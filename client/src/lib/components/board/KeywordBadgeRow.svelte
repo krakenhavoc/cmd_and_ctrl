@@ -129,6 +129,7 @@
     infect: "Infect",
     wither: "Wither",
     riot: "Riot",
+    soulbond: "Soulbond",
     unleash: "Unleash",
   };
 

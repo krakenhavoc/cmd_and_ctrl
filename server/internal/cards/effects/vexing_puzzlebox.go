@@ -17,6 +17,11 @@ func init() {
 			if zone := g.FindCardZoneForEffect(item.SourceCardID); zone == nil || zone.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) { // #1432
 				return nil
 			}
+			if total <= 0 {
+				// A result a modifier took to 0 or less (#5681), or a planar
+				// die, which has no number: no counters, never a removal.
+				return nil
+			}
 			return g.AddCounterForEffect(item.SourceCardID, "charge", total)
 		})},
 		ManaAbilities: []ManaAbility{{

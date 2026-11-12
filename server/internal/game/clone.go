@@ -657,6 +657,9 @@ func deepenCard(out *Card) {
 	if len(out.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]string(nil), out.GrantedAbilities...)
 	}
+	if len(out.LostKeywords) > 0 {
+		out.LostKeywords = append([]string(nil), out.LostKeywords...)
+	}
 	if len(out.ExileGrants) > 0 {
 		out.ExileGrants = append([]GrantedAbility(nil), out.ExileGrants...)
 	}
@@ -958,6 +961,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		CastFromZone:     s.CastFromZone,

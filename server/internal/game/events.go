@@ -1912,6 +1912,14 @@ type Event struct {
 	Call  string `json:"call,omitempty"`
 	Won   bool   `json:"won,omitempty"`
 
+	// Modifier is, on an EventRollDie, what the instruction added to
+	// (negative: subtracted from) the die (CR 706.2, DiceRoll.Modifier,
+	// #5681). Amount stays the natural result, the number the die shows,
+	// and the result of the roll is Amount + Modifier (RollResult). Zero
+	// on a roll with no modifier, on a planar die and on every other
+	// kind.
+	Modifier int `json:"modifier,omitempty"`
+
 	// PlanarFace is the face a planar die showed on an EventRollDie
 	// (CR 901.3a, ADR 0216 §4): PlanarFaceBlank, PlanarFaceChaos or
 	// PlanarFacePlaneswalk. Amount is 0 on such an event: the planar die

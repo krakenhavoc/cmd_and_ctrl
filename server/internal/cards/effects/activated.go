@@ -476,6 +476,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileGrantor {
 			out.ExileGrantor = true
 		}
+		// #5683: and the exile-by-name component; dropped, The Book of
+		// Vile Darkness would keep the Eye and the Hand.
+		if c.ExileNamed != nil {
+			out.ExileNamed = c.ExileNamed
+		}
 		// Cursecloth Wrappings: and "its mana cost" as the mana component;
 		// dropped, the granted embalm would be free.
 		if c.ManaFromSource {
@@ -521,6 +526,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// "{2}, Forage:" would pay its branch without foraging.
 		if c.Forage {
 			out.Forage = true
+		}
+		// #5682: and the roll. A composed "{6}, Roll a d8" that dropped
+		// it would leave the effect an X of nothing.
+		if c.RollDie != 0 {
+			out.RollDie = c.RollDie
 		}
 	}
 	return out
@@ -754,6 +764,17 @@ func ExileACreatureYouControl() game.AbilityCost {
 // zone (game.ExileSelfZoneSupported).
 func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
 
+// ExileYourPermanentsNamed is the "… and <card type>s you control named
+// A and B" cost component (#5683, game.AbilityCost.ExileNamed) — The Book
+// of Vile Darkness's "Exile The Book of Vile Darkness and artifacts you
+// control named Eye of Vecna and Hand of Vecna", composed with
+// ExileThis. Every permanent the activator controls with the card type
+// and one of the names is exiled; there is nothing to pick, and an empty
+// set still pays. `cardType` is lowercase ("artifact").
+func ExileYourPermanentsNamed(cardType string, names ...string) game.AbilityCost {
+	return game.AbilityCost{ExileNamed: &game.ExileNamedCost{CardType: cardType, Names: names}}
+}
+
 // ReturnThis is the "Return this <permanent> to its owner's hand" cost
 // component (#2028) — Gossamer Chains' "Return this enchantment to its
 // owner's hand:", Shigeki, Jukai Visionary's "Return Shigeki to its
@@ -984,6 +1005,36 @@ func ExileTopOfLibrary(n int) game.AbilityCost {
 // MillCards is the effect primitive.
 func MillCardsCost(n int) game.AbilityCost {
 	return game.AbilityCost{Mill: n}
+}
+
+// RollDieCost is "Roll a d<sides>" as a cost component (#5682,
+// game.AbilityCost.RollDie): Clay Golem's "{6}, Roll a d8: Monstrosity X,
+// where X is the result" is
+//
+//	Plus(ManaCost("{6}"), RollDieCost(8))
+//
+// A cost with a random element is paid after every other one (CR
+// 601.2h), through the ordinary dice door, so a replacement of the roll
+// applies and "whenever you roll one or more dice" sees it. The effect
+// reads the result with CostRollOf. Nothing to choose, and never
+// unpayable. Not for a mana ability.
+func RollDieCost(sides int) game.AbilityCost {
+	return game.AbilityCost{RollDie: sides}
+}
+
+// CostRollOf is the result of the dice the item's activation cost rolled
+// (RollDieCost): "where X is the result". Their total, which for the one
+// die a printed cost rolls is that die. Zero when the cost rolled none,
+// or when the roll was replaced with no roll at all.
+func CostRollOf(item *game.StackItem) int {
+	if item == nil {
+		return 0
+	}
+	total := 0
+	for _, r := range item.Paid.Rolled {
+		total += r
+	}
+	return total
 }
 
 // ExileCardsFromHand is "Exile N <kind> cards from your hand" as a

@@ -367,6 +367,16 @@ type PaidCost struct {
 	// onto.
 	AssistedBy uuid.UUID `json:"assistedBy,omitempty"`
 	AssistPaid int       `json:"assistPaid,omitempty"`
+
+	// Rolled is the kept results of the dice an activation cost rolled
+	// (AbilityCost.RollDie, #5682): Clay Golem's "{6}, Roll a d8:
+	// Monstrosity X, where X is the result". Written once the roll is
+	// settled, which is as the ability is activated unless a replacement
+	// of the roll asks its chooser which roll to ignore (dice_roll.go);
+	// nothing can respond before that answer. Nil for every other cost,
+	// and for a roll that was replaced with no roll at all. A CR 707.10
+	// copy of the ability keeps it, as it keeps X.
+	Rolled []int `json:"rolled,omitempty"`
 }
 
 // PaidCostBranch reports whether the either/or branch keyed `key` was
@@ -523,7 +533,7 @@ func (p PaidCost) IsZero() bool {
 		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
 		len(p.TappedOthers) == 0 && len(p.Chosen) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
-		p.AssistedBy == uuid.Nil && p.AssistPaid == 0
+		p.AssistedBy == uuid.Nil && p.AssistPaid == 0 && len(p.Rolled) == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
@@ -570,6 +580,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.Discarded) > 0 {
 		out.Discarded = append([]uuid.UUID(nil), p.Discarded...)
+	}
+	if len(p.Rolled) > 0 {
+		out.Rolled = append([]int(nil), p.Rolled...)
 	}
 	return out
 }

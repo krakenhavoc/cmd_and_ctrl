@@ -1620,6 +1620,19 @@ var items = []Item{
 		Examples: []string{"Exava, Rakdos Blood Witch", "Chaos Imps", "Hellhole Flailer"},
 	},
 	{
+		// #5675: the pair is a link on both creatures (game/soulbond.go);
+		// the keyword's two triggers are catalog rows (effects.Soulbond)
+		// that read this token off the layered ability list.
+		Slug: "soulbond", Name: "Soulbond", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "You may pair a soulbond creature with another unpaired creature you control when either enters. They stay paired for as long as you control both creatures.",
+		Rules:    []string{"702.95", "603.4"},
+		Issue:    5675,
+		Keywords: []string{game.KeywordSoulbond},
+		Mechanic: "soulbond",
+		Printed:  printedKeyword("soulbond"),
+		Examples: []string{"Doom Weaver", "Breathkeeper Seraph", "Mirage Phalanx"},
+	},
+	{
 		// #2075 (ADR 0113 §4): dies keywords whose triggers the engine
 		// derives from the departed permanent's LAST-KNOWN ability list
 		// (game/undying_persist.go), so a printed, token or granted

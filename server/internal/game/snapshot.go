@@ -1405,6 +1405,16 @@ type cardSnapshot struct {
 	// nothing about it.
 	Suspected   bool  `json:"suspected,omitempty"`
 	SuspectedAt int64 `json:"suspectedAt,omitempty"`
+	// PairedWith is the creature a soulbond ability paired this one with
+	// (CR 702.95b, #5675), carried for Monstrous's reason: "unpaired" is
+	// a legal zero value, so a restore that dropped it would take the
+	// pair's shared ability away and say nothing about it. Additive.
+	PairedWith uuid.UUID `json:"pairedWith,omitempty"`
+	// LostKeywords are the printed keywords a copy exception took away
+	// (CR 707.9b, #5675), carried for ColorCDADropped's reason: a
+	// restore that dropped it would hand a token copy its keyword back.
+	// Additive.
+	LostKeywords []string `json:"lostKeywords,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -1779,6 +1789,10 @@ type stackItemSnapshot struct {
 	// that makes its permanent enter tapped. Carried: the permission may
 	// be spent or gone by the time the spell resolves.
 	EntersTapped bool `json:"entersTapped,omitempty"`
+	// EntryRolls is StackItem.EntryRolls (#5682). Additive within the
+	// schema version and omitted when empty, which is every item but a
+	// permanent spell that rolled dice as it began to enter.
+	EntryRolls []int `json:"entryRolls,omitempty"`
 	// FaceDown is CR 708.4 (#1194): the state the permanent this
 	// spell becomes enters in. Carried, and it has to be — a restore
 	// that lost it would resolve a morph on the stack into a face-UP
@@ -3197,6 +3211,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
 		SuspectedAt:              c.SuspectedAt,
+		PairedWith:               c.PairedWith,
+		LostKeywords:             append([]string(nil), c.LostKeywords...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -3369,6 +3385,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,
@@ -4352,6 +4369,8 @@ func restoreCard(c *cardSnapshot) Card {
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
 		SuspectedAt:              c.SuspectedAt,
+		PairedWith:               c.PairedWith,
+		LostKeywords:             append([]string(nil), c.LostKeywords...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -4571,6 +4590,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,

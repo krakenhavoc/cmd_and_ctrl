@@ -131,6 +131,10 @@ type PrintedValues struct {
 	// exception dropped the copied colour-defining ability (CR 707.9d).
 	ColorCDADropped bool
 
+	// LostKeywords is Card.LostKeywords: the printed keywords a copy
+	// exception took away (CR 707.9b, #5675).
+	LostKeywords []string `json:",omitempty"`
+
 	// PrintsTapAbility is Card.PrintsTapAbility (#3860): whether the
 	// printed text has an activated ability with {T} in its cost. A copy
 	// takes the copied card's text (CR 707.2), so a copy of an
@@ -290,6 +294,7 @@ func printedValuesOf(src Card) PrintedValues {
 		Keywords:             copyStringSlice(src.Keywords),
 		GrantedAbilities:     copyStringSlice(src.GrantedAbilities),
 		ColorCDADropped:      src.ColorCDADropped,
+		LostKeywords:         copyStringSlice(src.LostKeywords),
 		PrintsTapAbility:     src.PrintsTapAbility,
 		ManaAbilityText:      src.ManaAbilityText,
 		NoAbilitiesText:      src.NoAbilitiesText,
@@ -548,6 +553,13 @@ func (v *PrintedValues) AddKeyword(kw string) {
 	v.Keywords = append(v.Keywords, kw)
 }
 
+// LoseKeyword is "except it loses <keyword>" (CR 707.9b, #5675): the
+// copy does not have that printed keyword, and neither does a copy of
+// it. See Card.LoseCopiedKeyword.
+func (v *PrintedValues) LoseKeyword(kw string) {
+	v.Keywords, v.LostKeywords = loseCopiedKeyword(v.Keywords, v.LostKeywords, kw)
+}
+
 // MakeToken stamps the "Token" supertype on the copiable values —
 // what CR 111.13 and CR 608.3f ask for when a copy of a permanent
 // spell becomes a token as it resolves.
@@ -745,6 +757,7 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 	c.Keywords = v.Keywords
 	c.GrantedAbilities = v.GrantedAbilities
 	c.ColorCDADropped = v.ColorCDADropped
+	c.LostKeywords = v.LostKeywords
 	c.PrintsTapAbility = v.PrintsTapAbility
 	c.ManaAbilityText = v.ManaAbilityText
 	c.NoAbilitiesText = v.NoAbilitiesText
@@ -799,6 +812,7 @@ func (c *Card) restorePrintedSelf() {
 	// always empty) grant list, so this restores rather than clears.
 	c.GrantedAbilities = v.GrantedAbilities
 	c.ColorCDADropped = v.ColorCDADropped
+	c.LostKeywords = v.LostKeywords
 	c.PrintsTapAbility = v.PrintsTapAbility
 	c.ManaAbilityText = v.ManaAbilityText
 	c.NoAbilitiesText = v.NoAbilitiesText

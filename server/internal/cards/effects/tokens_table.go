@@ -336,6 +336,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 green Legendary Dog named Porthos":                            {Name: "Porthos", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green and white Legendary Dog named Angelo":                   {Name: "Angelo", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"2/2 green Legendary Dog Detective named Tiny with trample":        {Name: "Tiny", TypeLine: "Token Legendary Creature — Dog Detective", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"trample"}},
+	"8/8 black Legendary Zombie God named Vecna with indestructible":   {Name: "Vecna", TypeLine: "Token Legendary Creature — Zombie God", Power: 8, Toughness: 8, Colors: []string{"B"}, Keywords: []string{"indestructible"}},
 	"2/2 white and black Legendary Dog named Darkstar":                 {Name: "Darkstar", TypeLine: "Token Legendary Creature — Dog", Power: 2, Toughness: 2, Colors: []string{"W", "B"}},
 	"3/3 colorless Illusion artifact":                                  {Name: "Illusion", TypeLine: "Token Artifact Creature — Illusion", Power: 3, Toughness: 3},
 	"3/3 white Angel with flying":                                      {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},

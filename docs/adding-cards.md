@@ -28,6 +28,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Granting an ability to another permanent (ADR 0093, #754)](#granting-an-ability-to-another-permanent-adr-0093-754)
   - [Alternative costs for every spell you cast (ADR 0118, #2163)](#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
   - [Abilities any player may activate (ADR 0106, #1793)](#abilities-any-player-may-activate-adr-0106-1793)
+  - [A token with "all triggered abilities of" other cards, and exiling by name as a cost (#5683)](#a-token-with-all-triggered-abilities-of-other-cards-and-exiling-by-name-as-a-cost-5683)
   - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
@@ -92,6 +93,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)](#leveler-cards-level-up-and-level-bands-5426-cr-70287--cr-711)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
   - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
+  - [Soulbond (CR 702.95, #5675)](#soulbond-cr-70295-5675)
   - [Suspect (CR 701.60, #2698)](#suspect-cr-70160-2698)
   - [Meld (ADR 0145, #2699, CR 701.42)](#meld-adr-0145-2699-cr-70142)
   - [More Than Meets the Eye, convert and living metal (ADR 0152, #1856)](#more-than-meets-the-eye-convert-and-living-metal-adr-0152-1856)
@@ -643,6 +645,51 @@ the `*Game` they receive, so undo operates on the restored game.
 `WheneverYouRollDice` triggers once per instruction, including when
 another roll trigger is still pending. See ADR 0054 and the random card
 tests for compositions; clear any caveat made stale by the new mechanic.
+
+**A roll's modifier and its natural result** (#5681, CR 706.2). "Roll a
+d20 and add the number of cards in your hand" puts the number in
+`RollDice{…, Modifier: n}` (negative for "subtract"), read as the effect
+resolves; never add it inside the tail. The roll is then announced with
+both: on each `EventRollDie`, `Amount` is the natural result (the number
+the die shows) and `Modifier` the instruction's, and `ev.RollResult()` is
+their sum. The tail reads the result of the die as `DiceResult(o)` (a
+`CardTail`; `o.Rolls` stay natural, `o.RollModifier` is the modifier) and
+reads `o.Tail.N` / `o.Tail.Carry` for anything else it was handed
+(`RollDice.TailN`, `.TailCarry`). A results table has no row below 1
+unless the card prints one (The Deck of Many Things' "0 or less").
+
+- "If any of those results was 10 or higher" (Farideh) is a
+  `WheneverYouRollDice` effect that walks `RolledDice(g, item)` and tests
+  `RollResult()`. The helper's `total` is the sum of the results.
+- "Whenever you roll a die's highest natural result" (Netherese
+  Puzzle-Ward) is `On(game.EventRollDie, YouRolledADiesHighestNaturalResult, …)`:
+  once per kept die. "When you roll a natural 20" (Critical Hit) tests
+  `ev.Amount == 20` the same way. Natural-result triggers never read the
+  modifier.
+- "If you would roll one or more dice, instead roll that many dice plus
+  one and ignore the lowest roll" (Pixie Guide, Barbarian Class) is
+  `Replacements: []game.ReplacementEffect{RollOneMoreDieAndIgnoreTheLowest("<card>")}`.
+  Nobody is asked, two of them stack, and planar dice are left alone
+  (CR 706.7). "…and ignore one" with a chooser is Ichor Elixir's
+  `ev.RollOneMoreAndIgnoreOne`.
+
+Two rolls are not an effect's, and each has its own declaration (#5682,
+[game/dice_cost.go](../server/internal/game/dice_cost.go)); both still go
+through the dice door, so a replacement of the roll and `WheneverYouRollDice`
+see them:
+
+- **A roll as an activation cost** ("{6}, Roll a d8: Monstrosity X, where
+  X is the result", Clay Golem): `Plus(ManaCost("{6}"), RollDieCost(8))`.
+  It is paid after every other component (CR 601.2h), once the ability is
+  on the stack, and the effect reads the result with `CostRollOf(item)`
+  (`PaidCost.Rolled`). Not for a mana ability.
+- **A roll as the permanent enters** ("As this creature enters, roll X d6.
+  It enters with a number of +1/+1 counters on it equal to the total of
+  those results", Neverwinter Hydra):
+  `EntersWithCountersFromCast: []game.EntryCountersFromCast{RollXDiceCounters(game.CounterPlusOne, 6)}`.
+  The dice are rolled as the spell resolves, before the entry begins; a
+  permanent that was not cast rolls nothing (CR 107.3m). One such clause
+  per card.
 
 ### Adding a mana ability (S15+)
 
@@ -1474,6 +1521,52 @@ See `borrowed_lender_cards_test.go` and `borrowed_last_cards_test.go`.
 
 The client groups lent rows under "From <lender>" and shows identical rows
 once (`client/src/lib/borrowedRows.ts`); nothing per card.
+
+### A token with "all triggered abilities of" other cards, and exiling by name as a cost (#5683)
+
+The Book of Vile Darkness: "{T}, Exile The Book of Vile Darkness and
+artifacts you control named Eye of Vecna and Hand of Vecna: Create Vecna,
+… with indestructible and all triggered abilities of the exiled cards."
+
+**The cost.** "… and <card type>s you control named A and B" is
+`ExileYourPermanentsNamed("artifact", "Eye of Vecna", "Hand of Vecna")`
+(`game.AbilityCost.ExileNamed`), composed with `ExileThis()` for the
+source. The board decides the set: every permanent the activator controls
+with the card type and one of the names, the source left out. Nothing is
+picked or sent by the client, an empty set still pays, and what was
+exiled is on `ctx.Paid().Exiled` after any picked exiles. It is an
+activated ability's component only.
+
+**The token.** This is not a borrow. A borrow is a layer-6 effect, re-read
+on every pass; here the creating effect defines the token's text (CR
+111.3), so the abilities are fixed as the ability resolves, are copied by
+a Clone and are removed with the token's other abilities. Collect the
+lender cards as they are now and call
+
+```go
+CreateTokenWithTriggeredAbilitiesOf(ctx, TokenCard("8/8 black Legendary Zombie God named Vecna with indestructible"), lenders)
+```
+
+Each lender adds one part to the template's `GrantedAbilities`,
+`game.TriggersOfKey(<its catalog key>)`, which the catalog answers with
+that card's triggered rows and triggered mana abilities and nothing else
+(`game/triggers_of_key.go`). The rows keep the lender's catalog identity,
+so a harvested trigger restores without the lender and adds no effect
+key. A triggered keyword the engine derives from the ability list joins
+the template's `Keywords` (prowess, exalted, undying); decayed and
+modular lend their trigger alone. A card with no triggered ability, a
+face-down card and a card the catalog does not know add nothing. The
+token enters with the abilities, so a lent "when this enters" triggers
+for its own arrival.
+
+Hand of Vecna's "Equip—Pay 1 life for each card in your hand" is the
+computed life cost on an equip:
+`EquipPayingAbility(label, PayLifeCount(handOfVecnaLifePerCardInHand))`,
+with the count registered once by `game.LifeCount` in the card's file.
+
+A test reads the token's `GrantedAbilities`, counts
+`game.TriggersForCard`, checks `game.ActivatedAbilitiesForCard` is empty,
+and lets a lent trigger fire (`vecna_cards_test.go`).
 
 ### Abilities any player may activate (ADR 0106, #1793)
 
@@ -2380,7 +2473,8 @@ line after escape's `applyAltCostEntryCountersLocked`, so a card file
 declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
 `ColorsSpent`, `ManaSpent` (CR 601.2h's "the amount of mana spent to cast
 it", #1735), `Delved` — and nothing else. Constructors:
-`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)` in
+`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)`,
+`RollXDiceCounters(kind, sides)` (#5682, "roll X d6 ... equal to the total of those results") in
 [cards/effects/entry_counters.go](../server/internal/cards/effects/entry_counters.go).
 Sunburst is not one of them any more: it is a keyword (ADR 0109 §11).
 Never build a `game.EntryCountersFromCast` by hand, for the reason
@@ -3505,6 +3599,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"modular N"` | Modular (CR 702.43) — #2012, a NUMBERED entry-and-dies keyword: one entry replacement per instance through the entry look-ahead ("enters with N +1/+1 counters", every entry path, never ordered against other entry replacements), and one dies trigger per instance off the last-known ability list and counters (`game/modular.go`), a "you may" that targets an artifact creature. Declare it in `PrintedKeywords` (`"modular 2"`); cumulative (CR 702.43b). Modular—Sunburst is not this token (Arcbound Wanderer's own card file). A creature whose only text is modular and other tokens here needs no card file |
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
+| `"soulbond"` | Soulbond (CR 702.95) — #5675. The token is the badge and the gate: the keyword's two triggered abilities are the catalog rows `Soulbond(name)` returns, and they read this token off the layered ability list, so a creature that has lost it (a copy that "loses soulbond") never asks to pair. Declare both; see "Soulbond" below. |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"melee"` | Melee (CR 702.121) — #4722, a TRIGGERED keyword: one attack trigger per instance (`game/melee.go`) gives the creature +1/+1 until end of turn for each opponent you attacked with a creature this combat, counted as the trigger resolves (`Game.OpponentsAttackedThisCombat`: attacks on a planeswalker or battle count no player). Cumulative (CR 702.121b), so grant it through `KeywordGrant` / `TribalKeywordGrant` / `game.AppendKeywordAbility` (Titania, Proud Pummeler). A creature whose only text is melee needs no card file. Never write the pump by hand |
 | `"enlist"` | Enlist (CR 702.154) — #5658, an optional cost to attack and a TRIGGERED keyword (`game/enlist.go`). The declaration names the creature the attacker enlists (`declare_attacker`'s `enlist`); the lock-in taps it and emits `game.EventEnlist`, and the linked trigger adds its power to the attacker until end of turn, read as it resolves. Not cumulative: an attacker enlists at most one creature. Print it with `PrintedKeywords: []string{game.KeywordEnlist}`; see [Enlist](#enlist-5658-cr-702154). |
@@ -10232,6 +10327,23 @@ removed from the battlefield before the exploit ability resolved still lets
 you sacrifice another creature, but makes no payoff; sacrificing the
 exploiter itself does. Like echo it is not a `canonicalKeywords` token.
 
+A payoff body that belongs to one card is a package-level `var` in that card's
+own file (`game.ReflexiveBody("<card>/<what>", simpleBody(fn), constTargets(...))`,
+as Diver Skaab does); package variables are initialised before any `init()`.
+
+"Whenever a creature you control exploits a nontoken creature" watches
+`game.EventExploited` (#5676, CR 702.110b): `CardID` is the creature with
+exploit, `Actor` its controller as it exploited and `Target` the creature that
+was sacrificed. `Exploit` emits it once the sacrifice has settled, on the same
+condition as the payoff, whether or not the card prints one. Write it as
+`WheneverACreatureYouControlExploitsANontokenCreature(label, effect)` (Skull
+Skaab). Exploiting is a sacrifice, so the ability looks back (CR 603.10a): a
+watcher that was the creature sacrificed still triggers, and the sacrificed
+creature is read as it last existed (`g.SimultaneousExitCardsForEffect`), not
+from the card in its new zone. A card that exploits in its own way must emit
+it: call `g.ExploitedForEffect(exploiter, controller, sacrificed)` from the
+sacrifice's tail.
+
 ### The CR 732 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never
@@ -13131,11 +13243,76 @@ SearchLibrary{…, EntersAttachedTo: game.TargetRef{Kind: game.TargetCard, ID: s
 ReturnFromGraveyardTogether{Targets: ids, AttachedTo: hostRef}                        // Mantle of the Ancients
 g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{AttachedTo: hostRef}, game.KeyedTail{}) // Gift of Immortality
 game.TokenEntryOptions{AttachedTo: hostRef}                                            // a token created attached
+ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: you,
+    Transformed: true, AttachedTo: hostRef}                                            // a back-face Aura, below
 ```
 
 An Aura that can't legally enchant the named host stays where it was
 (CR 303.4i). A non-Aura given `AttachedTo` (Mantle's Equipment) is
 attached as it enters and left to CR 704.5n.
+
+### Soulbond (CR 702.95, #5675)
+
+A soulbond creature declares three things:
+
+```go
+PrintedKeywords: []string{game.KeywordSoulbond},
+Triggered:       Soulbond("Doom Weaver"),
+Grants:          []AbilityGrant{{Key: doomWeaverGrant, Triggered: …, Text: "When this creature dies, draw cards equal to its power."}},
+Static:          []game.StaticAbility{PairedCreaturesHave(`As long as Doom Weaver is paired with another creature, each of those creatures has "…"`, doomWeaverGrant)},
+```
+
+`Soulbond(name)` ([soulbond.go](../server/internal/cards/effects/soulbond.go))
+is the keyword's two triggered abilities (CR 702.95a): "when this creature
+enters" and "whenever another creature you control enters", each with its
+intervening "if" checked as it triggers and as it resolves (CR 603.4). The
+partner is not a target: it is chosen as the ability resolves, on the
+"choose permanents" prompt with a floor of zero, which is the "you may".
+The rows read `game.KeywordSoulbond` off the layered ability list, so the
+keyword must be in `PrintedKeywords`, and a creature that has lost it never
+asks.
+
+`PairedCreaturesHave(label, keys...)` is "As long as <this> is paired with
+another creature, each of those creatures has '…'": an ADR 0093 layer-6
+grant of the bundles to the source and to its partner. Write the quoted
+ability as a granted trigger, with `source` as the creature that has it
+(see the section on granting an ability above). Each creature has its own
+instance, so two attackers are two triggers.
+
+The pair is `game.Card.PairedWith` on both creatures
+([soulbond.go](../server/internal/game/soulbond.go)). Read it with
+`g.PairedPartner(card)` or `g.PairedWithForEffect(id)`; make one with
+`g.PairForEffect(controller, a, b)`, which refuses anything CR 702.95c
+and 702.95d refuse. It ends when either creature changes controller, stops
+being a creature or leaves the battlefield (CR 702.95e), and it does not
+come back. Phasing out ends nothing (CR 702.26d): the pair is kept, and
+`PairedPartner` answers nil until the partner phases back in. It is not
+copiable.
+
+**"Except it … loses soulbond"** (Mirage Phalanx's token copy) is
+`tmpl.LoseCopiedKeyword(game.KeywordSoulbond)` on a token copy template, or
+`v.LoseKeyword(kw)` on a `*game.PrintedValues` (CR 707.9b). Never strip the
+word from `Keywords` by hand: the catalog's `PrintedKeywords` under the
+copied oracle ID would put it back.
+
+"Return this card to the battlefield transformed under your control
+attached to target …" (Radiant Grace, Vengeful Strangler; #5677) is a
+double-faced card whose back face is an Aura. Give the trigger its
+target with `Targeting` and resolve it with
+`ReturnThisCardTransformedAttachedToTarget`, which checks that the card
+is still the graveyard object it became (CR 400.7) and returns it back
+face up attached to `item.Targets[0]`:
+
+```go
+Targeting(WhenEnchantedCreatureDies("Radiant Grace — return this card … attached to target opponent",
+    ReturnThisCardTransformedAttachedToTarget), TargetPlayer("target opponent", Opponent()))
+```
+
+The back face's own `Targets` (its enchant clause) decides whether the
+host is legal, so register it on the `#1` Spec as for any Aura. Only this
+transformed form takes a host on `ReturnFromGraveyard`; a back face that
+is not an Aura, an Equipment or a Fortification enters unattached
+(CR 303.4h).
 
 ### Suspect (CR 701.60, #2698)
 

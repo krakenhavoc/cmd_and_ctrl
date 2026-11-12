@@ -877,6 +877,17 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{game.KeywordUnleash} — the engine does the rest`,
 	},
 	{
+		// #5675: soulbond is a canonicalKeywords token; its two
+		// triggers are catalog rows (effects.Soulbond) that read it off
+		// the layered ability list, so a card needs both.
+		Name:       "soulbond",
+		Phrases:    []string{"soulbond"},
+		Implements: printedKeywordProbe(game.KeywordSoulbond),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "soulbond"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordSoulbond} and Triggered: Soulbond(name)`,
+	},
+	{
 		// #2075 (ADR 0113 §4): undying and persist are canonicalKeywords
 		// tokens whose dies triggers the engine derives from the
 		// departed permanent's last-known ability list

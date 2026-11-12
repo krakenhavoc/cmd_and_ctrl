@@ -60,6 +60,7 @@ body bloodthirsty-adversary/copy
 body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
 body brass-infiniscope/draw-and-gain-half-x
+body breathkeeper-seraph/may-return-the-object
 body breeches/blast
 body breeches/copy-that-spell
 body bullseye-death-dealer/damage
@@ -116,6 +117,7 @@ body dire-blunderbuss/damage
 body discard-by-opponent/return-the-discarded-card
 body discard-by-opponent/return-to-hand
 body discard-by-opponent/return-with-counter
+body diver-skaab/tuck
 body dont-move/destroy-the-tapped-creature
 body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
@@ -153,6 +155,7 @@ body extra-turn/lose-the-game
 body facedown/ward
 body faebloom-trick/tap
 body fatal-fissure/earthbend-4
+body fell-stinger/draw-and-lose
 body felonious-rage/detective
 body felothar-dawn-of-the-abzan/counters
 body feral-encounter/bite
@@ -187,6 +190,7 @@ body glorifier-of-suffering/counters
 body gnawing-crescendo/cant-block-rat
 body goad/clear-listed
 body good-king-mog/copy-a-non-saga-token
+body graf-reaver/destroy
 body grant/double-strike-and-trample-until-eot
 body graveyard/return-listed-to-hand
 body graveyard/return-the-object-under-its-owners-control
@@ -245,6 +249,7 @@ body megatron-destructive-force/strike
 body melee/pump
 body merry-bards/young-hero-role
 body miasma-demon/shrink
+body mindleech-ghoul/exile
 body miracle/granted-offer
 body miracle/offer
 body modular/move-counters
@@ -322,6 +327,7 @@ body redirection/that-much-to-the-sources-controller
 body rediscover-the-way/double-strike
 body renown/grow
 body repeated-reverberation/copy-twice
+body repository-skaab/return
 body return/the-objects-together-under-your-control
 body rewrite-history/return
 body rhinos-rampage/destroy-artifact
@@ -329,6 +335,7 @@ body riddle-gate-gargoyle/lifelink
 body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
 body rose-room-treasurer/damage
+body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
@@ -358,6 +365,7 @@ body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
+body stitched-assistant/scry-draw
 body stolen-uniform/unattach-the-equipment
 body storm/the-spell-just-cast
 body summon-kujata/fire-damage
@@ -380,6 +388,7 @@ body territorial-aetherkite/damage-each-other
 body tester-of-the-tangential/move
 body tether-technician/strike
 body the-ancient-one/mill
+body the-deck-of-many-things/owner-loses
 body the-falcon-airship-restored/return
 body the-fire-nation-drill/destroy
 body the-last-ronin/attacks-alone
@@ -537,6 +546,7 @@ choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
 choose choose-cards/cyclonus-connive-discarded
 choose choose-cards/cytoshape-copy
+choose choose-cards/danse-macabre-return
 choose choose-cards/darkstar-augur-take
 choose choose-cards/dauthi-voidwalker-play
 choose choose-cards/deadly-cover-up-exile
@@ -941,6 +951,7 @@ choose choose-cards/tezzeret-betrayer-of-flesh-discard-two-or-artifact
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
+choose choose-cards/the-deck-of-many-things-reanimate
 choose choose-cards/the-gitrog-ravenous-ride-sacrifice
 choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
@@ -1118,6 +1129,7 @@ confirm confirm/black-widow-counter-or-cast
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
 confirm confirm/break-out-put
+confirm confirm/breathkeeper-seraph-return
 confirm confirm/breeches-sacrifice
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
@@ -1453,6 +1465,7 @@ option option-pick/gideon-blackblade-keyword
 option option-pick/gluntch-the-bestower-first
 option option-pick/gluntch-the-bestower-second
 option option-pick/gluntch-the-bestower-third
+option option-pick/hand-of-vecna-creature
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/highway-robbery-cost
 option option-pick/hunters-axe-keyword
@@ -1639,6 +1652,7 @@ payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
+payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
@@ -1843,6 +1857,7 @@ run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
 run prompt-run/cycle-of-renewal-fetch
 run prompt-run/dahar-master-sacrifice
+run prompt-run/danse-macabre-roll
 run prompt-run/daretti-return
 run prompt-run/dead-drop-sacrifice
 run prompt-run/deadly-brew-return
@@ -1858,7 +1873,15 @@ run prompt-run/empower-jace-choose
 run prompt-run/entish-restoration-search
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
+run prompt-run/exploit-diver-skaab
+run prompt-run/exploit-fell-stinger
+run prompt-run/exploit-graf-reaver
+run prompt-run/exploit-mindleech-ghoul
 run prompt-run/exploit-overcharged-amalgam
+run prompt-run/exploit-repository-skaab
+run prompt-run/exploit-rot-tide-gargantua
+run prompt-run/exploit-skull-skaab
+run prompt-run/exploit-stitched-assistant
 run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
@@ -2003,6 +2026,7 @@ run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
 run run/krenkos-buzzcrusher-destroy
+run soulbond/pair
 run the-city-on-the-edge-of-forever/gain-five
 searchrule search/aangs-journey-basic-land-and-shrine
 searchrule search/basics-share-a-land-type
@@ -2276,11 +2300,18 @@ tail dice/ancient-gold-dragon-tokens
 tail dice/ancient-silver-dragon-draw
 tail dice/berserkers-frenzy-result
 tail dice/component-pouch-counters
+tail dice/danse-macabre-result
 tail dice/diviners-portent-result
+tail dice/entry-roll
 tail dice/hoarding-ogre-treasures
 tail dice/maddening-hex-burn-and-move
+tail dice/netherese-puzzle-ward-scry
 tail dice/reckless-endeavor-rolled
+tail dice/revivify-result
+tail dice/roll-cost
 tail dice/roll-to-visit
+tail dice/song-of-inspiration-result
+tail dice/the-deck-of-many-things-result
 tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
@@ -2727,7 +2758,15 @@ tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
+tail sacrificed-one/prompt-run/exploit-diver-skaab
+tail sacrificed-one/prompt-run/exploit-fell-stinger
+tail sacrificed-one/prompt-run/exploit-graf-reaver
+tail sacrificed-one/prompt-run/exploit-mindleech-ghoul
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
+tail sacrificed-one/prompt-run/exploit-repository-skaab
+tail sacrificed-one/prompt-run/exploit-rot-tide-gargantua
+tail sacrificed-one/prompt-run/exploit-skull-skaab
+tail sacrificed-one/prompt-run/exploit-stitched-assistant
 tail sacrificed-one/prompt-run/felothar-sacrifice
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
 tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
@@ -2866,6 +2905,7 @@ tail territorial-bruntar/cast-nonland-this-turn
 tail tetzin-gnome-champion/after-mill
 tail the-binding-of-the-titans/gain-per-creature-exiled
 tail the-day-of-the-doctor/after-mill
+tail the-deck-of-many-things/curse
 tail the-end/after-exile
 tail the-end/draw-for-hand
 tail the-gitrog-ravenous-ride/sacrificed
