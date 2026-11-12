@@ -60,6 +60,7 @@ body bloodthirsty-adversary/copy
 body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
 body brass-infiniscope/draw-and-gain-half-x
+body breathkeeper-seraph/may-return-the-object
 body breeches/blast
 body breeches/copy-that-spell
 body bullseye-death-dealer/damage
@@ -1114,6 +1115,7 @@ confirm confirm/black-widow-counter-or-cast
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
 confirm confirm/break-out-put
+confirm confirm/breathkeeper-seraph-return
 confirm confirm/breeches-sacrifice
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
@@ -1998,6 +2000,7 @@ run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
 run run/krenkos-buzzcrusher-destroy
+run soulbond/pair
 run the-city-on-the-edge-of-forever/gain-five
 searchrule search/aangs-journey-basic-land-and-shrine
 searchrule search/basics-share-a-land-type

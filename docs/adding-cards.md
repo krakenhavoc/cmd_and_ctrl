@@ -92,6 +92,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)](#leveler-cards-level-up-and-level-bands-5426-cr-70287--cr-711)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
   - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
+  - [Soulbond (CR 702.95, #5675)](#soulbond-cr-70295-5675)
   - [Suspect (CR 701.60, #2698)](#suspect-cr-70160-2698)
   - [Meld (ADR 0145, #2699, CR 701.42)](#meld-adr-0145-2699-cr-70142)
   - [More Than Meets the Eye, convert and living metal (ADR 0152, #1856)](#more-than-meets-the-eye-convert-and-living-metal-adr-0152-1856)
@@ -3489,6 +3490,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"modular N"` | Modular (CR 702.43) — #2012, a NUMBERED entry-and-dies keyword: one entry replacement per instance through the entry look-ahead ("enters with N +1/+1 counters", every entry path, never ordered against other entry replacements), and one dies trigger per instance off the last-known ability list and counters (`game/modular.go`), a "you may" that targets an artifact creature. Declare it in `PrintedKeywords` (`"modular 2"`); cumulative (CR 702.43b). Modular—Sunburst is not this token (Arcbound Wanderer's own card file). A creature whose only text is modular and other tokens here needs no card file |
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
+| `"soulbond"` | Soulbond (CR 702.95) — #5675. The token is the badge and the gate: the keyword's two triggered abilities are the catalog rows `Soulbond(name)` returns, and they read this token off the layered ability list, so a creature that has lost it (a copy that "loses soulbond") never asks to pair. Declare both; see "Soulbond" below. |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"melee"` | Melee (CR 702.121) — #4722, a TRIGGERED keyword: one attack trigger per instance (`game/melee.go`) gives the creature +1/+1 until end of turn for each opponent you attacked with a creature this combat, counted as the trigger resolves (`Game.OpponentsAttackedThisCombat`: attacks on a planeswalker or battle count no player). Cumulative (CR 702.121b), so grant it through `KeywordGrant` / `TribalKeywordGrant` / `game.AppendKeywordAbility` (Titania, Proud Pummeler). A creature whose only text is melee needs no card file. Never write the pump by hand |
 | `"enlist"` | Enlist (CR 702.154) — #5658, an optional cost to attack and a TRIGGERED keyword (`game/enlist.go`). The declaration names the creature the attacker enlists (`declare_attacker`'s `enlist`); the lock-in taps it and emits `game.EventEnlist`, and the linked trigger adds its power to the attacker until end of turn, read as it resolves. Not cumulative: an attacker enlists at most one creature. Print it with `PrintedKeywords: []string{game.KeywordEnlist}`; see [Enlist](#enlist-5658-cr-702154). |
@@ -13033,6 +13035,50 @@ game.TokenEntryOptions{AttachedTo: hostRef}                                     
 An Aura that can't legally enchant the named host stays where it was
 (CR 303.4i). A non-Aura given `AttachedTo` (Mantle's Equipment) is
 attached as it enters and left to CR 704.5n.
+
+### Soulbond (CR 702.95, #5675)
+
+A soulbond creature declares three things:
+
+```go
+PrintedKeywords: []string{game.KeywordSoulbond},
+Triggered:       Soulbond("Doom Weaver"),
+Grants:          []AbilityGrant{{Key: doomWeaverGrant, Triggered: …, Text: "When this creature dies, draw cards equal to its power."}},
+Static:          []game.StaticAbility{PairedCreaturesHave(`As long as Doom Weaver is paired with another creature, each of those creatures has "…"`, doomWeaverGrant)},
+```
+
+`Soulbond(name)` ([soulbond.go](../server/internal/cards/effects/soulbond.go))
+is the keyword's two triggered abilities (CR 702.95a): "when this creature
+enters" and "whenever another creature you control enters", each with its
+intervening "if" checked as it triggers and as it resolves (CR 603.4). The
+partner is not a target: it is chosen as the ability resolves, on the
+"choose permanents" prompt with a floor of zero, which is the "you may".
+The rows read `game.KeywordSoulbond` off the layered ability list, so the
+keyword must be in `PrintedKeywords`, and a creature that has lost it never
+asks.
+
+`PairedCreaturesHave(label, keys...)` is "As long as <this> is paired with
+another creature, each of those creatures has '…'": an ADR 0093 layer-6
+grant of the bundles to the source and to its partner. Write the quoted
+ability as a granted trigger, with `source` as the creature that has it
+(see the section on granting an ability above). Each creature has its own
+instance, so two attackers are two triggers.
+
+The pair is `game.Card.PairedWith` on both creatures
+([soulbond.go](../server/internal/game/soulbond.go)). Read it with
+`g.PairedPartner(card)` or `g.PairedWithForEffect(id)`; make one with
+`g.PairForEffect(controller, a, b)`, which refuses anything CR 702.95c
+and 702.95d refuse. It ends when either creature changes controller, stops
+being a creature or leaves the battlefield (CR 702.95e), and it does not
+come back. Phasing out ends nothing (CR 702.26d): the pair is kept, and
+`PairedPartner` answers nil until the partner phases back in. It is not
+copiable.
+
+**"Except it … loses soulbond"** (Mirage Phalanx's token copy) is
+`tmpl.LoseCopiedKeyword(game.KeywordSoulbond)` on a token copy template, or
+`v.LoseKeyword(kw)` on a `*game.PrintedValues` (CR 707.9b). Never strip the
+word from `Keywords` by hand: the catalog's `PrintedKeywords` under the
+copied oracle ID would put it back.
 
 ### Suspect (CR 701.60, #2698)
 
