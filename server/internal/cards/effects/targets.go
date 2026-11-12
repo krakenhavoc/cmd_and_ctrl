@@ -933,6 +933,29 @@ func GreatestPowerYouControl() CardPredicate {
 	}
 }
 
+// LowestManaValueNonland matches a nonland permanent whose mana value
+// no other nonland permanent on the battlefield, anyone's, is below
+// (Culling Scales' "target nonland permanent with the lowest mana
+// value"). Ties all match, and the player targets any one of them, as
+// the reminder text says. Mana value is read on the battlefield (X is 0,
+// CR 202.3e; a token with no mana cost is 0), and the predicate re-runs
+// at resolution, so a cheaper permanent arriving in response makes the
+// target illegal (CR 608.2b).
+func LowestManaValueNonland() CardPredicate {
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		if c.IsLand() {
+			return false
+		}
+		least := c.ManaValue()
+		for _, other := range g.BattlefieldCardsForEffect() {
+			if !other.IsLand() && other.ManaValue() < least {
+				return false
+			}
+		}
+		return true
+	}
+}
+
 // --- cost clauses (S28) ------------------------------------------
 //
 // The three constructors below build specs for COSTS, not targets.
