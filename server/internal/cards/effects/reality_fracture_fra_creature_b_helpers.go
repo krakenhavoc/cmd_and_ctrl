@@ -127,20 +127,6 @@ func printedGingerbruteToken() tokenTemplate {
 	}
 }
 
-// rfCreatureBBasicLandTypesAmong is domain (the ability word): the
-// number of distinct basic land types among the lands `controller`
-// controls, read from post-layer subtypes so a land that gained a type
-// counts. Five at most.
-func rfCreatureBBasicLandTypesAmong(g *game.Game, controller uuid.UUID) int {
-	n := 0
-	for _, sub := range []string{"Plains", "Island", "Swamp", "Mountain", "Forest"} {
-		if b08LandsWithSubtypeControlled(g, controller, sub) > 0 {
-			n++
-		}
-	}
-	return n
-}
-
 // rfCreatureBOpponentDealtCombatDamageOnYourTurn is the When for
 // "one or more of your opponents are dealt combat damage during your
 // turn" (Fblthp, Impossibly Lost): combat damage above zero dealt to a
