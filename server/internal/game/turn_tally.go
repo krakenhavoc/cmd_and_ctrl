@@ -2040,6 +2040,8 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 		if ev.Combat {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.CombatDamageTaken += ev.Amount })
+			// #5652: and the memory that outlives the turn.
+			g.noteCombatDamagedSinceLastTurnLocked(ev.Target)
 		}
 		// #2149: which creature OBJECT it was, for "a creature that
 		// dealt (combat) damage to you this turn".

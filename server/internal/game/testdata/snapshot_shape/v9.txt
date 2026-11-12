@@ -71867,6 +71867,7 @@ seats[].combatAttacks[].defender	custom(uuid.UUID)
 seats[].combatAttacks[].epoch	number:int
 seats[].combatAttacks[].phaseId	number:int
 seats[].combatAttacks[].planeswalkerController	custom(uuid.UUID)
+seats[].combatDamagedSinceLastTurn	bool
 seats[].command	object
 seats[].command.cards	array
 seats[].command.cards[]	object
