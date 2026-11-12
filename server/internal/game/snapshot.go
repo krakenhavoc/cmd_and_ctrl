@@ -1475,10 +1475,15 @@ type cardSnapshot struct {
 	// a restore that dropped them would bring back somebody's phased
 	// board under the wrong player's untap step, or bring an Aura back
 	// without its host.
-	PhasedOutBy       uuid.UUID `json:"phasedOutBy,omitempty"`
-	PhaseInLockedBy   uuid.UUID `json:"phaseInLockedBy,omitempty"`
-	PhasedOutIndirect bool      `json:"phasedOutIndirect,omitempty"`
-	TapOnPhaseIn      bool      `json:"tapOnPhaseIn,omitempty"`
+	PhasedOutBy     uuid.UUID `json:"phasedOutBy,omitempty"`
+	PhaseInLockedBy uuid.UUID `json:"phaseInLockedBy,omitempty"`
+	// #5664: "It can't phase in for as long as you control this Saga".
+	// Additive; absent on every card no such effect names.
+	PhaseInBarredBy    uuid.UUID `json:"phaseInBarredBy,omitempty"`
+	PhaseInBarredEpoch int       `json:"phaseInBarredEpoch,omitempty"`
+	PhaseInBarredFor   uuid.UUID `json:"phaseInBarredFor,omitempty"`
+	PhasedOutIndirect  bool      `json:"phasedOutIndirect,omitempty"`
+	TapOnPhaseIn       bool      `json:"tapOnPhaseIn,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -3198,6 +3203,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
+		PhaseInBarredBy:          c.PhaseInBarredBy,
+		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
+		PhaseInBarredFor:         c.PhaseInBarredFor,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
@@ -4348,6 +4356,9 @@ func restoreCard(c *cardSnapshot) Card {
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
+		PhaseInBarredBy:          c.PhaseInBarredBy,
+		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
+		PhaseInBarredFor:         c.PhaseInBarredFor,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,

@@ -719,6 +719,9 @@ var cardFields = plan(
 	// untap step, or an Aura back without its host.
 	"PhasedOutBy", carried, "",
 	"PhaseInLockedBy", carried, "",
+	"PhaseInBarredBy", carried, "",
+	"PhaseInBarredEpoch", carried, "",
+	"PhaseInBarredFor", carried, "",
 	"PhasedOutIndirect", carried, "",
 	"TapOnPhaseIn", carried, "",
 	// S27 battles. Both are printed / chosen state with no other

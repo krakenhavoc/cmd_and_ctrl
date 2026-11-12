@@ -2550,6 +2550,7 @@ tail mass/mass-polymorph-reveal
 tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
 tail mass/overwrite-the-multiverse-empower
+tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
 tail mass/settle-the-wreckage-fetch-basics
 tail mass/shredders-technique-enchantment-loss

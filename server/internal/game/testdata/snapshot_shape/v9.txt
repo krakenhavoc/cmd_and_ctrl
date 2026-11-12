@@ -294,6 +294,9 @@ battlefield.cards[].noAbilitiesText	number:uint8
 battlefield.cards[].objectEpoch	number:int
 battlefield.cards[].oracleId	string
 battlefield.cards[].owner	custom(uuid.UUID)
+battlefield.cards[].phaseInBarredBy	custom(uuid.UUID)
+battlefield.cards[].phaseInBarredEpoch	number:int
+battlefield.cards[].phaseInBarredFor	custom(uuid.UUID)
 battlefield.cards[].phaseInLockedBy	custom(uuid.UUID)
 battlefield.cards[].phasedOutBy	custom(uuid.UUID)
 battlefield.cards[].phasedOutIndirect	bool
@@ -851,6 +854,9 @@ enteringTokens[].noAbilitiesText	number:uint8
 enteringTokens[].objectEpoch	number:int
 enteringTokens[].oracleId	string
 enteringTokens[].owner	custom(uuid.UUID)
+enteringTokens[].phaseInBarredBy	custom(uuid.UUID)
+enteringTokens[].phaseInBarredEpoch	number:int
+enteringTokens[].phaseInBarredFor	custom(uuid.UUID)
 enteringTokens[].phaseInLockedBy	custom(uuid.UUID)
 enteringTokens[].phasedOutBy	custom(uuid.UUID)
 enteringTokens[].phasedOutIndirect	bool
@@ -1370,6 +1376,9 @@ exile.cards[].noAbilitiesText	number:uint8
 exile.cards[].objectEpoch	number:int
 exile.cards[].oracleId	string
 exile.cards[].owner	custom(uuid.UUID)
+exile.cards[].phaseInBarredBy	custom(uuid.UUID)
+exile.cards[].phaseInBarredEpoch	number:int
+exile.cards[].phaseInBarredFor	custom(uuid.UUID)
 exile.cards[].phaseInLockedBy	custom(uuid.UUID)
 exile.cards[].phasedOutBy	custom(uuid.UUID)
 exile.cards[].phasedOutIndirect	bool
@@ -8790,6 +8799,9 @@ frozenEntries[].event.keywordActionTail.armyToken.noAbilitiesText	number:uint8
 frozenEntries[].event.keywordActionTail.armyToken.objectEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.oracleId	string
 frozenEntries[].event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
+frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phasedOutIndirect	bool
@@ -11117,6 +11129,9 @@ frozenEntries[].event.millTail.run.planned[].noAbilitiesText	number:uint8
 frozenEntries[].event.millTail.run.planned[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].oracleId	string
 frozenEntries[].event.millTail.run.planned[].owner	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].phaseInBarredEpoch	number:int
+frozenEntries[].event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phasedOutIndirect	bool
@@ -11526,6 +11541,9 @@ frozenEntries[].event.millTail.run.seen[].noAbilitiesText	number:uint8
 frozenEntries[].event.millTail.run.seen[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].oracleId	string
 frozenEntries[].event.millTail.run.seen[].owner	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].phaseInBarredEpoch	number:int
+frozenEntries[].event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phasedOutIndirect	bool
@@ -13755,6 +13773,9 @@ frozenEntries[].event.tokenGroups[].template.noAbilitiesText	number:uint8
 frozenEntries[].event.tokenGroups[].template.objectEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.oracleId	string
 frozenEntries[].event.tokenGroups[].template.owner	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.phaseInBarredEpoch	number:int
+frozenEntries[].event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phasedOutIndirect	bool
@@ -14811,6 +14832,9 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.noAbilitiesText	number
 frozenEntries[].event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.oracleId	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phasedOutIndirect	bool
@@ -15233,6 +15257,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phasedOutIndirect	bool
@@ -15642,6 +15669,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uin
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phasedOutIndirect	bool
@@ -19318,6 +19348,9 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
 frozenEntries[].event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].oracleId	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phasedOutIndirect	bool
@@ -20376,6 +20409,9 @@ lastKnownStack[].card.noAbilitiesText	number:uint8
 lastKnownStack[].card.objectEpoch	number:int
 lastKnownStack[].card.oracleId	string
 lastKnownStack[].card.owner	custom(uuid.UUID)
+lastKnownStack[].card.phaseInBarredBy	custom(uuid.UUID)
+lastKnownStack[].card.phaseInBarredEpoch	number:int
+lastKnownStack[].card.phaseInBarredFor	custom(uuid.UUID)
 lastKnownStack[].card.phaseInLockedBy	custom(uuid.UUID)
 lastKnownStack[].card.phasedOutBy	custom(uuid.UUID)
 lastKnownStack[].card.phasedOutIndirect	bool
@@ -21253,6 +21289,9 @@ match.decks[].fixed[].noAbilitiesText	number:uint8
 match.decks[].fixed[].objectEpoch	number:int
 match.decks[].fixed[].oracleId	string
 match.decks[].fixed[].owner	custom(uuid.UUID)
+match.decks[].fixed[].phaseInBarredBy	custom(uuid.UUID)
+match.decks[].fixed[].phaseInBarredEpoch	number:int
+match.decks[].fixed[].phaseInBarredFor	custom(uuid.UUID)
 match.decks[].fixed[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].fixed[].phasedOutBy	custom(uuid.UUID)
 match.decks[].fixed[].phasedOutIndirect	bool
@@ -21660,6 +21699,9 @@ match.decks[].main[].noAbilitiesText	number:uint8
 match.decks[].main[].objectEpoch	number:int
 match.decks[].main[].oracleId	string
 match.decks[].main[].owner	custom(uuid.UUID)
+match.decks[].main[].phaseInBarredBy	custom(uuid.UUID)
+match.decks[].main[].phaseInBarredEpoch	number:int
+match.decks[].main[].phaseInBarredFor	custom(uuid.UUID)
 match.decks[].main[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].main[].phasedOutBy	custom(uuid.UUID)
 match.decks[].main[].phasedOutIndirect	bool
@@ -22070,6 +22112,9 @@ match.decks[].side[].noAbilitiesText	number:uint8
 match.decks[].side[].objectEpoch	number:int
 match.decks[].side[].oracleId	string
 match.decks[].side[].owner	custom(uuid.UUID)
+match.decks[].side[].phaseInBarredBy	custom(uuid.UUID)
+match.decks[].side[].phaseInBarredEpoch	number:int
+match.decks[].side[].phaseInBarredFor	custom(uuid.UUID)
 match.decks[].side[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].side[].phasedOutBy	custom(uuid.UUID)
 match.decks[].side[].phasedOutIndirect	bool
@@ -28619,6 +28664,9 @@ movesAwaitingTokens[].keywordActionTail.armyToken.noAbilitiesText	number:uint8
 movesAwaitingTokens[].keywordActionTail.armyToken.objectEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.oracleId	string
 movesAwaitingTokens[].keywordActionTail.armyToken.owner	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredEpoch	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phasedOutIndirect	bool
@@ -30946,6 +30994,9 @@ movesAwaitingTokens[].millTail.run.planned[].noAbilitiesText	number:uint8
 movesAwaitingTokens[].millTail.run.planned[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].oracleId	string
 movesAwaitingTokens[].millTail.run.planned[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].phaseInBarredEpoch	number:int
+movesAwaitingTokens[].millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phasedOutIndirect	bool
@@ -31355,6 +31406,9 @@ movesAwaitingTokens[].millTail.run.seen[].noAbilitiesText	number:uint8
 movesAwaitingTokens[].millTail.run.seen[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].oracleId	string
 movesAwaitingTokens[].millTail.run.seen[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].phaseInBarredEpoch	number:int
+movesAwaitingTokens[].millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phasedOutIndirect	bool
@@ -33584,6 +33638,9 @@ movesAwaitingTokens[].tokenGroups[].template.noAbilitiesText	number:uint8
 movesAwaitingTokens[].tokenGroups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.oracleId	string
 movesAwaitingTokens[].tokenGroups[].template.owner	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.phaseInBarredEpoch	number:int
+movesAwaitingTokens[].tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phasedOutIndirect	bool
@@ -34640,6 +34697,9 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.noAbilitiesText	number
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.oracleId	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phasedOutIndirect	bool
@@ -35062,6 +35122,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phasedOutIndirect	bool
@@ -35471,6 +35534,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uin
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phasedOutIndirect	bool
@@ -39147,6 +39213,9 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].oracleId	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phasedOutIndirect	bool
@@ -41021,6 +41090,9 @@ pendingChoices[].attackSplit.settled.chosen[].template.noAbilitiesText	number:ui
 pendingChoices[].attackSplit.settled.chosen[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.oracleId	string
 pendingChoices[].attackSplit.settled.chosen[].template.owner	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredEpoch	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phasedOutIndirect	bool
@@ -41450,6 +41522,9 @@ pendingChoices[].attackSplit.settled.groups[].template.noAbilitiesText	number:ui
 pendingChoices[].attackSplit.settled.groups[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.oracleId	string
 pendingChoices[].attackSplit.settled.groups[].template.owner	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredEpoch	number:int
+pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phasedOutIndirect	bool
@@ -42486,6 +42561,9 @@ pendingChoices[].attackSplit.template.noAbilitiesText	number:uint8
 pendingChoices[].attackSplit.template.objectEpoch	number:int
 pendingChoices[].attackSplit.template.oracleId	string
 pendingChoices[].attackSplit.template.owner	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.phaseInBarredEpoch	number:int
+pendingChoices[].attackSplit.template.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phasedOutIndirect	bool
@@ -43286,6 +43364,9 @@ pendingChoices[].copyWalk.src.noAbilitiesText	number:uint8
 pendingChoices[].copyWalk.src.objectEpoch	number:int
 pendingChoices[].copyWalk.src.oracleId	string
 pendingChoices[].copyWalk.src.owner	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.phaseInBarredEpoch	number:int
+pendingChoices[].copyWalk.src.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phasedOutIndirect	bool
@@ -54806,6 +54887,9 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.noAbilities
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.objectEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.oracleId	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phasedOutIndirect	bool
@@ -57133,6 +57217,9 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].noAbilitiesText	
 pendingChoices[].replacementResume.event.millTail.run.planned[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredEpoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phasedOutIndirect	bool
@@ -57542,6 +57629,9 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].noAbilitiesText	num
 pendingChoices[].replacementResume.event.millTail.run.seen[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredEpoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phasedOutIndirect	bool
@@ -59771,6 +59861,9 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.noAbilitiesText	
 pendingChoices[].replacementResume.event.tokenGroups[].template.objectEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredEpoch	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phasedOutIndirect	bool
@@ -60827,6 +60920,9 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.noA
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phasedOutIndirect	bool
@@ -61249,6 +61345,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].noAb
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phasedOutIndirect	bool
@@ -61658,6 +61757,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].noAbili
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phasedOutIndirect	bool
@@ -65334,6 +65436,9 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].noAbilitie
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phasedOutIndirect	bool
@@ -67546,6 +67651,9 @@ pendingChoices[].targetWalk.frame.source.noAbilitiesText	number:uint8
 pendingChoices[].targetWalk.frame.source.objectEpoch	number:int
 pendingChoices[].targetWalk.frame.source.oracleId	string
 pendingChoices[].targetWalk.frame.source.owner	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.phaseInBarredEpoch	number:int
+pendingChoices[].targetWalk.frame.source.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phasedOutIndirect	bool
@@ -68314,6 +68422,9 @@ pendingChoices[].triggerFrame.source.noAbilitiesText	number:uint8
 pendingChoices[].triggerFrame.source.objectEpoch	number:int
 pendingChoices[].triggerFrame.source.oracleId	string
 pendingChoices[].triggerFrame.source.owner	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.phaseInBarredBy	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.phaseInBarredEpoch	number:int
+pendingChoices[].triggerFrame.source.phaseInBarredFor	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phasedOutBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phasedOutIndirect	bool
@@ -69449,6 +69560,9 @@ phasedOut.cards[].noAbilitiesText	number:uint8
 phasedOut.cards[].objectEpoch	number:int
 phasedOut.cards[].oracleId	string
 phasedOut.cards[].owner	custom(uuid.UUID)
+phasedOut.cards[].phaseInBarredBy	custom(uuid.UUID)
+phasedOut.cards[].phaseInBarredEpoch	number:int
+phasedOut.cards[].phaseInBarredFor	custom(uuid.UUID)
 phasedOut.cards[].phaseInLockedBy	custom(uuid.UUID)
 phasedOut.cards[].phasedOutBy	custom(uuid.UUID)
 phasedOut.cards[].phasedOutIndirect	bool
@@ -69861,6 +69975,9 @@ planechase.deck.cards[].noAbilitiesText	number:uint8
 planechase.deck.cards[].objectEpoch	number:int
 planechase.deck.cards[].oracleId	string
 planechase.deck.cards[].owner	custom(uuid.UUID)
+planechase.deck.cards[].phaseInBarredBy	custom(uuid.UUID)
+planechase.deck.cards[].phaseInBarredEpoch	number:int
+planechase.deck.cards[].phaseInBarredFor	custom(uuid.UUID)
 planechase.deck.cards[].phaseInLockedBy	custom(uuid.UUID)
 planechase.deck.cards[].phasedOutBy	custom(uuid.UUID)
 planechase.deck.cards[].phasedOutIndirect	bool
@@ -70273,6 +70390,9 @@ planechase.faceUp.cards[].noAbilitiesText	number:uint8
 planechase.faceUp.cards[].objectEpoch	number:int
 planechase.faceUp.cards[].oracleId	string
 planechase.faceUp.cards[].owner	custom(uuid.UUID)
+planechase.faceUp.cards[].phaseInBarredBy	custom(uuid.UUID)
+planechase.faceUp.cards[].phaseInBarredEpoch	number:int
+planechase.faceUp.cards[].phaseInBarredFor	custom(uuid.UUID)
 planechase.faceUp.cards[].phaseInLockedBy	custom(uuid.UUID)
 planechase.faceUp.cards[].phasedOutBy	custom(uuid.UUID)
 planechase.faceUp.cards[].phasedOutIndirect	bool
@@ -70923,6 +71043,9 @@ resolving.card.noAbilitiesText	number:uint8
 resolving.card.objectEpoch	number:int
 resolving.card.oracleId	string
 resolving.card.owner	custom(uuid.UUID)
+resolving.card.phaseInBarredBy	custom(uuid.UUID)
+resolving.card.phaseInBarredEpoch	number:int
+resolving.card.phaseInBarredFor	custom(uuid.UUID)
 resolving.card.phaseInLockedBy	custom(uuid.UUID)
 resolving.card.phasedOutBy	custom(uuid.UUID)
 resolving.card.phasedOutIndirect	bool
@@ -71934,6 +72057,9 @@ seats[].attractionDeck.cards[].noAbilitiesText	number:uint8
 seats[].attractionDeck.cards[].objectEpoch	number:int
 seats[].attractionDeck.cards[].oracleId	string
 seats[].attractionDeck.cards[].owner	custom(uuid.UUID)
+seats[].attractionDeck.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].attractionDeck.cards[].phaseInBarredEpoch	number:int
+seats[].attractionDeck.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phasedOutIndirect	bool
@@ -72510,6 +72636,9 @@ seats[].command.cards[].noAbilitiesText	number:uint8
 seats[].command.cards[].objectEpoch	number:int
 seats[].command.cards[].oracleId	string
 seats[].command.cards[].owner	custom(uuid.UUID)
+seats[].command.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].command.cards[].phaseInBarredEpoch	number:int
+seats[].command.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].command.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].command.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].command.cards[].phasedOutIndirect	bool
@@ -72924,6 +73053,9 @@ seats[].companion.cards[].noAbilitiesText	number:uint8
 seats[].companion.cards[].objectEpoch	number:int
 seats[].companion.cards[].oracleId	string
 seats[].companion.cards[].owner	custom(uuid.UUID)
+seats[].companion.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].companion.cards[].phaseInBarredEpoch	number:int
+seats[].companion.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].companion.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].companion.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].companion.cards[].phasedOutIndirect	bool
@@ -73347,6 +73479,9 @@ seats[].emblems.cards[].noAbilitiesText	number:uint8
 seats[].emblems.cards[].objectEpoch	number:int
 seats[].emblems.cards[].oracleId	string
 seats[].emblems.cards[].owner	custom(uuid.UUID)
+seats[].emblems.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].emblems.cards[].phaseInBarredEpoch	number:int
+seats[].emblems.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].emblems.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].emblems.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].emblems.cards[].phasedOutIndirect	bool
@@ -73857,6 +73992,9 @@ seats[].graveyard.cards[].noAbilitiesText	number:uint8
 seats[].graveyard.cards[].objectEpoch	number:int
 seats[].graveyard.cards[].oracleId	string
 seats[].graveyard.cards[].owner	custom(uuid.UUID)
+seats[].graveyard.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].graveyard.cards[].phaseInBarredEpoch	number:int
+seats[].graveyard.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].graveyard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].graveyard.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].graveyard.cards[].phasedOutIndirect	bool
@@ -74267,6 +74405,9 @@ seats[].hand.cards[].noAbilitiesText	number:uint8
 seats[].hand.cards[].objectEpoch	number:int
 seats[].hand.cards[].oracleId	string
 seats[].hand.cards[].owner	custom(uuid.UUID)
+seats[].hand.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].hand.cards[].phaseInBarredEpoch	number:int
+seats[].hand.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].hand.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].hand.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].hand.cards[].phasedOutIndirect	bool
@@ -74682,6 +74823,9 @@ seats[].junkyard.cards[].noAbilitiesText	number:uint8
 seats[].junkyard.cards[].objectEpoch	number:int
 seats[].junkyard.cards[].oracleId	string
 seats[].junkyard.cards[].owner	custom(uuid.UUID)
+seats[].junkyard.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].junkyard.cards[].phaseInBarredEpoch	number:int
+seats[].junkyard.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].junkyard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].junkyard.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].junkyard.cards[].phasedOutIndirect	bool
@@ -75110,6 +75254,9 @@ seats[].library.cards[].noAbilitiesText	number:uint8
 seats[].library.cards[].objectEpoch	number:int
 seats[].library.cards[].oracleId	string
 seats[].library.cards[].owner	custom(uuid.UUID)
+seats[].library.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].library.cards[].phaseInBarredEpoch	number:int
+seats[].library.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].library.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].library.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].library.cards[].phasedOutIndirect	bool
@@ -75561,6 +75708,9 @@ seats[].sideboard.cards[].noAbilitiesText	number:uint8
 seats[].sideboard.cards[].objectEpoch	number:int
 seats[].sideboard.cards[].oracleId	string
 seats[].sideboard.cards[].owner	custom(uuid.UUID)
+seats[].sideboard.cards[].phaseInBarredBy	custom(uuid.UUID)
+seats[].sideboard.cards[].phaseInBarredEpoch	number:int
+seats[].sideboard.cards[].phaseInBarredFor	custom(uuid.UUID)
 seats[].sideboard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].sideboard.cards[].phasedOutBy	custom(uuid.UUID)
 seats[].sideboard.cards[].phasedOutIndirect	bool
@@ -76332,6 +76482,9 @@ stack.cards[].noAbilitiesText	number:uint8
 stack.cards[].objectEpoch	number:int
 stack.cards[].oracleId	string
 stack.cards[].owner	custom(uuid.UUID)
+stack.cards[].phaseInBarredBy	custom(uuid.UUID)
+stack.cards[].phaseInBarredEpoch	number:int
+stack.cards[].phaseInBarredFor	custom(uuid.UUID)
 stack.cards[].phaseInLockedBy	custom(uuid.UUID)
 stack.cards[].phasedOutBy	custom(uuid.UUID)
 stack.cards[].phasedOutIndirect	bool
