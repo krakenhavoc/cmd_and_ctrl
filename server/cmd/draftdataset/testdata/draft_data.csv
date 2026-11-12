@@ -1,0 +1,6 @@
+expansion,event_type,draft_id,draft_time,rank,pack_number,pick_number,pick,pick_maindeck_rate,pack_card_Alpha Bear,"pack_card_Beta, the Fox",pack_card_Plains,pool_Alpha Bear,"pool_Beta, the Fox",pool_Plains
+TST,PremierDraft,d1,2026-01-05 10:00:00,gold,0,8,Alpha Bear,1.0,1,0,0,0,1,0
+TST,PremierDraft,d1,2026-01-05 10:00:00,gold,0,0,"Beta, the Fox",1.0,1,1,1,0,0,0
+TST,PremierDraft,d1,2026-01-05 10:00:00,gold,1,2,Alpha Bear,1.0,2,0,0,1,1,0
+TST,PremierDraft,d2,2026-01-02 23:00:00,gold,0,0,"Beta, the Fox",1.0,0,1,1,0,0,0
+TST,PremierDraft,d2,2026-01-02 23:00:00,gold,0,8,Plains,0.0,0,0,1,0,1,0

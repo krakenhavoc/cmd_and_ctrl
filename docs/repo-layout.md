@@ -18,6 +18,7 @@ cmd_and_ctrl/
 │   │   ├── mcpseat/     # local MCP seat: an MCP client plays a guest seat, badged as an AI agent (ADR 0122) — see docs/mcp-seat.md
 │   │   ├── gamecli/     # dev WebSocket client for driving a game via v0 actions
 │   │   ├── cardroles/   # weekly: Scryfall's Oracle Tags bulk file to data/scryfall/card-roles.json, each card's roles for the advanced stats (ADR 0217 §7)
+│   │   ├── draftdataset/ # one set's 17Lands public game and draft datasets to rows of the live card-ratings shape (GIH WR, average pick, average seen), run by `scripts/draft-ratings-refresh.sh --from-dataset` (#5708)
 │   │   ├── playrate/    # catalog coverage by EDHREC rank (top-N) and the missing top-1,000 list, read from the Scryfall dump (#3352)
 │   │   ├── restorecheck/ # restore rehearsal and real-restore step: verify a restored tree, re-apply the account-deletion ledger (#3340)
 │   │   ├── snapshotscrub/ # strips player data from a restore point before it joins the snapshot corpus (#522)
