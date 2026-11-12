@@ -510,6 +510,8 @@ type CastSpellParams struct {
 	// permanents, the count off each, and the kind (one for the payment,
 	// or one per part when the parts differ). Empty is the ordinary case;
 	// a payment sent with no counter component to pay is refused.
+	// #5679: for an offer that removes X counters (Light Up the Night's
+	// flashback) the counts must total the XValue announced.
 	CounterSourceIDs []uuid.UUID
 	CounterCounts    []int
 	CounterKind      string
@@ -1076,7 +1078,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #5390, CR 601.2b / 118.3: the offer's "remove N counters from
 	// among creatures you control", through the activation's own
 	// validator. Paid below, first of the board costs.
-	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castCounterPayment(params))
+	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castCounterPayment(params), params.XValue)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad counter-removal payment",
 			"card_name", card.Name,

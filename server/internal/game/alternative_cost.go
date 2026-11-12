@@ -360,6 +360,15 @@ type AlternativeCost struct {
 	// payment that does not total exactly N. The counters come off with
 	// the spell already on the stack, before any other board cost, so a
 	// creature both drained and sacrificed by the one cast pays both.
+	//
+	// #5679: the count may be the caster's to announce (Variable, with N
+	// the floor) — Light Up the Night's "Flashback—{3}{R}, Remove X
+	// loyalty counters from among planeswalkers you control. If you cast
+	// this spell this way, X can't be 0." That X is the spell's X: the
+	// offer is an alternative cost that includes X (CR 107.3a), so CR
+	// 107.3b does not lock X at 0 (CountersDefineX, PaymentDefinesX), the
+	// caster announces X (CR 601.2b) and the payment must total exactly
+	// it. The printed floor is N, so "X can't be 0" is N: 1.
 	RemoveCounters *CounterRemovalCost
 
 	// PayLabel is the picker's prompt copy for the card component —
@@ -760,9 +769,24 @@ func (a *AlternativeCost) Beholds() bool {
 // X, so CR 107.3b leaves the X announcement open (CastCost.AltIncludesX),
 // and the payment validator holds the named card's mana value to it.
 // Nil-safe.
+//
+// #5679: so is an offer that removes X counters (CountersDefineX), where
+// the number removed is the X.
 func (a *AlternativeCost) PaymentDefinesX() bool {
+	if a.CountersDefineX() {
+		return true
+	}
 	spec, _, _ := a.cardComponent()
 	return spec != nil && spec.ManaValueEqualsX
+}
+
+// CountersDefineX reports whether this offer removes X counters, X being
+// the spell's X (#5679, CR 107.3a): Light Up the Night's "Remove X
+// loyalty counters from among planeswalkers you control". The counter
+// payment must then total exactly the X the cast announces, never less
+// than the component's floor. Nil-safe.
+func (a *AlternativeCost) CountersDefineX() bool {
+	return a != nil && a.RemoveCounters != nil && a.RemoveCounters.Variable
 }
 
 // CollectsEvidence reports whether this offer's price is collect
@@ -918,13 +942,26 @@ func grantedInstanceOffer(card Card, grant *CastPermission, base, claim string, 
 // offer that removes no counters, is refused rather than ignored (the
 // validator's nil-cost branch), as a stray alt_cost_ids is.
 //
+//
+// `x` is the X the cast announces. Only an offer that removes X counters
+// reads it (#5679, CountersDefineX): the counters named must total
+// exactly X (CR 107.3a, 601.2b), and the validator has already held that
+// total to the printed floor ("X can't be 0").
+//
 // Caller must hold g.mu.
-func (g *Game) validateAltCostCountersLocked(playerID, castID uuid.UUID, alt *AlternativeCost, pay CounterCostPayment) (counterPayment, error) {
+func (g *Game) validateAltCostCountersLocked(playerID, castID uuid.UUID, alt *AlternativeCost, pay CounterCostPayment, x int) (counterPayment, error) {
 	var rc *CounterRemovalCost
 	if alt != nil {
 		rc = alt.RemoveCounters
 	}
-	return g.validateCounterRemovalLocked(playerID, castID, rc, pay)
+	paid, err := g.validateCounterRemovalLocked(playerID, castID, rc, pay)
+	if err != nil {
+		return counterPayment{}, err
+	}
+	if alt.CountersDefineX() && paid.total != x {
+		return counterPayment{}, ErrInvalidParam
+	}
+	return paid, nil
 }
 
 // castCounterPayment is the counter half of a cast_spell payload, in

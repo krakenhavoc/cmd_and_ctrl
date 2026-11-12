@@ -1861,11 +1861,14 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 // checkAltCostRemoveCounters holds an alternative cost's counter removal
 // (#5390) to the shape the cast path reads: the activation's own checks
 // (checkCounterCost), and the one form a spell can pay — "from among
-// <permanents> you control", a fixed count. The spell being cast is not
-// on the battlefield, so the self form ("from this") and "other" have
-// nothing to name, and no printed alternative cost removes X counters.
-// Not beside a card component either: the cast has one cost picker
-// chain, and no printed offer charges both.
+// <permanents> you control", a fixed count or, since #5679, X of one
+// printed kind with a floor of at least one (Light Up the Night's
+// "Remove X loyalty counters from among planeswalkers you control. ... X
+// can't be 0"; checkCounterCost holds the variable among form to that).
+// The spell being cast is not on the battlefield, so the self form
+// ("from this") and "other" have nothing to name. Not beside a card
+// component either: the cast has one cost picker chain, and no printed
+// offer charges both.
 func checkAltCostRemoveCounters(card string, ac game.AlternativeCost) {
 	rc := ac.RemoveCounters
 	if rc == nil {
@@ -1878,8 +1881,8 @@ func checkAltCostRemoveCounters(card string, ac game.AlternativeCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s removes counters from itself — a spell being cast is not on the battlefield; give it a \"from among …\" clause", card, where))
 	case rc.From.ExcludeSource:
 		panic(fmt.Sprintf("effects.Register: %q %s removes counters from \"other\" permanents — a spell being cast is not on the battlefield, so ExcludeSource names nothing", card, where))
-	case !rc.Among || rc.Variable:
-		panic(fmt.Sprintf("effects.Register: %q %s is not a fixed \"remove N counters from among …\" — the only counter removal a cast pays; build it with CastFromGraveyardByRemovingCounters", card, where))
+	case !rc.Among || rc.OnePermanent:
+		panic(fmt.Sprintf("effects.Register: %q %s is not \"remove N (or X) counters from among …\" — the only counter removal a cast pays; build it with CastFromGraveyardByRemovingCounters or FlashbackRemoveXCounters", card, where))
 	case altCostCardComponents(ac) > 0:
 		panic(fmt.Sprintf("effects.Register: %q %s removes counters beside a card-shaped payment — no printed alternative cost does", card, where))
 	}
