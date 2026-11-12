@@ -357,6 +357,13 @@ var canonicalKeywords = map[string]bool{
 	// granted one are two questions.
 	KeywordRiot:    true,
 	KeywordUnleash: true,
+	// soulbond (CR 702.95) joins with #5675, in the same change that
+	// teaches the engine to pair two creatures (soulbond.go). Its two
+	// triggered abilities are catalog rows (effects.Soulbond) that read
+	// this token off the layered ability list, so a token copy that
+	// "loses soulbond" (Mirage Phalanx) keeps the card's other text and
+	// never asks to pair.
+	KeywordSoulbond: true,
 	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
 	// 0113 §4). Dies triggers: harvestLTB derives one per instance on
 	// the LAST-KNOWN ability list (undying_persist.go), so a printed,

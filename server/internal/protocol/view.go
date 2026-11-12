@@ -3986,6 +3986,12 @@ type CardView struct {
 	// about the hidden card, and the table needs it to know why the
 	// creature cannot block.
 	Suspected bool `json:"suspected,omitempty"`
+	// PairedWith is the instance ID of the creature a soulbond ability
+	// paired this one with (CR 702.95b, #5675), on both creatures of the
+	// pair. Public, read off the card, and kept on a face-down
+	// permanent: the pair was made in front of the table and says
+	// nothing about the hidden card. Absent for an unpaired permanent.
+	PairedWith string `json:"paired_with,omitempty"`
 	// RingBearer is a permanent's CR 701.54b Ring-bearer designation
 	// (ADR 0114 §3, §9): whose Ring-bearer it is, is its controller.
 	// Public, and set straight off the card. Unlike Monstrous it is NOT
@@ -13256,6 +13262,9 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		view.Renowned = c.Renowned
 		view.Saddled = c.Saddled
 		view.Suspected = c.Suspected
+		if c.PairedWith != uuid.Nil {
+			view.PairedWith = ids.of(c.PairedWith)
+		}
 		view.Prepared = c.Prepared
 		// ADR 0103: a face-up Room's doors.
 		if game.HasSharedTypeLineOf(c) {

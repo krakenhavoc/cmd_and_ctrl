@@ -419,6 +419,18 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}Card.svelte`],
     doc: "a Vehicle's crewed badge (ADR 0186 §6): the creatures tapped this turn to crew it; the names come from the board, and an ID with no card there is left out",
   }),
+  pairedBadge: dynamicLabel({
+    stem: "paired",
+    match: "prefix",
+    shape: "paired with <name>, or paired",
+    make: (names: readonly string[]) =>
+      names.length > 0 ? `paired with ${andList(names)}` : "paired",
+    example: [["Llanowar Elves"]],
+    kind: "aria",
+    role: "generic",
+    owners: [`${BOARD}Card.svelte`],
+    doc: "a paired creature's badge (#5675, CR 702.95b): the creature a soulbond ability paired it with; the name comes from the board, and an ID with no card there is left out",
+  }),
   saddledBadge: dynamicLabel({
     stem: "saddled ",
     match: "prefix",

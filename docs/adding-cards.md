@@ -92,6 +92,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)](#leveler-cards-level-up-and-level-bands-5426-cr-70287--cr-711)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
   - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
+  - [Soulbond (CR 702.95, #5675)](#soulbond-cr-70295-5675)
   - [Suspect (CR 701.60, #2698)](#suspect-cr-70160-2698)
   - [Meld (ADR 0145, #2699, CR 701.42)](#meld-adr-0145-2699-cr-70142)
   - [More Than Meets the Eye, convert and living metal (ADR 0152, #1856)](#more-than-meets-the-eye-convert-and-living-metal-adr-0152-1856)
@@ -12916,6 +12917,48 @@ game.TokenEntryOptions{AttachedTo: hostRef}                                     
 An Aura that can't legally enchant the named host stays where it was
 (CR 303.4i). A non-Aura given `AttachedTo` (Mantle's Equipment) is
 attached as it enters and left to CR 704.5n.
+
+### Soulbond (CR 702.95, #5675)
+
+A soulbond creature declares three things:
+
+```go
+PrintedKeywords: []string{game.KeywordSoulbond},
+Triggered:       Soulbond("Doom Weaver"),
+Grants:          []AbilityGrant{{Key: doomWeaverGrant, Triggered: …, Text: "When this creature dies, draw cards equal to its power."}},
+Static:          []game.StaticAbility{PairedCreaturesHave(`As long as Doom Weaver is paired with another creature, each of those creatures has "…"`, doomWeaverGrant)},
+```
+
+`Soulbond(name)` ([soulbond.go](../server/internal/cards/effects/soulbond.go))
+is the keyword's two triggered abilities (CR 702.95a): "when this creature
+enters" and "whenever another creature you control enters", each with its
+intervening "if" checked as it triggers and as it resolves (CR 603.4). The
+partner is not a target: it is chosen as the ability resolves, on the
+"choose permanents" prompt with a floor of zero, which is the "you may".
+The rows read `game.KeywordSoulbond` off the layered ability list, so the
+keyword must be in `PrintedKeywords`, and a creature that has lost it never
+asks.
+
+`PairedCreaturesHave(label, keys...)` is "As long as <this> is paired with
+another creature, each of those creatures has '…'": an ADR 0093 layer-6
+grant of the bundles to the source and to its partner. Write the quoted
+ability as a granted trigger, with `source` as the creature that has it
+(see the section on granting an ability above). Each creature has its own
+instance, so two attackers are two triggers.
+
+The pair is `game.Card.PairedWith` on both creatures
+([soulbond.go](../server/internal/game/soulbond.go)). Read it with
+`g.PairedPartner(card)` or `g.PairedWithForEffect(id)`; make one with
+`g.PairForEffect(controller, a, b)`, which refuses anything CR 702.95c
+and 702.95d refuse. It ends when either creature changes controller, stops
+being a creature or leaves the battlefield (CR 702.95e), and it does not
+come back. It is not copiable.
+
+**"Except it … loses soulbond"** (Mirage Phalanx's token copy) is
+`tmpl.LoseCopiedKeyword(game.KeywordSoulbond)` on a token copy template, or
+`v.LoseKeyword(kw)` on a `*game.PrintedValues` (CR 707.9b). Never strip the
+word from `Keywords` by hand: the catalog's `PrintedKeywords` under the
+copied oracle ID would put it back.
 
 ### Suspect (CR 701.60, #2698)
 

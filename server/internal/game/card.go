@@ -212,6 +212,19 @@ type Card struct {
 	// anything, which is all of them but a handful.
 	GrantedAbilities []string
 
+	// LostKeywords are the printed keywords a copy exception took away:
+	// "a copy of this creature, except it … loses soulbond" (Mirage
+	// Phalanx, #5675). CR 707.9b makes the exception part of the
+	// copiable values, so a copy of the copy lacks the keyword too. It
+	// exists for ColorCDADropped's reason: the keyword also arrives
+	// through the copied oracle ID's PrintedKeywords, where it cannot be
+	// stripped from Keywords. Written by LoseCopiedKeyword and the copy
+	// plumbing; read by printedInputsOf and PrintedKeywordsHonouringCopy.
+	// Only the object's own printed keyword goes: a later effect can
+	// still grant it. Carried by the snapshot; cleared when the object
+	// becomes a new object.
+	LostKeywords []string
+
 	// TextBox is the text box this permanent has when it is not its own
 	// (CR 612.5, ADR 0160): the result of the textBox records, written
 	// by materialiseTextBoxesLocked and read by catalogKeyOf and the
@@ -713,6 +726,18 @@ type Card struct {
 	// before this field, in which case the grant falls back to the
 	// permanent's own timestamp.
 	SuspectedAt int64
+	// PairedWith is the creature this one is paired with by a soulbond
+	// ability (CR 702.95b, #5675): the partner's InstanceID, and
+	// uuid.Nil for an unpaired creature. The link is written on BOTH
+	// creatures by PairForEffect and by nothing else, and read through
+	// PairedPartner, which answers nothing for a half-link. It is
+	// cleared on this card at both CR 400.7 sites and on the pair by
+	// the sweep at the end of the layer recompute, when either creature
+	// has changed controller, stopped being a creature or left the
+	// battlefield (CR 702.95e, soulbond.go). A status, not a
+	// characteristic: CopiableValuesOf never reads it (CR 707.2).
+	// Carried by clone and the snapshot.
+	PairedWith uuid.UUID
 	// EncodedAt is the CR 613.7 timestamp of EncodedOn's grant: the
 	// moment the card was encoded, which is when its static ability
 	// (CR 702.99a's second) began to function in exile. Zero beside a

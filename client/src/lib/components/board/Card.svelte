@@ -677,6 +677,9 @@
   const crewers = $derived(card.face_down ? [] : crewNames(view, card.crewed_by));
   const saddlers = $derived(card.face_down ? [] : crewNames(view, card.saddled_by));
   const isCrewed = $derived(!card.face_down && (card.crewed_by?.length ?? 0) > 0);
+  // #5675 (CR 702.95b): PAIRED takes the slot last. The pair is public,
+  // so it shows on a face-down permanent too.
+  const pairedNames = $derived(crewNames(view, card.paired_with ? [card.paired_with] : undefined));
   const isSaddled = $derived(!card.face_down && !!card.saddled);
   const designationBadge = $derived(
     card.suspected
@@ -697,7 +700,9 @@
                     ? "SADDLED"
                     : isCrewed
                       ? "CREWED"
-                      : "",
+                      : card.paired_with
+                        ? "PAIRED"
+                        : "",
   );
   const designationTitle = $derived(
     card.suspected
@@ -716,7 +721,9 @@
                   ? `${L.saddledBadge(saddlers)} — its “attacks while saddled” abilities are on (CR 702.171)`
                   : isCrewed
                     ? `${L.crewedBadge(crewers)} (CR 702.122)`
-                    : `Class level ${card.class_level ?? 1}`,
+                    : card.paired_with
+                      ? `${L.pairedBadge(pairedNames)} — soulbond (CR 702.95)`
+                      : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to

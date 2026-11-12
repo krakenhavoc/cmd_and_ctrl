@@ -283,6 +283,9 @@ func tokenCopyTemplateFromCard(src game.Card) game.Card {
 		// CR 707.9a: an ability an earlier copy effect granted is part of
 		// the copiable values, so a token copy of that copy has it too.
 		GrantedAbilities: append([]string(nil), src.GrantedAbilities...),
+		// CR 707.9b: and so is a keyword an earlier copy exception took
+		// away (#5675).
+		LostKeywords: append([]string(nil), src.LostKeywords...),
 	}
 	if src.OracleID == "" && src.TokenKey != "" {
 		// A copy of a TOKEN (CR 707.2) takes the token's catalog
