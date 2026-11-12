@@ -104,10 +104,13 @@ func (g *Game) loseGameAfterLifeEventLocked(ev *ReplacementEvent) bool {
 }
 
 // resolvingControllerIsLocked reports whether `player` controls the
-// spell or ability resolving right now.
+// spell or ability resolving right now. The resolving slot outlives the
+// resolution (it is cleared when play moves on), so the depth is what
+// says one is running: a life payment made after it, or a hand-edited
+// life total, is not part of it.
 func (g *Game) resolvingControllerIsLocked(player uuid.UUID) bool {
 	r := g.resolving
-	return r != nil && r.item != nil && r.item.Controller == player
+	return g.resolutionDepth > 0 && r != nil && r.item != nil && r.item.Controller == player
 }
 
 // finishDamageLifeInsteadLocked lands what the life window made of the

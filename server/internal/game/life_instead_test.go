@@ -329,3 +329,40 @@ func TestLifePreviewOfAGainTurnedIntoALethalLoss(t *testing.T) {
 		t.Errorf("the preview touched the game: life %d, eliminated %v", p.Life, p.Eliminated)
 	}
 }
+
+// A player who loses this way in the middle of their own spell or
+// ability's resolution stops the rest of it (ADR 0057 Decision 3); the
+// same loss outside a resolution is no error at all.
+func TestLifeThenLosesStopsTheLosersOwnResolution(t *testing.T) {
+	g := newActiveGameWithSeats(t, 4)
+	p, q, other := g.Seats[1], g.Seats[2], g.Seats[3]
+	p.Life, q.Life = 5, 5
+	var mine, theirs, outside error
+	g.WithWriteLock(func() {
+		g.RegisterReplacementForTest(becomesThreeInstead(p.ID, true))
+		g.RegisterReplacementForTest(becomesThreeInstead(q.ID, true))
+		g.RegisterReplacementForTest(becomesThreeInstead(other.ID, true))
+
+		g.beginResolvingLocked(&StackItem{ID: uuid.New(), Controller: p.ID})
+		g.resolutionDepth++
+		theirs = g.ChangePlayerLifeForEffect(uuid.Nil, q.ID, -5)
+		mine = g.ChangePlayerLifeForEffect(uuid.Nil, p.ID, -5)
+		g.resolutionDepth--
+
+		// The slot still names p's item, but nothing is resolving.
+		g.beginResolvingLocked(&StackItem{ID: uuid.New(), Controller: other.ID})
+		outside = g.ChangePlayerLifeForEffect(uuid.Nil, other.ID, -other.Life)
+	})
+	if theirs != nil {
+		t.Errorf("another player's loss stopped the resolution: %v", theirs)
+	}
+	if !IsStopResolution(mine) {
+		t.Errorf("the controller's own loss returned %v, want ErrStopResolution", mine)
+	}
+	if outside != nil {
+		t.Errorf("a loss outside any resolution returned %v", outside)
+	}
+	if !p.Eliminated || !q.Eliminated || !other.Eliminated {
+		t.Errorf("eliminated: %v %v %v, want all three", p.Eliminated, q.Eliminated, other.Eliminated)
+	}
+}
