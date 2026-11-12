@@ -313,6 +313,8 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	// #5669: the untap form is an activated ability's alone.
+	checkUntapOthersCost(spec)
 	checkCostOpensFlash(spec)
 	checkFlashIf(spec)
 	// #5240: a collect evidence X sized by the targets, before the

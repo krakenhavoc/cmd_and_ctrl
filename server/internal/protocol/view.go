@@ -5421,6 +5421,19 @@ type ActivatedAbilityView struct {
 	// (CR 118.3 — it will already be tapped).
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// TapOthersUntap marks the clause as "Untap N TAPPED creatures you
+	// control" (#5669, Halo Fountain, game.TapOthersCost.Untap): the
+	// same label, options and `tap_ids`, with the cards the TAPPED
+	// permanents that could be untapped to pay, and the picker's verb
+	// "Untap". A permanent that can't become untapped is left off
+	// (CR 614.17b).
+	//
+	// TapOthersFreesSource is set when the ability also prints {T}, its
+	// source is tapped, and the source is among the options: naming it
+	// untaps it first and so pays the {T} (CR 601.2h, any order), so
+	// the row is not "already tapped".
+	TapOthersUntap       bool `json:"tap_others_untap,omitempty"`
+	TapOthersFreesSource bool `json:"tap_others_frees_source,omitempty"`
 	// CostBranches are the ways to pay an either/or part of the cost
 	// (#4566, game.AbilityCost.Either): Bullseye, Death Dealer's
 	// "Sacrifice an artifact or discard a nonland card". The client asks
@@ -14114,6 +14127,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if tc := a.Cost.TapOthers; !tc.Empty() {
 			v.TapOthersLabel = tc.Label
 			v.TapOthersOptions = tapOthersCostOptions(g, caster, c.InstanceID, tc, a.Cost.Tap)
+			// #5669: the untap form, and a tapped source it frees.
+			v.TapOthersUntap = game.TapOthersUntaps(tc)
+			v.TapOthersFreesSource = v.TapOthersUntap && a.Cost.Tap && c.Tapped &&
+				slices.Contains(v.TapOthersOptions.Cards, c.InstanceID.String())
 		}
 		// #4566: each branch of an either/or cost, off the walks the
 		// engine validates the folded cost against.
@@ -14539,6 +14556,16 @@ func tapOthersCostOptions(g *game.Game, controller, sourceID uuid.UUID, tc *game
 		return nil
 	}
 	ids := g.TapOthersOptionsForEffect(controller, sourceID, tc)
+	// #5669: the untap form on a cost that also taps its source. The
+	// source pays both in either order (CR 601.2h), so it is offered
+	// whatever its state, on the engine's own terms.
+	if alsoTapsSource && game.TapOthersUntaps(tc) {
+		alsoTapsSource = false
+		ids = slices.DeleteFunc(ids, func(id uuid.UUID) bool { return id == sourceID })
+		if g.UntapOthersSourcePaysForEffect(controller, sourceID, tc) {
+			ids = append(ids, sourceID)
+		}
+	}
 	lo, hi := game.TapOthersCostBounds(tc, 0)
 	out := &LegalTargetsView{Min: lo, Max: hi, CountFromX: game.TapOthersCountFromX(tc)}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
