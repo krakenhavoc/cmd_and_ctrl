@@ -141,6 +141,22 @@ type TapOthersCost struct {
 	// reason). Read by TapOthersOptionsForEffect and the validator, the
 	// one walk the view, the enumerator and the engine share (#544).
 	SharesColorWithSource bool
+
+	// Untap turns the clause over (#5669): "Untap N TAPPED creatures you
+	// control" (Halo Fountain). Everything else is the tap clause's:
+	// Count, Filter, ExcludeSource and Label, the one candidate walk, the
+	// one validator, and the same `tap_ids` list on the wire. What
+	// differs is the state a permanent must be in to pay (tapped, CR
+	// 701.26b: "Only tapped permanents can be untapped"), that a
+	// permanent that can't become untapped can't pay (CR 614.17b), and
+	// the payment, which is untapPermanentLocked, so a stun counter is
+	// removed instead and the cost is still paid (CR 122.1d, CR 118.11).
+	// Nothing is written to PaidCost.TappedOthers: nothing was tapped.
+	//
+	// An activated ability's cost only (AbilityCost.TapOthers), with a
+	// fixed count; effects.Register refuses it anywhere else. Not the
+	// {Q} symbol, so summoning sickness does not apply (CR 302.6).
+	Untap bool
 }
 
 // Empty reports whether the cost demands nothing. Nil-safe, so the
@@ -160,6 +176,55 @@ func TapOthersAnyNumber(c *TapOthersCost) bool {
 // candidate walk shared by the view, validator and enumerator.
 func TapOthersCountFromX(c *TapOthersCost) bool {
 	return c != nil && c.Filter != nil && c.Filter.CountFromX
+}
+
+// TapOthersUntaps reports the "Untap N tapped ..." form (#5669).
+func TapOthersUntaps(c *TapOthersCost) bool {
+	return c != nil && c.Filter != nil && c.Untap
+}
+
+// tapOthersStateOKLocked is the one state question of the clause: an
+// untapped permanent for the tap form (CR 118.3), and for the untap
+// form (#5669) a tapped one that an effect does not stop from becoming
+// untapped (CR 701.26b, CR 614.17b).
+//
+// Caller must hold g.mu.
+func (g *Game) tapOthersStateOKLocked(tc *TapOthersCost, c *Card) bool {
+	if TapOthersUntaps(tc) {
+		return c.Tapped && !g.CantBecomeUntappedLocked(c)
+	}
+	return !c.Tapped
+}
+
+// UntapOthersSourcePaysForEffect reports whether the SOURCE of an
+// ability may be named for its own "Untap N tapped creatures you
+// control" clause when the same cost also taps it with {T} (#5669): a
+// Halo Fountain that has become a creature.
+//
+// CR 601.2h pays the parts of a total cost "in any order". So an
+// untapped source is tapped for the {T} and then untapped for the
+// clause, and a tapped one is untapped for the clause and then tapped
+// for the {T}. Either way it must match the clause and be able to
+// become untapped (CR 614.17b); and a TAPPED source with a stun counter
+// cannot, because its untap only removes the counter (CR 122.1d) and
+// leaves it tapped, so the {T} can no longer be paid (CR 118.3).
+//
+// The view's option list, the validator and the activation path all ask
+// here, so they agree (#544).
+//
+// Caller must hold g.mu.
+func (g *Game) UntapOthersSourcePaysForEffect(playerID, sourceID uuid.UUID, tc *TapOthersCost) bool {
+	if !TapOthersUntaps(tc) || tc.ExcludeSource {
+		return false
+	}
+	c := findBattlefieldCard(g, sourceID)
+	if c == nil || c.Controller != playerID || g.CantBecomeUntappedLocked(c) {
+		return false
+	}
+	if c.Tapped && c.Counters[CounterStun] > 0 {
+		return false
+	}
+	return g.specMatchLocked(g.costSourceLocked(playerID, sourceID), tc.Filter, TargetRef{Kind: TargetCard, ID: sourceID}, false)
 }
 
 // TapOthersCostBounds is the payment width at an announced X. A
@@ -227,7 +292,7 @@ func (g *Game) TapOthersOptionsForEffect(playerID, sourceID uuid.UUID, tc *TapOt
 			continue
 		}
 		c := findBattlefieldCard(g, id)
-		if c == nil || c.Controller != playerID || c.Tapped {
+		if c == nil || c.Controller != playerID || !g.tapOthersStateOKLocked(tc, c) {
 			continue
 		}
 		if !g.tapOthersColorOKLocked(tc, sourceID, c) {
@@ -308,6 +373,14 @@ func (g *Game) validateTapOthersCostLocked(playerID, sourceID uuid.UUID, tc *Tap
 // validateTapOthersCostAtXLocked validates the component against the
 // X announced for this activation. Fixed costs ignore x.
 func (g *Game) validateTapOthersCostAtXLocked(playerID, sourceID uuid.UUID, tc *TapOthersCost, ids []uuid.UUID, x int) error {
+	return g.validateTapOthersCostWithSourceLocked(playerID, sourceID, tc, ids, x, false)
+}
+
+// validateTapOthersCostWithSourceLocked is the validator itself.
+// `alsoTapsSource` is set by the activation path when the same cost
+// prints {T}: for the untap form (#5669) the source may then be named
+// whatever its state, on UntapOthersSourcePaysForEffect's terms.
+func (g *Game) validateTapOthersCostWithSourceLocked(playerID, sourceID uuid.UUID, tc *TapOthersCost, ids []uuid.UUID, x int, alsoTapsSource bool) error {
 	if tc.Empty() {
 		if len(ids) > 0 {
 			return ErrInvalidParam
@@ -336,9 +409,22 @@ func (g *Game) validateTapOthersCostAtXLocked(playerID, sourceID uuid.UUID, tc *
 		if c.Controller != playerID {
 			return ErrCardCallerMismatch
 		}
+		// #5669: the source of a cost that also prints {T}, named for
+		// its own untap clause (CR 601.2h, any order).
+		if alsoTapsSource && id == sourceID && TapOthersUntaps(tc) {
+			if !g.UntapOthersSourcePaysForEffect(playerID, sourceID, tc) {
+				return ErrIllegalTarget
+			}
+			continue
+		}
 		// CR 118.3: you can't tap what is already tapped, so the
-		// cost is simply unpayable with this permanent.
-		if c.Tapped {
+		// cost is simply unpayable with this permanent. #5669: and
+		// the untap form can't untap what is untapped (CR 701.26b)
+		// or what can't become untapped (CR 614.17b).
+		if !g.tapOthersStateOKLocked(tc, c) {
+			if TapOthersUntaps(tc) {
+				return ErrNotTapped
+			}
 			return ErrAlreadyTapped
 		}
 		// specMatchLocked(…, false), not targetLegalLocked: tapping a
@@ -390,6 +476,24 @@ func (g *Game) payTapOthersCostLocked(playerID uuid.UUID, ids []uuid.UUID) []Car
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
 	}
 	return paid
+}
+
+// payUntapOthersCostLocked is payTapOthersCostLocked for the untap form
+// (#5669): each validated permanent is untapped through
+// untapPermanentLocked, the one gate every untap passes, so each emits
+// EventUntapCard for "whenever a creature becomes untapped" and a stun
+// counter is removed in place of the untap (CR 122.1d), which still
+// pays the cost (CR 118.11). `skip` is a permanent already paid for:
+// the source the activation path untapped before its {T}.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) payUntapOthersCostLocked(ids []uuid.UUID, skip uuid.UUID) {
+	for _, id := range ids {
+		if id == skip {
+			continue
+		}
+		g.untapPermanentLocked(findBattlefieldCard(g, id))
+	}
 }
 
 // --- The payment record (#759) ----------------------------------------
