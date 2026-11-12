@@ -53,8 +53,9 @@ func init() {
 				},
 			},
 			{
-				Label: "−2: Create a 1/1 red Devil creature token with \"When this token dies, it deals 1 damage to any target.\"",
-				Cost:  LoyaltyCost(-2),
+				Label:   "−2: Create a 1/1 red Devil creature token with \"When this token dies, it deals 1 damage to any target.\"",
+				Cost:    LoyaltyCost(-2),
+				Purpose: game.Purpose{Tokens: 1},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Template: devilToken(), N: 1}.Apply(NewContext(g, item))
 				},
@@ -63,6 +64,7 @@ func init() {
 				Label:   "−7: Target player draws seven cards and loses 7 life.",
 				Cost:    LoyaltyCost(-7),
 				Targets: TargetPlayer("target player"),
+				Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 7, LifeLoss: 7}),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return b32TargetPlayerDrawsAndLosesLife(item, NewContext(g, item), 7, 7)
 				},
