@@ -443,7 +443,12 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// runs. The other two exits (removed from combat, combat
 		// ends) have no event of their own; see
 		// invalidateLayersForAttackChangeLocked.
-		if attackingStatusStaticIsLiveLocked(g) {
+		//
+		// DependsOnEvents may also name EventAttack (#5649): "as long
+		// as it attacked a battle this turn" (War Historian) reads the
+		// turn's attack records, which turnTallyListener writes ahead
+		// of this listener on the same event.
+		if attackingStatusStaticIsLiveLocked(g) || eventStaticIsLiveLocked(g, EventAttack) {
 			g.layerVersion.Add(1)
 		}
 	case EventScry, EventSurveil, EventDealDamage, EventBlock, EventDrawCard, EventStepBegan:

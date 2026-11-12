@@ -13881,8 +13881,9 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
 ```
 
 - **A static whose condition is "has happened this turn" or "is blocking"** lists the event kinds in `DependsOnEvents`;
-  without it the layer cache is stale until something unrelated bumps it. Only `EventScry`, `EventSurveil`, `EventDealDamage`
-  and `EventBlock` are read; a new kind needs an arm in `layerVersionBump.OnEvent`. Put the keyword in the static, not in
+  without it the layer cache is stale until something unrelated bumps it. Only `EventScry`, `EventSurveil`, `EventDealDamage`,
+  `EventBlock`, `EventDrawCard`, `EventChangeLife`, `EventStepBegan` and `EventAttack` are read; a new kind needs an arm in
+  `layerVersionBump.OnEvent`. Put the keyword in the static, not in
   `PrintedKeywords`, when the static is what removes it (Surveillance Phantasm grants `defender` unless it scried).
 - **`PowerGE` on a spell reads the spell's own characteristic-defining ability**, so a `*/*` creature spell counts as what its
   text says (Spellbreaker Behemoth).
@@ -13898,6 +13899,30 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   placer). Tower Winder landed Full with #3217, The Warring Triad
   with #3845 (mill as a cost), and Transmutation Font with #3940 (a "different names" rule on a sacrifice clause,
   `SacrificeNDifferent`).
+
+
+### Attacking a battle (#5649)
+
+Three printed questions, three reads, all in `cards/effects/attacked_a_battle.go`:
+
+```go
+Triggered: []game.TriggeredAbility{WheneverThisAttacksABattle("Thrashing Frontliner — it gets +1/+1 until end of turn", …)},
+Static:    []game.StaticAbility{SelfKeywordWhileItAttackedABattleThisTurn("indestructible")}, // War Historian
+if isAttackingABattle(g, c) { … }                                                             // Rampaging Geoderm, as the ability resolves
+```
+
+- **"Whenever this creature attacks a battle"** is `WheneverThisAttacksABattle(label, effect)` (the predicate is
+  `ThisAttackedABattle`): the creature was declared as an attacker attacking a battle (CR 508.3a). A creature put onto the
+  battlefield attacking a battle, or reselected onto one, announces no `EventAttack` and triggers nothing (CR 508.4, 508.7a).
+- **"If it's attacking a battle"** is `isAttackingABattle(g, card)`, what the creature is attacking now. Read it as the
+  ability resolves. A creature whose battle was removed from combat is attacking nothing (CR 506.4c).
+- **"As long as it attacked a battle this turn"** is `SelfKeywordWhileItAttackedABattleThisTurn(keyword)`, which reads
+  `Game.AttackedBattleThisTurn(id)`: the turn's attack records, each stamped `AttackRecord.Battle` as the attack is declared.
+  It stays true after combat and after the battle has left, and is per object (CR 400.7). The helper sets
+  `DependsOnEvents: {EventAttack}`; a new static over the same fact must too.
+
+For "attacks a player" keep `attackedPlayer` and for "attacks you or a planeswalker you control" keep
+`attacksYouOrYourPlaneswalker`: an attack on a battle is neither (CR 508.3e).
 
 ### Void and revolt: "left the battlefield this turn" (#2128, #2148)
 
