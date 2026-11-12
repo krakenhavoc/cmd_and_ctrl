@@ -1986,6 +1986,23 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 		produced = append(append([]string(nil), choice.ManaSettled...), produced...)
 	}
 	tapped := choice.ManaTapped
+	// #5644: the answer finishes a mana ability, and an ability that
+	// watches that (Tyvar the Bellicose's granted trigger) is queued by
+	// the announcement below. It goes on the stack the next time a
+	// player would receive priority (CR 603.3b), which the state checks
+	// arrange, as ActivateManaAbility does for a trigger its own
+	// resolution queued.
+	//
+	// The layers are brought up to date first, as ActivateManaAbility
+	// does: that trigger is a layer 6 grant, and a game restored with
+	// this pick open has not computed its grants yet.
+	g.RecomputeLayersIfStaleLocked()
+	pendingBefore := len(g.PendingTriggers)
+	defer func() {
+		if len(g.PendingTriggers) > pendingBefore {
+			g.runStateChecksLocked()
+		}
+	}()
 	// #1222: through the one production body, which opens the
 	// CR 106.12b window on the amount. This is the ONLY place a
 	// Birds-of-Paradise-style source's colour is known, so it is the

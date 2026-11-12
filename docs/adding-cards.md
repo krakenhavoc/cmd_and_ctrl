@@ -59,6 +59,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
+  - ["Whenever a mana ability of this creature resolves" (#5644)](#whenever-a-mana-ability-of-this-creature-resolves-5644)
   - [State triggers (ADR 0107, #1858)](#state-triggers-adr-0107-1858)
   - ["Activates a mana ability of each land" (ADR 0200, #3952)](#activates-a-mana-ability-of-each-land-adr-0200-3952)
   - [Choices made at resolution (#796, #568)](#choices-made-at-resolution-796-568)
@@ -9208,6 +9209,39 @@ What the planner makes of a card is tested through the real catalog in
 stubbed triggers, in
 [autotap_trigger_mana_test.go](../server/internal/game/autotap_trigger_mana_test.go)
 in `game`.
+
+### "Whenever a mana ability of this creature resolves" (#5644)
+
+A STACK trigger that fires because a mana ability finished, and reads how
+much mana that ability made (Tyvar the Bellicose: "put a number of +1/+1
+counters on it equal to the amount of mana this creature produced").
+Watch `game.EventManaAbilityResolved`
+([mana_ability_resolved.go](../server/internal/game/mana_ability_resolved.go)):
+
+```go
+On(game.EventManaAbilityResolved,
+    func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+        return ev.CardID == source.InstanceID // "of this creature"
+    }, label, effect) // the effect reads item.Trigger.Event.Amount
+```
+
+- **One event per resolution, on every route**: the hand click, the last
+  answered colour pick (a Birds of Paradise has not resolved until its
+  colour is named), the auto-tapper, and each triggered mana ability
+  (CR 605.1b), whose `Source` is the trigger's own permanent.
+- **`Amount` is the mana that ability produced**, after a CR 106.12b
+  replacement (three from a Llanowar Elves under Nyxbloom Ancient). Mana
+  another ability added because of it (Wild Growth's) is not in it: that
+  ability resolves afterwards and has its own event. An ability that
+  resolved and added nothing has `Amount` 0.
+- `Actor` is the activator, or the player a triggered mana ability added
+  its mana to; `Label` is the ability's label.
+- It is not `EventManaAbilityActivated`, which is emitted when the cost
+  is paid, before the mana exists, and carries no amount. "Whenever you
+  tap this creature for mana, it deals 1 damage" still watches that one
+  (`manaActivationPing`).
+- The watching ability is not a mana ability (it adds no mana), so it
+  goes on the stack the next time a player would receive priority.
 
 ### State triggers (ADR 0107, #1858)
 
