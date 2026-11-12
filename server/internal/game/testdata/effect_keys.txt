@@ -1266,6 +1266,7 @@ confirm confirm/turtles-in-time-ask
 confirm confirm/tymna-the-weaver-pay-and-draw
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
+confirm confirm/urza-assembles-the-titans-reveal
 confirm confirm/uss-enterprise-c-discard-hand
 confirm confirm/vaultguard-trooper-discard-hand
 confirm confirm/wandering-archaic-copy
@@ -3074,6 +3075,7 @@ tail then/transforming-flourish-cast
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
 tail then/unwind-history-surveil
+tail then/urza-assembles-the-titans-may-reveal
 tail then/valakut-exploration-damage
 tail then/vengeful-villagers-stun
 tail then/venture-into-the-dungeon

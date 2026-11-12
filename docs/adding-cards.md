@@ -12080,6 +12080,14 @@ turn, so a walker that arrives later is covered; each call adds one, and it stac
 `LoyaltyTwiceEachTurn` / `YourPlaneswalkersLoyaltyTwiceEachTurn` (ADR 0145 amendment 2026-10-21). The timing of
 each activation is unchanged.
 
+**"You may activate the loyalty abilities of planeswalkers you control twice this turn rather than only
+once"** (Urza Assembles the Titans' chapter III, #5665) is
+`g.AllowLoyaltyTwiceThisTurnForEffect(item.Controller)` from the row's `Effect`. It is
+`YourPlaneswalkersLoyaltyTwiceEachTurn` as a one-turn effect: the limit is two for that player's planeswalkers
+until the turn ends, a walker that arrives later is covered, an activation already made counts as the first, and
+a second call changes nothing (twice, not once more). It stacks with The Chain Veil's grant (ADR 0145 amendment
+2026-11-12). Use the Spec field, not this, for a permanent's static.
+
 **Eminence** (The Ur-Sphinx) is a static that also works while its card is in its owner's command zone. For a cost
 reduction wrap the modifier: `Eminence(CostsLess(1, "…", YourSpell(), OtherSpellOfCreatureType("Sphinx")))` (ADR
 0140). The modifier is gathered from every seat's command zone, "you" is the player whose zone it is, and it

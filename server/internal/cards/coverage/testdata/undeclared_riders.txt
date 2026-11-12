@@ -110,6 +110,7 @@ Tidings of War | amass | the text makes it conditional or optional
 Took Reaper | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Torch the Tower | scry | the text makes it conditional or optional
 Trained Arynx | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Urza Assembles the Titans | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Valley Questcaller | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Viscera Seer | scry | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
 Wakandan Tusker | scry | on a triggered row that is not the card's enters effect, which nothing prices
