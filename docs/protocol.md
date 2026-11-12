@@ -2044,6 +2044,11 @@ The whole draft **as this seat may see it**. Sent first on connect and
 again after every change. Treat each one as the new state; `seq` only
 rises.
 
+Views are not queued (#5698). A view still waiting to be written when the
+next is made is replaced by it, so a slow link is sent fewer views, never
+a stale one, and is not disconnected for falling behind. An `error` or a
+`pong` can therefore arrive after a view made later than it.
+
 ```json
 {
   "v": 0, "kind": "draft", "id": "…",
