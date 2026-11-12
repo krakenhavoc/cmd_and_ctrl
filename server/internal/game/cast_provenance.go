@@ -86,6 +86,13 @@ const AltCostKeyEscape = "escape"
 // constant here beside escape's.
 const AltCostKeyRetrace = "retrace"
 
+// AltCostKeyJumpStart is CR 702.133's key (#5645): "you may cast this
+// card from your graveyard by discarding a card in addition to paying
+// its other costs", exiled as it leaves the stack. The spelling the
+// catalog's printed jump-start already claims (Radical Idea), and the
+// AltCostKey of the permission Niv-Mizzet, Supreme grants.
+const AltCostKeyJumpStart = "jump-start"
+
 // CastProvenance is what a permanent remembers about the spell that
 // became it (CR 400.7d). The zero value is a permanent that did not
 // come from a spell at all — a token, a reanimated creature, a land —

@@ -1956,6 +1956,8 @@ type pendingChoiceSnapshot struct {
 	ManaLabel            string                 `json:"manaLabel,omitempty"`
 	ManaSettled          []string               `json:"manaSettled,omitempty"`
 	ManaPicksLeft        []ManaPickSlot         `json:"manaPicksLeft,omitempty"`
+	ManaAbilityRun       string                 `json:"manaAbilityRun,omitempty"`
+	ManaAbilityAmount    int                    `json:"manaAbilityAmount,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
 	ManaRecolorsSource   bool                   `json:"manaRecolorsSource,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
@@ -3548,6 +3550,8 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		ManaLabel:             c.ManaLabel,
 		ManaSettled:           copyStrings(c.ManaSettled),
 		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
+		ManaAbilityRun:        c.ManaAbilityRun,
+		ManaAbilityAmount:     c.ManaAbilityAmount,
 		ManaTapped:            c.ManaTapped,
 		ManaRecolorsSource:    c.ManaRecolorsSource,
 		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
@@ -4671,6 +4675,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ManaLabel:             c.ManaLabel,
 		ManaSettled:           copyStrings(c.ManaSettled),
 		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
+		ManaAbilityRun:        c.ManaAbilityRun,
+		ManaAbilityAmount:     c.ManaAbilityAmount,
 		ManaTapped:            c.ManaTapped,
 		ManaRecolorsSource:    c.ManaRecolorsSource,
 		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),

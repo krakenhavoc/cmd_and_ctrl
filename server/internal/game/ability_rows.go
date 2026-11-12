@@ -304,6 +304,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "LifeForMana", fallback: "Lets you pay life for mana", ownLabel: true},
 	{field: "LegendRuleExemptions", label: legendRuleExemptionRows},
 	{field: "ZeroLoyaltyExemptions", fallback: "Planeswalkers aren't put into graveyards for having 0 loyalty", ownLabel: true},
+	{field: "DamageLastLoyalty", fallback: "Damage can't remove a planeswalker's last loyalty counter", ownLabel: true},
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice", ownLabel: true},
 	{field: "GameEndGates", label: gameEndGateRows},
 	{field: "CoinFlipRules", fallback: "Coin flips come up heads", ownLabel: true},

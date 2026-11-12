@@ -1135,6 +1135,11 @@ var pendingChoiceFields = plan(
 	"ManaLabel", carried, "",
 	"ManaSettled", carried, "",
 	"ManaPicksLeft", carried, "",
+	// #5644: the pick is a mana ability's output, and how much of that
+	// ability's mana is already counted. A restored pick that lost them
+	// would never announce EventManaAbilityResolved.
+	"ManaAbilityRun", carried, "",
+	"ManaAbilityAmount", carried, "",
 	// #763: whether answering this pick is "a permanent was tapped for
 	// mana" (CR 106.12a), which is what fires the triggered mana
 	// abilities. A restored Birds pick that lost it would put the mana

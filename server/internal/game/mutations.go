@@ -3586,6 +3586,9 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 				})
 			}
 		}
+		// #5644: the ability has resolved, rider and all; the triggered
+		// mana abilities below resolve after it and announce their own.
+		g.emitManaAbilityResolvedLocked(p.ID, cardID, ab.Label, len(addedColors))
 		if tapped && len(addedColors) > 0 {
 			g.fireManaTriggersLocked(ManaProduced{
 				Source:     tappedForMana,
@@ -3744,6 +3747,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 		Label:   ab.Label,
 		Exhaust: ab.Exhaust,
 	})
+	produced := 0
 	for si, slot := range slots {
 		var color string
 		if si == oneColorIdx {
@@ -3757,7 +3761,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 		if color == "" {
 			continue
 		}
-		g.produceManaLocked(
+		produced += len(g.produceManaLocked(
 			p, cardID,
 			repeatColor(color, slot.AmountFor(color)),
 			restrictionsFor(g, ab, p.ID, cardID),
@@ -3767,8 +3771,10 @@ func (g *Game) materializeExiledManaSourceLocked(
 			// tapped and was never a permanent.
 			false,
 			pending,
-		)
+		))
 	}
+	// #5644: the ability has resolved.
+	g.emitManaAbilityResolvedLocked(p.ID, cardID, ab.Label, produced)
 }
 
 // pickColorForSlot consumes one entry from `pending` if any of
@@ -7249,8 +7255,9 @@ func (g *Game) triggerPlacedWatchedLocked() bool {
 // the same enumeration harvestFromZone walks (triggersOf, so an
 // ability-removing effect or an unmet designation gate counts as no
 // watcher). Only the battlefield: no emblem and no other-zone ability
-// watches EventTriggerPlaced or EventAbilityCopied, and one that does
-// joins this check in the change that declares it.
+// watches EventTriggerPlaced, EventAbilityCopied or
+// EventManaAbilityResolved, and one that does joins this check in the
+// change that declares it.
 //
 // Caller must hold g.mu.
 func (g *Game) battlefieldWatchesLocked(kind EventKind) bool {
@@ -9038,6 +9045,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			ManaLabel:     ab.Label,
 			ManaSettled:   settled,
 			ManaPicksLeft: picks[1:],
+			// #5644: the ability has not finished resolving until its
+			// last colour is named; that answer announces it.
+			ManaAbilityRun: uuid.NewString(),
 		}
 		// The "becomes that color" rider waits for the colour too.
 		choice.ManaRecolorsSource = ab.SourceBecomesProducedColor
@@ -9072,6 +9082,12 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				ErrorMsg: err.Error(),
 			})
 		}
+	}
+	// #5644: with no colour left to pick the ability has resolved, and
+	// what it produced is known. One that queued a pick announces this
+	// from ResolveManaChoice instead (PendingChoice.ManaAbilityRun).
+	if len(picks) == 0 {
+		g.emitManaAbilityResolvedLocked(playerID, cardID, ab.Label, len(addedColors))
 	}
 	// --- triggered mana abilities (#763, CR 605.1b) ---------------
 	//
