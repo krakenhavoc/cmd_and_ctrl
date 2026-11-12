@@ -7723,6 +7723,19 @@ cards" is a union: Deeproot Historian uses
 permissions are derived from the battlefield or the owner's emblems on
 every query, so they end when the source does.
 
+**Granted jump-start (#5645, CR 702.133a).** A card that gives jump-start
+to others declares a `CastPermission` with
+`AltCostKey: game.AltCostKeyJumpStart`, `DiscardCardInAddition: true` and
+`ExileOnResolution: true`: the card's own mana cost, one card from hand
+discarded as a cost (any card, named in `alt_cost_ids`), and exile as the
+spell leaves the stack. `DiscardCardInAddition` is `DiscardLandCard`
+without the land clause; `DiscardCard` is "rather than paying its mana
+cost" and charges no mana. "That's exactly two colors" is
+`PermissionFilter{ColorCountExactly: 2}`, read off the card's effective
+colours (a hybrid card is every colour of its symbols), and it composes
+with the other clauses: Niv-Mizzet, Supreme is
+`PermissionFilter{CardInZone: true, InstantOrSorceryOnly: true, ColorCountExactly: 2}`.
+
 **Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
 is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
 `AlternativeCost.CastsFace: 1`, so the spell is the card's **back
