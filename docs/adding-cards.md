@@ -5832,6 +5832,20 @@ emits `EventManaAbilityActivated` and carries no `LifePaid`. A new card
 that reads "the life paid to activate it" reads the same field; a spell's
 side ("life paid to cast it") is not on `EventCast` yet.
 
+**Mana for an alternative cost named by keyword (#5680):** "Spend this
+mana only to pay a disturb cost" is
+`game.ManaRestrictAltCost(Disturb("").Key)`, inside a `ManaRestrictAnyOf`
+with the card's other clause (Unblinking Observer: "or cast an instant or
+sorcery spell"). It matches `ManaSpendContext.AltCost`, the key of the
+printed alternative cost the cast claims, so it admits that cast and no
+other: not the same card at its mana cost, and not a graveyard cast for
+flashback or escape, which is why `ManaRestrictCastFromGraveyard` is the
+wrong tag. The mana pays the whole of that cast's total cost (CR 601.2f).
+Read the key off the keyword's constructor rather than typing it. A
+granted alternative cost and the bot's planning estimate
+(`CastAdmitsRestrictedMana`) name no key and refuse the mana; the
+enumerator and the cast decide under the real context.
+
 **Mana for spells with mana value N or greater (#4694):** "Spend this
 mana only to cast spells with mana value 4 or greater" is
 `Restrictions: []string{game.ManaRestrictManaValueAtLeast(4)}` (Ashling,
