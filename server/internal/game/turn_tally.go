@@ -660,6 +660,14 @@ type TurnTally struct {
 	// through CrewRecordsForEffect and the two creature readers built on
 	// it. Additive within v8: omitted when empty.
 	Crews []CrewRecord `json:"crews,omitempty"`
+	// BecameCrewed is every Vehicle whose crew ability resolved this
+	// turn, one entry per resolution, as the OBJECT it was (CR 702.122e,
+	// #5671). Written only by noteCrewAbilityResolvedLocked; it is what
+	// EventBecameCrewed's Amount counts, so "becomes crewed for the
+	// first time each turn" (Mindlink Mech) holds whether or not the
+	// first trigger found a target. Additive within v9: omitted when
+	// empty.
+	BecameCrewed []ObjectRef `json:"becameCrewed,omitempty"`
 	// StepsBegun and PhasesBegun count the steps and phase families
 	// that have begun this turn; PhaseStarted is the PhaseID of the
 	// phase the last count opened. They are what Turn.StepOrdinal and
@@ -2011,6 +2019,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	if len(t.Crews) > 0 {
 		out.Crews = append([]CrewRecord(nil), t.Crews...)
+	}
+	if len(t.BecameCrewed) > 0 {
+		out.BecameCrewed = append([]ObjectRef(nil), t.BecameCrewed...)
 	}
 	if len(t.StepsBegun) > 0 {
 		out.StepsBegun = make(map[Step]int, len(t.StepsBegun))

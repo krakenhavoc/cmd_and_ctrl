@@ -12623,6 +12623,27 @@ Vaulter and Reckless Velocitaur are the proof cards. The Vehicle is not a
 creature yet when the trigger resolves (CR 208.3a), so grant keywords and
 pumps to it as a permanent, not as a creature.
 
+**"Whenever this Vehicle becomes crewed" (CR 702.122e, #5671).** The
+rule reads it as "whenever a crew ability of this Vehicle resolves", so it
+is the other end of the ability from the paragraph above: the engine emits
+`EventBecameCrewed` after a crew ability's effect, once per ability
+however many creatures paid, and only while the Vehicle is still on the
+battlefield as the object the ability came from. Write it with
+`WhenBecomesCrewed(label, effect)`
+([becomes_crewed.go](../server/internal/cards/effects/becomes_crewed.go));
+the Vehicle is already an artifact creature when the trigger goes on the
+stack. "For the first time each turn" is
+`WhenBecomesCrewedFirstTimeEachTurn(label, effect)`: the event's `Amount`
+counts the crew abilities of that object that resolved this turn
+(`TurnTally.BecameCrewed`), so a first crew whose trigger had no legal
+target still used the turn's one chance. Do not write it with a
+triggered-this-turn tally. A countered crew ability made nothing become
+crewed, though its creatures still crewed the Vehicle. "Target creature
+that crewed it this turn" is `CrewedThis(...)` as on any other Vehicle.
+An effect that says "target Vehicle becomes an artifact creature"
+(`BecomeCreatureUntilEOT`) is not crewing and emits nothing. Mobilizer
+Mech and Mindlink Mech are the proof cards.
+
 **A creature that counts for more when it crews or saddles (ADR 0186
 Decision 4, #3549).** "This creature crews Vehicles as though its power
 were 2 greater" and "… using its toughness rather than its power" are
