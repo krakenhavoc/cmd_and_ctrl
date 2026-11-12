@@ -999,3 +999,53 @@ A malformed suffix parses as no protection at all, the weaker direction.
   Aura's grant has no card yet. CR 303.4g's "can't enter attached"
   (`auraHostCandidatesLocked`) is not CR 702.16n's business and still
   reads plain protection.
+
+## Amendment (2026-11-12, #5650): protection from colorless, and choosing it beside a colour
+
+> 702.16a Protection is a static ability, written "Protection from
+> [quality]." This quality is usually a color (as in "protection from
+> black") but can be any characteristic value or information.
+
+> 105.2c A colorless object has no color.
+
+> 105.4. If a player is asked to choose a color, they must choose one of
+> the five colors. "Multicolored" is not a color. Neither is "colorless."
+
+Angelic Intervention reads "Target creature or planeswalker you control
+gains protection from colorless or from the color of your choice until
+end of turn." The grammar had no colourless quality, and the
+`choose_color` prompt dropped `C` from any option list.
+
+**Decision 1: `colorless` is its own quality kind.**
+`ProtectionQualityColorless` (wire kind `colorless`, no value), parsed
+from the whole phrase "colorless" and minted by
+`game.ProtectionFromColorless`. A source matches when its post-layer
+colours are empty, so the four consumers of §1 need nothing new. It is
+not a sixth entry in `protectionColors`: that map is CR 105.4's five, and
+`ProtectionFromColor` still mints nothing for `C`. An unknown source
+matches nothing, as for every characteristic quality. Hexproof's grammar
+does not gain it; no card prints "hexproof from colorless".
+
+**Decision 2: one prompt with a sixth answer, not two prompts.** CR 105.4
+is about "choose a color", and this sentence does not ask that: it offers
+a quality that is not a colour, or a colour of the player's choice.
+`game.ColorPrompt.OrColorless` appends `game.ColorlessChoice` (`"C"`,
+the letter a mana pick already uses) after the colours of a
+resolution-time `choose_color`; `effects.ChooseColorOrColorlessTail` is
+the card-side door, and `game.ProtectionFromColorOrColorless` turns the
+answer into a token. `normaliseColorOptions` is unchanged, so the stored
+"as this enters" form and every other prompt stay five colours. A first
+prompt asking "colorless or a colour?" followed by the colour prompt
+would be the same rule in two clicks.
+
+- **Wire.** No new field. `color_options` on that one prompt ends with
+  `C`, and `protection[].kind` may be `colorless`. The client's colour
+  picker already draws `C`, and the badge abbreviates the printed
+  quality, so the client needed no change.
+- **Order and bots.** `legal.OrderColorOptionsLocked` counts a colourless
+  permanent under `C`, which only a prompt that offers it reads, and the
+  heuristic's colour readers treat `C` as "has no colour".
+- **Snapshot.** Nothing new: the option list was already persisted, and
+  the granted token is a string in an until-end-of-turn keyword grant.
+- **§10 is unchanged.** "Protection from all colors" and "from
+  monocolored" stay outside the grammar until a card prints them.

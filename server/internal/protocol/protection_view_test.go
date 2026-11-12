@@ -93,6 +93,34 @@ func TestManaValueAndRingBearerProtectionAreProjected(t *testing.T) {
 	t.Fatal("the card is not in the view")
 }
 
+// #5650: protection from colorless reaches the wire with its own kind
+// and no value.
+func TestProtectionFromColorlessIsProjected(t *testing.T) {
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+
+	bear := game.NewCard("Grizzly Bears", me.ID)
+	bear.TypeLine = "Creature — Bear"
+	bear.Keywords = []string{game.ProtectionFromColorless}
+	bear.KnownBy = map[uuid.UUID]bool{me.ID: true}
+	g.Battlefield.PushTop(bear)
+
+	view := ViewOfGameFor(g, me.ID.String())
+	for _, c := range view.Battlefield.Cards {
+		if c.InstanceID != bear.InstanceID.String() {
+			continue
+		}
+		if len(c.Protection) != 1 {
+			t.Fatalf("protection = %+v, want one", c.Protection)
+		}
+		if p := c.Protection[0]; p.Kind != "colorless" || p.Value != "" || p.Printed != "colorless" {
+			t.Errorf("colorless quality = %+v", p)
+		}
+		return
+	}
+	t.Fatal("the card is not in the view")
+}
+
 // A quality the closed grammar refuses is projected as nothing, so
 // the badge never promises a rule the engine does not run (ADR 0037).
 func TestAnUnparseableProtectionIsNotProjected(t *testing.T) {

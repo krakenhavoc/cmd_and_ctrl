@@ -10851,7 +10851,13 @@ tail runs against the asking item rebuilt from data; carry what it reads
 (a target, X) on the tail, so a table waiting on the colour is a restore
 point (#4253). "Protection from the color of your choice" is the shared
 `chooseProtectionColorFor`; "prevent damage from sources of the color of
-your choice" the shared `preventDamageFromChosenColor`. "Each player
+your choice" the shared `preventDamageFromChosenColor`. "Protection from
+colorless or from the color of your choice" (Angelic Intervention, #5650)
+is `ChooseColorOrColorlessTail`, the same call with one more answer: the
+tail's Word is then `game.ColorlessChoice` (`"C"`), and
+`game.ProtectionFromColorOrColorless(word)` turns either answer into the
+token. Colorless is not a color (CR 105.4), so no other prompt offers it
+and `ProtectionFromColor` still mints nothing for it. "Each player
 chooses a color" is a chain: each answer's tail asks the next player in
 APNAP order (Selective Obliteration), the players riding its Carry and
 the answers so far its Words, so an undo cannot leak an answer from an
