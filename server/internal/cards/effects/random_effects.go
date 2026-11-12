@@ -29,6 +29,14 @@ type RollDice struct {
 	// TailN is a number read as the effect resolves that the tail reads
 	// (TailOutcome.Tail.N): Diviner's Portent's X.
 	TailN int
+	// Modifier is what the instruction adds to the roll, negative for
+	// "subtract" (CR 706.2, #5681): "roll a d20 and add the number of
+	// cards in your hand". Read it as the effect resolves and put it
+	// here, never inside the tail: the roll is announced with its natural
+	// result and this beside it, so "whenever you roll a natural 20"
+	// reads the die and "if any of those results was 10 or higher" reads
+	// the sum. The tail reads the sum as DiceResult(o).
+	Modifier int
 }
 
 // Apply rolls the dice for the effect's controller.
@@ -40,7 +48,47 @@ func (r RollDice) Apply(ctx *Context) error {
 	d := randomDraw(ctx)
 	return ctx.Game.RollDiceThenForEffect(game.DiceRoll{
 		Player: d.Player, Source: d.Source, Sides: r.Sides, N: r.N, IgnoreLowest: r.IgnoreLowest, Then: then,
+		Modifier: r.Modifier,
 	})
+}
+
+// DiceResult is the result of the first kept die a dice tail was told:
+// its natural result plus the instruction's modifier (CR 706.2,
+// RollDice.Modifier). The number a results table reads (CR 706.3a). Zero
+// when no die was kept.
+func DiceResult(o game.TailOutcome) int {
+	if len(o.Rolls) == 0 {
+		return 0
+	}
+	return o.Rolls[0] + o.RollModifier
+}
+
+// RollOneMoreDieAndIgnoreTheLowest is the static "If you would roll one or
+// more dice, instead roll that many dice plus one and ignore the lowest
+// roll." (Pixie Guide, Barbarian Class; CR 614.1a, 706.6, #5681): a
+// replacement on the dice roll's window (game.RepEventRollDice) for every
+// roll its controller makes. One more die is rolled and one more of the
+// lowest is ignored (ReplacementEvent.RollOneMoreAndIgnoreLowest); an
+// ignored roll never happened, so nothing triggers on it. Two of them
+// roll two more dice and ignore the two lowest. The planar die has no
+// numerical result and so no lowest roll (CR 706.7): its roll is left
+// alone. `name` is the card, for the label.
+func RollOneMoreDieAndIgnoreTheLowest(name string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventRollDie},
+		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
+			return ev.Kind == game.RepEventRollDice && !ev.RollPlanar && ev.RollCount > 0 && ev.RollPlayer == src.Controller
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.RollOneMoreAndIgnoreLowest()
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label:    name + ": roll one more die and ignore the lowest roll",
+		RowLabel: "If you would roll one or more dice, instead roll that many dice plus one and ignore the lowest roll.",
+	}
 }
 
 // DiceTail registers the rest of a dice-rolling effect, told the kept
@@ -99,6 +147,11 @@ func randomCardToHandOrBattlefield(g *game.Game, id uuid.UUID) error {
 // triggering event (item.Trigger.Event.BatchSeq, ADR 0041 P9) rather than
 // captured, so a table with this trigger waiting on the stack is a
 // restore point.
+//
+// The effect is told the total of the results, each its natural result
+// plus the instruction's modifier (CR 706.2, #5681). An effect that reads
+// the dice one by one ("if any of those results was 10 or higher") calls
+// RolledDice.
 func WheneverYouRollDice(label string, effect func(*game.Game, *game.StackItem, int) error) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventRollDie}, Key: label,
@@ -106,18 +159,46 @@ func WheneverYouRollDice(label string, effect func(*game.Game, *game.StackItem, 
 			return ev.Actor == source.Controller && ev.Seq == ev.BatchSeq
 		},
 		Effect: func(g *game.Game, item *game.StackItem) error {
-			batch := item.Trigger.Event.BatchSeq
 			total := 0
-			for _, rolled := range g.Events {
-				// CR 901.9d (ADR 0216 §4): the planar die triggers this but
-				// has no numerical result, so it adds nothing to the total.
-				if rolled.Kind == game.EventRollDie && rolled.BatchSeq == batch && rolled.PlanarFace == "" {
-					total += rolled.Amount
-				}
+			for _, rolled := range RolledDice(g, item) {
+				total += rolled.RollResult()
 			}
 			return effect(g, item, total)
 		},
 	}
+}
+
+// RolledDice lists the dice of the instruction a "whenever you roll one or
+// more dice" trigger fired on, one EventRollDie per kept die in the order
+// rolled: Amount is a die's natural result, RollResult() its result with
+// the instruction's modifier (CR 706.2). Ignored rolls are not there (CR
+// 706.6), and neither is a planar die: it triggers the ability but has no
+// numerical result (CR 706.7, 901.9d; ADR 0216 §4). The batch is read off
+// the item's triggering event, so it is the same on a restored table.
+func RolledDice(g *game.Game, item *game.StackItem) []game.Event {
+	if item == nil || item.Trigger == nil {
+		return nil
+	}
+	batch := item.Trigger.Event.BatchSeq
+	var out []game.Event
+	for _, rolled := range g.Events {
+		if rolled.Kind == game.EventRollDie && rolled.BatchSeq == batch && rolled.PlanarFace == "" {
+			out = append(out, rolled)
+		}
+	}
+	return out
+}
+
+// YouRolledADiesHighestNaturalResult is "whenever you roll a die's highest
+// natural result" (Netherese Puzzle-Ward, #5681): one EventRollDie of the
+// source's controller whose die shows its highest face. The natural
+// result is the number on the die before any modifier (CR 706.2), so the
+// event's Amount, never its RollResult. One event per kept die, so two
+// dice that both show their highest face fire the ability twice; an
+// ignored roll never happened (CR 706.6) and a planar die has no number.
+func YouRolledADiesHighestNaturalResult(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventRollDie && ev.PlanarFace == "" && ev.Actor != uuid.Nil && ev.Actor == source.Controller &&
+		ev.Sides > 0 && ev.Amount == ev.Sides
 }
 
 // YouWonACoinFlip is "whenever you win a coin flip" (CR 705.2, ADR 0054
