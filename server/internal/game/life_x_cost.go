@@ -41,7 +41,7 @@ func (g *Game) LifeXCeilingLocked(p *Player, cost AbilityCost, printed, maxX int
 		x = maxX
 	}
 	for ; x >= 0; x-- {
-		if g.CanPayLifeLocked(p, printed+x) {
+		if g.CanPayLifeToCastOrActivateLocked(p, printed+x) {
 			return x
 		}
 	}

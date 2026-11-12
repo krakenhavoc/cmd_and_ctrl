@@ -768,6 +768,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
+	// #5660: "Players can't pay life to cast spells" (Karn's Sylex)
+	// reaches the life half of a Phyrexian symbol and of a life-for-mana
+	// grant (CR 107.4f, CR 601.2b). Refused here, once the layers are fresh and
+	// before anything reads the claim, so every payment path below sees a cast that pays those
+	// symbols with mana or not at all.
+	if params.PhyrexianLife > 0 && g.cantPayLifeToCastOrActivateLocked() {
+		return fmt.Errorf("%w: players can't pay life to cast spells", ErrInvalidParam)
+	}
 	src, err := g.castSourceZoneLocked(p, cardID, params.FromZone)
 	if err != nil {
 		return err
@@ -1564,7 +1572,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		if alt != nil {
 			owed += alt.Life
 		}
-		if !g.CanPayLifeLocked(p, owed) {
+		if !g.CanPayLifeToCastOrActivateLocked(p, owed) {
 			slog.Warn("cast_spell rejected: can't pay the targeting tax",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,

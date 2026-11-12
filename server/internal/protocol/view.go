@@ -7613,7 +7613,7 @@ func stampCastTargetTaxes(g *game.Game, caster uuid.UUID, spell game.Card, out *
 				v.LifeTaxes = make(map[string]int)
 			}
 			v.LifeTaxes[id] = tax
-			if !g.CanPayLifeLocked(seat, tax) {
+			if !g.CanPayLifeToCastOrActivateLocked(seat, tax) {
 				v.LifeTaxesUnpayable = append(v.LifeTaxesUnpayable, id)
 			}
 		}
@@ -7826,7 +7826,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	// modifiers add generic, so the two agree today, and reading the
 	// effective one keeps them agreeing if that ever stops being
 	// true.
-	out.PhyrexianSymbols, out.PhyrexianGranted = phyrexianSymbolsIn(g, caster, f.manaCost)
+	out.PhyrexianSymbols, out.PhyrexianGranted = lifePayableSymbolsIn(g, caster, f.manaCost)
 	spec := game.TargetSpecFor(key)
 	// #1012: THE list of CR 118.9 prices this cast may claim out of
 	// this zone, from the one function that answers the question for
@@ -8052,6 +8052,19 @@ func phyrexianSymbolsIn(g *game.Game, payer uuid.UUID, costStr string) (total, g
 	}
 	cost = g.LifeGrantedCostForEffect(payer, cost)
 	return cost.PhyrexianSymbols(), cost.LifeGrantedSymbols()
+}
+
+// lifePayableSymbolsIn is phyrexianSymbolsIn for the cost of a spell or
+// of an activated ability that isn't a mana ability: zero while "players
+// can't pay life to cast spells or to activate abilities that aren't
+// mana abilities" is live (Karn's Sylex, #5660), so the client offers no
+// "or 2 life" payment the engine refuses. A mana ability's cost, a tax
+// and a pay-unless cost keep phyrexianSymbolsIn.
+func lifePayableSymbolsIn(g *game.Game, payer uuid.UUID, costStr string) (total, granted int) {
+	if g.CantPayLifeToCastOrActivateForEffect() {
+		return 0, 0
+	}
+	return phyrexianSymbolsIn(g, payer, costStr)
 }
 
 // castableNow is `castable_here` for a card in a graveyard, on a
@@ -8667,7 +8680,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 				v.XMax = &ceiling
 			}
 		}
-		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, ac.ManaCost)
+		v.PhyrexianSymbols, v.PhyrexianGranted = lifePayableSymbolsIn(g, caster, ac.ManaCost)
 		if spec := flashIf.TargetSpecUnder(game.TargetSpecUnderAlternativeCost(offerBase, &ac)); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
@@ -13992,7 +14005,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.XSlots = a.Cost.XSlots()
 		}
 		// #917 / #916: the "or 2 life" half of the announcement.
-		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, a.Cost.Mana)
+		v.PhyrexianSymbols, v.PhyrexianGranted = lifePayableSymbolsIn(g, caster, a.Cost.Mana)
 		// #1190: the row shows what AbilityManaCostForEffect actually
 		// charges, not the printed string alone — `caster` is the
 		// permanent's controller here, the same activator the
