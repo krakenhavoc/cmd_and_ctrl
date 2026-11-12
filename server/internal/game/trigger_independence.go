@@ -166,6 +166,10 @@ const (
 	// face down under the item's controller this turn (Tunnel Tipster).
 	// The tally only rises within a turn.
 	FootprintCondFaceDownEntered FootprintCond = "face_down_entered"
+	// FootprintCondNoCombatDamageSinceLastTurn: the item's controller
+	// has not been dealt combat damage since their last turn (Marchesa,
+	// Resolute Monarch, #5652; Player.CombatDamagedSinceLastTurn).
+	FootprintCondNoCombatDamageSinceLastTurn FootprintCond = "no_combat_damage_since_last_turn"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -777,6 +781,11 @@ func graveyardConditionSees(a *triggerAccess) bool {
 //     the tally cannot change while the batch is waiting. A creature put
 //     onto the battlefield attacking was never declared and is not
 //     counted.
+//   - "You haven't been dealt combat damage since your last turn" can
+//     only become false, by combat damage, which is dealt as a turn-based
+//     action (CR 510.2); no item on the stack deals it. It becomes true
+//     again only as that player's turn ends, when the stack is empty. It
+//     reads nothing while it holds, and is refused once it does not.
 //   - The monarch: an item that makes a player the monarch can change it
 //     (monarchRead).
 //   - The source: a read of the item's source object, as a counter on
@@ -821,6 +830,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.AttacksDeclared > 0
 	case FootprintCondFaceDownEntered:
 		return tally.PermanentsEnteredFaceDown > 0
+	case FootprintCondNoCombatDamageSinceLastTurn:
+		return !g.DealtCombatDamageSinceLastTurnForEffect(you)
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:

@@ -10,6 +10,7 @@
 **Amendment:** 2026-10-13 · **Accepted** · [The order prompt says why it asked](#amendment-2026-10-13--the-order-prompt-says-why-it-asked-3015--accepted) · [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015)
 **Amendment:** 2026-10-13 (second) · **Accepted** · [The six remaining villainous-choice cards](#amendment-2026-10-13-second--the-six-remaining-villainous-choice-cards-3143--accepted--backlog) · [#3143](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3143)
 **Amendment:** 2026-10-15 · **Accepted** · [A became-target event says what kind of object targeted](#amendment-2026-10-15--a-became-target-event-says-what-kind-of-object-targeted-3779--accepted) · [#3779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3779)
+**Amendment:** 2026-11-12 · **Accepted** · [A became-target event names the keyword ability that targeted](#amendment-2026-11-12--a-became-target-event-names-the-keyword-ability-that-targeted-5651--accepted) · [#5651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5651)
 
 ## Context
 
@@ -5110,3 +5111,40 @@ The fourth amendment keyed the confirms and listed what still chained into them 
 **Still a closure.** The search prompt itself: Tempt with Discovery's searches have had a `ThenTail` since #4253 slice 4, but the prompt (`PendingChoice.searchResume`) is not keyed, so a table waiting on one of its four searches is still not a restore point (a separate slice). The closure forms of `LookAtTop.Then`, `LookAtLibraryThenPlace.Then` and `PutInLibrarySpec.Then`, which other cards use. And two pauses inside the keyed cards that run closures when they happen: a commander tucked by Sylvan Library asks its owner about the command zone (CR 903.9) through `TuckToLibraryThenForEffect`'s continuation, and Lazav's exile can stop on a CR 616 prompt through `ExileTarget.Then`.
 
 **Tests** (`effects/chained_prompts_keyed_restore_test.go`, each a strict restore with the prompt open, then the answer on the restored table): Ponder (restored at the look, then at the question, both answers, the draw on each, the kept order drawn), Portent (restored at the order prompt, then at the question with the owner carried, both answers), a look-at-top with no "then", Sylvan Library (restored at the pick, then at each payment; the pick still refuses a stranger and a short set), Lazav (restored at the pick, accept and decline), and an unknown-key refusal for each prompt. **Back-outs, each failing the test named:** Ponder's `ThenTail` back to a closure fails `TestPonderLookIsARestorePoint`; Portent's, `TestPortentLookIsARestorePoint`; Sylvan Library's `ThenKey` back to a closure fails `TestSylvanLibraryPickIsARestorePoint`; Lazav's, `TestLazavFamiliarStrangerPickIsARestorePoint`; `carriesLookAtThen` without `look_at_top` fails Ponder's test; `ResolvePutInLibrary` ignoring `libraryOrderKeyed` fails Portent's.
+
+## Amendment 2026-11-12 — a became-target event names the keyword ability that targeted (#5651) · Accepted
+
+"Whenever a creature you control becomes the target of a backup ability, copy that ability" (Mirror-Shield Hoplite) has
+to tell a backup ability from every other triggered ability. The 2026-10-15 (seventh) amendment's `Event.TargeterKind`
+says "triggered" and no more. CR 702.165a: "Backup is a triggered ability. 'Backup N' means 'When this creature enters,
+put N +1/+1 counters on target creature. …'", so on the stack it is an ordinary enters trigger, and what makes it a
+backup ability is the row it came from.
+
+### Decision
+
+1. **`Event.TargeterKeyword`** is stamped by `emitBecameTargetLocked` beside `TargeterKind`, once for the whole fan-out.
+   It is the `TriggeredAbility.Keyword` of the catalog row the targeting item names (`targeterKeyword`, `game/backup.go`):
+   a triggered item whose body is `catalog/triggered`, resolved through its `Params.Ability` ref against the running
+   catalog (ADR 0041 P9). A spell, an activated ability, a keyed engine trigger, an unkeyed legacy `Build` and a ref the
+   catalog no longer has all read empty, which matches nothing.
+2. **Nothing new is carried on the stack item.** The row already says which keyword it is and the item already names
+   its row, so a restored item answers as the original did, and so does a copy: `createAbilityCopyLocked` keeps `Body`
+   and `Params`, and CR 707.10 says a copy "copies both the characteristics of the spell or ability and all decisions
+   made for it". A copy of a backup ability is a backup ability.
+3. **`game.KeywordBackup`** (`"backup"`) is stamped by `effects.Backup` and nowhere else. It is not a `canonicalKeywords`
+   token: backup has no keyword chip, so `abilityRowsOf` keeps the row, as it does for cumulative upkeep (#3869).
+4. **The predicate** is `creatureYouControlBecameTargetOfABackupAbility` in `mirror_shield_hoplite.go`: a card target, a
+   creature controlled by the source's controller, `TargeterKeyword == KeywordBackup`. Whose backup ability it is does
+   not matter, as printed. The body is the existing `copyTheTriggeringAbility`; the copy has the original's source
+   (CR 707.10b: "A copy of an ability has the same source as the original ability"), so "if that's another creature" is
+   asked of the creature with backup and the abilities granted are that creature's.
+5. **"This ability triggers only once each turn"** is the existing `TriggersOnlyOnceEachTurn`. The copy naming a creature
+   its controller controls is a second became-target event with the same keyword, and the gate declines it.
+6. **Snapshot.** `events[].targeter_keyword` and the same field inside every embedded trigger event are additive under
+   v9 and omitted when empty. A binary that drops the key reads old events as naming no keyword, which only means an
+   older Hoplite trigger does not fire for them. No wire, effect-key or closure-field change.
+
+**Back-outs.** Without the stamp in `effects.Backup`, or without the read in `emitBecameTargetLocked`,
+`TestMirrorShieldHopliteCopiesTheBackupAbilityAtANewTarget` and its siblings fail; without the row lookup
+`TestTargeterKeywordReadsTheCatalogRow` fails; without the `KeywordBackup` exemption in `abilityRowsOf`
+`TestBackupKeepsItsAbilityRow` fails.

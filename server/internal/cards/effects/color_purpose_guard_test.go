@@ -33,12 +33,13 @@ import (
 // is one of the named constants, spelled out at the call site where a
 // reviewer reading the card will see it.
 
-// colorPromptBuilders are the three doors to a `choose_color` prompt.
+// colorPromptBuilders are the four doors to a `choose_color` prompt.
 // Every one takes the purpose as its FIRST argument.
 var colorPromptBuilders = map[string]bool{
 	"ChooseColorAsEnters":          true,
 	"ChooseColorOtherThanAsEnters": true,
 	"ChooseColorTail":              true,
+	"ChooseColorOrColorlessTail":   true,
 }
 
 // colorPurposeNames is the declared vocabulary, by the identifier a

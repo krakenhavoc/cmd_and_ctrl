@@ -29,17 +29,19 @@ import (
 //
 // It watches the planar die's EventRollDie showing the chaos face, rolled
 // by anyone (an effect can make a player other than the planar controller
-// roll it, CR 901.9's note), and it is controlled by the source's
-// controller, the planar controller. No card of the catalog yet says
-// "chaos ensues" as an effect; the batch that adds one widens this shape,
-// not the plane files.
+// roll it, CR 901.9's note), and game.EventChaosEnsues, a resolving spell
+// or ability saying that chaos ensues (game.ChaosEnsuesForEffect, #5648:
+// the Will of the Planeswalkers cards, Missy). One ability with two
+// trigger events, controlled by the source's controller, the planar
+// controller.
 func WheneverChaosEnsues(label string, effect Effect) game.TriggeredAbility {
-	return On(game.EventRollDie, chaosEnsued, label, effect)
+	return OnAny([]game.EventKind{game.EventRollDie, game.EventChaosEnsues}, chaosEnsued, label, effect)
 }
 
-// chaosEnsued is the chaos face of the planar die (CR 901.9b).
+// chaosEnsued is the chaos face of the planar die (CR 901.9b) or an
+// effect's "chaos ensues" (CR 311.7).
 func chaosEnsued(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
-	return ev.PlanarFace == game.PlanarFaceChaos
+	return ev.Kind == game.EventChaosEnsues || ev.PlanarFace == game.PlanarFaceChaos
 }
 
 // WhenYouPlaneswalkToThisAndAtYourUpkeep is "When you planeswalk to ~ and

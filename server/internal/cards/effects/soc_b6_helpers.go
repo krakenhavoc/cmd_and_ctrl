@@ -27,9 +27,13 @@ import (
 // this one included; the counters go on whichever was chosen and is still
 // legal as the ability resolves (CR 608.2b), and the abilities only on
 // another creature, in one until-end-of-turn effect.
+//
+// The row carries game.KeywordBackup (#5651), stamped here and nowhere
+// else, so its item on the stack is a backup ability to a watcher of
+// "becomes the target of a backup ability" (Event.TargeterKeyword).
 func Backup(name string, n int, grantKey string, keywords ...string) game.TriggeredAbility {
 	kws := append([]string(nil), keywords...)
-	return Targeting(WhenThisEnters(name+" — backup "+strconv.Itoa(n), func(g *game.Game, item *game.StackItem) error {
+	t := Targeting(WhenThisEnters(name+" — backup "+strconv.Itoa(n), func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
 			if t.Kind != game.TargetCard {
@@ -57,6 +61,8 @@ func Backup(name string, n int, grantKey string, keywords ...string) game.Trigge
 		}
 		return nil
 	}), TargetCreature("target creature"))
+	t.Keyword = game.KeywordBackup
+	return t
 }
 
 // socB6AurasOnTheDead is the Auras that were attached to the creature an

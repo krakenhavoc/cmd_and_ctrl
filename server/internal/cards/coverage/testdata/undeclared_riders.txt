@@ -58,6 +58,7 @@ In the Darkness Bind Them | ring | on a triggered row that is not the card's ent
 Insectoid Exterminator | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Iron-Fist Pulverizer | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Jace's Sanctum | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Kasla, the Broken Halo | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Lifecrafter's Bestiary | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Lita, Little Orphan Amphibian | scry | a modal trigger whose other bullets declare nothing, so the declared one would always be chosen
 Lothlórien Lookout | scry | on a triggered row that is not the card's enters effect, which nothing prices

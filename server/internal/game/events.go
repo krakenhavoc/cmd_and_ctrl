@@ -1738,6 +1738,17 @@ type Event struct {
 	// became-target event whose item was not on the stack (none today).
 	TargeterKind StackItemKind `json:"targeter_kind,omitempty"`
 
+	// TargeterKeyword names the KEYWORD ability that did the targeting,
+	// on an EventBecomesTarget whose targeter is a triggered ability a
+	// keyword's constructor built: "backup" (CR 702.165a) for a backup
+	// ability (#5651). It is the catalog row's TriggeredAbility.Keyword,
+	// read through the row the stack item names (targeterKeyword) at the
+	// moment the event is emitted, for the reason TargeterKind is. A copy
+	// of the ability names the same row, so it reads the same (CR 707.10).
+	// Empty for a spell, an activated ability, a hand-written trigger and
+	// every other event.
+	TargeterKeyword string `json:"targeter_keyword,omitempty"`
+
 	// ResolvedStackItemID names the item that left the stack, on an
 	// ABILITY's EventResolve / EventFizzle (ADR 0119 §3), so the public
 	// log can say which item it was. A separate field from StackItemID
@@ -2385,31 +2396,35 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 	// the whole fan-out. Every caller creates its item before it emits
 	// (the doc above), so the stack answers; a missing item reads empty.
 	var kind StackItemKind
+	var keyword string
 	if item := g.StackMeta[itemID]; item != nil {
 		kind = item.Kind
+		keyword = targeterKeyword(item)
 	}
 	for i, t := range targets {
 		switch t.Kind {
 		case TargetCard:
 			g.EmitEvent(Event{
-				Kind:           EventBecomesTarget,
-				Actor:          actor,
-				Source:         source,
-				StackItemID:    itemID,
-				TargeterKind:   kind,
-				Target:         t.ID,
-				CardID:         t.ID,
-				CrimeCommitted: i == crimeSlot,
+				Kind:            EventBecomesTarget,
+				Actor:           actor,
+				Source:          source,
+				StackItemID:     itemID,
+				TargeterKind:    kind,
+				TargeterKeyword: keyword,
+				Target:          t.ID,
+				CardID:          t.ID,
+				CrimeCommitted:  i == crimeSlot,
 			})
 		case TargetPlayer:
 			g.EmitEvent(Event{
-				Kind:           EventBecomesTarget,
-				Actor:          actor,
-				Source:         source,
-				StackItemID:    itemID,
-				TargeterKind:   kind,
-				Target:         t.ID,
-				CrimeCommitted: i == crimeSlot,
+				Kind:            EventBecomesTarget,
+				Actor:           actor,
+				Source:          source,
+				StackItemID:     itemID,
+				TargeterKind:    kind,
+				TargeterKeyword: keyword,
+				Target:          t.ID,
+				CrimeCommitted:  i == crimeSlot,
 			})
 		}
 	}
