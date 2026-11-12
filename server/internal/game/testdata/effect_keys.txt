@@ -2095,6 +2095,7 @@ tail anchor-to-reality/scry-if-cheaper
 tail ancient-adamantoise/after-exile
 tail animists-awakening/rest-then-untap
 tail another-round/after-return
+tail anowon-the-ruin-thief/after-mill
 tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
 tail archdruids-charm/bite

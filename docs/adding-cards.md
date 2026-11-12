@@ -13798,6 +13798,12 @@ that keeps its haste and never goes home. `FlashForMore` takes the SURCHARGE ("{
 and is paid on top of one (#5207); a cast that does not announce it stays sorcery-speed. Never build "as though it had
 flash if" as an alternative cost: coverage's `TestNoFlashIfClauseIsAnAlternativeCost` refuses it (see
 [Flash if a condition holds](#flash-if-a-condition-holds-5207)).
+Prowl (CR 702.76a, #5509) is freerunning's sibling whose gate reads the SPELL: `Prowl("{3}{U}")` (Enigma Thief,
+`prowl_keyword.go`) passes when a creature you controlled dealt combat damage to a player this turn with any of the
+spell's creature types. Those types are the card's own as it sits in the zone it is cast from, zone layers included
+(Maskwood Nexus, Leyline of Transformation), so the constructor uses `AlternativeCost.SpellCondition`, which the view's
+offer stamp and `CastSpell`'s validator both ask of the card before it moves (`AlternativeCost.AvailableFor`). Use it
+for any other gate that reads the spell being cast; `Condition` stays the gate that reads only the caster.
 Convoke now records who tapped
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
