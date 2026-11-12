@@ -48,6 +48,7 @@ func domainLands(g *game.Game, seat, other *game.Player, types ...string) {
 	pushPermanent(g, seat.ID, game.Card{Name: "Plains", TypeLine: "Basic Land — Plains"})
 	pushPermanent(g, seat.ID, game.Card{Name: "Cave", TypeLine: "Land — Cave"})
 	pushPermanent(g, other.ID, game.Card{Name: "Swamp", TypeLine: "Basic Land — Swamp"})
+	g.WithWriteLock(func() { g.BumpLayerVersionForTest() })
 }
 
 func TestDomainCountCountsEachBasicTypeOnceAndOnlyYours(t *testing.T) {
@@ -77,8 +78,8 @@ func TestYavimayaSojournerCostsLessPerBasicLandType(t *testing.T) {
 		t.Fatalf("no lands: %d, want 8", got)
 	}
 	domainLands(g, me, opp, "Forest", "Island")
-	if got := selfPricedMV(t, g, me, yavimayaSojournerOracle, tl, "{7}{G}"); got != 6 {
-		t.Errorf("Forest, Plains, Island: %d, want 6", got)
+	if got := selfPricedMV(t, g, me, yavimayaSojournerOracle, tl, "{7}{G}"); got != 5 {
+		t.Errorf("Forest, Plains, Island: %d, want 5", got)
 	}
 	pushPermanent(g, me.ID, game.Card{Name: "Dual", TypeLine: "Land — Swamp Mountain"})
 	if got := selfPricedMV(t, g, me, yavimayaSojournerOracle, tl, "{7}{G}"); got != 3 {
@@ -110,6 +111,7 @@ func TestNishobaBrawlerPowerIsDomainToughnessStaysThree(t *testing.T) {
 		t.Errorf("Forest, Plains: %d/%d, want 2/3", c.Power, c.Toughness)
 	}
 	pushPermanent(g, me.ID, game.Card{Name: "Dual", TypeLine: "Land — Swamp Mountain Island"})
+	g.WithWriteLock(func() { g.BumpLayerVersionForTest() })
 	if c := gaLayered(t, g, brawler).Effective(); c.Power != 5 {
 		t.Errorf("all five: power %d, want 5", c.Power)
 	}
