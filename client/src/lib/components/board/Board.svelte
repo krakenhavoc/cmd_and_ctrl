@@ -2644,6 +2644,7 @@
       view.seats.find((s) => s.id === viewerID),
       p.ability,
       view.exile,
+      view.stack,
     );
   });
 

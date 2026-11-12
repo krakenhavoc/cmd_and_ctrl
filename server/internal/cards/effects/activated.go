@@ -1027,6 +1027,21 @@ func ProcessCards(n int, label string, match func(game.Card) bool) game.AbilityC
 	return game.AbilityCost{ExileCards: &game.ExileCost{N: n, Label: label, From: game.ZoneExile, Match: match}}
 }
 
+// ExileASpellYouControl is "Exile a spell you control" as a CR 602
+// activated ability's cost (#5655): Synthesis Pod. The exile-a-card
+// component read against the stack (game.ExileCost with From: ZoneStack):
+// the activator names the spell on exile_ids, a spell they control (an
+// ability is never a pick), and it is exiled without resolving and
+// without being countered. A copy of a spell is a legal pick and ceases
+// to exist. The effect reads the spell as it last existed on the stack
+// (CR 608.2h), its mana value with the announced X counted, through
+// ctx.Exiled() and Game.LastKnownSpellManaValueForEffect.
+//
+//	Cost: Plus(ManaCost("{1}{U/P}"), TapCost(), ExileASpellYouControl()),
+func ExileASpellYouControl() game.AbilityCost {
+	return game.AbilityCost{ExileCards: &game.ExileCost{N: 1, Label: "a spell you control", From: game.ZoneStack}}
+}
+
 // ExileFromGraveyard is "Exile N <kind> cards from your graveyard" as
 // a CR 602 activated ability's cost (#1297):
 //
