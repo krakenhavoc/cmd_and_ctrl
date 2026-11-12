@@ -675,6 +675,12 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	if preStaged && room.Seq() > preStagedSeq {
 		stageSnapshot("post-admit catch-up")
 	}
+	// ADR 0211 §2: a person back at a game their bots were playing out
+	// fast gets the table's own pace at once, not at the next sweep. A
+	// spectator and an admin are not at the table.
+	if room != nil && playerID != uuid.Nil && !binding.ReadOnly && !binding.Admin {
+		room.SetPlayOut(false)
+	}
 	metrics.WSConnected(client.role())
 	client.log.Info("ws client connected", "total", h.Count())
 

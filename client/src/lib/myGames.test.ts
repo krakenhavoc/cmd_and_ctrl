@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { discordLinkHref, fetchMyGames, rejoinMyGame } from "./api";
+import { L } from "./labels";
 import {
   canJoinByCode,
   canLinkDiscord,
@@ -128,6 +129,19 @@ describe("myGameStatus", () => {
 
   it("puts archived ahead of the state", () => {
     expect(myGameStatus(game({ state: "active", archived_at: 1 })).tone).toBe("archived");
+  });
+
+  // ADR 0211 owner decision 4: a table the server closed says why.
+  it("says why the server closed a table, and nothing for an admin's archive", () => {
+    const closed = (state: MyGame["state"], closed_reason?: string) =>
+      myGameStatus(game({ state, archived_at: 1, closed_reason }));
+    expect(closed("active", "idle_game")).toEqual({ label: L.closedIdleGame, tone: "archived" });
+    expect(closed("lobby", "idle_lobby")).toEqual({ label: L.closedIdleLobby, tone: "archived" });
+    expect(closed("active", "idle_bots")).toEqual({ label: L.closedIdleBots, tone: "archived" });
+    // An unloaded idle close's row reads ended; the reason still wins.
+    expect(closed("ended", "idle_game").label).toBe(L.closedIdleGame);
+    expect(closed("active")).toEqual({ label: "archived", tone: "archived" });
+    expect(closed("active", "something_new").label).toBe("archived");
   });
 });
 

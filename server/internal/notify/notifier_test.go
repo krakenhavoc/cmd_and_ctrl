@@ -496,6 +496,115 @@ func TestNeverRetriedLate(t *testing.T) {
 	}
 }
 
+// --- ADR 0211 §6: the idle-close warning ----------------------------
+
+// warnedWorld is newWorld's table warned that it closes in twelve hours,
+// with two more signed-in people at it: Dora, who conceded, and Ed,
+// whose seat a stand-in plays. Everyone has every switch on.
+func warnedWorld(t *testing.T) (w *world, closes time.Time) {
+	t.Helper()
+	w = newWorld(t)
+	closes = t0.Add(12 * time.Hour)
+	dora := Seat{PlayerID: uuid.New(), UserID: uuid.New(), Out: true}
+	ed := Seat{PlayerID: uuid.New(), UserID: uuid.New(), StandIn: true}
+	tbl := w.tables.tables[w.game]
+	tbl.Seats = append(tbl.Seats, dora, ed)
+	tbl.IdleCloseAt = closes
+	// A bot and an agent seat with a user and every switch on are still
+	// never messaged; the guest has no user.
+	botUser, agentUser := uuid.New(), uuid.New()
+	tbl.Seats[1].UserID = botUser
+	tbl.Seats[2].UserID = agentUser
+	all := Prefs{Turn: true, TableReady: true, TableFilled: true}
+	for _, u := range []uuid.UUID{w.alice.UserID, dora.UserID, ed.UserID, botUser, agentUser} {
+		w.store.prefs[u] = all
+	}
+	w.n.cfg.Recipients = subjects{
+		w.alice.UserID: "snowflake-alice", dora.UserID: "snowflake-dora", ed.UserID: "snowflake-ed",
+		botUser: "snowflake-bot", agentUser: "snowflake-agent",
+	}
+	return w, closes
+}
+
+func TestIdleWarningGoesOnceToThePeopleStillPlaying(t *testing.T) {
+	w, closes := warnedWorld(t)
+	w.n.TableIdleWarning(w.game, closes, 36)
+	w.tickFor(EventGrace)
+	if len(w.sender.sent) != 1 {
+		t.Fatalf("sent %v, want one DM, to Alice alone", w.sender.sent)
+	}
+	got := w.sender.sent[0]
+	at := closes.Unix()
+	want := fmt.Sprintf("**Friday pod** will be closed on <t:%d:F> (<t:%d:R>) because no one has moved for 36 hours. https://cmd.example/#/games/%s", at, at, w.game)
+	if got.to != "snowflake-alice" || got.content != want {
+		t.Errorf("sent %+v, want %q to snowflake-alice", got, want)
+	}
+	w.tickFor(2 * Window)
+	if len(w.sender.sent) != 1 {
+		t.Errorf("one warning sent %d DMs, want 1", len(w.sender.sent))
+	}
+}
+
+// Owner decision 3: the warning rides the "Your turn" switch, and only
+// that one.
+func TestIdleWarningRidesTheTurnSwitch(t *testing.T) {
+	w, closes := warnedWorld(t)
+	for u := range w.store.prefs {
+		w.store.prefs[u] = Prefs{TableReady: true, TableFilled: true}
+	}
+	w.n.TableIdleWarning(w.game, closes, 36)
+	w.tickFor(time.Minute)
+	if len(w.sender.sent) != 0 {
+		t.Fatalf("sent %v with the turn switch off", w.sender.sent)
+	}
+}
+
+func TestIdleWarningIsNotSentToSomeoneAtTheTable(t *testing.T) {
+	w, closes := warnedWorld(t)
+	w.hub.seats[w.key(w.alice)] = presence{away: false}
+	w.n.TableIdleWarning(w.game, closes, 36)
+	w.tickFor(time.Minute)
+	if len(w.sender.sent) != 0 {
+		t.Fatalf("sent %v to a player at the table, who sees its notice", w.sender.sent)
+	}
+}
+
+// A move before the grace is up takes the warning back, and the DM.
+func TestIdleWarningTakenBackSendsNothing(t *testing.T) {
+	w, closes := warnedWorld(t)
+	w.n.TableIdleWarning(w.game, closes, 36)
+	w.tables.tables[w.game].IdleCloseAt = time.Time{}
+	w.tickFor(time.Minute)
+	if len(w.sender.sent) != 0 {
+		t.Fatalf("sent %v for a warning a move took back", w.sender.sent)
+	}
+}
+
+// The rate window holds the warning back rather than dropping it: there
+// is one, and it is still true ten minutes on.
+func TestIdleWarningWaitsOutTheWindow(t *testing.T) {
+	w, closes := warnedWorld(t)
+	w.tables.waiting[w.key(w.alice)] = true
+	w.tick()
+	w.tickFor(TurnWait)
+	if len(w.sender.sent) != 1 {
+		t.Fatalf("want the turn DM first, got %v", w.sender.sent)
+	}
+	w.n.TableIdleWarning(w.game, closes, 36)
+	w.tickFor(EventGrace)
+	if len(w.sender.sent) != 1 {
+		t.Fatalf("the warning broke the ten-minute window: %v", w.sender.sent)
+	}
+	w.tickFor(Window)
+	if len(w.sender.sent) != 2 || !strings.Contains(w.sender.sent[1].content, "will be closed") {
+		t.Fatalf("after the window, sent %v, want the warning second", w.sender.sent)
+	}
+	w.tickFor(2 * Window)
+	if len(w.sender.sent) != 2 {
+		t.Errorf("the held-back warning went %d times", len(w.sender.sent)-1)
+	}
+}
+
 func TestTurnMessageBeforeTurnOne(t *testing.T) {
 	if got := turnMessage("Pod", 0, "L"); got != "The game at **Pod** is waiting on you. L" {
 		t.Errorf("turnMessage before turn 1 = %q", got)
