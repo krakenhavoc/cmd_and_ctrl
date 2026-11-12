@@ -14111,6 +14111,18 @@ if g.DealtCombatDamageSinceLastTurnForEffect(you) { … }                // a re
 
 `CondNoCombatDamageSinceYourLastTurn` declares `game.FootprintCondNoCombatDamageSinceLastTurn`: the condition can only become false, by combat damage, which is dealt as a turn-based action (CR 510.2); no step deals it.
 
+### "If a creature or planeswalker an opponent controlled was dealt excess damage this turn" (#5663)
+
+`TurnTally.ExcessDamaged` (`game/excess_damage_tally.go`) records, per controller, that a creature or planeswalker was dealt excess damage this turn (CR 120.10). The engine judges each damage event as it lands, before the damage is marked: for a creature, the amount past what was still needed for lethal damage, counting damage already marked on it (so two blockers that together deal more than lethal deal excess, CR 120.6), and any amount greater than 1 from a source with deathtouch (CR 120.4a); for a planeswalker, the amount past its loyalty before the event. Combat damage and noncombat damage both count, from any source under anyone's control, and prevented damage was not dealt. The controller is the permanent's as it was dealt the damage, so the fact outlives the permanent and a change of control. A battle that is neither a creature nor a planeswalker is not recorded. The readers are in `cards/effects/excess_damage_this_turn.go`:
+
+```go
+AtYourEndStepIfOpponentPermanentDealtExcessDamage(label, Do(...))      // the printed trigger (Rith, Liberated Primeval)
+InterveningIf(CondOpponentPermanentDealtExcessDamage{}, On(...))       // the same "if" on another trigger
+if g.OpponentPermanentDealtExcessDamageThisTurn(you) { … }             // a resolution check
+```
+
+`CondOpponentPermanentDealtExcessDamage` declares `game.FootprintCondOpponentPermanentDealtExcessDamage`, since the tally only rises within a turn. "Whenever … is dealt excess noncombat damage", one event's amount inside a trigger, is still `excess_damage.go` (Magmatic Galleon, Fall of Cair Andros).
+
 ### Face-down follow-ups: "can't be turned face up", face-down spells cost less, "entered face down this turn" (#5241)
 
 Three small pieces around CR 708 face-down permanents and CR 702.168 disguise.
