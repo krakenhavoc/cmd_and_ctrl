@@ -111,6 +111,9 @@ func underlyingTextKeyOf(c *Card) string {
 	switch {
 	case c.Fused && c.OracleID != "":
 		base = FusedCatalogKey(c.OracleID)
+	case c.Layout == LayoutPrototype:
+		// CR 718.5 (#5656): a prototyped object keeps its abilities, so
+		// both sets of characteristics read the one entry.
 	case c.ActiveFace != 0 && c.OracleID != "" && !hasSharedTypeLine(c):
 		base = c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
 	case c.ActiveFace != 0 && c.OracleID == "" && c.TokenKey != "" && c.Layout == LayoutTransform:
@@ -137,11 +140,24 @@ func underlyingTextKeyOf(c *Card) string {
 // CatalogKeyForFace is CatalogKey for a face other than the one
 // currently active — used by the legal-move enumerator, which has to
 // price BOTH halves of a modal DFC without mutating the card.
+//
+// Not for a prototype card, whose two sets of characteristics share one
+// entry (CR 718.5): CatalogKeyForLayoutFace asks the layout first.
 func CatalogKeyForFace(oracleID string, face int) string {
 	if face == 0 || oracleID == "" {
 		return oracleID
 	}
 	return oracleID + "#" + strconv.Itoa(face)
+}
+
+// CatalogKeyForLayoutFace is CatalogKeyForFace for a caller that holds
+// the card's layout: the bare key for either face of a prototype card
+// (CR 718.5, prototype.go), and CatalogKeyForFace's answer otherwise.
+func CatalogKeyForLayoutFace(oracleID, layout string, face int) string {
+	if layout == LayoutPrototype {
+		return oracleID
+	}
+	return CatalogKeyForFace(oracleID, face)
 }
 
 // effect_hooks.go holds the per-slot function variables the engine

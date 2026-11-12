@@ -7444,7 +7444,7 @@ func activeFace(c *CardView) castFace {
 	}
 	return castFace{
 		index:    c.ActiveFace,
-		key:      game.CatalogKeyForFace(c.oracleID, c.ActiveFace),
+		key:      game.CatalogKeyForLayoutFace(c.oracleID, c.Layout, c.ActiveFace),
 		manaCost: cost,
 	}
 }
@@ -7464,7 +7464,7 @@ func fusedFace(c *CardView) castFace {
 func castFaceOf(c *CardView, i int) castFace {
 	return castFace{
 		index:    i,
-		key:      game.CatalogKeyForFace(c.oracleID, i),
+		key:      game.CatalogKeyForLayoutFace(c.oracleID, c.Layout, i),
 		manaCost: c.Faces[i].ManaCost,
 	}
 }
@@ -14674,7 +14674,13 @@ func viewOfFaces(c *game.Card) []CardFaceView {
 			Toughness:  f.Toughness,
 		}
 		if c.ScryfallID != "" {
-			v.Image = fmt.Sprintf("/cards/%s/image?face=%d", c.ScryfallID, i)
+			// CR 718.1 (#5656): a prototype card is one printed image;
+			// its inset is a frame on the same side.
+			art := i
+			if c.Layout == game.LayoutPrototype {
+				art = 0
+			}
+			v.Image = fmt.Sprintf("/cards/%s/image?face=%d", c.ScryfallID, art)
 		}
 		out = append(out, v)
 	}
