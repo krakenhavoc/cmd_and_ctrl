@@ -815,6 +815,7 @@ choose choose-cards/ordered-pick-leg
 choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/otc-gonti-lord-of-luxury-exile
+choose choose-cards/path-of-the-schemer-reanimate
 choose choose-cards/patient-naturalist-land
 choose choose-cards/perforating-artist-punisher-discarded
 choose choose-cards/pia-aether-ascetic-search
@@ -3175,3 +3176,4 @@ vote vote/trial-of-a-time-lord
 vote vote/truth-or-consequences
 vote vote/tyrants-choice
 vote vote/vault-11-voters-dilemma
+vote vote/will-of-the-planeswalkers

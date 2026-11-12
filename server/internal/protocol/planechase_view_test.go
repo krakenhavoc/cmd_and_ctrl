@@ -114,3 +114,28 @@ func TestThePlanarDieOnTheWireAndInTheLog(t *testing.T) {
 		t.Errorf("a planar roll event carries a number: %s", raw)
 	}
 }
+
+// #5648: an effect's "chaos ensues" (CR 311.7) is a log line of its own,
+// naming the card whose effect it was.
+func TestChaosEnsuingFromAnEffectIsALogLine(t *testing.T) {
+	g := planechaseViewGame(t, true)
+	g.WithWriteLock(func() { g.ChaosEnsuesForEffect(g.Seats[0].ID, uuid.Nil) })
+	v := ViewOfGameFor(g, g.Seats[1].ID.String())
+	lines := 0
+	for _, e := range v.Log {
+		if e.Kind != LogChaosEnsues {
+			continue
+		}
+		lines++
+		if e.Text != "Chaos ensues" {
+			t.Errorf("text %q", e.Text)
+		}
+	}
+	if lines != 1 {
+		t.Errorf("%d chaos_ensues log lines, want 1", lines)
+	}
+	named := renderLogText(LogEvent{Kind: LogChaosEnsues, Label: "Path of the Animist"}, "", "")
+	if named != "Chaos ensues (Path of the Animist)" {
+		t.Errorf("named line %q", named)
+	}
+}

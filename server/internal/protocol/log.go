@@ -335,6 +335,12 @@ const (
 	// plane's name: a card turned face down is in no zone a view shows,
 	// so the line carries it. `card_id` is the plane.
 	LogPlaneswalk LogKind = "planeswalk"
+	// LogChaosEnsues — a resolving spell or ability said that chaos
+	// ensues (CR 311.7, #5648): "Chaos ensues (Path of the Animist)".
+	// `Label` is the name of the card whose effect it was. The planar
+	// die's chaos face is not this line: it is a `roll` with
+	// `planar_face`.
+	LogChaosEnsues LogKind = "chaos_ensues"
 	// LogCompanionRevealed — a player revealed their companion as the
 	// game began (CR 103.2b, ADR 0172 §5): "Alice revealed Jegantha,
 	// the Wellspring as their companion". `card_id` is the companion,
@@ -2159,6 +2165,11 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventChaosEnsues:
+		base.Kind = LogChaosEnsues
+		base.Label = ev.PublicNames[ev.Source]
+		return base, true
+
 	case game.EventCompanionRevealed:
 		// ADR 0172 §5. The card is public, so the line names it.
 		base.Kind = LogCompanionRevealed
@@ -3407,6 +3418,11 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s planeswalked away from %s", actor, plane)
 		}
 		return fmt.Sprintf("%s planeswalked to %s", actor, plane)
+	case LogChaosEnsues:
+		if e.Label == "" {
+			return "Chaos ensues"
+		}
+		return fmt.Sprintf("Chaos ensues (%s)", e.Label)
 	case LogCompanionRevealed:
 		// The view always holds a revealed companion, outside the game
 		// or later in play, so the name comes from the card; the label

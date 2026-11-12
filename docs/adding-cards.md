@@ -14212,7 +14212,7 @@ planeswalking ability (CR 901.8) is engine-wide: never write it into a card.
 The shapes are in `effects_planechase.go` and `planes_b1_helpers.go`:
 
 ```go
-// "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die)
+// "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die, or an effect's "chaos ensues")
 WheneverChaosEnsues("Coal Hill School — return target historic card …", returnTargetCardToHand),
 // "When you planeswalk to ~ and at the beginning of your upkeep, <effect>." (ONE ability)
 WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(Investigate{N: 1})),
@@ -14240,6 +14240,26 @@ SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // 
   outlives the plane it came from ("cards can't enter from exile this turn") is a
   stored rule, not a static of the plane (Bad Wolf Bay,
   `g.CardsCantEnterFromExileThisTurnForEffect`).
+- **"Chaos ensues" as an effect** (#5648, CR 311.7) is
+  `ctx.Game.ChaosEnsuesForEffect(ctx.Controller(), ctx.Source())`: it emits
+  `game.EventChaosEnsues`, which `WheneverChaosEnsues` watches beside the die's
+  chaos face, so every face-up plane's chaos ability triggers, controlled by the
+  planar controller. No die is rolled. It does nothing at a table that is not
+  playing Planechase, so a card that says it (Missy) needs no check of its own.
+- **Will of the Planeswalkers** (#5648, the five Paths of March of the Machine
+  Commander) is one step of the spell,
+  `ResolveSteps(…, WillOfThePlaneswalkers{Card: "Path of the Animist"})`: the
+  vote for planeswalk or chaos, then the caster planeswalks (only if they are
+  the planar controller, CR 701.31a) or chaos ensues (more votes or a tie). The
+  vote happens at every table; without a planar deck neither result does
+  anything.
+- **A replacement on planar dice** (Ichor Elixir, #5648) is an ordinary
+  `Replacements` row that watches `game.EventRollDie`, applies to
+  `ev.Kind == game.RepEventRollDice && ev.RollPlanar && ev.RollPlayer == src.Controller`
+  and calls `ev.RollOneMoreAndIgnoreOne(chooser, src.InstanceID, label)`: one
+  more die, and the chooser picks one to ignore once they are rolled (the
+  question Squid Fire Knight's sticker asks). Drop `RollPlanar` for a card
+  that says it of any dice.
 - **"The player to your left"** is `ControlledByThePlayerToYourLeft()`
   (`game.NearestOpponentForEffect(you, game.AttackDirectionLeft)`).
 - **Time travel** (CR 701.56a) is `Do(TimeTravel{})`.

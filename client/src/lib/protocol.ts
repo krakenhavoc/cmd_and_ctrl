@@ -1324,6 +1324,10 @@ export type LogKind =
   // for each plane left and "to" for the plane arrived at; `label` is
   // that plane's name and `card_id` the plane.
   | "planeswalk"
+  // #5648: a resolving spell or ability said that chaos ensues (CR
+  // 311.7). `label` is the name of the card whose effect it was. The
+  // planar die's chaos face is a `roll` with `planar_face` instead.
+  | "chaos_ensues"
   // ADR 0172 §5: a seat revealed its companion as the game began
   // ("Alice revealed Jegantha, the Wellspring as their companion").
   // `card_id` is the companion, public from then on.
