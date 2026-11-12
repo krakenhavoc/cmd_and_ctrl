@@ -644,6 +644,24 @@ the `*Game` they receive, so undo operates on the restored game.
 another roll trigger is still pending. See ADR 0054 and the random card
 tests for compositions; clear any caveat made stale by the new mechanic.
 
+Two rolls are not an effect's, and each has its own declaration (#5682,
+[game/dice_cost.go](../server/internal/game/dice_cost.go)); both still go
+through the dice door, so a replacement of the roll and `WheneverYouRollDice`
+see them:
+
+- **A roll as an activation cost** ("{6}, Roll a d8: Monstrosity X, where
+  X is the result", Clay Golem): `Plus(ManaCost("{6}"), RollDieCost(8))`.
+  It is paid after every other component (CR 601.2h), once the ability is
+  on the stack, and the effect reads the result with `CostRollOf(item)`
+  (`PaidCost.Rolled`). Not for a mana ability.
+- **A roll as the permanent enters** ("As this creature enters, roll X d6.
+  It enters with a number of +1/+1 counters on it equal to the total of
+  those results", Neverwinter Hydra):
+  `EntersWithCountersFromCast: []game.EntryCountersFromCast{RollXDiceCounters(game.CounterPlusOne, 6)}`.
+  The dice are rolled as the spell resolves, before the entry begins; a
+  permanent that was not cast rolls nothing (CR 107.3m). One such clause
+  per card.
+
 ### Adding a mana ability (S15+)
 
 Mana abilities live on the same `Spec{}` struct via the optional
@@ -2339,7 +2357,8 @@ line after escape's `applyAltCostEntryCountersLocked`, so a card file
 declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
 `ColorsSpent`, `ManaSpent` (CR 601.2h's "the amount of mana spent to cast
 it", #1735), `Delved` — and nothing else. Constructors:
-`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)` in
+`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)`,
+`RollXDiceCounters(kind, sides)` (#5682, "roll X d6 ... equal to the total of those results") in
 [cards/effects/entry_counters.go](../server/internal/cards/effects/entry_counters.go).
 Sunburst is not one of them any more: it is a keyword (ADR 0109 §11).
 Never build a `game.EntryCountersFromCast` by hand, for the reason

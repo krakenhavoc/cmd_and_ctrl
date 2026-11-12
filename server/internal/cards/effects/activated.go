@@ -522,6 +522,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.Forage {
 			out.Forage = true
 		}
+		// #5682: and the roll. A composed "{6}, Roll a d8" that dropped
+		// it would leave the effect an X of nothing.
+		if c.RollDie != 0 {
+			out.RollDie = c.RollDie
+		}
 	}
 	return out
 }
@@ -984,6 +989,36 @@ func ExileTopOfLibrary(n int) game.AbilityCost {
 // MillCards is the effect primitive.
 func MillCardsCost(n int) game.AbilityCost {
 	return game.AbilityCost{Mill: n}
+}
+
+// RollDieCost is "Roll a d<sides>" as a cost component (#5682,
+// game.AbilityCost.RollDie): Clay Golem's "{6}, Roll a d8: Monstrosity X,
+// where X is the result" is
+//
+//	Plus(ManaCost("{6}"), RollDieCost(8))
+//
+// A cost with a random element is paid after every other one (CR
+// 601.2h), through the ordinary dice door, so a replacement of the roll
+// applies and "whenever you roll one or more dice" sees it. The effect
+// reads the result with CostRollOf. Nothing to choose, and never
+// unpayable. Not for a mana ability.
+func RollDieCost(sides int) game.AbilityCost {
+	return game.AbilityCost{RollDie: sides}
+}
+
+// CostRollOf is the result of the dice the item's activation cost rolled
+// (RollDieCost): "where X is the result". Their total, which for the one
+// die a printed cost rolls is that die. Zero when the cost rolled none,
+// or when the roll was replaced with no roll at all.
+func CostRollOf(item *game.StackItem) int {
+	if item == nil {
+		return 0
+	}
+	total := 0
+	for _, r := range item.Paid.Rolled {
+		total += r
+	}
+	return total
 }
 
 // ExileCardsFromHand is "Exile N <kind> cards from your hand" as a

@@ -741,6 +741,19 @@ type AbilityCost struct {
 	// folded cost. A cost may have only one either/or part, so a
 	// forage sits beside no other OrCost.
 	Forage bool
+
+	// RollDie is "Roll a d<RollDie>" as a cost component (#5682): Clay
+	// Golem's "{6}, Roll a d8: Monstrosity X, where X is the result".
+	// The number is the die's sides; zero is every other cost. Nothing
+	// to choose and nothing that can make it unpayable. It is a cost
+	// with a random element, so it is paid after every other component
+	// (CR 601.2h, CR 602.2b), through the one dice door (dice_roll.go):
+	// the roll is a replaceable event, "whenever you roll" sees it, and
+	// the kept result is written to PaidCost.Rolled for the effect to
+	// read (effects.RollDieCost, Context.CostRoll). See dice_cost.go.
+	// Never a mana ability's cost: no such card is printed, and the
+	// mana path does not pay it.
+	RollDie int
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -2838,6 +2851,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the taps covered, so the activator has waterbent.
 	if !ab.Cost.Waterbend.Empty() && ab.Cost.Waterbend.Key == "waterbend" {
 		g.noteBendLocked(EventWaterbend, playerID, cardID)
+	}
+	// #5682, CR 601.2h: "Roll a d8" is a cost with a random element, so
+	// it is paid last, and here rather than in the payment block for the
+	// reason the taps above are: the result is written onto the item,
+	// and a "whenever you roll one or more dice" trigger sits above the
+	// ability. See dice_cost.go.
+	if err := g.payRollDieCostLocked(playerID, cardID, itemID, ab.Cost.RollDie); err != nil {
+		return err
 	}
 	// The cost may have queued dies-triggers (a sacrifice outlet
 	// feeding Blood Artist). Drain them so they sit ABOVE the
