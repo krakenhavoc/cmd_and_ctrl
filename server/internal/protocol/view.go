@@ -4213,6 +4213,11 @@ type CardView struct {
 	// single-faced card. The client reads it to decide whether
 	// playing this card needs a face prompt at all. Added by
 	// ADR 0034.
+	//
+	// "prototype" is a prototype card (CR 718, #5656): Faces[1] is the
+	// same card with the inset's mana cost, power and toughness, a cast
+	// of face 1 is the prototyped spell, and ActiveFace is 1 on that
+	// spell and on the permanent it becomes.
 	Layout string `json:"layout,omitempty"`
 
 	// Faces is every printed face of a multi-face card, front

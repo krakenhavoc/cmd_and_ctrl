@@ -24,6 +24,7 @@
     isOneSidedLayout,
     isSidewaysArt,
     LAYOUT_FLIP,
+    LAYOUT_PROTOTYPE,
     otherSideHeading,
     otherSideIndex,
     printedFace,
@@ -223,9 +224,16 @@
   const otherSide = $derived.by((): { heading: string; face: PrintedFace } | null => {
     if (!card) return null;
     if (otherIdx !== null && card.faces?.[otherIdx]) {
+      // #5656: a prototype card's two sets of characteristics share one
+      // text box (CR 718.5), so the other one lists its cost and size
+      // and does not repeat the text.
+      const other =
+        card.layout === LAYOUT_PROTOTYPE
+          ? { ...card.faces[otherIdx], oracle_text: undefined }
+          : card.faces[otherIdx];
       return {
         heading: otherSideHeading(card),
-        face: printedFace(card.faces[otherIdx], meta?.card_faces?.[otherIdx]),
+        face: printedFace(other, meta?.card_faces?.[otherIdx]),
       };
     }
     if (meldsInto?.name) return { heading: "Melds into", face: printedFace(meldsInto) };
