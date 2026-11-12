@@ -149,7 +149,7 @@
     padding: 0;
     display: grid;
     /* Big enough to read a card: five across at the 1200px page, three at 820px. */
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--pack-tile, 190px), 1fr));
     gap: 14px;
   }
   .pick-card {

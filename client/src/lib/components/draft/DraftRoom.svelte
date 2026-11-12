@@ -728,6 +728,9 @@
       grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
       grid-template-areas: "pairs stage";
       align-items: start;
+      /* Three columns share the page, so a pack card is a step narrower:
+         three across at 1440px, two at 1100px. */
+      --pack-tile: 170px;
     }
     .roomgrid.withpairs > .stage {
       grid-area: stage;
