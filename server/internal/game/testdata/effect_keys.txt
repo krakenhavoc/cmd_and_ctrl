@@ -641,6 +641,7 @@ choose choose-cards/karn-the-great-creator-take
 choose choose-cards/kastral-put-bird
 choose choose-cards/kaya-spirits-justice-copy
 choose choose-cards/kaya-spirits-justice-exile
+choose choose-cards/keldon-flamesage
 choose choose-cards/kellan-the-kid-if-you-dont
 choose choose-cards/king-narfis-betrayal-exile
 choose choose-cards/kinscaer-sentry-put
@@ -2967,6 +2968,7 @@ tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
 tail then/jinx-delayed-draw
 tail then/kaya-spirits-justice-exile-from-a-graveyard
+tail then/keldon-flamesage-bottom-then-cast
 tail then/kindred-charge-type-chosen
 tail then/kindred-dominance-type-chosen
 tail then/kindred-judgment-type-chosen
