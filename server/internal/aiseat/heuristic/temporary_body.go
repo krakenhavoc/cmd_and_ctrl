@@ -43,6 +43,10 @@ func temporaryBodyKind(key string) string {
 	if key == "granted-evoke" {
 		return "evoke"
 	}
+	// #5667: and blitz one gave it (Henzie "Toolbox" Torre) is blitz.
+	if key == "granted-blitz" {
+		return "blitz"
+	}
 	for _, k := range [...]string{"evoke", "warp", "dash", "blitz"} {
 		if key == k || strings.HasPrefix(key, k+"-") {
 			return k

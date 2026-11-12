@@ -273,6 +273,19 @@ type CostQuery struct {
 	// cast and for a harmonize cast that taps nothing.
 	AltTappedPower int
 
+	// AltBlitz reports that the alternative cost this cast claims is a
+	// blitz cost (AlternativeCost.Blitz, CR 702.152a): the card's own or
+	// one a permanent gave it (GrantedAltCostBlitz). It is what a
+	// modifier of blitz costs alone reads: Henzie "Toolbox" Torre's
+	// "Blitz costs you pay cost {1} less for each time you've cast your
+	// commander from the command zone this game" (#5667), which must not
+	// touch the same spell cast for its mana cost. CR 601.2b settles the
+	// claim before 601.2f totals the cost. Filled by the one pricer
+	// (costAfterModifiersLocked) and by the enumerator from the offer it
+	// is announcing, so the two agree (#544). False for every other
+	// cast, and for an activation or special action.
+	AltBlitz bool
+
 	// GrantReduction is the generic mana a cast permission takes off the
 	// spell cast through it (CastPermission.CostLess, #3787): Urianger
 	// Augurelt's "spells you cast this way cost {2} less to cast". Read
@@ -374,6 +387,13 @@ type AbilityCostSubject struct {
 	// alternative read it. It also switches on the keyword's own
 	// reduction by the source's mana cost (power_up.go).
 	PowerUp bool
+
+	// Ninjutsu is the ninjutsu keyword bit (CR 702.49a, and commander
+	// ninjutsu, its variant, CR 702.49d; #5672): "Ninjutsu abilities you
+	// activate cost {1} less to activate" (Silver-Fur Master). The
+	// query's FromZone is the hand or the command zone, where the card
+	// with the ability is (CR 113.6).
+	Ninjutsu bool
 
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation — set by manaAbilityCostQueryLocked (#1191), so a
@@ -1081,12 +1101,13 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 		// because both had to check it to get here.
 		FromZone: zone,
 		Ability: &AbilityCostSubject{
-			Label:   ab.Label,
-			Exhaust: ab.Exhaust,
-			Boast:   ab.Boast,
-			Equip:   ab.Equip,
-			PowerUp: ab.PowerUp,
-			own:     ab.CostModifiers,
+			Label:    ab.Label,
+			Exhaust:  ab.Exhaust,
+			Boast:    ab.Boast,
+			Equip:    ab.Equip,
+			PowerUp:  ab.PowerUp,
+			Ninjutsu: ab.Ninjutsu,
+			own:      ab.CostModifiers,
 		},
 		Targets: targets,
 	}

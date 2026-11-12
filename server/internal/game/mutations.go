@@ -3972,6 +3972,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// #3931, CR 702.180a: harmonize's, read off the creature the
 		// claimed offer names while it is still untapped.
 		AltTappedPower: g.altTappedPowerLocked(p.ID, card, params),
+		// #5667, CR 702.152a: whether the claimed offer is a blitz cost
+		// (Henzie "Toolbox" Torre's "Blitz costs you pay cost {1} less").
+		AltBlitz: g.altBlitzLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 		// and its "costs {N} more" (Zero, Incorporeal Sensate).
@@ -4994,6 +4997,9 @@ func (g *Game) resolveTopAbilityLocked() {
 	// chosen bullets in printed order, after whatever body the item
 	// itself carries (#764).
 	g.runChosenModeEffectsLocked(top, top.modeSpec, "")
+	// CR 702.122e (#5671): a crew ability has resolved, so its Vehicle
+	// "becomes crewed".
+	g.noteCrewAbilityResolvedLocked(top)
 	// #3613: an ability that asked something has not resolved until the
 	// answer is in; its log line waits for it (resolution_tail.go).
 	g.holdResolutionTailLocked(top, resolveSeq)

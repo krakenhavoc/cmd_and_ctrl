@@ -50,11 +50,15 @@ func TestStdB3BioengineeredFutureCountsLandsThatEnteredThisTurn(t *testing.T) {
 	if got := eoeCDCount(g, me.ID, "Lander"); got != 1 {
 		t.Errorf("%d Landers, want 1", got)
 	}
+	// #5213: the Lander is an artifact, not a land, so its entering
+	// is not counted.
+	if got := g.TurnTallyFor(me.ID).LandsEntered; got != want {
+		t.Errorf("the Lander token moved the lands-entered tally %d -> %d", want, got)
+	}
 	bear := avB1Cast(t, g, me, game.Card{Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{1}", Power: 2, Toughness: 2}, game.CastSpellParams{})
 	stdB3Resolve(t, g)
-	want = g.TurnTallyFor(me.ID).LandsEntered
-	if got := countersOn(g, bear, game.CounterPlusOne); got != want || want < 1 {
-		t.Errorf("a land entered before the enchantment did: %d counters, want %d (at least 1)", got, want)
+	if got := countersOn(g, bear, game.CounterPlusOne); got != want {
+		t.Errorf("a land entered before the enchantment did: %d counters, want %d (the Forest only, not the Lander)", got, want)
 	}
 	opp := g.Seats[1]
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 1, 1)
@@ -66,12 +70,20 @@ func TestStdB3BioengineeredFutureCountsLandsThatEnteredThisTurn(t *testing.T) {
 func TestStdB3BioengineeredFutureGivesNothingWithoutALandThisTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
+	base := g.TurnTallyFor(me.ID).LandsEntered
 	avB1Cast(t, g, me, game.Card{Name: "Bioengineered Future", TypeLine: "Enchantment", ManaCost: "{1}{G}{G}", OracleID: stdB3FutureOracle}, game.CastSpellParams{})
 	stdB3Resolve(t, g)
+	if got := eoeCDCount(g, me.ID, "Lander"); got != 1 {
+		t.Fatalf("%d Landers, want 1", got)
+	}
 	bear := avB1Cast(t, g, me, game.Card{Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{1}", Power: 2, Toughness: 2}, game.CastSpellParams{})
 	stdB3Resolve(t, g)
-	if got := countersOn(g, bear, game.CounterPlusOne); got != g.TurnTallyFor(me.ID).LandsEntered {
-		t.Errorf("one counter per land entered this turn: %d counters, tally %d", got, g.TurnTallyFor(me.ID).LandsEntered)
+	// #5213: its own Lander is not a land, so it adds no counter.
+	if got := g.TurnTallyFor(me.ID).LandsEntered; got != base {
+		t.Errorf("the Lander token moved the lands-entered tally %d -> %d", base, got)
+	}
+	if got := countersOn(g, bear, game.CounterPlusOne); got != base {
+		t.Errorf("one counter per land entered this turn: %d counters, want %d (the Lander adds none)", got, base)
 	}
 }
 

@@ -83,6 +83,7 @@ func Register(spec Spec) {
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
 	checkPowerUp(spec)
+	checkNinjutsu(spec)
 	checkPowerUpExtras(spec)
 	checkOnlyOnce(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
@@ -313,6 +314,8 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	// #5669: the untap form is an activated ability's alone.
+	checkUntapOthersCost(spec)
 	checkCostOpensFlash(spec)
 	checkFlashIf(spec)
 	// #5240: a collect evidence X sized by the targets, before the
@@ -348,6 +351,7 @@ func Register(spec Spec) {
 			refuseOpponentChoice(spec.Name, "a gift's", g.Targets)
 		}
 	}
+	checkCasualtyX(spec)
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
 	for i, oc := range spec.OptionalCosts {
 		// Without the flag the cast path prices it and never offers
@@ -2435,6 +2439,30 @@ func checkExhaustAbilities(spec Spec) {
 		if p.Label == "" {
 			panic(fmt.Sprintf("effects.Register: %q exhaust permission %d has no Label — the label is the printed clause", spec.Name, i))
 		}
+	}
+}
+
+// checkNinjutsu is the boot-time contract of the ninjutsu bit (CR
+// 702.49, #5672): the label and the bit agree in both directions, on a
+// card's own abilities and on the ones it grants. A row that prints the
+// keyword without the bit is priced in full under "Ninjutsu abilities
+// you activate cost {1} less to activate" (Silver-Fur Master), and a
+// bit without the keyword takes a discount the card does not print.
+func checkNinjutsu(spec Spec) {
+	check := func(where string, abilities []ActivatedAbility) {
+		for i, a := range abilities {
+			printed := strings.HasPrefix(a.Label, ninjutsuLabelPrefix) || strings.HasPrefix(a.Label, commanderNinjutsuLabelPrefix)
+			if printed && !a.Ninjutsu {
+				panic(fmt.Sprintf("effects.Register: %q %s ability %d prints ninjutsu and does not set Ninjutsu: true — build it with effects.Ninjutsu or effects.CommanderNinjutsu", spec.Name, where, i))
+			}
+			if a.Ninjutsu && !printed {
+				panic(fmt.Sprintf("effects.Register: %q %s ability %d sets Ninjutsu but its label does not start with the keyword — build it with effects.Ninjutsu or effects.CommanderNinjutsu", spec.Name, where, i))
+			}
+		}
+	}
+	check("activated", spec.Activated)
+	for _, b := range spec.Grants {
+		check("granted "+b.Key, b.Activated)
 	}
 }
 

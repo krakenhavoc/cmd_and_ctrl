@@ -91,6 +91,19 @@ type AlternativeCost struct {
 	// Read-only, under g.mu. Added in S28.
 	Condition func(g *Game, controller uuid.UUID) bool
 
+	// SpellCondition is Condition for a gate that reads the SPELL being
+	// cast: prowl's "a source that ... had any of this spell's creature
+	// types" (CR 702.76a, Enigma Thief, #5509). `spell` is the card in the
+	// zone it is cast from, read through the zone layers (zone_layers.go),
+	// so a type an effect gives it there (Maskwood Nexus, Leyline of
+	// Transformation) counts, as the prowl ruling says. Both readers ask it
+	// before the card moves (CR 601.2a): the view's offer stamp and
+	// CastSpell's validator. A nil spell, a card the engine cannot find,
+	// is refused. Nil means no such gate; an offer may carry both.
+	//
+	// Read-only, under g.mu.
+	SpellCondition func(g *Game, controller uuid.UUID, spell *Card) bool
+
 	// Life is a "pay N life" component of the alternative cost (CR
 	// 119.4) — Force of Will's 1 life, Snuff Out's 4.
 	//
@@ -977,6 +990,21 @@ func (a *AlternativeCost) Available(g *Game, controller uuid.UUID) bool {
 	return a.Condition == nil || a.Condition(g, controller)
 }
 
+// AvailableFor is Available plus the offer's SpellCondition, asked of
+// the card `castID` names (the spell being cast, still in the zone it is
+// cast from). An offer with a SpellCondition and no card to ask it of is
+// not available. Caller must hold g.mu.
+func (a *AlternativeCost) AvailableFor(g *Game, controller, castID uuid.UUID) bool {
+	if !a.Available(g, controller) {
+		return false
+	}
+	if a.SpellCondition == nil {
+		return true
+	}
+	spell := g.findCardByIDLocked(castID)
+	return spell != nil && a.SpellCondition(g, controller, spell)
+}
+
 // lifePayableBy is CR 119.4 and CR 119.8 on this offer's life
 // component: may `p` pay it right now?
 //
@@ -1036,7 +1064,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if alt == nil {
 		return false
 	}
-	if !alt.Available(g, playerID) {
+	if !alt.AvailableFor(g, playerID, castID) {
 		return false
 	}
 	p := g.playerByIDLocked(playerID)
@@ -1171,7 +1199,7 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		}
 		return nil
 	}
-	if !alt.Available(g, playerID) {
+	if !alt.AvailableFor(g, playerID, castID) {
 		return ErrInvalidParam
 	}
 	p := g.playerByIDLocked(playerID)
@@ -1586,6 +1614,14 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 		// keeps the ability whatever becomes of its source (CR 610.5), so
 		// the sacrifice is read off the key, as granted warp's exile is.
 		alt = &AlternativeCost{Key: GrantedAltCostEvoke, Label: "Evoke", SacrificeOnEntry: true}
+	}
+	if alt == nil && item.AltCost == GrantedAltCostBlitz {
+		// #5667, Henzie "Toolbox" Torre: "Each creature spell you cast
+		// with mana value 4 or greater has blitz". CR 702.152a hangs the
+		// haste, the draw and the sacrifice on "this spell's blitz cost
+		// was paid", so they are read off the key, as granted evoke's
+		// sacrifice is, whatever has become of Henzie.
+		alt = &AlternativeCost{Key: GrantedAltCostBlitz, Label: "Blitz", Blitz: true}
 	}
 	if alt == nil {
 		return

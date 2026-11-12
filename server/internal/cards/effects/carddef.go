@@ -57,6 +57,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			Exhaust:       a.Exhaust,
 			Boast:         a.Boast,
 			PowerUp:       a.PowerUp,
+			Ninjutsu:      a.Ninjutsu,
 			OnlyOnce:      a.OnlyOnce,
 			CostModifiers: a.CostModifiers,
 			Uncopyable:    a.Uncopyable,

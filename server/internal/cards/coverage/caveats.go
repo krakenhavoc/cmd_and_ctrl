@@ -333,6 +333,14 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Freerunning("{cost}", "Assassin")} — the Assassin-or-commander gate rides the constructor (#3172)`,
 	},
 	{
+		Name:       "prowl",
+		Phrases:    []string{"prowl"},
+		Implements: altCost("prowl"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "prowl") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Prowl("{cost}")} — the spell's creature types gate rides the constructor (#5509)`,
+	},
+	{
 		// ADR 0107 §4 (#1855): CR 702.146, an alternative cost bound to
 		// the graveyard that casts the card's back face.
 		Name:       "disturb",

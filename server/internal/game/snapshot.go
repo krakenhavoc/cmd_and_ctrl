@@ -1040,25 +1040,29 @@ type cardSnapshot struct {
 	// it did before the restore; recomputing this from the CURRENT
 	// resolver state would let a dump refresh between capture and
 	// restore change the answer for a token that already existed.
-	TokenArtOnly      bool           `json:"tokenArtOnly,omitempty"`
-	OracleID          string         `json:"oracleId,omitempty"`
-	TokenKey          string         `json:"tokenKey,omitempty"`
-	TypeLine          string         `json:"typeLine,omitempty"`
-	Power             int            `json:"power"`
-	Toughness         int            `json:"toughness"`
-	VariableToughness *bool          `json:"variableToughness,omitempty"`
-	ManaCost          string         `json:"manaCost,omitempty"`
-	ProducedMana      []string       `json:"producedMana,omitempty"`
-	Colors            []string       `json:"colors,omitempty"`
-	ColorIdentity     []string       `json:"colorIdentity,omitempty"`
-	StartingLoyalty   int            `json:"startingLoyalty"`
-	Keywords          []string       `json:"keywords,omitempty"`
-	GrantedAbilities  []string       `json:"grantedAbilities,omitempty"`
-	ColorCDADropped   bool           `json:"colorCDADropped,omitempty"`
-	Layout            string         `json:"layout,omitempty"`
-	Faces             []Face         `json:"faces,omitempty"`
-	ActiveFace        int            `json:"activeFace,omitempty"`
-	PrintedSelf       *PrintedValues `json:"printedSelf,omitempty"`
+	TokenArtOnly      bool     `json:"tokenArtOnly,omitempty"`
+	OracleID          string   `json:"oracleId,omitempty"`
+	TokenKey          string   `json:"tokenKey,omitempty"`
+	TypeLine          string   `json:"typeLine,omitempty"`
+	Power             int      `json:"power"`
+	Toughness         int      `json:"toughness"`
+	VariableToughness *bool    `json:"variableToughness,omitempty"`
+	ManaCost          string   `json:"manaCost,omitempty"`
+	ProducedMana      []string `json:"producedMana,omitempty"`
+	Colors            []string `json:"colors,omitempty"`
+	ColorIdentity     []string `json:"colorIdentity,omitempty"`
+	StartingLoyalty   int      `json:"startingLoyalty"`
+	// StartingLoyaltyKnown is Card.StartingLoyaltyKnown (#5668). Absent
+	// from every earlier file, which restores as "not set by a copy
+	// exception".
+	StartingLoyaltyKnown bool           `json:"startingLoyaltyKnown,omitempty"`
+	Keywords             []string       `json:"keywords,omitempty"`
+	GrantedAbilities     []string       `json:"grantedAbilities,omitempty"`
+	ColorCDADropped      bool           `json:"colorCDADropped,omitempty"`
+	Layout               string         `json:"layout,omitempty"`
+	Faces                []Face         `json:"faces,omitempty"`
+	ActiveFace           int            `json:"activeFace,omitempty"`
+	PrintedSelf          *PrintedValues `json:"printedSelf,omitempty"`
 	// DurationCopyBase is Card.DurationCopyBase (#1593): the layer-1
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
@@ -3105,6 +3109,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Colors:                   copyStrings(c.Colors),
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
+		StartingLoyaltyKnown:     c.StartingLoyaltyKnown,
 		Keywords:                 copyStrings(c.Keywords),
 		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		ColorCDADropped:          c.ColorCDADropped,
@@ -4262,6 +4267,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Colors:                   copyStrings(c.Colors),
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
+		StartingLoyaltyKnown:     c.StartingLoyaltyKnown,
 		Keywords:                 copyStrings(c.Keywords),
 		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		ColorCDADropped:          c.ColorCDADropped,

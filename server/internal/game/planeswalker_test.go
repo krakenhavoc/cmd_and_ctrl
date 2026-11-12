@@ -208,3 +208,31 @@ func TestManuallyMovedPlaneswalkerGetsPrintedLoyalty(t *testing.T) {
 		t.Fatalf("manually moved loyalty counters = %d, want 4", got)
 	}
 }
+
+// TestStartingLoyaltySetByACopyExceptionIsNotBackfilled is #5668: a
+// starting loyalty a copy exception set (PrintedValues.SetStartingLoyalty)
+// is the number the CR 306.5b stamp places, 0 included, where an
+// unstamped 0 falls back to the catalog's printed loyalty.
+func TestStartingLoyaltySetByACopyExceptionIsNotBackfilled(t *testing.T) {
+	prev := CatalogStartingLoyalty
+	CatalogStartingLoyalty = func(string) int { return 3 }
+	t.Cleanup(func() { CatalogStartingLoyalty = prev })
+
+	walker := Card{Name: "Walker", OracleID: "catalog-walker", TypeLine: "Legendary Planeswalker — Test"}
+	if got := startingLoyaltyOf(&walker, "catalog-walker"); got != 3 {
+		t.Fatalf("an unstamped walker reads %d, want the catalog's 3", got)
+	}
+	for _, x := range []int{0, 5, -2} {
+		v := CopiableValuesOf(walker)
+		v.SetStartingLoyalty(x)
+		cp := walker
+		cp.setPrintedValues(v)
+		want := max(x, 0)
+		if got := startingLoyaltyOf(&cp, "catalog-walker"); got != want {
+			t.Errorf("starting loyalty set to %d reads %d, want %d", x, got, want)
+		}
+		if again := CopiableValuesOf(cp); !again.StartingLoyaltyKnown || again.StartingLoyalty != want {
+			t.Errorf("a copy of the copy lost the exception (CR 707.9b): %+v", again)
+		}
+	}
+}

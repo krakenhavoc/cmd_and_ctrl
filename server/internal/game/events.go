@@ -622,6 +622,21 @@ const (
 	// EventTapCard precedes it.
 	EventEnlist EventKind = "enlist"
 
+	// EventAttackTaxPaid — an attack declaration paid its CR 508.1h
+	// cost to one taxing permanent (#5271): Propaganda's, Ghostly
+	// Prison's, Windborn Muse's "can't attack you unless their
+	// controller pays {2}". Actor is the player who paid, Target the
+	// defending player, Source and CardID the permanent whose clause
+	// charged (for a tax with a duration, attack_tax_duration.go, the
+	// card that made it), and Label what that permanent charged this
+	// payment, e.g. "{2}{2}" for two creatures.
+	//
+	// Emitted only by payAttackTaxLocked, after the payment succeeds:
+	// one event per (defending player, taxing permanent) pair, so a
+	// board with two taxes says both. A refused declaration paid
+	// nothing and emits nothing. A log breadcrumb, watched by nothing.
+	EventAttackTaxPaid EventKind = "attack_tax_paid"
+
 	// EventForage — a player foraged (CR 701.61a, #5184): exiled three
 	// cards from their graveyard or sacrificed a Food, as a cost, an
 	// additional cost or an effect's "you may forage". Actor is the
@@ -1171,6 +1186,20 @@ const (
 	// Mount. Distinct from EventBecameSaddled, which fires once per
 	// Mount when the ability resolves.
 	EventSaddledMount EventKind = "saddled_mount"
+
+	// EventBecameCrewed — a Vehicle became crewed (CR 702.122e, #5671):
+	// "Whenever [this Vehicle] becomes crewed" means "Whenever a crew
+	// ability of [this Vehicle] resolves." One event per crew ability
+	// that resolves while its Vehicle is still on the battlefield as
+	// the object the ability came from, emitted after the ability's
+	// effect: Source / CardID / Target = the Vehicle, Actor = the
+	// ability's controller, Amount = how many crew abilities of that
+	// object have resolved this turn, this one included, so 1 is "for
+	// the first time each turn". A crew ability that was countered, or
+	// whose Vehicle left, emits nothing. Distinct from
+	// EventCrewedVehicle, which fires once per creature while the cost
+	// is paid.
+	EventBecameCrewed EventKind = "became_crewed"
 
 	// EventFacedDilemma — a player chose one or more modes for a spell
 	// or ability (#4973, Star Trek's "you face a dilemma as you choose

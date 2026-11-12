@@ -495,6 +495,12 @@ var items = []Item{
 		Mechanic: "freerunning",
 	},
 	{
+		Slug: "prowl", Name: "Prowl", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Cast a spell for its prowl cost if a creature you controlled that shared one of its creature types dealt combat damage to a player this turn.",
+		Rules:    []string{"702.76"},
+		Mechanic: "prowl",
+	},
+	{
 		Slug: "free-cast", Name: "Free casts", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Spells you may cast without paying their mana cost when a condition holds, such as controlling your commander.",
 		Mechanic: "free cast",

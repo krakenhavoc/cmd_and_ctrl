@@ -43,6 +43,10 @@ const (
 	KindTableReady Kind = metrics.DMKindTableReady
 	// KindTableFilled: a table you host has filled while you are away.
 	KindTableFilled Kind = metrics.DMKindTableFilled
+	// KindIdleWarning: a game you are still in will be closed for having
+	// had no move (ADR 0211 §6). Not a switch of its own: it rides
+	// KindTurn's (owner decision 3).
+	KindIdleWarning Kind = metrics.DMKindIdleWarning
 )
 
 // ErrNoStore is what NoStore's writes answer.
@@ -66,7 +70,7 @@ func (p Prefs) Wants(k Kind) bool {
 		return false
 	}
 	switch k {
-	case KindTurn:
+	case KindTurn, KindIdleWarning:
 		return p.Turn
 	case KindTableReady:
 		return p.TableReady

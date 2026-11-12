@@ -191,6 +191,14 @@ const (
 	// "<card> enlisted <target>". `card_id` is the attacker and
 	// `target` the creature tapped to pay the cost.
 	LogEnlist LogKind = "enlist"
+	// LogAttackTax — an attack declaration paid a CR 508.1h attack tax
+	// (#5271): "<player> paid {2} to attack <player> (Ghostly Prison)".
+	// `seat` is the payer, `target_seat` the defending player, `card_id`
+	// the permanent whose clause charged and `label` what it charged.
+	// One line per taxing permanent, ahead of the `attack` lines of the
+	// same declaration, so the player who controls the tax can see it
+	// was paid.
+	LogAttackTax LogKind = "attack_tax"
 	// LogEliminated — a player left the game: a concession, a
 	// state-based loss or an effect loss. Cause says which (ADR 0057
 	// Decision 7), and the text says why.
@@ -1811,6 +1819,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.setTarget(ev.Target, seatOf)
 		return base, true
 
+	case game.EventAttackTaxPaid:
+		base.Kind = LogAttackTax
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		base.setTarget(ev.Target, seatOf)
+		return base, true
+
 	case game.EventDrawCard:
 		// Never the card — a drawn card is hidden, and the owner's
 		// own hand already shows it. One entry per card, collapsed by
@@ -3267,6 +3282,13 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s exerted %s", actor, card)
 	case LogEnlist:
 		return fmt.Sprintf("%s enlisted %s", card, target)
+	case LogAttackTax:
+		// The price rides Label, which is redacted with the card's
+		// name; a line that lost it still says a tax was paid.
+		if e.Label == "" {
+			return fmt.Sprintf("%s paid to attack %s (%s)", actor, target, card)
+		}
+		return fmt.Sprintf("%s paid %s to attack %s (%s)", actor, e.Label, target, card)
 	case LogDraw:
 		if e.Amount == 1 {
 			return fmt.Sprintf("%s drew a card", actor)

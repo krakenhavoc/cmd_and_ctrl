@@ -3030,6 +3030,13 @@
     if (ability.tap_others_options) {
       const options = ability.tap_others_options.cards ?? [];
       const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
+      // #5669: a tapped source that pays its own untap clause has to be
+      // the one named, or its {T} can't be paid (CR 601.2h).
+      if (ability.tap_others_frees_source && need === 1) {
+        abilityTapIDs = [card.instance_id];
+        afterAbilityPermanentPicks(card, ability);
+        return;
+      }
       if (ability.tap_others_options.count_from_x || options.length > need) {
         abilityTapPrompt = { card, ability };
         return;
@@ -5112,14 +5119,15 @@
     }}
   />
   <!-- #759: station's "Tap another untapped creature you control".
-       The sacrifice picker once more, with the verb "Tap". -->
+       The sacrifice picker once more, with the verb "Tap". #5669: and
+       "Untap" for Halo Fountain's "Untap a tapped creature you control". -->
   <SacrificeCostModal
     source={abilityTapPrompt?.card ?? null}
     label={abilityTapPrompt?.ability.tap_others_label ?? "another untapped creature you control"}
     options={abilityTapOptions}
     count={abilityTapPrompt?.ability.tap_others_options?.max ?? 1}
     min={abilityTapBounds.min}
-    verb="Tap"
+    verb={abilityTapPrompt?.ability.tap_others_untap ? "Untap" : "Tap"}
     onConfirm={confirmAbilityTapCost}
     onCancel={() => {
       abilityTapPrompt = null;

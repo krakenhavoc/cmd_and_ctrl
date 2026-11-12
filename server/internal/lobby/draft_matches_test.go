@@ -666,12 +666,11 @@ func TestAStalledDraftMatchIsADraw(t *testing.T) {
 	room := s.lobby.DraftRoom(id)
 	pickEverything(t, room, seat)
 	// The person is on the draft's page for the rounds. They connect after
-	// the picks: pickEverything changes the draft faster than the hub's
-	// writer can be scheduled under load, and the hub drops a socket whose
-	// 16-frame send buffer fills, which would leave the draft looking
-	// abandoned (#5696). The rounds send a handful of frames, which drain
-	// keeps read. The idle limit is set once the socket is up, and tables
-	// only open when the deck is in, so no table can stall before it.
+	// the picks (#5696; draft views are coalesced since #5698, so a burst
+	// no longer drops the socket, which TestABurstOfDraftViewsDoesNotDropTheDrafter
+	// holds). drain keeps the socket read. The idle limit is set once the
+	// socket is up, and tables only open when the deck is in, so no table
+	// can stall before it.
 	conn := s.dial(t, id, out.Token)
 	conn.next()
 	conn.drain()
