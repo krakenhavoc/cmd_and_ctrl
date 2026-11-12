@@ -971,6 +971,21 @@ const (
 	// other activation, which stays off the log (CR 605.3b).
 	EventManaAbilityActivated EventKind = "mana_ability_activated"
 
+	// EventManaAbilityResolved — a mana ability finished resolving
+	// (#5644, CR 605.3b, CR 605.4a). Actor = the player who activated
+	// it, or the player a triggered mana ability added its mana to;
+	// Source and CardID = the object whose ability it is; Label = the
+	// ability's label; Amount = how much mana that ability produced,
+	// after the CR 106.12b window and not counting what another
+	// ability added because of it. Amount is 0 for an ability that
+	// resolved and added nothing. One event per resolution, on every
+	// route: the hand click, the answered colour pick, the auto-tapper
+	// and a triggered mana ability (mana_ability_resolved.go). What
+	// "whenever a mana ability of this creature resolves" watches
+	// (Tyvar the Bellicose), and written only while a permanent on the
+	// battlefield has an ability watching it.
+	EventManaAbilityResolved EventKind = "mana_ability_resolved"
+
 	// EventManaAdded — one mana token landed in a player's pool.
 	// Actor = pool owner, Source = the producing permanent (uuid.Nil
 	// for non-card sources). Colors carries the one symbol added

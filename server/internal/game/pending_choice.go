@@ -446,6 +446,20 @@ type PendingChoice struct {
 	ManaSettled   []string
 	ManaPicksLeft []ManaPickSlot
 
+	// ManaAbilityRun marks a PendingChoiceMana that is the output of a
+	// MANA ABILITY still resolving (#5644): an activated one whose colour
+	// is being picked, or a triggered one (CR 605.1b) whose "any color"
+	// is. Every pick of one resolution carries the same value. The last
+	// of them to be answered announces EventManaAbilityResolved with the
+	// mana the ability produced; ManaAbilityAmount is the part of that
+	// total already counted when this pick is answered (mana the ability
+	// added without a pick, and the picks of the same run answered
+	// before it). Empty for a pick a resolving spell queued, which is no
+	// mana ability. Both ride the value copy every clone starts from and
+	// the snapshot. See mana_ability_resolved.go.
+	ManaAbilityRun    string
+	ManaAbilityAmount int
+
 	// ManaTapped marks a PendingChoiceMana that is part of TAPPING A
 	// PERMANENT FOR MANA (CR 106.12a) — a mana ability with a {T} cost
 	// whose colour the controller is still choosing.
@@ -1972,6 +1986,23 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 		produced = append(append([]string(nil), choice.ManaSettled...), produced...)
 	}
 	tapped := choice.ManaTapped
+	// #5644: the answer finishes a mana ability, and an ability that
+	// watches that (Tyvar the Bellicose's granted trigger) is queued by
+	// the announcement below. It goes on the stack the next time a
+	// player would receive priority (CR 603.3b), which the state checks
+	// arrange, as ActivateManaAbility does for a trigger its own
+	// resolution queued.
+	//
+	// The layers are brought up to date first, as ActivateManaAbility
+	// does: that trigger is a layer 6 grant, and a game restored with
+	// this pick open has not computed its grants yet.
+	g.RecomputeLayersIfStaleLocked()
+	pendingBefore := len(g.PendingTriggers)
+	defer func() {
+		if len(g.PendingTriggers) > pendingBefore {
+			g.runStateChecksLocked()
+		}
+	}()
 	// #1222: through the one production body, which opens the
 	// CR 106.12b window on the amount. This is the ONLY place a
 	// Birds-of-Paradise-style source's colour is known, so it is the
@@ -1997,7 +2028,12 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if choice.ManaRecolorsSource {
 		g.sourceBecomesManaColorLocked(source, produced)
 	}
+	run, runLabel, runBase := choice.ManaAbilityRun, choice.ManaLabel, choice.ManaAbilityAmount
 	g.dequeueChoiceLocked(idx)
+	// #5644: this pick was the output of a mana ability, which has now
+	// finished resolving unless it still has a pick open. Before the
+	// triggered mana abilities below, which resolve after it.
+	g.manaAbilityPickAnsweredLocked(run, chooserID, source, runLabel, runBase, len(colors))
 	// #763, CR 605.1b / 605.4a: the second of the three production
 	// sites, and the ONLY one that knows the colour a
 	// Birds-of-Paradise-style source produced — which is what "one

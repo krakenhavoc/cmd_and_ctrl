@@ -5106,3 +5106,26 @@ already carry. No snapshot key, no `Card` or `Player` field, no func reachable f
 ### Cards
 
 The Holodeck (Full).
+
+## Amendment — 2026-11-12 (#5645): a granted jump-start, and a filter on the number of colours
+
+Niv-Mizzet, Supreme: "Each instant and sorcery card in your graveyard that's exactly two colors has jump-start." Two
+additive fields, no decision above changed.
+
+- **The price.** CR 702.133a: jump-start is "You may cast this card from your graveyard if the resulting spell is an instant
+  or sorcery spell by discarding a card as an additional cost to cast it" and "If this spell was cast using its jump-start
+  ability, exile this card instead of putting it anywhere else any time it would leave the stack." A granted one is a
+  permission with `AltCostKey: AltCostKeyJumpStart` (`"jump-start"`, the key the printed keyword already claims),
+  `ExileOnResolution` and the new `CastPermission.DiscardCardInAddition`: the synthesised offer keeps the card's printed mana
+  cost and adds `AlternativeCost.DiscardFromHand` over any one card of the caster's hand. This is the 2026-10-07 retrace
+  decision (`DiscardLandCard`) without the land clause. `DiscardCard` (ADR 0135 §2) stays "rather than paying its mana cost".
+- **The filter.** `PermissionFilter.ColorCountExactly` is an int: a card qualifies when it has exactly that many colours
+  (CR 105.2), counted off its effective colours as `ColorsAny` reads them. Zero constrains nothing. It ANDs with the other
+  clauses, and with `CardInZone` it judges the card as it is in the graveyard, so a split card counts the colours of both
+  halves (CR 709.4b).
+- **A card that also prints jump-start** has two instances at one price (CR 113.2c), and the offer list shows one, by the
+  2026-10-16 rule that a granted instance which only repeats the printed price is not a second row.
+- **Snapshot.** Additive: `discardCardInAddition` and `filter.colorCountExactly` (omitempty), recorded in `v9.txt`. The
+  permission is derived off the battlefield, so nothing new is stored for this card. No func reachable from `Game`.
+- **Tests.** `game/permission_filter_colors_test.go` and `cards/effects/niv_mizzet_supreme_test.go`.
+- **Card.** Niv-Mizzet, Supreme (Full).
