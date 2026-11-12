@@ -2516,6 +2516,16 @@ permanents), across every pass of "proliferate twice", after every counter
 has landed (#3930, #4253). In a test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
 `answerProliferate(t, g, picks…)` takes a chosen one.
 
+**"Whenever you proliferate"** (#5653, CR 701.34a) is
+`WheneverYouProliferate(label, effect)`, off `game.EventProliferate`: one
+event per finished proliferate, raised after its counters have landed,
+with Actor the proliferating player. "Proliferate twice" is two events,
+and a proliferate that chose nothing, or had nothing to choose, still
+raises one; a proliferate a replacement took away raises none. A card
+that proliferates needs nothing new. Wrap the row in `InGraveyard` for an
+ability that works from the graveyard (Voidwing Hybrid), and give it
+`Modes` for "choose one —" (Venser, Corpse Puppet).
+
 **The mill AMOUNT is a replaceable quantity too** (#569,
 [ADR 0013 §5u](decisions/0013-replacement-effects.md)). "If an
 opponent would mill one or more cards, they mill twice that many cards

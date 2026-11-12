@@ -54,6 +54,11 @@ func (g *Game) proliferateAskKeyedLocked(actor, source uuid.UUID, remaining int,
 	}
 	cards, players := g.ProliferateCandidatesForEffect()
 	if len(cards)+len(players) == 0 {
+		// Nothing has a counter. Each proliferate owed is still a
+		// proliferate, of nothing (#5653).
+		for ; remaining > 0; remaining-- {
+			g.noteProliferateLocked(actor, source)
+		}
 		return rest.Run(g, nil)
 	}
 	sc, sp := g.ProliferateSuggestionForEffect(actor)
@@ -80,6 +85,20 @@ func (g *Game) proliferateAskKeyedLocked(actor, source uuid.UUID, remaining int,
 		return rest.Run(g, nil)
 	}
 	return nil
+}
+
+// noteProliferateLocked announces one finished proliferate (CR 701.34a,
+// #5653): the choice is made and every counter it gave has landed, so a
+// "whenever you proliferate" trigger sees the board the proliferate left.
+// A proliferate that chose nothing, or had nothing to choose, is
+// announced too. The only emitter of EventProliferate.
+//
+// Caller must hold g.mu.
+func (g *Game) noteProliferateLocked(player, source uuid.UUID) {
+	if p := g.playerByIDLocked(player); p == nil || p.Eliminated {
+		return
+	}
+	g.EmitEvent(Event{Kind: EventProliferate, Actor: player, Source: source})
 }
 
 // proliferatePicked is the keyed answer to a proliferate prompt: the picks
@@ -168,6 +187,8 @@ func (g *Game) proliferateStepLocked(run KeyedTail) error {
 		}
 		return g.addPlayerCounterByKeyedLocked(placer, id, kinds[k], 1, next)
 	}
+	// Past the last target: this proliferate is finished (#5653).
+	g.noteProliferateLocked(placer, run.Source)
 	rest := nextTailValue(run.Next)
 	if remaining > 0 && run.Word == proliferateExplicitWord {
 		// The same explicit choice again, behind this one's last counter.

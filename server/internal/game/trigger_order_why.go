@@ -90,6 +90,8 @@ func eventFamily(kind EventKind) string {
 		return "scrying"
 	case EventSurveil:
 		return "surveilling"
+	case EventProliferate:
+		return "proliferating"
 	case EventTokenCreated:
 		return "tokens being created"
 	case EventETB:
