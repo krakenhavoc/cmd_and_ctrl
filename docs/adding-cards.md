@@ -10152,6 +10152,23 @@ removed from the battlefield before the exploit ability resolved still lets
 you sacrifice another creature, but makes no payoff; sacrificing the
 exploiter itself does. Like echo it is not a `canonicalKeywords` token.
 
+A payoff body that belongs to one card is a package-level `var` in that card's
+own file (`game.ReflexiveBody("<card>/<what>", simpleBody(fn), constTargets(...))`,
+as Diver Skaab does); package variables are initialised before any `init()`.
+
+"Whenever a creature you control exploits a nontoken creature" watches
+`game.EventExploited` (#5676, CR 702.110b): `CardID` is the creature with
+exploit, `Actor` its controller as it exploited and `Target` the creature that
+was sacrificed. `Exploit` emits it once the sacrifice has settled, on the same
+condition as the payoff, whether or not the card prints one. Write it as
+`WheneverACreatureYouControlExploitsANontokenCreature(label, effect)` (Skull
+Skaab). Exploiting is a sacrifice, so the ability looks back (CR 603.10a): a
+watcher that was the creature sacrificed still triggers, and the sacrificed
+creature is read as it last existed (`g.SimultaneousExitCardsForEffect`), not
+from the card in its new zone. A card that exploits in its own way must emit
+it: call `g.ExploitedForEffect(exploiter, controller, sacrificed)` from the
+sacrifice's tail.
+
 ### The CR 732 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never
