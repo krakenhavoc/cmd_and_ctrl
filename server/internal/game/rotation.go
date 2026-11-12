@@ -218,6 +218,8 @@ func (g *Game) closeTurnLocked() {
 	// #1997: and whether its player cast a spell or put a nontoken
 	// permanent onto the battlefield (Arboria).
 	g.recordLastTurnCastOrPutLocked()
+	// #5652: and "since your last turn" starts over for its player.
+	g.resetSinceLastTurnLocked()
 	// ADR 0132, CR 502.2: and the spells its active player cast, which
 	// the NEXT untap step's day/night check reads.
 	g.recordPrevTurnSpellsLocked()

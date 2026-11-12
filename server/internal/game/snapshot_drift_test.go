@@ -803,6 +803,9 @@ var playerFields = plan(
 	// #1997: Arboria's "cast a spell or put a nontoken permanent onto
 	// the battlefield during their last turn".
 	"LastTurnCastOrPut", carried, "",
+	// #5652: Marchesa, Resolute Monarch's "if you haven't been dealt
+	// combat damage since your last turn".
+	"CombatDamagedSinceLastTurn", carried, "",
 	"Eliminated", carried, "",
 	// #4879: why the player left (a LossCause), for the seat view's
 	// loss_cause. Carried, additive within v9.

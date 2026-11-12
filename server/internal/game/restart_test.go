@@ -402,7 +402,7 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		"Life": true, "Poison": true, "Energy": true, "Speed": true,
 		"Library": true, "Hand": true, "Graveyard": true, "Command": true, "Emblems": true,
 		"CommanderDamage": true, "LifeHistory": true, "TurnsBegun": true, "UpkeepsBegun": true, "ExtraTurnsBegun": true,
-		"EndStepTurn": true, "LastTurnAttacks": true, "CombatAttacks": true, "LastCombatAttacks": true, "LastTurnCastOrPut": true, "Eliminated": true, "Removed": true,
+		"EndStepTurn": true, "LastTurnAttacks": true, "CombatAttacks": true, "LastCombatAttacks": true, "LastTurnCastOrPut": true, "CombatDamagedSinceLastTurn": true, "Eliminated": true, "Removed": true,
 		"LossCause":  true, // #4879: why they left goes with Eliminated.
 		"FinalBoard": true, // #4912: what they had when they left, too.
 		"HandKept":   true, "MulliganDecided": true, "TriggerOrderMemory": true, "MulligansTaken": true,

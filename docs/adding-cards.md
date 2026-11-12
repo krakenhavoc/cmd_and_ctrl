@@ -13988,6 +13988,18 @@ if CastASpellFromHandThisTurn(g, you) { … }              // a resolution check
 
 Prairie Dog's "until end of turn, if you would put one or more +1/+1 counters on a creature you control, put that many plus one" is `Game.OneMorePlusOneCounterThisTurnForEffect`, a turn-scoped `game.ModOneMorePlusOneCounter` record: Brad Boimler's `ModOneMoreCounter` narrowed to +1/+1 counters that player puts on a creature they control.
 
+### "If you haven't been dealt combat damage since your last turn" (#5652)
+
+`Player.CombatDamagedSinceLastTurn` (`game/since_last_turn.go`) is set as combat damage is dealt to a player and cleared as each of that player's turns ends, so it outlives the per-turn tally. "Your last turn" means what it means for `Player.LastTurnAttacks`: an extra turn is a turn (CR 500.7), a turn not taken clears nothing, and a player who has taken no turn yet is asked of the whole game so far. Damage that was prevented, and damage to a planeswalker or battle the player controls, was not dealt to the player. The readers are in `cards/effects/since_last_turn.go`:
+
+```go
+AtYourUpkeepIfNoCombatDamageSinceYourLastTurn(label, Do(...))          // the printed trigger (Marchesa, Resolute Monarch)
+InterveningIf(CondNoCombatDamageSinceYourLastTurn{}, On(...))          // the same "if" on another trigger
+if g.DealtCombatDamageSinceLastTurnForEffect(you) { … }                // a resolution check
+```
+
+`CondNoCombatDamageSinceYourLastTurn` declares `game.FootprintCondNoCombatDamageSinceLastTurn`: the condition can only become false, by combat damage, which is dealt as a turn-based action (CR 510.2); no step deals it.
+
 ### Face-down follow-ups: "can't be turned face up", face-down spells cost less, "entered face down this turn" (#5241)
 
 Three small pieces around CR 708 face-down permanents and CR 702.168 disguise.
