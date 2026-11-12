@@ -11885,6 +11885,19 @@ CR 704.5i applying, not indestructible and not a replacement: every other state-
 walker at 0 can use a plus ability and no minus. Read live off the battlefield, so a source that loses its
 abilities or leaves exempts nothing.
 
+**"As this enters, choose a planeswalker type"** (Deification) is `AsEnters: ChoosePlaneswalkerTypeAsEnters(name)`.
+It offers CR 205.3j's types, yours first, and stores the answer on `Card.ChosenOption`.
+`PlaneswalkersYouControlOfTheChosenType` is the predicate that reads it for a static ("… have hexproof"); it
+matches nothing until the choice is answered.
+
+**"If damage dealt to a planeswalker you control of the chosen type would result in all loyalty counters on
+it being removed, instead all but one of those counters are removed"** (Deification) is
+`DamageLastLoyalty: DamageLeavesChosenTypeAPlaneswalkersLastLoyaltyWhileYouControlACreature()` on the `Spec`
+(#5646). It replaces a result of the damage, not the damage (CR 120.4c): the damage is dealt in full, so
+lifelink and "is dealt damage" triggers see all of it, and only the loyalty removed is capped. Do not write it
+as a prevention shield. A new sentence of this shape (another scope or condition) is a field on
+`game.DamageLastLoyaltyStatic` and a constructor beside this one.
+
 **"Whenever you put one or more loyalty counters on a planeswalker"** (Inspired Tethermage) is
 `WheneverYouPutLoyaltyCountersOnAPlaneswalker(label, effect)`. One trigger per placement EVENT, so a +2 is one
 trigger and a doubled placement is one; a minus is a removal and triggers nothing; "each planeswalker you
