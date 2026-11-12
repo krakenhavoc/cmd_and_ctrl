@@ -3642,6 +3642,10 @@ export interface AlternativeCostView {
   // counter picker reads it as it reads an ability. No card component
   // beside it. The payment rides cast_spell as `counter_source_ids`,
   // `counter_counts` and `counter_kind` / `counter_kinds`.
+  // #5679: with `counter_cost_variable` the counters removed are the
+  // spell's X (Light Up the Night's "Remove X loyalty counters from among
+  // planeswalkers you control"): `counter_cost_n` is the floor, and the
+  // client sends the payment's total as `x_value` instead of asking for X.
   counter_cost_n?: number;
   counter_cost_kind?: string;
   counter_cost_self?: boolean;

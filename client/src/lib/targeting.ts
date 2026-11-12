@@ -1826,8 +1826,29 @@ export function castHandExileCost(
 // value X from your hand". The server ships the picker with
 // `mana_value_equals_x` and each card's `mana_values`, and the client
 // sends the picked card's value as the x_value instead of asking for X.
+//
+// #5679: so does an offer that removes X counters (Light Up the Night's
+// "Remove X loyalty counters from among planeswalkers you control"),
+// which the server ships as a counter block with `counter_cost_variable`:
+// the counters picked are the X.
 export function altCostPayDefinesX(offer: AlternativeCostView | undefined): boolean {
-  return offer?.pay_options?.mana_value_equals_x === true;
+  return offer?.pay_options?.mana_value_equals_x === true || altCostCountersDefineX(offer);
+}
+
+// altCostCountersDefineX reports an offer whose counter removal is the
+// spell's X (#5679).
+export function altCostCountersDefineX(offer: AlternativeCostView | undefined): boolean {
+  return offer?.counter_cost_variable === true;
+}
+
+// altCostCounterX is the X such an offer announces: the total of the
+// counters the payment removes. Undefined for any other offer.
+export function altCostCounterX(
+  offer: AlternativeCostView | undefined,
+  payment: CounterPayment,
+): number | undefined {
+  if (!altCostCountersDefineX(offer)) return undefined;
+  return (payment.counter_counts ?? []).reduce((sum, n) => sum + n, 0);
 }
 
 // altCostPayX is the X a pitch bound to X announces: the picked card's
@@ -1837,8 +1858,8 @@ export function altCostPayX(
   offer: AlternativeCostView | undefined,
   picked: string[],
 ): number | undefined {
-  if (!altCostPayDefinesX(offer) || picked.length !== 1) return undefined;
-  return offer?.pay_options?.mana_values?.[picked[0]];
+  if (offer?.pay_options?.mana_value_equals_x !== true || picked.length !== 1) return undefined;
+  return offer.pay_options.mana_values?.[picked[0]];
 }
 
 // ClaimedExileCardsCost is the "exile N cards from your graveyard"

@@ -5960,6 +5960,20 @@ emits `EventManaAbilityActivated` and carries no `LifePaid`. A new card
 that reads "the life paid to activate it" reads the same field; a spell's
 side ("life paid to cast it") is not on `EventCast` yet.
 
+**Mana for an alternative cost named by keyword (#5680):** "Spend this
+mana only to pay a disturb cost" is
+`game.ManaRestrictAltCost(Disturb("").Key)`, inside a `ManaRestrictAnyOf`
+with the card's other clause (Unblinking Observer: "or cast an instant or
+sorcery spell"). It matches `ManaSpendContext.AltCost`, the key of the
+printed alternative cost the cast claims, so it admits that cast and no
+other: not the same card at its mana cost, and not a graveyard cast for
+flashback or escape, which is why `ManaRestrictCastFromGraveyard` is the
+wrong tag. The mana pays the whole of that cast's total cost (CR 601.2f).
+Read the key off the keyword's constructor rather than typing it. A
+granted alternative cost and the bot's planning estimate
+(`CastAdmitsRestrictedMana`) name no key and refuse the mana; the
+enumerator and the cast decide under the real context.
+
 **Mana for spells with mana value N or greater (#4694):** "Spend this
 mana only to cast spells with mana value 4 or greater" is
 `Restrictions: []string{game.ManaRestrictManaValueAtLeast(4)}` (Ashling,
@@ -8080,6 +8094,28 @@ and refuses a malformed one (a plain reveal, no type, a colour, no
 count). An additional cost of "behold a … and exile it" (#4687) is not
 this shape, because that card is spent: it is `BeholdAndExileCost` on the
 mandatory slot.
+
+**X counters as part of the price (#5679, CR 107.3a, 107.3b).**
+"Flashback—{3}{R}, Remove X loyalty counters from among planeswalkers you
+control. If you cast this spell this way, X can't be 0." (Light Up the
+Night) is `AlternativeCost.RemoveCounters` with `Variable` and a floor of
+1, built with one constructor:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},                       // Light Up the Night
+AlternativeCosts: []game.AlternativeCost{FlashbackRemoveXCounters("{3}{R}", game.CounterLoyalty, "planeswalkers you control", Planeswalker())},
+```
+
+It keeps flashback's graveyard binding and `ExileOnLeavingStack`. The
+counters removed are the spell's X: the offer is an alternative cost that
+includes X (`AlternativeCost.CountersDefineX`), so X is not locked at 0,
+the cast announces X and its counter payment (`counter_source_ids` /
+`counter_counts`) must total exactly that, at least 1. The effect reads
+`ctx.X()` as for a cast that paid {X}. The split across the caster's
+matching permanents is theirs, nothing is targeted, and a caster with no
+such counter is not offered the cast. `Register` allows the variable form
+only for one printed kind with a floor of at least 1; a fixed count is
+`CastFromGraveyardByRemovingCounters`' shape (#5390).
 
 **Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
 card that prints "Harmonize {cost}" opens the graveyard as flashback
@@ -14868,6 +14904,53 @@ Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
 - **An "as it enters" exile from a graveyard** has no replacement-prompt kind; it is `Spec.AsEnters` queueing a
   choose-cards prompt over the graveyard whose keyed answer exiles with `ExileLinkedForEffect` (so the cards are
   "exiled with it", CR 607.2a) and then puts the counters on.
+
+### "If your life total would be reduced to 0 or less, instead …" (#5678)
+
+Enduring Angel's clause is an ordinary `ReplacementEffect` on the `RepEventLife` window, because every way a life total
+falls already runs it as a negative `LifeDelta`: a loss, a set-life effect (CR 119.5), a life payment (CR 119.4) and
+the life that damage costs (CR 120.3a, [ADR 0169](decisions/0169-the-life-that-damage-costs-runs-the-life-window.md)).
+The engine half is `game/life_instead.go`; `enduring_angel.go` is the card to copy.
+
+```go
+AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+    return src != nil && ev.LifePlayer == src.Controller && g.LifeWouldBeReducedToZeroOrLessForEffect(ev)
+},
+Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+    if g.ReplacementIsPreviewForEffect(ev) {          // the auto-tapper asking: rewrite the event, touch nothing
+        g.LifeTotalBecomesInsteadForEffect(ev, 3)
+        return nil
+    }
+    transformed := g.CanTransformForEffect(src.InstanceID)
+    if transformed {
+        if err := g.TransformPermanentForEffect(src.InstanceID); err != nil {
+            return err
+        }
+    }
+    g.LifeTotalBecomesInsteadForEffect(ev, 3)        // "your life total becomes 3": gains or loses the difference
+    if !transformed {
+        ev.LifeThenLoses = src.InstanceID            // "Then ... you lose the game", after the life lands
+    }
+    return nil
+},
+```
+
+- **`LifeWouldBeReducedToZeroOrLessForEffect(ev)`** reads the event as it stands when the window asks, so a doubler
+  applied first has already made the loss larger. A gain never matches, even for a player below 0.
+- **`LifeTotalBecomesInsteadForEffect(ev, n)`** leaves the event in the window as a gain or a loss of the difference.
+  A later replacement sees it, the caller's "life lost this way" is told what really moved, a player who can't gain
+  life does not gain, and a difference of zero lands as no event at all.
+- **`ev.LifeThenLoses`** is the card the loss of the game comes from. Never call `LoseTheGameForEffect` from a life
+  `Replace`: the event has not landed, other replacements may still apply, and a CR 616 prompt may park it. The place
+  the event lands carries the loss out (CR 104.3e, gated by "can't lose"), for damage after the damage has landed. The
+  field is carried by the snapshot. When the player who left controls the spell or ability resolving at that moment,
+  the life change returns `game.ErrStopResolution`: return it from the effect as it is, like any other error.
+- **A `Replace` on this window that does more than rewrite the event asks `ReplacementIsPreviewForEffect` first.** The
+  auto-tapper previews the life window without touching the game (`lifeChangePreviewLocked`), and it calls the same
+  `Replace` functions.
+- **"<This>'s power and toughness are each equal to your life total"** is `powerAndToughnessEqualToYourLifeTotal()`
+  (Serra Avatar, Angelic Enforcer). It declares `DependsOnLifeTotal`; a life-keyed static without it keeps a stale
+  size until something unrelated drops the layer cache.
 
 ### When in doubt
 

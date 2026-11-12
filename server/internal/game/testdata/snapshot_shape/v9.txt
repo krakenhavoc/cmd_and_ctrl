@@ -10972,6 +10972,7 @@ frozenEntries[].event.lifeTail.then.source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.word	string
 frozenEntries[].event.lifeTail.then.words	array
 frozenEntries[].event.lifeTail.then.words[]	string
+frozenEntries[].event.lifeThenLoses	custom(uuid.UUID)
 frozenEntries[].event.millCount	number:int
 frozenEntries[].event.millPlayer	custom(uuid.UUID)
 frozenEntries[].event.millTail	object
@@ -31078,6 +31079,7 @@ movesAwaitingTokens[].lifeTail.then.source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.word	string
 movesAwaitingTokens[].lifeTail.then.words	array
 movesAwaitingTokens[].lifeTail.then.words[]	string
+movesAwaitingTokens[].lifeThenLoses	custom(uuid.UUID)
 movesAwaitingTokens[].millCount	number:int
 movesAwaitingTokens[].millPlayer	custom(uuid.UUID)
 movesAwaitingTokens[].millTail	object
@@ -41268,6 +41270,7 @@ pendingChoices[].assist.spend.AbilityOrigin.Lent.SpendFrom	string
 pendingChoices[].assist.spend.AbilityOrigin.LentBy	custom(uuid.UUID)
 pendingChoices[].assist.spend.AbilityOrigin.Ref	string
 pendingChoices[].assist.spend.AllCreatureTypes	bool
+pendingChoices[].assist.spend.AltCost	string
 pendingChoices[].assist.spend.CastFrom	string
 pendingChoices[].assist.spend.Colors	array
 pendingChoices[].assist.spend.Colors[]	string
@@ -57590,6 +57593,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.word	string
 pendingChoices[].replacementResume.event.lifeTail.then.words	array
 pendingChoices[].replacementResume.event.lifeTail.then.words[]	string
+pendingChoices[].replacementResume.event.lifeThenLoses	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millCount	number:int
 pendingChoices[].replacementResume.event.millPlayer	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail	object

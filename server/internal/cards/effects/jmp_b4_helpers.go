@@ -148,7 +148,7 @@ func enchantedCreaturesControllerNow(g *game.Game, ev game.Event) uuid.UUID {
 }
 
 // doubleLifeTotal is "double <player>'s life total": the player gains (or,
-// below zero, loses) life equal to their life total (CR 701.10e, as Beacon
+// below zero, loses) life equal to their life total (CR 701.10d, as Beacon
 // of Immortality applies it), through the ordinary life-change path, so a
 // "can't gain life" stops it. A total of zero changes nothing.
 func doubleLifeTotal(g *game.Game, source, player uuid.UUID) error {

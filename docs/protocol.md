@@ -2871,6 +2871,20 @@ per viewer, like `pay_options`, and is stripped from a public pile; the
 count, kind, clause and shape are printed and stay public with the
 offer.
 
+**X counters as the price (#5679, CR 107.3a / 107.3b).** A flashback that
+removes X counters (Light Up the Night's "Flashback—{3}{R}, Remove X
+loyalty counters from among planeswalkers you control. If you cast this
+spell this way, X can't be 0.") is the same block with
+`counter_cost_variable: true`: `counter_cost_n` is the floor (1),
+`counter_cost_kind` the printed kind (`"loyalty"`) and `counter_cost_max`
+the most the viewer could remove right now. The counters removed are the
+spell's X, so the offer has `x_locked_at_zero: false` although its
+`mana_cost` has no {X}. The client does not ask for X: it opens the
+counter picker and sends the total of `counter_counts` as `x_value`. The
+engine refuses a total that differs from `x_value` or is under the floor
+as `bad_request`, with nothing paid. A viewer whose permanents hold no
+such counter is not shown the offer.
+
 **Awaken (ADR 0135 §3, #2411, CR 702.113).** An awaken offer is keyed
 `awaken`, labelled as printed ("Awaken 4—{5}{B}{B}"), and adds a target:
 its statement is the spell's own clauses followed by "target land you

@@ -176,6 +176,8 @@
     castTapCost,
     castConspireCost,
     castHandExileCost,
+    altCostCounterX,
+    altCostCountersDefineX,
     altCostPayDefinesX,
     altCostPayX,
     castExileCardsCost,
@@ -1417,7 +1419,16 @@
     const p = castCounterPrompt;
     castCounterPrompt = null;
     if (!p) return;
-    afterAltCostPayment(p.card, { ...p.choices, counter: counterPaymentParams(p.offer, picks) });
+    const counter = counterPaymentParams(p.offer, picks);
+    // #5679: "Remove X loyalty counters" — the counters removed are the
+    // spell's X, so the total is announced with them and the X prompt is
+    // skipped (afterCastCosts).
+    const x = altCostCounterX(p.offer, counter);
+    afterAltCostPayment(p.card, {
+      ...p.choices,
+      counter,
+      ...(x !== undefined ? { xValue: x } : {}),
+    });
   }
 
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
@@ -1513,6 +1524,7 @@
     // this a prompt decision rather than a rule the client enforces.
     // #3175: a pitch bound to X has already announced it — the pitched
     // card's mana value — so the X picker would only offer a wrong answer.
+    // #5679: likewise an offer that removes X counters.
     const xFromPitch =
       choices.xValue !== undefined &&
       altCostPayDefinesX(alternativeCostByKey(card, choices.altCost));
@@ -4876,7 +4888,9 @@
     card={castCounterPrompt?.card ?? null}
     ability={castCounterPrompt ? { ...castCounterPrompt.offer, index: -1 } : null}
     board={view.battlefield.cards}
-    payFor="cast this spell"
+    payFor={altCostCountersDefineX(castCounterPrompt?.offer)
+      ? "cast this spell. The number you remove is X"
+      : "cast this spell"}
     onConfirm={confirmCastCounterCost}
     onCancel={() => (castCounterPrompt = null)}
   />
