@@ -984,6 +984,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// ADR 0100 §2: a branch's fixed "pay 3 life" is held back the same
 	// way.
 	lifeReserved := offerLife(offer) + branchLife(addCost)
+	// #5659: an announced optional cost's fixed life (a Defiler's "you
+	// may pay 2 life") is owed too, and a set whose life the seat can't
+	// pay (CR 119.4, a locked life total) is a cast the engine refuses.
+	if owed := optionalLife(optional, chosen); owed > 0 {
+		lifeReserved += owed
+		if !e.g.CanPayLifeLocked(e.p, lifeReserved) {
+			return
+		}
+	}
 	lifeAllowed := addCost == nil || !addCost.PayLifeX
 
 	// Modes → each choice of modes yields its own clause list, and

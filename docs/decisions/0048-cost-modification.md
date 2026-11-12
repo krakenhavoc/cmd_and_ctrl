@@ -967,3 +967,30 @@ Tests: `TestColouredReductionUnitSpendsItsColourThenGeneric` (`internal/game`, t
 before, allowed after), `TestRegisterAcceptsWellFormedCostModifiers`.
 
 Back-out: take the `reduceBy` call back to `reduceGeneric` and the Drone stays at {1}{U} after a flier enters.
+
+## Amendment (2026-11-12, #5659): a reduction that takes only its colour (the Defiler cycle)
+
+Defiler of Dreams prints "As an additional cost to cast blue permanent spells, you may pay 2 life. Those spells cost
+{U} less to cast if you paid life this way. This effect reduces only the amount of blue mana you pay." The 2026-10-30
+amendment spends a coloured `Unit` by CR 118.7b and 118.7c: "If a cost is reduced by an amount of colored or colorless
+mana, but the cost doesn't require mana of that type, the cost is reduced by that amount of generic mana", and the
+excess over the colour's component comes off the generic component. The Defiler's last sentence switches both off, so
+that amendment's rule would make the card stronger than printed on a blue spell with no blue mana left in its cost.
+
+`CostModifier.UnitColorsOnly` is that sentence: a `CostReduction` whose `Unit` is coloured symbols alone, each taking
+one mana of its colour off the cost and nothing otherwise. A hybrid or Phyrexian symbol of the colour in the cost counts
+as mana of that colour, as it already does for every coloured reduction. `UnitProblem` refuses the flag on anything
+else, at boot and at the cast. CR 601.2f: "If multiple cost reductions apply, the player may apply them in any order";
+the pass applies these after the one-mana-floor reductions and before the rest, which never leaves more to pay because
+the others can fall back on generic mana and this one cannot.
+
+The condition is not new machinery in the pass: `CostQuery.GrantedOptionalTimesFromSource(key)` reads the announced
+optional costs (`CostQuery.OptionalCosts`, CR 601.2b) against the "printed, then granted" list
+`OptionalCostsForCastLocked` gives every reader, and counts only the entry the modifier's own source granted. The engine
+and the enumerator already fill `OptionalCosts`, so they price the cast alike (#544).
+
+Tests: `TestColorsOnlyReductionNeverTakesGeneric` (`internal/game`), `TestDefilerDiscountTakesOnlyItsColor`,
+`TestTwoDefilersAreTwoOffers`, `TestDefilersOfTwoColorsAreLinkedSeparately`, `TestDefilerDiscountIsEnumerated`.
+
+Back-out: drop the flag and the Defilers' discounts fall back to generic mana (stronger than printed), so the five
+cards would have to leave the catalog with it.

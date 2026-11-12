@@ -13938,6 +13938,17 @@ ctx.SourcePermanent()                                                           
   `GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(label, Or(Instant(), Sorcery()), Casualty(1))}`
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
+- **"As an additional cost to cast <colour> permanent spells, you may pay N life. Those spells cost {C} less to cast
+  if you paid life this way. This effect reduces only the amount of <colour> mana you pay."** (the Defiler cycle,
+  #5659) is a linked pair, declared side by side: `GrantedOptionalCosts:
+  []game.GrantedOptionalCost{MayPayLifeToCast(cardName, "U", 2)}` and `CostModifiers:
+  []game.CostModifier{CostsColorLessIfLifePaid("U")}` (`pay_life_for_discount.go`). The offer is `EachSource`, so each
+  permanent makes its own, and the discount reads only its own permanent's announced offer
+  (`CostQuery.GrantedOptionalTimesFromSource(key)`): that is how to write any other "if you paid this way" reduction
+  linked to a granted cost. The reduction is `CostModifier.UnitColorsOnly`: its `Unit` takes one mana of each of its
+  colours off the cost and never generic mana (CR 118.7b and 118.7c do not apply). The cycle's trigger is
+  `WheneverYouCastAPermanentSpellOfColor("U", label, effect)`. A grant's `Spells` filter now reads the spell through
+  the granting permanent's changed words (CR 612.2).
 - **Conspire** (CR 702.78, #4690) is `OptionalCosts: []game.AdditionalCost{Conspire()}` (`conspire.go`), and
   "each noncreature spell you cast has conspire" is `ConspireForSpellsYouCast(label, Noncreature())` (Raiding
   Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `conspire_ids`, a list apart
