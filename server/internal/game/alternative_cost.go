@@ -1587,6 +1587,14 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 		// the sacrifice is read off the key, as granted warp's exile is.
 		alt = &AlternativeCost{Key: GrantedAltCostEvoke, Label: "Evoke", SacrificeOnEntry: true}
 	}
+	if alt == nil && item.AltCost == GrantedAltCostBlitz {
+		// #5667, Henzie "Toolbox" Torre: "Each creature spell you cast
+		// with mana value 4 or greater has blitz". CR 702.152a hangs the
+		// haste, the draw and the sacrifice on "this spell's blitz cost
+		// was paid", so they are read off the key, as granted evoke's
+		// sacrifice is, whatever has become of Henzie.
+		alt = &AlternativeCost{Key: GrantedAltCostBlitz, Label: "Blitz", Blitz: true}
+	}
 	if alt == nil {
 		return
 	}

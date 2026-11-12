@@ -273,6 +273,19 @@ type CostQuery struct {
 	// cast and for a harmonize cast that taps nothing.
 	AltTappedPower int
 
+	// AltBlitz reports that the alternative cost this cast claims is a
+	// blitz cost (AlternativeCost.Blitz, CR 702.152a): the card's own or
+	// one a permanent gave it (GrantedAltCostBlitz). It is what a
+	// modifier of blitz costs alone reads: Henzie "Toolbox" Torre's
+	// "Blitz costs you pay cost {1} less for each time you've cast your
+	// commander from the command zone this game" (#5667), which must not
+	// touch the same spell cast for its mana cost. CR 601.2b settles the
+	// claim before 601.2f totals the cost. Filled by the one pricer
+	// (costAfterModifiersLocked) and by the enumerator from the offer it
+	// is announcing, so the two agree (#544). False for every other
+	// cast, and for an activation or special action.
+	AltBlitz bool
+
 	// GrantReduction is the generic mana a cast permission takes off the
 	// spell cast through it (CastPermission.CostLess, #3787): Urianger
 	// Augurelt's "spells you cast this way cost {2} less to cast". Read

@@ -151,6 +151,8 @@ type Card struct {
 	// The catalog value survives as a fallback for cards with no
 	// printed data (tokens, fixtures) — see CatalogStartingLoyalty.
 	StartingLoyalty int
+	// StartingLoyaltyKnown, the bit that says a 0 here was set by a copy
+	// exception, is in the bool block below (beside PrintedPTKnown).
 
 	// Keywords are printed keyword abilities carried on the card
 	// object itself rather than looked up in the catalog by oracle
@@ -1696,6 +1698,15 @@ type Card struct {
 	// VariableToughness still wins: a `*` is a stand-in whatever a
 	// template claims, and ToughnessIsKnown asks that question first.
 	PrintedPTKnown bool
+
+	// StartingLoyaltyKnown says the number in StartingLoyalty was set by
+	// a copy effect's exception ("has starting loyalty X", Ob Nixilis,
+	// the Adversary's casualty copy, #5668), so a 0 there is the real
+	// starting loyalty and not "nothing stamped": the CR 306.5b stamp
+	// does not fall back to the catalog's printed number. A copiable
+	// value (PrintedValues.StartingLoyaltyKnown, CR 707.9b). False for
+	// every card and every copy made without such an exception.
+	StartingLoyaltyKnown bool
 
 	// Solved is the CR 719.3 designation on a Case permanent — the
 	// marker that switches its printed "Solved — [ability]" clauses

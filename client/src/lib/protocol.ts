@@ -4173,6 +4173,16 @@ export interface ActivatedAbilityView {
   // activation's `x_value`; min / max are then unset (0 / 0).
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #5669: `tap_others_untap` turns the clause over, "Untap N tapped
+  // creatures you control" (Halo Fountain). The same label, options
+  // and `tap_ids`, the options now the TAPPED permanents that could be
+  // untapped to pay, and the picker's verb "Untap".
+  // `tap_others_frees_source` is set when the ability also costs {T},
+  // its source is tapped, and the source is one of the options: naming
+  // it untaps it first and so pays the {T} (CR 601.2h), so the row is
+  // not "already tapped".
+  tap_others_untap?: boolean;
+  tap_others_frees_source?: boolean;
   // #4566: the branches of an either/or cost ("Sacrifice an artifact or
   // discard a nonland card"). The client asks which branch first, runs
   // that branch's own picker as for a row printing the clause alone, and

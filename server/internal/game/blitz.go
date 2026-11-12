@@ -99,3 +99,11 @@ func blitzSacrifice(g *Game, it *StackItem, p EffectParams) error {
 	}
 	return nil
 }
+
+// altBlitzLocked is CostQuery.AltBlitz for one announcement: whether the
+// alternative cost the cast claims is a blitz cost, the card's own or a
+// granted one. Caller must hold g.mu.
+func (g *Game) altBlitzLocked(playerID uuid.UUID, card Card, params CastSpellParams) bool {
+	alt := g.claimedAltCostLocked(playerID, card, params)
+	return alt != nil && alt.Blitz
+}

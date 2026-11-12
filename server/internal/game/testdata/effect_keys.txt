@@ -810,6 +810,7 @@ choose choose-cards/ninjas-blades-loot
 choose choose-cards/north-wind-avatar-take
 choose choose-cards/northampton-farm-return
 choose choose-cards/nothing
+choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
 choose choose-cards/one-last-job-host
@@ -1481,6 +1482,7 @@ option option-pick/nesting-grounds-counter-kind
 option option-pick/nick-fury-spymaster-attacks
 option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
+option option-pick/ob-nixilis-the-adversary-answer
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
@@ -2042,6 +2044,7 @@ steps then-steps/midnight-clock-draw-then-exile
 steps then-steps/mog-moogle-warrior-draw
 steps then-steps/mog-moogle-warrior-finish
 steps then-steps/niv-mizzet-ghost-counsel-pay-and-draw
+steps then-steps/ob-nixilis-the-adversary-loss
 steps then-steps/ogre-head-helm-wheel
 steps then-steps/orchard-elemental-votes
 steps then-steps/pendant-of-prosperity-owner

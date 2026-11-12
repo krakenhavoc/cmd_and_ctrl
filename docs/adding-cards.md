@@ -1180,6 +1180,8 @@ Collect evidence N as the whole price ("You may collect evidence 10 rather than 
 
 "<Spells> you cast from your hand gain evoke {cost} as you cast them" (Ashling, the Limitless; #5428, CR 702.74a) is `EvokeForSpellsYouCastFromHand("{4}", "Elemental permanent spells", game.PermissionFilter{PermanentOnly: true, CreatureType: "Elemental"})` in `effects/granted_evoke.go`. Its key, `granted-evoke` (`game.GrantedAltCostEvoke`), is with granted warp the one granted offer that carries a clause for the permanent the spell becomes: the entry hook reads evoke's sacrifice off the key, so the permanent is sacrificed even if the grantor has left (CR 610.5), and a copy of the spell becomes a token that is sacrificed too. A card that asks "if its evoke cost was paid" reads `effects.PaidEvoke(key)`, never `key == "evoke"`.
 
+"Each creature spell you cast with mana value N or greater has blitz. The blitz cost is equal to its mana cost." (Henzie "Toolbox" Torre; #5667, CR 702.152a) is `BlitzForCreatureSpellsYouCast(4)` in `effects/granted_blitz.go`: a `PricedAtManaCost` offer over creature spells with a floor, `GrantedAlternativeCost.MinManaValue` (the card's mana value before X is announced, so an {X} counts as 0). Its key, `granted-blitz` (`game.GrantedAltCostBlitz`), is the third granted key that carries a clause for the permanent the spell becomes: the entry hook reads blitz's haste, draw and end-step sacrifice off the key, so they happen even if the grantor has left, and a copy of the spell becomes a token that gets them too. "Blitz costs you pay cost {1} less for each time you've cast your commander from the command zone this game" is `BlitzCostsYouPayCostLessForEachCommanderCast()`, a `CostModifiers` entry. A modifier of blitz costs alone uses the predicate `ForItsBlitzCost()`, which reads `game.CostQuery.AltBlitz`: true when the alternative cost the cast claims is a blitz cost, printed or granted, and filled by the one pricer and by the enumerator.
+
 A Room door's grant goes in `Door.GrantedAlternativeCosts`, and `Room` gates it on the door (`GrantedAlternativeCost.ActiveWhen`, #3174). "Once each turn" is `OnceEachTurn`, a limit per source object spent as the spell becomes cast (`TurnTally.GrantedAltCostsClaimed`); "during each of your turns" adds `YourTurnOnly`; "by paying life equal to its mana value" is `LifeEqualToManaValue`, with the offer's mana cost, life and energy left empty (a spell with {X} or no mana cost gets no offer). Warped Space is `PayZeroForASpellFromExileOnceEachTurn()` and Access Maze `PayLifeForASpellFromHandOnceEachOfYourTurns()`:
 
 ```go
@@ -5633,7 +5635,13 @@ control: Add X mana in any combination of colors" is
 `ManaAbilityCost.TapOthers: TapXUntappedForMana("X untapped tokens you control", IsTokenPredicate())`
 (#5447): the activator names any number of them, and the ability's
 `ProducedForPaid` reads the count back as `len(paid.TappedOthers)`
-(`Register` refuses the form without one). The Martyr cycle's "Reveal X black cards from
+(`Register` refuses the form without one). Halo Fountain's "{W}{W},
+{T}, Untap two tapped creatures you control" is the same component
+turned over, `AbilityCost.TapOthers: UntapTapped(2, "two tapped creatures you control", Creature())`
+(#5669, `TapOthersCost.Untap`): only tapped permanents pay, the picks
+ride `tap_ids`, a fixed count on an activated ability only (`Register`
+refuses it anywhere else), and nothing is written to
+`PaidCost.TappedOthers`. The Martyr cycle's "Reveal X black cards from
 your hand" is `RevealX("X black cards", "B")` (#2598, ADR 0020's
 2026-10-08 amendment): the same announced-X count, but the cards are
 only shown, never moved, so the picks ride `reveal_ids` and nothing is
@@ -7862,6 +7870,19 @@ cost" and charges no mana. "That's exactly two colors" is
 colours (a hybrid card is every colour of its symbols), and it composes
 with the other clauses: Niv-Mizzet, Supreme is
 `PermissionFilter{CardInZone: true, InstantOrSorceryOnly: true, ColorCountExactly: 2}`.
+
+**"By sacrificing a [permanent] in addition to paying its other costs"
+(#5670, CR 118.8).** A permission that asks for a sacrifice on top of the
+card's own costs sets an `AltCostKey` of its own (a constant in the card's
+file, an on-disk identity) and one of `SacrificeLandInAddition`
+(Exploration Broodship), `SacrificeNonlandPermanentInAddition` (Into the
+Pit) or `SacrificeCreatureInAddition` (Maestros Ascendancy). The offer
+charges the printed mana cost and one matching permanent the caster
+controls, judged by its types on the battlefield and named in
+`alt_cost_ids`; a caster with none cannot claim it. "Once during each of
+your turns" for a spell of any type is
+`PerType: []string{game.PermissionTypePermanent}` with
+`Timing: game.TimingYourTurnOnly`.
 
 **Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
 is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
@@ -14067,6 +14088,14 @@ ctx.SourcePermanent()                                                           
   `GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(label, Or(Instant(), Sorcery()), Casualty(1))}`
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
+- **Casualty X** ("Casualty X. The copy isn't legendary and has starting loyalty X.", Ob Nixilis, the Adversary, #5668)
+  is `OptionalCosts: []game.AdditionalCost{CasualtyX()}`. The caster may sacrifice any creature with power 0 or greater
+  and X is that creature's power as it last existed; the engine's casualty trigger makes the copy with both exceptions,
+  so declare nothing else. `Register` allows it once, on a card with no other sacrifice among its additional costs, and
+  never as a granted cost. A copy exception that sets a planeswalker's loyalty is `v.SetStartingLoyalty(n)` on the
+  `game.PrintedValues`, never a write to `v.StartingLoyalty`: it marks a 0 as the real number
+  (`Card.StartingLoyaltyKnown`), so the copy enters with no counters instead of the printed loyalty.
+
 - **"As an additional cost to cast <colour> permanent spells, you may pay N life. Those spells cost {C} less to cast
   if you paid life this way. This effect reduces only the amount of <colour> mana you pay."** (the Defiler cycle,
   #5659) is a linked pair, declared side by side: `GrantedOptionalCosts:

@@ -98,6 +98,9 @@ var activatedRowScopes = map[string]rowScope{
 	// count for themselves.
 	"SacrificeOptions": rowPublic, "CrewOptions": rowPublic, "CrewPower": rowPublic, "ReturnOptions": rowPublic,
 	"Waterbend": rowPublic, "TapOthersOptions": rowPublic,
+	// #5669: the untap form of the same clause, and whether the tapped
+	// source may pay it: the printed cost and the battlefield.
+	"TapOthersUntap": rowPublic, "TapOthersFreesSource": rowPublic,
 	// #1600: "Exile a creature you control" — its words, and the
 	// permanents on the battlefield that could pay.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,

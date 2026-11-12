@@ -314,6 +314,8 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	// #5669: the untap form is an activated ability's alone.
+	checkUntapOthersCost(spec)
 	checkCostOpensFlash(spec)
 	checkFlashIf(spec)
 	// #5240: a collect evidence X sized by the targets, before the
@@ -349,6 +351,7 @@ func Register(spec Spec) {
 			refuseOpponentChoice(spec.Name, "a gift's", g.Targets)
 		}
 	}
+	checkCasualtyX(spec)
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
 	for i, oc := range spec.OptionalCosts {
 		// Without the flag the cast path prices it and never offers
