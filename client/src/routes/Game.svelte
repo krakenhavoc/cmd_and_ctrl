@@ -160,7 +160,16 @@
     blockRequest,
     blockSelectionRequest,
     combatSelectionRequest,
+    type EnlistChoice,
   } from "../lib/combatDock";
+  import {
+    CANT_ENLIST_SENTENCE,
+    enlistCandidates,
+    enlistOptions,
+    enlistTaken,
+    isCantEnlistError,
+    withEnlistQuestion,
+  } from "../lib/enlist";
   import {
     NO_BLOCK_PICK,
     blockBoard,
@@ -259,6 +268,7 @@
     bulkAttackRefusal,
     eligibleAt,
     exertChoiceAt,
+    enlistChoiceAt,
     planAttackAll,
     type AttackAllParams,
     type BulkAttackAttempt,
@@ -1636,7 +1646,7 @@
   // re-pointed with no exert question: the server keeps a staged exert
   // across a re-point and never exerts one later in combat.
   type CombatSelection =
-    | { kind: "attacker"; cardID: string; exert?: boolean | null }
+    | { kind: "attacker"; cardID: string; exert?: boolean | null; enlist?: string | null }
     | { kind: "blocker"; cardID: string }
     | null;
   let combatSelection = $state<CombatSelection>(null);
@@ -2002,7 +2012,12 @@
       combatSelection = left.primary;
       return;
     }
-    const sel = selectAttackerFor(cardID, legalActions);
+    // #5658: a creature with someone to enlist opens that question.
+    const sel = withEnlistQuestion(
+      selectAttackerFor(cardID, legalActions),
+      legalActions,
+      enlistTaken(attackStage),
+    );
     if (stageAtSoleTarget(sel)) return;
     // #4326: a second creature joins the selection instead of replacing it.
     if (joinsSelection(current, sel, isAttacking)) {
@@ -2033,6 +2048,12 @@
   function chooseExert(exert: boolean): void {
     if (combatSelection?.kind !== "attacker") return;
     combatSelection = { ...combatSelection, exert };
+    stageAtSoleTarget(combatSelection);
+  }
+  // #5658: the dock's "Attack" / "Enlist <creature>" answer ("" is none).
+  function chooseEnlist(enlist: string): void {
+    if (combatSelection?.kind !== "attacker") return;
+    combatSelection = { ...combatSelection, enlist };
     stageAtSoleTarget(combatSelection);
   }
   // #3898: blockers are declared on the board (lib/blockPick.ts): click
@@ -2253,7 +2274,7 @@
     // exerted among the attackers, "Attack with all" opens the picker
     // so the player sees its Exert toggles, rather than sending a
     // declaration that answers "no" for them.
-    if (exertChoiceAt(attackPlan, defenderSeatID)) {
+    if (exertChoiceAt(attackPlan, defenderSeatID) || enlistChoiceAt(attackPlan, defenderSeatID)) {
       openAttackPicker(defenderSeatID);
       return;
     }
@@ -2375,6 +2396,7 @@
     lockedSources: string[],
     exertIDs: string[] = [],
     phyrexianLife = 0,
+    enlist: Record<string, string> = {},
   ): void {
     const defenderSeatID = attackPickerDefenderID;
     const keepsStage = attackPickerGroup !== null;
@@ -2387,6 +2409,8 @@
       lockedSources,
       // ADR 0130 §7: the rows whose Exert toggle the player turned on.
       exert: exertIDs,
+      // #5658: the creature each row enlists.
+      enlist,
       // #4198: the Phyrexian symbols of the tax paid with life.
       phyrexianLife,
     });
@@ -2414,7 +2438,9 @@
     if (!canDeclareAttackers) return;
     // ADR 0130 §7: a group with a member that may be exerted is asked
     // about in the picker, like "Attack with all".
-    if (attackerIDs.some((id) => attackPlan.exertable.includes(id))) {
+    if (
+      attackerIDs.some((id) => attackPlan.exertable.includes(id) || id in attackPlan.enlistable)
+    ) {
       openAttackPicker(defenderSeatID, attackerIDs);
       return;
     }
@@ -2832,6 +2858,17 @@
       blockNote,
     );
   });
+  // #5658: the selected attacker's enlist question, or null.
+  const combatSelectionEnlist = $derived.by((): EnlistChoice | null => {
+    const sel = combatSelection;
+    if (sel?.kind !== "attacker" || sel.enlist === undefined) return null;
+    const candidates = enlistCandidates(sel.cardID, legalActions, enlistTaken(attackStage));
+    return {
+      chosen: sel.enlist,
+      options: enlistOptions(candidates, view?.battlefield.cards),
+      onChoose: chooseEnlist,
+    };
+  });
   // The two-click combat flow's hint, with Cancel (and Escape).
   const selectionDockRequest = $derived(
     combatSelection && !mulligansOpen
@@ -2849,7 +2886,11 @@
           // can join.
           combatSelection.kind === "attacker" &&
             combatSelection.exert === undefined &&
+            combatSelection.enlist === undefined &&
             !isAttacking(combatSelection.cardID),
+          // #5658: "Attack" / "Enlist <creature>" for a creature with
+          // someone to enlist as it attacks.
+          combatSelectionEnlist,
         )
       : null,
   );
@@ -3704,6 +3745,9 @@
                   {:else if isCantExertError($lastError.message)}
                     <!-- ADR 0130: the server's ErrCantExert, said plainly. -->
                     {CANT_EXERT_SENTENCE}
+                  {:else if isCantEnlistError($lastError.message)}
+                    <!-- #5658: the server's ErrCantEnlist, said plainly. -->
+                    {CANT_ENLIST_SENTENCE}
                   {:else}
                     {$lastError.message}
                   {/if}

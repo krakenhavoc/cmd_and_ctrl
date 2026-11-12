@@ -81,6 +81,8 @@ const LOG_TONE: Record<LogKind, string> = {
   sacrifice: "tone-bad",
   // ADR 0130: an exert is part of an attack declaration.
   exert: "tone-combat",
+  // #5658: so is an enlist.
+  enlist: "tone-combat",
   eliminated: "tone-bad",
   // ADR 0057: the end of the game is the spine of the log, not a
   // whisper; a prevented win is a swing that didn't happen.

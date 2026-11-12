@@ -26,10 +26,12 @@ import {
   attackAllTaxLabel,
   attackTaxOn,
   eligibleAt,
+  enlistChoiceAt,
   exertChoiceAt,
   planAttackAll,
   seatLabel,
 } from "./attackAll";
+import { enlistCandidates, enlistOptionLabel, enlistOptions } from "./enlist";
 import { attackLifeAsks, attackLifeSymbols, clampAttackLife } from "./attackLife";
 import { L } from "./labels";
 import { grantedFromLabel, isBorrowedRow } from "./abilityRef";
@@ -1935,12 +1937,19 @@ function combatItems(
   if (defenders.length > 0) {
     // The defenders, as one declaration each. `exert` sends ADR 0130's
     // choice to exert the attacker as it attacks.
-    const targetItems = (exert: boolean): MenuItem[] => {
-      const prefix = exert ? "combat-attack-exert" : "combat-attack";
+    // `enlist` (#5658) sends the creature the attacker enlists.
+    const targetItems = (exert: boolean, enlist = ""): MenuItem[] => {
+      const prefix = enlist
+        ? `combat-attack-enlist-${enlist}`
+        : exert
+          ? "combat-attack-exert"
+          : "combat-attack";
       const params = (target: string) =>
-        exert
-          ? { attacker: card.instance_id, target, auto_tap: true, exert: true }
-          : { attacker: card.instance_id, target, auto_tap: true };
+        enlist
+          ? { attacker: card.instance_id, target, auto_tap: true, enlist }
+          : exert
+            ? { attacker: card.instance_id, target, auto_tap: true, exert: true }
+            : { attacker: card.instance_id, target, auto_tap: true };
       // #4197: in the declare attackers step, a defender the server would
       // refuse for this creature (Pramikon's or Teyo's direction, "can't
       // attack its owner", a "can't attack you" grant) is shown but not
@@ -2040,6 +2049,19 @@ function combatItems(
         items: targetItems(true),
       });
     }
+    // #5658: and one row for each creature it may enlist as it attacks
+    // (CR 702.154a), for a creature the server lists candidates for.
+    if (!card.attacking_target) {
+      const candidates = enlistCandidates(card.instance_id, gate);
+      for (const o of enlistOptions(candidates, view.battlefield?.cards)) {
+        items.push({
+          id: `combat-attack-enlist-${o.id}`,
+          label: L.declareAttackerAndEnlist(enlistOptionLabel(o)),
+          hint: "taps it and adds its power to this creature's until end of turn",
+          items: targetItems(false, o.id),
+        });
+      }
+    }
     // #318: the board-wide sibling of the row above. Same "pick a
     // defender" submenu shape, so the bulk affordance reads as a
     // wider version of the per-card one rather than a new idea — and
@@ -2073,6 +2095,17 @@ function combatItems(
                 id: `combat-attack-all-${s.id}`,
                 label: seatLabel(s),
                 hint: "a creature here may be exerted — choose in the dock's Attack with all",
+                disabled: true,
+              },
+            ];
+          }
+          // #5658: likewise a creature that may enlist another.
+          if (enlistChoiceAt(plan, s.id)) {
+            return [
+              {
+                id: `combat-attack-all-${s.id}`,
+                label: seatLabel(s),
+                hint: "a creature here may enlist another — choose in the dock's Attack with all",
                 disabled: true,
               },
             ];

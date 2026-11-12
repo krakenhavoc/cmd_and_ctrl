@@ -94,10 +94,10 @@ var enlistPumpBody = BodyRef{key: enlistPumpKey}
 
 func init() {
 	DelayedBody(enlistPumpKey, func(g *Game, item *StackItem, p EffectParams) error {
-		if len(p.Objects) != 2 {
-			return nil
+		if len(p.Objects) == 2 {
+			g.resolveEnlistLocked(item, p.Objects[0], p.Objects[1])
 		}
-		return g.resolveEnlistLocked(item, p.Objects[0], p.Objects[1])
+		return nil
 	})
 }
 
@@ -136,22 +136,21 @@ var enlistTrigger = TriggeredAbility{
 // resolves (CR 608.2h).
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) resolveEnlistLocked(item *StackItem, self, enlisted ObjectRef) error {
+func (g *Game) resolveEnlistLocked(item *StackItem, self, enlisted ObjectRef) {
 	if item == nil || self.ID == uuid.Nil {
-		return nil
+		return
 	}
 	info, ok := g.PermanentForEffect(enlisted)
 	if !ok || info.Power <= 0 {
-		return nil
+		return
 	}
 	c := findBattlefieldCard(g, self.ID)
 	if c == nil || c.ObjectEpoch != self.Epoch {
-		return nil
+		return
 	}
 	g.RegisterScopedEffectForEffect(item.SourceCardID,
 		[]AffectedObject{PinObject(c.InstanceID, c.EnteredBattlefieldAt)},
 		[]Mod{ModifyPTMod(info.Power, 0)}, g.UntilEndOfTurnDuration(), enlistLabel)
-	return nil
 }
 
 // canEnlistLocked reports whether `attacker` may enlist a creature as

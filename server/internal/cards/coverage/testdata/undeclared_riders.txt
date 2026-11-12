@@ -48,6 +48,7 @@ Gollum, Patient Plotter | ring | on a triggered row that is not the card's enter
 Great Fierce Bee | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Greedy Freebooter | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Gríma Wormtongue | amass | the text makes it conditional or optional
+Guardian of New Benalia | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Hawkeye, Bowslinger | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Hermes, Overseer of Elpis | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Hidden Stockpile | scry | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)

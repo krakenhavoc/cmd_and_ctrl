@@ -3452,6 +3452,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"melee"` | Melee (CR 702.121) — #4722, a TRIGGERED keyword: one attack trigger per instance (`game/melee.go`) gives the creature +1/+1 until end of turn for each opponent you attacked with a creature this combat, counted as the trigger resolves (`Game.OpponentsAttackedThisCombat`: attacks on a planeswalker or battle count no player). Cumulative (CR 702.121b), so grant it through `KeywordGrant` / `TribalKeywordGrant` / `game.AppendKeywordAbility` (Titania, Proud Pummeler). A creature whose only text is melee needs no card file. Never write the pump by hand |
+| `"enlist"` | Enlist (CR 702.154) — #5658, an optional cost to attack and a TRIGGERED keyword (`game/enlist.go`). The declaration names the creature the attacker enlists (`declare_attacker`'s `enlist`); the lock-in taps it and emits `game.EventEnlist`, and the linked trigger adds its power to the attacker until end of turn, read as it resolves. Not cumulative: an attacker enlists at most one creature. Print it with `PrintedKeywords: []string{game.KeywordEnlist}`; see [Enlist](#enlist-5658-cr-702154). |
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)). A permanent that GIVES it to spells declares `Spec.SplitSecondGrants`, read live: Samut's `InstantAndSorcerySpellsYouControlHaveSplitSecond()`, or `EachSpellYouCastHasSplitSecondIfManaFrom(kinds, label)` for "each spell you cast has split second if mana from a … was spent to cast it" (ADR 0007 amendments 2026-10-14 and 2026-10-30) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
@@ -3493,7 +3494,7 @@ Sword and Dwalin, Weaponmaster are the cards.
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
 carries a parameter a bare token cannot hold or triggers from the
-stack; a token here with an engine-side trigger (prowess, evolve, exalted, decayed, melee, undying, persist) when it lives
+stack; a token here with an engine-side trigger (prowess, evolve, exalted, decayed, melee, enlist, undying, persist) when it lives
 on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
@@ -11515,6 +11516,39 @@ Triggered: []game.TriggeredAbility{
   any-player row). The auto-tapper never pays an exert mana row: the
   player activates it from the mana menu, and a plain "{T}: Add …" row
   on the same permanent is still planned.
+
+### Enlist (#5658, CR 702.154)
+
+Enlist is an engine keyword. A card prints it and nothing else:
+
+```go
+PrintedKeywords: []string{game.KeywordEnlist},
+```
+
+- **The cost.** "As this creature attacks, you may tap up to one untapped
+  creature you control that you didn't choose to attack with" is an
+  optional cost to attack (CR 702.154b, 508.1g), chosen with the
+  declaration like an exert: `declare_attacker` and each
+  `declare_attackers` entry take `enlist`, the creature to tap. The engine
+  refuses a creature the rules don't allow (`game.ErrCantEnlist`: tapped,
+  attacking, not yours, the attacker itself, summoning sick without haste,
+  or already enlisted), stages the choice and pays it as the declaration
+  locks in. A card file never taps the creature itself.
+- **The linked trigger** (CR 607.2h) is derived from the keyword: the
+  attacker gets +X/+0 until end of turn, where X is the enlisted
+  creature's power as the trigger resolves (its last-known power if it
+  has left, CR 608.2h). Do not write this trigger on the card.
+- **`WheneverThisEnlists(label, effect)`** is "Whenever this creature
+  enlists a creature" (Guardian of New Benalia). It watches
+  `game.EventEnlist`, whose `CardID` is the attacker and `Target` the
+  creature tapped (CR 702.154c), and goes on the stack with the linked
+  trigger and the attack triggers. Build a one-sentence effect from `Do`
+  primitives as usual.
+- **One creature per attacker.** CR 702.154d lets each instance of enlist
+  enlist its own creature. No card prints two or grants enlist, so the
+  token is not cumulative. A card that grants enlist needs that first.
+- **Bots** see one twin attack move per creature that may be enlisted
+  and the heuristic never picks one yet.
 
 ### When NOT to add a catalog entry
 
