@@ -14617,3 +14617,19 @@ Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
 architectural decision and sandbox simplification the catalog was built
 around. Start there.
 
+
+### Domain: the basic land type count (#5666)
+
+"Domain" is an ability word (CR 207.2c), and the count behind it is the number of basic land types (CR 305.6) among
+lands you control, each counted once, read from the layered lands. One count in `cards/effects/domain.go`, three shapes:
+
+```go
+SelfCostModifiers: []game.CostModifier{DomainCostReduction("Domain — This spell costs {1} less to cast for each basic land type among lands you control")},
+CostModifiers:     []game.CostModifier{DomainCostReduction("This ability costs {1} less to activate for each basic land type among lands you control.")},
+Static:            []game.StaticAbility{DomainPT("Domain — … power and toughness are each equal to twice …", 2, 2)},
+```
+
+`DomainPT(label, powerPer, toughnessPer)` is a layer 7a characteristic-defining ability (a zero factor leaves that stat
+alone). A count read as an ability resolves calls `DomainCount(g, controller)` directly (Sunbathing Rootwalla). Never write a
+private copy. Cards: Leyline Binding, Fblthp, Knows the Way, Jodah's Codex, Llanowar Greenwidow, Radha's Firebrand,
+Yavimaya Sojourner, Sunbathing Rootwalla, Territorial Maro, Nishoba Brawler.
