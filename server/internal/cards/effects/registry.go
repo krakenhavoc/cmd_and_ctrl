@@ -328,6 +328,8 @@ func Register(spec Spec) {
 	checkOptionalBehold(spec)
 	// #5193: an optional "you may collect evidence N".
 	checkOptionalCollectEvidence(spec)
+	// #5657: offering's reduction by the sacrificed permanent's mana cost.
+	checkOffering(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
@@ -1912,6 +1914,33 @@ func checkEmerge(card string, ac game.AlternativeCost) {
 	}
 	if ac.Sacrifice == nil || game.SacrificeCostCount(ac.Sacrifice) != 1 || game.SacrificeCostVariable(ac.Sacrifice) {
 		panic(fmt.Sprintf("effects.Register: %q offers %q reduced by the sacrificed permanent's mana value without a sacrifice of exactly one permanent (CR 702.119a)", card, ac.Key))
+	}
+}
+
+// checkOffering holds ReducedBySacrificedManaCost (#5657) to the shape
+// CR 702.48a prints: an optional cost that sacrifices exactly one
+// permanent. The pricer reads the permanent that cost's clause names, so
+// the flag on a cost that sacrifices nothing, or on the mandatory slot
+// or an either/or branch (which the pricer does not read), would price a
+// discount the card does not print, or none where it prints one.
+func checkOffering(spec Spec) {
+	if ac := spec.AdditionalCost; ac != nil {
+		if ac.ReducedBySacrificedManaCost {
+			panic(fmt.Sprintf("effects.Register: %q reduces its mandatory additional cost by the sacrificed permanent's mana cost — offering is an optional cost (CR 702.48a); build it with Offering", spec.Name))
+		}
+		for _, b := range ac.Either {
+			if b.ReducedBySacrificedManaCost {
+				panic(fmt.Sprintf("effects.Register: %q reduces an either/or branch by the sacrificed permanent's mana cost — offering is an optional cost (CR 702.48a); build it with Offering", spec.Name))
+			}
+		}
+	}
+	for _, oc := range spec.OptionalCosts {
+		if !oc.ReducedBySacrificedManaCost {
+			continue
+		}
+		if oc.Sacrifice == nil || game.SacrificeCostCount(oc.Sacrifice) != 1 || game.SacrificeCostVariable(oc.Sacrifice) {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q is reduced by the sacrificed permanent's mana cost without a sacrifice of exactly one permanent (CR 702.48a) — build it with Offering", spec.Name, oc.Key))
+		}
 	}
 }
 

@@ -252,6 +252,22 @@ type AdditionalCost struct {
 	// still closes it (CR 101.2). False is every cost written before this.
 	AsThoughFlash bool
 
+	// ReducedBySacrificedManaCost is offering's price (CR 702.48a, c):
+	// "If you chose to pay the additional cost, this spell's total cost
+	// is reduced by the sacrificed permanent's mana cost." The permanent
+	// is the one this cost's Sacrifice clause names in
+	// CastSpellParams.SacrificeIDs, read while it is still on the
+	// battlefield (CR 601.2b chooses it, 601.2f totals the cost, 601.2h
+	// sacrifices it), and its mana cost comes off symbol by symbol:
+	// generic off generic, a coloured or colourless symbol off mana of
+	// the same type, and what finds none off generic (offering.go).
+	//
+	// effects.Register holds it to an optional cost that sacrifices
+	// exactly one permanent, which is what "a [quality] permanent"
+	// prints. Data, not a predicate, so it adds no route from Game to a
+	// func. False is every cost written before this.
+	ReducedBySacrificedManaCost bool
+
 	// Blight is "blight N" paid as a cost (CR 701.68a): put N -1/-1
 	// counters on a creature you control. The caster names the one
 	// creature in CastSpellParams.BlightIDs. The counters go through

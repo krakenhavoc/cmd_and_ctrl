@@ -13696,6 +13696,25 @@ too) or a flat `CastKindAsThoughFlash` (stronger than printed). Word order varie
 may cast this spell as though it had flash", the same clause. `TestNoFlashIfClauseIsAnAlternativeCost` holds every card
 that prints it to one of these shapes.
 
+### Offering (#5657)
+
+"[Quality] offering" (CR 702.48) is ONE optional additional cost, never an alternative cost and never a `FlashIf`:
+
+```go
+OptionalCosts: []game.AdditionalCost{Offering("artifact", Artifact())}, // Blast-Furnace Hellkite: "Artifact offering"
+```
+
+`Offering(quality, preds...)` (`cards/effects/offering.go`) is an optional `Sacrifice` of one permanent matching the
+predicates, with `AsThoughFlash` (the cast that announces it may be made any time its controller could cast an instant,
+CR 601.3c) and `ReducedBySacrificedManaCost` (`game/offering.go`): the pricer takes the named permanent's mana cost off
+the total cost symbol by symbol, a coloured or colourless symbol off mana of the same type and the excess off generic
+(CR 702.48c), after the commander tax and every increase and never below {0}. A token, a face-down permanent and a
+transformed back face have no mana cost and reduce nothing; an {X} in the cost is 0. The permanent rides `sacrifice_ids`
+with the offer's index in `optional_costs`, so the picker, the auto-tap preview and the bot enumerator (which prices
+each payment on its own and offers only the affordable ones) need nothing per card. `Register` refuses the flag anywhere
+but an optional cost that sacrifices exactly one permanent. Do not build it from `Emerge`: emerge is an alternative
+cost, reduces generic mana by a mana VALUE and has no timing half.
+
 ### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
 
 Five shapes that used to be caveats; the engine pieces are in the 2026-10-13 amendments of
