@@ -1008,6 +1008,16 @@ type Client struct {
 	feed       Feed
 	feedDetach func()
 	feedGone   bool
+
+	// feedNext is the newest feed frame the writer has not taken, and
+	// feedReady tells the writer there is one (#5698). A feed's frames
+	// are its state, so a newer one replaces one not yet written instead
+	// of queueing behind it in send: however far the writer falls
+	// behind, a feed cannot fill the send buffer and drop its socket.
+	// feedReady is nil on a game socket. feedNext is guarded by feedMu.
+	feedMu    sync.Mutex
+	feedNext  *feedFrame
+	feedReady chan struct{}
 }
 
 // role is the connection's role label (ADR 0123 §3): seat, spectator
@@ -1944,7 +1954,19 @@ func (c *Client) writePump() {
 				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
+			// A feed's newest state goes ahead of a reply queued in
+			// send, so the feed's first frame is the socket's first.
+			if err := c.writeFeed(); err != nil {
+				c.log.Warn("ws write error", "err", err)
+				return
+			}
+			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				c.log.Warn("ws write error", "err", err)
+				return
+			}
+		case <-c.feedReady:
+			if err := c.writeFeed(); err != nil {
 				c.log.Warn("ws write error", "err", err)
 				return
 			}

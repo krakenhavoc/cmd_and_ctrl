@@ -16,8 +16,9 @@ import (
 // A feed is something other than a game that a socket watches: the
 // draft (ADR 0222 §5, #5438). A feed socket is a hub Client like any
 // other, so it shares the origin check, the connection cap, the pumps,
-// the send buffer, ping and pong, revocation (EvictUserSessions) and
-// Shutdown. It is bound to no game: every game frame kind is refused on
+// the send buffer (for its replies: the feed's own frames are
+// coalesced, sendFeed), ping and pong, revocation (EvictUserSessions)
+// and Shutdown. It is bound to no game: every game frame kind is refused on
 // it, and no game broadcast reaches it.
 
 // Feed is one end of a feed, already bound to whoever the socket is
@@ -36,7 +37,11 @@ type Feed interface {
 // FeedSink is the socket as a feed sees it. Both methods are safe to
 // call from any goroutine and never block.
 type FeedSink interface {
-	// SendFrame queues one server frame of the given kind.
+	// SendFrame sends the feed's state as one server frame of the given
+	// kind. A feed's frames are its state, so they are not queued: one
+	// not yet written when the next is sent is replaced by it, and a
+	// slow client sees fewer frames instead of being disconnected
+	// (#5698).
 	SendFrame(kind protocol.Kind, payload any)
 	// Close ends the socket with a normal closure and the given reason;
 	// the client does not redial.
@@ -80,15 +85,16 @@ func (h *Hub) ServeFeed(w http.ResponseWriter, r *http.Request, feed Feed, b Fee
 		return
 	}
 	client := &Client{
-		hub:      h,
-		conn:     conn,
-		send:     make(chan []byte, 16),
-		log:      h.log.With("remote", clientip.FromRequest(r), "feed", b.Label),
-		userID:   b.UserID,
-		issuedAt: b.IssuedAt,
-		feed:     feed,
+		hub:       h,
+		conn:      conn,
+		send:      make(chan []byte, 16),
+		log:       h.log.With("remote", clientip.FromRequest(r), "feed", b.Label),
+		userID:    b.UserID,
+		issuedAt:  b.IssuedAt,
+		feed:      feed,
+		feedReady: make(chan struct{}, 1),
 	}
-	// Attach stages the first frame on the fresh send channel before
+	// Attach stages the first frame for the writer (sendFeed) before
 	// the client is visible to anything else, as ServeWS pre-stages a
 	// snapshot.
 	detach, err := feed.Attach(feedSink{client})
@@ -153,18 +159,56 @@ func (s feedSink) Close(reason string) {
 	_ = s.c.conn.Close()
 }
 
-// sendFeed queues a feed frame. A feed sends from its own goroutines,
-// which can race the socket's teardown, so unlike sendRaw it checks
-// under the hub's lock that the send channel is still open: unregister
-// closes it under the same lock. Before the client is admitted (the
-// first frame, staged by Attach) nothing else can reach the channel.
+// feedFrame is a feed frame waiting for the writer.
+type feedFrame struct {
+	kind protocol.Kind
+	raw  []byte
+}
+
+// sendFeed stages a feed frame for the writer, replacing one it has not
+// taken yet (#5698). It does not go through send, so a burst of feed
+// frames never fills the send buffer. A feed sends from its own
+// goroutines, which can race the socket's teardown; once the socket is
+// gone (feedGone, set by unregister under the hub's lock) the frame is
+// dropped. Before the client is admitted (the first frame, staged by
+// Attach) the writer has not started, and the frame waits for it.
 func (c *Client) sendFeed(kind protocol.Kind, raw []byte) {
 	c.hub.mu.RLock()
-	defer c.hub.mu.RUnlock()
-	if c.feedGone {
+	gone := c.feedGone
+	c.hub.mu.RUnlock()
+	if gone {
 		return
 	}
-	c.sendRaw(kind, raw)
+	c.feedMu.Lock()
+	c.feedNext = &feedFrame{kind: kind, raw: raw}
+	c.feedMu.Unlock()
+	select {
+	case c.feedReady <- struct{}{}:
+	default:
+		// The writer has been told already, and takes the newest frame.
+	}
+}
+
+// writeFeed writes the newest staged feed frame, if there is one. The
+// write pump alone calls it.
+func (c *Client) writeFeed() error {
+	if c.feedReady == nil {
+		return nil
+	}
+	c.feedMu.Lock()
+	f := c.feedNext
+	c.feedNext = nil
+	c.feedMu.Unlock()
+	if f == nil {
+		return nil
+	}
+	_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+	if err := c.conn.WriteMessage(websocket.TextMessage, f.raw); err != nil {
+		return err
+	}
+	metrics.WSFrame(metrics.FrameOut, string(f.kind))
+	metrics.WSSentBytes(string(f.kind), len(f.raw))
+	return nil
 }
 
 // handleFeedFrame routes a client frame on a feed socket.
