@@ -283,6 +283,15 @@ Section 5 and the build call of slice 6 say the build runs on a timer, 15 minute
 - **Tests** inject the clock (`fakeTime`), so none of this sleeps.
 - **Not built here:** a way for the host to end an untimed build by hand, and a warning to the others of who is still building. The build screen says the rounds begin when everyone has submitted.
 
+### Card ratings from 17Lands' public datasets (amendment 2026-11-12, #5708)
+
+The live endpoint of the amendment above returns a few hundred games for each older set, so on 2026-11-11 only `trk` and `fra` had files. 17Lands also publishes, per set and format, every game and every pick its users logged, as public datasets (`17lands-public.s3.amazonaws.com/analysis_data/`, the same credit applies). The files for older sets are built from those.
+
+- **Same file, same bars.** `scripts/draft-ratings-refresh.sh --from-dataset` downloads a set's `game_data` and `draft_data` files and `server/cmd/draftdataset` reads them as a stream into rows of the live endpoint's shape; the script's one builder then applies the 500-game and 40-card bars and writes the file it always wrote. `start` is the day of the set's first draft in the dataset. The downloads (a few hundred MB a set) are deleted once read.
+- **How the fields are counted.** GIH WR: games where the card was in the opening hand or drawn (tutored copies are not counted), and the share of them won. Average pick: the mean 1-based pick number a drafter took the card at. Average seen: per pack a drafter held at picks 1 to 8, the 1-based pick at which the card was last in it, which is the pick plus 8 when the pack came back with the card still in it (eight drafters a table). Basic lands are left out, as the live endpoint leaves them out. On `fra`, which has both, the dataset has about 40 times the games of the live file, and its GIH WR for the live file's 43 cards averages 0.7 points higher (standard deviation 1.8 points).
+- **Names.** Rows keep 17Lands' spelling and the server resolves them at start, as before. The datasets lose a letter outside Latin-1 ("Bespoke B?" for "Bespoke Bō"); given the Scryfall dump, the tool puts the real name back when exactly one dump name fits.
+- **Sets.** On 2026-11-12 these draftable sets have a PremierDraft dataset, with the cards over the bar: `blb` 265, `otj` 362, `mkm` 296, `lci` 282, `woe` 294, `dsk` 271, `fdn` 277, `dft` 276, `tdm` 273, `fin` 341, `tla` 279, `tmt` 186, `hob` 179, `msh` 273, `sos` 318. Star Trek (`trk`) has no dataset yet and keeps its live file until the live endpoint is refreshed; Marvel's Spider-Man (`spm`) has neither.
+
 ## Consequences
 
 - The catalog's "Full" now carries more weight: a draftable set is a promise that every card in its packs works unaided.

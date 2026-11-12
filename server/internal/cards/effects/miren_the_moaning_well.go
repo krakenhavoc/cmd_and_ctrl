@@ -29,17 +29,7 @@ func init() {
 			Label:   "{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.",
 			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost:    Plus(ManaCost("{3}"), TapCost(), SacrificeACreature()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				fed, ok := b17PermanentSacrificedToPay(g, item)
-				if !ok {
-					return nil
-				}
-				toughness := departedCreatureToughness(g, fed)
-				if toughness <= 0 {
-					return nil
-				}
-				return GainLife{Player: item.Controller, Amount: toughness}.Apply(NewContext(g, item))
-			},
+			Effect:  gainLifeEqualToSacrificedToughness,
 		}},
 	})
 }

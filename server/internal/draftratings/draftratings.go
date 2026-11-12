@@ -12,9 +12,11 @@
 // (client/src/lib/labels.ts). Nothing here is gated or sold, and no
 // person's data is in a file: a row is a card name and four aggregates.
 //
-// scripts/draft-ratings-refresh.sh writes data/<set>.json. It keeps a
-// card only when 17Lands has a win rate for it (500 or more games in
-// hand), and a set only when that leaves 40 cards, so a set 17Lands
+// scripts/draft-ratings-refresh.sh writes data/<set>.json, from 17Lands'
+// live card ratings or, with --from-dataset, from its public game and
+// draft datasets (cmd/draftdataset, #5708), the same fields either way.
+// It keeps a card only when 17Lands has a win rate for it (500 or more
+// games in hand), and a set only when that leaves 40 cards, so a set 17Lands
 // does not cover, or covers thinly, has no file and the draft shows the
 // in-house rating (draft.Rater) for it. The files are embedded in the
 // binary; a refresh is a commit.

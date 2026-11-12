@@ -469,4 +469,7 @@ var tokenTable = map[string]game.Card{
 	// #5647: Saint Traft and Rem Karolus, Invasion of Segovia.
 	"1/1 blue Spirit with flying":  {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Kraken with trample": {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"trample"}},
+
+	// #5637: Fallen Empires' Citizen (Icatian Town).
+	"1/1 white Citizen": {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"W"}},
 }
