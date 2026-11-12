@@ -162,8 +162,8 @@ func TestKarnsSylexStopsAnAlternativeCostsLife(t *testing.T) {
 	}
 }
 
-// "Pay X life" (Toxic Deluge): X = 0 is no payment and stays legal; any
-// X above it is refused.
+// "Pay X life" (Toxic Deluge): X = 0 stays legal (CR 119.4b); any X
+// above it is refused.
 func TestKarnsSylexHoldsPayXLifeToZero(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

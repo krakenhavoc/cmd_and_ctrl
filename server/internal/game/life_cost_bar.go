@@ -29,8 +29,8 @@ package game
 // under K'rrik), and every payment that is neither a cast nor an
 // activation: a ward cost, a "pay 2 life unless" at resolution, a land
 // entering ("you may pay 2 life"), an attack tax, a special action.
-// Paying 0 life is no payment (CR 119.4 lets any player pay 0), so "pay
-// X life" at X = 0 stays legal.
+// Paying 0 life is always possible (CR 119.4b: "even if an effect says
+// players can't pay life"), so "pay X life" at X = 0 stays legal.
 //
 // ONE READER, asked beside CanPayLifeLocked at each announce gate, by
 // the legal-move enumerator and by the view, so a payment the engine
