@@ -8790,6 +8790,7 @@ devoid either.
 | "Whenever a spell or ability you control exiles one or more permanents" | `EventZoneMove` | `ev.OldZone == ZoneBattlefield && game.ExiledBySpellOrAbilityOf(ev, source.Controller)` plus `OncePerBatch` (Ranar the Ever-Watchful, #1320). Reads `ev.Cause` / `ev.CauseController`, which a routed move fills from the resolving item; a cost, a special action or a manual move names its own cause and never matches |
 | "Whenever ~ becomes the target of a spell or ability" | `EventBecomesTarget` | `ev.CardID == source.InstanceID` — `CardID` repeats `Target` when the target is a card and is `uuid.Nil` for a player, so reading `CardID` is what keeps a player-targeting spell from matching. `ev.Actor` is the targeting player, `ev.Source` its source |
 | "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot** (CR 115.3), at **announce** (CR 601.2c), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
+| "Whenever a creature you control becomes the target of a backup ability" | `EventBecomesTarget` | `creatureYouControlBecameTargetOfABackupAbility` (Mirror-Shield Hoplite, #5651): `ev.TargeterKeyword == game.KeywordBackup` and the target is a creature the source's controller controls. `Event.TargeterKeyword` is the `TriggeredAbility.Keyword` of the catalog row the targeting item names, read as the event is emitted; `effects.Backup` stamps `game.KeywordBackup`. A copy of the ability names the same row, so it reads the same (CR 707.10). Empty for a spell, an activated ability and a hand-written trigger. A new "becomes the target of a [keyword] ability" card needs the keyword's constructor to stamp `Keyword`, nothing else. Copy it with `copyTheTriggeringAbility`; the copy keeps the backup creature as its source (CR 707.10b), so it grants that creature's abilities |
 | "Whenever a triggered ability … triggers" / "is put onto the stack" | `EventTriggerPlaced` | Read the placed item with `g.StackItemForEffect(ev.StackItemID)` and filter on its own triggering event, `item.Trigger.Event` and `item.Trigger.Object` (Aboleth Spawn, #4092). Emitted once per triggered ability after the whole batch is on the stack, so the watcher goes on ABOVE what it watched. The drain only emits it while a permanent on the battlefield watches the kind; a watcher in another zone or on an emblem has to join `battlefieldWatchesLocked` first. Copy it with `copyTheTriggeringAbility` |
 | "Whenever a spell or ability is put onto the stack" | `EventCast` + `EventSpellCopied` + `EventActivateAbility` + `EventTriggerPlaced` + `EventAbilityCopied` on one ability | The item id is `ev.CardID` for the first two and `ev.StackItemID` for the other three (`putOntoTheStackItem`, Grip of Chaos, #4050). A copy of an ability emits only `EventAbilityCopied` (CR 707.10a), gated on a battlefield watcher like `EventTriggerPlaced`. "If it has a single target" is `StackItemTargetCountForEffect == 1`, checked in `AppliesTo` and again in the effect |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
@@ -10949,7 +10950,13 @@ tail runs against the asking item rebuilt from data; carry what it reads
 (a target, X) on the tail, so a table waiting on the colour is a restore
 point (#4253). "Protection from the color of your choice" is the shared
 `chooseProtectionColorFor`; "prevent damage from sources of the color of
-your choice" the shared `preventDamageFromChosenColor`. "Each player
+your choice" the shared `preventDamageFromChosenColor`. "Protection from
+colorless or from the color of your choice" (Angelic Intervention, #5650)
+is `ChooseColorOrColorlessTail`, the same call with one more answer: the
+tail's Word is then `game.ColorlessChoice` (`"C"`), and
+`game.ProtectionFromColorOrColorless(word)` turns either answer into the
+token. Colorless is not a color (CR 105.4), so no other prompt offers it
+and `ProtectionFromColor` still mints nothing for it. "Each player
 chooses a color" is a chain: each answer's tail asks the next player in
 APNAP order (Selective Obliteration), the players riding its Carry and
 the answers so far its Words, so an undo cannot leak an answer from an
@@ -13915,6 +13922,15 @@ ctx.SourcePermanent()                                                           
 - **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
+- **"The next spell you cast this turn has convoke"** is `Do(NextSpellHasConvoke("<card name>"))` (Wand of the
+  Worldsoul, Flockchaser Phantom): a one-use `game.NextSpellPromise{Convoke: true}`, spent by the next spell cast
+  whether or not a creature was tapped, gone at end of turn. A spell's own tap cost, a promised one and the granted
+  ones are chained, so a spell with improvise that is promised convoke can tap artifacts and creatures (#5647).
+- **"Whenever you cast a spell that has convoke"** is `On(game.EventCast, YouCastASpellThatHasConvoke, label, effect)`
+  (Joyful Stormsculptor, Kasla, the Broken Halo, Saint Traft and Rem Karolus). It reads `StackItem.HadConvoke`
+  through `Game.SpellHadConvokeForEffect`: stamped as the spell becomes cast (CR 601.2i), true when convoke is
+  printed on the spell, given by a permanent (`SpellsYouCastHaveConvoke`) or given by a promise, and true whether or
+  not a creature was tapped (that is `Paid.Convoked`). "Another spell" needs no extra check on a permanent.
 
 ### Pieces from the Wilhelt deck (#3209)
 
@@ -13983,8 +13999,9 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
 ```
 
 - **A static whose condition is "has happened this turn" or "is blocking"** lists the event kinds in `DependsOnEvents`;
-  without it the layer cache is stale until something unrelated bumps it. Only `EventScry`, `EventSurveil`, `EventDealDamage`
-  and `EventBlock` are read; a new kind needs an arm in `layerVersionBump.OnEvent`. Put the keyword in the static, not in
+  without it the layer cache is stale until something unrelated bumps it. Only `EventScry`, `EventSurveil`, `EventDealDamage`,
+  `EventBlock`, `EventDrawCard`, `EventChangeLife`, `EventStepBegan` and `EventAttack` are read; a new kind needs an arm in
+  `layerVersionBump.OnEvent`. Put the keyword in the static, not in
   `PrintedKeywords`, when the static is what removes it (Surveillance Phantasm grants `defender` unless it scried).
 - **`PowerGE` on a spell reads the spell's own characteristic-defining ability**, so a `*/*` creature spell counts as what its
   text says (Spellbreaker Behemoth).
@@ -14000,6 +14017,30 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   placer). Tower Winder landed Full with #3217, The Warring Triad
   with #3845 (mill as a cost), and Transmutation Font with #3940 (a "different names" rule on a sacrifice clause,
   `SacrificeNDifferent`).
+
+
+### Attacking a battle (#5649)
+
+Three printed questions, three reads, all in `cards/effects/attacked_a_battle.go`:
+
+```go
+Triggered: []game.TriggeredAbility{WheneverThisAttacksABattle("Thrashing Frontliner — it gets +1/+1 until end of turn", …)},
+Static:    []game.StaticAbility{SelfKeywordWhileItAttackedABattleThisTurn("indestructible")}, // War Historian
+if isAttackingABattle(g, c) { … }                                                             // Rampaging Geoderm, as the ability resolves
+```
+
+- **"Whenever this creature attacks a battle"** is `WheneverThisAttacksABattle(label, effect)` (the predicate is
+  `ThisAttackedABattle`): the creature was declared as an attacker attacking a battle (CR 508.3a). A creature put onto the
+  battlefield attacking a battle, or reselected onto one, announces no `EventAttack` and triggers nothing (CR 508.4, 508.7a).
+- **"If it's attacking a battle"** is `isAttackingABattle(g, card)`, what the creature is attacking now. Read it as the
+  ability resolves. A creature whose battle was removed from combat is attacking nothing (CR 506.4c).
+- **"As long as it attacked a battle this turn"** is `SelfKeywordWhileItAttackedABattleThisTurn(keyword)`, which reads
+  `Game.AttackedBattleThisTurn(id)`: the turn's attack records, each stamped `AttackRecord.Battle` as the attack is declared.
+  It stays true after combat and after the battle has left, and is per object (CR 400.7). The helper sets
+  `DependsOnEvents: {EventAttack}`; a new static over the same fact must too.
+
+For "attacks a player" keep `attackedPlayer` and for "attacks you or a planeswalker you control" keep
+`attacksYouOrYourPlaneswalker`: an attack on a battle is neither (CR 508.3e).
 
 ### Void and revolt: "left the battlefield this turn" (#2128, #2148)
 
@@ -14057,6 +14098,18 @@ if CastASpellFromHandThisTurn(g, you) { … }              // a resolution check
 `CondNoSpellFromHand` declares `game.FootprintCondNoSpellsCastFromHand`: like Edgar's "if you didn't cast a spell this turn", it can only become false, by a cast, and no step casts. An extra "and" the printed condition adds goes in the trigger's `When` (the `also` arguments) and in an `If` inside the effect, so it is asked both times too (CR 603.4).
 
 Prairie Dog's "until end of turn, if you would put one or more +1/+1 counters on a creature you control, put that many plus one" is `Game.OneMorePlusOneCounterThisTurnForEffect`, a turn-scoped `game.ModOneMorePlusOneCounter` record: Brad Boimler's `ModOneMoreCounter` narrowed to +1/+1 counters that player puts on a creature they control.
+
+### "If you haven't been dealt combat damage since your last turn" (#5652)
+
+`Player.CombatDamagedSinceLastTurn` (`game/since_last_turn.go`) is set as combat damage is dealt to a player and cleared as each of that player's turns ends, so it outlives the per-turn tally. "Your last turn" means what it means for `Player.LastTurnAttacks`: an extra turn is a turn (CR 500.7), a turn not taken clears nothing, and a player who has taken no turn yet is asked of the whole game so far. Damage that was prevented, and damage to a planeswalker or battle the player controls, was not dealt to the player. The readers are in `cards/effects/since_last_turn.go`:
+
+```go
+AtYourUpkeepIfNoCombatDamageSinceYourLastTurn(label, Do(...))          // the printed trigger (Marchesa, Resolute Monarch)
+InterveningIf(CondNoCombatDamageSinceYourLastTurn{}, On(...))          // the same "if" on another trigger
+if g.DealtCombatDamageSinceLastTurnForEffect(you) { … }                // a resolution check
+```
+
+`CondNoCombatDamageSinceYourLastTurn` declares `game.FootprintCondNoCombatDamageSinceLastTurn`: the condition can only become false, by combat damage, which is dealt as a turn-based action (CR 510.2); no step deals it.
 
 ### Face-down follow-ups: "can't be turned face up", face-down spells cost less, "entered face down this turn" (#5241)
 
@@ -14314,7 +14367,7 @@ planeswalking ability (CR 901.8) is engine-wide: never write it into a card.
 The shapes are in `effects_planechase.go` and `planes_b1_helpers.go`:
 
 ```go
-// "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die)
+// "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die, or an effect's "chaos ensues")
 WheneverChaosEnsues("Coal Hill School — return target historic card …", returnTargetCardToHand),
 // "When you planeswalk to ~ and at the beginning of your upkeep, <effect>." (ONE ability)
 WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(Investigate{N: 1})),
@@ -14342,6 +14395,26 @@ SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // 
   outlives the plane it came from ("cards can't enter from exile this turn") is a
   stored rule, not a static of the plane (Bad Wolf Bay,
   `g.CardsCantEnterFromExileThisTurnForEffect`).
+- **"Chaos ensues" as an effect** (#5648, CR 311.7) is
+  `ctx.Game.ChaosEnsuesForEffect(ctx.Controller(), ctx.Source())`: it emits
+  `game.EventChaosEnsues`, which `WheneverChaosEnsues` watches beside the die's
+  chaos face, so every face-up plane's chaos ability triggers, controlled by the
+  planar controller. No die is rolled. It does nothing at a table that is not
+  playing Planechase, so a card that says it (Missy) needs no check of its own.
+- **Will of the Planeswalkers** (#5648, the five Paths of March of the Machine
+  Commander) is one step of the spell,
+  `ResolveSteps(…, WillOfThePlaneswalkers{Card: "Path of the Animist"})`: the
+  vote for planeswalk or chaos, then the caster planeswalks (only if they are
+  the planar controller, CR 701.31a) or chaos ensues (more votes or a tie). The
+  vote happens at every table; without a planar deck neither result does
+  anything.
+- **A replacement on planar dice** (Ichor Elixir, #5648) is an ordinary
+  `Replacements` row that watches `game.EventRollDie`, applies to
+  `ev.Kind == game.RepEventRollDice && ev.RollPlanar && ev.RollPlayer == src.Controller`
+  and calls `ev.RollOneMoreAndIgnoreOne(chooser, src.InstanceID, label)`: one
+  more die, and the chooser picks one to ignore once they are rolled (the
+  question Squid Fire Knight's sticker asks). Drop `RollPlanar` for a card
+  that says it of any dice.
 - **"The player to your left"** is `ControlledByThePlayerToYourLeft()`
   (`game.NearestOpponentForEffect(you, game.AttackDirectionLeft)`).
 - **Time travel** (CR 701.56a) is `Do(TimeTravel{})`.

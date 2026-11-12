@@ -1,0 +1,6 @@
+---
+title: "Protection from colorless, as a quality and as a choice"
+date: 2026-11-12
+issues: [5650]
+---
+**Protection from colorless, as a quality and as a choice** (#5650, [ADR 0072](decisions/0072-protection.md)'s 2026-11-12 amendment, CR 702.16a, 105.2c, 105.4) — "protection from colorless" is a quality of its own, `game.ProtectionQualityColorless` (wire kind `colorless`), minted by `game.ProtectionFromColorless` and matched by a source whose post-layer colours are empty, so targeting, attachment, damage and blocking all read it through the one matcher. "Colorless or the color of your choice" is one `choose_color` prompt with a sixth answer: `game.ColorPrompt.OrColorless` appends `game.ColorlessChoice` (`"C"`) after the colours, `effects.ChooseColorOrColorlessTail` asks it, and `game.ProtectionFromColorOrColorless` turns the answer into a token. Colorless is not a color, so every other prompt still offers five and `ProtectionFromColor` mints nothing for `C`. The prompt's order counts a colourless permanent under `C`, and the heuristic bot reads `C` as "has no colour". The wire gained no field and the client needed no change: its picker already draws `C` for a mana pick. Nothing new is persisted. **Cards:** Angelic Intervention (Full).

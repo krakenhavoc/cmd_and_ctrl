@@ -319,3 +319,19 @@ func TestTheEngineNeverQueuesAColourPromptWithNoOptions(t *testing.T) {
 		}
 	}
 }
+
+// #5650: Angelic Intervention's prompt offers colorless after the five
+// colours, and a protection prompt ranks it by the biggest colourless
+// creature pointed this way, as it ranks a colour.
+func TestProtectionPromptRanksColorlessByTheColourlessThreat(t *testing.T) {
+	g := newTable(t)
+	me, them := g.Seats[0], g.Seats[1]
+	battlefieldCard(g, them, creature("Stone Golem", "{5}", 4, 4))
+	battlefieldCard(g, them, creature("Goblin Guide", "{R}", 2, 2))
+	g.WithWriteLock(func() {
+		g.QueueColorChoiceThenForEffect(game.ColorPrompt{
+			Chooser: me.ID, Question: "Prompt", Purpose: game.ColorForProtection, OrColorless: true,
+		})
+	})
+	wantOrder(t, colorAnswerLabels(t, g, me.ID), "colorless", "red", "white", "blue", "black", "green")
+}

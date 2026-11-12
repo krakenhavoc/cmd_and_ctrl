@@ -282,6 +282,14 @@ type Player struct {
 	// turn. Read through CastOrPutDuringLastTurnForEffect.
 	LastTurnCastOrPut bool
 
+	// CombatDamagedSinceLastTurn is whether this player has been dealt
+	// combat damage since the last turn they took ended (#5652,
+	// since_last_turn.go): Marchesa, Resolute Monarch's "if you haven't
+	// been dealt combat damage since your last turn". Set as combat
+	// damage is dealt to them, cleared as each of their turns ends.
+	// Read through DealtCombatDamageSinceLastTurnForEffect.
+	CombatDamagedSinceLastTurn bool
+
 	// Eliminated is set when the player leaves the game: a concession,
 	// a state-based loss or an effect loss (ADR 0057, game_end.go). An
 	// eliminated player still occupies their seat for spectating. The

@@ -898,7 +898,12 @@ type playerSnapshot struct {
 	// which reads as "did nothing last turn" until the player's next turn
 	// ends.
 	LastTurnCastOrPut bool `json:"lastTurnCastOrPut,omitempty"`
-	Eliminated        bool `json:"eliminated"`
+	// CombatDamagedSinceLastTurn is Player.CombatDamagedSinceLastTurn
+	// (#5652, Marchesa, Resolute Monarch). Additive within v9: a file
+	// written before it restores with false, which reads as "not dealt
+	// combat damage since your last turn" until combat damage is dealt.
+	CombatDamagedSinceLastTurn bool `json:"combatDamagedSinceLastTurn,omitempty"`
+	Eliminated                 bool `json:"eliminated"`
 	// LossCause is Player.LossCause (#4879). Additive within v9: a file
 	// written before it restores an eliminated player with no cause.
 	LossCause string `json:"lossCause,omitempty"`
@@ -1819,6 +1824,12 @@ type stackItemSnapshot struct {
 	// creature onto the battlefield without the counter Savage Summoning
 	// promised. A binary from before the field refuses the file.
 	PromisedCounters []PromisedCounter `json:"promisedCounters,omitempty"`
+
+	// HadConvoke is StackItem.HadConvoke (#5647): the spell had convoke
+	// as it became cast. Carried for the triggers that ask while the
+	// cast event is still being answered. Additive within the schema
+	// version.
+	HadConvoke bool `json:"hadConvoke,omitempty"`
 
 	// Paid is what the announcement cost (#789 / #761). Carried: a
 	// restore that lost it would resolve a converge spell for zero
@@ -3210,65 +3221,66 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 
 func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 	out := playerSnapshot{
-		ID:                    p.ID,
-		Name:                  p.Name,
-		Seat:                  p.Seat,
-		Life:                  p.Life,
-		Poison:                p.Poison,
-		Energy:                p.Energy,
-		Library:               snapshotZone(p.Library, cen),
-		Hand:                  snapshotZone(p.Hand, cen),
-		Graveyard:             snapshotZone(p.Graveyard, cen),
-		Command:               snapshotZone(p.Command, cen),
-		Emblems:               snapshotZone(p.Emblems, cen),
-		Companion:             snapshotCompanionZone(p.Companion, cen),
-		Sideboard:             snapshotCompanionZone(p.Sideboard, cen),
-		AttractionDeck:        snapshotCompanionZone(p.AttractionDeck, cen),
-		Junkyard:              snapshotCompanionZone(p.Junkyard, cen),
-		StickerSheetPool:      cloneStickerSheets(p.StickerSheetPool),
-		StickerSheets:         cloneStickerSheets(p.StickerSheets),
-		HasSideboard:          p.HasSideboard,
-		CommanderDamage:       copyIntMap(p.CommanderDamage),
-		TurnsBegun:            p.TurnsBegun,
-		ExtraTurnsBegun:       p.ExtraTurnsBegun,
-		UpkeepsBegun:          p.UpkeepsBegun,
-		EndStepTurn:           p.EndStepTurn,
-		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
-		CombatAttacks:         append([]AttackRecord(nil), p.CombatAttacks...),
-		LastCombatAttacks:     append([]AttackRecord(nil), p.LastCombatAttacks...),
-		LastTurnCastOrPut:     p.LastTurnCastOrPut,
-		Eliminated:            p.Eliminated,
-		LossCause:             string(p.LossCause),
-		FinalBoard:            cloneFinalBoard(p.FinalBoard),
-		Removed:               p.Removed,
-		HandKept:              p.HandKept,
-		MulliganDecided:       p.MulliganDecided,
-		MulliganBottoming:     p.mulliganBottoming,
-		TriggerOrderAlwaysAsk: p.TriggerOrder == TriggerOrderAlways,
-		TriggerOrder:          string(p.TriggerOrder),
-		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
-		MulligansTaken:        p.MulligansTaken,
-		DeckImported:          p.DeckImported,
-		UndosRemaining:        p.UndosRemaining,
-		DiscordID:             p.DiscordID,
-		DiscordAvatarHash:     p.DiscordAvatarHash,
-		DisplayName:           p.DisplayName,
-		IsBot:                 p.IsBot,
-		BotTier:               p.BotTier,
-		BotDeck:               p.BotDeck,
-		Agent:                 p.Agent,
-		AgentClient:           p.AgentClient,
-		CitysBlessing:         p.CitysBlessing,
-		EnduringStory:         p.EnduringStory,
-		Dungeon:               cloneDungeonState(p.Dungeon),
-		CompletedDungeons:     append([]string(nil), p.CompletedDungeons...),
-		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
-		CommanderCasts:        copyIntMap(p.CommanderCasts),
-		Counters:              copyStringIntMap(p.Counters),
-		MaxHandSize:           p.MaxHandSize,
-		MaxHandSizeAt:         p.MaxHandSizeAt,
-		Speed:                 p.Speed,
-		LandDropsPerTurn:      p.LandDropsPerTurn,
+		ID:                         p.ID,
+		Name:                       p.Name,
+		Seat:                       p.Seat,
+		Life:                       p.Life,
+		Poison:                     p.Poison,
+		Energy:                     p.Energy,
+		Library:                    snapshotZone(p.Library, cen),
+		Hand:                       snapshotZone(p.Hand, cen),
+		Graveyard:                  snapshotZone(p.Graveyard, cen),
+		Command:                    snapshotZone(p.Command, cen),
+		Emblems:                    snapshotZone(p.Emblems, cen),
+		Companion:                  snapshotCompanionZone(p.Companion, cen),
+		Sideboard:                  snapshotCompanionZone(p.Sideboard, cen),
+		AttractionDeck:             snapshotCompanionZone(p.AttractionDeck, cen),
+		Junkyard:                   snapshotCompanionZone(p.Junkyard, cen),
+		StickerSheetPool:           cloneStickerSheets(p.StickerSheetPool),
+		StickerSheets:              cloneStickerSheets(p.StickerSheets),
+		HasSideboard:               p.HasSideboard,
+		CommanderDamage:            copyIntMap(p.CommanderDamage),
+		TurnsBegun:                 p.TurnsBegun,
+		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		UpkeepsBegun:               p.UpkeepsBegun,
+		EndStepTurn:                p.EndStepTurn,
+		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),
+		CombatAttacks:              append([]AttackRecord(nil), p.CombatAttacks...),
+		LastCombatAttacks:          append([]AttackRecord(nil), p.LastCombatAttacks...),
+		LastTurnCastOrPut:          p.LastTurnCastOrPut,
+		CombatDamagedSinceLastTurn: p.CombatDamagedSinceLastTurn,
+		Eliminated:                 p.Eliminated,
+		LossCause:                  string(p.LossCause),
+		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		Removed:                    p.Removed,
+		HandKept:                   p.HandKept,
+		MulliganDecided:            p.MulliganDecided,
+		MulliganBottoming:          p.mulliganBottoming,
+		TriggerOrderAlwaysAsk:      p.TriggerOrder == TriggerOrderAlways,
+		TriggerOrder:               string(p.TriggerOrder),
+		AutoAnswers:                copyAutoAnswers(p.AutoAnswers),
+		MulligansTaken:             p.MulligansTaken,
+		DeckImported:               p.DeckImported,
+		UndosRemaining:             p.UndosRemaining,
+		DiscordID:                  p.DiscordID,
+		DiscordAvatarHash:          p.DiscordAvatarHash,
+		DisplayName:                p.DisplayName,
+		IsBot:                      p.IsBot,
+		BotTier:                    p.BotTier,
+		BotDeck:                    p.BotDeck,
+		Agent:                      p.Agent,
+		AgentClient:                p.AgentClient,
+		CitysBlessing:              p.CitysBlessing,
+		EnduringStory:              p.EnduringStory,
+		Dungeon:                    cloneDungeonState(p.Dungeon),
+		CompletedDungeons:          append([]string(nil), p.CompletedDungeons...),
+		AttemptedEmptyDraw:         p.AttemptedEmptyDraw,
+		CommanderCasts:             copyIntMap(p.CommanderCasts),
+		Counters:                   copyStringIntMap(p.Counters),
+		MaxHandSize:                p.MaxHandSize,
+		MaxHandSizeAt:              p.MaxHandSizeAt,
+		Speed:                      p.Speed,
+		LandDropsPerTurn:           p.LandDropsPerTurn,
 	}
 	if p.FirstSpellCast.ID != uuid.Nil {
 		first := p.FirstSpellCast
@@ -3357,6 +3369,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
+	out.HadConvoke = s.HadConvoke                                   // #5647
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
 	out.Optional = cloneOptionalTrigger(s.Optional)                 // #2494
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
@@ -4390,62 +4403,63 @@ func restoreCard(c *cardSnapshot) Card {
 
 func restorePlayer(p *playerSnapshot) *Player {
 	out := &Player{
-		ID:                 p.ID,
-		Name:               p.Name,
-		Seat:               p.Seat,
-		Life:               p.Life,
-		Poison:             p.Poison,
-		Energy:             p.Energy,
-		Library:            restoreZone(p.Library, ZoneLibrary),
-		Hand:               restoreZone(p.Hand, ZoneHand),
-		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
-		Command:            restoreZone(p.Command, ZoneCommand),
-		Emblems:            restoreZone(p.Emblems, ZoneCommand),
-		Companion:          restoreCompanionZone(p.Companion),
-		Sideboard:          restoreCompanionZone(p.Sideboard),
-		AttractionDeck:     restoreCommandPile(p.AttractionDeck),
-		Junkyard:           restoreCommandPile(p.Junkyard),
-		StickerSheetPool:   cloneStickerSheets(p.StickerSheetPool),
-		StickerSheets:      cloneStickerSheets(p.StickerSheets),
-		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
-		TurnsBegun:         p.TurnsBegun,
-		ExtraTurnsBegun:    p.ExtraTurnsBegun,
-		UpkeepsBegun:       p.UpkeepsBegun,
-		EndStepTurn:        p.EndStepTurn,
-		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
-		CombatAttacks:      append([]AttackRecord(nil), p.CombatAttacks...),
-		LastCombatAttacks:  append([]AttackRecord(nil), p.LastCombatAttacks...),
-		LastTurnCastOrPut:  p.LastTurnCastOrPut,
-		Eliminated:         p.Eliminated,
-		LossCause:          LossCause(p.LossCause),
-		FinalBoard:         cloneFinalBoard(p.FinalBoard),
-		Removed:            p.Removed,
-		HandKept:           p.HandKept,
-		MulliganDecided:    p.MulliganDecided,
-		mulliganBottoming:  p.MulliganBottoming,
-		TriggerOrder:       restoredTriggerOrder(p.TriggerOrder, p.TriggerOrderAlwaysAsk),
-		AutoAnswers:        copyAutoAnswers(p.AutoAnswers),
-		MulligansTaken:     p.MulligansTaken,
-		DeckImported:       p.DeckImported,
-		UndosRemaining:     p.UndosRemaining,
-		DiscordID:          p.DiscordID,
-		DiscordAvatarHash:  p.DiscordAvatarHash,
-		DisplayName:        p.DisplayName,
-		IsBot:              p.IsBot,
-		BotTier:            p.BotTier,
-		BotDeck:            p.BotDeck,
-		Agent:              p.Agent,
-		AgentClient:        p.AgentClient,
-		CitysBlessing:      p.CitysBlessing,
-		EnduringStory:      p.EnduringStory,
-		Dungeon:            cloneDungeonState(p.Dungeon),
-		CompletedDungeons:  append([]string(nil), p.CompletedDungeons...),
-		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
-		Counters:           copyStringIntMap(p.Counters),
-		MaxHandSize:        p.MaxHandSize,
-		MaxHandSizeAt:      p.MaxHandSizeAt,
-		Speed:              p.Speed,
-		LandDropsPerTurn:   p.LandDropsPerTurn,
+		ID:                         p.ID,
+		Name:                       p.Name,
+		Seat:                       p.Seat,
+		Life:                       p.Life,
+		Poison:                     p.Poison,
+		Energy:                     p.Energy,
+		Library:                    restoreZone(p.Library, ZoneLibrary),
+		Hand:                       restoreZone(p.Hand, ZoneHand),
+		Graveyard:                  restoreZone(p.Graveyard, ZoneGraveyard),
+		Command:                    restoreZone(p.Command, ZoneCommand),
+		Emblems:                    restoreZone(p.Emblems, ZoneCommand),
+		Companion:                  restoreCompanionZone(p.Companion),
+		Sideboard:                  restoreCompanionZone(p.Sideboard),
+		AttractionDeck:             restoreCommandPile(p.AttractionDeck),
+		Junkyard:                   restoreCommandPile(p.Junkyard),
+		StickerSheetPool:           cloneStickerSheets(p.StickerSheetPool),
+		StickerSheets:              cloneStickerSheets(p.StickerSheets),
+		HasSideboard:               p.HasSideboard || p.Sideboard != nil,
+		TurnsBegun:                 p.TurnsBegun,
+		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		UpkeepsBegun:               p.UpkeepsBegun,
+		EndStepTurn:                p.EndStepTurn,
+		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),
+		CombatAttacks:              append([]AttackRecord(nil), p.CombatAttacks...),
+		LastCombatAttacks:          append([]AttackRecord(nil), p.LastCombatAttacks...),
+		LastTurnCastOrPut:          p.LastTurnCastOrPut,
+		CombatDamagedSinceLastTurn: p.CombatDamagedSinceLastTurn,
+		Eliminated:                 p.Eliminated,
+		LossCause:                  LossCause(p.LossCause),
+		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		Removed:                    p.Removed,
+		HandKept:                   p.HandKept,
+		MulliganDecided:            p.MulliganDecided,
+		mulliganBottoming:          p.MulliganBottoming,
+		TriggerOrder:               restoredTriggerOrder(p.TriggerOrder, p.TriggerOrderAlwaysAsk),
+		AutoAnswers:                copyAutoAnswers(p.AutoAnswers),
+		MulligansTaken:             p.MulligansTaken,
+		DeckImported:               p.DeckImported,
+		UndosRemaining:             p.UndosRemaining,
+		DiscordID:                  p.DiscordID,
+		DiscordAvatarHash:          p.DiscordAvatarHash,
+		DisplayName:                p.DisplayName,
+		IsBot:                      p.IsBot,
+		BotTier:                    p.BotTier,
+		BotDeck:                    p.BotDeck,
+		Agent:                      p.Agent,
+		AgentClient:                p.AgentClient,
+		CitysBlessing:              p.CitysBlessing,
+		EnduringStory:              p.EnduringStory,
+		Dungeon:                    cloneDungeonState(p.Dungeon),
+		CompletedDungeons:          append([]string(nil), p.CompletedDungeons...),
+		AttemptedEmptyDraw:         p.AttemptedEmptyDraw,
+		Counters:                   copyStringIntMap(p.Counters),
+		MaxHandSize:                p.MaxHandSize,
+		MaxHandSizeAt:              p.MaxHandSizeAt,
+		Speed:                      p.Speed,
+		LandDropsPerTurn:           p.LandDropsPerTurn,
 	}
 	// ADR 0018's eighth amendment (#3016): additive, absent restores empty.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
@@ -4552,6 +4566,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
+	out.HadConvoke = s.HadConvoke                                   // #5647
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
 	out.Optional = cloneOptionalTrigger(s.Optional)                 // #2494
 	if _, ok := catalogBodySlot(s.Body); ok {

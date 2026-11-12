@@ -43,3 +43,29 @@ func SpellIs(pred CardPredicate) ConvokeGrantFilter {
 func SpellsYouCastHaveImprovise(label string, spells ConvokeGrantFilter) game.GrantedTapCost {
 	return game.GrantedTapCost{Spells: spells, Cost: Improvise(), Label: label}
 }
+
+// NextSpellHasConvoke is "the next spell you cast this turn has convoke"
+// (Wand of the Worldsoul, Flockchaser Phantom; #5647): a one-use
+// NextSpellPromise carrying Convoke, given to the controller until end
+// of turn. While it stands the caster's next spell is offered the
+// convoke tap cost (CR 702.51a); that spell spends it whether or not a
+// creature was tapped, and it counts as a spell that has convoke for
+// YouCastASpellThatHasConvoke. `from` is the card's name, for the log.
+func NextSpellHasConvoke(from string) GrantNextSpellPromise {
+	return GrantNextSpellPromise{From: from, Promise: game.NextSpellPromise{
+		Convoke: true,
+		Text:    "The next spell you cast this turn has convoke.",
+	}}
+}
+
+// YouCastASpellThatHasConvoke — "whenever you cast a spell that has
+// convoke" (Joyful Stormsculptor, Saint Traft and Rem Karolus) and
+// "another spell that has convoke" (Kasla, the Broken Halo, whose own
+// cast never reaches her: she is not on the battlefield yet). On an
+// EventCast: your own cast of a spell that had convoke as it became cast
+// (CR 601.2i), whether printed on it, given by a permanent ("Noncreature
+// spells you cast have convoke") or given by a next-spell promise. No
+// creature need have been tapped for it.
+func YouCastASpellThatHasConvoke(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return ev.Kind == game.EventCast && ev.Actor == source.Controller && g.SpellHadConvokeForEffect(ev.CardID)
+}

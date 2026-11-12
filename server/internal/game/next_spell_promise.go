@@ -151,6 +151,15 @@ type NextSpellPromise struct {
 	// CastSpell agree; spent with the spell like every other rider.
 	Improvise bool `json:"improvise,omitempty"`
 
+	// Convoke is "has convoke" (CR 702.51a): the matching spell may be
+	// paid for by tapping creatures, each paying {1} or one mana of its
+	// colour (Wand of the Worldsoul, Flockchaser Phantom; #5647).
+	// Improvise's twin: offered through TapPermanentsCostForCastLocked
+	// while the promise stands, and spent with the spell. The spell it
+	// is spent on HAS convoke, so the cast stamps StackItem.HadConvoke
+	// before the spend. Additive within the schema version.
+	Convoke bool `json:"convoke,omitempty"`
+
 	// Text is the clause as printed, for the log and the panel. Not a
 	// rules input.
 	Text string `json:"text,omitempty"`
@@ -171,21 +180,31 @@ func (np NextSpellPromise) Matches(card Card) bool {
 // TargetSpec itself.
 var ImproviseTapCost *TapPermanentsCost
 
-// improvisePromiseCostLocked is ImproviseTapCost when one of `player`'s
-// live promises gives `card` improvise, else nil.
+// promisedTapCostLocked is the tap cost `player`'s live promises give
+// `card`: ConvokeTapCost for a "has convoke" promise, ImproviseTapCost
+// for a "has improvise" one, the two chained when both stand. Nil for
+// none.
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) improvisePromiseCostLocked(player uuid.UUID, card Card) *TapPermanentsCost {
+func (g *Game) promisedTapCostLocked(player uuid.UUID, card Card) *TapPermanentsCost {
 	p := g.playerByIDLocked(player)
-	if p == nil || ImproviseTapCost == nil {
+	if p == nil {
 		return nil
 	}
+	var out *TapPermanentsCost
 	for _, s := range p.Statics {
-		if s.NextSpell.Improvise && g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Matches(card) {
-			return ImproviseTapCost
+		np := s.NextSpell
+		if (!np.Improvise && !np.Convoke) || !g.livePromise(s) || np.EveryMatchingSpell || !np.Matches(card) {
+			continue
+		}
+		if np.Convoke {
+			out = out.WithAlso(ConvokeTapCost)
+		}
+		if np.Improvise {
+			out = out.WithAlso(ImproviseTapCost)
 		}
 	}
-	return nil
+	return out
 }
 
 // PromisedCounter is one "enters with an additional counter" mark on a

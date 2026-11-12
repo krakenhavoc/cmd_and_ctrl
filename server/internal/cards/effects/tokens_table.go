@@ -462,4 +462,8 @@ var tokenTable = map[string]game.Card{
 
 	// Venser, Corpse Puppet (#5653): The Hollow Sentinel.
 	"3/3 colorless Legendary Phyrexian Golem artifact named The Hollow Sentinel": {Name: "The Hollow Sentinel", TypeLine: "Token Legendary Artifact Creature — Phyrexian Golem", Power: 3, Toughness: 3},
+
+	// #5647: Saint Traft and Rem Karolus, Invasion of Segovia.
+	"1/1 blue Spirit with flying":  {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"1/1 blue Kraken with trample": {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"trample"}},
 }
