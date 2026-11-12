@@ -1820,6 +1820,12 @@ type stackItemSnapshot struct {
 	// promised. A binary from before the field refuses the file.
 	PromisedCounters []PromisedCounter `json:"promisedCounters,omitempty"`
 
+	// HadConvoke is StackItem.HadConvoke (#5647): the spell had convoke
+	// as it became cast. Carried for the triggers that ask while the
+	// cast event is still being answered. Additive within the schema
+	// version.
+	HadConvoke bool `json:"hadConvoke,omitempty"`
+
 	// Paid is what the announcement cost (#789 / #761). Carried: a
 	// restore that lost it would resolve a converge spell for zero
 	// and a "for each counter removed this way" ability for nothing,
@@ -3355,6 +3361,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
+	out.HadConvoke = s.HadConvoke                                   // #5647
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
 	out.Optional = cloneOptionalTrigger(s.Optional)                 // #2494
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
@@ -4548,6 +4555,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
+	out.HadConvoke = s.HadConvoke                                   // #5647
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
 	out.Optional = cloneOptionalTrigger(s.Optional)                 // #2494
 	if _, ok := catalogBodySlot(s.Body); ok {

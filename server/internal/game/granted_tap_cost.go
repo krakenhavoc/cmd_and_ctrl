@@ -10,12 +10,12 @@ import "github.com/google/uuid"
 // A card's own convoke is CardDef.TapCost, keyed by its oracle ID. A
 // granted one depends on the board and on where the spell is cast from,
 // so every cast-time reader asks TapPermanentsCostForCastLocked: the
-// card's own cost when it has one, otherwise the first grant from a
+// card's own cost, a next-spell promise's, and every grant from a
 // permanent the caster controls whose door (or other designation) gate
 // holds and whose Spells filter accepts the card and its zone. Two
-// instances of convoke are redundant (CR 702.51b), so a card that prints
+// instances of convoke are redundant (CR 702.51d), so a card that prints
 // convoke gains nothing more, and a card with a different tap cost of
-// its own (waterbend) keeps it.
+// its own (waterbend, improvise) owes both, chained (#5647).
 
 // GrantedTapCost is one "<spells> you cast have convoke" grant.
 type GrantedTapCost struct {
@@ -36,23 +36,26 @@ type GrantedTapCost struct {
 var CatalogGrantedTapCosts func(key string) []GrantedTapCost
 
 // TapPermanentsCostForCastLocked is the tap cost `caster` may pay to
-// cast `card` from `from` now: the card's own, or a granted one.
+// cast `card` from `from` now: the card's own, a promised one and a
+// granted one. A spell that has two different ones (its own improvise
+// and a granted convoke) owes both, chained (tap_cost_chain.go); a
+// second instance of the same keyword adds nothing (CR 702.51d).
 //
 // Caller must hold g.mu.
 func (g *Game) TapPermanentsCostForCastLocked(caster uuid.UUID, card Card, from ZoneKind) *TapPermanentsCost {
+	var out *TapPermanentsCost
 	if own := TapPermanentsCostFor(CatalogKey(card)); !own.Empty() {
-		return own
+		out = own
 	}
 	if caster == uuid.Nil {
-		return nil
+		return out
 	}
 	// "The next spell you cast this turn has improvise" (Archway of
-	// Innovation): a one-use promise on the caster, not a permanent's static.
-	if c := g.improvisePromiseCostLocked(caster, card); c != nil {
-		return c
-	}
+	// Innovation) or "has convoke" (Wand of the Worldsoul): a one-use
+	// promise on the caster, not a permanent's static.
+	out = out.WithAlso(g.promisedTapCostLocked(caster, card))
 	if CatalogGrantedTapCosts == nil || g.Battlefield == nil {
-		return nil
+		return out
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
@@ -73,10 +76,32 @@ func (g *Game) TapPermanentsCostForCastLocked(caster uuid.UUID, card Card, from 
 			if gr.Spells != nil && !gr.Spells(g, caster, card, from) {
 				continue
 			}
-			return gr.Cost
+			out = out.WithAlso(gr.Cost)
 		}
 	}
-	return nil
+	return out
+}
+
+// HasKey reports whether the cost, or one chained to it, is the keyword
+// `key` ("convoke", "improvise", "waterbend"). Nil-safe.
+func (c *TapPermanentsCost) HasKey(key string) bool {
+	for _, l := range c.links() {
+		if l.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// SpellHadConvokeForEffect reports whether the spell `spellID` had
+// convoke as it became cast (StackItem.HadConvoke): "whenever you cast a
+// spell that has convoke" (Joyful Stormsculptor, Kasla, the Broken Halo).
+// False for anything that is not a cast spell on the stack.
+//
+// The *ForEffect surface: caller must hold g.mu.
+func (g *Game) SpellHadConvokeForEffect(spellID uuid.UUID) bool {
+	item := g.StackMeta[spellID]
+	return item != nil && item.HadConvoke
 }
 
 // WaterbendTapCost builds a "waterbend {N}" tap cost (effects.Waterbend),

@@ -2481,10 +2481,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
 	// #3172: convoke records WHO tapped, for "each creature that
 	// convoked this spell" (Lethal Scheme). Waterbend is not convoke.
-	if convoked := g.tapConvokersForCastLocked(p, card, g.tapCostForCastParamsLocked(playerID, card, params), params); len(convoked) > 0 {
+	castTapCost := g.tapCostForCastParamsLocked(playerID, card, params)
+	if convoked := g.tapConvokersForCastLocked(p, card, castTapCost, params); len(convoked) > 0 {
 		if item := g.StackMeta[cardID]; item != nil {
 			item.Paid.Convoked = convoked
 		}
+	}
+	// #5647: whether the spell HAS convoke, tapped for or not, read
+	// here while a "the next spell you cast this turn has convoke"
+	// promise is still standing (the spend below takes it).
+	if item := g.StackMeta[cardID]; item != nil && castTapCost.HasKey("convoke") {
+		item.HadConvoke = true
 	}
 	// ADR 0100 §1: delve's exiles, in the same window and for the same
 	// reason as escape's — with the spell already on the stack, so a

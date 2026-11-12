@@ -1000,6 +1000,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 	// undo snapshot needs.
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
+	out.HadConvoke = s.HadConvoke                                   // #5647
 	// #1539: a held item's owed "becomes the target" event.
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending
 	// #2494: the CR 603.5 "you may", plain values.
