@@ -1775,6 +1775,10 @@ type stackItemSnapshot struct {
 	// that makes its permanent enter tapped. Carried: the permission may
 	// be spent or gone by the time the spell resolves.
 	EntersTapped bool `json:"entersTapped,omitempty"`
+	// EntryRolls is StackItem.EntryRolls (#5682). Additive within the
+	// schema version and omitted when empty, which is every item but a
+	// permanent spell that rolled dice as it began to enter.
+	EntryRolls []int `json:"entryRolls,omitempty"`
 	// FaceDown is CR 708.4 (#1194): the state the permanent this
 	// spell becomes enters in. Carried, and it has to be — a restore
 	// that lost it would resolve a morph on the stack into a face-UP
@@ -3364,6 +3368,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,
@@ -4565,6 +4570,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,

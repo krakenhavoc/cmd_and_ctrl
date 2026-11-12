@@ -13183,6 +13183,8 @@ frozenEntries[].event.stackItem.distribution{}	number:int
 frozenEntries[].event.stackItem.doubledBy	custom(uuid.UUID)
 frozenEntries[].event.stackItem.doubledByName	string
 frozenEntries[].event.stackItem.entersTapped	bool
+frozenEntries[].event.stackItem.entryRolls	array
+frozenEntries[].event.stackItem.entryRolls[]	number:int
 frozenEntries[].event.stackItem.exileAndPlot	bool
 frozenEntries[].event.stackItem.exileInsteadOfGraveyard	bool
 frozenEntries[].event.stackItem.exileLinkedTo	object
@@ -13285,6 +13287,8 @@ frozenEntries[].event.stackItem.paid.milled[]	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.optionalCosts	array
 frozenEntries[].event.stackItem.paid.optionalCosts[]	number:int
 frozenEntries[].event.stackItem.paid.paperMana	number:int
+frozenEntries[].event.stackItem.paid.rolled	array
+frozenEntries[].event.stackItem.paid.rolled[]	number:int
 frozenEntries[].event.stackItem.paid.sacrificedObjects	array
 frozenEntries[].event.stackItem.paid.sacrificedObjects[]	object
 frozenEntries[].event.stackItem.paid.sacrificedObjects[].epoch	number:int
@@ -20605,6 +20609,8 @@ lastKnownStack[].item.distribution{}	number:int
 lastKnownStack[].item.doubledBy	custom(uuid.UUID)
 lastKnownStack[].item.doubledByName	string
 lastKnownStack[].item.entersTapped	bool
+lastKnownStack[].item.entryRolls	array
+lastKnownStack[].item.entryRolls[]	number:int
 lastKnownStack[].item.exileAndPlot	bool
 lastKnownStack[].item.exileInsteadOfGraveyard	bool
 lastKnownStack[].item.exileLinkedTo	object
@@ -20707,6 +20713,8 @@ lastKnownStack[].item.paid.milled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.optionalCosts	array
 lastKnownStack[].item.paid.optionalCosts[]	number:int
 lastKnownStack[].item.paid.paperMana	number:int
+lastKnownStack[].item.paid.rolled	array
+lastKnownStack[].item.paid.rolled[]	number:int
 lastKnownStack[].item.paid.sacrificedObjects	array
 lastKnownStack[].item.paid.sacrificedObjects[]	object
 lastKnownStack[].item.paid.sacrificedObjects[].epoch	number:int
@@ -33072,6 +33080,8 @@ movesAwaitingTokens[].stackItem.distribution{}	number:int
 movesAwaitingTokens[].stackItem.doubledBy	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.doubledByName	string
 movesAwaitingTokens[].stackItem.entersTapped	bool
+movesAwaitingTokens[].stackItem.entryRolls	array
+movesAwaitingTokens[].stackItem.entryRolls[]	number:int
 movesAwaitingTokens[].stackItem.exileAndPlot	bool
 movesAwaitingTokens[].stackItem.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].stackItem.exileLinkedTo	object
@@ -33174,6 +33184,8 @@ movesAwaitingTokens[].stackItem.paid.milled[]	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.optionalCosts	array
 movesAwaitingTokens[].stackItem.paid.optionalCosts[]	number:int
 movesAwaitingTokens[].stackItem.paid.paperMana	number:int
+movesAwaitingTokens[].stackItem.paid.rolled	array
+movesAwaitingTokens[].stackItem.paid.rolled[]	number:int
 movesAwaitingTokens[].stackItem.paid.sacrificedObjects	array
 movesAwaitingTokens[].stackItem.paid.sacrificedObjects[]	object
 movesAwaitingTokens[].stackItem.paid.sacrificedObjects[].epoch	number:int
@@ -39480,6 +39492,8 @@ pausedModeWalk.item.distribution{}	number:int
 pausedModeWalk.item.doubledBy	custom(uuid.UUID)
 pausedModeWalk.item.doubledByName	string
 pausedModeWalk.item.entersTapped	bool
+pausedModeWalk.item.entryRolls	array
+pausedModeWalk.item.entryRolls[]	number:int
 pausedModeWalk.item.exileAndPlot	bool
 pausedModeWalk.item.exileInsteadOfGraveyard	bool
 pausedModeWalk.item.exileLinkedTo	object
@@ -39582,6 +39596,8 @@ pausedModeWalk.item.paid.milled[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.optionalCosts	array
 pausedModeWalk.item.paid.optionalCosts[]	number:int
 pausedModeWalk.item.paid.paperMana	number:int
+pausedModeWalk.item.paid.rolled	array
+pausedModeWalk.item.paid.rolled[]	number:int
 pausedModeWalk.item.paid.sacrificedObjects	array
 pausedModeWalk.item.paid.sacrificedObjects[]	object
 pausedModeWalk.item.paid.sacrificedObjects[].epoch	number:int
@@ -39830,6 +39846,8 @@ pausedResolutionTail.item.distribution{}	number:int
 pausedResolutionTail.item.doubledBy	custom(uuid.UUID)
 pausedResolutionTail.item.doubledByName	string
 pausedResolutionTail.item.entersTapped	bool
+pausedResolutionTail.item.entryRolls	array
+pausedResolutionTail.item.entryRolls[]	number:int
 pausedResolutionTail.item.exileAndPlot	bool
 pausedResolutionTail.item.exileInsteadOfGraveyard	bool
 pausedResolutionTail.item.exileLinkedTo	object
@@ -39932,6 +39950,8 @@ pausedResolutionTail.item.paid.milled[]	custom(uuid.UUID)
 pausedResolutionTail.item.paid.optionalCosts	array
 pausedResolutionTail.item.paid.optionalCosts[]	number:int
 pausedResolutionTail.item.paid.paperMana	number:int
+pausedResolutionTail.item.paid.rolled	array
+pausedResolutionTail.item.paid.rolled[]	number:int
 pausedResolutionTail.item.paid.sacrificedObjects	array
 pausedResolutionTail.item.paid.sacrificedObjects[]	object
 pausedResolutionTail.item.paid.sacrificedObjects[].epoch	number:int
@@ -40174,6 +40194,8 @@ pausedStepWalk.item.distribution{}	number:int
 pausedStepWalk.item.doubledBy	custom(uuid.UUID)
 pausedStepWalk.item.doubledByName	string
 pausedStepWalk.item.entersTapped	bool
+pausedStepWalk.item.entryRolls	array
+pausedStepWalk.item.entryRolls[]	number:int
 pausedStepWalk.item.exileAndPlot	bool
 pausedStepWalk.item.exileInsteadOfGraveyard	bool
 pausedStepWalk.item.exileLinkedTo	object
@@ -40276,6 +40298,8 @@ pausedStepWalk.item.paid.milled[]	custom(uuid.UUID)
 pausedStepWalk.item.paid.optionalCosts	array
 pausedStepWalk.item.paid.optionalCosts[]	number:int
 pausedStepWalk.item.paid.paperMana	number:int
+pausedStepWalk.item.paid.rolled	array
+pausedStepWalk.item.paid.rolled[]	number:int
 pausedStepWalk.item.paid.sacrificedObjects	array
 pausedStepWalk.item.paid.sacrificedObjects[]	object
 pausedStepWalk.item.paid.sacrificedObjects[].epoch	number:int
@@ -42822,6 +42846,8 @@ pendingChoices[].copyWalk.item.distribution{}	number:int
 pendingChoices[].copyWalk.item.doubledBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.doubledByName	string
 pendingChoices[].copyWalk.item.entersTapped	bool
+pendingChoices[].copyWalk.item.entryRolls	array
+pendingChoices[].copyWalk.item.entryRolls[]	number:int
 pendingChoices[].copyWalk.item.exileAndPlot	bool
 pendingChoices[].copyWalk.item.exileInsteadOfGraveyard	bool
 pendingChoices[].copyWalk.item.exileLinkedTo	object
@@ -42924,6 +42950,8 @@ pendingChoices[].copyWalk.item.paid.milled[]	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.optionalCosts	array
 pendingChoices[].copyWalk.item.paid.optionalCosts[]	number:int
 pendingChoices[].copyWalk.item.paid.paperMana	number:int
+pendingChoices[].copyWalk.item.paid.rolled	array
+pendingChoices[].copyWalk.item.paid.rolled[]	number:int
 pendingChoices[].copyWalk.item.paid.sacrificedObjects	array
 pendingChoices[].copyWalk.item.paid.sacrificedObjects[]	object
 pendingChoices[].copyWalk.item.paid.sacrificedObjects[].epoch	number:int
@@ -59330,6 +59358,8 @@ pendingChoices[].replacementResume.event.stackItem.distribution{}	number:int
 pendingChoices[].replacementResume.event.stackItem.doubledBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.doubledByName	string
 pendingChoices[].replacementResume.event.stackItem.entersTapped	bool
+pendingChoices[].replacementResume.event.stackItem.entryRolls	array
+pendingChoices[].replacementResume.event.stackItem.entryRolls[]	number:int
 pendingChoices[].replacementResume.event.stackItem.exileAndPlot	bool
 pendingChoices[].replacementResume.event.stackItem.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.stackItem.exileLinkedTo	object
@@ -59432,6 +59462,8 @@ pendingChoices[].replacementResume.event.stackItem.paid.milled[]	custom(uuid.UUI
 pendingChoices[].replacementResume.event.stackItem.paid.optionalCosts	array
 pendingChoices[].replacementResume.event.stackItem.paid.optionalCosts[]	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.paperMana	number:int
+pendingChoices[].replacementResume.event.stackItem.paid.rolled	array
+pendingChoices[].replacementResume.event.stackItem.paid.rolled[]	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.sacrificedObjects	array
 pendingChoices[].replacementResume.event.stackItem.paid.sacrificedObjects[]	object
 pendingChoices[].replacementResume.event.stackItem.paid.sacrificedObjects[].epoch	number:int
@@ -68826,6 +68858,8 @@ pendingTriggers[].distribution{}	number:int
 pendingTriggers[].doubledBy	custom(uuid.UUID)
 pendingTriggers[].doubledByName	string
 pendingTriggers[].entersTapped	bool
+pendingTriggers[].entryRolls	array
+pendingTriggers[].entryRolls[]	number:int
 pendingTriggers[].exileAndPlot	bool
 pendingTriggers[].exileInsteadOfGraveyard	bool
 pendingTriggers[].exileLinkedTo	object
@@ -68928,6 +68962,8 @@ pendingTriggers[].paid.milled[]	custom(uuid.UUID)
 pendingTriggers[].paid.optionalCosts	array
 pendingTriggers[].paid.optionalCosts[]	number:int
 pendingTriggers[].paid.paperMana	number:int
+pendingTriggers[].paid.rolled	array
+pendingTriggers[].paid.rolled[]	number:int
 pendingTriggers[].paid.sacrificedObjects	array
 pendingTriggers[].paid.sacrificedObjects[]	object
 pendingTriggers[].paid.sacrificedObjects[].epoch	number:int
@@ -71304,6 +71340,8 @@ resolving.item.distribution{}	number:int
 resolving.item.doubledBy	custom(uuid.UUID)
 resolving.item.doubledByName	string
 resolving.item.entersTapped	bool
+resolving.item.entryRolls	array
+resolving.item.entryRolls[]	number:int
 resolving.item.exileAndPlot	bool
 resolving.item.exileInsteadOfGraveyard	bool
 resolving.item.exileLinkedTo	object
@@ -71406,6 +71444,8 @@ resolving.item.paid.milled[]	custom(uuid.UUID)
 resolving.item.paid.optionalCosts	array
 resolving.item.paid.optionalCosts[]	number:int
 resolving.item.paid.paperMana	number:int
+resolving.item.paid.rolled	array
+resolving.item.paid.rolled[]	number:int
 resolving.item.paid.sacrificedObjects	array
 resolving.item.paid.sacrificedObjects[]	object
 resolving.item.paid.sacrificedObjects[].epoch	number:int
@@ -76747,6 +76787,8 @@ stackMeta[].distribution{}	number:int
 stackMeta[].doubledBy	custom(uuid.UUID)
 stackMeta[].doubledByName	string
 stackMeta[].entersTapped	bool
+stackMeta[].entryRolls	array
+stackMeta[].entryRolls[]	number:int
 stackMeta[].exileAndPlot	bool
 stackMeta[].exileInsteadOfGraveyard	bool
 stackMeta[].exileLinkedTo	object
@@ -76849,6 +76891,8 @@ stackMeta[].paid.milled[]	custom(uuid.UUID)
 stackMeta[].paid.optionalCosts	array
 stackMeta[].paid.optionalCosts[]	number:int
 stackMeta[].paid.paperMana	number:int
+stackMeta[].paid.rolled	array
+stackMeta[].paid.rolled[]	number:int
 stackMeta[].paid.sacrificedObjects	array
 stackMeta[].paid.sacrificedObjects[]	object
 stackMeta[].paid.sacrificedObjects[].epoch	number:int
