@@ -2796,6 +2796,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		Loyalty: ab.Cost.Loyalty != nil,
 		// CR 107.3a: an {X} mana symbol in the activation cost.
 		XCost: ab.Cost.XSlots() > 0,
+		// #5662: every point of life this announcement paid, for "if
+		// life was paid to activate it" (Verrak, Warped Sengir). The
+		// life costs are all paid above; nothing below pays life.
+		LifePaid: paid.LifePaid,
 		// #3855: what the activator declared about a waived payment
 		// is public, as a cast's is.
 		Unpaid:        paper.Free,

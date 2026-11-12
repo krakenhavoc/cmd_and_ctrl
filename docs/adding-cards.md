@@ -5817,6 +5817,21 @@ Unbound Flourishing's first ability. `Event.XCost` is stamped on every
 ability's intervening "if" (a spell's side is the printed mana cost,
 `socB9HasXInManaCost`).
 
+**"If life was paid to activate it … pay that much life again" (#5662):**
+`Event.LifePaid` is stamped on every `EventActivateAbility` with the life
+the activation paid: a printed "Pay N life", what an X or counted life
+cost came to, and 2 for each Phyrexian mana symbol paid with life (CR
+107.4f), in one total (it is `PaidCost.LifePaid`). Zero when no life was
+paid. Verrak, Warped Sengir is
+`InterveningIf(LifeWasPaidToActivateIt, On(game.EventActivateAbility, YouActivatedAnAbilityPayingLife, label, Do(MayPayThatLifeAgainToCopyIt)))`
+([ability_copy_life_paid.go](../server/internal/cards/effects/ability_copy_life_paid.go)):
+the When and the CR 603.4 recheck both read the event, not the stack,
+and the answer (`confirm/pay-life-copy-that-ability`) re-checks the
+payment and copies the ability `Event.StackItemID` names. A mana ability
+emits `EventManaAbilityActivated` and carries no `LifePaid`. A new card
+that reads "the life paid to activate it" reads the same field; a spell's
+side ("life paid to cast it") is not on `EventCast` yet.
+
 **Mana for spells with mana value N or greater (#4694):** "Spend this
 mana only to cast spells with mana value 4 or greater" is
 `Restrictions: []string{game.ManaRestrictManaValueAtLeast(4)}` (Ashling,
