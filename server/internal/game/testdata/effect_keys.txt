@@ -1445,6 +1445,7 @@ option option-pick/gideon-blackblade-keyword
 option option-pick/gluntch-the-bestower-first
 option option-pick/gluntch-the-bestower-second
 option option-pick/gluntch-the-bestower-third
+option option-pick/hand-of-vecna-creature
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/highway-robbery-cost
 option option-pick/hunters-axe-keyword
@@ -1630,6 +1631,7 @@ payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
+payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
