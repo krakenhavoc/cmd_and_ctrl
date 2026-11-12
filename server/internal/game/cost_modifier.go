@@ -247,6 +247,21 @@ type CostQuery struct {
 	// or special action.
 	OptionalCosts []int
 
+	// SacrificedManaCost is offering's reduction (CR 702.48a, c; #5657):
+	// the mana cost of the permanent an announced optional cost that is
+	// ReducedBySacrificedManaCost sacrifices, read while the permanent
+	// is still on the battlefield (CR 601.2f). The zero cost for every
+	// other cast.
+	//
+	// Like AltSacrificeManaValue it is a reduction of its own, not a
+	// modifier's input: applyCostModifiersLocked takes it off through
+	// reduceByManaCost (a coloured symbol off its own colour, the excess
+	// off generic, CR 118.7) with the board's reductions, after every
+	// increase and before a CostFloor. Filled by the one pricer
+	// (costAfterModifiersLocked, from SacrificedManaCostForEffect) and,
+	// per payment, by the enumerator, so the two agree (#544).
+	SacrificedManaCost ParsedCost
+
 	// AltSacrificeManaValue is emerge's reduction (CR 702.119a, ADR 0135
 	// §4): the mana value of the permanent the claimed alternative cost
 	// sacrifices, when that offer is ReducedBySacrificedManaValue, read
@@ -918,7 +933,9 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 		// The cast permission's "costs {N} more" (CastPermission.CostMore)
 		// is an increase, so it is in before any reduction comes off.
 		base = increaseBy(base, q.GrantIncrease, nil)
-		return reduceGeneric(reduceGeneric(reduceGeneric(reduceByManaCost(base, powerUp), q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
+		// #5657, CR 702.48a: and offering's, by a mana cost.
+		base = reduceByManaCost(reduceByManaCost(base, powerUp), q.SacrificedManaCost)
+		return reduceGeneric(reduceGeneric(reduceGeneric(base, q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
 	}
 	cost := base
 	// CR 601.2f step 1, CR 118.9: a "{0} rather than" alternative
@@ -989,6 +1006,10 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	// each component is floored at zero and a coloured symbol's excess
 	// only ever reduces generic mana.
 	cost = reduceByManaCost(cost, powerUp)
+	// #5657, CR 702.48a, c: offering's reduction by the sacrificed
+	// permanent's mana cost, with the others and order-free for the
+	// same reason.
+	cost = reduceByManaCost(cost, q.SacrificedManaCost)
 	// ADR 0135 §4, CR 702.119a: emerge's reduction by the sacrificed
 	// permanent's mana value, with the other reductions (CR 601.2f) and
 	// clamped the same way, so it is taken after every increase.
