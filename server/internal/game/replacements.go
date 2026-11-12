@@ -1354,6 +1354,11 @@ type ReplacementEvent struct {
 	// riders the applied replacements added, in the order they applied.
 	// Plain data; a replacement appends to a fresh slice.
 	rollShields []diceShield
+	// rollIgnoreLowest counts the applied "plus one and ignore the lowest
+	// roll" replacements (Pixie Guide, #5681): that many more of the
+	// lowest rolls are ignored. Set only through
+	// RollOneMoreAndIgnoreLowest.
+	rollIgnoreLowest int
 
 	// mustSettleNow marks an event that CANNOT pause: the pipeline
 	// must reach a settled answer before applyReplacementsLocked

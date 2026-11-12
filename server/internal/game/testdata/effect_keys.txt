@@ -380,6 +380,7 @@ body territorial-aetherkite/damage-each-other
 body tester-of-the-tangential/move
 body tether-technician/strike
 body the-ancient-one/mill
+body the-deck-of-many-things/owner-loses
 body the-falcon-airship-restored/return
 body the-fire-nation-drill/destroy
 body the-last-ronin/attacks-alone
@@ -537,6 +538,7 @@ choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
 choose choose-cards/cyclonus-connive-discarded
 choose choose-cards/cytoshape-copy
+choose choose-cards/danse-macabre-return
 choose choose-cards/darkstar-augur-take
 choose choose-cards/dauthi-voidwalker-play
 choose choose-cards/deadly-cover-up-exile
@@ -941,6 +943,7 @@ choose choose-cards/tezzeret-betrayer-of-flesh-discard-two-or-artifact
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
+choose choose-cards/the-deck-of-many-things-reanimate
 choose choose-cards/the-gitrog-ravenous-ride-sacrifice
 choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
@@ -1453,6 +1456,7 @@ option option-pick/gideon-blackblade-keyword
 option option-pick/gluntch-the-bestower-first
 option option-pick/gluntch-the-bestower-second
 option option-pick/gluntch-the-bestower-third
+option option-pick/hand-of-vecna-creature
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/highway-robbery-cost
 option option-pick/hunters-axe-keyword
@@ -1639,6 +1643,7 @@ payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
+payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
@@ -1843,6 +1848,7 @@ run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
 run prompt-run/cycle-of-renewal-fetch
 run prompt-run/dahar-master-sacrifice
+run prompt-run/danse-macabre-roll
 run prompt-run/daretti-return
 run prompt-run/dead-drop-sacrifice
 run prompt-run/deadly-brew-return
@@ -2276,11 +2282,18 @@ tail dice/ancient-gold-dragon-tokens
 tail dice/ancient-silver-dragon-draw
 tail dice/berserkers-frenzy-result
 tail dice/component-pouch-counters
+tail dice/danse-macabre-result
 tail dice/diviners-portent-result
+tail dice/entry-roll
 tail dice/hoarding-ogre-treasures
 tail dice/maddening-hex-burn-and-move
+tail dice/netherese-puzzle-ward-scry
 tail dice/reckless-endeavor-rolled
+tail dice/revivify-result
+tail dice/roll-cost
 tail dice/roll-to-visit
+tail dice/song-of-inspiration-result
+tail dice/the-deck-of-many-things-result
 tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
@@ -2866,6 +2879,7 @@ tail territorial-bruntar/cast-nonland-this-turn
 tail tetzin-gnome-champion/after-mill
 tail the-binding-of-the-titans/gain-per-creature-exiled
 tail the-day-of-the-doctor/after-mill
+tail the-deck-of-many-things/curse
 tail the-end/after-exile
 tail the-end/draw-for-hand
 tail the-gitrog-ravenous-ride/sacrificed

@@ -1088,6 +1088,7 @@ events[].life_paid	number:int
 events[].log_deferred	bool
 events[].looked_at	number:int
 events[].loyalty	bool
+events[].modifier	number:int
 events[].new_zone	string
 events[].old_zone	string
 events[].paperDeclared	bool
@@ -1896,6 +1897,7 @@ followUpParks[].then.asked.trigger.Event.life_paid	number:int
 followUpParks[].then.asked.trigger.Event.log_deferred	bool
 followUpParks[].then.asked.trigger.Event.looked_at	number:int
 followUpParks[].then.asked.trigger.Event.loyalty	bool
+followUpParks[].then.asked.trigger.Event.modifier	number:int
 followUpParks[].then.asked.trigger.Event.new_zone	string
 followUpParks[].then.asked.trigger.Event.old_zone	string
 followUpParks[].then.asked.trigger.Event.paperDeclared	bool
@@ -2556,6 +2558,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.life_paid	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.counterTail.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.paperDeclared	bool
@@ -3194,6 +3197,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.life_paid	number:
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.new_zone	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.paperDeclared	bool
@@ -3823,6 +3827,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.life_paid	number:
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.paperDeclared	bool
@@ -4635,6 +4640,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.life_paid	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.damageTail.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.paperDeclared	bool
@@ -5385,6 +5391,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.life
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperDeclared	bool
@@ -6090,6 +6097,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.life_paid	number:
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.paperDeclared	bool
@@ -6719,6 +6727,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.life_paid	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.new_zone	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.paperDeclared	bool
@@ -7381,6 +7390,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.life_pa
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.new_zone	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.paperDeclared	bool
@@ -8030,6 +8040,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.life_paid	number
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.paperDeclared	bool
@@ -9097,6 +9108,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.life_paid	numbe
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.paperDeclared	bool
@@ -9749,6 +9761,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.life_paid	number:in
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.paperDeclared	bool
@@ -10381,6 +10394,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.life_paid	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.paperDeclared	bool
@@ -11844,6 +11858,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.life_paid	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.paperDeclared	bool
@@ -12471,6 +12486,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.life_paid	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.millTail.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.paperDeclared	bool
@@ -13217,6 +13233,8 @@ frozenEntries[].event.stackItem.distribution{}	number:int
 frozenEntries[].event.stackItem.doubledBy	custom(uuid.UUID)
 frozenEntries[].event.stackItem.doubledByName	string
 frozenEntries[].event.stackItem.entersTapped	bool
+frozenEntries[].event.stackItem.entryRolls	array
+frozenEntries[].event.stackItem.entryRolls[]	number:int
 frozenEntries[].event.stackItem.exileAndPlot	bool
 frozenEntries[].event.stackItem.exileInsteadOfGraveyard	bool
 frozenEntries[].event.stackItem.exileLinkedTo	object
@@ -13319,6 +13337,8 @@ frozenEntries[].event.stackItem.paid.milled[]	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.optionalCosts	array
 frozenEntries[].event.stackItem.paid.optionalCosts[]	number:int
 frozenEntries[].event.stackItem.paid.paperMana	number:int
+frozenEntries[].event.stackItem.paid.rolled	array
+frozenEntries[].event.stackItem.paid.rolled[]	number:int
 frozenEntries[].event.stackItem.paid.sacrificedObjects	array
 frozenEntries[].event.stackItem.paid.sacrificedObjects[]	object
 frozenEntries[].event.stackItem.paid.sacrificedObjects[].epoch	number:int
@@ -13476,6 +13496,7 @@ frozenEntries[].event.stackItem.trigger.Event.life_paid	number:int
 frozenEntries[].event.stackItem.trigger.Event.log_deferred	bool
 frozenEntries[].event.stackItem.trigger.Event.looked_at	number:int
 frozenEntries[].event.stackItem.trigger.Event.loyalty	bool
+frozenEntries[].event.stackItem.trigger.Event.modifier	number:int
 frozenEntries[].event.stackItem.trigger.Event.new_zone	string
 frozenEntries[].event.stackItem.trigger.Event.old_zone	string
 frozenEntries[].event.stackItem.trigger.Event.paperDeclared	bool
@@ -14084,6 +14105,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.life_paid	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.paperDeclared	bool
@@ -15990,6 +16012,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.life_pai
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperDeclared	bool
@@ -16652,6 +16675,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.li
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.new_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperDeclared	bool
@@ -17279,6 +17303,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.life_paid	num
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -17926,6 +17951,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.life_paid	n
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -18640,6 +18666,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.life_paid	
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.loyalty	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.modifier	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.new_zone	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.old_zone	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -20664,6 +20691,8 @@ lastKnownStack[].item.distribution{}	number:int
 lastKnownStack[].item.doubledBy	custom(uuid.UUID)
 lastKnownStack[].item.doubledByName	string
 lastKnownStack[].item.entersTapped	bool
+lastKnownStack[].item.entryRolls	array
+lastKnownStack[].item.entryRolls[]	number:int
 lastKnownStack[].item.exileAndPlot	bool
 lastKnownStack[].item.exileInsteadOfGraveyard	bool
 lastKnownStack[].item.exileLinkedTo	object
@@ -20766,6 +20795,8 @@ lastKnownStack[].item.paid.milled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.optionalCosts	array
 lastKnownStack[].item.paid.optionalCosts[]	number:int
 lastKnownStack[].item.paid.paperMana	number:int
+lastKnownStack[].item.paid.rolled	array
+lastKnownStack[].item.paid.rolled[]	number:int
 lastKnownStack[].item.paid.sacrificedObjects	array
 lastKnownStack[].item.paid.sacrificedObjects[]	object
 lastKnownStack[].item.paid.sacrificedObjects[].epoch	number:int
@@ -20923,6 +20954,7 @@ lastKnownStack[].item.trigger.Event.life_paid	number:int
 lastKnownStack[].item.trigger.Event.log_deferred	bool
 lastKnownStack[].item.trigger.Event.looked_at	number:int
 lastKnownStack[].item.trigger.Event.loyalty	bool
+lastKnownStack[].item.trigger.Event.modifier	number:int
 lastKnownStack[].item.trigger.Event.new_zone	string
 lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.paperDeclared	bool
@@ -22502,6 +22534,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.life_paid	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.paperDeclared	bool
@@ -23140,6 +23173,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.life_paid	number:
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.paperDeclared	bool
@@ -23769,6 +23803,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.life_paid	number:
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.paperDeclared	bool
@@ -24581,6 +24616,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.life_paid	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.paperDeclared	bool
@@ -25331,6 +25367,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.life
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.paperDeclared	bool
@@ -26036,6 +26073,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.life_paid	number:
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.paperDeclared	bool
@@ -26665,6 +26703,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.life_paid	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.paperDeclared	bool
@@ -27327,6 +27366,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.life_pa
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.paperDeclared	bool
@@ -27976,6 +28016,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.life_paid	number
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.paperDeclared	bool
@@ -29043,6 +29084,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.life_paid	numbe
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.paperDeclared	bool
@@ -29695,6 +29737,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.life_paid	number:in
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.paperDeclared	bool
@@ -30327,6 +30370,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.life_paid	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.paperDeclared	bool
@@ -31790,6 +31834,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.life_paid	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.paperDeclared	bool
@@ -32417,6 +32462,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.life_paid	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.paperDeclared	bool
@@ -33163,6 +33209,8 @@ movesAwaitingTokens[].stackItem.distribution{}	number:int
 movesAwaitingTokens[].stackItem.doubledBy	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.doubledByName	string
 movesAwaitingTokens[].stackItem.entersTapped	bool
+movesAwaitingTokens[].stackItem.entryRolls	array
+movesAwaitingTokens[].stackItem.entryRolls[]	number:int
 movesAwaitingTokens[].stackItem.exileAndPlot	bool
 movesAwaitingTokens[].stackItem.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].stackItem.exileLinkedTo	object
@@ -33265,6 +33313,8 @@ movesAwaitingTokens[].stackItem.paid.milled[]	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.optionalCosts	array
 movesAwaitingTokens[].stackItem.paid.optionalCosts[]	number:int
 movesAwaitingTokens[].stackItem.paid.paperMana	number:int
+movesAwaitingTokens[].stackItem.paid.rolled	array
+movesAwaitingTokens[].stackItem.paid.rolled[]	number:int
 movesAwaitingTokens[].stackItem.paid.sacrificedObjects	array
 movesAwaitingTokens[].stackItem.paid.sacrificedObjects[]	object
 movesAwaitingTokens[].stackItem.paid.sacrificedObjects[].epoch	number:int
@@ -33422,6 +33472,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.life_paid	number:int
 movesAwaitingTokens[].stackItem.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].stackItem.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].stackItem.trigger.Event.loyalty	bool
+movesAwaitingTokens[].stackItem.trigger.Event.modifier	number:int
 movesAwaitingTokens[].stackItem.trigger.Event.new_zone	string
 movesAwaitingTokens[].stackItem.trigger.Event.old_zone	string
 movesAwaitingTokens[].stackItem.trigger.Event.paperDeclared	bool
@@ -34030,6 +34081,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.life_paid	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.paperDeclared	bool
@@ -35936,6 +35988,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.life_pai
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperDeclared	bool
@@ -36598,6 +36651,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.li
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperDeclared	bool
@@ -37225,6 +37279,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.life_paid	num
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -37872,6 +37927,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.life_paid	n
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -38586,6 +38642,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.life_paid	
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.loyalty	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.modifier	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.new_zone	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.old_zone	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -39592,6 +39649,8 @@ pausedModeWalk.item.distribution{}	number:int
 pausedModeWalk.item.doubledBy	custom(uuid.UUID)
 pausedModeWalk.item.doubledByName	string
 pausedModeWalk.item.entersTapped	bool
+pausedModeWalk.item.entryRolls	array
+pausedModeWalk.item.entryRolls[]	number:int
 pausedModeWalk.item.exileAndPlot	bool
 pausedModeWalk.item.exileInsteadOfGraveyard	bool
 pausedModeWalk.item.exileLinkedTo	object
@@ -39694,6 +39753,8 @@ pausedModeWalk.item.paid.milled[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.optionalCosts	array
 pausedModeWalk.item.paid.optionalCosts[]	number:int
 pausedModeWalk.item.paid.paperMana	number:int
+pausedModeWalk.item.paid.rolled	array
+pausedModeWalk.item.paid.rolled[]	number:int
 pausedModeWalk.item.paid.sacrificedObjects	array
 pausedModeWalk.item.paid.sacrificedObjects[]	object
 pausedModeWalk.item.paid.sacrificedObjects[].epoch	number:int
@@ -39851,6 +39912,7 @@ pausedModeWalk.item.trigger.Event.life_paid	number:int
 pausedModeWalk.item.trigger.Event.log_deferred	bool
 pausedModeWalk.item.trigger.Event.looked_at	number:int
 pausedModeWalk.item.trigger.Event.loyalty	bool
+pausedModeWalk.item.trigger.Event.modifier	number:int
 pausedModeWalk.item.trigger.Event.new_zone	string
 pausedModeWalk.item.trigger.Event.old_zone	string
 pausedModeWalk.item.trigger.Event.paperDeclared	bool
@@ -39941,6 +40003,8 @@ pausedResolutionTail.item.distribution{}	number:int
 pausedResolutionTail.item.doubledBy	custom(uuid.UUID)
 pausedResolutionTail.item.doubledByName	string
 pausedResolutionTail.item.entersTapped	bool
+pausedResolutionTail.item.entryRolls	array
+pausedResolutionTail.item.entryRolls[]	number:int
 pausedResolutionTail.item.exileAndPlot	bool
 pausedResolutionTail.item.exileInsteadOfGraveyard	bool
 pausedResolutionTail.item.exileLinkedTo	object
@@ -40043,6 +40107,8 @@ pausedResolutionTail.item.paid.milled[]	custom(uuid.UUID)
 pausedResolutionTail.item.paid.optionalCosts	array
 pausedResolutionTail.item.paid.optionalCosts[]	number:int
 pausedResolutionTail.item.paid.paperMana	number:int
+pausedResolutionTail.item.paid.rolled	array
+pausedResolutionTail.item.paid.rolled[]	number:int
 pausedResolutionTail.item.paid.sacrificedObjects	array
 pausedResolutionTail.item.paid.sacrificedObjects[]	object
 pausedResolutionTail.item.paid.sacrificedObjects[].epoch	number:int
@@ -40200,6 +40266,7 @@ pausedResolutionTail.item.trigger.Event.life_paid	number:int
 pausedResolutionTail.item.trigger.Event.log_deferred	bool
 pausedResolutionTail.item.trigger.Event.looked_at	number:int
 pausedResolutionTail.item.trigger.Event.loyalty	bool
+pausedResolutionTail.item.trigger.Event.modifier	number:int
 pausedResolutionTail.item.trigger.Event.new_zone	string
 pausedResolutionTail.item.trigger.Event.old_zone	string
 pausedResolutionTail.item.trigger.Event.paperDeclared	bool
@@ -40284,6 +40351,8 @@ pausedStepWalk.item.distribution{}	number:int
 pausedStepWalk.item.doubledBy	custom(uuid.UUID)
 pausedStepWalk.item.doubledByName	string
 pausedStepWalk.item.entersTapped	bool
+pausedStepWalk.item.entryRolls	array
+pausedStepWalk.item.entryRolls[]	number:int
 pausedStepWalk.item.exileAndPlot	bool
 pausedStepWalk.item.exileInsteadOfGraveyard	bool
 pausedStepWalk.item.exileLinkedTo	object
@@ -40386,6 +40455,8 @@ pausedStepWalk.item.paid.milled[]	custom(uuid.UUID)
 pausedStepWalk.item.paid.optionalCosts	array
 pausedStepWalk.item.paid.optionalCosts[]	number:int
 pausedStepWalk.item.paid.paperMana	number:int
+pausedStepWalk.item.paid.rolled	array
+pausedStepWalk.item.paid.rolled[]	number:int
 pausedStepWalk.item.paid.sacrificedObjects	array
 pausedStepWalk.item.paid.sacrificedObjects[]	object
 pausedStepWalk.item.paid.sacrificedObjects[].epoch	number:int
@@ -40543,6 +40614,7 @@ pausedStepWalk.item.trigger.Event.life_paid	number:int
 pausedStepWalk.item.trigger.Event.log_deferred	bool
 pausedStepWalk.item.trigger.Event.looked_at	number:int
 pausedStepWalk.item.trigger.Event.loyalty	bool
+pausedStepWalk.item.trigger.Event.modifier	number:int
 pausedStepWalk.item.trigger.Event.new_zone	string
 pausedStepWalk.item.trigger.Event.old_zone	string
 pausedStepWalk.item.trigger.Event.paperDeclared	bool
@@ -40737,6 +40809,7 @@ pendingChoices[].asked.trigger.Event.life_paid	number:int
 pendingChoices[].asked.trigger.Event.log_deferred	bool
 pendingChoices[].asked.trigger.Event.looked_at	number:int
 pendingChoices[].asked.trigger.Event.loyalty	bool
+pendingChoices[].asked.trigger.Event.modifier	number:int
 pendingChoices[].asked.trigger.Event.new_zone	string
 pendingChoices[].asked.trigger.Event.old_zone	string
 pendingChoices[].asked.trigger.Event.paperDeclared	bool
@@ -41949,6 +42022,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.life_paid	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Event.loyalty	bool
+pendingChoices[].attackSplit.tail.asked.trigger.Event.modifier	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Event.new_zone	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.old_zone	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.paperDeclared	bool
@@ -42940,6 +43014,8 @@ pendingChoices[].copyWalk.item.distribution{}	number:int
 pendingChoices[].copyWalk.item.doubledBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.doubledByName	string
 pendingChoices[].copyWalk.item.entersTapped	bool
+pendingChoices[].copyWalk.item.entryRolls	array
+pendingChoices[].copyWalk.item.entryRolls[]	number:int
 pendingChoices[].copyWalk.item.exileAndPlot	bool
 pendingChoices[].copyWalk.item.exileInsteadOfGraveyard	bool
 pendingChoices[].copyWalk.item.exileLinkedTo	object
@@ -43042,6 +43118,8 @@ pendingChoices[].copyWalk.item.paid.milled[]	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.optionalCosts	array
 pendingChoices[].copyWalk.item.paid.optionalCosts[]	number:int
 pendingChoices[].copyWalk.item.paid.paperMana	number:int
+pendingChoices[].copyWalk.item.paid.rolled	array
+pendingChoices[].copyWalk.item.paid.rolled[]	number:int
 pendingChoices[].copyWalk.item.paid.sacrificedObjects	array
 pendingChoices[].copyWalk.item.paid.sacrificedObjects[]	object
 pendingChoices[].copyWalk.item.paid.sacrificedObjects[].epoch	number:int
@@ -43199,6 +43277,7 @@ pendingChoices[].copyWalk.item.trigger.Event.life_paid	number:int
 pendingChoices[].copyWalk.item.trigger.Event.log_deferred	bool
 pendingChoices[].copyWalk.item.trigger.Event.looked_at	number:int
 pendingChoices[].copyWalk.item.trigger.Event.loyalty	bool
+pendingChoices[].copyWalk.item.trigger.Event.modifier	number:int
 pendingChoices[].copyWalk.item.trigger.Event.new_zone	string
 pendingChoices[].copyWalk.item.trigger.Event.old_zone	string
 pendingChoices[].copyWalk.item.trigger.Event.paperDeclared	bool
@@ -43925,6 +44004,7 @@ pendingChoices[].declineEndsLoop	bool
 pendingChoices[].declineLabel	string
 pendingChoices[].diceRoll	object
 pendingChoices[].diceRoll.ignoreLowest	number:int
+pendingChoices[].diceRoll.modifier	number:int
 pendingChoices[].diceRoll.n	number:int
 pendingChoices[].diceRoll.ordered	array
 pendingChoices[].diceRoll.ordered[]	object
@@ -44047,6 +44127,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.life_paid	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].diceRoll.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Event.new_zone	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.old_zone	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.paperDeclared	bool
@@ -45077,6 +45158,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.life_paid	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.log_deferred	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.looked_at	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.loyalty	bool
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.modifier	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.new_zone	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.old_zone	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.paperDeclared	bool
@@ -45706,6 +45788,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.life_paid	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.new_zone	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.old_zone	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.paperDeclared	bool
@@ -46341,6 +46424,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.life_paid	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].libraryOrder.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Event.new_zone	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.old_zone	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.paperDeclared	bool
@@ -47029,6 +47113,7 @@ pendingChoices[].nameThen.asked.trigger.Event.life_paid	number:int
 pendingChoices[].nameThen.asked.trigger.Event.log_deferred	bool
 pendingChoices[].nameThen.asked.trigger.Event.looked_at	number:int
 pendingChoices[].nameThen.asked.trigger.Event.loyalty	bool
+pendingChoices[].nameThen.asked.trigger.Event.modifier	number:int
 pendingChoices[].nameThen.asked.trigger.Event.new_zone	string
 pendingChoices[].nameThen.asked.trigger.Event.old_zone	string
 pendingChoices[].nameThen.asked.trigger.Event.paperDeclared	bool
@@ -47665,6 +47750,7 @@ pendingChoices[].ordered.asked.trigger.Event.life_paid	number:int
 pendingChoices[].ordered.asked.trigger.Event.log_deferred	bool
 pendingChoices[].ordered.asked.trigger.Event.looked_at	number:int
 pendingChoices[].ordered.asked.trigger.Event.loyalty	bool
+pendingChoices[].ordered.asked.trigger.Event.modifier	number:int
 pendingChoices[].ordered.asked.trigger.Event.new_zone	string
 pendingChoices[].ordered.asked.trigger.Event.old_zone	string
 pendingChoices[].ordered.asked.trigger.Event.paperDeclared	bool
@@ -48143,6 +48229,7 @@ pendingChoices[].pickTail.asked.trigger.Event.life_paid	number:int
 pendingChoices[].pickTail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].pickTail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].pickTail.asked.trigger.Event.loyalty	bool
+pendingChoices[].pickTail.asked.trigger.Event.modifier	number:int
 pendingChoices[].pickTail.asked.trigger.Event.new_zone	string
 pendingChoices[].pickTail.asked.trigger.Event.old_zone	string
 pendingChoices[].pickTail.asked.trigger.Event.paperDeclared	bool
@@ -48817,6 +48904,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.li
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.paperDeclared	bool
@@ -49455,6 +49543,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.paperDeclared	bool
@@ -50084,6 +50173,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.paperDeclared	bool
@@ -50896,6 +50986,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.lif
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.paperDeclared	bool
@@ -51646,6 +51737,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.paperDeclared	bool
@@ -52351,6 +52443,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.paperDeclared	bool
@@ -52980,6 +53073,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.lif
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.paperDeclared	bool
@@ -53642,6 +53736,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.paperDeclared	bool
@@ -54291,6 +54386,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.paperDeclared	bool
@@ -55358,6 +55454,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.paperDeclared	bool
@@ -56010,6 +56107,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.paperDeclared	bool
@@ -56642,6 +56740,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.life_
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.paperDeclared	bool
@@ -58105,6 +58204,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.l
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.paperDeclared	bool
@@ -58732,6 +58832,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.life_
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.paperDeclared	bool
@@ -59478,6 +59579,8 @@ pendingChoices[].replacementResume.event.stackItem.distribution{}	number:int
 pendingChoices[].replacementResume.event.stackItem.doubledBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.doubledByName	string
 pendingChoices[].replacementResume.event.stackItem.entersTapped	bool
+pendingChoices[].replacementResume.event.stackItem.entryRolls	array
+pendingChoices[].replacementResume.event.stackItem.entryRolls[]	number:int
 pendingChoices[].replacementResume.event.stackItem.exileAndPlot	bool
 pendingChoices[].replacementResume.event.stackItem.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.stackItem.exileLinkedTo	object
@@ -59580,6 +59683,8 @@ pendingChoices[].replacementResume.event.stackItem.paid.milled[]	custom(uuid.UUI
 pendingChoices[].replacementResume.event.stackItem.paid.optionalCosts	array
 pendingChoices[].replacementResume.event.stackItem.paid.optionalCosts[]	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.paperMana	number:int
+pendingChoices[].replacementResume.event.stackItem.paid.rolled	array
+pendingChoices[].replacementResume.event.stackItem.paid.rolled[]	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.sacrificedObjects	array
 pendingChoices[].replacementResume.event.stackItem.paid.sacrificedObjects[]	object
 pendingChoices[].replacementResume.event.stackItem.paid.sacrificedObjects[].epoch	number:int
@@ -59737,6 +59842,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.life_paid	numbe
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.paperDeclared	bool
@@ -60345,6 +60451,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.life
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.paperDeclared	bool
@@ -62251,6 +62358,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.paperDeclared	bool
@@ -62913,6 +63021,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.paperDeclared	bool
@@ -63540,6 +63649,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -64187,6 +64297,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -64901,6 +65012,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.loyalty	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.modifier	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.new_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.old_zone	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.paperDeclared	bool
@@ -65974,6 +66086,7 @@ pendingChoices[].scryThen.asked.trigger.Event.life_paid	number:int
 pendingChoices[].scryThen.asked.trigger.Event.log_deferred	bool
 pendingChoices[].scryThen.asked.trigger.Event.looked_at	number:int
 pendingChoices[].scryThen.asked.trigger.Event.loyalty	bool
+pendingChoices[].scryThen.asked.trigger.Event.modifier	number:int
 pendingChoices[].scryThen.asked.trigger.Event.new_zone	string
 pendingChoices[].scryThen.asked.trigger.Event.old_zone	string
 pendingChoices[].scryThen.asked.trigger.Event.paperDeclared	bool
@@ -66649,6 +66762,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.life_paid	number
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.loyalty	bool
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.modifier	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.new_zone	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.old_zone	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.paperDeclared	bool
@@ -68135,6 +68249,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.life_paid	number:int
 pendingChoices[].targetWalk.frame.trigger.Event.log_deferred	bool
 pendingChoices[].targetWalk.frame.trigger.Event.looked_at	number:int
 pendingChoices[].targetWalk.frame.trigger.Event.loyalty	bool
+pendingChoices[].targetWalk.frame.trigger.Event.modifier	number:int
 pendingChoices[].targetWalk.frame.trigger.Event.new_zone	string
 pendingChoices[].targetWalk.frame.trigger.Event.old_zone	string
 pendingChoices[].targetWalk.frame.trigger.Event.paperDeclared	bool
@@ -68909,6 +69024,7 @@ pendingChoices[].triggerFrame.trigger.Event.life_paid	number:int
 pendingChoices[].triggerFrame.trigger.Event.log_deferred	bool
 pendingChoices[].triggerFrame.trigger.Event.looked_at	number:int
 pendingChoices[].triggerFrame.trigger.Event.loyalty	bool
+pendingChoices[].triggerFrame.trigger.Event.modifier	number:int
 pendingChoices[].triggerFrame.trigger.Event.new_zone	string
 pendingChoices[].triggerFrame.trigger.Event.old_zone	string
 pendingChoices[].triggerFrame.trigger.Event.paperDeclared	bool
@@ -69001,6 +69117,8 @@ pendingTriggers[].distribution{}	number:int
 pendingTriggers[].doubledBy	custom(uuid.UUID)
 pendingTriggers[].doubledByName	string
 pendingTriggers[].entersTapped	bool
+pendingTriggers[].entryRolls	array
+pendingTriggers[].entryRolls[]	number:int
 pendingTriggers[].exileAndPlot	bool
 pendingTriggers[].exileInsteadOfGraveyard	bool
 pendingTriggers[].exileLinkedTo	object
@@ -69103,6 +69221,8 @@ pendingTriggers[].paid.milled[]	custom(uuid.UUID)
 pendingTriggers[].paid.optionalCosts	array
 pendingTriggers[].paid.optionalCosts[]	number:int
 pendingTriggers[].paid.paperMana	number:int
+pendingTriggers[].paid.rolled	array
+pendingTriggers[].paid.rolled[]	number:int
 pendingTriggers[].paid.sacrificedObjects	array
 pendingTriggers[].paid.sacrificedObjects[]	object
 pendingTriggers[].paid.sacrificedObjects[].epoch	number:int
@@ -69260,6 +69380,7 @@ pendingTriggers[].trigger.Event.life_paid	number:int
 pendingTriggers[].trigger.Event.log_deferred	bool
 pendingTriggers[].trigger.Event.looked_at	number:int
 pendingTriggers[].trigger.Event.loyalty	bool
+pendingTriggers[].trigger.Event.modifier	number:int
 pendingTriggers[].trigger.Event.new_zone	string
 pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.paperDeclared	bool
@@ -70967,6 +71088,7 @@ promptRuns[].asked.trigger.Event.life_paid	number:int
 promptRuns[].asked.trigger.Event.log_deferred	bool
 promptRuns[].asked.trigger.Event.looked_at	number:int
 promptRuns[].asked.trigger.Event.loyalty	bool
+promptRuns[].asked.trigger.Event.modifier	number:int
 promptRuns[].asked.trigger.Event.new_zone	string
 promptRuns[].asked.trigger.Event.old_zone	string
 promptRuns[].asked.trigger.Event.paperDeclared	bool
@@ -71490,6 +71612,8 @@ resolving.item.distribution{}	number:int
 resolving.item.doubledBy	custom(uuid.UUID)
 resolving.item.doubledByName	string
 resolving.item.entersTapped	bool
+resolving.item.entryRolls	array
+resolving.item.entryRolls[]	number:int
 resolving.item.exileAndPlot	bool
 resolving.item.exileInsteadOfGraveyard	bool
 resolving.item.exileLinkedTo	object
@@ -71592,6 +71716,8 @@ resolving.item.paid.milled[]	custom(uuid.UUID)
 resolving.item.paid.optionalCosts	array
 resolving.item.paid.optionalCosts[]	number:int
 resolving.item.paid.paperMana	number:int
+resolving.item.paid.rolled	array
+resolving.item.paid.rolled[]	number:int
 resolving.item.paid.sacrificedObjects	array
 resolving.item.paid.sacrificedObjects[]	object
 resolving.item.paid.sacrificedObjects[].epoch	number:int
@@ -71749,6 +71875,7 @@ resolving.item.trigger.Event.life_paid	number:int
 resolving.item.trigger.Event.log_deferred	bool
 resolving.item.trigger.Event.looked_at	number:int
 resolving.item.trigger.Event.loyalty	bool
+resolving.item.trigger.Event.modifier	number:int
 resolving.item.trigger.Event.new_zone	string
 resolving.item.trigger.Event.old_zone	string
 resolving.item.trigger.Event.paperDeclared	bool
@@ -76964,6 +77091,8 @@ stackMeta[].distribution{}	number:int
 stackMeta[].doubledBy	custom(uuid.UUID)
 stackMeta[].doubledByName	string
 stackMeta[].entersTapped	bool
+stackMeta[].entryRolls	array
+stackMeta[].entryRolls[]	number:int
 stackMeta[].exileAndPlot	bool
 stackMeta[].exileInsteadOfGraveyard	bool
 stackMeta[].exileLinkedTo	object
@@ -77066,6 +77195,8 @@ stackMeta[].paid.milled[]	custom(uuid.UUID)
 stackMeta[].paid.optionalCosts	array
 stackMeta[].paid.optionalCosts[]	number:int
 stackMeta[].paid.paperMana	number:int
+stackMeta[].paid.rolled	array
+stackMeta[].paid.rolled[]	number:int
 stackMeta[].paid.sacrificedObjects	array
 stackMeta[].paid.sacrificedObjects[]	object
 stackMeta[].paid.sacrificedObjects[].epoch	number:int
@@ -77223,6 +77354,7 @@ stackMeta[].trigger.Event.life_paid	number:int
 stackMeta[].trigger.Event.log_deferred	bool
 stackMeta[].trigger.Event.looked_at	number:int
 stackMeta[].trigger.Event.loyalty	bool
+stackMeta[].trigger.Event.modifier	number:int
 stackMeta[].trigger.Event.new_zone	string
 stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.paperDeclared	bool

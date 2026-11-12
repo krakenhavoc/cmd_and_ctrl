@@ -46,6 +46,23 @@ func XCounters(kind string) game.EntryCountersFromCast {
 	}
 }
 
+// RollXDiceCounters is "As this permanent enters, roll X d<sides>. It
+// enters with a number of <kind> counters on it equal to the total of
+// those results" (Neverwinter Hydra, #5682). X is the spell's announced
+// X (CR 107.3m), so the engine rolls as the spell resolves, before the
+// entry begins, through the ordinary dice door: a replacement of the
+// roll applies, an ignored roll counts for nothing (CR 706.6) and
+// "whenever you roll one or more dice" sees the rest. Put onto the
+// battlefield without being cast, or cast for X=0, it rolls nothing and
+// gets no counters.
+func RollXDiceCounters(kind string, sides int) game.EntryCountersFromCast {
+	return game.EntryCountersFromCast{
+		Kind:       kind,
+		RollXSides: sides,
+		Count:      func(cast game.CastCounts) int { return cast.EntryRoll },
+	}
+}
+
 // CountersPerKick is "this permanent enters with `per` <kind> counters
 // on it for each time it was kicked" (CR 702.33d) — Everflowing
 // Chalice's charge counter per multikick. Kicker and multikicker
