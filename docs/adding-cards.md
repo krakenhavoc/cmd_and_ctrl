@@ -721,6 +721,18 @@ Mana abilities can carry cost components beyond `{T}`:
 | Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
 | Exile a creature you control | `ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}` | Food Chain (#1600) |
 
+**"Mana abilities of this land cost an additional 1 life to activate"**
+(Thran Portal, #5661) is not a `Life` on a row: it prices every mana
+ability the permanent has, and on a land that is a basic land type the
+one it taps with is intrinsic (CR 305.6) and has no row. Declare the
+static `ManaAbilitiesOfThisPermanentCostLife(1)`
+([mana_ability_life_tax.go](../server/internal/cards/effects/mana_ability_life_tax.go)).
+The engine adds the life to each row's `LifeCost` as the rows are read
+(`Characteristic.ManaAbilityLifeTax`), a printed, intrinsic or granted
+one alike, so the activation, the cost chip, the auto-tapper's pain
+tier and a bot's enumerator need nothing more. It ends with the
+permanent's other abilities (CR 305.7, CR 613.1f).
+
 "Exile a card from your hand" is NOT a discard with a different
 destination: the card leaves through the one exit primitive, fires no
 `EventDiscardCard` and is invisible to madness. It rides its own wire
