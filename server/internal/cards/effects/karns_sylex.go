@@ -31,6 +31,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "c5e817f9-a003-45b5-8e16-1746e6096166",
 		Name:         "Karn's Sylex",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Static:       []game.StaticAbility{PlayersCantPayLifeToCastOrActivate()},
