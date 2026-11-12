@@ -419,7 +419,7 @@ func TestSoulbondWithoutTheKeywordDoesNotTrigger(t *testing.T) {
 // after it is answered.
 func TestSoulbondSurvivesARestore(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	me := g.Seats[0]
 	advanceTo(t, g, game.StepPrecombatMain)
 	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 	mare := sbondMightmare(t, g, me)
@@ -439,7 +439,7 @@ func TestSoulbondSurvivesARestore(t *testing.T) {
 
 	// Restored again with the pair made: it is still there and works.
 	g = restoreThroughJSON(t, g)
-	opp = g.Seats[1]
+	opp := g.Seats[1]
 	if sbondPartner(g, mare) != bear || sbondPartner(g, bear) != mare {
 		t.Fatal("the pair did not survive a restore")
 	}
