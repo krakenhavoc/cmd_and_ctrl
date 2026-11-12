@@ -352,6 +352,15 @@ type Game struct {
 	// as LoyaltyActivatedThisTurn is.
 	LoyaltyExtraActivationsUsedThisTurn map[uuid.UUID]map[uuid.UUID]int
 
+	// LoyaltyTwiceThisTurn is the set of PLAYERS who "may activate the
+	// loyalty abilities of planeswalkers you control twice this turn
+	// rather than only once" (Urza Assembles the Titans' chapter III,
+	// #5665): Oath of Teferi's static as a one-turn effect, so the
+	// limit is two, not one more per resolution. Flushed at the turn
+	// boundary with the rest. ADR 0145 amendment 2026-11-12;
+	// loyalty_limit.go.
+	LoyaltyTwiceThisTurn map[uuid.UUID]bool
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped

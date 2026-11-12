@@ -693,3 +693,173 @@ func TestAPhasedOutPermanentLeavesWithItsOwner(t *testing.T) {
 		t.Error("it left the game with its owner (CR 702.26k)")
 	}
 }
+
+// --- "it can't phase in for as long as you control ~" (#5664) --------
+
+// zhalfirJail phases `prisoner` out and bars its phase-in for as long as
+// `player` controls `jail`, the way The Phasing of Zhalfir's chapter
+// does: two instructions, the phase-out first.
+func zhalfirJail(g *Game, jail, player, prisoner uuid.UUID) {
+	g.WithWriteLock(func() {
+		_ = g.PhaseOutForEffect(jail, prisoner)
+		g.CantPhaseInWhileControlledForEffect(jail, player, prisoner)
+	})
+}
+
+// The permanent sits out its controller's untap steps while the source
+// is controlled, and when the source leaves it does NOT come back on
+// the spot: it phases in during its controller's next untap step
+// (CR 502.1).
+func TestCantPhaseInHoldsThroughUntapStepsAndEndsWhenTheSourceLeaves(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0].ID
+	them := g.Seats[1].ID
+	jail := pushPhasingTestCard(g, me, "The Phasing of Zhalfir", "Enchantment — Saga")
+	prisoner := pushPhasingTestCard(g, them, "Grizzly Bears", "Creature — Bear")
+	aura := pushPhasingTestCard(g, them, "Test Aura", "Enchantment — Aura")
+	g.WithWriteLock(func() {
+		if err := g.AttachForEffect(aura, TargetRef{Kind: TargetCard, ID: prisoner}); err != nil {
+			t.Fatalf("attach: %v", err)
+		}
+	})
+	zhalfirJail(g, jail, me, prisoner)
+
+	for i := 0; i < 2; i++ {
+		g.WithWriteLock(func() {
+			g.runStateChecksLocked()
+			g.performPhasingLocked(them)
+		})
+		if _, ok := phasedOutCardByID(g, prisoner); !ok {
+			t.Fatal("it can't phase in while the Saga's controller still controls the Saga")
+		}
+		if _, ok := phasedOutCardByID(g, aura); !ok {
+			t.Fatal("and the Aura that phased out with it stays out with it (CR 702.26g)")
+		}
+	}
+
+	g.WithWriteLock(func() {
+		g.DestroyPermanentsForEffect([]uuid.UUID{jail})
+		g.runStateChecksLocked()
+	})
+	held, ok := phasedOutCardByID(g, prisoner)
+	if !ok {
+		t.Fatal("the source leaving phases nothing in by itself: it waits for an untap step")
+	}
+	if held.PhaseInBarredBy != uuid.Nil {
+		t.Error("the ended effect is forgotten")
+	}
+
+	g.WithWriteLock(func() { g.performPhasingLocked(me) })
+	if _, ok := phasedOutCardByID(g, prisoner); !ok {
+		t.Fatal("another player's untap step is not the one it phased out under")
+	}
+	g.WithWriteLock(func() { g.performPhasingLocked(them) })
+	if _, ok := battlefieldCardByID(g, prisoner); !ok {
+		t.Fatal("it phases in during its controller's next untap step")
+	}
+	if back, ok := battlefieldCardByID(g, aura); !ok || !back.IsAttachedTo(prisoner) {
+		t.Error("with its Aura, still attached")
+	}
+}
+
+// "For as long as YOU control": the effect ends when the Saga changes
+// controller, and does not start again if control comes back
+// (CR 611.2b).
+func TestCantPhaseInEndsWhenTheSourceChangesControllerAndStaysEnded(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0].ID
+	them := g.Seats[1].ID
+	jail := pushPhasingTestCard(g, me, "The Phasing of Zhalfir", "Enchantment — Saga")
+	prisoner := pushPhasingTestCard(g, them, "Grizzly Bears", "Creature — Bear")
+	zhalfirJail(g, jail, me, prisoner)
+
+	g.WithWriteLock(func() {
+		if !g.GainControlForEffect(uuid.Nil, jail, them, IndefiniteDuration(), "test theft") {
+			t.Fatal("steal the Saga")
+		}
+		g.runStateChecksLocked()
+		if !g.GainControlForEffect(uuid.Nil, jail, me, IndefiniteDuration(), "test theft back") {
+			t.Fatal("take it back")
+		}
+		g.runStateChecksLocked()
+		g.performPhasingLocked(them)
+	})
+	if _, ok := battlefieldCardByID(g, prisoner); !ok {
+		t.Fatal("control was lost, so the effect ended; regaining control does not restart it")
+	}
+}
+
+// CR 702.26f: a source that phases out can no longer be seen, so the
+// duration ends.
+func TestCantPhaseInEndsWhenTheSourcePhasesOut(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0].ID
+	them := g.Seats[1].ID
+	jail := pushPhasingTestCard(g, me, "The Phasing of Zhalfir", "Enchantment — Saga")
+	prisoner := pushPhasingTestCard(g, them, "Grizzly Bears", "Creature — Bear")
+	zhalfirJail(g, jail, me, prisoner)
+
+	g.WithWriteLock(func() {
+		_ = g.PhaseOutForEffect(uuid.Nil, jail)
+		g.runStateChecksLocked()
+		g.performPhasingLocked(them)
+	})
+	if _, ok := battlefieldCardByID(g, prisoner); !ok {
+		t.Fatal("the Saga phased out, so the effect ended and the permanent phases in")
+	}
+}
+
+// CR 611.2b: the duration never starts when the player does not control
+// the source as the effect would begin, so the permanent is on the
+// ordinary clock.
+func TestCantPhaseInNeverStartsWithoutControlOfTheSource(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0].ID
+	them := g.Seats[1].ID
+	jail := pushPhasingTestCard(g, them, "The Phasing of Zhalfir", "Enchantment — Saga")
+	prisoner := pushPhasingTestCard(g, them, "Grizzly Bears", "Creature — Bear")
+	zhalfirJail(g, jail, me, prisoner)
+
+	if held, _ := phasedOutCardByID(g, prisoner); held.PhaseInBarredBy != uuid.Nil {
+		t.Fatal("nothing is recorded")
+	}
+	g.WithWriteLock(func() { g.performPhasingLocked(them) })
+	if _, ok := battlefieldCardByID(g, prisoner); !ok {
+		t.Fatal("it phases in at its controller's next untap step")
+	}
+}
+
+// The snapshot carries the effect: a restored table still holds the
+// permanent out, and still lets it back once the Saga is gone.
+func TestSnapshotRoundTripsACantPhaseInEffect(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0].ID
+	them := g.Seats[1].ID
+	jail := pushPhasingTestCard(g, me, "The Phasing of Zhalfir", "Enchantment — Saga")
+	prisoner := pushPhasingTestCard(g, them, "Grizzly Bears", "Creature — Bear")
+	zhalfirJail(g, jail, me, prisoner)
+
+	restored, err := g.CaptureSnapshot().Restore()
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	held, ok := phasedOutCardByID(restored, prisoner)
+	if !ok || held.PhaseInBarredBy != jail || held.PhaseInBarredFor != me {
+		t.Fatalf("the effect survives a restore: %+v", held)
+	}
+	restored.WithWriteLock(func() {
+		restored.runStateChecksLocked()
+		restored.performPhasingLocked(them)
+	})
+	if _, ok := phasedOutCardByID(restored, prisoner); !ok {
+		t.Fatal("the restored game still keeps it out")
+	}
+	restored.WithWriteLock(func() {
+		restored.DestroyPermanentsForEffect([]uuid.UUID{jail})
+		restored.runStateChecksLocked()
+		restored.performPhasingLocked(them)
+	})
+	if _, ok := battlefieldCardByID(restored, prisoner); !ok {
+		t.Fatal("and lets it back at the next untap step once the Saga is gone")
+	}
+}

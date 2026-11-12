@@ -611,6 +611,17 @@ const (
 	// triggers (CR 508.1j, 508.1m).
 	EventExert EventKind = "exert"
 
+	// EventEnlist — a creature enlisted another creature (CR 702.154c,
+	// #5658): the cost of its enlist ability was paid by tapping the
+	// other creature. Actor is the attacking player; CardID and Source
+	// are the attacker that enlisted; Target is the enlisted creature.
+	//
+	// Emitted only by payEnlistLocked, as the declaration locks in,
+	// ahead of the EventAttacks of the same declaration and in the same
+	// event batch (CR 508.1j, 508.1m). The enlisted creature's own
+	// EventTapCard precedes it.
+	EventEnlist EventKind = "enlist"
+
 	// EventForage — a player foraged (CR 701.61a, #5184): exiled three
 	// cards from their graveyard or sacrificed a Food, as a cost, an
 	// additional cost or an effect's "you may forage". Actor is the
@@ -1160,6 +1171,20 @@ const (
 	// Mount. Distinct from EventBecameSaddled, which fires once per
 	// Mount when the ability resolves.
 	EventSaddledMount EventKind = "saddled_mount"
+
+	// EventBecameCrewed — a Vehicle became crewed (CR 702.122e, #5671):
+	// "Whenever [this Vehicle] becomes crewed" means "Whenever a crew
+	// ability of [this Vehicle] resolves." One event per crew ability
+	// that resolves while its Vehicle is still on the battlefield as
+	// the object the ability came from, emitted after the ability's
+	// effect: Source / CardID / Target = the Vehicle, Actor = the
+	// ability's controller, Amount = how many crew abilities of that
+	// object have resolved this turn, this one included, so 1 is "for
+	// the first time each turn". A crew ability that was countered, or
+	// whose Vehicle left, emits nothing. Distinct from
+	// EventCrewedVehicle, which fires once per creature while the cost
+	// is paid.
+	EventBecameCrewed EventKind = "became_crewed"
 
 	// EventFacedDilemma — a player chose one or more modes for a spell
 	// or ability (#4973, Star Trek's "you face a dilemma as you choose
@@ -2168,6 +2193,21 @@ type Event struct {
 	// plainly knowable. False on every other event. Additive within
 	// schema v9.
 	XCost bool `json:"x_cost,omitempty"`
+
+	// LifePaid is, on an EventActivateAbility, the life the activator
+	// paid to activate the ability: PaidCost.LifePaid as the
+	// announcement finished paying, so a printed "Pay N life" component
+	// (CR 119.4), the life an X or a counted life cost came to, and 2
+	// for each Phyrexian mana symbol paid with life (CR 107.4f), all in
+	// one total. "Whenever you activate an ability that isn't a mana
+	// ability, if life was paid to activate it, you may pay that much
+	// life again" (Verrak, Warped Sengir, #5662) reads it for both the
+	// "if" and the amount. On the event for Exhaust's reason, and one
+	// more: the ability may have left the stack by the time the trigger
+	// resolves, and CR 603.4 still asks what was paid. Zero when no
+	// life was paid, and on every other event. Additive within schema
+	// v9.
+	LifePaid int `json:"life_paid,omitempty"`
 
 	// Converted marks an EventTransform whose turn-over was a CONVERT
 	// (CR 701.28a, ADR 0152 §2, owner decision 1) rather than a

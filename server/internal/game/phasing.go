@@ -231,6 +231,7 @@ func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOp
 		// is removed from combat. (See rule 506.4.)"
 		c.AttackingTarget = uuid.Nil
 		c.ExertOnAttack = false
+		c.EnlistOnAttack = uuid.Nil
 		c.clearBlocking()
 		g.forgetCombatRecordLocked(id)
 		// CR 702.26a: it phases in during the untap step of the player
@@ -302,9 +303,15 @@ func (g *Game) phaseInLocked(ids []uuid.UUID) []uuid.UUID {
 			continue
 		}
 		c := g.PhasedOut.Cards[idx]
+		// "It can't phase in" (#5664) is said of this permanent, so it
+		// stops every phase-in, whoever asks (CR 101.2).
+		if g.phaseInBarredLocked(&c) {
+			continue
+		}
 		c.PhasedOutBy = uuid.Nil
 		c.PhasedOutIndirect = false
 		c.PhaseInLockedBy = uuid.Nil
+		c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
 		if c.TapOnPhaseIn {
 			// Oubliette. Written directly rather than through
 			// untapPermanentLocked's twin: this is not the CR 701.21a
@@ -450,6 +457,13 @@ func (g *Game) performPhasingLocked(activePlayer uuid.UUID) {
 			if c.PhaseInLockedBy != uuid.Nil {
 				continue
 			}
+			// "It can't phase in for as long as you control ~"
+			// (#5664). Left out here, before the set grows by its
+			// attachments, so an Aura that phased out with it stays
+			// out with it (CR 702.26g).
+			if g.phaseInBarredLocked(c) {
+				continue
+			}
 			in = append(in, c.InstanceID)
 		}
 		in = g.withIndirectlyPhasedAttachmentsLocked(in)
@@ -557,6 +571,47 @@ func (g *Game) sweepPhaseInLocksLocked() bool {
 	return len(g.phaseInLocked(g.withIndirectlyPhasedAttachmentsLocked(ready))) > 0
 }
 
+// phaseInBarredLocked reports whether a phased-out permanent is under a
+// "can't phase in for as long as you control ~" effect that still
+// holds: the source is on the battlefield as the object the effect
+// named (CR 400.7) and under the named player's control. A source that
+// has itself phased out is not on the battlefield slice, so the
+// duration can no longer see it and ends (CR 702.26f).
+//
+// Caller must hold g.mu.
+func (g *Game) phaseInBarredLocked(c *Card) bool {
+	if c.PhaseInBarredBy == uuid.Nil {
+		return false
+	}
+	src, ok := g.battlefieldCardLocked(c.PhaseInBarredBy)
+	return ok && src.ObjectEpoch == c.PhaseInBarredEpoch && src.Controller == c.PhaseInBarredFor
+}
+
+// sweepPhaseInBarsLocked ends every "can't phase in for as long as you
+// control ~" effect whose condition has stopped holding, by clearing
+// the record. Nothing phases in here: the permanent goes back on the
+// untap step's clock (CR 502.1) and returns during the next untap step
+// of the player it phased out under.
+//
+// The clearing is what makes the duration end for good (CR 611.2b): a
+// Saga that is stolen and then taken back is controlled again, but the
+// effect ended when control was lost. Called beside
+// sweepPhaseInLocksLocked, from the pass that runs after every action
+// with the board settled.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) sweepPhaseInBarsLocked() {
+	if g.PhasedOut == nil {
+		return
+	}
+	for i := range g.PhasedOut.Cards {
+		c := &g.PhasedOut.Cards[i]
+		if c.PhaseInBarredBy != uuid.Nil && !g.phaseInBarredLocked(c) {
+			c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
+		}
+	}
+}
+
 // PhasedOutCardsForEffect is the read surface for the holding slice —
 // the "rules and effects that specifically mention phased-out
 // permanents" half of CR 702.26b. By value, like
@@ -611,4 +666,33 @@ func (g *Game) PhaseOutUntilLeavesForEffect(source, until uuid.UUID, tapOnPhaseI
 	}
 	g.phaseOutLocked(source, ids, phaseOutOptions{LockedBy: until, TapOnPhaseIn: tapOnPhaseIn})
 	return nil
+}
+
+// CantPhaseInWhileControlledForEffect is "It can't phase in for as long
+// as you control ~" (The Phasing of Zhalfir, #5664), said of permanents
+// that have just phased out. `source` is the object whose control is
+// the duration and `player` the "you" of the sentence.
+//
+// The duration never starts when `player` does not control `source` on
+// the battlefield as this is called (CR 611.2b): nothing is recorded
+// and the permanents phase in on the ordinary clock. An id that is not
+// phased out is skipped. While the effect holds the permanent stays out
+// through every untap step; once it ends the permanent phases in during
+// the next untap step of the player it phased out under (CR 502.1), not
+// at once.
+//
+// Caller must hold g.mu.
+func (g *Game) CantPhaseInWhileControlledForEffect(source, player uuid.UUID, ids ...uuid.UUID) {
+	src, ok := g.battlefieldCardLocked(source)
+	if !ok || player == uuid.Nil || src.Controller != player || g.PhasedOut == nil {
+		return
+	}
+	for i := range g.PhasedOut.Cards {
+		c := &g.PhasedOut.Cards[i]
+		for _, id := range ids {
+			if c.InstanceID == id {
+				c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = source, src.ObjectEpoch, player
+			}
+		}
+	}
 }

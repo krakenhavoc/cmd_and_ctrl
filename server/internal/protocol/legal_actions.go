@@ -139,6 +139,10 @@ type LegalSourceView struct {
 	// The client offers the choice from this and never from oracle
 	// text.
 	ExertOnAttack bool `json:"exert_on_attack,omitempty"`
+	// EnlistOnAttack are the creatures this creature may enlist as it
+	// attacks right now (CR 702.154a, #5658): the enumerator offers an
+	// attack move with `enlist: <id>` for each beside the plain one.
+	EnlistOnAttack []string `json:"enlist_on_attack,omitempty"`
 	// Blocks are the attackers this creature may block, alone or as
 	// part of a grouped declaration.
 	Blocks []string `json:"blocks,omitempty"`
@@ -257,6 +261,7 @@ type (
 	digestAttackParams struct {
 		Target string `json:"target"`
 		Exert  bool   `json:"exert"`
+		Enlist string `json:"enlist"`
 	}
 	digestBlockParams struct {
 		Blocker  string `json:"blocker"`
@@ -358,6 +363,7 @@ func digestLegalMoves(moves []legal.Move) *LegalActionsView {
 				if p.Exert {
 					e.ExertOnAttack = true
 				}
+				e.EnlistOnAttack = appendUniqueNonEmpty(e.EnlistOnAttack, p.Enlist)
 			}
 		case legal.KindBlock:
 			digestBlockMove(m, e, entry)

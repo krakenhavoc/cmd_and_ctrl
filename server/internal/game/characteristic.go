@@ -251,6 +251,14 @@ type Characteristic struct {
 	// restrictions.go has the taxonomy.
 	Restrictions Restriction
 
+	// ManaAbilityLifeTax is the life each mana ability of this
+	// permanent costs on top of its own cost: Thran Portal's "Mana
+	// abilities of this land cost an additional 1 life to activate"
+	// (#5661, CR 118.8). Written by that static's Apply and summed, the
+	// way Restrictions is OR'd; read only by manaAbilityRows, which
+	// adds it to every row's LifeCost. mana_ability_life_tax.go.
+	ManaAbilityLifeTax int
+
 	// AttackRequirements are the CR 508.1d requirements on this
 	// object — "attacks each combat if able" (Zurgo Helmsmasher's own,
 	// Grand Melee's on every creature, Bident of Thassa's floating one)

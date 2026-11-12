@@ -257,9 +257,14 @@ func (st *state) losses(atk *protocol.CardView, blockers []*protocol.CardView) [
 // with: an attack declaration that doesn't exert. The twin move that
 // exerts the attacker (ADR 0130 §6) is priced against it separately,
 // under Config.PriceExert (exert.go), so every plan still counts each
-// attacker once.
+// attacker once. A twin that enlists a creature (#5658) is left out
+// the same way, and nothing prices it yet.
 func plainAttack(m legal.Move) bool {
-	return m.Kind == legal.KindAttack && !decode[attackParams](m.Params).Exert
+	if m.Kind != legal.KindAttack {
+		return false
+	}
+	ap := decode[attackParams](m.Params)
+	return !ap.Exert && ap.Enlist == ""
 }
 
 // decideAttack picks one attacker to declare, or reports that the bot

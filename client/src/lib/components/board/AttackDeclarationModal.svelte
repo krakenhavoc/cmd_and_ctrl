@@ -78,6 +78,14 @@
   import { usableManaAbilities } from "../../seatSummary";
   import { cancelAction, confirmAction } from "../../dock";
   import { EXERT_NOTE } from "../../combatDock";
+  import {
+    ENLIST_NOTE,
+    enlistCandidates,
+    enlistOptionLabel,
+    enlistOptions,
+    enlistTaken,
+    type EnlistOption,
+  } from "../../enlist";
   import { L } from "../../labels";
   import DockSheet from "./DockSheet.svelte";
   import AttackLifeStepper from "./AttackLifeStepper.svelte";
@@ -110,11 +118,13 @@
     // toggle is on.
     // #4198: `phyrexianLife` is how many Phyrexian symbols of the tax
     // are paid with life; 0 pays them all with mana.
+    // #5658: `enlist` maps a checked attacker to the creature it enlists.
     onConfirm: (
       attackerIDs: string[],
       lockedSources: string[],
       exertIDs: string[],
       phyrexianLife: number,
+      enlist: Record<string, string>,
     ) => void;
     onCancel: () => void;
   }
@@ -151,6 +161,9 @@
   // exert as they attack. Off by default on every row: nothing exerts a
   // creature the player didn't ask to (CR 508.1g).
   let exerted = $state<string[]>([]);
+  // #5658: attacker id to the creature it enlists as it attacks. Empty
+  // on every row until the player picks one (CR 508.1g).
+  let enlisted = $state<Record<string, string>>({});
   // #4198: the Phyrexian symbols the player pays with life.
   let lifeSymbols = $state(0);
 
@@ -168,9 +181,42 @@
       );
       lockedSources = [];
       exerted = [];
+      enlisted = {};
       lifeSymbols = 0;
     }
   });
+
+  // #5658: a row's enlist choice. Only a checked attacker's choice is
+  // sent, and never a creature that is itself checked to attack or that
+  // another checked row already enlists: one creature is tapped once
+  // (CR 702.154a). keptStage's creatures are taken too.
+  const liveEnlisted = $derived.by(() => {
+    const taken = enlistTaken(keptStage ?? []);
+    for (const id of liveSelected) taken.add(id);
+    const out: Record<string, string> = {};
+    for (const id of liveSelected) {
+      const pick = enlisted[id];
+      if (!pick || taken.has(pick) || !plan.enlistable[id]?.includes(pick)) continue;
+      taken.add(pick);
+      out[id] = pick;
+    }
+    return out;
+  });
+  // The creatures row `id` may still pick: its candidates, less the
+  // checked attackers and what the other rows have taken.
+  function enlistChoices(id: string): EnlistOption[] {
+    const taken = enlistTaken(keptStage ?? []);
+    for (const a of liveSelected) taken.add(a);
+    for (const [a, pick] of Object.entries(liveEnlisted)) if (a !== id) taken.add(pick);
+    return enlistOptions(enlistCandidates(id, legalGate, taken), view?.battlefield?.cards);
+  }
+  function setEnlist(id: string, pick: string): void {
+    const next = { ...enlisted };
+    if (pick) next[id] = pick;
+    else delete next[id];
+    enlisted = next;
+  }
+  const anyEnlistable = $derived(eligible.some((c) => c.instance_id in plan.enlistable));
 
   function toggleExert(id: string): void {
     exerted = exerted.includes(id) ? exerted.filter((x) => x !== id) : [...exerted, id];
@@ -245,7 +291,9 @@
 
   function confirm(): void {
     if (liveSelected.length === 0 || overCap) return;
-    onConfirm(liveSelected.slice(), lockedSources.slice(), liveExerted.slice(), liveLife);
+    onConfirm(liveSelected.slice(), lockedSources.slice(), liveExerted.slice(), liveLife, {
+      ...liveEnlisted,
+    });
   }
 </script>
 
@@ -320,12 +368,35 @@
               {ex ? "Exerting" : "Exert"}
             </button>
           {/if}
+          {#if c.instance_id in plan.enlistable}
+            {@const choices = enlistChoices(c.instance_id)}
+            <!-- #5658: the creature this attacker enlists; none by default. -->
+            <select
+              class="enlist-pick"
+              aria-label={L.enlistFor(c.name || "unknown creature")}
+              disabled={!on || choices.length === 0}
+              title="tap a creature that isn't attacking to add its power to this one's until end of turn"
+              value={liveEnlisted[c.instance_id] ?? ""}
+              onchange={(e) => setEnlist(c.instance_id, e.currentTarget.value)}
+            >
+              <option value="">No enlist</option>
+              {#each choices as o (o.id)}
+                <option value={o.id}>Enlist {enlistOptionLabel(o)}</option>
+              {/each}
+            </select>
+          {/if}
         </li>
       {/each}
     </ul>
     {#if anyExertable}
       <p class="prompt-hint" role="note">
         Exert is off unless you turn it on. {EXERT_NOTE}
+      </p>
+    {/if}
+    {#if anyEnlistable}
+      <p class="prompt-hint" role="note">
+        Nothing is enlisted unless you choose it. {ENLIST_NOTE} A creature you send to attack can't be
+        enlisted.
       </p>
     {/if}
     <div class="pick-bulk">
@@ -373,14 +444,22 @@
 {/if}
 
 <style>
-  li:has(.exert-btn) {
+  li:has(.exert-btn),
+  li:has(.enlist-pick) {
     display: flex;
     align-items: center;
     gap: 6px;
   }
-  li:has(.exert-btn) > .prompt-opt {
+  li:has(.exert-btn) > .prompt-opt,
+  li:has(.enlist-pick) > .prompt-opt {
     flex: 1;
     min-width: 0;
+  }
+  .enlist-pick {
+    flex: none;
+    max-width: 45%;
+    height: 28px;
+    font-size: 12px;
   }
   .exert-btn {
     flex: none;
