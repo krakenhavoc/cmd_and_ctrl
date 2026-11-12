@@ -40633,6 +40633,7 @@ pendingChoices[].assist.spend.AbilityOrigin.Lent.SpendFrom	string
 pendingChoices[].assist.spend.AbilityOrigin.LentBy	custom(uuid.UUID)
 pendingChoices[].assist.spend.AbilityOrigin.Ref	string
 pendingChoices[].assist.spend.AllCreatureTypes	bool
+pendingChoices[].assist.spend.AltCost	string
 pendingChoices[].assist.spend.CastFrom	string
 pendingChoices[].assist.spend.Colors	array
 pendingChoices[].assist.spend.Colors[]	string
