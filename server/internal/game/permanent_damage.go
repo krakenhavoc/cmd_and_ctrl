@@ -116,7 +116,9 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 		// CR 120.3c. A walker at 3 loyalty hit for 5 goes to 0, not to
 		// -2: applyCounterLocked deletes the entry once it reaches
 		// zero, and the CR 704.5i SBA sweeps it on the next check.
-		_ = g.applyCounterLocked(cardID, CounterLoyalty, -amount)
+		// A static may keep the last counter (Deification, CR 120.4c:
+		// damage_last_loyalty.go); the damage itself is unchanged.
+		_ = g.applyCounterLocked(cardID, CounterLoyalty, -g.loyaltyRemovedByDamageLocked(c, amount))
 	}
 	if isBattle {
 		// CR 120.3h, and the same clamping. The CR 704.5v/w SBA takes a

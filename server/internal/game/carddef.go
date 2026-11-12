@@ -471,6 +471,13 @@ type CardDef struct {
 	// battlefield through CatalogZeroLoyaltyExemptions; see
 	// zero_loyalty_exemption.go.
 	ZeroLoyaltyExemptions []ZeroLoyaltyExemption
+	// DamageLastLoyalty are this permanent's printed "if damage dealt to
+	// a planeswalker you control … would result in all loyalty counters
+	// on it being removed, instead all but one of those counters are
+	// removed" statics (CR 120.3c, 120.4c, #5646) — Deification. Read
+	// from the battlefield through CatalogDamageLastLoyalty; see
+	// damage_last_loyalty.go.
+	DamageLastLoyalty []DamageLastLoyaltyStatic
 	// OpponentEffectProtections are this permanent's printed "spells and
 	// abilities your opponents control can't cause you to discard /
 	// sacrifice" statics (#2178). Read from the battlefield through
@@ -1182,6 +1189,12 @@ func init() {
 	CatalogDamageAsThough = func(key string) []DamageAsThoughStatic {
 		if d := catalogDef(key); d != nil {
 			return d.DamageAsThough
+		}
+		return nil
+	}
+	CatalogDamageLastLoyalty = func(key string) []DamageLastLoyaltyStatic {
+		if d := catalogDef(key); d != nil {
+			return d.DamageLastLoyalty
 		}
 		return nil
 	}
