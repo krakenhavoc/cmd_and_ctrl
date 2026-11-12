@@ -537,6 +537,31 @@ dependencies).
 - Its cleanup deletes every `loadtest-*` table, waiting for a crashed server to come back first.
 - Watch Grafana's Server and Hosts dashboards while it runs. The harness only sees the client side.
 
+### Idle tables close on their own
+
+Nobody archives abandoned tables by hand any more ([ADR 0211](decisions/0211-closing-idle-tables.md),
+#4562; this replaces §8's daily hand-archiving). The sweep
+([docs/lobby.md](lobby.md), "Idle tables are closed") closes an unstarted
+table after 24 hours with no activity, a started game after 48 hours with
+no move by a person (the players see a notice over the dock, and those
+with "Your turn" DMs get one DM, 12 hours before), and a game left to its
+bots with nobody at the table after an hour, having played it out at the
+fast pace first. What to do when:
+
+- **Someone asks for a closed table back.** `/admin/games`, filter
+  archived: the row's outcome says why it closed and the table page shows
+  its last activity. **Unarchive** within 48 hours of the close gives it a
+  fresh clock. After 48 hours the room and its restore point are gone
+  (the row reads ended, and the replay is kept); it cannot be resumed.
+- **Is it working?** The Overview's Capacity row: tables closed by kind
+  (`cmdctrl_capacity_idle_closed_total`), and the warnings and unloads
+  beside it. Each close logs `idle table closed` at INFO with the game and
+  the reason. No alert: a close is the system working.
+- **Turn a cleanup off.** Set `CMDCTRL_IDLE_LOBBY_TABLE_AFTER`,
+  `CMDCTRL_IDLE_GAME_AFTER` or `CMDCTRL_IDLE_BOTS_AFTER` to `0` as a
+  repository or environment variable and deploy ([docs/env.md](env.md)).
+  `0` for the bots also stops the fast play-out.
+
 ## Dev-only features
 
 Enabled only when `CMDCTRL_ENV=dev`. Each may be individually turned

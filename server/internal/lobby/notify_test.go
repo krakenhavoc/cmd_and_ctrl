@@ -141,6 +141,7 @@ type recordEvents struct {
 	filled  []uuid.UUID
 	by      []uuid.UUID
 	started []uuid.UUID
+	warned  []idleWarned
 }
 
 func (r *recordEvents) TableFilled(game, by uuid.UUID) {
@@ -154,6 +155,25 @@ func (r *recordEvents) TableStarted(game uuid.UUID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.started = append(r.started, game)
+}
+
+func (r *recordEvents) TableIdleWarning(game uuid.UUID, closesAt time.Time, hours int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.warned = append(r.warned, idleWarned{game, closesAt, hours})
+}
+
+func (r *recordEvents) warnings() []idleWarned {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]idleWarned(nil), r.warned...)
+}
+
+// idleWarned is one TableIdleWarning.
+type idleWarned struct {
+	game     uuid.UUID
+	closesAt time.Time
+	hours    int
 }
 
 func TestTheLobbyReportsAFillAndAStart(t *testing.T) {
@@ -242,6 +262,44 @@ func TestNotifyTablesShowsPeopleBotsAndTheHost(t *testing.T) {
 	}
 	if waiting, _ := nt.Waiting(uuid.New(), alice); waiting {
 		t.Error("an unknown table is waiting on someone")
+	}
+}
+
+// ADR 0211 §6: the idle warning is for the people still playing their
+// own seats, so the notifier is told who is out and who a stand-in plays.
+func TestNotifyTablesMarksSeatsOutOfTheGameAndStandIns(t *testing.T) {
+	l := NewLobby(ws.NewRoomManager(quietLogger(), ""))
+	meta, alice, _, bob, carol := startedTable(t, l)
+	concede(t, l, meta.ID, bob)
+	l.mu.Lock()
+	for i := range l.games[meta.ID].meta.Players {
+		if p := &l.games[meta.ID].meta.Players[i]; p.PlayerID == carol {
+			p.StandIn = StandInTier
+		}
+	}
+	l.mu.Unlock()
+	tbl, ok := l.NotifyTables().Table(meta.ID)
+	if !ok {
+		t.Fatal("no table")
+	}
+	for _, s := range tbl.Seats {
+		switch s.PlayerID {
+		case alice:
+			if s.Out || s.StandIn {
+				t.Errorf("Alice, still playing, reads %+v", s)
+			}
+		case bob:
+			if !s.Out {
+				t.Errorf("Bob conceded but reads %+v", s)
+			}
+		case carol:
+			if !s.StandIn || s.Out {
+				t.Errorf("Carol's stand-in reads %+v", s)
+			}
+		}
+	}
+	if !tbl.IdleCloseAt.IsZero() {
+		t.Errorf("an unwarned table reads IdleCloseAt %v", tbl.IdleCloseAt)
 	}
 }
 

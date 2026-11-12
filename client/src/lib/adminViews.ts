@@ -14,6 +14,8 @@
 // decides who may see a page; lib/admin.ts's isAdmin only decides
 // whether the page asks at all.
 
+import { closedReasonLabel } from "./idleClose";
+
 // --- the routes -------------------------------------------------------
 
 export const GAME_STATES = ["lobby", "active", "ended"] as const;
@@ -396,6 +398,10 @@ export interface AdminGame {
   archived_at?: number;
   outcome?: string; // "win" | "draw" | "closed"
   winner_seat?: number;
+  /** why the server closed it for being idle (ADR 0211 §5): idle_lobby, idle_game, idle_bots */
+  closed_reason?: string;
+  /** the table's last activity as the idle sweep last wrote it, Unix ms */
+  last_active_at?: number;
   creator?: { id: string; name: string };
   practice: boolean;
   loaded: boolean;
@@ -593,12 +599,15 @@ export function seatLabel(s: AdminSeat): string {
 }
 
 /**
- * outcomeLine is a table's result: who won, a draw, a close with no
- * result recorded, or where an unfinished table stands.
+ * outcomeLine is a table's result: who won, a draw, why the server closed
+ * it for being idle (ADR 0211 §5), a close with no result recorded, or
+ * where an unfinished table stands.
  */
 export function outcomeLine(
-  g: Pick<AdminGame, "outcome" | "winner_seat" | "seats" | "state">,
+  g: Pick<AdminGame, "outcome" | "winner_seat" | "seats" | "state" | "closed_reason">,
 ): string {
+  const idle = closedReasonLabel(g.closed_reason);
+  if (idle) return idle;
   switch (g.outcome) {
     case "win": {
       const winner =

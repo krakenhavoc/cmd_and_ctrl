@@ -17,6 +17,7 @@ import { _resetForTests as resetBluff } from "./bluff";
 import { _resetForTests as resetDock, pushDockRequest } from "./dock";
 import { attackRowRequest, blockRequest, combatSelectionRequest } from "./combatDock";
 import type { AttackAllPlan } from "./attackAll";
+import { idleCloseNotice } from "./idleClose";
 import { defaultSettings, settings } from "./settings";
 import type { CardView, GameView, PlayerView, TurnView } from "./protocol";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
@@ -128,6 +129,38 @@ function buttonsNamed(root: ParentNode, name: string): HTMLButtonElement[] {
     (b) => accessibleName(b) === name,
   );
 }
+
+// ADR 0211 §6: a warned game's frame carries idle_close_at, and the dock
+// shows one line over its top edge until a move clears it.
+describe("the idle-close notice", () => {
+  const closes = new Date(Date.now() + 12 * 3_600_000).toISOString();
+
+  it("shows while the frame is warned, as a status, and goes with the warning", () => {
+    const d = mountDock({ view: gameView({ idle_close_at: closes }) });
+    const notice = d.q(".idle-close");
+    expect(notice).not.toBeNull();
+    expect(notice!.getAttribute("role")).toBe("status");
+    expect(notice!.textContent?.trim()).toBe(idleCloseNotice(closes));
+    expect(notice!.textContent).toContain(" unless someone moves");
+    expect(notice!.querySelector("button")).toBeNull();
+
+    d.setProps({ view: gameView() } as never);
+    expect(d.q(".idle-close")).toBeNull();
+  });
+
+  it("sits above the handoff chip when both show", () => {
+    const d = mountDock({
+      view: gameView({ idle_close_at: closes }),
+      handoff: { whose: "Bob's", onJump: () => {} },
+    });
+    expect(d.q(".handoff-chip")).not.toBeNull();
+    expect(d.q(".idle-close")!.classList.contains("raised")).toBe(true);
+  });
+
+  it("is not drawn for an unwarned game", () => {
+    expect(mountDock().q(".idle-close")).toBeNull();
+  });
+});
 
 describe("ActionDock", () => {
   it("is one region named actions, with the header, the toggles and the action bar", () => {

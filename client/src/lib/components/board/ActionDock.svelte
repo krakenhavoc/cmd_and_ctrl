@@ -80,6 +80,7 @@
   import { L } from "../../labels";
   import LoopControl from "./LoopControl.svelte";
   import HandoffChip from "./HandoffChip.svelte";
+  import IdleCloseNotice from "./IdleCloseNotice.svelte";
   import type { LoopDockProps } from "../../loopShortcut";
   import type { OutsideDock } from "../../outsideRight";
   import type { PlanarDieButton } from "../../planarDie";
@@ -936,6 +937,11 @@
   <!-- #4434: not over an open sheet, which grows up from the same edge. -->
   {#if handoff && !(sheetOpen && !minimised)}
     <HandoffChip whose={handoff.whose} onJump={handoff.onJump} />
+  {/if}
+  <!-- ADR 0211 §6: the game closes soon unless someone moves. Above the
+       handoff chip when both show; never over an open sheet. -->
+  {#if view.idle_close_at && !(sheetOpen && !minimised)}
+    <IdleCloseNotice idleCloseAt={view.idle_close_at} raised={!!handoff} />
   {/if}
 </section>
 

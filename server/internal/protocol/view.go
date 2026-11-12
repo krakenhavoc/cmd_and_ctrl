@@ -100,6 +100,12 @@ type GameView struct {
 	// 0164), stamped by the room and reduced per viewer by FilterViewFor.
 	// Nil until a rematch is offered, and for a spectator.
 	Rematch *RematchView `json:"rematch,omitempty"`
+	// IdleCloseAt is when the server will close this started game for
+	// having had no human move (ADR 0211 §6), RFC 3339 UTC, stamped by
+	// the room from the lobby's warning. Omitted until the game is
+	// warned, and cleared by the next human move. Public and identical
+	// for every viewer: the table shows it as a one-line notice.
+	IdleCloseAt string `json:"idle_close_at,omitempty"`
 	// StackPositions is where each seat dragged the stack panel (#3429,
 	// ADR 0176), keyed by seat id, stamped by the room. FilterViewFor
 	// keeps only the viewer's own entry; a spectator gets none.
@@ -11996,6 +12002,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// they may use it.
 		Voice:   filterVoiceFor(v.Voice, viewerID),
 		Rematch: filterRematchFor(v.Rematch, viewerID),
+		// ADR 0211 §6: the closing time is the whole table's.
+		IdleCloseAt: v.IdleCloseAt,
 		// #3429: only the viewer's own placement of the stack panel.
 		StackPositions: filterStackPositionsFor(v.StackPositions, viewerID),
 		StartingSeat:   v.StartingSeat,

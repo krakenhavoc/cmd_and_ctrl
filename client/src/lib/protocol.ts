@@ -586,6 +586,10 @@ export interface GameView {
   // by the server to this viewer's own part. Absent until one is offered,
   // and for a spectator.
   rematch?: RematchView;
+  // When the server will close this started game for having had no move
+  // by a person (ADR 0211 §6), RFC 3339 UTC. Absent until the game is
+  // warned; the next person's move clears it. lib/idleClose.ts words it.
+  idle_close_at?: string;
   // Where this viewer dragged the stack panel to (#3429, ADR 0176), keyed
   // by seat id. The server keeps only the viewer's own entry; absent when
   // the panel is at its default and for a spectator.
@@ -1201,6 +1205,10 @@ export type LogKind =
   // #5658: a creature enlisted another (CR 702.154c). `card_id` is the
   // attacker, `target` the creature tapped; server-rendered `text`.
   | "enlist"
+  // #5271: an attack declaration paid a CR 508.1h attack tax. `seat` is
+  // the payer, `target_seat` the defender, `card_id` the taxing
+  // permanent and `label` the price; server-rendered `text`.
+  | "attack_tax"
   // ADR 0127 §6: the server answered a prompt with its chooser's
   // standing answer ("Bob paid {1} for Rhystic Study (automatic)").
   // Server-rendered `text`.
