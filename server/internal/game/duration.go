@@ -231,6 +231,38 @@ const (
 	// does, as the delayed trigger it is paired with does.
 	UntilNextEndStep
 
+	// UntilYourNextUpkeep is "until your next upkeep" (#5737): Erhnam
+	// Djinn's "target non-Wall creature an opponent controls gains
+	// forestwalk until your next upkeep", Xenic Poltergeist's animation.
+	// It ends as the named player's next UPKEEP STEP begins, which is
+	// neither "until your next turn" (that ends as the turn begins, a step
+	// earlier, CR 500.1) nor anything a turn count can say: a turn can
+	// have more than one upkeep (CR 500.10, Obeka), and one whose upkeep
+	// is skipped never begins it, so the effect lasts on to the next
+	// upkeep that does.
+	//
+	// The thirteenth kind, appended after UntilNextEndStep so every
+	// persisted int keeps its meaning; a binary from before it refuses a
+	// file carrying it through Known.
+	//
+	// The stamp is ExpiresAfterTurnsBegun, here the player's
+	// Player.UpkeepsBegun when the effect was made: the next upkeep they
+	// begin raises that count past it, and the effect is over. A pure
+	// read, like UntilNextEndStep's, with no flag to set. The step-entry
+	// hook for the upkeep counts the step and sweeps the durations BEFORE
+	// it announces the step, so the effect is gone by the time the
+	// upkeep's "at the beginning of your upkeep" triggers are checked and
+	// put on the stack (CR 503.1a), the same order the end step uses
+	// for "until your next end step".
+	//
+	// ExpiresAtTurnsBegun is the CR 800.4m backstop: the player's
+	// seat-turn count at which the turn holding that upkeep has begun.
+	// A player who has left the game takes no more upkeeps, so the
+	// effect lasts until the turn that WOULD have begun, which the
+	// rotation still counts for a departed seat (noteTurnBegunLocked),
+	// and no longer.
+	UntilYourNextUpkeep
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -743,6 +775,31 @@ func (g *Game) UntilYourNextEndStepDuration(player uuid.UUID) Duration {
 	}
 }
 
+// UntilYourNextUpkeepDuration is "until <player>'s next upkeep"
+// (#5737), stamped with the upkeeps that player has begun and, for the
+// CR 800.4m backstop, the seat-turn count of the turn that upkeep falls
+// in. Caller must hold g.mu.
+//
+// That turn is the player's next one, except during the untap step of
+// their own turn, whose upkeep is still to come. Nothing resolves in an
+// untap step (CR 502.4), so no card reaches that case today; the guard
+// keeps the stamp right if one ever does.
+func (g *Game) UntilYourNextUpkeepDuration(player uuid.UUID) Duration {
+	upkeeps, turns := 0, g.turnsBegunForLocked(player)
+	if p := g.playerByIDLocked(player); p != nil {
+		upkeeps = p.UpkeepsBegun
+	}
+	if !(g.activePlayerIDLocked() == player && g.Turn.Step == StepUntap) {
+		turns++
+	}
+	return Duration{
+		Kind:                   UntilYourNextUpkeep,
+		Player:                 player,
+		ExpiresAtTurnsBegun:    turns,
+		ExpiresAfterTurnsBegun: upkeeps,
+	}
+}
+
 // UntilNextEndStepDuration is "until the next end step" (any player's),
 // stamped with the end steps that have begun so far. Caller must hold
 // g.mu.
@@ -1212,6 +1269,19 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		// Over once an end step has begun since the effect was made
 		// (UntilNextEndStep): the count has grown past its stamp.
 		return g.endStepsBegunLocked() > d.ExpiresAtTurnsBegun
+	case UntilYourNextUpkeep:
+		// Over once the player has begun an upkeep since the effect was
+		// made (UntilYourNextUpkeep), or, once they have left the game,
+		// as the turn that upkeep was in would have begun (CR 800.4m).
+		p := g.playerByIDLocked(d.Player)
+		if p == nil {
+			// No such player: there is no upkeep for it to wait on.
+			return true
+		}
+		if p.UpkeepsBegun > d.ExpiresAfterTurnsBegun {
+			return true
+		}
+		return p.Eliminated && p.TurnsBegun >= d.ExpiresAtTurnsBegun
 	case UntilEndOfCombat:
 		// Over the moment the cursor is outside the combat phase it
 		// names (CR 511.3, 724.2d): the next step after end of combat,
@@ -1465,6 +1535,8 @@ func (k DurationKind) String() string {
 		return "until you planeswalk away"
 	case UntilNextEndStep:
 		return "until the next end step"
+	case UntilYourNextUpkeep:
+		return "until your next upkeep"
 	}
 	return "unknown duration"
 }

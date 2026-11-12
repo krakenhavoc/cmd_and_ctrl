@@ -39,23 +39,8 @@ func init() {
 				Targets: TargetPermanent("up to one target noncreature artifact", And(Artifact(), Noncreature())).WithCount(0, 1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetCard {
-							continue
-						}
-						c, ok := g.LookupCardForEffect(t.ID)
-						if !ok {
-							continue
-						}
-						mv := c.ManaValue()
-						return ScopedEffectFor{
-							Target:   t.ID,
-							Mods:     append([]game.Mod{game.AddTypesMod("Creature")}, game.SetBasePTMods(mv, mv)...),
-							Duration: DurationUntilYourNextTurn(ctx, item.Controller),
-							Label:    "Karn, the Great Creator — an artifact creature",
-						}.Apply(ctx)
-					}
-					return nil
+					return artifactBecomesCreatureOfItsManaValue(ctx, DurationUntilYourNextTurn(ctx, item.Controller),
+						"Karn, the Great Creator — an artifact creature")
 				},
 			},
 			{
