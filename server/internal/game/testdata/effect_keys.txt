@@ -2277,11 +2277,13 @@ tail dice/berserkers-frenzy-result
 tail dice/component-pouch-counters
 tail dice/danse-macabre-result
 tail dice/diviners-portent-result
+tail dice/entry-roll
 tail dice/hoarding-ogre-treasures
 tail dice/maddening-hex-burn-and-move
 tail dice/netherese-puzzle-ward-scry
 tail dice/reckless-endeavor-rolled
 tail dice/revivify-result
+tail dice/roll-cost
 tail dice/roll-to-visit
 tail dice/song-of-inspiration-result
 tail dice/the-deck-of-many-things-result
