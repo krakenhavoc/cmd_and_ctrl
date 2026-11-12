@@ -78,6 +78,8 @@ type PlayerTurnTally struct {
 	// damage still is (it is dealt, it just loses no life). Sidequest: Play
 	// Blitzball's "if a player was dealt 6 or more combat damage this turn"
 	// reads it through Game.CombatDamageTakenThisTurn. Additive.
+	// It ends with the turn: "since your last turn" is
+	// Player.CombatDamagedSinceLastTurn (#5652, since_last_turn.go).
 	CombatDamageTaken int `json:"combatDamageTaken,omitempty"`
 	// CardsDiscarded counts cards this player discarded (one event
 	// per card, CR 701.9a), whatever the discard's cause or eventual
