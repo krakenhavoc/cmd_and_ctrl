@@ -387,6 +387,29 @@ type Card struct {
 	// See phasing.go and ADR 0084. Added in S46 (#1199).
 	PhaseInLockedBy uuid.UUID
 
+	// PhaseInBarredBy, PhaseInBarredEpoch and PhaseInBarredFor are
+	// "It can't phase in for as long as you control this Saga" (The
+	// Phasing of Zhalfir, #5664): the object whose control is the
+	// duration, the ObjectEpoch it had when the effect began (CR 400.7:
+	// one that left and came back is a new object), and the player who
+	// must still control it.
+	//
+	// Unlike PhaseInLockedBy this is a prohibition, not a clock. While
+	// it holds, the permanent is skipped by the untap step's phase-in
+	// (CR 502.1) and by everything else that would phase it in. When
+	// it ends (the source leaves, phases out or changes controller)
+	// nothing phases in on the spot: the permanent is back on the
+	// ordinary clock and phases in during the next untap step of the
+	// player it phased out under. A duration that has ended does not
+	// start again (CR 611.2b), so sweepPhaseInBarsLocked clears the
+	// three fields as soon as it sees the condition false.
+	//
+	// uuid.Nil in PhaseInBarredBy is "no such effect". Meaningful only
+	// while the card sits in Game.PhasedOut. See phasing.go.
+	PhaseInBarredBy    uuid.UUID
+	PhaseInBarredEpoch int
+	PhaseInBarredFor   uuid.UUID
+
 	// DamageMarked is the damage currently noted on the creature this
 	// turn, used by the lethal-damage state-based action (CR 704.5g).
 	// Combat damage and direct-damage spells (resolved manually) write
@@ -1926,6 +1949,14 @@ type Card struct {
 	// cleared with AttackingTarget wherever the creature leaves combat
 	// before that. True only between the verb and the lock-in.
 	ExertOnAttack bool
+
+	// EnlistOnAttack is a staged choice of the creature this attacker
+	// enlists (CR 702.154a, 508.1g; enlist.go): set by a declaration
+	// verb beside AttackingTarget, paid and cleared by
+	// commitAttackDeclarationLocked as the declaration locks in, and
+	// cleared with AttackingTarget wherever the creature leaves combat
+	// before that. Non-nil only between the verb and the lock-in.
+	EnlistOnAttack uuid.UUID
 
 	// Suspected is the CR 701.60 designation described above
 	// (SuspectedAt). Here for alignment, beside the other bools.

@@ -1793,6 +1793,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if params.PhyrexianLife != 0 && ab.Cost.Mana == "" {
 		return ErrInvalidParam
 	}
+	// #5660: "Players can't pay life ... to activate abilities that
+	// aren't mana abilities" (Karn's Sylex) reaches the life half of a
+	// Phyrexian symbol and of a life-for-mana grant. This verb activates
+	// no mana ability (CR 605.1a), so the claim is refused outright.
+	if params.PhyrexianLife > 0 && g.cantPayLifeToCastOrActivateLocked() {
+		return ErrInvalidParam
+	}
 	if ab.Cost.Loyalty != nil {
 		// CR 606.3 / 606.5 say PERMANENT, not planeswalker, and that
 		// wording is load-bearing rather than loose: a loyalty ability
@@ -2059,11 +2066,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// once and locked in, so nothing that happens after the
 	// announcement changes what was paid.
 	lifeCost, lifeOK := g.AbilityLifeCostAtXLocked(playerID, cardID, ab.Cost, params.XValue)
-	if !lifeOK || !g.CanPayLifeLocked(p, lifeCost) {
+	if !lifeOK || !g.CanPayLifeToCastOrActivateLocked(p, lifeCost) {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
 		// after. CR 119.8 forbids it outright while the player's life
-		// total can't change (#1200, life_lock.go).
+		// total can't change (#1200, life_lock.go). #5660: and so does
+		// "players can't pay life to activate abilities that aren't
+		// mana abilities" (life_cost_bar.go).
 		return ErrInvalidParam
 	}
 	// ADR 0129 §2, CR 107.14 / 118.3: the energy component, the printed
@@ -2787,6 +2796,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		Loyalty: ab.Cost.Loyalty != nil,
 		// CR 107.3a: an {X} mana symbol in the activation cost.
 		XCost: ab.Cost.XSlots() > 0,
+		// #5662: every point of life this announcement paid, for "if
+		// life was paid to activate it" (Verrak, Warped Sengir). The
+		// life costs are all paid above; nothing below pays life.
+		LifePaid: paid.LifePaid,
 		// #3855: what the activator declared about a waived payment
 		// is public, as a cast's is.
 		Unpaid:        paper.Free,

@@ -34,7 +34,7 @@ func init() {
 				return target.InstanceID == source.InstanceID
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				c.Power = rfCreatureBBasicLandTypesAmong(g, source.Controller)
+				c.Power = DomainCount(g, source.Controller)
 			},
 		}},
 		Triggered: []game.TriggeredAbility{{

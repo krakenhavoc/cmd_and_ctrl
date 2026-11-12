@@ -995,7 +995,9 @@ func (g *Game) lifePayableBy(a *AlternativeCost, p *Player) bool {
 	if a == nil {
 		return false
 	}
-	return g.CanPayLifeLocked(p, a.Life)
+	// #5660: an alternative cost is a cost to cast a spell, so "players
+	// can't pay life to cast spells" refuses it too (life_cost_bar.go).
+	return g.CanPayLifeToCastOrActivateLocked(p, a.Life)
 }
 
 // AlternativeCostPayableLocked reports whether a player could pay

@@ -35,6 +35,7 @@ import {
 } from "./attackAll";
 import type { DockAction, DockRefusal, DockRequest } from "./dock";
 import { L } from "./labels";
+import { ENLIST_NOTE, enlistOptionLabel, type EnlistOption } from "./enlist";
 import type { GameView, PlayerView } from "./protocol";
 
 export interface AttackRowInput {
@@ -393,6 +394,44 @@ function exertRow(exert: ExertChoice): DockAction[] {
   ];
 }
 
+// EnlistChoice is the selected attacker's enlist question (#5658, CR
+// 702.154a): present only for a creature the server says may enlist one
+// of `options`. `chosen` is null until the player answers, "" for
+// attacking without enlisting, and the enlisted creature's id otherwise.
+// The seat click commits nothing before the answer (CR 508.1g).
+export interface EnlistChoice {
+  chosen: string | null;
+  options: readonly EnlistOption[];
+  onChoose: (enlistID: string) => void;
+}
+
+function enlistQuestion(cardName: string, enlist: EnlistChoice): string {
+  if (enlist.chosen === null) return `Attack with ${cardName}: enlist a creature as it attacks?`;
+  const picked = enlist.options.find((o) => o.id === enlist.chosen);
+  const how = picked ? `Attacking and enlisting ${picked.name}` : "Attacking";
+  return `${how} with ${cardName} — click an opponent's seat to commit, or the creature again to cancel.`;
+}
+
+function enlistRow(enlist: EnlistChoice): DockAction[] {
+  return [
+    {
+      id: "attack-plain",
+      label: L.attackPlain,
+      title: "attack without enlisting a creature",
+      pressed: enlist.chosen === "",
+      emphasis: enlist.chosen === null,
+      onPress: () => enlist.onChoose(""),
+    },
+    ...enlist.options.map((o) => ({
+      id: `attack-enlist-${o.id}`,
+      label: L.attackAndEnlist(enlistOptionLabel(o)),
+      title: `attack and tap ${o.name} to add its power until end of turn`,
+      pressed: enlist.chosen === o.id,
+      onPress: () => enlist.onChoose(o.id),
+    })),
+  ];
+}
+
 export function combatSelectionRequest(
   kind: "attacker" | "blocker",
   cardName: string,
@@ -401,8 +440,33 @@ export function combatSelectionRequest(
   exert: ExertChoice | null = null,
   // #4326: another creature clicked now joins the selection.
   adds = false,
+  // #5658: the enlist question, for an attacker with a creature to enlist.
+  enlist: EnlistChoice | null = null,
 ): DockRequest {
   const attacking = kind === "attacker";
+  if (attacking && exert === null && enlist !== null) {
+    return {
+      rank: "flow",
+      label: `attacking with ${cardName}`,
+      tag: "attack",
+      tone: "danger",
+      live: true,
+      question: enlistQuestion(cardName, enlist),
+      detail: ENLIST_NOTE,
+      row: enlistRow(enlist),
+      primary: null,
+      secondary: [
+        {
+          id: "cancel",
+          label: "Cancel",
+          cap: "Esc",
+          keyShortcuts: "Escape",
+          title: "cancel the selection",
+          onPress: onCancel,
+        },
+      ],
+    };
+  }
   const asking = attacking && exert !== null;
   return {
     rank: "flow",

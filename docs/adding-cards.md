@@ -721,6 +721,18 @@ Mana abilities can carry cost components beyond `{T}`:
 | Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
 | Exile a creature you control | `ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}` | Food Chain (#1600) |
 
+**"Mana abilities of this land cost an additional 1 life to activate"**
+(Thran Portal, #5661) is not a `Life` on a row: it prices every mana
+ability the permanent has, and on a land that is a basic land type the
+one it taps with is intrinsic (CR 305.6) and has no row. Declare the
+static `ManaAbilitiesOfThisPermanentCostLife(1)`
+([mana_ability_life_tax.go](../server/internal/cards/effects/mana_ability_life_tax.go)).
+The engine adds the life to each row's `LifeCost` as the rows are read
+(`Characteristic.ManaAbilityLifeTax`), a printed, intrinsic or granted
+one alike, so the activation, the cost chip, the auto-tapper's pain
+tier and a bot's enumerator need nothing more. It ends with the
+permanent's other abilities (CR 305.7, CR 613.1f).
+
 "Exile a card from your hand" is NOT a discard with a different
 destination: the card leaves through the one exit primitive, fires no
 `EventDiscardCard` and is invisible to madness. It rides its own wire
@@ -2091,6 +2103,33 @@ A caveat that says "pays 2 life instead of {B}" goes stale the day a card
 declares `LifeForMana`; the `paying 2 life instead of black mana`
 coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
 
+### "Players can't pay life to cast spells or to activate abilities" (#5660)
+
+"Players can't pay life to cast spells or to activate abilities that
+aren't mana abilities." (Karn's Sylex) is a world rule the source carries
+on itself:
+
+```go
+Static: []game.StaticAbility{PlayersCantPayLifeToCastOrActivate()}, // Karn's Sylex
+```
+
+The helper (`effects/life_cost_bar.go`) writes the
+`game.PlayersCantPayLifeToCastOrActivate` restriction bit, the way
+`RestrictSelf(game.PermanentsCantPhaseIn)` does. While any permanent on
+the battlefield has it, `game.CanPayLifeToCastOrActivateLocked` refuses
+every life component of a spell's cost and of a non-mana activation's
+(CR 101.2, CR 118.3): a Phyrexian symbol's or a life-for-mana grant's
+2 life, an additional or alternative cost's life, a targeting tax, and a
+printed "Pay N life" or "Pay X life" above X = 0 (CR 119.4b). The legal
+enumerator and the view read the same predicate, so no such payment is
+offered. It is not on the wire.
+
+A mana ability's cost (CR 605.1a), a ward cost, a pay-unless, a land's
+"you may pay 2 life" and an attack tax still ask `CanPayLifeLocked`: the
+printed text names casts and non-mana activations only. A new life
+component of a cast or of a non-mana activation asks
+`CanPayLifeToCastOrActivateLocked`, never `CanPayLifeLocked`.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,
@@ -3452,6 +3491,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"melee"` | Melee (CR 702.121) — #4722, a TRIGGERED keyword: one attack trigger per instance (`game/melee.go`) gives the creature +1/+1 until end of turn for each opponent you attacked with a creature this combat, counted as the trigger resolves (`Game.OpponentsAttackedThisCombat`: attacks on a planeswalker or battle count no player). Cumulative (CR 702.121b), so grant it through `KeywordGrant` / `TribalKeywordGrant` / `game.AppendKeywordAbility` (Titania, Proud Pummeler). A creature whose only text is melee needs no card file. Never write the pump by hand |
+| `"enlist"` | Enlist (CR 702.154) — #5658, an optional cost to attack and a TRIGGERED keyword (`game/enlist.go`). The declaration names the creature the attacker enlists (`declare_attacker`'s `enlist`); the lock-in taps it and emits `game.EventEnlist`, and the linked trigger adds its power to the attacker until end of turn, read as it resolves. Not cumulative: an attacker enlists at most one creature. Print it with `PrintedKeywords: []string{game.KeywordEnlist}`; see [Enlist](#enlist-5658-cr-702154). |
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)). A permanent that GIVES it to spells declares `Spec.SplitSecondGrants`, read live: Samut's `InstantAndSorcerySpellsYouControlHaveSplitSecond()`, or `EachSpellYouCastHasSplitSecondIfManaFrom(kinds, label)` for "each spell you cast has split second if mana from a … was spent to cast it" (ADR 0007 amendments 2026-10-14 and 2026-10-30) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
@@ -3493,7 +3533,7 @@ Sword and Dwalin, Weaponmaster are the cards.
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
 carries a parameter a bare token cannot hold or triggers from the
-stack; a token here with an engine-side trigger (prowess, evolve, exalted, decayed, melee, undying, persist) when it lives
+stack; a token here with an engine-side trigger (prowess, evolve, exalted, decayed, melee, enlist, undying, persist) when it lives
 on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
@@ -5776,6 +5816,21 @@ Unbound Flourishing's first ability. `Event.XCost` is stamped on every
 `EventActivateAbility` whose cost has an {X} mana symbol, for its second
 ability's intervening "if" (a spell's side is the printed mana cost,
 `socB9HasXInManaCost`).
+
+**"If life was paid to activate it … pay that much life again" (#5662):**
+`Event.LifePaid` is stamped on every `EventActivateAbility` with the life
+the activation paid: a printed "Pay N life", what an X or counted life
+cost came to, and 2 for each Phyrexian mana symbol paid with life (CR
+107.4f), in one total (it is `PaidCost.LifePaid`). Zero when no life was
+paid. Verrak, Warped Sengir is
+`InterveningIf(LifeWasPaidToActivateIt, On(game.EventActivateAbility, YouActivatedAnAbilityPayingLife, label, Do(MayPayThatLifeAgainToCopyIt)))`
+([ability_copy_life_paid.go](../server/internal/cards/effects/ability_copy_life_paid.go)):
+the When and the CR 603.4 recheck both read the event, not the stack,
+and the answer (`confirm/pay-life-copy-that-ability`) re-checks the
+payment and copies the ability `Event.StackItemID` names. A mana ability
+emits `EventManaAbilityActivated` and carries no `LifePaid`. A new card
+that reads "the life paid to activate it" reads the same field; a spell's
+side ("life paid to cast it") is not on `EventCast` yet.
 
 **Mana for spells with mana value N or greater (#4694):** "Spend this
 mana only to cast spells with mana value 4 or greater" is
@@ -10431,6 +10486,27 @@ phase-in, at an untap step and from a "phases out until ~ leaves" lock
 alike (CR 101.2); the permanents stay out until a later untap step of the
 player they phased out under. It is not on the wire.
 
+**"It can't phase in for as long as you control this Saga."** (The
+Phasing of Zhalfir, #5664) is `CantPhaseInWhileYouControl`, applied after
+the `PhaseOut` that the sentence before it prints:
+
+```go
+targets := legalTargetCards(item, g)
+if err := (PhaseOut{Targets: targets}).Apply(ctx); err != nil {
+    return err
+}
+return CantPhaseInWhileYouControl{Targets: targets, Source: item.SourceCardID}.Apply(ctx)
+```
+
+It is a prohibition, not the "until ~ leaves" clock: while the ability's
+controller controls `Source`, the permanent sits out every untap step,
+and when that stops (the source leaves, phases out or changes controller)
+the permanent phases in during the next untap step of the player it
+phased out under, not at once. If that player does not control `Source`
+as it applies, nothing is recorded (CR 611.2b). The record is three
+additive `Card` fields (`PhaseInBarredBy` / `Epoch` / `For`), so a table
+holding one is a restore point. It is not on the wire.
+
 Still missing, and named in the ADR rather than here: CR 702.26e /
 702.26f's continuous-effect corners — a "gain control until end of
 turn" whose object phases out keeps its `ScopedEffect` record
@@ -11516,6 +11592,39 @@ Triggered: []game.TriggeredAbility{
   player activates it from the mana menu, and a plain "{T}: Add …" row
   on the same permanent is still planned.
 
+### Enlist (#5658, CR 702.154)
+
+Enlist is an engine keyword. A card prints it and nothing else:
+
+```go
+PrintedKeywords: []string{game.KeywordEnlist},
+```
+
+- **The cost.** "As this creature attacks, you may tap up to one untapped
+  creature you control that you didn't choose to attack with" is an
+  optional cost to attack (CR 702.154b, 508.1g), chosen with the
+  declaration like an exert: `declare_attacker` and each
+  `declare_attackers` entry take `enlist`, the creature to tap. The engine
+  refuses a creature the rules don't allow (`game.ErrCantEnlist`: tapped,
+  attacking, not yours, the attacker itself, summoning sick without haste,
+  or already enlisted), stages the choice and pays it as the declaration
+  locks in. A card file never taps the creature itself.
+- **The linked trigger** (CR 607.2h) is derived from the keyword: the
+  attacker gets +X/+0 until end of turn, where X is the enlisted
+  creature's power as the trigger resolves (its last-known power if it
+  has left, CR 608.2h). Do not write this trigger on the card.
+- **`WheneverThisEnlists(label, effect)`** is "Whenever this creature
+  enlists a creature" (Guardian of New Benalia). It watches
+  `game.EventEnlist`, whose `CardID` is the attacker and `Target` the
+  creature tapped (CR 702.154c), and goes on the stack with the linked
+  trigger and the attack triggers. Build a one-sentence effect from `Do`
+  primitives as usual.
+- **One creature per attacker.** CR 702.154d lets each instance of enlist
+  enlist its own creature. No card prints two or grants enlist, so the
+  token is not cumulative. A card that grants enlist needs that first.
+- **Bots** see one twin attack move per creature that may be enlisted
+  and the heuristic never picks one yet.
+
 ### When NOT to add a catalog entry
 
 The registry of known seams — what is missing, which cards wait on
@@ -11970,6 +12079,14 @@ none of its loyalty abilities have been activated this turn"** (The Chain Veil, 
 turn, so a walker that arrives later is covered; each call adds one, and it stacks with
 `LoyaltyTwiceEachTurn` / `YourPlaneswalkersLoyaltyTwiceEachTurn` (ADR 0145 amendment 2026-10-21). The timing of
 each activation is unchanged.
+
+**"You may activate the loyalty abilities of planeswalkers you control twice this turn rather than only
+once"** (Urza Assembles the Titans' chapter III, #5665) is
+`g.AllowLoyaltyTwiceThisTurnForEffect(item.Controller)` from the row's `Effect`. It is
+`YourPlaneswalkersLoyaltyTwiceEachTurn` as a one-turn effect: the limit is two for that player's planeswalkers
+until the turn ends, a walker that arrives later is covered, an activation already made counts as the first, and
+a second call changes nothing (twice, not once more). It stacks with The Chain Veil's grant (ADR 0145 amendment
+2026-11-12). Use the Spec field, not this, for a permanent's static.
 
 **Eminence** (The Ur-Sphinx) is a static that also works while its card is in its owner's command zone. For a cost
 reduction wrap the modifier: `Eminence(CostsLess(1, "…", YourSpell(), OtherSpellOfCreatureType("Sphinx")))` (ADR
@@ -13904,6 +14021,17 @@ ctx.SourcePermanent()                                                           
   `GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(label, Or(Instant(), Sorcery()), Casualty(1))}`
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
+- **"As an additional cost to cast <colour> permanent spells, you may pay N life. Those spells cost {C} less to cast
+  if you paid life this way. This effect reduces only the amount of <colour> mana you pay."** (the Defiler cycle,
+  #5659) is a linked pair, declared side by side: `GrantedOptionalCosts:
+  []game.GrantedOptionalCost{MayPayLifeToCast(cardName, "U", 2)}` and `CostModifiers:
+  []game.CostModifier{CostsColorLessIfLifePaid("U")}` (`pay_life_for_discount.go`). The offer is `EachSource`, so each
+  permanent makes its own, and the discount reads only its own permanent's announced offer
+  (`CostQuery.GrantedOptionalTimesFromSource(key)`): that is how to write any other "if you paid this way" reduction
+  linked to a granted cost. The reduction is `CostModifier.UnitColorsOnly`: its `Unit` takes one mana of each of its
+  colours off the cost and never generic mana (CR 118.7b and 118.7c do not apply). The cycle's trigger is
+  `WheneverYouCastAPermanentSpellOfColor("U", label, effect)`. A grant's `Spells` filter now reads the spell through
+  the granting permanent's changed words (CR 612.2).
 - **Conspire** (CR 702.78, #4690) is `OptionalCosts: []game.AdditionalCost{Conspire()}` (`conspire.go`), and
   "each noncreature spell you cast has conspire" is `ConspireForSpellsYouCast(label, Noncreature())` (Raiding
   Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `conspire_ids`, a list apart
@@ -14110,6 +14238,18 @@ if g.DealtCombatDamageSinceLastTurnForEffect(you) { … }                // a re
 ```
 
 `CondNoCombatDamageSinceYourLastTurn` declares `game.FootprintCondNoCombatDamageSinceLastTurn`: the condition can only become false, by combat damage, which is dealt as a turn-based action (CR 510.2); no step deals it.
+
+### "If a creature or planeswalker an opponent controlled was dealt excess damage this turn" (#5663)
+
+`TurnTally.ExcessDamaged` (`game/excess_damage_tally.go`) records, per controller, that a creature or planeswalker was dealt excess damage this turn (CR 120.10). The engine judges each damage event as it lands, before the damage is marked: for a creature, the amount past what was still needed for lethal damage, counting damage already marked on it (so two blockers that together deal more than lethal deal excess, CR 120.6), and any amount greater than 1 from a source with deathtouch (CR 120.4a); for a planeswalker, the amount past its loyalty before the event. Combat damage and noncombat damage both count, from any source under anyone's control, and prevented damage was not dealt. The controller is the permanent's as it was dealt the damage, so the fact outlives the permanent and a change of control. A battle that is neither a creature nor a planeswalker is not recorded. The readers are in `cards/effects/excess_damage_this_turn.go`:
+
+```go
+AtYourEndStepIfOpponentPermanentDealtExcessDamage(label, Do(...))      // the printed trigger (Rith, Liberated Primeval)
+InterveningIf(CondOpponentPermanentDealtExcessDamage{}, On(...))       // the same "if" on another trigger
+if g.OpponentPermanentDealtExcessDamageThisTurn(you) { … }             // a resolution check
+```
+
+`CondOpponentPermanentDealtExcessDamage` declares `game.FootprintCondOpponentPermanentDealtExcessDamage`, since the tally only rises within a turn. "Whenever … is dealt excess noncombat damage", one event's amount inside a trigger, is still `excess_damage.go` (Magmatic Galleon, Fall of Cair Andros).
 
 ### Face-down follow-ups: "can't be turned face up", face-down spells cost less, "entered face down this turn" (#5241)
 
@@ -14477,3 +14617,19 @@ Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
 architectural decision and sandbox simplification the catalog was built
 around. Start there.
 
+
+### Domain: the basic land type count (#5666)
+
+"Domain" is an ability word (CR 207.2c), and the count behind it is the number of basic land types (CR 305.6) among
+lands you control, each counted once, read from the layered lands. One count in `cards/effects/domain.go`, three shapes:
+
+```go
+SelfCostModifiers: []game.CostModifier{DomainCostReduction("Domain — This spell costs {1} less to cast for each basic land type among lands you control")},
+CostModifiers:     []game.CostModifier{DomainCostReduction("This ability costs {1} less to activate for each basic land type among lands you control.")},
+Static:            []game.StaticAbility{DomainPT("Domain — … power and toughness are each equal to twice …", 2, 2)},
+```
+
+`DomainPT(label, powerPer, toughnessPer)` is a layer 7a characteristic-defining ability (a zero factor leaves that stat
+alone). A count read as an ability resolves calls `DomainCount(g, controller)` directly (Sunbathing Rootwalla). Never write a
+private copy. Cards: Leyline Binding, Fblthp, Knows the Way, Jodah's Codex, Llanowar Greenwidow, Radha's Firebrand,
+Yavimaya Sojourner, Sunbathing Rootwalla, Territorial Maro, Nishoba Brawler.
