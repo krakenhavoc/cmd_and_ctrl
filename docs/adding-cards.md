@@ -1499,6 +1499,11 @@ face-down card and a card the catalog does not know add nothing. The
 token enters with the abilities, so a lent "when this enters" triggers
 for its own arrival.
 
+Hand of Vecna's "Equip—Pay 1 life for each card in your hand" is the
+computed life cost on an equip:
+`EquipPayingAbility(label, PayLifeCount(handOfVecnaLifePerCardInHand))`,
+with the count registered once by `game.LifeCount` in the card's file.
+
 A test reads the token's `GrantedAbilities`, counts
 `game.TriggersForCard`, checks `game.ActivatedAbilitiesForCard` is empty,
 and lets a lent trigger fire (`vecna_cards_test.go`).
