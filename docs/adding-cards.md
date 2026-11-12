@@ -7783,6 +7783,19 @@ colours (a hybrid card is every colour of its symbols), and it composes
 with the other clauses: Niv-Mizzet, Supreme is
 `PermissionFilter{CardInZone: true, InstantOrSorceryOnly: true, ColorCountExactly: 2}`.
 
+**"By sacrificing a [permanent] in addition to paying its other costs"
+(#5670, CR 118.8).** A permission that asks for a sacrifice on top of the
+card's own costs sets an `AltCostKey` of its own (a constant in the card's
+file, an on-disk identity) and one of `SacrificeLandInAddition`
+(Exploration Broodship), `SacrificeNonlandPermanentInAddition` (Into the
+Pit) or `SacrificeCreatureInAddition` (Maestros Ascendancy). The offer
+charges the printed mana cost and one matching permanent the caster
+controls, judged by its types on the battlefield and named in
+`alt_cost_ids`; a caster with none cannot claim it. "Once during each of
+your turns" for a spell of any type is
+`PerType: []string{game.PermissionTypePermanent}` with
+`Timing: game.TimingYourTurnOnly`.
+
 **Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
 is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
 `AlternativeCost.CastsFace: 1`, so the spell is the card's **back
