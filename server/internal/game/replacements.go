@@ -1347,6 +1347,9 @@ type ReplacementEvent struct {
 	RollPlayer uuid.UUID
 	RollSides  int
 	RollCount  int
+	// RollPlanar marks a roll of planar dice (CR 901.3a, DiceRoll.Planar),
+	// for a replacement that names them (Ichor Elixir, #5648).
+	RollPlanar bool
 	// rollShields are the "then you choose one of those rolls to ignore"
 	// riders the applied replacements added, in the order they applied.
 	// Plain data; a replacement appends to a fresh slice.

@@ -52,6 +52,8 @@ export interface AutoTapCastParams {
   // creature tapped for teamwork cannot also tap for mana.
   teamworkIDs?: string[];
   blightIDs?: string[];
+  // #5688: the two creatures tapped for conspire, for the same reason.
+  conspireIDs?: string[];
   exilePermanentIDs?: string[];
   // #5247: the permanent a return-a-permanent cost returns. A land named
   // there may still tap for mana first; a Treasure may not be sacrificed.
@@ -98,6 +100,9 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
     out.teamworkIDs = [...choices.teamworkIDs];
   }
   if (choices.blightIDs && choices.blightIDs.length > 0) out.blightIDs = [...choices.blightIDs];
+  if (choices.conspireIDs && choices.conspireIDs.length > 0) {
+    out.conspireIDs = [...choices.conspireIDs];
+  }
   if (choices.exilePermanentIDs && choices.exilePermanentIDs.length > 0) {
     out.exilePermanentIDs = [...choices.exilePermanentIDs];
   }
@@ -182,6 +187,8 @@ export function castPreviewParamsFromPayload(
   if (team.length > 0) out.teamworkIDs = team;
   const blight = stringIDs(payload.blight_ids);
   if (blight.length > 0) out.blightIDs = blight;
+  const conspire = stringIDs(payload.conspire_ids);
+  if (conspire.length > 0) out.conspireIDs = conspire;
   const exiled = stringIDs(payload.exile_permanent_ids);
   if (exiled.length > 0) out.exilePermanentIDs = exiled;
   const returned = stringIDs(payload.return_ids);

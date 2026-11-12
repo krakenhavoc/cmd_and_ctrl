@@ -1,0 +1,6 @@
+---
+title: "Exile a spell you control, as a cost"
+date: 2026-11-12
+issues: [5655]
+---
+**Exile a spell you control, as a cost** (#5655, CR 602.2b, 118.3, 608.2h, 202.3e) — Synthesis Pod's cost is the exile-a-card component read against the stack: `game.ExileCost{From: ZoneStack}`, built with `effects.ExileASpellYouControl()`. The walk (`ExileCostOptionsForEffect`), the validator and the enumerator's payment are the component's own, with one more rule, that each pick is a spell the activator controls (the stack item's controller; a copy of a spell is a pick, an ability never is). The payer is the component's ordinary one: the spell leaves the stack for exile through the one exit primitive, which retires its stack item and files its last-known record (`stack_lki.go`), so it neither resolves nor is countered, and a copy ceases to exist. The pick is recorded on `PaidCost.Exiled`, and "the exiled spell's mana value" is `Game.LastKnownSpellManaValueForEffect` on it: the spell as it last existed on the stack, the announced X counted. The pick rides `exile_ids`; the view's `exile_cost_zone` gains `"stack"`, and the client's picker reads the options out of the shared stack. A CR 602 ability with a printed count only (`Register` refuses the form on a mana ability, with an open count or with a link). No snapshot change. **Cards now Full:** Synthesis Pod.

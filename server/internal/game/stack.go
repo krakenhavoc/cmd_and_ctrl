@@ -646,6 +646,18 @@ type StackItem struct {
 	// them, and they end with the item. Never mutated in place.
 	PromisedCounters []PromisedCounter
 
+	// HadConvoke says this SPELL had convoke as it became cast (#5647,
+	// CR 601.2i): printed on it (CardDef.TapCost), given by a permanent
+	// ("Noncreature spells you cast have convoke", Caetus, Sea Tyrant of
+	// Segovia) or by a next-spell promise (Wand of the Worldsoul).
+	// Stamped by the cast just before the promise is spent, because the
+	// promise is gone by the time EventCast is out and "whenever you
+	// cast a spell that has convoke" (Joyful Stormsculptor) asks then.
+	// Whether any creature was tapped is a different fact
+	// (Paid.Convoked). Read through SpellHadConvokeForEffect. A copy is
+	// not cast (CR 707.10), so createSpellCopyLocked leaves it false.
+	HadConvoke bool
+
 	// SplitSecond marks an item as having split second (CR 702.61).
 	// While any stack item has SplitSecond set, no further casts /
 	// activations are legal except mana abilities and special

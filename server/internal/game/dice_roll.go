@@ -131,7 +131,7 @@ func (g *Game) RollDiceThenForEffect(r DiceRoll) error {
 	}
 	ev := &ReplacementEvent{
 		Kind: RepEventRollDice, Actor: r.Player, Source: r.Source,
-		RollPlayer: r.Player, RollSides: r.Sides, RollCount: r.N,
+		RollPlayer: r.Player, RollSides: r.Sides, RollCount: r.N, RollPlanar: r.Planar,
 		mustSettleNow: true,
 	}
 	out, err := g.applyReplacementsLocked(ev)
@@ -170,6 +170,24 @@ func (g *Game) applyRollExtraDieLocked(e ScopedEffect, ev *ReplacementEvent) {
 	ev.rollShields = append(shields, diceShield{Chooser: e.Controller, Source: e.Source.ID, Label: label})
 	seq := e.Seq
 	g.dropScopedEffectsLocked(func(_ int, x ScopedEffect) bool { return x.Seq == seq })
+}
+
+// RollOneMoreAndIgnoreOne is a static replacement's "instead roll that
+// many dice plus one and ignore one" (Ichor Elixir, #5648; CR 614.1a,
+// 706.6) applied to a dice roll's window: one more die, and `chooser`
+// picks one of the rolls to ignore once they are rolled, through the same
+// keyed question Squid Fire Knight's shield asks. `source` and `label`
+// name the replacement on that question. Unlike the shield nothing is
+// spent: the replacement applies to every roll while it exists, once per
+// roll (CR 614.5).
+func (ev *ReplacementEvent) RollOneMoreAndIgnoreOne(chooser, source uuid.UUID, label string) {
+	if ev.Kind != RepEventRollDice || ev.RollCount <= 0 || chooser == uuid.Nil {
+		return
+	}
+	ev.RollCount++
+	shields := make([]diceShield, 0, len(ev.rollShields)+1)
+	shields = append(shields, ev.rollShields...)
+	ev.rollShields = append(shields, diceShield{Chooser: chooser, Source: source, Label: label})
 }
 
 // RollExtraDieNextTimeForEffect registers Squid Fire Knight's shield: the
@@ -334,6 +352,11 @@ func (g *Game) askDiceIgnoreLocked(p diceRollPause) error {
 		}
 		options = append(options, ChoiceOption{Label: "Ignore the " + shown + " (die " + strconv.Itoa(i+1) + ")"})
 	}
+	dice := "d" + strconv.Itoa(p.Roll.Sides)
+	if p.Roll.Planar {
+		// CR 901.3a: the planar die is not named by its sides.
+		dice = "planar dice"
+	}
 	pause := p
 	source := s.Source
 	if source == uuid.Nil {
@@ -343,8 +366,8 @@ func (g *Game) askDiceIgnoreLocked(p diceRollPause) error {
 		Chooser:    s.Chooser,
 		FromPlayer: s.Chooser,
 		Source:     source,
-		Question: fmt.Sprintf("%s — %s rolled %d d%d. Choose one of those rolls to ignore.",
-			s.Label, g.playerNameLocked(p.Roll.Player), len(p.Rolls), p.Roll.Sides),
+		Question: fmt.Sprintf("%s — %s rolled %d %s. Choose one of those rolls to ignore.",
+			s.Label, g.playerNameLocked(p.Roll.Player), len(p.Rolls), dice),
 		Options: options,
 		ThenKey: diceIgnoreThen,
 		dice:    &pause,

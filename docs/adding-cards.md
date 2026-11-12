@@ -59,6 +59,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
+  - ["Whenever a mana ability of this creature resolves" (#5644)](#whenever-a-mana-ability-of-this-creature-resolves-5644)
   - [State triggers (ADR 0107, #1858)](#state-triggers-adr-0107-1858)
   - ["Activates a mana ability of each land" (ADR 0200, #3952)](#activates-a-mana-ability-of-each-land-adr-0200-3952)
   - [Choices made at resolution (#796, #568)](#choices-made-at-resolution-796-568)
@@ -2516,6 +2517,16 @@ permanents), across every pass of "proliferate twice", after every counter
 has landed (#3930, #4253). In a test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
 `answerProliferate(t, g, picks…)` takes a chosen one.
 
+**"Whenever you proliferate"** (#5653, CR 701.34a) is
+`WheneverYouProliferate(label, effect)`, off `game.EventProliferate`: one
+event per finished proliferate, raised after its counters have landed,
+with Actor the proliferating player. "Proliferate twice" is two events,
+and a proliferate that chose nothing, or had nothing to choose, still
+raises one; a proliferate a replacement took away raises none. A card
+that proliferates needs nothing new. Wrap the row in `InGraveyard` for an
+ability that works from the graveyard (Voidwing Hybrid), and give it
+`Modes` for "choose one —" (Venser, Corpse Puppet).
+
 **The mill AMOUNT is a replaceable quantity too** (#569,
 [ADR 0013 §5u](decisions/0013-replacement-effects.md)). "If an
 opponent would mill one or more cards, they mill twice that many cards
@@ -4589,6 +4600,28 @@ information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
 
+### An Equipment that arrives on its own token (#5654)
+
+"When this Equipment enters, create a <token>, then attach this to it" is
+one enters trigger, and the keyword that prints it has a helper:
+`LivingWeapon(name)` (CR 702.92a, the 0/0 black Phyrexian Germ),
+`ForMirrodin(name)` (CR 702.163a, the 2/2 red Rebel) and `JobSelect(name)`
+(the 1/1 colorless Hero). Put it in `Spec.Triggered` beside the card's
+statics and its `EquipAbility`:
+
+```go
+Triggered: []game.TriggeredAbility{ForMirrodin("Vulshok Splitter")},
+Static:    []game.StaticAbility{PumpAttached(2, 0)},
+Activated: []ActivatedAbility{EquipAbility("{2}{R}")},
+```
+
+All three share `createTokenAndAttachSource`, whose attach rides the token
+creation's keyed tail. Never create the token and attach on the next line
+of Go: a token doubler pauses the creation for a CR 616 order prompt, and
+the IDs are not known until it is answered. A card that spells the
+sentence out with its own token (Hook Swords) calls the same body with
+`described` true, so the token is read through the card's text.
+
 ### Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)
 
 `Plus(ManaCost("{3}"), UnattachAnEquipment())` is Captain America, First Avenger's "{3}, Unattach an Equipment from
@@ -5418,6 +5451,20 @@ as the cost is paid. Nothing is recorded on `ctx.Exiled()`. A face-down
 pick stands for its group (same owner, same "exiled with" link) and the
 card moved is drawn at random from it. A CR 602 ability's cost only:
 `Register` refuses it on a mana ability and on a cast.
+
+**"Exile a spell you control" (#5655):** `ExileASpellYouControl()`,
+composed with `Plus` — Synthesis Pod is
+`Plus(ManaCost("{1}{U/P}"), TapCost(), ExileASpellYouControl())`. It is
+the same component read against the stack
+(`game.ExileCost{From: ZoneStack}`): the pick rides `exile_ids`, it must
+be a spell the activator controls (a copy of a spell is one, an ability
+is not), and it is exiled as the cost is paid, without resolving and
+without being countered. The effect reads which spell through
+`ctx.Exiled()` and "the exiled spell's mana value" through
+`g.LastKnownSpellManaValueForEffect(id)`: the spell as it last existed on
+the stack (CR 608.2h), an announced X counted (CR 202.3e). Do not read
+the card in exile for it, where X is 0 and a copy is gone. A CR 602
+ability's cost only, one spell, no link: `Register` refuses the rest.
 
 **"Exile a creature you control" (#1600):** `ExileACreatureYouControl()`,
 or `ExileAPermanentYouControl(label, preds...)` for another clause,
@@ -7723,6 +7770,19 @@ cards" is a union: Deeproot Historian uses
 permissions are derived from the battlefield or the owner's emblems on
 every query, so they end when the source does.
 
+**Granted jump-start (#5645, CR 702.133a).** A card that gives jump-start
+to others declares a `CastPermission` with
+`AltCostKey: game.AltCostKeyJumpStart`, `DiscardCardInAddition: true` and
+`ExileOnResolution: true`: the card's own mana cost, one card from hand
+discarded as a cost (any card, named in `alt_cost_ids`), and exile as the
+spell leaves the stack. `DiscardCardInAddition` is `DiscardLandCard`
+without the land clause; `DiscardCard` is "rather than paying its mana
+cost" and charges no mana. "That's exactly two colors" is
+`PermissionFilter{ColorCountExactly: 2}`, read off the card's effective
+colours (a hybrid card is every colour of its symbols), and it composes
+with the other clauses: Niv-Mizzet, Supreme is
+`PermissionFilter{CardInZone: true, InstantOrSorceryOnly: true, ColorCountExactly: 2}`.
+
 **Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
 is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
 `AlternativeCost.CastsFace: 1`, so the spell is the card's **back
@@ -8730,6 +8790,7 @@ devoid either.
 | "Whenever a spell or ability you control exiles one or more permanents" | `EventZoneMove` | `ev.OldZone == ZoneBattlefield && game.ExiledBySpellOrAbilityOf(ev, source.Controller)` plus `OncePerBatch` (Ranar the Ever-Watchful, #1320). Reads `ev.Cause` / `ev.CauseController`, which a routed move fills from the resolving item; a cost, a special action or a manual move names its own cause and never matches |
 | "Whenever ~ becomes the target of a spell or ability" | `EventBecomesTarget` | `ev.CardID == source.InstanceID` — `CardID` repeats `Target` when the target is a card and is `uuid.Nil` for a player, so reading `CardID` is what keeps a player-targeting spell from matching. `ev.Actor` is the targeting player, `ev.Source` its source |
 | "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot** (CR 115.3), at **announce** (CR 601.2c), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
+| "Whenever a creature you control becomes the target of a backup ability" | `EventBecomesTarget` | `creatureYouControlBecameTargetOfABackupAbility` (Mirror-Shield Hoplite, #5651): `ev.TargeterKeyword == game.KeywordBackup` and the target is a creature the source's controller controls. `Event.TargeterKeyword` is the `TriggeredAbility.Keyword` of the catalog row the targeting item names, read as the event is emitted; `effects.Backup` stamps `game.KeywordBackup`. A copy of the ability names the same row, so it reads the same (CR 707.10). Empty for a spell, an activated ability and a hand-written trigger. A new "becomes the target of a [keyword] ability" card needs the keyword's constructor to stamp `Keyword`, nothing else. Copy it with `copyTheTriggeringAbility`; the copy keeps the backup creature as its source (CR 707.10b), so it grants that creature's abilities |
 | "Whenever a triggered ability … triggers" / "is put onto the stack" | `EventTriggerPlaced` | Read the placed item with `g.StackItemForEffect(ev.StackItemID)` and filter on its own triggering event, `item.Trigger.Event` and `item.Trigger.Object` (Aboleth Spawn, #4092). Emitted once per triggered ability after the whole batch is on the stack, so the watcher goes on ABOVE what it watched. The drain only emits it while a permanent on the battlefield watches the kind; a watcher in another zone or on an emblem has to join `battlefieldWatchesLocked` first. Copy it with `copyTheTriggeringAbility` |
 | "Whenever a spell or ability is put onto the stack" | `EventCast` + `EventSpellCopied` + `EventActivateAbility` + `EventTriggerPlaced` + `EventAbilityCopied` on one ability | The item id is `ev.CardID` for the first two and `ev.StackItemID` for the other three (`putOntoTheStackItem`, Grip of Chaos, #4050). A copy of an ability emits only `EventAbilityCopied` (CR 707.10a), gated on a battlefield watcher like `EventTriggerPlaced`. "If it has a single target" is `StackItemTargetCountForEffect == 1`, checked in `AppliesTo` and again in the effect |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
@@ -9208,6 +9269,44 @@ What the planner makes of a card is tested through the real catalog in
 stubbed triggers, in
 [autotap_trigger_mana_test.go](../server/internal/game/autotap_trigger_mana_test.go)
 in `game`.
+
+### "Whenever a mana ability of this creature resolves" (#5644)
+
+A STACK trigger that fires because a mana ability finished, and reads how
+much mana that ability made (Tyvar the Bellicose: "put a number of +1/+1
+counters on it equal to the amount of mana this creature produced").
+Watch `game.EventManaAbilityResolved`
+([mana_ability_resolved.go](../server/internal/game/mana_ability_resolved.go)):
+
+```go
+On(game.EventManaAbilityResolved,
+    func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+        return ev.CardID == source.InstanceID // "of this creature"
+    }, label, effect) // the effect reads item.Trigger.Event.Amount
+```
+
+- **One event per resolution, on every route**: the hand click, the last
+  answered colour pick (a Birds of Paradise has not resolved until its
+  colour is named), the auto-tapper, and each triggered mana ability
+  (CR 605.1b), whose `Source` is the trigger's own permanent.
+- **`Amount` is the mana that ability produced**, after a CR 106.12b
+  replacement (three from a Llanowar Elves under Nyxbloom Ancient). Mana
+  another ability added because of it (Wild Growth's) is not in it: that
+  ability resolves afterwards and has its own event. An ability that
+  resolved and added nothing has `Amount` 0.
+- `Actor` is the activator, or the player a triggered mana ability added
+  its mana to; `Label` is the ability's label.
+- **It is written only while a permanent on the battlefield watches it**
+  (`battlefieldWatchesLocked`), so a board without such a card logs
+  nothing new and existing fixtures are unaffected. A watcher in another
+  zone, or on an emblem, joins that gate in the change that adds it. In an
+  engine test, put a watching permanent on the battlefield first.
+- It is not `EventManaAbilityActivated`, which is emitted when the cost
+  is paid, before the mana exists, and carries no amount. "Whenever you
+  tap this creature for mana, it deals 1 damage" still watches that one
+  (`manaActivationPing`).
+- The watching ability is not a mana ability (it adds no mana), so it
+  goes on the stack the next time a player would receive priority.
 
 ### State triggers (ADR 0107, #1858)
 
@@ -10851,7 +10950,13 @@ tail runs against the asking item rebuilt from data; carry what it reads
 (a target, X) on the tail, so a table waiting on the colour is a restore
 point (#4253). "Protection from the color of your choice" is the shared
 `chooseProtectionColorFor`; "prevent damage from sources of the color of
-your choice" the shared `preventDamageFromChosenColor`. "Each player
+your choice" the shared `preventDamageFromChosenColor`. "Protection from
+colorless or from the color of your choice" (Angelic Intervention, #5650)
+is `ChooseColorOrColorlessTail`, the same call with one more answer: the
+tail's Word is then `game.ColorlessChoice` (`"C"`), and
+`game.ProtectionFromColorOrColorless(word)` turns either answer into the
+token. Colorless is not a color (CR 105.4), so no other prompt offers it
+and `ProtectionFromColor` still mints nothing for it. "Each player
 chooses a color" is a chain: each answer's tail asks the next player in
 APNAP order (Selective Obliteration), the players riding its Carry and
 the answers so far its Words, so an undo cannot leak an answer from an
@@ -11203,8 +11308,40 @@ as the next turn begins. The scope is read live (CR 611.2c: "can't
 attack" changes no characteristic) and judged as attackers are declared
 (CR 508.1c). `game.ScopeCreaturesThatArentLands` is "creatures that
 aren't lands". Like `ScopeCreaturesWithoutFlying` it reads a layer
-result, so it carries only restriction bits. Only a scope can be bound,
-never affected objects, for the reason ADR 0188 Decision 3b gives.
+result, so it carries only restriction bits. A live scope is the form
+for a rule about a kind of creature.
+
+**"Each of those creatures ... that combat" (Illusionist's Gambit,
+ADR 0188 Decision 14, #5685):** a requirement or restriction on
+creatures the card fixed as it resolved, in force only in the combat it
+adds, is `AddPhases.ThoseCreaturesThatCombat`, a `*CombatObjectsRule`.
+Build it in `OnResolve`, because the creatures are known only then:
+
+```go
+those := AttackingCreatures(ctx.Game)
+// ... remove them from combat, untap them ...
+extra := ExtraCombatAfterThisPhase()
+extra.ThoseCreaturesThatCombat = &CombatObjectsRule{
+    Objects: those,
+    Mods: []game.Mod{
+        game.AddAttackRequirementMod(uuid.Nil),    // "attacks that combat if able"
+        game.CantAttackPlayerMod(item.Controller), // "can't attack you or planeswalkers you control"
+    },
+    Label: "Illusionist's Gambit — ...",
+}
+return extra.Apply(ctx)
+```
+
+The engine (`Game.DuringCombatPhaseObjectsEffectForEffect`,
+`game/phase_effects.go`) pins each creature as the object it is now,
+under its current controller, and holds the record on
+`Game.PhaseEffects` as `DuringThatCombat` does. A creature whose
+controller changes before that combat begins, or that has left the
+battlefield by then, is dropped, and stays free even if it comes back.
+Only `ModAddAttackRequirement`, `ModCantAttackPlayer` and
+`ModAddRestrictions` are taken; any other kind panics. A mod that
+changes a characteristic can't wait this way (CR 611.2c fixes its set
+when the effect begins), so give it an ordinary scoped effect instead.
 
 ### Ending the turn (#2165, CR 724.1, ADR 0059 amendment 2026-10-05)
 
@@ -11800,6 +11937,19 @@ Lurker) is `ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()` on the `Sp
 CR 704.5i applying, not indestructible and not a replacement: every other state-based action still does, and a
 walker at 0 can use a plus ability and no minus. Read live off the battlefield, so a source that loses its
 abilities or leaves exempts nothing.
+
+**"As this enters, choose a planeswalker type"** (Deification) is `AsEnters: ChoosePlaneswalkerTypeAsEnters(name)`.
+It offers CR 205.3j's types, yours first, and stores the answer on `Card.ChosenOption`.
+`PlaneswalkersYouControlOfTheChosenType` is the predicate that reads it for a static ("… have hexproof"); it
+matches nothing until the choice is answered.
+
+**"If damage dealt to a planeswalker you control of the chosen type would result in all loyalty counters on
+it being removed, instead all but one of those counters are removed"** (Deification) is
+`DamageLastLoyalty: DamageLeavesChosenTypeAPlaneswalkersLastLoyaltyWhileYouControlACreature()` on the `Spec`
+(#5646). It replaces a result of the damage, not the damage (CR 120.4c): the damage is dealt in full, so
+lifelink and "is dealt damage" triggers see all of it, and only the loyalty removed is capped. Do not write it
+as a prevention shield. A new sentence of this shape (another scope or condition) is a field on
+`game.DamageLastLoyaltyStatic` and a constructor beside this one.
 
 **"Whenever you put one or more loyalty counters on a planeswalker"** (Inspired Tethermage) is
 `WheneverYouPutLoyaltyCountersOnAPlaneswalker(label, effect)`. One trigger per placement EVENT, so a +2 is one
@@ -13755,10 +13905,11 @@ ctx.SourcePermanent()                                                           
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
 - **Conspire** (CR 702.78, #4690) is `OptionalCosts: []game.AdditionalCost{Conspire()}` (`conspire.go`), and
-  "each noncreature spell you cast has conspire" is `SpellsYouCastHave(label, Noncreature(), Conspire())` (Raiding
-  Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `teamwork_ids`, the copy is the
-  engine's trigger (`game/conspire.go`, body `conspire/copy`). A granted cost that taps is not offered on a spell
-  whose own cost already uses `teamwork_ids` (`castTapListTaken`).
+  "each noncreature spell you cast has conspire" is `ConspireForSpellsYouCast(label, Noncreature())` (Raiding
+  Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `conspire_ids`, a list apart
+  from `teamwork_ids` (#5688), so a spell whose own cost taps permanents is conspired with two more; the copy is the
+  engine's trigger (`game/conspire.go`, body `conspire/copy`), one per conspire cost paid. The grant is `EachSource`:
+  two permanents granting it give two costs (CR 702.78b).
 - **"<Spells> you cast gain offspring {cost} as you cast them"** (Zinnia, Valley's Voice; #5428, CR 702.175) is
   `GrantedOptionalCosts: []game.GrantedOptionalCost{OffspringForSpellsYouCast(label, Creature(), "{2}")}`
   (`granted_offspring.go`). The cost has its own key, `granted-offspring`, so a creature that prints offspring keeps
@@ -13771,6 +13922,15 @@ ctx.SourcePermanent()                                                           
 - **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
+- **"The next spell you cast this turn has convoke"** is `Do(NextSpellHasConvoke("<card name>"))` (Wand of the
+  Worldsoul, Flockchaser Phantom): a one-use `game.NextSpellPromise{Convoke: true}`, spent by the next spell cast
+  whether or not a creature was tapped, gone at end of turn. A spell's own tap cost, a promised one and the granted
+  ones are chained, so a spell with improvise that is promised convoke can tap artifacts and creatures (#5647).
+- **"Whenever you cast a spell that has convoke"** is `On(game.EventCast, YouCastASpellThatHasConvoke, label, effect)`
+  (Joyful Stormsculptor, Kasla, the Broken Halo, Saint Traft and Rem Karolus). It reads `StackItem.HadConvoke`
+  through `Game.SpellHadConvokeForEffect`: stamped as the spell becomes cast (CR 601.2i), true when convoke is
+  printed on the spell, given by a permanent (`SpellsYouCastHaveConvoke`) or given by a promise, and true whether or
+  not a creature was tapped (that is `Paid.Convoked`). "Another spell" needs no extra check on a permanent.
 
 ### Pieces from the Wilhelt deck (#3209)
 
@@ -13839,8 +13999,9 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
 ```
 
 - **A static whose condition is "has happened this turn" or "is blocking"** lists the event kinds in `DependsOnEvents`;
-  without it the layer cache is stale until something unrelated bumps it. Only `EventScry`, `EventSurveil`, `EventDealDamage`
-  and `EventBlock` are read; a new kind needs an arm in `layerVersionBump.OnEvent`. Put the keyword in the static, not in
+  without it the layer cache is stale until something unrelated bumps it. Only `EventScry`, `EventSurveil`, `EventDealDamage`,
+  `EventBlock`, `EventDrawCard`, `EventChangeLife`, `EventStepBegan` and `EventAttack` are read; a new kind needs an arm in
+  `layerVersionBump.OnEvent`. Put the keyword in the static, not in
   `PrintedKeywords`, when the static is what removes it (Surveillance Phantasm grants `defender` unless it scried).
 - **`PowerGE` on a spell reads the spell's own characteristic-defining ability**, so a `*/*` creature spell counts as what its
   text says (Spellbreaker Behemoth).
@@ -13856,6 +14017,30 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   placer). Tower Winder landed Full with #3217, The Warring Triad
   with #3845 (mill as a cost), and Transmutation Font with #3940 (a "different names" rule on a sacrifice clause,
   `SacrificeNDifferent`).
+
+
+### Attacking a battle (#5649)
+
+Three printed questions, three reads, all in `cards/effects/attacked_a_battle.go`:
+
+```go
+Triggered: []game.TriggeredAbility{WheneverThisAttacksABattle("Thrashing Frontliner — it gets +1/+1 until end of turn", …)},
+Static:    []game.StaticAbility{SelfKeywordWhileItAttackedABattleThisTurn("indestructible")}, // War Historian
+if isAttackingABattle(g, c) { … }                                                             // Rampaging Geoderm, as the ability resolves
+```
+
+- **"Whenever this creature attacks a battle"** is `WheneverThisAttacksABattle(label, effect)` (the predicate is
+  `ThisAttackedABattle`): the creature was declared as an attacker attacking a battle (CR 508.3a). A creature put onto the
+  battlefield attacking a battle, or reselected onto one, announces no `EventAttack` and triggers nothing (CR 508.4, 508.7a).
+- **"If it's attacking a battle"** is `isAttackingABattle(g, card)`, what the creature is attacking now. Read it as the
+  ability resolves. A creature whose battle was removed from combat is attacking nothing (CR 506.4c).
+- **"As long as it attacked a battle this turn"** is `SelfKeywordWhileItAttackedABattleThisTurn(keyword)`, which reads
+  `Game.AttackedBattleThisTurn(id)`: the turn's attack records, each stamped `AttackRecord.Battle` as the attack is declared.
+  It stays true after combat and after the battle has left, and is per object (CR 400.7). The helper sets
+  `DependsOnEvents: {EventAttack}`; a new static over the same fact must too.
+
+For "attacks a player" keep `attackedPlayer` and for "attacks you or a planeswalker you control" keep
+`attacksYouOrYourPlaneswalker`: an attack on a battle is neither (CR 508.3e).
 
 ### Void and revolt: "left the battlefield this turn" (#2128, #2148)
 
@@ -13913,6 +14098,18 @@ if CastASpellFromHandThisTurn(g, you) { … }              // a resolution check
 `CondNoSpellFromHand` declares `game.FootprintCondNoSpellsCastFromHand`: like Edgar's "if you didn't cast a spell this turn", it can only become false, by a cast, and no step casts. An extra "and" the printed condition adds goes in the trigger's `When` (the `also` arguments) and in an `If` inside the effect, so it is asked both times too (CR 603.4).
 
 Prairie Dog's "until end of turn, if you would put one or more +1/+1 counters on a creature you control, put that many plus one" is `Game.OneMorePlusOneCounterThisTurnForEffect`, a turn-scoped `game.ModOneMorePlusOneCounter` record: Brad Boimler's `ModOneMoreCounter` narrowed to +1/+1 counters that player puts on a creature they control.
+
+### "If you haven't been dealt combat damage since your last turn" (#5652)
+
+`Player.CombatDamagedSinceLastTurn` (`game/since_last_turn.go`) is set as combat damage is dealt to a player and cleared as each of that player's turns ends, so it outlives the per-turn tally. "Your last turn" means what it means for `Player.LastTurnAttacks`: an extra turn is a turn (CR 500.7), a turn not taken clears nothing, and a player who has taken no turn yet is asked of the whole game so far. Damage that was prevented, and damage to a planeswalker or battle the player controls, was not dealt to the player. The readers are in `cards/effects/since_last_turn.go`:
+
+```go
+AtYourUpkeepIfNoCombatDamageSinceYourLastTurn(label, Do(...))          // the printed trigger (Marchesa, Resolute Monarch)
+InterveningIf(CondNoCombatDamageSinceYourLastTurn{}, On(...))          // the same "if" on another trigger
+if g.DealtCombatDamageSinceLastTurnForEffect(you) { … }                // a resolution check
+```
+
+`CondNoCombatDamageSinceYourLastTurn` declares `game.FootprintCondNoCombatDamageSinceLastTurn`: the condition can only become false, by combat damage, which is dealt as a turn-based action (CR 510.2); no step deals it.
 
 ### Face-down follow-ups: "can't be turned face up", face-down spells cost less, "entered face down this turn" (#5241)
 
@@ -14170,7 +14367,7 @@ planeswalking ability (CR 901.8) is engine-wide: never write it into a card.
 The shapes are in `effects_planechase.go` and `planes_b1_helpers.go`:
 
 ```go
-// "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die)
+// "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die, or an effect's "chaos ensues")
 WheneverChaosEnsues("Coal Hill School — return target historic card …", returnTargetCardToHand),
 // "When you planeswalk to ~ and at the beginning of your upkeep, <effect>." (ONE ability)
 WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(Investigate{N: 1})),
@@ -14198,6 +14395,26 @@ SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // 
   outlives the plane it came from ("cards can't enter from exile this turn") is a
   stored rule, not a static of the plane (Bad Wolf Bay,
   `g.CardsCantEnterFromExileThisTurnForEffect`).
+- **"Chaos ensues" as an effect** (#5648, CR 311.7) is
+  `ctx.Game.ChaosEnsuesForEffect(ctx.Controller(), ctx.Source())`: it emits
+  `game.EventChaosEnsues`, which `WheneverChaosEnsues` watches beside the die's
+  chaos face, so every face-up plane's chaos ability triggers, controlled by the
+  planar controller. No die is rolled. It does nothing at a table that is not
+  playing Planechase, so a card that says it (Missy) needs no check of its own.
+- **Will of the Planeswalkers** (#5648, the five Paths of March of the Machine
+  Commander) is one step of the spell,
+  `ResolveSteps(…, WillOfThePlaneswalkers{Card: "Path of the Animist"})`: the
+  vote for planeswalk or chaos, then the caster planeswalks (only if they are
+  the planar controller, CR 701.31a) or chaos ensues (more votes or a tie). The
+  vote happens at every table; without a planar deck neither result does
+  anything.
+- **A replacement on planar dice** (Ichor Elixir, #5648) is an ordinary
+  `Replacements` row that watches `game.EventRollDie`, applies to
+  `ev.Kind == game.RepEventRollDice && ev.RollPlanar && ev.RollPlayer == src.Controller`
+  and calls `ev.RollOneMoreAndIgnoreOne(chooser, src.InstanceID, label)`: one
+  more die, and the chooser picks one to ignore once they are rolled (the
+  question Squid Fire Knight's sticker asks). Drop `RollPlanar` for a card
+  that says it of any dice.
 - **"The player to your left"** is `ControlledByThePlayerToYourLeft()`
   (`game.NearestOpponentForEffect(you, game.AttackDirectionLeft)`).
 - **Time travel** (CR 701.56a) is `Do(TimeTravel{})`.
@@ -14239,6 +14456,11 @@ Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
   printed values, and read through `game.PrintsNoAbilities`. A card the importer never read (a token, a fixture, a
   restore point from before the stamp) is `PrintedUnknown` and is not "with no abilities". A test fixture says so with
   `NoAbilitiesText: game.PrintedYes`.
+- **"Card with warp" is the printed text too.** `game.Card.WarpText` is stamped by the deck importer
+  (`game.WarpInText`: a line of its own that starts "Warp [cost]", CR 702.185a) and re-derived by `SetFace`, because
+  warp is not a canonical keyword token and `Keywords` does not carry it. `game.HasWarp` (`WithWarp()`) answers yes
+  on the stamp or on a catalog warp cost, so a card the catalog does not run counts, and no for any face-down card
+  (CR 406.3a, CR 708.2a). A test fixture says so with `WarpText: game.PrintedYes`.
 - **"Exile X cards" on an ability** is `game.ExileCost.CountIsX`, an any-number clause with no floor: the activator
   announces X by naming that many matching cards, and `ctx.Exiled()` is X. It is graveyard-only, and the wire is the
   existing `exile_cost_any_number` picker. A cast's "exile X" stays `ExileXFromGraveyardCost`.

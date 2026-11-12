@@ -54,7 +54,8 @@ type View struct {
 	You     int          `json:"you"`
 	Players []PlayerView `json:"players"`
 
-	// Pack is the pack the viewer holds, absent once it has picked.
+	// Pack is the pack the viewer holds, absent once it has picked. A
+	// card of Pack, Picks and Pool carries a `rating` (ratings.go).
 	Pack []Card `json:"pack,omitempty"`
 	// Picks is the viewer's own picks in the order taken.
 	Picks []Card `json:"picks"`
@@ -84,10 +85,15 @@ type View struct {
 
 // BuildView is the deckbuilding step.
 type BuildView struct {
-	Deadline time.Time `json:"deadline"`
-	Now      time.Time `json:"now"`
-	// Seconds is the whole build timer.
+	// Deadline is when the timer runs out. It is absent when the build
+	// is untimed (#5700): the rounds begin when the last person has
+	// submitted.
+	Deadline *time.Time `json:"deadline,omitempty"`
+	Now      time.Time  `json:"now"`
+	// Seconds is the whole build timer, 0 when the build is untimed.
 	Seconds int `json:"seconds"`
+	// Untimed says the build has no timer.
+	Untimed bool `json:"untimed,omitempty"`
 	// DeckMin is the smallest legal deck (CR 100.2b).
 	DeckMin int `json:"deck_min"`
 	// Submitted says the viewer has submitted a deck. They may submit
@@ -188,7 +194,7 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 		PickSeconds:  int(d.cfg.PickTimeout / time.Second),
 		You:          you,
 		Players:      make([]PlayerView, 0, len(d.seats)),
-		Picks:        append([]Card{}, me.picks...),
+		Picks:        withRatings(append([]Card{}, me.picks...)),
 		Phase:        d.Phase(),
 		BestOf:       d.BestOf(),
 	}
@@ -210,11 +216,11 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 		deadline, at := d.deadline, now
 		v.Deadline, v.Now = &deadline, &at
 		if !me.picked {
-			v.Pack = append([]Card(nil), me.pack...)
+			v.Pack = withRatings(append([]Card(nil), me.pack...))
 			v.Take = d.take(len(me.pack))
 		}
 	case StateDone:
-		v.Pool = append([]Card{}, me.picks...)
+		v.Pool = withRatings(append([]Card{}, me.picks...))
 		d.playView(&v, you, now)
 	}
 	return v, true
@@ -262,13 +268,19 @@ func (d *Draft) playView(v *View, you int, now time.Time) {
 		v.Deck = &own
 	}
 	if p.phase == PhaseBuilding {
-		v.Build = &BuildView{
-			Deadline:  p.buildDeadline,
+		b := &BuildView{
 			Now:       now,
-			Seconds:   int(d.buildTimeout() / time.Second),
 			DeckMin:   limitedDeckMin,
 			Submitted: p.built[you] && !p.auto[you],
 		}
+		if d.cfg.BuildUntimed {
+			b.Untimed = true
+		} else {
+			deadline := p.buildDeadline
+			b.Deadline = &deadline
+			b.Seconds = int(d.buildTimeout() / time.Second)
+		}
+		v.Build = b
 		return
 	}
 	if len(p.rounds) == 0 {

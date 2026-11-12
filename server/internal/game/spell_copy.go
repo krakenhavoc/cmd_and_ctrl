@@ -738,6 +738,13 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	if len(item.Paid.AltCostObjects) > 0 {
 		meta.Paid.AltCostObjects = append([]ObjectRef(nil), item.Paid.AltCostObjects...)
 	}
+	// #5688: and the permanents the original's own tap cost tapped, the
+	// same "objects used to pay its costs": a copied Burn at the Stake
+	// deals the original's damage, as its card file has always said. A
+	// conspired one is the first spell copy that reads them.
+	if len(item.Paid.TappedOthers) > 0 {
+		meta.Paid.TappedOthers = append([]PaidTap(nil), item.Paid.TappedOthers...)
+	}
 	g.StackMeta[copyCard.InstanceID] = meta
 	g.recomputeSplitSecondLocked()
 

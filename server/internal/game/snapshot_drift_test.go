@@ -416,6 +416,7 @@ var cardFields = plan(
 	"PrintsTapAbility", carried, "",
 	"ManaAbilityText", carried, "",
 	"NoAbilitiesText", carried, "",
+	"WarpText", carried, "",
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
@@ -802,6 +803,9 @@ var playerFields = plan(
 	// #1997: Arboria's "cast a spell or put a nontoken permanent onto
 	// the battlefield during their last turn".
 	"LastTurnCastOrPut", carried, "",
+	// #5652: Marchesa, Resolute Monarch's "if you haven't been dealt
+	// combat damage since your last turn".
+	"CombatDamagedSinceLastTurn", carried, "",
 	"Eliminated", carried, "",
 	// #4879: why the player left (a LossCause), for the seat view's
 	// loss_cause. Carried, additive within v9.
@@ -1009,6 +1013,9 @@ var stackItemFields = plan(
 	// marked on the spell. Carried: a restore that lost it would drop
 	// the counter Savage Summoning promised.
 	"PromisedCounters", carried, "",
+	// #5647: the spell had convoke as it became cast. Carried: the
+	// promise that gave it is spent, so nothing could rebuild it.
+	"HadConvoke", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
 	// #1511: which pending triggers may skip the CR 603.3b prompt.
@@ -1128,6 +1135,11 @@ var pendingChoiceFields = plan(
 	"ManaLabel", carried, "",
 	"ManaSettled", carried, "",
 	"ManaPicksLeft", carried, "",
+	// #5644: the pick is a mana ability's output, and how much of that
+	// ability's mana is already counted. A restored pick that lost them
+	// would never announce EventManaAbilityResolved.
+	"ManaAbilityRun", carried, "",
+	"ManaAbilityAmount", carried, "",
 	// #763: whether answering this pick is "a permanent was tapped for
 	// mana" (CR 106.12a), which is what fires the triggered mana
 	// abilities. A restored Birds pick that lost it would put the mana

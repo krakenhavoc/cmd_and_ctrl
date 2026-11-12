@@ -145,6 +145,11 @@ export interface CastChoices {
   // when `optionalCosts` claims that offer; the server refuses them on
   // a cast that does not.
   teamworkIDs?: string[];
+  // #5688: the two creatures tapped for a claimed conspire offer (CR
+  // 702.78a). A list of its own, so a spell whose own cost taps
+  // permanents on `teamworkIDs` can be conspired too; no permanent may be
+  // on both. Rides cast_spell as `conspire_ids`.
+  conspireIDs?: string[];
   // #3402: the permanents a mandatory "exile a creature you control"
   // additional cost exiles. Rides cast_spell as `exile_permanent_ids`.
   exilePermanentIDs?: string[];
@@ -313,6 +318,9 @@ export function applyCastChoices(
   // #1703: omitted unless the offer was claimed and paid.
   if (choices.teamworkIDs !== undefined && choices.teamworkIDs.length > 0)
     params.teamwork_ids = choices.teamworkIDs;
+  // #5688: omitted unless a conspire offer was claimed and paid.
+  if (choices.conspireIDs !== undefined && choices.conspireIDs.length > 0)
+    params.conspire_ids = choices.conspireIDs;
   if (choices.blightIDs !== undefined && choices.blightIDs.length > 0)
     params.blight_ids = choices.blightIDs;
   if (choices.revealIDs !== undefined && choices.revealIDs.length > 0)
@@ -1739,7 +1747,8 @@ function castReplicateTapCost(
   let times = 0;
   for (const index of choices?.optionalCosts ?? []) {
     const o = optionalCostsOf(card)[index];
-    if (o?.tap_others_options) {
+    // #5688: conspire's creatures have their own list (castConspireCost).
+    if (o?.tap_others_options && o.key !== CONSPIRE_KEY) {
       offer = o;
       times++;
     }
@@ -1751,6 +1760,40 @@ function castReplicateTapCost(
     count,
     min: count,
     options: offer.tap_others_options.cards ?? [],
+  };
+}
+
+// CONSPIRE_KEY is the `key` of a conspire offer (CR 702.78a), the one
+// optional cost whose taps ride `conspire_ids` rather than `teamwork_ids`.
+export const CONSPIRE_KEY = "conspire";
+
+// castConspireCost is the claimed conspire cost of a cast, if any (#5688):
+// two creatures that share a colour with the spell for each conspire offer
+// the cast announces (two Raiding Schemes offer two, CR 702.78b). The
+// picks ride cast_spell as `conspire_ids`. The options leave out what the
+// cast already taps for its own cost (`teamworkIDs`) or to help pay
+// (`tapIDs`): one creature is tapped once, so it cannot pay both.
+export function castConspireCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedTapCost | undefined {
+  let offer: OptionalCostView | undefined;
+  let times = 0;
+  for (const index of choices?.optionalCosts ?? []) {
+    const o = optionalCostsOf(card)[index];
+    if (o?.tap_others_options && o.key === CONSPIRE_KEY) {
+      offer = o;
+      times++;
+    }
+  }
+  if (!offer?.tap_others_options) return undefined;
+  const count = (offer.tap_others_options.min ?? 2) * times;
+  const taken = new Set([...(choices?.teamworkIDs ?? []), ...(choices?.tapIDs ?? [])]);
+  return {
+    label: offer.tap_others_label ?? "two untapped creatures you control",
+    count,
+    min: count,
+    options: (offer.tap_others_options.cards ?? []).filter((id) => !taken.has(id)),
   };
 }
 

@@ -13,15 +13,17 @@
 
   import {
     canConfirm,
-    cardAccessibleName,
     pickCount,
     pruneSelection,
     toggleSelection,
     type DraftCard,
   } from "../../draft";
+  import { ratedCardName } from "../../draftRatings.svelte";
+  import { sortPack } from "../../draftOrder";
   import { L } from "../../labels";
   import Icon from "../Icon.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
+  import DraftRatingBadge from "./DraftRatingBadge.svelte";
 
   interface Props {
     pack: DraftCard[];
@@ -35,7 +37,12 @@
     /** The pick timer, drawn at the start of the bar. */
     timer?: Snippet;
   }
-  const { pack, take, busy = false, blocked = "", onpick, timer }: Props = $props();
+  const { pack: dealt, take, busy = false, blocked = "", onpick, timer }: Props = $props();
+
+  // Shown mythic, rare, uncommon, common, then basic land, and by colour
+  // and name inside a rarity (#5701). The order follows the cards, not
+  // their places in the pack, so it holds as the pack thins.
+  const pack = $derived(sortPack(dealt));
 
   let selected = $state<string[]>([]);
 
@@ -101,13 +108,14 @@
           class="pick-card"
           class:on
           aria-pressed={on}
-          aria-label={cardAccessibleName(card)}
+          aria-label={ratedCardName(card)}
           disabled={busy}
           onclick={() => toggle(card.id)}
           ondblclick={() => pickNow(card.id)}
           onkeydown={(e) => onKey(e, card.id)}
         >
           <DraftCardArt {card} />
+          <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
           {#if on}
             <span class="mark" aria-hidden="true"><Icon name="check" size={14} /></span>
           {/if}
@@ -141,7 +149,7 @@
     padding: 0;
     display: grid;
     /* Big enough to read a card: five across at the 1200px page, three at 820px. */
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--pack-tile, 190px), 1fr));
     gap: 14px;
   }
   .pick-card {

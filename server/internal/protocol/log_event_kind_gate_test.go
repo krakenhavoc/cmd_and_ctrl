@@ -70,6 +70,7 @@ var silentEventKinds = map[string]string{
 	"EventEarthbend":       "the animation and the counters are the lines (#5276, CR 701.66b); the event exists for \"whenever you earthbend\" (Avatar Aang), whose own LogTrigger line follows",
 	"EventFirebend":        "the firebending trigger's resolution and its mana are the lines (#5276, CR 702.189b); the event exists for \"whenever you firebend\" (Avatar Aang), whose own LogTrigger line follows",
 	"EventAirbend":         "the exiles themselves are the lines (#5276, CR 701.65b); the event exists for \"whenever you airbend\" (Avatar Aang), whose own LogTrigger line follows",
+	"EventProliferate":     "the counters themselves are the lines (#5653, CR 701.34a); the event exists for \"whenever you proliferate\" (Ezuri, Stalker of Spheres; Scheming Aspirant), whose own LogTrigger line follows",
 	"EventCollectEvidence": "the exiles themselves are the lines (#5223, CR 701.59a); the event exists for \"whenever you collect evidence\" (Evidence Examiner, Surveillance Monitor), whose own LogTrigger line follows",
 	"EventEchoPaid":        "the payment itself is the line: the mana spent, the discard or the sacrifice (ADR 0108 §5); the event exists for Shah of Naar Isle's trigger, whose own line follows",
 	"EventDamagePrevented": "prevented damage is the damage line that is not written; the event is the context a prevention follow-up body is handed (ADR 0107 §6) and what a CR 615.13 \"whenever damage is prevented\" trigger watches (#2047), whose LogTrigger line is what the table sees",
@@ -113,9 +114,10 @@ var silentEventKinds = map[string]string{
 	"EventBeginEndStep":       silentStepSpine,
 
 	// --- mana --------------------------------------------------------
-	"EventManaAdded":       silentManaBookkeeping,
-	"EventManaSpent":       silentManaBookkeeping,
-	"EventManaPoolEmptied": silentManaBookkeeping,
+	"EventManaAdded":           silentManaBookkeeping,
+	"EventManaSpent":           silentManaBookkeeping,
+	"EventManaPoolEmptied":     silentManaBookkeeping,
+	"EventManaAbilityResolved": "a mana ability resolving is the mana it added, read off the mana display (CR 605.3b); the event exists for \"whenever a mana ability of this creature resolves\" (Tyvar the Bellicose, #5644), whose own LogTrigger line follows",
 	// EventManaAbilityActivated left this list with #1864: it is silent
 	// bookkeeping (CR 605.3b) except when a player activates the "Any
 	// player may activate this ability" mana row of a permanent another

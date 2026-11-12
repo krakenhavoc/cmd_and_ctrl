@@ -83,7 +83,11 @@ func colorBoardOf(g *game.Game, chooser uuid.UUID) colorBoard {
 		c := &g.Battlefield.Cards[i]
 		colors := c.EffectiveColors()
 		if len(colors) == 0 {
-			continue
+			// A colourless permanent counts under the colourless answer
+			// (#5650), which only a prompt that offers it reads: "the
+			// biggest colourless thing pointed this way" for Angelic
+			// Intervention's protection.
+			colors = []string{game.ColorlessChoice}
 		}
 		if c.Controller == chooser {
 			for _, col := range colors {

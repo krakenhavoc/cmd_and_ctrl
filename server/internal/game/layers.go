@@ -425,8 +425,10 @@ type StaticAbility struct {
 	// a third and fourth card from needing a flag each. "During your end
 	// step" lists EventStepBegan (Zurgo, Thunder's Decree): a static that
 	// reads the current step has a new answer as each step begins. Only
-	// these kinds are read by the listener (its EventScry, EventChangeLife
-	// and EventStepBegan arms), so any other kind here would do nothing.
+	// these kinds are read by the listener (its EventScry, EventChangeLife,
+	// EventAttack and EventStepBegan arms), so any other kind here would
+	// do nothing. EventAttack is "as long as it attacked a battle this
+	// turn" (War Historian, #5649), read from the turn's attack records.
 	DependsOnEvents []EventKind
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:

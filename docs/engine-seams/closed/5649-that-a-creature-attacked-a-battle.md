@@ -1,0 +1,6 @@
+---
+title: "That a creature attacked a battle"
+date: 2026-11-12
+issues: [5649]
+---
+**That a creature attacked a battle** (#5649, CR 508.1b / 508.3a / 508.4 / 508.7a / 506.4c) — the turn's attack records knew which creature attacked and what id it was declared at, but not that the id was a battle, and a defeated battle's id names nothing. `AttackRecord.Battle` is stamped as the attack is announced, and `Game.AttackedBattleThisTurn(id)` reads it per object (CR 400.7): true from the declaration until the turn ends, whatever became of the battle, false for a creature reselected onto a battle (CR 508.7a) or put onto the battlefield attacking one (CR 508.4). A static over it lists `EventAttack` in `DependsOnEvents`, which `layerVersionBump` now reads. Card side, in `cards/effects/attacked_a_battle.go`: `WheneverThisAttacksABattle` ("whenever this creature attacks a battle"), `isAttackingABattle` ("if it's attacking a battle", read as the ability resolves) and `SelfKeywordWhileItAttackedABattleThisTurn` ("has <keyword> as long as it attacked a battle this turn"). Additive snapshot data (`turnTally.attacks[].battle`, and the same field on the three per-seat copies of the attack records); no effect key, mod kind or wire change. **Cards:** War Historian, Thrashing Frontliner, War-Trained Slasher and Rampaging Geoderm (Full).

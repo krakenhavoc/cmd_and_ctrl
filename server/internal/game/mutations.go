@@ -403,6 +403,16 @@ type CastSpellParams struct {
 	TeamworkIDs []uuid.UUID
 	BlightIDs   []uuid.UUID
 
+	// ConspireIDs names the two untapped creatures tapped to pay an
+	// announced conspire cost (CR 702.78a, #5688). A list of its own, so
+	// a spell whose own cost taps permanents on TeamworkIDs (New Blood,
+	// teamwork, escalate's taps, a replicate cost that taps) can be
+	// conspired too: both costs are paid on the one cast, each from its
+	// own list, and no permanent may be on both (a tapped permanent can't
+	// be tapped again to pay a cost). Refused rather than ignored when no
+	// conspire cost is announced. On the wire as `conspire_ids`.
+	ConspireIDs []uuid.UUID
+
 	// ExilePermanentIDs names the permanents paid to a mandatory
 	// ExilePermanents additional cost (#3402) — Soul Exchange's "exile a
 	// creature you control". Validated at announce by the activation's own
@@ -1520,6 +1530,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// first, join the same plan so the one validator and the one payer
 	// see them (#2126).
 	costPlan = append(costPlan, escalatePayments(modeSpec, params.Modes)...)
+	// #5688: conspire's creatures have their own list; a cast that names
+	// them on teamwork_ids with nothing else there is read as before.
+	params.TeamworkIDs, params.ConspireIDs = castTapLists(costPlan, params.TeamworkIDs, params.ConspireIDs)
 	if err := g.validateAdditionalCostLocked(playerID, cardID, costPlan, params.DiscardIDs, params.SacrificeIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad additional cost payment",
 			"card_name", card.Name,
@@ -1579,7 +1592,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// be tapped for convoke or waterbend (TapIDs) or for teamwork or
 	// escalate (TeamworkIDs): each list is validated on its own as
 	// untapped, so a creature named to two would pass both.
-	if alt != nil && alt.TapOthers != nil && (sharesAnID(params.AltCostIDs, params.TapIDs) || sharesAnID(params.AltCostIDs, params.TeamworkIDs)) {
+	if alt != nil && alt.TapOthers != nil && (sharesAnID(params.AltCostIDs, params.TapIDs) || sharesAnID(params.AltCostIDs, params.TeamworkIDs) ||
+		sharesAnID(params.AltCostIDs, params.ConspireIDs)) {
 		slog.Warn("cast_spell rejected: one permanent named to two tap costs",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1623,6 +1637,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"taps_received", len(params.TeamworkIDs),
+			"err", err,
+		)
+		return err
+	}
+	// #5688: conspire's two creatures, on their own list, kept apart from
+	// every other tap of the cast: the convoke / waterbend taps and the
+	// spell's own tap cost (CR 702.78a; one creature is tapped once).
+	if err := g.validateConspireLocked(playerID, cardID, costPlan, params.ConspireIDs, params.TapIDs, params.TeamworkIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad conspire payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"conspire_received", len(params.ConspireIDs),
 			"err", err,
 		)
 		return err
@@ -2024,7 +2050,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
 	// refusePausedCostCardsLocked.
-	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs, params.TeamworkIDs, params.BlightIDs); err != nil {
+	if err := g.refusePausedCostCardsLocked(moving, params.TapIDs, params.TeamworkIDs, params.BlightIDs, params.ConspireIDs); err != nil {
 		return err
 	}
 	// ADR 0115: of those, only a card the payment puts into a hand or
@@ -2455,10 +2481,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
 	// #3172: convoke records WHO tapped, for "each creature that
 	// convoked this spell" (Lethal Scheme). Waterbend is not convoke.
-	if convoked := g.tapConvokersForCastLocked(p, card, g.tapCostForCastParamsLocked(playerID, card, params), params); len(convoked) > 0 {
+	castTapCost := g.tapCostForCastParamsLocked(playerID, card, params)
+	if convoked := g.tapConvokersForCastLocked(p, card, castTapCost, params); len(convoked) > 0 {
 		if item := g.StackMeta[cardID]; item != nil {
 			item.Paid.Convoked = convoked
 		}
+	}
+	// #5647: whether the spell HAS convoke, tapped for or not, read
+	// here while a "the next spell you cast this turn has convoke"
+	// promise is still standing (the spend below takes it).
+	if item := g.StackMeta[cardID]; item != nil && castTapCost.HasConvoke() {
+		item.HadConvoke = true
 	}
 	// ADR 0100 §1: delve's exiles, in the same window and for the same
 	// reason as escape's — with the spell already on the stack, so a
@@ -2487,6 +2520,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if !g.payCastTapOthersLocked(playerID, cardID, costPlan, params.TeamworkIDs) {
 		g.payTeamworkLocked(playerID, params.TeamworkIDs)
 	}
+	// #5688: and conspire's two creatures, after the spell's own taps.
+	g.payConspireLocked(playerID, costPlan, params.ConspireIDs)
 	if err := g.payBlightLocked(playerID, costPlan, params.BlightIDs, params.XValue); err != nil {
 		slog.Error("cast_spell: blight cost failed after validation",
 			"card_name", card.Name,
@@ -3551,6 +3586,9 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 				})
 			}
 		}
+		// #5644: the ability has resolved, rider and all; the triggered
+		// mana abilities below resolve after it and announce their own.
+		g.emitManaAbilityResolvedLocked(p.ID, cardID, ab.Label, len(addedColors))
 		if tapped && len(addedColors) > 0 {
 			g.fireManaTriggersLocked(ManaProduced{
 				Source:     tappedForMana,
@@ -3709,6 +3747,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 		Label:   ab.Label,
 		Exhaust: ab.Exhaust,
 	})
+	produced := 0
 	for si, slot := range slots {
 		var color string
 		if si == oneColorIdx {
@@ -3722,7 +3761,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 		if color == "" {
 			continue
 		}
-		g.produceManaLocked(
+		produced += len(g.produceManaLocked(
 			p, cardID,
 			repeatColor(color, slot.AmountFor(color)),
 			restrictionsFor(g, ab, p.ID, cardID),
@@ -3732,8 +3771,10 @@ func (g *Game) materializeExiledManaSourceLocked(
 			// tapped and was never a permanent.
 			false,
 			pending,
-		)
+		))
 	}
+	// #5644: the ability has resolved.
+	g.emitManaAbilityResolvedLocked(p.ID, cardID, ab.Label, produced)
 }
 
 // pickColorForSlot consumes one entry from `pending` if any of
@@ -7214,8 +7255,9 @@ func (g *Game) triggerPlacedWatchedLocked() bool {
 // the same enumeration harvestFromZone walks (triggersOf, so an
 // ability-removing effect or an unmet designation gate counts as no
 // watcher). Only the battlefield: no emblem and no other-zone ability
-// watches EventTriggerPlaced or EventAbilityCopied, and one that does
-// joins this check in the change that declares it.
+// watches EventTriggerPlaced, EventAbilityCopied or
+// EventManaAbilityResolved, and one that does joins this check in the
+// change that declares it.
 //
 // Caller must hold g.mu.
 func (g *Game) battlefieldWatchesLocked(kind EventKind) bool {
@@ -9003,6 +9045,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			ManaLabel:     ab.Label,
 			ManaSettled:   settled,
 			ManaPicksLeft: picks[1:],
+			// #5644: the ability has not finished resolving until its
+			// last colour is named; that answer announces it.
+			ManaAbilityRun: uuid.NewString(),
 		}
 		// The "becomes that color" rider waits for the colour too.
 		choice.ManaRecolorsSource = ab.SourceBecomesProducedColor
@@ -9037,6 +9082,12 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				ErrorMsg: err.Error(),
 			})
 		}
+	}
+	// #5644: with no colour left to pick the ability has resolved, and
+	// what it produced is known. One that queued a pick announces this
+	// from ResolveManaChoice instead (PendingChoice.ManaAbilityRun).
+	if len(picks) == 0 {
+		g.emitManaAbilityResolvedLocked(playerID, cardID, ab.Label, len(addedColors))
 	}
 	// --- triggered mana abilities (#763, CR 605.1b) ---------------
 	//

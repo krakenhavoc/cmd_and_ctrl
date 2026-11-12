@@ -116,7 +116,10 @@ func abilityRowsOf(c *Card, onBattlefield bool) []AbilityRow {
 		// chip, because it is not a canonicalKeywords token, so the row
 		// is where the tile shows it — as it did before the trigger
 		// carried a Keyword.
-		if t.Keyword != "" && t.Keyword != KeywordCumulativeUpkeep {
+		// So does backup (#5651), for the same reason, and because the
+		// row is where the tile says how many counters and which
+		// abilities.
+		if t.Keyword != "" && t.Keyword != KeywordCumulativeUpkeep && t.Keyword != KeywordBackup {
 			continue
 		}
 		label, generic := abilityRowText(t.Key, names, "Triggered ability")
@@ -301,6 +304,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "LifeForMana", fallback: "Lets you pay life for mana", ownLabel: true},
 	{field: "LegendRuleExemptions", label: legendRuleExemptionRows},
 	{field: "ZeroLoyaltyExemptions", fallback: "Planeswalkers aren't put into graveyards for having 0 loyalty", ownLabel: true},
+	{field: "DamageLastLoyalty", fallback: "Damage can't remove a planeswalker's last loyalty counter", ownLabel: true},
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice", ownLabel: true},
 	{field: "GameEndGates", label: gameEndGateRows},
 	{field: "CoinFlipRules", fallback: "Coin flips come up heads", ownLabel: true},

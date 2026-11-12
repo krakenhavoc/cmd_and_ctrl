@@ -78,6 +78,8 @@ type PlayerTurnTally struct {
 	// damage still is (it is dealt, it just loses no life). Sidequest: Play
 	// Blitzball's "if a player was dealt 6 or more combat damage this turn"
 	// reads it through Game.CombatDamageTakenThisTurn. Additive.
+	// It ends with the turn: "since your last turn" is
+	// Player.CombatDamagedSinceLastTurn (#5652, since_last_turn.go).
 	CombatDamageTaken int `json:"combatDamageTaken,omitempty"`
 	// CardsDiscarded counts cards this player discarded (one event
 	// per card, CR 701.9a), whatever the discard's cause or eventual
@@ -692,12 +694,22 @@ type TurnTally struct {
 // planeswalker may have died or changed hands. uuid.Nil for an attack
 // on a player or a battle (a battle you protect is not a planeswalker
 // you control, the card's ruling).
+//
+// Battle is true when Defender was a battle as the attack was declared
+// (#5649): "as long as it attacked a battle this turn" (War Historian)
+// is asked after combat, when that battle may have been defeated, and
+// Defender alone is then an id that names nothing. Frozen at the
+// declaration, so a reselect later in the combat changes nothing: the
+// creature is "still considered to have attacked the player or
+// permanent chosen as it was declared as an attacker" (CR 508.7a).
+// Additive within the snapshot schema: omitted when false.
 type AttackRecord struct {
 	Attacker               uuid.UUID `json:"attacker"`
 	Epoch                  int       `json:"epoch,omitempty"`
 	Defender               uuid.UUID `json:"defender,omitempty"`
 	PhaseID                int       `json:"phaseId,omitempty"`
 	PlaneswalkerController uuid.UUID `json:"planeswalkerController,omitempty"`
+	Battle                 bool      `json:"battle,omitempty"`
 }
 
 // AttackedYouOrYourPlaneswalkerThisTurn reports whether `player`
@@ -822,6 +834,30 @@ func (g *Game) TimesBecameTappedThisTurn(cardID uuid.UUID) int {
 // Caller must hold g.mu.
 func (g *Game) AttackedThisTurn(cardID uuid.UUID) bool {
 	return g.TimesAttackedThisTurn(cardID) > 0
+}
+
+// AttackedBattleThisTurn reports whether the object `cardID` names was
+// declared as an attacker attacking a battle this turn (#5649): War
+// Historian's "as long as it attacked a battle this turn". It reads
+// what each attack was aimed at as it was declared (CR 508.1b), so it
+// stays true once the battle is defeated or the combat is over, a
+// creature whose attack was reselected onto a battle did not attack one
+// (CR 508.7a), and neither did one put onto the battlefield attacking a
+// battle (CR 508.4). A creature that left and came back is a new object
+// with no attacks of its own (CR 400.7).
+//
+// Caller must hold g.mu.
+func (g *Game) AttackedBattleThisTurn(cardID uuid.UUID) bool {
+	if cardID == uuid.Nil || len(g.TurnTally.Attacks) == 0 {
+		return false
+	}
+	epoch := g.objectEpochLocked(cardID)
+	for _, a := range g.TurnTally.Attacks {
+		if a.Battle && a.Attacker == cardID && a.Epoch == epoch {
+			return true
+		}
+	}
+	return false
 }
 
 // ObjectAttackedThisTurn is AttackedThisTurn for an object named by
@@ -2040,6 +2076,8 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 		if ev.Combat {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.CombatDamageTaken += ev.Amount })
+			// #5652: and the memory that outlives the turn.
+			g.noteCombatDamagedSinceLastTurnLocked(ev.Target)
 		}
 		// #2149: which creature OBJECT it was, for "a creature that
 		// dealt (combat) damage to you this turn".
@@ -2163,6 +2201,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			if pw := findBattlefieldCard(g, ev.Target); pw != nil && pw.IsPlaneswalker() {
 				rec.PlaneswalkerController = pw.Controller
 			}
+			// #5649: that the attack was on a battle, frozen now for
+			// the same reason.
+			rec.Battle = g.classifyAttackTargetLocked(ev.Target) == AttackTargetBattle
 			attacks := make([]AttackRecord, len(g.TurnTally.Attacks), len(g.TurnTally.Attacks)+1)
 			copy(attacks, g.TurnTally.Attacks)
 			g.TurnTally.Attacks = append(attacks, rec)

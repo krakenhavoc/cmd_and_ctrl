@@ -1324,6 +1324,10 @@ export type LogKind =
   // for each plane left and "to" for the plane arrived at; `label` is
   // that plane's name and `card_id` the plane.
   | "planeswalk"
+  // #5648: a resolving spell or ability said that chaos ensues (CR
+  // 311.7). `label` is the name of the card whose effect it was. The
+  // planar die's chaos face is a `roll` with `planar_face` instead.
+  | "chaos_ensues"
   // ADR 0172 §5: a seat revealed its companion as the game began
   // ("Alice revealed Jegantha, the Wellspring as their companion").
   // `card_id` is the companion, public from then on.
@@ -2051,7 +2055,9 @@ export interface PendingChoiceView {
   // #742: on a "mana_pick" that adds more than one mana of the picked
   // colour ("{T}: Add three mana of any one color") — colour letter to
   // amount. A colour missing from the map adds one; absent on ordinary
-  // picks. Also, choose_color reuses color_options above.
+  // picks. Also, choose_color reuses color_options above: the colours,
+  // and "C" last on the one prompt that asks "colorless or the color of
+  // your choice" (#5650).
   color_amounts?: Record<string, number>;
   // #780: on a "choose_color" prompt — the card's own declaration of
   // what it will DO with the colour it is handed. Public (it is a
@@ -3483,6 +3489,11 @@ export interface OptionalCostView {
   // what ONE payment taps; paying the offer N times names N times that
   // many on `teamwork_ids`. `max_times` is capped at what the options
   // cover, and fewer options than `min` means it cannot be taken now.
+  // #5688: on a conspire offer (`key` "conspire") the same two fields
+  // describe conspire's two creatures, and those picks ride cast_spell
+  // as `conspire_ids`, a list apart from `teamwork_ids`, so a spell
+  // whose own cost taps permanents can be conspired too. No permanent
+  // may be on both lists.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #5358: a kicker that returns a permanent (Chocobo Kick's "Kicker—Return
@@ -3946,8 +3957,11 @@ export type ExilePlayUntil =
 // Attendant): the options are cards in the shared `exile` zone that an
 // opponent owns, and each pick goes to its owner's graveyard. A
 // face-down option stands for its group: the server moves a card chosen
-// at random from the cards exiled face down with it.
-export type ExileCostZone = "hand" | "graveyard" | "exile";
+// at random from the cards exiled face down with it. #5655: "stack" is
+// "Exile a spell you control" (Synthesis Pod): the options are spells on
+// the shared `stack` that the viewer controls, and the pick is exiled
+// without resolving.
+export type ExileCostZone = "hand" | "graveyard" | "exile" | "stack";
 
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
@@ -5775,7 +5789,8 @@ export interface ProtectionView {
   // "player", "mana_value_at_most" (value = the bound N, #2181),
   // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
   // "mana_value_even", "multityped_creatures", "noncreature_permanents"
-  // (#4307), "multicolored" (#4834) or "mana_value_at_least" (value = N).
+  // (#4307), "multicolored" (#4834), "mana_value_at_least" (value = N)
+  // or "colorless" (a source with no colour, #5650).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype

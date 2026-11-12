@@ -39,6 +39,14 @@ import (
 // option set is always a subset of AllColors, and why "a color other
 // than blue" (Thriving Isle) is just a four-entry option list rather
 // than a separate mechanism.
+//
+// One printed sentence asks a WIDER question: "protection from colorless
+// or from the color of your choice" (Angelic Intervention, #5650). That
+// is not "choose a color": the player picks between a quality that is
+// not a colour and a colour of their choice. It is asked as one prompt
+// with a sixth answer, ColorlessChoice, which only ColorPrompt.OrColorless
+// adds; the stored form and every other resolution prompt stay CR 105.4's
+// five.
 
 // PendingChoiceColor is the "choose a color" prompt. Answered with the
 // same `{color: "G"}` payload a mana pick uses; the dispatcher routes
@@ -111,6 +119,12 @@ var AllColorPurposes = []ColorPurpose{
 // colour picker renders.
 var AllColors = []string{"W", "U", "B", "R", "G"}
 
+// ColorlessChoice is the answer "colorless" on a prompt that offers it
+// (ColorPrompt.OrColorless, #5650): the letter the mana pick already
+// uses for colourless on the wire. Never a member of AllColors, since
+// colorless is not a color (CR 105.4).
+const ColorlessChoice = "C"
+
 // ColorsOtherThan is AllColors without `color` — the "choose a color
 // other than blue" option set.
 func ColorsOtherThan(color string) []string {
@@ -137,6 +151,8 @@ func ColorName(color string) string {
 		return "red"
 	case "G":
 		return "green"
+	case ColorlessChoice:
+		return "colorless"
 	}
 	return color
 }
@@ -243,6 +259,10 @@ type ColorPrompt struct {
 	// in practice: the catalog guard fails a prompt that leaves it
 	// empty, and an empty one falls back to the mana-fixing rule.
 	Purpose ColorPurpose
+	// OrColorless adds ColorlessChoice as one more answer, after the
+	// colours: "colorless or the color of your choice" (Angelic
+	// Intervention, #5650). The tail is then told "C" as its Word.
+	OrColorless bool
 	// ThenTail receives the answer (#4253): a registered tail
 	// (RegisterTail) told the colour as its Word. It runs with g.mu held
 	// and may queue further choices. The prompt holds no closure, so a
@@ -265,6 +285,12 @@ func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
 		Reason:       p.Question,
 		ColorOptions: normaliseColorOptions(p.Options),
 		ColorPurpose: p.Purpose,
+	}
+	if p.OrColorless {
+		// After the colours, which normaliseColorOptions has just
+		// narrowed to real ones: the one door through which "C" reaches
+		// a choose_color prompt.
+		c.ColorOptions = append(c.ColorOptions, ColorlessChoice)
 	}
 	// #4361: keyed even when nothing follows, so the prompt is data.
 	g.keyValueThenOrNothingLocked(&c, p.ThenTail)

@@ -240,6 +240,18 @@ type ExileCost struct {
 	// `exile_ids` and the validator are this component's own. A CR 602
 	// ability with a printed count only; effects.Register refuses the
 	// form anywhere else.
+	//
+	// ZoneStack is "Exile a spell you control" (Synthesis Pod, #5655):
+	// the walk reads the stack for SPELLS the activator controls (never
+	// an ability, never another player's spell), and the payer exiles
+	// each pick off the stack through the one exit primitive, which
+	// files the spell's CR 608.2h last-known record (stack_lki.go) and
+	// retires its stack item. The spell does not resolve and is not
+	// countered (CR 701.6 never applies). An effect reads "the exiled
+	// spell's mana value" with Game.LastKnownSpellManaValueForEffect on
+	// PaidCost.Exiled, the announced X counted (CR 202.3e). A CR 602
+	// ability with a printed count only (ExilesSpell); build it with
+	// effects.ExileASpellYouControl.
 	From ZoneKind
 
 	// Match is the clause's predicate. Nil matches any card in the
@@ -404,7 +416,14 @@ func (e *ExileCost) Zone() ZoneKind {
 // from; effects.Register refuses the rest at boot rather than shipping
 // a clause the candidate walk would never find a card for.
 func ExileCostZoneSupported(z ZoneKind) bool {
-	return z == ZoneHand || z == ZoneGraveyard || z == ZoneExile
+	return z == ZoneHand || z == ZoneGraveyard || z == ZoneExile || z == ZoneStack
+}
+
+// ExilesSpell reports whether the clause is "exile a spell you control"
+// (From: ZoneStack, #5655) rather than an exile out of a pile of cards.
+// Nil-safe.
+func (e *ExileCost) ExilesSpell() bool {
+	return e != nil && e.From == ZoneStack
 }
 
 // Processes reports whether the clause is "put a card an opponent owns
@@ -441,6 +460,8 @@ func (g *Game) exileCostPileLocked(p *Player, cost *ExileCost) *Zone {
 		return p.Graveyard
 	case ZoneExile:
 		return g.Exile
+	case ZoneStack:
+		return g.Stack
 	}
 	return nil
 }
@@ -452,9 +473,17 @@ func (g *Game) exileCostPileLocked(p *Player, cost *ExileCost) *Zone {
 // whose owner has left the game (it has no graveyard to go to).
 // A face-down card is a card an opponent owns too: ownership is not a
 // characteristic, so a clause with no predicate offers it (see
-// processedCardLocked).
+// processedCardLocked). The stack is shared too, and "a spell you
+// control" (ExilesSpell) reads the spell's controller.
 // Caller must hold g.mu.
 func (g *Game) exileCostOwnerOKLocked(playerID uuid.UUID, cost *ExileCost, c *Card) bool {
+	if cost.ExilesSpell() {
+		// "A spell you control": a spell's controller is its stack
+		// item's (CR 112.2), whoever owns the card. A face-down spell
+		// is a spell all the same.
+		item := g.StackMeta[c.InstanceID]
+		return item != nil && item.Kind == StackItemSpell && item.Controller == playerID
+	}
 	if !cost.Processes() {
 		return true
 	}

@@ -1,25 +1,30 @@
 <script lang="ts">
   // DraftBuild — the deckbuilding step of a draft (ADR 0222 §5, #5440).
   //
-  // The viewer's pool in two zones, the deck and the sideboard. A card
+  // The viewer's pool in two zones, Main and the Sideboard (the same
+  // component as the picks beside the pack, DraftSplit, #5699). A card
   // moves with a click or a drag; basic lands come from a stepper for
-  // each land type. Beside them: the count, the curve, a land-count
-  // suggestion and the one primary, Submit deck.
+  // each land type. Beside them: the count, a land-count suggestion and
+  // the one primary, Submit deck. Under them, the stats (DraftStats,
+  // #5702) follow the cards as they move.
+  //
+  // It opens on the split the picks screen kept (lib/draftSplit.ts), or,
+  // once a deck has been submitted, on that deck; every move is kept
+  // for a reload.
   //
   // Everything here is the viewer's own: `view.pool` and `view.deck`
   // hold no other seat's cards (CR 905.1c). The server runs the limited
   // deck check (CR 100.2b) on what is submitted; lib/draftBuild.ts says
   // the same thing first.
-  import type { Snippet } from "svelte";
+  import { untrack, type Snippet } from "svelte";
 
-  import { cardCount, DRAG_TYPE, type DraftCard, type DraftView } from "../../draft";
+  import { cardCount, type DraftCard, type DraftView } from "../../draft";
   import {
     applySuggestion,
     BASIC_COLOR,
     BASIC_LANDS,
     basicsCount,
     buildProblem,
-    curve,
     deckSize,
     initialBuild,
     landCount,
@@ -30,13 +35,15 @@
     sameDeck,
     setBasic,
     splitPool,
-    toggleCard,
     type BasicLand,
+    type BuildState,
   } from "../../draftBuild";
+  import type { Zone } from "../../draftSplit";
   import { L } from "../../labels";
   import ManaSymbol from "../board/ManaSymbol.svelte";
   import Icon from "../Icon.svelte";
-  import DraftPool from "./DraftPool.svelte";
+  import DraftSplit from "./DraftSplit.svelte";
+  import DraftStats from "./DraftStats.svelte";
 
   interface Props {
     view: DraftView;
@@ -47,42 +54,54 @@
     /** The server's sentence for a refused deck. */
     error: string;
     onsubmit: (main: string[], basics: Record<string, number>) => void;
+    /** The ids of the picks in the Sideboard, as the picks screen left them. */
+    side: string[];
+    /** The Sideboard changed here; the room keeps it. */
+    onside: (side: string[]) => void;
     /** The build timer, drawn by the room. */
     timer: Snippet;
   }
-  const { view, live, pending, error, onsubmit, timer }: Props = $props();
+  const { view, live, pending, error, onsubmit, side, onside, timer }: Props = $props();
 
   const pool = $derived<DraftCard[]>(view.pool ?? view.picks ?? []);
   const deckMin = $derived(view.build?.deck_min ?? 40);
 
   // The deck being built is this page's own until it is submitted. It
-  // opens on the deck the server already holds for the seat, if any.
-  // svelte-ignore state_referenced_locally
-  let build = $state(initialBuild(view.pool ?? view.picks ?? [], view.deck));
+  // opens on the deck the server already holds for the seat, if any;
+  // else on the split the picks screen kept: Main is every pick that is
+  // not in the Sideboard, so a card picked last is in Main.
+  function opening(): BuildState {
+    const all = view.pool ?? view.picks ?? [];
+    if (view.deck) return initialBuild(all, view.deck);
+    const set = new Set(side);
+    return { main: all.filter((c) => !set.has(c.id)).map((c) => c.id), basics: {} };
+  }
+  let build = $state(opening());
 
   const zones = $derived(splitPool(pool, build));
   const size = $derived(deckSize(build));
   const lands = $derived(landCount(zones.deck, build));
-  const columns = $derived(curve(zones.deck));
-  const tallest = $derived(Math.max(1, ...columns.map((c) => c.count)));
   const suggestion = $derived(landSuggestion(zones.deck, deckMin));
   const problem = $derived(buildProblem(size, deckMin));
   const submitted = $derived(view.build?.submitted === true);
   const unchanged = $derived(submitted && sameDeck(build, view.deck));
   const waiting = $derived(view.players.filter((p) => !p.bot && !p.built && p.seat !== view.you));
 
-  let dropOn = $state<"deck" | "side" | null>(null);
+  // What this screen holds is the deck's cards; what the room keeps is
+  // the other side of it, the Sideboard.
+  const sideIDs = (b: BuildState): string[] =>
+    pool.filter((c) => !b.main.includes(c.id)).map((c) => c.id);
 
-  function drop(ev: DragEvent, to: "deck" | "side"): void {
-    ev.preventDefault();
-    dropOn = null;
-    const id = ev.dataTransfer?.getData(DRAG_TYPE);
-    if (id) build = moveCard(build, id, to);
-  }
-  function over(ev: DragEvent, to: "deck" | "side"): void {
-    if (!ev.dataTransfer?.types.includes(DRAG_TYPE)) return;
-    ev.preventDefault();
-    dropOn = to;
+  // A deck the server held, or a build that shifted, differs from what
+  // the room was told: say so once, so a reload opens the same way.
+  $effect(() => {
+    const now = sideIDs(build);
+    const was = untrack(() => side);
+    if (now.length !== was.length || now.some((id) => !was.includes(id))) onside(now);
+  });
+
+  function move(id: string, to: Zone): void {
+    build = moveCard(build, id, to === "main" ? "deck" : "side");
   }
   function step(name: BasicLand, by: number): void {
     build = setBasic(build, name, (build.basics[name] ?? 0) + by);
@@ -91,55 +110,19 @@
     if (problem || pending || !live) return;
     onsubmit([...build.main], { ...build.basics });
   }
-
-  const curveSummary = $derived(
-    columns.map((c) => `${c.count} at ${c.value === 6 ? "6 or more" : c.value}`).join(", "),
-  );
 </script>
 
 <div class="cols">
   <div class="zones">
-    <section
-      class="card zone"
-      class:drop={dropOn === "deck"}
-      aria-labelledby="draft-deck-h"
-      data-testid="draft-deck"
-      ondragover={(ev) => over(ev, "deck")}
-      ondragleave={() => (dropOn = null)}
-      ondrop={(ev) => drop(ev, "deck")}
-    >
-      <h2 id="draft-deck-h">
-        {L.draftDeckZone} <span class="n">{zones.deck.length}</span>
-      </h2>
-      <DraftPool
-        cards={zones.deck}
-        images
-        verb="Move to sideboard"
-        empty="No cards yet. Click a card in your sideboard, or drag it here, to play it."
-        onpick={(card) => (build = toggleCard(build, card.id))}
-      />
-    </section>
-
-    <section
-      class="card zone"
-      class:drop={dropOn === "side"}
-      aria-labelledby="draft-side-h"
-      data-testid="draft-side"
-      ondragover={(ev) => over(ev, "side")}
-      ondragleave={() => (dropOn = null)}
-      ondrop={(ev) => drop(ev, "side")}
-    >
-      <h2 id="draft-side-h">
-        {L.draftSideboardZone} <span class="n">{zones.side.length}</span>
-      </h2>
-      <DraftPool
-        cards={zones.side}
-        images
-        verb="Add to deck"
-        empty="Every card you drafted is in your deck."
-        onpick={(card) => (build = toggleCard(build, card.id))}
-      />
-    </section>
+    <DraftSplit
+      cards={pool}
+      side={sideIDs(build)}
+      images
+      onmove={move}
+      emptyMain="No cards yet. Click a card in your sideboard, or drag it here, to play it."
+      emptySide="Every card you drafted is in your deck."
+    />
+    <DraftStats main={zones.deck} {pool} />
   </div>
 
   <section class="card panel" aria-labelledby="draft-build-h" data-testid="draft-build">
@@ -149,8 +132,12 @@
     </div>
     <p class="help">
       Play at least {deckMin} cards: the ones you drafted, plus as many basic lands as you like. The rest
-      of what you drafted is your sideboard. When the timer ends, a deck is built for anyone who has not
-      submitted one.
+      of what you drafted is your sideboard.
+      {#if view.build?.untimed}
+        There is no timer: the rounds begin when everyone has submitted a deck.
+      {:else}
+        When the timer ends, a deck is built for anyone who has not submitted one.
+      {/if}
     </p>
 
     <dl class="counts" data-testid="draft-deck-count">
@@ -167,16 +154,6 @@
         <dd>{size - lands}</dd>
       </div>
     </dl>
-
-    <div class="curve" role="img" aria-label={`${L.draftCurve}: ${curveSummary}`}>
-      {#each columns as col (col.value)}
-        <div class="col" aria-hidden="true">
-          <span class="count">{col.count}</span>
-          <span class="bar" style:height={`${Math.round((col.count / tallest) * 100)}%`}></span>
-          <span class="mv">{col.label}</span>
-        </div>
-      {/each}
-    </div>
 
     <div class="lands">
       <h3>{L.draftBasicLands} <span class="n">{basicsCount(build)}</span></h3>
@@ -289,15 +266,6 @@
     flex-direction: column;
     gap: 22px;
     min-width: 0;
-    /* Two zones share the page with the panel, so their tiles are a
-       step smaller than a finished pool's: three across at 820px. */
-    --pool-tile: 100px;
-  }
-  /* A zone a card is being dragged over: the hairline thickens to the
-     accent, and nothing moves. */
-  .zone.drop {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent);
   }
   .panel {
     position: sticky;
@@ -385,33 +353,6 @@
   .of {
     font-size: 12px;
     color: var(--fg-muted);
-  }
-  .curve {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
-    height: 96px;
-  }
-  .col {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    justify-items: center;
-    gap: 3px;
-    min-height: 0;
-  }
-  .col .count,
-  .col .mv {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-variant-numeric: tabular-nums;
-    color: var(--fg-muted);
-  }
-  .col .bar {
-    align-self: end;
-    width: 100%;
-    min-height: 2px;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    background: var(--accent);
   }
   .lands ul {
     list-style: none;

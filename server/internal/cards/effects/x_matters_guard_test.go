@@ -86,6 +86,7 @@ var xMattersAllowlist = map[string]string{
 	"pterafractyl.go Pterafractyl":                                "\"When this creature enters, you gain 2 life\" never reads X: at X=0 the 1/0 dies, but its enters trigger still resolves and gains the 2 life",
 	"song_of_totentanz.go Song of Totentanz":                      "\"Creatures you control gain haste until end of turn\" never reads X: at X=0 the spell makes no Rats and still gives the team haste",
 	"wild_hypothesis.go Wild Hypothesis":                          "the X counters scale with X but \"Surveil 2\" is a fixed rider: at X=0 the Fractal dies as a 0/0 and the spell still surveils 2, a real play",
+	"path_of_the_ghosthunter.go Path of the Ghosthunter":          "Will of the Planeswalkers never reads X: at X=0 the players still vote, and at a Planechase table the caster planeswalks or chaos ensues (#5648)",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

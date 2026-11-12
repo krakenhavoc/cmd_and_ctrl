@@ -174,6 +174,7 @@
     castExilePermanentCost,
     castReturnCost,
     castTapCost,
+    castConspireCost,
     castHandExileCost,
     altCostPayDefinesX,
     altCostPayX,
@@ -970,12 +971,16 @@
   // server's `tap_others_options`, the answer sent as `teamwork_ids`.
   // #3961: "tap any number of untapped creatures" (Burn at the Stake) is
   // the same picker with `min` 0 and every option as the ceiling.
+  // #5688: conspire's two creatures use it too, answered as
+  // `conspire_ids` (`list`), after the spell's own taps so the options
+  // leave those out.
   let addTapPrompt = $state<{
     card: CardView;
     label: string;
     count: number;
     min: number;
     choices: CastChoices;
+    list: "teamworkIDs" | "conspireIDs";
   } | null>(null);
   let addTapPromptOptionIDs = $state<string[]>([]);
   const addTapPromptOptions = $derived.by(() =>
@@ -986,7 +991,7 @@
     const p = addTapPrompt;
     addTapPrompt = null;
     if (!p) return;
-    afterSacrificeCost(p.card, { ...p.choices, teamworkIDs: ids });
+    afterSacrificeCost(p.card, { ...p.choices, [p.list]: ids });
   }
 
   // #3175: "you may exile any number of blue cards from your hand" (March
@@ -1144,7 +1149,29 @@
         return;
       }
       addTapPromptOptionIDs = tc.options;
-      addTapPrompt = { card, label: tc.label, count: tc.count, min: tc.min, choices };
+      addTapPrompt = {
+        card,
+        label: tc.label,
+        count: tc.count,
+        min: tc.min,
+        choices,
+        list: "teamworkIDs",
+      };
+      return;
+    }
+    // #5688: conspire's creatures, on their own list, after the spell's
+    // own taps so one creature is never offered to both.
+    const cc = castConspireCost(card, choices);
+    if (cc && choices.conspireIDs === undefined) {
+      addTapPromptOptionIDs = cc.options;
+      addTapPrompt = {
+        card,
+        label: cc.label,
+        count: cc.count,
+        min: cc.min,
+        choices,
+        list: "conspireIDs",
+      };
       return;
     }
     const he = castHandExileCost(card, choices);
@@ -1208,6 +1235,8 @@
     const card = tapPromptCard;
     if (!card) return [];
     const ids = new Set(tapCostFor(card, tapPromptChoices)?.options?.cards ?? []);
+    // #5688: a creature tapped for conspire can't also be tapped to help pay.
+    for (const id of tapPromptChoices.conspireIDs ?? []) ids.delete(id);
     return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
   });
 
@@ -1966,6 +1995,8 @@
       return (me?.hand.cards ?? []).filter((c) => c.instance_id !== p.card.instance_id);
     }
     const ids = new Set(p.card.modes?.escalate?.tap_options ?? []);
+    // #5688: nor can it pay escalate's taps.
+    for (const id of p.choices.conspireIDs ?? []) ids.delete(id);
     return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
   });
 
@@ -2613,6 +2644,7 @@
       view.seats.find((s) => s.id === viewerID),
       p.ability,
       view.exile,
+      view.stack,
     );
   });
 

@@ -1,0 +1,6 @@
+---
+title: "A proliferate event and \"whenever you proliferate\""
+date: 2026-11-12
+issues: [5653]
+---
+**A proliferate event and "whenever you proliferate"** (#5653, CR 701.34a; follows [keyword actions with a count](decisions/0013-replacement-effects.md)) — proliferate had a CR 614 window on the action (#976) and nothing after it, so no card could trigger on it. `game.EventProliferate` is now raised once per finished proliferate, by `noteProliferateLocked` at the end of the keyed walk (`game/proliferate_keyed.go`): after the choice and every counter it gave, with Actor the proliferating player and Source the card. "Proliferate twice" raises two, each behind its own counters, on the asked path and the explicit one; a proliferate that chose nothing, or found nothing with a counter, raises one for each proliferate owed; one a replacement cancelled raises none. The card side is `effects.WheneverYouProliferate(label, effect)`. The event is a deliberate log silence (the counters and the trigger are the lines), so there is no wire change, and nothing new rides the walk, so there is no snapshot change: a table restored between the two proliferates of "proliferate twice" still raises the second. **Cards:** Ezuri, Stalker of Spheres, Scheming Aspirant, Venser, Corpse Puppet, Voidwing Hybrid — Full.

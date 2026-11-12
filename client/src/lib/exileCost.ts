@@ -27,15 +27,18 @@ export function exileCostZone(ability: ExileCostFields): ExileCostZone {
 // seat's own hand or graveyard, in that zone's order. The server has
 // already filtered them; nothing narrows them further here. #5457: a
 // processing clause ("put a card an opponent owns from exile into that
-// player's graveyard") reads the shared exile zone instead.
+// player's graveyard") reads the shared exile zone instead. #5655:
+// "exile a spell you control" reads the shared stack.
 export function exileCostOptionCards(
   seat: PlayerView | undefined,
   ability: ExileCostFields,
   exile?: ZoneView,
+  stack?: ZoneView,
 ): CardView[] {
   const ids = new Set(ability.exile_cost_options ?? []);
   const zone = exileCostZone(ability);
   if (zone === "exile") return (exile?.cards ?? []).filter((c) => ids.has(c.instance_id));
+  if (zone === "stack") return (stack?.cards ?? []).filter((c) => ids.has(c.instance_id));
   if (!seat) return [];
   const pile = zone === "graveyard" ? seat.graveyard : seat.hand;
   return (pile?.cards ?? []).filter((c) => ids.has(c.instance_id));
@@ -47,6 +50,8 @@ export function exileCostNote(ability: ExileCostFields): string {
   switch (exileCostZone(ability)) {
     case "exile":
       return "an opponent's card in exile · it goes to its owner's graveyard";
+    case "stack":
+      return "a spell you control on the stack · it is exiled without resolving";
     case "graveyard":
       return "exiled from your graveyard · not a discard";
     default:
@@ -59,6 +64,8 @@ export function exileCostWhere(ability: ExileCostFields): string {
   switch (exileCostZone(ability)) {
     case "exile":
       return "in exile";
+    case "stack":
+      return "on the stack";
     case "graveyard":
       return "in your graveyard";
     default:

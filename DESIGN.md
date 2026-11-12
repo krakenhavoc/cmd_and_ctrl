@@ -144,6 +144,11 @@ seat hues by hand.
 on the Decks grid ([ADR 0158](docs/decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) §2).
 They are fixed: no skin may override them.
 
+The draft screens use them for a card's slight colour edge (#5704, `lib/draftEdge.ts`):
+one colour is that colour, two or more are equal diagonal bands in WUBRG order, and
+colourless is `--identity-c`; a land takes its colour identity. It is decoration
+only, with a hairline outside it so a light colour reads on a light skin.
+
 ### Chart colours
 
 `--chart-1` … `--chart-6` are the stats charts' categorical inks

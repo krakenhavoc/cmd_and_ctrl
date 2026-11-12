@@ -1448,6 +1448,17 @@ type Spec struct {
 	// game.CatalogZeroLoyaltyExemptions, keyed by CatalogAbilityKey.
 	ZeroLoyaltyExemptions []game.ZeroLoyaltyExemption
 
+	// DamageLastLoyalty declares a printed "if damage dealt to a
+	// planeswalker you control … would result in all loyalty counters on
+	// it being removed, instead all but one of those counters are
+	// removed" static (CR 120.3c, 120.4c, #5646):
+	//
+	//	DamageLastLoyalty: DamageLeavesChosenTypeAPlaneswalkersLastLoyaltyWhileYouControlACreature(), // Deification
+	//
+	// Read from the battlefield as damage lands on a planeswalker,
+	// through game.CatalogDamageLastLoyalty, keyed by CatalogAbilityKey.
+	DamageLastLoyalty []game.DamageLastLoyaltyStatic
+
 	// OpponentEffectProtections declares a printed "spells and abilities
 	// your opponents control can't cause you to discard cards / sacrifice
 	// permanents" static (#2178):

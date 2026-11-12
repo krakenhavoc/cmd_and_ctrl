@@ -659,15 +659,23 @@ func TestALimitedTableIsOnlyOpenedByADraft(t *testing.T) {
 func TestAStalledDraftMatchIsADraw(t *testing.T) {
 	s := newDraftStack(t)
 	s.withRealBots(t)
-	s.lobby.SetDraftMatchLimits(DraftMatchLimits{Idle: 150 * time.Millisecond})
 	_, out := s.call(t, http.MethodPost, "/draft", "", `{"set":"syn","seats":2}`)
 	id := out.Draft.ID
 	seat := s.draftSeatOf(t, out.Token)
-	conn := s.dial(t, id, out.Token)
-	conn.next()
 	s.call(t, http.MethodPost, "/draft/"+id.String()+"/start", out.Token, "")
 	room := s.lobby.DraftRoom(id)
 	pickEverything(t, room, seat)
+	// The person is on the draft's page for the rounds. They connect after
+	// the picks: pickEverything changes the draft faster than the hub's
+	// writer can be scheduled under load, and the hub drops a socket whose
+	// 16-frame send buffer fills, which would leave the draft looking
+	// abandoned (#5696). The rounds send a handful of frames, which drain
+	// keeps read. The idle limit is set once the socket is up, and tables
+	// only open when the deck is in, so no table can stall before it.
+	conn := s.dial(t, id, out.Token)
+	conn.next()
+	conn.drain()
+	s.lobby.SetDraftMatchLimits(DraftMatchLimits{Idle: 150 * time.Millisecond})
 	if err := room.SubmitDeck(seat, deckOf(t, room, seat)); err != nil {
 		t.Fatal(err)
 	}

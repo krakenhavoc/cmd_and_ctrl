@@ -34,7 +34,7 @@ const (
 )
 
 // Every card in the batch, pinned by oracle id to its name and its
-// declared completeness. Blade of the Swarm is the one with a caveat.
+// declared completeness.
 func TestEoeABEveryCardIsRegistered(t *testing.T) {
 	for oracle, name := range map[string]string{
 		eoeABStalkerOracle:    "All-Fates Stalker",
@@ -62,9 +62,6 @@ func TestEoeABEveryCardIsRegistered(t *testing.T) {
 			continue
 		}
 		want := CompletenessFull
-		if oracle == eoeABBladeOracle {
-			want = CompletenessCaveats
-		}
 		if spec.Name != name || spec.Completeness != want {
 			t.Errorf("%s: name %q, completeness %s, want %s", name, spec.Name, spec.Completeness, want)
 		}

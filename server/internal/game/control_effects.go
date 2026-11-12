@@ -140,6 +140,10 @@ type controlChange struct {
 // Caller must hold g.mu in write mode.
 func (g *Game) emitControlChangesLocked(changed []controlChange) {
 	for _, ch := range changed {
+		// #5685, ADR 0188 Decision 14: a creature named by a rule that is
+		// waiting for its combat is dropped from it when its controller
+		// changes, even if the first controller has it back by then.
+		g.dropPhaseEffectMemberLocked(ch.card)
 		g.EmitEvent(Event{
 			Kind:   EventControlChanged,
 			Actor:  ch.to,

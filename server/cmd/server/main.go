@@ -220,6 +220,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draft"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/drafthistory"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftpacks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftratings"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
@@ -889,6 +890,12 @@ func main() {
 	// The draft bots rate cards from this index and the catalog
 	// (ADR 0222 §7, #5439).
 	draft.UseCards(cardIdx)
+	// 17Lands' card ratings, embedded in the binary: the bots draft by
+	// them and the draft screens show them, with credit (ADR 0222 §7,
+	// #5703). A set with no file uses the in-house rating.
+	draftRatings := draftratings.MustLoad()
+	draftRatings.Bind(cardIdx)
+	draft.UseRatings(draftRatings)
 	// A signed-in person's finished drafts (ADR 0222 §9, migration
 	// 0038). With no database nothing is kept and the list is empty.
 	var draftHistory drafthistory.Store
@@ -1173,6 +1180,9 @@ func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *ca
 	// 0222 §9). Mounted on the exact path, every method, so the
 	// handler's own "GET /draft/sets" answers a POST with 405.
 	mux.Handle("/draft/sets", draftpacks.ListerHandler(draftSets))
+	// A set's ten colour pairs, with their gold uncommons and written
+	// labels (#5703): public, like the list it hangs from.
+	mux.Handle("/draft/sets/", draftpacks.ArchetypesHandler(draftSets))
 	// The art of the cards a draft hands out (#5438). Public for the
 	// same reason, and scoped like /catalog/image: only the printings
 	// a draftable set's packs can contain, so it is not a general

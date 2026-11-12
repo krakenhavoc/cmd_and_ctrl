@@ -53,12 +53,16 @@ import "github.com/google/uuid"
 // Tap an untapped Horror you control" paid twice taps two Horrors, on
 // the one teamwork_ids list, validated and tapped together. One entry
 // is returned as declared.
+//
+// Conspire's clause is not this component (#5688): its creatures ride
+// conspire_ids, validated and tapped on their own (planConspire), so a
+// spell may pay both.
 func planTapOthers(plan []costPayment) *TapOthersCost {
 	var found *TapOthersCost
 	count := 0
 	for _, pay := range plan {
 		tc := pay.cost.TapOthers
-		if tc.Empty() {
+		if tc.Empty() || ConspireCost(pay.cost) {
 			continue
 		}
 		if found == nil {

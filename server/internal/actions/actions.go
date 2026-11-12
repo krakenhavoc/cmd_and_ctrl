@@ -787,6 +787,11 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 701.68a). Absent unless optional_costs names one.
 			TeamworkIDs []string `json:"teamwork_ids,omitempty"`
 			BlightIDs   []string `json:"blight_ids,omitempty"`
+			// #5688 — the two creatures tapped to pay an announced
+			// conspire cost (CR 702.78a), apart from the spell's own
+			// taps on teamwork_ids. Absent unless optional_costs
+			// names a conspire cost.
+			ConspireIDs []string `json:"conspire_ids,omitempty"`
 			// ADR 0100 amendment 2026-10-07 — the one card an
 			// announced reveal / behold branch shows ("reveal an Elf
 			// card from your hand or pay {3}"). Absent unless the
@@ -992,6 +997,7 @@ func dispatch(g *game.Game, a Action) error {
 		}{
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+			{"conspire_ids", p.ConspireIDs, &params.ConspireIDs},
 			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
 			{"exile_permanent_ids", p.ExilePermanentIDs, &params.ExilePermanentIDs},
 			{"return_ids", p.ReturnIDs, &params.ReturnIDs},
@@ -2203,7 +2209,8 @@ func dispatch(g *game.Game, a Action) error {
 			CardIDs  []string `json:"card_ids"`
 			// Color answers the two colour prompts: a PendingChoiceMana
 			// pick (one of "W"/"U"/"B"/"R"/"G"/"C") and a #742
-			// PendingChoiceColor ("choose a color", W/U/B/R/G). The
+			// PendingChoiceColor ("choose a color", W/U/B/R/G, and "C"
+			// where the prompt offers colorless, #5650). The
 			// two share the field so the client's colour buttons
 			// answer both, and are routed by the choice's KIND — the
 			// presence of `color` alone no longer says which resolver

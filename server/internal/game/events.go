@@ -622,6 +622,20 @@ const (
 	// Emitted only by noteForageLocked (forage.go).
 	EventForage EventKind = "forage"
 
+	// EventProliferate — a player proliferated (CR 701.34a, #5653): one
+	// proliferate is finished, its choice made and every counter it gave
+	// placed. Actor is the player who proliferated, Source the card whose
+	// effect it was. One event per proliferate, so "proliferate twice"
+	// raises two, each after its own counters, and also for a
+	// proliferate that chose nothing or had nothing to choose: the
+	// player still proliferated. Not raised for a proliferate a
+	// replacement took away entirely. The counters emit their own events
+	// first; this one is the keyword action, which "whenever you
+	// proliferate" (Ezuri, Stalker of Spheres) watches.
+	//
+	// Emitted only by noteProliferateLocked (proliferate_keyed.go).
+	EventProliferate EventKind = "proliferate"
+
 	// EventCollectEvidence — a player collected evidence (CR 701.59a,
 	// #5223): exiled cards from their graveyard with the total mana value
 	// a collect evidence N or X asked for, as an optional additional cost
@@ -884,8 +898,8 @@ const (
 	// woken by a proliferate. Reusing EventScry and EventSurveil here
 	// would key a PRE-event window on the names of two POST-event
 	// facts — those fire after the player has put the cards back,
-	// with the count this window settled on — and there is no
-	// EventProliferate at all. #976.
+	// with the count this window settled on — and EventProliferate
+	// (#5653) is the same kind of POST-event fact. #976.
 	EventKeywordAction EventKind = "keyword_action"
 
 	// EventBeginUpkeep — the active player's upkeep step began.
@@ -970,6 +984,21 @@ const (
 	// the public log narrates it as LogActivateAcross; uuid.Nil for every
 	// other activation, which stays off the log (CR 605.3b).
 	EventManaAbilityActivated EventKind = "mana_ability_activated"
+
+	// EventManaAbilityResolved — a mana ability finished resolving
+	// (#5644, CR 605.3b, CR 605.4a). Actor = the player who activated
+	// it, or the player a triggered mana ability added its mana to;
+	// Source and CardID = the object whose ability it is; Label = the
+	// ability's label; Amount = how much mana that ability produced,
+	// after the CR 106.12b window and not counting what another
+	// ability added because of it. Amount is 0 for an ability that
+	// resolved and added nothing. One event per resolution, on every
+	// route: the hand click, the answered colour pick, the auto-tapper
+	// and a triggered mana ability (mana_ability_resolved.go). What
+	// "whenever a mana ability of this creature resolves" watches
+	// (Tyvar the Bellicose), and written only while a permanent on the
+	// battlefield has an ability watching it.
+	EventManaAbilityResolved EventKind = "mana_ability_resolved"
 
 	// EventManaAdded — one mana token landed in a player's pool.
 	// Actor = pool owner, Source = the producing permanent (uuid.Nil
@@ -1723,6 +1752,17 @@ type Event struct {
 	// became-target event whose item was not on the stack (none today).
 	TargeterKind StackItemKind `json:"targeter_kind,omitempty"`
 
+	// TargeterKeyword names the KEYWORD ability that did the targeting,
+	// on an EventBecomesTarget whose targeter is a triggered ability a
+	// keyword's constructor built: "backup" (CR 702.165a) for a backup
+	// ability (#5651). It is the catalog row's TriggeredAbility.Keyword,
+	// read through the row the stack item names (targeterKeyword) at the
+	// moment the event is emitted, for the reason TargeterKind is. A copy
+	// of the ability names the same row, so it reads the same (CR 707.10).
+	// Empty for a spell, an activated ability, a hand-written trigger and
+	// every other event.
+	TargeterKeyword string `json:"targeter_keyword,omitempty"`
+
 	// ResolvedStackItemID names the item that left the stack, on an
 	// ABILITY's EventResolve / EventFizzle (ADR 0119 §3), so the public
 	// log can say which item it was. A separate field from StackItemID
@@ -2370,31 +2410,35 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 	// the whole fan-out. Every caller creates its item before it emits
 	// (the doc above), so the stack answers; a missing item reads empty.
 	var kind StackItemKind
+	var keyword string
 	if item := g.StackMeta[itemID]; item != nil {
 		kind = item.Kind
+		keyword = targeterKeyword(item)
 	}
 	for i, t := range targets {
 		switch t.Kind {
 		case TargetCard:
 			g.EmitEvent(Event{
-				Kind:           EventBecomesTarget,
-				Actor:          actor,
-				Source:         source,
-				StackItemID:    itemID,
-				TargeterKind:   kind,
-				Target:         t.ID,
-				CardID:         t.ID,
-				CrimeCommitted: i == crimeSlot,
+				Kind:            EventBecomesTarget,
+				Actor:           actor,
+				Source:          source,
+				StackItemID:     itemID,
+				TargeterKind:    kind,
+				TargeterKeyword: keyword,
+				Target:          t.ID,
+				CardID:          t.ID,
+				CrimeCommitted:  i == crimeSlot,
 			})
 		case TargetPlayer:
 			g.EmitEvent(Event{
-				Kind:           EventBecomesTarget,
-				Actor:          actor,
-				Source:         source,
-				StackItemID:    itemID,
-				TargeterKind:   kind,
-				Target:         t.ID,
-				CrimeCommitted: i == crimeSlot,
+				Kind:            EventBecomesTarget,
+				Actor:           actor,
+				Source:          source,
+				StackItemID:     itemID,
+				TargeterKind:    kind,
+				TargeterKeyword: keyword,
+				Target:          t.ID,
+				CrimeCommitted:  i == crimeSlot,
 			})
 		}
 	}

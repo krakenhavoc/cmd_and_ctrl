@@ -65,6 +65,20 @@ describe("exileCost", () => {
     expect(exileCostWhere(clause)).toBe("in exile");
   });
 
+  // #5655: Synthesis Pod's options are the viewer's spells on the
+  // shared stack.
+  it("resolves an exile-a-spell clause's options out of the stack", () => {
+    const stack = zone("stack", [card("s1", "My Bolt"), card("s2", "Their Bolt")]);
+    const clause = { exile_cost_options: ["s1"], exile_cost_zone: "stack" as const };
+    expect(exileCostOptionCards(me, clause, undefined, stack).map((c) => c.name)).toEqual([
+      "My Bolt",
+    ]);
+    expect(exileCostOptionCards(me, clause)).toEqual([]);
+    expect(exileCostVerb(clause)).toBe("Exile");
+    expect(exileCostNote(clause)).toContain("without resolving");
+    expect(exileCostWhere(clause)).toBe("on the stack");
+  });
+
   it("names the pile in the modal's copy", () => {
     expect(exileCostNote({ exile_cost_zone: "graveyard" })).toContain("graveyard");
     expect(exileCostNote({})).toContain("hand");

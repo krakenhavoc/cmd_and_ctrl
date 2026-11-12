@@ -585,6 +585,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"RollPlayer":  repFieldGate,
 	"RollSides":   repFieldGate,
 	"RollCount":   repFieldGate,
+	"RollPlanar":  repFieldGate,
 	"rollShields": repFieldGate,
 }
 

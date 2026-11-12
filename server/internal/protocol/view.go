@@ -1903,6 +1903,13 @@ type OptionalCostView struct {
 	// cast_spell's `teamwork_ids`. max_times is capped at the payments
 	// the options cover, and an options list shorter than `min` means
 	// the offer cannot be taken right now (CR 118.3).
+	//
+	// A conspire offer (`key` "conspire", CR 702.78a) carries the same two
+	// fields for its two creatures, and those picks ride cast_spell's
+	// `conspire_ids` instead (#5688): a list apart from `teamwork_ids`,
+	// so a spell whose own cost taps permanents there can be conspired
+	// too. The options are not narrowed by what the spell's own cost will
+	// tap; the cast refuses a permanent named on both lists.
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 
@@ -5281,7 +5288,10 @@ type ActivatedAbilityView struct {
 	//   - ExileCostOptions is what could pay right now: the matching
 	//     cards in the activator's own hand or graveyard, in pile
 	//     order, the source excluded. Absent when nothing can pay.
-	//   - ExileCostZone is that pile, "hand" or "graveyard".
+	//   - ExileCostZone is that pile, "hand" or "graveyard"; "exile"
+	//     for a processing cost (#5457) and "stack" for "exile a spell
+	//     you control" (#5655), whose options are the activator's own
+	//     spells on the stack.
 	//
 	// NOT the discard triple: an exiled card is not discarded, so the
 	// picks ride back as `exile_ids`, never `discard_ids`. The client
@@ -8240,8 +8250,9 @@ type ProtectionView struct {
 	// "everything", "player", "mana_value_at_most" (Value is the
 	// bound N, #2181), "ring_bearer" (#2145), "opponents" (#2745),
 	// "mana_value_odd", "mana_value_even", "multityped_creatures" or
-	// "noncreature_permanents" (#4307), "multicolored" (#4834) or
-	// "mana_value_at_least" (Value is the bound N).
+	// "noncreature_permanents" (#4307), "multicolored" (#4834),
+	// "mana_value_at_least" (Value is the bound N) or "colorless"
+	// (a source with no colour, #5650).
 	// Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
@@ -8965,7 +8976,8 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 		// #4092: a replicate cost that taps — each payment taps Count of
 		// the options, so the stepper stops at what they cover. #4690:
 		// conspire's creatures share a colour with the spell, so the walk
-		// is asked with the spell as the cost's source.
+		// is asked with the spell as the cost's source. #5688: its picks
+		// ride conspire_ids, which the client reads off the offer's key.
 		if tc := oc.TapOthers; !tc.Empty() {
 			v.TapOthersLabel = tc.Label
 			v.TapOthersOptions = tapOthersCostOptions(g, caster, castID, tc, false)
