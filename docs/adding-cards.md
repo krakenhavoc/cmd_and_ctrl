@@ -13047,6 +13047,8 @@ SearchLibrary{…, EntersAttachedTo: game.TargetRef{Kind: game.TargetCard, ID: s
 ReturnFromGraveyardTogether{Targets: ids, AttachedTo: hostRef}                        // Mantle of the Ancients
 g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{AttachedTo: hostRef}, game.KeyedTail{}) // Gift of Immortality
 game.TokenEntryOptions{AttachedTo: hostRef}                                            // a token created attached
+ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: you,
+    Transformed: true, AttachedTo: hostRef}                                            // a back-face Aura, below
 ```
 
 An Aura that can't legally enchant the named host stays where it was
@@ -13096,6 +13098,25 @@ copiable.
 `v.LoseKeyword(kw)` on a `*game.PrintedValues` (CR 707.9b). Never strip the
 word from `Keywords` by hand: the catalog's `PrintedKeywords` under the
 copied oracle ID would put it back.
+
+"Return this card to the battlefield transformed under your control
+attached to target …" (Radiant Grace, Vengeful Strangler; #5677) is a
+double-faced card whose back face is an Aura. Give the trigger its
+target with `Targeting` and resolve it with
+`ReturnThisCardTransformedAttachedToTarget`, which checks that the card
+is still the graveyard object it became (CR 400.7) and returns it back
+face up attached to `item.Targets[0]`:
+
+```go
+Targeting(WhenEnchantedCreatureDies("Radiant Grace — return this card … attached to target opponent",
+    ReturnThisCardTransformedAttachedToTarget), TargetPlayer("target opponent", Opponent()))
+```
+
+The back face's own `Targets` (its enchant clause) decides whether the
+host is legal, so register it on the `#1` Spec as for any Aura. Only this
+transformed form takes a host on `ReturnFromGraveyard`; a back face that
+is not an Aura, an Equipment or a Fortification enters unattached
+(CR 303.4h).
 
 ### Suspect (CR 701.60, #2698)
 

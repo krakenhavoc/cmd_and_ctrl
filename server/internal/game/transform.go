@@ -565,7 +565,31 @@ func (g *Game) CraftMaterialsForEffect(refs []ObjectRef) []Card {
 func (g *Game) ReturnFromGraveyardTransformedForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int) (uuid.UUID, error) {
 	// The card is on its front face (CR 712.8a); ask the transform
 	// question of that shape, whatever a stray ActiveFace says.
-	return g.returnFromGraveyardOnFaceLocked(cardID, 1, false, CanTransform, controller, tapped, counters)
+	return g.returnFromGraveyardOnFaceLocked(cardID, 1, false, CanTransform, controller, tapped, counters, TargetRef{})
+}
+
+// ReturnFromGraveyardTransformedAttachedForEffect is
+// ReturnFromGraveyardTransformedForEffect for an effect that names what
+// the back face is attached to: "return this card to the battlefield
+// transformed under your control attached to target opponent" (Radiant
+// Grace), "... attached to target creature or planeswalker an opponent
+// controls" (Vengeful Strangler); #5677.
+//
+// The back face is an Aura that is not cast, and the effect specifies its
+// host, so CR 303.4f's choice is not offered: `host` rides the entry event
+// as the fixed host every other "attached to" entry uses (aura_host.go),
+// and the Aura is attached between the zone move and its enters event.
+// A host the back face's enchant ability does not admit, or one that is
+// gone, is CR 303.4i: the card stays in the graveyard, on its front face
+// (CR 712.8a), and uuid.Nil comes back with no error.
+//
+// A back face that is not an Aura, an Equipment or a Fortification
+// enters unattached (CR 303.4h). The zero `host` is
+// ReturnFromGraveyardTransformedForEffect.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardTransformedAttachedForEffect(cardID, controller uuid.UUID, host TargetRef) (uuid.UUID, error) {
+	return g.returnFromGraveyardOnFaceLocked(cardID, 1, false, CanTransform, controller, false, nil, host)
 }
 
 // returnFromGraveyardOnFaceLocked is the body "return it from a
@@ -589,8 +613,12 @@ func (g *Game) ReturnFromGraveyardTransformedForEffect(cardID, controller uuid.U
 // resume needs them, and a card still in a graveyard with a prompt open
 // is mid-move.
 //
+// `host` is what the effect says the card enters attached to, the zero
+// value for an effect that names nothing; see
+// ReturnFromGraveyardTransformedAttachedForEffect.
+//
 // Caller must hold g.mu.
-func (g *Game) returnFromGraveyardOnFaceLocked(cardID uuid.UUID, face int, flipped bool, guard func(Card) bool, controller uuid.UUID, tapped bool, counters map[string]int) (uuid.UUID, error) {
+func (g *Game) returnFromGraveyardOnFaceLocked(cardID uuid.UUID, face int, flipped bool, guard func(Card) bool, controller uuid.UUID, tapped bool, counters map[string]int, host TargetRef) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -615,7 +643,11 @@ func (g *Game) returnFromGraveyardOnFaceLocked(cardID uuid.UUID, face int, flipp
 	if flipped {
 		card.Flipped = true
 	}
-	id, err := g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters)
+	if !card.IsAura() && !card.HasSubtype("Equipment") && !card.HasSubtype("Fortification") {
+		// CR 303.4h: nothing else can enter attached.
+		host = TargetRef{}
+	}
+	id, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, false, host, entryThen{})
 	if id == uuid.Nil && len(g.PendingChoices) == 0 {
 		if z := g.findCardZoneLocked(cardID); z != nil && z.Kind == ZoneGraveyard {
 			for i := range z.Cards {
