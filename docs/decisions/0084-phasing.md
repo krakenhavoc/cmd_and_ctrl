@@ -144,6 +144,8 @@ guarantee this gets for free, and every loop that was missed would still be wron
 
 ### 2. Three fields on `Card`, and each answers a question the rules ask
 
+*(2026-11-12: three more, `PhaseInBarredBy` / `PhaseInBarredEpoch` / `PhaseInBarredFor`, are in the amendment at the end of this file, #5664.)*
+
 ```go
 PhasedOutBy       uuid.UUID  // CR 702.26a — under whose control it phased out
 PhaseInLockedBy   uuid.UUID  // "phases out until <source> leaves the battlefield"
