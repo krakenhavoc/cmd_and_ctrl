@@ -115,6 +115,7 @@ body dire-blunderbuss/damage
 body discard-by-opponent/return-the-discarded-card
 body discard-by-opponent/return-to-hand
 body discard-by-opponent/return-with-counter
+body diver-skaab/tuck
 body dont-move/destroy-the-tapped-creature
 body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
@@ -151,6 +152,7 @@ body extra-turn/lose-the-game
 body facedown/ward
 body faebloom-trick/tap
 body fatal-fissure/earthbend-4
+body fell-stinger/draw-and-lose
 body felonious-rage/detective
 body felothar-dawn-of-the-abzan/counters
 body feral-encounter/bite
@@ -185,6 +187,7 @@ body glorifier-of-suffering/counters
 body gnawing-crescendo/cant-block-rat
 body goad/clear-listed
 body good-king-mog/copy-a-non-saga-token
+body graf-reaver/destroy
 body grant/double-strike-and-trample-until-eot
 body graveyard/return-listed-to-hand
 body graveyard/return-the-object-under-its-owners-control
@@ -243,6 +246,7 @@ body megatron-destructive-force/strike
 body melee/pump
 body merry-bards/young-hero-role
 body miasma-demon/shrink
+body mindleech-ghoul/exile
 body miracle/granted-offer
 body miracle/offer
 body modular/move-counters
@@ -320,6 +324,7 @@ body redirection/that-much-to-the-sources-controller
 body rediscover-the-way/double-strike
 body renown/grow
 body repeated-reverberation/copy-twice
+body repository-skaab/return
 body return/the-objects-together-under-your-control
 body rewrite-history/return
 body rhinos-rampage/destroy-artifact
@@ -327,6 +332,7 @@ body riddle-gate-gargoyle/lifelink
 body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
 body rose-room-treasurer/damage
+body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
@@ -356,6 +362,7 @@ body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
+body stitched-assistant/scry-draw
 body stolen-uniform/unattach-the-equipment
 body storm/the-spell-just-cast
 body summon-kujata/fire-damage
@@ -1849,7 +1856,15 @@ run prompt-run/empower-jace-choose
 run prompt-run/entish-restoration-search
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
+run prompt-run/exploit-diver-skaab
+run prompt-run/exploit-fell-stinger
+run prompt-run/exploit-graf-reaver
+run prompt-run/exploit-mindleech-ghoul
 run prompt-run/exploit-overcharged-amalgam
+run prompt-run/exploit-repository-skaab
+run prompt-run/exploit-rot-tide-gargantua
+run prompt-run/exploit-skull-skaab
+run prompt-run/exploit-stitched-assistant
 run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
@@ -2713,7 +2728,15 @@ tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
+tail sacrificed-one/prompt-run/exploit-diver-skaab
+tail sacrificed-one/prompt-run/exploit-fell-stinger
+tail sacrificed-one/prompt-run/exploit-graf-reaver
+tail sacrificed-one/prompt-run/exploit-mindleech-ghoul
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
+tail sacrificed-one/prompt-run/exploit-repository-skaab
+tail sacrificed-one/prompt-run/exploit-rot-tide-gargantua
+tail sacrificed-one/prompt-run/exploit-skull-skaab
+tail sacrificed-one/prompt-run/exploit-stitched-assistant
 tail sacrificed-one/prompt-run/felothar-sacrifice
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
 tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
