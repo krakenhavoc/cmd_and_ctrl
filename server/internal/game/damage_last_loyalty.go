@@ -121,11 +121,3 @@ func (g *Game) controlsACreatureLocked(player uuid.UUID) bool {
 	}
 	return false
 }
-
-// DamageKeepsLastLoyaltyForEffect reports whether damage cannot remove
-// `walker`'s last loyalty counter right now, for a caller outside the
-// damage path (a test, a bot's "can this attack kill the walker" read).
-// Caller must hold g.mu (read or write).
-func (g *Game) DamageKeepsLastLoyaltyForEffect(walker Card) bool {
-	return g.damageKeepsLastLoyaltyLocked(&walker)
-}
