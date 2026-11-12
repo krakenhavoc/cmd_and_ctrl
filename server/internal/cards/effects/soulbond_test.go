@@ -451,3 +451,39 @@ func TestSoulbondSurvivesARestore(t *testing.T) {
 		t.Error("the restored pair's ability did not trigger")
 	}
 }
+
+// CR 702.26d: phasing out is not leaving the battlefield and changes no
+// controller, so the pair is kept. While the partner is phased out it
+// is treated as though it does not exist, and nothing is shared.
+func TestSoulbondIsKeptThroughPhasing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceTo(t, g, game.StepPrecombatMain)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	mare := sbondPair(t, g, me, bear)
+
+	g.WithWriteLock(func() {
+		if err := g.PhaseOutForEffect(uuid.Nil, bear); err != nil {
+			t.Fatalf("PhaseOutForEffect: %v", err)
+		}
+	})
+	if g.Battlefield.Contains(bear) {
+		t.Fatal("the Bear did not phase out")
+	}
+	if sbondPartner(g, mare) != uuid.Nil || sbondGranted(g, mare) != 0 {
+		t.Error("with its partner phased out, the Mightmare shares nothing")
+	}
+	// The Bear phases in during its controller's next untap step.
+	for i := 0; i < len(g.Seats); i++ {
+		endTurn(t, g)
+	}
+	if !g.Battlefield.Contains(bear) {
+		t.Fatal("the Bear did not phase back in")
+	}
+	if sbondPartner(g, mare) != bear || sbondPartner(g, bear) != mare {
+		t.Error("the pair did not survive phasing")
+	}
+	if sbondGranted(g, mare) != 1 || sbondGranted(g, bear) != 1 {
+		t.Error("the pair's shared ability is back")
+	}
+}

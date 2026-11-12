@@ -286,8 +286,7 @@ func TestBreathkeeperSeraphUnpairedCreatureDoesNotReturn(t *testing.T) {
 
 // --- Mirage Phalanx -------------------------------------------------------
 
-// sbondTokens lists the tokens `controller` controls that are not in
-// `known`.
+// sbondTokens lists the tokens `controller` controls.
 func sbondTokens(g *game.Game, controller uuid.UUID) []game.Card {
 	var out []game.Card
 	for _, c := range g.Battlefield.Cards {
