@@ -545,7 +545,46 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 	if err != nil {
 		return &AttackTaxUnpaidError{Cost: price.Cost, Err: err}
 	}
+	g.emitAttackTaxPaidLocked(payer, price)
 	return nil
+}
+
+// emitAttackTaxPaidLocked tells the table a declaration paid its
+// CR 508.1h cost (#5271): one EventAttackTaxPaid per (defending player,
+// taxing permanent) pair, in the order the lines were priced, each
+// carrying what that permanent charged for this payment.
+//
+// Before this the payment was silent. The tapper paid the {2} out of
+// the attacker's lands and the only line anyone saw was "<creature>
+// attacks <player>", so the player whose Ghostly Prison had just been
+// paid for could not tell it from a free attack.
+//
+// One event per source rather than one per payment, so the line can
+// name the card: Propaganda and Ghostly Prison on one board are two
+// lines, each saying its own {2}.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) emitAttackTaxPaidLocked(payer uuid.UUID, price AttackTaxPrice) {
+	type pair struct{ defender, source uuid.UUID }
+	order := make([]pair, 0, 1)
+	mana := make(map[pair]string, 1)
+	for _, l := range price.Lines {
+		k := pair{l.Defender, l.Source}
+		if _, seen := mana[k]; !seen {
+			order = append(order, k)
+		}
+		mana[k] += l.Mana
+	}
+	for _, k := range order {
+		g.EmitEvent(Event{
+			Kind:   EventAttackTaxPaid,
+			Actor:  payer,
+			Source: k.source,
+			CardID: k.source,
+			Target: k.defender,
+			Label:  mana[k],
+		})
+	}
 }
 
 // AttackTaxUnpaidError is what a declaration refused for want of the
