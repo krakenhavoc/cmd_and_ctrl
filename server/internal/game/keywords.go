@@ -590,6 +590,25 @@ func CanonicalKeywordTable() []string {
 	return out
 }
 
+// KeywordLineParts splits one oracle line into the items a
+// keyword-ability line would list, for CanonicalKeywords to read one
+// at a time. Today's Oracle wording separates keywords with commas
+// ("Flying, vigilance"); older wording still on some cards uses
+// semicolons ("Flying; trample; rampage 4" on Teeka's Dragon, "Trample;
+// rampage 2" on Gorilla Berserkers), so both separate items (#5791).
+// Empty items are kept, as strings.Split keeps them, so a caller that
+// reads the first item reads what the line actually starts with.
+//
+// The three readers of printed text — deck.keywordLineCounts,
+// deck.isSentenceLine and coverage.keywordOnlyLine — all split here,
+// so the importer and the coverage signal agree on what a keyword line
+// is. Splitting is not the same as accepting: an item is a keyword only
+// if CanonicalKeywords says so, and each reader decides what a line
+// with other items in it is.
+func KeywordLineParts(line string) []string {
+	return strings.Split(strings.ReplaceAll(line, ";", ","), ",")
+}
+
 // CanonicalKeyword normalises one printed keyword string to the
 // engine's wire token, reporting whether the engine knows it.
 // Scryfall capitalises its keyword arrays as the card prints them

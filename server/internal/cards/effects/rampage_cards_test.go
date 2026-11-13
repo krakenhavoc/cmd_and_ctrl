@@ -71,9 +71,9 @@ func TestRampageCardsAreRegisteredFullWithTheirKeywords(t *testing.T) {
 
 // The deck importer reads the number off the printed line, so an
 // imported copy has the same one instance of rampage as the catalog's.
-// Gorilla Berserkers' "Trample; rampage 2" is the catalog's to declare
-// (the semicolon is not a keyword-list separator to the line scan), and
-// the merge keeps one instance, not two.
+// Gorilla Berserkers' "Trample; rampage 2" is read by the line scan too
+// (a semicolon separates keywords as a comma does, #5791) and declared
+// by the catalog, and the merge keeps one instance, not two.
 func TestRampageCardsImportWithOneInstance(t *testing.T) {
 	for _, tc := range rampageCards {
 		text := spellText(t, tc.oracle)
