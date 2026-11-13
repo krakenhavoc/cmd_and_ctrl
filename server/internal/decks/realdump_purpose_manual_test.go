@@ -145,6 +145,7 @@ var reviewedNotAWipe = map[string]string{
 	"Mandate of Peace":                         "ends combat and exiles the stack",
 	"Merciful Mandate":                         "untaps your creatures and may end combat, exiling the stack",
 	"Mindwhisker":                              "-1/-0 to opponents' creatures under threshold kills nothing",
+	"Morningtide":                              "exiles graveyards, no permanents",
 	"Obeka, Brute Chronologist":                "ends the turn",
 	"Opposition Agent":                         "exiles the cards an opponent finds while searching, not permanents (#3998)",
 	"Rest in Peace":                            "exiles graveyards",
