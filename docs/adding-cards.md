@@ -10316,7 +10316,9 @@ Two things that are not obvious:
   permanent is still on the battlefield. The narrowing is one-way and
   per prompt — the `pay_unless` **kind** is unchanged, so Rhystic Study
   still plays as it did. Stasis and Pact of Negation are the same door
-  (#997); nothing declares a halt on the card.
+  (#997); nothing declares a halt on the card. So is a beginning-of-end-step
+  "sacrifice it unless you pay", such as Ashling, the Limitless's delayed
+  trigger for its token (#5803).
 - **"Cumulative upkeep" is not a `canonicalKeywords` token**, for
   ward's reason (ward.go): the keyword carries a cost and a bare string
   in `Characteristic.Abilities` has nowhere to put one, so a token
