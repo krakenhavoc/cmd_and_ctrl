@@ -1047,6 +1047,7 @@ coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
 coinflip coin-flip/plasma-caster
+coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/the-gold-saucer-treasure
 condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
@@ -3101,6 +3102,7 @@ tail then/shuffle-each-carried
 tail then/shuffle-if-it-went
 tail then/shuffle-then-draw-n
 tail then/skrelv-defector-mite-color-chosen
+tail then/sorcerers-strongbox-draw
 tail then/sorin-lord-of-innistrad-return
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
