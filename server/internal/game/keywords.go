@@ -370,6 +370,19 @@ var canonicalKeywords = map[string]bool{
 	// "loses soulbond" (Mirage Phalanx) keeps the card's other text and
 	// never asks to pair.
 	KeywordSoulbond: true,
+	// flanking (CR 702.25) joins with #5757, soulbond's shape: its
+	// triggered ability is a catalog row (effects.Flanking), and the
+	// token is what that row asks of the BLOCKER. CR 702.25a shrinks
+	// only "a creature without flanking", so a flanking creature
+	// blocking another has to have the keyword, and before this entry
+	// no real permanent did: the importer dropped Scryfall's
+	// "Flanking" and the rows carried only the trigger. Stamped by the
+	// importer like every other canonical token, so an uncatalogued
+	// flanking blocker is spared too; a line of it is still a rule a
+	// card file has to run (keywordRunsInCatalog, coverage.go). Not
+	// cumulative: the token is asked whether it is there, and each
+	// printed instance is its own catalog row (CR 702.25b).
+	KeywordFlanking: true,
 	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
 	// 0113 §4). Dies triggers: harvestLTB derives one per instance on
 	// the LAST-KNOWN ability list (undying_persist.go), so a printed,
@@ -430,6 +443,10 @@ var canonicalKeywords = map[string]bool{
 // card's types, in every zone, and so it is consulted by HasSubtype
 // rather than by the combat engine.
 const KeywordChangeling = "changeling"
+
+// KeywordFlanking is the canonical token for flanking (CR 702.25a),
+// read by the catalog's flanking trigger off the blocker (#5757).
+const KeywordFlanking = "flanking"
 
 // CanBeTargetedBy reports whether the spell or ability `src`
 // describes may choose this card as a target, under the CR 702

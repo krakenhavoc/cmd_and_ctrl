@@ -18,10 +18,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "644b7aba-a7b8-4861-9e83-73329cf85be2",
-		Name:         "Outrider en-Kor",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Flanking("Outrider en-Kor")},
-		Activated:    []ActivatedAbility{enKorRow()},
+		OracleID:        "644b7aba-a7b8-4861-9e83-73329cf85be2",
+		Name:            "Outrider en-Kor",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordFlanking},
+		Triggered:       []game.TriggeredAbility{Flanking("Outrider en-Kor")},
+		Activated:       []ActivatedAbility{enKorRow()},
 	})
 }

@@ -16,11 +16,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "4e92c705-19c2-42df-ad12-808d272c505e",
-		Name:         "Knight of the Holy Nimbus",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Flanking("Knight of the Holy Nimbus")},
-		Replacements: []game.ReplacementEffect{RegenerateIfThisWouldBeDestroyed()},
-		Activated:    []ActivatedAbility{noRegenerationRow("{2}")},
+		OracleID:        "4e92c705-19c2-42df-ad12-808d272c505e",
+		Name:            "Knight of the Holy Nimbus",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordFlanking},
+		Triggered:       []game.TriggeredAbility{Flanking("Knight of the Holy Nimbus")},
+		Replacements:    []game.ReplacementEffect{RegenerateIfThisWouldBeDestroyed()},
+		Activated:       []ActivatedAbility{noRegenerationRow("{2}")},
 	})
 }

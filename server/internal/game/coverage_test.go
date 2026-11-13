@@ -245,6 +245,16 @@ func TestNeedsCatalogEffectCatchesRealRules(t *testing.T) {
 		typeLine: "Creature — Human Wizard",
 		texts:    []string{"Ward {2}"},
 	}, {
+		// #5757: flanking is canonical, so the importer stamps it and
+		// a flanking blocker is spared, but its trigger is a catalog
+		// row (effects.Flanking). Without a Spec the creature has the
+		// keyword and not the ability.
+		name:     "a creature whose only text is flanking",
+		typeLine: "Creature — Human Knight",
+		texts: []string{"Flanking (Whenever a creature without flanking " +
+			"blocks this creature, the blocking creature gets -1/-1 until " +
+			"end of turn.)"},
+	}, {
 		name:     "keyword with a cost",
 		typeLine: "Artifact — Equipment",
 		texts:    []string{"Equipped creature gets +1/+1.\nEquip {2}"},

@@ -20,10 +20,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "331b6834-6bb4-40fa-b80b-22d67b34734f",
-		Name:         "Sidar Kondo of Jamuraa",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Flanking("Sidar Kondo of Jamuraa")},
+		OracleID:        "331b6834-6bb4-40fa-b80b-22d67b34734f",
+		Name:            "Sidar Kondo of Jamuraa",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordFlanking},
+		Triggered:       []game.TriggeredAbility{Flanking("Sidar Kondo of Jamuraa")},
 		BlockRules: []game.BlockRule{
 			CantBlockAttackers(
 				OnMatching(And(Creature(), OpponentControls(), WithoutKeyword("flying"), WithoutKeyword("reach"))),
