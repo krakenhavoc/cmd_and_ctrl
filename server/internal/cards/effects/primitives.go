@@ -1385,7 +1385,7 @@ func (p PayUnless) Apply(ctx *Context) error {
 // to ask for. The prompt is addressed to the player whose upkeep it
 // is, about their own permanent or their own survival, so the table
 // must not leave the step while it is unanswered (CR 117.3, CR
-// 500.4). The engine derives that from the cursor rather than from a
+// 500.2). The engine derives that from the cursor rather than from a
 // flag on the card (Game.QueueUpkeepPayUnlessForEffect,
 // game/upkeep_pay_unless.go): #567 shipped the flag, and the two
 // cards written afterwards with the same sentence printed on them

@@ -206,7 +206,7 @@ func (s SeatSet) Seats() []int {
 // The zero value names no step at all, which is what makes it usable
 // as an OPTIONAL anchor on a struct that mostly does not carry one:
 // PendingChoice.OwedInStep, the step a pay-or-else prompt must be
-// answered in (upkeep_pay_unless.go, CR 500.4).
+// answered in (upkeep_pay_unless.go, CR 500.2).
 type TurnStep struct {
 	// Turn is the turn sequence this anchor is about, 1-indexed like
 	// Turn.Seq. Zero means the anchor names no step. The field keeps its

@@ -74,7 +74,7 @@ func init() {
 // UpkeepPayUnless, not PayUnless: the debt is the active player's
 // own, owed in their own upkeep, and what hangs on the answer is the
 // largest consequence in the game. The table does not leave the
-// upkeep until it is answered (#997, CR 500.4). It used PayUnless
+// upkeep until it is answered (#997, CR 500.2). It used PayUnless
 // until then, and a table could take the turn — and the Pact's
 // controller could untap, draw and attack — with the {3}{U}{U} still
 // unpaid and the loss still pending.
