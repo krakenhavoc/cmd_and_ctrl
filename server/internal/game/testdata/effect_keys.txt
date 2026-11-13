@@ -943,6 +943,7 @@ choose choose-cards/take-reveal-rest-bottom-any-order
 choose choose-cards/take-reveal-rest-bottom-random
 choose choose-cards/take-reveal-then-shuffle
 choose choose-cards/talions-messenger-counter
+choose choose-cards/tangle-wire-tap
 choose choose-cards/tasigur-the-golden-fang-return
 choose choose-cards/taster-of-wares-exile
 choose choose-cards/taster-of-wares-reveal

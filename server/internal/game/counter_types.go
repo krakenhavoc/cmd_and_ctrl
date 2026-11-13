@@ -87,6 +87,14 @@ const (
 	// them (CR 711.2), in cards/effects/leveler.go. A Class's level is a
 	// designation, not this counter (CR 702.87c).
 	CounterLevel = "level"
+	// CounterFade is the fade counter (CR 122.1 — no lettered subrule of
+	// its own), placed by fading (CR 702.32a) and removed one per upkeep
+	// by the keyword's own trigger, which sacrifices the permanent once
+	// there is none left to remove. No SBA. Several fading cards also
+	// spend them as a cost ("Remove a fade counter from this creature:
+	// …") or count them (Rusting Golem). See cards/effects/fading.go
+	// (#5802).
+	CounterFade = "fade"
 )
 
 // Player-level counter type identifiers.
@@ -146,6 +154,7 @@ var KnownCardCounters = []string{
 	CounterHone,
 	CounterFinality,
 	CounterLevel,
+	CounterFade,
 }
 
 // KnownPlayerCounters is the slice form of the player-level counter

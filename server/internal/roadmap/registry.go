@@ -1949,6 +1949,18 @@ var items = []Item{
 		Examples: []string{"Deranged Hermit", "Karmic Guide", "Skizzik Surger"},
 	},
 	{
+		// #5802: effects.Fading and effects.FadingUpkeep (fading.go),
+		// vanishing's sibling. The upkeep trigger carries
+		// effects.KeywordFading.
+		Slug: "fading", Name: "Fading", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "A permanent with fading enters with fade counters on it. At the beginning of your upkeep you remove one, and when there are none left to remove you sacrifice it.",
+		Rules:    []string{"702.32"},
+		Issue:    5802,
+		Printed:  printedLine("fading"),
+		Phrases:  []string{"fading", "fade counter"},
+		Examples: []string{"Blastoderm", "Saproling Burst", "Jolting Merfolk"},
+	},
+	{
 		// #1889; built by ADR 0108 §10 (PR 10).
 		Slug: "damage-as-though-wither", Name: "Damage dealt as though its source had wither or infect", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Statics that change how every source's damage is dealt, such as Everlasting Torment's \"All damage is dealt as though its source had wither\".",
