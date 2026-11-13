@@ -221,7 +221,7 @@ func TestSmotheringTitheOpponentPaysNoTreasure(t *testing.T) {
 	// turn-based draw has already fired. newCatalogGame parks the
 	// cursor on that step (#692), so walk to the main phase first.
 	// The mana goes in AFTER the walk — the pool empties at the end
-	// of every step (CR 500.4).
+	// of every step (CR 500.5).
 	advanceToMain(t, g)
 	drawer.ManaPool.AddMana(game.ManaToken{Color: "C"}, game.ManaToken{Color: "C"})
 
