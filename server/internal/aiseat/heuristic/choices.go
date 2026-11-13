@@ -757,6 +757,12 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 						// attacker or blocker until it untaps, a small
 						// share of what it is worth.
 						loss += 0.1 * st.permanentValue(c)
+					case ch.PayCards.Action == payActionMinusOneCounter:
+						// #5746: one -1/-1 counter costs what a blight
+						// of one costs: all a creature is worth when it
+						// dies of it, else a point of toughness and
+						// power, so it goes where it costs least.
+						loss += st.blightCounterCost(c, 1)
 					default:
 						loss += st.cardValue(p.cfg, c)
 					}
@@ -1165,6 +1171,12 @@ func (st *state) blightPickValue(ids []string, lookup func(string) *protocol.Car
 	}
 	return blightPayoff - cost
 }
+
+// payActionMinusOneCounter is a pay-unless paid by putting a -1/-1 counter
+// on a creature the payer controls (#5746, game.PayActionMinusOneCounter:
+// Thelon's Chant's "unless the player puts a -1/-1 counter on a creature
+// they control"), as `pay_cards.action` names it on the wire.
+const payActionMinusOneCounter = "minus_one_counter"
 
 // blightCounterCost is what n -1/-1 counters cost the creature c: all it
 // is worth when its toughness is n or less (it dies, CR 704.5f), else n

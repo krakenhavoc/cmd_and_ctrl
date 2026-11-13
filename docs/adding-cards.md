@@ -55,6 +55,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
   - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
+  - ["Unless they put a -1/-1 counter on a creature they control" (#5746)](#unless-they-put-a--11-counter-on-a-creature-they-control-5746)
   - [Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)
   - [Cloak (#4452, CR 701.58)](#cloak-4452-cr-70158)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
@@ -4902,6 +4903,25 @@ graveyard ability (`Zones: []game.ZoneKind{game.ZoneGraveyard}`) blights a
 creature on the battlefield. The card file declares nothing else; the
 view, the client's picker, the enumerator and the bot's price come with
 the component.
+
+### "Unless they put a -1/-1 counter on a creature they control" (#5746)
+
+A pay-unless whose payment is a -1/-1 counter (Thelon's Chant, Tourach's
+Chant) is `MinusOneCounterPayment("creature", QueryTypes("creature"))`,
+asked with `PayActionUnless{Chooser, Payment, Question, Else, Carry}`
+(`minus_counter_payment.go`), which takes any non-mana payment and a
+chooser who need not be the effect's controller. The payer names one
+creature they control that can have a counter put on it (`pay_cards.action:
+"minus_one_counter"`); the counter is a cost's (CR 118.12), so Doubling
+Season doesn't double it, and a creature that dies of it still paid. It is
+not blight (CR 701.68a), so "whenever a player blights" doesn't see it. In
+an upkeep, pass the same payment to `UpkeepPayUnless`.
+
+"Whenever a player puts a <subtype> onto the battlefield" is
+`On(game.EventETB, APlayerPutAPermanentWithSubtype("Swamp"), …)`. The
+player who put it there is the event's `PutBy` (#5746), which is not
+always the player it entered under: the same reading as the Arboria
+record in "Who put it" above.
 
 ### Forage (#5184, CR 701.61a)
 

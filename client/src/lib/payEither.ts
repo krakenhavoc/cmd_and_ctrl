@@ -27,7 +27,8 @@ export function branchNamesCards(b: PayOptionView): boolean {
     b.action === "sacrifice" ||
     b.action === "discard" ||
     b.action === "exile_graveyard" ||
-    b.action === "tap"
+    b.action === "tap" ||
+    b.action === "minus_one_counter"
   );
 }
 

@@ -98,6 +98,22 @@ const (
 	// is paid through the prompt's own mana path (pool, then the
 	// auto-tapper), so an unfundable "yes" is a decline as always.
 	PayActionMana PayActionKind = "mana"
+	// PayActionMinusOneCounter puts one -1/-1 counter on each of Count
+	// permanents the payer controls that match Of (#5746): Thelon's
+	// Chant's "deals 3 damage to that player unless the player puts a
+	// -1/-1 counter on a creature they control". A card pick, so it takes
+	// the {apply, card_ids} answer like a sacrifice, and "Pay" is a
+	// payment only with at least Count matches that can have a counter
+	// put on them (CR 118.3; "can't have counters put on it" refuses one,
+	// #4692). The counters are a cost's (CR 118.12: the action is a cost
+	// paid as the ability resolves), so they go through the CR 614
+	// counter window marked as a cost's, as blight's do: Doubling Season,
+	// which names "an effect" (CR 614.16), does not double them, and
+	// Vizier of Remedies, which names none, still applies. It is not the
+	// keyword action blight (CR 701.68a), so a "whenever a player
+	// blights" trigger does not see it. A creature the counter kills
+	// still paid.
+	PayActionMinusOneCounter PayActionKind = "minus_one_counter"
 )
 
 // NamesNothing reports whether a "Pay" of this payment names no cards
@@ -203,8 +219,8 @@ func (g *Game) PayActionCanPayForEffect(chooser uuid.UUID, a *PayAction) bool {
 }
 
 // PayAction is a non-mana pay-unless payment: "discard N cards",
-// "sacrifice N permanents of a type" or "exile N cards from your
-// graveyard".
+// "sacrifice N permanents of a type", "exile N cards from your
+// graveyard" or "put a -1/-1 counter on a creature you control".
 type PayAction struct {
 	Kind PayActionKind
 	// Count is how many cards or permanents one payment takes. A
@@ -264,6 +280,11 @@ func PayActionPhrase(a PayAction) string {
 		return "sacrifice " + n + " permanents"
 	case PayActionTap:
 		return "tap " + n + " untapped permanents"
+	case PayActionMinusOneCounter:
+		if a.Count == 1 {
+			return "put a -1/-1 counter on a permanent you control"
+		}
+		return "put a -1/-1 counter on each of " + n + " permanents you control"
 	case PayActionMana:
 		return "pay " + a.Mana
 	case PayActionExileFromGraveyard:
@@ -363,6 +384,19 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 				out = append(out, c.InstanceID)
 			}
 		}
+	case PayActionMinusOneCounter:
+		// #5746: only a permanent the payer controls, and only one that
+		// can have a counter put on it (CR 118.3, #4692). Battlefield
+		// order. Not a target: hexproof and protection don't stop it.
+		if g.Battlefield == nil {
+			return nil
+		}
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.Controller == chooser && a.Of.matchesLocked(g, c) && !g.cantHaveCountersLocked(c) {
+				out = append(out, c.InstanceID)
+			}
+		}
 	}
 	return out
 }
@@ -445,6 +479,19 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 		// #1997: the taps are the payment, each announced as a tap
 		// (EventTapCard) through the path a tap cost pays with.
 		g.payTapPermanentsCostLocked(chooser, picked)
+	case PayActionMinusOneCounter:
+		// #5746: one -1/-1 counter on each named permanent, as a cost's
+		// (CR 118.12) with the payer as its placer, settled at once as
+		// every cost-shaped placement is. The cost is paid whatever the
+		// window makes of the counter.
+		for _, id := range picked {
+			if findBattlefieldCard(g, id) == nil {
+				continue
+			}
+			if _, err := g.payCostCounterLocked(chooser, id, CounterMinusOne, 1); err != nil {
+				return err
+			}
+		}
 	case PayActionEnergy:
 		// ADR 0129 §3 (energy_payment.go): the counters come off the
 		// payer through the one path that pays energy.
