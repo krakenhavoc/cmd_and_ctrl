@@ -472,4 +472,7 @@ var tokenTable = map[string]game.Card{
 
 	// #5637: Fallen Empires' Citizen (Icatian Town).
 	"1/1 white Citizen": {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"W"}},
+
+	// #5789: Odyssey block's Wurm (Roar of the Wurm, Crush of Wurms).
+	"6/6 green Wurm": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"G"}},
 }
