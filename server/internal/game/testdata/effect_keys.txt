@@ -2331,6 +2331,7 @@ tail dice/ancient-copper-dragon-treasures
 tail dice/ancient-gold-dragon-tokens
 tail dice/ancient-silver-dragon-draw
 tail dice/berserkers-frenzy-result
+tail dice/clown-car-results
 tail dice/component-pouch-counters
 tail dice/danse-macabre-result
 tail dice/diviners-portent-result
