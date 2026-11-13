@@ -3812,6 +3812,17 @@ var items = []Item{
 		Examples: []string{"Blitz Automaton", "Cradle Clearcutter", "Depth Charge Colossus"},
 	},
 	{
+		// #5794: one board read (effects.NoUntappedLands) behind a layer
+		// 7c pump, a layer 6 keyword grant and two intervening-if
+		// trigger shapes (cards/effects/no_untapped_lands.go).
+		Slug: "no-untapped-lands", Name: "\"If you control no untapped lands\"", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that work only while every land you control is tapped, such as Scoria Cat's +3/+3 and Well of Life's end step life gain. A creature's bonus turns on and off the moment a land taps or untaps, and a triggered ability checks again as it resolves.",
+		Rules:    []string{"603.4", "611.3a"},
+		Issue:    5794,
+		Printed:  `(?i)\b(?:if|as long as) you control no untapped lands\b`,
+		Examples: []string{"Scoria Cat", "Keldon Berserker", "Well of Life"},
+	},
+	{
 		Slug: "one-cast-per-card-type", Name: "One spell of each card type", Kind: KindSeam, Status: StatusImplemented,
 		Summary:  "Permissions that let you cast one spell of each card type, such as Muldrotha, the Gravetide's \"a permanent spell of each permanent type from your graveyard\" during each of your turns and Aminatou's Augury's free casts from among the cards it exiled.",
 		Rules:    []string{"601.3", "205.2a"},
