@@ -2273,14 +2273,17 @@ tail courier-of-comestibles/food-unless-found
 tail crabomination/cast-from-exiled
 tail crypt-incursion/gain-3-per-exiled
 tail cultivate/basic-land-to-hand
+tail cumulative-upkeep/arctic-wolves-cumulative-upkeep-2
 tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cumulative-upkeep-1
 tail cumulative-upkeep/cumulative-upkeep-2
 tail cumulative-upkeep/cumulative-upkeep-pay-1-life
+tail cumulative-upkeep/gallowbraid-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/illusionary-forces-cumulative-upkeep-u
 tail cumulative-upkeep/illusionary-terrain-cumulative-upkeep-2
 tail cumulative-upkeep/illusionary-wall-cumulative-upkeep-u
 tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
+tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
 tail cumulative-upkeep/phyrexian-soulgorger-cumulative-upkeep-sacrifice-a-creature
 tail cumulative-upkeep/polar-kraken-cumulative-upkeep-sacrifice-a-land
@@ -2288,6 +2291,7 @@ tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
 tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
+tail cumulative-upkeep/uktabi-efreet-cumulative-upkeep-g
 tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
 tail cumulative-upkeep/yavimaya-ants-cumulative-upkeep-g-g
 tail currency-converter/token-for-graveyarded-card
