@@ -120,6 +120,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Celebration: "two or more nonland permanents entered" (#5164)](#celebration-two-or-more-nonland-permanents-entered-5164)
   - ["If you've sacrificed an artifact this turn" (#5224)](#if-youve-sacrificed-an-artifact-this-turn-5224)
   - ["If you haven't cast a spell from your hand this turn" (#5235)](#if-you-havent-cast-a-spell-from-your-hand-this-turn-5235)
+  - ["If you control no untapped lands" (#5794)](#if-you-control-no-untapped-lands-5794)
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
@@ -14667,6 +14668,21 @@ if g.OpponentPermanentDealtExcessDamageThisTurn(you) { … }             // a re
 ```
 
 `CondOpponentPermanentDealtExcessDamage` declares `game.FootprintCondOpponentPermanentDealtExcessDamage`, since the tally only rises within a turn. "Whenever … is dealt excess noncombat damage", one event's amount inside a trigger, is still `excess_damage.go` (Magmatic Galleon, Fall of Cair Andros).
+
+### "If you control no untapped lands" (#5794)
+
+The Prophecy condition is one fact about the battlefield, read through the layers: the player controls no permanent that is both a land and untapped. A land creature and an animated land are lands; a phased-out land is not on the battlefield (CR 702.26b); a player with no lands at all controls no untapped lands. The readers are in `cards/effects/no_untapped_lands.go`:
+
+```go
+Static: []game.StaticAbility{SelfPumpWhileNoUntappedLands(3, 3)},       // "This creature gets +3/+3 as long as …" (Scoria Cat)
+Static: []game.StaticAbility{SelfKeywordWhileNoUntappedLands("fear")},  // "This creature has fear as long as …" (Fen Stalker)
+WheneverThisAttacksIfNoUntappedLands(label, effect)                     // "Whenever this creature attacks, if …" (Keldon Berserker)
+AtYourEndStepIfNoUntappedLands(label, Do(...))                          // "At the beginning of your end step, if …" (Well of Life)
+InterveningIf(CondNoUntappedLands{}, On(...))                           // the same "if" on another trigger
+if NoUntappedLands(g, you) { … }                                        // a resolution check
+```
+
+The statics are live (CR 611.3a): the layer cache already drops on every `EventTapCard` and `EventUntapCard`, on a land entering or leaving and on a change of control. The one tap without an event is an attacker's own (CR 508.1f), and an animated land can attack, so both statics declare `DependsOnEvents: []game.EventKind{game.EventAttack}`. The trigger shapes are intervening ifs (CR 603.4), checked as the trigger fires and again as it resolves, so a land untapped in response leaves the ability doing nothing. `CondNoUntappedLands` declares `game.FootprintCondBoard`: a tap or an untap is no footprinted step, so any item that does one already conflicts with everything. Cards: Scoria Cat, Spur Grappler, Fen Stalker, Vintara Snapper, Keldon Berserker, Well of Life, Well of Discovery.
 
 ### Face-down follow-ups: "can't be turned face up", face-down spells cost less, "entered face down this turn" (#5241)
 
