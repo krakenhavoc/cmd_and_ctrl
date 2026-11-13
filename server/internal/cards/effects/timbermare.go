@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Timbermare — Creature — Elemental Horse, {3}{G}, 5/5:
 //
@@ -21,14 +17,7 @@ func init() {
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
 			Echo("Timbermare", "{5}{G}"),
-			WhenThisEnters("Timbermare — tap all other creatures", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				var ids []uuid.UUID
-				for _, c := range MatchingBattlefield(ctx, And(Creature(), NotSelf(item.SourceCardID))) {
-					ids = append(ids, c.InstanceID)
-				}
-				return tapEach(ctx, ids)
-			}),
+			WhenThisEnters("Timbermare — tap all other creatures", tapAllOtherCreatures),
 		},
 	})
 }

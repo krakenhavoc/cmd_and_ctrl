@@ -3,7 +3,7 @@ package game
 import "github.com/google/uuid"
 
 // mana_keep.go — mana a player does not lose as steps and phases end
-// (CR 106.4, CR 500.4; #2166, ADR 0040 amendment 2026-10-05).
+// (CR 106.4, CR 500.5; #2166, ADR 0040 amendment 2026-10-05).
 //
 // emptyAllManaPoolsLocked used to drop every token at every step entry.
 // Two shapes of printed text change that, and they are two readers over

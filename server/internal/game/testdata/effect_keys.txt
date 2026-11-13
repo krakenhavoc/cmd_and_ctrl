@@ -811,6 +811,7 @@ choose choose-cards/mind-extraction-discard-wur
 choose choose-cards/mind-extraction-discard-wurg
 choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
+choose choose-cards/mind-swords-exile-two
 choose choose-cards/minion-of-the-mighty-put
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
@@ -1245,6 +1246,7 @@ confirm confirm/partner-with-search
 confirm confirm/pay-life-copy-that-ability
 confirm confirm/pay-life-draw
 confirm confirm/peace-in-our-time-draw
+confirm confirm/pemmins-aura-pump
 confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
