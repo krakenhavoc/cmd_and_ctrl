@@ -845,3 +845,20 @@ func AnOpponentControlsAAndYouControlA(theirs, yours string) func(g *game.Game, 
 		return opponents && you
 	}
 }
+
+// FreeIfAnOpponentControlsAAndYouControlA is the whole clause the
+// Mercadian Masques Legates print (#5619): "If an opponent controls a
+// <theirs> and you control a <yours>, you may cast this spell without
+// paying its mana cost." Sivvi's Ruse's and Submerge's alternative cost
+// as a constructor, with AnOpponentControlsAAndYouControlA as the
+// condition, judged as the spell is cast and in the view. The words are
+// judged as given, so a caller passes printed land types.
+func FreeIfAnOpponentControlsAAndYouControlA(theirs, yours string) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key: "free",
+		Label: "Cast without paying its mana cost (an opponent controls " +
+			landTypeArticle(theirs) + " and you control " + landTypeArticle(yours) + ")",
+		ManaCost:  "",
+		Condition: AnOpponentControlsAAndYouControlA(theirs, yours),
+	}
+}
