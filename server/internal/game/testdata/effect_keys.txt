@@ -1053,6 +1053,7 @@ coinflip coin-flip/goblin-psychopath
 coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
 coinflip coin-flip/krark-the-thumbless
+coinflip coin-flip/mana-crypt-damage
 coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
@@ -1416,6 +1417,7 @@ option dice/order-replacements
 option meld/order
 option option-pick/abstract-performance-opponent
 option option-pick/abstract-performance-pile
+option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/apocalypse-demon-sacrifice-or-tap
 option option-pick/arachne-psionic-weaver-look
