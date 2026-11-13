@@ -14,3 +14,18 @@ func targetPlayerDrawsTwo(item *game.StackItem, ctx *Context) error {
 	}
 	return DrawCards{Player: item.Targets[0].ID, N: 2}.Apply(ctx)
 }
+
+// theTargetPlayerDraws is "Target player draws N cards." as an
+// activated row's Effect (Limestone Golem's "draws a card" is N = 1). A
+// target that is no longer legal as the ability resolves draws nothing
+// (CR 608.2b).
+func theTargetPlayerDraws(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		p, ok := firstLegalPlayerTarget(ctx)
+		if !ok {
+			return nil
+		}
+		return DrawCards{Player: p, N: n}.Apply(ctx)
+	}
+}
