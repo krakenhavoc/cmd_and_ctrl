@@ -859,6 +859,17 @@ Doubling Cube, which reads the pool the plan is filling), a spend rider
 (Opal Palace) and a board with a mana-production replacement on it stay
 hand-activated.
 
+**"If this ability has been activated four or more times this turn"
+(#5745).** Farrelite Priest's sentence after "Add {W}" is a `Rider`
+built with `SacrificeAtNextEndStepIfActivatedRider(4, label,
+triggerLabel)`, where `label` is the ability's own `Label` (keep it in a
+const so the two cannot drift). The rider reads
+`game.ActivatedThisTurn(source, label)`, which already counts the
+activation it is resolving, and schedules a delayed sacrifice at the
+next end step. The count is per object, so a flickered creature starts
+again (CR 400.7). The rider is opaque, so the auto-tapper leaves the
+creature alone and the player activates it from the board.
+
 **Counter costs (#789).** `ManaAbilityCost.RemoveCounters` is the SAME
 `*game.CounterRemovalCost` a CR 602 ability's cost carries — one
 component with two owners — so build it with the same constructors and
