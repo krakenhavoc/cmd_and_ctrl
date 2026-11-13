@@ -559,6 +559,7 @@ choose choose-cards/death-wish-take
 choose choose-cards/deepfathom-echo-copy
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
+choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
 choose choose-cards/discard-draw-as-many
 choose choose-cards/discard-draw-one-if-any
@@ -577,6 +578,7 @@ choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
 choose choose-cards/dormant-volcano-return-an-untapped-mountain
+choose choose-cards/drake-familiar-return
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/duelists-flame-exile
 choose choose-cards/dyadrine-remove-two-counters
@@ -2343,6 +2345,7 @@ tail dominion-infiltration/haste-and-exile-copies
 tail dose-of-dawnglow/blight
 tail dragonhawk-fates-tempest/schedule-damage
 tail drain/gain-the-life-lost
+tail drake-familiar/after-bounce
 tail dread-summons/zombie-per-creature-milled
 tail dream-harvest/after-exile
 tail dream-harvest/exile-step
@@ -2981,6 +2984,7 @@ tail then/clutch-of-the-undercity-controller-loses-3
 tail then/cmdr2-s43-tectonic-giant-choose
 tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others
+tail then/congregation-at-dawn-order
 tail then/created-gain-keyword-until-eot
 tail then/crippling-fear-type-chosen
 tail then/crystal-spray-draw
@@ -2993,6 +2997,7 @@ tail then/demonic-covenant-milled
 tail then/descendants-fury-sacrificed
 tail then/desculpting-blast-drone
 tail then/determined-iteration-sacrifice-at-end
+tail then/dimir-machinations-put-back
 tail then/discard-at-random
 tail then/distant-melody-type-chosen
 tail then/disturbing-mirth-draw-two
