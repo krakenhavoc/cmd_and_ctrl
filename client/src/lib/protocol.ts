@@ -5720,6 +5720,9 @@ export interface CardView extends CastSurfaceView {
   // ADR 0034 — Scryfall's printing layout, absent for the ordinary
   // single-faced card. "modal_dfc" is the one the client acts on:
   // it means playing this card needs a face choice first.
+  // "prototype" (CR 718, #5656) needs one too: `faces[1]` is the same
+  // card with the inset's mana cost, power and toughness, and a cast
+  // of face 1 is the prototyped spell.
   layout?: string;
   // ADR 0034 — every printed face, front first. PURELY ADDITIVE:
   // name / type_line / mana_cost / power / toughness above continue

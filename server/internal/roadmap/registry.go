@@ -3792,6 +3792,13 @@ var items = []Item{
 		Examples: []string{"Nighthowler", "Boon Satyr", "Eidolon of Countless Battles"},
 	},
 	{
+		Slug: "prototype", Name: "Prototype", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Artifact creatures you may cast for a smaller, coloured cost as a smaller creature. A prototyped spell and the permanent it becomes have the inset's mana cost, colour, power and toughness, and keep their abilities and types.",
+		Rules:    []string{"702.160", "718"},
+		ADR:      "0034-multi-face-cards.md",
+		Examples: []string{"Blitz Automaton", "Cradle Clearcutter", "Depth Charge Colossus"},
+	},
+	{
 		Slug: "one-cast-per-card-type", Name: "One spell of each card type", Kind: KindSeam, Status: StatusImplemented,
 		Summary:  "Permissions that let you cast one spell of each card type, such as Muldrotha, the Gravetide's \"a permanent spell of each permanent type from your graveyard\" during each of your turns and Aminatou's Augury's free casts from among the cards it exiled.",
 		Rules:    []string{"601.3", "205.2a"},

@@ -1192,6 +1192,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// this one sacrifice clause, so the payment is the whole list.
 	varSac := sacrifice != nil && game.SacrificeCostVariable(sacrifice)
 	sacFromX := varSac && game.SacrificeCountFromX(sacrifice)
+	// #5657, CR 702.48a: an announced offering is priced per payment for
+	// the same reason — the sacrificed permanent's mana cost comes off
+	// the total (CostQuery.SacrificedManaCost), so a Hellkite the seat
+	// cannot afford at nine mana may be affordable over a six-drop.
+	perSac := varSac || game.AnySacrificeReducesByManaCost(optional, chosen)
 	var sacOrdered []uuid.UUID
 	if discards > 0 {
 		var pool []uuid.UUID
@@ -1363,7 +1368,7 @@ modeLoop:
 		// up-front price to gate on. A Torgaar the seat cannot afford at
 		// full price may well be affordable with three creatures
 		// sacrificed.
-		if !perTarget && !varSac {
+		if !perTarget && !perSac {
 			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
 				Card:                  card,
 				Controller:            e.seat,
@@ -1559,7 +1564,7 @@ modeLoop:
 					}
 					payX, payLife, payCost, payPrinted := setX, setLife, setCost, setPrinted
 					payDelve, payDelveFull := setDelve, setDelveFull
-					if varSac {
+					if perSac {
 						// ADR 0100 §6: priced with THIS payment's count,
 						// through the pricer CastSpell charges with — the
 						// discount (CostQuery.Sacrificing) and, for the X
@@ -1578,6 +1583,7 @@ modeLoop:
 							XValue:                payX,
 							Targets:               tgts,
 							Sacrificing:           len(sacs),
+							SacrificedManaCost:    g.SacrificedManaCostForEffect(addCost, optional, chosen, sacs),
 							AltSacrificeManaValue: altMV,
 							AltTappedPower:        altPower,
 							AltBlitz:              offer != nil && offer.Blitz,
@@ -1760,7 +1766,7 @@ modeLoop:
 		//
 		// ADR 0135 §4: and an emerge payment at ITS price, which is the
 		// first announcement's less this permanent's mana value.
-		payCost, ok := e.altPaymentCost(card, fromZone, first, altPaid, perTarget, varSac)
+		payCost, ok := e.altPaymentCost(card, fromZone, first, altPaid, perTarget, varSac, g.SacrificedManaCostForEffect(addCost, optional, chosen, first.sacs))
 		if !ok || !e.canPayExcluding(payCost, payX, spend, first.autoTapExclusions(altPaid)) {
 			continue
 		}

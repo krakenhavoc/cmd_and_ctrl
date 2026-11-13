@@ -3971,6 +3971,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// permanent the claimed offer names while it is still on the
 		// battlefield.
 		AltSacrificeManaValue: g.altSacrificeManaValueLocked(p.ID, card, params),
+		// #5657, CR 702.48a: offering's reduction, the mana cost of the
+		// permanent the announced offering cost names, read the same way.
+		SacrificedManaCost: g.sacrificedManaCostLocked(p.ID, card, params),
 		// #3931, CR 702.180a: harmonize's, read off the creature the
 		// claimed offer names while it is still untapped.
 		AltTappedPower: g.altTappedPowerLocked(p.ID, card, params),

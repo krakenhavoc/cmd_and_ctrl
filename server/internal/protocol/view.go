@@ -4225,6 +4225,11 @@ type CardView struct {
 	// single-faced card. The client reads it to decide whether
 	// playing this card needs a face prompt at all. Added by
 	// ADR 0034.
+	//
+	// "prototype" is a prototype card (CR 718, #5656): Faces[1] is the
+	// same card with the inset's mana cost, power and toughness, a cast
+	// of face 1 is the prototyped spell, and ActiveFace is 1 on that
+	// spell and on the permanent it becomes.
 	Layout string `json:"layout,omitempty"`
 
 	// Faces is every printed face of a multi-face card, front
@@ -7469,7 +7474,7 @@ func activeFace(c *CardView) castFace {
 	}
 	return castFace{
 		index:    c.ActiveFace,
-		key:      game.CatalogKeyForFace(c.oracleID, c.ActiveFace),
+		key:      game.CatalogKeyForLayoutFace(c.oracleID, c.Layout, c.ActiveFace),
 		manaCost: cost,
 	}
 }
@@ -7489,7 +7494,7 @@ func fusedFace(c *CardView) castFace {
 func castFaceOf(c *CardView, i int) castFace {
 	return castFace{
 		index:    i,
-		key:      game.CatalogKeyForFace(c.oracleID, i),
+		key:      game.CatalogKeyForLayoutFace(c.oracleID, c.Layout, i),
 		manaCost: c.Faces[i].ManaCost,
 	}
 }
@@ -8173,14 +8178,21 @@ func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, k
 // payableOpeningCosts is the card's optional costs that open the
 // instant-speed window (AdditionalCost.AsThoughFlash, CR 601.3c) and that
 // the caster could announce right now: a teamwork cost the untapped
-// creatures cannot reach opens nothing, as the enumerator, which drops
-// the unpayable set, agrees.
+// creatures cannot reach opens nothing, and neither does a sacrifice
+// with nothing to sacrifice (offering, CR 702.48a), as the enumerator,
+// which drops the unpayable set, agrees.
 func payableOpeningCosts(g *game.Game, caster uuid.UUID, card game.Card) []game.AdditionalCost {
 	var out []game.AdditionalCost
 	for _, oc := range g.OptionalCostsForCastLocked(caster, card) {
-		if oc.AsThoughFlash && (oc.Teamwork == 0 || g.TeamworkPayableForEffect(caster, oc.Teamwork)) {
-			out = append(out, oc)
+		if !oc.AsThoughFlash || (oc.Teamwork != 0 && !g.TeamworkPayableForEffect(caster, oc.Teamwork)) {
+			continue
 		}
+		// #5657, CR 118.3: nor does an offering with no permanent to
+		// sacrifice.
+		if oc.Sacrifice != nil && len(g.SacrificeCostCandidatesForEffect(caster, uuid.Nil, oc.Sacrifice)) < game.SacrificeCostCount(oc.Sacrifice) {
+			continue
+		}
+		out = append(out, oc)
 	}
 	return out
 }
@@ -14731,7 +14743,13 @@ func viewOfFaces(c *game.Card) []CardFaceView {
 			Toughness:  f.Toughness,
 		}
 		if c.ScryfallID != "" {
-			v.Image = fmt.Sprintf("/cards/%s/image?face=%d", c.ScryfallID, i)
+			// CR 718.1 (#5656): a prototype card is one printed image;
+			// its inset is a frame on the same side.
+			art := i
+			if c.Layout == game.LayoutPrototype {
+				art = 0
+			}
+			v.Image = fmt.Sprintf("/cards/%s/image?face=%d", c.ScryfallID, art)
 		}
 		out = append(out, v)
 	}

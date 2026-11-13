@@ -120,9 +120,10 @@ func (e ExileAndReturnTransformed) Apply(ctx *Context) error {
 //
 // A FLIPPED flip card is not one (ADR 0151): its ActiveFace is 1 too,
 // but a flip card is single-faced (CR 710.1) and flipping is not
-// transforming.
+// transforming. Nor is a prototyped permanent (CR 718, #5656): a
+// prototype card is single-faced too.
 func TransformedPermanent(c game.Card) bool {
-	return c.ActiveFace != 0 && len(c.Faces) > 1 && c.Layout != game.LayoutFlip
+	return c.ActiveFace != 0 && len(c.Faces) > 1 && c.Layout != game.LayoutFlip && c.Layout != game.LayoutPrototype
 }
 
 // TransformPicked turns over every permanent a resolution-time pick

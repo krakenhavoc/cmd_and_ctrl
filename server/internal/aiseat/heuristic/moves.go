@@ -1118,6 +1118,11 @@ func (st *state) castSource(id string) *protocol.CardView {
 	return nil
 }
 
+// layoutPrototype is Scryfall's layout for a prototype card, as
+// CardView.Layout spells it (game.LayoutPrototype; a policy may not
+// import the game package).
+const layoutPrototype = "prototype"
+
 // castFaceOf is the card as the spell a move casts: the view with the
 // printed face face's name, types, cost and size in place of the
 // active face's (ADR 0152 §6). The card itself when face is the one it
@@ -1128,6 +1133,9 @@ func (st *state) castSource(id string) *protocol.CardView {
 // different permanent. A face with living metal is a creature of its
 // printed size on every turn the bot attacks with it, so it is priced
 // as one; its value as a blocker is not counted.
+//
+// A prototype card's face 1 is the card cast prototyped (CR 718): the
+// same permanent, smaller.
 func castFaceOf(c *protocol.CardView, face int) *protocol.CardView {
 	if c == nil || face <= 0 || face == c.ActiveFace || face >= len(c.Faces) {
 		return c
@@ -1137,7 +1145,11 @@ func castFaceOf(c *protocol.CardView, face int) *protocol.CardView {
 	out.Name, out.TypeLine, out.ManaCost = f.Name, f.TypeLine, f.ManaCost
 	out.Power, out.Toughness = f.Power, f.Toughness
 	out.ActiveFace = face
-	out.Abilities, out.AbilityRows, out.Protection, out.Purpose = nil, nil, nil, nil
+	// CR 718.5 (#5656): a prototype card's second face is the same card
+	// with a smaller cost and size, so it keeps the front's abilities.
+	if c.Layout != layoutPrototype {
+		out.Abilities, out.AbilityRows, out.Protection, out.Purpose = nil, nil, nil, nil
+	}
 	if strings.Contains(strings.ToLower(f.OracleText), "living metal") && !isCreature(&out) {
 		if head, tail, ok := strings.Cut(out.TypeLine, " — "); ok {
 			out.TypeLine = head + " Creature — " + tail

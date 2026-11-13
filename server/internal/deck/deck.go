@@ -1059,6 +1059,24 @@ func printedMeld(c cards.Card) *game.MeldPrint {
 // offer a choice is indistinguishable from no face list, and nil is
 // the cheaper representation of the same fact.
 func printedFaces(c cards.Card) []game.Face {
+	// CR 718 (#5656): a prototype card is one Scryfall face whose inset
+	// (a second mana cost, power and toughness) is only in its oracle
+	// text. The engine keeps the inset as a second face
+	// (game/prototype.go), built here from the printed card.
+	if c.Layout == game.LayoutPrototype && len(c.CardFaces) < 2 {
+		power, _ := strconv.Atoi(strings.TrimSpace(c.Power))
+		toughness, _ := strconv.Atoi(strings.TrimSpace(c.Toughness))
+		return game.PrototypeFaces(game.Face{
+			Name:              c.Name,
+			TypeLine:          c.TypeLine,
+			ManaCost:          c.ManaCost,
+			Colors:            append([]string(nil), c.Colors...),
+			Power:             power,
+			Toughness:         toughness,
+			VariableToughness: variableToughness(c.TypeLine, c.Toughness),
+			OracleText:        c.OracleText,
+		})
+	}
 	if len(c.CardFaces) < 2 {
 		return nil
 	}

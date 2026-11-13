@@ -92,6 +92,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)](#leveler-cards-level-up-and-level-bands-5426-cr-70287--cr-711)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
+  - [Prototype (ADR 0034 amendment 2026-11-12, #5656, CR 718)](#prototype-adr-0034-amendment-2026-11-12-5656-cr-718)
   - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
   - [Soulbond (CR 702.95, #5675)](#soulbond-cr-70295-5675)
   - [Suspect (CR 701.60, #2698)](#suspect-cr-70160-2698)
@@ -13213,6 +13214,43 @@ Static: []game.StaticAbility{PumpSelfCreatureOrAttachedPer(1, 1, count)}, // "Th
   (CR 702.103f). Write none of that.
 - Never build the offer by hand: `Bestow` is what sets `AlternativeCost.Bestow`.
 
+### Prototype (ADR 0034 amendment 2026-11-12, #5656, CR 718)
+
+A prototype card ("Prototype {2}{R} — 3/2") needs **nothing in its card
+file** for the keyword. The deck importer reads the inset out of the
+oracle text and gives the card a second face (`game.PrototypeFaces`): the
+same card with the inset's mana cost, power and toughness and the colours
+of that cost. A cast of face 1 is the prototyped spell, the permanent
+keeps that face, and every other zone turns the card back (CR 718.4). The
+rules side is `game/prototype.go`.
+
+```go
+Register(Spec{
+    OracleID:        "19f344ee-031d-4346-9553-c5d32b02df43",
+    Name:            "Blitz Automaton",
+    Completeness:    CompletenessFull,
+    PrintedKeywords: []string{"haste"},   // the rest of the text, as for any card
+})
+```
+
+- Register ONE entry under the bare oracle ID. Both faces read it (CR
+  718.5); there is no `<id>#1` entry.
+- Do not declare an `AlternativeCost` for the prototype cost. Prototype is
+  not one (CR 702.160a): the prototyped spell's mana cost, mana value and
+  colour are the inset's.
+- An ability that reads "this creature's power" or "its power" must read
+  it as it resolves (`ctx.SourcePermanent()`, `GainLifeEqualToSubject`,
+  a mana ability's `ProducedAmount`), never a number from the card file:
+  the prototyped permanent is smaller. Spotter Thopter ("scry X, where X
+  is its power") and Iron-Craw Crusher ("gets +X/+0 …, where X is this
+  creature's power") are the precedents.
+- `card.Prototyped()` answers "is this a prototyped spell or a permanent
+  that was one", for a card that asks.
+- In a test, build the card as the importer does: `game.PrototypeFaces`
+  over the printed face, `Layout: game.LayoutPrototype`, then
+  `SettleImported()` (`prototypeCard` in `prototype_test.go`), and cast it
+  with `CastSpellParams{Face: game.PrototypeFace}`.
+
 ### Auras that enchant a card in a graveyard (ADR 0154, #1780)
 
 "Enchant creature card in a graveyard" is an ordinary enchant clause, built
@@ -14122,6 +14160,25 @@ or under a Vedalken Orrery, takes any X. The announce gate, the enumerator, the 
 too) or a flat `CastKindAsThoughFlash` (stronger than printed). Word order varies: Serpent of the Pass prints "If …, you
 may cast this spell as though it had flash", the same clause. `TestNoFlashIfClauseIsAnAlternativeCost` holds every card
 that prints it to one of these shapes.
+
+### Offering (#5657)
+
+"[Quality] offering" (CR 702.48) is ONE optional additional cost, never an alternative cost and never a `FlashIf`:
+
+```go
+OptionalCosts: []game.AdditionalCost{Offering("artifact", Artifact())}, // Blast-Furnace Hellkite: "Artifact offering"
+```
+
+`Offering(quality, preds...)` (`cards/effects/offering.go`) is an optional `Sacrifice` of one permanent matching the
+predicates, with `AsThoughFlash` (the cast that announces it may be made any time its controller could cast an instant,
+CR 601.3c) and `ReducedBySacrificedManaCost` (`game/offering.go`): the pricer takes the named permanent's mana cost off
+the total cost symbol by symbol, a coloured or colourless symbol off mana of the same type and the excess off generic
+(CR 702.48c), after the commander tax and every increase and never below {0}. A token, a face-down permanent and a
+transformed back face have no mana cost and reduce nothing; an {X} in the cost is 0. The permanent rides `sacrifice_ids`
+with the offer's index in `optional_costs`, so the picker, the auto-tap preview and the bot enumerator (which prices
+each payment on its own and offers only the affordable ones) need nothing per card. `Register` refuses the flag anywhere
+but an optional cost that sacrifices exactly one permanent. Do not build it from `Emerge`: emerge is an alternative
+cost, reduces generic mana by a mana VALUE and has no timing half.
 
 ### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
 

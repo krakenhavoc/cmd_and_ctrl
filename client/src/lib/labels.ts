@@ -868,6 +868,27 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}FacePickerModal.svelte`],
     doc: "#5191: the face picker's source tag on an omen card (CR 720.3: cast it normally or as an Omen), which Scryfall lays out as an adventure; known by the Omen spell type on its second half's type line",
   }),
+  facePickerPrototype: label({
+    name: "prototype · CR 718.3",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}FacePickerModal.svelte`],
+    doc: "#5656: the face picker's source tag on a prototype card (CR 718.3: cast it normally or prototyped)",
+  }),
+  facePrototyped: label({
+    name: "Prototyped",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}FacePickerModal.svelte`],
+    doc: "#5656: the face picker's caption on a prototype card's inset, the choice that casts it with the smaller cost and size (CR 718.3b)",
+  }),
+  faceNotPrototyped: label({
+    name: "Not prototyped",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}FacePickerModal.svelte`],
+    doc: "#5656: the face picker's caption on a prototype card cast normally",
+  }),
   selectTarget: dynamicLabel({
     stem: "Select target for ",
     match: "prefix",
