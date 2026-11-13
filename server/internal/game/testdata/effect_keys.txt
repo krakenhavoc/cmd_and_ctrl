@@ -2288,6 +2288,7 @@ tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
 tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
+tail cumulative-upkeep/yavimaya-ants-cumulative-upkeep-g-g
 tail currency-converter/token-for-graveyarded-card
 tail curse-of-the-swine/boar-per-exiled
 tail cyclonus/connive
