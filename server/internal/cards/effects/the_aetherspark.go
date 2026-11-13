@@ -68,6 +68,14 @@ import (
 // to a player: the printed text says "deals combat damage", with no
 // recipient named.
 //
+// It is ONE trigger per combat damage step for the whole of what the
+// creature dealt in it (#5760; CR 510.2, CR 603.2c): a trampler that
+// puts 1 into its blocker and 2 into the player has dealt combat damage
+// once, for three. The engine opens one damage event per recipient, so
+// the trigger settles at the end of its batch on the creature's total
+// (ThatMuchDamageDealtAtLeast(1), Quilled Greatwurm's reading), and
+// "that many" is that total. A double striker triggers in each step.
+//
 // THE −10 IS A LOYALTY ABILITY, NOT A MANA ABILITY. CR 605.1a
 // excludes an ability with a loyalty cost from the mana-ability
 // definition, so it uses the stack, it can be responded to, and the
@@ -104,9 +112,10 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventDealDamage},
-			AppliesTo: equippedCreatureDealtCombatDamageOnYourTurn,
-			Key:       "The Aetherspark — put that many loyalty counters on it",
+			Watches:    []game.EventKind{game.EventDealDamage},
+			AppliesTo:  equippedCreatureDealtCombatDamageOnYourTurn,
+			AtBatchEnd: ThatMuchDamageDealtAtLeast(1),
+			Key:        "The Aetherspark — put that many loyalty counters on it",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return AddCounter{
 					Target: item.SourceCardID,
