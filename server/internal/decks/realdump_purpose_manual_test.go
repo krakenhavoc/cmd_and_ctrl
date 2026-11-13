@@ -118,6 +118,7 @@ var reviewedNotAWipe = map[string]string{
 	"Northampton Farm":                         "returns the cards it exiled to hand, not permanents",
 	"Baneblade Scoundrel // Baneclaw Marauder": "-1/-1 only to the creatures blocking it",
 	"Battle-Scarred Goblin":                    "1 damage only to the creatures blocking it",
+	"Knight of Valor":                          "-1/-1 only to the creatures without flanking blocking it",
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
 	"The Apprentice's Folly":                   "sacrifices only its controller's own Reflection tokens, not a board",

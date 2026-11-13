@@ -5853,7 +5853,11 @@ locking accessor), and reads only public information, because every
 viewer receives the flag. Never drop a condition you can't express,
 and never move it into `Effect`: the first is stronger than printed
 (#259), the second charges the cost for nothing. "Activate only once
-each turn" is `OncePerTurnActivation(label)` (Quirion Ranger).
+each turn" is `OncePerTurnActivation(label)` (Quirion Ranger), and
+"Activate no more than twice each turn" is
+`AtMostNActivationsPerTurn(label, 2)` (Roterothopter, #5752). Both read
+the per-object announce tally, so an activation still on the stack
+counts, and the count starts over each turn.
 
 **Boast (CR 702.142, #2697):** never spell "attacked this turn" and
 "only once each turn" by hand. `Boast(text, cost, effect)` and
