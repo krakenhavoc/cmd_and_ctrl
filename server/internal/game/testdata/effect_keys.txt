@@ -1246,6 +1246,7 @@ confirm confirm/partner-with-search
 confirm confirm/pay-life-copy-that-ability
 confirm confirm/pay-life-draw
 confirm confirm/peace-in-our-time-draw
+confirm confirm/pemmins-aura-pump
 confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
