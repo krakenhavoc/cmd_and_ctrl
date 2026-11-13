@@ -31,6 +31,7 @@ anyplayer any-player/innocent-traveler-transform
 anyplayer any-player/nakaya-shade-pump
 anyplayer any-player/prowling-pangolin-sacrifice
 anyplayer any-player/rhystic-circle-shield
+anyplayer any-player/rhystic-scrying-discard
 anyplayer any-player/rhystic-shield-extra
 anyplayer any-player/rhystic-tutor-search
 anyplayer any-player/soul-strings-return
