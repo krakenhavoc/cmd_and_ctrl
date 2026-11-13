@@ -17,22 +17,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "Artifacts and creatures" names no zone and no "card", so it means
 // permanents on the battlefield (CR 109.2): an ability activated from a
 // hand or a graveyard (cycling an artifact card, ninjutsu, a creature
-// card's graveyard ability) is not stopped. That is the battlefield
-// check in front of SourcesCantActivate's own body.
+// card's graveyard ability) is not stopped. SourcesCantActivate checks
+// that zone itself since #5759.
 //
 // No simplification.
 func init() {
-	matrix := SourcesCantActivate(
-		"Damping Matrix — activated abilities of artifacts and creatures can't be activated unless they're mana abilities.",
-		Or(Artifact(), Creature()), true)
-	forbids := matrix.Forbids
-	matrix.Forbids = func(q game.ActivationQuery) bool {
-		return q.FromZone == game.ZoneBattlefield && forbids(q)
-	}
 	Register(Spec{
-		OracleID:               "10403a8c-2534-421e-8809-5fc019623452",
-		Name:                   "Damping Matrix",
-		Completeness:           CompletenessFull,
-		ActivationRestrictions: []game.ActivationRestriction{matrix},
+		OracleID:     "10403a8c-2534-421e-8809-5fc019623452",
+		Name:         "Damping Matrix",
+		Completeness: CompletenessFull,
+		ActivationRestrictions: []game.ActivationRestriction{
+			SourcesCantActivate(
+				"Damping Matrix — activated abilities of artifacts and creatures can't be activated unless they're mana abilities.",
+				Or(Artifact(), Creature()), true),
+		},
 	})
 }
