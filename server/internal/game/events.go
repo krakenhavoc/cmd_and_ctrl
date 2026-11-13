@@ -2398,6 +2398,21 @@ type Event struct {
 	// rides the trigger context into a snapshot. Additive within the
 	// snapshot schema: omitted when empty.
 	TappedBy uuid.UUID `json:"tapped_by,omitempty"`
+
+	// PutBy is the player who PUT an EventETB's permanent onto the
+	// battlefield (#5746): a land play's player (CR 305.1), a resolving
+	// permanent spell's controller, the resolving spell or ability's
+	// controller for an effect's put (CR 608.2c), or the player an
+	// instruction names (CR 110.2a) — the same reading Arboria's record
+	// takes (entryPutterLocked, last_turn_actions.go). It is not always
+	// the player the permanent entered under. Thelon's Chant's "whenever
+	// a player puts a Swamp onto the battlefield, … deals 3 damage to that
+	// player" reads it ("damages the player putting the land onto the
+	// battlefield, even if they are not the controller of the land").
+	// Empty on a sandbox move with no entry pipeline behind it. It is an
+	// event fact, so it rides the trigger context into a snapshot.
+	// Additive within the snapshot schema: omitted when empty.
+	PutBy uuid.UUID `json:"put_by,omitempty"`
 }
 
 // TapCauseTeamwork is Event.TapCause for a creature tapped to pay a

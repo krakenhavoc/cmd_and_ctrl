@@ -1611,6 +1611,7 @@ payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
+payunless pay-unless/chant-3-damage-to-that-player
 payunless pay-unless/chaos-spewer-blight
 payunless pay-unless/cmdr2-b05-emperor-mihail-merfolk
 payunless pay-unless/cmdr2-b05-fathom-fleet-captain-pirate

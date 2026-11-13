@@ -35,3 +35,32 @@ func TestPayUnlessSacrificePaysWithTheLeastValuable(t *testing.T) {
 		t.Fatalf("chose %q, want to pay with the least valuable permanent", got)
 	}
 }
+
+// #5746: Thelon's Chant's "unless the player puts a -1/-1 counter on a
+// creature they control" is paid, and the counter goes where it costs
+// least, priced as a blight of one: on a wall that survives it and loses
+// only toughness, not on a 1/1 it would kill.
+func TestPayUnlessMinusOneCounterGoesOnTheCreatureItCostsLeast(t *testing.T) {
+	const choiceID = "choice-chant"
+	elf := creature(cardID(1), 0, "Elf", 1, 1)
+	wall := creature(cardID(2), 0, "Wall", 0, 6)
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(elf, wall),
+		withChoice(protocol.PendingChoiceView{
+			ID:       choiceID,
+			Kind:     "pay_unless",
+			Chooser:  seatID(0).String(),
+			Reason:   "Thelon's Chant — put a -1/-1 counter on a creature you control, or take 3 damage?",
+			PayCost:  "Put a -1/-1 counter on a creature you control",
+			PayCards: &protocol.PayCardsView{Action: "minus_one_counter", Count: 1, Options: []string{cardID(1), cardID(2)}},
+		}))
+	yes, no := true, false
+	in := input(0, v,
+		choiceMove(t, 0, choiceID, "decline", map[string]any{"apply": no}),
+		choiceMove(t, 0, choiceID, "counter on the elf", map[string]any{"apply": yes, "card_ids": []string{cardID(1)}}),
+		choiceMove(t, 0, choiceID, "counter on the wall", map[string]any{"apply": yes, "card_ids": []string{cardID(2)}}),
+	)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "counter on the wall" {
+		t.Fatalf("chose %q, want the counter on the creature that survives it", got)
+	}
+}

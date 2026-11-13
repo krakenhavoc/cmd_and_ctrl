@@ -3769,7 +3769,10 @@ export interface PayCardsView {
   // "exile_graveyard" (ADR 0187 §3): options are the chooser's own
   // graveyard, public to every seat. "tap" (#1997): the untapped
   // permanents of the clause's kind the chooser controls.
-  action: "discard" | "sacrifice" | "exile_graveyard" | "tap";
+  // "minus_one_counter" (#5746): the permanents of the clause's kind the
+  // chooser controls that can have a counter put on them; each one named
+  // gets a -1/-1 counter.
+  action: "discard" | "sacrifice" | "exile_graveyard" | "tap" | "minus_one_counter";
   count: number;
   options: string[];
 }

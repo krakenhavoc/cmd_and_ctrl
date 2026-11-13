@@ -2304,7 +2304,9 @@ type TapCostView struct {
 // right now.
 type PayCardsView struct {
 	// Action is "discard", "sacrifice", "exile_graveyard" (ADR 0187
-	// §3) or "tap" (#1997: tap untapped permanents you control).
+	// §3), "tap" (#1997: tap untapped permanents you control) or
+	// "minus_one_counter" (#5746: put a -1/-1 counter on each of the
+	// named permanents you control).
 	Action string `json:"action"`
 	// Count is exactly how many of Options one payment names.
 	Count int `json:"count"`
@@ -2312,6 +2314,8 @@ type PayCardsView struct {
 	// for a discard, the permanents of the clause's kind they control
 	// for a sacrifice (in the payment order "Choose for me" uses), the
 	// untapped ones of the clause's kind they control for a tap, the
+	// ones of the clause's kind they control that can have a counter put
+	// on them for a minus_one_counter, the
 	// chooser's own graveyard for an exile_graveyard. Only a discard's
 	// are withheld from the other seats: a sacrifice's and a
 	// graveyard's are public. Present-and-empty when there is nothing
