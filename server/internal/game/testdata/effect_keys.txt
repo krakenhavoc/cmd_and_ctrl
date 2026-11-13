@@ -1006,6 +1006,7 @@ choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
 choose choose-cards/ward-sacrifice-a-food
 choose choose-cards/ward-sacrifice-a-legendary-artifact-or-legendary-creature
+choose choose-cards/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
 choose choose-cards/ward-sacrifice-two-permanents
@@ -1307,6 +1308,7 @@ confirm confirm/ward-pay-life
 confirm confirm/ward-sacrifice-a-creature
 confirm confirm/ward-sacrifice-a-food
 confirm confirm/ward-sacrifice-a-legendary-artifact-or-legendary-creature
+confirm confirm/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
