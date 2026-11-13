@@ -15,6 +15,13 @@ import (
 // creature blocked by two creatures without flanking shrinks both. Whether
 // the blocker has flanking is read as it blocks (CR 509.3), and multiple
 // instances trigger separately (CR 702.25b).
+//
+// The blocker's flanking is the canonical token game.KeywordFlanking
+// (#5757): the deck importer stamps Scryfall's "Flanking", and a card
+// with this row declares it in PrintedKeywords too, so a flanking
+// creature blocking another one is spared whether or not it came
+// through an import. A granted flanking counts the same, as it is on
+// the layered ability list.
 
 // Flanking is "Flanking" for the card named `name`.
 func Flanking(name string) game.TriggeredAbility {
@@ -24,7 +31,7 @@ func Flanking(name string) game.TriggeredAbility {
 			return false
 		}
 		blocker, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && !game.HasKeyword(&blocker, "flanking")
+		return ok && !game.HasKeyword(&blocker, game.KeywordFlanking)
 	}, label, flankingShrink)
 }
 

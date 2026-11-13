@@ -128,6 +128,7 @@
     shroud: "Shroud",
     infect: "Infect",
     wither: "Wither",
+    flanking: "Flanking",
     riot: "Riot",
     soulbond: "Soulbond",
     unleash: "Unleash",

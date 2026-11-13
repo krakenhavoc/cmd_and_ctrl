@@ -191,12 +191,30 @@ func keywordOnlyLine(line string) bool {
 		// CanonicalKeywords, not the singular form: one printed
 		// clause can be two abilities ("protection from Demons and
 		// from Dragons", CR 702.16m).
-		if _, ok := CanonicalKeywords(part); !ok {
+		kws, ok := CanonicalKeywords(part)
+		if !ok {
 			return false
+		}
+		for _, kw := range kws {
+			if keywordRunsInCatalog[kw] {
+				return false
+			}
 		}
 		found = true
 	}
 	return found
+}
+
+// keywordRunsInCatalog is the canonical tokens whose triggered
+// abilities are catalog rows rather than an engine path: the token
+// is the badge and what the rows read (a flanking blocker is spared,
+// CR 702.25a; a creature that lost soulbond never pairs), but nothing
+// in the engine triggers from it. An uncatalogued card that prints
+// one has the keyword and not the ability, so the line is a rule the
+// engine does not run, and the card is flagged.
+var keywordRunsInCatalog = map[string]bool{
+	KeywordFlanking: true,
+	KeywordSoulbond: true,
 }
 
 // stripReminderText removes every parenthesised span. Scryfall's

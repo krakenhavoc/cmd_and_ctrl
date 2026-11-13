@@ -15,10 +15,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "9e60c102-412e-4956-a7bb-a2cd737d6692",
-		Name:         "Zhalfirin Crusader",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Flanking("Zhalfirin Crusader")},
+		OracleID:        "9e60c102-412e-4956-a7bb-a2cd737d6692",
+		Name:            "Zhalfirin Crusader",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordFlanking},
+		Triggered:       []game.TriggeredAbility{Flanking("Zhalfirin Crusader")},
 		Activated: []ActivatedAbility{
 			redirectRow("{1}{W}: The next 1 damage that would be dealt to this creature this turn is dealt to any target instead.",
 				ManaCost("{1}{W}"), TargetAny(), RedirectDamage{Protect: ShieldThis, Amount: 1, To: RedirectToClause(0)}),
