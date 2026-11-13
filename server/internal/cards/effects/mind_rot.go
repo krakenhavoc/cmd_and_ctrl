@@ -17,16 +17,20 @@ func init() {
 		Name:         "Mind Rot",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player: item.Targets[0].ID,
-				Source: item.SourceCardID,
-				N:      2,
-			})
-			return nil
-		},
+		OnResolve:    mindRotOnResolve,
 	})
+}
+
+// mindRotOnResolve is the spell's body, shared with Waking Nightmare,
+// which prints the same text.
+func mindRotOnResolve(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+		return nil
+	}
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: item.Targets[0].ID,
+		Source: item.SourceCardID,
+		N:      2,
+	})
+	return nil
 }
