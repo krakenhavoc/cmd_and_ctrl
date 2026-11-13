@@ -28,7 +28,7 @@ func init() {
 		OracleID:     "7dce1e8c-5cfd-4626-9f23-7bb3f1b10c1e",
 		Name:         "Eldritch Immunity",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Answers: game.AnswerProtect},
+		Purpose:      game.Purpose{Answers: game.AnswerProtect, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "protection"))},
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		AlternativeCosts: []game.AlternativeCost{
 			Overload("{4}{C}"),
