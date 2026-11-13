@@ -119,6 +119,15 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 		}
 		pushBattlefieldCardWithTimestamp(g, c)
 		triggerSources = append(triggerSources, id)
+		// Extraplanar Lens fires only for lands named like a card exiled
+		// with it: a Forest, linked to this seat's Lens.
+		if oracle == mrdExtraplanarLensOracle {
+			lens := findBattlefieldCardForTest(g, id)
+			g.Exile.PushTop(game.Card{
+				InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest",
+				Owner: p.ID, Controller: p.ID, ExiledWith: game.ObjectRefOf(*lens),
+			})
+		}
 		if si == 0 && monarch {
 			g.WithWriteLock(func() { g.Monarch = p.ID })
 		}
