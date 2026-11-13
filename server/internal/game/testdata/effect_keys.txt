@@ -3072,6 +3072,7 @@ tail then/pucas-eye-color-chosen
 tail then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield
 tail then/put-found-lands-onto-battlefield-tapped
 tail then/pygmy-hippo-schedule-lost-mana
+tail then/radiance-protection-from-chosen-color-until-eot
 tail then/radiant-lotus-color-chosen
 tail then/raise-the-palisade-type-chosen
 tail then/reality-scramble-reveal
