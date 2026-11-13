@@ -15,10 +15,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "4956008e-d912-48ba-9b82-176258281060",
-		Name:         "Fallen Askari",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Flanking("Fallen Askari")},
-		Static:       []game.StaticAbility{RestrictSelf(game.CantBlock)},
+		OracleID:        "4956008e-d912-48ba-9b82-176258281060",
+		Name:            "Fallen Askari",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordFlanking},
+		Triggered:       []game.TriggeredAbility{Flanking("Fallen Askari")},
+		Static:          []game.StaticAbility{RestrictSelf(game.CantBlock)},
 	})
 }

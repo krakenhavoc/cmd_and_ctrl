@@ -18,10 +18,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "8a3a8a02-b7da-4648-a772-c9efb7c332da",
-		Name:         "Teferi's Honor Guard",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Flanking("Teferi's Honor Guard")},
+		OracleID:        "8a3a8a02-b7da-4648-a772-c9efb7c332da",
+		Name:            "Teferi's Honor Guard",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordFlanking},
+		Triggered:       []game.TriggeredAbility{Flanking("Teferi's Honor Guard")},
 		Activated: []ActivatedAbility{{
 			Label:   "{U}{U}: This creature phases out.",
 			Purpose: game.Purpose{Answers: game.AnswerSurvive},

@@ -22,10 +22,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	const label = "{1}{W}: Each creature without flanking blocking this creature gets -1/-1 until end of turn. Activate only once each turn."
 	Register(Spec{
-		OracleID:     "f2edb543-de33-4eed-892c-98038eec96e2",
-		Name:         "Knight of Valor",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Flanking("Knight of Valor")},
+		OracleID:        "f2edb543-de33-4eed-892c-98038eec96e2",
+		Name:            "Knight of Valor",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordFlanking},
+		Triggered:       []game.TriggeredAbility{Flanking("Knight of Valor")},
 		Activated: []ActivatedAbility{{
 			Label:     label,
 			Purpose:   game.Purpose{Answers: game.AnswerRemove},
@@ -39,7 +40,7 @@ func init() {
 				}
 				member := ctx.asGroupMember() // #1463
 				for _, c := range g.BattlefieldCardsForEffect() {
-					if !c.IsCreature() || !c.IsBlockingAttacker(knight) || game.HasKeyword(&c, "flanking") {
+					if !c.IsCreature() || !c.IsBlockingAttacker(knight) || game.HasKeyword(&c, game.KeywordFlanking) {
 						continue
 					}
 					if err := (BoostUntilEOT{Target: c.InstanceID, Power: -1, Toughness: -1, Label: "Knight of Valor — -1/-1"}).Apply(member); err != nil {

@@ -18,7 +18,7 @@ func init() {
 		OracleID:        "f348b326-8a73-4df9-8faf-e271a36ce373",
 		Name:            "Suq'Ata Lancer",
 		Completeness:    CompletenessFull,
-		PrintedKeywords: []string{"haste"},
+		PrintedKeywords: []string{"haste", game.KeywordFlanking},
 		Triggered:       []game.TriggeredAbility{Flanking("Suq'Ata Lancer")},
 	})
 }
