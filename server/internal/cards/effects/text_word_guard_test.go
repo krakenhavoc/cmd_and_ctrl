@@ -95,6 +95,7 @@ var textWordLiteralAllowed = map[string]string{
 	"kyren_legate.go":     "alternative cost, judged as cast",
 	"cho_arrim_legate.go": "alternative cost, judged as cast",
 	"deepwood_legate.go":  "alternative cost, judged as cast",
+	"rushwood_legate.go":  "alternative cost, judged as cast",
 
 	// "This land enters tapped unless you control …": asked as the land
 	// enters, a new object no text change has reached (CR 400.7, 614.12).
