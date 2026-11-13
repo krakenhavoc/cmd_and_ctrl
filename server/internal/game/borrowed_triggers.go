@@ -124,6 +124,9 @@ func lendableTriggeredKeyword(a string) bool {
 	if _, ok := RenownValue(a); ok {
 		return true
 	}
+	if _, ok := RampageValue(a); ok {
+		return true
+	}
 	_, ok := ModularValue(a)
 	return ok
 }

@@ -320,6 +320,7 @@ body prowess/pump
 body pygmy-hippo/add-colorless
 body quantum-entanglement/blink
 body rad/mill
+body rampage/pump
 body ratchet-field-medic/return
 body rebound/cast
 body rebound/the-spell-you-just-cast
@@ -538,6 +539,7 @@ choose choose-cards/connive-discarded
 choose choose-cards/connive-x-discarded
 choose choose-cards/conspiracy-theorist-draw
 choose choose-cards/conspiracy-theorist-exile
+choose choose-cards/coral-atoll-return-an-untapped-island
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/cosmium-confluence-animate-cave
 choose choose-cards/court-of-ambition-discarded-3
@@ -573,6 +575,7 @@ choose choose-cards/discard-two-unless-enchantment
 choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
+choose choose-cards/dormant-volcano-return-an-untapped-mountain
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/duelists-flame-exile
 choose choose-cards/dyadrine-remove-two-counters
@@ -591,6 +594,7 @@ choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
 choose choose-cards/eumidian-wastewaker-discard
 choose choose-cards/evercoat-ursine-play-one
+choose choose-cards/everglades-return-an-untapped-swamp
 choose choose-cards/evidence-examiner-collect-evidence
 choose choose-cards/exile-from-hand-and-plot
 choose choose-cards/exile-top-face-down-linked
@@ -648,10 +652,12 @@ choose choose-cards/isochron-scepter-imprint
 choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
+choose choose-cards/jungle-basin-return-an-untapped-forest
 choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
 choose choose-cards/karn-the-great-creator-take
+choose choose-cards/karoo-return-an-untapped-plains
 choose choose-cards/kastral-put-bird
 choose choose-cards/kaya-spirits-justice-copy
 choose choose-cards/kaya-spirits-justice-exile
@@ -2267,14 +2273,17 @@ tail courier-of-comestibles/food-unless-found
 tail crabomination/cast-from-exiled
 tail crypt-incursion/gain-3-per-exiled
 tail cultivate/basic-land-to-hand
+tail cumulative-upkeep/arctic-wolves-cumulative-upkeep-2
 tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cumulative-upkeep-1
 tail cumulative-upkeep/cumulative-upkeep-2
 tail cumulative-upkeep/cumulative-upkeep-pay-1-life
+tail cumulative-upkeep/gallowbraid-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/illusionary-forces-cumulative-upkeep-u
 tail cumulative-upkeep/illusionary-terrain-cumulative-upkeep-2
 tail cumulative-upkeep/illusionary-wall-cumulative-upkeep-u
 tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
+tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
 tail cumulative-upkeep/phyrexian-soulgorger-cumulative-upkeep-sacrifice-a-creature
 tail cumulative-upkeep/polar-kraken-cumulative-upkeep-sacrifice-a-land
@@ -2282,7 +2291,9 @@ tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
 tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
+tail cumulative-upkeep/uktabi-efreet-cumulative-upkeep-g
 tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
+tail cumulative-upkeep/yavimaya-ants-cumulative-upkeep-g-g
 tail currency-converter/token-for-graveyarded-card
 tail curse-of-the-swine/boar-per-exiled
 tail cyclonus/connive
@@ -3196,6 +3207,11 @@ tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
 tail vindictive-triumph/exile-at-end-step
 tail virtue-of-loyalty/untap-those-creatures
+tail vis/coral-atoll-after-return
+tail vis/dormant-volcano-after-return
+tail vis/everglades-after-return
+tail vis/jungle-basin-after-return
+tail vis/karoo-after-return
 tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard

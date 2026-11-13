@@ -3617,6 +3617,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"flanking"` | Flanking (CR 702.25) — #5757, soulbond's shape. The trigger is the catalog row `Flanking(name)` (`effects/flanking.go`), one per creature that blocks this one (CR 509.3d), and the token is what it asks of the BLOCKER: a blocker with flanking, printed, imported or granted, is not shrunk (CR 702.25a). Declare both, `PrintedKeywords: []string{game.KeywordFlanking}` and `Triggered: []game.TriggeredAbility{Flanking(name)}`; a card that prints it twice declares two rows (CR 702.25b). The importer stamps the token on every card, but a line of it is still a rule an uncatalogued card does not run, so such a card stays flagged (`keywordRunsInCatalog`, `game/coverage.go`) |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"melee"` | Melee (CR 702.121) — #4722, a TRIGGERED keyword: one attack trigger per instance (`game/melee.go`) gives the creature +1/+1 until end of turn for each opponent you attacked with a creature this combat, counted as the trigger resolves (`Game.OpponentsAttackedThisCombat`: attacks on a planeswalker or battle count no player). Cumulative (CR 702.121b), so grant it through `KeywordGrant` / `TribalKeywordGrant` / `game.AppendKeywordAbility` (Titania, Proud Pummeler). A creature whose only text is melee needs no card file. Never write the pump by hand |
+| `"rampage N"` | Rampage (CR 702.23) — #5769, a TRIGGERED keyword numbered like annihilator. One "becomes blocked" trigger per instance (`game/rampage.go`, CR 702.23c) gives the creature +N/+N until end of turn for each creature blocking it beyond the first, counted once as the trigger resolves (CR 702.23b, `Game.CreaturesBlockingForEffect`): a blocker gone by then does not count and one added later changes nothing. Declare it in `PrintedKeywords` (`"rampage 2"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.RampageAmounts`, never `HasKeyword`. A creature whose only text is rampage and other tokens here needs no card file. Never write the pump by hand |
 | `"enlist"` | Enlist (CR 702.154) — #5658, an optional cost to attack and a TRIGGERED keyword (`game/enlist.go`). The declaration names the creature the attacker enlists (`declare_attacker`'s `enlist`); the lock-in taps it and emits `game.EventEnlist`, and the linked trigger adds its power to the attacker until end of turn, read as it resolves. Not cumulative: an attacker enlists at most one creature. Print it with `PrintedKeywords: []string{game.KeywordEnlist}`; see [Enlist](#enlist-5658-cr-702154). |
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)). A permanent that GIVES it to spells declares `Spec.SplitSecondGrants`, read live: Samut's `InstantAndSorcerySpellsYouControlHaveSplitSecond()`, or `EachSpellYouCastHasSplitSecondIfManaFrom(kinds, label)` for "each spell you cast has split second if mana from a … was spent to cast it" (ADR 0007 amendments 2026-10-14 and 2026-10-30) |
@@ -5853,7 +5854,11 @@ locking accessor), and reads only public information, because every
 viewer receives the flag. Never drop a condition you can't express,
 and never move it into `Effect`: the first is stronger than printed
 (#259), the second charges the cost for nothing. "Activate only once
-each turn" is `OncePerTurnActivation(label)` (Quirion Ranger).
+each turn" is `OncePerTurnActivation(label)` (Quirion Ranger), and
+"Activate no more than twice each turn" is
+`AtMostNActivationsPerTurn(label, 2)` (Roterothopter, #5752). Both read
+the per-object announce tally, so an activation still on the stack
+counts, and the count starts over each turn.
 
 **Boast (CR 702.142, #2697):** never spell "attacked this turn" and
 "only once each turn" by hand. `Boast(text, cost, effect)` and
@@ -10599,6 +10604,22 @@ zone changes. They are data on `Card`, not turn-scoped closures, so undo
 and persisted snapshots retain them. Exert, as it attacks and as a
 cost, has its own section below ([ADR 0130](decisions/0130-exert.md)). See [ADR 0058](decisions/0058-doesnt-untap.md) and
 [ADR 0070](decisions/0070-untap-step-choices.md).
+
+Read the possessive (#5753, the Homelands cards). "Doesn't untap during
+YOUR next untap step" (Reveka, Wizard Savant; Samite Alchemist; Spectral
+Bears) is `Player: ctx.Controller()`: Reveka's ruling says that under
+another player's control it untaps in that player's step. "During ITS
+CONTROLLER'S next untap step" (Labyrinth Minotaur, Joven's Ferrets) is
+`Player: uuid.Nil`: their rulings say the mark follows the creature to a
+new controller. A creature the card names without targeting it ("that
+creature" from a block trigger) is not re-checked at resolution the way
+a target is. So the trigger's `Build` stamps the object as
+`item.Params.Object` (or `Params.Objects` for a set), and the effect
+skips it if `ObjectEpochForEffect` has changed (CR 400.7). "Creatures
+that blocked this creature this turn" is read from the turn's
+`EventBlock` records, which a creature put onto the battlefield blocking
+never writes (CR 509.4). See `creaturesThatBlockedThisTurn` in
+[jovens_ferrets.go](../server/internal/cards/effects/jovens_ferrets.go).
 
 Those markers are for a set the card names ("those creatures"). When the
 card names a PLAYER's permanents instead ("Lands target player controls
