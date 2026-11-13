@@ -858,6 +858,17 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{"renown N"} — the engine does the rest`,
 	},
 	{
+		// #5769: rampage is a numbered canonicalKeywords token
+		// ("rampage N") whose trigger the engine derives from the
+		// ability list (game/rampage.go), renown's shape.
+		Name:       "rampage",
+		Phrases:    []string{"rampage"},
+		Implements: rampageProbe,
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) has a "rampage N" token`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{"rampage N"} — the engine does the rest`,
+	},
+	{
 		// #1556 (ADR 0109 §10): riot and unleash are canonicalKeywords
 		// tokens whose entry replacements the engine derives from the
 		// CR 614.12 look-ahead (game/riot.go). Same probe as evolve.
@@ -1007,6 +1018,20 @@ func renownProbe(s effects.Spec) bool {
 	}
 	for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
 		if _, ok := game.RenownValue(kw); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// rampageProbe is the exact probe for rampage: a printed "rampage N"
+// token.
+func rampageProbe(s effects.Spec) bool {
+	if game.CatalogPrintedKeywords == nil {
+		return false
+	}
+	for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
+		if _, ok := game.RampageValue(kw); ok {
 			return true
 		}
 	}

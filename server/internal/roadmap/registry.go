@@ -382,6 +382,18 @@ var items = []Item{
 		Examples: []string{"Titania, Proud Pummeler"},
 	},
 	{
+		// #5769: a numbered keyword trigger, annihilator's token and
+		// melee's count read on resolution (game/rampage.go).
+		Slug: "rampage", Name: "Rampage", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever a creature with rampage becomes blocked, it gets +N/+N until end of turn for each creature blocking it beyond the first, counted once as the trigger resolves. Rampage another permanent gives works, and each instance triggers separately.",
+		Rules:    []string{"702.23", "509.3c"},
+		Issue:    5769,
+		Keywords: []string{game.KeywordRampage},
+		Mechanic: "rampage",
+		Printed:  `(?im)^(?:[a-z' -]+[,;] )*rampage \d`,
+		Examples: []string{"Craw Giant", "Gorilla Berserkers", "Balduvian War-Makers"},
+	},
+	{
 		Slug: "enlist", Name: "Enlist", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "As a creature with enlist attacks, you may tap another creature you control that isn't attacking and could have attacked. The attacker gets that creature's power added to its own until end of turn.",
 		Rules:    []string{"702.154", "508.1g", "607.2h"},

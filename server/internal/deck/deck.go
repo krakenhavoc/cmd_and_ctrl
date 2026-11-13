@@ -512,6 +512,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	wantAnnihilator := false
 	wantRenown := false
 	wantModular := false
+	wantRampage := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
 		kws, ok := game.CanonicalKeywords(raw)
@@ -554,6 +555,10 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 			// MODULAR (CR 702.43, #2012) is the same shape again.
 			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordModular) {
 				wantModular = true
+			}
+			// RAMPAGE (CR 702.23, #5769) is the same shape again.
+			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordRampage) {
+				wantRampage = true
 			}
 			continue
 		}
@@ -656,6 +661,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 		{wantAnnihilator, game.AnnihilatorValue},
 		{wantRenown, game.RenownValue},
 		{wantModular, game.ModularValue},
+		{wantRampage, game.RampageValue},
 	} {
 		if !want.on {
 			continue

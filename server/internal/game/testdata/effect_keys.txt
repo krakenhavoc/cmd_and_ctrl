@@ -320,6 +320,7 @@ body prowess/pump
 body pygmy-hippo/add-colorless
 body quantum-entanglement/blink
 body rad/mill
+body rampage/pump
 body ratchet-field-medic/return
 body rebound/cast
 body rebound/the-spell-you-just-cast

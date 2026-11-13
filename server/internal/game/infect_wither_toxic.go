@@ -195,6 +195,10 @@ func KeywordIsCumulative(kw string) bool {
 	if _, ok := ModularValue(kw); ok {
 		return true
 	}
+	// Rampage (CR 702.23c, #5769): each instance triggers separately.
+	if _, ok := RampageValue(kw); ok {
+		return true
+	}
 	// Undying and persist (#2075, ADR 0113 §4): no rule of their own on
 	// the point, so CR 113.2c's "each instance functions independently"
 	// — each instance is its own dies trigger.

@@ -131,7 +131,8 @@ func resolveProwess(g *Game, item *StackItem) error {
 // (CR 702.86b, annihilator.go), then one exalted trigger per exalted
 // token (CR 113.2c, exalted.go), then one decayed trigger per decayed
 // token, then one renown trigger per "renown N" token (CR 702.112c,
-// renown.go).
+// renown.go), then one rampage trigger per "rampage N" token (CR
+// 702.23c, rampage.go).
 //
 // It reads the list through forEachAbilityToken, the same walk
 // HasKeyword uses, so the answer follows the layer engine on the
@@ -153,7 +154,7 @@ func keywordTriggersFor(c *Card) []TriggeredAbility {
 // (borrowedTriggersOf, ADR 0155's 2026-11-05 amendment).
 func keywordTriggersOver(walk func(fn func(string) bool)) []TriggeredAbility {
 	prowess, evolve, exalted, decayed, melee, enlist := 0, 0, 0, 0, 0, 0
-	var annihilator, renown []int
+	var annihilator, renown, rampage []int
 	walk(func(a string) bool {
 		switch a {
 		case KeywordProwess:
@@ -179,13 +180,18 @@ func keywordTriggersOver(walk func(fn func(string) bool)) []TriggeredAbility {
 			if n, ok := RenownValue(a); ok {
 				renown = append(renown, n)
 			}
+			// CR 702.23c (#5769, rampage.go): one trigger per
+			// "rampage N" instance, each with its own N.
+			if n, ok := RampageValue(a); ok {
+				rampage = append(rampage, n)
+			}
 		}
 		return true
 	})
-	if prowess+evolve+exalted+decayed+melee+enlist+len(annihilator)+len(renown) == 0 {
+	if prowess+evolve+exalted+decayed+melee+enlist+len(annihilator)+len(renown)+len(rampage) == 0 {
 		return nil
 	}
-	out := make([]TriggeredAbility, 0, prowess+evolve+exalted+decayed+melee+enlist+len(annihilator)+len(renown))
+	out := make([]TriggeredAbility, 0, prowess+evolve+exalted+decayed+melee+enlist+len(annihilator)+len(renown)+len(rampage))
 	for i := 0; i < prowess; i++ {
 		out = append(out, prowessTrigger)
 	}
@@ -209,6 +215,9 @@ func keywordTriggersOver(walk func(fn func(string) bool)) []TriggeredAbility {
 	}
 	for _, n := range renown {
 		out = append(out, renownTriggerFor(n))
+	}
+	for _, n := range rampage {
+		out = append(out, rampageTriggerFor(n))
 	}
 	return out
 }

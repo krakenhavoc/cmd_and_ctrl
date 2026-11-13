@@ -288,6 +288,13 @@ var canonicalKeywords = map[string]bool{
 	// Proud Pummeler) all trigger. CUMULATIVE (CR 702.121b: each
 	// instance triggers separately).
 	KeywordMelee: true,
+	// rampage (CR 702.23) joins with #5769, in the same change that
+	// teaches the engine to honour it. A TRIGGERED keyword built like
+	// melee (keywordTriggersFor, rampage.go) and NUMBERED like
+	// annihilator: stored as its family key, the tokens are "rampage N"
+	// minted by CanonicalRampageToken, and a bare "rampage" is refused.
+	// CUMULATIVE (CR 702.23c: each instance triggers separately).
+	KeywordRampage: true,
 	// enlist (CR 702.154) joins with #5658, in the same change that
 	// teaches the engine to honour it (enlist.go): the optional cost to
 	// attack is read off the attacker with HasKeyword, and the linked
@@ -630,7 +637,7 @@ func CanonicalKeyword(s string) (string, bool) {
 // same call for "Hexproof from").
 func CanonicalKeywords(s string) ([]string, bool) {
 	kw := strings.ToLower(strings.TrimSpace(s))
-	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator || kw == KeywordRenown || kw == KeywordModular {
+	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator || kw == KeywordRenown || kw == KeywordModular || kw == KeywordRampage {
 		return nil, false
 	}
 	if canonicalKeywords[kw] {
@@ -657,6 +664,10 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	if tok, ok := CanonicalModularToken(s); ok {
 		return []string{tok}, true
 	}
+	// Rampage (CR 702.23), #5769: "Rampage 2" is "rampage 2".
+	if tok, ok := CanonicalRampageToken(s); ok {
+		return []string{tok}, true
+	}
 	if toks, ok := ProtectionTokens(s); ok {
 		return toks, true
 	}
@@ -680,8 +691,9 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
 // "split second", rebound, sunburst, devoid, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
-// ToxicTotal. Nor is annihilator, read with AnnihilatorAmounts, or
-// renown, read with RenownAmounts.
+// ToxicTotal. Nor is annihilator, read with AnnihilatorAmounts,
+// renown, read with RenownAmounts, or rampage, read with
+// RampageAmounts.
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other
