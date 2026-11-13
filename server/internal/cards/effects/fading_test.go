@@ -270,10 +270,24 @@ func TestAncientHydraPingsAndDefenderEnVecShields(t *testing.T) {
 		t.Fatalf("Hydra entered with %d fade counters, want 5", got)
 	}
 
+	// The {1} is part of the cost: with no mana the ping is refused and
+	// no fade counter is spent. Only a Strict activation pays mana.
+	drainPool(t, g, me.ID)
+	if err := g.ActivateCatalogAbility(me.ID, hydra, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+		Strict:  true,
+	}); err == nil {
+		t.Fatal("pinged with no mana for its {1}")
+	}
+	if got := counterCount(g, hydra, game.CounterFade); got != 5 {
+		t.Fatalf("Hydra has %d fade counters after a refused ping, want 5", got)
+	}
+
 	before := lifeOf(g, opp.ID)
 	fillPool(me, 1)
 	if err := g.ActivateCatalogAbility(me.ID, hydra, 0, game.ActivateAbilityParams{
 		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+		Strict:  true,
 	}); err != nil {
 		t.Fatalf("ping: %v", err)
 	}
