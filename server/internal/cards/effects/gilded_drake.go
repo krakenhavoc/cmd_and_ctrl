@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // amendment): the target clause is marked StillResolves, so
 // spellAllTargetsIllegalLocked no longer removes the trigger under CR
 // 608.2b when its only target is gone. The trigger then runs, the
-// exchange cannot happen (CR 701.12b, and the explicit legality check
+// exchange cannot happen (CR 701.12a, and the explicit legality check
 // below for a target that is still on the battlefield but is no longer
 // a legal pick, e.g. it gained hexproof), and the Drake is sacrificed.
 //

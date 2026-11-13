@@ -69,7 +69,7 @@ func (g *Game) GainControlForEffect(sourceID, target, controller uuid.UUID, d Du
 // ExchangeControlForEffect exchanges control of two permanents
 // (CR 701.12), as Switcheroo does.
 //
-// ALL OR NOTHING (CR 701.12b): both objects are checked before
+// ALL OR NOTHING (CR 701.12a): both objects are checked before
 // either effect is registered, and if either has left the
 // battlefield no control is exchanged at all — the function returns
 // false having changed nothing.
