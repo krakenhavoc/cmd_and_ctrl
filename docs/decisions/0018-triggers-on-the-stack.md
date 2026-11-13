@@ -2641,7 +2641,7 @@ the pinned-target path of `eotSnapshot` (so `BoostUntilEOT`,
 through `withoutNewSourceObject` (`TurnFaceDown`, `PhaseOut`,
 `PhaseOutUntilLeaves` — which also refuses an `Until` that is a new
 object — `DoesntUntapNextUntapStep`, `TapAndFreeze`,
-`DoesntUntapWhile`), fight (`b10Fight`, CR 701.12b: no damage at all),
+`DoesntUntapWhile`), fight (`b10Fight`, CR 701.14b: no damage at all),
 and the "for as long as ~" duration builders (`DurationWhileSourceRemains`,
 `DurationWhileYouControlSource`, the hold in
 `TapAndHoldWhileThisRemainsTapped`: CR 611.2b, the effect never begins).

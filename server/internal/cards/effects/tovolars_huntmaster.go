@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Tovolar's Packleader (CR 702.145b), so it is that face's trigger that
 // sees it enter. The fight is a two-clause activated ability, each clause
 // carrying its own predicate (Bite Down's shape), and b10Fight does
-// nothing if either creature has left (CR 701.12b).
+// nothing if either creature has left (CR 701.14b).
 //
 // No simplification.
 func init() {
