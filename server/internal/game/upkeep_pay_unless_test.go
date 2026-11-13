@@ -93,7 +93,7 @@ func TestAnUpkeepPayUnlessHaltsTheTurn(t *testing.T) {
 		}
 	}
 	// Nothing moved: the table is still in the upkeep the question was
-	// asked in, which is the whole point (CR 500.4).
+	// asked in, which is the whole point (CR 500.2).
 	if g.Turn.Step != StepUpkeep {
 		t.Errorf("the cursor reached %q with the upkeep tax unanswered", g.Turn.Step)
 	}

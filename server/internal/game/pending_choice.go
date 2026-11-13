@@ -1118,7 +1118,7 @@ type PendingChoice struct {
 	// blocks the table, whatever its kind's classification says
 	// (Game.ChoicePromptBlocksTable, choice_gate.go): CR 117.3 does
 	// not let priority pass on with a required action outstanding and
-	// CR 500.4 does not let the step end until it has been taken. Set
+	// CR 500.2 does not let the step end until it has been taken. Set
 	// only by QueueUpkeepPayUnlessForEffect (upkeep_pay_unless.go),
 	// which is the one door into this shape.
 	//

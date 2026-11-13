@@ -21,7 +21,7 @@ import (
 // — or whether the player is still in the game. A table that takes
 // the turn while the prompt is open has walked past a decision its
 // own turn structure depends on: CR 117.3 does not let priority pass
-// on with a required action outstanding, and CR 500.4 does not let
+// on with a required action outstanding, and CR 500.2 does not let
 // the step end until it has been taken.
 //
 // WHY IT IS NOT A FLAG. #567 answered the same question for
@@ -110,7 +110,7 @@ type UpkeepPayUnlessPrompt struct {
 
 // QueueUpkeepPayUnlessForEffect queues the CR 118.12 prompt and
 // anchors it to the step the game is standing in, so the table cannot
-// leave that step until it is answered (CR 117.3, CR 500.4).
+// leave that step until it is answered (CR 117.3, CR 500.2).
 //
 // The ability that asked has finished resolving; what is left is the
 // payer's decision, which arrives as an ordinary resolve_choice. A
