@@ -1628,6 +1628,7 @@ payunless pay-unless/corpses-of-the-lost-return
 payunless pay-unless/counter-guarded
 payunless pay-unless/counter-guarded-exile
 payunless pay-unless/cradle-of-vitality-counters
+payunless pay-unless/crystal-shard-return-to-hand
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/curious-forager-return
 payunless pay-unless/cyclops-superconductor-damage
