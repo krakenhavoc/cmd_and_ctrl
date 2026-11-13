@@ -2295,6 +2295,7 @@ tail cumulative-upkeep/phyrexian-soulgorger-cumulative-upkeep-sacrifice-a-creatu
 tail cumulative-upkeep/polar-kraken-cumulative-upkeep-sacrifice-a-land
 tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
 tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
+tail cumulative-upkeep/sustaining-spirit-cumulative-upkeep-1-w
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
 tail cumulative-upkeep/uktabi-efreet-cumulative-upkeep-g

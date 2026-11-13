@@ -14275,6 +14275,11 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   steps, and gone by the postcombat main phase.
 - **Turn-face-up mana** has its own spend purpose, so a Peeper's `{U}` pays a morph cost and not a spell.
 - **The life floor caps the life the damage costs**, not the damage: lifelink and "dealt damage" triggers still see all of it.
+  A "lose life" effect or a life payment is not floored.
+- **A printed life floor** on a permanent ("Damage that would reduce your life total to less than 1 reduces it to 1
+  instead", Sustaining Spirit, #5770) is `PlayerLifeFloorOne: true` on the `Spec`. It is read off the battlefield on every
+  query (`game/life_floor.go`), like Platinum Emperion's `PlayerLifeTotalLocked`: it belongs to the permanent's controller,
+  follows a change of control, ends when the permanent leaves or loses its abilities, and writes nothing to the player.
 - **Entry counters for a duration** are a player grant read by a built-in entry replacement, so they reach tokens and cast
   creatures alike and outlive the planeswalker that made them.
 - **Commander identity in a static**: `CommanderIdentityColorsForEffect` answers `(colours, known)`. Grant nothing when

@@ -288,6 +288,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "PlayerKeywords", label: playerKeywordRows},
 	{field: "PlayerKeywordsIf", fallback: "Gives you an ability some of the time", ownLabel: true},
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
+	{field: "PlayerLifeFloorOne", label: boolRow("Damage that would reduce your life total to less than 1 reduces it to 1 instead.")},
 	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "LoyaltyTwiceEachTurn", label: boolRow("You may activate its loyalty abilities twice each turn rather than only once.")},
 	{field: "YourPlaneswalkersLoyaltyTwiceEachTurn", label: boolRow("You may activate the loyalty abilities of planeswalkers you control twice each turn rather than only once.")},

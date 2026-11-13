@@ -3744,6 +3744,17 @@ var items = []Item{
 		Issue:            2183,
 		NoCatalogExample: "Its one catalogued card, Ob Nixilis, Captive Kingpin, carries a caveat about the end-step edge of its play window, so none is listed as fully automated.",
 	},
+	{
+		// #3172 granted it for a turn (Angel's Grace); #5770 added the
+		// printed half on a permanent (Spec.PlayerLifeFloorOne, read off
+		// the battlefield in game/life_floor.go).
+		Slug: "life-floor-of-one", Name: "Damage that can't take you below 1 life", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that stop damage from taking your life total below 1, such as Sustaining Spirit's while it is on the battlefield and Angel's Grace's for a turn. The damage is still dealt in full, so lifelink and commander damage count all of it, and losing or paying life is not stopped.",
+		Rules:    []string{"120.3a"},
+		Issue:    5770,
+		Printed:  `(?i)\bdamage that would reduce your life total to less than 1 reduces it to 1 instead\b`,
+		Examples: []string{"Sustaining Spirit", "Angel's Grace"},
+	},
 
 	// Seams that have fully closed. They stay so the page can say so;
 	// their history is in engine-seams.md's Closed seams list.

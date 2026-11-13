@@ -1272,6 +1272,23 @@ type Spec struct {
 	// Issue #1200, ADR 0085.
 	PlayerLifeTotalLocked bool
 
+	// PlayerLifeFloorOne declares the printed static "Damage that would
+	// reduce your life total to less than 1 reduces it to 1 instead"
+	// (Sustaining Spirit), about this permanent's CONTROLLER. True while
+	// the permanent is on the battlefield and nowhere else.
+	//
+	//	PlayerLifeFloorOne: true,
+	//
+	// DERIVED, for PlayerLifeTotalLocked's reasons: the engine asks the
+	// battlefield on every query through game.CatalogPlayerLifeFloorOne.
+	// Only damage is floored; the damage is still dealt in full, and a
+	// "lose life" effect or a life payment is not floored. The GRANTED
+	// half, "until end of turn" (Angel's Grace), is
+	// Game.GrantLifeFloorForEffect.
+	//
+	// Issue #5770.
+	PlayerLifeFloorOne bool
+
 	// DamageStaysThroughCleanup declares the printed static "Damage
 	// isn't removed from this creature during cleanup steps" (CR 514.2 —
 	// Ancient Adamantoise). Judged on the battlefield through

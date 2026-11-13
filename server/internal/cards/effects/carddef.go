@@ -261,6 +261,7 @@ func buildDef(spec Spec) *game.CardDef {
 		PlayerKeywords:                      spec.PlayerKeywords,
 		PlayerKeywordsIf:                    spec.PlayerKeywordsIf,
 		PlayerLifeTotalLocked:               spec.PlayerLifeTotalLocked,
+		PlayerLifeFloorOne:                  spec.PlayerLifeFloorOne,
 		DamageStaysThroughCleanup:           spec.DamageStaysThroughCleanup,
 		LoyaltyTwiceEachTurn:                spec.LoyaltyTwiceEachTurn,
 		ActivateAsThoughHaste:               spec.ActivateAsThoughHaste,
