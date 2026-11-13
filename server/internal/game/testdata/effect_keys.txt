@@ -1071,6 +1071,7 @@ condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
 condition attack/each-creature-you-control-unblocked
 condition attack/nontoken-creatures-attack
+condition attack/that-creature-attacks-an-opponent-of-the-controller
 condition attack/that-creature-attacks-the-monarch
 condition attack/that-creature-unblocked
 condition attack/you-attack
