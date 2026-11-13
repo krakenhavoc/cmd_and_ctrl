@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strconv"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -41,22 +39,6 @@ func thisDealtDamage(ev game.Event, source *game.Card, _ game.Characteristic, _ 
 // (EventBlock's Amount, as in selfBlocksOnce).
 func aCreatureBlocked(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventBlock && ev.CardID != uuid.Nil && ev.Amount <= 1
-}
-
-// preventNextDamageToTheTarget is "Prevent the next N damage that would
-// be dealt to any target this turn" as an activated ability's body: the
-// charged shield (PreventNextDamage, CR 615.7) on the one target, at any
-// amount. A target gone by resolution gets no shield (CR 608.2b).
-func preventNextDamageToTheTarget(name string, n int) Effect {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		ts := ctx.LegalTargets()
-		if len(ts) == 0 {
-			return nil
-		}
-		label := name + ": prevent the next " + strconv.Itoa(n) + " damage"
-		return PreventNextDamage{Target: ts[0].ID, Amount: n, Label: label}.Apply(ctx)
-	}
 }
 
 // eachPlayerLifeChanges is "each player loses N life" (a negative

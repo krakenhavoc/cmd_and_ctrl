@@ -117,6 +117,7 @@ var reviewedNotAWipe = map[string]string{
 	// the Saprolings it created.
 	"Tombstone Stairwell":                      "destroys only the tokens it created, not a board",
 	"Saproling Burst":                          "destroys only the tokens it created, not a board",
+	"All Suns' Dawn":                           "\"Exile All Suns' Dawn\" is the spell exiling itself; it returns cards from your graveyard to hand, no permanents",
 	"Bag of Holding":                           "returns the cards it exiled, not permanents",
 	"Northampton Farm":                         "returns the cards it exiled to hand, not permanents",
 	"Baneblade Scoundrel // Baneclaw Marauder": "-1/-1 only to the creatures blocking it",
