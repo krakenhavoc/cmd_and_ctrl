@@ -505,6 +505,7 @@ choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cecily-haunted-mage-cast
 choose choose-cards/celestus-sanctifier-put
 choose choose-cards/cemetery-prowler-exile
+choose choose-cards/chain-of-plasma-discarded
 choose choose-cards/chain-of-smog-discarded
 choose choose-cards/chain-sacrifice-a-land
 choose choose-cards/chandra-flameshaper-play
@@ -2974,6 +2975,7 @@ tail then/cecil-dark-knight-darkness
 tail then/celebrate-the-mountain-king-exiled-one
 tail then/cerebral-download-draw
 tail then/chain-lightning-offer-red-payment
+tail then/chain-of-acid-offer-copy
 tail then/chain-of-vapor-offer-chain
 tail then/chain-sacrificed-offer-copy
 tail then/change-creature-type-word-replace
