@@ -156,9 +156,9 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The four declared skips must stay out until their seam lands:
+	// The declared skips must stay out until their seam lands:
 	// a put-a-card-from-hand-onto-the-battlefield prompt (Walking
-	// Atlas, Elvish Piper), a counter-removal cost on an ability that
+	// Atlas), a counter-removal cost on an ability that
 	// MOVES a counter rather than spending it (Power Conduit), and an
 	// opponent's three-way choice at resolution (Master of Ceremonies).
 	//
@@ -174,9 +174,14 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 	if _, ok := Lookup("3ed41d2d-211b-4013-8562-8c64d54cc43a"); !ok {
 		t.Error("Ramos, Dragon Engine is no longer skipped (#789) but is not registered")
 	}
+	// Elvish Piper came off this list in #5621: Quicksilver Amulet's
+	// PutFromHandOntoBattlefield is the put it waited on, and Urza's
+	// Destiny batch 2 registers it (elvish_piper.go).
+	if _, ok := Lookup("872ef617-7cdb-4a7a-85f5-efc9e12bece5"); !ok {
+		t.Error("Elvish Piper is no longer skipped (#5621) but is not registered")
+	}
 	for oracle, name := range map[string]string{
 		"855a4837-7fc8-4b97-afbd-daa88e322c89": "Walking Atlas",
-		"872ef617-7cdb-4a7a-85f5-efc9e12bece5": "Elvish Piper",
 		"2e358f7e-c282-4b92-8255-1436c99cda49": "Power Conduit",
 		"18ed0c8a-db8f-4247-87c4-544b833f01bd": "Master of Ceremonies",
 	} {
