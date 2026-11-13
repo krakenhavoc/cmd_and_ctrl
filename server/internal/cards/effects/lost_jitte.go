@@ -40,7 +40,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "Whenever equipped creature deals COMBAT DAMAGE" — to anything. A
 // blocked attacker that kills its blocker banks a counter just as a
 // connection to a player does, which is the difference between this
-// trigger and the Swords' "to a player" one.
+// trigger and the Swords' "to a player" one. It is one trigger per
+// combat damage step (WheneverEquippedCreatureDealsCombatDamage,
+// #5760): a trampler that hits its blocker and the player banks one
+// counter, and a double striker banks one in each damage step.
 //
 // No simplification.
 func init() {
@@ -49,9 +52,7 @@ func init() {
 		Name:         "Lost Jitte",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b43AttachedCreatureDealtCombatDamage(ev, source, g)
-			}, "Lost Jitte — put a charge counter on it", b33PutChargeCounterOnSelf),
+			WheneverEquippedCreatureDealsCombatDamage("Lost Jitte — put a charge counter on it", b33PutChargeCounterOnSelf),
 		},
 		Activated: []ActivatedAbility{
 			{
