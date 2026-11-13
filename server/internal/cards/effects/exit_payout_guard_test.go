@@ -146,6 +146,11 @@ var exitPayoutAllowlist = map[string]string{
 	"sokkas_haiku.go:42": "Sokka's Haiku's `t` is its second target, the land of \"Untap target " +
 		"land\": a separate printed sentence that reads the target's legality (CR 608.2b), never the " +
 		"mill's outcome, so a replaced or redirected mill cannot change whether the land untaps.",
+	"death_mutation.go:34": "Death Mutation's `mv` is Tainted Treats' read (#5614): \"Create X 1/1 " +
+		"green Saproling creature tokens, where X is that creature's mana value\" has no \"if you do\", " +
+		"so an indestructible target still makes the Saprolings, and `if mv <= 0` only skips a token " +
+		"count of nothing. The value is read before the destroy because that is the last moment the " +
+		"permanent is guaranteed findable (CR 608.2h).",
 }
 
 // exitVerb names one pausable exit and the continuation form a card

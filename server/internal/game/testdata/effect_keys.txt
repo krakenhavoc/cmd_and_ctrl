@@ -621,6 +621,7 @@ choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
 choose choose-cards/garnet-princess-of-alexandria-remove
+choose choose-cards/gerrards-verdict-life
 choose choose-cards/gert-and-old-lace-search
 choose choose-cards/gift-of-perfection-assimilate
 choose choose-cards/gifts-ungiven-settle
@@ -2143,6 +2144,7 @@ tail ancient-adamantoise/after-exile
 tail animists-awakening/rest-then-untap
 tail another-round/after-return
 tail anowon-the-ruin-thief/after-mill
+tail apocalypse/saprolings-per-mana-value
 tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
 tail archdruids-charm/bite
@@ -2879,6 +2881,7 @@ tail speak-secrets/after-mill
 tail specter-of-mortality/after-exile
 tail spelunking/gain-life-for-a-cave
 tail spikeshell-harrier/reduce-speed
+tail spiritmonger/color-chosen
 tail ss-botany-bay/then-you
 tail std-b26/come-back-wrong-return
 tail std-b26/nashi-after-mill
