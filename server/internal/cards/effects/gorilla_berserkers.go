@@ -11,9 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 creatures."
 //
 // Trample is the engine's keyword and rampage its keyword trigger (CR
-// 702.23, game/rampage.go). The semicolon is old wording for a comma, so
-// the keywords are declared here rather than left to the importer's line
-// scan. "Can't be blocked except by three or more creatures" is a block
+// 702.23, game/rampage.go). The semicolon is old wording for a comma,
+// which the importer's line scan reads as one since #5791; the keywords
+// are declared here as well, and the merge keeps one instance. "Can't be blocked except by three or more creatures" is a block
 // minimum (MinBlockers), so a declaration that blocks it names at least
 // three creatures.
 //

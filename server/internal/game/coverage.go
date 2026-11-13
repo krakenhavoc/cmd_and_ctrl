@@ -142,7 +142,8 @@ func UnimplementedNames(cards []Card) []string {
 //
 // Oracle text is newline-separated abilities. A keyword-ability line
 // holds nothing but keywords, comma-separated — "Flash", "Flying,
-// vigilance", "Reach, trample". Anything else standing on its own
+// vigilance", "Reach, trample" — or, in older wording, separated by
+// semicolons ("Flying; trample; rampage 4", #5791). Anything else standing on its own
 // line is a rule: a triggered ability, an activated ability, a static
 // effect, a spell instruction. Reminder text is removed first; it is
 // parenthesised by definition and never carries rules, so a Forest's
@@ -176,15 +177,19 @@ func printsUnhandledRules(text string) bool {
 	return false
 }
 
-// keywordOnlyLine reports whether every comma-separated item on the
-// line is a keyword the engine enforces. Empty items are skipped so a
+// keywordOnlyLine reports whether every item on the line, split on
+// commas and semicolons alike (KeywordLineParts, #5791), is a keyword
+// the engine enforces. A sentence that lists keywords between
+// semicolons — Built Bear's "1 point each → Flash; deathtouch; reach;
+// vigilance; or ward {2}" — still fails, because its other items are
+// not keywords. Empty items are skipped so a
 // stray trailing comma doesn't sink an otherwise clean keyword line;
 // a line that is nothing but punctuation therefore finds no keyword
 // at all and returns false, which the caller reads as "a rule" — the
 // conservative direction for text this function does not understand.
 func keywordOnlyLine(line string) bool {
 	found := false
-	for _, part := range strings.Split(line, ",") {
+	for _, part := range KeywordLineParts(line) {
 		if strings.TrimSpace(part) == "" {
 			continue
 		}
