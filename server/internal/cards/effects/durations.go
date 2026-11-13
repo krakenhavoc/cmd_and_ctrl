@@ -17,6 +17,7 @@ import (
 //
 //	DurationUntilEndOfTurn(ctx)
 //	DurationUntilYourNextTurn(ctx, player)
+//	DurationUntilYourNextUpkeep(ctx, player)
 //	DurationWhileSourceRemains(ctx, source)
 //	DurationWhileYouControlSource(ctx, source, player)
 //	game.IndefiniteDuration()
@@ -45,6 +46,18 @@ func DurationUntilEndOfTurn(ctx *Context) game.Duration {
 // begun (CR 800.4m).
 func DurationUntilYourNextTurn(ctx *Context, player uuid.UUID) game.Duration {
 	return ctx.Game.UntilYourNextTurnDuration(player)
+}
+
+// DurationUntilYourNextUpkeep is "until <player>'s next upkeep"
+// (#5737): Erhnam Djinn, Xenic Poltergeist. The effect ends as that
+// player's next upkeep step begins, before the upkeep's triggered
+// abilities are put on the stack (CR 503.1a), so Erhnam Djinn's next
+// trigger never sees last turn's forestwalk. A turn with a second upkeep
+// (CR 500.10) ends it at the second; a skipped upkeep never begins and
+// ends nothing. If that player has left the game, the effect ends as
+// the turn holding that upkeep would have begun (CR 800.4m).
+func DurationUntilYourNextUpkeep(ctx *Context, player uuid.UUID) game.Duration {
+	return ctx.Game.UntilYourNextUpkeepDuration(player)
 }
 
 // DurationWhileSourceRemains is "for as long as ~ remains on the

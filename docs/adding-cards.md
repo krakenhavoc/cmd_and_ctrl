@@ -1190,6 +1190,7 @@ func init() {
 |---|---|---|
 | "until end of turn" | `DurationUntilEndOfTurn(ctx)` | that turn's cleanup step (CR 514.2) |
 | "until your next turn" | `DurationUntilYourNextTurn(ctx, player)` | as that player's next turn begins, before untap — and when a departed player's turn *would have* begun (CR 800.4m) |
+| "until your next upkeep" | `DurationUntilYourNextUpkeep(ctx, player)` | as that player's next upkeep step begins, after untap and before the upkeep's triggers go on the stack (CR 503.1a); a second upkeep in one turn ends it, a skipped one doesn't, and a departed player's ends as their turn *would have* begun (CR 800.4m) (#5737) |
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
 | "this combat" / "until end of combat" | `DurationUntilEndOfCombat(ctx)` (second return false outside a combat phase: register nothing) | as the end of combat step ends, or an effect ends the phase (CR 511.3, 724.2d); an additional combat phase is a different combat (#2027) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
