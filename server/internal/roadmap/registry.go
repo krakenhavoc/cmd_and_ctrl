@@ -1645,9 +1645,10 @@ var items = []Item{
 		Examples: []string{"Doom Weaver", "Breathkeeper Seraph", "Mirage Phalanx"},
 	},
 	{
-		// #5757: soulbond's shape. The trigger is a catalog row
-		// (effects.Flanking), one per blocker; the token is what it asks
-		// of the blocker, stamped by the importer and declared on the row.
+		// #5757, #5784: a keyword trigger the engine derives from the
+		// ability list (game/flanking.go), one per instance and one per
+		// blocker; the token is also what it asks of the blocker. A
+		// granted flanking triggers, and a lost one does not.
 		Slug: "flanking", Name: "Flanking", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "Whenever a creature without flanking blocks a creature with flanking, the blocking creature gets -1/-1 until end of turn. A blocker that has flanking itself is not shrunk.",
 		Rules:    []string{"702.25", "509.3d"},

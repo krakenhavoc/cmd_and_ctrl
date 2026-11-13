@@ -115,7 +115,7 @@ func lentTriggerRowsOf(lender *Card) []BorrowedAbility {
 func lendableTriggeredKeyword(a string) bool {
 	switch a {
 	case KeywordProwess, KeywordEvolve, KeywordExalted, KeywordDecayed, KeywordMelee, KeywordEnlist,
-		KeywordUndying, KeywordPersist:
+		KeywordUndying, KeywordPersist, KeywordFlanking:
 		return true
 	}
 	if _, ok := AnnihilatorValue(a); ok {

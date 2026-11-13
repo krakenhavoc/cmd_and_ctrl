@@ -221,6 +221,11 @@ func KeywordIsCumulative(kw string) bool {
 	if kw == KeywordMelee {
 		return true
 	}
+	// Flanking (#5784): CR 702.25b, each instance triggers separately,
+	// so Agility on a creature that prints flanking is two triggers.
+	if kw == KeywordFlanking {
+		return true
+	}
 	_, ok := ToxicValue(kw)
 	return ok
 }

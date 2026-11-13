@@ -899,15 +899,15 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{game.KeywordSoulbond} and Triggered: Soulbond(name)`,
 	},
 	{
-		// #5757: flanking is soulbond's shape. The trigger is a catalog
-		// row (effects.Flanking) that asks the blocker for the token,
-		// so a card needs both.
+		// #5757, #5784: flanking is a canonicalKeywords token whose
+		// trigger the engine derives from the ability list
+		// (game/flanking.go), exalted's shape. Same probe as exalted.
 		Name:       "flanking",
 		Phrases:    []string{"flanking"},
 		Implements: printedKeywordProbe(game.KeywordFlanking),
 		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "flanking"`,
 		Confidence: Exact,
-		Adopt:      `PrintedKeywords: []string{game.KeywordFlanking} and Triggered: Flanking(name)`,
+		Adopt:      `PrintedKeywords: []string{game.KeywordFlanking} — the engine does the rest`,
 	},
 	{
 		// #2075 (ADR 0113 §4): undying and persist are canonicalKeywords

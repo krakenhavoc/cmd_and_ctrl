@@ -23,7 +23,7 @@ func init() {
 		Name:            "Searing Spear Askari",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Searing Spear Askari")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Searing Spear Askari")},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{R}: This creature gains menace until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerCombatGrant, Pump: &game.Pump{Keywords: []string{"menace"}}},

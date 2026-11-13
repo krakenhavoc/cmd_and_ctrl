@@ -19,6 +19,6 @@ func init() {
 		Name:            "Mtenda Herder",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Mtenda Herder")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Mtenda Herder")},
 	})
 }

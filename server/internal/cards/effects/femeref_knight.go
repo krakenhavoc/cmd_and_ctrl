@@ -21,7 +21,7 @@ func init() {
 		Name:            "Femeref Knight",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Femeref Knight")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Femeref Knight")},
 		Activated: []ActivatedAbility{{
 			Label:   "{W}: This creature gains vigilance until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerCombatGrant, Pump: &game.Pump{Keywords: []string{"vigilance"}}},
