@@ -85,6 +85,9 @@ var textWordLiteralAllowed = map[string]string{
 	"sivvis_ruse.go":       "alternative cost, judged as cast",
 	"sivvis_valor.go":      "alternative cost, judged as cast",
 	"snuff_out.go":         "alternative cost, judged as cast",
+	"massacre.go":          "alternative cost, judged as cast",
+	"mogg_salvage.go":      "alternative cost, judged as cast",
+	"refreshing_rain.go":   "alternative cost, judged as cast",
 
 	// "This land enters tapped unless you control …": asked as the land
 	// enters, a new object no text change has reached (CR 400.7, 614.12).
