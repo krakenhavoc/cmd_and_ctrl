@@ -10600,6 +10600,22 @@ and persisted snapshots retain them. Exert, as it attacks and as a
 cost, has its own section below ([ADR 0130](decisions/0130-exert.md)). See [ADR 0058](decisions/0058-doesnt-untap.md) and
 [ADR 0070](decisions/0070-untap-step-choices.md).
 
+Read the possessive (#5753, the Homelands cards). "Doesn't untap during
+YOUR next untap step" (Reveka, Wizard Savant; Samite Alchemist; Spectral
+Bears) is `Player: ctx.Controller()`: Reveka's ruling says that under
+another player's control it untaps in that player's step. "During ITS
+CONTROLLER'S next untap step" (Labyrinth Minotaur, Joven's Ferrets) is
+`Player: uuid.Nil`: their rulings say the mark follows the creature to a
+new controller. A creature the card names without targeting it ("that
+creature" from a block trigger) is not re-checked at resolution the way
+a target is. So the trigger's `Build` stamps the object as
+`item.Params.Object` (or `Params.Objects` for a set), and the effect
+skips it if `ObjectEpochForEffect` has changed (CR 400.7). "Creatures
+that blocked this creature this turn" is read from the turn's
+`EventBlock` records, which a creature put onto the battlefield blocking
+never writes (CR 509.4). See `creaturesThatBlockedThisTurn` in
+[jovens_ferrets.go](../server/internal/cards/effects/jovens_ferrets.go).
+
 Those markers are for a set the card names ("those creatures"). When the
 card names a PLAYER's permanents instead ("Lands target player controls
 don't untap during their next untap step", "Lands you control don't
