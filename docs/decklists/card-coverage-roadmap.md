@@ -156,10 +156,10 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **14459** |
-| — whole cards (bare `oracle_id`) | **13977** |
+| Registry keys (`len(effects.All())`) | **14476** |
+| — whole cards (bare `oracle_id`) | **13994** |
 | — back faces (`<oracle_id>#1`) | 482 |
-| Declared `full` | 14459 |
+| Declared `full` | 14476 |
 | Declared `caveats` | 0 |
 | Declared `unreviewed` | 0 |
 | Planes and phenomena in the card database with a catalog row | 14 of 196 |
