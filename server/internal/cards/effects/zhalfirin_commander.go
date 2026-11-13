@@ -22,7 +22,7 @@ func init() {
 		Name:            "Zhalfirin Commander",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Zhalfirin Commander")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Zhalfirin Commander")},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}{W}: Target Knight creature gets +1/+1 until end of turn.",
 			Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),

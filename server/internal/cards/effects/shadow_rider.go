@@ -17,6 +17,6 @@ func init() {
 		Name:            "Shadow Rider",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Shadow Rider")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Shadow Rider")},
 	})
 }

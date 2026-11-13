@@ -23,7 +23,7 @@ func init() {
 		Name:            "Burning Shield Askari",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Burning Shield Askari")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Burning Shield Askari")},
 		Activated: []ActivatedAbility{{
 			Label:   "{R}{R}: This creature gains first strike until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerCombatGrant, Pump: &game.Pump{Keywords: []string{"first strike"}}},

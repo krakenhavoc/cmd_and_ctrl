@@ -21,6 +21,6 @@ func init() {
 		Name:            "Jolrael's Centaur",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"shroud", game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Jolrael's Centaur")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Jolrael's Centaur")},
 	})
 }

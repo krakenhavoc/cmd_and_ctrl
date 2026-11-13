@@ -25,7 +25,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
 		Triggered: []game.TriggeredAbility{
-			Flanking("Sidar Jabari"),
+			RetiredFlankingRow("Sidar Jabari"),
 			distractingGeistTap("Sidar Jabari — tap target creature defending player controls"),
 		},
 	})

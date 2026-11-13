@@ -26,7 +26,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
 		Triggered: []game.TriggeredAbility{
-			Flanking("Telim'Tor"),
+			RetiredFlankingRow("Telim'Tor"),
 			WheneverThisAttacks("Telim'Tor — all attacking creatures with flanking get +1/+1 until end of turn",
 				Do(BoostUntilEOT{Match: And(AttackingCreature(), HasKeyword(game.KeywordFlanking)), Power: 1, Toughness: 1,
 					Label: "Telim'Tor — attacking creatures with flanking get +1/+1"})),

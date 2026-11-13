@@ -166,6 +166,7 @@ body fight-the-blank-fight/fight
 body fin/return-the-objects-to-hand
 body fin/unattach-the-objects
 body fire-lord-sozin/reanimate
+body flanking/shrink
 body flash/cleanup-sacrifice
 body flicker/return-exiled-lands-tapped
 body flicker/return-exiled-to-owners

@@ -19,7 +19,7 @@ func init() {
 		Name:            "Zhalfirin Knight",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Zhalfirin Knight")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Zhalfirin Knight")},
 		Activated: []ActivatedAbility{{
 			Label:   "{W}{W}: This creature gains first strike until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerCombatGrant, Pump: &game.Pump{Keywords: []string{"first strike"}}},

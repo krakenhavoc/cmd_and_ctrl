@@ -21,7 +21,7 @@ func init() {
 		Name:            "Cadaverous Knight",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Cadaverous Knight")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Cadaverous Knight")},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}{B}: Regenerate this creature.",
 			Purpose: game.Purpose{Answers: game.AnswerSurvive},

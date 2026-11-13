@@ -19,7 +19,7 @@ func init() {
 		Name:            "Fallen Askari",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Fallen Askari")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Fallen Askari")},
 		Static:          []game.StaticAbility{RestrictSelf(game.CantBlock)},
 	})
 }
