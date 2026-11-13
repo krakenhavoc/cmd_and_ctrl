@@ -419,6 +419,18 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}Card.svelte`],
     doc: "a Vehicle's crewed badge (ADR 0186 §6): the creatures tapped this turn to crew it; the names come from the board, and an ID with no card there is left out",
   }),
+  pairedBadge: dynamicLabel({
+    stem: "paired",
+    match: "prefix",
+    shape: "paired with <name>, or paired",
+    make: (names: readonly string[]) =>
+      names.length > 0 ? `paired with ${andList(names)}` : "paired",
+    example: [["Llanowar Elves"]],
+    kind: "aria",
+    role: "generic",
+    owners: [`${BOARD}Card.svelte`],
+    doc: "a paired creature's badge (#5675, CR 702.95b): the creature a soulbond ability paired it with; the name comes from the board, and an ID with no card there is left out",
+  }),
   saddledBadge: dynamicLabel({
     stem: "saddled ",
     match: "prefix",
@@ -2345,6 +2357,38 @@ export const LABEL_SPECS = {
     role: "status",
     owners: ["lib/gameClosed.ts", "lib/connectionBanner.ts"],
     doc: "ADR 0211 §4, #5082: what a refused join, spectate, start, deck, bot or setup says for the server's `game_closed` code, and the connection banner's headline once a failed redial finds the table archived",
+  }),
+  idleCloseNotice: dynamicLabel({
+    stem: " unless someone moves",
+    match: "suffix",
+    shape: "This game closes <when> unless someone moves",
+    make: (when: string) => `This game closes ${when} unless someone moves`,
+    example: ["at 21:14 on Friday"],
+    kind: "text",
+    role: "status",
+    owners: ["lib/idleClose.ts"],
+    doc: "ADR 0211 §6: the one-line notice over the action dock once a started game has had no move by a person for 36 hours; `when` is the closing time in the viewer's own clock (`idle_close_at`), and any person's move takes it away",
+  }),
+  closedIdleLobby: label({
+    name: "Closed: never started",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/idleClose.ts"],
+    doc: "ADR 0211 owner decision 4: the result chip in Tables › History and the admin views for a table the server closed after a day unstarted with no activity (`closed_reason: idle_lobby`)",
+  }),
+  closedIdleGame: label({
+    name: "Closed: no moves",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/idleClose.ts"],
+    doc: "ADR 0211 owner decision 4: the result chip for a started game the server closed after two days with no move by a person (`closed_reason: idle_game`)",
+  }),
+  closedIdleBots: label({
+    name: "Closed: only bots left",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/idleClose.ts"],
+    doc: "ADR 0211 owner decision 4: the result chip for a game the server closed after an hour with only bots playing and nobody at the table (`closed_reason: idle_bots`)",
   }),
 
   // -- Automatic answers (ADR 0127) --

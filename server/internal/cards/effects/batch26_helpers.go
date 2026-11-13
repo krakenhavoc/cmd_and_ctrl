@@ -243,6 +243,17 @@ func b26TargetPermanentCardInYourGraveyardWithManaValueAtMostPowerOf(oracleID st
 // twice the nonbasic lands they control. Counts are snapshotted
 // before any damage is dealt.
 func b26DamageEachPlayerTwiceTheirNonbasicLands(ctx *Context) error {
+	return damageEachPlayerByCount(ctx, func(player uuid.UUID) int {
+		return 2 * b26NonbasicLandsControlled(ctx.Game, player)
+	})
+}
+
+// damageEachPlayerByCount is "<this> deals damage to each player equal
+// to <a count of that player's>": every seated player, the controller
+// included, takes the amount `count` gives for them (Price of Progress,
+// Acidic Soil). Every count is read before any damage is dealt, and the
+// damage is one simultaneous instance.
+func damageEachPlayerByCount(ctx *Context, count func(player uuid.UUID) int) error {
 	type hit struct {
 		player uuid.UUID
 		amount int
@@ -252,7 +263,7 @@ func b26DamageEachPlayerTwiceTheirNonbasicLands(ctx *Context) error {
 		if p == nil || p.Eliminated {
 			continue
 		}
-		hits = append(hits, hit{p.ID, 2 * b26NonbasicLandsControlled(ctx.Game, p.ID)})
+		hits = append(hits, hit{p.ID, count(p.ID)})
 	}
 	return ctx.Game.DamageInstanceForEffect(func() error {
 		for _, h := range hits {

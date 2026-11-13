@@ -86,6 +86,7 @@ var tokenTable = map[string]game.Card{
 	"0/1 green Egg with defender":                                   {Name: "Egg", TypeLine: "Token Creature — Egg", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/2 green Plant with defender":                                 {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
+	"0/1 green Sheep":                                               {Name: "Sheep", TypeLine: "Token Creature — Sheep", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"0/1 red Kobolds of Kher Keep":                                  {Name: "Kobolds of Kher Keep", TypeLine: "Token Creature — Kobold", Power: 0, Toughness: 1, Colors: []string{"R"}},
 	"0/1 white Goat":                                                {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
 	"0/4 colorless Wall artifact with defender":                     {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
@@ -335,6 +336,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 green Legendary Dog named Porthos":                            {Name: "Porthos", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green and white Legendary Dog named Angelo":                   {Name: "Angelo", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"2/2 green Legendary Dog Detective named Tiny with trample":        {Name: "Tiny", TypeLine: "Token Legendary Creature — Dog Detective", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"trample"}},
+	"8/8 black Legendary Zombie God named Vecna with indestructible":   {Name: "Vecna", TypeLine: "Token Legendary Creature — Zombie God", Power: 8, Toughness: 8, Colors: []string{"B"}, Keywords: []string{"indestructible"}},
 	"2/2 white and black Legendary Dog named Darkstar":                 {Name: "Darkstar", TypeLine: "Token Legendary Creature — Dog", Power: 2, Toughness: 2, Colors: []string{"W", "B"}},
 	"3/3 colorless Illusion artifact":                                  {Name: "Illusion", TypeLine: "Token Artifact Creature — Illusion", Power: 3, Toughness: 3},
 	"3/3 white Angel with flying":                                      {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -467,4 +469,7 @@ var tokenTable = map[string]game.Card{
 	// #5647: Saint Traft and Rem Karolus, Invasion of Segovia.
 	"1/1 blue Spirit with flying":  {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Kraken with trample": {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"trample"}},
+
+	// #5637: Fallen Empires' Citizen (Icatian Town).
+	"1/1 white Citizen": {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"W"}},
 }

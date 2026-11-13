@@ -199,6 +199,8 @@ func (g *Game) durationPhraseLocked(d Duration, sourceName string) string {
 		return "until end of turn"
 	case UntilYourNextTurn:
 		return "until " + g.playerNameLocked(d.Player) + "'s next turn"
+	case UntilYourNextUpkeep:
+		return "until " + g.playerNameLocked(d.Player) + "'s next upkeep"
 	case UntilEndOfCombat:
 		return "until end of combat"
 	case ForAsLongAs:

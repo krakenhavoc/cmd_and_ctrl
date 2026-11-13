@@ -1204,10 +1204,12 @@ func (g *Game) stampStartingLoyaltyLocked(cardID uuid.UUID, oracleID string) {
 // startingLoyaltyOf is the loyalty the CR 306.5b stamp places: the
 // printed value, else the catalog's fallback (see
 // stampStartingLoyaltyLocked's source precedence). Zero or less means
-// the stamp opens no counter event at all.
+// the stamp opens no counter event at all. A starting loyalty a copy
+// exception set (Card.StartingLoyaltyKnown, #5668) is the number, 0
+// included: the catalog's printed value is not consulted.
 func startingLoyaltyOf(c *Card, oracleID string) int {
 	loyalty := c.StartingLoyalty
-	if loyalty <= 0 && CatalogStartingLoyalty != nil && oracleID != "" {
+	if loyalty <= 0 && !c.StartingLoyaltyKnown && CatalogStartingLoyalty != nil && oracleID != "" {
 		loyalty = CatalogStartingLoyalty(oracleID)
 	}
 	return loyalty

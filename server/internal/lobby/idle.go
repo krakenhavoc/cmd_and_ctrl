@@ -100,6 +100,20 @@ func (l *Lobby) touchLocked(entry *gameEntry) {
 		return
 	}
 	entry.lastTouched = l.idleNow()
+	// Activity answers a warning (§6). The sweep would see it on its
+	// next tick; the table's notice goes now.
+	if !entry.idleWarnedAt.IsZero() {
+		l.clearIdleWarningLocked(entry)
+	}
+}
+
+// clearIdleWarningLocked takes back entry's warning (§6): the sweep's
+// own record of it and the room's idle_close_at. Callers hold l.mu.
+func (l *Lobby) clearIdleWarningLocked(entry *gameEntry) {
+	entry.idleWarnedAt, entry.idleCloseAt = time.Time{}, time.Time{}
+	if entry.room != nil {
+		entry.room.SetIdleCloseAt(time.Time{})
+	}
 }
 
 // TouchTable is touchLocked for an HTTP route that acts on a table
@@ -113,11 +127,13 @@ func (l *Lobby) TouchTable(id uuid.UUID) {
 }
 
 // resetIdleLocked forgets entry's in-memory idle state: the bot-only
-// clock and any warning. Callers hold l.mu.
+// clock and its play-out, and any warning. Callers hold l.mu.
 func (l *Lobby) resetIdleLocked(entry *gameEntry) {
 	entry.botOnlySince = time.Time{}
-	entry.idleWarnedAt = time.Time{}
-	entry.idleCloseAt = time.Time{}
+	l.clearIdleWarningLocked(entry)
+	if entry.room != nil {
+		entry.room.SetPlayOut(false)
+	}
 }
 
 // lastActivityLocked is the newest of everything that counts as entry's
@@ -164,6 +180,19 @@ func idleWarnLead(after time.Duration) time.Duration {
 // by a person: every seat not out of the game is a bot or a stand-in
 // (ADR 0211 §2). Callers hold l.mu.
 func botOnlyLocked(entry *gameEntry) bool {
+	out := outOfGameLocked(entry)
+	for _, s := range entry.meta.Players {
+		if out[s.PlayerID] || s.IsBot || s.StandIn != "" {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// outOfGameLocked is the seats of entry's game that are out of it: they
+// conceded or lost. Callers hold l.mu.
+func outOfGameLocked(entry *gameEntry) map[uuid.UUID]bool {
 	out := map[uuid.UUID]bool{}
 	entry.room.Game.ReadSnapshot(func() {
 		for _, pl := range entry.room.Game.Seats {
@@ -172,13 +201,7 @@ func botOnlyLocked(entry *gameEntry) bool {
 			}
 		}
 	})
-	for _, s := range entry.meta.Players {
-		if out[s.PlayerID] || s.IsBot || s.StandIn != "" {
-			continue
-		}
-		return false
-	}
-	return true
+	return out
 }
 
 // idleCandidate is one table the sweep looks at, copied under l.mu.
@@ -287,7 +310,7 @@ func (l *Lobby) idleStepLocked(e *gameEntry, lim capacity.Limits, now time.Time,
 
 	// Any activity since the warning takes it back.
 	if !e.idleWarnedAt.IsZero() && last.After(e.idleWarnedAt) {
-		e.idleWarnedAt, e.idleCloseAt = time.Time{}, time.Time{}
+		l.clearIdleWarningLocked(e)
 	}
 	graceEnds := e.residentSince.Add(IdleResidencyGrace)
 	inGrace := now.Before(graceEnds)
@@ -307,16 +330,26 @@ func (l *Lobby) idleStepLocked(e *gameEntry, lim capacity.Limits, now time.Time,
 		return nil
 	}
 
-	// §2: a game left to its bots, with nobody at the table.
+	// §2: a game left to its bots, with nobody at the table. Its bots
+	// play it out fast (owner decision 2, sub-PR 5) so it reaches a real
+	// result; the close an hour on is only the backstop for a stall. A
+	// person connecting to their seat ends the play-out at once
+	// (ws.Hub.ServeWS); this sweep ends it too, or starts it again, as
+	// the condition comes and goes.
 	if lim.IdleBotsAfter > 0 && !watched && botOnlyLocked(e) {
 		if e.botOnlySince.IsZero() {
 			e.botOnlySince = now
+		}
+		if !e.room.PlayingOut() {
+			e.room.SetPlayOut(true)
+			slog.Default().Info("bot-only table playing out", "game_id", id)
 		}
 		if alone := now.Sub(e.botOnlySince); alone >= lim.IdleBotsAfter && !inGrace {
 			return l.closeIdleLocked(e, ClosedIdleBots, int(alone/time.Minute), now)
 		}
 	} else {
 		e.botOnlySince = time.Time{}
+		e.room.SetPlayOut(false)
 	}
 
 	after := idleGameAfter(e, lim)
@@ -364,18 +397,27 @@ func (l *Lobby) storeLastActiveLocked(e *gameEntry, last time.Time) {
 }
 
 // warnIdleLocked warns a started game that it will be closed at
-// closesAt (ADR 0211 §6): a line in its log, and the warning held in
-// memory until a move clears it. Callers hold l.mu.
+// closesAt (ADR 0211 §6): a line in its log, idle_close_at on its view
+// (the table's notice), and a DM to the people still in it who asked
+// for "Your turn" DMs. The warning is held in memory until a move
+// clears it. Callers hold l.mu.
 func (l *Lobby) warnIdleLocked(e *gameEntry, hours int, now, closesAt time.Time) func() {
+	// Set before the commit, so the frame that carries the log line
+	// carries the notice too.
+	e.room.SetIdleCloseAt(closesAt)
 	broadcast, err := l.applyLocked(e.meta.ID, e, func() error {
 		e.room.Game.NoteIdleClose(game.IdleCloseWarning, hours, closesAt)
 		return nil
 	})
 	if err != nil {
+		e.room.SetIdleCloseAt(time.Time{})
 		slog.Default().Warn("idle warning failed", "game_id", e.meta.ID, "err", err)
 		return nil
 	}
 	e.idleWarnedAt, e.idleCloseAt = now, closesAt
+	if l.events != nil {
+		l.events.TableIdleWarning(e.meta.ID, closesAt, hours)
+	}
 	metrics.IdleWarned()
 	slog.Default().Info("idle table warned", "game_id", e.meta.ID, "idle_hours", hours,
 		"closes_at", closesAt.UTC().Format(time.RFC3339))

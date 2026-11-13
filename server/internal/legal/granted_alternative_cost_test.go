@@ -90,3 +90,68 @@ func TestEnumeratorOffersAGrantedFreeCastAtTheSpellsTiming(t *testing.T) {
 	}
 	dispatchAll(t, g, seat.ID, castMovesFor(moves, sorcery))
 }
+
+const oracleTestHenzie = "test-5667-legal-henzie"
+
+// withLegalGrantedBlitz stubs a grantor spelled as
+// effects.BlitzForCreatureSpellsYouCast(4) builds it, with a reduction of
+// blitz costs alone by two (CostQuery.AltBlitz), as
+// effects.BlitzCostsYouPayCostLessForEachCommanderCast is after two
+// commander casts.
+func withLegalGrantedBlitz(t *testing.T) {
+	t.Helper()
+	prevGrants, prevMods := game.CatalogGrantedAlternativeCosts, game.CatalogCostModifiers
+	four := 4
+	game.CatalogGrantedAlternativeCosts = func(key string) []game.GrantedAlternativeCost {
+		if key != oracleTestHenzie {
+			return nil
+		}
+		return []game.GrantedAlternativeCost{{
+			Offer:            game.AlternativeCost{Key: game.GrantedAltCostBlitz, Label: "Blitz", Blitz: true},
+			Spells:           game.PermissionFilter{CreatureOnly: true},
+			MinManaValue:     &four,
+			PricedAtManaCost: true,
+		}}
+	}
+	game.CatalogCostModifiers = func(id string) []game.CostModifier {
+		if id != oracleTestHenzie {
+			return nil
+		}
+		return []game.CostModifier{{
+			Kind:      game.CostReduction,
+			Label:     "Blitz costs you pay cost {2} less.",
+			AppliesTo: func(q game.CostQuery) bool { return q.AltBlitz && q.Controller == q.Source.Controller },
+			Amount:    func(game.CostQuery) int { return 2 },
+		}}
+	}
+	t.Cleanup(func() {
+		game.CatalogGrantedAlternativeCosts, game.CatalogCostModifiers = prevGrants, prevMods
+	})
+}
+
+// #5667: the enumerator prices a granted blitz with the reduction that
+// applies to blitz costs alone, as the engine does. Two Forests pay the
+// {3}{G} creature's blitz cost less {2} and not its mana cost, so the one
+// cast offered claims granted-blitz, and CastSpell accepts it.
+func TestEnumeratorPricesAGrantedBlitzWithABlitzCostReduction(t *testing.T) {
+	withLegalGrantedBlitz(t)
+	g := newTable(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	clearHand(seat)
+	advanceTo(t, g, game.StepPrecombatMain)
+	basicLands(g, seat, 2, "Forest")
+	battlefieldCard(g, seat, game.Card{Name: "Test Henzie", TypeLine: "Legendary Creature — Devil Rogue", OracleID: oracleTestHenzie})
+	ogre := handCard(seat, creature("Test Ogre", "{3}{G}", 4, 4))
+	// Mana value 3: no blitz, and its {2}{G} is out of reach of two lands.
+	small := handCard(seat, creature("Test Goblin", "{2}{G}", 2, 2))
+
+	moves := legal.EnumerateFor(g, seat.ID)
+	casts := castPayloadsOf(t, moves, ogre)
+	if len(casts) != 1 || casts[0].AlternativeCost != game.GrantedAltCostBlitz {
+		t.Fatalf("casts of the Ogre = %+v, want one claiming granted-blitz: %v", casts, labels(moves))
+	}
+	if casts := castPayloadsOf(t, moves, small); len(casts) != 0 {
+		t.Fatalf("a three-drop was offered a cast with two lands: %+v", casts)
+	}
+	dispatchAll(t, g, seat.ID, castMovesFor(moves, ogre))
+}

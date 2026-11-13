@@ -142,3 +142,35 @@ func TestPacingNowReadsAMidGameSettingsChange(t *testing.T) {
 		t.Errorf("after mid-game change: pacingNow() = (%v, %v), want slow's (2s, 8s) — the runner must not have cached the old preset", min, max)
 	}
 }
+
+// ADR 0211 §2, owner decision 2 (sub-PR 5): while the room plays a game
+// left to its bots out, every runner there plays at the fast preset,
+// whatever the table's own pace; the table's settings are untouched, so
+// the people's pace comes back the moment the play-out ends.
+func TestPacingNowPlaysABotOnlyGameOutFast(t *testing.T) {
+	room := paceRoom(t)
+	r := &Runner{room: room, cfg: Config{FollowTablePace: true, MinThink: defaultMinThink, MaxThink: defaultMaxThink}}
+	slow := game.BotPaceSlow
+	if err := room.Game.UpdateSettings(uuid.Nil, game.SettingsPatch{BotPace: &slow}); err != nil {
+		t.Fatalf("UpdateSettings: %v", err)
+	}
+
+	room.SetPlayOut(true)
+	if min, max := r.pacingNow(); min != 0 || max != defaultMaxThink {
+		t.Errorf("playing out: pacingNow() = (%v, %v), want fast's (0, %v)", min, max, defaultMaxThink)
+	}
+	if hold := r.stackHoldNow(); hold != 0 {
+		t.Errorf("playing out: stackHoldNow() = %v, want fast's 0", hold)
+	}
+	if got := room.Game.TableSettingsSnapshot().BotPace; got != game.BotPaceSlow {
+		t.Errorf("the play-out changed the table's pace to %q", got)
+	}
+
+	room.SetPlayOut(false)
+	if min, max := r.pacingNow(); min != 2*time.Second || max != 8*time.Second {
+		t.Errorf("after the play-out: pacingNow() = (%v, %v), want the table's slow (2s, 8s)", min, max)
+	}
+	if hold := r.stackHoldNow(); hold != botPacePresets[game.BotPaceSlow].StackHold {
+		t.Errorf("after the play-out: stackHoldNow() = %v, want slow's", hold)
+	}
+}

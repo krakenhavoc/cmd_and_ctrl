@@ -81,6 +81,8 @@ func adminLiveTables(in []LiveTable) []adminview.LiveTable {
 			Archived:  t.Archived,
 			Practice:  t.Practice,
 			Seats:     make([]adminview.LiveSeat, 0, len(t.Seats)),
+			// ADR 0211 §5.
+			ClosedReason: t.ClosedReason,
 		}
 		for _, s := range t.Seats {
 			lt.Seats = append(lt.Seats, adminview.LiveSeat{

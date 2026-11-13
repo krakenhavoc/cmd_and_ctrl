@@ -55,3 +55,17 @@ No card in the catalog makes that observable. The only life-loss replacements ar
 - Bloodletter of Aclazotz ships Full as one `ReplacementEffect` (`effects.OpponentsLoseTwiceThatMuchLifeDuringYourTurn`) with no damage-specific code.
 - Any later "would lose life" replacement automatically sees damage. A replacement that must not see it has no flag to read yet. None is printed in the catalog.
 - If a replacement in the window turned the loss into a gain, the damage would cost no life and gain nothing. No printed card does that to damage.
+
+## Amendment 2026-11-12 — a loss the window turns into a gain is gained (#5678)
+
+The last consequence above said a loss turned into a gain "would cost no life and gain nothing", because no printed card did that to damage. Enduring Angel does: "If your life total would be reduced to 0 or less, instead transform this creature and your life total becomes 3." At 2 life, 5 damage becomes "your life total becomes 3", and CR 119.5 says "the player gains or loses the necessary amount of life to end up with the new total", here a gain of 1. Gaining nothing would leave the player at 2, weaker than printed.
+
+So `damageLifeLossThroughReplacementsLocked` now also returns the settled life event when it owes more than a plain loss, and `finishDamageLifeInsteadLocked` (`game/life_instead.go`) lands it after the damage event and the lifelink credit:
+
+- **A gain** lands through the one life tail (`applyResolvedLifeChangeLocked`), as an `EventChangeLife` of its own. The damage event still says the damage dealt, with all of it as `DamageNotLifeLoss`: the damage cost no life (CR 120.3a's loss was replaced, CR 614.6).
+- **A loss smaller than the damage** (12 damage at 10 life becomes a loss of 7) needs nothing new: it is the ordinary result, and Decision 4's arithmetic already records it.
+- **"Then ... you lose the game"** rides the event as `ReplacementEvent.LifeThenLoses` and is carried out after the damage has landed ([ADR 0057](0057-win-and-lose-by-effect.md), amendment of the same date).
+
+Decision 3's order stands: the window, then the Angel's Grace floor, then the lock. With both a floor and an Enduring Angel the Angel therefore applies first. CR 616.1 gives that choice to the affected player; taking it away is the same declared simplification Decision 3 already makes, and under the floor's own card the player cannot lose the game either way.
+
+Decision 2 (`mustSettleNow`) stands too. Enduring Angel and Bloodletter of Aclazotz are now two different loss replacements, so their order is observable for damage (Bloodletter first leaves 3 life; the Angel first leaves the doubled difference). For damage the window applies them in the gathered order without asking; for a loss that is not damage the affected player is asked (`TestEnduringAngelOrderingPromptSurvivesARestore`). That is the case Decision 2 said to revisit, and it is left as it was: the damage tail still has no resume.

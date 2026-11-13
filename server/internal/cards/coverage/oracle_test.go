@@ -44,6 +44,13 @@ var knownOracleMismatches = map[string]string{
 	"Tidal Control | cost not printed | pay 2 life":                      "one choice of cost written as two rows; this is the life row",
 	"Tidal Control | cost not printed | {2}":                             "one choice of cost written as two rows; this is the mana row",
 	"Tidal Control | printed ability not registered | pay 2 life or {2}": "registered as two rows, one per cost",
+
+	// Crystal Shard prints one ability with a choice of cost, "{3}, {T}
+	// or {U}, {T}", written as two rows for Tidal Control's reason. Each
+	// row's label names the cost it charges, so neither is the printed
+	// cost line (#5606).
+	"Crystal Shard | cost not printed | {3}, {t}": "one choice of cost written as two rows; this is the {3} row",
+	"Crystal Shard | cost not printed | {u}, {t}": "one choice of cost written as two rows; this is the {U} row",
 }
 
 func loadOracleFixture(t *testing.T) map[string]OracleCard {

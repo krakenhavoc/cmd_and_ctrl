@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -432,6 +433,70 @@ func TestMyGamesListsSeatsNewestFirstWithoutInvites(t *testing.T) {
 	_, games, _ = getMyGames(t, s, idTok)
 	if len(games) != 2 || games[1].ArchivedAt == nil || games[1].Rejoin != "" {
 		t.Errorf("archived game = %+v, want archived_at set and no rejoin", games[1])
+	}
+}
+
+// ADR 0211 owner decision 4 (sub-PR 4): My games says why the server
+// closed a table, from games.closed_reason, live and from the row; an
+// admin's archive gives no reason, and an unarchive takes it away.
+func TestMyGamesSaysWhyTheServerClosedATable(t *testing.T) {
+	s := newMyGamesStack(t)
+	idTok := identityTokenFromCallback(t, s.srv, s.state)
+	who := mustValidate(t, s.auth, idTok)
+	idle, _ := s.lobby.Create("Nobody came")
+	decodeSession(t, postJSON(t, s.srv, "/join", idTok, map[string]string{"invite_token": idle.InviteToken}), http.StatusOK)
+	time.Sleep(2 * time.Millisecond) // created_at is stored in ms
+	byHand, _ := s.lobby.Create("Archived by hand")
+	decodeSession(t, postJSON(t, s.srv, "/join", idTok, map[string]string{"invite_token": byHand.InviteToken}), http.StatusOK)
+	if _, err := s.lobby.SetArchived(byHand.ID, true); err != nil {
+		t.Fatal(err)
+	}
+
+	s.lobby.SetCapacity(capacity.Defaults(), nil)
+	later := time.Now().Add(25 * time.Hour)
+	s.lobby.SetIdleClock(func() time.Time { return later })
+	s.lobby.TickIdle()
+
+	reasons := func() map[uuid.UUID]MyGame {
+		t.Helper()
+		status, games, _ := getMyGames(t, s, idTok)
+		if status != http.StatusOK {
+			t.Fatalf("GET /me/games = %d", status)
+		}
+		out := map[uuid.UUID]MyGame{}
+		for _, g := range games {
+			out[g.ID] = g
+		}
+		return out
+	}
+	got := reasons()
+	if g := got[idle.ID]; g.ArchivedAt == nil || g.ClosedReason != ClosedIdleLobby || g.Rejoin != "" {
+		t.Errorf("the idle-closed table = %+v, want archived, closed_reason %q and no rejoin", g, ClosedIdleLobby)
+	}
+	if g := got[byHand.ID]; g.ArchivedAt == nil || g.ClosedReason != "" {
+		t.Errorf("the admin's archive = %+v, want archived with no closed_reason", g)
+	}
+
+	// The row says the same, for a table no longer in memory.
+	recs, err := s.lobby.store.SeatsOfUser(context.Background(), who.UserID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range recs {
+		want := ""
+		if r.Game.ID == idle.ID {
+			want = ClosedIdleLobby
+		}
+		if r.Game.ClosedReason != want {
+			t.Errorf("row %q: closed_reason %q, want %q", r.Game.Name, r.Game.ClosedReason, want)
+		}
+	}
+
+	if _, err := s.lobby.SetArchived(idle.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	if g := reasons()[idle.ID]; g.ArchivedAt != nil || g.ClosedReason != "" {
+		t.Errorf("after an unarchive: %+v, want open with no closed_reason", g)
 	}
 }
 

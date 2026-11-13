@@ -622,6 +622,21 @@ const (
 	// EventTapCard precedes it.
 	EventEnlist EventKind = "enlist"
 
+	// EventAttackTaxPaid — an attack declaration paid its CR 508.1h
+	// cost to one taxing permanent (#5271): Propaganda's, Ghostly
+	// Prison's, Windborn Muse's "can't attack you unless their
+	// controller pays {2}". Actor is the player who paid, Target the
+	// defending player, Source and CardID the permanent whose clause
+	// charged (for a tax with a duration, attack_tax_duration.go, the
+	// card that made it), and Label what that permanent charged this
+	// payment, e.g. "{2}{2}" for two creatures.
+	//
+	// Emitted only by payAttackTaxLocked, after the payment succeeds:
+	// one event per (defending player, taxing permanent) pair, so a
+	// board with two taxes says both. A refused declaration paid
+	// nothing and emits nothing. A log breadcrumb, watched by nothing.
+	EventAttackTaxPaid EventKind = "attack_tax_paid"
+
 	// EventForage — a player foraged (CR 701.61a, #5184): exiled three
 	// cards from their graveyard or sacrificed a Food, as a cost, an
 	// additional cost or an effect's "you may forage". Actor is the
@@ -1896,6 +1911,14 @@ type Event struct {
 	Sides int    `json:"sides,omitempty"`
 	Call  string `json:"call,omitempty"`
 	Won   bool   `json:"won,omitempty"`
+
+	// Modifier is, on an EventRollDie, what the instruction added to
+	// (negative: subtracted from) the die (CR 706.2, DiceRoll.Modifier,
+	// #5681). Amount stays the natural result, the number the die shows,
+	// and the result of the roll is Amount + Modifier (RollResult). Zero
+	// on a roll with no modifier, on a planar die and on every other
+	// kind.
+	Modifier int `json:"modifier,omitempty"`
 
 	// PlanarFace is the face a planar die showed on an EventRollDie
 	// (CR 901.3a, ADR 0216 §4): PlanarFaceBlank, PlanarFaceChaos or

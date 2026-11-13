@@ -169,6 +169,23 @@ idle-closed table is unloaded: its room, restore point and snapshot are
 removed (the replay is kept) and its row is written `ended`, still
 archived and with no outcome.
 
+**Telling people** (ADR 0211 §6). When a started game is warned, its
+view carries `idle_close_at` ([protocol.md](protocol.md)) until the next
+move by a person, and the table shows one line over the action dock:
+"This game closes at 21:14 on Friday unless someone moves". The people
+still playing their own seats who have the "Your turn" DM switch on, and
+are away, get one Discord DM saying when it closes
+(`cmdctrl_dm_notifications_total{kind="idle_warning"}`, see
+[notifications](#get-menotifications-and-put-menotifications-adr-0162)).
+A table the sweep closed says why in [`GET /me/games`](#get-megames)
+and the [admin views](#get-admingames) (`closed_reason`). A game left to
+its bots is **played out at the fast bot pace** while nobody is at the
+table, so it reaches a real result (owner decision 2): the sweep turns
+the play-out on, and off again when a person's seat has a socket, which
+also turns it off at once on connecting. The table's own pace setting
+is never changed, and the one-hour close stays as the backstop for a
+game that stalls.
+
 **The Discord join at the connection cap.** `GET /auth/discord/callback`
 is a browser navigation, so a JSON 503 would be shown as a blank page. At
 the connection cap, an invite-link callback does **not** claim the seat:
@@ -3451,6 +3468,14 @@ authenticated, you are just not a person.
   `winner_seat` come from the engine, as `GET /games` reads them.
 - `rejoin` is present only while the table is still open: live in this
   process and not archived. It is the path to POST for a seat session.
+- `closed_reason` ([ADR 0211](decisions/0211-closing-idle-tables.md)
+  owner decision 4, omitempty) is why the server closed the table for
+  being idle: `idle_lobby` (a day unstarted with no activity),
+  `idle_game` (two days with no move by a person) or `idle_bots` (an
+  hour with only bots playing and nobody at the table). It is absent for
+  an open table and for an admin's archive, and an unarchive clears it.
+  It stays on the row after the closed table is unloaded. Tables ›
+  History shows it as the row's result ("Closed: no moves").
 - No invite token appears anywhere in the response.
 
 ### Cubes: `GET`, `POST /me/cubes`; `GET`, `PUT`, `DELETE /me/cubes/{id}`
@@ -4755,7 +4780,7 @@ one **off** until the person turns it on:
 
 | Switch | A DM is sent when |
 |---|---|
-| `turn` | the game has waited on you for **2 minutes** while you are away |
+| `turn` | the game has waited on you for **2 minutes** while you are away; and, once, when a game you are still playing has had no move for 36 hours and will be closed ([ADR 0211](decisions/0211-closing-idle-tables.md) §6, owner decision 3: no switch of its own) |
 | `table_ready` | a table you sit at has filled (every seat taken) or started while you are away |
 | `table_filled` | a table you host has filled while you are away |
 
@@ -4765,7 +4790,12 @@ most **one DM per player per table per 10 minutes**, across all three.
 Never to a bot, an agent seat, a guest or a spectator, and never about a
 practice table. The message is one line naming the table (and the turn,
 for `turn`) and a link to `/#/games/{id}`, which rejoins a signed-in
-player's seat the usual way (`POST /me/games/{id}/session`).
+player's seat the usual way (`POST /me/games/{id}/session`). The idle
+warning also skips a seat that is out of the game or played by a
+stand-in, names the closing time as a Discord timestamp (each reader
+sees their own time zone), is dropped if a move takes the warning back
+first, and, held back by the 10-minute window, is sent once the window
+has passed rather than dropped.
 
 Same caller rule as the rest of `/me/*`: a signed-in person. No
 credential is **401**; a guest's seat, a spectator link and the admin
@@ -4810,7 +4840,8 @@ synced settings body, which the server never reads (ADR 0110 §4).
 Account deletion deletes the row. The rate window and the two-minute
 clocks are in memory: a restart forgets them, which at worst sends one
 extra DM. Every attempt is counted in
-`cmdctrl_dm_notifications_total{kind, result}`, `result` being `sent`,
+`cmdctrl_dm_notifications_total{kind, result}` (`kind` the three
+switches and `idle_warning`), `result` being `sent`,
 `refused` (50007) or `error`. A 429 from Discord waits once, up to five
 seconds; anything else is logged and dropped, never retried late.
 
@@ -6355,6 +6386,14 @@ A table row:
   ended, or was archived after it started, with none recorded (as
   `cmdctrl_games_ended_total{outcome="closed"}` counts it); absent for a
   table that has not ended.
+- `closed_reason` ([ADR 0211](decisions/0211-closing-idle-tables.md)
+  §5, omitempty) is why the idle sweep closed the table, `idle_lobby`,
+  `idle_game` or `idle_bots`, as in [`GET /me/games`](#get-megames);
+  absent for an admin's archive and once the table is unarchived (memory
+  answers for a loaded table). The views show it as the outcome.
+  `last_active_at` (omitempty) is the table's last activity as the sweep
+  last wrote it (`games.last_active_at`, at most one sweep stale), absent
+  for a row the sweep has never seen.
 - `creator` is absent for a table the token created.
 - `loaded` is whether the table's room is in memory now. A row in state
   `lobby` or `active` that is not loaded did not come back after a

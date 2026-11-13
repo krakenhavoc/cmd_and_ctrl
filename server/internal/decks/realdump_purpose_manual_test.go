@@ -122,6 +122,7 @@ var reviewedNotAWipe = map[string]string{
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
 	"The Apprentice's Folly":                   "sacrifices only its controller's own Reflection tokens, not a board",
 	"Bewildering Blizzard":                     "-3/-0 kills nothing",
+	"Marsh Gas":                                "-1/-0 kills nothing",
 	"Mouth of the Storm":                       "-3/-0 until your next turn kills nothing",
 	"Call Forth the Tempest":                   "damage equal to spells cast this turn: no fixed amount or X for a sweep to declare",
 	"Demonic Consultation":                     "exiles cards from your own library, no permanents",

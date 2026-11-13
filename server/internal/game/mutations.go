@@ -510,6 +510,8 @@ type CastSpellParams struct {
 	// permanents, the count off each, and the kind (one for the payment,
 	// or one per part when the parts differ). Empty is the ordinary case;
 	// a payment sent with no counter component to pay is refused.
+	// #5679: for an offer that removes X counters (Light Up the Night's
+	// flashback) the counts must total the XValue announced.
 	CounterSourceIDs []uuid.UUID
 	CounterCounts    []int
 	CounterKind      string
@@ -1084,7 +1086,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #5390, CR 601.2b / 118.3: the offer's "remove N counters from
 	// among creatures you control", through the activation's own
 	// validator. Paid below, first of the board costs.
-	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castCounterPayment(params))
+	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castCounterPayment(params), params.XValue)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad counter-removal payment",
 			"card_name", card.Name,
@@ -3975,6 +3977,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// #3931, CR 702.180a: harmonize's, read off the creature the
 		// claimed offer names while it is still untapped.
 		AltTappedPower: g.altTappedPowerLocked(p.ID, card, params),
+		// #5667, CR 702.152a: whether the claimed offer is a blitz cost
+		// (Henzie "Toolbox" Torre's "Blitz costs you pay cost {1} less").
+		AltBlitz: g.altBlitzLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 		// and its "costs {N} more" (Zero, Incorporeal Sensate).
@@ -4568,6 +4573,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// caster chose, after the main spell's (spliced texts wait for a
 	// prompt an earlier instruction opened, as a later bullet does).
 	g.runSpellBodiesLocked(item, ModeSpecFor(CatalogKey(top)), CatalogKey(top), ownText)
+	// #5682, CR 614.1c: "As this creature enters, roll X d6." The dice of
+	// a permanent spell's own entry clause are rolled here, before its
+	// entry begins, so a replacement of the roll that asks which roll to
+	// ignore is one more prompt the tail below waits for (dice_cost.go).
+	g.rollEntryDiceLocked(top, item)
 	// #3613, CR 608.2c / 608.2n: an effect that asked something is not
 	// finished until the answer is in, so neither is the spell. The
 	// rest of this resolution — the exit below and the log's

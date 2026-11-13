@@ -205,6 +205,25 @@ const (
 	ManaRestrictSpellNotOwned = "spell:not-owned"
 )
 
+// ManaRestrictAltCost builds "spend this mana only to pay a [keyword]
+// cost" for a keyword that is an alternative cost of a spell (#5680,
+// CR 106.6, CR 118.9): Unblinking Observer's "to pay a disturb cost" is
+// ManaRestrictAltCost("disturb"). The key is the AlternativeCost.Key the
+// keyword's constructor writes (effects.Disturb's "disturb"), so the tag
+// admits a cast that claims that printed offer and nothing else: not the
+// same card cast for its mana cost, not a cast for another alternative
+// cost (flashback and escape are graveyard casts too, which is why
+// ManaRestrictCastFromGraveyard is too wide), not an activation, and not
+// a cast whose payment did not name the cost it pays (weaker than
+// printed, never stronger). The whole cost of such a cast is the
+// alternative cost with its increases and reductions (CR 601.2f), so
+// the mana pays all of it. ManaSpendContext.AltCost is what it reads.
+// Combine it with a cast clause through ManaRestrictAnyOf.
+func ManaRestrictAltCost(key string) string { return altCostKey + ":" + key }
+
+// altCostKey is the tag key of ManaRestrictAltCost.
+const altCostKey = "alt"
+
 // ManaRestrictManaValueAtLeast builds "spend this mana only to cast
 // spells with mana value N or greater" (#4694, CR 106.6, CR 202.3):
 // Ashling, Rimebound's ManaRestrictManaValueAtLeast(4). It is a clause
@@ -431,6 +450,13 @@ type ManaSpendContext struct {
 	// alternative cost. False for every payment that is not a cast.
 	ManaCostHasX bool
 
+	// AltCost is the key of the printed alternative cost the cast claims
+	// (AlternativeCost.Key, CR 118.9): what ManaRestrictAltCost reads
+	// (#5680). Set by ManaSpendForCastParams when the card prints the
+	// offer the cast names; empty for a cast at the mana cost, for a
+	// granted offer, and for every payment that is not a cast.
+	AltCost string
+
 	// FaceDownSpell is set when the spell being cast is cast face down
 	// (CR 708.4): what ManaRestrictFaceDownSpell reads. False for every
 	// payment that is not a cast.
@@ -534,12 +560,21 @@ func ManaSpendForCastFrom(c Card, from ZoneKind) ManaSpendContext {
 func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
 	from, _ := castZoneFromWire(params.FromZone)
 	ctx := ManaSpendForCastFrom(c, from)
-	if alt := AlternativeCostByKey(castOfferKey(c), params.AlternativeCost); alt != nil {
+	alt := AlternativeCostByKey(castOfferKey(c), params.AlternativeCost)
+	if alt == nil {
+		// CR 712.11d, ADR 0107 §4: a disturb cast has already turned the
+		// card to its back face, whose own entry prints no offer; the
+		// claim is the front face's (#5680).
+		alt = frontFaceCastOffer(c, params.AlternativeCost)
+	}
+	if alt != nil {
 		if alt.SpendOnlySources != 0 {
 			ctx.SourceOnly = alt.SpendOnlySources
 		}
 		// #4834: the cost paid is the alternative one.
 		ctx.CostHasX = strings.Contains(alt.ManaCost, "{X}")
+		// #5680: and it is this one.
+		ctx.AltCost = alt.Key
 	}
 	// #4694: the spell's mana value on the stack counts the X announced
 	// for it (CR 202.3e). Only an {X} in its MANA cost counts, so an
@@ -833,6 +868,9 @@ func (ctx ManaSpendContext) matchesKeyed(key, value string) bool {
 		return containsFold(ctx.Colors, value)
 	case manaValueKey:
 		return ctx.matchesManaValue(value)
+	case altCostKey:
+		// #5680: a clause about the cost a spell is cast for.
+		return ctx.Purpose == SpendPurposeCast && ctx.AltCost == value
 	}
 	return false
 }

@@ -1231,6 +1231,15 @@ type ReplacementEvent struct {
 	// is not Canceled): no life moves and no EventChangeLife is emitted.
 	LifePayment bool
 
+	// LifeThenLoses is set by a replacement whose body ends "Then ...
+	// you lose the game" (Enduring Angel, life_instead.go): the card the
+	// loss comes from, uuid.Nil for none. The loss is part of the
+	// replaced event and comes after the rest of it, so the place the
+	// event lands carries it out (CR 104.3e), not the Replace that
+	// decided it: other replacements may still apply in between, and a
+	// CR 616 ordering prompt may park the event.
+	LifeThenLoses uuid.UUID
+
 	// lifeTail is the life half's answer to damageTail: the rest of
 	// the effect that asked for this change, run with the amount that
 	// actually moved once the pipeline settles. Set by the *Then*
@@ -1354,6 +1363,11 @@ type ReplacementEvent struct {
 	// riders the applied replacements added, in the order they applied.
 	// Plain data; a replacement appends to a fresh slice.
 	rollShields []diceShield
+	// rollIgnoreLowest counts the applied "plus one and ignore the lowest
+	// roll" replacements (Pixie Guide, #5681): that many more of the
+	// lowest rolls are ignored. Set only through
+	// RollOneMoreAndIgnoreLowest.
+	rollIgnoreLowest int
 
 	// mustSettleNow marks an event that CANNOT pause: the pipeline
 	// must reach a settled answer before applyReplacementsLocked

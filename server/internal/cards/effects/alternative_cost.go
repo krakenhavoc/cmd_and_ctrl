@@ -180,6 +180,35 @@ func FlashbackSacrifice(n int, label string, preds ...CardPredicate) game.Altern
 	return ac
 }
 
+// FlashbackRemoveXCounters is "Flashback—<mana>, Remove X <kind> counters
+// from among <permanents> you control. If you cast this spell this way, X
+// can't be 0." (CR 702.34a, CR 107.3a, #5679): Light Up the Night's
+//
+//	FlashbackRemoveXCounters("{3}{R}", game.CounterLoyalty, "planeswalkers you control", Planeswalker())
+//
+// Flashback's cast from the graveyard and its exile on leaving the stack,
+// with a counter removal beside the mana whose size is the spell's X. The
+// offer is an alternative cost that includes X, so CR 107.3b does not
+// lock X at 0: the caster announces X, at least 1, and removes exactly
+// that many counters of the kind, split across the matching permanents
+// they control however they choose (chosen, not targeted). A caster whose
+// permanents hold no such counter can't claim it (CR 118.3). The payment
+// rides cast_spell's counter_source_ids / counter_counts and its total is
+// the x_value. The card file still lists ZoneGraveyard in CastableZones,
+// as for Flashback, and reads the X with ctx.X() like any {X} spell.
+func FlashbackRemoveXCounters(mana, kind, label string, preds ...CardPredicate) game.AlternativeCost {
+	ac := Flashback(mana)
+	ac.Label = "Flashback—" + mana + ", Remove X " + kind + " counters from among " + label
+	ac.RemoveCounters = &game.CounterRemovalCost{
+		Counter:  kind,
+		N:        1,
+		From:     TargetPermanent(label, preds...),
+		Among:    true,
+		Variable: true,
+	}
+	return ac
+}
+
 // SacrificeInstead is the Fireblast clause: "You may sacrifice two
 // Mountains rather than pay this spell's mana cost" (#1727), paid from
 // hand:

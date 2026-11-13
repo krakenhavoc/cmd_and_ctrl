@@ -55,6 +55,10 @@ type Seat struct {
 	Host   bool
 	Bot    bool
 	Agent  bool
+	// Out is a seat no longer in the game: it conceded or lost.
+	Out bool
+	// StandIn is a person's seat a stand-in bot is playing (ADR 0177).
+	StandIn bool
 }
 
 // person reports whether the seat may ever be messaged: a signed-in
@@ -73,6 +77,9 @@ type Table struct {
 	Seats []Seat
 	// Full is whether every seat is taken.
 	Full bool
+	// IdleCloseAt is when the server will close the game for having had
+	// no move (ADR 0211 §6), zero while it is not warned.
+	IdleCloseAt time.Time
 }
 
 // Tables is the lobby's half: which tables there are, and who the
@@ -156,9 +163,11 @@ type eventKind int
 const (
 	eventFilled eventKind = iota
 	eventStarted
+	eventIdleWarning
 )
 
-// event is a table filling or starting, queued for EventGrace.
+// event is a table filling or starting, or a started game warned that it
+// will be closed, queued for EventGrace.
 type event struct {
 	kind eventKind
 	game uuid.UUID
@@ -166,6 +175,13 @@ type event struct {
 	// that is certainly not away, and is never told.
 	by  uuid.UUID
 	due time.Time
+	// closesAt and hours are an idle warning's closing time and how long
+	// the game has had no move.
+	closesAt time.Time
+	hours    int
+	// to narrows an idle warning to one person: the retry of one the
+	// rate window held back. uuid.Nil is everyone it is for.
+	to uuid.UUID
 }
 
 // Notifier decides who to message and sends it. Safe for concurrent
@@ -245,8 +261,24 @@ func (n *Notifier) TableStarted(game uuid.UUID) {
 	n.queue(event{kind: eventStarted, game: game})
 }
 
+// TableIdleWarning queues ADR 0211 §6's warning for table game: it will
+// be closed at closesAt, having had no move for hours. It goes once to
+// every signed-in person still playing their own seat there who has the
+// "Your turn" switch on (owner decision 3) and is away, like every DM
+// here (someone at the table reads the table's own notice); never to a
+// bot, an agent, a guest, a spectator, a seat that is out of the game or
+// one a stand-in is playing. A move before it is sent takes the warning
+// back, and the DM with it.
+func (n *Notifier) TableIdleWarning(game uuid.UUID, closesAt time.Time, hours int) {
+	n.queue(event{kind: eventIdleWarning, game: game, closesAt: closesAt, hours: hours})
+}
+
 func (n *Notifier) queue(ev event) {
 	ev.due = n.cfg.Now().Add(EventGrace)
+	n.enqueue(ev)
+}
+
+func (n *Notifier) enqueue(ev event) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if len(n.events) >= maxEvents {
@@ -316,6 +348,10 @@ func (n *Notifier) tickEvents(ctx context.Context, now time.Time, active map[uui
 		if !ok {
 			continue
 		}
+		if ev.kind == eventIdleWarning {
+			n.idleWarning(ctx, now, active, t, ev)
+			continue
+		}
 		switch ev.kind {
 		case eventFilled:
 			// Only while it is still full and waiting to start: once it
@@ -354,6 +390,37 @@ func (n *Notifier) tickEvents(ctx context.Context, now time.Time, active map[uui
 			}
 			n.send(ctx, now, active, s.UserID, t.ID, kind, content)
 		}
+	}
+}
+
+// idleWarning sends one idle warning (TableIdleWarning) to the people it
+// is for, while the table still stands warned for the same closing time:
+// a move since takes it back, and a later warning queues its own. A
+// person the rate window holds back is tried again once the window has
+// passed, rather than dropped: unlike "your turn", the warning is still
+// true then, and there is only one.
+func (n *Notifier) idleWarning(ctx context.Context, now time.Time, active map[uuid.UUID]Prefs, t Table, ev event) {
+	if t.State != StateActive || !t.IdleCloseAt.Equal(ev.closesAt) {
+		return
+	}
+	for _, s := range t.Seats {
+		if !s.person() || s.Out || s.StandIn || (ev.to != uuid.Nil && s.UserID != ev.to) {
+			continue
+		}
+		if p, ok := active[s.UserID]; !ok || !p.Wants(KindIdleWarning) {
+			continue
+		}
+		if away, _ := n.cfg.Presence.SeatAway(t.ID, s.PlayerID); !away {
+			continue
+		}
+		if !n.claim(s.UserID, t.ID, now) {
+			retry := ev
+			retry.to, retry.due = s.UserID, now.Add(Window)
+			n.enqueue(retry)
+			continue
+		}
+		n.send(ctx, now, active, s.UserID, t.ID, KindIdleWarning,
+			idleWarningMessage(t.Name, ev.closesAt, ev.hours, n.link(t.ID)))
 	}
 }
 

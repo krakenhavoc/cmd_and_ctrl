@@ -405,6 +405,10 @@ var cardFields = plan(
 	"Colors", carried, "",
 	"ColorIdentity", carried, "",
 	"StartingLoyalty", carried, "",
+	// #5668: travels with StartingLoyalty. A restore that dropped it
+	// would let a copy with starting loyalty 0 enter with the printed
+	// number.
+	"StartingLoyaltyKnown", carried, "",
 	"Keywords", carried, "",
 	// Multi-face model (#357). Printed per-face data: which face is
 	// up decides TypeLine, ManaCost and P/T, so a restore that lost
@@ -572,6 +576,7 @@ var cardFields = plan(
 	// #2322 / CR 707.9d: a colour-setting copy exception dropped the
 	// copied devoid. Carried: nothing else on the card says so.
 	"ColorCDADropped", carried, "",
+	"LostKeywords", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
@@ -676,6 +681,7 @@ var cardFields = plan(
 	// for Monstrous's reason.
 	"Suspected", carried, "",
 	"SuspectedAt", carried, "",
+	"PairedWith", carried, "",
 	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
 	// emblem's count of temptations, carried for Harnessed's reason.
 	"RingBearer", carried, "",
@@ -988,6 +994,8 @@ var stackItemFields = plan(
 	// #3768. Carried: the permission that said "that artifact enters
 	// tapped" may be spent or gone by the time the spell resolves.
 	"EntersTapped", carried, "",
+	// #5682: the dice a permanent spell rolled as it began to enter.
+	"EntryRolls", carried, "",
 	// CR 708.4 (#1194, ADR 0082). Carried: a restore that lost it
 	// would resolve a morph on the stack into a face-UP creature,
 	// revealing the card to the table and handing it back every

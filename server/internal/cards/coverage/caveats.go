@@ -333,6 +333,14 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Freerunning("{cost}", "Assassin")} — the Assassin-or-commander gate rides the constructor (#3172)`,
 	},
 	{
+		Name:       "prowl",
+		Phrases:    []string{"prowl"},
+		Implements: altCost("prowl"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "prowl") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Prowl("{cost}")} — the spell's creature types gate rides the constructor (#5509)`,
+	},
+	{
 		// ADR 0107 §4 (#1855): CR 702.146, an alternative cost bound to
 		// the graveyard that casts the card's back face.
 		Name:       "disturb",
@@ -867,6 +875,17 @@ var mechanics = []Mechanic{
 		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "unleash"`,
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{game.KeywordUnleash} — the engine does the rest`,
+	},
+	{
+		// #5675: soulbond is a canonicalKeywords token; its two
+		// triggers are catalog rows (effects.Soulbond) that read it off
+		// the layered ability list, so a card needs both.
+		Name:       "soulbond",
+		Phrases:    []string{"soulbond"},
+		Implements: printedKeywordProbe(game.KeywordSoulbond),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "soulbond"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordSoulbond} and Triggered: Soulbond(name)`,
 	},
 	{
 		// #2075 (ADR 0113 §4): undying and persist are canonicalKeywords

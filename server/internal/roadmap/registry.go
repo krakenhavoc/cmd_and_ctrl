@@ -495,6 +495,12 @@ var items = []Item{
 		Mechanic: "freerunning",
 	},
 	{
+		Slug: "prowl", Name: "Prowl", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Cast a spell for its prowl cost if a creature you controlled that shared one of its creature types dealt combat damage to a player this turn.",
+		Rules:    []string{"702.76"},
+		Mechanic: "prowl",
+	},
+	{
 		Slug: "free-cast", Name: "Free casts", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Spells you may cast without paying their mana cost when a condition holds, such as controlling your commander.",
 		Mechanic: "free cast",
@@ -1612,6 +1618,19 @@ var items = []Item{
 		Mechanic: "unleash",
 		Printed:  printedKeyword("unleash"),
 		Examples: []string{"Exava, Rakdos Blood Witch", "Chaos Imps", "Hellhole Flailer"},
+	},
+	{
+		// #5675: the pair is a link on both creatures (game/soulbond.go);
+		// the keyword's two triggers are catalog rows (effects.Soulbond)
+		// that read this token off the layered ability list.
+		Slug: "soulbond", Name: "Soulbond", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "You may pair a soulbond creature with another unpaired creature you control when either enters. They stay paired for as long as you control both creatures.",
+		Rules:    []string{"702.95", "603.4"},
+		Issue:    5675,
+		Keywords: []string{game.KeywordSoulbond},
+		Mechanic: "soulbond",
+		Printed:  printedKeyword("soulbond"),
+		Examples: []string{"Doom Weaver", "Breathkeeper Seraph", "Mirage Phalanx"},
 	},
 	{
 		// #2075 (ADR 0113 §4): dies keywords whose triggers the engine

@@ -91,6 +91,19 @@ type AlternativeCost struct {
 	// Read-only, under g.mu. Added in S28.
 	Condition func(g *Game, controller uuid.UUID) bool
 
+	// SpellCondition is Condition for a gate that reads the SPELL being
+	// cast: prowl's "a source that ... had any of this spell's creature
+	// types" (CR 702.76a, Enigma Thief, #5509). `spell` is the card in the
+	// zone it is cast from, read through the zone layers (zone_layers.go),
+	// so a type an effect gives it there (Maskwood Nexus, Leyline of
+	// Transformation) counts, as the prowl ruling says. Both readers ask it
+	// before the card moves (CR 601.2a): the view's offer stamp and
+	// CastSpell's validator. A nil spell, a card the engine cannot find,
+	// is refused. Nil means no such gate; an offer may carry both.
+	//
+	// Read-only, under g.mu.
+	SpellCondition func(g *Game, controller uuid.UUID, spell *Card) bool
+
 	// Life is a "pay N life" component of the alternative cost (CR
 	// 119.4) — Force of Will's 1 life, Snuff Out's 4.
 	//
@@ -360,6 +373,15 @@ type AlternativeCost struct {
 	// payment that does not total exactly N. The counters come off with
 	// the spell already on the stack, before any other board cost, so a
 	// creature both drained and sacrificed by the one cast pays both.
+	//
+	// #5679: the count may be the caster's to announce (Variable, with N
+	// the floor) — Light Up the Night's "Flashback—{3}{R}, Remove X
+	// loyalty counters from among planeswalkers you control. If you cast
+	// this spell this way, X can't be 0." That X is the spell's X: the
+	// offer is an alternative cost that includes X (CR 107.3a), so CR
+	// 107.3b does not lock X at 0 (CountersDefineX, PaymentDefinesX), the
+	// caster announces X (CR 601.2b) and the payment must total exactly
+	// it. The printed floor is N, so "X can't be 0" is N: 1.
 	RemoveCounters *CounterRemovalCost
 
 	// PayLabel is the picker's prompt copy for the card component —
@@ -760,9 +782,24 @@ func (a *AlternativeCost) Beholds() bool {
 // X, so CR 107.3b leaves the X announcement open (CastCost.AltIncludesX),
 // and the payment validator holds the named card's mana value to it.
 // Nil-safe.
+//
+// #5679: so is an offer that removes X counters (CountersDefineX), where
+// the number removed is the X.
 func (a *AlternativeCost) PaymentDefinesX() bool {
+	if a.CountersDefineX() {
+		return true
+	}
 	spec, _, _ := a.cardComponent()
 	return spec != nil && spec.ManaValueEqualsX
+}
+
+// CountersDefineX reports whether this offer removes X counters, X being
+// the spell's X (#5679, CR 107.3a): Light Up the Night's "Remove X
+// loyalty counters from among planeswalkers you control". The counter
+// payment must then total exactly the X the cast announces, never less
+// than the component's floor. Nil-safe.
+func (a *AlternativeCost) CountersDefineX() bool {
+	return a != nil && a.RemoveCounters != nil && a.RemoveCounters.Variable
 }
 
 // CollectsEvidence reports whether this offer's price is collect
@@ -918,13 +955,25 @@ func grantedInstanceOffer(card Card, grant *CastPermission, base, claim string, 
 // offer that removes no counters, is refused rather than ignored (the
 // validator's nil-cost branch), as a stray alt_cost_ids is.
 //
+// `x` is the X the cast announces. Only an offer that removes X counters
+// reads it (#5679, CountersDefineX): the counters named must total
+// exactly X (CR 107.3a, 601.2b), and the validator has already held that
+// total to the printed floor ("X can't be 0").
+//
 // Caller must hold g.mu.
-func (g *Game) validateAltCostCountersLocked(playerID, castID uuid.UUID, alt *AlternativeCost, pay CounterCostPayment) (counterPayment, error) {
+func (g *Game) validateAltCostCountersLocked(playerID, castID uuid.UUID, alt *AlternativeCost, pay CounterCostPayment, x int) (counterPayment, error) {
 	var rc *CounterRemovalCost
 	if alt != nil {
 		rc = alt.RemoveCounters
 	}
-	return g.validateCounterRemovalLocked(playerID, castID, rc, pay)
+	paid, err := g.validateCounterRemovalLocked(playerID, castID, rc, pay)
+	if err != nil {
+		return counterPayment{}, err
+	}
+	if alt.CountersDefineX() && paid.total != x {
+		return counterPayment{}, ErrInvalidParam
+	}
+	return paid, nil
 }
 
 // castCounterPayment is the counter half of a cast_spell payload, in
@@ -975,6 +1024,21 @@ func (a *AlternativeCost) Available(g *Game, controller uuid.UUID) bool {
 		return false
 	}
 	return a.Condition == nil || a.Condition(g, controller)
+}
+
+// AvailableFor is Available plus the offer's SpellCondition, asked of
+// the card `castID` names (the spell being cast, still in the zone it is
+// cast from). An offer with a SpellCondition and no card to ask it of is
+// not available. Caller must hold g.mu.
+func (a *AlternativeCost) AvailableFor(g *Game, controller, castID uuid.UUID) bool {
+	if !a.Available(g, controller) {
+		return false
+	}
+	if a.SpellCondition == nil {
+		return true
+	}
+	spell := g.findCardByIDLocked(castID)
+	return spell != nil && a.SpellCondition(g, controller, spell)
 }
 
 // lifePayableBy is CR 119.4 and CR 119.8 on this offer's life
@@ -1036,7 +1100,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if alt == nil {
 		return false
 	}
-	if !alt.Available(g, playerID) {
+	if !alt.AvailableFor(g, playerID, castID) {
 		return false
 	}
 	p := g.playerByIDLocked(playerID)
@@ -1171,7 +1235,7 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		}
 		return nil
 	}
-	if !alt.Available(g, playerID) {
+	if !alt.AvailableFor(g, playerID, castID) {
 		return ErrInvalidParam
 	}
 	p := g.playerByIDLocked(playerID)
@@ -1586,6 +1650,14 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 		// keeps the ability whatever becomes of its source (CR 610.5), so
 		// the sacrifice is read off the key, as granted warp's exile is.
 		alt = &AlternativeCost{Key: GrantedAltCostEvoke, Label: "Evoke", SacrificeOnEntry: true}
+	}
+	if alt == nil && item.AltCost == GrantedAltCostBlitz {
+		// #5667, Henzie "Toolbox" Torre: "Each creature spell you cast
+		// with mana value 4 or greater has blitz". CR 702.152a hangs the
+		// haste, the draw and the sacrifice on "this spell's blitz cost
+		// was paid", so they are read off the key, as granted evoke's
+		// sacrifice is, whatever has become of Henzie.
+		alt = &AlternativeCost{Key: GrantedAltCostBlitz, Label: "Blitz", Blitz: true}
 	}
 	if alt == nil {
 		return

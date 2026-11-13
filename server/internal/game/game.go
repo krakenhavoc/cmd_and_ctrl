@@ -2727,6 +2727,11 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 			// watch, so echo's intervening if reads this upkeep as the
 			// current one (CR 702.30a, CR 603.4).
 			g.Seats[g.Turn.ActiveSeat].UpkeepsBegun++
+			// #5737: "until your next upkeep" ends as this step begins,
+			// so the sweep runs on the count just raised and before the
+			// event: the upkeep's triggers are checked against a board
+			// the effect has already left (CR 503.1a).
+			g.ClearExpiredScopedStaticsLocked()
 			g.EmitEvent(Event{
 				Kind:  EventBeginUpkeep,
 				Actor: g.Seats[g.Turn.ActiveSeat].ID,

@@ -1040,25 +1040,29 @@ type cardSnapshot struct {
 	// it did before the restore; recomputing this from the CURRENT
 	// resolver state would let a dump refresh between capture and
 	// restore change the answer for a token that already existed.
-	TokenArtOnly      bool           `json:"tokenArtOnly,omitempty"`
-	OracleID          string         `json:"oracleId,omitempty"`
-	TokenKey          string         `json:"tokenKey,omitempty"`
-	TypeLine          string         `json:"typeLine,omitempty"`
-	Power             int            `json:"power"`
-	Toughness         int            `json:"toughness"`
-	VariableToughness *bool          `json:"variableToughness,omitempty"`
-	ManaCost          string         `json:"manaCost,omitempty"`
-	ProducedMana      []string       `json:"producedMana,omitempty"`
-	Colors            []string       `json:"colors,omitempty"`
-	ColorIdentity     []string       `json:"colorIdentity,omitempty"`
-	StartingLoyalty   int            `json:"startingLoyalty"`
-	Keywords          []string       `json:"keywords,omitempty"`
-	GrantedAbilities  []string       `json:"grantedAbilities,omitempty"`
-	ColorCDADropped   bool           `json:"colorCDADropped,omitempty"`
-	Layout            string         `json:"layout,omitempty"`
-	Faces             []Face         `json:"faces,omitempty"`
-	ActiveFace        int            `json:"activeFace,omitempty"`
-	PrintedSelf       *PrintedValues `json:"printedSelf,omitempty"`
+	TokenArtOnly      bool     `json:"tokenArtOnly,omitempty"`
+	OracleID          string   `json:"oracleId,omitempty"`
+	TokenKey          string   `json:"tokenKey,omitempty"`
+	TypeLine          string   `json:"typeLine,omitempty"`
+	Power             int      `json:"power"`
+	Toughness         int      `json:"toughness"`
+	VariableToughness *bool    `json:"variableToughness,omitempty"`
+	ManaCost          string   `json:"manaCost,omitempty"`
+	ProducedMana      []string `json:"producedMana,omitempty"`
+	Colors            []string `json:"colors,omitempty"`
+	ColorIdentity     []string `json:"colorIdentity,omitempty"`
+	StartingLoyalty   int      `json:"startingLoyalty"`
+	// StartingLoyaltyKnown is Card.StartingLoyaltyKnown (#5668). Absent
+	// from every earlier file, which restores as "not set by a copy
+	// exception".
+	StartingLoyaltyKnown bool           `json:"startingLoyaltyKnown,omitempty"`
+	Keywords             []string       `json:"keywords,omitempty"`
+	GrantedAbilities     []string       `json:"grantedAbilities,omitempty"`
+	ColorCDADropped      bool           `json:"colorCDADropped,omitempty"`
+	Layout               string         `json:"layout,omitempty"`
+	Faces                []Face         `json:"faces,omitempty"`
+	ActiveFace           int            `json:"activeFace,omitempty"`
+	PrintedSelf          *PrintedValues `json:"printedSelf,omitempty"`
 	// DurationCopyBase is Card.DurationCopyBase (#1593): the layer-1
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
@@ -1401,6 +1405,16 @@ type cardSnapshot struct {
 	// nothing about it.
 	Suspected   bool  `json:"suspected,omitempty"`
 	SuspectedAt int64 `json:"suspectedAt,omitempty"`
+	// PairedWith is the creature a soulbond ability paired this one with
+	// (CR 702.95b, #5675), carried for Monstrous's reason: "unpaired" is
+	// a legal zero value, so a restore that dropped it would take the
+	// pair's shared ability away and say nothing about it. Additive.
+	PairedWith uuid.UUID `json:"pairedWith,omitempty"`
+	// LostKeywords are the printed keywords a copy exception took away
+	// (CR 707.9b, #5675), carried for ColorCDADropped's reason: a
+	// restore that dropped it would hand a token copy its keyword back.
+	// Additive.
+	LostKeywords []string `json:"lostKeywords,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -1775,6 +1789,10 @@ type stackItemSnapshot struct {
 	// that makes its permanent enter tapped. Carried: the permission may
 	// be spent or gone by the time the spell resolves.
 	EntersTapped bool `json:"entersTapped,omitempty"`
+	// EntryRolls is StackItem.EntryRolls (#5682). Additive within the
+	// schema version and omitted when empty, which is every item but a
+	// permanent spell that rolled dice as it began to enter.
+	EntryRolls []int `json:"entryRolls,omitempty"`
 	// FaceDown is CR 708.4 (#1194): the state the permanent this
 	// spell becomes enters in. Carried, and it has to be — a restore
 	// that lost it would resolve a morph on the stack into a face-UP
@@ -3095,6 +3113,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Colors:                   copyStrings(c.Colors),
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
+		StartingLoyaltyKnown:     c.StartingLoyaltyKnown,
 		Keywords:                 copyStrings(c.Keywords),
 		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		ColorCDADropped:          c.ColorCDADropped,
@@ -3192,6 +3211,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
 		SuspectedAt:              c.SuspectedAt,
+		PairedWith:               c.PairedWith,
+		LostKeywords:             append([]string(nil), c.LostKeywords...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -3364,6 +3385,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,
@@ -4250,6 +4272,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Colors:                   copyStrings(c.Colors),
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
+		StartingLoyaltyKnown:     c.StartingLoyaltyKnown,
 		Keywords:                 copyStrings(c.Keywords),
 		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		ColorCDADropped:          c.ColorCDADropped,
@@ -4346,6 +4369,8 @@ func restoreCard(c *cardSnapshot) Card {
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
 		SuspectedAt:              c.SuspectedAt,
+		PairedWith:               c.PairedWith,
+		LostKeywords:             append([]string(nil), c.LostKeywords...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -4565,6 +4590,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,
