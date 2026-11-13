@@ -96,6 +96,9 @@ var textWordLiteralAllowed = map[string]string{
 	"cho_arrim_legate.go": "alternative cost, judged as cast",
 	"deepwood_legate.go":  "alternative cost, judged as cast",
 	"rushwood_legate.go":  "alternative cost, judged as cast",
+	// Dark Triumph's and Mind Swords' "if you control a Swamp" (#5618),
+	// Snuff Out's shape, built once in the batch helper.
+	"nem_b2_helpers.go": "alternative cost, judged as cast",
 
 	// "This land enters tapped unless you control …": asked as the land
 	// enters, a new object no text change has reached (CR 400.7, 614.12).

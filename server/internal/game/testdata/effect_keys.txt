@@ -811,6 +811,7 @@ choose choose-cards/mind-extraction-discard-wur
 choose choose-cards/mind-extraction-discard-wurg
 choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
+choose choose-cards/mind-swords-exile-two
 choose choose-cards/minion-of-the-mighty-put
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
