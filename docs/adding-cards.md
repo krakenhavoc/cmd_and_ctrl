@@ -69,6 +69,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Adding a `PendingChoiceKind` (#730, #794)](#adding-a-pendingchoicekind-730-794)
   - [Cumulative upkeep (#567, CR 702.24)](#cumulative-upkeep-567-cr-70224)
   - [Echo (ADR 0108 §5, #1888, CR 702.30)](#echo-adr-0108-5-1888-cr-70230)
+  - [Fading (#5802, CR 702.32)](#fading-5802-cr-70232)
   - [The CR 732 loop breaker (#628)](#the-cr-732-loop-breaker-628)
   - ["The first time counters are put on it this turn", "the exiled card" and "during your end step" (#4463)](#the-first-time-counters-are-put-on-it-this-turn-the-exiled-card-and-during-your-end-step-4463)
   - [Untapping in another player's untap step (#74)](#untapping-in-another-players-untap-step-74)
@@ -10365,6 +10366,48 @@ when the upkeep begins and again on resolution, asks through
 payment: "When this creature's echo cost is paid" is
 `WhenEchoIsPaid(label, effect)`. Like cumulative upkeep it is not a
 `canonicalKeywords` token; the trigger carries `game.KeywordEcho`.
+
+### Fading (#5802, CR 702.32)
+
+Fading is two abilities (CR 702.32a), so a card takes two helpers from
+[fading.go](../server/internal/cards/effects/fading.go): `Fading(n)` in
+`Replacements` (the N fade counters it enters with, `game.CounterFade`)
+and `FadingUpkeep()` in `Triggered` (at the beginning of your upkeep,
+remove a fade counter; if you can't, sacrifice it):
+
+```go
+Replacements: []game.ReplacementEffect{Fading(3)},
+Triggered:    []game.TriggeredAbility{FadingUpkeep()},
+```
+
+It is vanishing's sibling (`cmdr2B17VanishingEntry` /
+`cmdr2B17VanishingTriggers`, CR 702.63a, Deep Forest Hermit), built the
+same way, with one difference that matters: vanishing's upkeep trigger has
+an intervening "if" and a second trigger sacrifices the permanent as the
+last time counter comes off, while fading's one trigger always fires and
+sacrifices only when there is no counter left to remove. A Fading 3
+permanent survives three upkeeps and goes at the fourth. Nobody chooses
+anything; the counter is read as the trigger resolves.
+
+- The entry counters are an entry replacement (`b10EntersWithCounters`),
+  so they go through the counter window and Doubling Season doubles them.
+- "This creature enters tapped" beside fading is `FadingEntersTapped(n)`,
+  one replacement (Skyshroud Behemoth), for `SelfEntersTappedWithCounters`'
+  reason: two self-replacements would ask for a CR 616 order that changes
+  nothing.
+- "Remove a fade counter from this <permanent>: …" is
+  `RemoveAFadeCounterFromThis()`, the ordinary counter-removal cost paid
+  at activation, combined with mana through `Plus` (Ancient Hydra,
+  Woodripper). The counters it spends are ones the upkeep can no longer
+  remove.
+- A count of them is `source.Counters[game.CounterFade]` in a layer 7a
+  static (Rusting Golem). Saproling Burst's tokens read the counters on
+  the Burst object that made them through `Card.CreatedWith`.
+
+The trigger carries `effects.KeywordFading`, and
+`TestEveryFadingCardHasBothHalves` fails a card with one half and not the
+other. Like echo it is not a `canonicalKeywords` token: the number lives
+on the replacement.
 
 ### Exploit (#4092, CR 702.110)
 

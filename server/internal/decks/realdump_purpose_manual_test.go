@@ -112,8 +112,11 @@ var reviewedNotAWipe = map[string]string{
 	"Hex Magic":             "exiles the cards in its caster's own hand, not a board",
 	"Armageddon":            "destroys lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
-	// it created itself, every player's, never another permanent.
+	// it created itself, every player's, never another permanent. #5802:
+	// Saproling Burst's leaves trigger is the same link, destroying only
+	// the Saprolings it created.
 	"Tombstone Stairwell":                      "destroys only the tokens it created, not a board",
+	"Saproling Burst":                          "destroys only the tokens it created, not a board",
 	"Bag of Holding":                           "returns the cards it exiled, not permanents",
 	"Northampton Farm":                         "returns the cards it exiled to hand, not permanents",
 	"Baneblade Scoundrel // Baneclaw Marauder": "-1/-1 only to the creatures blocking it",
