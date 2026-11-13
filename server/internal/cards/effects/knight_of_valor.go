@@ -26,7 +26,7 @@ func init() {
 		Name:            "Knight of Valor",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Knight of Valor")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Knight of Valor")},
 		Activated: []ActivatedAbility{{
 			Label:     label,
 			Purpose:   game.Purpose{Answers: game.AnswerRemove},

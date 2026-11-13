@@ -207,13 +207,13 @@ func keywordOnlyLine(line string) bool {
 
 // keywordRunsInCatalog is the canonical tokens whose triggered
 // abilities are catalog rows rather than an engine path: the token
-// is the badge and what the rows read (a flanking blocker is spared,
-// CR 702.25a; a creature that lost soulbond never pairs), but nothing
-// in the engine triggers from it. An uncatalogued card that prints
-// one has the keyword and not the ability, so the line is a rule the
-// engine does not run, and the card is flagged.
+// is the badge and what the rows read (a creature that lost soulbond
+// never pairs), but nothing in the engine triggers from it. An
+// uncatalogued card that prints one has the keyword and not the
+// ability, so the line is a rule the engine does not run, and the card
+// is flagged. Flanking left with #5784: its trigger is the engine's
+// (flanking.go), so a line of it is a keyword the engine runs.
 var keywordRunsInCatalog = map[string]bool{
-	KeywordFlanking: true,
 	KeywordSoulbond: true,
 }
 

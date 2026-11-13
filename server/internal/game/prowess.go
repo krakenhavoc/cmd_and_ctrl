@@ -132,7 +132,8 @@ func resolveProwess(g *Game, item *StackItem) error {
 // token (CR 113.2c, exalted.go), then one decayed trigger per decayed
 // token, then one renown trigger per "renown N" token (CR 702.112c,
 // renown.go), then one rampage trigger per "rampage N" token (CR
-// 702.23c, rampage.go).
+// 702.23c, rampage.go), then one flanking trigger per flanking token
+// (CR 702.25b, flanking.go).
 //
 // It reads the list through forEachAbilityToken, the same walk
 // HasKeyword uses, so the answer follows the layer engine on the
@@ -153,7 +154,7 @@ func keywordTriggersFor(c *Card) []TriggeredAbility {
 // tokens: the object's own, or the triggered keywords a borrow lent it
 // (borrowedTriggersOf, ADR 0155's 2026-11-05 amendment).
 func keywordTriggersOver(walk func(fn func(string) bool)) []TriggeredAbility {
-	prowess, evolve, exalted, decayed, melee, enlist := 0, 0, 0, 0, 0, 0
+	prowess, evolve, exalted, decayed, melee, enlist, flanking := 0, 0, 0, 0, 0, 0, 0
 	var annihilator, renown, rampage []int
 	walk(func(a string) bool {
 		switch a {
@@ -169,6 +170,8 @@ func keywordTriggersOver(walk func(fn func(string) bool)) []TriggeredAbility {
 			melee++
 		case KeywordEnlist:
 			enlist++
+		case KeywordFlanking:
+			flanking++
 		default:
 			// CR 702.86b (#2073, annihilator.go): one trigger per
 			// "annihilator N" instance, each with its own N.
@@ -188,10 +191,10 @@ func keywordTriggersOver(walk func(fn func(string) bool)) []TriggeredAbility {
 		}
 		return true
 	})
-	if prowess+evolve+exalted+decayed+melee+enlist+len(annihilator)+len(renown)+len(rampage) == 0 {
+	if prowess+evolve+exalted+decayed+melee+enlist+flanking+len(annihilator)+len(renown)+len(rampage) == 0 {
 		return nil
 	}
-	out := make([]TriggeredAbility, 0, prowess+evolve+exalted+decayed+melee+enlist+len(annihilator)+len(renown)+len(rampage))
+	out := make([]TriggeredAbility, 0, prowess+evolve+exalted+decayed+melee+enlist+flanking+len(annihilator)+len(renown)+len(rampage))
 	for i := 0; i < prowess; i++ {
 		out = append(out, prowessTrigger)
 	}
@@ -218,6 +221,9 @@ func keywordTriggersOver(walk func(fn func(string) bool)) []TriggeredAbility {
 	}
 	for _, n := range rampage {
 		out = append(out, rampageTriggerFor(n))
+	}
+	for i := 0; i < flanking; i++ {
+		out = append(out, flankingTrigger)
 	}
 	return out
 }

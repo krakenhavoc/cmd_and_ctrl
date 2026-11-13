@@ -51,6 +51,14 @@ var knownOracleMismatches = map[string]string{
 	// cost line (#5606).
 	"Crystal Shard | cost not printed | {3}, {t}": "one choice of cost written as two rows; this is the {3} row",
 	"Crystal Shard | cost not printed | {u}, {t}": "one choice of cost written as two rows; this is the {U} row",
+
+	// Granite Shard and Heartwood Shard are Crystal Shard's shape, "{3},
+	// {T} or {R}, {T}" and "{3}, {T} or {G}, {T}", written as two rows
+	// for the same reason (#5606).
+	"Granite Shard | cost not printed | {3}, {t}":   "one choice of cost written as two rows; this is the {3} row",
+	"Granite Shard | cost not printed | {r}, {t}":   "one choice of cost written as two rows; this is the {R} row",
+	"Heartwood Shard | cost not printed | {3}, {t}": "one choice of cost written as two rows; this is the {3} row",
+	"Heartwood Shard | cost not printed | {g}, {t}": "one choice of cost written as two rows; this is the {G} row",
 }
 
 func loadOracleFixture(t *testing.T) map[string]OracleCard {

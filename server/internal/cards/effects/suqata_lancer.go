@@ -19,6 +19,6 @@ func init() {
 		Name:            "Suq'Ata Lancer",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste", game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Suq'Ata Lancer")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Suq'Ata Lancer")},
 	})
 }

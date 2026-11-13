@@ -953,7 +953,7 @@ item.
 item, so the effect must treat an illegal target as unaffected:
 `Context.IsTargetLegal` still answers the per-slot CR 608.2b re-check.
 `ExchangeControl.ApplyAndReport` says whether an exchange happened
-(CR 701.12b: false when either object is gone), which makes "if you
+(CR 701.12a: false when either object is gone), which makes "if you
 don't or can't" a plain branch.
 
 **Out of scope.** Nothing here changes which targets are legal at

@@ -63,10 +63,10 @@ func flankingBears(t *testing.T) game.Card {
 // triggered, stopping in the declare blockers step.
 func flankingBlocks(t *testing.T, g *game.Game, defender, attacker uuid.UUID, blockers ...uuid.UUID) {
 	t.Helper()
-	advanceTo(t, g, game.StepDeclareAttackers)
-	if err := g.DeclareAttacker(attacker, defender); err != nil {
-		t.Fatal(err)
-	}
+	// #5784: the attack is locked in and its triggers resolved (Barbed
+	// Foliage, Telim'Tor) before the blocks.
+	declareAttack(t, g, defender, attacker)
+	passPriorityAroundTable(t, g)
 	advanceTo(t, g, game.StepDeclareBlockers)
 	for _, b := range blockers {
 		if err := g.DeclareBlocker(b, attacker); err != nil {
@@ -101,18 +101,32 @@ func TestFlankingIsAKeywordARealCardHas(t *testing.T) {
 	}
 }
 
-// Every catalog row that carries the flanking trigger declares the token,
-// and every row that declares the token carries the trigger, one per
-// printed instance: a card with the keyword and no trigger would be a
-// badge with nothing behind it, and one with the trigger and no keyword
-// would shrink a flanking creature that blocks it.
-func TestEveryFlankingRowDeclaresTheKeyword(t *testing.T) {
-	found := 0
+// #5784: the retired flanking row stays on the cards that shipped with
+// it, one per printed instance, so a restore point holding its trigger
+// still resolves through the catalog (ADR 0041 P9) and the #522 parity
+// count is unchanged. No other card carries it: flanking is the keyword
+// token now, and a row beside it on a new card would be dead weight,
+// never a second trigger. The list only shrinks.
+func TestOnlyTheLegacyFlankingCardsKeepTheRetiredRow(t *testing.T) {
+	legacy := map[string]bool{}
+	for _, name := range []string{
+		"Burning Shield Askari", "Cadaverous Knight", "Fallen Askari", "Femeref Knight",
+		"Jolrael's Centaur", "Knight of the Holy Nimbus", "Knight of Valor", "Mtenda Herder",
+		"Outrider en-Kor", "Searing Spear Askari", "Shadow Rider", "Sidar Jabari",
+		"Sidar Kondo of Jamuraa", "Suq'Ata Lancer", "Teferi's Honor Guard", "Telim'Tor",
+		"Zhalfirin Commander", "Zhalfirin Crusader", "Zhalfirin Knight",
+	} {
+		legacy[name] = true
+	}
+	seen := 0
 	for _, spec := range All() {
-		triggers := 0
+		rows := 0
 		for _, tr := range spec.Triggered {
 			if strings.HasSuffix(tr.Key, " — flanking") {
-				triggers++
+				rows++
+				if tr.Key != spec.Name+" — flanking" || tr.Keyword != game.KeywordFlanking {
+					t.Errorf("%s: retired row keyed %q, keyword %q", spec.Name, tr.Key, tr.Keyword)
+				}
 			}
 		}
 		declared := 0
@@ -121,20 +135,35 @@ func TestEveryFlankingRowDeclaresTheKeyword(t *testing.T) {
 				declared++
 			}
 		}
-		if triggers == 0 && declared == 0 {
-			continue
-		}
-		found++
-		if declared == 0 {
-			t.Errorf("%s: has %d flanking trigger(s) and does not declare the keyword", spec.Name, triggers)
-		}
-		if triggers == 0 {
-			t.Errorf("%s: declares flanking and has no flanking trigger", spec.Name)
+		switch {
+		case legacy[spec.Name]:
+			seen++
+			if rows != 1 || declared != 1 {
+				t.Errorf("%s: %d retired row(s) and %d declared flanking, want 1 and 1", spec.Name, rows, declared)
+			}
+		case rows > 0:
+			t.Errorf("%s: carries the retired flanking row; declare the keyword alone (#5784)", spec.Name)
 		}
 	}
-	if found < 4 {
-		t.Fatalf("found %d flanking cards, want at least the four of #5757", found)
+	if seen != len(legacy) {
+		t.Fatalf("found %d of the %d legacy flanking cards", seen, len(legacy))
 	}
+}
+
+// The retired row never triggers, whatever blocks: the keyword path is
+// the only one that does (#5784).
+func TestRetiredFlankingRowNeverTriggers(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	crusader := apaPush(g, me.ID, me.ID, flankingCrusader(t))
+	bears := apaPush(g, opp.ID, opp.ID, flankingBears(t))
+	row := RetiredFlankingRow("Zhalfirin Crusader")
+	g.WithWriteLock(func() {
+		ev := game.Event{Kind: game.EventBlock, Actor: opp.ID, CardID: bears, Target: crusader}
+		if row.AppliesTo(ev, findBattlefieldCardForTest(g, crusader), game.Characteristic{}, g) {
+			t.Error("the retired flanking row triggered")
+		}
+	})
 }
 
 // The issue's case: a real Zhalfirin Crusader blocked by a real Knight of
@@ -195,18 +224,21 @@ func TestFlankingGrantedToABlockerCounts(t *testing.T) {
 // CR 702.25b: a creature with two instances of flanking has two triggers,
 // so a blocker without flanking gets -1/-1 twice, and a real Knight of the
 // Holy Nimbus blocking beside it still gets nothing. No card prints
-// flanking twice, so the attacker is a test row with two.
+// flanking twice, so the attacker is a test card that declares it twice;
+// since #5784 the two tokens are the two triggers, with no row of its own.
 func TestFlankingTwoInstancesTriggerSeparately(t *testing.T) {
 	const oracle = "test-5757-double-flanking"
 	registerForTest(t, Spec{
 		OracleID:        oracle,
 		Name:            "Double Flanker",
 		PrintedKeywords: []string{game.KeywordFlanking, game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Double Flanker"), Flanking("Double Flanker")},
 	})
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	attacker := apaPush(g, me.ID, me.ID, apaCreature("Double Flanker", oracle, 2, 2))
+	if got := game.FlankingCount(apaLive(g, attacker)); got != 2 {
+		t.Fatalf("the Double Flanker has %d instances of flanking, want 2", got)
+	}
 	big := apaPush(g, opp.ID, opp.ID, apaCreature("Big Blocker", "", 2, 5))
 	knight := apaPush(g, opp.ID, opp.ID, flankingNimbus(t))
 	flankingBlocks(t, g, opp.ID, attacker, big, knight)

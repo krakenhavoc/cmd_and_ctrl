@@ -1645,9 +1645,10 @@ var items = []Item{
 		Examples: []string{"Doom Weaver", "Breathkeeper Seraph", "Mirage Phalanx"},
 	},
 	{
-		// #5757: soulbond's shape. The trigger is a catalog row
-		// (effects.Flanking), one per blocker; the token is what it asks
-		// of the blocker, stamped by the importer and declared on the row.
+		// #5757, #5784: a keyword trigger the engine derives from the
+		// ability list (game/flanking.go), one per instance and one per
+		// blocker; the token is also what it asks of the blocker. A
+		// granted flanking triggers, and a lost one does not.
 		Slug: "flanking", Name: "Flanking", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "Whenever a creature without flanking blocks a creature with flanking, the blocking creature gets -1/-1 until end of turn. A blocker that has flanking itself is not shrunk.",
 		Rules:    []string{"702.25", "509.3d"},
@@ -3834,6 +3835,17 @@ var items = []Item{
 		Rules:    []string{"702.160", "718"},
 		ADR:      "0034-multi-face-cards.md",
 		Examples: []string{"Blitz Automaton", "Cradle Clearcutter", "Depth Charge Colossus"},
+	},
+	{
+		// #5794: one board read (effects.NoUntappedLands) behind a layer
+		// 7c pump, a layer 6 keyword grant and two intervening-if
+		// trigger shapes (cards/effects/no_untapped_lands.go).
+		Slug: "no-untapped-lands", Name: "\"If you control no untapped lands\"", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that work only while every land you control is tapped, such as Scoria Cat's +3/+3 and Well of Life's end step life gain. A creature's bonus turns on and off the moment a land taps or untaps, and a triggered ability checks again as it resolves.",
+		Rules:    []string{"603.4", "611.3a"},
+		Issue:    5794,
+		Printed:  `(?i)\b(?:if|as long as) you control no untapped lands\b`,
+		Examples: []string{"Scoria Cat", "Keldon Berserker", "Well of Life"},
 	},
 	{
 		Slug: "one-cast-per-card-type", Name: "One spell of each card type", Kind: KindSeam, Status: StatusImplemented,

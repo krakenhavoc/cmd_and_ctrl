@@ -19,7 +19,14 @@ import (
 // Bushido is "Bushido n" for the card named `name`.
 func Bushido(n int, name string) game.TriggeredAbility {
 	label := fmt.Sprintf("%s — bushido %d", name, n)
-	return OnAny([]game.EventKind{game.EventBlock, game.EventBecomesBlocked}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return selfBlocksOnce(ev, source) || (ev.Kind == game.EventBecomesBlocked && ev.CardID == source.InstanceID)
-	}, label, thisGetsUntilEndOfTurn(n, n, label))
+	return OnAny([]game.EventKind{game.EventBlock, game.EventBecomesBlocked}, thisBlocksOrBecomesBlocked,
+		label, thisGetsUntilEndOfTurn(n, n, label))
+}
+
+// thisBlocksOrBecomesBlocked is bushido's trigger condition, "whenever
+// this creature blocks or becomes blocked", for a card that prints it
+// without the keyword (Dromosaur). Watch EventBlock and
+// EventBecomesBlocked with it.
+func thisBlocksOrBecomesBlocked(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return selfBlocksOnce(ev, source) || (ev.Kind == game.EventBecomesBlocked && ev.CardID == source.InstanceID)
 }

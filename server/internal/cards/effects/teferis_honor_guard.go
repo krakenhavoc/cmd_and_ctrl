@@ -22,7 +22,7 @@ func init() {
 		Name:            "Teferi's Honor Guard",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Teferi's Honor Guard")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Teferi's Honor Guard")},
 		Activated: []ActivatedAbility{{
 			Label:   "{U}{U}: This creature phases out.",
 			Purpose: game.Purpose{Answers: game.AnswerSurvive},

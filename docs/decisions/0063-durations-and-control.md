@@ -338,7 +338,7 @@ set, never cleared, so a creature that was already hasty stays hasty.
 func (g *Game) ExchangeControlForEffect(sourceID, a, b uuid.UUID, label string) bool
 ```
 
-CR 701.12b makes an exchange all-or-nothing, so the primitive checks
+CR 701.12a makes an exchange all-or-nothing, so the primitive checks
 both objects on the battlefield *before* registering either, and
 returns false having changed nothing if either is gone. When both are
 present it registers two layer-2 `ScopedStatic`s — A to B's controller,

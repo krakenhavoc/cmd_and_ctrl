@@ -50,6 +50,15 @@ func TestNeedsCatalogEffectSilentOnCardsThatWork(t *testing.T) {
 		texts: []string{"Flying (This creature can't be blocked except by " +
 			"creatures with flying or reach.)"},
 	}, {
+		// #5784: flanking's trigger is the engine's (flanking.go),
+		// derived from the token the importer stamps, so a creature
+		// whose only text is flanking needs no Spec.
+		name:     "a creature whose only text is flanking",
+		typeLine: "Creature — Human Knight",
+		texts: []string{"Flanking (Whenever a creature without flanking " +
+			"blocks this creature, the blocking creature gets -1/-1 until " +
+			"end of turn.)"},
+	}, {
 		// A basic land's mana ability is granted by the type line
 		// (CR 305.6); the printed text is reminder only, and
 		// ManaAbilitiesForCard synthesises the ability.
@@ -244,16 +253,6 @@ func TestNeedsCatalogEffectCatchesRealRules(t *testing.T) {
 		name:     "keyword the engine does not enforce",
 		typeLine: "Creature — Human Wizard",
 		texts:    []string{"Ward {2}"},
-	}, {
-		// #5757: flanking is canonical, so the importer stamps it and
-		// a flanking blocker is spared, but its trigger is a catalog
-		// row (effects.Flanking). Without a Spec the creature has the
-		// keyword and not the ability.
-		name:     "a creature whose only text is flanking",
-		typeLine: "Creature — Human Knight",
-		texts: []string{"Flanking (Whenever a creature without flanking " +
-			"blocks this creature, the blocking creature gets -1/-1 until " +
-			"end of turn.)"},
 	}, {
 		name:     "keyword with a cost",
 		typeLine: "Artifact — Equipment",

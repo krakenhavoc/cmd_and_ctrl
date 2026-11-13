@@ -85,6 +85,9 @@ var textWordLiteralAllowed = map[string]string{
 	"sivvis_ruse.go":       "alternative cost, judged as cast",
 	"sivvis_valor.go":      "alternative cost, judged as cast",
 	"snuff_out.go":         "alternative cost, judged as cast",
+	"massacre.go":          "alternative cost, judged as cast",
+	"mogg_salvage.go":      "alternative cost, judged as cast",
+	"refreshing_rain.go":   "alternative cost, judged as cast",
 	// Rouse and the Mercadian Masques Legates (#5619): Snuff Out's and
 	// Sivvi's Ruse's shapes.
 	"rouse.go":            "alternative cost, judged as cast",

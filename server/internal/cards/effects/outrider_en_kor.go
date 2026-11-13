@@ -9,8 +9,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {0}: The next 1 damage that would be dealt to this creature this turn
 //	 is dealt to target creature you control instead."
 //
-// ADR 0108 §9 (#1905): the en-Kor row (enKorRow) and Flanking
-// (flanking.go). The rulings: blocked by several creatures at once, you
+// ADR 0108 §9 (#1905): the en-Kor row (enKorRow) and flanking, the
+// keyword token the engine triggers from (game/flanking.go, #5784; the
+// row beside it is the retired trigger, kept for restore). The rulings: blocked by several creatures at once, you
 // choose which source's 1 damage each activation redirects (divide_shield);
 // the damage is still the original source's; a target that has left
 // leaves the damage where it was.
@@ -22,7 +23,7 @@ func init() {
 		Name:            "Outrider en-Kor",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordFlanking},
-		Triggered:       []game.TriggeredAbility{Flanking("Outrider en-Kor")},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Outrider en-Kor")},
 		Activated:       []ActivatedAbility{enKorRow()},
 	})
 }

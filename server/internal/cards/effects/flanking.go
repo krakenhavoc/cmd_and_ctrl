@@ -10,33 +10,41 @@ import (
 // blocked by a creature without flanking, the blocking creature gets
 // -1/-1 until end of turn." Append-only, mechanic-named.
 //
-// A trigger per blocker (EventBlock names the blocker in CardID and the
-// attacker in Target, once per pair of the final declaration), so a
-// creature blocked by two creatures without flanking shrinks both. Whether
-// the blocker has flanking is read as it blocks (CR 509.3), and multiple
-// instances trigger separately (CR 702.25b).
+// Since #5784 flanking is an ENGINE keyword trigger (game/flanking.go):
+// one trigger per flanking token on the creature's layered ability list,
+// so a printed, imported or granted flanking triggers (Agility), each
+// instance separately (CR 702.25b), and a creature that loses flanking
+// (Barbed Foliage) does not. A card that prints flanking declares only
+// the token: PrintedKeywords: []string{game.KeywordFlanking}.
 //
-// The blocker's flanking is the canonical token game.KeywordFlanking
-// (#5757): the deck importer stamps Scryfall's "Flanking", and a card
-// with this row declares it in PrintedKeywords too, so a flanking
-// creature blocking another one is spared whether or not it came
-// through an import. A granted flanking counts the same, as it is on
-// the layered ability list.
+// The row below is RETIRED. It was the trigger before #5784, and the
+// cards that shipped with it keep it, in the same place on their
+// Triggered list, because a restore point written before #5784 may hold
+// that row's trigger on the stack: the item names the row by key and
+// index (ADR 0041 P9, #1497), resolves through it, and a missing row
+// would flag the card for the rest of the game (#522). The row never
+// triggers now, so the keyword path is the only one that does and no
+// instance triggers twice. Never add it to a new card;
+// TestOnlyTheLegacyFlankingCardsKeepTheRetiredRow keeps it to the cards
+// that had it.
 
-// Flanking is "Flanking" for the card named `name`.
-func Flanking(name string) game.TriggeredAbility {
+// RetiredFlankingRow is the pre-#5784 flanking row for the card named
+// `name`: it keeps its key (the restore identity) and its resolution,
+// and never triggers. Keyword marks it as the flanking keyword's, so the
+// ability tiles show the keyword's chip and not a second row.
+func RetiredFlankingRow(name string) game.TriggeredAbility {
 	label := fmt.Sprintf("%s — flanking", name)
-	return On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		if ev.Kind != game.EventBlock || ev.Target != source.InstanceID || ev.CardID == source.InstanceID {
-			return false
-		}
-		blocker, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && !game.HasKeyword(&blocker, game.KeywordFlanking)
+	row := On(game.EventBlock, func(game.Event, *game.Card, game.Characteristic, *game.Game) bool {
+		return false
 	}, label, flankingShrink)
+	row.Keyword = game.KeywordFlanking
+	return row
 }
 
 // flankingShrink gives the blocker the trigger saw -1/-1 until end of
-// turn. A blocker that has left the battlefield is gone (CR 400.7).
+// turn: the retired row's resolution, for a trigger restored from
+// before #5784. A blocker that has left the battlefield is gone (CR
+// 400.7).
 func flankingShrink(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if info, ok := ctx.TriggeringPermanent(); !ok || info.Left {
