@@ -785,6 +785,34 @@ func TheyControl(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// AnotherPlayerControls is the "another player controls" of a clause the
+// triggering event's player chooses, where "another" is relative to that
+// chooser (game.TargetSpec.ControlledByAnotherThanChooser, #5739):
+// Confusion in the Ranks' "its controller chooses target permanent
+// another player controls". The ability's controller's own permanents
+// are on offer when someone else chooses. Only on an OfThatPlayersChoice
+// clause; effects.Register refuses it elsewhere.
+//
+//	AnotherPlayerControls(OfThatPlayersChoice(TargetPermanent("target permanent another player controls")))
+func AnotherPlayerControls(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ControlledByAnotherThanChooser = true
+	return spec
+}
+
+// SharesACardTypeWithIt is "that shares a card type with it" on a
+// triggered ability's clause, where "it" is the object the triggering
+// event is about: the permanent that entered (game.TargetSpec.
+// SharesCardTypeWithEventObject, #5739). Judged in the one shared walk,
+// so the legal set, the announce, the CR 608.2b re-check, the client's
+// picker and the bot's moves are one answer. A walk with no fired
+// trigger admits nothing.
+//
+//	SharesACardTypeWithIt(TargetPermanent("target permanent that shares a card type with it"))
+func SharesACardTypeWithIt(spec *game.TargetSpec) *game.TargetSpec {
+	spec.SharesCardTypeWithEventObject = true
+	return spec
+}
+
 // SaddledThis narrows a clause to the creatures that saddled its own
 // source this turn (CR 702.171c): Giant Beaver's "target creature that
 // saddled it this turn". It is data on the clause

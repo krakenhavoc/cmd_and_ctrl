@@ -1430,3 +1430,50 @@ Tests: `TestMsc4707BlackBoltDestroysAPermanentOfTheOpponentWhoTargetedIt`,
 `TestMsc4707BlackBoltIgnoresItsOwnControllersTargeting` (`internal/cards/effects`).
 
 Back-out: drop `eventActorAdmits` from `sourceAdmits` and the first test offers every permanent on the table.
+
+## Amendment (2026-11-12, #5739): a trigger's target chosen by the entering permanent's controller
+
+Confusion in the Ranks (Mirrodin) prints "Whenever an artifact, creature, or enchantment enters, its controller chooses
+target permanent another player controls that shares a card type with it. Exchange control of those permanents." Three
+readings were missing; each was checked on `origin/develop` at `18f1572df` and every rule against the pinned
+Comprehensive Rules (`MagicCompRules 20260925.txt`): CR 603.3d (a trigger's targets are chosen as it is put on the stack),
+CR 603.6a (an enters trigger checks the newcomers too, so Confusion triggers on itself), CR 608.2b (the re-check), CR
+205.2a (the card types), CR 400.7 (a permanent that leaves and returns is a new object), CR 701.12a (an exchange that
+cannot be completed does nothing) and CR 701.12b (two permanents with one controller are not changed).
+
+1. **Who chooses.** The 2026-10-23 amendment's `ChosenByTriggerActor` sends the prompt to the player the event names.
+   On `EventETB` the Actor is whoever put the permanent there (ADR 0109's Arboria distinction), which is not "its
+   controller". `triggerChooserOf` now answers an enters event with the controller the trigger's own CR 603.10 object
+   snapshot recorded (`TriggerContext.Object.Controller`), as it already answers a damage event with the player dealt
+   damage (Bladegriff Prototype). The snapshot rides the trigger, the walk's restore frame and the stack item, so the
+   prompt, a restore while it is open and the CR 608.2b re-check read one chooser, and nothing new is recorded. No
+   catalog card used `ChosenByTriggerActor` on an enters trigger before, so no card's reading changed. Legality is still
+   judged for the ability's controller.
+2. **"Another player controls", relative to the chooser.** `TargetSpec.ControlledByAnotherThanChooser` (bool,
+   `effects.AnotherPlayerControls`) is `ControlledByChooser`'s opposite: the candidate's controller is not the chooser.
+   So the trigger's controller's own permanents are on offer when someone else's permanent entered. `effects.Register`
+   refuses it without `ChosenByTriggerActor` and beside `ControlledByChooser`.
+3. **"Shares a card type with it", where it is the event's object.** `TargetSpec.SharesCardTypeWithEventObject` (bool,
+   `effects.SharesACardTypeWithIt`) compares card types (`SharedCardTypes`) with the event's object, read live while the
+   same object is on the battlefield and from its last-known record (or the event snapshot) once it has gone. Reading it
+   live is what makes the 2004 ruling hold: "The permanents have to share a permanent type both when the target is chosen
+   and when the ability resolves." A walk with no fired trigger or no event object admits nothing.
+
+Both new fields are judged in `sourceAdmits`, so the harvest's fillability (no legal target removes the trigger, CR
+603.3d), the prompt's legal set, the announce gate, the re-check, the client's picker and the bot's moves are one answer.
+They are catalog data re-derived on restore: no snapshot field, wire field or effect key was added, no fixture changed,
+and `closure_fields.txt` is untouched. The prompt carries `PickTargetFor` = the controller when the chooser is someone
+else, so the wire shows `chosen_for` and the heuristic prices it as a choice for another player's effect, which for an
+exchange still takes the most valuable permanent.
+
+**Card.** Confusion in the Ranks, `full`.
+
+**Tests.** `cards/effects/confusion_in_the_ranks_test.go` (artifact, creature, enchantment, artifact creature and
+artifact land; no legal target and a land entering; Confusion entering itself; a four-player table where the chooser is
+not Confusion's controller and Confusion's controller cannot answer; the entering permanent leaving before resolution;
+the shared type re-checked on resolution; a restore with the prompt open and another with the trigger on the stack),
+`aiseat/confusion_in_the_ranks_bot_test.go` (the bot answers its own prompt under an opponent's Confusion through the
+view and the enumerator and takes the better creature).
+
+Back-out: drop the `EventETB` case from `triggerChooserOf` and every Confusion test finds no prompt; drop
+`otherThanChooserAdmits` or `eventObjectTypeAdmits` from `sourceAdmits` and the legal-set tests fail.
