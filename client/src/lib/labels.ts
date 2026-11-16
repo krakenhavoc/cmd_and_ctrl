@@ -2726,6 +2726,20 @@ export const LABEL_SPECS = {
     owners: ["routes/DraftSets.svelte", `${DRAFT}DraftArchetypesPanel.svelte`],
     doc: "a set's ten colour pairs with a short label and the gold uncommons that name each: the disclosure on the draftable sets page and the panel beside a draft",
   }),
+  draftArchetypesHide: label({
+    name: "Hide colour pairs",
+    kind: "aria",
+    role: "button",
+    owners: [`${DRAFT}DraftArchetypesPanel.svelte`],
+    doc: "#5848: the draft room's colour-pair panel's collapse button; the panel folds sideways into a narrow strip and the pack takes the width",
+  }),
+  draftArchetypesShow: label({
+    name: "Show colour pairs",
+    kind: "aria",
+    role: "button",
+    owners: [`${DRAFT}DraftArchetypesPanel.svelte`],
+    doc: "#5848: the collapsed colour-pair strip, one button that opens the panel again; beside its label it shows a pip for each colour with three or more Main picks",
+  }),
   // -- The booster draft (ADR 0222 §5, #5438) --
   draftThisSet: label({
     name: "Draft this set",
@@ -2898,6 +2912,20 @@ export const LABEL_SPECS = {
     role: "timer",
     owners: [`${DRAFT}DraftRoom.svelte`],
     doc: "the pick screen's countdown, run from the server's clock; urgent in the last 10 seconds",
+  }),
+  draftDeckView: label({
+    name: "Deck view",
+    kind: "text",
+    role: "button",
+    owners: [`${DRAFT}DraftCornerButtons.svelte`],
+    doc: "#5848: the pick screen's corner button (key D) that swaps the pack for the deckbuilding layout of the picks so far, while the pick clock keeps running",
+  }),
+  draftBackToPack: label({
+    name: "Back to the pack",
+    kind: "text",
+    role: "button",
+    owners: [`${DRAFT}DraftCornerButtons.svelte`],
+    doc: "#5848: the corner button's other state, in Deck view (key D): returns to the pack",
   }),
   draftWaiting: label({
     name: "Waiting for the others",
