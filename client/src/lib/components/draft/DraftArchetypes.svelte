@@ -15,8 +15,11 @@
   // nothing but a short line while it loads or if it cannot.
   import { onMount } from "svelte";
 
+  import type { DraftCard } from "../../draft";
   import {
     fetchArchetypes,
+    PAIR_FIT_MIN,
+    pairFit,
     pairName,
     pairTitle,
     signpostCard,
@@ -29,8 +32,16 @@
   interface Props {
     /** The set code to show the pairs of. */
     set: string;
+    /**
+     * The viewer's Main picks (#5848 §4). With them each pair says how many
+     * fit it, and is highlighted at three or more. Without them, no count.
+     */
+    main?: DraftCard[];
   }
-  const { set }: Props = $props();
+  const { set, main }: Props = $props();
+
+  const fits = (p: ArchetypePair): number | null => (main ? pairFit(p.colors, main) : null);
+  const fitWords = (n: number): string => `${n} ${n === 1 ? "pick fits" : "picks fit"}`;
 
   let data = $state<Archetypes | null>(null);
   let failed = $state(false);
@@ -57,6 +68,10 @@
 {#snippet head(p: ArchetypePair)}
   <span class="pips"><ManaCost cost={pips(p)} size={14} label={pairName(p.colors)} /></span>
   <span class="pair-name">{pairTitle(p.colors)}</span>
+  {#if main}
+    {@const n = pairFit(p.colors, main)}
+    <span class="fit" class:on={n >= PAIR_FIT_MIN} data-fit={n}>{fitWords(n)}</span>
+  {/if}
   {#if p.label}<span class="label">{p.label}</span>{/if}
   {#if p.signposts.length > 0}
     <span class="names">{p.signposts.map((s) => s.name).join(", ")}</span>
@@ -73,7 +88,7 @@
   {:else}
     <ul class="pairs">
       {#each data.pairs as p (p.colors)}
-        <li class="pair" data-pair={p.colors}>
+        <li class="pair" class:fits={(fits(p) ?? 0) >= PAIR_FIT_MIN} data-pair={p.colors}>
           {#if p.signposts.length > 0}
             <details ontoggle={(e) => (opened[p.colors] = e.currentTarget.open)}>
               <summary>{@render head(p)}</summary>
@@ -144,6 +159,22 @@
     font-weight: 700;
     color: var(--fg);
     overflow-wrap: anywhere;
+  }
+  /* How many Main picks fit the pair: mono, as counts are. From three it
+     takes the accent and a bar, and the words say the same, so it is
+     never colour alone. */
+  .fit {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-muted);
+  }
+  .fit.on {
+    font-weight: 700;
+    color: var(--accent-strong);
+  }
+  .pair.fits {
+    box-shadow: inset 3px 0 0 var(--accent);
   }
   .label {
     margin-left: auto;

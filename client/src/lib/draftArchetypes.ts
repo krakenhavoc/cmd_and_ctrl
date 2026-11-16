@@ -77,6 +77,52 @@ export function signpostCard(s: Signpost): DraftCard {
   };
 }
 
+/** The Main picks needed in a colour before the collapsed panel shows its pip (#5848 §4). */
+export const RAIL_MIN_PICKS = 3;
+
+/** The WUBRG order the pips and the pairs use. */
+const WUBRG = ["W", "U", "B", "R", "G"];
+
+/**
+ * How many of `cards` (the Main picks) are in each colour: a gold card
+ * counts once for each of its colours, a colourless card or a land not at
+ * all.
+ */
+export function colourCounts(cards: readonly DraftCard[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const c of cards) for (const k of new Set(c.colors ?? [])) out[k] = (out[k] ?? 0) + 1;
+  return out;
+}
+
+/**
+ * The colours to show as pips on the collapsed panel: each with
+ * `RAIL_MIN_PICKS` or more Main picks, most picks first (WUBRG on a tie).
+ */
+export function railColours(cards: readonly DraftCard[], min = RAIL_MIN_PICKS): string[] {
+  const n = colourCounts(cards);
+  return WUBRG.filter((k) => (n[k] ?? 0) >= min).sort(
+    (a, b) => n[b] - n[a] || WUBRG.indexOf(a) - WUBRG.indexOf(b),
+  );
+}
+
+/**
+ * How many of `cards` fit a colour pair: coloured cards whose colours
+ * are all in the pair. A colourless card or a land fits every pair, so
+ * counting it would say nothing; it is left out.
+ */
+export function pairFit(colors: string, cards: readonly DraftCard[]): number {
+  const pair = new Set(colors);
+  let n = 0;
+  for (const c of cards) {
+    const k = c.colors ?? [];
+    if (k.length > 0 && k.every((x) => pair.has(x))) n++;
+  }
+  return n;
+}
+
+/** The picks that make a pair "a fit": it is highlighted from here. */
+export const PAIR_FIT_MIN = 3;
+
 /** The set codes a page asks for are used in a path: only lowercase letters and digits. */
 const SET_CODE = /^[a-z0-9]{2,8}$/;
 

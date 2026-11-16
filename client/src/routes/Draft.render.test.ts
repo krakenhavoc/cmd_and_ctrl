@@ -1936,18 +1936,18 @@ describe("card ratings and colour pairs in the room", () => {
       // no storage: the panel stays open, which the first assertion allows
     }
     const c = await open(rated());
-    const details = c.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!;
-    expect(details.open).toBe(true);
-    details.open = false;
-    details.dispatchEvent(new Event("toggle"));
-    flushSync();
+    const panel = (el: HTMLElement): HTMLElement =>
+      el.querySelector<HTMLElement>('[data-testid="archetypes-panel"]')!;
+    expect(panel(c).getAttribute("data-open")).toBe("true");
+    click(c.querySelector<HTMLButtonElement>(`[aria-label="${L.draftArchetypesHide}"]`)!);
     expect(localStorage.getItem("c2.draft.archetypes")).toBe("closed");
+    // The room's column follows: the pack takes the width (#5848 §4).
+    expect(c.querySelector(".roomgrid")!.classList).toContain("pairs-closed");
     cleanup();
 
     const again = await open(rated());
-    expect(again.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!.open).toBe(
-      false,
-    );
+    expect(panel(again).getAttribute("data-open")).toBe("false");
+    expect(again.querySelector(".roomgrid")!.classList).toContain("pairs-closed");
     localStorage.removeItem("c2.draft.archetypes");
   });
 });
@@ -2208,5 +2208,220 @@ describe("the build screen starts from the split", () => {
     await room(buildView({ phase: "rounds", deck: { main: ["p1"], basics: {} } }));
     await settle();
     expect(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)).toBeNull();
+  });
+});
+
+// ---- The room's layout: the fuse, Deck view, the corner buttons (#5848 §4, §5, §7, §8) ----
+
+describe("the pick clock as a fuse (#5848 §7)", () => {
+  const fuse = (c: HTMLElement): HTMLElement | null =>
+    c.querySelector<HTMLElement>('[data-testid="draft-fuse"]');
+  const burn = (c: HTMLElement): HTMLElement => fuse(c)!.querySelector<HTMLElement>(".burn")!;
+  const frames = async (): Promise<void> => {
+    await new Promise((r) => setTimeout(r, 60));
+    flushSync();
+  };
+
+  it("burns from the server's deadline, blue with plenty of time, and keeps the text clock", async () => {
+    // 43 seconds left of 60.
+    const c = await room();
+    await frames();
+    expect(fuse(c)).not.toBeNull();
+    expect(fuse(c)!.getAttribute("aria-hidden")).toBe("true");
+    const width = parseFloat(burn(c).style.width);
+    expect(width).toBeGreaterThan(70);
+    expect(width).toBeLessThan(72);
+    expect(burn(c).style.getPropertyValue("--fuse")).toBe("rgb(61, 139, 255)");
+    expect(fuse(c)!.classList.contains("flash")).toBe(false);
+    // The text clock is still there.
+    expect(c.querySelector('[role="timer"]')).not.toBeNull();
+  });
+
+  it("is red and flashing in the last eight seconds", async () => {
+    // 4 seconds left of 60: under 15 %.
+    const c = await room(view({ deadline: "2026-11-11T19:00:06Z" }));
+    await frames();
+    expect(fuse(c)!.classList.contains("flash")).toBe(true);
+    const [r, g] = burn(c).style.getPropertyValue("--fuse").match(/\d+/g)!.map(Number);
+    expect(r).toBeGreaterThan(200);
+    expect(g).toBeLessThan(70);
+  });
+
+  it("does not flash with more than eight seconds left", async () => {
+    const c = await room(view({ deadline: "2026-11-11T19:00:11Z" }));
+    await frames();
+    expect(fuse(c)!.classList.contains("flash")).toBe(false);
+  });
+
+  it("only exists while a pick is being made", async () => {
+    const lobby = await room(view({ state: "lobby", pack: undefined, deadline: undefined }));
+    expect(fuse(lobby)).toBeNull();
+    cleanup();
+    const untimed = await room(view({ deadline: undefined, now: undefined }));
+    expect(fuse(untimed)).toBeNull();
+    cleanup();
+    const building = await room(
+      view({
+        state: "done",
+        phase: "building",
+        pack: undefined,
+        deadline: undefined,
+        now: undefined,
+        pool: [card("p1", "Thundertrap Trainer")],
+        build: {
+          deadline: "2026-11-11T19:15:00Z",
+          now: "2026-11-11T19:00:00Z",
+          seconds: 900,
+          deck_min: 40,
+          submitted: false,
+        },
+      }),
+    );
+    expect(fuse(building)).toBeNull();
+  });
+});
+
+describe("Deck view during the draft (#5848 §5)", () => {
+  const picks = [
+    card("p1", "Thundertrap Trainer", { mana_value: 2 }),
+    card("p2", "Mindwhisker", { mana_value: 3 }),
+    card("p3", "Dire Downdraft", { mana_value: 7, type_line: "Instant" }),
+  ];
+  const deckBtn = (c: HTMLElement): HTMLButtonElement =>
+    c.querySelector<HTMLButtonElement>('[data-testid="draft-deck-view-button"]')!;
+  const deckPane = (c: HTMLElement): HTMLElement | null =>
+    c.querySelector<HTMLElement>('[data-testid="draft-deck-columns"]');
+  const press = (key: string, target: EventTarget = document.body): void => {
+    target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    flushSync();
+  };
+
+  it("has a corner button with the pick count that swaps the pack for the picks as a deck, and back", async () => {
+    const c = await room(view({ picks }));
+    expect(text(deckBtn(c))).toContain(L.draftDeckView);
+    expect(text(deckBtn(c))).toContain("3 picks");
+    expect(cardButtons(c).length).toBe(3);
+    expect(deckPane(c)).toBeNull();
+
+    click(deckBtn(c));
+    expect(deckPane(c)).not.toBeNull();
+    expect(cardButtons(c).length).toBe(0);
+    expect(text(deckBtn(c))).toContain(L.draftBackToPack);
+    // The note says the clock still runs, and the clock is in it.
+    const note = c.querySelector('[data-testid="draft-deck-view-note"]')!;
+    expect(text(note)).toContain("The pick clock is still running");
+    expect(note.querySelector('[role="timer"]')).not.toBeNull();
+    // The fuse keeps burning.
+    expect(c.querySelector('[data-testid="draft-fuse"]')).not.toBeNull();
+
+    click(deckBtn(c));
+    expect(deckPane(c)).toBeNull();
+    expect(cardButtons(c).length).toBe(3);
+  });
+
+  it("lays Main out in columns by mana value, with 6 and more last", async () => {
+    const c = await room(view({ picks }));
+    click(deckBtn(c));
+    const col = (mv: string): string[] =>
+      [...deckPane(c)!.querySelectorAll(`.col[data-mv="${mv}"] [data-move-id]`)].map(
+        (el) => (el as HTMLElement).dataset.moveId!,
+      );
+    expect(col("2")).toEqual(["p1"]);
+    expect(col("3")).toEqual(["p2"]);
+    expect(col("6")).toEqual(["p3"]);
+  });
+
+  it("opens and closes with D, but not while typing, and not with a modifier", async () => {
+    const c = await room(view({ picks }));
+    press("d");
+    expect(deckPane(c)).not.toBeNull();
+    press("D");
+    expect(deckPane(c)).toBeNull();
+
+    const field = document.createElement("input");
+    document.body.appendChild(field);
+    press("d", field);
+    expect(deckPane(c)).toBeNull();
+    field.remove();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "d", ctrlKey: true, bubbles: true }));
+    flushSync();
+    expect(deckPane(c)).toBeNull();
+  });
+
+  it("carries a move back to the pack screen", async () => {
+    const c = await room(view({ picks }));
+    click(deckBtn(c));
+    click(deckPane(c)!.querySelector('[data-move-id="p2"]')!);
+    expect(
+      deckPane(c)!.querySelector('[data-testid="draft-deckview-side"] [data-move-id="p2"]'),
+    ).not.toBeNull();
+    click(deckBtn(c));
+    expect(c.querySelector('[data-testid="draft-picks-side"] [data-move-id="p2"]')).not.toBeNull();
+    expect(c.querySelector('[data-testid="draft-picks-main"] [data-move-id="p2"]')).toBeNull();
+  });
+
+  it("names the card in a toast when the clock runs out and picks for the viewer", async () => {
+    const c = await room(view({ picks }));
+    click(deckBtn(c));
+    expect(c.querySelector('[data-testid="draft-toast"]')).toBeNull();
+    // The server's next frame: a card more in the picks, the next pack, none of our pick sent.
+    socket().frame(
+      "draft",
+      view({
+        seq: 13,
+        pick: 6,
+        picks: [...picks, card("p4", "Bonecache Overseer")],
+        pack: [card("c9", "Plumecreed Escort")],
+      }),
+    );
+    const toast = c.querySelector('[data-testid="draft-toast"]')!;
+    expect(toast.getAttribute("role")).toBe("status");
+    expect(text(toast)).toBe("Time ran out. Took Bonecache Overseer for you.");
+    // Still in Deck view, with the new card in Main.
+    expect(deckPane(c)).not.toBeNull();
+    expect(deckPane(c)!.querySelector('[data-move-id="p4"]')).not.toBeNull();
+  });
+
+  it("makes no toast on the pack screen", async () => {
+    const c = await room(view({ picks }));
+    socket().frame(
+      "draft",
+      view({ seq: 13, pick: 6, picks: [...picks, card("p4", "Bonecache Overseer")] }),
+    );
+    expect(c.querySelector('[data-testid="draft-toast"]')).toBeNull();
+  });
+
+  it("makes no toast for a pick the viewer sent before opening Deck view", async () => {
+    const c = await room(view({ picks }));
+    click(cardButtons(c)[0]);
+    click(button(c, L.draftConfirmPick(1)));
+    expect(socket().picks().length).toBe(1);
+    click(deckBtn(c));
+    socket().frame(
+      "draft",
+      view({
+        seq: 13,
+        picks: [...picks, card("c1", "Shoreline Looter")],
+        pack: undefined,
+        take: 0,
+      }),
+    );
+    expect(c.querySelector('[data-testid="draft-toast"]')).toBeNull();
+  });
+
+  it("is only on the pick screen", async () => {
+    const lobby = await room(view({ state: "lobby", pack: undefined, deadline: undefined }));
+    expect(lobby.querySelector('[data-testid="draft-deck-view-button"]')).toBeNull();
+    press("d");
+    expect(lobby.querySelector('[data-testid="draft-deck-columns"]')).toBeNull();
+  });
+});
+
+describe("the corner buttons (#5848 §8)", () => {
+  it("are one group in the corner, and the room is padded so the last row clears them", async () => {
+    const c = await room();
+    expect(c.querySelectorAll('[data-testid="draft-corner-buttons"]').length).toBe(1);
+    expect(c.querySelector(".roomgrid")!.classList).toContain("corner");
   });
 });

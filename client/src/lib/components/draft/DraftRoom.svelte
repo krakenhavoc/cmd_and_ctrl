@@ -12,6 +12,7 @@
   import { onMount, tick } from "svelte";
 
   import {
+    autoPickToast,
     DRAFT_NEW_HASH,
     draftErrorMessage,
     draftInviteURL,
@@ -22,6 +23,7 @@
     isUrgent,
     clockText,
     leaveDraft,
+    newPickNames,
     passTarget,
     pickModeName,
     previewDraft,
@@ -38,6 +40,7 @@
     waitingLine,
     type DraftView,
   } from "../../draft";
+  import { loadArchetypesOpen } from "../../draftArchetypes";
   import { buildSecondsLeft } from "../../draftBuild";
   import {
     forgetSplit,
@@ -60,10 +63,13 @@
   import { navigate } from "../../router";
   import { signedInUserID } from "../../myGames";
   import { session, setSession } from "../../session";
+  import { stickColumn } from "../../stickColumn";
   import Icon from "../Icon.svelte";
   import Page from "../Page.svelte";
   import DraftArchetypesPanel from "./DraftArchetypesPanel.svelte";
   import DraftBuild from "./DraftBuild.svelte";
+  import DraftCornerButtons from "./DraftCornerButtons.svelte";
+  import DraftFuse from "./DraftFuse.svelte";
   import DraftPack from "./DraftPack.svelte";
   import DraftRounds from "./DraftRounds.svelte";
   import DraftPool from "./DraftPool.svelte";
@@ -147,6 +153,26 @@
   function moveCard(card: string, to: Zone): void {
     setSide(moveTo(sideIDs, card, to));
   }
+  // Deck view (#5848 §5) swaps the pack for the picks laid out as a deck,
+  // while the pick clock runs. It is this page's own and not remembered:
+  // a reload opens on the pack, where the pick is.
+  let deckView = $state(false);
+  // The colour-pair panel is open or shut (#5848 §4); the room sizes its
+  // column from it. It opens as the viewer left it.
+  let pairsOpen = $state(loadArchetypesOpen());
+  // What the clock did for the viewer while they were in Deck view.
+  let toast = $state("");
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  function say(message: string): void {
+    toast = message;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast = ""), 6000);
+  }
+  onMount(() => () => clearTimeout(toastTimer));
+  // Deck view is a part of picking: it ends when the picks do.
+  $effect(() => {
+    if (view && view.state !== "picking") deckView = false;
+  });
   // The splits of drafts this browser no longer holds a seat in go.
   onMount(() => pruneSplits([...storedDraftIDs(), id]));
   // A draft that is over has no use for its split.
@@ -171,6 +197,13 @@
     frameAt = performance.now();
     clock = frameAt;
     serverNote = "";
+    // Cards that came to the picks with no pick of ours on its way are the
+    // clock's: in Deck view the pack is not in front of the viewer, so say
+    // which card it took.
+    if (deckView && pendingPick === null && next.state === "picking") {
+      const took = autoPickToast(newPickNames(prev, next));
+      if (took) say(took);
+    }
     // A frame that leaves the same pack in hand is someone else's news
     // (a seat picked, a socket came or went): a pick of ours that is on
     // its way, or was just refused, still stands.
@@ -428,6 +461,13 @@
   <!-- Said once per change, never per second (DESIGN.md §8). -->
   <p class="sr-only" aria-live="polite" data-testid="draft-announce">{announce}</p>
 
+  <!-- The pick clock as a fuse (#5848 §7): only while a pick is being made,
+       pinned under the site header as the page scrolls. The text clock
+       stays beside the pack, and in Deck view in its note. -->
+  {#if view?.state === "picking" && seconds !== null}
+    <DraftFuse clock={view} {frameAt} totalSeconds={view.pick_seconds ?? 60} />
+  {/if}
+
   <div class="stack">
     {#if serverNote}
       <p class="notice warn" role="status">
@@ -577,9 +617,27 @@
         <!-- Pick, build and the rounds share one frame: on a wide screen the
              set's colour pairs (#5703) take a column on the left and the
              stage the rest; on a narrow one the pairs come last. -->
-        <div class="roomgrid" class:withpairs={pairsSet !== ""}>
+        <div
+          class="roomgrid"
+          class:withpairs={pairsSet !== ""}
+          class:pairs-closed={!pairsOpen}
+          class:corner={view.state === "picking"}
+        >
           <div class="stage">
-            {#if view.state === "picking"}
+            {#if view.state === "picking" && deckView}
+              <!-- Deck view (#5848 §5): the picks so far as a deck. -->
+              <DraftBuild
+                {view}
+                {live}
+                pending={false}
+                error=""
+                onsubmit={submitDeck}
+                side={sideIDs}
+                onside={setSide}
+                {timer}
+                peek
+              />
+            {:else if view.state === "picking"}
               <!-- The pack, and the picks beside it when there is room (#5699). -->
               <div class="pickgrid">
                 <section class="packarea" aria-labelledby="draft-pick-h">
@@ -617,7 +675,7 @@
                   {/if}
                 </section>
 
-                <aside class="picksarea" aria-labelledby="draft-picks-h">
+                <aside class="picksarea" aria-labelledby="draft-picks-h" use:stickColumn>
                   <h2 id="draft-picks-h">
                     {L.draftYourPicks} <span class="n">{picks.length}</span>
                   </h2>
@@ -674,14 +732,27 @@
           <!-- After the stage in the page, so the pick comes first by
                keyboard; the grid puts it on the left on a wide screen. -->
           {#if pairsSet}
-            <aside class="pairs-aside" data-testid="draft-pairs">
-              <DraftArchetypesPanel set={pairsSet} setName={view.set_name} />
+            <aside class="pairs-aside" data-testid="draft-pairs" use:stickColumn>
+              <DraftArchetypesPanel
+                set={pairsSet}
+                setName={view.set_name}
+                bind:open={pairsOpen}
+                main={picks.filter((c) => !sideIDs.includes(c.id))}
+              />
             </aside>
           {/if}
         </div>
       {/if}
     {/if}
   </div>
+
+  {#if view?.state === "picking"}
+    <DraftCornerButtons picks={picks.length} {deckView} ondeck={() => (deckView = !deckView)} />
+  {/if}
+
+  {#if toast}
+    <p class="toast" role="status" data-testid="draft-toast">{toast}</p>
+  {/if}
 </Page>
 
 <style>
@@ -735,15 +806,26 @@
     .roomgrid.withpairs > .stage {
       grid-area: stage;
     }
+    /* Collapsed, the panel is a 44px strip and the pack takes the rest
+       (#5848 §4). */
+    .roomgrid.withpairs.pairs-closed {
+      grid-template-columns: 44px minmax(0, 1fr);
+    }
     .roomgrid.withpairs > .pairs-aside {
       grid-area: pairs;
-      /* Stays in view as the pack scrolls, under the site header (z 30,
-         about 56px tall), and scrolls on its own if it outgrows the window. */
+      /* One scroll bar (#5848 §8): the panel never scrolls on its own.
+         A panel shorter than the window sticks under the site header and
+         the fuse; a taller one scrolls with the page until its end shows,
+         then sticks there. --stick is set from its height
+         (lib/stickColumn.ts). */
       position: sticky;
-      top: 72px;
-      max-height: calc(100vh - 88px);
-      overflow-y: auto;
+      top: var(--stick, 72px);
     }
+  }
+  /* The corner buttons float over the foot of the page; this room is
+     padded so its last row can scroll clear of them (#5848 §8). */
+  .roomgrid.corner {
+    padding-bottom: 96px;
   }
   .cols {
     display: grid;
@@ -903,13 +985,13 @@
   .picksarea {
     grid-area: picks;
     min-width: 0;
-    /* Stays beside the pack while it scrolls, and scrolls on its own when
-       the picks outgrow the window. It sits below the sticky site
-       header (z 30, about 56px tall). */
+    /* Stays beside the pack while it scrolls, and never scrolls on its
+       own (#5848 §8): shorter than the window it sticks under the site
+       header and the fuse; taller, it scrolls with the page until its end
+       shows, then sticks there. --stick is set from its height
+       (lib/stickColumn.ts). */
     position: sticky;
-    top: 72px;
-    max-height: calc(100vh - 88px);
-    overflow-y: auto;
+    top: var(--stick, 72px);
   }
   .picksarea h2 {
     margin: 0 0 12px;
@@ -926,9 +1008,25 @@
     }
     .picksarea {
       position: static;
-      max-height: none;
-      overflow-y: visible;
     }
+  }
+  /* What the clock did while the viewer was in Deck view. Above the corner
+     buttons, at the foot of the window. */
+  .toast {
+    position: fixed;
+    right: 16px;
+    bottom: 76px;
+    z-index: 41;
+    max-width: min(420px, calc(100vw - 32px));
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-raised);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--fg);
   }
   .notice {
     display: flex;

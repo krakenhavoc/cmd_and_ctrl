@@ -354,6 +354,8 @@ registered, or when this file is stale.
 | `draftRatingsCredit` | `Card ratings from 17Lands` | link | text | `lib/components/draft/DraftRatingsBar.svelte` | the credit 17Lands' data is used on: shown wherever a 17Lands rating shows beside a draft card; links to 17lands.com (the owner's condition, 2026-11-11) |
 | `draftRatingsShow` | `Show card ratings` | checkbox | text | `lib/components/draft/DraftRatingsBar.svelte` | the viewer's switch for the rating beside each draft card, kept in this browser only; on by default |
 | `draftArchetypesTitle` | `Colour pairs` | heading | text | `routes/DraftSets.svelte`<br>`lib/components/draft/DraftArchetypesPanel.svelte` | a set's ten colour pairs with a short label and the gold uncommons that name each: the disclosure on the draftable sets page and the panel beside a draft |
+| `draftArchetypesHide` | `Hide colour pairs` | button | aria | `lib/components/draft/DraftArchetypesPanel.svelte` | #5848: the draft room's colour-pair panel's collapse button; the panel folds sideways into a narrow strip and the pack takes the width |
+| `draftArchetypesShow` | `Show colour pairs` | button | aria | `lib/components/draft/DraftArchetypesPanel.svelte` | #5848: the collapsed colour-pair strip, one button that opens the panel again; beside its label it shows a pip for each colour with three or more Main picks |
 | `draftThisSet` | `Draft this set` | link | text | `routes/DraftSets.svelte` | the draftable sets page: a ready set's link to the create form with that set chosen (#/draft?set=<code>) |
 | `draftAgainstBots` | `Draft against bots` | link | text | `routes/FrontPage.svelte` | the front page's way into a draft without an account: #/draft, a solo draft against bots when signed out |
 | `draftNewTitle` | `Start a draft` | heading | text | `lib/components/draft/DraftCreate.svelte` | the create form's page title, at #/draft |
@@ -378,6 +380,8 @@ registered, or when this file is stale.
 | `draftPack` | `the pack you hold` | group | aria | `lib/components/draft/DraftPack.svelte` | the pick screen's pack: one toggle button per card, named for the card |
 | `draftConfirmPick` | `Pick <n> card(s)` (starts with `Pick `) | button | text | `lib/draft.ts` | the pick screen's primary: sends draft_pick with the chosen cards, enabled only when exactly that many are chosen |
 | `draftTimer` | `pick timer` | timer | aria | `lib/components/draft/DraftRoom.svelte` | the pick screen's countdown, run from the server's clock; urgent in the last 10 seconds |
+| `draftDeckView` | `Deck view` | button | text | `lib/components/draft/DraftCornerButtons.svelte` | #5848: the pick screen's corner button (key D) that swaps the pack for the deckbuilding layout of the picks so far, while the pick clock keeps running |
+| `draftBackToPack` | `Back to the pack` | button | text | `lib/components/draft/DraftCornerButtons.svelte` | #5848: the corner button's other state, in Deck view (key D): returns to the pack |
 | `draftWaiting` | `Waiting for the others` | heading | text | `lib/components/draft/DraftRoom.svelte` | the pick screen after the viewer has picked, above the names of the seats still picking |
 | `draftYourPicks` | `Your picks` | heading | text | `lib/components/draft/DraftRoom.svelte` | the pick screen's list of the viewer's own picks so far, grouped by colour and mana value |
 | `draftYourPool` | `Your pool` | heading | text | `lib/components/draft/DraftRoom.svelte` | a finished draft's card pool, grouped by colour and mana value |

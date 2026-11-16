@@ -40,6 +40,9 @@ import {
   rememberDraftSeat,
   seatChoices,
   seatStatus,
+  msLeftAfter,
+  newPickNames,
+  autoPickToast,
   secondsLeft,
   stackCopies,
   startDraft,
@@ -587,5 +590,51 @@ describe("the draft routes", () => {
     }
     serve({ error: "started", code: "draft_started" }, 409);
     expect(isDraftGone(await joinDraft("d1", "i").catch((e) => e))).toBe(false);
+  });
+});
+
+// ---- The fuse's clock and the pick the clock makes (#5848 §5, §7) ----
+
+describe("msLeftAfter", () => {
+  const frame = { deadline: "2026-11-11T19:00:45Z", now: "2026-11-11T19:00:02Z" };
+
+  it("is the milliseconds left, not rounded up, after the time since the frame", () => {
+    expect(msLeftAfter(frame, 0)).toBe(43_000);
+    expect(msLeftAfter(frame, 1500)).toBe(41_500);
+    expect(msLeftAfter(frame, -10)).toBe(43_000);
+  });
+
+  it("stops at zero, and is null with no timer", () => {
+    expect(msLeftAfter(frame, 90_000)).toBe(0);
+    expect(msLeftAfter({}, 0)).toBeNull();
+  });
+});
+
+describe("newPickNames / autoPickToast", () => {
+  const a = card("a", { name: "Shoreline Looter" });
+  const b = card("b", { name: "Mindwhisker" });
+  const c = card("c", { name: "Dire Downdraft" });
+
+  it("names the cards a frame added to the picks", () => {
+    expect(newPickNames(view({ picks: [a] }), view({ picks: [a, b] }))).toEqual(["Mindwhisker"]);
+    expect(newPickNames(view({ picks: [a] }), view({ picks: [a, b, c] }))).toEqual([
+      "Mindwhisker",
+      "Dire Downdraft",
+    ]);
+  });
+
+  it("names nothing on a first frame, for another draft, or when the picks did not grow", () => {
+    expect(newPickNames(null, view({ picks: [a] }))).toEqual([]);
+    expect(newPickNames(view({ id: "other", picks: [] }), view({ picks: [a] }))).toEqual([]);
+    expect(newPickNames(view({ picks: [a] }), view({ picks: [a] }))).toEqual([]);
+    expect(newPickNames(view({ picks: undefined }), view({ picks: [a] }))).toEqual([]);
+  });
+
+  it("says what the clock took, for one card and for two", () => {
+    expect(autoPickToast(["Mindwhisker"])).toBe("Time ran out. Took Mindwhisker for you.");
+    expect(autoPickToast(["Mindwhisker", "Dire Downdraft"])).toBe(
+      "Time ran out. Took Mindwhisker and Dire Downdraft for you.",
+    );
+    expect(autoPickToast([])).toBe("");
   });
 });

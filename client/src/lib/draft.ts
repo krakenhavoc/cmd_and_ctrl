@@ -734,6 +734,20 @@ export function secondsLeft(
   return Math.max(0, Math.ceil((at - Math.max(0, elapsedMs)) / 1000));
 }
 
+/**
+ * Milliseconds left on the pick timer, `elapsedMs` after the frame
+ * arrived. The same count as `secondsLeft`, not rounded up, for the
+ * fuse (#5848), which moves every animation frame.
+ */
+export function msLeftAfter(
+  view: Pick<DraftView, "deadline" | "now">,
+  elapsedMs: number,
+): number | null {
+  const at = msLeftAtFrame(view);
+  if (at === null) return null;
+  return Math.max(0, at - Math.max(0, elapsedMs));
+}
+
 /** "1:05", "0:09". */
 export function clockText(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -758,6 +772,27 @@ export function timerAnnouncement(prev: number | null, next: number | null): str
     if (prev > mark && next <= mark && next > 0) return `${mark} seconds left to pick.`;
   }
   return "";
+}
+
+/**
+ * The cards this frame added to the picks since the last one: what a
+ * pick made for the viewer when the clock ran out looks like from here.
+ * Empty on the first frame, for another draft, or when nothing was added.
+ */
+export function newPickNames(prev: DraftView | null, next: DraftView): string[] {
+  if (!prev || prev.id !== next.id || !prev.picks || !next.picks) return [];
+  const had = new Set(prev.picks.map((c) => c.id));
+  return next.picks.filter((c) => !had.has(c.id)).map((c) => c.name);
+}
+
+/** The toast for a pick made by the clock: "Time ran out. Took A and B for you." */
+export function autoPickToast(names: string[]): string {
+  if (names.length === 0) return "";
+  const list =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `Time ran out. Took ${list} for you.`;
 }
 
 /** "Pick 1 card" / "Pick 2 cards". */
