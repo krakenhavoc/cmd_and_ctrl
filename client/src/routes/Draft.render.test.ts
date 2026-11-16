@@ -141,6 +141,10 @@ const button = (c: HTMLElement, name: string): HTMLButtonElement => {
 const cardButtons = (c: HTMLElement): HTMLButtonElement[] => [
   ...c.querySelectorAll<HTMLButtonElement>(`[aria-label="${L.draftPack}"] button`),
 ];
+// A drag swallows the click that follows it for 60 ms (draftDrag). A test that
+// drags waits that out, or the next test's first click is the one eaten.
+const afterDrag = (): Promise<void> => new Promise((r) => setTimeout(r, 80));
+
 const click = (el: Element): void => {
   el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
   flushSync();
@@ -1052,6 +1056,46 @@ describe("the pick screen", () => {
     expect(text(c.querySelector('[role="alert"]'))).toContain("that card is not in your pack");
     expect(cardButtons(c)[0].disabled).toBe(false);
     expect(button(c, "Pick 1 card").disabled).toBe(false);
+  });
+
+  it("does not carry a refused drag to the Sideboard into a later pick", async () => {
+    const mine = card("p1", "Thundertrap Trainer");
+    const c = await room(view({ picks: [mine] }));
+    const pointer = (target: Element | Window, type: string, x: number, y: number): void => {
+      const ev = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+      Object.defineProperty(ev, "pointerId", { value: 1 });
+      Object.defineProperty(ev, "pointerType", { value: "mouse" });
+      target.dispatchEvent(ev);
+      flushSync();
+    };
+    const sideArea = c.querySelector('[data-testid="draft-picks-side"]')!;
+    document.elementFromPoint = () => sideArea;
+    try {
+      pointer(cardButtons(c)[0], "pointerdown", 10, 10);
+      pointer(window, "pointermove", 200, 300);
+      pointer(window, "pointerup", 200, 300);
+    } finally {
+      delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+    }
+    const sent = socket().picks();
+    expect(sent).toHaveLength(1);
+    expect(sent[0].payload).toEqual({ cards: [PACK[0].id] });
+    await afterDrag();
+
+    // The server refuses it: the card is still in the pack.
+    socket().frame(
+      "error",
+      { code: "draft_pick_refused", message: "that card is not in your pack" },
+      sent[0].id,
+    );
+    await settle();
+    expect(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)).toBeNull();
+
+    // Picked the ordinary way later, it lands in Main, not the Sideboard.
+    socket().frame("draft", view({ seq: 15, pack: undefined, take: 0, picks: [mine, PACK[0]] }));
+    await settle();
+    expect(text(c.querySelector('[data-testid="draft-picks-side"]'))).not.toContain(PACK[0].name);
+    expect(text(c.querySelector('[data-testid="draft-picks-main"]'))).toContain(PACK[0].name);
   });
 
   it("waits for the others once the pick has landed, and names them", async () => {
@@ -2105,6 +2149,7 @@ describe("the picks beside the pack", () => {
     } finally {
       delete (document as { elementFromPoint?: unknown }).elementFromPoint;
     }
+    await afterDrag();
     expect(text(area(c, "draft-picks-side"))).toContain("Thundertrap Trainer");
     expect(text(c.querySelector("#draft-picks-main-h"))).toBe(`${L.draftDeckZone} 2`);
   });
@@ -2133,6 +2178,7 @@ describe("the picks beside the pack", () => {
 
     // Setting Wall of Bark aside takes it out of Main's counts, not the pool's.
     click(moveBtn(c, "draft-picks-main", "Wall of Bark"));
+    await settle();
     expect(stat("main", '[data-type="artifact"]')).toBe("0");
     expect(stat("main", '[data-colour="G"]')).toBe("0");
     expect(stat("pool", '[data-type="artifact"]')).toBe("1");
