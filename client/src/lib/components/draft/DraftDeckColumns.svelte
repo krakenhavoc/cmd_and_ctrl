@@ -7,30 +7,51 @@
   // The component owns no state: `side` is the ids in the Sideboard and
   // `onmove` says where a card goes. A card is a button named for what a
   // click does ("Move to sideboard: Shoreline Looter"), and a move is
-  // said once for a screen reader, as in DraftSplit.
-  import { tick } from "svelte";
+  // said once for a screen reader, as in DraftSplit. A card also drags to
+  // the other area with the pointer (a held finger on touch) and shows
+  // its large preview, with the same helpers as DraftSplit (#5848 §1, §2).
+  import { tick, type Snippet } from "svelte";
 
   import type { DraftCard } from "../../draft";
+  import { draftCard } from "../../draftCardPointer";
+  import { dragState } from "../../draftDrag.svelte";
   import { byManaValue, columnLabel } from "../../draftColumns";
   import { ratedCardName } from "../../draftRatings.svelte";
   import { splitCards, type Zone } from "../../draftSplit";
   import { L } from "../../labels";
   import DraftCardArt from "./DraftCardArt.svelte";
+  import DraftPreview from "./DraftPreview.svelte";
 
   interface Props {
     cards: DraftCard[];
     /** The ids of the cards in the Sideboard; every other card is in Main. */
     side: string[];
     onmove: (id: string, to: Zone) => void;
+    /** Drawn under each card's large preview (the reasons for its rating). */
+    previewExtra?: Snippet<[DraftCard]>;
   }
-  const { cards, side, onmove }: Props = $props();
+  const { cards, side, onmove, previewExtra }: Props = $props();
 
   const zones = $derived(splitCards(cards, side));
   const columns = $derived(byManaValue(zones.main));
 
   let root = $state<HTMLElement | null>(null);
+  let mainEl = $state<HTMLElement | null>(null);
+  let sideEl = $state<HTMLElement | null>(null);
+  // The area a card is being dragged over, for its highlight.
+  const dropOn = $derived<Zone | null>(
+    dragState.over && dragState.over === mainEl
+      ? "main"
+      : dragState.over && dragState.over === sideEl
+        ? "side"
+        : null,
+  );
+  // Both areas share one preview host, so a swap from one to the other is instant.
+  const scope = `deck-${Math.random().toString(36).slice(2, 8)}`;
   let said = $state("");
 
+  // A drop on the area the card is already in is not a move: the zones
+  // never report one, so the drag's own `ondrop` is only ever the other area.
   function move(card: DraftCard, to: Zone): void {
     onmove(card.id, to);
     said = `Moved ${card.name} to ${to === "main" ? "main" : "sideboard"}.`;
@@ -51,6 +72,11 @@
     aria-label={`${to === "side" ? "Move to sideboard" : "Move to main"}: ${ratedCardName(card)}`}
     title={`${to === "side" ? "Move to sideboard" : "Move to main"}: ${card.name}`}
     data-move-id={card.id}
+    use:draftCard={{
+      card,
+      scope,
+      drag: { from: to === "side" ? "main" : "side", ondrop: (z) => move(card, z) },
+    }}
     onclick={() => move(card, to)}
   >
     <DraftCardArt {card} />
@@ -60,8 +86,11 @@
 <div class="deck" bind:this={root} data-testid="draft-deck-columns">
   <section
     class="card zone"
+    class:drop={dropOn === "main"}
     aria-labelledby="draft-deckview-main-h"
     data-testid="draft-deckview-main"
+    data-drop-zone="main"
+    bind:this={mainEl}
   >
     <h2 id="draft-deckview-main-h">
       {L.draftDeckZone} <span class="n">{zones.main.length}</span>
@@ -86,8 +115,11 @@
 
   <section
     class="card zone"
+    class:drop={dropOn === "side"}
     aria-labelledby="draft-deckview-side-h"
     data-testid="draft-deckview-side"
+    data-drop-zone="side"
+    bind:this={sideEl}
   >
     <h2 id="draft-deckview-side-h">
       {L.draftSideboardZone} <span class="n">{zones.side.length}</span>
@@ -104,6 +136,7 @@
   </section>
 
   <p class="sr-only" role="status" data-testid="draft-deckview-said">{said}</p>
+  <DraftPreview {scope} children={previewExtra} />
 </div>
 
 <style>
@@ -115,6 +148,12 @@
   }
   .zone {
     min-width: 0;
+  }
+  /* A zone a card is being dragged over, as in DraftSplit. */
+  .zone.drop {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
   }
   h2 {
     margin: 0 0 12px;

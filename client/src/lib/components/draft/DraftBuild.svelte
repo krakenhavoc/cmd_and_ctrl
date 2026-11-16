@@ -44,7 +44,8 @@
   import Icon from "../Icon.svelte";
   import DraftDeckColumns from "./DraftDeckColumns.svelte";
   import DraftSplit from "./DraftSplit.svelte";
-  import DraftStats from "./DraftStats.svelte";
+  import DraftReasons from "./DraftReasons.svelte";
+  import DraftStatsStrip from "./DraftStatsStrip.svelte";
 
   interface Props {
     view: DraftView;
@@ -133,6 +134,10 @@
   }
 </script>
 
+{#snippet reasons(card: DraftCard)}
+  <DraftReasons {card} setAvg={view.set_avg_win_rate} />
+{/snippet}
+
 {#if peek}
   <div class="peek" data-testid="draft-deck-view">
     <p class="peeknote" data-testid="draft-deck-view-note">
@@ -142,145 +147,150 @@
       </span>
       {@render timer()}
     </p>
+    <DraftStatsStrip main={(view.picks ?? []).filter((c) => !side.includes(c.id))} wide />
     <DraftDeckColumns
       cards={view.picks ?? []}
       {side}
       onmove={(id, to) => onside(moveTo(side, id, to))}
+      previewExtra={reasons}
     />
   </div>
 {:else}
-  <div class="cols">
-    <div class="zones">
-      <DraftSplit
-        cards={pool}
-        side={sideIDs(build)}
-        images
-        onmove={move}
-        emptyMain="No cards yet. Click a card in your sideboard, or drag it here, to play it."
-        emptySide="Every card you drafted is in your deck."
-      />
-      <DraftStats main={zones.deck} {pool} />
-    </div>
-
-    <section class="card panel" aria-labelledby="draft-build-h" data-testid="draft-build">
-      <div class="head">
-        <h2 id="draft-build-h">{L.draftBuildDeck}</h2>
-        {@render timer()}
-      </div>
-      <p class="help">
-        Play at least {deckMin} cards: the ones you drafted, plus as many basic lands as you like. The
-        rest of what you drafted is your sideboard.
-        {#if view.build?.untimed}
-          There is no timer: the rounds begin when everyone has submitted a deck.
-        {:else}
-          When the timer ends, a deck is built for anyone who has not submitted one.
-        {/if}
-      </p>
-
-      <dl class="counts" data-testid="draft-deck-count">
-        <div>
-          <dt>Deck</dt>
-          <dd class:short={problem !== ""}>{size}<span class="of">/{deckMin}</span></dd>
-        </div>
-        <div>
-          <dt>Lands</dt>
-          <dd>{lands}</dd>
-        </div>
-        <div>
-          <dt>Other cards</dt>
-          <dd>{size - lands}</dd>
-        </div>
-      </dl>
-
-      <div class="lands">
-        <h3>{L.draftBasicLands} <span class="n">{basicsCount(build)}</span></h3>
-        <ul>
-          {#each BASIC_LANDS as name (name)}
-            {@const n = build.basics[name] ?? 0}
-            <li role="group" aria-label={L.draftBasicStepper(name)}>
-              <span class="land">
-                <ManaSymbol symbol={BASIC_COLOR[name]} size={16} />
-                {name}
-              </span>
-              <span class="stepper">
-                <button
-                  type="button"
-                  class="btn ghost sm"
-                  aria-label={`one fewer ${name}`}
-                  disabled={n === 0}
-                  onclick={() => step(name, -1)}>−</button
-                >
-                <output class="num" aria-live="off">{n}</output>
-                <button
-                  type="button"
-                  class="btn ghost sm"
-                  aria-label={`one more ${name}`}
-                  disabled={n >= MAX_BASICS}
-                  onclick={() => step(name, 1)}>+</button
-                >
-              </span>
-            </li>
-          {/each}
-        </ul>
-        {#if suggestion.lands > 0}
-          <p class="help suggest" data-testid="draft-land-suggestion">
-            Suggested: {suggestion.lands} lands for {cardCount(
-              zones.deck.length - (lands - basicsCount(build)),
-            )}
-            that are not lands{#if Object.keys(suggestion.basics).length > 0}{": "}{BASIC_LANDS.filter(
-                (b) => suggestion.basics[b],
-              )
-                .map((b) => `${suggestion.basics[b]} ${b}`)
-                .join(", ")}{/if}.
-          </p>
-          {#if suggestion.add > 0 && Object.keys(suggestion.basics).length > 0 && !matchesSuggestion(build, suggestion)}
-            <button
-              type="button"
-              class="btn ghost sm"
-              onclick={() => (build = applySuggestion(build, suggestion))}
-            >
-              {L.draftUseSuggestion}
-            </button>
-          {/if}
-        {:else}
-          <p class="help suggest">A 40-card deck usually plays about 17 lands.</p>
-        {/if}
+  <div class="build">
+    <DraftStatsStrip main={zones.deck} wide />
+    <div class="cols">
+      <div class="zones">
+        <DraftSplit
+          cards={pool}
+          side={sideIDs(build)}
+          images
+          onmove={move}
+          emptyMain="No cards yet. Click a card in your sideboard, or drag it here, to play it."
+          emptySide="Every card you drafted is in your deck."
+          previewExtra={reasons}
+        />
       </div>
 
-      {#if error}
-        <p class="notice err" role="alert">
-          <Icon name="x" size={14} />
-          <span>{error}</span>
-        </p>
-      {/if}
-
-      <div class="submit">
-        <button
-          type="button"
-          class="btn primary"
-          disabled={problem !== "" || pending || !live || unchanged}
-          onclick={submit}
-        >
-          {pending ? "Submitting…" : L.draftSubmitDeck}
-        </button>
-        <p class="help" role="status" data-testid="draft-build-status">
-          {#if problem}
-            {problem}
-          {:else if !live}
-            Reconnecting… Your deck is kept on this page.
-          {:else if unchanged}
-            Deck submitted.
-            {#if waiting.length > 0}
-              Waiting for {waiting.map((p) => p.name).join(", ")}. You can still change your deck.
-            {/if}
-          {:else if submitted}
-            You changed your deck since you submitted it. Submit again to play this one.
+      <section class="card panel" aria-labelledby="draft-build-h" data-testid="draft-build">
+        <div class="head">
+          <h2 id="draft-build-h">{L.draftBuildDeck}</h2>
+          {@render timer()}
+        </div>
+        <p class="help">
+          Play at least {deckMin} cards: the ones you drafted, plus as many basic lands as you like. The
+          rest of what you drafted is your sideboard.
+          {#if view.build?.untimed}
+            There is no timer: the rounds begin when everyone has submitted a deck.
           {:else}
-            {cardCount(size)}. Ready to submit.
+            When the timer ends, a deck is built for anyone who has not submitted one.
           {/if}
         </p>
-      </div>
-    </section>
+
+        <dl class="counts" data-testid="draft-deck-count">
+          <div>
+            <dt>Deck</dt>
+            <dd class:short={problem !== ""}>{size}<span class="of">/{deckMin}</span></dd>
+          </div>
+          <div>
+            <dt>Lands</dt>
+            <dd>{lands}</dd>
+          </div>
+          <div>
+            <dt>Other cards</dt>
+            <dd>{size - lands}</dd>
+          </div>
+        </dl>
+
+        <div class="lands">
+          <h3>{L.draftBasicLands} <span class="n">{basicsCount(build)}</span></h3>
+          <ul>
+            {#each BASIC_LANDS as name (name)}
+              {@const n = build.basics[name] ?? 0}
+              <li role="group" aria-label={L.draftBasicStepper(name)}>
+                <span class="land">
+                  <ManaSymbol symbol={BASIC_COLOR[name]} size={16} />
+                  {name}
+                </span>
+                <span class="stepper">
+                  <button
+                    type="button"
+                    class="btn ghost sm"
+                    aria-label={`one fewer ${name}`}
+                    disabled={n === 0}
+                    onclick={() => step(name, -1)}>−</button
+                  >
+                  <output class="num" aria-live="off">{n}</output>
+                  <button
+                    type="button"
+                    class="btn ghost sm"
+                    aria-label={`one more ${name}`}
+                    disabled={n >= MAX_BASICS}
+                    onclick={() => step(name, 1)}>+</button
+                  >
+                </span>
+              </li>
+            {/each}
+          </ul>
+          {#if suggestion.lands > 0}
+            <p class="help suggest" data-testid="draft-land-suggestion">
+              Suggested: {suggestion.lands} lands for {cardCount(
+                zones.deck.length - (lands - basicsCount(build)),
+              )}
+              that are not lands{#if Object.keys(suggestion.basics).length > 0}{": "}{BASIC_LANDS.filter(
+                  (b) => suggestion.basics[b],
+                )
+                  .map((b) => `${suggestion.basics[b]} ${b}`)
+                  .join(", ")}{/if}.
+            </p>
+            {#if suggestion.add > 0 && Object.keys(suggestion.basics).length > 0 && !matchesSuggestion(build, suggestion)}
+              <button
+                type="button"
+                class="btn ghost sm"
+                onclick={() => (build = applySuggestion(build, suggestion))}
+              >
+                {L.draftUseSuggestion}
+              </button>
+            {/if}
+          {:else}
+            <p class="help suggest">A 40-card deck usually plays about 17 lands.</p>
+          {/if}
+        </div>
+
+        {#if error}
+          <p class="notice err" role="alert">
+            <Icon name="x" size={14} />
+            <span>{error}</span>
+          </p>
+        {/if}
+
+        <div class="submit">
+          <button
+            type="button"
+            class="btn primary"
+            disabled={problem !== "" || pending || !live || unchanged}
+            onclick={submit}
+          >
+            {pending ? "Submitting…" : L.draftSubmitDeck}
+          </button>
+          <p class="help" role="status" data-testid="draft-build-status">
+            {#if problem}
+              {problem}
+            {:else if !live}
+              Reconnecting… Your deck is kept on this page.
+            {:else if unchanged}
+              Deck submitted.
+              {#if waiting.length > 0}
+                Waiting for {waiting.map((p) => p.name).join(", ")}. You can still change your deck.
+              {/if}
+            {:else if submitted}
+              You changed your deck since you submitted it. Submit again to play this one.
+            {:else}
+              {cardCount(size)}. Ready to submit.
+            {/if}
+          </p>
+        </div>
+      </section>
+    </div>
   </div>
 {/if}
 
@@ -303,6 +313,12 @@
     border: 1px solid var(--accent);
     font-size: 0.8125rem;
     color: var(--fg);
+  }
+  .build {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-width: 0;
   }
   .cols {
     display: grid;

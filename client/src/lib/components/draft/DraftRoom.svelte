@@ -38,6 +38,7 @@
     timerAnnouncement,
     viewAnnouncement,
     waitingLine,
+    type DraftCard,
     type DraftView,
   } from "../../draft";
   import { loadArchetypesOpen } from "../../draftArchetypes";
@@ -76,7 +77,9 @@
   import DraftRatingsBar from "./DraftRatingsBar.svelte";
   import DraftSeats from "./DraftSeats.svelte";
   import DraftSplit from "./DraftSplit.svelte";
-  import DraftStats from "./DraftStats.svelte";
+  import DraftReasons from "./DraftReasons.svelte";
+  import DraftStatsOverlay from "./DraftStatsOverlay.svelte";
+  import DraftStatsStrip from "./DraftStatsStrip.svelte";
 
   interface Props {
     id: string;
@@ -145,6 +148,9 @@
   let side = $state<string[]>(loadSplit(id));
   const picks = $derived(view?.picks ?? []);
   const sideIDs = $derived(pruneSide(picks, side));
+  // Main and the Sideboard, for the stats (#5848 §6).
+  const mainPicks = $derived(picks.filter((c) => !sideIDs.includes(c.id)));
+  const sidePicks = $derived(picks.filter((c) => sideIDs.includes(c.id)));
 
   function setSide(next: string[]): void {
     side = next;
@@ -157,6 +163,9 @@
   // while the pick clock runs. It is this page's own and not remembered:
   // a reload opens on the pack, where the pick is.
   let deckView = $state(false);
+  // The full stats overlay (#5848 §6): closed on every page load, never remembered.
+  let statsOpen = $state(false);
+  let statsButton = $state<HTMLButtonElement | null>(null);
   // The colour-pair panel is open or shut (#5848 §4); the room sizes its
   // column from it. It opens as the viewer left it.
   let pairsOpen = $state(loadArchetypesOpen());
@@ -171,7 +180,10 @@
   onMount(() => () => clearTimeout(toastTimer));
   // Deck view is a part of picking: it ends when the picks do.
   $effect(() => {
-    if (view && view.state !== "picking") deckView = false;
+    if (view && view.state !== "picking") {
+      deckView = false;
+      statsOpen = false;
+    }
   });
   // The splits of drafts this browser no longer holds a seat in go.
   onMount(() => pruneSplits([...storedDraftIDs(), id]));
@@ -414,6 +426,10 @@
     }
   }
 </script>
+
+{#snippet reasons(card: DraftCard)}
+  <DraftReasons {card} setAvg={view?.set_avg_win_rate} />
+{/snippet}
 
 {#snippet timer()}
   {#if seconds !== null}
@@ -677,6 +693,7 @@
                       onpick={pick}
                       onaside={(ids) => setSide([...new Set([...side, ...ids])])}
                       {timer}
+                      previewExtra={reasons}
                     />
                   {:else}
                     <div class="card waiting" data-testid="draft-waiting">
@@ -698,11 +715,12 @@
                     ids={{ main: "draft-picks-main", side: "draft-picks-side" }}
                     emptyMain="No picks yet."
                     emptySide="Drag a card here, or click it, to set it aside."
+                    previewExtra={reasons}
                   />
                 </aside>
 
                 <div class="statsarea">
-                  <DraftStats main={picks.filter((c) => !sideIDs.includes(c.id))} pool={picks} />
+                  <DraftStatsStrip main={mainPicks} />
                 </div>
 
                 <section class="card side seatsarea" aria-labelledby="draft-seats-h">
@@ -759,7 +777,30 @@
   </div>
 
   {#if view?.state === "picking"}
-    <DraftCornerButtons picks={picks.length} {deckView} ondeck={() => (deckView = !deckView)} />
+    <DraftCornerButtons picks={picks.length} {deckView} ondeck={() => (deckView = !deckView)}>
+      <button
+        type="button"
+        class="fab alt"
+        bind:this={statsButton}
+        aria-keyshortcuts="S"
+        aria-pressed={statsOpen}
+        data-testid="draft-stats-button"
+        onclick={() => (statsOpen = !statsOpen)}
+      >
+        <Icon name="chart" size={14} />
+        {L.draftFullStats}
+        <kbd>S</kbd>
+      </button>
+    </DraftCornerButtons>
+    <DraftStatsOverlay
+      open={statsOpen}
+      main={mainPicks}
+      side={sidePicks}
+      onopen={() => (statsOpen = true)}
+      onclose={() => (statsOpen = false)}
+      returnTo={statsButton}
+      {timer}
+    />
   {/if}
 
   {#if toast}

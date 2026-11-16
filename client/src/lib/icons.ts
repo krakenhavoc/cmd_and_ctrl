@@ -229,6 +229,8 @@ export const ICONS = {
     p("M4.5 12h.01"),
     p("M4.5 18h.01"),
   ],
+  // The draft room's Full stats button (#5848): three bars.
+  chart: [p("M5 20v-8"), p("M12 20V5"), p("M19 20v-11")],
 } satisfies Record<string, IconPrimitive[]>;
 
 export type IconName = keyof typeof ICONS;

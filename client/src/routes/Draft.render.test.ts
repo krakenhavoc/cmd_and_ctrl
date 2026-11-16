@@ -2163,26 +2163,26 @@ describe("the picks beside the pack", () => {
     expect(localStorage.getItem("cmdctrl.draftSplit.over")).toBeNull();
   });
 
-  it("tallies the picks for Main and for the whole pool, and follows a move", async () => {
+  it("shows the colours and the curve of Main under the picks, and follows a move", async () => {
     const c = await room(view({ picks }));
-    const stat = (scope: "main" | "pool", sel: string): string =>
-      text(c.querySelector(`[data-testid="draft-stats"] [data-scope="${scope}"] ${sel}`));
-    expect(text(c.querySelector("#draft-stats-h"))).toBe(L.draftStats);
-    expect(stat("main", '[data-stat="creatures"]')).toBe("2");
-    expect(stat("main", '[data-stat="non-creatures"]')).toBe("1");
-    expect(stat("pool", '[data-type="artifact"]')).toBe("1");
-    expect(stat("pool", '[data-colour="U"]')).toBe("2");
-    expect(c.querySelector('[data-scope="main"] [role="img"]')!.getAttribute("aria-label")).toBe(
+    const pips = (colour: string): string =>
+      text(c.querySelector(`[data-testid="draft-stats"] [data-pips="${colour}"]`));
+    const strip = c.querySelector('[data-testid="draft-stats"]')!;
+    expect(strip.getAttribute("aria-label")).toBe(L.draftStatsStripName);
+    expect(pips("U")).toBe("2");
+    expect(pips("G")).toBe("1");
+    expect(strip.querySelector('[role="img"]')!.getAttribute("aria-label")).toBe(
       `${L.draftCurve}: 0 at 0, 1 at 1, 1 at 2, 1 at 3, 0 at 4, 0 at 5, 0 at 6 or more`,
     );
 
-    // Setting Wall of Bark aside takes it out of Main's counts, not the pool's.
+    // Setting Wall of Bark aside takes it out of Main's colours and curve.
     click(moveBtn(c, "draft-picks-main", "Wall of Bark"));
     await settle();
-    expect(stat("main", '[data-type="artifact"]')).toBe("0");
-    expect(stat("main", '[data-colour="G"]')).toBe("0");
-    expect(stat("pool", '[data-type="artifact"]')).toBe("1");
-    expect(stat("pool", '[data-colour="G"]')).toBe("1");
+    expect(c.querySelector('[data-testid="draft-stats"] [data-pips="G"]')).toBeNull();
+    expect(pips("U")).toBe("2");
+    expect(
+      c.querySelector('[data-testid="draft-stats"] [role="img"]')!.getAttribute("aria-label"),
+    ).toBe(`${L.draftCurve}: 0 at 0, 0 at 1, 1 at 2, 1 at 3, 0 at 4, 0 at 5, 0 at 6 or more`);
   });
 });
 
@@ -2211,12 +2211,9 @@ describe("the build screen starts from the split", () => {
       },
       ...over,
     });
-  const stat = (c: HTMLElement, scope: "main" | "pool"): string =>
-    text(
-      c.querySelector(
-        `[data-testid="draft-stats"] [data-scope="${scope}"] [data-stat="creatures"]`,
-      ),
-    );
+  // Main's blue mana symbols, from the strip across the top.
+  const stat = (c: HTMLElement): string =>
+    text(c.querySelector('[data-testid="draft-stats"] [data-pips="U"]'));
 
   it("opens with the sideboard the picks screen left, and shows the stats", async () => {
     localStorage.setItem(
@@ -2228,20 +2225,19 @@ describe("the build screen starts from the split", () => {
     expect(text(c.querySelector("#draft-side-h"))).toBe(`${L.draftSideboardZone} 1`);
     expect(text(c.querySelector('[data-testid="draft-deck"]'))).toContain("Thundertrap Trainer");
     expect(text(c.querySelector('[data-testid="draft-side"]'))).toContain("Mindwhisker");
-    expect(stat(c, "main")).toBe("1");
-    expect(stat(c, "pool")).toBe("2");
+    expect(stat(c)).toBe("1");
   });
 
   it("keeps a move made here, for a reload, and the stats follow it", async () => {
     const c = await room(buildView());
-    expect(stat(c, "main")).toBe("2");
+    expect(stat(c)).toBe("2");
     const move = [...c.querySelectorAll<HTMLElement>('[data-testid="draft-deck"] button')].find(
       (b) => b.getAttribute("aria-label")!.includes(": Mindwhisker, "),
     )!;
     click(move);
     await settle();
     expect(JSON.parse(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)!).side).toEqual(["p2"]);
-    expect(stat(c, "main")).toBe("1");
+    expect(stat(c)).toBe("1");
   });
 
   it("forgets the split once the rounds begin", async () => {
@@ -2467,5 +2463,214 @@ describe("the corner buttons (#5848 §8)", () => {
     const c = await room();
     expect(c.querySelectorAll('[data-testid="draft-corner-buttons"]').length).toBe(1);
     expect(c.querySelector(".roomgrid")!.classList).toContain("corner");
+  });
+});
+
+// ---- Colours, curve and the full stats overlay (#5848 §6) ----
+
+describe("the full stats overlay (#5848 §6)", () => {
+  const picks = [
+    card("p1", "Serra Angel", {
+      colors: ["W"],
+      mana_cost: "{3}{W}{W}",
+      mana_value: 5,
+      type_line: "Creature — Angel",
+      keywords: ["Flying", "Vigilance"],
+      power: "4",
+      toughness: "4",
+    }),
+    card("p2", "Doom Blade", {
+      colors: ["B"],
+      mana_cost: "{1}{B}",
+      mana_value: 2,
+      type_line: "Instant",
+      oracle_text: "Destroy target nonblack creature.",
+    }),
+    card("p3", "Pacifism", {
+      colors: ["W"],
+      mana_cost: "{1}{W}",
+      mana_value: 2,
+      type_line: "Enchantment — Aura",
+      oracle_text: "Enchanted creature can't attack or block.",
+    }),
+    card("p4", "Mind Stone", {
+      colors: [],
+      mana_cost: "{2}",
+      mana_value: 2,
+      type_line: "Artifact",
+      oracle_text: "{T}: Add {C}.",
+    }),
+  ];
+  const overlay = (c: HTMLElement): HTMLElement | null =>
+    c.querySelector<HTMLElement>('[data-testid="draft-stats-overlay"]');
+  const button = (c: HTMLElement): HTMLButtonElement =>
+    c.querySelector<HTMLButtonElement>('[data-testid="draft-stats-button"]')!;
+  const closeBtn = (c: HTMLElement): HTMLButtonElement =>
+    c.querySelector<HTMLButtonElement>('[data-testid="draft-stats-close"]')!;
+  const press = (key: string, target: EventTarget = document.body): void => {
+    target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    flushSync();
+  };
+
+  it("is closed on load, beside Deck view, with its key", async () => {
+    const c = await room(view({ picks }));
+    expect(overlay(c)).toBeNull();
+    expect(text(button(c))).toContain(L.draftFullStats);
+    expect(button(c).getAttribute("aria-keyshortcuts")).toBe("S");
+    // One group of corner buttons: Full stats first, Deck view last.
+    const fabs = [...c.querySelectorAll('[data-testid="draft-corner-buttons"] .fab')];
+    expect(fabs.map((b) => b.getAttribute("data-testid"))).toEqual([
+      "draft-stats-button",
+      "draft-deck-view-button",
+    ]);
+  });
+
+  it("opens as a modal dialog with a sticky header, locks the page's scroll and focuses Close", async () => {
+    const c = await room(view({ picks }));
+    click(button(c));
+    await settle();
+    const dlg = overlay(c)!;
+    expect(dlg.getAttribute("role")).toBe("dialog");
+    expect(dlg.getAttribute("aria-modal")).toBe("true");
+    expect(text(c.querySelector(`#${dlg.getAttribute("aria-labelledby")}`))).toBe(L.deckStats);
+    expect(text(c.querySelector('[data-testid="draft-stats-counts"]'))).toBe(
+      "Main 4 · Sideboard 0",
+    );
+    // The pick clock is in the header while drafting.
+    expect(dlg.querySelector('.head [role="timer"]')).not.toBeNull();
+    expect(text(closeBtn(c))).toBe(L.draftStatsClose);
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    expect(document.activeElement).toBe(closeBtn(c));
+  });
+
+  it("closes with Close, Esc or S, gives the scroll and the focus back, and is not remembered", async () => {
+    const c = await room(view({ picks }));
+    for (const close of [() => click(closeBtn(c)), () => press("Escape"), () => press("s")]) {
+      click(button(c));
+      await settle();
+      expect(overlay(c)).not.toBeNull();
+      close();
+      await settle();
+      expect(overlay(c)).toBeNull();
+      expect(document.documentElement.style.overflow).toBe("");
+      expect(document.activeElement).toBe(button(c));
+    }
+    // A new page load opens closed.
+    cleanup();
+    const again = await room(view({ picks }));
+    expect(overlay(again)).toBeNull();
+  });
+
+  it("opens with S, but not while typing or with a modifier held", async () => {
+    const c = await room(view({ picks }));
+    const field = document.createElement("input");
+    document.body.appendChild(field);
+    press("s", field);
+    expect(overlay(c)).toBeNull();
+    field.remove();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true }));
+    flushSync();
+    expect(overlay(c)).toBeNull();
+    press("S");
+    expect(overlay(c)).not.toBeNull();
+  });
+
+  it("keeps Tab on Close", async () => {
+    const c = await room(view({ picks }));
+    click(button(c));
+    await settle();
+    const ev = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    overlay(c)!.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(closeBtn(c));
+  });
+
+  it("lays out colours, card types, the curve and More detail, each row with its card names", async () => {
+    const c = await room(view({ picks }));
+    click(button(c));
+    await settle();
+    const o = overlay(c)!;
+    const row = (key: string): HTMLElement => o.querySelector<HTMLElement>(`[data-row="${key}"]`)!;
+    // Colours: white has 3 pips (Serra Angel WW, Pacifism W), black 1.
+    expect(text(o.querySelector('[data-pips="W"]'))).toBe("3");
+    expect(text(o.querySelector('[data-pips="B"]'))).toBe("1");
+    expect(text(o.querySelector('[data-testid="draft-basics"]'))).toBe(
+      "17 basics by pips: 13 Plains · 4 Swamp",
+    );
+    // Card types: a row for each, the names listed, a zero row faded.
+    expect(text(row("creature"))).toBe(`${L.draftTypeCreature} 1 Serra Angel`);
+    expect(row("sorcery").classList.contains("zero")).toBe(true);
+    expect(text(row("other"))).toContain("Doom Blade, Pacifism, Mind Stone");
+    expect(text(o.querySelector('[data-testid="draft-creature-note"]'))).toBe(
+      L.draftStatsCreatureNote(1),
+    );
+    // The curve, larger, with its average mana value.
+    expect(text(o.querySelector('[data-testid="draft-curve-average"]'))).toBe(
+      L.draftStatsAverageMv("2.75"),
+    );
+    // More detail: type lines, creatures, roles, timing, all in the page.
+    const more = o.querySelector('[data-testid="draft-more-detail"]')!;
+    expect(more).not.toBeNull();
+    expect(more.closest("details")).toBeNull();
+    expect(text(row("line-Enchantment (Aura)"))).toContain("Pacifism");
+    expect(text(row("medium"))).toBe(`${L.draftStatsMedium} 1 Serra Angel`);
+    expect(row("big").classList.contains("zero")).toBe(true);
+    expect(text(row("evasive"))).toContain("Serra Angel");
+    expect(text(row("removal"))).toContain("Doom Blade, Pacifism");
+    expect(text(row("fliers"))).toContain("Serra Angel");
+    expect(text(row("ramp"))).toContain("Mind Stone");
+    expect(row("counters").classList.contains("zero")).toBe(true);
+    expect(text(row("instant-speed"))).toContain("Doom Blade");
+    expect(text(row("colourless"))).toContain("Mind Stone");
+  });
+
+  it("counts Main and Sideboard apart, and Main only for the stats", async () => {
+    const c = await room(view({ picks }));
+    click(
+      [...c.querySelectorAll<HTMLElement>('[data-testid="draft-picks-main"] [data-move-id]')].find(
+        (b) => b.dataset.moveId === "p2",
+      )!,
+    );
+    await settle();
+    click(button(c));
+    await settle();
+    expect(text(c.querySelector('[data-testid="draft-stats-counts"]'))).toBe(
+      "Main 3 · Sideboard 1",
+    );
+    expect(overlay(c)!.querySelector('[data-pips="B"]')).toBeNull();
+  });
+
+  it("closes itself when the picks are over", async () => {
+    const c = await room(view({ picks }));
+    click(button(c));
+    await settle();
+    socket().frame(
+      "draft",
+      view({
+        state: "done",
+        phase: "building",
+        seq: 99,
+        pack: undefined,
+        take: 0,
+        picks,
+        pool: picks,
+      }),
+    );
+    await settle();
+    expect(overlay(c)).toBeNull();
+    expect(document.documentElement.style.overflow).toBe("");
+  });
+});
+
+describe("colours and curve across the top of Deck view (#5848 §6)", () => {
+  it("shows the compact strip above the columns, and no separate curve panel", async () => {
+    const picks = [card("p1", "Thundertrap Trainer", { colors: ["U"], mana_cost: "{1}{U}" })];
+    const c = await room(view({ picks }));
+    click(c.querySelector('[data-testid="draft-deck-view-button"]')!);
+    const pane = c.querySelector('[data-testid="draft-deck-view"]')!;
+    const kids = [...pane.children].map((k) => k.getAttribute("data-testid"));
+    expect(kids.indexOf("draft-stats")).toBeGreaterThan(-1);
+    expect(kids.indexOf("draft-stats")).toBeLessThan(kids.indexOf("draft-deck-columns"));
+    expect(c.querySelectorAll('[data-testid="draft-stats"]').length).toBe(1);
   });
 });
