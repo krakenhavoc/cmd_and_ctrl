@@ -1,0 +1,8 @@
+Branch: feat/5848-draft-card-fields (PR open into develop). Its last commit is a WIP left by an earlier session that was stopped before running any tests: read `git diff origin/develop...HEAD` in full first.
+
+Goal (spec section 3 and the note under section 6):
+1. The draft view's card (Go: server/internal/draft view.go/source.go; TS: DraftCard in client/src/lib/draft.ts) carries additive, omitempty fields `oracle_text` (two faces joined the way the codebase already does elsewhere), `power`, `toughness` (strings, absent unless a creature), `keywords` (string array, absent when empty), sourced from the same card data that already gives type_line/mana_cost.
+2. The set's average 17Lands GIH win rate, computed on the server from the set's 17Lands ratings (server/internal/draftratings), sent once in the draft view (e.g. `set_avg_win_rate`, percent, one decimal, omitted with no 17Lands data), with the TS type.
+3. docs/protocol.md documents both; client types only, no component changes.
+4. Tests: a creature carries the four fields; a non-creature omits power/toughness; the set average is computed and omitted with no data. If the draft view is persisted, changes are additive only; never edit fixtures.
+Finish or correct the WIP, then verify: go vet ./internal/draft/... ./internal/draftratings/... ./internal/lobby/...; go test for those packages; go test ./internal/docsguard/ ./internal/protocol/; gofmt -l . prints nothing; client `npx vitest run src/lib/draft.test.ts` and `npx svelte-check`. Squash nothing; add a final commit `feat(server): send rules text, power, toughness, keywords and the set's average win rate with draft cards`. Push and stop.
