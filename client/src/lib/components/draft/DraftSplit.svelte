@@ -3,17 +3,22 @@
   // (#5699). It is the one component of the pick screen's panel beside
   // the pack and of the deckbuilding screen's zones.
   //
-  // A card moves with a drag onto the other area, or, without a pointer
-  // and on touch, with a click or Enter on the card, which is a button
-  // named for what it does ("Move to sideboard: Shoreline Looter"). The
-  // component owns no state: `side` is the ids in the Sideboard and
-  // `onmove` says where a card goes; the page keeps the split.
-  import { tick } from "svelte";
+  // A card moves with a drag onto the other area (a pointer-event drag,
+  // so a mouse, a pen, or a finger held for a moment, #5848), or with a
+  // click or Enter on the card, which is a button named for what it does
+  // ("Move to sideboard: Shoreline Looter"). A card dragged here from the
+  // pack is a pick: DraftPack does that, and these areas are only the
+  // drop targets (`data-drop-zone`). The component owns no state: `side`
+  // is the ids in the Sideboard and `onmove` says where a card goes; the
+  // page keeps the split.
+  import { tick, type Snippet } from "svelte";
 
-  import { DRAG_TYPE, type DraftCard } from "../../draft";
+  import type { DraftCard } from "../../draft";
+  import { dragState } from "../../draftDrag.svelte";
   import { splitCards, type Zone } from "../../draftSplit";
   import { L } from "../../labels";
   import DraftPool from "./DraftPool.svelte";
+  import DraftPreview from "./DraftPreview.svelte";
 
   interface Props {
     cards: DraftCard[];
@@ -26,6 +31,8 @@
     ids?: { main: string; side: string };
     emptyMain?: string;
     emptySide?: string;
+    /** Drawn under each card's large preview (the reasons for its rating). */
+    previewExtra?: Snippet<[DraftCard]>;
   }
   const {
     cards,
@@ -35,12 +42,24 @@
     ids = { main: "draft-deck", side: "draft-side" },
     emptyMain = "No cards yet.",
     emptySide = "Nothing set aside.",
+    previewExtra,
   }: Props = $props();
 
   const zones = $derived(splitCards(cards, side));
 
   let root = $state<HTMLElement | null>(null);
-  let dropOn = $state<Zone | null>(null);
+  let mainEl = $state<HTMLElement | null>(null);
+  let sideEl = $state<HTMLElement | null>(null);
+  // The area a card is being dragged over, for its highlight.
+  const dropOn = $derived<Zone | null>(
+    dragState.over && dragState.over === mainEl
+      ? "main"
+      : dragState.over && dragState.over === sideEl
+        ? "side"
+        : null,
+  );
+  // Both areas share one preview host, so a swap from one to the other is instant.
+  const scope = `split-${Math.random().toString(36).slice(2, 8)}`;
   // Said once per move, for a screen reader (DESIGN.md §8).
   let said = $state("");
 
@@ -61,17 +80,8 @@
     }
   }
 
-  function over(ev: DragEvent, to: Zone): void {
-    if (!ev.dataTransfer?.types.includes(DRAG_TYPE)) return;
-    ev.preventDefault();
-    dropOn = to;
-  }
-  function drop(ev: DragEvent, to: Zone): void {
-    ev.preventDefault();
-    dropOn = null;
-    const id = ev.dataTransfer?.getData(DRAG_TYPE);
-    if (id && cards.some((c) => c.id === id)) move(id, to, false);
-  }
+  // A card dropped on the other area; a drop on its own is not a move.
+  const dragged = (card: DraftCard, to: Zone): void => move(card.id, to, false);
   const toggle = (card: DraftCard, from: Zone): void =>
     move(card.id, from === "main" ? "side" : "main", true);
 </script>
@@ -82,9 +92,8 @@
     class:drop={dropOn === "main"}
     aria-labelledby={`${ids.main}-h`}
     data-testid={ids.main}
-    ondragover={(ev) => over(ev, "main")}
-    ondragleave={() => (dropOn = null)}
-    ondrop={(ev) => drop(ev, "main")}
+    data-drop-zone="main"
+    bind:this={mainEl}
   >
     <h2 id={`${ids.main}-h`}>
       {L.draftDeckZone} <span class="n">{zones.main.length}</span>
@@ -95,6 +104,9 @@
       verb="Move to sideboard"
       empty={emptyMain}
       onpick={(card) => toggle(card, "main")}
+      zone="main"
+      ondrag={dragged}
+      previewScope={scope}
     />
   </section>
 
@@ -103,9 +115,8 @@
     class:drop={dropOn === "side"}
     aria-labelledby={`${ids.side}-h`}
     data-testid={ids.side}
-    ondragover={(ev) => over(ev, "side")}
-    ondragleave={() => (dropOn = null)}
-    ondrop={(ev) => drop(ev, "side")}
+    data-drop-zone="side"
+    bind:this={sideEl}
   >
     <h2 id={`${ids.side}-h`}>
       {L.draftSideboardZone} <span class="n">{zones.side.length}</span>
@@ -116,10 +127,14 @@
       verb="Move to main"
       empty={emptySide}
       onpick={(card) => toggle(card, "side")}
+      zone="side"
+      ondrag={dragged}
+      previewScope={scope}
     />
   </section>
 
   <p class="sr-only" role="status" data-testid="draft-split-said">{said}</p>
+  <DraftPreview {scope} children={previewExtra} />
 </div>
 
 <style>
@@ -145,6 +160,7 @@
   .zone.drop {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
   }
   h2 {
     margin: 0 0 12px;

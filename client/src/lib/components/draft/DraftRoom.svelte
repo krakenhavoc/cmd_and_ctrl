@@ -246,6 +246,16 @@
     }
   }
 
+  // A card dragged to the Sideboard is queued there before the server has
+  // taken the pick. If the pick is refused the card is still in the pack,
+  // so it must not carry the queue into a later pick: drop every queued
+  // id that is still in the pack.
+  function dropQueuedAside(): void {
+    const inPack = new Set((view?.pack ?? []).map((c) => c.id));
+    if (!side.some((sid) => inPack.has(sid))) return;
+    setSide(side.filter((sid) => !inPack.has(sid)));
+  }
+
   function onError(err: DraftError): void {
     if (err.code === SERVER_FULL_CODE) {
       serverNote =
@@ -258,6 +268,7 @@
       return;
     }
     pendingPick = null;
+    dropQueuedAside();
     pickError = err.message || "That pick was refused. Choose again.";
   }
 
@@ -664,6 +675,7 @@
                           ? "Sending your pick…"
                           : ""}
                       onpick={pick}
+                      onaside={(ids) => setSide([...new Set([...side, ...ids])])}
                       {timer}
                     />
                   {:else}

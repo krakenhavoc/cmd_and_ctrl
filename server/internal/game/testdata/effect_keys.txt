@@ -1008,6 +1008,7 @@ choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
 choose choose-cards/ward-sacrifice-a-food
 choose choose-cards/ward-sacrifice-a-legendary-artifact-or-legendary-creature
+choose choose-cards/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
 choose choose-cards/ward-sacrifice-two-permanents
@@ -1073,6 +1074,7 @@ condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
 condition attack/each-creature-you-control-unblocked
 condition attack/nontoken-creatures-attack
+condition attack/that-creature-attacks-an-opponent-of-the-controller
 condition attack/that-creature-attacks-the-monarch
 condition attack/that-creature-unblocked
 condition attack/you-attack
@@ -1310,6 +1312,7 @@ confirm confirm/ward-pay-life
 confirm confirm/ward-sacrifice-a-creature
 confirm confirm/ward-sacrifice-a-food
 confirm confirm/ward-sacrifice-a-legendary-artifact-or-legendary-creature
+confirm confirm/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
@@ -2335,6 +2338,7 @@ tail dice/ancient-copper-dragon-treasures
 tail dice/ancient-gold-dragon-tokens
 tail dice/ancient-silver-dragon-draw
 tail dice/berserkers-frenzy-result
+tail dice/clown-car-results
 tail dice/component-pouch-counters
 tail dice/danse-macabre-result
 tail dice/diviners-portent-result

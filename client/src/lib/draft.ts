@@ -400,9 +400,6 @@ export async function seatDraftMatch(id: string, token: string): Promise<Session
   };
 }
 
-/** The drag type a pool card carries on the deckbuilding screen: its draft id. */
-export const DRAG_TYPE = "application/x-c2-draft-card";
-
 // The way back from a match's table to its draft. The game page knows a
 // table by its id alone, so the draft page notes which draft a table
 // belongs to as it sends the player there. Session storage: it is this
