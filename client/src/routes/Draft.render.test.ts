@@ -1359,7 +1359,6 @@ describe("building a deck", () => {
     const out = moveBtn(c, "draft-deck", "Shoreline Looter");
     expect(out.getAttribute("aria-label")).toMatch(/^Move to sideboard: Shoreline Looter, costs /);
     expect(out.getAttribute("aria-label")).toContain("Creature — Rat Rogue");
-    expect(out.getAttribute("draggable")).toBe("true");
     click(out);
     expect(moveBtn(c, "draft-side", "Shoreline Looter").getAttribute("aria-label")).toMatch(
       /^Move to main: Shoreline Looter/,
@@ -2087,26 +2086,25 @@ describe("the picks beside the pack", () => {
     expect(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)).toBeNull();
   });
 
-  it("moves a pick by dropping it on the other area", async () => {
+  it("moves a pick by dragging it onto the other area with the pointer", async () => {
     const c = await room(view({ picks }));
-    const data = new Map<string, string>();
-    const transfer = {
-      types: ["application/x-c2-draft-card"],
-      setData: (k: string, v: string) => data.set(k, v),
-      getData: (k: string) => data.get(k) ?? "",
-      effectAllowed: "",
-    };
-    const fire = (el: Element, type: string): void => {
-      const ev = new Event(type, { bubbles: true, cancelable: true });
-      Object.defineProperty(ev, "dataTransfer", { value: transfer });
-      el.dispatchEvent(ev);
+    const pointer = (target: Element | Window, type: string, x: number, y: number): void => {
+      const ev = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+      Object.defineProperty(ev, "pointerId", { value: 1 });
+      Object.defineProperty(ev, "pointerType", { value: "mouse" });
+      target.dispatchEvent(ev);
       flushSync();
     };
     const row = moveBtn(c, "draft-picks-main", "Thundertrap Trainer");
-    expect(row.getAttribute("draggable")).toBe("true");
-    fire(row, "dragstart");
-    fire(area(c, "draft-picks-side"), "dragover");
-    fire(area(c, "draft-picks-side"), "drop");
+    expect(row.getAttribute("draggable")).toBeNull();
+    document.elementFromPoint = () => area(c, "draft-picks-side");
+    try {
+      pointer(row, "pointerdown", 10, 10);
+      pointer(window, "pointermove", 200, 300);
+      pointer(window, "pointerup", 200, 300);
+    } finally {
+      delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+    }
     expect(text(area(c, "draft-picks-side"))).toContain("Thundertrap Trainer");
     expect(text(c.querySelector("#draft-picks-main-h"))).toBe(`${L.draftDeckZone} 2`);
   });

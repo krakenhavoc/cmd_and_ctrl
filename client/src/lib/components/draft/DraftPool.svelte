@@ -9,17 +9,16 @@
   //
   // `cards` is the viewer's `picks` or `pool`. No other seat's cards
   // exist on the wire (CR 905.1c).
-  import {
-    DRAG_TYPE,
-    groupPool,
-    stackCopies,
-    type DraftCard,
-    type PoolGroupKey,
-  } from "../../draft";
+  import type { Snippet } from "svelte";
+
+  import { groupPool, stackCopies, type DraftCard, type PoolGroupKey } from "../../draft";
+  import { draftCard } from "../../draftCardPointer";
   import { cardEdge } from "../../draftEdge";
   import { ratedCardName } from "../../draftRatings.svelte";
+  import type { Zone } from "../../draftSplit";
   import ManaCost from "../board/ManaCost.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
+  import DraftPreview from "./DraftPreview.svelte";
   import DraftRatingBadge from "./DraftRatingBadge.svelte";
 
   interface Props {
@@ -34,16 +33,42 @@
      */
     onpick?: (card: DraftCard) => void;
     verb?: string;
+    /**
+     * The zone this pool is, and what a drag of one of its cards onto
+     * the other zone does (#5848). With both, a card is dragged with the
+     * pointer, a finger held for a moment, or a pen.
+     */
+    zone?: Zone;
+    ondrag?: (card: DraftCard, to: Zone) => void;
+    /**
+     * The preview host that draws this pool's previews. Left out, the
+     * pool hosts its own; DraftSplit hosts one for both its pools.
+     */
+    previewScope?: string;
+    /** Drawn under the large preview, for the card (see DraftPreview). */
+    previewExtra?: Snippet<[DraftCard]>;
     /** What an empty pool says. */
     empty?: string;
   }
-  const { cards, images = false, onpick, verb = "", empty = "No picks yet." }: Props = $props();
+  const {
+    cards,
+    images = false,
+    onpick,
+    verb = "",
+    empty = "No picks yet.",
+    zone,
+    ondrag,
+    previewScope,
+    previewExtra,
+  }: Props = $props();
 
-  // A dragged card carries its draft id; DraftBuild's zones read it.
-  function dragStart(ev: DragEvent, card: DraftCard): void {
-    ev.dataTransfer?.setData(DRAG_TYPE, card.id);
-    if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
-  }
+  const scope = $derived(previewScope ?? "pool");
+  // What a card's pointer does: it previews, and with a zone to leave it drags.
+  const wear = (card: DraftCard): Parameters<typeof draftCard>[1] => ({
+    card,
+    scope,
+    drag: zone && ondrag ? { from: zone, ondrop: (to) => ondrag(card, to) } : undefined,
+  });
 
   const groups = $derived(groupPool(cards));
 
@@ -83,8 +108,7 @@
                     aria-label={`${verb}: ${ratedCardName(card)}`}
                     title={`${verb}: ${card.name}`}
                     data-move-id={card.id}
-                    draggable="true"
-                    ondragstart={(ev) => dragStart(ev, card)}
+                    use:draftCard={wear(card)}
                     onclick={() => onpick(card)}
                   >
                     <DraftCardArt {card} />
@@ -92,8 +116,10 @@
                     <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
                   </button>
                 {:else}
-                  <DraftCardArt {card} alt={card.name} />
-                  <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
+                  <span class="still" use:draftCard={wear(card)}>
+                    <DraftCardArt {card} alt={card.name} />
+                    <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
+                  </span>
                 {/if}
               </li>
             {/each}
@@ -112,8 +138,7 @@
                       aria-label={`${verb}: ${ratedCardName(s.card)}`}
                       data-move-id={s.card.id}
                       data-identity={edge.key}
-                      draggable="true"
-                      ondragstart={(ev) => dragStart(ev, s.card)}
+                      use:draftCard={wear(s.card)}
                       onclick={() => onpick(s.card)}
                     >
                       <span class="edge" style:--edge={edge.background} aria-hidden="true"></span>
@@ -127,15 +152,17 @@
                       <DraftRatingBadge rating={s.card.rating} cardSet={s.card.set} />
                     </button>
                   {:else}
-                    <span class="edge" style:--edge={edge.background} aria-hidden="true"></span>
-                    <span class="mv"
-                      ><span class="sr-only">{"mana value "}</span>{row.manaValue}</span
-                    >
-                    <span class="name">
-                      {#if s.count > 1}<span class="x">{s.count}×</span>{" "}{/if}{s.card.name}
+                    <span class="still row-still" use:draftCard={wear(s.card)}>
+                      <span class="edge" style:--edge={edge.background} aria-hidden="true"></span>
+                      <span class="mv"
+                        ><span class="sr-only">{"mana value "}</span>{row.manaValue}</span
+                      >
+                      <span class="name">
+                        {#if s.count > 1}<span class="x">{s.count}×</span>{" "}{/if}{s.card.name}
+                      </span>
+                      {#if s.card.mana_cost}<ManaCost cost={s.card.mana_cost} size={12} />{/if}
+                      <DraftRatingBadge rating={s.card.rating} cardSet={s.card.set} />
                     </span>
-                    {#if s.card.mana_cost}<ManaCost cost={s.card.mana_cost} size={12} />{/if}
-                    <DraftRatingBadge rating={s.card.rating} cardSet={s.card.set} />
                   {/if}
                 </li>
               {/each}
@@ -145,6 +172,10 @@
       </section>
     {/each}
   </div>
+{/if}
+
+{#if previewScope === undefined}
+  <DraftPreview scope="pool" children={previewExtra} />
 {/if}
 
 <style>
@@ -226,6 +257,17 @@
     color: inherit;
     text-align: left;
     cursor: pointer;
+  }
+  /* A card that only previews: the row's own layout, in a span. */
+  .row-still {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+  .still {
+    display: block;
   }
   .row:hover {
     background: var(--surface-sunken);

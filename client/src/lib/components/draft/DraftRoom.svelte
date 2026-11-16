@@ -606,6 +606,7 @@
                           ? "Sending your pick…"
                           : ""}
                       onpick={pick}
+                      onaside={(ids) => setSide([...new Set([...side, ...ids])])}
                       {timer}
                     />
                   {:else}
