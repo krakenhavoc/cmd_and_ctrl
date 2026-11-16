@@ -171,6 +171,17 @@ type Card struct {
 	// ManaValue is computed from ManaCost (ManaValue).
 	ManaValue int    `json:"mana_value"`
 	TypeLine  string `json:"type_line"`
+	// OracleText is the card's rules text, Scryfall's oracle_text; a
+	// two-faced card's faces are joined with "\n//\n" (#5848). Power
+	// and Toughness are the printed values as Scryfall gives them ("2",
+	// "*", "1+*"), absent for a card that has none. Keywords are the
+	// keyword abilities the card itself prints (Scryfall's keywords,
+	// never the ones it grants), absent when it has none. All four are
+	// additive and omitted when empty.
+	OracleText string   `json:"oracle_text,omitempty"`
+	Power      string   `json:"power,omitempty"`
+	Toughness  string   `json:"toughness,omitempty"`
+	Keywords   []string `json:"keywords,omitempty"`
 	// Basic marks a basic land.
 	Basic bool `json:"basic,omitempty"`
 	// Rating is what a screen shows beside the card: 17Lands' number

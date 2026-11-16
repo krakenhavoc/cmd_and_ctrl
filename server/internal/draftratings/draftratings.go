@@ -303,6 +303,23 @@ func (s *set) find(oracle uuid.UUID, name string) (Rating, bool) {
 	return Rating{}, false
 }
 
+// MeanPercent is the mean games-in-hand win rate of the set's rated
+// cards, in percent, one decimal (54.1): the figure a card's own win rate
+// is read against ("+3.2 against this set's average", #5848). It is the
+// same mean the tiers and Rating.Z are measured from, so every card of
+// the file has at least the file's MinGames of sample behind it. ok is
+// false for a set without a file.
+func (b *Book) MeanPercent(set string) (float64, bool) {
+	if b == nil {
+		return 0, false
+	}
+	s, ok := b.sets[strings.ToLower(set)]
+	if !ok || len(s.Cards) == 0 {
+		return 0, false
+	}
+	return math.Round(s.mean*1000) / 10, true
+}
+
 // In is the card's rating in the file of the named set.
 func (b *Book) In(set string, oracle uuid.UUID, name string) (Rating, bool) {
 	if b == nil {

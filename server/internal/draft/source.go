@@ -106,6 +106,37 @@ func fillPrinted(out *Card, full cards.Card) {
 		}
 	}
 	out.ManaValue = ManaValue(out.ManaCost)
+
+	// What a screen shows on the card's large preview (#5848).
+	out.OracleText = printedText(full)
+	out.Power, out.Toughness = full.Power, full.Toughness
+	if out.Power == "" && out.Toughness == "" && len(full.CardFaces) > 0 {
+		// Scryfall puts power and toughness on the face of a two-faced
+		// card; the front face's are the card's as it is cast.
+		out.Power, out.Toughness = full.CardFaces[0].Power, full.CardFaces[0].Toughness
+	}
+	if len(full.Keywords) > 0 {
+		out.Keywords = append(out.Keywords, full.Keywords...)
+	}
+}
+
+// faceSeparator joins the rules text of a card's faces.
+const faceSeparator = "\n//\n"
+
+// printedText is a card's rules text: its own oracle_text, or for a
+// two-faced card whose top-level text Scryfall leaves empty, each face's
+// text joined by faceSeparator. A face with no text is skipped.
+func printedText(c cards.Card) string {
+	if c.OracleText != "" || len(c.CardFaces) == 0 {
+		return c.OracleText
+	}
+	parts := make([]string, 0, len(c.CardFaces))
+	for _, f := range c.CardFaces {
+		if f.OracleText != "" {
+			parts = append(parts, f.OracleText)
+		}
+	}
+	return strings.Join(parts, faceSeparator)
 }
 
 // A cube's packs (ADR 0222 §8, #5441).
