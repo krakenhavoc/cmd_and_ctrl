@@ -2065,6 +2065,7 @@ a stale one, and is not disconnected for falling behind. An `error` or a
     "round": 1, "rounds": 3, "pick": 3, "picks_in_round": 14,
     "take": 1, "passing": "left",
     "pick_seconds": 60, "deadline": "2026-11-11T19:00:45Z", "now": "2026-11-11T19:00:02Z",
+    "set_avg_win_rate": 54.1,
     "you": 0,
     "players": [
       { "seat": 0, "name": "Ian", "host": true, "connected": true, "picking": true, "picked": 2 },
@@ -2075,6 +2076,8 @@ a stale one, and is not disconnected for falling behind. An `error` or a
                 "colors": ["U"], "color_identity": ["U"],
                 "mana_cost": "{1}{U}", "mana_value": 2,
                 "type_line": "Creature — Rat Rogue",
+                "oracle_text": "Flying\nWhen this creature enters, draw a card.",
+                "power": "2", "toughness": "1", "keywords": ["Flying"],
                 "rating": { "source": "17lands", "value": 58.3, "tier": "B+", "games": 12345,
                             "avg_pick": 6.3, "avg_seen": 9.1, "set": "blb",
                             "format": "PremierDraft", "fetched": "2026-11-11" } } ],
@@ -2089,6 +2092,26 @@ a stale one, and is not disconnected for falling behind. An `error` or a
   a slight edge on each card from it, falling back to `colors` when it is
   absent.
 
+- A card's `oracle_text`, `power`, `toughness` and `keywords` (#5848,
+  additive, each `omitempty`) are what a screen shows on a large preview of
+  the card. `oracle_text` is Scryfall's rules text, lines split by `\n`; a
+  two-faced card whose top-level text is empty has its faces' texts joined
+  with `\n//\n`. `power` and `toughness` are the printed values as Scryfall
+  gives them (`"2"`, `"*"`, `"1+*"`), taken from the front face of a
+  two-faced card, and absent for a card that has none (a non-creature).
+  `keywords` is the keyword abilities the card itself prints (`["Flying",
+  "Vigilance"]`), never ones it grants, and absent when it has none. A
+  client treats all four as optional: an older server sends none.
+- `set_avg_win_rate` (#5848, additive, `omitempty`) is the mean 17Lands
+  games-in-hand win rate of the draft's set's rated cards, in percent, one
+  decimal (`54.1`), the same scale as a `"17lands"` rating's `value`, so a
+  client can show a card as "+3.2 against this set's average". It is the
+  mean the `tier` grades and the bots' ratings are measured from, over the
+  cards the set's 17Lands file keeps (500 or more games in hand each). It is
+  a fact about the set, the same for every seat, and is sent in every view
+  of the draft rather than on each card. It is absent for a cube draft, for
+  a set with no 17Lands file and from an older server. A card whose rating
+  came from another set (a reprint) is still read against the draft's set.
 - `cube` is `true` for a draft of a saved card list ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §8,
   #5441) and absent otherwise. `set` is then `""`, `set_name` is the cube's
   name and `booster` is `"cube"`: the packs are cut from the shuffled list,

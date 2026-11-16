@@ -73,6 +73,21 @@ export interface DraftCard {
   mana_cost?: string;
   mana_value?: number;
   type_line?: string;
+  /**
+   * The card's rules text (Scryfall's oracle_text), lines split by "\n".
+   * A two-faced card's faces are joined with "\n//\n". Absent when the card
+   * has none and from an older server (#5848).
+   */
+  oracle_text?: string;
+  /** Printed power, as Scryfall gives it ("2", "*", "1+*"); absent when the card has none. */
+  power?: string;
+  /** Printed toughness, as Scryfall gives it; absent when the card has none. */
+  toughness?: string;
+  /**
+   * The keyword abilities the card itself prints ("Flying", "First
+   * strike"), never ones it grants; absent when it has none.
+   */
+  keywords?: string[];
   /** A basic land. */
   basic?: boolean;
   /**
@@ -192,6 +207,13 @@ export interface DraftView {
   /** The viewer's seat. */
   you: number;
   players: DraftPlayer[];
+  /**
+   * The mean 17Lands games-in-hand win rate of the set's rated cards, in
+   * percent, one decimal (54.1): what a card's `rating.value` is read
+   * against ("+3.2 against this set's average", #5848). Absent for a cube
+   * draft, for a set with no 17Lands data and from an older server.
+   */
+  set_avg_win_rate?: number;
   /** The pack the viewer holds; absent while waiting for the others. */
   pack?: DraftCard[];
   /** The viewer's own picks, in the order taken. */
