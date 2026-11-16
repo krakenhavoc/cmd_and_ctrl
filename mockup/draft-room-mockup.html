@@ -1,0 +1,787 @@
+<title>C2 Draft Room Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: three columns — colour pairs (collapses to a 44px rail), the pack, your picks.
+   C2's own dark palette, deliberately single-theme like the app. */
+:root {
+  color-scheme: dark;
+  --bg: #070d14;
+  --surface: #121e2c;
+  --surface-raised: #1a2a3c;
+  --surface-hover: #22354b;
+  --surface-sunken: #0a121b;
+  --fg: #e8eff7;
+  --fg-muted: #8fa3ba;
+  --fg-dim: #5d7187;
+  --border: rgba(140,180,225,.11);
+  --border-strong: rgba(140,180,225,.22);
+  --accent: #ff7a1a;
+  --accent-strong: #ffa55e;
+  --accent-soft: rgba(255,122,26,.16);
+  --accent-fg: #1f0b00;
+  --ok: #4fc58a;
+  --radius: 8px;
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  /* card frame colours */
+  --f-W: #e9e2cc; --f-U: #3d7fc4; --f-B: #4b4450; --f-R: #c9543a; --f-G: #3f8a55; --f-M: #c7a148; --f-C: #9aa4ad;
+  --pip-W: #f6efd2; --pip-U: #a9d3f2; --pip-B: #b9aeb8; --pip-R: #f2a688; --pip-G: #9fd3a8; --pip-C: #cfd5da;
+  --tile: 168px;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 96px; /* room to scroll the last row above the corner buttons */
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+/* ── mockup bar ───────────────────────── */
+.mockbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+  padding: 10px 14px; margin-bottom: 14px;
+  border: 1px dashed var(--border-strong); border-radius: var(--radius);
+  background: var(--surface-sunken); color: var(--fg-muted); font-size: 13px;
+}
+.mockbar strong { color: var(--fg); font-family: var(--font-display); font-weight: 800; font-size: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; padding: 2px; }
+.seg button { border: 0; background: none; padding: 4px 12px; border-radius: 999px; cursor: pointer; color: var(--fg-muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.mockbar label { display: inline-flex; align-items: center; gap: 8px; }
+.mockbar input[type=range] { width: 110px; accent-color: var(--accent); }
+.mockbar .spacer { flex: 1; }
+.linkbtn { background: none; border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 10px; cursor: pointer; color: var(--fg-muted); }
+.linkbtn:hover { color: var(--fg); border-color: var(--fg-dim); }
+
+/* ── page header ──────────────────────── */
+.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 14px; }
+.head h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: -.01em; }
+.head .progress { font-family: var(--font-display); font-weight: 600; font-size: 17px; color: var(--fg-muted); }
+.head .progress b { color: var(--fg); }
+.clock { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); }
+.clock.urgent { color: var(--accent-strong); border-color: var(--accent); }
+
+/* ── room grid ────────────────────────── */
+.room { display: grid; gap: 16px; align-items: start;
+  grid-template-columns: 240px minmax(0,1fr) 290px; grid-template-areas: "pairs stage picks"; }
+.room.pairs-closed { grid-template-columns: 44px minmax(0,1fr) 290px; }
+.room.building { grid-template-columns: 240px minmax(0,1fr); grid-template-areas: "pairs stage"; }
+.room.building.pairs-closed { grid-template-columns: 44px minmax(0,1fr); }
+.stage { grid-area: stage; min-width: 0; }
+/* One scroll bar: the side columns never scroll on their own. A column shorter than the
+   window sticks under the fuse; a taller one scrolls with the page until its end shows,
+   then sticks there (--stick is set from its height). */
+.pairs { grid-area: pairs; min-width: 0; position: sticky; top: var(--stick, 24px); }
+.picks { grid-area: picks; min-width: 0; position: sticky; top: var(--stick, 24px); display: flex; flex-direction: column; gap: 12px; }
+
+/* ── colour pairs panel ───────────────── */
+.panel { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.pairs-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 12px; }
+.pairs-head h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 15px; flex: 1; }
+.iconbtn { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface-raised); cursor: pointer; color: var(--fg-muted); flex: none; }
+.iconbtn:hover { color: var(--fg); background: var(--surface-hover); }
+.pairs ul { list-style: none; margin: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 6px; }
+.pair { padding: 8px 10px; border-radius: 6px; background: var(--surface-sunken); border: 1px solid transparent; }
+.pair.fit { border-color: var(--accent-soft); }
+.pair .top { display: flex; align-items: center; gap: 8px; }
+.pair .nm { font-weight: 600; flex: 1; }
+.pair .n { font-family: var(--font-mono); font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.pair.fit .n { color: var(--accent-strong); }
+.pair p { margin: 4px 0 0; font-size: 12.5px; color: var(--fg-muted); line-height: 1.4; }
+/* collapsed: a rail, not a strip — the columns beside it take the width */
+.rail { display: none; height: calc(100vh - 24px); max-height: 640px; width: 44px; padding: 8px 0; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; }
+.rail .vlabel { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--fg-muted); letter-spacing: .01em; }
+.rail .dots { display: flex; flex-direction: column; gap: 4px; }
+.rail:hover .vlabel { color: var(--fg); }
+.pairs-closed .pairs .open-body { display: none; }
+.pairs-closed .pairs .rail { display: flex; }
+.pairs-closed .pairs { overflow: visible; }
+
+/* ── pack ─────────────────────────────── */
+.stage h2.sec { margin: 0 0 10px; font-family: var(--font-display); font-weight: 800; font-size: 17px; display: flex; align-items: baseline; gap: 10px; }
+.stage h2.sec .hint { font-family: var(--font-body); font-weight: 400; font-size: 13px; color: var(--fg-muted); }
+.pack { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr)); }
+.pack li { min-width: 0; }
+.tilebtn { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: grab; border-radius: 10px; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .12s ease, box-shadow .12s ease; }
+@media (hover: hover) { .tilebtn:hover { transform: translateY(-3px); box-shadow: 0 0 0 2px var(--accent); } }
+.tilebtn.lifted { opacity: .35; }
+.rating { display: flex; justify-content: space-between; margin-top: 4px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); }
+
+/* ── the card face (scales with its width) ── */
+.mtg { container-type: inline-size; width: 100%; aspect-ratio: 63/88; border-radius: 4.5cqw; background: #111; padding: 3.2cqw; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
+.mtg .fr { height: 100%; border-radius: 2.5cqw; padding: 2.4cqw; display: flex; flex-direction: column; gap: 1.8cqw; background: var(--frame); color: #121212; }
+.mtg .bar { display: flex; align-items: center; gap: 2cqw; padding: 1.6cqw 2.6cqw; border-radius: 2cqw; background: rgba(255,255,255,.82); box-shadow: inset 0 0 0 .5cqw rgba(0,0,0,.25); }
+.mtg .name { flex: 1; min-width: 0; font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: 6.6cqw; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mtg .cost { display: flex; gap: .8cqw; flex: none; }
+.pip { display: inline-grid; place-items: center; width: 6.4cqw; height: 6.4cqw; border-radius: 50%; font-family: var(--font-mono); font-weight: 600; font-size: 4.2cqw; color: #111; background: var(--pip-C); box-shadow: 0 .4cqw 0 rgba(0,0,0,.35); }
+.mtg .art { flex: 1 1 40%; border-radius: 1cqw; box-shadow: inset 0 0 0 .6cqw rgba(0,0,0,.4); background: var(--art); min-height: 0; }
+.mtg .type { padding: 1.2cqw 2.6cqw; border-radius: 2cqw; background: rgba(255,255,255,.82); box-shadow: inset 0 0 0 .5cqw rgba(0,0,0,.25); font-family: Georgia, serif; font-weight: 700; font-size: 5cqw; display: flex; align-items: center; gap: 2cqw; white-space: nowrap; overflow: hidden; }
+.mtg .type span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.mtg .rar { width: 4cqw; height: 4cqw; border-radius: 50%; flex: none; background: #222; }
+.mtg .rar.u { background: linear-gradient(135deg,#d7e1ea,#7a8a98); }
+.mtg .rar.r { background: linear-gradient(135deg,#f5d77a,#a3781e); }
+.mtg .txt { flex: 1 1 36%; padding: 2.6cqw 3cqw; border-radius: 1cqw; background: rgba(250,247,238,.94); font-family: Georgia, serif; font-size: 5.1cqw; line-height: 1.28; overflow: hidden; display: flex; flex-direction: column; gap: 1.6cqw; position: relative; }
+.mtg .txt p { margin: 0; }
+.mtg .pt { position: absolute; right: 2cqw; bottom: 1.6cqw; padding: .6cqw 2.4cqw; border-radius: 1.6cqw; background: rgba(255,255,255,.95); box-shadow: inset 0 0 0 .5cqw rgba(0,0,0,.3); font-weight: 700; font-size: 6cqw; }
+.mtg.has-pt .txt { padding-bottom: 9cqw; }
+
+/* ── picks panel ──────────────────────── */
+.zone { padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: border-color .1s, box-shadow .1s, background .1s; }
+.zone h3 { margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; font-family: var(--font-display); font-weight: 800; font-size: 16px; }
+.zone h3 .n { font-family: var(--font-mono); font-size: 12px; color: var(--fg-muted); font-weight: 600; }
+.zone h3 .sub { margin-left: auto; font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--fg-dim); }
+.zone.drop { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.zone .empty { margin: 0; padding: 14px 8px; border: 1px dashed var(--border-strong); border-radius: 6px; color: var(--fg-dim); font-size: 12.5px; text-align: center; }
+.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-radius: 6px; background: var(--surface-sunken); text-align: left; cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-left: 3px solid var(--frame); }
+.row:hover { background: var(--surface-hover); }
+.row .rn { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.row .rc { display: flex; gap: 2px; flex: none; }
+.row .rc .pip { width: 15px; height: 15px; font-size: 9.5px; box-shadow: none; }
+.row.lifted { opacity: .35; }
+.row.just { animation: flash .9s ease; }
+@keyframes flash { from { box-shadow: 0 0 0 2px var(--accent); } to { box-shadow: 0 0 0 2px transparent; } }
+.curve { display: flex; align-items: flex-end; gap: 4px; height: 54px; padding-top: 4px; }
+.curve div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-dim); }
+.curve i { display: block; width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; opacity: .85; }
+
+/* ── deckbuilding ─────────────────────── */
+.buildtop { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 12px; }
+.count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 15px; }
+.count.ok { color: var(--ok); }
+.lands { display: flex; flex-wrap: wrap; gap: 6px; }
+.land { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 12px; }
+.land button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--surface-raised); cursor: pointer; }
+.land button:hover { background: var(--surface-hover); }
+.cols { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 10px; }
+.colh { font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); margin-bottom: 4px; text-align: center; }
+.stack { display: flex; flex-direction: column; }
+.stack .tilebtn + .tilebtn { margin-top: calc(var(--colw, 120px) * -1.13); }
+.stack .tilebtn:hover, .stack .tilebtn:focus-visible { z-index: 2; position: relative; }
+.sidegrid { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.build-zones { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── drag ghost and preview ───────────── */
+.ghost { position: fixed; left: 0; top: 0; width: 120px; pointer-events: none; z-index: 400; transform-origin: 30% 20%; rotate: -4deg; filter: drop-shadow(0 10px 18px rgba(0,0,0,.6)); }
+.ghost.row-ghost { width: 220px; rotate: 0deg; }
+.preview { position: fixed; left: 0; top: 0; width: var(--pv, 320px); z-index: 300; pointer-events: none; filter: drop-shadow(0 16px 30px rgba(0,0,0,.65)); opacity: 0; transition: opacity .08s ease; }
+.preview.on { opacity: 1; }
+.preview .meta { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--surface-raised); border: 1px solid var(--border-strong); font-size: 12.5px; color: var(--fg-muted); display: flex; justify-content: space-between; gap: 10px; font-family: var(--font-mono); }
+.toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom, 0px)); translate: -50% 0; padding: 8px 14px; border-radius: 999px; background: var(--surface-raised); border: 1px solid var(--border-strong); font-size: 13px; z-index: 500; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.toast.on { opacity: 1; }
+.fab.alt { background: var(--surface-raised); color: var(--fg); border-color: var(--border-strong); }
+.fab.alt[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-strong); }
+.fab kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 5px; border-radius: 4px; border: 1px solid currentColor; opacity: .55; }
+.statsbox h4 { margin: 0 0 6px; display: flex; align-items: baseline; gap: 8px; font-family: var(--font-display); font-weight: 800; font-size: 13.5px; }
+.statsbox h4 span { font-family: var(--font-body); font-weight: 400; font-size: 11.5px; color: var(--fg-dim); }
+.sgrid { display: flex; flex-direction: column; gap: 14px; }
+.statsbox.wide { margin-bottom: 14px; }
+.statsbox.wide .sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px 24px; }
+.pipbar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--surface-sunken); margin-bottom: 8px; }
+.pipbar i { display: block; height: 100%; }
+.srows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+.srows li { display: flex; align-items: center; gap: 8px; }
+.srows .l { flex: 1; }
+.srows b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+.srows .dim { min-width: 54px; text-align: right; font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); font-variant-numeric: tabular-nums; }
+.shint { margin: 6px 0 0; font-size: 12px; color: var(--fg-muted); }
+details.more { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+details.more summary { cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--fg-muted); list-style: none; padding: 4px 0; }
+details.more summary::-webkit-details-marker { display: none; }
+details.more summary::before { content: ""; border-left: 5px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .12s; }
+details.more[open] summary::before { transform: rotate(90deg); }
+details.more summary:hover { color: var(--fg); }
+details.more summary .dim { font-weight: 400; color: var(--fg-dim); }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px 24px; margin-top: 10px; }
+.mgrid .srows li { flex-wrap: wrap; row-gap: 0; }
+.names { width: 100%; font-size: 11px; line-height: 1.35; color: var(--fg-dim); }
+.zero { opacity: .45; }
+html.lock { overflow: hidden; }
+.overlay { position: fixed; inset: 0; z-index: 350; overflow-y: auto; background: color-mix(in srgb, var(--bg) 94%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.ovin { max-width: 1240px; margin: 0 auto; }
+.ovhead { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0; margin-bottom: 8px; background: var(--bg); border-bottom: 1px solid var(--border); }
+.ovhead h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 22px; }
+.ovhead .count { color: var(--fg-muted); font-size: 13px; }
+.ovhead .clock { margin-left: auto; }
+.ovclose { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface-raised); cursor: pointer; }
+.ovclose:hover { background: var(--surface-hover); }
+#ovbody { display: flex; flex-direction: column; gap: 8px; }
+#ovbody > .sgrid, #ovbody .mgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px 32px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+#ovbody .curve { height: 120px; }
+#ovbody .srows { font-size: 13.5px; }
+.ovsub { margin: 18px 0 4px; font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+.fuse { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40; height: 8px; margin: -4px 0 16px; border-radius: 4px; background: var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--border); }
+.burn { position: absolute; right: 0; top: 0; bottom: 0; width: 100%; border-radius: 4px; background: var(--fuse, #3d8bff); box-shadow: 0 0 10px var(--fuse, #3d8bff); }
+.spark { position: absolute; left: -6px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%; background: radial-gradient(circle, #fff 0 22%, #ffd27a 42%, rgba(255,160,60,.5) 58%, transparent 72%); animation: sparkle .22s infinite alternate; }
+@keyframes sparkle { from { transform: scale(.75); } to { transform: scale(1.3); } }
+.fuse.flash .burn { animation: fuseflash .5s steps(2, jump-none) infinite; }
+@keyframes fuseflash { 0% { opacity: 1; } 100% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .spark, .fuse.flash .burn { animation: none; } }
+.why { margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: var(--surface-raised); border: 1px solid var(--border-strong); font-size: 12.5px; line-height: 1.45; color: var(--fg-muted); }
+.why .wh { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; color: var(--fg); font-family: var(--font-display); font-weight: 800; font-size: 14px; }
+.why .wh .score { font-family: var(--font-mono); font-size: 13px; color: var(--accent-strong); }
+.why .wh .src { margin-left: auto; font-family: var(--font-body); font-weight: 400; font-size: 11px; color: var(--fg-dim); }
+.why ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 2px; }
+.why .stats { margin-top: 6px; display: flex; gap: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); }
+.fabs .fab { opacity: .5; transition: opacity .15s ease; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.fabs .fab:hover, .fabs .fab:focus-visible { opacity: 1; }
+.fabs { position: fixed; right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px)); bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px)); z-index: 250; display: flex; gap: 8px; }
+.fab { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); font-weight: 600; cursor: pointer; box-shadow: 0 8px 22px rgba(0,0,0,.5); }
+.fab.back { background: var(--surface-raised); color: var(--fg); border-color: var(--border-strong); }
+.fab .n { font-family: var(--font-mono); font-size: 12px; opacity: .8; }
+.peeknote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 12px; margin-bottom: 12px; border-radius: var(--radius); background: var(--accent-soft); border: 1px solid var(--accent); font-size: 13px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── narrower screens ─────────────────── */
+@media (max-width: 1099px) {
+  .room, .room.pairs-closed { grid-template-columns: minmax(0,1fr) 260px; grid-template-areas: "pairs pairs" "stage picks"; }
+  .room.building, .room.building.pairs-closed { grid-template-columns: minmax(0,1fr); grid-template-areas: "pairs" "stage"; }
+  .pairs { position: static; max-height: none; }
+  .pairs ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  /* collapsed on a narrow screen: one short bar */
+  .pairs-closed .pairs .rail { height: auto; width: auto; flex-direction: row; padding: 8px 12px; }
+  .pairs-closed .pairs .rail .vlabel { writing-mode: horizontal-tb; transform: none; }
+  .pairs-closed .pairs .rail .dots { flex-direction: row; }
+  .cols { grid-template-columns: repeat(4, minmax(0,1fr)); }
+}
+@media (max-width: 719px) {
+  :root { --tile: 132px; }
+  .room, .room.pairs-closed { grid-template-columns: minmax(0,1fr); grid-template-areas: "pairs" "stage" "picks"; }
+  .picks { position: static; max-height: none; }
+  .cols { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .clock { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .tilebtn, .preview, .zone { transition: none; } .row.just { animation: none; } }
+</style>
+
+<div class="mockbar" role="region" aria-label="Mockup controls">
+  <strong>Mockup</strong>
+  <span class="seg" role="group" aria-label="Screen">
+    <button type="button" id="m-pick" aria-pressed="true">Picking</button>
+    <button type="button" id="m-build" aria-pressed="false">Deckbuilding</button>
+  </span>
+  <label for="delay">Preview delay <input type="range" id="delay" min="0" max="800" step="50" value="250"> <span id="delayv" class="count" style="font-size:12px">250 ms</span></label>
+  <label for="pvsize">Preview size <input type="range" id="pvsize" min="260" max="440" step="20" value="340"></label>
+  <button type="button" class="linkbtn" id="burnfast">Jump clock to 0:12</button>
+  <span class="spacer"></span>
+  <button type="button" class="linkbtn" id="reset">Start over</button>
+</div>
+
+<header class="head">
+  <h1>Sample Set draft</h1>
+  <span class="progress" id="progress"></span>
+  <span class="clock" id="clock" aria-live="off">1:00</span>
+</header>
+<div class="fuse" id="fuse" role="presentation"><div class="burn" id="burn"><i class="spark"></i></div></div>
+
+<div class="room" id="room">
+  <aside class="pairs" aria-label="Colour pairs">
+    <div class="panel open-body">
+      <div class="pairs-head">
+        <h2>Colour pairs</h2>
+        <button type="button" class="iconbtn" id="pairs-close" aria-label="Collapse colour pairs" title="Collapse">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M9 2 4 7l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <ul id="pairs-list"></ul>
+    </div>
+    <button type="button" class="panel rail" id="pairs-open" aria-label="Show colour pairs" title="Show colour pairs">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="m5 2 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="vlabel">Colour pairs</span>
+      <span class="dots" id="rail-dots"></span>
+    </button>
+  </aside>
+
+  <main class="stage" id="stage"></main>
+
+  <aside class="picks" id="picks" aria-label="Your picks"></aside>
+</div>
+
+<div class="preview" id="preview" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status"></div>
+<div class="overlay" id="statsov" role="dialog" aria-modal="true" aria-labelledby="ov-h" hidden>
+  <div class="ovin">
+    <div class="ovhead"><h2 id="ov-h">Deck stats</h2><span class="count" id="ovcount"></span><span class="clock" id="ovclock"></span>
+      <button type="button" class="ovclose" id="ovclose">Close <kbd style="font-family:var(--font-mono);font-size:11px;opacity:.6">Esc</kbd></button></div>
+    <div id="ovbody"></div>
+  </div>
+</div>
+<div class="fabs"><button type="button" class="fab alt" id="statsbtn" aria-pressed="false"></button><button type="button" class="fab" id="fab" hidden></button></div>
+
+<script>
+(() => {
+  // ── sample card pool ──────────────────────────────────────────────
+  const C = (name, cost, colors, type, text, rar = "c", pt = "", rating = 0) => ({ name, cost, colors, type, text, rar, pt, rating,
+    gih: 52 + (rating - 2.5) * 3.2, alsa: Math.min(9, Math.max(1.2, 10.5 - rating * 2)) });
+  const SET_AVG = 54.0;
+  // The reasons are built from the numbers and the card's text, never written per card.
+  function why(c) {
+    const out = [], d = c.gih - SET_AVG, t = c.text.join(" ");
+    out.push(`Wins ${c.gih.toFixed(1)}% of games when drawn, ${d >= 0 ? "+" : ""}${d.toFixed(1)} against this set's average.`);
+    if (c.alsa < 3) out.push(`Other drafters take it early: it's usually gone by pick ${Math.ceil(c.alsa)}.`);
+    else if (c.alsa > 6) out.push(`It often comes back around late, so you may see another one.`);
+    if (/Destroy target (nonblack |artifact or )?creature|damage to any target|damage divided|can't attack or block/.test(t)) out.push("Removal: it deals with a creature, so it fits almost any deck in its colour.");
+    else if (/Flying/.test(t) && /Creature/.test(c.type)) out.push("A flier: evasion wins a lot of limited games.");
+    else if (/Counter target/.test(t)) out.push("Counterspells are weaker in limited: you have to leave mana open.");
+    else if (/Draw/.test(t)) out.push("Card draw: steady value, but it rarely wins a game alone.");
+    else if (/Creature/.test(c.type) && !c.text.length) out.push("A plain creature: it fills a gap in your curve.");
+    if (c.colors.length > 1) out.push("Two colours: strong, but only if you end up in both.");
+    return out;
+  }
+  const POOL = [
+    C("Savannah Lions", "W", "W", "Creature — Cat", [], "c", "2/1", 2.8),
+    C("Serra Angel", "3WW", "W", "Creature — Angel", ["Flying, vigilance"], "u", "4/4", 3.9),
+    C("Pacifism", "1W", "W", "Enchantment — Aura", ["Enchant creature", "Enchanted creature can't attack or block."], "c", "", 3.6),
+    C("Raise the Alarm", "1W", "W", "Instant", ["Create two 1/1 white Soldier creature tokens."], "c", "", 3.0),
+    C("Suntail Hawk", "W", "W", "Creature — Bird", ["Flying"], "c", "1/1", 2.2),
+    C("Glorious Anthem", "1WW", "W", "Enchantment", ["Creatures you control get +1/+1."], "r", "", 3.4),
+    C("Counterspell", "UU", "U", "Instant", ["Counter target spell."], "c", "", 3.1),
+    C("Divination", "2U", "U", "Sorcery", ["Draw two cards."], "c", "", 2.7),
+    C("Man-o'-War", "2U", "U", "Creature — Jellyfish", ["When Man-o'-War enters, return target creature to its owner's hand."], "c", "2/2", 3.5),
+    C("Unsummon", "U", "U", "Instant", ["Return target creature to its owner's hand."], "c", "", 2.6),
+    C("Air Elemental", "3UU", "U", "Creature — Elemental", ["Flying"], "u", "4/4", 3.3),
+    C("Doom Blade", "1B", "B", "Instant", ["Destroy target nonblack creature."], "c", "", 4.0),
+    C("Gravedigger", "3B", "B", "Creature — Zombie", ["When Gravedigger enters, you may return target creature card from your graveyard to your hand."], "c", "2/2", 3.3),
+    C("Mind Rot", "2B", "B", "Sorcery", ["Target player discards two cards."], "c", "", 2.4),
+    C("Vampire Nighthawk", "1BB", "B", "Creature — Vampire Shaman", ["Flying, deathtouch, lifelink"], "u", "2/3", 4.2),
+    C("Lightning Bolt", "R", "R", "Instant", ["Lightning Bolt deals 3 damage to any target."], "c", "", 4.1),
+    C("Shock", "R", "R", "Instant", ["Shock deals 2 damage to any target."], "c", "", 3.4),
+    C("Shivan Dragon", "4RR", "R", "Creature — Dragon", ["Flying", "{R}: Shivan Dragon gets +1/+0 until end of turn."], "r", "5/5", 4.4),
+    C("Hill Giant", "3R", "R", "Creature — Giant", [], "c", "3/3", 2.5),
+    C("Goblin Piker", "1R", "R", "Creature — Goblin Warrior", ["Goblin Piker can't block."], "c", "2/1", 2.1),
+    C("Lava Axe", "4R", "R", "Sorcery", ["Lava Axe deals 5 damage to target player or planeswalker."], "c", "", 2.3),
+    C("Llanowar Elves", "G", "G", "Creature — Elf Druid", ["{T}: Add {G}."], "c", "1/1", 3.2),
+    C("Giant Growth", "G", "G", "Instant", ["Target creature gets +3/+3 until end of turn."], "c", "", 3.0),
+    C("Grizzly Bears", "1G", "G", "Creature — Bear", [], "c", "2/2", 2.4),
+    C("Giant Spider", "3G", "G", "Creature — Spider", ["Reach"], "c", "2/4", 2.8),
+    C("Naturalize", "1G", "G", "Instant", ["Destroy target artifact or enchantment."], "c", "", 2.0),
+    C("Craw Wurm", "4GG", "G", "Creature — Wurm", [], "c", "6/4", 2.7),
+    C("Mind Stone", "2", "", "Artifact", ["{T}: Add {C}.", "{1}, {T}, Sacrifice Mind Stone: Draw a card."], "u", "", 2.9),
+    C("Ornithopter", "0", "", "Artifact Creature — Thopter", ["Flying"], "u", "0/2", 1.8),
+    C("Watchwolf", "GW", "GW", "Creature — Wolf", [], "u", "3/3", 3.4),
+    C("Lightning Helix", "RW", "RW", "Instant", ["Lightning Helix deals 3 damage to any target and you gain 3 life."], "u", "", 4.0),
+    C("Putrefy", "1BG", "BG", "Instant", ["Destroy target artifact or creature. It can't be regenerated."], "u", "", 4.0),
+    C("Electrolyze", "1UR", "UR", "Instant", ["Electrolyze deals 2 damage divided as you choose among one or two targets.", "Draw a card."], "u", "", 3.9),
+    C("Mortify", "1WB", "WB", "Instant", ["Destroy target creature or enchantment."], "u", "", 3.9),
+  ];
+  const PAIRS = [
+    ["WU", "Fliers", "Evasive creatures and tempo spells; win in the air."],
+    ["UB", "Control", "Removal, card draw and a few big finishers."],
+    ["BR", "Sacrifice", "Cheap creatures that feed sacrifice payoffs."],
+    ["RG", "Big creatures", "Ramp into the biggest bodies on the table."],
+    ["GW", "Go wide", "Many small creatures, then a pump effect."],
+    ["WB", "Life gain", "Gain life in small bits and get paid for it."],
+    ["UR", "Spells", "Instants and sorceries that reward each other."],
+    ["BG", "Graveyard", "Fill the graveyard, then bring creatures back."],
+    ["RW", "Aggro", "Low curve, attack early, burn to finish."],
+    ["GU", "Ramp", "Mana creatures into card advantage."],
+  ];
+  const ART = { W: ["#f3ead0", "#c7b98d"], U: ["#5ea5e0", "#20466e"], B: ["#6c6273", "#221d26"], R: ["#ef8a5f", "#7d2a1a"], G: ["#6fbf7f", "#1f4d2c"], M: ["#e8c66b", "#7a5b1c"], C: ["#c3cbd2", "#555f68"] };
+
+  const frameOf = (c) => c.colors.length > 1 ? "M" : (c.colors || "C");
+  const mv = (c) => [...c.cost].reduce((n, ch) => n + (/\d/.test(ch) ? +ch : 1), 0) - ((c.cost.match(/\d\d/) || []).length ? 0 : 0);
+  const esc = (s) => s.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+  const pips = (cost) => [...cost].map((ch) => `<span class="pip" style="background:var(--pip-${/\d/.test(ch) ? "C" : ch})">${/\d/.test(ch) ? ch : ""}</span>`).join("");
+  const symText = (t) => esc(t).replace(/\{([WUBRGCT])\}/g, (_, s) => s === "T" ? '<span class="pip" style="width:5.4cqw;height:5.4cqw;font-size:3.6cqw">↷</span>' : `<span class="pip" style="width:5.4cqw;height:5.4cqw;background:var(--pip-${s})">${s === "C" ? "◇" : ""}</span>`).replace(/\{(\d)\}/g, '<span class="pip" style="width:5.4cqw;height:5.4cqw">$1</span>');
+  function face(c) {
+    const f = frameOf(c), a = ART[f];
+    return `<div class="mtg${c.pt ? " has-pt" : ""}" style="--frame:var(--f-${f});--art:radial-gradient(120% 90% at 30% 25%, ${a[0]}, ${a[1]})">
+      <div class="fr">
+        <div class="bar"><span class="name">${esc(c.name)}</span><span class="cost">${pips(c.cost)}</span></div>
+        <div class="art"></div>
+        <div class="type"><span>${esc(c.type)}</span><i class="rar ${c.rar}"></i></div>
+        <div class="txt">${c.text.map((p) => `<p>${symText(p)}</p>`).join("")}${c.pt ? `<span class="pt">${c.pt}</span>` : ""}</div>
+      </div></div>`;
+  }
+
+  // ── state ─────────────────────────────────────────────────────────
+  let uid = 0;
+  const S = { mode: "pick", pack: [], packNo: 1, pickNo: 1, picks: [], side: new Set(), pairsOpen: true, lands: { W: 0, U: 0, B: 0, R: 0, G: 0 }, clock: 60, peek: false, stats: false, deadline: 0 };
+  try { const v = localStorage.getItem("c2mock-pairs"); if (v !== null) S.pairsOpen = v === "1"; } catch {}
+
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const deal = (n) => shuffle([...POOL]).slice(0, n).map((c) => ({ ...c, id: "c" + ++uid }));
+  function reset() {
+    S.packNo = 1; S.pickNo = 1; S.side = new Set(); S.lands = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+    S.picks = deal(5); S.side.add(S.picks[4].id); // a few picks already, one set aside
+    S.pickNo = 6; S.pack = deal(15 - 5); S.clock = 60; S.deadline = Date.now() + 60000;
+    render();
+  }
+  const byId = (id) => S.picks.find((c) => c.id === id) || S.pack.find((c) => c.id === id);
+  const SEATS = ["Wren (bot)", "Ash (bot)", "Moss (bot)", "Kit (bot)", "Rook (bot)", "Lux (bot)", "Pell (bot)"];
+
+  // ── actions ───────────────────────────────────────────────────────
+  function pickCard(id, zone) {
+    const c = S.pack.find((x) => x.id === id); if (!c) return;
+    S.picks.push(c); if (zone === "side") S.side.add(c.id);
+    say(`Picked ${c.name} to ${zone === "side" ? "sideboard" : "main"}.`);
+    S.pickNo++;
+    if (S.pickNo > 15) { S.packNo++; S.pickNo = 1; if (S.packNo > 3) { S.packNo = 3; S.pickNo = 15; setMode("build"); return; } }
+    S.pack = deal(16 - S.pickNo); S.clock = 60; S.deadline = Date.now() + 60000; lastMoved = c.id;
+    render();
+  }
+  function moveCard(id, zone) {
+    const c = S.picks.find((x) => x.id === id); if (!c) return;
+    const was = S.side.has(id) ? "side" : "main"; if (was === zone) return;
+    zone === "side" ? S.side.add(id) : S.side.delete(id);
+    lastMoved = id; say(`Moved ${c.name} to ${zone === "side" ? "sideboard" : "main"}.`);
+    render();
+  }
+  let lastMoved = null;
+  const COLOUR = { W: ["White", "Plains"], U: ["Blue", "Island"], B: ["Black", "Swamp"], R: ["Red", "Mountain"], G: ["Green", "Forest"] };
+  const TYPES = [["Creature", "Creatures"], ["Instant", "Instants"], ["Sorcery", "Sorceries"], ["Enchantment", "Enchantments"], ["Artifact", "Artifacts"], ["Planeswalker", "Planeswalkers"], ["Land", "Lands"]];
+  function statsHTML(compact) {
+    const main = mainCards();
+    const spells = main.filter((c) => !/Land/.test(c.type));
+    const pipN = {}, cardN = {};
+    for (const c of main) { for (const ch of c.cost) if (COLOUR[ch]) pipN[ch] = (pipN[ch] || 0) + 1; for (const ch of c.colors) cardN[ch] = (cardN[ch] || 0) + 1; }
+    const total = Object.values(pipN).reduce((a, b) => a + b, 0);
+    const order = Object.keys(COLOUR).filter((k) => pipN[k]).sort((a, b) => pipN[b] - pipN[a]);
+    // 17 basics split by pip share, largest remainder
+    const raw = order.map((k) => [k, (pipN[k] / (total || 1)) * 17]);
+    const base = raw.map(([k, v]) => [k, Math.floor(v), v - Math.floor(v)]);
+    let left = 17 - base.reduce((a, b) => a + b[1], 0);
+    [...base].sort((a, b) => b[2] - a[2]).forEach((b) => { if (left > 0) { b[1]++; left--; } });
+    const lands = base.filter((b) => b[1] > 0).map(([k, n]) => `${n} ${COLOUR[k][1]}`).join(" · ");
+    const typeRows = TYPES.map(([t, label]) => [label, main.filter((c) => c.type.split(" — ")[0].includes(t)).length]).filter(([l, n], i) => n > 0 || i === 0);
+    const creatures = typeRows[0][1];
+    const curve = [0, 1, 2, 3, 4, 5, 6].map((n) => spells.filter((c) => Math.min(mv(c), 6) === n).length);
+    const max = Math.max(1, ...curve);
+    const avg = spells.length ? (spells.reduce((a, c) => a + mv(c), 0) / spells.length).toFixed(2) : "0";
+    return `<div class="sgrid">
+      <div><h4>Colours <span>coloured pips in Main's costs</span></h4>
+        <div class="pipbar">${order.map((k) => `<i style="width:${(pipN[k] / total) * 100}%;background:var(--pip-${k})" title="${COLOUR[k][0]} ${pipN[k]}"></i>`).join("")}</div>
+        ${order.length ? `<ul class="srows">${order.map((k) => `<li><span class="pip" style="width:14px;height:14px;box-shadow:none;background:var(--pip-${k})"></span><span class="l">${COLOUR[k][0]}</span><b>${pipN[k]}</b><span class="dim">${cardN[k] || 0} card${cardN[k] === 1 ? "" : "s"}</span></li>`).join("")}</ul>
+        <p class="shint">17 basics by pips: ${lands}</p>` : `<p class="shint">No coloured cards in Main yet.</p>`}</div>
+      ${compact ? "" : `<div><h4>Card types <span>Main</span></h4>
+        <ul class="srows">${typeRows.map(([l, n]) => `<li><span class="l">${l}</span><b>${n}</b></li>`).join("")}<li><span class="l">Other spells</span><b>${spells.length - creatures}</b></li></ul>
+        <p class="shint">${creatures < 13 ? `Most limited decks want 15–17 creatures; you have ${creatures}.` : `${creatures} creatures: on track for a limited deck.`}</p></div>`}
+      <div><h4>Curve <span>average mana value ${avg}</span></h4>
+        <div class="curve">${curve.map((n, i) => `<div title="${n} at ${i === 6 ? "6+" : i}"><i style="height:${(n / max) * (compact ? 36 : 96)}px"></i>${i === 6 ? "6+" : i}${compact ? "" : `<b style="color:var(--fg-muted)">${n}</b>`}</div>`).join("")}</div></div>
+    </div>${compact ? "" : `<h3 class="ovsub">More detail</h3>${moreHTML(main, spells)}`}`;
+  }
+  // Roles are read from the card's rules text, so they work for any set.
+  const ROLES = [
+    ["Removal", (c, t) => /Destroy target (nonblack |artifact or )?creature|damage to any target|damage divided|can't attack or block/.test(t)],
+    ["Fliers", (c, t) => /Creature/.test(c.type) && /Flying/.test(t)],
+    ["Card draw", (c, t) => /[Dd]raw (a|two|three) cards?/.test(t)],
+    ["Combat tricks", (c, t) => /Instant/.test(c.type) && /gets \+\d\/\+\d until end of turn/.test(t)],
+    ["Counterspells", (c, t) => /Counter target/.test(t)],
+    ["Bounce", (c, t) => /[Rr]eturn target creature to its owner's hand/.test(t)],
+    ["Makes tokens", (c, t) => /[Cc]reate .* token/.test(t)],
+    ["Mana and ramp", (c, t) => /Add \{/.test(t)],
+    ["Life gain", (c, t) => /gain \d+ life|lifelink/i.test(t)],
+    ["Discard", (c, t) => /discards?/.test(t)],
+    ["Deals with artifacts or enchantments", (c, t) => /Destroy target artifact|or enchantment/.test(t)],
+  ];
+  function moreHTML(main, spells) {
+    const row = (label, list, extra = "") => `<li class="${list.length ? "" : "zero"}"><span class="l">${label}</span><b>${list.length}</b>${extra}${list.length ? `<span class="names">${list.map((c) => esc(c.name)).join(", ")}</span>` : ""}</li>`;
+    // exact type lines: "Artifact Creature", "Enchantment (Aura)"
+    const lines = {};
+    for (const c of main) {
+      const [front, sub = ""] = c.type.split(" — ");
+      const key = /Creature/.test(front) ? front : front + (sub ? ` (${sub})` : "");
+      (lines[key] = lines[key] || []).push(c);
+    }
+    const lineRows = Object.entries(lines).sort((a, b) => b[1].length - a[1].length).map(([k, l]) => row(k, l)).join("");
+    const creatures = main.filter((c) => /Creature/.test(c.type));
+    const subs = {};
+    for (const c of creatures) for (const s of (c.type.split(" — ")[1] || "").split(" ").filter(Boolean)) (subs[s] = subs[s] || []).push(c);
+    const subRows = Object.entries(subs).sort((a, b) => b[1].length - a[1].length).slice(0, 8).map(([k, l]) => row(k, l)).join("");
+    const pt = creatures.filter((c) => c.pt).map((c) => [c, ...c.pt.split("/").map(Number)]);
+    const avgP = pt.length ? (pt.reduce((a, x) => a + x[1], 0) / pt.length).toFixed(1) : "–";
+    const avgT = pt.length ? (pt.reduce((a, x) => a + x[2], 0) / pt.length).toFixed(1) : "–";
+    const small = pt.filter((x) => x[1] <= 2).map((x) => x[0]), mid = pt.filter((x) => x[1] >= 3 && x[1] <= 4).map((x) => x[0]), big = pt.filter((x) => x[1] >= 5).map((x) => x[0]);
+    const evasive = creatures.filter((c) => /Flying|can't be blocked|Menace|Trample/.test(c.text.join(" ")));
+    const instant = spells.filter((c) => /Instant/.test(c.type) || /Flash/.test(c.text.join(" ")));
+    const sorcery = spells.filter((c) => !instant.includes(c));
+    const multi = main.filter((c) => c.colors.length > 1), colourless = main.filter((c) => !c.colors);
+    const roles = ROLES.map(([label, f]) => row(label, main.filter((c) => f(c, c.text.join(" "))))).join("");
+    return `<div class="mgrid">
+        <div><h4>Type lines</h4><ul class="srows">${lineRows || `<li class="zero">No cards in Main yet.</li>`}</ul></div>
+        <div><h4>Creatures <span>average ${avgP}/${avgT}</span></h4><ul class="srows">
+          ${row("Small (power 2 or less)", small)}${row("Medium (power 3–4)", mid)}${row("Big (power 5+)", big)}${row("Evasive", evasive)}</ul>
+          ${subRows ? `<h4 style="margin-top:12px">Creature types</h4><ul class="srows">${subRows}</ul>` : ""}</div>
+        <div><h4>What they do <span>read from the rules text</span></h4><ul class="srows">${roles}</ul></div>
+        <div><h4>Timing and colour</h4><ul class="srows">
+          ${row("Instant speed", instant)}${row("Sorcery speed", sorcery)}${row("Two or more colours", multi)}${row("Colourless", colourless)}</ul></div>
+      </div>`;
+  }
+  document.addEventListener("toggle", (e) => { if (e.target.id === "stats-more") { S.more = e.target.open; try { localStorage.setItem("c2mock-more", S.more ? "1" : "0"); } catch {} } }, true);
+  try { S.more = localStorage.getItem("c2mock-more") === "1"; } catch {}
+  function toggleStats() { S.stats = !S.stats; render(); (S.stats ? $("ovclose") : $("statsbtn")).focus(); }
+  function renderFab() {
+    const sb = $("statsbtn"); sb.setAttribute("aria-pressed", S.stats);
+    sb.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 12V7M7 12V2M12 12V5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Full stats <kbd>S</kbd>`;
+    const f = $("fab"); f.hidden = S.mode !== "pick";
+    f.classList.toggle("back", S.peek);
+    f.innerHTML = S.peek
+      ? `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M9 2 4 7l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Back to the pack <span class="n">${S.pack.length} cards</span> <kbd>D</kbd>`
+      : `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="1.5" y="2" width="4" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="8.5" y="2" width="4" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>Deck view <span class="n">${S.picks.length} picks</span> <kbd>D</kbd>`;
+  }
+  function setMode(m) {
+    S.mode = m; S.peek = false;
+    document.getElementById("m-pick").setAttribute("aria-pressed", m === "pick");
+    document.getElementById("m-build").setAttribute("aria-pressed", m === "build");
+    render();
+  }
+
+  // ── rendering ─────────────────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+  const mainCards = () => S.picks.filter((c) => !S.side.has(c.id));
+  const sideCards = () => S.picks.filter((c) => S.side.has(c.id));
+  function render() {
+    hidePreview();
+    const room = $("room");
+    room.classList.toggle("pairs-closed", !S.pairsOpen);
+    const deckView = S.mode === "build" || S.peek;
+    room.classList.toggle("building", deckView);
+    $("picks").hidden = deckView;
+    $("progress").innerHTML = S.mode === "pick"
+      ? `Pack <b>${S.packNo}</b>, pick <b>${S.pickNo}</b> · passing to ${SEATS[(S.packNo % 2 ? 0 : 6)]}`
+      : `Build your deck · <b>40</b> cards`;
+    $("clock").hidden = S.mode !== "pick";
+    $("fuse").hidden = S.mode !== "pick";
+    renderPairs();
+    deckView ? renderBuild() : renderPick();
+    renderFab();
+    $("statsov").hidden = !S.stats;
+    document.documentElement.classList.toggle("lock", S.stats);
+    $("ovclock").hidden = S.mode !== "pick";
+    if (S.stats) { $("ovbody").innerHTML = statsHTML(false); $("ovcount").textContent = `Main ${mainCards().length} · Sideboard ${sideCards().length}`; }
+    if (lastMoved) { const el = document.querySelector(`[data-id="${lastMoved}"]`); if (el) { el.classList.add("just"); } lastMoved = null; }
+  }
+  function renderPairs() {
+    const main = mainCards();
+    $("pairs-list").innerHTML = PAIRS.map(([cc, nm, blurb]) => {
+      const n = main.filter((c) => c.colors && [...c.colors].every((x) => cc.includes(x))).length;
+      return `<li class="pair${n >= 3 ? " fit" : ""}"><div class="top"><span class="cost" style="display:flex;gap:2px">${[...cc].map((x) => `<span class="pip" style="width:16px;height:16px;background:var(--pip-${x})"></span>`).join("")}</span><span class="nm">${cc} ${nm}</span><span class="n" title="Your main-deck picks in these colours">${n}</span></div><p>${blurb}</p></li>`;
+    }).join("");
+    // the rail keeps a hint of your colours: one dot per colour you have 3+ main picks in
+    const counts = {}; main.forEach((c) => [...c.colors].forEach((x) => counts[x] = (counts[x] || 0) + 1));
+    $("rail-dots").innerHTML = Object.entries(counts).filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1]).map(([x]) => `<span class="pip" style="width:14px;height:14px;background:var(--pip-${x})" title="${x}"></span>`).join("");
+  }
+  function renderPick() {
+    $("stage").innerHTML = `
+      <h2 class="sec">Pick a card <span class="hint">Click to take it into Main, or drag it onto Main or Sideboard.</span></h2>
+      <ul class="pack" id="pack">${S.pack.map((c) => `
+        <li><button type="button" class="tilebtn" data-id="${c.id}" data-src="pack" aria-label="Pick ${esc(c.name)}">${face(c)}</button>
+        <div class="rating"><span>${c.rar === "r" ? "rare" : c.rar === "u" ? "uncommon" : "common"}</span><span title="17Lands-style rating">${c.rating.toFixed(1)}</span></div></li>`).join("")}
+      </ul>`;
+    const main = mainCards(), side = sideCards();
+    const curve = [0, 1, 2, 3, 4, 5, 6].map((n) => main.filter((c) => !/Land/.test(c.type) && Math.min(mv(c), 6) === n).length);
+    const max = Math.max(1, ...curve);
+    $("picks").innerHTML = `
+      <section class="zone" data-zone="main" aria-labelledby="z-main"><h3 id="z-main">Main <span class="n">${main.length}</span><span class="sub">drop here</span></h3>
+        ${main.length ? `<ul class="rows">${main.map(rowHTML).join("")}</ul>` : `<p class="empty">No picks yet.</p>`}</section>
+      <section class="zone" data-zone="side" aria-labelledby="z-side"><h3 id="z-side">Sideboard <span class="n">${side.length}</span><span class="sub">drop here</span></h3>
+        ${side.length ? `<ul class="rows">${side.map(rowHTML).join("")}</ul>` : `<p class="empty">Drag a card here, or click it, to set it aside.</p>`}</section>
+      <section class="zone statsbox" aria-label="Colours and curve">${statsHTML(true)}</section>`;
+  }
+  const rowHTML = (c) => `<li><button type="button" class="row" data-id="${c.id}" data-src="picks" style="--frame:var(--f-${frameOf(c)})" aria-label="${S.side.has(c.id) ? "Move to main" : "Move to sideboard"}: ${esc(c.name)}"><span class="rn">${esc(c.name)}</span><span class="rc">${pips(c.cost)}</span></button></li>`;
+  function renderBuild() {
+    const main = mainCards(), side = sideCards();
+    const landN = Object.values(S.lands).reduce((a, b) => a + b, 0);
+    const total = main.length + landN;
+    const cols = [0, 1, 2, 3, 4, 5, 6].map((n) => main.filter((c) => Math.min(Math.max(mv(c), 0), 6) === n));
+    $("stage").innerHTML = `
+      ${S.peek ? `<div class="peeknote"><strong>Your picks so far</strong><span>The pick clock at the top is still running. Moves you make here carry back to the pack screen.</span></div>` : ""}
+      <div class="buildtop"${S.peek ? " hidden" : ""}>
+        <span class="count ${total === 40 ? "ok" : ""}">${total} / 40</span>
+        <span class="lands" aria-label="Basic lands">${Object.keys(S.lands).map((k) => `<span class="land"><span class="pip" style="width:14px;height:14px;background:var(--pip-${k})"></span>${S.lands[k]}<button type="button" data-land="${k}" data-d="-1" aria-label="Remove a basic ${k}">−</button><button type="button" data-land="${k}" data-d="1" aria-label="Add a basic ${k}">+</button></span>`).join("")}</span>
+      </div>
+      <section class="zone statsbox wide" aria-label="Colours and curve">${statsHTML(true)}</section>
+      <div class="build-zones">
+        <section class="zone" data-zone="main" aria-labelledby="b-main"><h3 id="b-main">Main <span class="n">${main.length}</span><span class="sub">sorted by mana value · drag cards between Main and Sideboard</span></h3>
+          <div class="cols" id="cols">${cols.map((col, i) => `<div><div class="colh">${i === 6 ? "6+" : i}</div><div class="stack">${col.map((c) => `<button type="button" class="tilebtn" data-id="${c.id}" data-src="picks" aria-label="Move to sideboard: ${esc(c.name)}">${face(c)}</button>`).join("")}</div></div>`).join("")}</div>
+        </section>
+        <section class="zone" data-zone="side" aria-labelledby="b-side"><h3 id="b-side">Sideboard <span class="n">${side.length}</span></h3>
+          ${side.length ? `<ul class="sidegrid">${side.map((c) => `<li><button type="button" class="tilebtn" data-id="${c.id}" data-src="picks" aria-label="Move to main: ${esc(c.name)}">${face(c)}</button></li>`).join("")}</ul>` : `<p class="empty">Nothing set aside.</p>`}
+        </section>
+      </div>`;
+    sizeStacks();
+  }
+  function sizeStacks() { const col = document.querySelector("#cols .stack"); if (col) $("cols").style.setProperty("--colw", col.clientWidth + "px"); }
+  addEventListener("resize", () => S.mode === "build" && sizeStacks());
+  function stick() {
+    for (const el of [document.querySelector(".pairs"), $("picks")]) {
+      if (!el || el.hidden) continue;
+      el.style.setProperty("--stick", Math.min(24, innerHeight - el.offsetHeight - 16) + "px");
+    }
+  }
+  const ro = new ResizeObserver(stick);
+  ro.observe(document.querySelector(".pairs")); ro.observe($("picks"));
+  addEventListener("resize", stick);
+
+  // ── hover / long-press preview ────────────────────────────────────
+  const pv = $("preview"); let pvTimer = 0, pvFor = null;
+  const delay = () => +$("delay").value;
+  function showPreview(el) {
+    const c = byId(el.dataset.id); if (!c) return;
+    pvFor = el;
+    pv.innerHTML = face(c) + `<div class="why"><div class="wh">Rating <span class="score">${c.rating.toFixed(1)}</span><span class="src">sample 17Lands numbers</span></div><ul>${why(c).map((s) => `<li>${esc(s)}</li>`).join("")}</ul><div class="stats"><span>GIH WR ${c.gih.toFixed(1)}%</span><span>ALSA ${c.alsa.toFixed(1)}</span><span>MV ${mv(c)}</span></div></div>`;
+    placePreview(el);
+    pv.classList.add("on");
+  }
+  function placePreview(el) {
+    const r = el.getBoundingClientRect(), w = pv.offsetWidth, h = pv.offsetHeight, gap = 14, vw = innerWidth, vh = innerHeight;
+    let x, y;
+    if (vw < 720) {                                           // phone: centred, above or below the card
+      x = Math.max(8, (vw - w) / 2);
+      y = r.top - h - gap >= 8 ? r.top - h - gap : Math.min(vh - h - 8, r.bottom + gap);
+      y = Math.max(8, y);
+    } else {
+      x = r.right + gap;                                      // beside the card, never on it
+      if (x + w > vw - 8) x = r.left - gap - w;               // or on its left
+      x = Math.max(8, x);
+      y = Math.max(8, Math.min(vh - h - 8, r.top + r.height / 2 - h / 2));
+    }
+    pv.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  }
+  function hidePreview() { clearTimeout(pvTimer); pvFor = null; pv.classList.remove("on"); }
+  document.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse" || drag) return;
+    const el = e.target.closest("[data-id]"); if (!el || el === pvFor) return;
+    clearTimeout(pvTimer);
+    if (pvFor) showPreview(el); // moving across cards: no second wait
+    else pvTimer = setTimeout(() => showPreview(el), delay());
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const el = e.target.closest("[data-id]"); const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("[data-id]");
+    if (el && !to) hidePreview();
+  });
+  document.addEventListener("focusin", (e) => { const el = e.target.closest("[data-id]"); if (el && el.matches(":focus-visible")) showPreview(el); });
+  document.addEventListener("focusout", hidePreview);
+  addEventListener("scroll", hidePreview, { passive: true });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { hidePreview(); cancelDrag(); if (S.stats) toggleStats(); } });
+  $("pvsize").addEventListener("input", (e) => pv.style.setProperty("--pv", e.target.value + "px"));
+  pv.style.setProperty("--pv", "340px");
+  $("delay").addEventListener("input", (e) => $("delayv").textContent = e.target.value + " ms");
+
+  // ── drag (mouse: drag at once; touch: hold to lift, then drag) ───
+  let press = null, drag = null;
+  document.addEventListener("pointerdown", (e) => {
+    const el = e.target.closest("[data-id]"); if (!el || e.button !== 0) return;
+    press = { el, id: el.dataset.id, src: el.dataset.src, x: e.clientX, y: e.clientY, type: e.pointerType, lifted: e.pointerType === "mouse", timer: 0 };
+    if (e.pointerType !== "mouse") press.timer = setTimeout(() => { if (press) { press.lifted = true; showPreview(el); navigator.vibrate?.(15); } }, 380);
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!press) return;
+    const dx = e.clientX - press.x, dy = e.clientY - press.y, far = Math.hypot(dx, dy) > 6;
+    if (!drag) {
+      if (!far) return;
+      if (!press.lifted) { clearTimeout(press.timer); press = null; return; } // touch moved early: it's a scroll
+      startDrag(e);
+    }
+    moveDrag(e);
+  });
+  document.addEventListener("touchmove", (e) => { if (drag || (press && press.lifted)) e.preventDefault(); }, { passive: false });
+  document.addEventListener("contextmenu", (e) => { if (press && press.type !== "mouse") e.preventDefault(); });
+  function startDrag(e) {
+    hidePreview();
+    const isRow = press.el.classList.contains("row");
+    const g = document.createElement("div");
+    g.className = "ghost" + (isRow ? " row-ghost" : "");
+    g.innerHTML = isRow ? press.el.outerHTML : face(byId(press.id));
+    document.body.appendChild(g);
+    press.el.classList.add("lifted");
+    drag = { ...press, ghost: g, over: null };
+    document.body.style.cursor = "grabbing";
+  }
+  function moveDrag(e) {
+    drag.ghost.style.transform = `translate(${e.clientX - 30}px, ${e.clientY - 20}px)`;
+    const z = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-zone]");
+    const zone = z ? z.dataset.zone : null;
+    if (zone !== drag.over) {
+      document.querySelectorAll(".zone.drop").forEach((n) => n.classList.remove("drop"));
+      if (z) z.classList.add("drop");
+      drag.over = zone;
+    }
+  }
+  function cancelDrag() {
+    if (!drag) return;
+    drag.ghost.remove(); drag.el.classList.remove("lifted");
+    document.querySelectorAll(".zone.drop").forEach((n) => n.classList.remove("drop"));
+    document.body.style.cursor = ""; drag = null; press = null;
+  }
+  document.addEventListener("pointerup", (e) => {
+    if (drag) {
+      const { id, src, over } = drag; cancelDrag();
+      if (over) src === "pack" ? pickCard(id, over) : moveCard(id, over);
+      suppressClick = true; setTimeout(() => suppressClick = false, 0);
+      return;
+    }
+    if (press) { clearTimeout(press.timer); if (press.lifted && press.type !== "mouse") { hidePreview(); suppressClick = true; setTimeout(() => suppressClick = false, 0); } }
+    press = null;
+  });
+  document.addEventListener("pointercancel", () => { cancelDrag(); if (press) clearTimeout(press.timer); press = null; hidePreview(); });
+  let suppressClick = false;
+
+  // ── clicks ────────────────────────────────────────────────────────
+  document.addEventListener("click", (e) => {
+    if (suppressClick) { e.preventDefault(); e.stopPropagation(); return; }
+    const card = e.target.closest("[data-id]");
+    if (card) {
+      if (card.dataset.src === "pack") pickCard(card.dataset.id, "main");
+      else moveCard(card.dataset.id, S.side.has(card.dataset.id) ? "main" : "side");
+      return;
+    }
+    const land = e.target.closest("[data-land]");
+    if (land) { const k = land.dataset.land; S.lands[k] = Math.max(0, S.lands[k] + +land.dataset.d); render(); }
+  }, true);
+  const setPairs = (open) => { S.pairsOpen = open; try { localStorage.setItem("c2mock-pairs", open ? "1" : "0"); } catch {} render(); (open ? $("pairs-close") : $("pairs-open")).focus(); };
+  $("pairs-close").addEventListener("click", () => setPairs(false));
+  $("fab").addEventListener("click", () => { S.peek = !S.peek; render(); window.scrollTo({ top: 0 }); $("fab").focus(); });
+  $("statsbtn").addEventListener("click", toggleStats);
+  $("ovclose").addEventListener("click", toggleStats);
+  $("burnfast").addEventListener("click", () => { if (S.mode === "pick") S.deadline = Date.now() + 12000; });
+  document.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || (e.target.closest && e.target.closest("input, textarea, select"))) return;
+    if (e.key === "s" || e.key === "S") toggleStats();
+    else if ((e.key === "d" || e.key === "D") && S.mode === "pick") { S.peek = !S.peek; render(); }
+  });
+  $("pairs-open").addEventListener("click", () => setPairs(true));
+  $("m-pick").addEventListener("click", () => { if (S.mode !== "pick") { if (S.pack.length === 0) reset(); setMode("pick"); } });
+  $("m-build").addEventListener("click", () => setMode("build"));
+  $("reset").addEventListener("click", () => { S.mode = "pick"; setMode("pick"); reset(); });
+
+  // ── clock and announcements ───────────────────────────────────────
+  // The fuse: burns from the left, blue to orange to red, flashing in the last 8 seconds.
+  const STOPS = [[1, [61, 139, 255]], [0.55, [61, 139, 255]], [0.35, [255, 140, 26]], [0.15, [255, 60, 40]], [0, [225, 20, 20]]];
+  function fuseColour(f) {
+    for (let i = 0; i < STOPS.length - 1; i++) {
+      const [f0, c0] = STOPS[i], [f1, c1] = STOPS[i + 1];
+      if (f <= f0 && f >= f1) { const t = (f0 - f) / (f0 - f1 || 1); return `rgb(${c0.map((v, j) => Math.round(v + (c1[j] - v) * t)).join(",")})`; }
+    }
+    return "rgb(225,20,20)";
+  }
+  function tickFuse() {
+    if (S.mode === "pick" && S.deadline) {
+      const left = Math.max(0, S.deadline - Date.now()), f = left / 60000, b = $("burn");
+      b.style.width = (f * 100).toFixed(2) + "%";
+      b.style.setProperty("--fuse", fuseColour(f));
+      $("fuse").classList.toggle("flash", left > 0 && left <= 8000);
+    }
+    requestAnimationFrame(tickFuse);
+  }
+  requestAnimationFrame(tickFuse);
+  setInterval(() => {
+    if (S.mode !== "pick") return;
+    S.clock = Math.max(0, Math.ceil((S.deadline - Date.now()) / 1000));
+    const el = $("clock"); el.textContent = `${Math.floor(S.clock / 60)}:${String(S.clock % 60).padStart(2, "0")}`; el.classList.toggle("urgent", S.clock <= 10); $("ovclock").textContent = el.textContent; $("ovclock").classList.toggle("urgent", S.clock <= 10);
+    if (S.clock === 0) { cancelDrag(); const best = [...S.pack].sort((a, b) => b.rating - a.rating)[0]; if (best) { say(`Time ran out. Took ${best.name}.`); pickCard(best.id, "main"); } }
+  }, 1000);
+  let toastT = 0;
+  function say(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 1600); }
+
+  reset();
+})();
+</script>
