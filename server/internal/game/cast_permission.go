@@ -293,6 +293,14 @@ type PermissionFilter struct {
 	// Additive.
 	ColorCountExactly int `json:"colorCountExactly,omitempty"`
 
+	// KeywordsAny is Errant and Giada's "spells with flash or flying": the
+	// card has AT LEAST ONE of these keywords, lowercase and joined by
+	// spaces ("flash flying"), read through the layered keyword view of the
+	// card where it sits (a printed keyword on a library card). A string
+	// rather than a slice because PermissionFilter is compared with ==.
+	// Empty constrains nothing. Additive (S82).
+	KeywordsAny string `json:"keywordsAny,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -534,6 +542,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.ColorCountExactly != 0 && len(c.EffectiveColors()) != f.ColorCountExactly {
 		return false
 	}
+	if f.KeywordsAny != "" && !cardHasAnyKeyword(c, f.KeywordsAny) {
+		return false
+	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
 		return false
 	}
@@ -603,6 +614,17 @@ func (f PermissionFilter) judgesSpell() bool {
 func cardHasAnyColor(c Card, letters string) bool {
 	for _, l := range letters {
 		if c.HasColor(string(l)) {
+			return true
+		}
+	}
+	return false
+}
+
+// cardHasAnyKeyword reports whether the card has at least one of the
+// keywords named in the space-separated list.
+func cardHasAnyKeyword(c Card, list string) bool {
+	for _, kw := range strings.Fields(list) {
+		if HasKeyword(&c, kw) {
 			return true
 		}
 	}
