@@ -50,14 +50,15 @@ func grimeGorgerAsk(g *game.Game, item *game.StackItem) error {
 		cards = append(cards, c.InstanceID)
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  ctx.Controller(),
-		Source:   ctx.Source(),
-		Question: "Grime Gorger — exile up to one card of each card type from defending player's graveyard",
-		Cards:    cards,
-		Min:      0,
-		LiveZone: game.ZoneGraveyard,
-		ThenKey:  grimeGorgerExile,
-		Asked:    game.NewAskedItem(ctx.Item),
+		Chooser:    ctx.Controller(),
+		FromPlayer: defender,
+		Source:     ctx.Source(),
+		Question:   "Grime Gorger — exile up to one card of each card type from defending player's graveyard",
+		Cards:      cards,
+		Min:        0,
+		LiveZone:   game.ZoneGraveyard,
+		ThenKey:    grimeGorgerExile,
+		Asked:      game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
