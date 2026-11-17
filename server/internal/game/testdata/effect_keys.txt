@@ -343,6 +343,7 @@ body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
+body s82-mom-b12/flitting-guerrilla-top
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -902,6 +903,8 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
+choose choose-cards/s82-mom-b12-skaab-top
+choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
@@ -1277,6 +1280,7 @@ confirm confirm/rotisserie-elemental-sacrifice
 confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
+confirm confirm/s82-mom-b12-guerrilla-exile
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
 confirm confirm/sauron-the-dark-lord-wheel
@@ -2954,6 +2958,9 @@ tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
+tail tail/s82-mom-b12-guerrilla-after-mill
+tail tail/s82-mom-b12-guerrilla-exiled
+tail tail/s82-mom-b12-skaab-after-mill
 tail tail/sensational-spider-man-after-stun
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
