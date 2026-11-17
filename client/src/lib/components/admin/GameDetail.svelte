@@ -129,6 +129,11 @@
           <dt>Archived</dt>
           <dd><RelTime ms={g.archived_at} {now} /></dd>
         </div>
+        <!-- ADR 0211 §5: the last activity the idle sweep wrote. -->
+        <div>
+          <dt>Last activity</dt>
+          <dd><RelTime ms={g.last_active_at} {now} /></dd>
+        </div>
         <div>
           <dt>Created by</dt>
           <dd>

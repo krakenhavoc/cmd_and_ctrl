@@ -471,7 +471,8 @@ func TestQuilledGreatwurmDoesNothingOnAnotherPlayersTurn(t *testing.T) {
 }
 
 // Register holds a cast's counter removal to the one shape the cast path
-// pays: a fixed "from among …" count, with no card component beside it.
+// pays: a "from among …" count, fixed or X of one kind with a floor (#5679),
+// with no card component beside it.
 func TestRegisterRefusesMalformedCastCounterRemoval(t *testing.T) {
 	spec := func(name string, mut func(ac *game.AlternativeCost)) Spec {
 		ac := CastFromGraveyardByRemovingCounters("{1}", 2, "creatures you control", Creature())
@@ -486,8 +487,14 @@ func TestRegisterRefusesMalformedCastCounterRemoval(t *testing.T) {
 	}{
 		{"self", func(ac *game.AlternativeCost) { ac.RemoveCounters.From = nil }, "removes counters from itself"},
 		{"other", func(ac *game.AlternativeCost) { ac.RemoveCounters.From.ExcludeSource = true }, "names nothing"},
-		{"single", func(ac *game.AlternativeCost) { ac.RemoveCounters.Among = false; ac.RemoveCounters.Counter = "+1/+1" }, "not a fixed"},
-		{"variable", func(ac *game.AlternativeCost) { ac.RemoveCounters.Variable = true; ac.RemoveCounters.Counter = "+1/+1" }, "not a fixed"},
+		{"single", func(ac *game.AlternativeCost) { ac.RemoveCounters.Among = false; ac.RemoveCounters.Counter = "+1/+1" }, "the only counter removal a cast pays"},
+		{"x of any kind", func(ac *game.AlternativeCost) { ac.RemoveCounters.Variable = true }, "variable number of counters of any kind"},
+		{"x from one permanent", func(ac *game.AlternativeCost) {
+			ac.RemoveCounters.Variable, ac.RemoveCounters.OnePermanent = true, true
+		}, "the only counter removal a cast pays"},
+		{"any number", func(ac *game.AlternativeCost) {
+			ac.RemoveCounters.Variable, ac.RemoveCounters.N, ac.RemoveCounters.Counter = true, 0, "+1/+1"
+		}, "floor 1"},
 		{"zero", func(ac *game.AlternativeCost) { ac.RemoveCounters.N = 0 }, "removes 0 counters"},
 		{"beside a card", func(ac *game.AlternativeCost) { ac.DiscardFromHand = CardInYourHand("a card") }, "beside a card-shaped payment"},
 	}

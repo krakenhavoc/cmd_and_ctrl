@@ -1,3 +1,4 @@
+import { closedReasonLabel } from "./idleClose";
 import type { Session } from "./session";
 
 // myGames.ts is the pure half of "My games" (ADR 0051 decision 4, S34
@@ -29,6 +30,12 @@ export interface MyGame {
   started_at: number | null;
   ended_at: number | null;
   archived_at: number | null;
+  /**
+   * Why the server closed the table for being idle (ADR 0211 owner
+   * decision 4): "idle_lobby", "idle_game" or "idle_bots". Absent for an
+   * open table and an admin's archive.
+   */
+  closed_reason?: string;
   others: MySeat[];
   rejoin?: string;
 }
@@ -91,9 +98,12 @@ export function linkDiscordLabel(seatHasDiscord: boolean): string {
 export type MyGameTone = "lobby" | "live" | "won" | "ended" | "archived";
 
 // myGameStatus is the chip on one row. Archived wins over the state:
-// the table is retired whatever it was doing.
+// the table is retired whatever it was doing. A table the server closed
+// for being idle says why (ADR 0211 owner decision 4).
 export function myGameStatus(g: MyGame): { label: string; tone: MyGameTone } {
-  if (g.archived_at != null) return { label: "archived", tone: "archived" };
+  if (g.archived_at != null) {
+    return { label: closedReasonLabel(g.closed_reason) ?? "archived", tone: "archived" };
+  }
   switch (g.state) {
     case "lobby":
       return { label: "in the lobby", tone: "lobby" };

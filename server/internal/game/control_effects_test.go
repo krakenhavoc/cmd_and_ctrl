@@ -196,7 +196,7 @@ func TestExchangeControlIsOneEffectWithOneTimestamp(t *testing.T) {
 	}
 }
 
-// TestExchangeControlFailsWholeWhenOneObjectIsGone — CR 701.12b. All
+// TestExchangeControlFailsWholeWhenOneObjectIsGone — CR 701.12a. All
 // or nothing: the surviving permanent does not change controller, and
 // nothing is registered.
 func TestExchangeControlFailsWholeWhenOneObjectIsGone(t *testing.T) {
@@ -210,7 +210,7 @@ func TestExchangeControlFailsWholeWhenOneObjectIsGone(t *testing.T) {
 		}
 	})
 	if n := len(g.ScopedEffects); n != 0 {
-		t.Errorf("a failed exchange registered %d entries; CR 701.12b says none", n)
+		t.Errorf("a failed exchange registered %d entries; CR 701.12a says none", n)
 	}
 	if got := controllerOfCard(t, g, mine); got != me.ID {
 		t.Errorf("the surviving permanent changed controller: %s, want %s", got, me.ID)

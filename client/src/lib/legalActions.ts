@@ -107,6 +107,12 @@ export interface LegalActions {
    * beside the plain ones. Read off the digest, never oracle text.
    */
   canExertOnAttack(cardID: string): boolean;
+  /**
+   * #5658: the creatures this creature may enlist as it attacks right
+   * now (CR 702.154a) — the server offers its attacks with
+   * `enlist: <id>` for each. Read off the digest, never oracle text.
+   */
+  enlistOnAttack(cardID: string): readonly string[];
   /** The attackers this creature may block, alone or in a group. */
   blockableAttackers(cardID: string): readonly string[];
   /**
@@ -139,6 +145,7 @@ interface Acc {
   blocks: string[];
   cast_idle_hint?: string;
   exert_on_attack?: boolean;
+  enlist_on_attack?: string[];
 }
 
 function push<T>(list: T[], v: T | undefined | null): void {
@@ -212,6 +219,10 @@ function fromMoves(moves: readonly LegalMoveView[]): Map<string, LegalSourceView
         push(e.attack_targets, str(p.target));
         // ADR 0130 §5: the twin move that exerts it as it attacks.
         if (p.exert === true) e.exert_on_attack = true;
+        // #5658: a twin move that enlists a creature as it attacks.
+        if (typeof p.enlist === "string" && p.enlist) {
+          push((e.enlist_on_attack ??= []), p.enlist);
+        }
         break;
       case "block": {
         // declare_blockers names a group (the two creatures a menace
@@ -288,6 +299,7 @@ function lookup(
     canAttack: (id) => get(id)?.kinds.includes("attack") ?? false,
     attackTargets: (id) => get(id)?.attack_targets ?? NONE,
     canExertOnAttack: (id) => get(id)?.exert_on_attack === true,
+    enlistOnAttack: (id) => get(id)?.enlist_on_attack ?? NONE,
     blockableAttackers: (id) => get(id)?.blocks ?? NONE,
     readyCount(zone, seatID) {
       if (!view || sources.size === 0) return 0;
@@ -431,6 +443,7 @@ export function acrossActions(
     canAttack: () => false,
     attackTargets: () => NONE,
     canExertOnAttack: () => false,
+    enlistOnAttack: () => NONE,
     blockableAttackers: () => NONE,
     readyCount: () => 0,
   };

@@ -176,3 +176,21 @@ func TestACubeCardIsRatedByTheMostRecentSetThatHasIt(t *testing.T) {
 		t.Error("a nil Book rated something")
 	}
 }
+
+func TestMeanPercentIsTheSetsAverageWinRate(t *testing.T) {
+	b, err := LoadFS(fstest.MapFS{"data/aaa.json": {Data: []byte(setFile("aaa", "2026-01-01", "Card", 100))}}, "data")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Win rates climb 0.400 to 0.598 in steps of 0.002: the mean is 0.499.
+	if got, ok := b.MeanPercent("AAA"); !ok || got != 49.9 {
+		t.Errorf("MeanPercent = %v, %v; want 49.9", got, ok)
+	}
+	if _, ok := b.MeanPercent("zzz"); ok {
+		t.Error("a set with no file has an average")
+	}
+	var none *Book
+	if _, ok := none.MeanPercent("aaa"); ok {
+		t.Error("a nil Book has an average")
+	}
+}

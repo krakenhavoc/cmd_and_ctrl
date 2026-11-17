@@ -194,6 +194,16 @@ func TargetRevealsYouChooseDiscard(filter CardPredicate, label string) func(*gam
 	}
 }
 
+// TargetRevealsYouChooseExile is TargetRevealsYouChooseDiscard with the
+// chosen card exiled instead of discarded, and nothing else: "Target
+// opponent reveals their hand. You choose a nonland card from it and
+// exile that card." (Castigate).
+func TargetRevealsYouChooseExile(filter CardPredicate, label string) func(*game.StackItem, *Context) error {
+	return func(_ *game.StackItem, ctx *Context) error {
+		return ChooseFromRevealedHand{Player: TargetedPlayer(ctx), Filter: filter, Label: label, Exile: true}.Apply(ctx)
+	}
+}
+
 // TargetRevealsYouChooseDiscardAbility is TargetRevealsYouChooseDiscard
 // as a triggered or activated ability's Effect: Grief's enters trigger,
 // Mind Slash's sacrifice ability, a Saga's chapter. "You" is the

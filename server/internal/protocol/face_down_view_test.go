@@ -114,6 +114,8 @@ var redactedCardKeys = map[string]bool{
 	// public — it was suspected in front of the table, and it is the
 	// reason the face-down creature cannot block.
 	"suspected": true,
+	// #5675: the pair was made in front of the table (CR 702.95b).
+	"paired_with": true,
 }
 
 // assertRedacted fails on any key outside redactedCardKeys and on a
@@ -335,6 +337,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		SaddledBy:              []string{"saddler"},
 		RingBearer:             true,
 		Suspected:              true,
+		PairedWith:             "paired-partner",
 		Prepared:               true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped

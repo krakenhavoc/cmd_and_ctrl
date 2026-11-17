@@ -103,6 +103,14 @@ type Room struct {
 	lastHumanAt time.Time
 	lastChatAt  time.Time
 	clock       func() time.Time
+	// idleCloseAt is the lobby's warning that the game closes then
+	// unless a person moves (ADR 0211 §6), zero when not warned; guarded
+	// by idleMu, a leaf, so the lobby may set it from anywhere and the
+	// capture may read it under mu. playOut is the bot-only fast
+	// play-out (§2). See idle.go.
+	idleMu      sync.Mutex
+	idleCloseAt time.Time
+	playOut     atomic.Bool
 
 	// pendingAnnotation is consumed by the next captureLocked and
 	// written onto the replay line / crash dump it produces. Set
@@ -415,7 +423,7 @@ func (r *Room) ApplyAction(tag ActionTag, fn func() error) (protocol.GameView, u
 	st.record()
 	if err == nil {
 		r.noteActed(tag.Actor)
-		r.noteHuman(tag)
+		r.noteHuman(st.human)
 		r.notify()
 	}
 	return view, seq, err
@@ -440,6 +448,7 @@ func (r *Room) apply(caller uuid.UUID, fn func() error, st *commitStat) (protoco
 		return protocol.GameView{}, 0, err
 	}
 	st.applied = true
+	r.clearIdleWarning(st.human)
 	r.pushUndoLocked(undoEntry{pre: pre, barrier: barrier, caller: caller})
 	r.dropUndoAcrossMatchGamesLocked(number, between)
 	return r.autoAnswerThenCaptureLocked()
@@ -615,7 +624,7 @@ func (r *Room) ApplyBundle(b Bundle) (protocol.GameView, uint64, error) {
 	st.record()
 	if err == nil {
 		r.noteActed(b.Actor)
-		r.noteHuman(ActionTag{Actor: b.Actor})
+		r.noteHuman(st.human)
 		r.notify()
 	}
 	return view, seq, err
@@ -650,6 +659,7 @@ func (r *Room) applyBundle(b Bundle, st *commitStat) (protocol.GameView, uint64,
 	}
 
 	st.applied = true
+	r.clearIdleWarning(st.human)
 	r.pushUndoLocked(undoEntry{pre: pre, barrier: barrier, caller: b.Caller, freeUndo: b.FreeUndo})
 	r.pendingAnnotation = b.Annotation
 	return r.autoAnswerThenCaptureLocked()
@@ -707,7 +717,7 @@ func (r *Room) ApplyExternalAction(tag ActionTag, fn func() error) (protocol.Gam
 		// The lobby's own commits carry no actor and stamp nothing; a
 		// seat's opening roll, mulligan, table roll or settings change
 		// is a move (ADR 0211 §1).
-		r.noteHuman(tag)
+		r.noteHuman(st.human)
 		r.notify()
 	}
 	return view, seq, err
@@ -723,6 +733,7 @@ func (r *Room) applyExternal(fn func() error, st *commitStat) (protocol.GameView
 		return protocol.GameView{}, 0, err
 	}
 	st.applied = true
+	r.clearIdleWarning(st.human)
 	r.dropUndoAcrossMatchGamesLocked(number, between)
 	return r.autoAnswerThenCaptureLocked()
 }
@@ -819,16 +830,17 @@ func (r *Room) Undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 // an admin bound to a seat undoes as that seat, but the idle clock
 // does not count it as the seat's move (ADR 0211 §1).
 func (r *Room) UndoBy(caller uuid.UUID, admin bool) (protocol.GameView, uint64, error) {
-	view, seq, err := r.undo(caller)
+	human := r.humanMove(ActionTag{Actor: caller, Admin: admin})
+	view, seq, err := r.undo(caller, human)
 	if err == nil {
 		r.noteActed(caller)
-		r.noteHuman(ActionTag{Actor: caller, Admin: admin})
+		r.noteHuman(human)
 		r.notify()
 	}
 	return view, seq, err
 }
 
-func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
+func (r *Room) undo(caller uuid.UUID, human bool) (protocol.GameView, uint64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(r.undoStack) == 0 {
@@ -902,6 +914,7 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 			return protocol.GameView{}, 0, err
 		}
 	}
+	r.clearIdleWarning(human)
 	return r.captureLocked(true)
 }
 
@@ -968,6 +981,7 @@ func (r *Room) ViewFor(viewerID string) protocol.GameView {
 	r.stampPlaymatsLocked(&view)
 	r.stampVoiceLocked(&view)
 	r.stampRematchLocked(&view)
+	r.stampIdleLocked(&view)
 	r.stampStackPositionsLocked(&view)
 	r.stampStandInsLocked(&view)
 	r.mu.Unlock()
@@ -1017,6 +1031,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	r.stampPlaymatsLocked(&view)
 	r.stampVoiceLocked(&view)
 	r.stampRematchLocked(&view)
+	r.stampIdleLocked(&view)
 	r.stampStackPositionsLocked(&view)
 	r.stampStandInsLocked(&view)
 

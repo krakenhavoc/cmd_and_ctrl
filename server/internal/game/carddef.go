@@ -385,6 +385,12 @@ type CardDef struct {
 	// CatalogAbilityKey, never from a card's own zone; see
 	// game.CatalogPlayerLifeTotalLocked and ADR 0085 (#1200).
 	PlayerLifeTotalLocked bool
+	// PlayerLifeFloorOne is this permanent's printed "Damage that would
+	// reduce your life total to less than 1 reduces it to 1 instead"
+	// (Sustaining Spirit), about its CONTROLLER. Read from the battlefield
+	// through CatalogAbilityKey; see game.CatalogPlayerLifeFloorOne and
+	// life_floor.go (#5770).
+	PlayerLifeFloorOne bool
 	// DamageStaysThroughCleanup is this permanent's printed "Damage
 	// isn't removed from this creature during cleanup steps" (CR 514.2 —
 	// Ancient Adamantoise). Read from the battlefield through
@@ -1131,6 +1137,10 @@ func init() {
 	CatalogPlayerLifeTotalLocked = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeTotalLocked
+	}
+	CatalogPlayerLifeFloorOne = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.PlayerLifeFloorOne
 	}
 	CatalogDamageStaysThroughCleanup = func(key string) bool {
 		d := catalogDef(key)

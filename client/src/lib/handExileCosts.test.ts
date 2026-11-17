@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { altCostPayDefinesX, altCostPayX, applyCastChoices, castHandExileCost } from "./targeting";
+import {
+  altCostCounterX,
+  altCostCountersDefineX,
+  altCostPayDefinesX,
+  altCostPayX,
+  applyCastChoices,
+  castHandExileCost,
+} from "./targeting";
 import { castPreviewParams, castPreviewParamsFromPayload } from "./castPreview";
 import type { AlternativeCostView, CardView } from "./protocol";
 
@@ -90,5 +97,47 @@ describe("a pitch bound to X (Shining Shoal)", () => {
     expect(altCostPayX(fow, ["x"])).toBeUndefined();
     expect(altCostPayX(pitch, [])).toBeUndefined();
     expect(altCostPayX(undefined, ["angel"])).toBeUndefined();
+  });
+});
+
+describe("a flashback that removes X counters (Light Up the Night)", () => {
+  const flashback: AlternativeCostView = {
+    key: "flashback",
+    label: "Flashback—{3}{R}, Remove X loyalty counters from among planeswalkers you control",
+    counter_cost_n: 1,
+    counter_cost_kind: "loyalty",
+    counter_cost_among: true,
+    counter_cost_variable: true,
+    counter_cost_max: 7,
+    counter_cost_options: [
+      { card_id: "chandra", kinds: [{ kind: "loyalty", count: 4 }] },
+      { card_id: "jace", kinds: [{ kind: "loyalty", count: 3 }] },
+    ],
+  };
+
+  it("announces the counters removed as X", () => {
+    expect(altCostCountersDefineX(flashback)).toBe(true);
+    expect(altCostPayDefinesX(flashback)).toBe(true);
+    expect(
+      altCostCounterX(flashback, {
+        counter_source_ids: ["chandra", "jace"],
+        counter_counts: [2, 1],
+      }),
+    ).toBe(3);
+    // No card is pitched, so the pitch reading has nothing to say.
+    expect(altCostPayX(flashback, ["chandra"])).toBeUndefined();
+  });
+
+  it("announces nothing for a fixed counter removal (Quilled Greatwurm)", () => {
+    const fixed: AlternativeCostView = {
+      key: "remove_counters_from_graveyard",
+      counter_cost_n: 6,
+      counter_cost_among: true,
+    };
+    expect(altCostCountersDefineX(fixed)).toBe(false);
+    expect(altCostPayDefinesX(fixed)).toBe(false);
+    expect(
+      altCostCounterX(fixed, { counter_source_ids: ["a"], counter_counts: [6] }),
+    ).toBeUndefined();
   });
 });

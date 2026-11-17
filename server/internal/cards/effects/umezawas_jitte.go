@@ -3,7 +3,10 @@ package effects
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Umezawa's Jitte banks two charge counters whenever its equipped
-// creature deals combat damage, including damage to a blocker. Its
+// creature deals combat damage, including damage to a blocker: once per
+// combat damage step, so a trampler that hits its blocker and the
+// player banks two, not four (WheneverEquippedCreatureDealsCombatDamage,
+// #5760). Its
 // counter cost and modal choice are made when activated, and only the
 // -1/-1 bullet targets. The pump reads the equipped creature when it
 // resolves, using the Equipment's last-known attachment if it left.
@@ -13,9 +16,7 @@ func init() {
 		Name:         "Umezawa's Jitte",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b43AttachedCreatureDealtCombatDamage(ev, source, g)
-			}, "Umezawa's Jitte — put two charge counters on it", func(g *game.Game, item *game.StackItem) error {
+			WheneverEquippedCreatureDealsCombatDamage("Umezawa's Jitte — put two charge counters on it", func(g *game.Game, item *game.StackItem) error {
 				if !b09SourceStillOnBattlefield(g, item) {
 					return nil
 				}

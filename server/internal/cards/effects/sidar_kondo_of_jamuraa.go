@@ -9,7 +9,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 creatures with power 2 or less.
 //	 Partner"
 //
-// Flanking is flanking.go's trigger. The static is a blocker-side block
+// Flanking is the keyword token, which the engine triggers from
+// (game/flanking.go, #5784); the row beside it is the retired pre-#5784
+// trigger, kept for restore (RetiredFlankingRow). The static is a blocker-side block
 // rule (CantBlockAttackers): blockers are your opponents' creatures with
 // neither flying nor reach, read live through the layers; the attackers
 // it protects are any creatures with power 2 or less, whoever controls
@@ -20,10 +22,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "331b6834-6bb4-40fa-b80b-22d67b34734f",
-		Name:         "Sidar Kondo of Jamuraa",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Flanking("Sidar Kondo of Jamuraa")},
+		OracleID:        "331b6834-6bb4-40fa-b80b-22d67b34734f",
+		Name:            "Sidar Kondo of Jamuraa",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordFlanking},
+		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Sidar Kondo of Jamuraa")},
 		BlockRules: []game.BlockRule{
 			CantBlockAttackers(
 				OnMatching(And(Creature(), OpponentControls(), WithoutKeyword("flying"), WithoutKeyword("reach"))),

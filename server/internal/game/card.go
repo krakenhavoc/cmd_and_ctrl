@@ -151,6 +151,8 @@ type Card struct {
 	// The catalog value survives as a fallback for cards with no
 	// printed data (tokens, fixtures) — see CatalogStartingLoyalty.
 	StartingLoyalty int
+	// StartingLoyaltyKnown, the bit that says a 0 here was set by a copy
+	// exception, is in the bool block below (beside PrintedPTKnown).
 
 	// Keywords are printed keyword abilities carried on the card
 	// object itself rather than looked up in the catalog by oracle
@@ -211,6 +213,19 @@ type Card struct {
 	// deep-copies it. Nil for every card that was never granted
 	// anything, which is all of them but a handful.
 	GrantedAbilities []string
+
+	// LostKeywords are the printed keywords a copy exception took away:
+	// "a copy of this creature, except it … loses soulbond" (Mirage
+	// Phalanx, #5675). CR 707.9b makes the exception part of the
+	// copiable values, so a copy of the copy lacks the keyword too. It
+	// exists for ColorCDADropped's reason: the keyword also arrives
+	// through the copied oracle ID's PrintedKeywords, where it cannot be
+	// stripped from Keywords. Written by LoseCopiedKeyword and the copy
+	// plumbing; read by printedInputsOf and PrintedKeywordsHonouringCopy.
+	// Only the object's own printed keyword goes: a later effect can
+	// still grant it. Carried by the snapshot; cleared when the object
+	// becomes a new object.
+	LostKeywords []string
 
 	// TextBox is the text box this permanent has when it is not its own
 	// (CR 612.5, ADR 0160): the result of the textBox records, written
@@ -386,6 +401,29 @@ type Card struct {
 	//
 	// See phasing.go and ADR 0084. Added in S46 (#1199).
 	PhaseInLockedBy uuid.UUID
+
+	// PhaseInBarredBy, PhaseInBarredEpoch and PhaseInBarredFor are
+	// "It can't phase in for as long as you control this Saga" (The
+	// Phasing of Zhalfir, #5664): the object whose control is the
+	// duration, the ObjectEpoch it had when the effect began (CR 400.7:
+	// one that left and came back is a new object), and the player who
+	// must still control it.
+	//
+	// Unlike PhaseInLockedBy this is a prohibition, not a clock. While
+	// it holds, the permanent is skipped by the untap step's phase-in
+	// (CR 502.1) and by everything else that would phase it in. When
+	// it ends (the source leaves, phases out or changes controller)
+	// nothing phases in on the spot: the permanent is back on the
+	// ordinary clock and phases in during the next untap step of the
+	// player it phased out under. A duration that has ended does not
+	// start again (CR 611.2b), so sweepPhaseInBarsLocked clears the
+	// three fields as soon as it sees the condition false.
+	//
+	// uuid.Nil in PhaseInBarredBy is "no such effect". Meaningful only
+	// while the card sits in Game.PhasedOut. See phasing.go.
+	PhaseInBarredBy    uuid.UUID
+	PhaseInBarredEpoch int
+	PhaseInBarredFor   uuid.UUID
 
 	// DamageMarked is the damage currently noted on the creature this
 	// turn, used by the lethal-damage state-based action (CR 704.5g).
@@ -713,6 +751,18 @@ type Card struct {
 	// before this field, in which case the grant falls back to the
 	// permanent's own timestamp.
 	SuspectedAt int64
+	// PairedWith is the creature this one is paired with by a soulbond
+	// ability (CR 702.95b, #5675): the partner's InstanceID, and
+	// uuid.Nil for an unpaired creature. The link is written on BOTH
+	// creatures by PairForEffect and by nothing else, and read through
+	// PairedPartner, which answers nothing for a half-link. It is
+	// cleared on this card at both CR 400.7 sites and on the pair by
+	// the sweep at the end of the layer recompute, when either creature
+	// has changed controller, stopped being a creature or left the
+	// battlefield (CR 702.95e, soulbond.go). A status, not a
+	// characteristic: CopiableValuesOf never reads it (CR 707.2).
+	// Carried by clone and the snapshot.
+	PairedWith uuid.UUID
 	// EncodedAt is the CR 613.7 timestamp of EncodedOn's grant: the
 	// moment the card was encoded, which is when its static ability
 	// (CR 702.99a's second) began to function in exile. Zero beside a
@@ -1674,6 +1724,15 @@ type Card struct {
 	// template claims, and ToughnessIsKnown asks that question first.
 	PrintedPTKnown bool
 
+	// StartingLoyaltyKnown says the number in StartingLoyalty was set by
+	// a copy effect's exception ("has starting loyalty X", Ob Nixilis,
+	// the Adversary's casualty copy, #5668), so a 0 there is the real
+	// starting loyalty and not "nothing stamped": the CR 306.5b stamp
+	// does not fall back to the catalog's printed number. A copiable
+	// value (PrintedValues.StartingLoyaltyKnown, CR 707.9b). False for
+	// every card and every copy made without such an exception.
+	StartingLoyaltyKnown bool
+
 	// Solved is the CR 719.3 designation on a Case permanent — the
 	// marker that switches its printed "Solved — [ability]" clauses
 	// on (ADR 0071).
@@ -1926,6 +1985,14 @@ type Card struct {
 	// cleared with AttackingTarget wherever the creature leaves combat
 	// before that. True only between the verb and the lock-in.
 	ExertOnAttack bool
+
+	// EnlistOnAttack is a staged choice of the creature this attacker
+	// enlists (CR 702.154a, 508.1g; enlist.go): set by a declaration
+	// verb beside AttackingTarget, paid and cleared by
+	// commitAttackDeclarationLocked as the declaration locks in, and
+	// cleared with AttackingTarget wherever the creature leaves combat
+	// before that. Non-nil only between the verb and the lock-in.
+	EnlistOnAttack uuid.UUID
 
 	// Suspected is the CR 701.60 designation described above
 	// (SuspectedAt). Here for alignment, beside the other bools.
@@ -2619,33 +2686,49 @@ func equalFoldASCII(a, b string) bool {
 	return true
 }
 
-// typeLineHas does a case-insensitive substring check against the
-// given lowercase needle. The needle MUST be lowercase (callers in
-// this file always pass a literal). Returns false for an empty
-// TypeLine (placeholder cards from the demo seed are conservatively
-// treated as no-type).
-func typeLineHas(typeLine, lowerNeedle string) bool {
-	if typeLine == "" {
+// typeLineHas reports whether one WORD of the type line is `needle`,
+// case-insensitively. The words are the supertypes and card types
+// before the dash and the subtypes after it: the line splits on
+// whitespace, the em dash and the "//" between faces. A whole-word
+// match, not a substring one (#5213): "Token Artifact — Lander" has
+// the subtype Lander and is not a land, and "Land" is not "Island".
+// A hyphenated subtype (Assembly-Worker) is one word. The needle is
+// one word; a needle with a space in it matches nothing. Returns
+// false for an empty TypeLine (placeholder cards from the demo seed
+// are conservatively treated as no-type).
+func typeLineHas(typeLine, needle string) bool {
+	if typeLine == "" || needle == "" {
 		return false
 	}
-	n := len(lowerNeedle)
-	for i := 0; i+n <= len(typeLine); i++ {
-		match := true
-		for j := 0; j < n; j++ {
-			c := typeLine[i+j]
-			if c >= 'A' && c <= 'Z' {
-				c += 'a' - 'A'
-			}
-			if c != lowerNeedle[j] {
-				match = false
-				break
-			}
+	start := 0
+	for i := 0; i < len(typeLine); {
+		sep := typeLineSeparatorLen(typeLine, i)
+		if sep == 0 {
+			i++
+			continue
 		}
-		if match {
+		if equalFoldASCII(typeLine[start:i], needle) {
 			return true
 		}
+		i += sep
+		start = i
 	}
-	return false
+	return equalFoldASCII(typeLine[start:], needle)
+}
+
+// typeLineSeparatorLen is the byte length of the word separator that
+// starts at typeLine[i], or 0 when a word character is there. The em
+// dash (U+2014) is three bytes in UTF-8.
+func typeLineSeparatorLen(typeLine string, i int) int {
+	switch typeLine[i] {
+	case ' ', '\t', '\n', '/':
+		return 1
+	case 0xE2:
+		if i+2 < len(typeLine) && typeLine[i+1] == 0x80 && typeLine[i+2] == 0x94 {
+			return 3
+		}
+	}
+	return 0
 }
 
 // NewCard constructs a fresh Card instance with a new InstanceID, owned

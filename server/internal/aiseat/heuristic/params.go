@@ -145,6 +145,11 @@ type attackParams struct {
 	// 0130 PR 3 (§9), so until then plainAttack filters them out and the
 	// bot attacks exactly as it did before exert existed.
 	Exert bool `json:"exert"`
+	// Enlist marks a twin move that also enlists a creature (CR 702.154,
+	// #5658). The heuristic never picks one: plainAttack filters them
+	// out, so every plan still counts each attacker once and the bot
+	// attacks as it would without enlist.
+	Enlist string `json:"enlist"`
 }
 
 type blockParams struct {

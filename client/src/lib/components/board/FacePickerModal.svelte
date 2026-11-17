@@ -26,12 +26,15 @@
   import { cardArt } from "../../cardArt";
   import {
     LAYOUT_ADVENTURE,
+    LAYOUT_PROTOTYPE,
     LAYOUT_SPLIT,
     castableFaceIndex,
     displayName,
     faceOptions,
     isOmenCard,
+    isPrototypedFace,
     isSidewaysArt,
+    type FaceOption,
   } from "../../faces";
   import { L } from "../../labels";
   import { hasSatisfiableTargets } from "../../timing";
@@ -143,8 +146,27 @@
           ? card.fused
             ? "split, fuse · CR 709.3, 702.102"
             : "split · CR 709.3"
-          : "modal double-faced · CR 712.12",
+          : card?.layout === LAYOUT_PROTOTYPE
+            ? L.facePickerPrototype
+            : "modal double-faced · CR 712.12",
   );
+
+  // #5656: both choices of a prototype card have one name and one type
+  // line (CR 718.5), so each is told apart by whether it is prototyped
+  // and by its size.
+  function prototypeCaption(opt: FaceOption): string {
+    const how = isPrototypedFace(card, opt.face) ? L.facePrototyped : L.faceNotPrototyped;
+    return `${how} · ${opt.view.power ?? 0}/${opt.view.toughness ?? 0}`;
+  }
+  const confirmLabel = $derived.by(() => {
+    const opt = options[chosen];
+    if (!opt) return verb;
+    if (card?.layout === LAYOUT_PROTOTYPE) {
+      const how = isPrototypedFace(card, opt.face) ? L.facePrototyped : L.faceNotPrototyped;
+      return `${verb} ${opt.view.name} (${how.toLowerCase()})`;
+    }
+    return `${verb} ${opt.view.name ?? ""}`.trim();
+  });
 </script>
 
 {#if card && options.length > 1}
@@ -153,10 +175,12 @@
     src={provenance}
     width={560}
     sheetKey={`face:${card.instance_id}`}
-    primary={confirmAction(`${verb} ${options[chosen]?.view.name ?? ""}`.trim(), confirm)}
+    primary={confirmAction(confirmLabel, confirm)}
     secondary={[cancelAction(onCancel)]}
   >
-    <p class="prompt-hint">Which half are you playing?</p>
+    <p class="prompt-hint">
+      {card.layout === LAYOUT_PROTOTYPE ? "How are you casting it?" : "Which half are you playing?"}
+    </p>
     <ul class="face-options">
       {#each options as opt, i (opt.fused ? "fused" : opt.face)}
         {@const art = cardImageURL(card, "normal", opt.face)}
@@ -182,7 +206,11 @@
             {/if}
             <span class="face-name">{opt.view.name}</span>
             <span class="face-type"
-              >{opt.fused ? "both halves (fuse)" : (opt.view.type_line ?? "")}</span
+              >{opt.fused
+                ? "both halves (fuse)"
+                : card.layout === LAYOUT_PROTOTYPE
+                  ? prototypeCaption(opt)
+                  : (opt.view.type_line ?? "")}</span
             >
             <span class="face-cost"
               >{#if opt.view.mana_cost}<ManaCost

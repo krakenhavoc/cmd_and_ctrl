@@ -70,6 +70,16 @@ describe("payCards", () => {
     expect(payCardsVerb(tap)).toBe("Choose one card to tap.");
   });
 
+  it("reads a -1/-1 counter's options from the battlefield (#5746, Thelon's Chant)", () => {
+    const card = (id: string, name: string) => ({ instance_id: id, name }) as CardView;
+    const me = { id: "p1", hand: { cards: [card("h1", "In hand")] } } as PlayerView;
+    const counter: PayCardsView = { action: "minus_one_counter", count: 1, options: ["b1", "b2"] };
+    const bf = [card("b2", "Bear Two"), card("b1", "Bear One")];
+    expect(payCardsOptions(counter, bf, me).map((c) => c.name)).toEqual(["Bear One", "Bear Two"]);
+    expect(payCardsVerb(counter)).toBe("Choose one card to put a -1/-1 counter on.");
+    expect(canPayCards({ ...counter, options: [] })).toBe(false);
+  });
+
   it("sends card_ids beside apply on a Pay, never on a decline", () => {
     const choice = {
       id: "c1",

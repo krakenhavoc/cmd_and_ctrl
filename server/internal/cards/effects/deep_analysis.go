@@ -31,12 +31,7 @@ func init() {
 		Purpose:          ForTargets(game.TargetPurpose{Slot: 0, Draws: 2}),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{deepAnalysisFlashback()},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			return DrawCards{Player: item.Targets[0].ID, N: 2}.Apply(ctx)
-		},
+		OnResolve:        targetPlayerDrawsTwo,
 	})
 }
 

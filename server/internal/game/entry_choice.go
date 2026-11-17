@@ -715,6 +715,10 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 	if ev.stackItem == nil {
 		g.stampEntryProvenanceLocked(&etb)
 	}
+	// #5746: who put it there, for "whenever a player puts a Swamp onto
+	// the battlefield" (Thelon's Chant). The same reading Arboria's tally
+	// takes just below.
+	etb.PutBy = g.entryPutterLocked(l)
 	g.EmitEvent(etb)
 	// #1997: who put it there, for "during their last turn" (Arboria).
 	g.notePermanentPutLocked(l)

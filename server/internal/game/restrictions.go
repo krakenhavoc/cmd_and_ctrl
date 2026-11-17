@@ -100,7 +100,7 @@ import "github.com/google/uuid"
 // prohibitions on one permanent, as a bitmask. The zero value is
 // "no restrictions", which is what every permanent the catalog says
 // nothing about carries.
-type Restriction uint8
+type Restriction uint16
 
 const (
 	// CantAttack is "~ can't attack" (CR 508.1c). Checked when an
@@ -163,8 +163,17 @@ const (
 	// every bit here it belongs to the SOURCE (the Aura), so a layer-6
 	// "loses all abilities" leaves it.
 	//
-	// This is the eighth bit of a uint8: the next one widens the type.
 	CantCrew
+
+	// PlayersCantPayLifeToCastOrActivate is "Players can't pay life to
+	// cast spells or to activate abilities that aren't mana abilities."
+	// (Karn's Sylex, #5660). A world rule the SOURCE carries on itself
+	// (RestrictSelf), like PermanentsCantPhaseIn: while any permanent on
+	// the battlefield has it, CanPayLifeToCastOrActivateLocked refuses
+	// every life component of a spell's cost and of a non-mana
+	// activation's (life_cost_bar.go). Absent from Names for the same
+	// reason: it is no badge on the permanent that carries it.
+	PlayersCantPayLifeToCastOrActivate
 )
 
 // CantAttackOrBlock is the pair every "can't attack or block" card

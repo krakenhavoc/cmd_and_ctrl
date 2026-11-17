@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // GainControls: it is ONE effect. Both halves share a CR 613.7
 // timestamp, so a later control-changer beats both or neither and no
 // third effect can resolve "between" them. And it is all or nothing
-// (CR 701.12b): if either creature has left the battlefield by the
+// (CR 701.12a): if either creature has left the battlefield by the
 // time this resolves, no control is exchanged at all — the surviving
 // one stays where it is rather than being handed to a player who was
 // meant to be trading for something.
@@ -37,7 +37,7 @@ func init() {
 			// CR 608.2b: a target that became illegal in response is
 			// skipped, and with only two targets that means the
 			// exchange has nothing to do. `ExchangeControlForEffect`
-			// refuses it anyway (CR 701.12b), so this is the earlier
+			// refuses it anyway (CR 701.12a), so this is the earlier
 			// of two guards, not the only one.
 			legal := ctx.LegalTargets()
 			if len(legal) != 2 {

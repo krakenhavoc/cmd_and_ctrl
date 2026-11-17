@@ -352,6 +352,15 @@ type Game struct {
 	// as LoyaltyActivatedThisTurn is.
 	LoyaltyExtraActivationsUsedThisTurn map[uuid.UUID]map[uuid.UUID]int
 
+	// LoyaltyTwiceThisTurn is the set of PLAYERS who "may activate the
+	// loyalty abilities of planeswalkers you control twice this turn
+	// rather than only once" (Urza Assembles the Titans' chapter III,
+	// #5665): Oath of Teferi's static as a one-turn effect, so the
+	// limit is two, not one more per resolution. Flushed at the turn
+	// boundary with the rest. ADR 0145 amendment 2026-11-12;
+	// loyalty_limit.go.
+	LoyaltyTwiceThisTurn map[uuid.UUID]bool
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped
@@ -2718,6 +2727,11 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 			// watch, so echo's intervening if reads this upkeep as the
 			// current one (CR 702.30a, CR 603.4).
 			g.Seats[g.Turn.ActiveSeat].UpkeepsBegun++
+			// #5737: "until your next upkeep" ends as this step begins,
+			// so the sweep runs on the count just raised and before the
+			// event: the upkeep's triggers are checked against a board
+			// the effect has already left (CR 503.1a).
+			g.ClearExpiredScopedStaticsLocked()
 			g.EmitEvent(Event{
 				Kind:  EventBeginUpkeep,
 				Actor: g.Seats[g.Turn.ActiveSeat].ID,

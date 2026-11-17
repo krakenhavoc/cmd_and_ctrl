@@ -141,6 +141,10 @@ const button = (c: HTMLElement, name: string): HTMLButtonElement => {
 const cardButtons = (c: HTMLElement): HTMLButtonElement[] => [
   ...c.querySelectorAll<HTMLButtonElement>(`[aria-label="${L.draftPack}"] button`),
 ];
+// A drag swallows the click that follows it for 60 ms (draftDrag). A test that
+// drags waits that out, or the next test's first click is the one eaten.
+const afterDrag = (): Promise<void> => new Promise((r) => setTimeout(r, 80));
+
 const click = (el: Element): void => {
   el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
   flushSync();
@@ -1054,6 +1058,46 @@ describe("the pick screen", () => {
     expect(button(c, "Pick 1 card").disabled).toBe(false);
   });
 
+  it("does not carry a refused drag to the Sideboard into a later pick", async () => {
+    const mine = card("p1", "Thundertrap Trainer");
+    const c = await room(view({ picks: [mine] }));
+    const pointer = (target: Element | Window, type: string, x: number, y: number): void => {
+      const ev = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+      Object.defineProperty(ev, "pointerId", { value: 1 });
+      Object.defineProperty(ev, "pointerType", { value: "mouse" });
+      target.dispatchEvent(ev);
+      flushSync();
+    };
+    const sideArea = c.querySelector('[data-testid="draft-picks-side"]')!;
+    document.elementFromPoint = () => sideArea;
+    try {
+      pointer(cardButtons(c)[0], "pointerdown", 10, 10);
+      pointer(window, "pointermove", 200, 300);
+      pointer(window, "pointerup", 200, 300);
+    } finally {
+      delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+    }
+    const sent = socket().picks();
+    expect(sent).toHaveLength(1);
+    expect(sent[0].payload).toEqual({ cards: [PACK[0].id] });
+    await afterDrag();
+
+    // The server refuses it: the card is still in the pack.
+    socket().frame(
+      "error",
+      { code: "draft_pick_refused", message: "that card is not in your pack" },
+      sent[0].id,
+    );
+    await settle();
+    expect(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)).toBeNull();
+
+    // Picked the ordinary way later, it lands in Main, not the Sideboard.
+    socket().frame("draft", view({ seq: 15, pack: undefined, take: 0, picks: [mine, PACK[0]] }));
+    await settle();
+    expect(text(c.querySelector('[data-testid="draft-picks-side"]'))).not.toContain(PACK[0].name);
+    expect(text(c.querySelector('[data-testid="draft-picks-main"]'))).toContain(PACK[0].name);
+  });
+
   it("waits for the others once the pick has landed, and names them", async () => {
     const c = await room();
     click(cardButtons(c)[0]);
@@ -1359,7 +1403,6 @@ describe("building a deck", () => {
     const out = moveBtn(c, "draft-deck", "Shoreline Looter");
     expect(out.getAttribute("aria-label")).toMatch(/^Move to sideboard: Shoreline Looter, costs /);
     expect(out.getAttribute("aria-label")).toContain("Creature — Rat Rogue");
-    expect(out.getAttribute("draggable")).toBe("true");
     click(out);
     expect(moveBtn(c, "draft-side", "Shoreline Looter").getAttribute("aria-label")).toMatch(
       /^Move to main: Shoreline Looter/,
@@ -1936,18 +1979,18 @@ describe("card ratings and colour pairs in the room", () => {
       // no storage: the panel stays open, which the first assertion allows
     }
     const c = await open(rated());
-    const details = c.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!;
-    expect(details.open).toBe(true);
-    details.open = false;
-    details.dispatchEvent(new Event("toggle"));
-    flushSync();
+    const panel = (el: HTMLElement): HTMLElement =>
+      el.querySelector<HTMLElement>('[data-testid="archetypes-panel"]')!;
+    expect(panel(c).getAttribute("data-open")).toBe("true");
+    click(c.querySelector<HTMLButtonElement>(`[aria-label="${L.draftArchetypesHide}"]`)!);
     expect(localStorage.getItem("c2.draft.archetypes")).toBe("closed");
+    // The room's column follows: the pack takes the width (#5848 §4).
+    expect(c.querySelector(".roomgrid")!.classList).toContain("pairs-closed");
     cleanup();
 
     const again = await open(rated());
-    expect(again.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!.open).toBe(
-      false,
-    );
+    expect(panel(again).getAttribute("data-open")).toBe("false");
+    expect(again.querySelector(".roomgrid")!.classList).toContain("pairs-closed");
     localStorage.removeItem("c2.draft.archetypes");
   });
 });
@@ -2087,26 +2130,26 @@ describe("the picks beside the pack", () => {
     expect(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)).toBeNull();
   });
 
-  it("moves a pick by dropping it on the other area", async () => {
+  it("moves a pick by dragging it onto the other area with the pointer", async () => {
     const c = await room(view({ picks }));
-    const data = new Map<string, string>();
-    const transfer = {
-      types: ["application/x-c2-draft-card"],
-      setData: (k: string, v: string) => data.set(k, v),
-      getData: (k: string) => data.get(k) ?? "",
-      effectAllowed: "",
-    };
-    const fire = (el: Element, type: string): void => {
-      const ev = new Event(type, { bubbles: true, cancelable: true });
-      Object.defineProperty(ev, "dataTransfer", { value: transfer });
-      el.dispatchEvent(ev);
+    const pointer = (target: Element | Window, type: string, x: number, y: number): void => {
+      const ev = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+      Object.defineProperty(ev, "pointerId", { value: 1 });
+      Object.defineProperty(ev, "pointerType", { value: "mouse" });
+      target.dispatchEvent(ev);
       flushSync();
     };
     const row = moveBtn(c, "draft-picks-main", "Thundertrap Trainer");
-    expect(row.getAttribute("draggable")).toBe("true");
-    fire(row, "dragstart");
-    fire(area(c, "draft-picks-side"), "dragover");
-    fire(area(c, "draft-picks-side"), "drop");
+    expect(row.getAttribute("draggable")).toBeNull();
+    document.elementFromPoint = () => area(c, "draft-picks-side");
+    try {
+      pointer(row, "pointerdown", 10, 10);
+      pointer(window, "pointermove", 200, 300);
+      pointer(window, "pointerup", 200, 300);
+    } finally {
+      delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+    }
+    await afterDrag();
     expect(text(area(c, "draft-picks-side"))).toContain("Thundertrap Trainer");
     expect(text(c.querySelector("#draft-picks-main-h"))).toBe(`${L.draftDeckZone} 2`);
   });
@@ -2120,25 +2163,26 @@ describe("the picks beside the pack", () => {
     expect(localStorage.getItem("cmdctrl.draftSplit.over")).toBeNull();
   });
 
-  it("tallies the picks for Main and for the whole pool, and follows a move", async () => {
+  it("shows the colours and the curve of Main under the picks, and follows a move", async () => {
     const c = await room(view({ picks }));
-    const stat = (scope: "main" | "pool", sel: string): string =>
-      text(c.querySelector(`[data-testid="draft-stats"] [data-scope="${scope}"] ${sel}`));
-    expect(text(c.querySelector("#draft-stats-h"))).toBe(L.draftStats);
-    expect(stat("main", '[data-stat="creatures"]')).toBe("2");
-    expect(stat("main", '[data-stat="non-creatures"]')).toBe("1");
-    expect(stat("pool", '[data-type="artifact"]')).toBe("1");
-    expect(stat("pool", '[data-colour="U"]')).toBe("2");
-    expect(c.querySelector('[data-scope="main"] [role="img"]')!.getAttribute("aria-label")).toBe(
+    const pips = (colour: string): string =>
+      text(c.querySelector(`[data-testid="draft-stats"] [data-pips="${colour}"]`));
+    const strip = c.querySelector('[data-testid="draft-stats"]')!;
+    expect(strip.getAttribute("aria-label")).toBe(L.draftStatsStripName);
+    expect(pips("U")).toBe("2");
+    expect(pips("G")).toBe("1");
+    expect(strip.querySelector('[role="img"]')!.getAttribute("aria-label")).toBe(
       `${L.draftCurve}: 0 at 0, 1 at 1, 1 at 2, 1 at 3, 0 at 4, 0 at 5, 0 at 6 or more`,
     );
 
-    // Setting Wall of Bark aside takes it out of Main's counts, not the pool's.
+    // Setting Wall of Bark aside takes it out of Main's colours and curve.
     click(moveBtn(c, "draft-picks-main", "Wall of Bark"));
-    expect(stat("main", '[data-type="artifact"]')).toBe("0");
-    expect(stat("main", '[data-colour="G"]')).toBe("0");
-    expect(stat("pool", '[data-type="artifact"]')).toBe("1");
-    expect(stat("pool", '[data-colour="G"]')).toBe("1");
+    await settle();
+    expect(c.querySelector('[data-testid="draft-stats"] [data-pips="G"]')).toBeNull();
+    expect(pips("U")).toBe("2");
+    expect(
+      c.querySelector('[data-testid="draft-stats"] [role="img"]')!.getAttribute("aria-label"),
+    ).toBe(`${L.draftCurve}: 0 at 0, 0 at 1, 1 at 2, 1 at 3, 0 at 4, 0 at 5, 0 at 6 or more`);
   });
 });
 
@@ -2167,12 +2211,9 @@ describe("the build screen starts from the split", () => {
       },
       ...over,
     });
-  const stat = (c: HTMLElement, scope: "main" | "pool"): string =>
-    text(
-      c.querySelector(
-        `[data-testid="draft-stats"] [data-scope="${scope}"] [data-stat="creatures"]`,
-      ),
-    );
+  // Main's blue mana symbols, from the strip across the top.
+  const stat = (c: HTMLElement): string =>
+    text(c.querySelector('[data-testid="draft-stats"] [data-pips="U"]'));
 
   it("opens with the sideboard the picks screen left, and shows the stats", async () => {
     localStorage.setItem(
@@ -2184,20 +2225,19 @@ describe("the build screen starts from the split", () => {
     expect(text(c.querySelector("#draft-side-h"))).toBe(`${L.draftSideboardZone} 1`);
     expect(text(c.querySelector('[data-testid="draft-deck"]'))).toContain("Thundertrap Trainer");
     expect(text(c.querySelector('[data-testid="draft-side"]'))).toContain("Mindwhisker");
-    expect(stat(c, "main")).toBe("1");
-    expect(stat(c, "pool")).toBe("2");
+    expect(stat(c)).toBe("1");
   });
 
   it("keeps a move made here, for a reload, and the stats follow it", async () => {
     const c = await room(buildView());
-    expect(stat(c, "main")).toBe("2");
+    expect(stat(c)).toBe("2");
     const move = [...c.querySelectorAll<HTMLElement>('[data-testid="draft-deck"] button')].find(
       (b) => b.getAttribute("aria-label")!.includes(": Mindwhisker, "),
     )!;
     click(move);
     await settle();
     expect(JSON.parse(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)!).side).toEqual(["p2"]);
-    expect(stat(c, "main")).toBe("1");
+    expect(stat(c)).toBe("1");
   });
 
   it("forgets the split once the rounds begin", async () => {
@@ -2208,5 +2248,429 @@ describe("the build screen starts from the split", () => {
     await room(buildView({ phase: "rounds", deck: { main: ["p1"], basics: {} } }));
     await settle();
     expect(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)).toBeNull();
+  });
+});
+
+// ---- The room's layout: the fuse, Deck view, the corner buttons (#5848 §4, §5, §7, §8) ----
+
+describe("the pick clock as a fuse (#5848 §7)", () => {
+  const fuse = (c: HTMLElement): HTMLElement | null =>
+    c.querySelector<HTMLElement>('[data-testid="draft-fuse"]');
+  const burn = (c: HTMLElement): HTMLElement => fuse(c)!.querySelector<HTMLElement>(".burn")!;
+  const frames = async (): Promise<void> => {
+    await new Promise((r) => setTimeout(r, 60));
+    flushSync();
+  };
+
+  it("burns from the server's deadline, blue with plenty of time, and keeps the text clock", async () => {
+    // 43 seconds left of 60.
+    const c = await room();
+    await frames();
+    expect(fuse(c)).not.toBeNull();
+    expect(fuse(c)!.getAttribute("aria-hidden")).toBe("true");
+    const width = parseFloat(burn(c).style.width);
+    expect(width).toBeGreaterThan(70);
+    expect(width).toBeLessThan(72);
+    expect(burn(c).style.getPropertyValue("--fuse")).toBe("rgb(61, 139, 255)");
+    expect(fuse(c)!.classList.contains("flash")).toBe(false);
+    // The text clock is still there.
+    expect(c.querySelector('[role="timer"]')).not.toBeNull();
+  });
+
+  it("is red and flashing in the last eight seconds", async () => {
+    // 4 seconds left of 60: under 15 %.
+    const c = await room(view({ deadline: "2026-11-11T19:00:06Z" }));
+    await frames();
+    expect(fuse(c)!.classList.contains("flash")).toBe(true);
+    const [r, g] = burn(c).style.getPropertyValue("--fuse").match(/\d+/g)!.map(Number);
+    expect(r).toBeGreaterThan(200);
+    expect(g).toBeLessThan(70);
+  });
+
+  it("does not flash with more than eight seconds left", async () => {
+    const c = await room(view({ deadline: "2026-11-11T19:00:11Z" }));
+    await frames();
+    expect(fuse(c)!.classList.contains("flash")).toBe(false);
+  });
+
+  it("only exists while a pick is being made", async () => {
+    const lobby = await room(view({ state: "lobby", pack: undefined, deadline: undefined }));
+    expect(fuse(lobby)).toBeNull();
+    cleanup();
+    const untimed = await room(view({ deadline: undefined, now: undefined }));
+    expect(fuse(untimed)).toBeNull();
+    cleanup();
+    const building = await room(
+      view({
+        state: "done",
+        phase: "building",
+        pack: undefined,
+        deadline: undefined,
+        now: undefined,
+        pool: [card("p1", "Thundertrap Trainer")],
+        build: {
+          deadline: "2026-11-11T19:15:00Z",
+          now: "2026-11-11T19:00:00Z",
+          seconds: 900,
+          deck_min: 40,
+          submitted: false,
+        },
+      }),
+    );
+    expect(fuse(building)).toBeNull();
+  });
+});
+
+describe("Deck view during the draft (#5848 §5)", () => {
+  const picks = [
+    card("p1", "Thundertrap Trainer", { mana_value: 2 }),
+    card("p2", "Mindwhisker", { mana_value: 3 }),
+    card("p3", "Dire Downdraft", { mana_value: 7, type_line: "Instant" }),
+  ];
+  const deckBtn = (c: HTMLElement): HTMLButtonElement =>
+    c.querySelector<HTMLButtonElement>('[data-testid="draft-deck-view-button"]')!;
+  const deckPane = (c: HTMLElement): HTMLElement | null =>
+    c.querySelector<HTMLElement>('[data-testid="draft-deck-columns"]');
+  const press = (key: string, target: EventTarget = document.body): void => {
+    target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    flushSync();
+  };
+
+  it("has a corner button with the pick count that swaps the pack for the picks as a deck, and back", async () => {
+    const c = await room(view({ picks }));
+    expect(text(deckBtn(c))).toContain(L.draftDeckView);
+    expect(text(deckBtn(c))).toContain("3 picks");
+    expect(cardButtons(c).length).toBe(3);
+    expect(deckPane(c)).toBeNull();
+
+    click(deckBtn(c));
+    expect(deckPane(c)).not.toBeNull();
+    expect(cardButtons(c).length).toBe(0);
+    expect(text(deckBtn(c))).toContain(L.draftBackToPack);
+    // The note says the clock still runs, and the clock is in it.
+    const note = c.querySelector('[data-testid="draft-deck-view-note"]')!;
+    expect(text(note)).toContain("The pick clock is still running");
+    expect(note.querySelector('[role="timer"]')).not.toBeNull();
+    // The fuse keeps burning.
+    expect(c.querySelector('[data-testid="draft-fuse"]')).not.toBeNull();
+
+    click(deckBtn(c));
+    expect(deckPane(c)).toBeNull();
+    expect(cardButtons(c).length).toBe(3);
+  });
+
+  it("lays Main out in columns by mana value, with 6 and more last", async () => {
+    const c = await room(view({ picks }));
+    click(deckBtn(c));
+    const col = (mv: string): string[] =>
+      [...deckPane(c)!.querySelectorAll(`.col[data-mv="${mv}"] [data-move-id]`)].map(
+        (el) => (el as HTMLElement).dataset.moveId!,
+      );
+    expect(col("2")).toEqual(["p1"]);
+    expect(col("3")).toEqual(["p2"]);
+    expect(col("6")).toEqual(["p3"]);
+  });
+
+  it("opens and closes with D, but not while typing, and not with a modifier", async () => {
+    const c = await room(view({ picks }));
+    press("d");
+    expect(deckPane(c)).not.toBeNull();
+    press("D");
+    expect(deckPane(c)).toBeNull();
+
+    const field = document.createElement("input");
+    document.body.appendChild(field);
+    press("d", field);
+    expect(deckPane(c)).toBeNull();
+    field.remove();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "d", ctrlKey: true, bubbles: true }));
+    flushSync();
+    expect(deckPane(c)).toBeNull();
+  });
+
+  it("carries a move back to the pack screen", async () => {
+    const c = await room(view({ picks }));
+    click(deckBtn(c));
+    click(deckPane(c)!.querySelector('[data-move-id="p2"]')!);
+    expect(
+      deckPane(c)!.querySelector('[data-testid="draft-deckview-side"] [data-move-id="p2"]'),
+    ).not.toBeNull();
+    click(deckBtn(c));
+    expect(c.querySelector('[data-testid="draft-picks-side"] [data-move-id="p2"]')).not.toBeNull();
+    expect(c.querySelector('[data-testid="draft-picks-main"] [data-move-id="p2"]')).toBeNull();
+  });
+
+  it("names the card in a toast when the clock runs out and picks for the viewer", async () => {
+    const c = await room(view({ picks }));
+    click(deckBtn(c));
+    expect(c.querySelector('[data-testid="draft-toast"]')).toBeNull();
+    // The server's next frame: a card more in the picks, the next pack, none of our pick sent.
+    socket().frame(
+      "draft",
+      view({
+        seq: 13,
+        pick: 6,
+        picks: [...picks, card("p4", "Bonecache Overseer")],
+        pack: [card("c9", "Plumecreed Escort")],
+      }),
+    );
+    const toast = c.querySelector('[data-testid="draft-toast"]')!;
+    expect(toast.getAttribute("role")).toBe("status");
+    expect(text(toast)).toBe("Time ran out. Took Bonecache Overseer for you.");
+    // Still in Deck view, with the new card in Main.
+    expect(deckPane(c)).not.toBeNull();
+    expect(deckPane(c)!.querySelector('[data-move-id="p4"]')).not.toBeNull();
+  });
+
+  it("makes no toast on the pack screen", async () => {
+    const c = await room(view({ picks }));
+    socket().frame(
+      "draft",
+      view({ seq: 13, pick: 6, picks: [...picks, card("p4", "Bonecache Overseer")] }),
+    );
+    expect(c.querySelector('[data-testid="draft-toast"]')).toBeNull();
+  });
+
+  it("makes no toast for a pick the viewer sent before opening Deck view", async () => {
+    const c = await room(view({ picks }));
+    click(cardButtons(c)[0]);
+    click(button(c, L.draftConfirmPick(1)));
+    expect(socket().picks().length).toBe(1);
+    click(deckBtn(c));
+    socket().frame(
+      "draft",
+      view({
+        seq: 13,
+        picks: [...picks, card("c1", "Shoreline Looter")],
+        pack: undefined,
+        take: 0,
+      }),
+    );
+    expect(c.querySelector('[data-testid="draft-toast"]')).toBeNull();
+  });
+
+  it("is only on the pick screen", async () => {
+    const lobby = await room(view({ state: "lobby", pack: undefined, deadline: undefined }));
+    expect(lobby.querySelector('[data-testid="draft-deck-view-button"]')).toBeNull();
+    press("d");
+    expect(lobby.querySelector('[data-testid="draft-deck-columns"]')).toBeNull();
+  });
+});
+
+describe("the corner buttons (#5848 §8)", () => {
+  it("are one group in the corner, and the room is padded so the last row clears them", async () => {
+    const c = await room();
+    expect(c.querySelectorAll('[data-testid="draft-corner-buttons"]').length).toBe(1);
+    expect(c.querySelector(".roomgrid")!.classList).toContain("corner");
+  });
+});
+
+// ---- Colours, curve and the full stats overlay (#5848 §6) ----
+
+describe("the full stats overlay (#5848 §6)", () => {
+  const picks = [
+    card("p1", "Serra Angel", {
+      colors: ["W"],
+      mana_cost: "{3}{W}{W}",
+      mana_value: 5,
+      type_line: "Creature — Angel",
+      keywords: ["Flying", "Vigilance"],
+      power: "4",
+      toughness: "4",
+    }),
+    card("p2", "Doom Blade", {
+      colors: ["B"],
+      mana_cost: "{1}{B}",
+      mana_value: 2,
+      type_line: "Instant",
+      oracle_text: "Destroy target nonblack creature.",
+    }),
+    card("p3", "Pacifism", {
+      colors: ["W"],
+      mana_cost: "{1}{W}",
+      mana_value: 2,
+      type_line: "Enchantment — Aura",
+      oracle_text: "Enchanted creature can't attack or block.",
+    }),
+    card("p4", "Mind Stone", {
+      colors: [],
+      mana_cost: "{2}",
+      mana_value: 2,
+      type_line: "Artifact",
+      oracle_text: "{T}: Add {C}.",
+    }),
+  ];
+  const overlay = (c: HTMLElement): HTMLElement | null =>
+    c.querySelector<HTMLElement>('[data-testid="draft-stats-overlay"]');
+  const button = (c: HTMLElement): HTMLButtonElement =>
+    c.querySelector<HTMLButtonElement>('[data-testid="draft-stats-button"]')!;
+  const closeBtn = (c: HTMLElement): HTMLButtonElement =>
+    c.querySelector<HTMLButtonElement>('[data-testid="draft-stats-close"]')!;
+  const press = (key: string, target: EventTarget = document.body): void => {
+    target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    flushSync();
+  };
+
+  it("is closed on load, beside Deck view, with its key", async () => {
+    const c = await room(view({ picks }));
+    expect(overlay(c)).toBeNull();
+    expect(text(button(c))).toContain(L.draftFullStats);
+    expect(button(c).getAttribute("aria-keyshortcuts")).toBe("S");
+    // One group of corner buttons: Full stats first, Deck view last.
+    const fabs = [...c.querySelectorAll('[data-testid="draft-corner-buttons"] .fab')];
+    expect(fabs.map((b) => b.getAttribute("data-testid"))).toEqual([
+      "draft-stats-button",
+      "draft-deck-view-button",
+    ]);
+  });
+
+  it("opens as a modal dialog with a sticky header, locks the page's scroll and focuses Close", async () => {
+    const c = await room(view({ picks }));
+    click(button(c));
+    await settle();
+    const dlg = overlay(c)!;
+    expect(dlg.getAttribute("role")).toBe("dialog");
+    expect(dlg.getAttribute("aria-modal")).toBe("true");
+    expect(text(c.querySelector(`#${dlg.getAttribute("aria-labelledby")}`))).toBe(L.deckStats);
+    expect(text(c.querySelector('[data-testid="draft-stats-counts"]'))).toBe(
+      "Main 4 · Sideboard 0",
+    );
+    // The pick clock is in the header while drafting.
+    expect(dlg.querySelector('.head [role="timer"]')).not.toBeNull();
+    expect(text(closeBtn(c))).toBe(L.draftStatsClose);
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    expect(document.activeElement).toBe(closeBtn(c));
+  });
+
+  it("closes with Close, Esc or S, gives the scroll and the focus back, and is not remembered", async () => {
+    const c = await room(view({ picks }));
+    for (const close of [() => click(closeBtn(c)), () => press("Escape"), () => press("s")]) {
+      click(button(c));
+      await settle();
+      expect(overlay(c)).not.toBeNull();
+      close();
+      await settle();
+      expect(overlay(c)).toBeNull();
+      expect(document.documentElement.style.overflow).toBe("");
+      expect(document.activeElement).toBe(button(c));
+    }
+    // A new page load opens closed.
+    cleanup();
+    const again = await room(view({ picks }));
+    expect(overlay(again)).toBeNull();
+  });
+
+  it("opens with S, but not while typing or with a modifier held", async () => {
+    const c = await room(view({ picks }));
+    const field = document.createElement("input");
+    document.body.appendChild(field);
+    press("s", field);
+    expect(overlay(c)).toBeNull();
+    field.remove();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true }));
+    flushSync();
+    expect(overlay(c)).toBeNull();
+    press("S");
+    expect(overlay(c)).not.toBeNull();
+  });
+
+  it("keeps Tab on Close", async () => {
+    const c = await room(view({ picks }));
+    click(button(c));
+    await settle();
+    const ev = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    overlay(c)!.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(closeBtn(c));
+  });
+
+  it("lays out colours, card types, the curve and More detail, each row with its card names", async () => {
+    const c = await room(view({ picks }));
+    click(button(c));
+    await settle();
+    const o = overlay(c)!;
+    const row = (key: string): HTMLElement => o.querySelector<HTMLElement>(`[data-row="${key}"]`)!;
+    // Colours: white has 3 pips (Serra Angel WW, Pacifism W), black 1.
+    expect(text(o.querySelector('[data-pips="W"]'))).toBe("3");
+    expect(text(o.querySelector('[data-pips="B"]'))).toBe("1");
+    expect(text(o.querySelector('[data-testid="draft-basics"]'))).toBe(
+      "17 basics by pips: 13 Plains · 4 Swamp",
+    );
+    // Card types: a row for each, the names listed, a zero row faded.
+    expect(text(row("creature"))).toBe(`${L.draftTypeCreature} 1 Serra Angel`);
+    expect(row("sorcery").classList.contains("zero")).toBe(true);
+    expect(text(row("other"))).toContain("Doom Blade, Pacifism, Mind Stone");
+    expect(text(o.querySelector('[data-testid="draft-creature-note"]'))).toBe(
+      L.draftStatsCreatureNote(1),
+    );
+    // The curve, larger, with its average mana value.
+    expect(text(o.querySelector('[data-testid="draft-curve-average"]'))).toBe(
+      L.draftStatsAverageMv("2.75"),
+    );
+    // More detail: type lines, creatures, roles, timing, all in the page.
+    const more = o.querySelector('[data-testid="draft-more-detail"]')!;
+    expect(more).not.toBeNull();
+    expect(more.closest("details")).toBeNull();
+    expect(text(row("line-Enchantment (Aura)"))).toContain("Pacifism");
+    expect(text(row("medium"))).toBe(`${L.draftStatsMedium} 1 Serra Angel`);
+    expect(row("big").classList.contains("zero")).toBe(true);
+    expect(text(row("evasive"))).toContain("Serra Angel");
+    expect(text(row("removal"))).toContain("Doom Blade, Pacifism");
+    expect(text(row("fliers"))).toContain("Serra Angel");
+    expect(text(row("ramp"))).toContain("Mind Stone");
+    expect(row("counters").classList.contains("zero")).toBe(true);
+    expect(text(row("instant-speed"))).toContain("Doom Blade");
+    expect(text(row("colourless"))).toContain("Mind Stone");
+  });
+
+  it("counts Main and Sideboard apart, and Main only for the stats", async () => {
+    const c = await room(view({ picks }));
+    click(
+      [...c.querySelectorAll<HTMLElement>('[data-testid="draft-picks-main"] [data-move-id]')].find(
+        (b) => b.dataset.moveId === "p2",
+      )!,
+    );
+    await settle();
+    click(button(c));
+    await settle();
+    expect(text(c.querySelector('[data-testid="draft-stats-counts"]'))).toBe(
+      "Main 3 · Sideboard 1",
+    );
+    expect(overlay(c)!.querySelector('[data-pips="B"]')).toBeNull();
+  });
+
+  it("closes itself when the picks are over", async () => {
+    const c = await room(view({ picks }));
+    click(button(c));
+    await settle();
+    socket().frame(
+      "draft",
+      view({
+        state: "done",
+        phase: "building",
+        seq: 99,
+        pack: undefined,
+        take: 0,
+        picks,
+        pool: picks,
+      }),
+    );
+    await settle();
+    expect(overlay(c)).toBeNull();
+    expect(document.documentElement.style.overflow).toBe("");
+  });
+});
+
+describe("colours and curve across the top of Deck view (#5848 §6)", () => {
+  it("shows the compact strip above the columns, and no separate curve panel", async () => {
+    const picks = [card("p1", "Thundertrap Trainer", { colors: ["U"], mana_cost: "{1}{U}" })];
+    const c = await room(view({ picks }));
+    click(c.querySelector('[data-testid="draft-deck-view-button"]')!);
+    const pane = c.querySelector('[data-testid="draft-deck-view"]')!;
+    const kids = [...pane.children].map((k) => k.getAttribute("data-testid"));
+    expect(kids.indexOf("draft-stats")).toBeGreaterThan(-1);
+    expect(kids.indexOf("draft-stats")).toBeLessThan(kids.indexOf("draft-deck-columns"));
+    expect(c.querySelectorAll('[data-testid="draft-stats"]').length).toBe(1);
   });
 });

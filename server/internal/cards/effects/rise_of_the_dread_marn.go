@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Rise of the Dread Marn — Instant {2}{B}:
 //
@@ -33,6 +37,15 @@ func init() {
 // nontokenCreaturesDiedThisTurn counts the nontoken creatures that died
 // this turn, any controller.
 func nontokenCreaturesDiedThisTurn(g *game.Game) int {
+	return nontokenCreaturesDiedThisTurnOwnedBy(g, uuid.Nil)
+}
+
+// nontokenCreaturesDiedThisTurnOwnedBy is nontokenCreaturesDiedThisTurn
+// limited to the cards `owner` owns, uuid.Nil for any owner. A card is
+// put into its owner's graveyard (CR 400.3), so with an owner it is
+// "nontoken creatures put into your graveyard from the battlefield this
+// turn" (Caller of the Claw), counting a card that has since left it.
+func nontokenCreaturesDiedThisTurnOwnedBy(g *game.Game, owner uuid.UUID) int {
 	n := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
@@ -40,6 +53,9 @@ func nontokenCreaturesDiedThisTurn(g *game.Game) int {
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
 		if !ok || c.IsToken() || !leftAsType(ev, c, "creature") {
+			continue
+		}
+		if owner != uuid.Nil && c.Owner != owner {
 			continue
 		}
 		n++

@@ -23,7 +23,9 @@ import (
 // trigger targets a creature you control (the Lurker itself is legal): it
 // can't be blocked this turn (RestrictUntilEOT), and a repeating delayed
 // trigger (CR 603.7, DelayedOnEvent) bound to that creature as the object it
-// is now watches for combat damage it deals to anything this turn. Each
+// is now watches for combat damage it deals to anything this turn, once per
+// combat damage step however many objects and players it damaged in it
+// (OncePerBatch, #5760; CR 510.2, CR 603.2c). Each
 // instance asks its "you may" as it resolves and, on a yes, flickers the
 // creature (Flicker, stdB27FlickerObject): exiled, then returned under its
 // owner's control as a new object, so counters and Auras are gone and a
@@ -74,6 +76,7 @@ func longRiverLurkerEnters(g *game.Game, item *game.StackItem) error {
 		Body:             longRiverLurkerFlickerBody,
 		Params:           game.EffectParams{Object: game.ObjectRef{ID: id, Epoch: c.ObjectEpoch}},
 		Repeats:          true,
+		OncePerBatch:     true,
 	}.Apply(ctx)
 }
 

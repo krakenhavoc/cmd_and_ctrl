@@ -26,27 +26,8 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		SelfCostModifiers: []game.CostModifier{
-			CostsLessEach(domainCountYouControl, "Domain — This spell costs {1} less to cast for each basic land type among lands you control"),
+			DomainCostReduction("Domain — This spell costs {1} less to cast for each basic land type among lands you control"),
 		},
 		Triggered: exileUntilThisLeavesTriggers("Leyline Binding"),
 	})
-}
-
-// domainCountYouControl is the domain count (an ability word, not a
-// rule): the number of basic land types among the lands the caster
-// controls.
-func domainCountYouControl(q game.CostQuery) int {
-	if q.Game == nil || q.Game.Battlefield == nil {
-		return 0
-	}
-	n := 0
-	for _, t := range game.BasicLandTypes {
-		for _, c := range q.Game.Battlefield.Cards {
-			if c.Controller == q.Controller && c.IsLand() && c.HasSubtype(t) {
-				n++
-				break
-			}
-		}
-	}
-	return n
 }

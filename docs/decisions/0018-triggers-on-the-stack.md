@@ -610,7 +610,7 @@ on the answer is whether a permanent is on the battlefield for the rest
 of the turn, or whether the player is still in the game. That is the
 reasoning the #567 amendment already accepted for CR 702.24; nothing
 about it is specific to cumulative upkeep. CR 117.3 does not pass
-priority on with a required action outstanding, and CR 500.4 does not
+priority on with a required action outstanding, and CR 500.2 does not
 end a step until it has been taken.
 
 **The interesting half is why the fix is not "set the flag on two more
@@ -2641,7 +2641,7 @@ the pinned-target path of `eotSnapshot` (so `BoostUntilEOT`,
 through `withoutNewSourceObject` (`TurnFaceDown`, `PhaseOut`,
 `PhaseOutUntilLeaves` — which also refuses an `Until` that is a new
 object — `DoesntUntapNextUntapStep`, `TapAndFreeze`,
-`DoesntUntapWhile`), fight (`b10Fight`, CR 701.12b: no damage at all),
+`DoesntUntapWhile`), fight (`b10Fight`, CR 701.14b: no damage at all),
 and the "for as long as ~" duration builders (`DurationWhileSourceRemains`,
 `DurationWhileYouControlSource`, the hold in
 `TapAndHoldWhileThisRemainsTapped`: CR 611.2b, the effect never begins).

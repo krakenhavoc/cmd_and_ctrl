@@ -310,9 +310,26 @@ func DuringYourUpkeep() ActivationCondition {
 // label must equal the ability's own Label exactly, the same contract
 // ActivatedThisTurn keeps for every other reader of the per-object
 // tally.
+//
+// It is AtMostNActivationsPerTurn with n = 1.
 func OncePerTurnActivation(label string) ActivationCondition {
+	return AtMostNActivationsPerTurn(label, 1)
+}
+
+// AtMostNActivationsPerTurn — "Activate no more than twice each turn"
+// (CR 602.1b, #5752: Roterothopter) and, at n = 1, "Activate only once
+// each turn". The ability may be announced while fewer than n
+// activations of it have been made this turn, so the (n+1)th is never
+// offered. It reads the same per-object announce tally as
+// OncePerTurnActivation (Game.ActivatedThisTurn), so an activation still
+// on the stack, countered or fizzled counts, a new object (CR 400.7)
+// starts at zero, the count starts over each turn, and a change of
+// controller keeps it (CR 602.5b). An n below 1 never allows the ability.
+//
+// label must equal the ability's own Label exactly.
+func AtMostNActivationsPerTurn(label string, n int) ActivationCondition {
 	return func(g *game.Game, _, source uuid.UUID) bool {
-		return g.ActivatedThisTurn(source, label) == 0
+		return g.ActivatedThisTurn(source, label) < n
 	}
 }
 

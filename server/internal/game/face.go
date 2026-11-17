@@ -325,12 +325,15 @@ func (c Card) FaceCount() int {
 //	                   from the card. Its copy in exile is, through
 //	                   the permission prepare.go derives, which names
 //	                   face 1 (ADR 0090).
+//	prototype          both — CR 718.3: the player chooses whether they
+//	                   cast the card normally or prototyped
+//	                   (prototype.go).
 //	anything else      front only.
 func (c Card) CastableFaces() []int {
 	if len(c.Faces) < 2 {
 		return []int{0}
 	}
-	if c.Layout == LayoutModalDFC || c.Layout == LayoutAdventure || c.Layout == LayoutSplit {
+	if c.Layout == LayoutModalDFC || c.Layout == LayoutAdventure || c.Layout == LayoutSplit || c.Layout == LayoutPrototype {
 		out := make([]int, len(c.Faces))
 		for i := range c.Faces {
 			out[i] = i
@@ -583,6 +586,10 @@ func castPathKey(c Card, alt *AlternativeCost) string {
 func faceOnResolve(layout string, castFace int) int {
 	switch layout {
 	case LayoutModalDFC, LayoutTransform:
+		return castFace
+	case LayoutPrototype:
+		// CR 718.3b: the permanent a prototyped spell becomes has only
+		// the alternative characteristics too.
 		return castFace
 	}
 	return 0

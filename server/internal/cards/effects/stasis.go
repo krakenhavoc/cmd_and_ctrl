@@ -62,7 +62,7 @@ func init() {
 			// answer decides whether the permanent that is skipping
 			// everybody's untap step is still on the battlefield for
 			// the rest of the turn. So the table does not leave the
-			// upkeep until it is answered (#997, CR 500.4). It used
+			// upkeep until it is answered (#997, CR 500.2). It used
 			// PayUnless until then, and a table could take the whole
 			// turn with the {U} still unpaid.
 			AtYourUpkeep("Stasis — sacrifice unless you pay {U}", func(g *game.Game, item *game.StackItem) error {

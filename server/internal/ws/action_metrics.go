@@ -82,12 +82,15 @@ type commitStat struct {
 	typ, kind string
 	applied   bool
 	held      time.Duration
+	// human is whether the commit is a person's own move (humanMove,
+	// ADR 0211 §1): it clears the idle warning and stamps LastHumanAt.
+	human bool
 }
 
 // startCommit labels a commit before it takes the room lock. It reads
 // the actor's seat under the game's read lock, never the room's.
 func (r *Room) startCommit(tag ActionTag) commitStat {
-	return commitStat{typ: tag.typeLabel(), kind: r.seatKind(tag)}
+	return commitStat{typ: tag.typeLabel(), kind: r.seatKind(tag), human: r.humanMove(tag)}
 }
 
 func (r *Room) seatKind(tag ActionTag) string {

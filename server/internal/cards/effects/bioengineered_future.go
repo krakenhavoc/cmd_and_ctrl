@@ -23,8 +23,9 @@ import (
 // land that is itself a creature entering is not counted for itself, and
 // no land this turn means no counter. A creature that enters at the same
 // time as the enchantment sees no replacement from it (the rulings: the
-// source is not yet on the battlefield). A Lander token or the Lander's
-// land fetched this turn raises the count for creatures that enter later.
+// source is not yet on the battlefield). The Lander token is an artifact,
+// not a land, so its entering adds nothing (#5213); the basic land it
+// fetches this turn raises the count for creatures that enter later.
 //
 // No simplification.
 func init() {

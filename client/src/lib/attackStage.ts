@@ -21,11 +21,14 @@
 
 import type { AttackerSelection } from "./exert";
 import { exertUnanswered } from "./exert";
+import { enlistUnanswered } from "./enlist";
 
 export interface StagedAttack {
   attacker: string;
   target: string;
   exert?: true;
+  // #5658: the creature this attacker enlists (CR 702.154a).
+  enlist?: string;
 }
 
 /** isStaged reports whether a creature is in the staged set. */
@@ -40,20 +43,23 @@ export function unstage(stage: readonly StagedAttack[], cardID: string): StagedA
 
 /**
  * stageAt puts the selected creature in the staged set aimed at
- * `target`, replacing any earlier aim. Null while the exert question
- * is still open: nothing is staged until the player answers it.
+ * `target`, replacing any earlier aim. Null while the exert or enlist
+ * question is still open: nothing is staged until the player answers it.
+ * A creature staged to attack is no longer enlisted by another staged
+ * attacker (#5658: it can't do both, and the attack is the later choice).
  */
 export function stageAt(
   stage: readonly StagedAttack[],
   sel: AttackerSelection,
   target: string,
 ): StagedAttack[] | null {
-  if (exertUnanswered(sel)) return null;
+  if (exertUnanswered(sel) || enlistUnanswered(sel)) return null;
   const entry: StagedAttack =
     sel.exert === true
       ? { attacker: sel.cardID, target, exert: true }
       : { attacker: sel.cardID, target };
-  return [...unstage(stage, sel.cardID), entry];
+  if (sel.enlist) entry.enlist = sel.enlist;
+  return [...withoutEnlisting(unstage(stage, sel.cardID), [sel.cardID]), entry];
 }
 
 /**
@@ -68,7 +74,25 @@ export function stageMany(
   entries: readonly StagedAttack[],
 ): StagedAttack[] {
   const ids = new Set(entries.map((e) => e.attacker));
-  return [...stage.filter((s) => !ids.has(s.attacker)), ...entries.map((e) => ({ ...e }))];
+  return [
+    ...withoutEnlisting(
+      stage.filter((s) => !ids.has(s.attacker)),
+      [...ids],
+    ),
+    ...entries.map((e) => ({ ...e })),
+  ];
+}
+
+/**
+ * withoutEnlisting drops the enlist of every staged attacker that
+ * enlists one of `ids` (#5658): those creatures are attacking now.
+ */
+function withoutEnlisting(stage: readonly StagedAttack[], ids: readonly string[]): StagedAttack[] {
+  return stage.map((s) => {
+    if (!s.enlist || !ids.includes(s.enlist)) return s;
+    const { enlist: _dropped, ...rest } = s;
+    return rest;
+  });
 }
 
 /** unstageMany takes several creatures out of the staged set. */

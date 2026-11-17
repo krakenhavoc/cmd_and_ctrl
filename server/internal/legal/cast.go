@@ -951,7 +951,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// can pay for (CR 119.4, less one so the seat survives its own
 	// sweep). Both live in x.go.
 	xFloor := enumeratedXFloor(game.CatalogKey(card), game.OptionalCostsXFloor(optional, chosen))
-	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
+	// #5660: under "players can't pay life to cast spells" a "pay X life"
+	// cost is payable at X = 0 only, which is what no life to spend says.
+	payableLife := p.Life
+	if e.g.CantPayLifeToCastOrActivateForEffect() {
+		payableLife = 0
+	}
+	xLifeCeiling := xCeilingFromCost(addCost, payableLife)
 	if bx := e.blightXCeiling(addCost); bx != noXCeiling {
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
@@ -984,6 +990,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// ADR 0100 §2: a branch's fixed "pay 3 life" is held back the same
 	// way.
 	lifeReserved := offerLife(offer) + branchLife(addCost)
+	// #5659: an announced optional cost's fixed life (a Defiler's "you
+	// may pay 2 life") is owed too, and a set whose life the seat can't
+	// pay (CR 119.4, a locked life total) is a cast the engine refuses.
+	if owed := optionalLife(optional, chosen); owed > 0 {
+		lifeReserved += owed
+		if !e.g.CanPayLifeLocked(e.p, lifeReserved) {
+			return
+		}
+	}
 	lifeAllowed := addCost == nil || !addCost.PayLifeX
 
 	// Modes → each choice of modes yields its own clause list, and
@@ -1068,6 +1083,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	altCostSets := [][]uuid.UUID{nil}
 	// #3175: the X each payment in altCostSets announces, for an offer
 	// whose card is bound to X (Shining Shoal); nil for every other offer.
+	// #5679: or the one X an offer that removes X counters announces.
 	var altXs []int
 	if offer.CollectsEvidence() {
 		// Conspiracy Unraveler's "collect evidence 10 rather than pay the
@@ -1142,6 +1158,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			return
 		}
 	}
+	if offer.CountersDefineX() {
+		// #5679: "Remove X loyalty counters from among planeswalkers you
+		// control" — the counters removed ARE the X this cast announces,
+		// so the one payment the emitter writes fixes it.
+		counters, ok := castCounterChoice(g, e.seat, card, offer)
+		if !ok {
+			return
+		}
+		altXs = []int{counters.total}
+	}
 	// ADR 0135 §4: the reduction the FIRST payment buys, priced into
 	// every announcement below; the other payments are repriced on their
 	// own when they are offered against it (first.base).
@@ -1166,6 +1192,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// this one sacrifice clause, so the payment is the whole list.
 	varSac := sacrifice != nil && game.SacrificeCostVariable(sacrifice)
 	sacFromX := varSac && game.SacrificeCountFromX(sacrifice)
+	// #5657, CR 702.48a: an announced offering is priced per payment for
+	// the same reason — the sacrificed permanent's mana cost comes off
+	// the total (CostQuery.SacrificedManaCost), so a Hellkite the seat
+	// cannot afford at nine mana may be affordable over a six-drop.
+	perSac := varSac || game.AnySacrificeReducesByManaCost(optional, chosen)
 	var sacOrdered []uuid.UUID
 	if discards > 0 {
 		var pool []uuid.UUID
@@ -1337,13 +1368,14 @@ modeLoop:
 		// up-front price to gate on. A Torgaar the seat cannot afford at
 		// full price may well be affordable with three creatures
 		// sacrificed.
-		if !perTarget && !varSac {
+		if !perTarget && !perSac {
 			priced, err := e.g.ApplyCostModifiersForEffect(modeCost, game.CostQuery{
 				Card:                  card,
 				Controller:            e.seat,
 				FromZone:              fromZone,
 				AltSacrificeManaValue: altMV,
 				AltTappedPower:        altPower,
+				AltBlitz:              offer != nil && offer.Blitz,
 				GrantReduction:        grantLess,
 				GrantIncrease:         grantMore,
 				ExilingFromHand:       len(handExile),
@@ -1448,10 +1480,10 @@ modeLoop:
 			setReserved, setLifeCeiling := lifeReserved, xLifeCeiling
 			if taxLife > 0 {
 				setReserved += taxLife
-				if !e.g.CanPayLifeLocked(e.p, setReserved) {
+				if !e.g.CanPayLifeToCastOrActivateLocked(e.p, setReserved) {
 					continue
 				}
-				if lc := xCeilingFromCost(addCost, e.p.Life-taxLife); lc < setLifeCeiling {
+				if lc := xCeilingFromCost(addCost, payableLife-taxLife); lc < setLifeCeiling {
 					setLifeCeiling = lc
 				}
 			}
@@ -1470,6 +1502,7 @@ modeLoop:
 					Targets:               targets,
 					AltSacrificeManaValue: altMV,
 					AltTappedPower:        altPower,
+					AltBlitz:              offer != nil && offer.Blitz,
 					GrantReduction:        grantLess,
 					GrantIncrease:         grantMore,
 					ExilingFromHand:       len(handExile),
@@ -1531,7 +1564,7 @@ modeLoop:
 					}
 					payX, payLife, payCost, payPrinted := setX, setLife, setCost, setPrinted
 					payDelve, payDelveFull := setDelve, setDelveFull
-					if varSac {
+					if perSac {
 						// ADR 0100 §6: priced with THIS payment's count,
 						// through the pricer CastSpell charges with — the
 						// discount (CostQuery.Sacrificing) and, for the X
@@ -1550,8 +1583,10 @@ modeLoop:
 							XValue:                payX,
 							Targets:               tgts,
 							Sacrificing:           len(sacs),
+							SacrificedManaCost:    g.SacrificedManaCostForEffect(addCost, optional, chosen, sacs),
 							AltSacrificeManaValue: altMV,
 							AltTappedPower:        altPower,
+							AltBlitz:              offer != nil && offer.Blitz,
 							GrantReduction:        grantLess,
 							GrantIncrease:         grantMore,
 							ExilingFromHand:       len(handExile),
@@ -1731,7 +1766,7 @@ modeLoop:
 		//
 		// ADR 0135 §4: and an emerge payment at ITS price, which is the
 		// first announcement's less this permanent's mana value.
-		payCost, ok := e.altPaymentCost(card, fromZone, first, altPaid, perTarget, varSac)
+		payCost, ok := e.altPaymentCost(card, fromZone, first, altPaid, perTarget, varSac, g.SacrificedManaCostForEffect(addCost, optional, chosen, first.sacs))
 		if !ok || !e.canPayExcluding(payCost, payX, spend, first.autoTapExclusions(altPaid)) {
 			continue
 		}
@@ -1827,14 +1862,10 @@ func (e *enumerator) castMoveEmitter(
 	// most first), from the walk the engine validates against. An offer
 	// the board cannot pay was dropped by CastOffersForLocked; the check
 	// is kept because this is the function that writes the payment.
-	var counters counterChoice
-	if offer != nil && offer.RemoveCounters != nil {
-		choices := counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, card.InstanceID, offer.RemoveCounters), offer.RemoveCounters)
-		if len(choices) == 0 {
-			return func([]uuid.UUID, []int, []game.TargetRef, int, int, game.ParsedCost, map[uuid.UUID]int, []uuid.UUID, []uuid.UUID, []uuid.UUID, *MoveValue) {
-			}
+	counters, ok := castCounterChoice(g, e.seat, card, offer)
+	if !ok {
+		return func([]uuid.UUID, []int, []game.TargetRef, int, int, game.ParsedCost, map[uuid.UUID]int, []uuid.UUID, []uuid.UUID, []uuid.UUID, *MoveValue) {
 		}
-		counters = choices[0]
 	}
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
@@ -2012,6 +2043,50 @@ func (e *enumerator) castMoveEmitter(
 			}),
 		})
 	}
+}
+
+// castCounterChoice is the one counter payment a cast under `offer`
+// writes (#5390): the activation's own rule (counterPaymentChoices: drain
+// the permanents holding the most first), from the walk the engine
+// validates against. The zero choice and true for an offer that removes
+// no counters; false when the board cannot pay.
+//
+// #5679: an offer that removes X counters (Light Up the Night's
+// flashback) has no printed count to cover, and the activation's answer
+// for a variable among cost, every counter there is, would spend every
+// planeswalker the seat controls. The cast's payment leaves one counter
+// on each permanent instead, so a planeswalker pays without dying, and
+// falls back to every counter only when that would remove fewer than the
+// floor. The total is the X the cast announces.
+func castCounterChoice(g *game.Game, seat uuid.UUID, card game.Card, offer *game.AlternativeCost) (counterChoice, bool) {
+	if offer == nil || offer.RemoveCounters == nil {
+		return counterChoice{}, true
+	}
+	rc := offer.RemoveCounters
+	opts := g.CounterCostOptionsForEffect(seat, card.InstanceID, rc)
+	if offer.CountersDefineX() {
+		spare := counterChoice{fromOther: true, explicitCounts: true}
+		for _, o := range opts {
+			for _, k := range o.Kinds {
+				if k.Kind != rc.Counter || k.Count < 2 {
+					continue
+				}
+				spare.parts = append(spare.parts, counterPart{cardID: o.CardID, kind: k.Kind, n: k.Count - 1})
+				spare.total += k.Count - 1
+				if k.Count > spare.count {
+					spare.count = k.Count
+				}
+			}
+		}
+		if spare.total >= rc.N && spare.total > 0 {
+			return spare, true
+		}
+	}
+	choices := counterPaymentChoices(opts, rc)
+	if len(choices) == 0 {
+		return counterChoice{}, false
+	}
+	return choices[0], true
 }
 
 // castCounterLabel names the counters a cast's counter removal takes
@@ -2313,7 +2388,9 @@ func (e *enumerator) castPayment(
 	priced = e.g.LifeGrantedCostForEffect(e.seat, priced)
 	for n := 1; n <= priced.PhyrexianSymbols(); n++ {
 		reduced, life := game.PhyrexianLifePlan(priced, e.p.ManaPool, spend, n)
-		if !e.g.CanPayLifeLocked(e.p, reserved+life) {
+		// #5660: the cast's form, which refuses every life payment under
+		// "players can't pay life to cast spells".
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, reserved+life) {
 			break
 		}
 		if x, ok := e.announcedX(reduced, spend, floor, lifeCeiling); ok {
@@ -2339,7 +2416,7 @@ func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendCo
 		return 0, game.ParsedCost{}, false
 	}
 	reduced, life := game.PhyrexianLifePlan(printed, e.p.ManaPool, spend, n)
-	if !e.g.CanPayLifeLocked(e.p, reserved+life) {
+	if !e.g.CanPayLifeToCastOrActivateLocked(e.p, reserved+life) {
 		return 0, game.ParsedCost{}, false
 	}
 	if !e.canPayExcluding(reduced, first.x, spend, first.autoTapExclusions(first.alt)) {

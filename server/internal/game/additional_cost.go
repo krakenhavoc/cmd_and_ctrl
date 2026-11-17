@@ -105,6 +105,19 @@ type AdditionalCost struct {
 	// mandatory slot.
 	SacrificeHalfRoundedUp bool
 
+	// CasualtyX marks "Casualty X. The copy isn't legendary and has
+	// starting loyalty X." (Ob Nixilis, the Adversary, #5668; CR
+	// 702.153a with a variable N, CR 107.3a). The Sacrifice clause is one
+	// creature with power 0 or greater, and X is the sacrificed
+	// creature's power as it last existed (CR 608.2h): the greatest X
+	// that creature can pay for. The casualty trigger (casualty.go) reads
+	// the sacrificed object off PaidCost.SacrificedObjects and makes the
+	// copy with those two exceptions. effects.Register allows it only on
+	// the card's own optional cost keyed CasualtyKey with a one-creature
+	// sacrifice, on a card with no other sacrifice in its plan, so the
+	// first sacrificed object is this cost's.
+	CasualtyX bool
+
 	// PayLifeX is "As an additional cost to cast this spell, pay X
 	// life" (Toxic Deluge), where X is the value announced on
 	// CastSpellParams.XValue. Added in S23.
@@ -251,6 +264,22 @@ type AdditionalCost struct {
 	// timing before the per-player restrictions, so a Teferi, Time Raveler
 	// still closes it (CR 101.2). False is every cost written before this.
 	AsThoughFlash bool
+
+	// ReducedBySacrificedManaCost is offering's price (CR 702.48a, c):
+	// "If you chose to pay the additional cost, this spell's total cost
+	// is reduced by the sacrificed permanent's mana cost." The permanent
+	// is the one this cost's Sacrifice clause names in
+	// CastSpellParams.SacrificeIDs, read while it is still on the
+	// battlefield (CR 601.2b chooses it, 601.2f totals the cost, 601.2h
+	// sacrifices it), and its mana cost comes off symbol by symbol:
+	// generic off generic, a coloured or colourless symbol off mana of
+	// the same type, and what finds none off generic (offering.go).
+	//
+	// effects.Register holds it to an optional cost that sacrifices
+	// exactly one permanent, which is what "a [quality] permanent"
+	// prints. Data, not a predicate, so it adds no route from Game to a
+	// func. False is every cost written before this.
+	ReducedBySacrificedManaCost bool
 
 	// Blight is "blight N" paid as a cost (CR 701.68a): put N -1/-1
 	// counters on a creature you control. The caster names the one
@@ -924,7 +953,11 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 	// CanPayLifeLocked is the one reader of CR 119.4 and of "you can't
 	// pay life" statements, the same predicate the alternative cost's
 	// life asks (lifePayableBy).
-	if owed := planLife(plan, xValue); owed > 0 && !g.CanPayLifeLocked(p, owed) {
+	//
+	// #5660: through the cast's form of it, which also refuses every
+	// life payment while "players can't pay life to cast spells" is
+	// live (life_cost_bar.go). "Pay X life" at X = 0 owes nothing.
+	if owed := planLife(plan, xValue); owed > 0 && !g.CanPayLifeToCastOrActivateLocked(p, owed) {
 		return ErrInvalidParam
 	}
 	for _, pay := range plan {
@@ -1167,7 +1200,7 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 	if p == nil || cost == nil {
 		return false
 	}
-	if cost.PayLife > 0 && !g.CanPayLifeLocked(p, cost.PayLife) {
+	if cost.PayLife > 0 && !g.CanPayLifeToCastOrActivateLocked(p, cost.PayLife) {
 		return false
 	}
 	if cost.DiscardCards > 0 {

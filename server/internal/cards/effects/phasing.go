@@ -8,12 +8,13 @@ import (
 
 // phasing.go — the card-facing half of CR 702.26 (#1199, ADR 0084).
 //
-// Two primitives, because the printed cards come in exactly two
-// shapes:
+// Three primitives, one per printed shape:
 //
 //	"Target creature phases out."                      PhaseOut
 //	"… phases out until this enchantment leaves
 //	 the battlefield."                                 PhaseOutUntilLeaves
+//	"It can't phase in for as long as you control
+//	 this Saga."                                       CantPhaseInWhileYouControl
 //
 // Everything a card author might expect to have to say is the
 // engine's job and is said nowhere here: the Auras and Equipment
@@ -84,6 +85,32 @@ func (p PhaseOutUntilLeaves) Apply(ctx *Context) error {
 	}
 	return ctx.Game.PhaseOutUntilLeavesForEffect(
 		ctx.Source(), p.Until, p.TapOnPhaseIn, targets...)
+}
+
+// CantPhaseInWhileYouControl is "It can't phase in for as long as you
+// control this Saga" (The Phasing of Zhalfir, #5664), said after the
+// PhaseOut that put Targets out.
+//
+// A prohibition, not a clock: while the resolving ability's controller
+// controls Source the permanents sit out every untap step, and once
+// that stops (Source leaves, phases out or changes controller) they
+// phase in during the next untap step of the player they phased out
+// under (CR 502.1), not at once. If that player does not control Source
+// as this applies, the duration never starts (CR 611.2b) and the
+// permanents are on the ordinary clock.
+type CantPhaseInWhileYouControl struct {
+	Targets []uuid.UUID
+	Source  uuid.UUID
+}
+
+func (p CantPhaseInWhileYouControl) Apply(ctx *Context) error {
+	// A Source that left and came back is a new object, which is not
+	// the one the sentence names (CR 400.7).
+	if len(p.Targets) == 0 || p.Source == uuid.Nil || ctx.isNewSourceObjectAsThis(p.Source) {
+		return nil
+	}
+	ctx.Game.CantPhaseInWhileControlledForEffect(p.Source, ctx.Controller(), p.Targets...)
+	return nil
 }
 
 // legalTargetCards is the list of this item's card targets that are

@@ -434,7 +434,17 @@ func ManaAbilitiesWithOriginsOf(c *Card) ([]ManaAbilityShape, AbilityOrigins) {
 // manaAbilityRows is the one body behind ManaAbilitiesForCard and
 // ManaAbilitiesWithOrigins. Takes a pointer so neither it nor the
 // catalog-key read copies the card (#1498).
+//
+// #5661: every row carries the permanent's own life surcharge
+// (mana_ability_life_tax.go), so no reader can price a row without it.
 func manaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrigins) {
+	rows, origins := untaxedManaAbilityRows(c, wantOrigins)
+	return taxedManaRows(rows, manaAbilityLifeTaxOf(c)), origins
+}
+
+// untaxedManaAbilityRows is manaAbilityRows before the permanent's life
+// surcharge: the rows as their definitions price them.
+func untaxedManaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrigins) {
 	var declared []ManaAbilityShape
 	switch {
 	// S24 layer 6: an ability-removing effect takes the DECLARED half

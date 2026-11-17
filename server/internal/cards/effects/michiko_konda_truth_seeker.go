@@ -32,15 +32,9 @@ func init() {
 		Name:         "Michiko Konda, Truth Seeker",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target != source.Controller {
-					return false
-				}
-				dealer := b17DamageSourceController(ev, g)
-				return dealer != uuid.Nil && dealer != source.Controller
-			},
-			Key: label,
+			Watches:   []game.EventKind{game.EventDealDamage},
+			AppliesTo: ASourceAnOpponentControlsDealtDamageToYou,
+			Key:       label,
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source, label)
 				item.Params.Player = b17DamageSourceController(ev, g)

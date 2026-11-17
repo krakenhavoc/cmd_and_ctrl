@@ -40,8 +40,11 @@ var casualtyTrigger = TriggeredAbility{
 		return ev.CardID == source.InstanceID && casualtyPaidLocked(g, source) > 0
 	},
 	Build: func(ev Event, source *Card, _ Characteristic, g *Game) *StackItem {
-		item := NewKeyedTriggeredItem(source, source.Name+" — casualty: copy it", casualtyCopyBody,
-			EffectParams{Amount: casualtyPaidLocked(g, source)})
+		params := EffectParams{Amount: casualtyPaidLocked(g, source)}
+		if ref, ok := casualtyXSacrificeLocked(g, source); ok {
+			params.Object = ref
+		}
+		item := NewKeyedTriggeredItem(source, source.Name+" — casualty: copy it", casualtyCopyBody, params)
 		if ev.Actor != uuid.Nil {
 			item.Controller, item.Owner = ev.Actor, ev.Actor
 		}
@@ -63,12 +66,56 @@ func casualtyPaidLocked(g *Game, spell *Card) int {
 	return OptionalCostTimesPaid(*spell, paid.OptionalCosts, CasualtyKey) + GrantedOptionalTimesPaid(paid, CasualtyKey)
 }
 
+// casualtyXSacrificeLocked is the creature a paid "Casualty X" cost
+// sacrificed for the spell `spell` (AdditionalCost.CasualtyX, #5668), as
+// the battlefield object it was. False for a spell with no such cost,
+// or one whose cost was not paid.
+//
+// The card's own optional costs hold at most one sacrifice when one of
+// them is casualty X, and it has no mandatory sacrifice (effects.Register),
+// and granted costs are paid after the card's own (castCostPayments), so
+// the first sacrificed object is this cost's.
+func casualtyXSacrificeLocked(g *Game, spell *Card) (ObjectRef, bool) {
+	if g == nil || spell == nil {
+		return ObjectRef{}, false
+	}
+	paid := g.StackItemPaidForEffect(spell.InstanceID)
+	if len(paid.SacrificedObjects) == 0 {
+		return ObjectRef{}, false
+	}
+	costs := OptionalCostsFor(CatalogKey(*spell))
+	for _, i := range paid.OptionalCosts {
+		if i >= 0 && i < len(costs) && costs[i].Key == CasualtyKey && costs[i].CasualtyX {
+			return paid.SacrificedObjects[0], true
+		}
+	}
+	return ObjectRef{}, false
+}
+
 // resolveCasualty copies the spell once per casualty cost paid, offering
 // new targets for each copy.
+//
+// A casualty X cost (#5668) is the trigger's Params.Object, the creature
+// it sacrificed: X is that creature's power as it last existed on the
+// battlefield (CR 608.2h), never less than 0, and the first copy is made
+// with the printed exceptions, "The copy isn't legendary and has
+// starting loyalty X" (CR 707.9b). The other copies are a granted
+// casualty's, which prints no exception.
 func resolveCasualty(g *Game, item *StackItem) error {
 	n := item.Params.Amount
 	for i := 0; i < n; i++ {
-		err := g.CopyLastKnownSpellForEffect(item.SourceCardID, item.Controller, true, nil)
+		var except func(v *PrintedValues)
+		if i == 0 && item.Params.Object.ID != uuid.Nil {
+			x := 0
+			if info, ok := g.PermanentForEffect(item.Params.Object); ok && info.Power > 0 {
+				x = info.Power
+			}
+			except = func(v *PrintedValues) {
+				v.RemoveSupertype("Legendary")
+				v.SetStartingLoyalty(x)
+			}
+		}
+		err := g.CopyLastKnownSpellForEffect(item.SourceCardID, item.Controller, true, except)
 		if err == ErrCardNotFound {
 			return nil
 		}

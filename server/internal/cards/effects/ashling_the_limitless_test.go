@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -448,5 +450,204 @@ func TestACopyOfASpellCastForGrantedEvokeIsSacrificedToo(t *testing.T) {
 	}
 	if n := len(ashlingTokens(g, ashlingElemName)); n != 1 {
 		t.Errorf("%d tokens at the end, want 1: Ashling's copy of the nontoken original", n)
+	}
+}
+
+// --- #5803: the end-step question holds the end step ------------------
+
+// ashlingQuestionOpen makes a token copy, walks to its controller's end
+// step and resolves the delayed trigger up to its question. It returns
+// the table with the question open, the token and the turn it was asked
+// in.
+func ashlingQuestionOpen(t *testing.T) (g *game.Game, tok uuid.UUID, turn int) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me, _ := ashlingOnBattlefield(t, g)
+	elem := pushDiesCreatureForTest(g, me.ID, ashlingElemName, "", "Creature — Elemental", 5, 5)
+	ashlingSacrifice(t, g, elem)
+	ashlingLimitlessSettle(t, g)
+	toks := ashlingTokens(g, ashlingElemName)
+	if len(toks) != 1 {
+		t.Fatalf("%d token copies, want 1", len(toks))
+	}
+	ashlingEndStep(t, g, me)
+	if !hasPayUnlessFor(g, me.ID) {
+		t.Fatal("no pay-or-sacrifice prompt at the end step")
+	}
+	if g.Turn.Step != game.StepEnd {
+		t.Fatalf("the question was asked in %v, want the end step", g.Turn.Step)
+	}
+	return g, toks[0].InstanceID, g.Turn.Seq
+}
+
+// ashlingQuestionFor returns the open pay-or-sacrifice prompt for p.
+func ashlingQuestionFor(t *testing.T, g *game.Game, p uuid.UUID) *game.PendingChoice {
+	t.Helper()
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoicePayUnless && c.Chooser == p {
+			return c
+		}
+	}
+	t.Fatal("no pay-or-sacrifice prompt")
+	return nil
+}
+
+// assertAshlingHoldsTheEndStep checks that nothing moves the table out of
+// the end step while the question is open.
+func assertAshlingHoldsTheEndStep(t *testing.T, g *game.Game, turn int) {
+	t.Helper()
+	me := g.Seats[g.Turn.ActiveSeat]
+	if c := ashlingQuestionFor(t, g, me.ID); !g.ChoicePromptBlocksTable(c) {
+		t.Error("the question does not block the table")
+	}
+	if !g.ResolutionPaused() {
+		t.Error("the delayed trigger's resolution is not paused on its question")
+	}
+	if err := g.PassPriority(); !errors.Is(err, game.ErrChoicePending) {
+		t.Errorf("a pass with the question open = %v, want ErrChoicePending", err)
+	}
+	if _, err := g.AdvanceStep(); !errors.Is(err, game.ErrChoicePending) {
+		t.Errorf("advance_step with the question open = %v, want ErrChoicePending", err)
+	}
+	if err := g.EndTurnByPassing(); !errors.Is(err, game.ErrChoicePending) {
+		t.Errorf("end_turn with the question open = %v, want ErrChoicePending", err)
+	}
+	if err := g.PassTurn(); !errors.Is(err, game.ErrChoicePending) {
+		t.Errorf("pass_turn with the question open = %v, want ErrChoicePending", err)
+	}
+	if g.Turn.Step != game.StepEnd || g.Turn.Seq != turn {
+		t.Fatalf("the cursor left the end step with the question open (turn %d, %v)", g.Turn.Seq, g.Turn.Step)
+	}
+}
+
+// assertAshlingDeclinedInTheEndStep answers "don't pay" and checks that
+// the token is sacrificed in the end step the question was asked in.
+func assertAshlingDeclinedInTheEndStep(t *testing.T, g *game.Game, tok uuid.UUID, turn int) {
+	t.Helper()
+	me := g.Seats[g.Turn.ActiveSeat]
+	answerPayUnless(t, g, me.ID, false)
+	g.SettleResolution()
+	if g.Battlefield.Contains(tok) {
+		t.Error("the token is still on the battlefield after its controller declined")
+	}
+	if hasPayUnlessFor(g, me.ID) {
+		t.Error("the question is still open after it was answered")
+	}
+	if g.Turn.Step != game.StepEnd || g.Turn.Seq != turn {
+		t.Errorf("the sacrifice landed in turn %d, %v; want turn %d's end step", g.Turn.Seq, g.Turn.Step, turn)
+	}
+	if !stackFullyEmpty(g) {
+		t.Error("the delayed trigger did not finish resolving after the answer")
+	}
+}
+
+// TestAshlingEndStepQuestionHoldsTheEndStep is #5803: the delayed
+// trigger asks its controller in their own end step, so nobody can pass
+// priority or leave the step until they answer, and a decline
+// sacrifices the token in that end step (CR 118.12, CR 117.3b, CR
+// 500.2).
+func TestAshlingEndStepQuestionHoldsTheEndStep(t *testing.T) {
+	g, tok, turn := ashlingQuestionOpen(t)
+	assertAshlingHoldsTheEndStep(t, g, turn)
+	if !g.Battlefield.Contains(tok) {
+		t.Fatal("the token left before its controller answered")
+	}
+	assertAshlingDeclinedInTheEndStep(t, g, tok, turn)
+}
+
+// Paying keeps the token, and the table is free once it is paid.
+func TestAshlingEndStepQuestionPaidKeepsTheToken(t *testing.T) {
+	g, tok, turn := ashlingQuestionOpen(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	assertAshlingHoldsTheEndStep(t, g, turn)
+	floatMana(t, g, me, "{W}{U}{B}{R}{G}")
+	answerPayUnless(t, g, me.ID, true)
+	g.SettleResolution()
+	if !g.Battlefield.Contains(tok) {
+		t.Fatal("the token was sacrificed though {W}{U}{B}{R}{G} was paid")
+	}
+	if n := me.ManaPool.Total(); n != 0 {
+		t.Errorf("%d mana left, want 0", n)
+	}
+	if g.Turn.Step != game.StepEnd || g.Turn.Seq != turn {
+		t.Errorf("paying moved the cursor to turn %d, %v", g.Turn.Seq, g.Turn.Step)
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Errorf("advance_step after the answer = %v, want it to go through", err)
+	}
+}
+
+// A strict restore taken with the question open resumes it: the restored
+// table still holds the end step, and the answer still lands there.
+func TestAshlingEndStepQuestionSurvivesAStrictRestore(t *testing.T) {
+	t.Run("decline", func(t *testing.T) {
+		g, tok, turn := ashlingQuestionOpen(t)
+		g = restoreRoundTrip(t, g, true)
+		assertAshlingHoldsTheEndStep(t, g, turn)
+		assertAshlingDeclinedInTheEndStep(t, g, tok, turn)
+	})
+	t.Run("pay", func(t *testing.T) {
+		g, tok, turn := ashlingQuestionOpen(t)
+		g = restoreRoundTrip(t, g, true)
+		assertAshlingHoldsTheEndStep(t, g, turn)
+		me := g.Seats[g.Turn.ActiveSeat]
+		floatMana(t, g, me, "{W}{U}{B}{R}{G}")
+		answerPayUnless(t, g, me.ID, true)
+		g.SettleResolution()
+		if !g.Battlefield.Contains(tok) {
+			t.Error("the token was sacrificed though {W}{U}{B}{R}{G} was paid after a restore")
+		}
+	})
+}
+
+// A snapshot taken mid-question before #5803 has the same prompt and the
+// same decline key, only without the step anchor. It still restores
+// strictly, and declining still sacrifices the token.
+func TestAshlingQuestionFromBeforeTheStepAnchorStillRestores(t *testing.T) {
+	g, tok, _ := ashlingQuestionOpen(t)
+	snap := g.CaptureSnapshot()
+	if !snap.Restorable() {
+		t.Fatalf("the game is not a restore point: %+v", snap.Continuations)
+	}
+	raw, err := json.Marshal(snap)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	choices, _ := doc["pendingChoices"].([]any)
+	stripped := 0
+	for _, c := range choices {
+		if m, ok := c.(map[string]any); ok {
+			if _, had := m["owedInStep"]; had {
+				delete(m, "owedInStep")
+				stripped++
+			}
+		}
+	}
+	if stripped != 1 {
+		t.Fatalf("stripped the step anchor from %d prompts, want 1", stripped)
+	}
+	if raw, err = json.Marshal(doc); err != nil {
+		t.Fatalf("re-marshal: %v", err)
+	}
+	var old game.GameSnapshot
+	if err := json.Unmarshal(raw, &old); err != nil {
+		t.Fatalf("decode the old snapshot: %v", err)
+	}
+	restored, err := old.RestoreStrict()
+	if err != nil {
+		t.Fatalf("RestoreStrict of the old snapshot: %v", err)
+	}
+	me := restored.Seats[restored.Turn.ActiveSeat]
+	if !hasPayUnlessFor(restored, me.ID) {
+		t.Fatal("the restored table lost the question")
+	}
+	answerPayUnless(t, restored, me.ID, false)
+	restored.SettleResolution()
+	if restored.Battlefield.Contains(tok) {
+		t.Error("declining after restoring the old snapshot left the token on the battlefield")
 	}
 }

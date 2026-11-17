@@ -531,6 +531,19 @@ func requireActivePlayer(g *game.Game, caller uuid.UUID) error {
 	return nil
 }
 
+// parseEnlist reads a declaration's optional `enlist` (#5658): the
+// creature the attacker enlists, uuid.Nil when absent.
+func parseEnlist(raw, verb string) (uuid.UUID, error) {
+	if raw == "" {
+		return uuid.Nil, nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("%s enlist: %w", verb, err)
+	}
+	return id, nil
+}
+
 // unmarshalParams is a small helper that returns a friendly
 // "missing required params" error for nil or empty Params, and
 // otherwise decodes into dest. Without this, every action that
@@ -1438,6 +1451,9 @@ func dispatch(g *game.Game, a Action) error {
 			// Exert is the choice to exert the attacker as it attacks
 			// (CR 701.43d, ADR 0130 §5). Absent means no.
 			Exert bool `json:"exert,omitempty"`
+			// Enlist is the creature the attacker enlists as it attacks
+			// (CR 702.154a, #5658). Absent means none.
+			Enlist string `json:"enlist,omitempty"`
 			attackTaxParams
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
@@ -1458,7 +1474,11 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return err
 		}
-		return g.DeclareAttackerDeclWith(game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: p.Exert}, declParams)
+		enlistID, err := parseEnlist(p.Enlist, "declare_attacker")
+		if err != nil {
+			return err
+		}
+		return g.DeclareAttackerDeclWith(game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: p.Exert, Enlist: enlistID}, declParams)
 
 	case TypeDeclareAttackers:
 		var p struct {
@@ -1467,6 +1487,8 @@ func dispatch(g *game.Game, a Action) error {
 				Target   string `json:"target"`
 				// Exert: ADR 0130 §5, per attacker.
 				Exert bool `json:"exert,omitempty"`
+				// Enlist: #5658, the creature this attacker enlists.
+				Enlist string `json:"enlist,omitempty"`
 			} `json:"attackers"`
 			attackTaxParams
 		}
@@ -1497,7 +1519,11 @@ func dispatch(g *game.Game, a Action) error {
 			if err := requireCardController(g, a.Caller, attackerID); err != nil {
 				return err
 			}
-			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: e.Exert})
+			enlistID, err := parseEnlist(e.Enlist, "declare_attackers")
+			if err != nil {
+				return err
+			}
+			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: e.Exert, Enlist: enlistID})
 		}
 		declParams, err := p.decode("declare_attackers")
 		if err != nil {

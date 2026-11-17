@@ -170,7 +170,13 @@ func corpusBoards() []corpusBoard {
 		// activation, now that the payment loop also emits
 		// EventCrewedVehicle after each creature's tap, so the event log
 		// carries one more entry than crewed_vehicle's frozen one.
-		{"crewed_vehicle_event", corpusCrewedVehicle},
+		{"crewed_vehicle_event", corpusCrewedVehicleEventAsFrozen},
+		// Added by #5671 (CR 702.122e) as a new file: the same crew
+		// activation, now that the crew ability's resolution also emits
+		// EventBecameCrewed and writes TurnTally.BecameCrewed, so the
+		// event log carries one more entry than crewed_vehicle_event's
+		// frozen one.
+		{"crewed_vehicle_became_crewed", corpusCrewedVehicle},
 		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
 		// grants — the grantAbilities mod on disk.
 		{"duration_grants_cast_batch", corpusDurationGrants},
@@ -3368,6 +3374,16 @@ func corpusUntilEOTPump(t *testing.T) *game.Game {
 // what the frozen fixture holds (corpusDriftAdvice's rule) by restoring it.
 func corpusCrewedVehicleAsFrozen(t *testing.T) *game.Game {
 	return corpusFrozenBoard(t, "crewed_vehicle")
+}
+
+// corpusCrewedVehicleEventAsFrozen is the crewed_vehicle_event board as
+// its fixture holds it. A crew ability that resolves now writes one more
+// event than it did when that file was frozen (EventBecameCrewed, #5671),
+// so the scripted activation builds the crewed_vehicle_became_crewed
+// board, and this one keeps building what the frozen fixture holds by
+// restoring it.
+func corpusCrewedVehicleEventAsFrozen(t *testing.T) *game.Game {
+	return corpusFrozenBoard(t, "crewed_vehicle_event")
 }
 
 // corpusTokenCopyEntryAsFrozen is the token_copy_entry board as its

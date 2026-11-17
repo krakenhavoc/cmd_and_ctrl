@@ -527,6 +527,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"LifeDelta":                  repFieldCarried,
 	"LifeFromRadiation":          repFieldCarried,
 	"LifePayment":                repFieldCarried,
+	"LifeThenLoses":              repFieldCarried,
 	// #4253 slice 3: a tail's data half — a keyed continuation, or a
 	// lose-life batch's remaining players — is carried; a closure gates
 	// (replacementEventKeyable).
@@ -582,11 +583,12 @@ var replacementEventFields = map[string]replacementEventField{
 	"CounterBySource":    repFieldGate,
 	"counterInstead":     repFieldGate,
 	// #4307: a dice roll's window never pauses (mustSettleNow).
-	"RollPlayer":  repFieldGate,
-	"RollSides":   repFieldGate,
-	"RollCount":   repFieldGate,
-	"RollPlanar":  repFieldGate,
-	"rollShields": repFieldGate,
+	"RollPlayer":       repFieldGate,
+	"RollSides":        repFieldGate,
+	"RollCount":        repFieldGate,
+	"RollPlanar":       repFieldGate,
+	"rollShields":      repFieldGate,
+	"rollIgnoreLowest": repFieldGate,
 }
 
 // replacementEventGatesClear reports whether every gate field of ev is
@@ -859,6 +861,7 @@ type replacementEventSnapshot struct {
 	LifeDelta                  int                        `json:"lifeDelta,omitempty"`
 	LifeFromRadiation          bool                       `json:"lifeFromRadiation,omitempty"`
 	LifePayment                bool                       `json:"lifePayment,omitempty"`
+	LifeThenLoses              *uuid.UUID                 `json:"lifeThenLoses,omitempty"`
 	// #4253 slice 9: a discard.
 	DiscardPlayer          *uuid.UUID   `json:"discardPlayer,omitempty"`
 	DiscardCause           DiscardCause `json:"discardCause,omitempty"`
@@ -1311,6 +1314,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		LifeDelta:                  ev.LifeDelta,
 		LifeFromRadiation:          ev.LifeFromRadiation,
 		LifePayment:                ev.LifePayment,
+		LifeThenLoses:              uuidPtrOrNil(ev.LifeThenLoses),
 		DiscardPlayer:              uuidPtrOrNil(ev.DiscardPlayer),
 		DiscardCause:               ev.DiscardCause,
 		DiscardCauseController:     uuidPtrOrNil(ev.DiscardCauseController),
@@ -1486,6 +1490,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		LifeDelta:                  s.LifeDelta,
 		LifeFromRadiation:          s.LifeFromRadiation,
 		LifePayment:                s.LifePayment,
+		LifeThenLoses:              uuidOrNil(s.LifeThenLoses),
 		DiscardPlayer:              uuidOrNil(s.DiscardPlayer),
 		DiscardCause:               s.DiscardCause,
 		DiscardCauseController:     uuidOrNil(s.DiscardCauseController),

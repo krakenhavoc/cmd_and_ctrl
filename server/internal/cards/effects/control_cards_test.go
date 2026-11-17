@@ -259,7 +259,7 @@ func TestSwitcherooDoesNothingWhenOneCreatureIsGone(t *testing.T) {
 			{Kind: game.TargetCard, ID: mine},
 			{Kind: game.TargetCard, ID: theirs},
 		})
-	// In response, their creature dies. CR 701.12b: all or nothing.
+	// In response, their creature dies. CR 701.12a: all or nothing.
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(theirs) })
 	passPriorityAroundTable(t, g)
 

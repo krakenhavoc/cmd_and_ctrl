@@ -114,14 +114,17 @@ func lentTriggerRowsOf(lender *Card) []BorrowedAbility {
 // "can't block" half reads the borrower's own ability list.
 func lendableTriggeredKeyword(a string) bool {
 	switch a {
-	case KeywordProwess, KeywordEvolve, KeywordExalted, KeywordDecayed, KeywordMelee,
-		KeywordUndying, KeywordPersist:
+	case KeywordProwess, KeywordEvolve, KeywordExalted, KeywordDecayed, KeywordMelee, KeywordEnlist,
+		KeywordUndying, KeywordPersist, KeywordFlanking:
 		return true
 	}
 	if _, ok := AnnihilatorValue(a); ok {
 		return true
 	}
 	if _, ok := RenownValue(a); ok {
+		return true
+	}
+	if _, ok := RampageValue(a); ok {
 		return true
 	}
 	_, ok := ModularValue(a)

@@ -6,6 +6,14 @@
   // cards are chosen. With one card to take, a double-click picks at
   // once, and Enter on the chosen card confirms it.
   //
+  // A card can also be dragged (pointer events: a mouse, a pen, or a
+  // finger held for a moment, #5848) onto Main or the Sideboard of the
+  // picks beside the pack. With one card to take that picks it into that
+  // pile at once. With two, the card is chosen as a click would choose it
+  // and remembered for the Sideboard, and the primary picks the pair.
+  // Which pile is the page's business: `onaside` is told, just before
+  // `onpick`, which of the picked cards go to the Sideboard.
+  //
   // The component reads `pack` and nothing else about cards: there is
   // nothing else on the wire (CR 905.1c).
   import type { Snippet } from "svelte";
@@ -18,11 +26,14 @@
     toggleSelection,
     type DraftCard,
   } from "../../draft";
+  import { draftCard } from "../../draftCardPointer";
   import { ratedCardName } from "../../draftRatings.svelte";
   import { sortPack } from "../../draftOrder";
+  import type { Zone } from "../../draftSplit";
   import { L } from "../../labels";
   import Icon from "../Icon.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
+  import DraftPreview from "./DraftPreview.svelte";
   import DraftRatingBadge from "./DraftRatingBadge.svelte";
 
   interface Props {
@@ -34,10 +45,23 @@
     /** Why the primary cannot be pressed right now, shown in the bar. */
     blocked?: string;
     onpick: (cards: string[]) => void;
+    /** Called just before `onpick` with the picked cards that go to the Sideboard. */
+    onaside?: (cards: string[]) => void;
     /** The pick timer, drawn at the start of the bar. */
     timer?: Snippet;
+    /** Drawn under each card's large preview (the reasons for its rating). */
+    previewExtra?: Snippet<[DraftCard]>;
   }
-  const { pack: dealt, take, busy = false, blocked = "", onpick, timer }: Props = $props();
+  const {
+    pack: dealt,
+    take,
+    busy = false,
+    blocked = "",
+    onpick,
+    onaside,
+    timer,
+    previewExtra,
+  }: Props = $props();
 
   // Shown mythic, rare, uncommon, common, then basic land, and by colour
   // and name inside a rarity (#5701). The order follows the cards, not
@@ -45,6 +69,10 @@
   const pack = $derived(sortPack(dealt));
 
   let selected = $state<string[]>([]);
+  // The chosen cards dragged to the Sideboard rather than clicked (two to take).
+  let aside = $state<string[]>([]);
+  // Said once per drop, for a screen reader (DESIGN.md §8).
+  let said = $state("");
 
   // A new pack, or a smaller `take`, drops whatever no longer applies.
   $effect(() => {
@@ -55,10 +83,20 @@
     );
     if (kept.length !== untrack(() => selected.length)) selected = kept;
   });
+  // A card that is no longer chosen is no longer headed anywhere.
+  $effect(() => {
+    const keep = aside.filter((id) => selected.includes(id));
+    if (keep.length !== untrack(() => aside.length)) aside = keep;
+  });
 
   const ready = $derived(canConfirm(selected, pack, take));
   const chosen = $derived(
-    selected.map((id) => pack.find((c) => c.id === id)?.name ?? "").filter(Boolean),
+    selected
+      .map((id) => {
+        const name = pack.find((c) => c.id === id)?.name ?? "";
+        return name && aside.includes(id) ? `${name} to ${L.draftSideboardZone}` : name;
+      })
+      .filter(Boolean),
   );
   const prompt = $derived.by(() => {
     if (blocked) return blocked;
@@ -77,7 +115,30 @@
 
   function confirm(): void {
     if (busy || !ready) return;
+    const away = selected.filter((id) => aside.includes(id));
+    if (away.length > 0) onaside?.(away);
     onpick([...selected]);
+  }
+
+  // A card dragged onto a pile. One card to take: it is picked into that
+  // pile. Two: it is chosen for it, and the primary sends the pair.
+  function drop(card: DraftCard, to: Zone): void {
+    if (busy) return;
+    const pile = to === "main" ? L.draftDeckZone : L.draftSideboardZone;
+    if (take === 1) {
+      selected = [card.id];
+      aside = [];
+      if (to === "side") onaside?.([card.id]);
+      said = `Picked ${card.name} into ${pile}.`;
+      onpick([card.id]);
+      return;
+    }
+    if (!selected.includes(card.id)) selected = toggleSelection(selected, card.id, take);
+    aside =
+      to === "side"
+        ? [...aside.filter((id) => id !== card.id), card.id]
+        : aside.filter((id) => id !== card.id);
+    said = `Chose ${card.name} for ${pile}.`;
   }
 
   // With one card to take: a double-click picks it outright.
@@ -113,6 +174,11 @@
           onclick={() => toggle(card.id)}
           ondblclick={() => pickNow(card.id)}
           onkeydown={(e) => onKey(e, card.id)}
+          use:draftCard={{
+            card,
+            scope: "pack",
+            drag: { from: "pack", ondrop: (to) => drop(card, to) },
+          }}
         >
           <DraftCardArt {card} />
           <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
@@ -135,8 +201,12 @@
     </button>
   </div>
   {#if take === 1}
-    <p class="tip">Double-click a card to pick it straight away.</p>
+    <p class="tip">
+      Double-click a card to pick it, or drag it to {L.draftDeckZone} or {L.draftSideboardZone}.
+    </p>
   {/if}
+  <p class="sr-only" role="status" data-testid="draft-pack-said">{said}</p>
+  <DraftPreview scope="pack" children={previewExtra} />
 </div>
 
 <style>
@@ -224,6 +294,14 @@
   }
   .prompt.warn {
     color: var(--fg-muted);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .tip {
     margin: 10px 0 0;

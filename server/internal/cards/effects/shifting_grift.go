@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 + {1} — Exchange control of two target enchantments."
 //
 // Switcheroo's exchange (CR 701.12) three times over, one Spree bullet
-// (CR 702.172) each. Each exchange is all or nothing (CR 701.12b): if
+// (CR 702.172) each. Each exchange is all or nothing (CR 701.12a): if
 // either of a bullet's two targets is illegal as it resolves, that pair
 // stays put, and the other bullets still happen. Neither half has a
 // duration. The same permanent may be picked by two bullets (an

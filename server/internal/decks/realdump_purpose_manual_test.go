@@ -112,16 +112,22 @@ var reviewedNotAWipe = map[string]string{
 	"Hex Magic":             "exiles the cards in its caster's own hand, not a board",
 	"Armageddon":            "destroys lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
-	// it created itself, every player's, never another permanent.
+	// it created itself, every player's, never another permanent. #5802:
+	// Saproling Burst's leaves trigger is the same link, destroying only
+	// the Saprolings it created.
 	"Tombstone Stairwell":                      "destroys only the tokens it created, not a board",
+	"Saproling Burst":                          "destroys only the tokens it created, not a board",
+	"All Suns' Dawn":                           "\"Exile All Suns' Dawn\" is the spell exiling itself; it returns cards from your graveyard to hand, no permanents",
 	"Bag of Holding":                           "returns the cards it exiled, not permanents",
 	"Northampton Farm":                         "returns the cards it exiled to hand, not permanents",
 	"Baneblade Scoundrel // Baneclaw Marauder": "-1/-1 only to the creatures blocking it",
 	"Battle-Scarred Goblin":                    "1 damage only to the creatures blocking it",
+	"Knight of Valor":                          "-1/-1 only to the creatures without flanking blocking it",
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
 	"The Apprentice's Folly":                   "sacrifices only its controller's own Reflection tokens, not a board",
 	"Bewildering Blizzard":                     "-3/-0 kills nothing",
+	"Marsh Gas":                                "-1/-0 kills nothing",
 	"Mouth of the Storm":                       "-3/-0 until your next turn kills nothing",
 	"Call Forth the Tempest":                   "damage equal to spells cast this turn: no fixed amount or X for a sweep to declare",
 	"Demonic Consultation":                     "exiles cards from your own library, no permanents",
@@ -143,6 +149,7 @@ var reviewedNotAWipe = map[string]string{
 	"Mandate of Peace":                         "ends combat and exiles the stack",
 	"Merciful Mandate":                         "untaps your creatures and may end combat, exiling the stack",
 	"Mindwhisker":                              "-1/-0 to opponents' creatures under threshold kills nothing",
+	"Morningtide":                              "exiles graveyards, no permanents",
 	"Obeka, Brute Chronologist":                "ends the turn",
 	"Opposition Agent":                         "exiles the cards an opponent finds while searching, not permanents (#3998)",
 	"Rest in Peace":                            "exiles graveyards",

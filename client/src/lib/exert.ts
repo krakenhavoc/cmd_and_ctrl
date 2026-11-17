@@ -17,6 +17,10 @@ export interface AttackerSelection {
   kind: "attacker";
   cardID: string;
   exert?: boolean | null;
+  // #5658 (lib/enlist.ts): the creature it enlists as it attacks.
+  // Absent when it can enlist nothing, null while the dock's question
+  // is open, "" for none, and the creature's id once chosen.
+  enlist?: string | null;
 }
 
 // selectAttackerFor is the selection a click on `cardID` makes. A
@@ -43,6 +47,7 @@ export type DeclareAttackerParams = {
   target: string;
   auto_tap: true;
   exert?: true;
+  enlist?: string;
 };
 
 // declareAttackerParams builds the single declaration for a seat or
@@ -51,7 +56,7 @@ export function declareAttackerParams(
   sel: AttackerSelection,
   target: string,
 ): DeclareAttackerParams | null {
-  if (exertUnanswered(sel)) return null;
+  if (exertUnanswered(sel) || sel.enlist === null) return null;
   const p: DeclareAttackerParams = {
     attacker: sel.cardID,
     target,
@@ -60,6 +65,7 @@ export function declareAttackerParams(
     auto_tap: true,
   };
   if (sel.exert === true) p.exert = true;
+  if (sel.enlist) p.enlist = sel.enlist;
   return p;
 }
 

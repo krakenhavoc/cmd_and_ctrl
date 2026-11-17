@@ -441,6 +441,11 @@ type GameSnapshot struct {
 	LoyaltyExtraActivationsThisTurn     map[uuid.UUID]int               `json:"loyaltyExtraActivationsThisTurn,omitempty"`
 	LoyaltyExtraActivationsUsedThisTurn map[uuid.UUID]map[uuid.UUID]int `json:"loyaltyExtraActivationsUsedThisTurn,omitempty"`
 
+	// LoyaltyTwiceThisTurn is Game's (#5665, ADR 0145 amendment
+	// 2026-11-12): the players whose planeswalkers may activate loyalty
+	// abilities twice this turn. Additive.
+	LoyaltyTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyTwiceThisTurn,omitempty"`
+
 	// Activations is the per-(object, ability) activation record
 	// (#1181). Carried because its game-lifetime half IS game state a
 	// player can lose on: a restore that forgot it would hand every
@@ -1035,25 +1040,29 @@ type cardSnapshot struct {
 	// it did before the restore; recomputing this from the CURRENT
 	// resolver state would let a dump refresh between capture and
 	// restore change the answer for a token that already existed.
-	TokenArtOnly      bool           `json:"tokenArtOnly,omitempty"`
-	OracleID          string         `json:"oracleId,omitempty"`
-	TokenKey          string         `json:"tokenKey,omitempty"`
-	TypeLine          string         `json:"typeLine,omitempty"`
-	Power             int            `json:"power"`
-	Toughness         int            `json:"toughness"`
-	VariableToughness *bool          `json:"variableToughness,omitempty"`
-	ManaCost          string         `json:"manaCost,omitempty"`
-	ProducedMana      []string       `json:"producedMana,omitempty"`
-	Colors            []string       `json:"colors,omitempty"`
-	ColorIdentity     []string       `json:"colorIdentity,omitempty"`
-	StartingLoyalty   int            `json:"startingLoyalty"`
-	Keywords          []string       `json:"keywords,omitempty"`
-	GrantedAbilities  []string       `json:"grantedAbilities,omitempty"`
-	ColorCDADropped   bool           `json:"colorCDADropped,omitempty"`
-	Layout            string         `json:"layout,omitempty"`
-	Faces             []Face         `json:"faces,omitempty"`
-	ActiveFace        int            `json:"activeFace,omitempty"`
-	PrintedSelf       *PrintedValues `json:"printedSelf,omitempty"`
+	TokenArtOnly      bool     `json:"tokenArtOnly,omitempty"`
+	OracleID          string   `json:"oracleId,omitempty"`
+	TokenKey          string   `json:"tokenKey,omitempty"`
+	TypeLine          string   `json:"typeLine,omitempty"`
+	Power             int      `json:"power"`
+	Toughness         int      `json:"toughness"`
+	VariableToughness *bool    `json:"variableToughness,omitempty"`
+	ManaCost          string   `json:"manaCost,omitempty"`
+	ProducedMana      []string `json:"producedMana,omitempty"`
+	Colors            []string `json:"colors,omitempty"`
+	ColorIdentity     []string `json:"colorIdentity,omitempty"`
+	StartingLoyalty   int      `json:"startingLoyalty"`
+	// StartingLoyaltyKnown is Card.StartingLoyaltyKnown (#5668). Absent
+	// from every earlier file, which restores as "not set by a copy
+	// exception".
+	StartingLoyaltyKnown bool           `json:"startingLoyaltyKnown,omitempty"`
+	Keywords             []string       `json:"keywords,omitempty"`
+	GrantedAbilities     []string       `json:"grantedAbilities,omitempty"`
+	ColorCDADropped      bool           `json:"colorCDADropped,omitempty"`
+	Layout               string         `json:"layout,omitempty"`
+	Faces                []Face         `json:"faces,omitempty"`
+	ActiveFace           int            `json:"activeFace,omitempty"`
+	PrintedSelf          *PrintedValues `json:"printedSelf,omitempty"`
 	// DurationCopyBase is Card.DurationCopyBase (#1593): the layer-1
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
@@ -1128,8 +1137,12 @@ type cardSnapshot struct {
 	// exert this attacker, staged and not yet paid. A restore point can
 	// be written between the verb and the lock-in. Additive within v7;
 	// omitted when false.
-	ExertOnAttack  bool      `json:"exertOnAttack,omitempty"`
-	BlockingTarget uuid.UUID `json:"blockingTarget"`
+	ExertOnAttack bool `json:"exertOnAttack,omitempty"`
+	// EnlistOnAttack is Card.EnlistOnAttack (#5658, enlist.go): the
+	// creature this attacker enlists, staged and not yet paid.
+	// Additive within the version; omitted when nil.
+	EnlistOnAttack *uuid.UUID `json:"enlistOnAttack,omitempty"`
+	BlockingTarget uuid.UUID  `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -1392,6 +1405,16 @@ type cardSnapshot struct {
 	// nothing about it.
 	Suspected   bool  `json:"suspected,omitempty"`
 	SuspectedAt int64 `json:"suspectedAt,omitempty"`
+	// PairedWith is the creature a soulbond ability paired this one with
+	// (CR 702.95b, #5675), carried for Monstrous's reason: "unpaired" is
+	// a legal zero value, so a restore that dropped it would take the
+	// pair's shared ability away and say nothing about it. Additive.
+	PairedWith uuid.UUID `json:"pairedWith,omitempty"`
+	// LostKeywords are the printed keywords a copy exception took away
+	// (CR 707.9b, #5675), carried for ColorCDADropped's reason: a
+	// restore that dropped it would hand a token copy its keyword back.
+	// Additive.
+	LostKeywords []string `json:"lostKeywords,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -1471,10 +1494,15 @@ type cardSnapshot struct {
 	// a restore that dropped them would bring back somebody's phased
 	// board under the wrong player's untap step, or bring an Aura back
 	// without its host.
-	PhasedOutBy       uuid.UUID `json:"phasedOutBy,omitempty"`
-	PhaseInLockedBy   uuid.UUID `json:"phaseInLockedBy,omitempty"`
-	PhasedOutIndirect bool      `json:"phasedOutIndirect,omitempty"`
-	TapOnPhaseIn      bool      `json:"tapOnPhaseIn,omitempty"`
+	PhasedOutBy     uuid.UUID `json:"phasedOutBy,omitempty"`
+	PhaseInLockedBy uuid.UUID `json:"phaseInLockedBy,omitempty"`
+	// #5664: "It can't phase in for as long as you control this Saga".
+	// Additive; absent on every card no such effect names.
+	PhaseInBarredBy    uuid.UUID `json:"phaseInBarredBy,omitempty"`
+	PhaseInBarredEpoch int       `json:"phaseInBarredEpoch,omitempty"`
+	PhaseInBarredFor   uuid.UUID `json:"phaseInBarredFor,omitempty"`
+	PhasedOutIndirect  bool      `json:"phasedOutIndirect,omitempty"`
+	TapOnPhaseIn       bool      `json:"tapOnPhaseIn,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -1761,6 +1789,10 @@ type stackItemSnapshot struct {
 	// that makes its permanent enter tapped. Carried: the permission may
 	// be spent or gone by the time the spell resolves.
 	EntersTapped bool `json:"entersTapped,omitempty"`
+	// EntryRolls is StackItem.EntryRolls (#5682). Additive within the
+	// schema version and omitted when empty, which is every item but a
+	// permanent spell that rolled dice as it began to enter.
+	EntryRolls []int `json:"entryRolls,omitempty"`
 	// FaceDown is CR 708.4 (#1194): the state the permanent this
 	// spell becomes enters in. Carried, and it has to be — a restore
 	// that lost it would resolve a morph on the stack into a face-UP
@@ -2656,6 +2688,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyActivatedTwiceThisTurn = copyBoolMap(g.LoyaltyActivatedTwiceThisTurn)
 	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
+	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
@@ -3080,6 +3113,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Colors:                   copyStrings(c.Colors),
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
+		StartingLoyaltyKnown:     c.StartingLoyaltyKnown,
 		Keywords:                 copyStrings(c.Keywords),
 		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		ColorCDADropped:          c.ColorCDADropped,
@@ -3112,6 +3146,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
+		EnlistOnAttack:           uuidPtrOrNil(c.EnlistOnAttack),
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		GoadedBy:                 c.LatestGoader(),
@@ -3176,6 +3211,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
 		SuspectedAt:              c.SuspectedAt,
+		PairedWith:               c.PairedWith,
+		LostKeywords:             append([]string(nil), c.LostKeywords...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -3193,6 +3230,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
+		PhaseInBarredBy:          c.PhaseInBarredBy,
+		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
+		PhaseInBarredFor:         c.PhaseInBarredFor,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
@@ -3345,6 +3385,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,
@@ -4001,6 +4042,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyActivatedTwiceThisTurn = copyBoolMap(s.LoyaltyActivatedTwiceThisTurn)
 	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
+	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
@@ -4230,6 +4272,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Colors:                   copyStrings(c.Colors),
 		ColorIdentity:            copyStrings(c.ColorIdentity),
 		StartingLoyalty:          c.StartingLoyalty,
+		StartingLoyaltyKnown:     c.StartingLoyaltyKnown,
 		Keywords:                 copyStrings(c.Keywords),
 		GrantedAbilities:         copyStrings(c.GrantedAbilities),
 		ColorCDADropped:          c.ColorCDADropped,
@@ -4262,6 +4305,7 @@ func restoreCard(c *cardSnapshot) Card {
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
+		EnlistOnAttack:           uuidOrNil(c.EnlistOnAttack),
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		Goads:                    restoreGoads(c.Goads, c.GoadedBy),
@@ -4325,6 +4369,8 @@ func restoreCard(c *cardSnapshot) Card {
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
 		SuspectedAt:              c.SuspectedAt,
+		PairedWith:               c.PairedWith,
+		LostKeywords:             append([]string(nil), c.LostKeywords...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -4342,6 +4388,9 @@ func restoreCard(c *cardSnapshot) Card {
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
+		PhaseInBarredBy:          c.PhaseInBarredBy,
+		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
+		PhaseInBarredFor:         c.PhaseInBarredFor,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
@@ -4541,6 +4590,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
 		EntersTapped:     s.EntersTapped,
+		EntryRolls:       copyInts(s.EntryRolls),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,

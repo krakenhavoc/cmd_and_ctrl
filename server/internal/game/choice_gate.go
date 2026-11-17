@@ -103,7 +103,7 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 //     during their OWN upkeep, about whether a permanent — or the
 //     player — is still in the game for the rest of the turn. CR
 //     117.3 does not pass priority on with a required action
-//     outstanding and CR 500.4 does not end the step until it is
+//     outstanding and CR 500.2 does not end the step until it is
 //     taken.
 //
 // Both are DERIVED by the engine from what the prompt is about rather

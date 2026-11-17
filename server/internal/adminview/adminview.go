@@ -186,6 +186,10 @@ type GameRow struct {
 	CreatorID    string
 	CreatorName  string
 	HostPlayerID string
+	// ClosedReason is games.closed_reason (ADR 0211 §4), "" for NULL;
+	// LastActiveAt is games.last_active_at, zero for NULL.
+	ClosedReason string
+	LastActiveAt time.Time
 	// TheirSeat is the seat the account holds, on an account's games.
 	TheirSeat *int
 	Seats     []SeatRow

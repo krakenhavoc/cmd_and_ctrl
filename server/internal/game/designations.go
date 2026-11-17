@@ -853,6 +853,53 @@ func (g *Game) recordCrewLocked(saddle bool, permanent, creature ObjectRef) {
 	g.TurnTally.Crews = append(crews, CrewRecord{Saddle: saddle, Permanent: permanent, Creature: creature})
 }
 
+// noteCrewAbilityResolvedLocked is CR 702.122e's moment: `item`, an
+// activated ability that has just resolved, was a crew ability, so its
+// Vehicle "becomes crewed" (#5671). The ability is known by its catalog
+// row (a cost with a crew component), read through the item's ability
+// ref, so a copy of a crew ability counts (CR 707.10) and so does one
+// restored from a snapshot. Nothing happens unless the Vehicle is still
+// on the battlefield as the object the ability came from: a Vehicle that
+// left has no ability to trigger, and one that came back is a new object
+// whose crew ability this was not (CR 400.7).
+//
+// The resolution is appended to TurnTally.BecameCrewed (a fresh slice,
+// for recordCrewLocked's reason) and said as EventBecameCrewed, whose
+// Amount is the object's count this turn.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) noteCrewAbilityResolvedLocked(item *StackItem) {
+	if item == nil || item.Kind != StackItemActivated || item.Params.Ability == nil {
+		return
+	}
+	row, _, outcome := resolveActivatedAbilityRef(*item.Params.Ability)
+	if outcome == abilityRefLost || row.Cost.Crew <= 0 {
+		return
+	}
+	ref := item.SourceObject
+	c := findBattlefieldCard(g, item.SourceCardID)
+	if c == nil || ref.ID != c.InstanceID || ref.Epoch != c.ObjectEpoch {
+		return
+	}
+	crewed := make([]ObjectRef, len(g.TurnTally.BecameCrewed), len(g.TurnTally.BecameCrewed)+1)
+	copy(crewed, g.TurnTally.BecameCrewed)
+	g.TurnTally.BecameCrewed = append(crewed, ref)
+	n := 0
+	for _, r := range g.TurnTally.BecameCrewed {
+		if r == ref {
+			n++
+		}
+	}
+	g.EmitEvent(Event{
+		Kind:   EventBecameCrewed,
+		Actor:  item.Controller,
+		Source: c.InstanceID,
+		CardID: c.InstanceID,
+		Target: c.InstanceID,
+		Amount: n,
+	})
+}
+
 // CrewRecordsForEffect is every creature tapped this turn to pay a crew
 // cost (saddle false) or a saddle cost (saddle true) of the object
 // `permanent` names, in payment order, departed creatures included. The

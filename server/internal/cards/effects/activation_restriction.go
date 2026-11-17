@@ -34,10 +34,19 @@ import (
 // controller.
 //
 // Cursed Totem ("of creatures", no exemption), Collector Ouphe ("of
-// artifacts", no exemption), Null Rod and Stony Silence ("of
-// artifacts", exempt). `match` picks out which sources the clause
-// covers; nil covers every source, which is the Karn, the Great
-// Creator shape.
+// artifacts", no exemption), Clarion Conqueror ("of artifacts,
+// creatures, and planeswalkers", no exemption), Damping Matrix ("of
+// artifacts and creatures", exempt). `match` picks out which
+// permanents the clause covers; nil covers every permanent.
+//
+// PERMANENTS ONLY (#5759). Every one of these clauses names a card
+// type and no zone, and says neither "card" nor "source", so it means
+// permanents of that type on the battlefield (CR 109.2, CR 110.1). An
+// artifact or creature CARD in a hand or a graveyard is not one: its
+// cycling, ninjutsu or graveyard ability is not stopped. A clause that
+// does reach other zones says "sources" and is ChosenNameCantActivate
+// below; one that means only a hand or a graveyard needs its own
+// constructor, not a flag on this one.
 //
 // The match runs against the OBJECT whose ability is being activated,
 // as it stands right now — so it reads the layered type line
@@ -49,6 +58,9 @@ func SourcesCantActivate(label string, match CardPredicate, exemptMana bool) gam
 		Label: label,
 		Forbids: func(q game.ActivationQuery) bool {
 			if exemptMana && q.Ability.Mana {
+				return false
+			}
+			if q.FromZone != game.ZoneBattlefield {
 				return false
 			}
 			return matchActivationSource(q, match)
@@ -130,8 +142,8 @@ func OpponentsSourcesCantActivateDuringYourTurn(label string, match CardPredicat
 // SOURCES, not permanents — the clause reaches a card in any zone
 // whose ability functions from there, which since #660 is a real case
 // (a Ketria Triome's cycling from hand). So no zone test, unlike
-// OpponentsSourcesCantActivate above, whose clause says "creatures
-// your opponents control".
+// SourcesCantActivate and OpponentsSourcesCantActivate above, whose
+// clauses name a card type and so mean permanents (CR 109.2).
 //
 // The name is read LIVE off the restricting permanent, never captured
 // at Register time: two Needles name two different cards, and the

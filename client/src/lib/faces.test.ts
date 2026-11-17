@@ -6,6 +6,7 @@ import {
   castableFaces,
   isOmenCard,
   isOneSidedLayout,
+  isPrototypedFace,
   isSidewaysArt,
   needsFacePicker,
   otherSideHeading,
@@ -390,5 +391,69 @@ describe("the halves of a one-image card (#4109)", () => {
       expect(cardImageURL(c, "normal"), layout).toBe("/cards/sg/image?size=normal");
       expect(cardImageURL(c, "normal", 1), layout).toBe("/cards/sg/image?size=normal");
     }
+  });
+});
+
+// #5656, CR 718: a prototype card is one printed card with an inset.
+// The server sends the inset as face 1.
+describe("prototype cards", () => {
+  function blitzAutomaton(active = 0): CardView {
+    const faces = [
+      {
+        name: "Blitz Automaton",
+        type_line: "Artifact Creature — Construct",
+        mana_cost: "{7}",
+        power: 6,
+        toughness: 4,
+        image: "/cards/ba/image?face=0",
+      },
+      {
+        name: "Blitz Automaton",
+        type_line: "Artifact Creature — Construct",
+        mana_cost: "{2}{R}",
+        power: 3,
+        toughness: 2,
+        image: "/cards/ba/image?face=0",
+      },
+    ];
+    const f = faces[active]!;
+    return {
+      instance_id: "ba",
+      name: f.name,
+      type_line: f.type_line,
+      mana_cost: f.mana_cost,
+      power: f.power,
+      toughness: f.toughness,
+      scryfall_id: "ba",
+      owner: "p1",
+      controller: "p1",
+      layout: "prototype",
+      faces,
+      active_face: active,
+    } as CardView;
+  }
+
+  it("asks how the card is cast (CR 718.3)", () => {
+    const card = blitzAutomaton();
+    expect(needsFacePicker(card)).toBe(true);
+    const views = castableFaces(card);
+    expect(views.map((v) => v.mana_cost)).toEqual(["{7}", "{2}{R}"]);
+    expect(views.map((v) => `${v.power}/${v.toughness}`)).toEqual(["6/4", "3/2"]);
+    expect(isPrototypedFace(card, 0)).toBe(false);
+    expect(isPrototypedFace(card, 1)).toBe(true);
+    expect(isPrototypedFace(seaGate(), 1)).toBe(false);
+  });
+
+  it("has one image for both sets of characteristics", () => {
+    const card = blitzAutomaton(1);
+    expect(isOneSidedLayout(card)).toBe(true);
+    expect(cardImageURL(card, "normal")).toBe(scryfallImageURL("ba", "normal", 0));
+    expect(cardImageURL(card, "normal", 1)).toBe(scryfallImageURL("ba", "normal", 0));
+  });
+
+  it("names the other set of characteristics in the hover panel", () => {
+    expect(otherSideIndex(blitzAutomaton())).toBe(1);
+    expect(otherSideHeading(blitzAutomaton())).toBe("Prototyped");
+    expect(otherSideHeading(blitzAutomaton(1))).toBe("Not prototyped");
   });
 });

@@ -8,7 +8,13 @@ import "github.com/google/uuid"
 // only once" (Urza, Planeswalker; ADR 0145), and its class form, "You
 // may activate the loyalty abilities of planeswalkers you control twice
 // each turn rather than only once" (Oath of Teferi, #4184). Two sources
-// of the static do not stack: the limit is two either way.
+// of the static do not stack: the limit is two either way. The same
+// permission as a one-turn effect, "You may activate the loyalty
+// abilities of planeswalkers you control twice this turn rather than
+// only once" (Urza Assembles the Titans' chapter III, #5665; ADR 0145
+// amendment 2026-11-12), is the PLAYER's until the turn ends
+// (LoyaltyTwiceThisTurn): it does not stack with the statics or with
+// itself either.
 //
 // Two maps, both keyed by the permanent's instance ID and both flushed
 // at the turn boundary and forgotten when the object leaves the
@@ -66,8 +72,9 @@ func (g *Game) LoyaltySpentLocked(cardID uuid.UUID) bool {
 }
 
 // loyaltyLimitSpentLocked is CR 606.3's ordinary limit alone, as
-// raised to two by Urza's and Oath of Teferi's statics: the permanent
-// has made one activation and may make only one, or has made two.
+// raised to two by Urza's and Oath of Teferi's statics and by a
+// one-turn "twice this turn" effect: the permanent has made one
+// activation and may make only one, or has made two.
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) loyaltyLimitSpentLocked(cardID uuid.UUID) bool {
@@ -84,7 +91,31 @@ func (g *Game) loyaltyLimitSpentLocked(cardID uuid.UUID) bool {
 	if c.loyaltyTwiceEachTurn() {
 		return false
 	}
-	return !c.IsPlaneswalker() || !g.yourPlaneswalkersLoyaltyTwiceLocked(c.Controller)
+	if !c.IsPlaneswalker() {
+		return true
+	}
+	return !g.LoyaltyTwiceThisTurn[c.Controller] && !g.yourPlaneswalkersLoyaltyTwiceLocked(c.Controller)
+}
+
+// AllowLoyaltyTwiceThisTurnForEffect is the resolution of "You may
+// activate the loyalty abilities of planeswalkers you control twice
+// this turn rather than only once" (Urza Assembles the Titans' chapter
+// III, #5665): until the turn ends, CR 606.3's limit is two for every
+// planeswalker `player` controls. It is the player's, read live, so a
+// planeswalker that comes under their control later this turn is
+// covered and one that changes hands is not; an activation already made
+// this turn counts as the first of the two. A second resolution changes
+// nothing: twice, not once more.
+//
+// Caller must hold g.mu (write).
+func (g *Game) AllowLoyaltyTwiceThisTurnForEffect(player uuid.UUID) {
+	if player == uuid.Nil {
+		return
+	}
+	if g.LoyaltyTwiceThisTurn == nil {
+		g.LoyaltyTwiceThisTurn = make(map[uuid.UUID]bool)
+	}
+	g.LoyaltyTwiceThisTurn[player] = true
 }
 
 // CatalogYourPlaneswalkersLoyaltyTwiceEachTurn reports whether a

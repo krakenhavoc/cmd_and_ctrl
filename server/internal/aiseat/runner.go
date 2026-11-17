@@ -1046,8 +1046,7 @@ func (r *Runner) pacingNow() (minThink, maxThink time.Duration) {
 	if !r.cfg.FollowTablePace {
 		return
 	}
-	pace := r.room.Game.TableSettingsSnapshot().BotPace
-	preset, ok := botPacePresets[pace]
+	preset, ok := botPacePresets[r.paceNow()]
 	if !ok {
 		return
 	}
@@ -1069,11 +1068,23 @@ func (r *Runner) stackHoldNow() time.Duration {
 	if !r.cfg.FollowTablePace || r.stepped {
 		return 0
 	}
-	preset, ok := botPacePresets[r.room.Game.TableSettingsSnapshot().BotPace]
+	preset, ok := botPacePresets[r.paceNow()]
 	if !ok {
 		return 0
 	}
 	return preset.StackHold
+}
+
+// paceNow is the pace this decision window follows: the table's own
+// BotPace, or game.BotPaceFast while the room plays a game left to its
+// bots out (ADR 0211 §2, owner decision 2: Room.PlayingOut). The
+// play-out never touches the table's settings, so the pace the people
+// chose comes back the moment one of them connects.
+func (r *Runner) paceNow() game.BotPace {
+	if r.room.PlayingOut() {
+		return game.BotPaceFast
+	}
+	return r.room.Game.TableSettingsSnapshot().BotPace
 }
 
 // noteStack records when this runner first saw each item on the stack

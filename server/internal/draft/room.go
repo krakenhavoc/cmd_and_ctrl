@@ -113,7 +113,12 @@ type Status struct {
 	State     State
 	Humans    int
 	Connected int
-	Solo      bool
+	// Away is true when nobody is on the draft's page by the pick
+	// timer's measure: no seat has a socket, and none has had one for
+	// AwayGrace. A socket that dropped and is redialling is not away
+	// (#5698).
+	Away bool
+	Solo bool
 	// Phase is where the draft is after its picks (limited.go).
 	Phase Phase
 	// LastHuman is the last time a person did something here: took a
@@ -126,10 +131,20 @@ type Status struct {
 func (r *Room) Status() Status {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	away := len(r.subs) == 0
+	if away {
+		now := r.clock()
+		for _, left := range r.leftAt {
+			if now.Before(left.Add(AwayGrace)) {
+				away = false
+			}
+		}
+	}
 	return Status{
 		State:     r.d.State(),
 		Humans:    r.d.Humans(),
 		Connected: len(r.subs),
+		Away:      away,
 		Solo:      r.d.Config().Solo,
 		Phase:     r.d.Phase(),
 		LastHuman: r.lastHuman,

@@ -41,6 +41,8 @@ export function joinsSelection(
 ): boolean {
   if (!current || current.cardID === next.cardID) return false;
   if (current.exert !== undefined || next.exert !== undefined) return false;
+  // #5658: so is one with an enlist question.
+  if (current.enlist !== undefined || next.enlist !== undefined) return false;
   return !declared(current.cardID) && !declared(next.cardID);
 }
 

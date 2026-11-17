@@ -586,6 +586,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		slices.Equal(a.RemovedOwnAbilities, b.RemovedOwnAbilities) &&
 		a.Controller == b.Controller &&
 		a.Restrictions == b.Restrictions &&
+		a.ManaAbilityLifeTax == b.ManaAbilityLifeTax &&
 		a.CantHaveCounters == b.CantHaveCounters &&
 		a.CantBeBeamedUp == b.CantBeBeamedUp &&
 		a.AdditionalBlocks == b.AdditionalBlocks &&

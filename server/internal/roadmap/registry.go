@@ -382,6 +382,27 @@ var items = []Item{
 		Examples: []string{"Titania, Proud Pummeler"},
 	},
 	{
+		// #5769: a numbered keyword trigger, annihilator's token and
+		// melee's count read on resolution (game/rampage.go).
+		Slug: "rampage", Name: "Rampage", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever a creature with rampage becomes blocked, it gets +N/+N until end of turn for each creature blocking it beyond the first, counted once as the trigger resolves. Rampage another permanent gives works, and each instance triggers separately.",
+		Rules:    []string{"702.23", "509.3c"},
+		Issue:    5769,
+		Keywords: []string{game.KeywordRampage},
+		Mechanic: "rampage",
+		Printed:  `(?im)^(?:[a-z' -]+[,;] )*rampage \d`,
+		Examples: []string{"Craw Giant", "Gorilla Berserkers", "Balduvian War-Makers"},
+	},
+	{
+		Slug: "enlist", Name: "Enlist", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "As a creature with enlist attacks, you may tap another creature you control that isn't attacking and could have attacked. The attacker gets that creature's power added to its own until end of turn.",
+		Rules:    []string{"702.154", "508.1g", "607.2h"},
+		Issue:    5658,
+		Keywords: []string{game.KeywordEnlist},
+		Probe:    hasKeyword(game.KeywordEnlist),
+		Examples: []string{"Guardian of New Benalia", "Keldon Flamesage"},
+	},
+	{
 		Slug: "decayed", Name: "Decayed", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "A creature with decayed can't block, and when it attacks it is sacrificed at end of combat. Decayed tokens, decayed another permanent gives and decayed counters all work.",
 		Rules:    []string{"702.147", "122.1b"},
@@ -484,6 +505,12 @@ var items = []Item{
 		Summary:  "Cast a spell for its freerunning cost if an Assassin or a commander you controlled dealt combat damage to a player this turn.",
 		Rules:    []string{"702.173"},
 		Mechanic: "freerunning",
+	},
+	{
+		Slug: "prowl", Name: "Prowl", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Cast a spell for its prowl cost if a creature you controlled that shared one of its creature types dealt combat damage to a player this turn.",
+		Rules:    []string{"702.76"},
+		Mechanic: "prowl",
 	},
 	{
 		Slug: "free-cast", Name: "Free casts", Kind: KindMechanic, Status: StatusImplemented,
@@ -1605,6 +1632,33 @@ var items = []Item{
 		Examples: []string{"Exava, Rakdos Blood Witch", "Chaos Imps", "Hellhole Flailer"},
 	},
 	{
+		// #5675: the pair is a link on both creatures (game/soulbond.go);
+		// the keyword's two triggers are catalog rows (effects.Soulbond)
+		// that read this token off the layered ability list.
+		Slug: "soulbond", Name: "Soulbond", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "You may pair a soulbond creature with another unpaired creature you control when either enters. They stay paired for as long as you control both creatures.",
+		Rules:    []string{"702.95", "603.4"},
+		Issue:    5675,
+		Keywords: []string{game.KeywordSoulbond},
+		Mechanic: "soulbond",
+		Printed:  printedKeyword("soulbond"),
+		Examples: []string{"Doom Weaver", "Breathkeeper Seraph", "Mirage Phalanx"},
+	},
+	{
+		// #5757, #5784: a keyword trigger the engine derives from the
+		// ability list (game/flanking.go), one per instance and one per
+		// blocker; the token is also what it asks of the blocker. A
+		// granted flanking triggers, and a lost one does not.
+		Slug: "flanking", Name: "Flanking", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Whenever a creature without flanking blocks a creature with flanking, the blocking creature gets -1/-1 until end of turn. A blocker that has flanking itself is not shrunk.",
+		Rules:    []string{"702.25", "509.3d"},
+		Issue:    5757,
+		Keywords: []string{game.KeywordFlanking},
+		Mechanic: "flanking",
+		Printed:  printedKeyword("flanking"),
+		Examples: []string{"Zhalfirin Crusader", "Knight of the Holy Nimbus", "Outrider en-Kor"},
+	},
+	{
 		// #2075 (ADR 0113 §4): dies keywords whose triggers the engine
 		// derives from the departed permanent's LAST-KNOWN ability list
 		// (game/undying_persist.go), so a printed, token or granted
@@ -1894,6 +1948,18 @@ var items = []Item{
 		Printed:  printedLine("echo"),
 		Phrases:  []string{"echo"},
 		Examples: []string{"Deranged Hermit", "Karmic Guide", "Skizzik Surger"},
+	},
+	{
+		// #5802: effects.Fading and effects.FadingUpkeep (fading.go),
+		// vanishing's sibling. The upkeep trigger carries
+		// effects.KeywordFading.
+		Slug: "fading", Name: "Fading", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "A permanent with fading enters with fade counters on it. At the beginning of your upkeep you remove one, and when there are none left to remove you sacrifice it.",
+		Rules:    []string{"702.32"},
+		Issue:    5802,
+		Printed:  printedLine("fading"),
+		Phrases:  []string{"fading", "fade counter"},
+		Examples: []string{"Blastoderm", "Saproling Burst", "Jolting Merfolk"},
 	},
 	{
 		// #1889; built by ADR 0108 §10 (PR 10).
@@ -3690,6 +3756,17 @@ var items = []Item{
 		Issue:            2183,
 		NoCatalogExample: "Its one catalogued card, Ob Nixilis, Captive Kingpin, carries a caveat about the end-step edge of its play window, so none is listed as fully automated.",
 	},
+	{
+		// #3172 granted it for a turn (Angel's Grace); #5770 added the
+		// printed half on a permanent (Spec.PlayerLifeFloorOne, read off
+		// the battlefield in game/life_floor.go).
+		Slug: "life-floor-of-one", Name: "Damage that can't take you below 1 life", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that stop damage from taking your life total below 1, such as Sustaining Spirit's while it is on the battlefield and Angel's Grace's for a turn. The damage is still dealt in full, so lifelink and commander damage count all of it, and losing or paying life is not stopped.",
+		Rules:    []string{"120.3a"},
+		Issue:    5770,
+		Printed:  `(?i)\bdamage that would reduce your life total to less than 1 reduces it to 1 instead\b`,
+		Examples: []string{"Sustaining Spirit", "Angel's Grace"},
+	},
 
 	// Seams that have fully closed. They stay so the page can say so;
 	// their history is in engine-seams.md's Closed seams list.
@@ -3762,6 +3839,24 @@ var items = []Item{
 		ADR:      "0141-bestow.md",
 		Mechanic: "bestow",
 		Examples: []string{"Nighthowler", "Boon Satyr", "Eidolon of Countless Battles"},
+	},
+	{
+		Slug: "prototype", Name: "Prototype", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Artifact creatures you may cast for a smaller, coloured cost as a smaller creature. A prototyped spell and the permanent it becomes have the inset's mana cost, colour, power and toughness, and keep their abilities and types.",
+		Rules:    []string{"702.160", "718"},
+		ADR:      "0034-multi-face-cards.md",
+		Examples: []string{"Blitz Automaton", "Cradle Clearcutter", "Depth Charge Colossus"},
+	},
+	{
+		// #5794: one board read (effects.NoUntappedLands) behind a layer
+		// 7c pump, a layer 6 keyword grant and two intervening-if
+		// trigger shapes (cards/effects/no_untapped_lands.go).
+		Slug: "no-untapped-lands", Name: "\"If you control no untapped lands\"", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that work only while every land you control is tapped, such as Scoria Cat's +3/+3 and Well of Life's end step life gain. A creature's bonus turns on and off the moment a land taps or untaps, and a triggered ability checks again as it resolves.",
+		Rules:    []string{"603.4", "611.3a"},
+		Issue:    5794,
+		Printed:  `(?i)\b(?:if|as long as) you control no untapped lands\b`,
+		Examples: []string{"Scoria Cat", "Keldon Berserker", "Well of Life"},
 	},
 	{
 		Slug: "one-cast-per-card-type", Name: "One spell of each card type", Kind: KindSeam, Status: StatusImplemented,

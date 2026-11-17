@@ -103,6 +103,7 @@ func (g *Game) commitAttackDeclarationLocked() {
 		controller uuid.UUID
 		defender   uuid.UUID
 		exert      bool
+		enlist     uuid.UUID
 	}
 	var fresh []declaration
 	for i := range g.Battlefield.Cards {
@@ -115,10 +116,12 @@ func (g *Game) commitAttackDeclarationLocked() {
 			controller: c.Controller,
 			defender:   c.AttackingTarget,
 			exert:      c.ExertOnAttack,
+			enlist:     c.EnlistOnAttack,
 		})
 		// The staged choice is spent here: once the declaration is
 		// locked in, the exert is paid, like the tap.
 		c.ExertOnAttack = false
+		c.EnlistOnAttack = uuid.Nil
 	}
 	for _, d := range fresh {
 		g.noteAttackAnnouncedLocked(d.attacker)
@@ -133,6 +136,14 @@ func (g *Game) commitAttackDeclarationLocked() {
 	for _, d := range fresh {
 		if d.exert {
 			g.exertLocked(d.attacker, d.controller, d.defender)
+		}
+	}
+	// #5658: enlist is an optional cost to attack too (CR 702.154b),
+	// paid here for the same reason: the enlisted creature is tapped
+	// and EventEnlist joins the batch ahead of the EventAttacks.
+	for _, d := range fresh {
+		if d.enlist != uuid.Nil {
+			g.payEnlistLocked(d.attacker, d.controller, d.enlist)
 		}
 	}
 	for _, d := range fresh {

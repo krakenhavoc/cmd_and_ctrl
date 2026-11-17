@@ -83,6 +83,7 @@ func Register(spec Spec) {
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
 	checkPowerUp(spec)
+	checkNinjutsu(spec)
 	checkPowerUpExtras(spec)
 	checkOnlyOnce(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
@@ -313,6 +314,8 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	// #5669: the untap form is an activated ability's alone.
+	checkUntapOthersCost(spec)
 	checkCostOpensFlash(spec)
 	checkFlashIf(spec)
 	// #5240: a collect evidence X sized by the targets, before the
@@ -328,6 +331,8 @@ func Register(spec Spec) {
 	checkOptionalBehold(spec)
 	// #5193: an optional "you may collect evidence N".
 	checkOptionalCollectEvidence(spec)
+	// #5657: offering's reduction by the sacrificed permanent's mana cost.
+	checkOffering(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
@@ -348,6 +353,7 @@ func Register(spec Spec) {
 			refuseOpponentChoice(spec.Name, "a gift's", g.Targets)
 		}
 	}
+	checkCasualtyX(spec)
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
 	for i, oc := range spec.OptionalCosts {
 		// Without the flag the cast path prices it and never offers
@@ -1861,11 +1867,14 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 // checkAltCostRemoveCounters holds an alternative cost's counter removal
 // (#5390) to the shape the cast path reads: the activation's own checks
 // (checkCounterCost), and the one form a spell can pay — "from among
-// <permanents> you control", a fixed count. The spell being cast is not
-// on the battlefield, so the self form ("from this") and "other" have
-// nothing to name, and no printed alternative cost removes X counters.
-// Not beside a card component either: the cast has one cost picker
-// chain, and no printed offer charges both.
+// <permanents> you control", a fixed count or, since #5679, X of one
+// printed kind with a floor of at least one (Light Up the Night's
+// "Remove X loyalty counters from among planeswalkers you control. ... X
+// can't be 0"; checkCounterCost holds the variable among form to that).
+// The spell being cast is not on the battlefield, so the self form
+// ("from this") and "other" have nothing to name. Not beside a card
+// component either: the cast has one cost picker chain, and no printed
+// offer charges both.
 func checkAltCostRemoveCounters(card string, ac game.AlternativeCost) {
 	rc := ac.RemoveCounters
 	if rc == nil {
@@ -1878,8 +1887,8 @@ func checkAltCostRemoveCounters(card string, ac game.AlternativeCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s removes counters from itself — a spell being cast is not on the battlefield; give it a \"from among …\" clause", card, where))
 	case rc.From.ExcludeSource:
 		panic(fmt.Sprintf("effects.Register: %q %s removes counters from \"other\" permanents — a spell being cast is not on the battlefield, so ExcludeSource names nothing", card, where))
-	case !rc.Among || rc.Variable:
-		panic(fmt.Sprintf("effects.Register: %q %s is not a fixed \"remove N counters from among …\" — the only counter removal a cast pays; build it with CastFromGraveyardByRemovingCounters", card, where))
+	case !rc.Among || rc.OnePermanent:
+		panic(fmt.Sprintf("effects.Register: %q %s is not \"remove N (or X) counters from among …\" — the only counter removal a cast pays; build it with CastFromGraveyardByRemovingCounters or FlashbackRemoveXCounters", card, where))
 	case altCostCardComponents(ac) > 0:
 		panic(fmt.Sprintf("effects.Register: %q %s removes counters beside a card-shaped payment — no printed alternative cost does", card, where))
 	}
@@ -1912,6 +1921,33 @@ func checkEmerge(card string, ac game.AlternativeCost) {
 	}
 	if ac.Sacrifice == nil || game.SacrificeCostCount(ac.Sacrifice) != 1 || game.SacrificeCostVariable(ac.Sacrifice) {
 		panic(fmt.Sprintf("effects.Register: %q offers %q reduced by the sacrificed permanent's mana value without a sacrifice of exactly one permanent (CR 702.119a)", card, ac.Key))
+	}
+}
+
+// checkOffering holds ReducedBySacrificedManaCost (#5657) to the shape
+// CR 702.48a prints: an optional cost that sacrifices exactly one
+// permanent. The pricer reads the permanent that cost's clause names, so
+// the flag on a cost that sacrifices nothing, or on the mandatory slot
+// or an either/or branch (which the pricer does not read), would price a
+// discount the card does not print, or none where it prints one.
+func checkOffering(spec Spec) {
+	if ac := spec.AdditionalCost; ac != nil {
+		if ac.ReducedBySacrificedManaCost {
+			panic(fmt.Sprintf("effects.Register: %q reduces its mandatory additional cost by the sacrificed permanent's mana cost — offering is an optional cost (CR 702.48a); build it with Offering", spec.Name))
+		}
+		for _, b := range ac.Either {
+			if b.ReducedBySacrificedManaCost {
+				panic(fmt.Sprintf("effects.Register: %q reduces an either/or branch by the sacrificed permanent's mana cost — offering is an optional cost (CR 702.48a); build it with Offering", spec.Name))
+			}
+		}
+	}
+	for _, oc := range spec.OptionalCosts {
+		if !oc.ReducedBySacrificedManaCost {
+			continue
+		}
+		if oc.Sacrifice == nil || game.SacrificeCostCount(oc.Sacrifice) != 1 || game.SacrificeCostVariable(oc.Sacrifice) {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q is reduced by the sacrificed permanent's mana cost without a sacrifice of exactly one permanent (CR 702.48a) — build it with Offering", spec.Name, oc.Key))
+		}
 	}
 }
 
@@ -2054,6 +2090,9 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	if c.ControlledByChooser && !c.ChosenByOpponent && !c.ChosenByTriggerActor {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
+	}
+	if c.ControlledByAnotherThanChooser && (!c.ChosenByTriggerActor || c.ControlledByChooser) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"another player controls\" relative to a chooser it does not have, or beside \"they control\" — wrap it as AnotherPlayerControls(OfThatPlayersChoice(...))", name, i))
 	}
 	if c.Harmful && !slices.Contains(c.Zones, game.ZoneBattlefield) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is marked Harmful but cannot pick a permanent (#4249)", name, i))
@@ -2435,6 +2474,30 @@ func checkExhaustAbilities(spec Spec) {
 		if p.Label == "" {
 			panic(fmt.Sprintf("effects.Register: %q exhaust permission %d has no Label — the label is the printed clause", spec.Name, i))
 		}
+	}
+}
+
+// checkNinjutsu is the boot-time contract of the ninjutsu bit (CR
+// 702.49, #5672): the label and the bit agree in both directions, on a
+// card's own abilities and on the ones it grants. A row that prints the
+// keyword without the bit is priced in full under "Ninjutsu abilities
+// you activate cost {1} less to activate" (Silver-Fur Master), and a
+// bit without the keyword takes a discount the card does not print.
+func checkNinjutsu(spec Spec) {
+	check := func(where string, abilities []ActivatedAbility) {
+		for i, a := range abilities {
+			printed := strings.HasPrefix(a.Label, ninjutsuLabelPrefix) || strings.HasPrefix(a.Label, commanderNinjutsuLabelPrefix)
+			if printed && !a.Ninjutsu {
+				panic(fmt.Sprintf("effects.Register: %q %s ability %d prints ninjutsu and does not set Ninjutsu: true — build it with effects.Ninjutsu or effects.CommanderNinjutsu", spec.Name, where, i))
+			}
+			if a.Ninjutsu && !printed {
+				panic(fmt.Sprintf("effects.Register: %q %s ability %d sets Ninjutsu but its label does not start with the keyword — build it with effects.Ninjutsu or effects.CommanderNinjutsu", spec.Name, where, i))
+			}
+		}
+	}
+	check("activated", spec.Activated)
+	for _, b := range spec.Grants {
+		check("granted "+b.Key, b.Activated)
 	}
 }
 

@@ -3,6 +3,7 @@ package notify
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -34,6 +35,16 @@ func filledMessage(table, link string) string {
 // startedMessage is "table ready" for a start.
 func startedMessage(table, link string) string {
 	return fmt.Sprintf("**%s** has started. %s", flatten(table), link)
+}
+
+// idleWarningMessage is ADR 0211 §6's warning before a started game is
+// closed for having had no move. The closing time is a Discord
+// timestamp, which each reader sees in their own time zone, with how
+// long is left beside it.
+func idleWarningMessage(table string, closesAt time.Time, hours int, link string) string {
+	at := closesAt.Unix()
+	return fmt.Sprintf("**%s** will be closed on <t:%d:F> (<t:%d:R>) because no one has moved for %d hours. %s",
+		flatten(table), at, at, hours, link)
 }
 
 // gameURL is the client's route for a table.

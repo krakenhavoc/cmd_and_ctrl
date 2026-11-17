@@ -237,6 +237,24 @@ describe("the crewed and saddled badges name who paid", () => {
     expect(title(container)).toContain("saddled by Llanowar Elves and Birds of Paradise");
   });
 
+  // #5675 (CR 702.95b): a creature a soulbond ability paired.
+  it("shows a paired creature and names its partner", () => {
+    const { container } = mountWith(
+      permanent({ name: "Doom Weaver", type_line: "Creature — Spider Horror", paired_with: "c1" }),
+      ["Llanowar Elves"],
+    );
+    expect(badgeText(container)).toBe("PAIRED");
+    expect(title(container)).toContain("paired with Llanowar Elves");
+  });
+
+  it("shows no paired badge on an unpaired creature", () => {
+    const { container } = mountWith(
+      permanent({ name: "Doom Weaver", type_line: "Creature — Spider Horror" }),
+      ["Llanowar Elves"],
+    );
+    expect(container.querySelector(".badge.designation")).toBeNull();
+  });
+
   it("shows a crewed Vehicle and its crew", () => {
     const { container } = mountWith(
       permanent({ name: "Smuggler's Copter", type_line: "Artifact — Vehicle", crewed_by: ["c1"] }),

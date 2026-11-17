@@ -99,6 +99,7 @@ type printedInputs struct {
 	keywords        []string // Card.Keywords, the import's keywords
 	catalogKeywords []string // CatalogPrintedKeywords(CatalogKey(c))
 	colorCDADropped bool     // Card.ColorCDADropped: devoid is not a printed keyword here (CR 707.9d)
+	lostKeywords    []string // Card.LostKeywords: printed keywords a copy exception took (CR 707.9b)
 }
 
 // printedInputsOf reads the inputs off a face-up card. The slices
@@ -116,6 +117,7 @@ func printedInputsOf(c *Card) printedInputs {
 		keywords: c.textKeywords(),
 
 		colorCDADropped: c.ColorCDADropped,
+		lostKeywords:    c.LostKeywords,
 	}
 	// The gate is the catalog KEY and not an oracle ID (ADR 0083
 	// decision 3): a token has a key of its own since #521, so a
@@ -169,6 +171,8 @@ func (in *printedInputs) characteristicFrom(supertypes, types, subtypes []string
 		// colour-defining ability was never copied (#2322).
 		abilities = withoutKeyword(abilities, KeywordDevoid)
 	}
+	// CR 707.9b: "except it loses <keyword>" (#5675).
+	abilities = withoutKeywordsFold(abilities, in.lostKeywords)
 	return Characteristic{
 		Power:      in.power,
 		Toughness:  in.toughness,
@@ -205,7 +209,8 @@ func (in *printedInputs) sameAs(o *printedInputs) bool {
 		sameStrings(in.colors, o.colors) &&
 		sameStrings(in.keywords, o.keywords) &&
 		sameStrings(in.catalogKeywords, o.catalogKeywords) &&
-		in.colorCDADropped == o.colorCDADropped
+		in.colorCDADropped == o.colorCDADropped &&
+		sameStrings(in.lostKeywords, o.lostKeywords)
 }
 
 func sameStrings(a, b []string) bool {

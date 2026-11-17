@@ -1177,6 +1177,12 @@ func (g *Game) recomputeLayersLocked() {
 	// is undone before the next pass cannot revive it. Holds are not
 	// layer inputs, so this does not touch the layer version.
 	g.sweepUntapHoldsLocked()
+	// CR 702.95e (#5675): a pair ends when either creature changes
+	// controller, stops being a creature or leaves the battlefield, and
+	// all three are settled only now. Swept here for the untap holds'
+	// reason: the pass that breaks a pair also ends it, so a control
+	// change undone before the next pass cannot bring it back.
+	unpaired := g.sweepBrokenPairsLocked(changed)
 	// ADR 0155 §8: the library tops this pass read, while something
 	// reads them (library_top_watch.go).
 	g.armLibraryTopWatchLocked()
@@ -1188,6 +1194,13 @@ func (g *Game) recomputeLayersLocked() {
 	// same "bump after the store" the attack rewrite below uses. That
 	// pass finds the record gone and settles.
 	if g.powerConditionsFailLocked() {
+		g.layerVersion.Add(1)
+	}
+	// #5675: the pass above still gave a pair the sweep ended its
+	// "as long as it is paired" abilities. Bumped after the store for
+	// the same reason: the next read runs a pass that finds no pair to
+	// end and settles.
+	if unpaired {
 		g.layerVersion.Add(1)
 	}
 	// #1387 (ADR 0045 Decision 37): CR 506.4's type clause. An

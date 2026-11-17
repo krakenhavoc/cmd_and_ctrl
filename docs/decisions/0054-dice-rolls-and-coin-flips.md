@@ -1143,3 +1143,31 @@ reads its rolls on the next line has to be able to wait.
   the roll to visit your Attractions (`dice/roll-to-visit`, the engine's own tail, so Line Cutter, Command Performance
   and the turn-based roll of CR 717.4 go through it). Vexing Puzzlebox's mana ability rolls through the door with no
   tail: nothing of that ability follows the roll, so only the "whenever you roll" triggers wait for its question.
+
+
+## Amendment (2026-11-12): a static "ignore the lowest roll", and a roll's modifier (#5681)
+
+**Issue:** [#5681](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5681). Checked against
+`MagicCompRules 20260925.txt`: CR 706.2, 706.3a, 706.6, 706.7, 614.1a, 614.5.
+
+Nine cards of Adventures in the Forgotten Realms and its Commander decks read a roll in ways the dice door could not
+say. Pixie Guide and Barbarian Class replace every roll their controller makes with one more die and the lowest
+ignored. Four cards add to or subtract from their d20 (CR 706.2: "the instruction may include modifiers to the roll
+which add to or subtract from the natural result"), while Critical Hit and Netherese Puzzle-Ward read the natural
+result and Farideh reads the result.
+
+- **Ignore the lowest, as a replacement.** `ReplacementEvent.RollOneMoreAndIgnoreLowest()` raises the window's die
+  count and a count of lowest rolls to ignore, which `RollDiceThenForEffect` adds to the card's own
+  `DiceRoll.IgnoreLowest`. No question is asked: CR 706.6 lets the roller choose among rolls tied for the lowest, but
+  tied rolls show the same number and carry the same modifier, so the choice cannot be observed. A chosen ignore
+  (Squid Fire Knight, Ichor Elixir) still goes first and the lowest of the rest after it; under either CR 616.1 order
+  the same sets of kept rolls are reachable. Planar dice are left alone (CR 706.7).
+- **The modifier rides the roll.** `DiceRoll.Modifier` is the instruction's modifier. An `EventRollDie` keeps `Amount`
+  as the natural result and gains `Modifier`; `Event.RollResult()` is the result. A tail is told the natural rolls and
+  `TailOutcome.RollModifier`. A card never adds inside its tail any more (Diviner's Portent was moved), because a
+  trigger that reads "those results" has only the event to read. The planar die has no numerical result and carries
+  no modifier (CR 901.9d).
+- **Only an instruction's own modifier.** CR 706.2a and 706.2b (optional or paid modifiers from other sources, and the
+  roller's order among them) have no card in the catalog and are not built.
+- **Snapshot and wire.** Additive snapshot fields (`modifier` on an event and on a paused roll). The log's `roll` entry
+  is unchanged and shows natural results.

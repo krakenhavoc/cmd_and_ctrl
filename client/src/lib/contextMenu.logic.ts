@@ -26,10 +26,12 @@ import {
   attackAllTaxLabel,
   attackTaxOn,
   eligibleAt,
+  enlistChoiceAt,
   exertChoiceAt,
   planAttackAll,
   seatLabel,
 } from "./attackAll";
+import { enlistCandidates, enlistOptionLabel, enlistOptions } from "./enlist";
 import { attackLifeAsks, attackLifeSymbols, clampAttackLife } from "./attackLife";
 import { L } from "./labels";
 import { grantedFromLabel, isBorrowedRow } from "./abilityRef";
@@ -736,6 +738,10 @@ export interface AbilityCost {
   // the return cost: fewer untapped creatures than the clause needs.
   tap_others_label?: string;
   tap_others_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+  // #5669: the clause untaps tapped permanents instead (Halo Fountain),
+  // and a tapped source that may pay it, which frees its own {T}.
+  tap_others_untap?: boolean;
+  tap_others_frees_source?: boolean;
   // #1157: `min` is part of the clause and not decoration. "Up to one
   // target creature you control" is min 0, and a clause with min 0 is
   // satisfied by an empty candidate list — see hasSatisfiableTargets.
@@ -1009,11 +1015,19 @@ export function blightCostLabel(n: number | undefined): string {
 // server's option list already excludes tapped creatures, other
 // players' creatures and — for "another" — the source, so its length
 // against `min` is the whole of CR 118.3.
-export function tapOthersShortfall(opts: ReturnOptionsShape | undefined, label?: string): string {
+//
+// #5669: `untap` is the clause turned over ("Untap two tapped creatures
+// you control"), where the list is the tapped permanents instead.
+export function tapOthersShortfall(
+  opts: ReturnOptionsShape | undefined,
+  label?: string,
+  untap?: boolean,
+): string {
   if (!opts) return "";
   const have = opts.cards?.length ?? 0;
   const need = opts.count_from_x ? 1 : (opts.min ?? 1);
   if (have >= need) return "";
+  if (untap) return `nothing to untap (${label ?? "a tapped creature you control"})`;
   return `nothing to tap (${label ?? "another untapped creature you control"})`;
 }
 
@@ -1046,7 +1060,8 @@ export function abilityBlocked(
   loyalty?: LoyaltyContext,
   life?: number,
 ): string {
-  if (a.tap_cost && tapped) return "already tapped";
+  // #5669: unless the cost's own untap clause may untap the source first.
+  if (a.tap_cost && tapped && !a.tap_others_frees_source) return "already tapped";
   if (a.tap_cost && sick) return "summoning sickness";
   // #1690: a life cost the paying player can't afford — Greed's fixed
   // one, and since #1688 a computed one (War Room, Murderous
@@ -1079,7 +1094,11 @@ export function abilityBlocked(
   const blight = blightShortfall(a.blight, a.blight_options);
   if (blight) return blight;
   // #759: and the tap-another cost.
-  const tapOthers = tapOthersShortfall(a.tap_others_options, a.tap_others_label);
+  const tapOthers = tapOthersShortfall(
+    a.tap_others_options,
+    a.tap_others_label,
+    a.tap_others_untap,
+  );
   if (tapOthers) return tapOthers;
   // CR 702.122a: a crew cost with no untapped creature to pay it is
   // unpayable. Only the empty case is judged here — whether the
@@ -1331,7 +1350,7 @@ export function abilityRowBlocked(
     return EFFECT_STOPS_ABILITIES;
   }
   if (a.cant_activate) return a.cant_activate;
-  if (a.tap_cost && ctx.tapped) return "already tapped";
+  if (a.tap_cost && ctx.tapped && !a.tap_others_frees_source) return "already tapped";
   if (a.tap_cost && ctx.sick) return "summoning sickness";
   if (a.timing_closed && ctx.timingWords !== undefined) {
     return ctx.timingWords || ABILITY_NOT_RIGHT_NOW;
@@ -1935,12 +1954,19 @@ function combatItems(
   if (defenders.length > 0) {
     // The defenders, as one declaration each. `exert` sends ADR 0130's
     // choice to exert the attacker as it attacks.
-    const targetItems = (exert: boolean): MenuItem[] => {
-      const prefix = exert ? "combat-attack-exert" : "combat-attack";
+    // `enlist` (#5658) sends the creature the attacker enlists.
+    const targetItems = (exert: boolean, enlist = ""): MenuItem[] => {
+      const prefix = enlist
+        ? `combat-attack-enlist-${enlist}`
+        : exert
+          ? "combat-attack-exert"
+          : "combat-attack";
       const params = (target: string) =>
-        exert
-          ? { attacker: card.instance_id, target, auto_tap: true, exert: true }
-          : { attacker: card.instance_id, target, auto_tap: true };
+        enlist
+          ? { attacker: card.instance_id, target, auto_tap: true, enlist }
+          : exert
+            ? { attacker: card.instance_id, target, auto_tap: true, exert: true }
+            : { attacker: card.instance_id, target, auto_tap: true };
       // #4197: in the declare attackers step, a defender the server would
       // refuse for this creature (Pramikon's or Teyo's direction, "can't
       // attack its owner", a "can't attack you" grant) is shown but not
@@ -2040,6 +2066,19 @@ function combatItems(
         items: targetItems(true),
       });
     }
+    // #5658: and one row for each creature it may enlist as it attacks
+    // (CR 702.154a), for a creature the server lists candidates for.
+    if (!card.attacking_target) {
+      const candidates = enlistCandidates(card.instance_id, gate);
+      for (const o of enlistOptions(candidates, view.battlefield?.cards)) {
+        items.push({
+          id: `combat-attack-enlist-${o.id}`,
+          label: L.declareAttackerAndEnlist(enlistOptionLabel(o)),
+          hint: "taps it and adds its power to this creature's until end of turn",
+          items: targetItems(false, o.id),
+        });
+      }
+    }
     // #318: the board-wide sibling of the row above. Same "pick a
     // defender" submenu shape, so the bulk affordance reads as a
     // wider version of the per-card one rather than a new idea — and
@@ -2073,6 +2112,17 @@ function combatItems(
                 id: `combat-attack-all-${s.id}`,
                 label: seatLabel(s),
                 hint: "a creature here may be exerted — choose in the dock's Attack with all",
+                disabled: true,
+              },
+            ];
+          }
+          // #5658: likewise a creature that may enlist another.
+          if (enlistChoiceAt(plan, s.id)) {
+            return [
+              {
+                id: `combat-attack-all-${s.id}`,
+                label: seatLabel(s),
+                hint: "a creature here may enlist another — choose in the dock's Attack with all",
                 disabled: true,
               },
             ];

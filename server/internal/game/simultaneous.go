@@ -182,7 +182,14 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 	// time. The batch stays open across the whole wipe, so an entry
 	// (or a cast, or a draw) that lands while it is open is a LATER
 	// event, and a watcher that already left must not see it.
-	if !isBattlefieldExitEvent(ev) {
+	//
+	// #5676: exploiting a creature is the sacrifice itself (CR 702.110b),
+	// and "abilities that trigger when a player sacrifices a permanent"
+	// look back (CR 603.10a). EventExploited is emitted from the
+	// sacrifice's tail, inside its batch, so the creature that was
+	// sacrificed still sees it.
+	exploited := ev.Kind == EventExploited
+	if !isBattlefieldExitEvent(ev) && !exploited {
 		return
 	}
 	// Snapshot the batch header: dispatching a trigger can open a
@@ -191,7 +198,9 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 	batch := g.simultaneousExit
 	for i := range batch {
 		card := batch[i]
-		if card.InstanceID == ev.CardID {
+		// EventExploited has no harvestLTB pass: its CardID is the
+		// exploiter, which may be the creature that was sacrificed.
+		if card.InstanceID == ev.CardID && !exploited {
 			continue
 		}
 		if findCardOnBattlefield(g, card.InstanceID) >= 0 {

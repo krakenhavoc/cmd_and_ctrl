@@ -1,0 +1,6 @@
+---
+title: "Mana that may only pay a named alternative cost"
+date: 2026-11-12
+issues: [5680]
+---
+**Mana that may only pay a named alternative cost** (#5680, CR 106.6, CR 118.9, CR 702.146a; follows [ADR 0040](decisions/0040-mana-pipeline.md)) — the restriction tags could say where a spell is cast from and what it is, and not which cost it is cast for, so "spend this mana only to pay a disturb cost" had only `cast:from-graveyard`, which also admits flashback and escape. `game.ManaRestrictAltCost(key)` is the tag `alt:<key>`, matched against the new `ManaSpendContext.AltCost`, which `ManaSpendForCastParams` sets to the key of the printed alternative cost the cast claims. A disturb cast has already turned the card to its back face when it is paid for, so the lookup now also reads the front face's offer (CR 712.11d), as the claim itself is resolved. The tag admits a cast for that cost, with its increases and reductions (CR 601.2f), and refuses the same card at its mana cost, a cast for any other alternative cost, an activation and a payment that names no cost. The cast, its auto-tap, the pool solver and `internal/legal` read the one context. The context is stored on an assist prompt, so the snapshot shape gains `pendingChoices[].assist.spend.AltCost` (additive, no bump); there is no wire change. **Cards:** Unblinking Observer — Full.

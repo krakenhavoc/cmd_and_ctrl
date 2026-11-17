@@ -101,6 +101,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 			Access: map[string]string{ownerID: VoiceAccessGranted, oppID: VoiceAccessNotInServer}},
 		Rematch: &RematchView{GameID: uuid.NewString(), Host: ownerID, HostName: "Owner", Open: true,
 			Accepted: []string{oppID}, Left: []string{}},
+		IdleCloseAt:    "2026-11-13T20:14:00Z",
 		StackPositions: map[string]StackPositionView{ownerID: {X: 0.5, Y: 0.25}},
 		StartingSeat:   1,
 		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{

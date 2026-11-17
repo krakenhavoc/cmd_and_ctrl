@@ -560,3 +560,28 @@ func TestReturnFromGraveyardTransformedNotInGraveyard(t *testing.T) {
 		t.Fatalf("err = %v, want ErrCardNotFound", err)
 	}
 }
+
+// CR 303.4h (#5677): "attached to" said of a back face that is not an
+// Aura, an Equipment or a Fortification is ignored, and the permanent
+// enters unattached.
+func TestReturnFromGraveyardTransformedAttachedNonAuraEntersUnattached(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	id := graveyardTransformFixture(g, me)
+
+	got, err := g.ReturnFromGraveyardTransformedAttachedForEffect(id, me.ID, TargetRef{Kind: TargetPlayer, ID: opp.ID})
+	if err != nil || got != id {
+		t.Fatalf("got (%v, %v), want the card", got, err)
+	}
+	back := findBattlefieldCard(g, got)
+	if back == nil || back.ActiveFace != 1 {
+		t.Fatal("the card did not enter on its back face")
+	}
+	if back.AttachedTo != (TargetRef{}) {
+		t.Errorf("a creature entered attached to %+v", back.AttachedTo)
+	}
+	if back.Tapped || back.Controller != me.ID {
+		t.Errorf("tapped %v controller %v, want untapped under the named controller", back.Tapped, back.Controller)
+	}
+	AssertFaceInvariant(t, g)
+}

@@ -238,6 +238,11 @@ func noteStateTriggerKey(key string, d *CardDef) {
 // the answer (a permanent under an ability-removing effect has none).
 func mayHaveStateTrigger(c *Card, keys map[string]struct{}) bool {
 	has := func(k string) bool {
+		// #5683: a "triggers of <card>" part has that card's state
+		// triggers (triggers_of_key.go).
+		if lender, ok := TriggersOfKeyLender(k); ok {
+			k = lender
+		}
 		_, ok := keys[k]
 		return ok && k != ""
 	}

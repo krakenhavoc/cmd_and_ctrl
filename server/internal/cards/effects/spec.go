@@ -1272,6 +1272,23 @@ type Spec struct {
 	// Issue #1200, ADR 0085.
 	PlayerLifeTotalLocked bool
 
+	// PlayerLifeFloorOne declares the printed static "Damage that would
+	// reduce your life total to less than 1 reduces it to 1 instead"
+	// (Sustaining Spirit), about this permanent's CONTROLLER. True while
+	// the permanent is on the battlefield and nowhere else.
+	//
+	//	PlayerLifeFloorOne: true,
+	//
+	// DERIVED, for PlayerLifeTotalLocked's reasons: the engine asks the
+	// battlefield on every query through game.CatalogPlayerLifeFloorOne.
+	// Only damage is floored; the damage is still dealt in full, and a
+	// "lose life" effect or a life payment is not floored. The GRANTED
+	// half, "until end of turn" (Angel's Grace), is
+	// Game.GrantLifeFloorForEffect.
+	//
+	// Issue #5770.
+	PlayerLifeFloorOne bool
+
 	// DamageStaysThroughCleanup declares the printed static "Damage
 	// isn't removed from this creature during cleanup steps" (CR 514.2 —
 	// Ancient Adamantoise). Judged on the battlefield through
@@ -2085,6 +2102,13 @@ type ActivatedAbility struct {
 	// reduction itself (game/power_up.go). Set it through the PowerUp
 	// constructor (power_up.go), which also writes the label.
 	PowerUp bool
+	// Ninjutsu marks a ninjutsu or commander ninjutsu ability (CR
+	// 702.49a, 702.49d; #5672). It gates nothing; it names the keyword
+	// for a cost modifier that prices "ninjutsu abilities"
+	// (ANinjutsuAbilityCost, Silver-Fur Master). Set it through the
+	// Ninjutsu and CommanderNinjutsu constructors (ninjutsu.go), which
+	// also write the label.
+	Ninjutsu bool
 	// OnlyOnce is the printed "Activate only once." on an ability that
 	// is not an exhaust ability (CR 602.5b, #5221): Possessed Goat,
 	// Haunted Screen. One bit, no card logic: the engine reads the

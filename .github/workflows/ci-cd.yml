@@ -349,6 +349,13 @@ jobs:
         # It runs on the job's own Go 1.27 (its floor is 1.26), so the
         # GOTOOLCHAIN=auto this step once needed is gone (ADR 0122 §1.1)
         # and lint, vet, test and build all use one toolchain.
+        # GOMEMLIMIT (#5741): unbounded, golangci-lint on this tree peaks
+        # near 13 GiB and the hosted runner (16 GB) kills it at random
+        # ("received a shutdown signal", make lint Killed). A soft limit
+        # makes Go's GC work harder before the heap reaches it: measured
+        # at 9.6 GiB peak and 0 issues under 9GiB, so 10GiB leaves room.
+        env:
+          GOMEMLIMIT: 10GiB
         run: make lint
 
       # Known vulnerabilities the server can reach (#3335), in this
@@ -680,6 +687,14 @@ jobs:
   build:
     needs: changes
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    # Static, pure-Go binaries, so what ships does not depend on the
+    # runner's C toolchain. With cgo on, the runtime/cgo and net glue is
+    # compiled by the runner's gcc: when ubuntu-latest moved to 26.04, that
+    # code used instructions the hosts' QEMU CPU model lacks, and the server
+    # died with SIGILL before main. Nothing we ship needs cgo (SQLite is
+    # modernc.org/sqlite); mcpseat-release.yml already builds this way.
+    env:
+      CGO_ENABLED: "0"
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

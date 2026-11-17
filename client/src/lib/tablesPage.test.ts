@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { GameMeta, SeatInfo } from "./api";
+import { L } from "./labels";
 import type { MyGame } from "./myGames";
 import {
   botChipText,
@@ -547,6 +548,18 @@ describe("History (ADR 0158 §1 item 3)", () => {
   it("is GET /me/games minus Now, plus the ended tables listed, most recent first", () => {
     expect(rows.map((r) => r.id)).toEqual(["shelved", "lost", "won", "listed"]);
     expect(rows.map((r) => r.result.label)).toEqual(["Archived", "Bob won", "You won", "Ended"]);
+  });
+
+  // ADR 0211 owner decision 4: a table the server closed says why, and
+  // is still one of the Archived filter's.
+  it("says why the server closed a table", () => {
+    const [row] = historyRows(
+      [mine("idle", { state: "active", archived_at: NOW - HOUR, closed_reason: "idle_game" })],
+      [],
+      new Set(),
+    );
+    expect(row.result).toEqual({ label: L.closedIdleGame, tone: "archived" });
+    expect(filterHistory([row], "archived")).toHaveLength(1);
   });
 
   it("filters", () => {
