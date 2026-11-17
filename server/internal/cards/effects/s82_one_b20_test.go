@@ -76,7 +76,7 @@ func TestS82KothPlusTwoFetchesABasicMountainToHand(t *testing.T) {
 	advanceToMain(t, g)
 	s82Activate(t, g, me.ID, koth, 0, game.ActivateAbilityParams{})
 	passPriorityAroundTable(t, g)
-	answerChooseCards(t, g, me.ID, mountain)
+	answerSearchByID(t, g, me.ID, mountain)
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(mountain) || me.Hand.Contains(forest) {
 		t.Errorf("hand has Mountain=%v Forest=%v, want only the Mountain", me.Hand.Contains(mountain), me.Hand.Contains(forest))

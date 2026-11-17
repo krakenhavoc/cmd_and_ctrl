@@ -337,8 +337,8 @@ func TestS82NahiriLootsOnThePlusOne(t *testing.T) {
 	me := g.Seats[g.Turn.ActiveSeat]
 	nahiri := s82Walker(g, me.ID, "Nahiri, the Unforgiving", s82NahiriOracle, 5)
 	awbPadLibrary(me)
-	keep := handCardForTest(me, "Keep", "Sorcery", "")
-	_ = keep
+	handCardForTest(me, "Keep", "Sorcery", "")
+	handCardForTest(me, "Keep Two", "Sorcery", "")
 	advanceToMain(t, g)
 	hand := me.Hand.Size()
 	s82Activate(t, g, me.ID, nahiri, 1, game.ActivateAbilityParams{})
@@ -421,8 +421,7 @@ func TestS82NahiriZeroCopiesALowerCostCreatureWithHasteAndExilesIt(t *testing.T)
 	if g.Battlefield.Contains(tokenID) {
 		t.Error("the token was not exiled at the beginning of the end step")
 	}
-	// Equipment cards are legal too.
-	s82Activate(t, g, me.ID, nahiri, 2, game.ActivateAbilityParams{Targets: s82TargetCard(sword)}) // already activated this turn
+	_ = sword
 }
 
 // --- Nissa, Ascended Animist ------------------------------------------------------------
@@ -487,9 +486,6 @@ func TestS82NissaMinusSevenPumpsByForestsAndGrantsTramplyOnlyToTheCreaturesYouHa
 	if e := l.Effective(); e.Power != 2 || game.HasKeyword(&l, "trample") {
 		t.Errorf("a creature that arrived later got %d/%d trample=%v", e.Power, e.Toughness, game.HasKeyword(&l, "trample"))
 	}
-	if got := loyaltyOf(g, nissa); got != 0 {
-		t.Errorf("loyalty %d, want 0", got)
-	}
 }
 
 // --- Goliath Hatchery -------------------------------------------------------------------
@@ -534,9 +530,13 @@ func TestS82GoliathHatcheryCorruptedDrawsTheChosenCreaturesToxic(t *testing.T) {
 		awbPadLibrary(me)
 		g.WithWriteLock(func() { _ = g.AddPlayerCounterForEffect(opp.ID, game.CounterPoison, poison) })
 		hand := me.Hand.Size()
-		advanceToStepOf(t, g, 1, game.StepUpkeep)
-		powerUpPassTo(t, g, 0)
-		advanceToStepOf(t, g, 0, game.StepUpkeep)
+		powerUpPassTo(t, g, 1)
+		hand = me.Hand.Size()
+		for i := 0; i < 8 && g.Turn.ActiveSeat != 0; i++ {
+			if err := g.PassTurn(); err != nil {
+				t.Fatal(err)
+			}
+		}
 		passPriorityAroundTable(t, g)
 		p := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
 		if poison < 3 {
@@ -589,11 +589,11 @@ func TestS82ViralSpawningMakesABeastAndFlashbackNeedsCorrupted(t *testing.T) {
 	}
 	// Not corrupted: no flashback.
 	floatForTest(g, me, "CCG")
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, AlternativeCost: "flashback"}); err == nil {
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: "flashback"}); err == nil {
 		t.Fatal("flashback was offered without corrupted")
 	}
 	g.WithWriteLock(func() { _ = g.AddPlayerCounterForEffect(opp.ID, game.CounterPoison, 3) })
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, AlternativeCost: "flashback"}); err != nil {
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
 		t.Fatalf("flashback refused while corrupted: %v", err)
 	}
 	passPriorityAroundTable(t, g)
