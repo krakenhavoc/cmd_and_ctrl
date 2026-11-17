@@ -652,6 +652,8 @@ choose choose-cards/imprint-exile-from-hand
 choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/intuition-settle
+choose choose-cards/invasion-of-alara-put-one
+choose choose-cards/invasion-of-arcavios-outside
 choose choose-cards/invasion-of-tarkir-reveal
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/irreverent-gremlin-discard-draw
@@ -1054,6 +1056,7 @@ choose resolution-cast/commander-spock-after-cast
 choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/herald-of-amity-rest-to-bottom
+choose resolution-cast/invasion-of-alara-after-cast
 choose resolution-cast/kefka-life-loss
 choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
@@ -1217,6 +1220,7 @@ confirm confirm/high-society-hunter-sacrifice
 confirm confirm/ill-timed-explosion-discard
 confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/innocuous-researcher-untap
+confirm confirm/invocation-of-the-founders-copy
 confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
@@ -1508,6 +1512,7 @@ option option-pick/inspirit-flagship-vessel-counters
 option option-pick/intellectual-offering-draw
 option option-pick/intellectual-offering-untap
 option option-pick/intrude-on-the-mind-chooser
+option option-pick/invasion-of-arcavios-zones
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/kinscaer-sentry-attacks
 option option-pick/land-mana-each
@@ -1876,6 +1881,7 @@ run prompt-run/arid-archway-return-land
 run prompt-run/ascent-of-the-worthy-redirect
 run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
+run prompt-run/awaken-the-maelstrom-copy
 run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
@@ -2582,6 +2588,8 @@ tail incubate/transform-all-incubators
 tail infernal-vessel/demon
 tail insidious-roots/counter-on-each-plant
 tail intuition/choose
+tail invasion-of-arcavios/library-found
+tail invasion-of-kaldheim/draw-and-play
 tail invent/sorcery-search
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land

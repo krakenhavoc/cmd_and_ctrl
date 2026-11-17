@@ -31,18 +31,7 @@ func init() {
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Zero, Incorporeal Sensate — look at target opponent's hand; you may exile a nonland card from it",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					return ChooseFromRevealedHand{
-						Player:   TargetedPlayer(ctx),
-						Filter:   Nonland(),
-						Label:    "nonland card",
-						Look:     true,
-						Optional: true,
-						Keep:     true,
-						Then:     zeroIncorporealSensateExile,
-					}.Apply(ctx)
-				}),
+				lookAtOpponentsHandExileTaxed),
 				TargetPlayer("target opponent", Opponent())),
 		},
 	})
