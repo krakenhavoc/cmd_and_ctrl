@@ -941,6 +941,7 @@ choose choose-cards/put-from-library-s82-bro-total-mana-value-9
 choose choose-cards/put-from-library-s82-bro-total-mana-value-unbounded
 choose choose-cards/queen-kayla-bin-kroog-mana-value
 choose choose-cards/quintorius-history-chaser-draw-two-mill-one
+choose choose-cards/raff-weatherlight-stalwart-tap-two
 choose choose-cards/rakdos-patron-of-chaos-sacrifice
 choose choose-cards/rambling-possum-return-saddlers
 choose choose-cards/read-the-runes-discarded
@@ -1087,6 +1088,7 @@ choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/vivien-champion-of-the-wilds-exile
+choose choose-cards/vohar-vodalian-desecrator-discarded
 choose choose-cards/vow-to-erebor-attach
 choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
