@@ -21,7 +21,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:        "{1}{U}, Exile this card from your graveyard: Create a 1/1 blue Fish creature token with \"This token can't be blocked.\" Activate only as a sorcery.",
-			Purpose:      game.Purpose{Answers: game.AnswerMakesBlocker},
 			Cost:         Plus(ManaCost("{1}{U}"), ExileThis()),
 			Zones:        []game.ZoneKind{game.ZoneGraveyard},
 			SorcerySpeed: true,
