@@ -219,6 +219,7 @@ body initiative/take
 body initiative/venture
 body inkshield/inklings
 body inti-seneschal-of-the-sun/counter-and-trample
+body invasion-of-new-capenna/exile
 body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
@@ -1943,6 +1944,7 @@ run prompt-run/humiliate-counter
 run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
+run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
 run prompt-run/killmonger-sacrificed
@@ -2817,6 +2819,7 @@ tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
+tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/larval-scoutlander-search
 tail sacrificed-one/prompt-run/lithobraking-sacrifice
