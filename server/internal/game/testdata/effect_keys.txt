@@ -1999,8 +1999,8 @@ run prompt-run/humiliate-counter
 run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
-run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/indoctrination-attendant-return
+run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
 run prompt-run/killmonger-sacrificed
@@ -2633,9 +2633,9 @@ tail indoctrination-attendant/mite
 tail infernal-vessel/demon
 tail insidious-roots/counter-on-each-plant
 tail intuition/choose
-tail invasion-of-pyrulea/reveal-then-draw
 tail invasion-of-arcavios/library-found
 tail invasion-of-kaldheim/draw-and-play
+tail invasion-of-pyrulea/reveal-then-draw
 tail invent/sorcery-search
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land
