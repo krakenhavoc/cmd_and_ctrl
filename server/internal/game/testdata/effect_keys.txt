@@ -192,6 +192,7 @@ body generous-plunderer/gift
 body gift-of-immortality/return-aura
 body gilgamesh/attach-equipment
 body glacial-dragonhunt/damage
+body glissas-retriever/return-to-hand
 body gloom-surgeon/exile-that-many
 body glorifier-of-suffering/counters
 body gnawing-crescendo/cant-block-rat
@@ -295,6 +296,7 @@ body phyrexian-vindicator/strike
 body pit-automaton/copy-exhaust
 body planechase/planeswalk
 body plasm-capture/refund
+body poison/the-payload-creatures-controller
 body portent/draw
 body power-pack/cast-exiled-free
 body prepare/stensian-sanguinist-becomes-prepared
@@ -1121,6 +1123,7 @@ condition attack/that-creature-attacks-the-monarch
 condition attack/that-creature-unblocked
 condition attack/you-attack
 condition block/an-opponents-creature-blocks
+condition block/each-creature-blocks
 condition cast/you-next-cast
 condition cast/you-next-cast-a-lesson
 condition cast/you-next-cast-at-most-mv
@@ -1776,6 +1779,7 @@ payunless pay-unless/jolted-awake-return
 payunless pay-unless/kalastria-highborn-drain
 payunless pay-unless/kavaron-harrier-robot
 payunless pay-unless/kazuul-ogre
+payunless pay-unless/kinzu-of-the-bleak-coven-exile
 payunless pay-unless/koya-death-from-above-return
 payunless pay-unless/krenko-baron-of-tin-street-goblin
 payunless pay-unless/krovod-haunch-dogs
@@ -2595,6 +2599,7 @@ tail gifts-ungiven/choose
 tail gilgamesh-master-at-arms/rest-then-attach-trigger
 tail glamdring-foe-hammer/gleam-of-death-after-mill
 tail glimmer-of-genius/then
+tail glissas-retriever/exiled
 tail glorious-purpose/after-exile
 tail go-nuts/fight
 tail goblin-plate-mail/attach
@@ -2662,6 +2667,7 @@ tail kaya-geist-hunter/spirits
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kindred-charge/haste-and-exile-copies
 tail kinscaer-sentry/entered
+tail kinzu-of-the-bleak-coven/copy
 tail kishla-trawlers/after-exile
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile

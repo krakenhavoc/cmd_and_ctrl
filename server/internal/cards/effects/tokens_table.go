@@ -479,4 +479,8 @@ var tokenTable = map[string]game.Card{
 
 	// #5789: Odyssey block's Wurm (Roar of the Wurm, Crush of Wurms).
 	"6/6 green Wurm": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"G"}},
+
+	// S82 ONE batch 16: Wurmquake's X/X Phyrexian Wurm (printed X/X; a 0/0 placeholder, set to
+	// the mana spent when it is created).
+	"0/0 green Phyrexian Wurm with trample and toxic 1": {Name: "Phyrexian Wurm", TypeLine: "Token Creature — Phyrexian Wurm", Colors: []string{"G"}, Keywords: []string{"trample", "toxic 1"}, PrintedPTKnown: true},
 }
