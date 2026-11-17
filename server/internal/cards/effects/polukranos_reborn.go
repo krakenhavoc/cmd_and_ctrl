@@ -49,7 +49,7 @@ func init() {
 				}
 				dead, ok := diedCreature(ev, g)
 				return ok && !IsToken(dead) && leftUnderControlOf(ev, dead) == source.Controller &&
-					leftAsSubtype(ev, dead, "Hydra")
+					leftAsSubtype(ev, dead, source.TextSubtype("Hydra"))
 			},
 			Key: "Polukranos, Engine of Ruin — create a 3/3 Phyrexian Hydra with reach and a 3/3 Phyrexian Hydra with lifelink",
 			Effect: Do(
