@@ -407,6 +407,7 @@ body thunder-of-unity/drain
 body time-to-feed/gain-three-life
 body tip-the-scales/minus
 body tolarian-kraken/tap-or-untap
+body tranquil-frillback/modes
 body transformers/convert-this
 body treasure/create-tapped
 body ty-lee-artful-acrobat/cant-block
@@ -764,6 +765,7 @@ choose choose-cards/manhole-missile-bottom
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
 choose choose-cards/marvo-deep-operative-cast
 choose choose-cards/masterminds-acquisition-take
+choose choose-cards/mat-distribute-counters-among
 choose choose-cards/meanders-guide-tap
 choose choose-cards/memories-returning-bottom
 choose choose-cards/memories-returning-take
@@ -821,6 +823,7 @@ choose choose-cards/mog-moogle-warrior-discarded
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
+choose choose-cards/nahiris-resolve-exile
 choose choose-cards/nantuko-cultivator-discard
 choose choose-cards/narset-of-the-ancient-way-discarded
 choose choose-cards/narset-transcendent-take
@@ -1165,6 +1168,7 @@ confirm confirm/commander-spock-land
 confirm confirm/copy-this-spell
 confirm confirm/cori-steel-cutter-attach
 confirm confirm/corruption-of-towashi-draw
+confirm confirm/cosmic-rebirth-battlefield-or-hand
 confirm confirm/crawling-barrens-animate
 confirm confirm/create-tokens
 confirm confirm/dance-with-calamity-exile-top
@@ -1407,6 +1411,7 @@ number number/glissa-sunslayer-remove-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
+number number/mat-distribute-counters-share
 number number/necrodominance-draw-that-many
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plunge-into-darkness-look-at-that-many
@@ -1777,6 +1782,7 @@ payunless pay-unless/the-thing-double-counters
 payunless pay-unless/thousand-moons-crackshot-tap
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
+payunless pay-unless/tranquil-frillback-pay-g
 payunless pay-unless/trudge-garden-fungus-beast
 payunless pay-unless/ty-lee-artful-acrobat
 payunless pay-unless/ultimecia-exile
@@ -2682,6 +2688,7 @@ tail msh-a9/ultron-robot-villain
 tail mutinous-massacre/steal-everything
 tail myriad/exile-tokens-at-end-of-combat
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
+tail nahiris-resolve/schedule-return-at-next-upkeep
 tail nantuko-cultivator/discarded
 tail necromantic-selection/black-zombie-then-exile
 tail necropotence/schedule-delivery
