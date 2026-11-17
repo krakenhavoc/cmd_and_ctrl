@@ -245,8 +245,8 @@ func TestDMUB11TatyovaAnimatesALandOnlyWithSevenLands(t *testing.T) {
 	enter()
 	dmuB11PickIfAsked(t, g, me.ID, lands[0])
 	passPriorityAroundTable(t, g)
-	c := gaLayered(t, g, lands[0]).Effective()
-	if !c.IsCreature() || !c.IsLand() || c.Power != 3 || c.Toughness != 3 || !game.HasKeyword(&c, "haste") || !c.HasSubtype("Elemental") {
+	c := gaLayered(t, g, lands[0])
+	if !c.IsCreature() || !c.IsLand() || c.CurrentPower() != 3 || c.CurrentToughness() != 3 || !game.HasKeyword(&c, "haste") || !c.HasSubtype("Elemental") {
 		t.Errorf("animated land: %+v", c)
 	}
 	if !game.HasKeyword(&c, "flying") {
@@ -305,7 +305,7 @@ func TestDMUB11RulikMonsPutsALandOrMakesAGoblin(t *testing.T) {
 func dmuB11Goblins(g *game.Game, owner uuid.UUID) int {
 	n := 0
 	for _, c := range g.Battlefield.Cards {
-		if c.Controller == owner && c.IsToken && c.Name == "Goblin" && c.Power == 1 && c.Toughness == 1 {
+		if c.Controller == owner && c.IsToken() && c.Name == "Goblin" && c.Power == 1 && c.Toughness == 1 {
 			n++
 		}
 	}
@@ -395,8 +395,8 @@ func TestDMUB11NaelLooksAtDomainCardsAndDrawsWithFiveTypes(t *testing.T) {
 	if pick == nil {
 		t.Fatalf("no look prompt: %+v", g.PendingChoices)
 	}
-	if len(pick.RevealCards) != 3 {
-		t.Fatalf("looked at %d cards, want 3", len(pick.RevealCards))
+	if len(pick.ChooseCards) != 3 {
+		t.Fatalf("looked at %d cards, want 3", len(pick.ChooseCards))
 	}
 	if err := g.ResolveRevealPick(pick.ID, me.ID, []uuid.UUID{lib[1]}); err != nil {
 		t.Fatalf("ResolveRevealPick: %v", err)
@@ -422,7 +422,7 @@ func TestDMUB11NaelDrawsAfterArrangingWithFiveTypes(t *testing.T) {
 	dealCombatDamageToPlayer(g, nael, opp.ID, 2)
 	passPriorityAroundTable(t, g)
 	pick := latestRevealPickFor(g, me.ID)
-	if pick == nil || len(pick.RevealCards) != 5 {
+	if pick == nil || len(pick.ChooseCards) != 5 {
 		t.Fatalf("want a look at five cards: %+v", pick)
 	}
 	if err := g.ResolveRevealPick(pick.ID, me.ID, []uuid.UUID{lib[2]}); err != nil {
