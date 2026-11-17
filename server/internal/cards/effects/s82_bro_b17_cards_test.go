@@ -425,12 +425,6 @@ func TestBro17TheStoneBrainExilesNamedCardsAndDrawsForTheHandOnes(t *testing.T) 
 	}
 }
 
-func inExile(g *game.Game, id uuid.UUID) bool {
-	found := false
-	g.ReadSnapshot(func() { found = g.Exile.Contains(id) })
-	return found
-}
-
 // --- Urza's Sylex ---------------------------------------------------
 
 func TestBro17UrzasSylexDestroysAllButSixLandsEach(t *testing.T) {
@@ -590,13 +584,13 @@ func TestBro17FatefulHandoffDrawsForManaValueAndGivesItAway(t *testing.T) {
 		t.Fatal("no opponent choice")
 	}
 	idx := -1
-	for i, o := range pick.Options {
+	for i, o := range pick.PickOptions {
 		if o.Player == opp.ID {
 			idx = i
 		}
 	}
 	if idx < 0 {
-		t.Fatalf("the opponent is not among the options %+v", pick.Options)
+		t.Fatalf("the opponent is not among the options %+v", pick.PickOptions)
 	}
 	if err := g.ResolveOptionPick(pick.ID, me.ID, idx); err != nil {
 		t.Fatalf("ResolveOptionPick: %v", err)
