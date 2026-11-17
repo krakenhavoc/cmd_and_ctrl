@@ -529,9 +529,8 @@ func TestS82GoliathHatcheryCorruptedDrawsTheChosenCreaturesToxic(t *testing.T) {
 		bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 		awbPadLibrary(me)
 		g.WithWriteLock(func() { _ = g.AddPlayerCounterForEffect(opp.ID, game.CounterPoison, poison) })
-		hand := me.Hand.Size()
 		powerUpPassTo(t, g, 1)
-		hand = me.Hand.Size()
+		hand := me.Hand.Size()
 		for i := 0; i < 8 && g.Turn.ActiveSeat != 0; i++ {
 			if err := g.PassTurn(); err != nil {
 				t.Fatal(err)
