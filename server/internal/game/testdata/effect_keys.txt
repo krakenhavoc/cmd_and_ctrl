@@ -906,6 +906,7 @@ choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
+choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
 choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
@@ -2822,6 +2823,7 @@ tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
+tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
