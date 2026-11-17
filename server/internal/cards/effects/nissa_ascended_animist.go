@@ -42,14 +42,7 @@ func init() {
 				Label:   "−1: Destroy target artifact or enchantment.",
 				Cost:    LoyaltyCost(-1),
 				Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					t, ok := firstLegalTarget(ctx)
-					if !ok {
-						return nil
-					}
-					return DestroyTarget{Target: t.ID}.Apply(ctx)
-				},
+				Effect:  destroyFirstLegalTarget,
 			},
 			{
 				Label:  "−7: Until end of turn, creatures you control get +1/+1 for each Forest you control and gain trample.",
