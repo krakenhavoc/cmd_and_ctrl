@@ -292,6 +292,7 @@ func TestS82KaitoBounceGrantsASecondLoyaltyActivation(t *testing.T) {
 		if err := g.ResolveChooseCards(p.ID, me.ID, pick); err != nil {
 			t.Fatal(err)
 		}
+		toMainForCost(t, g) // the second main phase
 		err := g.ActivateCatalogAbility(me.ID, kaito, 1, game.ActivateAbilityParams{Strict: true})
 		if bounce {
 			if !handHasName(me, "Bear") || g.Battlefield.Contains(bear) {

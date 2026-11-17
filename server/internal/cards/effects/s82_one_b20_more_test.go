@@ -619,6 +619,12 @@ func answerChooseCardsOrDiscard(t *testing.T, g *game.Game, p *game.Player) {
 			if len(opts) == 0 {
 				opts = []uuid.UUID{p.Hand.Cards[0].InstanceID}
 			}
+			if c.Kind == game.PendingChoiceChooseCards {
+				if err := g.ResolveChooseCards(c.ID, p.ID, opts[:1]); err != nil {
+					t.Fatalf("discard: %v", err)
+				}
+				return
+			}
 			if err := g.ResolvePendingChoice(c.ID, p.ID, opts[:1]); err != nil {
 				t.Fatalf("discard: %v", err)
 			}
