@@ -492,6 +492,8 @@ func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
 	}
 	src := SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
 	src.spell = cf.item.Kind == StackItemSpell
+	// #5860, CR 707.10: a copy keeps what its original fixed as it was cast.
+	src.castValues = cf.item.CastValues
 	return src
 }
 
