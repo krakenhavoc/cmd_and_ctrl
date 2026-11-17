@@ -23,7 +23,7 @@ func init() {
 			Label:   "{4}{U/R}, Exile this card from your graveyard: Draw two cards, then discard a card.",
 			Cost:    Plus(ManaCost("{4}{U/R}"), ExileThis()),
 			Zones:   []game.ZoneKind{game.ZoneGraveyard},
-			Purpose: game.Purpose{Draws: 2, Discards: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 2, Discards: 1},
 			Effect:  func(g *game.Game, item *game.StackItem) error { return b16DrawThenDiscard(g, item, 2) },
 		}},
 	})

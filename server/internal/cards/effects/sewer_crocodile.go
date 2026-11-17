@@ -19,8 +19,9 @@ func init() {
 		Name:         "Sewer Crocodile",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{3}{U}: This creature can't be blocked this turn. This ability costs {3} less to activate if there are five or more mana values among cards in your graveyard.",
-			Cost:  ManaCost("{3}{U}"),
+			Label:   "{3}{U}: This creature can't be blocked this turn. This ability costs {3} less to activate if there are five or more mana values among cards in your graveyard.",
+			Cost:    ManaCost("{3}{U}"),
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
 			CostModifiers: []game.CostModifier{
 				CostsLessEach(sncCostLessThreeWithFive,
 					"This ability costs {3} less to activate if there are five or more mana values among cards in your graveyard."),

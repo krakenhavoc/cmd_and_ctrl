@@ -24,9 +24,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace", "lifelink"},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}, Sacrifice another creature: Surveil 1.",
-			Cost:   Plus(ManaCost("{1}"), SacrificeAnotherN(1, "another creature", Creature())),
-			Effect: Do(Surveil{N: 1}),
+			Label:   "{1}, Sacrifice another creature: Surveil 1.",
+			Cost:    Plus(ManaCost("{1}"), SacrificeAnotherN(1, "another creature", Creature())),
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Effect:  Do(Surveil{N: 1}),
 		}},
 		Triggered: []game.TriggeredAbility{
 			InterveningIf(CondSNCFiveManaValues{},

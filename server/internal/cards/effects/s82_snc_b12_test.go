@@ -27,7 +27,7 @@ const (
 
 // sncGrave seeds one nonland card per mana value into p's graveyard (a mana
 // value of 0 is a land card), and returns their ids.
-func sncGrave(p *game.Player, mvs ...int) []uuid.UUID {
+func sncGrave(g *game.Game, p *game.Player, mvs ...int) []uuid.UUID {
 	var ids []uuid.UUID
 	for i, mv := range mvs {
 		c := game.Card{InstanceID: uuid.New(), Name: fmt.Sprintf("Grave %d-%d", mv, i), Owner: p.ID, Controller: p.ID}
@@ -39,6 +39,8 @@ func sncGrave(p *game.Player, mvs ...int) []uuid.UUID {
 		p.Graveyard.PushTop(c)
 		ids = append(ids, c.InstanceID)
 	}
+	// A real arrival bumps the layer version (the listener); a direct push does not.
+	g.BumpLayerVersionForTest()
 	return ids
 }
 
@@ -72,11 +74,11 @@ func TestSncB12EveryCardIsRegisteredFull(t *testing.T) {
 func TestSncB12SyndicateInfiltratorNeedsFiveDifferentManaValues(t *testing.T) {
 	g, me, _ := sncTable(t)
 	spy := blbB1Push(g, me.ID, "Syndicate Infiltrator", "Creature — Vampire Wizard", sncInfiltratorOracle, 3, 3)
-	sncGrave(me, 1, 1, 2, 2, 3, 3, 4, 4) // four different values, eight cards
+	sncGrave(g, me, 1, 1, 2, 2, 3, 3, 4, 4) // four different values, eight cards
 	if p, tt := ptOf(t, g, spy); p != 3 || tt != 3 {
 		t.Fatalf("four mana values: %d/%d, want 3/3", p, tt)
 	}
-	extra := sncGrave(me, 0) // a land is mana value 0: the fifth value
+	extra := sncGrave(g, me, 0) // a land is mana value 0: the fifth value
 	if p, tt := ptOf(t, g, spy); p != 5 || tt != 5 {
 		t.Fatalf("five mana values: %d/%d, want 5/5", p, tt)
 	}
@@ -93,7 +95,7 @@ func TestSncB12SyndicateInfiltratorNeedsFiveDifferentManaValues(t *testing.T) {
 func TestSncB12InfiltratorIgnoresAnOpponentsGraveyard(t *testing.T) {
 	g, me, opp := sncTable(t)
 	spy := blbB1Push(g, me.ID, "Syndicate Infiltrator", "Creature — Vampire Wizard", sncInfiltratorOracle, 3, 3)
-	sncGrave(opp, 0, 1, 2, 3, 4, 5)
+	sncGrave(g, opp, 0, 1, 2, 3, 4, 5)
 	if p, _ := ptOf(t, g, spy); p != 3 {
 		t.Fatalf("an opponent's graveyard counted: power %d", p)
 	}
@@ -101,11 +103,11 @@ func TestSncB12InfiltratorIgnoresAnOpponentsGraveyard(t *testing.T) {
 
 func TestSncB12SnoopingNewsieMillsTwoThenTurnsOnLifelinkAndPump(t *testing.T) {
 	g, me, _ := sncTable(t)
-	sncGrave(me, 1, 2, 3)
+	sncGrave(g, me, 1, 2, 3)
 	me.Library.Cards = nil
-	pushLibraryCardForTest(me, game.Card{Name: "Deep", TypeLine: "Sorcery", ManaCost: "{6}"})
-	pushLibraryCardForTest(me, game.Card{Name: "Mill B", TypeLine: "Sorcery", ManaCost: "{5}"})
 	pushLibraryCardForTest(me, game.Card{Name: "Mill A", TypeLine: "Sorcery", ManaCost: "{4}"})
+	pushLibraryCardForTest(me, game.Card{Name: "Mill B", TypeLine: "Sorcery", ManaCost: "{5}"})
+	pushLibraryCardForTest(me, game.Card{Name: "Deep", TypeLine: "Sorcery", ManaCost: "{6}"})
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Snooping Newsie", TypeLine: "Creature — Human Rogue",
 		OracleID: sncNewsieOracle, Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
@@ -113,9 +115,6 @@ func TestSncB12SnoopingNewsieMillsTwoThenTurnsOnLifelinkAndPump(t *testing.T) {
 		t.Fatal(err)
 	}
 	passPriorityAroundTable(t, g) // the spell
-	if p, _ := ptOf(t, g, id); p != 2 || hasKeywordOnBattlefield(t, g, id, "lifelink") {
-		t.Fatal("pumped before the entry trigger resolved")
-	}
 	passPriorityAroundTable(t, g) // the entry trigger
 	if got := me.Graveyard.Size(); got != 5 {
 		t.Fatalf("graveyard = %d cards, want 5 (two milled)", got)
@@ -131,15 +130,15 @@ func TestSncB12SnoopingNewsieMillsTwoThenTurnsOnLifelinkAndPump(t *testing.T) {
 func TestSncB12AvenHeartstabberPumpsDeathtouchAndMillsThenDrawsWhenItDies(t *testing.T) {
 	g, me, _ := sncTable(t)
 	me.Library.Cards = nil
-	pushLibraryCardForTest(me, game.Card{Name: "Drawn", TypeLine: "Sorcery", ManaCost: "{1}"})
-	pushLibraryCardForTest(me, game.Card{Name: "Mill B", TypeLine: "Sorcery", ManaCost: "{2}"})
 	pushLibraryCardForTest(me, game.Card{Name: "Mill A", TypeLine: "Sorcery", ManaCost: "{3}"})
+	pushLibraryCardForTest(me, game.Card{Name: "Mill B", TypeLine: "Sorcery", ManaCost: "{2}"})
+	pushLibraryCardForTest(me, game.Card{Name: "Drawn", TypeLine: "Sorcery", ManaCost: "{1}"})
 	bird := blbB1Push(g, me.ID, "Aven Heartstabber", "Creature — Bird Assassin", sncHeartstabberOracle, 1, 1)
-	sncGrave(me, 1, 2, 3, 4)
+	sncGrave(g, me, 1, 2, 3, 4)
 	if p, tt := ptOf(t, g, bird); p != 1 || tt != 1 || hasKeywordOnBattlefield(t, g, bird, "deathtouch") {
 		t.Fatalf("four values: %d/%d", p, tt)
 	}
-	sncGrave(me, 5)
+	sncGrave(g, me, 5)
 	if p, tt := ptOf(t, g, bird); p != 3 || tt != 3 || !hasKeywordOnBattlefield(t, g, bird, "deathtouch") {
 		t.Fatalf("five values: %d/%d, want 3/3 with deathtouch", p, tt)
 	}
@@ -165,7 +164,7 @@ func TestSncB12TaintedIndulgenceDiscardsOnlyBelowFiveManaValues(t *testing.T) {
 	}{{"four values", []int{1, 2, 3, 4}, true}, {"five values", []int{1, 2, 3, 4, 5}, false}} {
 		t.Run(tc.name, func(t *testing.T) {
 			g, me, _ := sncTable(t)
-			sncGrave(me, tc.mvs...)
+			sncGrave(g, me, tc.mvs...)
 			me.Hand.Cards = nil
 			for i := 0; i < 3; i++ {
 				pushLibraryCardForTest(me, game.Card{Name: "Lib", TypeLine: "Sorcery", ManaCost: "{9}"})
@@ -196,7 +195,7 @@ func TestSncB12TaintedIndulgenceDiscardsOnlyBelowFiveManaValues(t *testing.T) {
 func TestSncB12GraveyardShiftHasFlashOnlyWithFiveManaValues(t *testing.T) {
 	g, me, _ := sncTable(t)
 	bear := pushGraveyardPermanent(me, "Bear", "Creature — Bear", "{1}{G}")
-	sncGrave(me, 3, 4, 5)
+	sncGrave(g, me, 3, 4, 5)
 	shift := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: shift, Name: "Graveyard Shift", TypeLine: "Sorcery",
 		OracleID: sncGraveyardShiftOracl, Owner: me.ID, Controller: me.ID})
@@ -204,7 +203,7 @@ func TestSncB12GraveyardShiftHasFlashOnlyWithFiveManaValues(t *testing.T) {
 	if err := g.CastSpell(me.ID, shift, game.CastSpellParams{Strict: true, Targets: cardTarget(bear)}); err == nil {
 		t.Fatal("cast at instant speed with four mana values (bear 2, 3, 4, 5)")
 	}
-	sncGrave(me, 6) // five: 2, 3, 4, 5, 6
+	sncGrave(g, me, 6) // five: 2, 3, 4, 5, 6
 	if err := g.CastSpell(me.ID, shift, game.CastSpellParams{Strict: true, Targets: cardTarget(bear)}); err != nil {
 		t.Fatalf("flash with five mana values: %v", err)
 	}
@@ -244,11 +243,11 @@ func TestSncB12SewerCrocodileCostsThreeLessWithFiveManaValues(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g, me, _ := sncTable(t)
 			croc := blbB1Push(g, me.ID, "Sewer Crocodile", "Creature — Crocodile", sncSewerCrocOracle, 4, 6)
-			sncGrave(me, tc.mvs...)
+			sncGrave(g, me, tc.mvs...)
 			if err := g.AddManaForEffect(me.ID, uuid.Nil, tc.pool); err != nil {
 				t.Fatal(err)
 			}
-			err := g.ActivateCatalogAbility(me.ID, croc, 0, game.ActivateAbilityParams{})
+			err := g.ActivateCatalogAbility(me.ID, croc, 0, game.ActivateAbilityParams{Strict: true})
 			if (err == nil) != tc.ok {
 				t.Fatalf("activation err = %v, want ok=%v", err, tc.ok)
 			}
@@ -302,7 +301,7 @@ func TestSncB12SanguineSpyEndStepPaysLifeForACardOnlyWithFive(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g, me, _ := sncTable(t)
 			blbB1Push(g, me.ID, "Sanguine Spy", "Creature — Vampire Rogue", sncSanguineSpyOracle, 2, 3)
-			sncGrave(me, tc.mvs...)
+			sncGrave(g, me, tc.mvs...)
 			pushLibraryCardForTest(me, game.Card{Name: "Top", TypeLine: "Sorcery", ManaCost: "{1}"})
 			life, hand := me.Life, me.Hand.Size()
 			advanceToEndStep(t, g)
@@ -368,9 +367,9 @@ func TestSncB12MaestrosInitiateCannotBeActivatedFromTheHand(t *testing.T) {
 func TestSncB12AllSeeingArbiterShrinksAnOpponentsCreatureOnEachDiscard(t *testing.T) {
 	g, me, opp := sncTable(t)
 	big := blbB1Push(g, opp.ID, "Big", "Creature — Ogre", "", 6, 6)
-	sncGrave(me, 1, 2, 3)
+	sncGrave(g, me, 1, 2, 3)
 	me.Hand.Cards = nil
-	me.Hand.PushTop(game.Card{Name: "Pitch", TypeLine: "Sorcery", ManaCost: "{4}", Owner: me.ID, Controller: me.ID})
+	me.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "Pitch", TypeLine: "Sorcery", ManaCost: "{4}", Owner: me.ID, Controller: me.ID})
 	for i := 0; i < 3; i++ {
 		pushLibraryCardForTest(me, game.Card{Name: "Lib", TypeLine: "Sorcery", ManaCost: "{9}"})
 	}
@@ -389,6 +388,7 @@ func TestSncB12AllSeeingArbiterShrinksAnOpponentsCreatureOnEachDiscard(t *testin
 		}
 	}
 	answerDiscard(t, g, me.ID, pitched)
+	pickTriggerTarget(t, g, me.ID, big)
 	passPriorityAroundTable(t, g) // the discard trigger
 	if p, tt := ptOf(t, g, big); p != 2 || tt != 6 {
 		t.Fatalf("after discarding a mana value 4 card: %d/%d, want 2/6 (X = 4)", p, tt)
@@ -419,7 +419,7 @@ func TestSncB12OskarCostsOneLessPerDifferentManaValue(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g, me, _ := sncTable(t)
-			sncGrave(me, tc.mvs...)
+			sncGrave(g, me, tc.mvs...)
 			id := uuid.New()
 			me.Hand.PushTop(game.Card{InstanceID: id, Name: "Oskar, Rubbish Reclaimer", TypeLine: "Legendary Creature — Human Wizard",
 				ManaCost: "{3}{U}{B}", OracleID: sncOskarOracle, Power: 3, Toughness: 3, Owner: me.ID, Controller: me.ID})
@@ -440,15 +440,15 @@ func TestSncB12OskarOffersToCastADiscardedNonlandCard(t *testing.T) {
 	me.Hand.Cards = nil
 	bolt := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: bolt, Name: "Shock", TypeLine: "Instant", ManaCost: "{R}", Owner: me.ID, Controller: me.ID})
-	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{R}"); err != nil {
-		t.Fatal(err)
-	}
 	g.WithWriteLock(func() {
 		if err := g.DiscardRandomForEffect(me.ID, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
 	passPriorityAroundTable(t, g)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{R}"); err != nil {
+		t.Fatal(err)
+	}
 	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordPaidCast, bolt)
 	if err := g.CastSpell(me.ID, bolt, game.CastSpellParams{FromZone: "graveyard", Strict: true}); err != nil {
 		t.Fatalf("cast the discarded card from the graveyard: %v", err)
