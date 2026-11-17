@@ -185,6 +185,17 @@ type ObjectSnapshot struct {
 	// stack. Empty for an object with none and for one that was not on the
 	// battlefield when the event was harvested.
 	Counters map[string]int `json:",omitempty"`
+
+	// Attached are the permanents attached to the object when the event
+	// was harvested (CR 603.10a), written down for the two events whose
+	// harvest runs while the attachment still stands: an attack declaration
+	// (the object is still on the battlefield) and a leave-the-battlefield
+	// (the CR 704.5n unattach is a state-based action that has not run
+	// yet). A dies or attacks trigger that moves "all Equipment attached to
+	// that creature" (Rhuk, Hexgold Nabber) reads it after the creature is
+	// gone and the Equipment have fallen off. Empty for every other event
+	// and for an object with nothing attached.
+	Attached []ObjectRef `json:",omitempty"`
 }
 
 // Ref names the object the snapshot describes, for PermanentForEffect.
@@ -342,7 +353,15 @@ func (tc TriggerContext) Amount() int { return tc.Event.Amount }
 //
 // Caller must hold g.mu.
 func (g *Game) triggerContextLocked(ev Event) TriggerContext {
-	return TriggerContext{Event: ev, Object: g.objectSnapshotLocked(ev.CardID)}
+	obj := g.objectSnapshotLocked(ev.CardID)
+	if obj != nil && (ev.Kind == EventLTB || ev.Kind == EventAttack) {
+		for i := range g.Battlefield.Cards {
+			if a := &g.Battlefield.Cards[i]; a.IsAttachedTo(ev.CardID) {
+				obj.Attached = append(obj.Attached, ObjectRef{ID: a.InstanceID, Epoch: a.ObjectEpoch})
+			}
+		}
+	}
+	return TriggerContext{Event: ev, Object: obj}
 }
 
 // objectSnapshotLocked reads last-known information about one object
@@ -469,6 +488,9 @@ func cloneTriggerContext(tc *TriggerContext) *TriggerContext {
 		obj.Colors = copyStrings(tc.Object.Colors)
 		if len(tc.Object.AltCostObjects) > 0 {
 			obj.AltCostObjects = append([]ObjectRef(nil), tc.Object.AltCostObjects...)
+		}
+		if len(tc.Object.Attached) > 0 {
+			obj.Attached = append([]ObjectRef(nil), tc.Object.Attached...)
 		}
 		out.Object = &obj
 	}
