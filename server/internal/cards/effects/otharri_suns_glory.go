@@ -50,10 +50,11 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{R}{W}, Tap an untapped Rebel you control: Return this card from your graveyard to the battlefield tapped.",
-			Cost:   Plus(ManaCost("{2}{R}{W}"), TapAnUntapped("an untapped Rebel you control", HasSubtype("Rebel"), YouControl())),
-			Zones:  []game.ZoneKind{game.ZoneGraveyard},
-			Effect: returnThisFromGraveyardTapped,
+			Label:   "{2}{R}{W}, Tap an untapped Rebel you control: Return this card from your graveyard to the battlefield tapped.",
+			Cost:    Plus(ManaCost("{2}{R}{W}"), TapAnUntapped("an untapped Rebel you control", HasSubtype("Rebel"), YouControl())),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Effect:  returnThisFromGraveyardTapped,
 		}},
 	})
 }
