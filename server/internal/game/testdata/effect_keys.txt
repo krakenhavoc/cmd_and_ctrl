@@ -1793,6 +1793,7 @@ payunless pay-unless/invisible-woman-pump
 payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/itzquinth-dinosaur-bites
 payunless pay-unless/jace-multiverse-architect-cant-attack
+payunless pay-unless/jedit-ojanen-mercenary-cat-warrior
 payunless pay-unless/jolted-awake-return
 payunless pay-unless/kalastria-highborn-drain
 payunless pay-unless/kavaron-harrier-robot
@@ -1837,6 +1838,7 @@ payunless pay-unless/riparian-tiger-pump
 payunless pay-unless/ripples-of-undeath-take-one
 payunless pay-unless/roar-of-resistance-pump
 payunless pay-unless/rodolf-duskbringer-return
+payunless pay-unless/rohgahh-kher-keep-overlord-dragon
 payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
 payunless pay-unless/s82-mom-b21-elenda-and-azor-draw-x
