@@ -862,6 +862,7 @@ choose choose-cards/moment-of-truth-take
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
+choose choose-cards/nael-avizoa-aeronaut-arranged
 choose choose-cards/nahiris-resolve-exile
 choose choose-cards/nantuko-cultivator-discard
 choose choose-cards/narset-of-the-ancient-way-discarded
@@ -1026,6 +1027,7 @@ choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/thornplate-intimidator-punisher-discarded
 choose choose-cards/thousand-moons-smithy-tap-five
+choose choose-cards/threats-undetected-settle
 choose choose-cards/tidal-terror-tap-two
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
@@ -1636,6 +1638,7 @@ option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
 option option-pick/slumbering-walker-remove-a-counter
 option option-pick/sorcerous-spyglass-look
+option option-pick/sphinx-of-clear-skies-splitter
 option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
 option option-pick/step-between-worlds-shuffle
@@ -1648,6 +1651,7 @@ option option-pick/the-black-gate-most-life
 option option-pick/the-cloning-of-shredder-copy
 option option-pick/the-master-gallifreys-end-opponent
 option option-pick/thornplate-intimidator-punisher
+option option-pick/threats-undetected-opponent
 option option-pick/thrull-wizard-pay
 option option-pick/time-travel
 option option-pick/tireless-provisioner-token
@@ -2164,6 +2168,7 @@ searchrule search/aangs-journey-basic-land-and-shrine
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names
+searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/total-mana-value-at-most
 steps steps/ad-nauseam-pass
@@ -2918,6 +2923,7 @@ tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
+tail rulik-mons/goblin-if-none-entered
 tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
@@ -3301,6 +3307,7 @@ tail then/shuffle-then-draw-n
 tail then/skrelv-defector-mite-color-chosen
 tail then/sorcerers-strongbox-draw
 tail then/sorin-lord-of-innistrad-return
+tail then/sphinx-of-clear-skies-take
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed
@@ -3346,6 +3353,7 @@ tail then/winds-of-change-shuffled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
 tail thrasios-triton-hero/reveal-top
+tail threats-undetected/choose
 tail through-the-forest-gate/shuffle-and-gain-8
 tail thunderbolts-conspiracy/hero
 tail thunderous-debut/shuffle-after-put
