@@ -445,6 +445,7 @@ body wildborn-preserver/counters
 body winter-tormented-loner/edict
 body wishing-well/free-cast
 body wolf-in-blank-clothing/shrink
+body xira-the-golden-sting/draw-and-insect
 body yathan-roadwatcher/return
 body yunas-whistle/counters
 body zara/return-to-hand
@@ -1010,6 +1011,7 @@ choose choose-cards/temporal-conqueror-return-land
 choose choose-cards/teo-spirited-glider-discarded
 choose choose-cards/terra-magical-adept-take-pick
 choose choose-cards/tether-technician-strike
+choose choose-cards/tetsuo-imperial-champion-cast
 choose choose-cards/tezzeret-betrayer-of-flesh-discard-the-one
 choose choose-cards/tezzeret-betrayer-of-flesh-discard-two-or-artifact
 choose choose-cards/thassas-oracle-arranged
@@ -1165,6 +1167,7 @@ condition dies/nontoken-creature-you-control-this-turn
 condition dies/reckless-blaze-that-creature-under-your-control
 condition dies/that-creature
 condition dies/that-creature-under-your-control
+condition dies/that-creature-with-an-egg-counter
 condition dies/that-creature-you-control-your-commander
 condition dies/the-listed-object
 condition discard/opponent-caused-yours
