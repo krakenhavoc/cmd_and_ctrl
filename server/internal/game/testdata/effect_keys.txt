@@ -61,6 +61,7 @@ body blitz/sacrifice
 body bloodthirsty-adversary/copy
 body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
+body borborygmos-and-fblthp/damage
 body brass-infiniscope/draw-and-gain-half-x
 body breathkeeper-seraph/may-return-the-object
 body breeches/blast
@@ -230,6 +231,7 @@ body killmonger-scourge-of-wakanda/destroy
 body kishla-trawlers/return-to-hand
 body koya-death-from-above/pay-or-return
 body kravens-last-hunt/damage
+body kroxa-and-kunoros/return
 body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
 body lichs-relic/destroy
@@ -492,6 +494,7 @@ choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
 choose choose-cards/bonny-pall-land-from-hand-or-graveyard
+choose choose-cards/borborygmos-and-fblthp-discard
 choose choose-cards/borg-cube-assimilate
 choose choose-cards/bound-return
 choose choose-cards/braids-arisen-nightmare-sacrifice
@@ -678,6 +681,7 @@ choose choose-cards/kinscaer-sentry-put
 choose choose-cards/kiora-sovereign-of-the-deep-cast
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
+choose choose-cards/kroxa-and-kunoros-exile-five
 choose choose-cards/lady-octopus-cast
 choose choose-cards/lamplight-phoenix-collect-evidence
 choose choose-cards/last-chosen-exiled-card
@@ -1049,6 +1053,7 @@ choose choose-cards/zara-renegade-recruiter-put
 choose choose-cards/zenos-yae-galvus-first-friend
 choose choose-cards/zero-point-ballad-return
 choose choose-cards/zimones-experiment-reveal
+choose choose-cards/zurgo-and-ojutai-return
 choose choose-source/desperate-gambit
 choose choose-source/shield
 choose engine/outside-pick-permanent
@@ -3026,6 +3031,7 @@ tail then/blastoneuron-haste-and-sacrifice
 tail then/bloodline-bidding-type-chosen
 tail then/bonehoard-dracosaur-exiled
 tail then/boommobile-color-chosen
+tail then/borborygmos-and-fblthp-discarded
 tail then/boseiju-who-endures-search
 tail then/brackish-blunder-map
 tail then/braids-arisen-nightmare-ask-opponents
@@ -3124,6 +3130,7 @@ tail then/kindred-dominance-type-chosen
 tail then/kindred-judgment-type-chosen
 tail then/kindred-summons-type-chosen
 tail then/king-solomons-frogs-exiled-one
+tail then/kogla-and-yidaro-shuffle-draw
 tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return
@@ -3205,6 +3212,7 @@ tail then/sylvia-tilly-joy-of-discovery-when-you-do
 tail then/synth-eradicator-ask
 tail then/tamiyo-collector-named
 tail then/teferi-temporal-pilgrim-shuffle-nonland
+tail then/thalia-and-the-gitrog-monster-draw
 tail then/the-black-arrow-destroy-dragon
 tail then/the-cloning-of-shredder-copy
 tail then/the-falcon-when-you-do
