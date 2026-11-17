@@ -942,6 +942,7 @@ choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
+choose choose-cards/saheeli-filigree-master-tap-artifact
 choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
@@ -1312,6 +1313,7 @@ confirm confirm/pay-life-copy-that-ability
 confirm confirm/pay-life-draw
 confirm confirm/peace-in-our-time-draw
 confirm confirm/pemmins-aura-pump
+confirm confirm/phyrexian-dragon-engine-discard-hand
 confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
@@ -2978,6 +2980,8 @@ tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/yuma-proud-protector-sacrifice
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
 tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
+tail saheeli-filigree-master/after-scry
+tail saheeli-filigree-master/thopter-haste
 tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
 tail saheeli-the-suns-brilliance/haste-and-sacrifice-copy

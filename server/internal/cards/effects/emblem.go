@@ -168,6 +168,13 @@ type EmblemSpec struct {
 	// paying their mana costs". Offered to the emblem's owner.
 	GrantedAlternativeCosts []game.GrantedAlternativeCost
 
+	// CostModifiers are the emblem's cost-changing statics, the
+	// `Spec.CostModifiers` slot one zone over: Saheeli, Filigree Master's
+	// "Artifact spells you cast cost {1} less to cast." Priced as any
+	// cost modifier is (CR 601.2f), with the emblem as the source and its
+	// owner as "you".
+	CostModifiers []game.CostModifier
+
 	// Lines are the emblem's abilities line by line, each with the
 	// count it is gained at, for an emblem whose abilities switch on one
 	// by one (the Ring, CR 701.54c). The wire's text for it is derived
@@ -202,6 +209,7 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 		Replacements:            e.Replacements,
 		HandSize:                e.HandSize,
 		GrantedAlternativeCosts: e.GrantedAlternativeCosts,
+		CostModifiers:           e.CostModifiers,
 		Emblem:                  &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
 	}
 }
@@ -222,7 +230,7 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 	if len(e.Static) == 0 && len(e.Triggered) == 0 && len(e.UntapStep) == 0 && len(e.DrawStep) == 0 &&
 		len(e.ActivationTimings) == 0 && len(e.CastRestrictions) == 0 && len(e.LandPlayRestrictions) == 0 &&
 		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 && len(e.CastPermissions) == 0 &&
-		len(e.Replacements) == 0 && len(e.HandSize) == 0 && len(e.GrantedAlternativeCosts) == 0 {
+		len(e.Replacements) == 0 && len(e.HandSize) == 0 && len(e.GrantedAlternativeCosts) == 0 && len(e.CostModifiers) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)
