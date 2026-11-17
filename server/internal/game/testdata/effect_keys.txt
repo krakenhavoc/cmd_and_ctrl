@@ -1367,6 +1367,8 @@ confirm may/carpet-of-flowers-add-mana
 confirm may/cemetery-tampering-mill
 confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
+confirm s82-bro-b07/sarinth-take-land
+confirm s82-bro-b07/sarinth-to-graveyard
 confirm std-b9/traveling-botanist-take-land
 drawinstead dredge-2
 drawinstead dredge-3
@@ -1821,6 +1823,7 @@ payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/subway-train-basic-land
 payunless pay-unless/sunstreak-phoenix-return
 payunless pay-unless/sylvia-tilly-joy-of-discovery-exile
+payunless pay-unless/symmetry-matrix-draw
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/terror-of-towashi-return
