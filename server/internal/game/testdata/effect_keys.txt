@@ -42,6 +42,7 @@ body aang-at-the-crossroads/transform
 body activation-count/sacrifice-this-creature
 body agathas-soul-cauldron/counter
 body all-out-assault/untap-each-creature-you-control
+body ambulatory-edifice/shrink
 body angel-of-suffering/mill-twice
 body annihilator/sacrifice
 body ant-man-colony-commander/counter
@@ -359,6 +360,7 @@ body selfcraft-mechan/counter-and-draw
 body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
+body shrapnel-slinger/destroy
 body shriek-treblemaker/cant-block
 body skyfisher-spider/destroy
 body slumbering-walker/return-from-graveyard
@@ -1143,6 +1145,7 @@ confirm confirm/agency-outfitter-library
 confirm confirm/ajanis-chosen-attach
 confirm confirm/ajanis-last-stand-sacrifice
 confirm confirm/altar-of-the-wretched-sacrifice
+confirm confirm/ambulatory-edifice-pay-life
 confirm confirm/another-chance-mill
 confirm confirm/arc-of-fortune-embark
 confirm confirm/arc-of-fortune-may-wheel
@@ -1241,6 +1244,7 @@ confirm confirm/mog-moogle-warrior-discard
 confirm confirm/msh-a6-nick-fury-transform
 confirm confirm/msh-a8-kingpin-pay-life
 confirm confirm/multiform-wonder-pump
+confirm confirm/myr-custodian-scry
 confirm confirm/myriad-copy
 confirm confirm/mystic-remora-draw
 confirm confirm/narset-jeskai-waymaster-discard-hand
@@ -1898,6 +1902,7 @@ run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
+run prompt-run/cruel-grimnarch-gain
 run prompt-run/cycle-of-renewal-fetch
 run prompt-run/dahar-master-sacrifice
 run prompt-run/danse-macabre-roll
@@ -2010,6 +2015,7 @@ run prompt-run/sephiroth-sacrifice-draw
 run prompt-run/serendib-djinn-sacrificed
 run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
+run prompt-run/shrapnel-slinger-sacrifice
 run prompt-run/sidequest-play-blitzball-attach
 run prompt-run/skyfisher-spider-sacrifice
 run prompt-run/slaughter-the-strong-keep
@@ -2696,6 +2702,7 @@ tail msh-a7/rick-jones-after-mill
 tail msh-a8/tricksters-stratagem-connive
 tail msh-a9/ultron-robot-villain
 tail mutinous-massacre/steal-everything
+tail myr-custodian/ask-opponents
 tail myriad/exile-tokens-at-end-of-combat
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
 tail nahiri-forged-in-fury/free-equipment
@@ -2849,6 +2856,7 @@ tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
+tail sacrificed-one/prompt-run/shrapnel-slinger-sacrifice
 tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/spirit-sisters-call-return
