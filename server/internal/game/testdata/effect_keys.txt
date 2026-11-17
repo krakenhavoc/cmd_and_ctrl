@@ -446,6 +446,7 @@ body winter-tormented-loner/edict
 body wishing-well/free-cast
 body wolf-in-blank-clothing/shrink
 body yathan-roadwatcher/return
+body yotia-declares-war/damage
 body yunas-whistle/counters
 body zara/return-to-hand
 body ziatora/fling
@@ -646,6 +647,7 @@ choose choose-cards/forbidden-alchemy-take
 choose choose-cards/foreboding-steamboat-grave
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
+choose choose-cards/founding-the-third-path-cast
 choose choose-cards/gandalf-party-guest-cast
 choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gerrards-verdict-life
@@ -1022,6 +1024,7 @@ choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
 choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-ur-sphinx-cast
+choose choose-cards/the-world-spell-take
 choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/thornplate-intimidator-punisher-discarded
@@ -1077,6 +1080,7 @@ choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/worldsouls-rage-lands
 choose choose-cards/yorion-sky-nomad-exile
+choose choose-cards/yotia-declares-war-tap
 choose choose-cards/yue-the-moon-spirit-cast
 choose choose-cards/yuffie-materia-hunter-attach
 choose choose-cards/yunas-decision-put
@@ -1941,6 +1945,8 @@ run blight/scuzzback-scrounger-treasure
 run blight/sourbread-auntie-tokens
 run blight/ward-blight
 run blight/warren-torchmaster-when-you-do
+run braids-frightful-return/each-opponent-discards
+run braids-frightful-return/edict
 run dalek-intensive-care/exile
 run engine/explore-each-pick
 run prompt-run/acererak-the-archlich-sacrificed
@@ -2616,6 +2622,7 @@ tail foray-of-orcs/reflexive-damage
 tail forgotten-creation/draw-per-discarded
 tail fortune-loyal-steed/return-exiled-together
 tail forum-filibuster/inkling-created
+tail founding-the-third-path/copy-exiled
 tail fractal-harness/attach
 tail fractal-harness/fractal-created
 tail fractured-identity/after-exile
@@ -2921,6 +2928,7 @@ tail ruinous-intrusion/after-exile
 tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
+tail sacrificed-one/braids-frightful-return/each-opponent-discards
 tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
@@ -3314,6 +3322,7 @@ tail then/sylvia-tilly-joy-of-discovery-when-you-do
 tail then/synth-eradicator-ask
 tail then/tamiyo-collector-named
 tail then/teferi-temporal-pilgrim-shuffle-nonland
+tail then/temporary-lockdown-exiled-one
 tail then/thalia-and-the-gitrog-monster-draw
 tail then/the-black-arrow-destroy-dragon
 tail then/the-cloning-of-shredder-copy
