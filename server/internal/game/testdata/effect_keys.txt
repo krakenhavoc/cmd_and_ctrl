@@ -543,6 +543,7 @@ choose choose-cards/connive-discarded
 choose choose-cards/connive-x-discarded
 choose choose-cards/conspiracy-theorist-draw
 choose choose-cards/conspiracy-theorist-exile
+choose choose-cards/contagious-vorrac-take
 choose choose-cards/coral-atoll-return-an-untapped-island
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/cosmium-confluence-animate-cave
@@ -1160,6 +1161,7 @@ confirm confirm/breathkeeper-seraph-return
 confirm confirm/breeches-sacrifice
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
+confirm confirm/cacophony-scamp-sacrifice
 confirm confirm/cathartic-parting-shuffle
 confirm confirm/chain-sacrifice-a-land
 confirm confirm/champion-of-wits-loot
@@ -1208,6 +1210,7 @@ confirm confirm/gathering-stone-take
 confirm confirm/gathering-stone-to-graveyard
 confirm confirm/gaze-of-pain-damage
 confirm confirm/geier-reach-bandit-transform
+confirm confirm/gitaxian-anatomist-tap
 confirm confirm/gogo-copy
 confirm confirm/graha-tia-pay-and-create
 confirm confirm/hauntwoods-shrieker-face-up
@@ -1768,6 +1771,7 @@ payunless pay-unless/ripples-of-undeath-take-one
 payunless pay-unless/rodolf-duskbringer-return
 payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
+payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
@@ -3145,6 +3149,7 @@ tail then/risky-research-draw-two-lose-two
 tail then/rivers-grasp-black-half
 tail then/rotisserie-elemental-exile
 tail then/rottenmouth-viper-punisher-sacrificed
+tail then/s82-one-b06-proliferate-if-done
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
 tail then/saurons-ransom-take
