@@ -55,6 +55,7 @@ import (
 // or a noncreature permanent — is a rider, and so is a fixed clause
 // that happens whatever X is.
 var xMattersAllowlist = map[string]string{
+	"kellan_the_kid.go Kellan, the Kid":                           "no X cost of its own: its trigger reads the triggering spell's XValue for that spell's mana value (CR 202.3e), not an X Kellan announced",
 	"lost_in_the_maze.go Lost in the Maze":                        "X is the target count of its enters trigger (CountFromX on an XFromCast row), which the scan cannot see; at X=0 the enchantment taps nothing",
 	"benevolent_hydra.go Benevolent Hydra":                        "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",
 	"chandra_chill_of_compliance.go Chandra, Chill of Compliance": "a planeswalker with no X cost of its own: her −X at X=0 still taps the target, and her other abilities never read X",
@@ -278,7 +279,8 @@ func readsXDirectly(n ast.Node) bool {
 }
 
 // callsAny reports whether the subtree calls one of `names` by its
-// bare package-level name.
+// bare package-level name, or hands one to a call as a function value
+// (`Instruction(drawXCards)` reaches X as surely as `drawXCards(ctx)`).
 func callsAny(n ast.Node, names map[string]bool) bool {
 	found := false
 	ast.Inspect(n, func(n ast.Node) bool {
@@ -292,6 +294,12 @@ func callsAny(n ast.Node, names map[string]bool) bool {
 		if ident, ok := call.Fun.(*ast.Ident); ok && names[ident.Name] {
 			found = true
 			return false
+		}
+		for _, arg := range call.Args {
+			if ident, ok := arg.(*ast.Ident); ok && names[ident.Name] {
+				found = true
+				return false
+			}
 		}
 		return true
 	})
