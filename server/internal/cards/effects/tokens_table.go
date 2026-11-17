@@ -491,4 +491,7 @@ var tokenTable = map[string]game.Card{
 
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
 	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},
+
+	// Jared Carthalion (DMU, S82 batch 15): the printed all-colors Kavu.
+	"3/3 white and blue and black and red and green Kavu with trample": {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"W", "U", "B", "R", "G"}, Keywords: []string{"trample"}},
 }
