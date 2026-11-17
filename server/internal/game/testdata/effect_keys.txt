@@ -543,6 +543,7 @@ choose choose-cards/charnel-serenade-return
 choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
+choose choose-cards/civil-servant-tap
 choose choose-cards/cloak-a-card-from-your-hand
 choose choose-cards/cmdr2-b09-florian-exile
 choose choose-cards/cmdr2-b11-quickling-return
