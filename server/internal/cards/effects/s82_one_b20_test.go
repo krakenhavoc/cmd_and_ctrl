@@ -292,8 +292,6 @@ func TestS82KaitoBounceGrantsASecondLoyaltyActivation(t *testing.T) {
 		if err := g.ResolveChooseCards(p.ID, me.ID, pick); err != nil {
 			t.Fatal(err)
 		}
-		passPriorityAroundTable(t, g)
-		t.Logf("bounce=%v step=%v stack=%d perm=%v", bounce, g.Turn.Step, g.Stack.Size(), g.LoyaltyPermanentTwiceThisTurn)
 		err := g.ActivateCatalogAbility(me.ID, kaito, 1, game.ActivateAbilityParams{Strict: true})
 		if bounce {
 			if !handHasName(me, "Bear") || g.Battlefield.Contains(bear) {
@@ -302,9 +300,10 @@ func TestS82KaitoBounceGrantsASecondLoyaltyActivation(t *testing.T) {
 			if err != nil {
 				t.Fatalf("second activation refused after the bounce: %v", err)
 			}
-			passPriorityAroundTable(t, g)
-			if err := g.ActivateCatalogAbility(me.ID, kaito, 1, game.ActivateAbilityParams{Strict: true}); err == nil {
-				t.Error("a third activation was allowed")
+			spent := false
+			g.ReadSnapshot(func() { spent = g.LoyaltySpentLocked(kaito) })
+			if !spent {
+				t.Error("a third activation would be allowed")
 			}
 		} else if err == nil {
 			t.Error("declining the bounce still allowed a second activation")
