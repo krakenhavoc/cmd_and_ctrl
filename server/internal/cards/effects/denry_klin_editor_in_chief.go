@@ -3,6 +3,8 @@ package effects
 import (
 	"sort"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -30,9 +32,23 @@ func init() {
 		Name:         "Denry Klin, Editor in Chief",
 		Completeness: CompletenessFull,
 		AsEnters: func(card *game.Card, ctx *Context) error {
-			return putChosenCounterOn(ctx, card.Controller, card.InstanceID,
-				"Denry Klin — choose a counter to enter with",
-				[]string{game.CounterPlusOne, game.CounterFirstStrike, game.CounterVigilance})
+			kinds := []string{game.CounterPlusOne, game.CounterFirstStrike, game.CounterVigilance}
+			options := make([]game.ChoiceOption, len(kinds))
+			for i, kind := range kinds {
+				options[i] = game.ChoiceOption{Label: counterOptionLabel(kind)}
+			}
+			// Queued straight off the entry (no stack item), like every as-enters
+			// choice; energyChosenCounter reads the controller, then the permanent
+			// and the placer from the carry.
+			ctx.Game.QueueOptionPickForEffect(game.OptionPickPrompt{
+				Chooser:  card.Controller,
+				Source:   card.InstanceID,
+				Question: "Denry Klin — choose a counter to enter with",
+				Options:  options,
+				ThenKey:  energyChosenCounter,
+				Carry:    []uuid.UUID{card.Controller, card.InstanceID, card.Controller},
+			})
+			return nil
 		},
 		Triggered: []game.TriggeredAbility{
 			InterveningIf(CondBoard{Name: "Denry Klin has counters on it", Test: func(ctx *Context) bool {

@@ -97,9 +97,10 @@ func TestSncB07FishTokenIsABlueOneOneThatCantBeBlocked(t *testing.T) {
 	}
 	// Seat 0 is the active player; give the Fish no summoning sickness.
 	g.WithWriteLock(func() {
-		for _, bc := range g.Battlefield.Cards {
-			if bc.InstanceID == fish[0] {
-				bc.EnteredBattlefieldAt = 0
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == fish[0] {
+				g.Battlefield.Cards[i].EnteredBattlefieldAt = 0
+				g.Battlefield.Cards[i].SummonedThisTurn = false
 			}
 		}
 	})
@@ -110,7 +111,7 @@ func TestSncB07FishTokenIsABlueOneOneThatCantBeBlocked(t *testing.T) {
 
 func TestSncB07LackeyExilesItselfFromTheGraveyardForAFish(t *testing.T) {
 	g := newCatalogGame(t)
-	id, me := activateFromGraveyard(t, g, "Expendable Lackey", "Creature — Human Citizen", sncB07Lackey, 1, 1, "{1}{U}", game.ActivateAbilityParams{})
+	id, me := activateFromGraveyard(t, g, "Expendable Lackey", "Creature — Human Citizen", sncB07Lackey, 1, 1, "{U}{U}", game.ActivateAbilityParams{})
 	passPriorityAroundTable(t, g)
 	sncB07Fishes(t, g, me, 1)
 	if got := b12ZoneOf(g, id); got != game.ZoneExile {
@@ -250,9 +251,10 @@ func TestSncB07PerrieShieldsOnEntryAndPumpsByKindsOnAttack(t *testing.T) {
 	}
 	putCounters(t, g, ox, game.CounterPlusOne, 2)
 	g.WithWriteLock(func() {
-		for _, c := range g.Battlefield.Cards {
-			if c.InstanceID == perrie {
-				c.EnteredBattlefieldAt = 0
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == perrie {
+				g.Battlefield.Cards[i].EnteredBattlefieldAt = 0
+				g.Battlefield.Cards[i].SummonedThisTurn = false
 			}
 		}
 	})
@@ -264,7 +266,7 @@ func TestSncB07PerrieShieldsOnEntryAndPumpsByKindsOnAttack(t *testing.T) {
 		t.Error("the Ox did not gain trample")
 	}
 	c := b12Card(t, g, ox)
-	if got := effectivePower(t, g, c.InstanceID); got != 2+2+2 {
+	if got := currentPowerFor(t, g, c.InstanceID); got != 2+2+2 {
 		t.Errorf("the Ox has power %d, want 6", got)
 	}
 }
