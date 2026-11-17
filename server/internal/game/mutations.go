@@ -2740,6 +2740,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #3781, CR 601.2i: "as you cast this spell" values are fixed here,
 	// with every cost paid and nobody yet holding priority.
 	g.stampCastTimeValuesLocked(card, g.StackMeta[cardID])
+	// #5860: and which opponents met an as-cast target condition.
+	g.stampAsCastOpponentsLocked(card, g.StackMeta[cardID])
 	// CR 702.33h (#4307): a paid sticker kicker gives its ticket and its
 	// sticker question now, as the additional cost it is.
 	g.payStickerKickerLocked(playerID, card)

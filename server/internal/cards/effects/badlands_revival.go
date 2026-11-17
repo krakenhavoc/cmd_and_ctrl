@@ -29,18 +29,10 @@ func init() {
 		),
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error {
-				t, ok := ctx.ClauseTarget(0)
-				if !ok || t.Kind != game.TargetCard {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
+				return returnClauseCardFromGraveyard(ctx, 0, game.ZoneBattlefield)
 			}),
 			Instruction(func(ctx *Context) error {
-				t, ok := ctx.ClauseTarget(1)
-				if !ok || t.Kind != game.TargetCard {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
+				return returnClauseCardFromGraveyard(ctx, 1, game.ZoneHand)
 			}),
 		),
 	})

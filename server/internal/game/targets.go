@@ -133,6 +133,12 @@ type TargetSource struct {
 	// abilities from artifact sources your opponents control" (Species
 	// 8472, #4973), where CR 702.16b's protection reads both.
 	spell bool
+
+	// castValues is the walked item's StackItem.CastValues, for a clause
+	// whose answer was fixed as the spell was cast
+	// (TargetSpec.AsCastOpponentSlot, #5860). Nil while the spell is
+	// still being cast, when the clause reads the game live.
+	castValues map[string]int
 }
 
 // IsSpell reports whether the source is a spell (a card being cast, a
@@ -339,6 +345,8 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 		return TargetSource{}
 	}
 	src := g.stackItemSourceBaseLocked(item)
+	// #5860: a clause fixed as the spell was cast reads its stamp.
+	src.castValues = item.CastValues
 	if item.Trigger != nil {
 		// #3860: a triggered item re-checks a clause that is relative to
 		// its event ("that opponent controls") against the event it
@@ -661,6 +669,20 @@ type TargetSpec struct {
 	// the required-ness is Game.ClauseMinForEffect. Build it with
 	// effects.ForNthOpponent.
 	OpponentSlot int
+
+	// AsCastOpponentSlot and AsCastMinPoison are "for each opponent who
+	// has N or more poison counters as you cast this spell, … target …
+	// from that player's graveyard" (Geth's Summons, #5860): the clause
+	// belongs to the n-th seat (1-based) after the chooser's, the
+	// candidate must be owned by that opponent, and that opponent must
+	// have had AsCastMinPoison or more poison counters as the spell was
+	// cast. The poison is judged live while the spell is announced (CR
+	// 601.2c) and fixed on the item as the cast completes (CR 601.2i), so
+	// the CR 608.2b re-check never re-judges it. DATA, judged in
+	// sourceAdmits (as_cast_opponent.go). Zero slot is no gate. Build it
+	// with effects.ForNthOpponentPoisonedAsCast.
+	AsCastOpponentSlot int
+	AsCastMinPoison    int
 
 	// ChosenByOpponent is "target … of an opponent's choice" (#2055,
 	// ADR 0019's 2026-10-16 amendment): as the spell or ability is put
@@ -2130,7 +2152,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
