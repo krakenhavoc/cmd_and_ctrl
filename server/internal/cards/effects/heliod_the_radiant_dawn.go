@@ -28,14 +28,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Heliod, the Radiant Dawn — return target enchantment card that isn't a God from your graveyard to your hand",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}.Apply(ctx)
-				}),
+				s82Mom16ReturnTargetToHand),
 				TargetCardInGraveyard("target enchantment card that isn't a God from your graveyard", YouOwn(), Enchantment(), Not(HasSubtype("God")))),
 		},
 		Activated: []ActivatedAbility{{

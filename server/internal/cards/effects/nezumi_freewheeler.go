@@ -39,14 +39,7 @@ func init() {
 	})
 	reanimate := On(game.EventTransform, ThisTransformedInto(1),
 		"Hideous Fleshwheeler — put target permanent card with mana value 2 or less from a graveyard onto the battlefield under your control",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
-		})
+		s82Mom16PutTargetOntoTheBattlefield)
 	reanimate.Targets = TargetCardInGraveyard("target permanent card with mana value 2 or less from a graveyard", Permanent(), ManaValueLE(2))
 	Register(Spec{
 		OracleID:        oracle + "#1",

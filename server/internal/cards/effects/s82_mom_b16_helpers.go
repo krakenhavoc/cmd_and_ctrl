@@ -38,3 +38,26 @@ func s82Mom16CardsOpponentsDrewThisTurn(q game.CostQuery) int {
 	}
 	return n
 }
+
+// s82Mom16ReturnTargetToHand is "return target <card> from a graveyard to
+// your hand": the first target still legal as the ability resolves
+// (CR 608.2b).
+func s82Mom16ReturnTargetToHand(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}.Apply(ctx)
+}
+
+// s82Mom16PutTargetOntoTheBattlefield is "put target <card> from a
+// graveyard onto the battlefield under your control".
+func s82Mom16PutTargetOntoTheBattlefield(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
+}
