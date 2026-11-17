@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // End of the Hunt — Sorcery {1}{B} (Secrets of Strixhaven, #4456):
 //
 //	"Target opponent exiles a creature or planeswalker they control with
@@ -24,14 +22,7 @@ func init() {
 		Name:         "End of the Hunt",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			t, ok := firstLegalTarget(ctx)
-			if !ok || t.Kind != game.TargetPlayer {
-				return nil
-			}
-			return msc17ExileEdict(ctx, t.ID,
-				"End of the Hunt — exile a creature or planeswalker with the greatest mana value",
-				b10GreatestManaValueCreatureOrPlaneswalkerYouControl(), doomfallExile)
-		},
+		OnResolve: s82MatB01ExileGreatestEdict(
+			"End of the Hunt — exile a creature or planeswalker with the greatest mana value"),
 	})
 }
