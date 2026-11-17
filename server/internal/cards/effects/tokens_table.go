@@ -144,6 +144,8 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Wolf with deathtouch":                                {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"1/1 colorless Servo artifact":                                  {Name: "Servo", TypeLine: "Token Artifact Creature — Servo", Power: 1, Toughness: 1},
 	"1/1 colorless Soldier artifact":                                {Name: "Soldier", TypeLine: "Token Artifact Creature — Soldier", Power: 1, Toughness: 1},
+	"3/3 colorless Zombie artifact":                                 {Name: "Zombie", TypeLine: "Token Artifact Creature — Zombie", Power: 3, Toughness: 3},
+	"Scrap artifact":                                                {Name: "Scrap", TypeLine: "Token Artifact"},
 	"1/1 colorless Spirit":                                          {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1},
 	"1/1 colorless Thopter artifact with flying":                    {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
 	"3/3 green Forest Tentacle":                                     {Name: "Forest Tentacle", TypeLine: "Token Land Creature — Forest Tentacle", Power: 3, Toughness: 3, Colors: []string{"G"}},
