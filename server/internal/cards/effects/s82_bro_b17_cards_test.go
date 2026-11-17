@@ -358,3 +358,274 @@ func TestBro17LiberatorLetsYouCastArtifactAndColorlessSpellsAtInstantSpeed(t *te
 		t.Errorf("a colorless creature spell in the end step: %v", err)
 	}
 }
+
+// --- The Stone Brain ------------------------------------------------
+
+func TestBro17TheStoneBrainExilesNamedCardsAndDrawsForTheHandOnes(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	brain := pushPermanentForTest(g, me.ID, "The Stone Brain", bro17BrainOracle, "Legendary Artifact")
+	var handA, handB, gy, lib, other uuid.UUID
+	mk := func(name string) game.Card {
+		return game.Card{InstanceID: uuid.New(), Name: name, TypeLine: "Creature — Bear", Owner: opp.ID, Controller: opp.ID}
+	}
+	g.WithWriteLock(func() {
+		a, b, c, d, e := mk("Sol Ring"), mk("Sol Ring"), mk("Sol Ring"), mk("Sol Ring"), mk("Mox Pearl")
+		handA, handB, gy, lib, other = a.InstanceID, b.InstanceID, c.InstanceID, d.InstanceID, e.InstanceID
+		opp.Hand.PushTop(a)
+		opp.Hand.PushTop(b)
+		opp.Hand.PushTop(e)
+		opp.Graveyard.PushTop(c)
+		opp.Library.PushTop(d)
+		for i := 0; i < 4; i++ {
+			opp.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Instant", Owner: opp.ID, Controller: opp.ID})
+		}
+	})
+	floatForTest(g, me, "CC")
+	if err := g.ActivateCatalogAbility(me.ID, brain, 0, game.ActivateAbilityParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	var name *game.PendingChoice
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceCardName {
+			name = c
+		}
+	}
+	if name == nil {
+		t.Fatal("no card-name prompt")
+	}
+	if err := g.ResolveCardNameChoice(name.ID, me.ID, "sol ring"); err != nil {
+		t.Fatalf("ResolveCardNameChoice: %v", err)
+	}
+	search := latestChoiceOfKindFor(g, game.PendingChoiceSearchLibrary, me.ID)
+	if search == nil {
+		t.Fatal("no search prompt")
+	}
+	if err := g.ResolveSearchLibrary(search.ID, me.ID, []uuid.UUID{handA, handB, gy}); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{handA, handB, gy} {
+		if !inExile(g, id) {
+			t.Errorf("card %v was not exiled", id)
+		}
+	}
+	if inExile(g, lib) || inExile(g, other) {
+		t.Error("a card that was not taken left its zone")
+	}
+	// Two hand cards were exiled (3 -> 1), then two were drawn.
+	if got := bro17HandSize(g, opp); got != 3 {
+		t.Errorf("the opponent's hand is %d, want 3 (one left, two drawn)", got)
+	}
+	if me.Hand.Size() != 0 {
+		t.Errorf("the activator drew: hand %d", me.Hand.Size())
+	}
+}
+
+func inExile(g *game.Game, id uuid.UUID) bool {
+	found := false
+	g.ReadSnapshot(func() { found = g.Exile.Contains(id) })
+	return found
+}
+
+// --- Urza's Sylex ---------------------------------------------------
+
+func TestBro17UrzasSylexDestroysAllButSixLandsEach(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	sylex := pushPermanentForTest(g, me.ID, "Urza's Sylex", bro17SylexOracle, "Legendary Artifact")
+	myLand := pushPermanentForTest(g, me.ID, "Forest", "", "Basic Land — Forest")
+	myBear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	theirBear := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	var lands []uuid.UUID
+	for i := 0; i < 8; i++ {
+		lands = append(lands, pushPermanentForTest(g, opp.ID, "Island", "", "Basic Land — Island"))
+	}
+	floatForTest(g, me, "WWCC")
+	if err := g.ActivateCatalogAbility(me.ID, sylex, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	pr := latestChooseCardsFor(g, opp.ID)
+	if pr == nil {
+		t.Fatal("the opponent with eight lands was not asked for six")
+	}
+	if latestChooseCardsFor(g, me.ID) != nil {
+		t.Error("the activator has one land and must not be asked")
+	}
+	if err := g.ResolveChooseCards(pr.ID, opp.ID, lands[:6]); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	onBF := func(id uuid.UUID) bool { return g.Battlefield.Contains(id) }
+	for i, id := range lands {
+		if onBF(id) != (i < 6) {
+			t.Errorf("opponent land %d on the battlefield = %v, want %v", i, onBF(id), i < 6)
+		}
+	}
+	if !onBF(myLand) {
+		t.Error("a player with six lands or fewer keeps them all")
+	}
+	if onBF(myBear) || onBF(theirBear) {
+		t.Error("creatures survived the destroy-all")
+	}
+	if onBF(sylex) {
+		t.Error("the Sylex is exiled as a cost")
+	}
+}
+
+func TestBro17UrzasSylexIsSorcerySpeed(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	sylex := pushPermanentForTest(g, me.ID, "Urza's Sylex", bro17SylexOracle, "Legendary Artifact")
+	advanceTo(t, g, game.StepEnd)
+	floatForTest(g, me, "WWCC")
+	if err := g.ActivateCatalogAbility(me.ID, sylex, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Error("activated in the end step")
+	}
+}
+
+func TestBro17UrzasSylexExiledFromTheBattlefieldOffersAPlaneswalkerSearch(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	sylex := pushPermanentForTest(g, me.ID, "Urza's Sylex", bro17SylexOracle, "Legendary Artifact")
+	walker := uuid.New()
+	g.WithWriteLock(func() {
+		me.Library.PushTop(game.Card{InstanceID: walker, Name: "Jace", TypeLine: "Legendary Planeswalker — Jace", Owner: me.ID, Controller: me.ID})
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear", Owner: me.ID, Controller: me.ID})
+	})
+	floatForTest(g, me, "WWCCCC")
+	if err := g.ActivateCatalogAbility(me.ID, sylex, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	pay := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if pay == nil {
+		t.Fatal("the exile trigger did not offer {2}")
+	}
+	if err := g.ResolvePayUnless(pay.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolvePayUnless: %v", err)
+	}
+	search := latestChoiceOfKindFor(g, game.PendingChoiceSearchLibrary, me.ID)
+	if search == nil {
+		t.Fatal("no search prompt after paying")
+	}
+	if err := g.ResolveSearchLibrary(search.ID, me.ID, []uuid.UUID{walker}); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
+	}
+	if !me.Hand.Contains(walker) {
+		t.Error("the planeswalker did not reach the hand")
+	}
+}
+
+// --- Soul Partition -------------------------------------------------
+
+func TestBro17SoulPartitionTaxesOnlyAnOpponentsCast(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	mine := uuid.New()
+	theirs := uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{InstanceID: mine, Name: "My Gizmo", TypeLine: "Artifact", ManaCost: "{1}", Owner: me.ID, Controller: me.ID})
+		g.Battlefield.PushTop(game.Card{InstanceID: theirs, Name: "Their Gizmo", TypeLine: "Artifact", ManaCost: "{1}", Owner: opp.ID, Controller: opp.ID})
+	})
+	for _, target := range []uuid.UUID{mine, theirs} {
+		floatForTest(g, me, "WC")
+		castFromHandForTest(t, g, me, "Soul Partition", "Instant", "{1}{W}", bro17PartitionOracle,
+			game.CastSpellParams{Strict: true, Targets: []game.TargetRef{{Kind: game.TargetCard, ID: target}}})
+		passPriorityAroundTable(t, g)
+		if !inExile(g, target) {
+			t.Fatalf("target %v was not exiled", target)
+		}
+	}
+	// My own card: playable at its printed cost.
+	advanceToMain(t, g)
+	floatForTest(g, me, "C")
+	if err := g.CastSpell(me.ID, mine, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
+		t.Errorf("casting my own exiled card for {1}: %v", err)
+	}
+	// Their card: {2} more, on their own turn.
+	advanceToMainOf(t, g, (g.Turn.ActiveSeat+1)%len(g.Seats))
+	floatForTest(g, opp, "C")
+	if err := g.CastSpell(opp.ID, theirs, game.CastSpellParams{Strict: true, FromZone: "exile"}); err == nil {
+		t.Error("their card cast for {1}: the {2} tax is missing")
+	}
+	floatForTest(g, opp, "CC")
+	if err := g.CastSpell(opp.ID, theirs, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
+		t.Errorf("their card cast for {3}: %v", err)
+	}
+}
+
+// --- Fateful Handoff ------------------------------------------------
+
+func TestBro17FatefulHandoffDrawsForManaValueAndGivesItAway(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	gizmo := uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{InstanceID: gizmo, Name: "Gizmo", TypeLine: "Artifact", ManaCost: "{3}", Owner: me.ID, Controller: me.ID})
+		for i := 0; i < 5; i++ {
+			me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
+		}
+	})
+	before := bro17HandSize(g, me)
+	floatForTest(g, me, "BCCC")
+	castFromHandForTest(t, g, me, "Fateful Handoff", "Sorcery", "{3}{B}", bro17HandoffOracle,
+		game.CastSpellParams{Strict: true, Targets: []game.TargetRef{{Kind: game.TargetCard, ID: gizmo}}})
+	passPriorityAroundTable(t, g)
+	if got := bro17HandSize(g, me); got != before+3 {
+		t.Errorf("hand %d -> %d, want 3 cards drawn", before, got)
+	}
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceOptionPick, me.ID)
+	if pick == nil {
+		t.Fatal("no opponent choice")
+	}
+	idx := -1
+	for i, o := range pick.Options {
+		if o.Player == opp.ID {
+			idx = i
+		}
+	}
+	if idx < 0 {
+		t.Fatalf("the opponent is not among the options %+v", pick.Options)
+	}
+	if err := g.ResolveOptionPick(pick.ID, me.ID, idx); err != nil {
+		t.Fatalf("ResolveOptionPick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	var controller uuid.UUID
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.InstanceID == gizmo {
+				controller = c.Controller
+			}
+		}
+	})
+	if controller != opp.ID {
+		t.Errorf("the Gizmo is controlled by %v, want the chosen opponent", controller)
+	}
+}
+
+func TestBro17FatefulHandoffCannotTargetAnOpponentsPermanent(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	theirs := pushPermanentForTest(g, opp.ID, "Their Bear", "", "Creature — Bear")
+	floatForTest(g, me, "BCCC")
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Fateful Handoff", TypeLine: "Sorcery", ManaCost: "{3}{B}", OracleID: bro17HandoffOracle, Owner: me.ID, Controller: me.ID})
+	})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, Targets: []game.TargetRef{{Kind: game.TargetCard, ID: theirs}}}); err == nil {
+		t.Error("targeted a permanent the caster does not control")
+	}
+}
