@@ -1276,6 +1276,7 @@ confirm confirm/reactor-raid-sacrifice
 confirm confirm/reckless-endeavor-result
 confirm confirm/requiem-monolith-ping
 confirm confirm/rhystic-study-draw
+confirm confirm/rona-tolarian-obliterator-land
 confirm confirm/rotisserie-elemental-sacrifice
 confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
@@ -2017,6 +2018,7 @@ run prompt-run/season-of-weaving-copy
 run prompt-run/seize-the-spotlight-gain-control
 run prompt-run/selfcraft-mechan-sacrificed
 run prompt-run/sephiroth-sacrifice-draw
+run prompt-run/seraph-of-new-phyrexia-pump
 run prompt-run/serendib-djinn-sacrificed
 run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
@@ -2190,6 +2192,7 @@ tail attacking-tokens/calamity-sacrifice-then-next-round
 tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
 tail attacking-tokens/dorotheas-retribution-sacrifice-the-spirit
 tail attacking-tokens/fire-navy-trebuchet-sacrifice-the-boulder
+tail attacking-tokens/furnace-blessed-conqueror-counters-and-sacrifice
 tail attacking-tokens/kari-zev-exile-ragavan
 tail attacking-tokens/kavaron-harrier-sacrifice-the-robot
 tail attacking-tokens/living-laser-exile-the-tokens
@@ -2211,6 +2214,7 @@ tail avatar-b34/then-spirit-token
 tail avatar-destiny/after-mill
 tail avatar-kyoshi-earthbender/untap-that-land
 tail axgard-armory/equipment-search
+tail ayara-furnace-queen/entered
 tail azog/amass-goblins-and-draw
 tail azula-cunning-usurper/graveyard
 tail bad-wolf-bay/return-at-next-end-step
@@ -2807,6 +2811,7 @@ tail risen-reef/rest-into-hand
 tail riverwheel-sweep/choose-one
 tail rohirrim-chargers/attach-then-rest
 tail role-tokens/attach-to-host
+tail rona-tolarian-obliterator/exiled
 tail rooms-b-helpers/after-mill
 tail rootborn-defenses/grant-indestructible
 tail rottenmouth-viper/punish
@@ -2859,6 +2864,7 @@ tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
+tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
 tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/spirit-sisters-call-return
@@ -2903,6 +2909,7 @@ tail sin-spiras-punishment/repeat-for-a-land
 tail sinners-judgment/check
 tail sins-of-the-father/creature-cards-drain
 tail six/after-mill
+tail skyclave-invader/land-declined-into-hand
 tail skyserpent-seeker/rest-on-bottom-then-counter
 tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters

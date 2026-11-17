@@ -60,10 +60,5 @@ func socB29YouGainedLifeThisTurnWhen(_ game.Event, source *game.Card, _ game.Cha
 
 // moseoInfusion returns the chosen creature card to the battlefield.
 func moseoInfusion(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
+	return s82Mom16PutTargetOntoTheBattlefield(g, item)
 }
