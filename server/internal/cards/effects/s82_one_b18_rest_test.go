@@ -10,19 +10,6 @@ import (
 
 // --- Monument to Perfection -----------------------------------------------------
 
-func s82OneB18NineBasics(g *game.Game, owner uuid.UUID) {
-	for _, l := range []struct{ name, tl string }{
-		{"Plains", "Basic Land — Plains"}, {"Island", "Basic Land — Island"},
-		{"Swamp", "Basic Land — Swamp"}, {"Mountain", "Basic Land — Mountain"},
-		{"Forest", "Basic Land — Forest"}, {"Wastes", "Basic Land"},
-		{"Snow-Covered Plains", "Basic Snow Land — Plains"},
-		{"Snow-Covered Island", "Basic Snow Land — Island"},
-		{"Snow-Covered Swamp", "Basic Snow Land — Swamp"},
-	} {
-		b12Permanent(g, owner, l.name, l.tl)
-	}
-}
-
 func TestS82OneB18MonumentTutorsABasicSphereOrLocusLand(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
