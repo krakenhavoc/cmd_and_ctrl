@@ -81,6 +81,7 @@ var tokenTable = map[string]game.Card{
 	"0/0 black Phyrexian Germ":                                      {Name: "Phyrexian Germ", TypeLine: "Token Creature — Phyrexian Germ", Power: 0, Toughness: 0, Colors: []string{"B"}, PrintedPTKnown: true},
 	"0/0 green and blue Fractal":                                    {Name: "Fractal", TypeLine: "Token Creature — Fractal", Power: 0, Toughness: 0, Colors: []string{"G", "U"}, PrintedPTKnown: true},
 	"0/0 green and blue Fractal named Primo, the Indivisible":       {Name: "Primo, the Indivisible", TypeLine: "Token Legendary Creature — Fractal", Power: 0, Toughness: 0, Colors: []string{"G", "U"}, PrintedPTKnown: true},
+	"2/2 colorless Construct artifact":                              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 2, Toughness: 2},
 	"0/0 colorless Construct artifact":                              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 0, Toughness: 0},
 	"0/0 red Gremlin artifact":                                      {Name: "Gremlin", TypeLine: "Token Artifact Creature — Gremlin", Power: 0, Toughness: 0, Colors: []string{"R"}, PrintedPTKnown: true},
 	"0/1 black Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 0, Toughness: 1, Colors: []string{"B"}},
@@ -144,6 +145,8 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Wolf with deathtouch":                                {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"1/1 colorless Servo artifact":                                  {Name: "Servo", TypeLine: "Token Artifact Creature — Servo", Power: 1, Toughness: 1},
 	"1/1 colorless Soldier artifact":                                {Name: "Soldier", TypeLine: "Token Artifact Creature — Soldier", Power: 1, Toughness: 1},
+	"3/3 colorless Zombie artifact":                                 {Name: "Zombie", TypeLine: "Token Artifact Creature — Zombie", Power: 3, Toughness: 3},
+	"Scrap artifact":                                                {Name: "Scrap", TypeLine: "Token Artifact"},
 	"1/1 colorless Spirit":                                          {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1},
 	"1/1 colorless Thopter artifact with flying":                    {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
 	"3/3 green Forest Tentacle":                                     {Name: "Forest Tentacle", TypeLine: "Token Land Creature — Forest Tentacle", Power: 3, Toughness: 3, Colors: []string{"G"}},
@@ -483,4 +486,6 @@ var tokenTable = map[string]game.Card{
 	// S82 ONE batch 16: Wurmquake's X/X Phyrexian Wurm (printed X/X; a 0/0 placeholder, set to
 	// the mana spent when it is created).
 	"0/0 green Phyrexian Wurm with trample and toxic 1": {Name: "Phyrexian Wurm", TypeLine: "Token Creature — Phyrexian Wurm", Colors: []string{"G"}, Keywords: []string{"trample", "toxic 1"}, PrintedPTKnown: true},
+	// #5479: Phyrexia: All Will Be One's Beast (Goliath Hatchery, Viral Spawning, Lukka, Bound to Ruin).
+	"3/3 green Phyrexian Beast with toxic 1": {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"toxic 1"}},
 }

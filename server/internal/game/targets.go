@@ -175,6 +175,19 @@ func (s TargetSource) PowerToughness() (power, toughness int, ok bool) {
 	return 0, 0, false
 }
 
+// loyalty is the number of loyalty counters on the source: the live
+// object's, or a departed source's last-known count (CR 608.2h). ok is
+// false when the walk has no source object.
+func (s TargetSource) loyalty() (int, bool) {
+	switch {
+	case s.Object != nil:
+		return s.Object.Counters[CounterLoyalty], true
+	case s.Departed != nil:
+		return s.Departed.Counters[CounterLoyalty], true
+	}
+	return 0, false
+}
+
 // ObjectRef names the object this walk is relative to, as the
 // {instance, epoch} a Card.ExiledWith link records: the live source's
 // own epoch, or a departed source's last-known record (CR 608.2h,
@@ -1738,6 +1751,12 @@ const (
 	// The source's power is its live value while it stands and its
 	// last-known value once it has left (CR 608.2h), as for SourcePower.
 	SourceManaValueVsPower SourceStat = "mana_value_vs_power"
+	// SourceManaValueVsLoyalty compares the CANDIDATE's mana value with
+	// the number of loyalty counters on the SOURCE: "target creature or
+	// Equipment card with mana value less than Nahiri's loyalty" (Nahiri,
+	// the Unforgiving). The loyalty is the live object's while it stands
+	// and its last-known record's once it has left (CR 608.2h).
+	SourceManaValueVsLoyalty SourceStat = "mana_value_vs_loyalty"
 )
 
 // SourceCmp is how the candidate's stat compares with the source's.
@@ -1766,6 +1785,8 @@ func (sc SourceComparison) holds(c Card, srcPower, srcToughness int) bool {
 	case SourceToughness:
 		cand, src = c.CurrentToughness(), srcToughness
 	case SourceManaValueVsPower:
+		cand = c.ManaValue()
+	case SourceManaValueVsLoyalty:
 		cand = c.ManaValue()
 	}
 	switch sc.Cmp {
@@ -2159,11 +2180,15 @@ func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
 		return true
 	}
 	p, t, ok := src.PowerToughness()
-	if !ok {
-		return false
-	}
+	loyalty, loyaltyOK := src.loyalty()
 	for _, sc := range s.RelativeToSource {
-		if !sc.holds(c, p, t) {
+		if sc.Stat == SourceManaValueVsLoyalty {
+			if !loyaltyOK || !sc.holds(c, loyalty, 0) {
+				return false
+			}
+			continue
+		}
+		if !ok || !sc.holds(c, p, t) {
 			return false
 		}
 	}

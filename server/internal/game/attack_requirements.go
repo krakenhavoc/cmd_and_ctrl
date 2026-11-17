@@ -155,6 +155,16 @@ type AttackRequirement struct {
 	AfterTurn int
 }
 
+// AnyPlayerSentinel is the OtherThan of "attacks a player each combat if
+// able" (Nahiri, the Unforgiving, #5479): an ID that is never a player, so
+// "a player other than it" is every player and no planeswalker or battle.
+// An on-disk identity: never changed.
+var AnyPlayerSentinel = uuid.MustParse("00000000-0000-4000-8000-00000000a771")
+
+// AttackAPlayerIfAbleMod is "attacks a player each combat if able": an
+// attack requirement obeyed only by an attack on a player, any player.
+func AttackAPlayerIfAbleMod() Mod { return AddAttackRequirementMod(AnyPlayerSentinel) }
+
 // obeyedBy reports whether an attack at `target` obeys r. uuid.Nil is
 // "not attacking", which obeys nothing.
 //
@@ -179,6 +189,8 @@ func (r AttackRequirement) obeyedBy(g *Game, target uuid.UUID) bool {
 	if r.OtherThan == uuid.Nil {
 		return true
 	}
+	// AnyPlayer: "attacks a player each combat if able" (Nahiri, the
+	// Unforgiving), obeyed by attacking any player and by nothing else.
 	return target != r.OtherThan && g.classifyAttackTargetLocked(target) == AttackTargetPlayer
 }
 
@@ -729,13 +741,18 @@ func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 	}
 	if r.GoadedBy != uuid.Nil {
 		s := who + " is goaded by " + player(r.GoadedBy, e.GoaderName)
+		if r.OtherThan == AnyPlayerSentinel {
+			return s + " and must attack a player if able."
+		}
 		if r.OtherThan != uuid.Nil {
 			return s + " and must attack a player other than " + player(r.OtherThan, e.OtherThanName) + " if able."
 		}
 		return s + " and must attack this combat if able."
 	}
 	var s string
-	if r.OtherThan != uuid.Nil {
+	if r.OtherThan == AnyPlayerSentinel {
+		s = who + " must attack a player if able"
+	} else if r.OtherThan != uuid.Nil {
 		s = who + " must attack a player other than " + player(r.OtherThan, e.OtherThanName) + " if able"
 	} else {
 		s = who + " must attack this combat if able"

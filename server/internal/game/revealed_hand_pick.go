@@ -299,7 +299,9 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 	}
 	if d.FromGraveyard && p.Graveyard != nil {
 		for _, c := range p.Graveyard.Cards {
-			options = append(options, c.InstanceID)
+			if d.GraveyardFilter == nil || d.GraveyardFilter(c) {
+				options = append(options, c.InstanceID)
+			}
 		}
 	}
 	reason := d.Reason

@@ -660,6 +660,7 @@ choose choose-cards/glittering-wish-take
 choose choose-cards/gluntch-the-bestower-creature
 choose choose-cards/golden-wish-take
 choose choose-cards/goldwardens-gambit-attach
+choose choose-cards/goliath-hatchery-draw
 choose choose-cards/granted-take
 choose choose-cards/gravelgill-scoundrel-tap
 choose choose-cards/great-intelligences-plan-cast
@@ -691,6 +692,7 @@ choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/jungle-basin-return-an-untapped-forest
+choose choose-cards/kaito-dancing-shadow-return
 choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
@@ -1273,6 +1275,7 @@ confirm confirm/invocation-of-the-founders-copy
 confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
+confirm confirm/kaya-intangible-slayer-scry
 confirm confirm/kellan-daring-traveler-to-graveyard
 confirm confirm/killmonger-sacrifice
 confirm confirm/kimahri-ronso-rage-copy
@@ -1620,6 +1623,7 @@ option option-pick/resolution-exit
 option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
+option option-pick/s82-bro-b11-argivian-avenger-keyword
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/saurons-ransom-splitter
@@ -1880,6 +1884,7 @@ payunless pay-unless/voracious-tome-skimmer-draw
 payunless pay-unless/vraska-the-silencer-return-as-treasure
 payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
+payunless pay-unless/weakstones-subjugation-tap
 payunless pay-unless/weapons-vendor-attach
 payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/wolfbat-return
@@ -1889,6 +1894,7 @@ pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/cruelclaws-heist-may-cast
 pick revealed-pick/deep-cavern-bat-return
+pick revealed-pick/dreams-of-steel-and-oil-graveyard
 pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/reckoner-shakedown-two-counters
@@ -1946,6 +1952,7 @@ run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
 run prompt-run/arid-archway-return-land
 run prompt-run/ascent-of-the-worthy-redirect
+run prompt-run/ashnod-flesh-mechanist-powerstone
 run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
 run prompt-run/awaken-the-maelstrom-copy
@@ -2037,6 +2044,7 @@ run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
 run prompt-run/kethek-crucible-goliath-sacrifice
+run prompt-run/kill-zone-acrobat-flying
 run prompt-run/killmonger-sacrificed
 run prompt-run/kishla-trawlers-exile
 run prompt-run/kor-cause-of-vengeance-sacrifice
@@ -2349,6 +2357,7 @@ tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
+tail carrion-locust/lose-life
 tail cease/gain-and-draw
 tail cemetery-tampering/offer-the-exiled-card
 tail chandra-flameshaper/choose-exiled
@@ -2689,6 +2698,7 @@ tail kaito-bane-of-nightmares/draw-per-opponent-who-lost-life
 tail kang-prime/time-counters
 tail kav-landseeker/sacrifice-the-lander-next-turn
 tail kaya-geist-hunter/spirits
+tail kaya-intangible-slayer/ask-next
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kindred-charge/haste-and-exile-copies
 tail kinscaer-sentry/entered
@@ -2908,8 +2918,10 @@ tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
+tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
+tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
@@ -2945,6 +2957,7 @@ tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
 tail sacrificed-one/prompt-run/kethek-crucible-goliath-sacrifice
+tail sacrificed-one/prompt-run/kill-zone-acrobat-flying
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/larval-scoutlander-search
 tail sacrificed-one/prompt-run/lithobraking-sacrifice
@@ -3208,6 +3221,8 @@ tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
 tail then/jinx-delayed-draw
+tail then/kaito-dancing-shadow-bounced
+tail then/kaya-intangible-slayer-copy
 tail then/kaya-spirits-justice-exile-from-a-graveyard
 tail then/keldon-flamesage-bottom-then-cast
 tail then/kindred-charge-type-chosen
@@ -3232,6 +3247,7 @@ tail then/midnight-clock-after-tuck
 tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/nahiri-the-unforgiving-copy
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
 tail then/one-ring-to-rule-them-all-mill

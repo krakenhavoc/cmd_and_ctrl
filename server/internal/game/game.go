@@ -361,6 +361,14 @@ type Game struct {
 	// loyalty_limit.go.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool
 
+	// LoyaltyPermanentTwiceThisTurn is the set of PERMANENTS whose
+	// controller "may activate loyalty abilities of [it] twice this turn
+	// rather than only once" (Kaito, Dancing Shadow, #5479): the same
+	// permission as LoyaltyTwiceThisTurn, but one permanent's rather
+	// than a player's planeswalkers. Keyed by instance ID, flushed at the
+	// turn boundary and forgotten when the object leaves the battlefield.
+	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped

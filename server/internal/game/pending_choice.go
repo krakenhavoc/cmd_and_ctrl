@@ -3417,7 +3417,12 @@ type RevealedHandDiscard struct {
 	// FromGraveyard is "or a card from their graveyard" (Agonizing
 	// Remorse): every card in FromPlayer's graveyard is a candidate as
 	// well as the hand's matches. Filter applies to the hand only.
-	FromGraveyard bool
+	// GraveyardFilter, with FromGraveyard, limits the graveyard's candidates
+	// the way Filter limits the hand's (Dreams of Steel and Oil's "an
+	// artifact or creature card from their graveyard"). Nil offers every
+	// card, as Agonizing Remorse does. Read when the pick is raised.
+	GraveyardFilter func(Card) bool
+	FromGraveyard   bool
 	// Then is the registered continuation told what was chosen: "if
 	// you do / if you don't", a clause that reads the chosen card, or
 	// anything else printed after the pick that must wait for it.

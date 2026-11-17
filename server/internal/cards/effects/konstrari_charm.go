@@ -28,13 +28,7 @@ func init() {
 			// The trample waits for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
 			ModeSteps("Put two +1/+1 counters on target creature. It gains trample until end of turn.",
 				TargetCreature("target creature"),
-				Instruction(func(ctx *Context) error {
-					t, ok := ModeTarget(ctx, ctx.Occurrence())
-					if !ok || t.Kind != game.TargetCard {
-						return nil
-					}
-					return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
-				}),
+				Instruction(putCountersOnTheModesTargetStep(game.CounterPlusOne, 2)),
 				Instruction(func(ctx *Context) error {
 					t, ok := ModeTarget(ctx, ctx.Occurrence())
 					if !ok || t.Kind != game.TargetCard {
