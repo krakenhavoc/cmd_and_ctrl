@@ -380,6 +380,8 @@ body shriek-treblemaker/cant-block
 body skyfisher-spider/destroy
 body slumbering-walker/return-from-graveyard
 body snaremaster-sprite/tap-and-stun
+body snc-b04/obscura-interceptor-return-spell
+body snc-b04/psychic-pickpocket-return-permanent
 body sorin-imperious-bloodlord/strike
 body specter-of-mortality/sweep
 body speed-young-avenger/unblockable
@@ -999,6 +1001,8 @@ choose choose-cards/silvan-reveler-discarded
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/smugglers-surprise-put-creatures
 choose choose-cards/smugglers-surprise-take-milled
+choose choose-cards/snc-b04-obscura-interceptor-discarded
+choose choose-cards/snc-b04-psychic-pickpocket-discarded
 choose choose-cards/soldier-military-program-counters
 choose choose-cards/sorin-the-mirthless-take
 choose choose-cards/sothera-exile-creature
@@ -3093,6 +3097,8 @@ tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters
 tail smugglers-surprise/after-mill
 tail smugglers-surprise/protect
+tail snc-b04/obscura-interceptor-connive
+tail snc-b04/psychic-pickpocket-connive
 tail sold-out/clue
 tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
