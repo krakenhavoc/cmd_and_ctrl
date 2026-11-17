@@ -55,9 +55,9 @@ func dmuEmptyHand(g *game.Game, p *game.Player) {
 	g.WithWriteLock(func() { p.Hand.Cards = nil })
 }
 
-// dmuCast casts a catalog spell for free from the active seat's hand in a
+// dmuB09Cast casts a catalog spell for free from the active seat's hand in a
 // main phase, kicked or not.
-func dmuCast(t *testing.T, g *game.Game, name, typeLine, oracle string, kicked bool, targets []game.TargetRef) uuid.UUID {
+func dmuB09Cast(t *testing.T, g *game.Game, name, typeLine, oracle string, kicked bool, targets []game.TargetRef) uuid.UUID {
 	t.Helper()
 	me := g.Seats[g.Turn.ActiveSeat]
 	advanceToMain(t, g)
@@ -89,7 +89,7 @@ func TestDmuB09ChokingMiasmaUnkickedShrinksEveryCreature(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := b12Creature(g, me.ID, "Mine", "Creature — Bear", 3, 3)
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
-	dmuCast(t, g, "Choking Miasma", "Sorcery", dmuChokingMiasmaOracle, false, nil)
+	dmuB09Cast(t, g, "Choking Miasma", "Sorcery", dmuChokingMiasmaOracle, false, nil)
 	passPriorityAroundTable(t, g)
 	if p, tough := ptOf(t, g, mine); p != 1 || tough != 1 {
 		t.Errorf("my creature is %d/%d, want 1/1", p, tough)
@@ -107,7 +107,7 @@ func TestDmuB09ChokingMiasmaKickedCountersFirstThenShrinks(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := b12Creature(g, me.ID, "Mine", "Creature — Bear", 2, 2)
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
-	dmuCast(t, g, "Choking Miasma", "Sorcery", dmuChokingMiasmaOracle, true, nil)
+	dmuB09Cast(t, g, "Choking Miasma", "Sorcery", dmuChokingMiasmaOracle, true, nil)
 	passPriorityAroundTable(t, g)
 	own := pendingOfKind(g, game.PendingChoiceOwnPermanents)
 	if own == nil {
@@ -133,7 +133,7 @@ func TestDmuB09ChokingMiasmaKickedCountersFirstThenShrinks(t *testing.T) {
 
 func TestDmuB09ChokingMiasmaKickedWithNoCreatureStillShrinksNothing(t *testing.T) {
 	g := newCatalogGame(t)
-	dmuCast(t, g, "Choking Miasma", "Sorcery", dmuChokingMiasmaOracle, true, nil)
+	dmuB09Cast(t, g, "Choking Miasma", "Sorcery", dmuChokingMiasmaOracle, true, nil)
 	passPriorityAroundTable(t, g)
 	if pendingOfKind(g, game.PendingChoiceOwnPermanents) != nil {
 		t.Error("asked for a creature with none on the battlefield")
@@ -163,7 +163,7 @@ func TestDmuB09FiresOfVictoryDealsDamageEqualToYourHand(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		handCardForTest(me, "Filler", "Sorcery", "")
 	}
-	dmuCast(t, g, "Fires of Victory", "Instant", dmuFiresOfVictoryOracle, false, cardTarget(theirs))
+	dmuB09Cast(t, g, "Fires of Victory", "Instant", dmuFiresOfVictoryOracle, false, cardTarget(theirs))
 	passPriorityAroundTable(t, g)
 	if got := damageOn(t, g, theirs); got != 3 {
 		t.Errorf("damage = %d, want 3 (the hand, not counting the spell)", got)
@@ -177,7 +177,7 @@ func TestDmuB09FiresOfVictoryKickedDrawsFirstSoTheCardCounts(t *testing.T) {
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Beast", 9, 9)
 	handCardForTest(me, "Filler", "Sorcery", "")
 	seedLibrary(me, "Drawn")
-	dmuCast(t, g, "Fires of Victory", "Instant", dmuFiresOfVictoryOracle, true, cardTarget(theirs))
+	dmuB09Cast(t, g, "Fires of Victory", "Instant", dmuFiresOfVictoryOracle, true, cardTarget(theirs))
 	passPriorityAroundTable(t, g)
 	if got := damageOn(t, g, theirs); got != 2 {
 		t.Errorf("damage = %d, want 2 (filler plus the drawn card)", got)
@@ -205,7 +205,7 @@ func TestDmuB09JointExplorationScriesThenDraws(t *testing.T) {
 	me := g.Seats[0]
 	dmuEmptyHand(g, me)
 	seedLibrary(me, "One", "Two", "Three")
-	dmuCast(t, g, "Joint Exploration", "Instant", dmuJointExplorationOracle, false, nil)
+	dmuB09Cast(t, g, "Joint Exploration", "Instant", dmuJointExplorationOracle, false, nil)
 	passPriorityAroundTable(t, g)
 	answerScryKeepAll(t, g, me.ID)
 	g.SettleResolution()
@@ -224,7 +224,7 @@ func TestDmuB09JointExplorationKickedMayPutALandFromHand(t *testing.T) {
 	seedLibrary(me, "One", "Two", "Three")
 	land := handCardForTest(me, "Forest", "Basic Land — Forest", "")
 	rock := handCardForTest(me, "Sol Ring", "Artifact", "")
-	dmuCast(t, g, "Joint Exploration", "Instant", dmuJointExplorationOracle, true, nil)
+	dmuB09Cast(t, g, "Joint Exploration", "Instant", dmuJointExplorationOracle, true, nil)
 	passPriorityAroundTable(t, g)
 	answerScryKeepAll(t, g, me.ID)
 	g.SettleResolution()
@@ -254,7 +254,7 @@ func TestDmuB09ProtectTheNegotiatorsTaxesOneForEachCreature(t *testing.T) {
 	b12Creature(g, me.ID, "A", "Creature — Bear", 1, 1)
 	b12Creature(g, me.ID, "B", "Creature — Bear", 1, 1)
 	victim := castCatalogSpell(t, g, "Divination", "Sorcery", "", nil)
-	dmuCast(t, g, "Protect the Negotiators", "Instant", dmuProtectNegotiators, false, cardTarget(victim))
+	dmuB09Cast(t, g, "Protect the Negotiators", "Instant", dmuProtectNegotiators, false, cardTarget(victim))
 	passPriorityAroundTable(t, g)
 	c := pendingOfKind(g, game.PendingChoicePayUnless)
 	if c == nil {
@@ -270,7 +270,7 @@ func TestDmuB09ProtectTheNegotiatorsKickedMakesASoldierThatCounts(t *testing.T) 
 	me := g.Seats[0]
 	b12Creature(g, me.ID, "A", "Creature — Bear", 1, 1)
 	victim := castCatalogSpell(t, g, "Divination", "Sorcery", "", nil)
-	dmuCast(t, g, "Protect the Negotiators", "Instant", dmuProtectNegotiators, true, cardTarget(victim))
+	dmuB09Cast(t, g, "Protect the Negotiators", "Instant", dmuProtectNegotiators, true, cardTarget(victim))
 	passPriorityAroundTable(t, g)
 	if n, _ := countTokensNamed(g, me.ID, "Soldier"); n != 1 {
 		t.Errorf("Soldier tokens = %d, want 1", n)
@@ -285,7 +285,7 @@ func TestDmuB09ProtectTheNegotiatorsMakesNoTokenUnkicked(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	victim := castCatalogSpell(t, g, "Divination", "Sorcery", "", nil)
-	dmuCast(t, g, "Protect the Negotiators", "Instant", dmuProtectNegotiators, false, cardTarget(victim))
+	dmuB09Cast(t, g, "Protect the Negotiators", "Instant", dmuProtectNegotiators, false, cardTarget(victim))
 	passPriorityAroundTable(t, g)
 	if n, _ := countTokensNamed(g, me.ID, "Soldier"); n != 0 {
 		t.Errorf("Soldier tokens = %d, want 0", n)
@@ -312,7 +312,7 @@ func TestDmuB09StallForTimeTapsUpToTwoAndDraws(t *testing.T) {
 	a := b12Creature(g, opp.ID, "A", "Creature — Bear", 2, 2)
 	b := b12Creature(g, opp.ID, "B", "Creature — Bear", 2, 2)
 	seedLibrary(me, "Drawn")
-	dmuCast(t, g, "Stall for Time", "Instant", dmuStallForTimeOracle, false, cardRefs(a, b))
+	dmuB09Cast(t, g, "Stall for Time", "Instant", dmuStallForTimeOracle, false, cardRefs(a, b))
 	passPriorityAroundTable(t, g)
 	for _, id := range []uuid.UUID{a, b} {
 		tapped, stun := championsOfTheShoalStunned(t, g, id)
@@ -333,7 +333,7 @@ func TestDmuB09StallForTimeKickedStunsEachOfThem(t *testing.T) {
 	b := b12Creature(g, me.ID, "B", "Creature — Bear", 2, 2)
 	c := b12Creature(g, opp.ID, "Bystander", "Creature — Bear", 2, 2)
 	seedLibrary(me, "Drawn")
-	dmuCast(t, g, "Stall for Time", "Instant", dmuStallForTimeOracle, true, cardRefs(a, b))
+	dmuB09Cast(t, g, "Stall for Time", "Instant", dmuStallForTimeOracle, true, cardRefs(a, b))
 	passPriorityAroundTable(t, g)
 	for _, id := range []uuid.UUID{a, b} {
 		tapped, stun := championsOfTheShoalStunned(t, g, id)
@@ -354,7 +354,7 @@ func TestDmuB09StallForTimeWithNoTargetStillDraws(t *testing.T) {
 	me := g.Seats[0]
 	dmuEmptyHand(g, me)
 	seedLibrary(me, "Drawn")
-	dmuCast(t, g, "Stall for Time", "Instant", dmuStallForTimeOracle, true, nil)
+	dmuB09Cast(t, g, "Stall for Time", "Instant", dmuStallForTimeOracle, true, nil)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != 1 {
 		t.Errorf("hand = %d, want 1", me.Hand.Size())
@@ -384,7 +384,7 @@ func TestDmuB09TimelyInterferenceShrinksPowerAndDraws(t *testing.T) {
 	dmuEmptyHand(g, me)
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 3, 3)
 	seedLibrary(me, "Drawn")
-	dmuCast(t, g, "Timely Interference", "Instant", dmuTimelyInterference, false, cardTarget(theirs))
+	dmuB09Cast(t, g, "Timely Interference", "Instant", dmuTimelyInterference, false, cardTarget(theirs))
 	passPriorityAroundTable(t, g)
 	if p, tough := ptOf(t, g, theirs); p != 2 || tough != 3 {
 		t.Errorf("creature is %d/%d, want 2/3", p, tough)
@@ -401,7 +401,7 @@ func TestDmuB09TimelyInterferenceKickedForcesABlock(t *testing.T) {
 	g := newCatalogGame(t)
 	opp := g.Seats[1]
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 3, 3)
-	dmuCast(t, g, "Timely Interference", "Instant", dmuTimelyInterference, true, cardTarget(theirs))
+	dmuB09Cast(t, g, "Timely Interference", "Instant", dmuTimelyInterference, true, cardTarget(theirs))
 	passPriorityAroundTable(t, g)
 	if p, _ := ptOf(t, g, theirs); p != 2 {
 		t.Errorf("power = %d, want 2", p)
@@ -418,7 +418,7 @@ func TestDmuB09TributeToUrborgUnkickedIsMinusTwo(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	pushGraveyardCardTyped(me, "Spell", "Instant")
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 5, 5)
-	dmuCast(t, g, "Tribute to Urborg", "Instant", dmuTributeToUrborgOracle, false, cardTarget(theirs))
+	dmuB09Cast(t, g, "Tribute to Urborg", "Instant", dmuTributeToUrborgOracle, false, cardTarget(theirs))
 	passPriorityAroundTable(t, g)
 	if p, tough := ptOf(t, g, theirs); p != 3 || tough != 3 {
 		t.Errorf("creature is %d/%d, want 3/3", p, tough)
@@ -433,7 +433,7 @@ func TestDmuB09TributeToUrborgKickedCountsInstantsAndSorceries(t *testing.T) {
 	pushGraveyardCardTyped(me, "Bear", "Creature — Bear")
 	pushGraveyardCardTyped(opp, "Their Spell", "Instant")
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 9, 9)
-	dmuCast(t, g, "Tribute to Urborg", "Instant", dmuTributeToUrborgOracle, true, cardTarget(theirs))
+	dmuB09Cast(t, g, "Tribute to Urborg", "Instant", dmuTributeToUrborgOracle, true, cardTarget(theirs))
 	passPriorityAroundTable(t, g)
 	if p, tough := ptOf(t, g, theirs); p != 5 || tough != 5 {
 		t.Errorf("creature is %d/%d, want 5/5 (-2/-2, then -1/-1 for each of my two spells)", p, tough)
@@ -445,7 +445,7 @@ func TestDmuB09TributeToUrborgKickedKillsWhenTheGraveyardIsDeepEnough(t *testing
 	me, opp := g.Seats[0], g.Seats[1]
 	pushGraveyardCardTyped(me, "Spell", "Instant")
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 3, 3)
-	dmuCast(t, g, "Tribute to Urborg", "Instant", dmuTributeToUrborgOracle, true, cardTarget(theirs))
+	dmuB09Cast(t, g, "Tribute to Urborg", "Instant", dmuTributeToUrborgOracle, true, cardTarget(theirs))
 	passPriorityAroundTable(t, g)
 	if findBattlefieldCardByID(g, theirs) != nil {
 		t.Error("a 3/3 survived -3/-3")
@@ -460,7 +460,7 @@ func TestDmuB09UrborgRepossessionReturnsTheCreatureAndGainsLife(t *testing.T) {
 	bear := pushGraveyardCardTyped(me, "Bear", "Creature — Bear")
 	land := pushGraveyardCardTyped(me, "Forest", "Basic Land — Forest")
 	life := lifeOf(g, me.ID)
-	dmuCast(t, g, "Urborg Repossession", "Sorcery", dmuUrborgRepossession, false, cardTarget(bear))
+	dmuB09Cast(t, g, "Urborg Repossession", "Sorcery", dmuUrborgRepossession, false, cardTarget(bear))
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(bear) || me.Hand.Contains(land) {
 		t.Errorf("hand has bear %v land %v, want the bear only", me.Hand.Contains(bear), me.Hand.Contains(land))
@@ -477,7 +477,7 @@ func TestDmuB09UrborgRepossessionKickedReturnsAnotherPermanentCard(t *testing.T)
 	land := pushGraveyardCardTyped(me, "Forest", "Basic Land — Forest")
 	spell := pushGraveyardCardTyped(me, "Bolt", "Instant")
 	life := lifeOf(g, me.ID)
-	dmuCast(t, g, "Urborg Repossession", "Sorcery", dmuUrborgRepossession, true, cardRefs(bear, land))
+	dmuB09Cast(t, g, "Urborg Repossession", "Sorcery", dmuUrborgRepossession, true, cardRefs(bear, land))
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(bear) || !me.Hand.Contains(land) || me.Hand.Contains(spell) {
 		t.Errorf("hand has bear %v land %v spell %v", me.Hand.Contains(bear), me.Hand.Contains(land), me.Hand.Contains(spell))
