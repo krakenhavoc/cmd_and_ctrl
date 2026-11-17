@@ -155,6 +155,11 @@ var exitPayoutAllowlist = map[string]string{
 		"so an indestructible target still makes the Saprolings, and `if mv <= 0` only skips a token " +
 		"count of nothing. The value is read before the destroy because that is the last moment the " +
 		"permanent is guaranteed findable (CR 608.2h).",
+	"extinguish_the_light.go:38": "Extinguish the Light's `small` is Death Mutation's read (#5487): \"Destroy " +
+		"target creature or planeswalker. If its mana value was 3 or less, you gain 3 life\" gates the " +
+		"life on the target's mana value, not on the destroy happening, so an indestructible target " +
+		"still pays the life. The value is read before the destroy because that is the last moment " +
+		"the permanent is guaranteed findable (CR 608.2h).",
 }
 
 // exitVerb names one pausable exit and the continuation form a card
