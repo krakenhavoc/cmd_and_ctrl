@@ -138,6 +138,10 @@ var exitPayoutAllowlist = map[string]string{
 		"indestructible or regenerated target still makes the Lander. The value is read before " +
 		"the destroy because that is the last moment the permanent is guaranteed findable " +
 		"(CR 608.2h).",
+	"raze_to_the_ground.go:36": "Raze to the Ground's `small` is Tainted Treats' gate (#4461): \"If its " +
+		"mana value was 1 or less, draw a card\" has no \"if you do\", so an indestructible or " +
+		"regenerated target still draws. The value is read before the destroy because that is the " +
+		"last moment the permanent is guaranteed findable (CR 608.2h).",
 	"fallers_faithful.go:52": "Faller's Faithful's `undamaged` is Tainted Treats' gate (#4461): \"If " +
 		"that creature wasn't dealt damage this turn, its controller draws two cards\" has no \"if you " +
 		"do\", so an indestructible or regenerated target still draws its controller two. The damage " +
