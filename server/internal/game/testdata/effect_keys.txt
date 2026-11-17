@@ -48,6 +48,7 @@ body annihilator/sacrifice
 body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-denial/draws
+body argentum-masticore/destroy
 body ascend/exile-listed-unless-citys-blessing
 body ashling-the-limitless/pay-wubrg-or-sacrifice
 body atraxas-skitterfang/grant
@@ -257,6 +258,7 @@ body meanders-guide/return
 body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
+body melira/return-listed-to-the-battlefield
 body merry-bards/young-hero-role
 body miasma-demon/shrink
 body mindleech-ghoul/exile
@@ -319,6 +321,7 @@ body prevention/put-toughness-counters
 body prevention/red-damage-source-controller
 body prevention/remove-a-counter-from-this
 body prevention/remove-that-many-counters-from-this
+body prevention/ria-ivor-create-mites
 body prevention/shield-gain-life-equal
 body prevention/that-many-counters-on-it
 body prevention/that-many-counters-on-this
@@ -477,6 +480,7 @@ choose choose-cards/another-round-picked
 choose choose-cards/anzrags-rampage-creature
 choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
+choose choose-cards/argentum-masticore-discard
 choose choose-cards/arm-mounted-anchor-discard-two-unless-pirate
 choose choose-cards/armored-kincaller-reveal
 choose choose-cards/armored-skyhunter-attach
@@ -510,12 +514,18 @@ choose choose-cards/brazen-bluff-cast
 choose choose-cards/breach-the-multiverse-graveyard
 choose choose-cards/break-out-reveal
 choose choose-cards/breeches-the-blastmaker-sacrifice
+choose choose-cards/bro-b06-airlift-chaplain-take-or-counter
+choose choose-cards/bro-b06-blanchwood-prowler-take-or-counter
+choose choose-cards/bro-b06-fallaji-archaeologist-take-or-counter
+choose choose-cards/bro-b06-ravenous-gigamole-take-or-counter
+choose choose-cards/bro-b06-tomakul-scrapsmith-take-or-counter
 choose choose-cards/bull-elephant-return-two-forests
 choose choose-cards/burning-wish-take
 choose choose-cards/buster-sword-cast
 choose choose-cards/calamity-galloping-inferno-copy
 choose choose-cards/call-the-spirit-dragons-pick
 choose choose-cards/caparocti-sunborn-tap-two
+choose choose-cards/capricious-hellraiser-copy
 choose choose-cards/captain-james-t-kirk-draw
 choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cecily-haunted-mage-cast
@@ -801,6 +811,7 @@ choose choose-cards/mill-then-take-first-contact-pick
 choose choose-cards/mill-then-take-midnight-tilling-pick
 choose choose-cards/mill-then-take-something-worth-saving-pick
 choose choose-cards/mill-then-take-temporal-anomaly-pick
+choose choose-cards/mill-then-take-wasteful-harvest-pick
 choose choose-cards/mill-three-return-land-tapped
 choose choose-cards/mimeoplasm-exile-creature-cards
 choose choose-cards/minas-tirith-garrison-tap-humans
@@ -1380,6 +1391,8 @@ confirm may/carpet-of-flowers-add-mana
 confirm may/cemetery-tampering-mill
 confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
+confirm s82-bro-b07/sarinth-take-land
+confirm s82-bro-b07/sarinth-to-graveyard
 confirm std-b9/traveling-botanist-take-land
 drawinstead dredge-2
 drawinstead dredge-3
@@ -1761,6 +1774,7 @@ payunless pay-unless/guide-of-souls-angel
 payunless pay-unless/halo-forager-x-cast
 payunless pay-unless/hashaton-scarabs-fist-zombie-copy
 payunless pay-unless/hawkeye-trick-arrows
+payunless pay-unless/heavyweight-demolisher-tap
 payunless pay-unless/hellkite-charger-extra-combat
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike
@@ -1839,6 +1853,7 @@ payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/subway-train-basic-land
 payunless pay-unless/sunstreak-phoenix-return
 payunless pay-unless/sylvia-tilly-joy-of-discovery-exile
+payunless pay-unless/symmetry-matrix-draw
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/terror-of-towashi-return
@@ -2021,6 +2036,7 @@ run prompt-run/indoctrination-attendant-return
 run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
+run prompt-run/kethek-crucible-goliath-sacrifice
 run prompt-run/killmonger-sacrificed
 run prompt-run/kishla-trawlers-exile
 run prompt-run/kor-cause-of-vengeance-sacrifice
@@ -2314,6 +2330,12 @@ tail breaching-dragonstorm/after-exile
 tail brenard-ginger-sculptor/copy
 tail bring-to-light/cast
 tail bristlebud-farmer/after-mill
+tail bro-b05/zephyr-sentinel-counter
+tail bro-b06/airlift-chaplain/after-mill
+tail bro-b06/blanchwood-prowler/after-mill
+tail bro-b06/fallaji-archaeologist/after-mill
+tail bro-b06/ravenous-gigamole/after-mill
+tail bro-b06/tomakul-scrapsmith/after-mill
 tail brudiclad/choose-a-token
 tail bruse-tarl/ox-if-land
 tail budding-insurgent/draw-if-legendary-enchantment
@@ -2322,6 +2344,7 @@ tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
 tail cantankerous-keepers/after-mill
+tail capricious-hellraiser/choose-and-copy
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
@@ -2332,6 +2355,7 @@ tail chandra-flameshaper/choose-exiled
 tail chandra-hopes-beacon/grant-cast
 tail charming-prince/after-exile
 tail charnel-serenade/then
+tail chiss-goria-forge-tyrant/grant-cast
 tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy
 tail city-of-the-daleks/bind-tagged-tokens
@@ -2747,6 +2771,7 @@ tail mill-then-take/first-contact-first-spell
 tail mill-then-take/midnight-tilling
 tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
+tail mill-then-take/wasteful-harvest
 tail mill-then/lluwen-imperfect-naturalist
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
@@ -2861,6 +2886,7 @@ tail recipient/reckless-blaze-watch-death
 tail recipient/s82-one-b14-loses-indestructible
 tail recipient/sonic-shrieker-player-discards
 tail reckless-handling/discard-at-random
+tail red-suns-twilight/haste-and-exile-copies
 tail red-suns-zenith/shuffle-into-library
 tail release-to-memory/spirit-per-creature-card
 tail renegade-bull/copy-exiled
@@ -2918,6 +2944,7 @@ tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
+tail sacrificed-one/prompt-run/kethek-crucible-goliath-sacrifice
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/larval-scoutlander-search
 tail sacrificed-one/prompt-run/lithobraking-sacrifice

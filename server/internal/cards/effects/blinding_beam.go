@@ -28,17 +28,7 @@ func init() {
 		Modes: Entwining(ChooseOne(
 			ModeDoing("Tap two target creatures.",
 				TargetCreature("two target creatures").WithCount(2, 2),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					for _, t := range ctx.ModeTargets(occ) {
-						if t.Kind != game.TargetCard || !ctx.IsTargetLegal(t) {
-							continue
-						}
-						if err := (TapTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+				tapTheModesTargets),
 			ModeDoing("Creatures don't untap during target player's next untap step.",
 				TargetPlayer("target player"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
