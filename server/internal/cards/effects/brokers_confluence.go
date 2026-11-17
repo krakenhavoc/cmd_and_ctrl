@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Brokers Confluence — Instant {2}{G}{W}{U} (Streets of New Capenna
 // Commander):
@@ -33,13 +29,7 @@ func init() {
 				}),
 			ModeDoing("Target creature phases out.",
 				TargetCreature("target creature"),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return PhaseOut{Targets: []uuid.UUID{t.ID}}.Apply(ctx)
-				}),
+				visionCharmPhaseOut),
 			ModeDoing("Counter target activated or triggered ability.",
 				AbilityOnStack("target activated or triggered ability"),
 				CounterTheModesTarget),

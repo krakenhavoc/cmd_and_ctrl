@@ -24,7 +24,7 @@ func init() {
 		Name:         "Brokers Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Target creature you control gets +1/+0 until end of turn. It deals damage equal to its power to target creature or planeswalker an opponent controls.",
+			ModeWithPurpose(ModeDoing("Target creature you control gets +1/+0 until end of turn. It deals damage equal to its power to target creature or planeswalker an opponent controls.",
 				Clauses(
 					TargetCreature("target creature you control", YouControl()),
 					Harmful(TargetPermanent("target creature or planeswalker an opponent controls", And(Or(Creature(), Planeswalker()), OpponentControls()))),
@@ -42,7 +42,7 @@ func init() {
 						return nil
 					}
 					return DealDamage{Source: mine.ID, Target: theirs.ID, Amount: b31CurrentPowerOf(ctx.Game, mine.ID)}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 1, 0))),
 			ModeDoing("Destroy target enchantment.",
 				TargetPermanent("target enchantment", Enchantment()),
 				DestroyTheModesTarget),

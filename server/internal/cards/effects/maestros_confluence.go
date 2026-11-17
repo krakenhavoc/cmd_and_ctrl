@@ -33,9 +33,10 @@ func init() {
 				rfCreatureBModeTargetDoes(func(ctx *Context, id uuid.UUID) error {
 					return ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}.Apply(ctx)
 				})),
-			ModeDoing("Target creature gets -3/-3 until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gets -3/-3 until end of turn.",
 				Harmful(TargetCreature("target creature")),
 				BoostTheModesTarget(-3, -3, "Maestros Confluence — -3/-3")),
+				ForTargets(HarmUntilEOT(0, -3, -3))),
 			ModeDoing("Goad each creature target player controls.",
 				TargetPlayer("target player"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
