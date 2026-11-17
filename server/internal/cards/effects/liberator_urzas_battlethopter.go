@@ -25,12 +25,7 @@ import (
 // again as it resolves. Liberator must still be the same permanent.
 func init() {
 	const label = "Liberator, Urza's Battlethopter — put a +1/+1 counter on Liberator"
-	t := WheneverYouCast(nil, label, func(g *game.Game, item *game.StackItem) error {
-		if !sourceIsStillThisPermanent(g, item) || !liberatorBeaten(g, item.SourceCardID, item.Params.Amount) {
-			return nil
-		}
-		return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-	})
+	t := WheneverYouCast(nil, label, Do(counterOnThisIfSpentExceedsPower{}))
 	inner := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 		if inner != nil && !inner(ev, source, ch, g) {

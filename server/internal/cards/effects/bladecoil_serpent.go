@@ -29,9 +29,7 @@ func init() {
 		Completeness:   CompletenessFull,
 		ReadsManaSpent: game.ReadsOwnPayment,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEntersForEachPairSpent("U", drawLabel, func(g *game.Game, item *game.StackItem) error {
-				return DrawCards{N: item.Params.Amount}.Apply(NewContext(g, item))
-			}),
+			WhenThisEntersForEachPairSpent("U", drawLabel, Do(drawPerPairSpent{})),
 			WhenThisEntersForEachPairSpent("B", discardLabel, func(g *game.Game, item *game.StackItem) error {
 				if item.Params.Amount <= 0 {
 					return nil

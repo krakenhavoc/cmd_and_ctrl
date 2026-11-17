@@ -628,3 +628,24 @@ func TestBro17FatefulHandoffCannotTargetAnOpponentsPermanent(t *testing.T) {
 		t.Error("targeted a permanent the caster does not control")
 	}
 }
+
+func TestBro17SoulPartitionExilesATokenForGood(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	tok := uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{InstanceID: tok, Name: "Soldier", TypeLine: "Token Creature — Soldier",
+			Power: 1, Toughness: 1, Owner: opp.ID, Controller: opp.ID})
+	})
+	floatForTest(g, me, "WC")
+	castFromHandForTest(t, g, me, "Soul Partition", "Instant", "{1}{W}", bro17PartitionOracle,
+		game.CastSpellParams{Strict: true, Targets: []game.TargetRef{{Kind: game.TargetCard, ID: tok}}})
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(tok) {
+		t.Error("the token is still on the battlefield")
+	}
+	if inExile(g, tok) {
+		t.Error("a token cannot stay in exile to be played")
+	}
+}

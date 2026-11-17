@@ -48,3 +48,42 @@ func SelfEntersWithCountersFromSpentMana(kind, rowLabel string, count func(game.
 		},
 	}
 }
+
+// drawPerPairSpent is "draw a card" once for each pair counted into the
+// item (item.Params.Amount, WhenThisEntersForEachPairSpent). It declares
+// the draw's footprint so the row is not an unfootprinted one-sentence
+// trigger; the item its Build makes carries the count in Params, which the
+// trigger-order check never accepts as plain (builtItemIsPlain), so the
+// row keeps its ordering prompt and the declared N of 1 is never trusted.
+type drawPerPairSpent struct{}
+
+func (drawPerPairSpent) Apply(ctx *Context) error {
+	if ctx.Item == nil {
+		return nil
+	}
+	return DrawCards{N: ctx.Item.Params.Amount}.Apply(ctx)
+}
+
+func (drawPerPairSpent) footprint() (game.FootprintStep, bool) {
+	return game.FootprintStep{Kind: game.FootprintDraw, N: 1}, true
+}
+
+// counterOnThisIfSpentExceedsPower is Liberator's whole effect: the
+// intervening "if" (CR 603.4) rechecked as the item resolves, against the
+// mana spent that the trigger carried (item.Params.Amount) and this
+// permanent's power now, then a +1/+1 counter on it. Footprint declared as
+// the counter on the source; as with drawPerPairSpent the carried amount
+// keeps the item out of the order check's plain items.
+type counterOnThisIfSpentExceedsPower struct{}
+
+func (counterOnThisIfSpentExceedsPower) Apply(ctx *Context) error {
+	if ctx.Item == nil || !sourceIsStillThisPermanent(ctx.Game, ctx.Item) ||
+		!liberatorBeaten(ctx.Game, ctx.Item.SourceCardID, ctx.Item.Params.Amount) {
+		return nil
+	}
+	return CounterOnThis{Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+}
+
+func (counterOnThisIfSpentExceedsPower) footprint() (game.FootprintStep, bool) {
+	return game.FootprintStep{Kind: game.FootprintCounterOnSource, N: 1, Counter: game.CounterPlusOne}, true
+}
