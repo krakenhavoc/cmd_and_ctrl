@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Thalia, Heretic Cathar — Legendary Creature — Human Soldier {2}{W},
 // 3/2 (EDHREC rank 1473):
@@ -29,26 +25,8 @@ func init() {
 		Name:            "Thalia, Heretic Cathar",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"first strike"},
-		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventZoneMove},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
-					return false
-				}
-				entering, ok := g.LookupCardForEffect(ev.CardID)
-				if !ok || entering.Controller == src.Controller {
-					return false
-				}
-				return entering.IsCreature() || b10NonbasicLand()(g, uuid.Nil, entering)
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.EntersTapped = true
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			Label: "Thalia, Heretic Cathar: enters tapped",
-		}},
+		Replacements: []game.ReplacementEffect{
+			opponentsCreaturesAndNonbasicLandsEnterTapped("Thalia, Heretic Cathar: enters tapped"),
+		},
 	})
 }
