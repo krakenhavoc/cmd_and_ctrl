@@ -487,6 +487,7 @@ choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
+choose choose-cards/black-suns-twilight-return
 choose choose-cards/bolster
 choose choose-cards/bonny-pall-land-from-hand-or-graveyard
 choose choose-cards/borg-cube-assimilate
@@ -638,6 +639,9 @@ choose choose-cards/granted-take
 choose choose-cards/gravelgill-scoundrel-tap
 choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/green-goblin-revenant-draw
+choose choose-cards/green-suns-twilight-picked
+choose choose-cards/green-suns-twilight-placed
+choose choose-cards/green-suns-twilight-take
 choose choose-cards/gurmag-nightwatch-rest
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
