@@ -1949,6 +1949,7 @@ run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
 run prompt-run/arid-archway-return-land
 run prompt-run/ascent-of-the-worthy-redirect
+run prompt-run/ashnod-flesh-mechanist-powerstone
 run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
 run prompt-run/awaken-the-maelstrom-copy
@@ -2040,6 +2041,7 @@ run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
 run prompt-run/kethek-crucible-goliath-sacrifice
+run prompt-run/kill-zone-acrobat-flying
 run prompt-run/killmonger-sacrificed
 run prompt-run/kishla-trawlers-exile
 run prompt-run/kor-cause-of-vengeance-sacrifice
@@ -2914,6 +2916,7 @@ tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
+tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
@@ -2949,6 +2952,7 @@ tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
 tail sacrificed-one/prompt-run/kethek-crucible-goliath-sacrifice
+tail sacrificed-one/prompt-run/kill-zone-acrobat-flying
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/larval-scoutlander-search
 tail sacrificed-one/prompt-run/lithobraking-sacrifice
