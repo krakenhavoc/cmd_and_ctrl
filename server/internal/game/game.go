@@ -2122,6 +2122,12 @@ type CastTally struct {
 	// never a spell (CR 305.1), so neither adds anything. Read through
 	// CardTypesCast. Additive within the snapshot version.
 	CardTypes string `json:"cardTypes,omitempty"`
+	// NoncreatureCardTypes is CardTypes over the noncreature spells only
+	// (a spell that is a creature as it became cast, CR 601.2i, adds
+	// nothing): Hurkyl, Master Wizard's "each card type among noncreature
+	// spells you've cast this turn". Read through NoncreatureCardTypesCast.
+	// Additive within the snapshot version.
+	NoncreatureCardTypes string `json:"noncreatureCardTypes,omitempty"`
 	// Artifact counts the artifact spells the player cast this turn,
 	// read as each spell became cast, off the spell on the stack
 	// (CR 601.2i), like InstantSorceryColors. Artificer Class's "the
@@ -2312,15 +2318,37 @@ var cardTypes205Sorted = slices.Sorted(maps.Keys(cardTypes205))
 // withSpellCardTypes adds a cast spell's card types to CardTypes,
 // skipping any word that is not a CR 205.2a card type.
 func (t CastTally) withSpellCardTypes(types []string) CastTally {
-	have := strings.Fields(t.CardTypes)
+	t.CardTypes = mergeCardTypes(t.CardTypes, types)
+	return t
+}
+
+// withNoncreatureSpellCardTypes adds a cast NONCREATURE spell's card types
+// to NoncreatureCardTypes (Hurkyl, Master Wizard).
+func (t CastTally) withNoncreatureSpellCardTypes(types []string) CastTally {
+	t.NoncreatureCardTypes = mergeCardTypes(t.NoncreatureCardTypes, types)
+	return t
+}
+
+// mergeCardTypes is the CR 205.2a card types in `have` (a space-joined
+// set) and `types`, alphabetical and space-joined, skipping any word that
+// is not a card type.
+func mergeCardTypes(have string, types []string) string {
+	haveTypes := strings.Fields(have)
 	var out []string
 	for _, ct := range cardTypes205Sorted {
-		if slices.Contains(have, ct) || slices.ContainsFunc(types, func(s string) bool { return strings.EqualFold(s, ct) }) {
+		if slices.Contains(haveTypes, ct) || slices.ContainsFunc(types, func(s string) bool { return strings.EqualFold(s, ct) }) {
 			out = append(out, ct)
 		}
 	}
-	t.CardTypes = strings.Join(out, " ")
-	return t
+	return strings.Join(out, " ")
+}
+
+// NoncreatureCardTypesCast is the distinct card types among the
+// NONCREATURE spells the player cast this turn, in alphabetical order: an
+// artifact creature spell adds nothing (it is a creature spell), an
+// artifact enchantment spell adds two.
+func (t CastTally) NoncreatureCardTypesCast() []string {
+	return strings.Fields(t.NoncreatureCardTypes)
 }
 
 // CardTypesCast is the distinct card types among the spells the player
