@@ -400,6 +400,7 @@ body teferi-hero/untap-two-lands
 body teo-spirited-glider/counter
 body terra-herald-of-hope/return
 body territorial-aetherkite/damage-each-other
+body terror-ballista/destroy
 body terror-of-towashi/return
 body tester-of-the-tangential/move
 body tether-technician/strike
@@ -923,6 +924,7 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
+choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
@@ -1047,6 +1049,7 @@ choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
 choose choose-cards/ward-sacrifice-a-food
 choose choose-cards/ward-sacrifice-a-legendary-artifact-or-legendary-creature
+choose choose-cards/ward-sacrifice-a-permanent
 choose choose-cards/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
@@ -1366,6 +1369,7 @@ confirm confirm/ward-pay-life
 confirm confirm/ward-sacrifice-a-creature
 confirm confirm/ward-sacrifice-a-food
 confirm confirm/ward-sacrifice-a-legendary-artifact-or-legendary-creature
+confirm confirm/ward-sacrifice-a-permanent
 confirm confirm/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
@@ -2092,6 +2096,7 @@ run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/tenured-tethermage-tokens
+run prompt-run/terror-ballista-sacrifice
 run prompt-run/the-death-of-gwen-stacy-lose-life
 run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-goose-mother-sacrifice-draw
@@ -2936,6 +2941,7 @@ tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/spirit-sisters-call-return
 tail sacrificed-one/prompt-run/swarm-culler-draw
+tail sacrificed-one/prompt-run/terror-ballista-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
@@ -3240,6 +3246,8 @@ tail then/risky-research-draw-two-lose-two
 tail then/rivers-grasp-black-half
 tail then/rotisserie-elemental-exile
 tail then/rottenmouth-viper-punisher-sacrificed
+tail then/s82-bro-b13-choose-one-play
+tail then/s82-bro-b13-exiled-to-hand
 tail then/s82-one-b06-proliferate-if-done
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
