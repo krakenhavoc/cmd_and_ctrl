@@ -431,6 +431,7 @@ body ugins-binding/bounce-all
 body undead-butler/return-to-hand
 body undercity-eliminator/exile
 body undying/return
+body unleash-the-inferno/destroy
 body unscrupulous-contractor/draw-and-lose
 body until/return-to-battlefield
 body uss-farragut/bottom-of-library
