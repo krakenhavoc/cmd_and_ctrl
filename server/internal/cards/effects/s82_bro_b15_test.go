@@ -562,7 +562,7 @@ func s82BroPendingCast(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
 }
 
 func s82BroSanwell(g *game.Game, me *game.Player) uuid.UUID {
-	return b12Push(g, me.ID, "Sanwell, Avenger Ace", "Legendary Creature — Human Pilot", s82BroSanwellOracle, 3, 1)
+	return b12Push(g, me.ID, "Sanwell, Avenger Ace", "Legendary Creature — Human Pilot", s82BroSanwellOracle, 3, 6)
 }
 
 func TestS82BroB15SanwellPreventsDamageWhileAnArtifactCreatureAttacks(t *testing.T) {
