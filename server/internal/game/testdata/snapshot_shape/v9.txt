@@ -78313,6 +78313,8 @@ turnTally.players{}.speedTriggered	bool
 turnTally.players{}.tokensAttacked	number:int
 turnTally.players{}.tokensCreated	number:int
 turnTally.players{}.waterbends	number:int
+turnTally.plusOneCountersPut	map:string
+turnTally.plusOneCountersPut{}	number:int
 turnTally.prevNoncombatVictims	array
 turnTally.prevNoncombatVictims[]	custom(uuid.UUID)
 turnTally.replacementsApplied	map:string

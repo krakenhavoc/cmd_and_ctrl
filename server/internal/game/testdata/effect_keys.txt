@@ -1417,6 +1417,7 @@ number number/necrodominance-draw-that-many
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plunge-into-darkness-look-at-that-many
 number number/rampaging-aetherhood-plus-one-counters-on-this
+number number/render-inert-remove-counters
 number number/resourceful-defense-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
