@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -36,12 +38,9 @@ func meliraReturnListedToBattlefield(g *game.Game, item *game.StackItem) error {
 // types" (CR 205.1b): the layer 4 Apply of Encroaching Mycosynth, and
 // idempotent.
 func s82OneB18AddArtifactType(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-	for _, t := range c.Types {
-		if t == "Artifact" {
-			return
-		}
+	if !slices.Contains(c.Types, "Artifact") {
+		c.Types = append(c.Types, "Artifact")
 	}
-	c.Types = append(c.Types, "Artifact")
 }
 
 // s82OneB18NonlandPermanentType reports whether a card or spell has a

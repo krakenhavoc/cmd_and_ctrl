@@ -31,6 +31,7 @@ func init() {
 				Tap:            true,
 				SacrificeOther: SacrificeN(1, "an artifact", Artifact()).SacrificeOther,
 			},
+			Answers:         game.AnswerValue, // an artifact sacrifice, not a creature one (ADR 0142)
 			ProducedForPaid: slobadProduced,
 			Label:           "{T}, Sacrifice an artifact: Add an amount of {R} equal to the sacrificed artifact's mana value. Spend this mana only to cast artifact spells or activate abilities of artifacts.",
 			Restrictions: []string{game.ManaRestrictAnyOf(

@@ -43,7 +43,7 @@ func init() {
 		Static: []game.StaticAbility{
 			GrantAbilities(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID != source.InstanceID && target.Controller == source.Controller &&
-					target.IsCreature() && target.HasColor("U")
+					target.IsCreature() && target.HasColor(source.TextColor("U"))
 			}, unctusLootGrant),
 			{
 				Layer:    game.Layer7PT,
@@ -72,7 +72,7 @@ func init() {
 				}
 				return ScopedEffectFor{
 					Target:   id,
-					Mods:     []game.Mod{game.AddColorsMod("U"), game.AddTypesMod("Artifact")},
+					Mods:     []game.Mod{game.AddColorsMod(ctx.TextColors("U")...), game.AddTypesMod("Artifact")},
 					Duration: g.UntilEndOfTurnDuration(),
 					Label:    "Unctus, Grand Metatect — becomes a blue artifact until end of turn",
 				}.Apply(ctx)

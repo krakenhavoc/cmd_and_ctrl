@@ -39,6 +39,8 @@ const (
 // OR PLAYER", twice; Lae'zel is "on a creature or planeswalker you
 // control OR ON YOURSELF".
 var countersOnOptIns = map[string]string{
+	"Melira, the Living Cure": `"If you would get one or more poison counters" — the clause
+		names the controller as a player, and only poison counters.`,
 	"Vorinclex, Monstrous Raider": `"If you would put one or more counters on a permanent
 		or player" — both halves of the card name players.`,
 	"Winding Constrictor": `"If you would get one or more counters, you get that many
