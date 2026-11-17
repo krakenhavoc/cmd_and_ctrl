@@ -77,6 +77,7 @@ var permissionFilterDerived = map[string]string{
 	"std_b7_helpers.go":               "Dracogenesis's granted alternative cost (grantedAlternativeCostsLocked)",
 	"emperor_mihail_ii.go":            "standing cast permission (stampStandingPermissionLocked)",
 	"singer_of_swift_rivers.go":       "standing cast timing (castTimingVerdictLocked)",
+	"sigarda_font_of_blessings.go":    "standing cast permission (stampStandingPermissionLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {

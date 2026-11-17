@@ -47,13 +47,7 @@ func init() {
 					TargetPermanent("up to one target Equipment you control", HasSubtype("Equipment"), YouControl()).WithCount(0, 1),
 					TargetCreature("target creature you control", YouControl()),
 				)),
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.CardID == uuid.Nil || ev.Actor != source.Controller {
-					return false
-				}
-				attacker, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && attacker.Controller == source.Controller && isEquippedCreature(g, attacker)
-			}, "Swordsman — the equipped creature connives",
+			On(game.EventAttack, equippedCreatureYouControlAttacks, "Swordsman — the equipped creature connives",
 				func(g *game.Game, item *game.StackItem) error {
 					return ConniveEach{Controller: item.Controller, Creatures: []uuid.UUID{item.Trigger.Event.CardID}}.Apply(NewContext(g, item))
 				}),
