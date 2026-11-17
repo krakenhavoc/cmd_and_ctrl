@@ -4189,7 +4189,8 @@ type CardView struct {
 	// Restrictions is the S24 restriction set as stable snake_case
 	// tokens — "cant_attack", "cant_block", "cant_be_blocked",
 	// "cant_activate", "cant_activate_mana", and (#2733)
-	// "cant_become_suspected". Empty for the permanent
+	// "cant_become_suspected", and (#5673) "cant_crew" (it is left
+	// out of every crew cost's crew_options). Empty for the permanent
 	// nothing is restricting, which is almost all of them.
 	//
 	// It is deliberately NOT folded into Abilities. A restriction is
@@ -13241,7 +13242,7 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		ManaAbilities: viewOfManaAbilities(c),
 		SummoningSick: game.HasSummoningSickness(c),
 		Abilities:     viewOfAbilityBadges(eff),
-		Restrictions:  eff.Restrictions.Names(),
+		Restrictions:  game.RestrictionNames(eff.Restrictions, eff.ExtraRestrictions),
 		// #4692: only a battlefield static writes it.
 		CantHaveCounters: eff.CantHaveCounters,
 		// ADR 0106 §2 (#1794): the owner chip's data, resolved here.
@@ -14243,6 +14244,12 @@ func crewOptions(g *game.Game, caster, except uuid.UUID, use game.CostPowerUse) 
 	var counted map[string]int
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != caster || !c.IsCreature() || c.Tapped || c.InstanceID == except {
+			continue
+		}
+		// CR 702.122d: a creature that can't crew Vehicles is not
+		// offered for a crew cost (Intercessor's Arrest, #5673). A
+		// saddle cost still offers it.
+		if use == game.CostPowerCrew && !game.CanCrewVehicles(&c) {
 			continue
 		}
 		id := c.InstanceID.String()

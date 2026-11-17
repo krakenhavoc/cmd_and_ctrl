@@ -3949,6 +3949,21 @@ Five bits: `CantAttack`, `CantBlock`, `CantBeBlocked`, `CantActivate`,
 The activation pair is split because Faith's Fetters says "unless
 they're mana abilities" and Arrest does not.
 
+**"Can't crew Vehicles"** (Intercessor's Arrest, #5673) is `game.CantCrew`,
+a bit of the second set, `game.ExtraRestriction`: `game.Restriction` is a
+`uint8` whose eight bits are all taken and is on disk, so it is full and
+a new restriction bit goes in `ExtraRestriction`. Write both sets with
+`RestrictAttachedExtra(game.CantAttackOrBlock|game.CantActivate, game.CantCrew)`,
+`RestrictSelfExtra(0, game.CantCrew)` on a creature that prints it, or
+`RestrictUntilEOT{ExtraRestrictions: …}`. CR 702.122d: the creature can't
+be tapped to pay a Vehicle's crew cost. The one reader is
+`game.CanCrewVehicles`, asked by the crew validator (which refuses with
+`game.ErrCantCrew` and taps nothing), the view's `crew_options` and the
+enumerator's `crewPayment`. It names crew only: a saddle cost, a
+teamwork cost and any other "tap an untapped creature you control" still
+take the creature. The wire token is `cant_crew`, on the same
+`restrictions` list as the first set's.
+
 **The engine reads them; you do not.** Declarations go through
 `game.AttackerEligible` and `Game.CanBlockLocked` (the boolean form of
 `Game.BlockPairRefusalLocked`, which also says why), activations through

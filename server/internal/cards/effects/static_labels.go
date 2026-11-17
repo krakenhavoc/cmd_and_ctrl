@@ -83,11 +83,12 @@ func (f TribeFilter) subject() string {
 	return strings.ToUpper(who[:1]) + who[1:]
 }
 
-// restrictionClause names the bits of a Restriction a player reads on a
-// card: "can't attack", "can't attack or block". Empty when r holds a
-// bit this wording does not cover, so the row falls back to its kind
-// rather than saying half of it.
-func restrictionClause(r game.Restriction) string {
+// restrictionClause names the bits of a restriction set a player reads
+// on a card: "can't attack", "can't attack or block", "can't attack,
+// block, or crew Vehicles". `x` is the second set (game.ExtraRestriction).
+// Empty when either set holds a bit this wording does not cover, so the
+// row falls back to its kind rather than saying half of it.
+func restrictionClause(r game.Restriction, x game.ExtraRestriction) string {
 	var parts []string
 	rest := r
 	for _, p := range []struct {
@@ -102,18 +103,32 @@ func restrictionClause(r game.Restriction) string {
 			rest &^= p.bit
 		}
 	}
+	restX := x
+	if restX&game.CantCrew != 0 {
+		parts = append(parts, "crew Vehicles")
+		restX &^= game.CantCrew
+	}
 	var clauses []string
 	if len(parts) > 0 {
-		clauses = append(clauses, "can't "+strings.Join(parts, " or "))
+		clauses = append(clauses, "can't "+joinOrSerial(parts))
 	}
 	if rest&game.CantBeBlocked != 0 {
 		clauses = append(clauses, "can't be blocked")
 		rest &^= game.CantBeBlocked
 	}
-	if rest != 0 || len(clauses) == 0 {
+	if rest != 0 || restX != 0 || len(clauses) == 0 {
 		return ""
 	}
 	return strings.Join(clauses, " and ")
+}
+
+// joinOrSerial is "attack", "attack or block", "attack, block, or crew
+// Vehicles": the printed list form.
+func joinOrSerial(parts []string) string {
+	if len(parts) < 3 {
+		return strings.Join(parts, " or ")
+	}
+	return strings.Join(parts[:len(parts)-1], ", ") + ", or " + parts[len(parts)-1]
 }
 
 // queryNoun renders a PermanentQuery as the thing a player sees on the

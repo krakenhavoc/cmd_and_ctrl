@@ -736,9 +736,12 @@ type Mod struct {
 	Slot         string      `json:"slot,omitempty"`
 	Row          int         `json:"row,omitempty"`
 	Restrictions Restriction `json:"restrictions,omitempty"`
-	Power        int         `json:"power,omitempty"`
-	Toughness    int         `json:"toughness,omitempty"`
-	Player       uuid.UUID   `json:"player,omitempty"`
+	// ExtraRestrictions is ModAddRestrictions' second set (CantCrew,
+	// #5673), beside Restrictions because that one is full.
+	ExtraRestrictions ExtraRestriction `json:"extraRestrictions,omitempty"`
+	Power             int              `json:"power,omitempty"`
+	Toughness         int              `json:"toughness,omitempty"`
+	Player            uuid.UUID        `json:"player,omitempty"`
 	// Grants is ModGrantAbilities' bundle keys, in GrantKey form.
 	Grants []string `json:"grants,omitempty"`
 	// Borrows is ModBorrowAbilities' lent rows, captured as the effect
@@ -1414,7 +1417,8 @@ func LoseAllAbilitiesMod(keep ...string) Mod {
 }
 
 // AddRestrictionsMod adds restriction bits (layer 6, ADR 0045). Reads
-// Restrictions.
+// Restrictions, and ExtraRestrictions, the second set, which a caller
+// sets on the returned Mod (RestrictUntilEOT).
 func AddRestrictionsMod(r Restriction) Mod { return Mod{Kind: ModAddRestrictions, Restrictions: r} }
 
 // SetBasePowerMod sets base power (layer 7b). Reads Power.
@@ -2216,12 +2220,14 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 			continue
 		}
 		var bits Restriction
+		var extra ExtraRestriction
 		for _, m := range e.Mods {
 			if foldedAfterLayers(e.Scope, m.Kind) {
 				bits |= m.Restrictions
+				extra |= m.ExtraRestrictions
 			}
 		}
-		if bits == 0 {
+		if bits == 0 && extra == 0 {
 			continue
 		}
 		applies := scopePredicate(e.Scope, e.Controller)
@@ -2231,6 +2237,7 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 				continue
 			}
 			target.effective.Restrictions |= bits
+			target.effective.ExtraRestrictions |= extra
 		}
 	}
 }
@@ -2368,9 +2375,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 			ch.Abilities = kept
 		}
 	case ModAddRestrictions:
-		bits := m.Restrictions
+		bits, extra := m.Restrictions, m.ExtraRestrictions
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Restrictions |= bits
+			ch.ExtraRestrictions |= extra
 		}
 	case ModCantHaveKeywords:
 		return cantHaveApply(m.Keywords)

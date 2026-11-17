@@ -42,6 +42,8 @@ import "github.com/google/uuid"
 //	  mana abilities)         CantActivateMana mana activations
 //	"can't become suspected"  CantBecomeSuspected  the suspect action
 //	                          (CR 701.60, #2733)
+//	"can't crew Vehicles"     CantCrew         paying a crew cost
+//	                          (CR 702.122d, #5673; an ExtraRestriction)
 //
 // CantBeBlocked lives on the attacker because that is the permanent
 // the effect is attached to, but it is consumed on the defender's
@@ -98,6 +100,14 @@ import "github.com/google/uuid"
 // prohibitions on one permanent, as a bitmask. The zero value is
 // "no restrictions", which is what every permanent the catalog says
 // nothing about carries.
+//
+// THE SET IS FULL. All eight bits are taken (PlayersCantPayLifeTo…
+// is 1<<7), and the type is on disk: Characteristic.Restrictions
+// rides every last-known-information record and Mod.Restrictions
+// every scoped effect, both as uint8, and a snapshot schema version
+// only grows additively (docs/snapshots.md), so widening it is a
+// retype and a bump. A new bit goes in ExtraRestriction below, a
+// second set beside this one, never here.
 type Restriction uint8
 
 const (
@@ -160,6 +170,71 @@ const (
 	// reason: it is no badge on the permanent that carries it.
 	PlayersCantPayLifeToCastOrActivate
 )
+
+// ExtraRestriction is the second restriction set, for the bits that
+// did not fit in Restriction once its eight were taken (#5673). It is
+// the same kind of thing, a prohibition the SOURCE has rather than an
+// ability the restricted permanent has, written and read the same way:
+// OR'd into Characteristic.ExtraRestrictions by a static's Apply (or a
+// scoped effect's Mod.ExtraRestrictions), never cleared by a layer,
+// read only post-layers. Both fields are omitempty, so a snapshot
+// written before this set existed loads with it empty, which is what
+// every permanent then had.
+type ExtraRestriction uint8
+
+const (
+	// CantCrew is "~ can't crew Vehicles" (Intercessor's Arrest,
+	// #5673). CR 702.122d: "If an effect states that a creature
+	// 'can't crew Vehicles,' that creature can't be tapped to pay the
+	// crew cost of a Vehicle." A restriction on what the creature may
+	// PAY, so it is read where a crew cost picks its creatures
+	// (CanCrewVehicles: the validator, the view's crew_options and the
+	// move enumerator) and nowhere else: a saddle cost (CR 702.171a), a
+	// teamwork cost and any other "tap an untapped creature you
+	// control" are different costs and still take the creature. Like
+	// every bit here it belongs to the SOURCE (the Aura), so a layer-6
+	// "loses all abilities" leaves it.
+	CantCrew ExtraRestriction = 1 << iota
+)
+
+// Has reports whether every bit in `want` is set.
+func (r ExtraRestriction) Has(want ExtraRestriction) bool {
+	return r&want == want
+}
+
+// Names renders the set as stable snake_case tokens for the wire, in
+// declaration order, nil for the empty set. Protocol, like
+// Restriction.Names: the view appends these after that set's tokens on
+// the one CardView.Restrictions list, so the client never sees which
+// set a token came from.
+func (r ExtraRestriction) Names() []string {
+	var out []string
+	for _, e := range []struct {
+		bit  ExtraRestriction
+		name string
+	}{
+		{CantCrew, "cant_crew"},
+	} {
+		if r&e.bit != 0 {
+			out = append(out, e.name)
+		}
+	}
+	return out
+}
+
+// RestrictionNames is both sets' tokens on one list, Restriction's
+// first: what CardView.Restrictions carries.
+func RestrictionNames(r Restriction, x ExtraRestriction) []string {
+	return append(r.Names(), x.Names()...)
+}
+
+// ExtraRestrictionsOn is RestrictionsOn for the second set.
+func ExtraRestrictionsOn(c *Card) ExtraRestriction {
+	if c == nil {
+		return 0
+	}
+	return c.Effective().ExtraRestrictions
+}
 
 // CantAttackOrBlock is the pair every "can't attack or block" card
 // prints together. Spelled as a named constant because writing the
@@ -244,6 +319,19 @@ func CanActivateAbilities(c *Card) bool {
 // because Faith's Fetters stops one and not the other.
 func CanActivateManaAbilities(c *Card) bool {
 	return !Restricted(c, CantActivateMana)
+}
+
+// CanCrewVehicles reports whether this permanent may be tapped to pay
+// a Vehicle's crew cost under the RESTRICTION vocabulary alone
+// (CR 702.122d, "can't crew Vehicles": Intercessor's Arrest, #5673).
+//
+// The one predicate the three crew walks share: the engine's
+// validateCrewCostLocked, the view's crew_options and the move
+// enumerator's crewPayment. Being an untapped creature the payer
+// controls is each walk's own test; a saddle or teamwork cost never
+// asks this. Layers must be fresh.
+func CanCrewVehicles(c *Card) bool {
+	return !ExtraRestrictionsOn(c).Has(CantCrew)
 }
 
 // AttackerEligible reports whether card `a` could be declared as an
