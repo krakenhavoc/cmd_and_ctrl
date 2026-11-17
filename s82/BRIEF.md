@@ -1,0 +1,52 @@
+# S82 card batches: brief for a cloud worker (umbrella #5458)
+
+You build ONE batch of cards from the ten sets that most recently left Standard (MAT, MOM, ONE, BRO, DMU, SNC, NEO, VOW, MID, AFR, with their Commander sets). Your prompt names the set and the batch number. You push a branch and stop; you do not open a PR.
+
+## Where things are (this session cannot reach Scryfall)
+- The batch's card list: `git fetch origin work/s82-batches` then `git show FETCH_HEAD:plan/s82-batches.json`; pick the row with your `set` and `batch`. Build exactly its `missing` cards.
+- The set issue (`issue` in that row) has the planner's notes for each batch: read your batch's section (`gh issue view <n>` or `curl -s https://api.github.com/repos/krakenhavoc/cmd_and_ctrl/issues/<n>`).
+- Card data and the rules: `git fetch origin work/s82-cards`, then
+  `mkdir -p data/scryfall data/cr && git show FETCH_HEAD:s82-cards.json.gz | gunzip > data/scryfall/default-cards.json && git show FETCH_HEAD:cr.txt > data/cr/cr.txt`.
+  The dump has every printing of your cards and their tokens (oracle text, faces, all_parts). Read each card's full object from it (python `json.load`, then filter by name). `data/` is gitignored: never commit those files.
+- Comprehensive Rules (pinned 2026-09-25 edition): `data/cr/cr.txt`. Grep and quote it before citing any rule number; never cite from memory.
+
+## Setup
+- `git fetch origin && git switch -c feat/s82-<set>-b<NN> origin/develop` (NN two digits, e.g. `feat/s82-mom-b03`).
+- Read AGENTS.md (binding: commit format, closure ratchet, snapshots additive) and the docs/adding-cards.md subsections you need.
+- Go: from server/, `GOTOOLCHAIN=go1.27.0 GOGC=30 go ... -p 1`, one package at a time. No docker. Never `go test ./...`.
+- Before each card, check it isn't already on origin/develop (grep its oracle_id under server/internal/cards) or on another `feat/s82-*` branch (`git ls-remote origin 'refs/heads/feat/s82-*'`, then grep that branch); skip it if so.
+
+## Merge-friendly (many batches land in parallel)
+- A new shared helper goes in a new file for your batch, `server/internal/cards/effects/s82_<set>_b<NN>_helpers.go`, never appended to a shared file. Grep origin/develop and the other `feat/s82-*` branches first and reuse.
+- Don't reformat or reorder code you didn't change.
+
+## Goal: every card Full, no caveats
+- Every card ships CompletenessFull with an engine-driven test, no caveats. Never stamp Full falsely. Stronger than printed is wrong; weaker is wrong too.
+- Each set's mechanics (kicker, domain, enlist, read ahead, prototype, offering, blitz, casualty, ninjutsu, disturb, daybound/nightbound, training, exploit, soulbond, dungeons, dice...) are on develop: grep and reuse. The S82 seams #5644–#5683 are all on develop except #5673 (can't crew Vehicles).
+- Contained, additive engine work is fine and expected: build a small seam if a card needs one (data, not a func field reachable from Game; `server/internal/game/testdata/closure_fields.txt` census may only fall; snapshot changes additive, re-record with `go test ./internal/game/ -run TestSnapshotShapeIsRecorded -update-shape`).
+- If a clause needs protocol + client work or an owner decision, leave that card out and list it under `## Skipped` with the exact clause.
+
+## Card rules
+- One file per card, `server/internal/cards/effects/<snake_name>.go`, one init(). Opt-in by oracle_id (never scryfall_id). Double-faced / adventure / saga / class / other layouts: find a precedent on develop with grep.
+- One printed triggered ability = one registered trigger. Last-known information when the source may have left (CR 608.2h). Intervening-"if" rechecks (CR 603.4). Read keywords and types through the layered view.
+- Negative tests use CastSpellParams{Strict: true} / strict activation; test refusals by illegal target, timing or a pool that can't pay.
+- TestNoNewExactClonesInTheCatalog: if a card's body matches an existing card's, call or extract one shared helper; never reshape it to dodge the gate.
+- Token rows: match the printed token in the dump exactly (name, types, P/T, colours, abilities). Before adding a row to `tokens_table.go`, check develop and the other `feat/s82-*` branches for the same token and reuse its key.
+- One-sentence triggers use `effects.Do` primitives that declare a footprint (`cards/effects/footprint.go`); never add a card to `testdata/unfootprinted_trigger_lines.txt`.
+- Fixed-amount riders (scry N, surveil N, amass N, venture, learn...) are declared with `Purpose` (TestRiderPurposesMatchThePrintedCard); board wipes, tutors, ramp and draw engines declare their Purpose (ADR 0126).
+- Effect keys only via `go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys`. Roadmap: `go test ./internal/roadmap/ -args -update -update-closed`.
+- Test gotchas: g.MoveCardByID takes the game lock itself (deadlocks inside WithWriteLock); attack triggers need lockInAttacks(t, g) after DeclareAttacker; batched triggers settle after g.RunStateChecksForTest().
+
+## Oracle fixtures (you make them now)
+From server/: `CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json go test -p 1 ./internal/cards/coverage/ -run TestOracleFixtureCoversRegistry -update-oracle -oracle-ids=<your ids, comma-separated>`. Only your own ids; never regenerate them all. Commit the new files under testdata/oracle.
+
+## Before you push
+From server/, each as its own command: `go vet ./internal/cards/... ./internal/game/`; `go test ./internal/cards/effects/`; `CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json go test -timeout 40m ./internal/cards/coverage/` (it must pass; with this cut-down dump, a dump-wide audit may report cards from OTHER sets as missing from the dump: that alone is not your failure, say so in the commit message); `go test ./internal/game/` only if you touched internal/game; `go test ./internal/roadmap/`; `gofmt -l` on your files prints nothing.
+
+## Push and stop
+- Commit trailers exactly:
+  Sprint: S82 — Card coverage: sets outside Standard, newest first
+  Issue: #<the set issue>
+- No AI attribution lines anywhere.
+- Push `feat/s82-<set>-b<NN>` and STOP: do NOT open a PR. Put the PR-body text in the FINAL commit message: a one-line subject `feat(server): <SET> cards, batch <NN>`, then the cards built, any new seam / token rows / effect keys, `## Skipped` with exact clauses (if any), the checks you ran with results, and one line `oracle-ids=<id>,<id>,...`.
+- Your final message: cards built, skipped (with clauses), each check with its result.
