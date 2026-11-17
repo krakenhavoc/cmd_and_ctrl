@@ -1663,6 +1663,7 @@ option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bro-b11-argivian-avenger-keyword
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
+option option-pick/sanctuary-warden-remove-a-counter
 option option-pick/saurons-ransom-splitter
 option option-pick/season-of-gathering-type
 option option-pick/secret-choice
