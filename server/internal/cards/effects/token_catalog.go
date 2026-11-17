@@ -242,6 +242,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0114 PR 5: There and Back Again's Smaug.
 	printedSmaugToken,
 
+	// S82: Wildfire Awakener's Elemental.
+	printedWildfireElementalToken,
+
 	// Weapons Manufacturing's Munitions.
 	printedMunitionsToken,
 

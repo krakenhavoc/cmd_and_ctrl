@@ -145,6 +145,12 @@ type CastCounts struct {
 	// for a spell with no such clause, for one cast with X of 0, and for
 	// every entry that was not a resolving spell (CR 107.3m: X is 0).
 	EntryRoll int
+
+	// Convoked is how many creatures were tapped to convoke the spell
+	// (CR 702.51; PaidCost.Convoked): Ancient Imperiosaur's "two +1/+1
+	// counters for each creature that convoked it". Zero for a spell not
+	// convoked, a CR 707.10 copy and every entry that was not a spell.
+	Convoked int
 }
 
 // KickedWith is CR 702.33f's "if it was kicked with its [cost]
@@ -240,6 +246,7 @@ func castCountsFor(card Card, item *StackItem) CastCounts {
 		ManaSpent:   item.Paid.ManaSpentCount(),
 		CastFrom:    item.CastFromZone,
 		EntryRoll:   sumInts(item.EntryRolls),
+		Convoked:    len(item.Paid.Convoked),
 	}
 }
 
