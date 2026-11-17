@@ -370,7 +370,7 @@ func TestS82Mom16FurnaceBlessedConquerorMakesACounteredCopyThatIsSacrificed(t *t
 		}
 	})
 	declareAttack(t, g, opp.ID, id)
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	var token *game.Card
 	for i := range g.Battlefield.Cards {
 		if c := &g.Battlefield.Cards[i]; c.InstanceID != id && c.Name == "Furnace-Blessed Conqueror" {
