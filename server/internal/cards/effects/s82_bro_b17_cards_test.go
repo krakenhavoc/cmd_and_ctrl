@@ -110,6 +110,7 @@ func TestBro17BladecoilSerpentCountsPairsOfEachColour(t *testing.T) {
 					t.Fatalf("ResolveChooseCards: %v", err)
 				}
 				passPriorityAroundTable(t, g)
+				t.Logf("stack %d, pending %d", g.Stack.Size(), len(g.PendingChoices))
 			}
 			if got := bro17HandSize(g, me); got != before+tc.draws {
 				t.Errorf("hand %d -> %d, want %d cards drawn", before, got, tc.draws)
