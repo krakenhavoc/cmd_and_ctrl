@@ -1969,6 +1969,7 @@ run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
+run prompt-run/choking-miasma-counter
 run prompt-run/cmdr2-b09-foul-rebirth-token
 run prompt-run/cmdr2-b09-promise-of-aclazotz-populate
 run prompt-run/cmdr2-s18-killer-service-rhino
