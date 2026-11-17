@@ -27,13 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(Subtype("Myr"),
 				"Urtet, Remnant of Memnarch — create a 1/1 colorless Myr artifact creature token",
-				func(g *game.Game, item *game.StackItem) error {
-					return CreateToken{
-						Controller: item.Controller,
-						Template:   TokenCard("1/1 colorless Myr artifact"),
-						N:          1,
-					}.Apply(NewContext(g, item))
-				}),
+				Do(CreateToken{Template: TokenCard("1/1 colorless Myr artifact"), N: 1})),
 			AtBeginningOfYourCombat("Urtet, Remnant of Memnarch — untap each Myr you control",
 				func(g *game.Game, item *game.StackItem) error {
 					return b16UntapAllYouControlMatching(NewContext(g, item), item.Controller,
