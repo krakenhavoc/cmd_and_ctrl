@@ -479,4 +479,7 @@ var tokenTable = map[string]game.Card{
 
 	// #5789: Odyssey block's Wurm (Roar of the Wurm, Crush of Wurms).
 	"6/6 green Wurm": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"G"}},
+
+	// #5479: Phyrexia: All Will Be One's Beast (Goliath Hatchery, Viral Spawning, Lukka, Bound to Ruin).
+	"3/3 green Phyrexian Beast with toxic 1": {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"toxic 1"}},
 }
