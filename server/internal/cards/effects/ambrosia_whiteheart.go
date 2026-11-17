@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Ambrosia Whiteheart — Legendary Creature — Bird {1}{W}, 2/2:
 //
@@ -49,20 +45,9 @@ func init() {
 // ambrosiaReturnAnother asks the controller which, if any, of their
 // OTHER permanents goes back to its owner's hand, and bounces it.
 func ambrosiaReturnAnother(g *game.Game, item *game.StackItem) error {
-	self := item.SourceCardID
-	return ChoosePermanents{
-		Question: "Ambrosia Whiteheart — you may return another permanent you control to its owner's hand",
-		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-			var out []uuid.UUID
-			for _, id := range PermanentsControlledBy(g, of) {
-				if id != self {
-					out = append(out, id)
-				}
-			}
-			return out, 0, 1
-		},
-		Keyed: ambrosiaReturned,
-	}.Apply(NewContext(g, item))
+	return s82OneB04ReturnAnotherPermanent(g, item,
+		"Ambrosia Whiteheart — you may return another permanent you control to its owner's hand",
+		ambrosiaReturned)
 }
 
 // ambrosiaReturned is the chosen permanent returning to its owner's hand,
