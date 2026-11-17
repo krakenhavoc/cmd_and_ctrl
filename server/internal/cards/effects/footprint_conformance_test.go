@@ -155,6 +155,11 @@ var footprintConformanceCases = map[string]conformanceCase{
 		Name:  "creature",
 		Count: func(ctx *Context) int { return len(ctx.Game.Battlefield.Cards) },
 	}},
+	// S82 BRO batch 17: Bladecoil Serpent's draw per pair spent.
+	"DrawForEach": {step: DrawForEach{
+		Name:  "creature",
+		Count: func(ctx *Context) int { return len(ctx.Game.Battlefield.Cards) },
+	}},
 	"If:nested": {step: If{Cond: CondNoSpellsCast{}, Then: []Applier{
 		GainLife{Amount: 1},
 		If{Cond: CondMonarch{}, Then: []Applier{DrawCards{N: 1}}},

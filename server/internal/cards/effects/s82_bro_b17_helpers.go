@@ -49,41 +49,37 @@ func SelfEntersWithCountersFromSpentMana(kind, rowLabel string, count func(game.
 	}
 }
 
-// drawPerPairSpent is "draw a card" once for each pair counted into the
-// item (item.Params.Amount, WhenThisEntersForEachPairSpent). It declares
-// the draw's footprint so the row is not an unfootprinted one-sentence
-// trigger; the item its Build makes carries the count in Params, which the
-// trigger-order check never accepts as plain (builtItemIsPlain), so the
-// row keeps its ordering prompt and the declared N of 1 is never trusted.
-type drawPerPairSpent struct{}
+// DrawForEach is "draw a card for each <thing>", counted as the item
+// resolves: InvestigateForEach's contract for Count, and its footprint with
+// the draw step in place of the investigate step (a declared board read,
+// then the draw). Bladecoil Serpent's count is the pairs its Build carried
+// on the item.
+type DrawForEach struct {
+	// Name says what it counts, for a reader of the card file.
+	Name  string
+	Count func(ctx *Context) int
+}
 
-func (drawPerPairSpent) Apply(ctx *Context) error {
+func (s DrawForEach) Apply(ctx *Context) error {
+	if s.Count == nil {
+		return nil
+	}
+	return DrawCards{N: s.Count(ctx)}.Apply(ctx)
+}
+
+func (s DrawForEach) footprints() ([]game.FootprintStep, bool) {
+	if s.Count == nil {
+		return nil, false
+	}
+	step, _ := DrawCards{N: 1}.footprint()
+	return []game.FootprintStep{condStep(game.FootprintCondBoard, 0), step}, true
+}
+
+// itemPairsSpent is the pair count WhenThisEntersForEachPairSpent put on
+// the item.
+func itemPairsSpent(ctx *Context) int {
 	if ctx.Item == nil {
-		return nil
+		return 0
 	}
-	return DrawCards{N: ctx.Item.Params.Amount}.Apply(ctx)
-}
-
-func (drawPerPairSpent) footprint() (game.FootprintStep, bool) {
-	return game.FootprintStep{Kind: game.FootprintDraw, N: 1}, true
-}
-
-// counterOnThisIfSpentExceedsPower is Liberator's whole effect: the
-// intervening "if" (CR 603.4) rechecked as the item resolves, against the
-// mana spent that the trigger carried (item.Params.Amount) and this
-// permanent's power now, then a +1/+1 counter on it. Footprint declared as
-// the counter on the source; as with drawPerPairSpent the carried amount
-// keeps the item out of the order check's plain items.
-type counterOnThisIfSpentExceedsPower struct{}
-
-func (counterOnThisIfSpentExceedsPower) Apply(ctx *Context) error {
-	if ctx.Item == nil || !sourceIsStillThisPermanent(ctx.Game, ctx.Item) ||
-		!liberatorBeaten(ctx.Game, ctx.Item.SourceCardID, ctx.Item.Params.Amount) {
-		return nil
-	}
-	return CounterOnThis{Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-}
-
-func (counterOnThisIfSpentExceedsPower) footprint() (game.FootprintStep, bool) {
-	return game.FootprintStep{Kind: game.FootprintCounterOnSource, N: 1, Counter: game.CounterPlusOne}, true
+	return ctx.Item.Params.Amount
 }

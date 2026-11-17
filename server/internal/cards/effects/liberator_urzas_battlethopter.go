@@ -25,7 +25,10 @@ import (
 // again as it resolves. Liberator must still be the same permanent.
 func init() {
 	const label = "Liberator, Urza's Battlethopter — put a +1/+1 counter on Liberator"
-	t := WheneverYouCast(nil, label, Do(counterOnThisIfSpentExceedsPower{}))
+	t := WheneverYouCast(nil, label, Do(If{
+		Cond: CondBoard{Name: "the mana spent is greater than this creature's power", Test: liberatorBeatenNow},
+		Then: []Applier{CounterOnThis{Kind: game.CounterPlusOne, N: 1}},
+	}))
 	inner := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 		if inner != nil && !inner(ev, source, ch, g) {
@@ -57,4 +60,12 @@ func init() {
 func liberatorBeaten(g *game.Game, liberator uuid.UUID, spent int) bool {
 	c, ok := g.LookupCardForEffect(liberator)
 	return ok && spent > c.PowerForComparison()
+}
+
+// liberatorBeatenNow is the intervening "if" as the item resolves: the mana
+// the trigger carried against Liberator's power now, Liberator being the
+// same permanent that triggered.
+func liberatorBeatenNow(ctx *Context) bool {
+	return ctx.Item != nil && sourceIsStillThisPermanent(ctx.Game, ctx.Item) &&
+		liberatorBeaten(ctx.Game, ctx.Item.SourceCardID, ctx.Item.Params.Amount)
 }

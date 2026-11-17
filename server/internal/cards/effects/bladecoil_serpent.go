@@ -29,7 +29,7 @@ func init() {
 		Completeness:   CompletenessFull,
 		ReadsManaSpent: game.ReadsOwnPayment,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEntersForEachPairSpent("U", drawLabel, Do(drawPerPairSpent{})),
+			WhenThisEntersForEachPairSpent("U", drawLabel, Do(DrawForEach{Name: "{U}{U} spent to cast it", Count: itemPairsSpent})),
 			WhenThisEntersForEachPairSpent("B", discardLabel, func(g *game.Game, item *game.StackItem) error {
 				if item.Params.Amount <= 0 {
 					return nil
