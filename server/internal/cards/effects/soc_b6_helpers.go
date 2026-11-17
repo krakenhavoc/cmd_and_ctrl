@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strconv"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -32,37 +30,7 @@ import (
 // else, so its item on the stack is a backup ability to a watcher of
 // "becomes the target of a backup ability" (Event.TargeterKeyword).
 func Backup(name string, n int, grantKey string, keywords ...string) game.TriggeredAbility {
-	kws := append([]string(nil), keywords...)
-	t := Targeting(WhenThisEnters(name+" — backup "+strconv.Itoa(n), func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			if t.Kind != game.TargetCard {
-				continue
-			}
-			if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: n}).Apply(ctx); err != nil {
-				return err
-			}
-			if t.ID == item.SourceCardID || !onBattlefield(g, t.ID) {
-				return nil
-			}
-			var also []game.Mod
-			if len(kws) > 0 {
-				also = append(also, game.AddKeywordsMod(kws...))
-			}
-			if grantKey == "" {
-				if len(also) == 0 {
-					return nil
-				}
-				return ScopedEffectFor{Target: t.ID, Mods: also, Duration: DurationUntilEndOfTurn(ctx),
-					Label: name + " — backup: the creature gains its abilities until end of turn"}.Apply(ctx)
-			}
-			return GrantAbilitiesFor{Target: t.ID, Keys: []string{grantKey}, Also: also,
-				Label: name + " — backup: the creature gains its abilities until end of turn"}.Apply(ctx)
-		}
-		return nil
-	}), TargetCreature("target creature"))
-	t.Keyword = game.KeywordBackup
-	return t
+	return BackupAlso(name, n, grantKey, nil, keywords...)
 }
 
 // socB6AurasOnTheDead is the Auras that were attached to the creature an
