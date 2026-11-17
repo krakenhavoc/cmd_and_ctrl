@@ -313,23 +313,6 @@ func TestS82BroB20MeldedMishraLeavesAsTwoCards(t *testing.T) {
 	}
 }
 
-// s82BroMishraLostAttack puts Mishra, Lost to Phyrexia on my side, attacks
-// the opponent with it and answers the "choose three" prompt with `modes`.
-func s82BroMishraLostAttack(t *testing.T, g *game.Game, modes []int) (uuid.UUID, *game.Player, *game.Player) {
-	t.Helper()
-	me, opp := g.Seats[0], g.Seats[1]
-	id := b12Push(g, me.ID, "Mishra, Lost to Phyrexia", "Legendary Artifact Creature — Phyrexian Artificer", s82BroMishraLostOracle, 9, 9)
-	declareAttack(t, g, opp.ID, id)
-	pick := latestChoiceOfKindFor(g, game.PendingChoiceModePick, me.ID)
-	if pick == nil {
-		t.Fatalf("no mode prompt: %+v", g.PendingChoices)
-	}
-	if err := g.ResolveModePick(pick.ID, me.ID, modes); err != nil {
-		t.Fatalf("ResolveModePick %v: %v", modes, err)
-	}
-	return id, me, opp
-}
-
 func TestS82BroB20MishraLostChoosesExactlyThreeDifferentModes(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
