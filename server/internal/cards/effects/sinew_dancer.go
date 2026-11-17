@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Sinew Dancer — Creature — Phyrexian Soldier {W}, 1/1:
 //
 //	"{3}{W}, {T}: Tap target creature.
