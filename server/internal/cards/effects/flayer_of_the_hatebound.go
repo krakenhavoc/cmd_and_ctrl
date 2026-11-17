@@ -24,16 +24,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordUndying},
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventETB},
-			AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-				if !EnteredFromYourGraveyard(ev, source, lki, g) {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.IsCreature()
-			},
-			Targets: TargetAny(),
-			Key:     "Flayer of the Hatebound — that creature deals damage equal to its power to any target",
+			Watches:   []game.EventKind{game.EventETB},
+			AppliesTo: s82Bro13CreatureEnteredFromYourGraveyard,
+			Targets:   TargetAny(),
+			Key:       "Flayer of the Hatebound — that creature deals damage equal to its power to any target",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source, "Flayer of the Hatebound — that creature deals damage equal to its power to any target")
 				if c, ok := g.LookupCardForEffect(ev.CardID); ok {
