@@ -1817,6 +1817,7 @@ payunless pay-unless/riddle-gate-gargoyle-lifelink
 payunless pay-unless/rings-of-brighthearth-copy-ability
 payunless pay-unless/riparian-tiger-pump
 payunless pay-unless/ripples-of-undeath-take-one
+payunless pay-unless/roar-of-resistance-pump
 payunless pay-unless/rodolf-duskbringer-return
 payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
