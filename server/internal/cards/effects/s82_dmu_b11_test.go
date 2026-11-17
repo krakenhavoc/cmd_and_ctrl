@@ -447,14 +447,16 @@ func TestDMUB11SphinxOfClearSkiesOpponentSeparatesAndYouTakeAPile(t *testing.T) 
 	if latestOptionPickFor(g, me.ID) != nil {
 		answerChoosePlayer(t, g, me.ID, opp)
 	}
-	split := chooseCardsChoiceFor(g, opp.ID)
+	split := latestRevealPickFor(g, opp.ID)
 	if split == nil {
 		t.Fatalf("the opponent was not asked to separate: %+v", g.PendingChoices)
 	}
 	if len(split.ChooseCards) != 3 {
 		t.Fatalf("separating %d cards, want 3", len(split.ChooseCards))
 	}
-	answerChooseCards(t, g, opp.ID, lib[0]) // pile one: lib[0]; pile two: lib[1], lib[2]
+	if err := g.ResolveRevealPick(split.ID, opp.ID, []uuid.UUID{lib[0]}); err != nil { // pile one: lib[0]; pile two: lib[1], lib[2]
+		t.Fatalf("ResolveRevealPick: %v", err)
+	}
 	pile := latestOptionPickFor(g, me.ID)
 	if pile == nil {
 		t.Fatalf("no pile pick: %+v", g.PendingChoices)
