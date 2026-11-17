@@ -107,6 +107,12 @@ func (g *Game) AddPlayerCounterByForEffect(placer, playerID uuid.UUID, name stri
 		CounterName:   name,
 		CounterDelta:  delta,
 	}
+	// Melira, the Living Cure's "can't get additional poison counters this
+	// turn" is asked before the window opens: a "can't" beats a replacement
+	// (CR 101.2).
+	if g.counterPlacementRefusedLocked(ev) {
+		return nil
+	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
 		return nil
@@ -147,6 +153,12 @@ func (g *Game) addPlayerCounterByKeyedLocked(placer, playerID uuid.UUID, name st
 		CounterPlacer: placer,
 		CounterName:   name,
 		CounterDelta:  delta,
+	}
+	// Melira, the Living Cure's "can't get additional poison counters this
+	// turn" is asked before the window opens: a "can't" beats a replacement
+	// (CR 101.2).
+	if g.counterPlacementRefusedLocked(ev) {
+		return then.RunTold(g, nil, 0)
 	}
 	if !then.IsZero() {
 		ev.counterTail = &counterTail{keyed: copyKeyedTail(then)}

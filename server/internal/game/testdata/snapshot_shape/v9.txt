@@ -68352,6 +68352,8 @@ pendingChoices[].sourceShield.next.Source.epoch	number:int
 pendingChoices[].sourceShield.next.Source.id	custom(uuid.UUID)
 pendingChoices[].sourceShield.next.SourceZone	string
 pendingChoices[].sourceShield.next.Then	object
+pendingChoices[].sourceShield.next.ThisCombat	bool
+pendingChoices[].sourceShield.next.ToPlayersOnly	bool
 pendingChoices[].sourceShield.next.thenKey	string
 pendingChoices[].sourceShield.prevent	object
 pendingChoices[].sourceShield.prevent.Amount	number:int

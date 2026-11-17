@@ -139,9 +139,13 @@ func recipientFilterModProblem(m Mod) string {
 		return ""
 	}
 	switch {
-	case m.Kind != ModPreventFromSource && m.Kind != ModRedirectDamage:
+	case m.Kind != ModPreventFromSource && m.Kind != ModRedirectDamage && m.Kind != ModPreventNextCombatFromSource:
 		// #2056: a redirection reads the set the way the shield does.
-		return fmt.Sprintf("a %s mod carries a recipient filter, which only preventFromSource and redirectDamage read", m.Kind)
+		// Ria Ivor's combat-only next-damage shield reads "to players".
+		return fmt.Sprintf("a %s mod carries a recipient filter, which only preventFromSource, redirectDamage and preventNextCombatFromSource read", m.Kind)
+	case m.Kind == ModPreventNextCombatFromSource && (!m.RecipientFilter[0].Players || m.RecipientFilter[0].Permanents):
+		return "a preventNextCombatFromSource shield reads only the recipient set \"players\""
+
 	case len(m.RecipientFilter) > 1:
 		return fmt.Sprintf("a %s mod carries more than one recipient filter", m.Kind)
 	case m.Player != uuid.Nil || len(m.Types) != 0:

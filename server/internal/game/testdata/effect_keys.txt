@@ -257,6 +257,7 @@ body meanders-guide/return
 body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
+body melira/return-listed-to-the-battlefield
 body merry-bards/young-hero-role
 body miasma-demon/shrink
 body mindleech-ghoul/exile
@@ -319,6 +320,7 @@ body prevention/put-toughness-counters
 body prevention/red-damage-source-controller
 body prevention/remove-a-counter-from-this
 body prevention/remove-that-many-counters-from-this
+body prevention/ria-ivor-create-mites
 body prevention/shield-gain-life-equal
 body prevention/that-many-counters-on-it
 body prevention/that-many-counters-on-this
@@ -2021,6 +2023,7 @@ run prompt-run/indoctrination-attendant-return
 run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
+run prompt-run/kethek-crucible-goliath-sacrifice
 run prompt-run/killmonger-sacrificed
 run prompt-run/kishla-trawlers-exile
 run prompt-run/kor-cause-of-vengeance-sacrifice
@@ -2918,6 +2921,7 @@ tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
+tail sacrificed-one/prompt-run/kethek-crucible-goliath-sacrifice
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/larval-scoutlander-search
 tail sacrificed-one/prompt-run/lithobraking-sacrifice

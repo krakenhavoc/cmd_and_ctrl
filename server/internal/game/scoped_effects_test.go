@@ -434,6 +434,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,
+		// Melira, the Living Cure: a rule gate on poison counters for one
+		// player. Its cases are in cant_get_poison_test.go.
+		ModCantGetPoisonCounters: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
