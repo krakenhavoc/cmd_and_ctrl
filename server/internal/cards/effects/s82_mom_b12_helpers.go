@@ -17,11 +17,10 @@ func s82MomB12Damageable(c game.Card) bool {
 }
 
 // s82MomB12CreaturePlaneswalkerOrBattle is the target clause "target
-// creature, planeswalker, or battle", narrowed by predicates.
-func s82MomB12CreaturePlaneswalkerOrBattle(label string, preds ...CardPredicate) *game.TargetSpec {
-	pred := And(preds...)
-	return battlefieldSpec("permanent", label, func(g *game.Game, caster uuid.UUID, c game.Card) bool {
-		return s82MomB12Damageable(c) && pred(g, caster, c)
+// creature, planeswalker, or battle".
+func s82MomB12CreaturePlaneswalkerOrBattle(label string) *game.TargetSpec {
+	return battlefieldSpec("permanent", label, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return s82MomB12Damageable(c)
 	})
 }
 

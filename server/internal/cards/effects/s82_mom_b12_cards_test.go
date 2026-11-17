@@ -337,7 +337,7 @@ func TestS82B12NahirisWarcraftingWithNoExcessLooksAtNothing(t *testing.T) {
 
 func TestS82B12PortentTrackerUntapsALandAndTendsABattle(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	me := g.Seats[0]
 	tracker := b12Push(g, me.ID, "Portent Tracker", "Creature — Satyr Scout", s82b12TrackerOracle, 1, 1)
 	land := aangPushLand(g, me.ID, "Forest", true)
 	b16Activate(t, g, me.ID, tracker, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: land}}})
@@ -350,7 +350,7 @@ func TestS82B12PortentTrackerUntapsALandAndTendsABattle(t *testing.T) {
 
 	// An opponent protects it: a counter comes off.
 	g = newCatalogGame(t)
-	me, opp = g.Seats[0], g.Seats[1]
+	me, opp := g.Seats[0], g.Seats[1]
 	tracker = b12Push(g, me.ID, "Portent Tracker", "Creature — Satyr Scout", s82b12TrackerOracle, 1, 1)
 	advanceToMain(t, g)
 	theirs := s82b12Battle(g, me.ID, opp.ID, 5)

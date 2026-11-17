@@ -40,14 +40,15 @@ func init() {
 		},
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
-			for _, id := range legalTargetCardIDs(ctx) {
-				c, ok := g.LookupCardForEffect(id)
-				if !ok || c.ManaValue() > item.Params.Amount {
-					return nil
-				}
-				return ReturnFromGraveyardTogether{Targets: []uuid.UUID{id}}.Apply(ctx)
+			ids := legalTargetCardIDs(ctx)
+			if len(ids) == 0 {
+				return nil
 			}
-			return nil
+			c, ok := g.LookupCardForEffect(ids[0])
+			if !ok || c.ManaValue() > item.Params.Amount {
+				return nil
+			}
+			return ReturnFromGraveyardTogether{Targets: []uuid.UUID{ids[0]}}.Apply(ctx)
 		},
 	}
 	Register(Spec{
