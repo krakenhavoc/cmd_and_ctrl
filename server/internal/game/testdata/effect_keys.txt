@@ -231,6 +231,7 @@ body invisible-woman/pump
 body iroh-tea-master/ally
 body itzquinth/dinosaur-bites
 body jace-reality-sculptor/attacker-gets-minus-five
+body jaya-fiery-negotiator/damage
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
 body kishla-trawlers/return-to-hand
@@ -587,6 +588,7 @@ choose choose-cards/death-wish-take
 choose choose-cards/deepfathom-echo-copy
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
+choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
 choose choose-cards/discard-draw-as-many
@@ -689,6 +691,7 @@ choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/irreverent-gremlin-discard-draw
 choose choose-cards/isochron-scepter-imprint
 choose choose-cards/izoni-center-of-the-web-collect-evidence
+choose choose-cards/jaya-fiery-negotiator-play
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/jungle-basin-return-an-untapped-forest
@@ -1396,6 +1399,7 @@ confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
 confirm s82-bro-b07/sarinth-take-land
 confirm s82-bro-b07/sarinth-to-graveyard
+confirm s82-dmu-b16/ajani-bottom
 confirm std-b9/traveling-botanist-take-land
 drawinstead dredge-2
 drawinstead dredge-3
@@ -2692,6 +2696,7 @@ tail invasion-of-pyrulea/reveal-then-draw
 tail invent/sorcery-search
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land
+tail jaya-fiery-negotiator/choose-exiled
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
 tail kaito-bane-of-nightmares/draw-per-opponent-who-lost-life
