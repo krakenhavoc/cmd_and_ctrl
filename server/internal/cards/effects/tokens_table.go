@@ -497,4 +497,10 @@ var tokenTable = map[string]game.Card{
 
 	// #5487: Dominaria United Commander's Stangg Twin (Stangg, Echo Warrior).
 	"3/4 red and green Legendary Human Warrior named Stangg Twin": {Name: "Stangg Twin", TypeLine: "Token Legendary Creature — Human Warrior", Power: 3, Toughness: 4, Colors: []string{"R", "G"}},
+
+	// S82 DMU batch 18: Dominaria United's tokens for Greensleeves, Baru, Rasputin and Jedit Ojanen.
+	"3/3 green Badger": {Name: "Badger", TypeLine: "Token Creature — Badger", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"4/4 green Wurm":   {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 4, Toughness: 4, Colors: []string{"G"}},
+	"2/2 white Knight with protection from red": {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"protection from red"}},
+	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
 }
