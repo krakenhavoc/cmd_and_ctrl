@@ -108,3 +108,14 @@ func sncB07HasCounters(counters map[string]int) bool {
 	}
 	return false
 }
+
+// shieldCounterOnTarget is "put a shield counter on target <creature>" as an
+// ability's whole body: Perrie's entry trigger and Singer of Swift Rivers'.
+func shieldCounterOnTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return AddCounter{Target: id, Kind: game.CounterShield, N: 1}.Apply(ctx)
+}

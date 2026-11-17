@@ -75,11 +75,6 @@ func sncB07Fishes(t *testing.T, g *game.Game, me *game.Player, n int) {
 	}
 }
 
-func sncB07Pick(t *testing.T, g *game.Game, who uuid.UUID, label string) {
-	t.Helper()
-	blbSTPickOption(t, g, who, label)
-}
-
 // --- the Fish ---------------------------------------------------------
 
 func TestSncB07FishTokenIsABlueOneOneThatCantBeBlocked(t *testing.T) {

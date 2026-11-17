@@ -24,14 +24,7 @@ func init() {
 		Name:         "Perrie, the Pulverizer",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisEnters("Perrie — put a shield counter on target creature", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return AddCounter{Target: id, Kind: game.CounterShield, N: 1}.Apply(ctx)
-			}), TargetCreature("target creature")),
+			Targeting(WhenThisEnters("Perrie — put a shield counter on target creature", shieldCounterOnTarget), TargetCreature("target creature")),
 			Targeting(WheneverThisAttacks("Perrie — target creature you control gains trample and gets +X/+X", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)
