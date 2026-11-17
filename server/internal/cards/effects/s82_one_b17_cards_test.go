@@ -215,7 +215,6 @@ func TestS82B17RoarGivesCreatureTokensHaste(t *testing.T) {
 func s82B17RoarSetup(t *testing.T, g *game.Game, me *game.Player) {
 	t.Helper()
 	b12Push(g, me.ID, "Roar of Resistance", "Enchantment", s82B17RoarOracle, 0, 0)
-	b06AddMana(me, "R", "R")
 }
 
 func TestS82B17RoarPaidPumpsAttackersAimedAtOpponents(t *testing.T) {
@@ -232,6 +231,7 @@ func TestS82B17RoarPaidPumpsAttackersAimedAtOpponents(t *testing.T) {
 		t.Fatal(err)
 	}
 	lockInAttacks(t, g)
+	b06AddMana(me, "R", "R")
 	passPriorityAroundTable(t, g)
 	if !hasPayUnlessFor(g, me.ID) {
 		t.Fatal("one trigger for the whole attack should ask for {1}{R}")
@@ -253,6 +253,7 @@ func TestS82B17RoarDeclinedPumpsNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	lockInAttacks(t, g)
+	b06AddMana(me, "R", "R")
 	passPriorityAroundTable(t, g)
 	answerPayUnless(t, g, me.ID, false)
 	passPriorityAroundTable(t, g)
@@ -279,6 +280,7 @@ func TestS82B17RoarCountsAnOpponentsAttackOnAnotherOpponentButNotOnYou(t *testin
 		t.Fatal(err)
 	}
 	lockInAttacks(t, g)
+	b06AddMana(me, "R", "R")
 	passPriorityAroundTable(t, g)
 	if !hasPayUnlessFor(g, me.ID) {
 		t.Fatal("an attack by any player triggers the Roar")
@@ -530,7 +532,7 @@ func TestS82B17OtharriReturnsFromTheGraveyardByTappingARebel(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	rebel := b12Creature(g, me.ID, "Rebel Scout", "Creature — Human Rebel", 1, 1)
-	id, _ := activateFromGraveyard(t, g, "Otharri, Suns' Glory", "Legendary Creature — Phoenix", s82B17OtharriOracle, 3, 3, "{C}{C}{R}{W}", game.ActivateAbilityParams{})
+	id, _ := activateFromGraveyard(t, g, "Otharri, Suns' Glory", "Legendary Creature — Phoenix", s82B17OtharriOracle, 3, 3, "{C}{C}{R}{W}", game.ActivateAbilityParams{TapIDs: []uuid.UUID{rebel}})
 	if c, _ := battlefieldCard(g, rebel); !c.Tapped {
 		t.Error("the Rebel was not tapped to pay")
 	}
