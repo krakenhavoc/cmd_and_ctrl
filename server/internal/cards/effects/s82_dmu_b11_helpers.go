@@ -8,24 +8,13 @@ import (
 
 // s82_dmu_b11_helpers.go — shared bodies for Dominaria United batch 11.
 
-// dmuB11TargetCard is the one card the trigger or spell targets, if it is
-// still a legal target as the ability resolves (CR 608.2b).
-func dmuB11TargetCard(ctx *Context) (uuid.UUID, bool) {
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return t.ID, true
-		}
-	}
-	return uuid.Nil, false
-}
-
 // dmuB11DomainCounters is "put X +1/+1 counters on target creature you
 // control, where X is the number of basic land types among lands you
 // control" (Briar Hydra). X is counted as the ability resolves.
 func dmuB11DomainCounters() Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := dmuB11TargetCard(ctx)
+		id, ok := b16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}

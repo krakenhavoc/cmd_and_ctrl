@@ -18,7 +18,7 @@ func init() {
 	const label = "Radha, Coalition Warlord — another target creature you control gets +X/+X until end of turn, where X is the number of basic land types among lands you control"
 	pump := func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := dmuB11TargetCard(ctx)
+		id, ok := b16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}

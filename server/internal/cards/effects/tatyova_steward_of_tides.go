@@ -29,7 +29,7 @@ func init() {
 	}
 	animate := func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := dmuB11TargetCard(ctx)
+		id, ok := b16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}

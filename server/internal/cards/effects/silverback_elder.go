@@ -26,13 +26,7 @@ func init() {
 	trig.Modes = ChooseOne(
 		ModeDoing("Destroy target artifact or enchantment.",
 			TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok {
-					return nil
-				}
-				return DestroyTarget{Target: t.ID}.Apply(ctx)
-			}),
+			DestroyTheModesTarget),
 		ModeDoing("Look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order.", nil,
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				return PutFromLibraryOntoBattlefield{
