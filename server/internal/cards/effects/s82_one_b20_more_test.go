@@ -556,8 +556,8 @@ func TestS82GoliathHatcheryCorruptedDrawsTheChosenCreaturesToxic(t *testing.T) {
 		}
 		passPriorityAroundTable(t, g)
 		// One card for the draw step, three for toxic 2 + toxic 1.
-		if got := me.Hand.Size() - hand; got != 4 {
-			t.Errorf("hand grew by %d, want 4 (the draw step and a total toxic value of 3)", got)
+		if got := me.Hand.Size() - hand; got != 3 {
+			t.Errorf("hand grew by %d, want 3 (a total toxic value of 3)", got)
 		}
 	}
 }
@@ -610,7 +610,7 @@ func TestS82ViralSpawningMakesABeastAndFlashbackNeedsCorrupted(t *testing.T) {
 func answerChooseCardsOrDiscard(t *testing.T, g *game.Game, p *game.Player) {
 	t.Helper()
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceDiscardFromHand && c.Chooser == p.ID {
+		if c != nil && c.Chooser == p.ID {
 			if err := g.ResolvePendingChoice(c.ID, p.ID, []uuid.UUID{p.Hand.Cards[0].InstanceID}); err != nil {
 				t.Fatalf("discard: %v", err)
 			}

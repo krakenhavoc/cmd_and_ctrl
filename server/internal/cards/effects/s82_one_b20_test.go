@@ -293,6 +293,7 @@ func TestS82KaitoBounceGrantsASecondLoyaltyActivation(t *testing.T) {
 			t.Fatal(err)
 		}
 		passPriorityAroundTable(t, g)
+		t.Logf("bounce=%v step=%v stack=%d perm=%v", bounce, g.Turn.Step, g.Stack.Size(), g.LoyaltyPermanentTwiceThisTurn)
 		err := g.ActivateCatalogAbility(me.ID, kaito, 1, game.ActivateAbilityParams{Strict: true})
 		if bounce {
 			if !handHasName(me, "Bear") || g.Battlefield.Contains(bear) {
