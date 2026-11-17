@@ -101,17 +101,24 @@ func TestBro17BladecoilSerpentCountsPairsOfEachColour(t *testing.T) {
 			if !g.Battlefield.Contains(id) {
 				t.Fatal("the Serpent did not resolve")
 			}
-			pr := latestChooseCardsFor(g, opp.ID)
-			if (pr != nil) != (tc.discards > 0) {
-				t.Errorf("discard prompt for the opponent = %v, want %v", pr != nil, tc.discards > 0)
-			}
-			if pr != nil {
-				if err := g.ResolveChooseCards(pr.ID, opp.ID, pr.ChooseCards[:tc.discards]); err != nil {
-					t.Fatalf("ResolveChooseCards: %v", err)
+			sawPrompt := false
+			for _, p := range g.Seats {
+				if p.ID == me.ID {
+					continue
 				}
-				passPriorityAroundTable(t, g)
-				t.Logf("stack %d, pending %d", g.Stack.Size(), len(g.PendingChoices))
+				if pr := latestChooseCardsFor(g, p.ID); pr != nil {
+					if p.ID == opp.ID {
+						sawPrompt = true
+					}
+					if err := g.ResolveChooseCards(pr.ID, p.ID, pr.ChooseCards[:tc.discards]); err != nil {
+						t.Fatalf("ResolveChooseCards: %v", err)
+					}
+				}
 			}
+			if sawPrompt != (tc.discards > 0) {
+				t.Errorf("discard prompt for the opponent = %v, want %v", sawPrompt, tc.discards > 0)
+			}
+			passPriorityAroundTable(t, g)
 			if got := bro17HandSize(g, me); got != before+tc.draws {
 				t.Errorf("hand %d -> %d, want %d cards drawn", before, got, tc.draws)
 			}
