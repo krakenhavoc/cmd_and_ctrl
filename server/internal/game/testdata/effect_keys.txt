@@ -1541,6 +1541,7 @@ option option-pick/face-down-piles-curator-of-destinies
 option option-pick/face-down-piles-riddles-in-the-dark
 option option-pick/fact-or-fiction-splitter
 option option-pick/fandaniel-telophoroi-ascian-sacrifice-or-lose-life
+option option-pick/fateful-handoff-opponent
 option option-pick/flicker-return-under-an-opponent
 option option-pick/ghostly-dancers-return-or-unlock
 option option-pick/gideon-blackblade-keyword
@@ -1856,6 +1857,7 @@ payunless pay-unless/ultron-unlimited-robot-villain
 payunless pay-unless/unassuming-sage-sorcerer-role
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
+payunless pay-unless/urzas-sylex-search
 payunless pay-unless/vanille-cheerful-lcie-meld
 payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
@@ -2113,6 +2115,7 @@ run prompt-run/undercity-eliminator-sacrificed
 run prompt-run/unexpected-request-attach
 run prompt-run/unscrupulous-contractor-sacrifice
 run prompt-run/unstable-glyphbridge-destroy
+run prompt-run/urzas-sylex-keep-lands
 run prompt-run/vampire-gourmand-draw-unblockable
 run prompt-run/venom-lethal-protector-sacrificed
 run prompt-run/vicious-rumors-gain
@@ -3280,6 +3283,8 @@ tail then/the-key-to-the-vault-bottom-then-cast
 tail then/the-misty-mountains-cold-dragon
 tail then/the-neutrinos-return-attacking
 tail then/the-ring-goes-south-reveal
+tail then/the-stone-brain-draw
+tail then/the-stone-brain-named
 tail then/the-tale-of-tamiyo-copy-and-cast
 tail then/the-tale-of-tamiyo-milled
 tail then/this-is-how-it-ends-shuffle-choice
