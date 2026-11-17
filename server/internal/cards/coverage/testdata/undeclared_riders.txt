@@ -60,6 +60,7 @@ Insectoid Exterminator | scry | on a triggered row that is not the card's enters
 Iron-Fist Pulverizer | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Jace's Sanctum | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Kasla, the Broken Halo | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Kaya, Intangible Slayer | scry | the text makes it conditional or optional
 Lifecrafter's Bestiary | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Lita, Little Orphan Amphibian | scry | a modal trigger whose other bullets declare nothing, so the declared one would always be chosen
 Lothlórien Lookout | scry | on a triggered row that is not the card's enters effect, which nothing prices

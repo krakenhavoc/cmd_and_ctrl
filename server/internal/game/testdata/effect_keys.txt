@@ -660,6 +660,7 @@ choose choose-cards/glittering-wish-take
 choose choose-cards/gluntch-the-bestower-creature
 choose choose-cards/golden-wish-take
 choose choose-cards/goldwardens-gambit-attach
+choose choose-cards/goliath-hatchery-draw
 choose choose-cards/granted-take
 choose choose-cards/gravelgill-scoundrel-tap
 choose choose-cards/great-intelligences-plan-cast
@@ -691,6 +692,7 @@ choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/jungle-basin-return-an-untapped-forest
+choose choose-cards/kaito-dancing-shadow-return
 choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
@@ -1273,6 +1275,7 @@ confirm confirm/invocation-of-the-founders-copy
 confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
+confirm confirm/kaya-intangible-slayer-scry
 confirm confirm/kellan-daring-traveler-to-graveyard
 confirm confirm/killmonger-sacrifice
 confirm confirm/kimahri-ronso-rage-copy
@@ -2689,6 +2692,7 @@ tail kaito-bane-of-nightmares/draw-per-opponent-who-lost-life
 tail kang-prime/time-counters
 tail kav-landseeker/sacrifice-the-lander-next-turn
 tail kaya-geist-hunter/spirits
+tail kaya-intangible-slayer/ask-next
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kindred-charge/haste-and-exile-copies
 tail kinscaer-sentry/entered
@@ -3208,6 +3212,8 @@ tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
 tail then/jinx-delayed-draw
+tail then/kaito-dancing-shadow-bounced
+tail then/kaya-intangible-slayer-copy
 tail then/kaya-spirits-justice-exile-from-a-graveyard
 tail then/keldon-flamesage-bottom-then-cast
 tail then/kindred-charge-type-chosen
@@ -3232,6 +3238,7 @@ tail then/midnight-clock-after-tuck
 tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/nahiri-the-unforgiving-copy
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
 tail then/one-ring-to-rule-them-all-mill

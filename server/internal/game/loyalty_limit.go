@@ -94,7 +94,28 @@ func (g *Game) loyaltyLimitSpentLocked(cardID uuid.UUID) bool {
 	if !c.IsPlaneswalker() {
 		return true
 	}
+	if g.LoyaltyPermanentTwiceThisTurn[cardID] {
+		return false
+	}
 	return !g.LoyaltyTwiceThisTurn[c.Controller] && !g.yourPlaneswalkersLoyaltyTwiceLocked(c.Controller)
+}
+
+// AllowThisPermanentLoyaltyTwiceThisTurnForEffect is the resolution of
+// "you may activate loyalty abilities of [this permanent] twice this
+// turn rather than only once" (Kaito, Dancing Shadow, #5479): until the
+// turn ends, CR 606.3's limit is two for that one permanent. An
+// activation already made counts as the first, a second resolution
+// changes nothing, and it leaves with the object (CR 400.7).
+//
+// Caller must hold g.mu (write).
+func (g *Game) AllowThisPermanentLoyaltyTwiceThisTurnForEffect(cardID uuid.UUID) {
+	if cardID == uuid.Nil || findBattlefieldCard(g, cardID) == nil {
+		return
+	}
+	if g.LoyaltyPermanentTwiceThisTurn == nil {
+		g.LoyaltyPermanentTwiceThisTurn = make(map[uuid.UUID]bool)
+	}
+	g.LoyaltyPermanentTwiceThisTurn[cardID] = true
 }
 
 // AllowLoyaltyTwiceThisTurnForEffect is the resolution of "You may

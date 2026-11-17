@@ -405,6 +405,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// with flying (Edge of Eternities, #4461).
 	printedDroneToken,
 
+	// Kaito, Dancing Shadow's Drone (Phyrexia: All Will Be One, #5479).
+	printedS82OneB20DroneToken,
+
 	// Mabel, Heir to Cragflame's Cragflame (Bloomburrow, #4467): a
 	// legendary Equipment token, +1/+1, vigilance, trample and haste,
 	// equip {2}.
