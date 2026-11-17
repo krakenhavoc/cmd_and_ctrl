@@ -179,6 +179,9 @@ var reviewedNotAWipe = map[string]string{
 	// #5482: BRO batch 16.
 	"Calamity's Wake": "exiles every graveyard and bars noncreature spells for the turn: it touches no permanent",
 	"Urza's Command":  "one of its two chosen bullets gives opposing creatures -2/-0 until end of turn, which removes nothing",
+
+	// #5482: one of six modes, chosen three at a time on an enters-or-attacks trigger.
+	"Mishra, Lost to Phyrexia": "its -1/-1 to opposing creatures is one of six modes, three chosen each time: a mode of a trigger, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

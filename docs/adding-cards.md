@@ -12292,6 +12292,12 @@ Three things to know:
   `ev.DamageTarget == src.Controller` is "damage to you" (Ajani
   Steadfast's emblem, `ajaniSteadfastEmblemPrevention`). The owner orders
   it against every other effect (CR 616.1).
+- **An emblem's cost modifiers** (S82, #5482) are `EmblemSpec.CostModifiers`,
+  built with the `Spec.CostModifiers` constructors (`CostsLess`, `YourSpell()`,
+  `ArtifactSpell()`). The cast price reads every seat's emblems beside the
+  battlefield, with the emblem as the source and its owner as "you", so
+  Saheeli, Filigree Master's "Artifact spells you cast cost {1} less to cast"
+  discounts only its owner's casts (`game.appendEmblemCostModifiersLocked`).
 
 ### Compleated (CR 702.150a, ADR 0183, #2946)
 
