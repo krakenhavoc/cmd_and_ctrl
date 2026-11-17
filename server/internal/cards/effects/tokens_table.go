@@ -81,6 +81,7 @@ var tokenTable = map[string]game.Card{
 	"0/0 black Phyrexian Germ":                                      {Name: "Phyrexian Germ", TypeLine: "Token Creature — Phyrexian Germ", Power: 0, Toughness: 0, Colors: []string{"B"}, PrintedPTKnown: true},
 	"0/0 green and blue Fractal":                                    {Name: "Fractal", TypeLine: "Token Creature — Fractal", Power: 0, Toughness: 0, Colors: []string{"G", "U"}, PrintedPTKnown: true},
 	"0/0 green and blue Fractal named Primo, the Indivisible":       {Name: "Primo, the Indivisible", TypeLine: "Token Legendary Creature — Fractal", Power: 0, Toughness: 0, Colors: []string{"G", "U"}, PrintedPTKnown: true},
+	"2/2 colorless Construct artifact":                              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 2, Toughness: 2},
 	"0/0 colorless Construct artifact":                              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 0, Toughness: 0},
 	"0/0 red Gremlin artifact":                                      {Name: "Gremlin", TypeLine: "Token Artifact Creature — Gremlin", Power: 0, Toughness: 0, Colors: []string{"R"}, PrintedPTKnown: true},
 	"0/1 black Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 0, Toughness: 1, Colors: []string{"B"}},
