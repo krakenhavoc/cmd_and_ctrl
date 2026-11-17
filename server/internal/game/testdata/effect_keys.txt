@@ -49,6 +49,7 @@ body anthropede/destroy-room
 body arcane-denial/draws
 body ascend/exile-listed-unless-citys-blessing
 body ashling-the-limitless/pay-wubrg-or-sacrifice
+body atraxas-skitterfang/grant
 body attach/sacrifice-the-returned-creature
 body augusta-order-returned/counters
 body auron-venerated-guardian/exile
@@ -177,6 +178,7 @@ body flicker/return-exiled-with-flying-counter
 body flicker/return-exiled-with-plus-one-counter
 body flip/the-source
 body foray-of-orcs/damage
+body forgehammer-centurion/cant-block
 body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
@@ -1443,6 +1445,7 @@ option option-pick/arachne-psionic-weaver-look
 option option-pick/aragorn-company-leader-counter
 option option-pick/archfiend-of-spite-life-or-sacrifice
 option option-pick/arni-metalbrow-attacks
+option option-pick/atraxas-skitterfang-keyword
 option option-pick/attach-source-to-player
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/blank-blank-rocketship-letter
