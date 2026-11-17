@@ -1980,6 +1980,7 @@ run prompt-run/dead-drop-sacrifice
 run prompt-run/deadly-brew-return
 run prompt-run/dire-blunderbuss-sacrificed
 run prompt-run/disciple-of-bolas-payout
+run prompt-run/disciple-of-caelus-nin-phase-out
 run prompt-run/disciple-of-freyalise-payout
 run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
