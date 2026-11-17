@@ -60,6 +60,11 @@ const (
 	// too. Colors is unused. Like Kruphix's, the conversion keeps the
 	// token's restrictions and riders (the Ozai ruling).
 	ManaPoolBecomesRed
+	// ManaPoolBecomesBlack — the mana that would be lost becomes black and
+	// stays (Omnath, Locus of All). Black mana stays black, so it is kept
+	// too. Colors is unused. Like Kruphix's, the conversion keeps the
+	// token's restrictions and riders.
+	ManaPoolBecomesBlack
 )
 
 // ManaPoolStatic is ONE printed static over a player's mana pool.
@@ -93,7 +98,7 @@ type manaPoolRules struct {
 	keepAll    bool
 	keepColors map[string]bool
 	// convertTo is the colour mana that would be lost becomes ("C" for
-	// Kruphix, "R" for Ozai); empty converts nothing. With two converting
+	// Kruphix, "R" for Ozai, "B" for Omnath, Locus of All); empty converts nothing. With two converting
 	// statics live, the first on the battlefield wins.
 	convertTo string
 }
@@ -117,6 +122,10 @@ func (g *Game) manaPoolRulesLocked(p *Player, endOfTurn bool) manaPoolRules {
 		case ManaPoolBecomesRed:
 			if r.convertTo == "" {
 				r.convertTo = "R"
+			}
+		case ManaPoolBecomesBlack:
+			if r.convertTo == "" {
+				r.convertTo = "B"
 			}
 		case ManaPoolKeep:
 			if len(s.Colors) == 0 {

@@ -106,13 +106,16 @@ const (
 	DamageRecipientsPlayerAndTheirPermanents DamageRecipients = "playerAndTheirPermanents"
 	// DamageRecipientsCreatures is "to a creature" (Blind Fury).
 	DamageRecipientsCreatures DamageRecipients = "creatures"
+	// DamageRecipientsPlayersAndBattles is "to a player or battle": any
+	// player, and a battle on the battlefield (Rankle and Torbran).
+	DamageRecipientsPlayersAndBattles DamageRecipients = "playersAndBattles"
 )
 
 // Known reports whether this binary can interpret r.
 func (r DamageRecipients) Known() bool {
 	switch r {
 	case DamageRecipientsAny, DamageRecipientsOpponents, DamageRecipientsOpponentsAndTheirPermanents,
-		DamageRecipientsPlayerAndTheirPermanents, DamageRecipientsCreatures:
+		DamageRecipientsPlayerAndTheirPermanents, DamageRecipientsCreatures, DamageRecipientsPlayersAndBattles:
 		return true
 	}
 	return false
@@ -303,6 +306,8 @@ func (g *Game) damageRecipientsMatchLocked(e ScopedEffect, m Mod, target uuid.UU
 			return e.Controller != uuid.Nil && p.ID != e.Controller
 		case DamageRecipientsPlayerAndTheirPermanents:
 			return p.ID == m.Player
+		case DamageRecipientsPlayersAndBattles:
+			return true
 		}
 		return false
 	}
@@ -317,6 +322,8 @@ func (g *Game) damageRecipientsMatchLocked(e ScopedEffect, m Mod, target uuid.UU
 		return c.Controller == m.Player
 	case DamageRecipientsCreatures:
 		return c.IsCreature()
+	case DamageRecipientsPlayersAndBattles:
+		return c.IsBattle()
 	}
 	return false
 }

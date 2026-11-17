@@ -27,13 +27,7 @@ func init() {
 		Name:         "Doctor Doom, King of Latveria",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			withAtBatchEnd(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if !discardedByYou(ev, source) {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.IsLand()
-			}, "Doctor Doom, King of Latveria — each opponent loses 2 life",
+			withAtBatchEnd(On(game.EventDiscardCard, YouDiscardedALandCard, "Doctor Doom, King of Latveria — each opponent loses 2 life",
 				Do(EachOpponentLosesLife{N: 2})), ThatManyEvents()),
 			Targeting(
 				AtBeginningOfYourCombat("Doctor Doom, King of Latveria — target Villain you control gains menace until end of turn and connives",
