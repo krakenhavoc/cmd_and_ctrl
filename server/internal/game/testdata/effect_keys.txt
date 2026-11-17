@@ -2184,6 +2184,7 @@ tail attacking-tokens/kari-zev-exile-ragavan
 tail attacking-tokens/kavaron-harrier-sacrifice-the-robot
 tail attacking-tokens/living-laser-exile-the-tokens
 tail attacking-tokens/loki-the-deceiver-sacrifice-the-token
+tail attacking-tokens/mirror-style-master-next
 tail attacking-tokens/mobilize-sacrifice-the-warriors
 tail attacking-tokens/redoubled-stormsinger-next
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
@@ -2262,6 +2263,7 @@ tail carrion-cruiser/after-mill
 tail cease/gain-and-draw
 tail cemetery-tampering/offer-the-exiled-card
 tail chandra-flameshaper/choose-exiled
+tail chandra-hopes-beacon/grant-cast
 tail charming-prince/after-exile
 tail charnel-serenade/then
 tail choco-seeker-of-paradise/rest-into-graveyard
@@ -2929,6 +2931,7 @@ tail survival-cache/compare
 tail sword-of-hearth-and-home/put-both
 tail sword-of-hearth-and-home/search-basic
 tail sword-of-hearth-and-home/shuffle
+tail sword-of-once-and-future/after-surveil
 tail synthesis-pod/exiled
 tail systems-override/schedule-charge-removal
 tail tablet-of-discovery/after-mill
