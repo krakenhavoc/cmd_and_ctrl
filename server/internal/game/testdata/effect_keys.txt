@@ -1688,6 +1688,8 @@ option sticker/name-position
 option venture/dungeon
 option venture/room
 payunless arni-metalbrow/paid
+payunless cadric-soul-kindler/paid
+payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/ant-man-colony-commander-counter
@@ -3034,6 +3036,8 @@ tail spelunking/gain-life-for-a-cave
 tail spikeshell-harrier/reduce-speed
 tail spiritmonger/color-chosen
 tail ss-botany-bay/then-you
+tail stangg-echo-warrior/copies-created
+tail stangg-echo-warrior/twin-created
 tail std-b26/come-back-wrong-return
 tail std-b26/nashi-after-mill
 tail std-b26/niko-after-exile

@@ -488,4 +488,6 @@ var tokenTable = map[string]game.Card{
 	"0/0 green Phyrexian Wurm with trample and toxic 1": {Name: "Phyrexian Wurm", TypeLine: "Token Creature — Phyrexian Wurm", Colors: []string{"G"}, Keywords: []string{"trample", "toxic 1"}, PrintedPTKnown: true},
 	// #5479: Phyrexia: All Will Be One's Beast (Goliath Hatchery, Viral Spawning, Lukka, Bound to Ruin).
 	"3/3 green Phyrexian Beast with toxic 1": {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"toxic 1"}},
+	// #5487: Dominaria United Commander's Stangg Twin (Stangg, Echo Warrior).
+	"3/4 red and green Legendary Human Warrior named Stangg Twin": {Name: "Stangg Twin", TypeLine: "Token Legendary Creature — Human Warrior", Power: 3, Toughness: 4, Colors: []string{"R", "G"}},
 }

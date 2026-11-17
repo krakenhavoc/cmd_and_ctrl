@@ -179,6 +179,9 @@ var reviewedNotAWipe = map[string]string{
 	// #5482: BRO batch 16.
 	"Calamity's Wake": "exiles every graveyard and bars noncreature spells for the turn: it touches no permanent",
 	"Urza's Command":  "one of its two chosen bullets gives opposing creatures -2/-0 until end of turn, which removes nothing",
+
+	// #5487: its end-step sacrifice names only the tokens its own attack made.
+	"Stangg, Echo Warrior": "sacrifices only the tokens its own attack trigger created, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

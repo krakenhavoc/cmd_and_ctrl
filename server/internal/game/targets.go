@@ -1464,6 +1464,11 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.AbilityOK != nil && !spec.AbilityOK(g, src.Controller, item) {
 				continue
 			}
+			// "another": an ability of the clause's own source is not offered
+			// (The Peregrine Dynamo's "from another legendary source").
+			if spec.excludesSource(src, item.SourceCardID) {
+				continue
+			}
 			out.Cards = append(out.Cards, item.ID)
 		}
 	}
@@ -1698,7 +1703,8 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		// ref to exactly one thing.
 		if spec.Abilities {
 			if item := g.StackMeta[ref.ID]; item != nil && item.Kind != StackItemSpell {
-				return spec.AbilityOK == nil || spec.AbilityOK(g, src.Controller, item)
+				return (spec.AbilityOK == nil || spec.AbilityOK(g, src.Controller, item)) &&
+					!spec.excludesSource(src, item.SourceCardID)
 			}
 		}
 		z := g.findCardZoneLocked(ref.ID)
