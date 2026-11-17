@@ -78877,6 +78877,7 @@ turnTally.players{}.artifactsOrCreaturesSacrificed	number:int
 turnTally.players{}.attacksDeclared	number:int
 turnTally.players{}.cardsDiscarded	number:int
 turnTally.players{}.cardsDrawn	number:int
+turnTally.players{}.cardsPlayedFromExile	number:int
 turnTally.players{}.cardsToGraveyardFromHandOrLibrary	number:int
 turnTally.players{}.combatDamageTaken	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
