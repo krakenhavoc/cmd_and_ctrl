@@ -751,6 +751,16 @@ type AttackRecord struct {
 	PhaseID                int       `json:"phaseId,omitempty"`
 	PlaneswalkerController uuid.UUID `json:"planeswalkerController,omitempty"`
 	Battle                 bool      `json:"battle,omitempty"`
+	// Controller and Subtypes are the attacker as it was declared
+	// (S82, Ramses, Assassin Lord): "attacked this turn by an Assassin
+	// you controlled" is asked after the Assassin may have died or
+	// changed hands, so who controlled it and what it was are frozen at
+	// the declaration. AllTypes marks a changeling (CR 702.73a). Read
+	// through AttackedByCreatureTypeThisTurn. Additive within the
+	// snapshot schema: omitted when empty.
+	Controller uuid.UUID `json:"controller,omitempty"`
+	Subtypes   []string  `json:"subtypes,omitempty"`
+	AllTypes   bool      `json:"allTypes,omitempty"`
 }
 
 // AttackedYouOrYourPlaneswalkerThisTurn reports whether `player`
@@ -2280,6 +2290,12 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 				Epoch:    g.objectEpochLocked(ev.CardID),
 				Defender: ev.Target,
 				PhaseID:  g.Turn.PhaseID,
+			}
+			// S82: what the attacker was as it was declared.
+			if c := g.findCardByIDLocked(ev.CardID); c != nil {
+				rec.Controller = ev.Actor
+				rec.AllTypes = HasAllCreatureTypes(c)
+				rec.Subtypes = append([]string(nil), c.Effective().Subtypes...)
 			}
 			// #2719: who controlled an attacked planeswalker, frozen
 			// now, for a question asked later in the turn.
