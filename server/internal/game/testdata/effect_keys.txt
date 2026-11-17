@@ -936,6 +936,8 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
+choose choose-cards/s82-dmu-b10-keep-one-on-top
+choose choose-cards/s82-dmu-shadow-prophecy-take
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
@@ -2919,6 +2921,7 @@ tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
 tail s82-bro-b11/tawnoss-tinkering-after
+tail s82-dmu/slimefoots-survey-look
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
 tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
