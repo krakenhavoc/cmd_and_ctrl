@@ -293,6 +293,16 @@ func ActivatedDuringYourTurn() CostPredicate {
 	}
 }
 
+// CastDuringAnotherPlayersTurn passes when the spell's controller is not
+// the active player — Defense Grid's "except during its controller's
+// turn" (#5623). "Its controller" is the caster, not the modifier
+// source's controller.
+func CastDuringAnotherPlayersTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game != nil && !IsYourTurn(q.Game, q.Controller)
+	}
+}
+
 // TheFirstOwnCreatureTargetingActivationThisTurn passes while the
 // activator has not yet made an activation this turn that targeted a
 // creature they control (#3779) — "the FIRST activated ability you

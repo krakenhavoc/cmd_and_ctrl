@@ -458,7 +458,7 @@ func TestHobA11BurglarsPlotRefusesTargetsThatShareNoTypeOrAreLands(t *testing.T)
 	}
 }
 
-// All or nothing (CR 701.12b): when one target is gone as the spell resolves
+// All or nothing (CR 701.12a): when one target is gone as the spell resolves
 // nothing changes hands.
 func TestHobA11BurglarsPlotDoesNothingWhenATargetIsGone(t *testing.T) {
 	g := newCatalogGame(t)

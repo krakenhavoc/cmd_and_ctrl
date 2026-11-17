@@ -142,7 +142,8 @@ func UnimplementedNames(cards []Card) []string {
 //
 // Oracle text is newline-separated abilities. A keyword-ability line
 // holds nothing but keywords, comma-separated — "Flash", "Flying,
-// vigilance", "Reach, trample". Anything else standing on its own
+// vigilance", "Reach, trample" — or, in older wording, separated by
+// semicolons ("Flying; trample; rampage 4", #5791). Anything else standing on its own
 // line is a rule: a triggered ability, an activated ability, a static
 // effect, a spell instruction. Reminder text is removed first; it is
 // parenthesised by definition and never carries rules, so a Forest's
@@ -176,27 +177,49 @@ func printsUnhandledRules(text string) bool {
 	return false
 }
 
-// keywordOnlyLine reports whether every comma-separated item on the
-// line is a keyword the engine enforces. Empty items are skipped so a
+// keywordOnlyLine reports whether every item on the line, split on
+// commas and semicolons alike (KeywordLineParts, #5791), is a keyword
+// the engine enforces. A sentence that lists keywords between
+// semicolons — Built Bear's "1 point each → Flash; deathtouch; reach;
+// vigilance; or ward {2}" — still fails, because its other items are
+// not keywords. Empty items are skipped so a
 // stray trailing comma doesn't sink an otherwise clean keyword line;
 // a line that is nothing but punctuation therefore finds no keyword
 // at all and returns false, which the caller reads as "a rule" — the
 // conservative direction for text this function does not understand.
 func keywordOnlyLine(line string) bool {
 	found := false
-	for _, part := range strings.Split(line, ",") {
+	for _, part := range KeywordLineParts(line) {
 		if strings.TrimSpace(part) == "" {
 			continue
 		}
 		// CanonicalKeywords, not the singular form: one printed
 		// clause can be two abilities ("protection from Demons and
 		// from Dragons", CR 702.16m).
-		if _, ok := CanonicalKeywords(part); !ok {
+		kws, ok := CanonicalKeywords(part)
+		if !ok {
 			return false
+		}
+		for _, kw := range kws {
+			if keywordRunsInCatalog[kw] {
+				return false
+			}
 		}
 		found = true
 	}
 	return found
+}
+
+// keywordRunsInCatalog is the canonical tokens whose triggered
+// abilities are catalog rows rather than an engine path: the token
+// is the badge and what the rows read (a creature that lost soulbond
+// never pairs), but nothing in the engine triggers from it. An
+// uncatalogued card that prints one has the keyword and not the
+// ability, so the line is a rule the engine does not run, and the card
+// is flagged. Flanking left with #5784: its trigger is the engine's
+// (flanking.go), so a line of it is a keyword the engine runs.
+var keywordRunsInCatalog = map[string]bool{
+	KeywordSoulbond: true,
 }
 
 // stripReminderText removes every parenthesised span. Scryfall's

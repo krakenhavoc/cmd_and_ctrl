@@ -1005,7 +1005,8 @@ func altCostHasEntryRider(card Card, item *StackItem) bool {
 	}
 	// #5428: a granted evoke has no row on the card; its sacrifice is read
 	// off the key (queueAltCostEntryTriggerLocked).
-	if item.AltCost == GrantedAltCostEvoke {
+	// #5667: so has a granted blitz.
+	if item.AltCost == GrantedAltCostEvoke || item.AltCost == GrantedAltCostBlitz {
 		return true
 	}
 	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)

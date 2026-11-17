@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The mana carries ManaRestrictNotFromHand (#2811): it pays for
 // activated abilities and for spells cast from a graveyard, exile, the
 // command zone or a library top, and not for a spell cast from hand. It
-// empties with the phase like any other mana (CR 500.4).
+// empties with the phase like any other mana (CR 500.5).
 //
 // No simplification.
 func init() {

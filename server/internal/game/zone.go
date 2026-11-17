@@ -267,6 +267,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil
 		c.ExertOnAttack = false
+		c.EnlistOnAttack = uuid.Nil
 		c.clearBlocking()
 		c.Goads = nil
 		// #816 / CR 400.7: marked damage and the CR 702.2c deathtouch
@@ -311,6 +312,8 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// #2322 / CR 400.7: a colour exception's dropped devoid belongs to
 		// the copy object, not the card; a new object has its own text.
 		c.ColorCDADropped = false
+		// #5675 / CR 400.7: and so does a keyword a copy exception took.
+		c.LostKeywords = nil
 		// #742: the chosen colour belongs to the entry too, for the
 		// same reason — a bounced Coldsteel Heart chooses again.
 		c.ChosenColor = ""
@@ -383,6 +386,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// flickered or bounced comes back a new, unsuspected object.
 		c.Suspected = false
 		c.SuspectedAt = 0
+		// CR 702.95e (#5675): and a paired creature that leaves the
+		// battlefield is unpaired. Its partner's half of the link goes
+		// at the next layer recompute (sweepBrokenPairsLocked).
+		c.PairedWith = uuid.Nil
 		// ADR 0114 §3 / CR 400.7 + CR 701.54a: and so is the
 		// Ring-bearer designation — a Ring-bearer that leaves and comes
 		// back is a new object and is nobody's Ring-bearer.
@@ -438,6 +445,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// leaves behind must not remember a status it no longer has.
 		c.PhasedOutBy = uuid.Nil
 		c.PhaseInLockedBy = uuid.Nil
+		c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
 		c.PhasedOutIndirect = false
 		c.TapOnPhaseIn = false
 	}

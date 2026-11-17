@@ -304,7 +304,7 @@ func TestOtjS2ShiftingGriftExchangesNothingWhenATargetIsGone(t *testing.T) {
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(theirRock) })
 	passPriorityAroundTable(t, g)
 	if c, ok := battlefieldCard(g, myRock); !ok || c.Controller != me.ID {
-		t.Error("with one target gone, no control is exchanged (CR 701.12b)")
+		t.Error("with one target gone, no control is exchanged (CR 701.12a)")
 	}
 }
 

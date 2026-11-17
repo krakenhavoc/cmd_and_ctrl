@@ -4,12 +4,18 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { DraftCard } from "./draft";
 import {
   clearArchetypeCache,
+  colourCounts,
   fetchArchetypes,
+  PAIR_FIT_MIN,
+  pairFit,
   pairHasContent,
   pairName,
   pairTitle,
+  railColours,
+  RAIL_MIN_PICKS,
   signpostCard,
 } from "./draftArchetypes";
 
@@ -85,5 +91,64 @@ describe("fetchArchetypes", () => {
     const spy = serve({ set: "zzz", name: "Z", pairs: [] });
     await expect(fetchArchetypes("zzz")).resolves.toMatchObject({ set: "zzz" });
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---- The collapsed panel's pips and each pair's fit (#5848 §4) ----
+
+describe("colourCounts / railColours", () => {
+  const c = (id: string, colors?: string[]): DraftCard => ({ id, name: id, colors });
+
+  it("counts a gold card once in each of its colours, and a colourless card or a land in none", () => {
+    expect(colourCounts([c("a", ["W", "U"]), c("b", ["W"]), c("c", []), c("d")])).toEqual({
+      W: 2,
+      U: 1,
+    });
+  });
+
+  it("lists the colours with three or more cards, most first, WUBRG on a tie", () => {
+    const cards = [
+      c("a", ["G"]),
+      c("b", ["G"]),
+      c("c", ["G"]),
+      c("d", ["W"]),
+      c("e", ["W"]),
+      c("f", ["W"]),
+      c("g", ["B"]),
+      c("h", ["B"]),
+      c("i", ["B"]),
+      c("j", ["B"]),
+      c("k", ["R"]),
+      c("l", ["R"]),
+    ];
+    expect(railColours(cards)).toEqual(["B", "W", "G"]);
+    expect(RAIL_MIN_PICKS).toBe(3);
+  });
+
+  it("is empty with no colour at three", () => {
+    expect(railColours([c("a", ["U"]), c("b", ["U"])])).toEqual([]);
+    expect(railColours([])).toEqual([]);
+  });
+});
+
+describe("pairFit", () => {
+  const c = (id: string, colors?: string[]): DraftCard => ({ id, name: id, colors });
+
+  it("counts the coloured cards whose colours are all in the pair", () => {
+    const cards = [
+      c("a", ["W"]),
+      c("b", ["U"]),
+      c("c", ["W", "U"]),
+      c("d", ["W", "B"]),
+      c("e", ["B"]),
+    ];
+    expect(pairFit("WU", cards)).toBe(3);
+    expect(pairFit("WB", cards)).toBe(3);
+    expect(pairFit("RG", cards)).toBe(0);
+  });
+
+  it("leaves out colourless cards and lands, which fit every pair", () => {
+    expect(pairFit("WU", [c("a"), c("b", []), c("c", ["U"])])).toBe(1);
+    expect(PAIR_FIT_MIN).toBe(3);
   });
 });

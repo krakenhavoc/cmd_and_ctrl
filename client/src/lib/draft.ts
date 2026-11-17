@@ -73,6 +73,21 @@ export interface DraftCard {
   mana_cost?: string;
   mana_value?: number;
   type_line?: string;
+  /**
+   * The card's rules text (Scryfall's oracle_text), lines split by "\n".
+   * A two-faced card's faces are joined with "\n//\n". Absent when the card
+   * has none and from an older server (#5848).
+   */
+  oracle_text?: string;
+  /** Printed power, as Scryfall gives it ("2", "*", "1+*"); absent when the card has none. */
+  power?: string;
+  /** Printed toughness, as Scryfall gives it; absent when the card has none. */
+  toughness?: string;
+  /**
+   * The keyword abilities the card itself prints ("Flying", "First
+   * strike"), never ones it grants; absent when it has none.
+   */
+  keywords?: string[];
   /** A basic land. */
   basic?: boolean;
   /**
@@ -192,6 +207,13 @@ export interface DraftView {
   /** The viewer's seat. */
   you: number;
   players: DraftPlayer[];
+  /**
+   * The mean 17Lands games-in-hand win rate of the set's rated cards, in
+   * percent, one decimal (54.1): what a card's `rating.value` is read
+   * against ("+3.2 against this set's average", #5848). Absent for a cube
+   * draft, for a set with no 17Lands data and from an older server.
+   */
+  set_avg_win_rate?: number;
   /** The pack the viewer holds; absent while waiting for the others. */
   pack?: DraftCard[];
   /** The viewer's own picks, in the order taken. */
@@ -399,9 +421,6 @@ export async function seatDraftMatch(id: string, token: string): Promise<Session
     gameID: body.game?.id,
   };
 }
-
-/** The drag type a pool card carries on the deckbuilding screen: its draft id. */
-export const DRAG_TYPE = "application/x-c2-draft-card";
 
 // The way back from a match's table to its draft. The game page knows a
 // table by its id alone, so the draft page notes which draft a table
@@ -734,6 +753,20 @@ export function secondsLeft(
   return Math.max(0, Math.ceil((at - Math.max(0, elapsedMs)) / 1000));
 }
 
+/**
+ * Milliseconds left on the pick timer, `elapsedMs` after the frame
+ * arrived. The same count as `secondsLeft`, not rounded up, for the
+ * fuse (#5848), which moves every animation frame.
+ */
+export function msLeftAfter(
+  view: Pick<DraftView, "deadline" | "now">,
+  elapsedMs: number,
+): number | null {
+  const at = msLeftAtFrame(view);
+  if (at === null) return null;
+  return Math.max(0, at - Math.max(0, elapsedMs));
+}
+
 /** "1:05", "0:09". */
 export function clockText(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -758,6 +791,27 @@ export function timerAnnouncement(prev: number | null, next: number | null): str
     if (prev > mark && next <= mark && next > 0) return `${mark} seconds left to pick.`;
   }
   return "";
+}
+
+/**
+ * The cards this frame added to the picks since the last one: what a
+ * pick made for the viewer when the clock ran out looks like from here.
+ * Empty on the first frame, for another draft, or when nothing was added.
+ */
+export function newPickNames(prev: DraftView | null, next: DraftView): string[] {
+  if (!prev || prev.id !== next.id || !prev.picks || !next.picks) return [];
+  const had = new Set(prev.picks.map((c) => c.id));
+  return next.picks.filter((c) => !had.has(c.id)).map((c) => c.name);
+}
+
+/** The toast for a pick made by the clock: "Time ran out. Took A and B for you." */
+export function autoPickToast(names: string[]): string {
+  if (names.length === 0) return "";
+  const list =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `Time ran out. Took ${list} for you.`;
 }
 
 /** "Pick 1 card" / "Pick 2 cards". */

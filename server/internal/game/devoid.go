@@ -132,6 +132,7 @@ func (c *Card) PrintedKeywordsHonouringCopy(kws []string) []string {
 	if c.ColorCDADropped {
 		kws = withoutKeyword(kws, KeywordDevoid)
 	}
+	kws = withoutKeywordsFold(kws, c.LostKeywords)
 	return c.TextWords.keywords(kws)
 }
 

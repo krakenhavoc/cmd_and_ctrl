@@ -42,8 +42,12 @@ import (
 //  3. Roll: every die is drawn from the roll stream at once, in order.
 //  4. Ignore (dice/ignore-roll): each chooser in turn picks one of the
 //     rolls still in play to ignore.
-//  5. The card's own "ignore the lowest" (CR 706.6), then one EventRollDie
-//     per kept roll in one batch, then the tail.
+//  5. The card's own "ignore the lowest" (CR 706.6) together with every
+//     static "plus one and ignore the lowest roll" that applied in the
+//     window (Pixie Guide, #5681: RollOneMoreAndIgnoreLowest), then one
+//     EventRollDie per kept roll in one batch, each with its natural
+//     result and the instruction's modifier (CR 706.2,
+//     DiceRoll.Modifier), then the tail.
 //
 // Each question is a keyed option pick, and the paused roll rides it as
 // plain data (PendingChoice.dice, written as pendingChoiceSnapshot.DiceRoll),
@@ -99,6 +103,17 @@ type DiceRoll struct {
 	// (EventRollDie.PlanarFace) with no number (CR 901.9d). The tail is
 	// still told the drawn 1..6.
 	Planar bool
+	// Modifier is what the instruction adds to (or, negative, subtracts
+	// from) each die's natural result (CR 706.2): Diviner's Portent's
+	// "roll a d20 and add the number of cards in your hand", The Deck of
+	// Many Things' "subtract the number of cards in your hand". The card
+	// reads the number as the roll is made. Every kept die is announced
+	// with its natural result and this beside it (EventRollDie.Amount and
+	// .Modifier), so "a natural 20" reads the face and "if any of those
+	// results was 10 or higher" reads the sum, and the tail is told both
+	// (TailOutcome.Rolls, .RollModifier). A planar die has no numerical
+	// result (CR 901.9d) and carries none.
+	Modifier int
 }
 
 // diceShield is one applied "then you choose one of those rolls to
@@ -143,9 +158,12 @@ func (g *Game) RollDiceThenForEffect(r DiceRoll) error {
 	if out == nil {
 		// Nothing replaces a roll with nothing today; a cancelled roll
 		// rolled no dice.
-		return g.runKeyedRollTailLocked(r.Then, nil)
+		return g.runKeyedRollTailLocked(r.Then, nil, 0)
 	}
 	r.N = out.RollCount
+	// A static "plus one and ignore the lowest roll" (Pixie Guide) is the
+	// instruction's own ignore, one more for each that applied.
+	r.IgnoreLowest += out.rollIgnoreLowest
 	return g.continueDiceRollLocked(diceRollPause{Roll: r, Pending: append([]diceShield(nil), out.rollShields...)})
 }
 
@@ -188,6 +206,27 @@ func (ev *ReplacementEvent) RollOneMoreAndIgnoreOne(chooser, source uuid.UUID, l
 	shields := make([]diceShield, 0, len(ev.rollShields)+1)
 	shields = append(shields, ev.rollShields...)
 	ev.rollShields = append(shields, diceShield{Chooser: chooser, Source: source, Label: label})
+}
+
+// RollOneMoreAndIgnoreLowest is a static replacement's "instead roll that
+// many dice plus one and ignore the lowest roll" (Pixie Guide, Barbarian
+// Class, #5681; CR 614.1a, 706.6) applied to a dice roll's window: one
+// more die, and one more of the lowest rolls ignored once they are
+// rolled. Nobody is asked: rolls tied for the lowest show the same number
+// and carry the same modifier, so which of them goes is unobservable.
+// Each such replacement applies once per roll (CR 614.5), so two of them
+// roll two more dice and ignore the two lowest. A roll a player chose to
+// ignore (RollOneMoreAndIgnoreOne) goes first, then the lowest of the
+// rest; whichever order the roller would pick (CR 616.1), the same sets
+// of kept rolls are reachable. The planar die has no numerical result, so
+// no roll of it is the lowest (CR 706.7): a roll of planar dice is left
+// alone.
+func (ev *ReplacementEvent) RollOneMoreAndIgnoreLowest() {
+	if ev.Kind != RepEventRollDice || ev.RollCount <= 0 || ev.RollPlanar {
+		return
+	}
+	ev.RollCount++
+	ev.rollIgnoreLowest++
 }
 
 // RollExtraDieNextTimeForEffect registers Squid Fire Knight's shield: the
@@ -252,14 +291,28 @@ func (g *Game) finishDiceRollLocked(r DiceRoll, rolls []int) error {
 	}
 	batch := g.eventSeq + 1
 	for _, result := range kept {
-		ev := Event{Kind: EventRollDie, Actor: r.Player, Source: r.Source, Amount: result, Sides: r.Sides, BatchSeq: batch}
+		ev := Event{Kind: EventRollDie, Actor: r.Player, Source: r.Source, Amount: result, Modifier: r.Modifier, Sides: r.Sides, BatchSeq: batch}
 		if r.Planar {
 			// CR 901.9d: the planar die has no numerical result.
-			ev.Amount, ev.PlanarFace = 0, planarFaceOf(result)
+			ev.Amount, ev.Modifier, ev.PlanarFace = 0, 0, planarFaceOf(result)
 		}
 		g.EmitEvent(ev)
 	}
-	return g.runKeyedRollTailLocked(r.Then, kept)
+	modifier := r.Modifier
+	if r.Planar {
+		modifier = 0
+	}
+	return g.runKeyedRollTailLocked(r.Then, kept, modifier)
+}
+
+// RollResult is an EventRollDie's result: the natural result the die shows
+// (Amount) plus the instruction's modifier (CR 706.2, #5681). Zero for a
+// planar die, which has no numerical result (CR 901.9d).
+func (ev Event) RollResult() int {
+	if ev.Kind != EventRollDie || ev.PlanarFace != "" {
+		return 0
+	}
+	return ev.Amount + ev.Modifier
 }
 
 // distinctChoosers lists the different choosers of shields, in order of
@@ -428,6 +481,7 @@ type diceRollPauseSnapshot struct {
 	IgnoreLowest int                `json:"ignoreLowest,omitempty"`
 	Then         *keyedTailSnapshot `json:"then,omitempty"`
 	Planar       bool               `json:"planar,omitempty"`
+	Modifier     int                `json:"modifier,omitempty"`
 	Rolls        []int              `json:"rolls,omitempty"`
 	Pending      []diceShield       `json:"pending,omitempty"`
 	Ordered      []diceShield       `json:"ordered,omitempty"`
@@ -436,7 +490,7 @@ type diceRollPauseSnapshot struct {
 func snapshotDiceRollPause(p *diceRollPause) *diceRollPauseSnapshot {
 	return &diceRollPauseSnapshot{
 		Player: p.Roll.Player, Source: uuidPtrOrNil(p.Roll.Source), Sides: p.Roll.Sides, N: p.Roll.N,
-		IgnoreLowest: p.Roll.IgnoreLowest, Then: snapshotKeyedTail(p.Roll.Then), Planar: p.Roll.Planar,
+		IgnoreLowest: p.Roll.IgnoreLowest, Then: snapshotKeyedTail(p.Roll.Then), Planar: p.Roll.Planar, Modifier: p.Roll.Modifier,
 		Rolls: append([]int(nil), p.Rolls...), Pending: append([]diceShield(nil), p.Pending...),
 		Ordered: append([]diceShield(nil), p.Ordered...),
 	}
@@ -446,7 +500,7 @@ func restoreDiceRollPause(s *diceRollPauseSnapshot) *diceRollPause {
 	return &diceRollPause{
 		Roll: DiceRoll{
 			Player: s.Player, Source: uuidOrNil(s.Source), Sides: s.Sides, N: s.N,
-			IgnoreLowest: s.IgnoreLowest, Then: restoreKeyedTail(s.Then), Planar: s.Planar,
+			IgnoreLowest: s.IgnoreLowest, Then: restoreKeyedTail(s.Then), Planar: s.Planar, Modifier: s.Modifier,
 		},
 		Rolls: append([]int(nil), s.Rolls...), Pending: append([]diceShield(nil), s.Pending...),
 		Ordered: append([]diceShield(nil), s.Ordered...),

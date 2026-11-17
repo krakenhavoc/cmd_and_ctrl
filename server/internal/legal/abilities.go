@@ -408,7 +408,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// AbilityLifeCostLocked, so the move the bot is offered and
 		// the payment the engine charges are the same number.
 		life, lifeOK := g.AbilityLifeCostLocked(e.seat, source.InstanceID, ab.Cost)
-		if !lifeOK || !g.CanPayLifeLocked(p, life) {
+		// #5660: the non-mana activation's form of it, which also
+		// refuses under "players can't pay life to activate abilities
+		// that aren't mana abilities".
+		if !lifeOK || !g.CanPayLifeToCastOrActivateLocked(p, life) {
 			continue
 		}
 		// ADR 0129 §7, CR 118.3: the energy component, through the
@@ -585,10 +588,21 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		tapSets := [][]uuid.UUID{nil}
 		if tc := ab.Cost.TapOthers; !tc.Empty() {
 			pool := g.TapOthersOptionsForEffect(e.seat, source.InstanceID, tc)
+			alsoTaps := ab.Cost.Tap
+			// #5669: the untap form on a cost that also taps its source.
+			// The source (untapped here, or the row was skipped above)
+			// pays both halves (CR 601.2h), on the engine's own terms,
+			// as the view offers it.
+			if alsoTaps && game.TapOthersUntaps(tc) {
+				alsoTaps = false
+				if g.UntapOthersSourcePaysForEffect(e.seat, source.InstanceID, tc) {
+					pool = append(pool, source.InstanceID)
+				}
+			}
 			if game.TapOthersCountFromX(tc) {
-				tapSets = e.variableTapOthersPayments(pool, tc, source.InstanceID, ab.Cost.Tap)
+				tapSets = e.variableTapOthersPayments(pool, tc, source.InstanceID, alsoTaps)
 			} else {
-				tapSets = e.tapOthersPayments(pool, tc, source.InstanceID, ab.Cost.Tap)
+				tapSets = e.tapOthersPayments(pool, tc, source.InstanceID, alsoTaps)
 			}
 			if len(tapSets) == 0 {
 				continue
@@ -1071,7 +1085,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								}
 								label += returnLabel(g, rets)
 								label += exileLabel(g, perms)
-								label += tapLabel(g, taps)
+								if game.TapOthersUntaps(ab.Cost.TapOthers) {
+									label += untapLabel(g, taps)
+								} else {
+									label += tapLabel(g, taps)
+								}
 								label += randomDiscardLabel(ab.Cost)
 								handN := e.handDiscardCount(ab.Cost.DiscardCards, source.InstanceID)
 								label += handDiscardLabel(ab.Cost.DiscardCards, handN)
@@ -1767,6 +1785,19 @@ func tapLabel(g *game.Game, ids []uuid.UUID) string {
 	return " (tapping " + strings.Join(names, ", ") + ")"
 }
 
+// untapLabel is tapLabel for an "Untap N tapped creatures you control"
+// cost (#5669).
+func untapLabel(g *game.Game, ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = cardName(g, id)
+	}
+	return " (untapping " + strings.Join(names, ", ") + ")"
+}
+
 // sacrificeLabel names what a payment eats, so two moves that differ
 // only in which permanent paid read differently in a log or a trace.
 // Empty for a payment of nothing.
@@ -1885,7 +1916,9 @@ func (e *enumerator) affordablePayment(
 		// subtraction that knew only the first half, so a seat under
 		// a life lock is not offered a Phyrexian activation the
 		// strike refuses.
-		if !e.g.CanPayLifeLocked(e.p, reservedLife+life) {
+		// #5660: and "players can't pay life to activate abilities that
+		// aren't mana abilities" (this prices no mana ability).
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, reservedLife+life) {
 			break
 		}
 		if x, ok := e.affordableXExcluding(reduced, spend, floor, excluded); ok {

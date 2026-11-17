@@ -485,7 +485,8 @@ func printedDefense(c cards.Card) int {
 // today, so a keyword the front face's oracle text does not print
 // is dropped. The match is against comma-separated entries of a
 // line, which is how keyword abilities are printed ("Reach,
-// trample"), so prose that merely mentions a keyword ("target
+// trample"; older wording "Trample; rampage 2" separates them with
+// semicolons, game.KeywordLineParts), so prose that merely mentions a keyword ("target
 // creature gains trample") can't smuggle one in.
 func printedKeywords(c cards.Card) []string {
 	return printedKeywordsForFace(c, 0)
@@ -512,6 +513,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	wantAnnihilator := false
 	wantRenown := false
 	wantModular := false
+	wantRampage := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
 		kws, ok := game.CanonicalKeywords(raw)
@@ -554,6 +556,10 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 			// MODULAR (CR 702.43, #2012) is the same shape again.
 			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordModular) {
 				wantModular = true
+			}
+			// RAMPAGE (CR 702.23, #5769) is the same shape again.
+			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordRampage) {
+				wantRampage = true
 			}
 			continue
 		}
@@ -656,6 +662,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 		{wantAnnihilator, game.AnnihilatorValue},
 		{wantRenown, game.RenownValue},
 		{wantModular, game.ModularValue},
+		{wantRampage, game.RampageValue},
 	} {
 		if !want.on {
 			continue
@@ -767,7 +774,9 @@ func keywordLineCountsOf(c cards.Card) map[string]int {
 // duplicate toxic lines both depend on the repeat count, not merely
 // the presence (#1510). A keyword ability occupies its own line,
 // alone or comma-separated from its neighbours ("Flash", "Flying,
-// vigilance", "Reach, trample", "Prowess, prowess"); reminder text in
+// vigilance", "Reach, trample", "Prowess, prowess") — or, in older
+// wording, semicolon-separated ("Flying; trample; rampage 4", #5791,
+// split by game.KeywordLineParts); reminder text in
 // parentheses is stripped first so a reminder that names another
 // keyword doesn't count. Only exact matches after the split are
 // kept, so a sentence is never mistaken for a keyword line.
@@ -777,7 +786,7 @@ func keywordLineCounts(text string) map[string]int {
 		if i := strings.IndexByte(line, '('); i >= 0 {
 			line = line[:i]
 		}
-		parts := strings.Split(line, ",")
+		parts := game.KeywordLineParts(line)
 		if isSentenceLine(line, parts) {
 			continue
 		}
@@ -799,15 +808,29 @@ func keywordLineCounts(text string) map[string]int {
 
 // isSentenceLine reports whether a line (reminder text already cut) is
 // a SENTENCE rather than a keyword-ability line: it ends with a full
-// stop and its first comma-separated part is not a keyword. A keyword
+// stop and its first part (game.KeywordLineParts) is not a keyword. A keyword
 // line never reads that way — "Flying, vigilance", "Annihilator 2",
 // "Trample, haste, annihilator 1" — but a sentence can have a part
 // between two commas that IS a keyword. Flayer of Loyalties' cast
 // trigger ends "gains trample, annihilator 2, and haste.", and counting
 // that "annihilator 2" would give the card a second, unprinted
 // instance of a cumulative keyword: stronger than printed (#2073).
+//
+// A line with a SEMICOLON in it needs no full stop to be a sentence
+// (#5791). Every real keyword line separated by semicolons starts with
+// a keyword ("Flying; trample; rampage 4", "First strike; banding"),
+// but a sentence can use them to list choices, keywords among them,
+// and stop without a full stop: Built Bear's "1 point each → Flash;
+// deathtouch; reach; vigilance; or ward {2}" would otherwise count
+// deathtouch, reach and vigilance the card does not have. Its first
+// part is not a keyword, so it is a sentence. A semicolon line that
+// starts with a keyword the engine does not enforce ("Bushido 2;
+// flying" — no such card is printed) counts nothing, which errs weaker.
 func isSentenceLine(line string, parts []string) bool {
-	if !strings.HasSuffix(strings.TrimSpace(line), ".") || len(parts) == 0 {
+	if len(parts) == 0 {
+		return false
+	}
+	if !strings.HasSuffix(strings.TrimSpace(line), ".") && !strings.ContainsRune(line, ';') {
 		return false
 	}
 	_, ok := game.CanonicalKeywords(parts[0])
@@ -1059,6 +1082,24 @@ func printedMeld(c cards.Card) *game.MeldPrint {
 // offer a choice is indistinguishable from no face list, and nil is
 // the cheaper representation of the same fact.
 func printedFaces(c cards.Card) []game.Face {
+	// CR 718 (#5656): a prototype card is one Scryfall face whose inset
+	// (a second mana cost, power and toughness) is only in its oracle
+	// text. The engine keeps the inset as a second face
+	// (game/prototype.go), built here from the printed card.
+	if c.Layout == game.LayoutPrototype && len(c.CardFaces) < 2 {
+		power, _ := strconv.Atoi(strings.TrimSpace(c.Power))
+		toughness, _ := strconv.Atoi(strings.TrimSpace(c.Toughness))
+		return game.PrototypeFaces(game.Face{
+			Name:              c.Name,
+			TypeLine:          c.TypeLine,
+			ManaCost:          c.ManaCost,
+			Colors:            append([]string(nil), c.Colors...),
+			Power:             power,
+			Toughness:         toughness,
+			VariableToughness: variableToughness(c.TypeLine, c.Toughness),
+			OracleText:        c.OracleText,
+		})
+	}
 	if len(c.CardFaces) < 2 {
 		return nil
 	}

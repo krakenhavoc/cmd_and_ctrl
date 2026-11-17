@@ -114,6 +114,8 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 		MulligansOpen: v.MulligansOpen,
 		UndoLimit:     v.UndoLimit,
 		Settings:      v.Settings,
+		// ADR 0211 §6: a time, no ids in it.
+		IdleCloseAt: v.IdleCloseAt,
 	}
 	out.Seats = make([]protocol.PlayerView, len(v.Seats))
 	// First pass: assign placeholders to every player's ID so that
@@ -733,6 +735,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 			Access: map[string]string{ownerID: protocol.VoiceAccessGranted}},
 		Rematch: &protocol.RematchView{GameID: "55555555-5555-5555-5555-555555555555", Host: ownerID, HostName: "Owner", Open: true,
 			Accepted: []string{oppID}},
+		IdleCloseAt:    "2026-11-13T20:14:00Z",
 		StackPositions: map[string]protocol.StackPositionView{ownerID: {X: 0.5, Y: 0.25}},
 		StartingSeat:   1,
 		OpeningRoll: &protocol.OpeningRollView{Rounds: []protocol.OpeningRollRoundView{

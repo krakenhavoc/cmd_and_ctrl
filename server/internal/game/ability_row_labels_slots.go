@@ -149,6 +149,15 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 		}
 		return upperFirst(subject) + " you cast" + from + " gain evoke " + o.ManaCost + " as you cast them."
 	}
+	if o.Key == GrantedAltCostBlitz {
+		// #5667, Henzie "Toolbox" Torre: the granted keyword, in the
+		// printed words.
+		with := ""
+		if gr.MinManaValue != nil {
+			with = fmt.Sprintf(" with mana value %d or greater", *gr.MinManaValue)
+		}
+		return "Each " + strings.TrimSuffix(subject, "s") + " you cast" + with + " has blitz. The blitz cost is equal to its mana cost."
+	}
 	if o.ReturnToHand != nil && o.Sacrifice == nil {
 		// Peter Parker // Amazing Spider-Man: web-slinging, granted.
 		// SpellsText is the singular noun phrase ("legendary spell that's

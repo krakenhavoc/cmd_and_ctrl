@@ -114,6 +114,10 @@ func (g *Game) changeLifeThroughReplacementsLocked(ev *ReplacementEvent) (paused
 		// to the life lost this way" gains nothing when the loss was
 		// replaced away, and a drain adding up several players' losses
 		// would otherwise wait forever for this one.
+		//
+		// A "Then ... you lose the game" a replacement put on the event
+		// before another cancelled it still happens (life_instead.go).
+		g.loseGameAfterLifeEventLocked(ev)
 		return false, g.runLifeTailLocked(ev, 0)
 	}
 	return false, g.applyResolvedLifeChangeLocked(out)
@@ -161,11 +165,15 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 		}
 		return gone
 	}
-	if ev.LifePayment && ev.LifeDelta == 0 {
+	if ev.LifeDelta == 0 {
 		// A payment a replacement turned into something else (exiling
 		// cards from the library instead, Ashiok, Wicked Manipulator) is
-		// still paid, but no life moved: no change, no event.
-		return g.runLifeTailLocked(ev, 0)
+		// still paid, but no life moved: no change, no event. The same
+		// for a loss rewritten into "your life total becomes 3" at 3
+		// life (Enduring Angel, life_instead.go): CR 119.5 gains or
+		// loses the difference, and there is none.
+		lost := g.loseGameAfterLifeEventLocked(ev)
+		return g.lifeTailThenStopLocked(ev, 0, lost)
 	}
 	p.ChangeLife(ev.LifeDelta)
 	if ev.LifeDelta < 0 {
@@ -186,7 +194,30 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 	// — or queues its own life change — sees this one already recorded,
 	// and before the caller's state-based sweep, because the loss and
 	// the gain of a drain are both part of one resolution.
-	return g.runLifeTailLocked(ev, ev.LifeDelta)
+	//
+	// #5678: a "Then ... you lose the game" the replaced event carries
+	// comes first, since it is part of this event and the continuation
+	// is the rest of somebody's effect.
+	lost := g.loseGameAfterLifeEventLocked(ev)
+	return g.lifeTailThenStopLocked(ev, ev.LifeDelta, lost)
+}
+
+// lifeTailThenStopLocked runs a landed life event's continuation and,
+// when the event's own "Then ... you lose the game" took out the player
+// whose spell or ability is resolving, reports ErrStopResolution so the
+// rest of that resolution stops (ADR 0057 Decision 3), as
+// effects.LoseTheGame does for a loss the effect itself states.
+//
+// Caller must hold g.mu.
+func (g *Game) lifeTailThenStopLocked(ev *ReplacementEvent, applied int, lost bool) error {
+	stop := lost && g.resolvingControllerIsLocked(ev.LifePlayer)
+	if err := g.runLifeTailLocked(ev, applied); err != nil {
+		return err
+	}
+	if stop {
+		return ErrStopResolution
+	}
+	return nil
 }
 
 // lifeTail is the life half's answer to damageTail: what a life change

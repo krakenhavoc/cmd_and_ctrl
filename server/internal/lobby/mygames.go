@@ -40,12 +40,16 @@ type MyGame struct {
 	// result, and absent when unknown (not ended, closed by an admin,
 	// or ended before games.outcome existed). It is how a draw is told
 	// from an abandoned table, which winner_seat cannot.
-	Outcome    string   `json:"outcome,omitempty"`
-	CreatedAt  int64    `json:"created_at"`
-	StartedAt  *int64   `json:"started_at"`
-	EndedAt    *int64   `json:"ended_at"`
-	ArchivedAt *int64   `json:"archived_at"`
-	Others     []MySeat `json:"others"`
+	Outcome    string `json:"outcome,omitempty"`
+	CreatedAt  int64  `json:"created_at"`
+	StartedAt  *int64 `json:"started_at"`
+	EndedAt    *int64 `json:"ended_at"`
+	ArchivedAt *int64 `json:"archived_at"`
+	// ClosedReason is why the server closed the table for being idle
+	// (ADR 0211 §4, owner decision 4): "idle_lobby", "idle_game" or
+	// "idle_bots". Absent for an open table and for an admin's archive.
+	ClosedReason string   `json:"closed_reason,omitempty"`
+	Others       []MySeat `json:"others"`
 	// Rejoin is the path a client POSTs to for a fresh player session
 	// on the caller's seat (POST /me/games/{id}/session). Present only
 	// while the table is still open: live in this process and not
@@ -149,17 +153,18 @@ func (l *Lobby) MyGames(userID uuid.UUID) ([]MyGame, error) {
 	for _, r := range recs {
 		g := r.Game
 		mg := MyGame{
-			ID:         g.ID,
-			Name:       g.Name,
-			State:      g.State,
-			Seat:       r.Seat,
-			WinnerSeat: g.WinnerSeat,
-			Outcome:    g.Outcome,
-			CreatedAt:  g.CreatedAt.UnixMilli(),
-			StartedAt:  millisPtr(g.StartedAt),
-			EndedAt:    millisPtr(g.EndedAt),
-			ArchivedAt: millisPtr(g.ArchivedAt),
-			Others:     make([]MySeat, 0, len(r.Others)),
+			ID:           g.ID,
+			Name:         g.Name,
+			State:        g.State,
+			Seat:         r.Seat,
+			WinnerSeat:   g.WinnerSeat,
+			Outcome:      g.Outcome,
+			CreatedAt:    g.CreatedAt.UnixMilli(),
+			StartedAt:    millisPtr(g.StartedAt),
+			EndedAt:      millisPtr(g.EndedAt),
+			ArchivedAt:   millisPtr(g.ArchivedAt),
+			ClosedReason: g.ClosedReason,
+			Others:       make([]MySeat, 0, len(r.Others)),
 		}
 		for _, o := range r.Others {
 			mg.Others = append(mg.Others, MySeat{Seat: o.Seat, Name: o.Name, Bot: o.Bot, userID: o.UserID})
@@ -171,6 +176,7 @@ func (l *Lobby) MyGames(userID uuid.UUID) ([]MyGame, error) {
 			mg.StartedAt = millisPtr(entry.startedAt)
 			mg.EndedAt = millisPtr(entry.endedAt)
 			mg.ArchivedAt = millisPtr(entry.meta.ArchivedAt)
+			mg.ClosedReason = entry.closedReason
 			mg.WinnerSeat = entry.winnerSeat
 			mg.Outcome = entry.outcome
 			if !entry.meta.Archived() && !seatRemovedAt(entry, r.Seat) {

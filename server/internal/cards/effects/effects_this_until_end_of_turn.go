@@ -66,3 +66,24 @@ func thisLosesOwnReplacementUntilEndOfTurn(row int, label string) func(g *game.G
 			game.LoseOwnAbilityMod(game.AbilitySlotReplacement, row))
 	}
 }
+
+// thisGetsRow is the whole activated row "<cost>: This creature gets
+// +power/+toughness until end of turn." for a mana cost with no {T}
+// (#5634: Storm Shaman, Yavimaya Ancients, Wild Aesthir), so it can be
+// activated any number of times, the turn the creature arrives
+// included. `name` heads the effect's label. A trade that lowers one
+// side (Yavimaya Ancients' +1/-2) declares the pump without an amount,
+// since a declared amount is never negative.
+func thisGetsRow(cost string, power, toughness int, name string) ActivatedAbility {
+	pt := signedPT(power, toughness)
+	purpose := game.Purpose{Answers: game.AnswerPump}
+	if power >= 0 && toughness >= 0 {
+		purpose.Pump = &game.Pump{Power: power, Toughness: toughness}
+	}
+	return ActivatedAbility{
+		Label:   cost + ": This creature gets " + pt + " until end of turn.",
+		Purpose: purpose,
+		Cost:    ManaCost(cost),
+		Effect:  thisGetsUntilEndOfTurn(power, toughness, name+" — "+pt+" until end of turn"),
+	}
+}

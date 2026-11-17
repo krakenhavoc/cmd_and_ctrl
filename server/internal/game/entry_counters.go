@@ -138,6 +138,13 @@ type CastCounts struct {
 	// (#4973). Empty for a CR 707.10 copy, which was not cast, and for
 	// every entry that was not a resolving spell.
 	CastFrom ZoneKind
+
+	// EntryRoll is the total of the dice the spell's own "As this
+	// permanent enters, roll X d6" clause rolled (StackItem.EntryRolls,
+	// #5682): the kept results, after any replacement of the roll. Zero
+	// for a spell with no such clause, for one cast with X of 0, and for
+	// every entry that was not a resolving spell (CR 107.3m: X is 0).
+	EntryRoll int
 }
 
 // KickedWith is CR 702.33f's "if it was kicked with its [cost]
@@ -187,6 +194,16 @@ type EntryCountersFromCast struct {
 	// because CR 614.1c is a fact about the spell and not about the
 	// board.
 	Count func(cast CastCounts) int
+
+	// RollXSides, when positive, makes the clause "As this permanent
+	// enters, roll X d<RollXSides>. It enters with a number of <Kind>
+	// counters on it equal to the total of those results" (Neverwinter
+	// Hydra, #5682). The engine rolls X dice of that kind as the spell
+	// resolves, before the entry begins (rollEntryDiceLocked,
+	// dice_cost.go), and Count reads their total, CastCounts.EntryRoll.
+	// A card declares at most one such clause. Build it with
+	// effects.RollXDiceCounters.
+	RollXSides int
 }
 
 // CatalogEntersWithCountersFromCast is the catalog hook the effects
@@ -222,6 +239,7 @@ func castCountsFor(card Card, item *StackItem) CastCounts {
 		ColorsSpent: item.Paid.ColorsSpentCount(),
 		ManaSpent:   item.Paid.ManaSpentCount(),
 		CastFrom:    item.CastFromZone,
+		EntryRoll:   sumInts(item.EntryRolls),
 	}
 }
 

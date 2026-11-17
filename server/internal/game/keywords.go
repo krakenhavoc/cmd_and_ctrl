@@ -288,6 +288,19 @@ var canonicalKeywords = map[string]bool{
 	// Proud Pummeler) all trigger. CUMULATIVE (CR 702.121b: each
 	// instance triggers separately).
 	KeywordMelee: true,
+	// rampage (CR 702.23) joins with #5769, in the same change that
+	// teaches the engine to honour it. A TRIGGERED keyword built like
+	// melee (keywordTriggersFor, rampage.go) and NUMBERED like
+	// annihilator: stored as its family key, the tokens are "rampage N"
+	// minted by CanonicalRampageToken, and a bare "rampage" is refused.
+	// CUMULATIVE (CR 702.23c: each instance triggers separately).
+	KeywordRampage: true,
+	// enlist (CR 702.154) joins with #5658, in the same change that
+	// teaches the engine to honour it (enlist.go): the optional cost to
+	// attack is read off the attacker with HasKeyword, and the linked
+	// "when you do" is a keyword trigger (keywordTriggersFor). Not
+	// cumulative: an attacker enlists at most one creature.
+	KeywordEnlist: true,
 	// rebound (CR 702.88) joins with #1854 (ADR 0107 §3), in the same
 	// change that teaches the engine to honour it. Its consumer is the
 	// stack's graveyard route (routeStackCardToGraveyardLocked, through
@@ -357,6 +370,23 @@ var canonicalKeywords = map[string]bool{
 	// granted one are two questions.
 	KeywordRiot:    true,
 	KeywordUnleash: true,
+	// soulbond (CR 702.95) joins with #5675, in the same change that
+	// teaches the engine to pair two creatures (soulbond.go). Its two
+	// triggered abilities are catalog rows (effects.Soulbond) that read
+	// this token off the layered ability list, so a token copy that
+	// "loses soulbond" (Mirage Phalanx) keeps the card's other text and
+	// never asks to pair.
+	KeywordSoulbond: true,
+	// flanking (CR 702.25) joins with #5757. CR 702.25a shrinks only
+	// "a creature without flanking", so a flanking creature blocking
+	// another has to have the keyword, and before this entry no real
+	// permanent did: the importer dropped Scryfall's "Flanking".
+	// Stamped by the importer like every other canonical token. Since
+	// #5784 it is also a TRIGGERED keyword like exalted
+	// (keywordTriggersFor, flanking.go): one trigger per instance, so a
+	// printed, imported or granted flanking triggers and a creature
+	// that loses it does not. CUMULATIVE (CR 702.25b).
+	KeywordFlanking: true,
 	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
 	// 0113 §4). Dies triggers: harvestLTB derives one per instance on
 	// the LAST-KNOWN ability list (undying_persist.go), so a printed,
@@ -417,6 +447,11 @@ var canonicalKeywords = map[string]bool{
 // card's types, in every zone, and so it is consulted by HasSubtype
 // rather than by the combat engine.
 const KeywordChangeling = "changeling"
+
+// KeywordFlanking is the canonical token for flanking (CR 702.25a):
+// each instance is one engine trigger (flanking.go, #5784), and the
+// trigger reads it off the blocker (#5757).
+const KeywordFlanking = "flanking"
 
 // CanBeTargetedBy reports whether the spell or ability `src`
 // describes may choose this card as a target, under the CR 702
@@ -555,6 +590,25 @@ func CanonicalKeywordTable() []string {
 	return out
 }
 
+// KeywordLineParts splits one oracle line into the items a
+// keyword-ability line would list, for CanonicalKeywords to read one
+// at a time. Today's Oracle wording separates keywords with commas
+// ("Flying, vigilance"); older wording still on some cards uses
+// semicolons ("Flying; trample; rampage 4" on Teeka's Dragon, "Trample;
+// rampage 2" on Gorilla Berserkers), so both separate items (#5791).
+// Empty items are kept, as strings.Split keeps them, so a caller that
+// reads the first item reads what the line actually starts with.
+//
+// The three readers of printed text — deck.keywordLineCounts,
+// deck.isSentenceLine and coverage.keywordOnlyLine — all split here,
+// so the importer and the coverage signal agree on what a keyword line
+// is. Splitting is not the same as accepting: an item is a keyword only
+// if CanonicalKeywords says so, and each reader decides what a line
+// with other items in it is.
+func KeywordLineParts(line string) []string {
+	return strings.Split(strings.ReplaceAll(line, ";", ","), ",")
+}
+
 // CanonicalKeyword normalises one printed keyword string to the
 // engine's wire token, reporting whether the engine knows it.
 // Scryfall capitalises its keyword arrays as the card prints them
@@ -600,7 +654,7 @@ func CanonicalKeyword(s string) (string, bool) {
 // same call for "Hexproof from").
 func CanonicalKeywords(s string) ([]string, bool) {
 	kw := strings.ToLower(strings.TrimSpace(s))
-	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator || kw == KeywordRenown || kw == KeywordModular {
+	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator || kw == KeywordRenown || kw == KeywordModular || kw == KeywordRampage {
 		return nil, false
 	}
 	if canonicalKeywords[kw] {
@@ -627,6 +681,10 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	if tok, ok := CanonicalModularToken(s); ok {
 		return []string{tok}, true
 	}
+	// Rampage (CR 702.23), #5769: "Rampage 2" is "rampage 2".
+	if tok, ok := CanonicalRampageToken(s); ok {
+		return []string{tok}, true
+	}
 	if toks, ok := ProtectionTokens(s); ok {
 		return toks, true
 	}
@@ -650,8 +708,9 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
 // "split second", rebound, sunburst, devoid, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
-// ToxicTotal. Nor is annihilator, read with AnnihilatorAmounts, or
-// renown, read with RenownAmounts.
+// ToxicTotal. Nor is annihilator, read with AnnihilatorAmounts,
+// renown, read with RenownAmounts, or rampage, read with
+// RampageAmounts.
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other

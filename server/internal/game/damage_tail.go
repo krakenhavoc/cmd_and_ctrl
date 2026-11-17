@@ -830,7 +830,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// so a "would lose life" replacement (Bloodletter of Aclazotz)
 	// sees it through the CR 614 life window. The damage itself is
 	// settled and stays whole.
-	lifeLoss = g.damageLifeLossThroughReplacementsLocked(p.ID, ev.DamageSource, lifeLoss)
+	lifeLoss, lifeInstead := g.damageLifeLossThroughReplacementsLocked(p.ID, ev.DamageSource, lifeLoss)
 	// Angel's Grace (#3172): the damage stays whole and only the life it
 	// costs is capped at the floor of 1, after the window (ADR 0169 §3).
 	lifeLoss = g.capLifeLossByFloorLocked(p, lifeLoss)
@@ -867,6 +867,10 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// step, so a halving replacement rounds the sum once.
 	g.placeDamageResultCountersLocked(ev, t, CounterPoison, poison)
 	g.creditLifelinkLocked(t, ev.DamageSource, ev.DamageAmount)
+	// #5678: a loss the window rewrote into a gain, and a "Then ... you
+	// lose the game" it carries, land once the damage has (Enduring
+	// Angel, life_instead.go).
+	g.finishDamageLifeInsteadLocked(lifeInstead)
 	return ev.DamageAmount, nil
 }
 
@@ -879,13 +883,18 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 // It settles inline (mustSettleNow): the damage tail has no resume
 // between the damage and its result. The lock ("your life total can't
 // change") cancels it here as its preemptive built-in, so a cancelled
-// event costs nothing. A replacement that turned the loss into a gain
-// costs nothing and gains nothing; no printed card does that to damage.
+// event costs nothing.
+//
+// The second result is the settled event when it owes more than a plain
+// loss, for finishDamageLifeInsteadLocked to land after the damage: a
+// replacement turned the loss into a gain ("your life total becomes 3"
+// at 2 life, Enduring Angel), which costs nothing here, or put a "Then
+// ... you lose the game" on it. Nil otherwise.
 //
 // Caller must hold g.mu.
-func (g *Game) damageLifeLossThroughReplacementsLocked(player, source uuid.UUID, lifeLoss int) int {
+func (g *Game) damageLifeLossThroughReplacementsLocked(player, source uuid.UUID, lifeLoss int) (int, *ReplacementEvent) {
 	if lifeLoss <= 0 {
-		return lifeLoss
+		return lifeLoss, nil
 	}
 	lev := &ReplacementEvent{
 		Kind:          RepEventLife,
@@ -904,13 +913,20 @@ func (g *Game) damageLifeLossThroughReplacementsLocked(player, source uuid.UUID,
 			Kind:     EventEffectError,
 			ErrorMsg: "damage life loss: " + err.Error(),
 		})
-		return lifeLoss
+		return lifeLoss, nil
 	}
 	defer g.clearReplacementEventLocked(lev.ID)
-	if out == nil || out.Canceled {
-		return 0
+	if out == nil {
+		out = lev
 	}
-	return max(-out.LifeDelta, 0)
+	var owed *ReplacementEvent
+	if out.LifeThenLoses != uuid.Nil || (!out.Canceled && out.LifeDelta > 0) {
+		owed = out
+	}
+	if out.Canceled {
+		return 0, owed
+	}
+	return max(-out.LifeDelta, 0), owed
 }
 
 // applyResolvedDamageToPermanentLocked lands settled damage on a

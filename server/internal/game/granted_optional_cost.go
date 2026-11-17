@@ -54,6 +54,14 @@ type GrantedOptionalCost struct {
 	EachSource bool
 }
 
+// PaidLifeForDiscountKey is the key of the optional "pay N life" a
+// permanent offers on other spells with a linked discount (#5659, the
+// Defiler cycle: "As an additional cost to cast blue permanent spells,
+// you may pay 2 life. Those spells cost {U} less to cast if you paid
+// life this way."). An on-disk identity (PaidCost.GrantedOptional):
+// never renamed, never reused.
+const PaidLifeForDiscountKey = "paid_life_for_discount"
+
 // CatalogGrantedOptionalCosts is the catalog hook for a permanent's
 // grants, wired in carddef.go from CardDef.GrantedOptionalCosts.
 var CatalogGrantedOptionalCosts func(key string) []GrantedOptionalCost
@@ -66,11 +74,26 @@ var CatalogGrantedOptionalCosts func(key string) []GrantedOptionalCost
 //
 // Caller must hold g.mu.
 func (g *Game) OptionalCostsForCastLocked(caster uuid.UUID, card Card) []AdditionalCost {
+	costs, _ := g.optionalCostsWithGrantorsLocked(caster, card)
+	return costs
+}
+
+// optionalCostsWithGrantorsLocked is OptionalCostsForCastLocked with,
+// beside each entry, the permanent that granted it (uuid.Nil for one of
+// the card's own). The second list is nil when nothing was granted.
+//
+// The grant's Spells filter reads the card through the granting
+// permanent's changed words (CR 612.2), so a colour or type word in
+// "<kind of> spells you cast" follows a text-changing effect on it.
+//
+// Caller must hold g.mu.
+func (g *Game) optionalCostsWithGrantorsLocked(caster uuid.UUID, card Card) ([]AdditionalCost, []uuid.UUID) {
 	own := OptionalCostsFor(CatalogKey(card))
 	if CatalogGrantedOptionalCosts == nil || g.Battlefield == nil || caster == uuid.Nil {
-		return own
+		return own, nil
 	}
 	var out []AdditionalCost
+	var grantors []uuid.UUID
 	seen := map[string]bool{}
 	for _, oc := range own {
 		seen[oc.Key] = true
@@ -88,23 +111,58 @@ func (g *Game) OptionalCostsForCastLocked(caster uuid.UUID, card Card) []Additio
 			if gr.Cost.Key == "" || (seen[gr.Cost.Key] && !gr.EachSource) {
 				continue
 			}
-			if gr.Spells != nil && !gr.Spells(g, caster, card) {
+			if gr.Spells != nil && !gr.Spells(g, caster, ThroughTextOf(src, card)) {
 				continue
 			}
 			seen[gr.Cost.Key] = true
 			if out == nil {
 				out = append([]AdditionalCost(nil), own...)
+				grantors = make([]uuid.UUID, len(own))
 			}
 			c := gr.Cost
 			c.Optional = true
 			c.Granted = true
 			out = append(out, c)
+			grantors = append(grantors, src.InstanceID)
 		}
 	}
 	if out == nil {
-		return own
+		return own, nil
 	}
-	return out
+	return out, grantors
+}
+
+// GrantedOptionalTimesFromSource is how many times the announcement
+// pays the optional cost keyed `key` that q.Source grants the spell
+// (#5659): the "if you paid life this way" of Defiler of Dreams' "As an
+// additional cost to cast blue permanent spells, you may pay 2 life.
+// Those spells cost {U} less to cast if you paid life this way."
+//
+// The intention to pay is announced at CR 601.2b and the total cost is
+// determined at 601.2f, so the reduction reads the announcement
+// (CostQuery.OptionalCosts), in the same "printed, then granted" index
+// space OptionalCostsForCastLocked gives every other reader. Only the
+// entry q.Source itself granted counts: the two sentences are one
+// permanent's linked pair, so a second Defiler whose own offer was
+// declined reduces nothing. Zero for an activation or special action,
+// and for a self modifier (a spell grants itself nothing).
+//
+// Read-only, under the lock the pricer holds.
+func (q CostQuery) GrantedOptionalTimesFromSource(key string) int {
+	if q.Game == nil || len(q.OptionalCosts) == 0 || q.Ability != nil || q.SpecialAction != nil || q.Source.InstanceID == uuid.Nil {
+		return 0
+	}
+	costs, grantors := q.Game.optionalCostsWithGrantorsLocked(q.Controller, q.Card)
+	n := 0
+	for _, i := range q.OptionalCosts {
+		if i < 0 || i >= len(grantors) {
+			continue
+		}
+		if costs[i].Granted && costs[i].Key == key && grantors[i] == q.Source.InstanceID {
+			n++
+		}
+	}
+	return n
 }
 
 // GrantedOptionalTimesPaid counts how many times the granted optional

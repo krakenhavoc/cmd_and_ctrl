@@ -333,6 +333,14 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Freerunning("{cost}", "Assassin")} — the Assassin-or-commander gate rides the constructor (#3172)`,
 	},
 	{
+		Name:       "prowl",
+		Phrases:    []string{"prowl"},
+		Implements: altCost("prowl"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "prowl") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Prowl("{cost}")} — the spell's creature types gate rides the constructor (#5509)`,
+	},
+	{
 		// ADR 0107 §4 (#1855): CR 702.146, an alternative cost bound to
 		// the graveyard that casts the card's back face.
 		Name:       "disturb",
@@ -850,6 +858,17 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{"renown N"} — the engine does the rest`,
 	},
 	{
+		// #5769: rampage is a numbered canonicalKeywords token
+		// ("rampage N") whose trigger the engine derives from the
+		// ability list (game/rampage.go), renown's shape.
+		Name:       "rampage",
+		Phrases:    []string{"rampage"},
+		Implements: rampageProbe,
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) has a "rampage N" token`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{"rampage N"} — the engine does the rest`,
+	},
+	{
 		// #1556 (ADR 0109 §10): riot and unleash are canonicalKeywords
 		// tokens whose entry replacements the engine derives from the
 		// CR 614.12 look-ahead (game/riot.go). Same probe as evolve.
@@ -867,6 +886,28 @@ var mechanics = []Mechanic{
 		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "unleash"`,
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{game.KeywordUnleash} — the engine does the rest`,
+	},
+	{
+		// #5675: soulbond is a canonicalKeywords token; its two
+		// triggers are catalog rows (effects.Soulbond) that read it off
+		// the layered ability list, so a card needs both.
+		Name:       "soulbond",
+		Phrases:    []string{"soulbond"},
+		Implements: printedKeywordProbe(game.KeywordSoulbond),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "soulbond"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordSoulbond} and Triggered: Soulbond(name)`,
+	},
+	{
+		// #5757, #5784: flanking is a canonicalKeywords token whose
+		// trigger the engine derives from the ability list
+		// (game/flanking.go), exalted's shape. Same probe as exalted.
+		Name:       "flanking",
+		Phrases:    []string{"flanking"},
+		Implements: printedKeywordProbe(game.KeywordFlanking),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "flanking"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordFlanking} — the engine does the rest`,
 	},
 	{
 		// #2075 (ADR 0113 §4): undying and persist are canonicalKeywords
@@ -977,6 +1018,20 @@ func renownProbe(s effects.Spec) bool {
 	}
 	for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
 		if _, ok := game.RenownValue(kw); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// rampageProbe is the exact probe for rampage: a printed "rampage N"
+// token.
+func rampageProbe(s effects.Spec) bool {
+	if game.CatalogPrintedKeywords == nil {
+		return false
+	}
+	for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
+		if _, ok := game.RampageValue(kw); ok {
 			return true
 		}
 	}

@@ -2031,7 +2031,7 @@ func (g *Game) ReturnFromGraveyardWithCountersForEffect(cardID, controller uuid.
 // enters with. FaceDownNone is every face-up return; nil counters is
 // every return that names none.
 func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int) (uuid.UUID, error) {
-	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, false, entryThen{})
+	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, false, TargetRef{}, entryThen{})
 }
 
 // ReturnFromGraveyardToBattlefieldKeyedForEffect is
@@ -2066,7 +2066,7 @@ func (g *Game) returnFromGraveyardThenLocked(cardID, controller uuid.UUID, tappe
 		}
 		return nil
 	}
-	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, false, then)
+	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, false, TargetRef{}, then)
 	return err
 }
 
@@ -2081,7 +2081,9 @@ func (g *Game) ReturnFromGraveyardWithCountersKeyedForEffect(cardID, controller 
 
 // returnFromGraveyardEntryLocked is the body of every graveyard return,
 // with the caller's continuation for a battlefield entry (nil for none).
-func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, asAura bool, then entryThen) (uuid.UUID, error) {
+// `host` is what the effect says the card enters attached to (#5677),
+// the zero value for a return that names nothing.
+func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, asAura bool, host TargetRef, then entryThen) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -2156,6 +2158,10 @@ func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, c
 			entryResumable: true,
 			// ADR 0154's 2026-10-23 amendment: "return it … It's an Aura".
 			entersAsAura: asAura,
+			// #5677: the effect names the host, so CR 303.4f does not ask
+			// and CR 303.4i answers an illegal one (aura_host.go).
+			auraHost:      host,
+			auraHostFixed: host.Kind != "",
 		}
 		// #1584: the effect's own "with N counters on it", seeded
 		// before the window opens so a counter replacement sees it.

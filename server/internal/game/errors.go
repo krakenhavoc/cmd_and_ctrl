@@ -289,6 +289,11 @@ var (
 	// 605.1 + 118.3). Added in S15 sub-PR 2.
 	ErrAlreadyTapped = errors.New("game: card is already tapped")
 
+	// ErrNotTapped is returned when a permanent named for an "Untap N
+	// tapped creatures you control" cost (#5669) is untapped or can't
+	// become untapped: it can't pay (CR 701.26b, CR 614.17b, CR 118.3).
+	ErrNotTapped = errors.New("game: card is not tapped, or can't become untapped")
+
 	// ErrInsufficientMana is the sentinel for a cast_spell gated by
 	// the S15 strict-mana mode when the caster's pool can't cover
 	// the effective cost. CastSpell wraps it in an

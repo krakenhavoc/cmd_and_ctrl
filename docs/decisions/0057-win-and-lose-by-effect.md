@@ -1197,3 +1197,27 @@ needs: the damage is still dealt in full, lifelink gains all of it, a "dealt
 damage" trigger and the commander tally see all of it, and the part that cost
 no life rides the event as `DamageNotLifeLoss`. A player already below 1 is
 left alone. Non-damage life loss is not floored, as printed.
+
+## Amendment 2026-11-12 — a loss that is part of a replaced life event (#5678)
+
+Enduring Angel: "If your life total would be reduced to 0 or less, instead transform this creature and your life total
+becomes 3. Then if this creature didn't transform this way, you lose the game." The loss is CR 104.3e's ("An effect may
+state that a player loses the game"), but the effect stating it is a replacement effect, so it happens inside a CR 614
+window and not in a resolving spell or ability. Two things follow.
+
+**The event carries the loss; the landing carries it out.** The `Replace` that decides it cannot call
+`LoseTheGameForEffect`: the life has not become 3 yet, other replacements may still apply to the event, and a CR 616
+ordering prompt may park it. So the replacement sets `ReplacementEvent.LifeThenLoses` (the card the loss comes from,
+carried by the snapshot) and `loseGameAfterLifeEventLocked` (`game/life_instead.go`) runs at every terminal outcome of
+the event, after the life has landed. The gate is read there, as the loss happens (CR 614.17a), and the player leaves
+there (`loseGameLocked`): immediate, as Decision 3 says, and a player who can't lose is left at 3 life with nothing
+remembered.
+
+**The game-over check and the rotation always wait for the next state-based pass.** Decision 3 defers them only when
+the ACTIVE player lost, because a non-active loss inside a resolution is safe to settle at once. A life window is not
+always inside a resolution: it runs in the middle of a batch of combat damage and in the middle of paying a cost. So
+this path sets `ActiveSeatLeftPending` whoever the player is, and the pass that follows the damage step, the cost or
+the resolution settles the departure exactly as it settles a mid-resolution loss by the active player.
+
+When the player who left controls the spell or ability that is resolving, the life change reports `ErrStopResolution`
+after the caller's continuation has run, so the rest of that resolution stops, as it does for `effects.LoseTheGame`.

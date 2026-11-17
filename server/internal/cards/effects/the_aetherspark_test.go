@@ -185,12 +185,12 @@ func TestAethersparkGainsLoyaltyEqualToEquippedCombatDamage(t *testing.T) {
 		t.Fatalf("loyalty after the +1: got %d, want 5", got)
 	}
 
-	g.WithWriteLock(func() {
-		g.EmitEvent(game.Event{
-			Kind: game.EventDealDamage, Actor: me.ID, Source: bear,
-			Target: opp.ID, Amount: 3, Combat: true,
-		})
-	})
+	// A real combat damage step, not a lone synthetic event: the trigger
+	// settles on the creature's total for the step (#5760), at the
+	// boundary before a player gets priority. The 2/2 is a 3/3 with the
+	// +1's counter.
+	declareAttack(t, g, opp.ID, bear)
+	advanceTo(t, g, game.StepCombatDamage)
 	if got := loyaltyCount(g, spark); got != 5 {
 		t.Error("the trigger skipped the stack — loyalty moved before it resolved")
 	}
@@ -210,15 +210,15 @@ func TestAethersparkUnattachedGainsNoLoyaltyFromCombatDamage(t *testing.T) {
 	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
 	spark := pushAetherspark(g, me.ID, 4)
 	bear := pushCreatureToBattlefieldForTest(g, me.ID, "Bear")
+	life := opp.Life
 
-	g.WithWriteLock(func() {
-		g.EmitEvent(game.Event{
-			Kind: game.EventDealDamage, Actor: me.ID, Source: bear,
-			Target: opp.ID, Amount: 3, Combat: true,
-		})
-	})
+	declareAttack(t, g, opp.ID, bear)
+	advanceTo(t, g, game.StepCombatDamage)
 	passPriorityAroundTable(t, g)
 
+	if life-opp.Life != 2 {
+		t.Fatalf("the defender lost %d, want the bear's 2", life-opp.Life)
+	}
 	if got := loyaltyCount(g, spark); got != 4 {
 		t.Errorf("an unattached Aetherspark gained loyalty: got %d, want 4", got)
 	}
@@ -243,15 +243,20 @@ func TestAethersparkGainsNoLoyaltyOnAnotherPlayersTurn(t *testing.T) {
 		Counters:   map[string]int{game.CounterLoyalty: 4},
 		AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: blocker},
 	})
+	attacker := b16Creature(g, me.ID, "Attacker", "Creature — Test", 0, 3)
 
-	g.WithWriteLock(func() {
-		g.EmitEvent(game.Event{
-			Kind: game.EventDealDamage, Actor: opp.ID, Source: blocker,
-			Target: me.ID, Amount: 3, Combat: true,
-		})
-	})
+	declareAttack(t, g, opp.ID, attacker)
+	advanceTo(t, g, game.StepDeclareBlockers)
+	if err := g.DeclareBlocker(blocker, attacker); err != nil {
+		t.Fatalf("DeclareBlocker: %v", err)
+	}
+	lockInBlocks(t, g)
+	advanceTo(t, g, game.StepCombatDamage)
 	passPriorityAroundTable(t, g)
 
+	if c, ok := battlefieldCard(g, attacker); !ok || c.DamageMarked != 2 {
+		t.Fatal("the equipped blocker did not deal its 2 combat damage")
+	}
 	if got := loyaltyCount(g, spark); got != 4 {
 		t.Errorf("loyalty grew on another player's turn: got %d, want 4", got)
 	}

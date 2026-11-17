@@ -85,6 +85,20 @@ var textWordLiteralAllowed = map[string]string{
 	"sivvis_ruse.go":       "alternative cost, judged as cast",
 	"sivvis_valor.go":      "alternative cost, judged as cast",
 	"snuff_out.go":         "alternative cost, judged as cast",
+	"massacre.go":          "alternative cost, judged as cast",
+	"mogg_salvage.go":      "alternative cost, judged as cast",
+	"refreshing_rain.go":   "alternative cost, judged as cast",
+	// Rouse and the Mercadian Masques Legates (#5619): Snuff Out's and
+	// Sivvi's Ruse's shapes.
+	"rouse.go":            "alternative cost, judged as cast",
+	"saprazzan_legate.go": "alternative cost, judged as cast",
+	"kyren_legate.go":     "alternative cost, judged as cast",
+	"cho_arrim_legate.go": "alternative cost, judged as cast",
+	"deepwood_legate.go":  "alternative cost, judged as cast",
+	"rushwood_legate.go":  "alternative cost, judged as cast",
+	// Dark Triumph's and Mind Swords' "if you control a Swamp" (#5618),
+	// Snuff Out's shape, built once in the batch helper.
+	"nem_b2_helpers.go": "alternative cost, judged as cast",
 
 	// "This land enters tapped unless you control …": asked as the land
 	// enters, a new object no text change has reached (CR 400.7, 614.12).
@@ -126,6 +140,9 @@ var textWordHelperArgs = map[string][]int{
 	"b18ControlsPermanentOfColor":       {2},
 	"b33IslandsControlled":              {2},
 	"leftAsColor":                       {2},
+
+	// #5619: the Legates' whole free-cast clause.
+	"FreeIfAnOpponentControlsAAndYouControlA": {0, 1},
 
 	// #3984: helpers that take a creature type (or a land type) and judge
 	// it as given.

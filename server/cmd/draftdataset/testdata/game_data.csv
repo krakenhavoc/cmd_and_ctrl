@@ -1,0 +1,5 @@
+expansion,event_type,draft_id,draft_time,game_time,won,opening_hand_Alpha Bear,drawn_Alpha Bear,tutored_Alpha Bear,deck_Alpha Bear,"opening_hand_Beta, the Fox","drawn_Beta, the Fox","tutored_Beta, the Fox","deck_Beta, the Fox",opening_hand_Plains,drawn_Plains,tutored_Plains,deck_Plains
+TST,PremierDraft,d1,2026-01-05 10:00:00,2026-01-05 10:40:00,True,1,0,0,2,0,0,1,1,2,3,0,8
+TST,PremierDraft,d1,2026-01-05 10:00:00,2026-01-05 11:00:00,False,0,2,0,2,0,1,0,1,3,1,0,8
+TST,PremierDraft,d2,2026-01-03 09:00:00,2026-01-03 09:30:00,True,0,0,0,1,1,0,0,1,2,2,0,8
+TST,PremierDraft,d2,2026-01-03 09:00:00,2026-01-03 09:50:00,True,0,1,0,1,0,0,0,1,2,2,0,8

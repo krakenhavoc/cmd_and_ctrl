@@ -1029,6 +1029,15 @@ type ReturnFromGraveyard struct {
 	// is set; a plain return names none today.
 	Counters map[string]int
 
+	// AttachedTo is the host the returning effect names for a back face
+	// that is an Aura: "return this card to the battlefield transformed
+	// under your control attached to target opponent" (Radiant Grace,
+	// Vengeful Strangler; #5677). The Aura enters attached and its
+	// controller is not asked CR 303.4f's question; a host it can't
+	// legally enchant leaves the card in the graveyard (CR 303.4i). Only
+	// read when Transformed is set, and then Tapped and Counters are not.
+	AttachedTo game.TargetRef
+
 	// Flipped returns a flip card flipped — "return it to the
 	// battlefield flipped" (Homura, Human Ascendant, CR 110.5b, ADR 0151
 	// decision 6). Only meaningful for Dest == ZoneBattlefield. A card
@@ -1052,6 +1061,10 @@ func (r ReturnFromGraveyard) Apply(ctx *Context) error {
 	}
 	if r.Flipped {
 		_, err := ctx.Game.ReturnFromGraveyardFlippedForEffect(r.Target, r.Controller, r.Tapped)
+		return nothingIfGone(err)
+	}
+	if r.Transformed && r.AttachedTo.Kind != "" {
+		_, err := ctx.Game.ReturnFromGraveyardTransformedAttachedForEffect(r.Target, r.Controller, r.AttachedTo)
 		return nothingIfGone(err)
 	}
 	if r.Transformed {
@@ -1372,7 +1385,7 @@ func (p PayUnless) Apply(ctx *Context) error {
 // to ask for. The prompt is addressed to the player whose upkeep it
 // is, about their own permanent or their own survival, so the table
 // must not leave the step while it is unanswered (CR 117.3, CR
-// 500.4). The engine derives that from the cursor rather than from a
+// 500.2). The engine derives that from the cursor rather than from a
 // flag on the card (Game.QueueUpkeepPayUnlessForEffect,
 // game/upkeep_pay_unless.go): #567 shipped the flag, and the two
 // cards written afterwards with the same sentence printed on them

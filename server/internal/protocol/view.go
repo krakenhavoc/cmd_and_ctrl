@@ -100,6 +100,12 @@ type GameView struct {
 	// 0164), stamped by the room and reduced per viewer by FilterViewFor.
 	// Nil until a rematch is offered, and for a spectator.
 	Rematch *RematchView `json:"rematch,omitempty"`
+	// IdleCloseAt is when the server will close this started game for
+	// having had no human move (ADR 0211 §6), RFC 3339 UTC, stamped by
+	// the room from the lobby's warning. Omitted until the game is
+	// warned, and cleared by the next human move. Public and identical
+	// for every viewer: the table shows it as a one-line notice.
+	IdleCloseAt string `json:"idle_close_at,omitempty"`
 	// StackPositions is where each seat dragged the stack panel (#3429,
 	// ADR 0176), keyed by seat id, stamped by the room. FilterViewFor
 	// keeps only the viewer's own entry; a spectator gets none.
@@ -2298,7 +2304,9 @@ type TapCostView struct {
 // right now.
 type PayCardsView struct {
 	// Action is "discard", "sacrifice", "exile_graveyard" (ADR 0187
-	// §3) or "tap" (#1997: tap untapped permanents you control).
+	// §3), "tap" (#1997: tap untapped permanents you control) or
+	// "minus_one_counter" (#5746: put a -1/-1 counter on each of the
+	// named permanents you control).
 	Action string `json:"action"`
 	// Count is exactly how many of Options one payment names.
 	Count int `json:"count"`
@@ -2306,6 +2314,8 @@ type PayCardsView struct {
 	// for a discard, the permanents of the clause's kind they control
 	// for a sacrifice (in the payment order "Choose for me" uses), the
 	// untapped ones of the clause's kind they control for a tap, the
+	// ones of the clause's kind they control that can have a counter put
+	// on them for a minus_one_counter, the
 	// chooser's own graveyard for an exile_graveyard. Only a discard's
 	// are withheld from the other seats: a sacrifice's and a
 	// graveyard's are public. Present-and-empty when there is nothing
@@ -3986,6 +3996,12 @@ type CardView struct {
 	// about the hidden card, and the table needs it to know why the
 	// creature cannot block.
 	Suspected bool `json:"suspected,omitempty"`
+	// PairedWith is the instance ID of the creature a soulbond ability
+	// paired this one with (CR 702.95b, #5675), on both creatures of the
+	// pair. Public, read off the card, and kept on a face-down
+	// permanent: the pair was made in front of the table and says
+	// nothing about the hidden card. Absent for an unpaired permanent.
+	PairedWith string `json:"paired_with,omitempty"`
 	// RingBearer is a permanent's CR 701.54b Ring-bearer designation
 	// (ADR 0114 §3, §9): whose Ring-bearer it is, is its controller.
 	// Public, and set straight off the card. Unlike Monstrous it is NOT
@@ -4213,6 +4229,11 @@ type CardView struct {
 	// single-faced card. The client reads it to decide whether
 	// playing this card needs a face prompt at all. Added by
 	// ADR 0034.
+	//
+	// "prototype" is a prototype card (CR 718, #5656): Faces[1] is the
+	// same card with the inset's mana cost, power and toughness, a cast
+	// of face 1 is the prototyped spell, and ActiveFace is 1 on that
+	// spell and on the permanent it becomes.
 	Layout string `json:"layout,omitempty"`
 
 	// Faces is every printed face of a multi-face card, front
@@ -5421,6 +5442,19 @@ type ActivatedAbilityView struct {
 	// (CR 118.3 — it will already be tapped).
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// TapOthersUntap marks the clause as "Untap N TAPPED creatures you
+	// control" (#5669, Halo Fountain, game.TapOthersCost.Untap): the
+	// same label, options and `tap_ids`, with the cards the TAPPED
+	// permanents that could be untapped to pay, and the picker's verb
+	// "Untap". A permanent that can't become untapped is left off
+	// (CR 614.17b).
+	//
+	// TapOthersFreesSource is set when the ability also prints {T}, its
+	// source is tapped, and the source is among the options: naming it
+	// untaps it first and so pays the {T} (CR 601.2h, any order), so
+	// the row is not "already tapped".
+	TapOthersUntap       bool `json:"tap_others_untap,omitempty"`
+	TapOthersFreesSource bool `json:"tap_others_frees_source,omitempty"`
 	// CostBranches are the ways to pay an either/or part of the cost
 	// (#4566, game.AbilityCost.Either): Bullseye, Death Dealer's
 	// "Sacrifice an artifact or discard a nonland card". The client asks
@@ -7444,7 +7478,7 @@ func activeFace(c *CardView) castFace {
 	}
 	return castFace{
 		index:    c.ActiveFace,
-		key:      game.CatalogKeyForFace(c.oracleID, c.ActiveFace),
+		key:      game.CatalogKeyForLayoutFace(c.oracleID, c.Layout, c.ActiveFace),
 		manaCost: cost,
 	}
 }
@@ -7464,7 +7498,7 @@ func fusedFace(c *CardView) castFace {
 func castFaceOf(c *CardView, i int) castFace {
 	return castFace{
 		index:    i,
-		key:      game.CatalogKeyForFace(c.oracleID, i),
+		key:      game.CatalogKeyForLayoutFace(c.oracleID, c.Layout, i),
 		manaCost: c.Faces[i].ManaCost,
 	}
 }
@@ -7613,7 +7647,7 @@ func stampCastTargetTaxes(g *game.Game, caster uuid.UUID, spell game.Card, out *
 				v.LifeTaxes = make(map[string]int)
 			}
 			v.LifeTaxes[id] = tax
-			if !g.CanPayLifeLocked(seat, tax) {
+			if !g.CanPayLifeToCastOrActivateLocked(seat, tax) {
 				v.LifeTaxesUnpayable = append(v.LifeTaxesUnpayable, id)
 			}
 		}
@@ -7826,7 +7860,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	// modifiers add generic, so the two agree today, and reading the
 	// effective one keeps them agreeing if that ever stops being
 	// true.
-	out.PhyrexianSymbols, out.PhyrexianGranted = phyrexianSymbolsIn(g, caster, f.manaCost)
+	out.PhyrexianSymbols, out.PhyrexianGranted = lifePayableSymbolsIn(g, caster, f.manaCost)
 	spec := game.TargetSpecFor(key)
 	// #1012: THE list of CR 118.9 prices this cast may claim out of
 	// this zone, from the one function that answers the question for
@@ -8054,6 +8088,19 @@ func phyrexianSymbolsIn(g *game.Game, payer uuid.UUID, costStr string) (total, g
 	return cost.PhyrexianSymbols(), cost.LifeGrantedSymbols()
 }
 
+// lifePayableSymbolsIn is phyrexianSymbolsIn for the cost of a spell or
+// of an activated ability that isn't a mana ability: zero while "players
+// can't pay life to cast spells or to activate abilities that aren't
+// mana abilities" is live (Karn's Sylex, #5660), so the client offers no
+// "or 2 life" payment the engine refuses. A mana ability's cost, a tax
+// and a pay-unless cost keep phyrexianSymbolsIn.
+func lifePayableSymbolsIn(g *game.Game, payer uuid.UUID, costStr string) (total, granted int) {
+	if g.CantPayLifeToCastOrActivateForEffect() {
+		return 0, 0
+	}
+	return phyrexianSymbolsIn(g, payer, costStr)
+}
+
 // castableNow is `castable_here` for a card in a graveyard, on a
 // library top or in exile: no cast gate refuses it, a price is
 // claimable, and game.CastTimingOpenLocked says the window is open.
@@ -8135,14 +8182,21 @@ func castTimingOpenForAnyOffer(g *game.Game, caster uuid.UUID, card game.Card, k
 // payableOpeningCosts is the card's optional costs that open the
 // instant-speed window (AdditionalCost.AsThoughFlash, CR 601.3c) and that
 // the caster could announce right now: a teamwork cost the untapped
-// creatures cannot reach opens nothing, as the enumerator, which drops
-// the unpayable set, agrees.
+// creatures cannot reach opens nothing, and neither does a sacrifice
+// with nothing to sacrifice (offering, CR 702.48a), as the enumerator,
+// which drops the unpayable set, agrees.
 func payableOpeningCosts(g *game.Game, caster uuid.UUID, card game.Card) []game.AdditionalCost {
 	var out []game.AdditionalCost
 	for _, oc := range g.OptionalCostsForCastLocked(caster, card) {
-		if oc.AsThoughFlash && (oc.Teamwork == 0 || g.TeamworkPayableForEffect(caster, oc.Teamwork)) {
-			out = append(out, oc)
+		if !oc.AsThoughFlash || (oc.Teamwork != 0 && !g.TeamworkPayableForEffect(caster, oc.Teamwork)) {
+			continue
 		}
+		// #5657, CR 118.3: nor does an offering with no permanent to
+		// sacrifice.
+		if oc.Sacrifice != nil && len(g.SacrificeCostCandidatesForEffect(caster, uuid.Nil, oc.Sacrifice)) < game.SacrificeCostCount(oc.Sacrifice) {
+			continue
+		}
+		out = append(out, oc)
 	}
 	return out
 }
@@ -8667,7 +8721,7 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 				v.XMax = &ceiling
 			}
 		}
-		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, ac.ManaCost)
+		v.PhyrexianSymbols, v.PhyrexianGranted = lifePayableSymbolsIn(g, caster, ac.ManaCost)
 		if spec := flashIf.TargetSpecUnder(game.TargetSpecUnderAlternativeCost(offerBase, &ac)); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
@@ -11983,6 +12037,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// they may use it.
 		Voice:   filterVoiceFor(v.Voice, viewerID),
 		Rematch: filterRematchFor(v.Rematch, viewerID),
+		// ADR 0211 §6: the closing time is the whole table's.
+		IdleCloseAt: v.IdleCloseAt,
 		// #3429: only the viewer's own placement of the stack panel.
 		StackPositions: filterStackPositionsFor(v.StackPositions, viewerID),
 		StartingSeat:   v.StartingSeat,
@@ -13256,6 +13312,9 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		view.Renowned = c.Renowned
 		view.Saddled = c.Saddled
 		view.Suspected = c.Suspected
+		if c.PairedWith != uuid.Nil {
+			view.PairedWith = ids.of(c.PairedWith)
+		}
 		view.Prepared = c.Prepared
 		// ADR 0103: a face-up Room's doors.
 		if game.HasSharedTypeLineOf(c) {
@@ -13992,7 +14051,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.XSlots = a.Cost.XSlots()
 		}
 		// #917 / #916: the "or 2 life" half of the announcement.
-		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, a.Cost.Mana)
+		v.PhyrexianSymbols, v.PhyrexianGranted = lifePayableSymbolsIn(g, caster, a.Cost.Mana)
 		// #1190: the row shows what AbilityManaCostForEffect actually
 		// charges, not the printed string alone — `caster` is the
 		// permanent's controller here, the same activator the
@@ -14114,6 +14173,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if tc := a.Cost.TapOthers; !tc.Empty() {
 			v.TapOthersLabel = tc.Label
 			v.TapOthersOptions = tapOthersCostOptions(g, caster, c.InstanceID, tc, a.Cost.Tap)
+			// #5669: the untap form, and a tapped source it frees.
+			v.TapOthersUntap = game.TapOthersUntaps(tc)
+			v.TapOthersFreesSource = v.TapOthersUntap && a.Cost.Tap && c.Tapped &&
+				slices.Contains(v.TapOthersOptions.Cards, c.InstanceID.String())
 		}
 		// #4566: each branch of an either/or cost, off the walks the
 		// engine validates the folded cost against.
@@ -14539,6 +14602,16 @@ func tapOthersCostOptions(g *game.Game, controller, sourceID uuid.UUID, tc *game
 		return nil
 	}
 	ids := g.TapOthersOptionsForEffect(controller, sourceID, tc)
+	// #5669: the untap form on a cost that also taps its source. The
+	// source pays both in either order (CR 601.2h), so it is offered
+	// whatever its state, on the engine's own terms.
+	if alsoTapsSource && game.TapOthersUntaps(tc) {
+		alsoTapsSource = false
+		ids = slices.DeleteFunc(ids, func(id uuid.UUID) bool { return id == sourceID })
+		if g.UntapOthersSourcePaysForEffect(controller, sourceID, tc) {
+			ids = append(ids, sourceID)
+		}
+	}
 	lo, hi := game.TapOthersCostBounds(tc, 0)
 	out := &LegalTargetsView{Min: lo, Max: hi, CountFromX: game.TapOthersCountFromX(tc)}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
@@ -14674,7 +14747,13 @@ func viewOfFaces(c *game.Card) []CardFaceView {
 			Toughness:  f.Toughness,
 		}
 		if c.ScryfallID != "" {
-			v.Image = fmt.Sprintf("/cards/%s/image?face=%d", c.ScryfallID, i)
+			// CR 718.1 (#5656): a prototype card is one printed image;
+			// its inset is a frame on the same side.
+			art := i
+			if c.Layout == game.LayoutPrototype {
+				art = 0
+			}
+			v.Image = fmt.Sprintf("/cards/%s/image?face=%d", c.ScryfallID, art)
 		}
 		out = append(out, v)
 	}

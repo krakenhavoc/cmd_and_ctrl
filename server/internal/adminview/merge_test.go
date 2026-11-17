@@ -121,6 +121,32 @@ func TestMergeGameOverlaysMemory(t *testing.T) {
 	}
 }
 
+// ADR 0211 §5: the admin views list an idle close with its reason and
+// the last activity the sweep wrote; memory, fresher, has the final word
+// on the reason (an unarchive clears it).
+func TestMergeGameCarriesTheIdleCloseReasonAndLastActivity(t *testing.T) {
+	id := uuid.New()
+	row := GameRow{ID: id, Name: "Idle", State: "active", CreatedAt: t0, ArchivedAt: at(49 * time.Hour),
+		ClosedReason: "idle_game", LastActiveAt: at(time.Hour)}
+
+	plain := MergeGame(row, Overlay{})
+	if plain.ClosedReason != "idle_game" || plain.LastActiveAt != at(time.Hour).UnixMilli() {
+		t.Errorf("from the row: reason %q, last active %d; want idle_game at %d",
+			plain.ClosedReason, plain.LastActiveAt, at(time.Hour).UnixMilli())
+	}
+	closed := MergeGame(row, Overlay{Tables: []LiveTable{{ID: id, State: "active", Archived: true, ClosedReason: "idle_game"}}})
+	if closed.ClosedReason != "idle_game" {
+		t.Errorf("loaded and closed: reason %q", closed.ClosedReason)
+	}
+	reopened := MergeGame(row, Overlay{Tables: []LiveTable{{ID: id, State: "active"}}})
+	if reopened.ClosedReason != "" || reopened.ArchivedAt != 0 {
+		t.Errorf("unarchived in memory: reason %q archived %d, want neither", reopened.ClosedReason, reopened.ArchivedAt)
+	}
+	if never := MergeGame(GameRow{ID: uuid.New(), CreatedAt: t0}, Overlay{}); never.LastActiveAt != 0 || never.ClosedReason != "" {
+		t.Errorf("a row the sweep never wrote: %+v", never)
+	}
+}
+
 func TestConnectedCountsWhenTheSocketsAreKnown(t *testing.T) {
 	id, other := uuid.New(), uuid.New()
 	p0, p1 := uuid.New(), uuid.New()

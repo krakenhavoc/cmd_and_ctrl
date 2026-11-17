@@ -43,40 +43,62 @@ func cmdr2B11QuicklingEnters(g *game.Game, item *game.StackItem) error {
 			others = append(others, c.InstanceID)
 		}
 	}
-	if len(others) == 0 {
+	return sacrificeUnlessYouReturnOne(ctx, item, others,
+		"Quickling — return another creature you control to its owner's hand (or sacrifice Quickling)",
+		cmdr2B11QuicklingPicked)
+}
+
+// sacrificeUnlessYouReturnOne is "sacrifice it unless you return <one of
+// candidates> to its owner's hand" as the enters trigger resolves
+// (Quickling, Drake Familiar): with no candidate the source is sacrificed at
+// once; otherwise a choose_cards prompt names one or none, and `picked`
+// (built on returnPickedOrSacrifice) does the rest.
+func sacrificeUnlessYouReturnOne(ctx *Context, item *game.StackItem, candidates []uuid.UUID, question string, picked game.ChooseCardsThen) error {
+	if len(candidates) == 0 {
 		return SacrificePermanent{Target: item.SourceCardID}.Apply(ctx)
 	}
-	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    ctx.Controller(),
 		FromPlayer: ctx.Controller(),
 		Source:     item.SourceCardID,
-		Question:   "Quickling — return another creature you control to its owner's hand (or sacrifice Quickling)",
-		Cards:      others,
+		Question:   question,
+		Cards:      candidates,
 		Min:        0,
 		Max:        1,
 		LiveZone:   game.ZoneBattlefield,
-		ThenKey:    cmdr2B11QuicklingPicked,
+		ThenKey:    picked,
 		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
 
-// cmdr2B11QuicklingPicked returns the chosen creature, or sacrifices the
-// Quickling when none was named or the one named is gone. An on-disk key.
-var cmdr2B11QuicklingPicked = askedPick("choose-cards/cmdr2-b11-quickling-return", func(ctx *Context, r game.CardsChosen) error {
+// returnPickedOrSacrifice returns the permanent named, with `bounced` (built
+// on sacrificeSourceUnlessBounced) as the return's tail, or sacrifices the
+// source when none was named or the one named is gone.
+func returnPickedOrSacrifice(ctx *Context, r game.CardsChosen, bounced game.TailRef) error {
 	for _, id := range r.Picked {
 		if onBattlefield(ctx.Game, id) {
-			return BounceToHand{Target: id, ThenTail: ctx.ItemTail(cmdr2B11QuicklingBounced)}.Apply(ctx)
+			return BounceToHand{Target: id, ThenTail: ctx.ItemTail(bounced)}.Apply(ctx)
 		}
 	}
 	return SacrificePermanent{Target: ctx.Source()}.Apply(ctx)
-})
+}
 
-// cmdr2B11QuicklingBounced sacrifices the Quickling when the creature did
-// not reach a hand. An on-disk key.
-var cmdr2B11QuicklingBounced = CardTail("cmdr2-b11/quickling-after-bounce", func(ctx *Context, o game.TailOutcome) error {
+// sacrificeSourceUnlessBounced sacrifices the source when the returned
+// permanent did not reach a hand.
+func sacrificeSourceUnlessBounced(ctx *Context, o game.TailOutcome) error {
 	if len(o.IDs) > 0 {
 		return nil
 	}
 	return SacrificePermanent{Target: ctx.Source()}.Apply(ctx)
+}
+
+// cmdr2B11QuicklingPicked returns the chosen creature, or sacrifices the
+// Quickling when none was named or the one named is gone. An on-disk key.
+var cmdr2B11QuicklingPicked = askedPick("choose-cards/cmdr2-b11-quickling-return", func(ctx *Context, r game.CardsChosen) error {
+	return returnPickedOrSacrifice(ctx, r, cmdr2B11QuicklingBounced)
 })
+
+// cmdr2B11QuicklingBounced sacrifices the Quickling when the creature did
+// not reach a hand. An on-disk key.
+var cmdr2B11QuicklingBounced = CardTail("cmdr2-b11/quickling-after-bounce", sacrificeSourceUnlessBounced)

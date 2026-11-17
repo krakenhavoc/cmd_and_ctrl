@@ -96,6 +96,13 @@ type GrantedAlternativeCost struct {
 	// CR 202.3).
 	MaxManaValue *int
 
+	// MinManaValue is the floor of the same test: Henzie "Toolbox"
+	// Torre's "with mana value 4 or greater" (#5667). Nil means no floor.
+	// The mana value is the card's as the offer is derived, before a
+	// value is announced for an {X} in its mana cost (CR 601.2b announces
+	// the alternative cost, then X), so that {X} counts as 0.
+	MinManaValue *int
+
 	// MaxManaValueFunc is a cap that follows the board: Omnipresence's
 	// "mana value less than or equal to the number of creatures you
 	// control" (#3503). It is asked with the game and the CASTER every
@@ -259,6 +266,9 @@ func (gr GrantedAlternativeCost) covers(g *Game, caster uuid.UUID, card Card) bo
 	if gr.MaxManaValue != nil && card.ManaValue() > *gr.MaxManaValue {
 		return false
 	}
+	if gr.MinManaValue != nil && card.ManaValue() < *gr.MinManaValue {
+		return false
+	}
 	return gr.MaxManaValueFunc == nil || card.ManaValue() <= gr.MaxManaValueFunc(g, caster)
 }
 
@@ -415,6 +425,18 @@ const GrantedAltCostWarp = "granted-warp"
 // granted it may be gone by the time the spell resolves (CR 610.5). An
 // on-disk identity: never renamed, never reused.
 const GrantedAltCostEvoke = "granted-evoke"
+
+// GrantedAltCostBlitz is the key of "Each creature spell you cast with
+// mana value 4 or greater has blitz. The blitz cost is equal to its mana
+// cost." (Henzie "Toolbox" Torre; CR 702.152a, #5667): a granted offer
+// that carries blitz's haste, "When this creature dies, draw a card." and
+// sacrifice at the beginning of the next end step. Like granted warp and
+// granted evoke, the entry hook (queueAltCostEntryTriggerLocked) reads
+// the clause off the key, because the card prints no row for it and the
+// permanent that granted it may be gone by the time the spell resolves:
+// CR 702.152a asks only whether "this spell's blitz cost was paid". An
+// on-disk identity: never renamed, never reused.
+const GrantedAltCostBlitz = "granted-blitz"
 
 // GrantedAltCostNextFree is the key of the free offer a live
 // NextSpellPromise.WithoutPayingManaCost makes (#2709). An on-disk

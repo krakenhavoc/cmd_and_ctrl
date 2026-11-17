@@ -15,7 +15,8 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 )
 
-// TableEvents is told when a table fills or starts. Satisfied by
+// TableEvents is told when a table fills or starts, and when a started
+// one is warned that it will be closed for being idle. Satisfied by
 // *notify.Notifier; nil (no bot token) tells nobody.
 type TableEvents interface {
 	// TableFilled: every seat at the table is taken. by is the seat
@@ -23,6 +24,9 @@ type TableEvents interface {
 	TableFilled(game, by uuid.UUID)
 	// TableStarted: the table has started.
 	TableStarted(game uuid.UUID)
+	// TableIdleWarning: the started table will be closed at closesAt,
+	// having had no human move for hours (ADR 0211 §6).
+	TableIdleWarning(game uuid.UUID, closesAt time.Time, hours int)
 }
 
 // SetTableEvents wires the notifier in at boot.
@@ -98,14 +102,16 @@ func (n notifyTables) Waiting(gameID, seat uuid.UUID) (bool, time.Time) {
 // notifyTableLocked projects one entry. Caller holds l.mu.
 func notifyTableLocked(e *gameEntry) notify.Table {
 	t := notify.Table{
-		ID:    e.meta.ID,
-		Name:  e.meta.Name,
-		State: string(e.room.Game.CurrentState()),
-		Full:  len(e.meta.Players) >= seatCapLocked(e),
+		ID:          e.meta.ID,
+		Name:        e.meta.Name,
+		State:       string(e.room.Game.CurrentState()),
+		Full:        len(e.meta.Players) >= seatCapLocked(e),
+		IdleCloseAt: e.room.IdleCloseAt(),
 	}
 	if glance, ok := e.room.Game.Glance(); ok {
 		t.Turn = glance.Turn
 	}
+	out := outOfGameLocked(e)
 	host := e.room.HostPlayerID()
 	for _, s := range e.meta.Players {
 		t.Seats = append(t.Seats, notify.Seat{
@@ -114,6 +120,8 @@ func notifyTableLocked(e *gameEntry) notify.Table {
 			Host:     s.PlayerID == host && host != uuid.Nil,
 			Bot:      s.IsBot,
 			Agent:    s.IsAgent,
+			Out:      out[s.PlayerID],
+			StandIn:  s.StandIn != "",
 		})
 	}
 	return t

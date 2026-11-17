@@ -102,6 +102,7 @@ var silentEventKinds = map[string]string{
 	"EventExplored":      "every step of an explore is already a line: the reveal, the land's move to hand, the +1/+1 counter and the card's move to the graveyard (CR 701.44a); the event exists for \"whenever a creature you control explores\" triggers (#2720)",
 	"EventInvestigate":   "the Clue token's creation is already a line (CR 701.16a); the event exists for \"whenever you investigate\" triggers (Erdwal Illuminator, #5425), whose own LogTrigger line follows",
 	"EventGiftGiven":     "the gift's own effect (the card drawn, the token created) is already a line; the event exists for \"whenever you give a gift\" triggers (Jolly Gerbils, #4467)",
+	"EventExploited":     "the sacrifice is already a line (CR 702.110b); the event exists for \"whenever a creature you control exploits\" triggers (Skull Skaab, #5676), whose own LogTrigger line follows",
 	"EventConnived":      "every step of a connive is already a line: the draw, the discard and the +1/+1 counter (CR 701.50a); the event exists for \"whenever a creature you control connives\" triggers (#4641)",
 
 	// --- the step spine ----------------------------------------------
@@ -178,6 +179,7 @@ var silentEventKinds = map[string]string{
 	"EventBecameSaddled":   silentBoardStateIsVisible,
 	"EventCrewedVehicle":   silentImpliedByAnotherLine, // #3545: the activation line and the taps already say it
 	"EventSaddledMount":    silentImpliedByAnotherLine, // #3545
+	"EventBecameCrewed":    silentImpliedByAnotherLine, // #5671: the crew ability's resolve line already says it
 	"EventFacedDilemma":    silentImpliedByAnotherLine, // #4973: the cast, activation or mode-choice line already names the modes
 	"EventBecameRenowned":  silentBoardStateIsVisible,
 	"EventRegenerated":     silentImpliedByAnotherLine,

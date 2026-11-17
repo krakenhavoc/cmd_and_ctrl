@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -247,6 +248,21 @@ type CostQuery struct {
 	// or special action.
 	OptionalCosts []int
 
+	// SacrificedManaCost is offering's reduction (CR 702.48a, c; #5657):
+	// the mana cost of the permanent an announced optional cost that is
+	// ReducedBySacrificedManaCost sacrifices, read while the permanent
+	// is still on the battlefield (CR 601.2f). The zero cost for every
+	// other cast.
+	//
+	// Like AltSacrificeManaValue it is a reduction of its own, not a
+	// modifier's input: applyCostModifiersLocked takes it off through
+	// reduceByManaCost (a coloured symbol off its own colour, the excess
+	// off generic, CR 118.7) with the board's reductions, after every
+	// increase and before a CostFloor. Filled by the one pricer
+	// (costAfterModifiersLocked, from SacrificedManaCostForEffect) and,
+	// per payment, by the enumerator, so the two agree (#544).
+	SacrificedManaCost ParsedCost
+
 	// AltSacrificeManaValue is emerge's reduction (CR 702.119a, ADR 0135
 	// §4): the mana value of the permanent the claimed alternative cost
 	// sacrifices, when that offer is ReducedBySacrificedManaValue, read
@@ -271,6 +287,19 @@ type CostQuery struct {
 	// pricer and, per payment, by the enumerator. Zero for every other
 	// cast and for a harmonize cast that taps nothing.
 	AltTappedPower int
+
+	// AltBlitz reports that the alternative cost this cast claims is a
+	// blitz cost (AlternativeCost.Blitz, CR 702.152a): the card's own or
+	// one a permanent gave it (GrantedAltCostBlitz). It is what a
+	// modifier of blitz costs alone reads: Henzie "Toolbox" Torre's
+	// "Blitz costs you pay cost {1} less for each time you've cast your
+	// commander from the command zone this game" (#5667), which must not
+	// touch the same spell cast for its mana cost. CR 601.2b settles the
+	// claim before 601.2f totals the cost. Filled by the one pricer
+	// (costAfterModifiersLocked) and by the enumerator from the offer it
+	// is announcing, so the two agree (#544). False for every other
+	// cast, and for an activation or special action.
+	AltBlitz bool
 
 	// GrantReduction is the generic mana a cast permission takes off the
 	// spell cast through it (CastPermission.CostLess, #3787): Urianger
@@ -374,6 +403,13 @@ type AbilityCostSubject struct {
 	// reduction by the source's mana cost (power_up.go).
 	PowerUp bool
 
+	// Ninjutsu is the ninjutsu keyword bit (CR 702.49a, and commander
+	// ninjutsu, its variant, CR 702.49d; #5672): "Ninjutsu abilities you
+	// activate cost {1} less to activate" (Silver-Fur Master). The
+	// query's FromZone is the hand or the command zone, where the card
+	// with the ability is (CR 113.6).
+	Ninjutsu bool
+
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation — set by manaAbilityCostQueryLocked (#1191), so a
 	// predicate says which kind it means. CR 605.1a makes both
@@ -472,6 +508,22 @@ type CostModifier struct {
 	// effects.Register refuses the same shapes at boot; both read
 	// UnitProblem.
 	Unit *ParsedCost
+
+	// UnitColorsOnly is "This effect reduces only the amount of blue
+	// mana you pay" (Defiler of Dreams, #5659): a CostReduction whose
+	// Unit is coloured symbols alone, each taking one mana of its colour
+	// off the cost and NOTHING when the cost has none left. It switches
+	// off CR 118.7b and 118.7c, which would otherwise turn the missing
+	// colour into a generic reduction. A hybrid or Phyrexian symbol of
+	// the colour in the cost counts as mana of that colour, as it does
+	// for every coloured reduction (reduceByManaCost).
+	//
+	// CR 601.2f lets the player apply reductions in any order, so the
+	// pass applies these before the other reductions: that order never
+	// leaves more to pay, because this one cannot fall back on generic
+	// mana and the others can. UnitProblem refuses it on anything but a
+	// reduction with a Unit of coloured symbols.
+	UnitColorsOnly bool
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this modifier applies only while its source permanent has the
@@ -604,6 +656,9 @@ func reduceKeepingOneMana(cost ParsedCost, n, x int) ParsedCost {
 // refusal cannot drift apart.
 func (m CostModifier) UnitProblem() string {
 	u := m.Unit
+	if m.UnitColorsOnly && (m.Kind != CostReduction || u == nil || u.Generic > 0 || len(u.Required) == 0) {
+		return "a colours-only reduction that is not a reduction by coloured symbols alone"
+	}
 	if u == nil {
 		return ""
 	}
@@ -622,6 +677,9 @@ func (m CostModifier) UnitProblem() string {
 		}
 		if len(r.Options) != 1 || r.HasNumericAlt {
 			return "a mana unit carrying a hybrid symbol"
+		}
+		if m.UnitColorsOnly && (r.Snow || r.Options[0] == "C") {
+			return "a colours-only reduction by a symbol that is not a colour"
 		}
 	}
 	return ""
@@ -918,7 +976,9 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 		// The cast permission's "costs {N} more" (CastPermission.CostMore)
 		// is an increase, so it is in before any reduction comes off.
 		base = increaseBy(base, q.GrantIncrease, nil)
-		return reduceGeneric(reduceGeneric(reduceGeneric(reduceByManaCost(base, powerUp), q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
+		// #5657, CR 702.48a: and offering's, by a mana cost.
+		base = reduceByManaCost(reduceByManaCost(base, powerUp), q.SacrificedManaCost)
+		return reduceGeneric(reduceGeneric(reduceGeneric(base, q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
 	}
 	cost := base
 	// CR 601.2f step 1, CR 118.9: a "{0} rather than" alternative
@@ -968,12 +1028,27 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 			cost = reduceKeepingOneMana(cost, n, q.XValue)
 		}
 	}
+	// Then the reductions that take only their own colour (#5659,
+	// UnitColorsOnly), before the ones that can fall back on generic
+	// mana: the order that never leaves more to pay.
+	for _, bm := range mods {
+		if bm.modifier.Kind != CostReduction || bm.modifier.KeepsOneMana || !bm.modifier.UnitColorsOnly {
+			continue
+		}
+		n, ok, err := amountFor(bm, q, cost)
+		if err != nil {
+			return ParsedCost{}, err
+		}
+		if ok {
+			cost = reduceColorsOnly(cost, n, *bm.modifier.Unit)
+		}
+	}
 	// Then every other reduction. Also additive, but each one
 	// is clamped against the generic remaining as it is spent, which
 	// is what keeps two {2}-reducers from making a {1}{B} spell owe
 	// negative generic.
 	for _, bm := range mods {
-		if bm.modifier.Kind != CostReduction || bm.modifier.KeepsOneMana {
+		if bm.modifier.Kind != CostReduction || bm.modifier.KeepsOneMana || bm.modifier.UnitColorsOnly {
 			continue
 		}
 		n, ok, err := amountFor(bm, q, cost)
@@ -989,6 +1064,10 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	// each component is floored at zero and a coloured symbol's excess
 	// only ever reduces generic mana.
 	cost = reduceByManaCost(cost, powerUp)
+	// #5657, CR 702.48a, c: offering's reduction by the sacrificed
+	// permanent's mana cost, with the others and order-free for the
+	// same reason.
+	cost = reduceByManaCost(cost, q.SacrificedManaCost)
 	// ADR 0135 §4, CR 702.119a: emerge's reduction by the sacrificed
 	// permanent's mana value, with the other reductions (CR 601.2f) and
 	// clamped the same way, so it is taken after every increase.
@@ -1043,12 +1122,13 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 		// because both had to check it to get here.
 		FromZone: zone,
 		Ability: &AbilityCostSubject{
-			Label:   ab.Label,
-			Exhaust: ab.Exhaust,
-			Boast:   ab.Boast,
-			Equip:   ab.Equip,
-			PowerUp: ab.PowerUp,
-			own:     ab.CostModifiers,
+			Label:    ab.Label,
+			Exhaust:  ab.Exhaust,
+			Boast:    ab.Boast,
+			Equip:    ab.Equip,
+			PowerUp:  ab.PowerUp,
+			Ninjutsu: ab.Ninjutsu,
+			own:      ab.CostModifiers,
 		},
 		Targets: targets,
 	}
@@ -1551,6 +1631,21 @@ func reduceBy(cost ParsedCost, n int, unit *ParsedCost) ParsedCost {
 	for i := 0; i < n; i++ {
 		cost = reduceByManaCost(cost, *unit)
 	}
+	return cost
+}
+
+// reduceColorsOnly takes `n` times the unit's coloured symbols off a
+// cost, each one mana of its own colour, and nothing where the cost has
+// none of that colour left (CostModifier.UnitColorsOnly): the generic
+// part is never touched.
+func reduceColorsOnly(cost ParsedCost, n int, unit ParsedCost) ParsedCost {
+	req := slices.Clone(cost.Required)
+	for i := 0; i < n; i++ {
+		for _, r := range unit.Required {
+			req, _ = takeRequirement(req, r.Options[0])
+		}
+	}
+	cost.Required = req
 	return cost
 }
 

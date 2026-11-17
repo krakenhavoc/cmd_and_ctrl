@@ -36,6 +36,7 @@ import {
   type AdminSeat,
   type GamesFilter,
 } from "./adminViews";
+import { L } from "./labels";
 import { parseHash } from "./router";
 
 const GAME = "9c2f0e4c-1d1e-4c3b-9d7e-2f8a1b2c3d4e";
@@ -233,6 +234,19 @@ describe("the outcome line (§8)", () => {
     expect(outcomeLine({ state: "ended", outcome: "win", seats })).toBe("Won");
     expect(outcomeLine({ state: "ended", outcome: "draw", seats })).toBe("Draw");
     expect(outcomeLine({ state: "ended", outcome: "closed", seats })).toBe("Closed, no result");
+  });
+
+  // ADR 0211 §5: an idle close says why, whatever the row's outcome.
+  it("says why the server closed an idle table", () => {
+    expect(
+      outcomeLine({ state: "active", outcome: "closed", closed_reason: "idle_game", seats }),
+    ).toBe(L.closedIdleGame);
+    expect(outcomeLine({ state: "lobby", closed_reason: "idle_lobby", seats })).toBe(
+      L.closedIdleLobby,
+    );
+    expect(outcomeLine({ state: "ended", closed_reason: "idle_bots", seats })).toBe(
+      L.closedIdleBots,
+    );
   });
 
   it("says where an unfinished table stands", () => {

@@ -2,6 +2,7 @@ package game
 
 import (
 	"log/slog"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -575,6 +576,16 @@ type AbilityCost struct {
 	// moves (CR 118.3). See exile_grantor_cost.go.
 	ExileGrantor bool
 
+	// ExileNamed exiles every permanent the activator controls with a
+	// card type and one of the listed names as part of the cost (#5683):
+	// The Book of Vile Darkness's "{T}, Exile The Book of Vile Darkness
+	// and artifacts you control named Eye of Vecna and Hand of Vecna".
+	// The board decides the set, so nothing is announced, and an empty
+	// set is still a payable cost. The source is never in it (ExileSelf
+	// pays for the source). What it exiled is recorded on
+	// PaidCost.Exiled. See exile_named_cost.go.
+	ExileNamed *ExileNamedCost
+
 	// TapGrantor taps the permanent that GRANTED this ability as part of
 	// the cost: Fishing Pole's equipped creature has "{1}, {T}, Tap
 	// Fishing Pole: …". Same grantor as ExileGrantor (AbilityOrigin.
@@ -741,6 +752,19 @@ type AbilityCost struct {
 	// folded cost. A cost may have only one either/or part, so a
 	// forage sits beside no other OrCost.
 	Forage bool
+
+	// RollDie is "Roll a d<RollDie>" as a cost component (#5682): Clay
+	// Golem's "{6}, Roll a d8: Monstrosity X, where X is the result".
+	// The number is the die's sides; zero is every other cost. Nothing
+	// to choose and nothing that can make it unpayable. It is a cost
+	// with a random element, so it is paid after every other component
+	// (CR 601.2h, CR 602.2b), through the one dice door (dice_roll.go):
+	// the roll is a replaceable event, "whenever you roll" sees it, and
+	// the kept result is written to PaidCost.Rolled for the effect to
+	// read (effects.RollDieCost, Context.CostRoll). See dice_cost.go.
+	// Never a mana ability's cost: no such card is printed, and the
+	// mana path does not pay it.
+	RollDie int
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -1054,6 +1078,17 @@ type ActivatedAbilityShape struct {
 	//     included (CR 702.193b, 118.7b–g), so the menu, the enumerator
 	//     and the payment price it from one function.
 	PowerUp bool
+
+	// Ninjutsu marks a NINJUTSU ability (CR 702.49a) or a commander
+	// ninjutsu ability, the variant of it (CR 702.49d), #5672. Built by
+	// effects.Ninjutsu and effects.CommanderNinjutsu.
+	//
+	// Unlike Exhaust, Boast and PowerUp it gates nothing: the keyword's
+	// rules are its cost, its zones and its effect, which the shape
+	// already carries. The bit is the keyword's NAME, for a cost
+	// modifier that prices "ninjutsu abilities" (Silver-Fur Master,
+	// AbilityCostSubject.Ninjutsu) and must not match on label prose.
+	Ninjutsu bool
 
 	// OnlyOnce is the ability's own "Activate only once." without the
 	// exhaust keyword (#5221, CR 602.1b / 602.5b): Possessed Goat,
@@ -1793,6 +1828,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if params.PhyrexianLife != 0 && ab.Cost.Mana == "" {
 		return ErrInvalidParam
 	}
+	// #5660: "Players can't pay life ... to activate abilities that
+	// aren't mana abilities" (Karn's Sylex) reaches the life half of a
+	// Phyrexian symbol and of a life-for-mana grant. This verb activates
+	// no mana ability (CR 605.1a), so the claim is refused outright.
+	if params.PhyrexianLife > 0 && g.cantPayLifeToCastOrActivateLocked() {
+		return ErrInvalidParam
+	}
 	if ab.Cost.Loyalty != nil {
 		// CR 606.3 / 606.5 say PERMANENT, not planeswalker, and that
 		// wording is load-bearing rather than loose: a loyalty ability
@@ -1833,8 +1875,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return ErrCantPayCounterCost
 		}
 	}
+	// #5669: a tapped source named for its own "Untap N tapped creatures
+	// you control" clause is untapped by that payment first, and then
+	// pays the {T} (CR 601.2h, any order). See
+	// UntapOthersSourcePaysForEffect.
+	untapsSourceFirst := ab.Cost.Tap && source.Tapped && TapOthersUntaps(ab.Cost.TapOthers) &&
+		slices.Contains(params.TapIDs, cardID) && g.UntapOthersSourcePaysForEffect(playerID, cardID, ab.Cost.TapOthers)
 	if ab.Cost.Tap {
-		if source.Tapped {
+		if source.Tapped && !untapsSourceFirst {
 			return ErrAlreadyTapped
 		}
 		// CR 302.6: a creature's {T} ability needs it to have been
@@ -1862,7 +1910,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #758: the tap-another component. Validated here with every
 	// other cost and paid at the foot of the announce, so a refusal
 	// leaves the board entirely untapped (ADR 0020 §3).
-	if err := g.validateTapOthersCostAtXLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs, params.XValue); err != nil {
+	if err := g.validateTapOthersCostWithSourceLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs, params.XValue, ab.Cost.Tap); err != nil {
 		return err
 	}
 	// CR 118.3: the source can only be tapped once. A cost that
@@ -1874,7 +1922,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// printed word "another", and this is the interaction between
 	// two components of one cost, which only the activation path
 	// holds both halves of.
-	if ab.Cost.Tap && !ab.Cost.TapOthers.Empty() {
+	//
+	// #5669: not so for the untap form, where the source pays both in
+	// either order (CR 601.2h); the validator above has judged it.
+	if ab.Cost.Tap && !ab.Cost.TapOthers.Empty() && !TapOthersUntaps(ab.Cost.TapOthers) {
 		for _, id := range params.TapIDs {
 			if id == cardID {
 				return ErrInvalidParam
@@ -1928,6 +1979,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	if err := validateExileGrantorCostLocked(grantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
+		return err
+	}
+	// #5683: "and artifacts you control named …" (The Book of Vile
+	// Darkness). The board decides the set, read once here as the cost
+	// is determined (CR 601.2f); a permanent in it pays no other
+	// component (CR 118.3).
+	exileNamed := g.exileNamedSetLocked(playerID, cardID, ab.Cost.ExileNamed)
+	if err := validateExileNamedCostLocked(exileNamed, sacrifices, params.ReturnIDs, params.ExilePermanentIDs, []uuid.UUID{grantor}); err != nil {
 		return err
 	}
 	// "Tap <the permanent that granted this>" (Fishing Pole): the row's
@@ -2059,11 +2118,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// once and locked in, so nothing that happens after the
 	// announcement changes what was paid.
 	lifeCost, lifeOK := g.AbilityLifeCostAtXLocked(playerID, cardID, ab.Cost, params.XValue)
-	if !lifeOK || !g.CanPayLifeLocked(p, lifeCost) {
+	if !lifeOK || !g.CanPayLifeToCastOrActivateLocked(p, lifeCost) {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
 		// after. CR 119.8 forbids it outright while the player's life
-		// total can't change (#1200, life_lock.go).
+		// total can't change (#1200, life_lock.go). #5660: and so does
+		// "players can't pay life to activate abilities that aren't
+		// mana abilities" (life_cost_bar.go).
 		return ErrInvalidParam
 	}
 	// ADR 0129 §2, CR 107.14 / 118.3: the energy component, the printed
@@ -2166,6 +2227,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// a commander exiled to The Soul Stone's harness is offered the
 	// command zone (CR 903.9a) before anything is paid.
 	moving = append(moving, params.ExilePermanentIDs...)
+	// #5683: and the permanents an exile-by-name component moves.
+	moving = append(moving, exileNamed...)
 	// ADR 0109 §7: and the cards the library components move — the
 	// hand card put on top (CR 903.9b), the top cards exiled and the
 	// cards discarded at random (CR 903.9a).
@@ -2345,6 +2408,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		paid.LifePaid = spent.LifePaid
 	}
 	if ab.Cost.Tap {
+		// #5669: the source's own untap clause first, when it is what
+		// makes the {T} payable.
+		if untapsSourceFirst {
+			g.untapPermanentLocked(source)
+		}
 		source.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
@@ -2516,6 +2584,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	// #5683: the exile-by-name set, through the same door and for the
+	// same reasons; recorded after the picked permanents.
+	exiledNamed, err := g.payExilePermanentsCostKindLocked(playerID, cardID, exileNamed, params.commanderAnswers, MoveCauseCost, PermissionCardRef{})
+	if err != nil {
+		return err
+	}
+	exiledPermanents = append(exiledPermanents, exiledNamed...)
 	// #4000: the exile-the-grantor half, with the other permanent-moving
 	// components and for the same reasons: the source stays where it is
 	// (only the grantor moves), and the grantor's leaves-triggers sit
@@ -2787,6 +2862,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		Loyalty: ab.Cost.Loyalty != nil,
 		// CR 107.3a: an {X} mana symbol in the activation cost.
 		XCost: ab.Cost.XSlots() > 0,
+		// #5662: every point of life this announcement paid, for "if
+		// life was paid to activate it" (Verrak, Warped Sengir). The
+		// life costs are all paid above; nothing below pays life.
+		LifePaid: paid.LifePaid,
 		// #3855: what the activator declared about a waived payment
 		// is public, as a cast's is.
 		Unpaid:        paper.Free,
@@ -2819,7 +2898,19 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// record — here, after the item exists, because this is where the
 	// taps are paid — so station's effect can read the tapped
 	// creature back at resolution (CR 702.184a). See PaidTap.
-	item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	//
+	// #5669: the untap form is paid at the same place for the same
+	// reason ("whenever a creature becomes untapped"), and records
+	// nothing: no permanent was tapped.
+	if TapOthersUntaps(ab.Cost.TapOthers) {
+		paidFirst := uuid.Nil
+		if untapsSourceFirst {
+			paidFirst = cardID
+		}
+		g.payUntapOthersCostLocked(params.TapIDs, paidFirst)
+	} else {
+		item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	}
 	// Fishing Pole: and the tap-the-grantor half, for the same reason.
 	g.payTapGrantorCostLocked(playerID, tapGrantor)
 	// #2695: a saddle ability's tapped creatures are the "creatures
@@ -2838,6 +2929,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the taps covered, so the activator has waterbent.
 	if !ab.Cost.Waterbend.Empty() && ab.Cost.Waterbend.Key == "waterbend" {
 		g.noteBendLocked(EventWaterbend, playerID, cardID)
+	}
+	// #5682, CR 601.2h: "Roll a d8" is a cost with a random element, so
+	// it is paid last, and here rather than in the payment block for the
+	// reason the taps above are: the result is written onto the item,
+	// and a "whenever you roll one or more dice" trigger sits above the
+	// ability. See dice_cost.go.
+	if err := g.payRollDieCostLocked(playerID, cardID, itemID, ab.Cost.RollDie); err != nil {
+		return err
 	}
 	// The cost may have queued dies-triggers (a sacrifice outlet
 	// feeding Blood Artist). Drain them so they sit ABOVE the

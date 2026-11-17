@@ -294,6 +294,19 @@ func b17DamageSourceController(ev game.Event, g *game.Game) uuid.UUID {
 	return ev.Actor
 }
 
+// ASourceAnOpponentControlsDealtDamageToYou is "Whenever a source an
+// opponent controls deals damage to you": one damage event to the
+// source's controller, the player and not their permanents, from a
+// source whose controller (b17DamageSourceController) is someone else
+// (Michiko Konda, Truth Seeker; Farsight Mask).
+func ASourceAnOpponentControlsDealtDamageToYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target != source.Controller {
+		return false
+	}
+	dealer := b17DamageSourceController(ev, g)
+	return dealer != uuid.Nil && dealer != source.Controller
+}
+
 // b17OpponentsCreatureAttackedYou is Kazuul's condition: a creature
 // an opponent controls was declared attacking, and the source's
 // controller is the defending player.

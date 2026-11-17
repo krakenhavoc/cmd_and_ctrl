@@ -33,6 +33,14 @@ export const LAYOUT_SPLIT = "split";
 export const LAYOUT_FLIP = "flip";
 
 /**
+ * Scryfall's layout for a prototype card (CR 718, #5656): one printed
+ * card with an inset that gives a second mana cost, power and
+ * toughness. The server sends the inset as face 1, which a cast may
+ * choose (CR 718.3), and it has ONE image.
+ */
+export const LAYOUT_PROTOTYPE = "prototype";
+
+/**
  * Scryfall's layout for a plane or phenomenon (ADR 0216): a landscape
  * card, scanned as a portrait image with the card turned a quarter.
  */
@@ -134,7 +142,9 @@ export function needsFacePicker(card: CardView): boolean {
   return (
     card.layout === LAYOUT_MODAL_DFC ||
     card.layout === LAYOUT_ADVENTURE ||
-    card.layout === LAYOUT_SPLIT
+    card.layout === LAYOUT_SPLIT ||
+    // CR 718.3 (#5656): cast normally, or prototyped.
+    card.layout === LAYOUT_PROTOTYPE
   );
 }
 
@@ -375,9 +385,10 @@ export function castableFaceIndex(
  * halves' text (#4109). A flip card is one image too, but its upside-down
  * half is a set of alternative characteristics the card can take
  * (CR 710.1), so it is not on this list: the panel shows that half as
- * the same image turned.
+ * the same image turned. A prototype card's inset is a frame on the
+ * same side (CR 718.1).
  */
-const ONE_SIDED_LAYOUTS = new Set([LAYOUT_SPLIT, LAYOUT_ADVENTURE, "prepare"]);
+const ONE_SIDED_LAYOUTS = new Set([LAYOUT_SPLIT, LAYOUT_ADVENTURE, "prepare", LAYOUT_PROTOTYPE]);
 
 /**
  * isOneSidedLayout reports whether a card's halves share one image
@@ -421,7 +432,8 @@ export function otherSideIndex(
  * same side), so its halves are "Flipped" and "Unflipped". An
  * adventurer card's other half is its "Adventure" (CR 715.2), a prepare
  * card's its "Prepare spell" (CR 722.2a), and a split card's is just its
- * "Other half".
+ * "Other half". A prototype card's other set of characteristics is the
+ * card "Prototyped", or "Not prototyped" beside a prototyped permanent.
  */
 export function otherSideHeading(card: Pick<CardView, "layout" | "active_face">): string {
   const backUp = (card.active_face ?? 0) !== 0;
@@ -429,6 +441,7 @@ export function otherSideHeading(card: Pick<CardView, "layout" | "active_face">)
   if (card.layout === LAYOUT_ADVENTURE) return backUp ? "Creature" : "Adventure";
   if (card.layout === "prepare") return backUp ? "Creature" : "Prepare spell";
   if (card.layout === LAYOUT_SPLIT) return "Other half";
+  if (card.layout === LAYOUT_PROTOTYPE) return backUp ? "Not prototyped" : "Prototyped";
   return backUp ? "Front face" : "Back face";
 }
 
@@ -490,4 +503,16 @@ export function printedFace(
     out.statsTitle = "printed power/toughness";
   }
   return out;
+}
+
+/**
+ * isPrototypedFace reports whether face `i` of `card` is a prototype
+ * card's inset (CR 718.3b): the face a prototyped spell and the
+ * permanent it becomes have up.
+ */
+export function isPrototypedFace(
+  card: Pick<CardView, "layout"> | null | undefined,
+  i: number,
+): boolean {
+  return card?.layout === LAYOUT_PROTOTYPE && i === 1;
 }

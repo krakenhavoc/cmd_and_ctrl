@@ -90,6 +90,11 @@ export interface AttackAllPlan {
   // with all at a seat one of them can attack is never sent blind: it
   // opens the picker, whose Exert toggle asks (owner decision 1).
   exertable: string[];
+  // #5658: for each eligible creature with enlist, the creatures the
+  // server says it may enlist as it attacks (the digest's
+  // enlist_on_attack). Like exert, an attack with all that includes one
+  // opens the picker, whose row asks.
+  enlistable: Record<string, readonly string[]>;
 }
 
 // attackBlocker names, from the row fields, why a creature can't
@@ -155,6 +160,7 @@ export function planAttackAll(
     defenders: [],
     targets: {},
     exertable: [],
+    enlistable: {},
   };
   if (!view || !viewerID) return plan;
 
@@ -177,6 +183,8 @@ export function planAttackAll(
     plan.eligible.push(card);
     if (gate.known) plan.targets[card.instance_id] = gate.attackTargets(card.instance_id);
     if (gate.canExertOnAttack(card.instance_id)) plan.exertable.push(card.instance_id);
+    const enlist = gate.enlistOnAttack(card.instance_id);
+    if (enlist.length > 0) plan.enlistable[card.instance_id] = enlist;
   }
   return plan;
 }
@@ -202,6 +210,14 @@ export function exertChoiceAt(plan: AttackAllPlan, defenderSeatID: string): bool
   return eligibleAt(plan, defenderSeatID).some((c) => plan.exertable.includes(c.instance_id));
 }
 
+// enlistChoiceAt reports whether an attack with all at ONE seat would
+// include a creature that may enlist another (#5658). Then the player is
+// asked, in the picker: sending everything would both answer "no" for
+// them and take away every creature it could have enlisted.
+export function enlistChoiceAt(plan: AttackAllPlan, defenderSeatID: string): boolean {
+  return eligibleAt(plan, defenderSeatID).some((c) => c.instance_id in plan.enlistable);
+}
+
 // AttackAllParams is the wire shape of the bulk declare_attackers
 // action. Mirrors the params struct in
 // server/internal/actions/actions.go.
@@ -211,7 +227,8 @@ export function exertChoiceAt(plan: AttackAllPlan, defenderSeatID: string): bool
 export type AttackAllParams = {
   // `exert`: ADR 0130 §5, the choice to exert that attacker as it
   // attacks. Sent only as true; absent means no.
-  attackers: { attacker: string; target: string; exert?: true }[];
+  // `enlist`: #5658, the creature that attacker enlists. Absent for none.
+  attackers: { attacker: string; target: string; exert?: true; enlist?: string }[];
   // ADR 0080 (#1063): let the server tap lands for the CR 508.1h
   // attack tax when the mana pool alone cannot cover it. Always sent,
   // for the reason the cast chain sends it after its preview — a
@@ -252,6 +269,11 @@ export interface AttackAllOptions {
   // exertable is dropped: the server refuses the whole declaration for
   // an exert it can't honour.
   exert?: readonly string[];
+  // #5658: attacker id to the creature it enlists (the picker's row
+  // choices). A pair the plan does not list, a creature that is itself
+  // sent to attack, and a second attacker naming the same creature are
+  // dropped: the server refuses the whole declaration for any of them.
+  enlist?: Readonly<Record<string, string>>;
   // #4198: the Phyrexian symbols of the tax to pay with life, sent as
   // `phyrexian_life`. Zero or absent pays them all with mana.
   phyrexianLife?: number;
@@ -270,12 +292,26 @@ export function attackAllParams(
   const here = eligibleAt(plan, defenderSeatID);
   const attackers = opts.only ? here.filter((c) => opts.only!.includes(c.instance_id)) : here;
   if (attackers.length === 0) return null;
+  const sent = new Set(attackers.map((c) => c.instance_id));
+  const enlisted = new Set<string>();
   const params: AttackAllParams = {
-    attackers: attackers.map((c) =>
-      opts.exert?.includes(c.instance_id) && plan.exertable.includes(c.instance_id)
-        ? { attacker: c.instance_id, target: defenderSeatID, exert: true as const }
-        : { attacker: c.instance_id, target: defenderSeatID },
-    ),
+    attackers: attackers.map((c) => {
+      const entry: AttackAllParams["attackers"][number] =
+        opts.exert?.includes(c.instance_id) && plan.exertable.includes(c.instance_id)
+          ? { attacker: c.instance_id, target: defenderSeatID, exert: true as const }
+          : { attacker: c.instance_id, target: defenderSeatID };
+      const pick = opts.enlist?.[c.instance_id];
+      if (
+        pick &&
+        plan.enlistable[c.instance_id]?.includes(pick) &&
+        !sent.has(pick) &&
+        !enlisted.has(pick)
+      ) {
+        enlisted.add(pick);
+        entry.enlist = pick;
+      }
+      return entry;
+    }),
     auto_tap: true,
   };
   if (opts.lockedSources && opts.lockedSources.length > 0) {
@@ -422,6 +458,8 @@ export function offersAttackPicker(
   // ADR 0130 §7: a creature that may be exerted is a choice to make,
   // even when it is the only attacker.
   if (exertChoiceAt(plan, defenderSeatID)) return true;
+  // #5658: so is a creature that may enlist another.
+  if (enlistChoiceAt(plan, defenderSeatID)) return true;
   return eligibleAt(plan, defenderSeatID).length > 1;
 }
 

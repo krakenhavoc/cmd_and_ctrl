@@ -84,6 +84,14 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 	if t == nil {
 		t = &damageTail{}
 	}
+	// #5663: the excess-damage reading below compares the amount with
+	// the creature's toughness as the damage finds it, so an earlier
+	// step of the same resolution that changed it is settled first
+	// (freshForEffectLocked, CR 608.2). Before the pointer is taken,
+	// since a pass rewrites the battlefield's effective characteristics.
+	// Counters are read live, so the -1/-1 counters of an earlier wither
+	// event of the same batch need no pass.
+	g.freshForEffectLocked()
 	idx := -1
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -98,6 +106,9 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 	isCreature := c.IsCreature()
 	isPlaneswalker := c.IsPlaneswalker()
 	isBattle := c.IsBattle()
+	// #5663: whether this is excess damage (CR 120.10) is read off the
+	// permanent as the damage finds it, before anything is marked.
+	g.recordExcessDamageLocked(c, amount, t.deathtouch)
 
 	if isCreature {
 		// CR 120.3d / 120.3e: counters or marked damage, never both.

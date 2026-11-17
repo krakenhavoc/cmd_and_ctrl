@@ -116,6 +116,14 @@ var ashlingHasteAndUpkeep = CardTail("ashling-the-limitless/haste-and-pay-or-sac
 // ashlingPayOrSacrificeBody is the delayed trigger: for the token it
 // names, if its controller still controls it, pay {W}{U}{B}{R}{G} or
 // sacrifice it. An on-disk key.
+//
+// The question is UpkeepPayUnless, not PayUnless (#5803). It is the
+// #997 shape that ADR 0018's amendment names for an end step too: the
+// controller is asked, during their own end step, about their own
+// token. The payment is made as the trigger resolves (CR 118.12), so
+// nobody gets priority (CR 117.3b) and the end step cannot end (CR
+// 500.2) until they answer, and a decline sacrifices the token in that
+// end step. The decline keeps its key, so no new key is needed.
 var ashlingPayOrSacrificeBody = game.SimpleDelayedBody("ashling-the-limitless/pay-wubrg-or-sacrifice", func(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range item.Targets {
@@ -126,7 +134,7 @@ var ashlingPayOrSacrificeBody = game.SimpleDelayedBody("ashling-the-limitless/pa
 		if !ok || !onBattlefield(g, t.ID) || c.Controller != item.Controller {
 			continue
 		}
-		if err := (PayUnless{
+		if err := (UpkeepPayUnless{
 			Chooser:  item.Controller,
 			Cost:     "{W}{U}{B}{R}{G}",
 			Question: "Ashling, the Limitless — pay {W}{U}{B}{R}{G}, or sacrifice " + c.Name + "?",

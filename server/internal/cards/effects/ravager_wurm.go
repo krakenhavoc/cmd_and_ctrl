@@ -22,7 +22,7 @@ const ravagerWurmLabel = "Ravager Wurm — choose up to one"
 // enters, so the fight already counts a riot counter. The modal trigger
 // is a real mode pick (#764); "up to one" lets the controller choose
 // neither. The fight is b10Fight, which deals nothing if either
-// creature has left (CR 701.12b).
+// creature has left (CR 701.14b).
 //
 // "A land with an activated ability that isn't a mana ability" reads
 // the land's activated abilities through game.ActivatedAbilitiesForCard,

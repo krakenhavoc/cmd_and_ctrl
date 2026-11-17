@@ -44,6 +44,21 @@ var knownOracleMismatches = map[string]string{
 	"Tidal Control | cost not printed | pay 2 life":                      "one choice of cost written as two rows; this is the life row",
 	"Tidal Control | cost not printed | {2}":                             "one choice of cost written as two rows; this is the mana row",
 	"Tidal Control | printed ability not registered | pay 2 life or {2}": "registered as two rows, one per cost",
+
+	// Crystal Shard prints one ability with a choice of cost, "{3}, {T}
+	// or {U}, {T}", written as two rows for Tidal Control's reason. Each
+	// row's label names the cost it charges, so neither is the printed
+	// cost line (#5606).
+	"Crystal Shard | cost not printed | {3}, {t}": "one choice of cost written as two rows; this is the {3} row",
+	"Crystal Shard | cost not printed | {u}, {t}": "one choice of cost written as two rows; this is the {U} row",
+
+	// Granite Shard and Heartwood Shard are Crystal Shard's shape, "{3},
+	// {T} or {R}, {T}" and "{3}, {T} or {G}, {T}", written as two rows
+	// for the same reason (#5606).
+	"Granite Shard | cost not printed | {3}, {t}":   "one choice of cost written as two rows; this is the {3} row",
+	"Granite Shard | cost not printed | {r}, {t}":   "one choice of cost written as two rows; this is the {R} row",
+	"Heartwood Shard | cost not printed | {3}, {t}": "one choice of cost written as two rows; this is the {3} row",
+	"Heartwood Shard | cost not printed | {g}, {t}": "one choice of cost written as two rows; this is the {G} row",
 }
 
 func loadOracleFixture(t *testing.T) map[string]OracleCard {

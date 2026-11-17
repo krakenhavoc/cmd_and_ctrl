@@ -176,6 +176,8 @@
     castTapCost,
     castConspireCost,
     castHandExileCost,
+    altCostCounterX,
+    altCostCountersDefineX,
     altCostPayDefinesX,
     altCostPayX,
     castExileCardsCost,
@@ -1417,7 +1419,16 @@
     const p = castCounterPrompt;
     castCounterPrompt = null;
     if (!p) return;
-    afterAltCostPayment(p.card, { ...p.choices, counter: counterPaymentParams(p.offer, picks) });
+    const counter = counterPaymentParams(p.offer, picks);
+    // #5679: "Remove X loyalty counters" — the counters removed are the
+    // spell's X, so the total is announced with them and the X prompt is
+    // skipped (afterCastCosts).
+    const x = altCostCounterX(p.offer, counter);
+    afterAltCostPayment(p.card, {
+      ...p.choices,
+      counter,
+      ...(x !== undefined ? { xValue: x } : {}),
+    });
   }
 
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
@@ -1513,6 +1524,7 @@
     // this a prompt decision rather than a rule the client enforces.
     // #3175: a pitch bound to X has already announced it — the pitched
     // card's mana value — so the X picker would only offer a wrong answer.
+    // #5679: likewise an offer that removes X counters.
     const xFromPitch =
       choices.xValue !== undefined &&
       altCostPayDefinesX(alternativeCostByKey(card, choices.altCost));
@@ -3030,6 +3042,13 @@
     if (ability.tap_others_options) {
       const options = ability.tap_others_options.cards ?? [];
       const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
+      // #5669: a tapped source that pays its own untap clause has to be
+      // the one named, or its {T} can't be paid (CR 601.2h).
+      if (ability.tap_others_frees_source && need === 1) {
+        abilityTapIDs = [card.instance_id];
+        afterAbilityPermanentPicks(card, ability);
+        return;
+      }
       if (ability.tap_others_options.count_from_x || options.length > need) {
         abilityTapPrompt = { card, ability };
         return;
@@ -4869,7 +4888,9 @@
     card={castCounterPrompt?.card ?? null}
     ability={castCounterPrompt ? { ...castCounterPrompt.offer, index: -1 } : null}
     board={view.battlefield.cards}
-    payFor="cast this spell"
+    payFor={altCostCountersDefineX(castCounterPrompt?.offer)
+      ? "cast this spell. The number you remove is X"
+      : "cast this spell"}
     onConfirm={confirmCastCounterCost}
     onCancel={() => (castCounterPrompt = null)}
   />
@@ -5112,14 +5133,15 @@
     }}
   />
   <!-- #759: station's "Tap another untapped creature you control".
-       The sacrifice picker once more, with the verb "Tap". -->
+       The sacrifice picker once more, with the verb "Tap". #5669: and
+       "Untap" for Halo Fountain's "Untap a tapped creature you control". -->
   <SacrificeCostModal
     source={abilityTapPrompt?.card ?? null}
     label={abilityTapPrompt?.ability.tap_others_label ?? "another untapped creature you control"}
     options={abilityTapOptions}
     count={abilityTapPrompt?.ability.tap_others_options?.max ?? 1}
     min={abilityTapBounds.min}
-    verb="Tap"
+    verb={abilityTapPrompt?.ability.tap_others_untap ? "Untap" : "Tap"}
     onConfirm={confirmAbilityTapCost}
     onCancel={() => {
       abilityTapPrompt = null;

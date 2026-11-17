@@ -212,30 +212,138 @@ describe("DraftArchetypesPanel", () => {
     return spy;
   };
 
-  it("is a collapsible panel headed by the label, open with the pairs by default", async () => {
+  const click = (el: Element): void => {
+    (el as HTMLElement).click();
+    flushSync();
+  };
+  const gold = (id: string, colors: string[]): DraftCard => ({ id, name: `Card ${id}`, colors });
+
+  it("is a panel headed by the label, open with the pairs and a collapse button by default", async () => {
     const spy = serve();
     const { container } = render(
       DraftArchetypesPanel as never,
       { set: "blb", setName: "Bloomburrow" } as never,
     );
     await settle();
-    const d = container.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!;
-    expect(d.open).toBe(true);
-    expect(text(d.querySelector("summary h2"))).toBe(L.draftArchetypesTitle);
-    expect(text(d)).toContain("Bloomburrow");
-    expect(text(d)).toContain("Birds and flyers");
+    const p = container.querySelector('[data-testid="archetypes-panel"]')!;
+    expect(p.getAttribute("data-open")).toBe("true");
+    expect(text(p.querySelector("h2"))).toBe(L.draftArchetypesTitle);
+    expect(text(p)).toContain("Bloomburrow");
+    expect(text(p)).toContain("Birds and flyers");
+    const hide = p.querySelector<HTMLButtonElement>("button.iconbtn")!;
+    expect(hide.getAttribute("aria-label")).toBe(L.draftArchetypesHide);
+    expect(hide.getAttribute("aria-expanded")).toBe("true");
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it("asks for nothing while it is closed", async () => {
+  it("asks for nothing while it is closed, and is a strip with a rotated label and an expand button", async () => {
     const spy = serve();
     const { container } = render(
       DraftArchetypesPanel as never,
       { set: "blb", open: false } as never,
     );
     await settle();
-    expect(container.querySelector<HTMLDetailsElement>("details")!.open).toBe(false);
+    const p = container.querySelector('[data-testid="archetypes-panel"]')!;
+    expect(p.getAttribute("data-open")).toBe("false");
+    expect(p.classList.contains("collapsed")).toBe(true);
     expect(spy).not.toHaveBeenCalled();
     expect(container.querySelector('[data-testid="archetypes"]')).toBeNull();
+    const rail = p.querySelector<HTMLButtonElement>("button.rail")!;
+    expect(rail.getAttribute("aria-label")).toBe(L.draftArchetypesShow);
+    expect(rail.getAttribute("aria-expanded")).toBe("false");
+    expect(text(rail.querySelector(".vlabel"))).toBe(L.draftArchetypesTitle);
+    // The pairs are not on the page, and nor is the body.
+    expect(p.querySelector(".body")).toBeNull();
+  });
+
+  it("collapses and expands, and remembers the choice", async () => {
+    serve();
+    const { container } = render(
+      DraftArchetypesPanel as never,
+      { set: "blb", open: true } as never,
+    );
+    await settle();
+    click(container.querySelector("button.iconbtn")!);
+    expect(container.querySelector('[data-testid="archetypes-panel"]')!.classList).toContain(
+      "collapsed",
+    );
+    expect(localStorage.getItem("c2.draft.archetypes")).toBe("closed");
+    click(container.querySelector("button.rail")!);
+    await settle();
+    expect(container.querySelector('[data-testid="archetypes-panel"]')!.classList).not.toContain(
+      "collapsed",
+    );
+    expect(localStorage.getItem("c2.draft.archetypes")).toBeNull();
+  });
+
+  it("shows a pip in the strip for each colour with three or more Main picks, most picks first", async () => {
+    serve();
+    const main = [
+      gold("a", ["U"]),
+      gold("b", ["U"]),
+      gold("c", ["U", "B"]),
+      gold("d", ["B"]),
+      gold("e", ["B"]),
+      gold("f", ["B"]),
+      gold("g", ["R"]),
+      gold("h", ["R"]),
+    ];
+    const { container } = render(
+      DraftArchetypesPanel as never,
+      { set: "blb", open: false, main } as never,
+    );
+    await settle();
+    // Blue has 3 (one gold), black has 4: black first. Red has only 2.
+    const labels = [
+      ...container.querySelectorAll('[data-testid="archetypes-rail-pips"] [aria-label]'),
+    ].map((e) => e.getAttribute("aria-label"));
+    expect(labels).toEqual(["black", "blue"]);
+  });
+
+  it("shows no pip in the strip with fewer than three picks in any colour", async () => {
+    serve();
+    const { container } = render(
+      DraftArchetypesPanel as never,
+      { set: "blb", open: false, main: [gold("a", ["U"]), gold("b", ["U"])] } as never,
+    );
+    await settle();
+    expect(container.querySelector('[data-testid="archetypes-rail-pips"]')).toBeNull();
+  });
+
+  it("says how many Main picks fit each pair, highlighted at three or more", async () => {
+    serve();
+    const main = [
+      gold("a", ["W"]),
+      gold("b", ["U"]),
+      gold("c", ["W", "U"]),
+      gold("d", ["B"]),
+      { id: "e", name: "Card e" },
+    ];
+    const { container } = render(DraftArchetypesPanel as never, { set: "blb", main } as never);
+    await settle();
+    const fit = container.querySelector<HTMLElement>('[data-pair="WU"] .fit')!;
+    // White, blue and white-blue fit; black does not; a colourless card fits nothing here.
+    expect(text(fit)).toBe("3 picks fit");
+    expect(fit.classList.contains("on")).toBe(true);
+    expect(container.querySelector('[data-pair="WU"]')!.classList).toContain("fits");
+  });
+
+  it("says one pick fits in the singular, and does not highlight under three", async () => {
+    serve();
+    const { container } = render(
+      DraftArchetypesPanel as never,
+      { set: "blb", main: [gold("a", ["W"])] } as never,
+    );
+    await settle();
+    const fit = container.querySelector<HTMLElement>('[data-pair="WU"] .fit')!;
+    expect(text(fit)).toBe("1 pick fits");
+    expect(fit.classList.contains("on")).toBe(false);
+  });
+
+  it("shows no fit count without the viewer's picks", async () => {
+    serve();
+    const { container } = render(DraftArchetypesPanel as never, { set: "blb" } as never);
+    await settle();
+    expect(container.querySelector(".fit")).toBeNull();
   });
 });

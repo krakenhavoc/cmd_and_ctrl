@@ -306,6 +306,76 @@ func TestIdleGameAMoveClearsTheWarning(t *testing.T) {
 	}
 }
 
+// ADR 0211 §6 (sub-PR 4): the warning reaches the table as
+// idle_close_at on the view and the notifier as one TableIdleWarning;
+// a person's move takes both back at once, not at the next sweep.
+func TestIdleWarningStampsTheViewAndTellsTheNotifierOnce(t *testing.T) {
+	s := newIdleStack(t, "", idleLimits())
+	ev := &recordEvents{}
+	s.l.SetTableEvents(ev)
+	meta, alice, _ := startTwoSeatGame(t, s.l, "Warned")
+	room := s.room(t, meta.ID)
+
+	s.at(35 * time.Hour)
+	if got := room.ViewFor(alice.String()).IdleCloseAt; got != "" {
+		t.Fatalf("idle_close_at %q before the warning", got)
+	}
+	s.at(36*time.Hour + time.Minute)
+	want := s.entry(t, meta.ID).idleCloseAt
+	if want.IsZero() {
+		t.Fatal("not warned at 36 h")
+	}
+	view, _, err := room.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.IdleCloseAt != want.UTC().Format(time.RFC3339) {
+		t.Errorf("idle_close_at %q, want %v", view.IdleCloseAt, want)
+	}
+	if tbl, _ := s.l.NotifyTables().Table(meta.ID); !tbl.IdleCloseAt.Equal(want) {
+		t.Errorf("the notifier reads the closing time as %v, want %v", tbl.IdleCloseAt, want)
+	}
+	s.at(37 * time.Hour)
+	if w := ev.warnings(); len(w) != 1 || w[0].game != meta.ID || !w[0].closesAt.Equal(want) || w[0].hours != 36 {
+		t.Fatalf("the notifier was told %+v, want one 36-hour warning closing at %v", w, want)
+	}
+
+	s.at(40 * time.Hour)
+	s.move(t, meta.ID, alice)
+	if got := room.ViewFor(alice.String()).IdleCloseAt; got != "" {
+		t.Errorf("idle_close_at %q after a move, before the next sweep", got)
+	}
+	if tbl, _ := s.l.NotifyTables().Table(meta.ID); !tbl.IdleCloseAt.IsZero() {
+		t.Error("the notifier still reads the warning after a move")
+	}
+	s.at(40*time.Hour + 10*time.Minute)
+	if got := room.ViewFor(alice.String()).IdleCloseAt; got != "" {
+		t.Errorf("the sweep put idle_close_at %q back after a move", got)
+	}
+	if len(ev.warnings()) != 1 {
+		t.Errorf("warnings told: %d, want 1", len(ev.warnings()))
+	}
+}
+
+// A lobby touch (a take-back, an away answer, a DM invite) answers the
+// warning too, and its notice goes with it.
+func TestIdleWarningIsTakenBackByATouch(t *testing.T) {
+	s := newIdleStack(t, "", idleLimits())
+	meta, _, _ := startTwoSeatGame(t, s.l, "Touched")
+	room := s.room(t, meta.ID)
+	s.at(36*time.Hour + time.Minute)
+	if room.IdleCloseAt().IsZero() {
+		t.Fatal("not warned at 36 h")
+	}
+	s.l.TouchTable(meta.ID)
+	if !room.IdleCloseAt().IsZero() {
+		t.Error("a touch left the table's notice up")
+	}
+	if e := s.entry(t, meta.ID); !e.idleWarnedAt.IsZero() {
+		t.Error("a touch left the sweep's warning standing")
+	}
+}
+
 func TestIdleGameCloseWaitsAnHourAfterALateWarning(t *testing.T) {
 	s := newIdleStack(t, "", idleLimits())
 	meta, _, _ := startTwoSeatGame(t, s.l, "Server was down")
@@ -336,14 +406,27 @@ func TestIdleBotOnlyGameClosesAfterAnHourAlone(t *testing.T) {
 	if _, err := s.l.Start(meta.ID); err != nil {
 		t.Fatal(err)
 	}
+	room := s.room(t, meta.ID)
+	if room.PlayingOut() {
+		t.Fatal("playing out before the sweep has seen the table")
+	}
 	s.at(time.Minute) // the sweep first sees it alone
+	// Sub-PR 5 (owner decision 2): its bots play it out fast.
+	if !room.PlayingOut() {
+		t.Fatal("a game left to its bots is not played out fast")
+	}
 	s.at(time.Hour)
 	if s.archived(t, meta.ID) {
 		t.Fatal("closed before an hour alone")
 	}
+	// The fake bot host runs no bots, so this game has stalled: the
+	// one-hour close is its backstop.
 	s.at(time.Hour + 2*time.Minute)
 	if !s.archived(t, meta.ID) {
 		t.Fatal("a game left to its bots is still open after an hour")
+	}
+	if room.PlayingOut() {
+		t.Error("a closed table is still playing out")
 	}
 	if got := s.entry(t, meta.ID).closedReason; got != ClosedIdleBots {
 		t.Errorf("closed_reason %q, want %q", got, ClosedIdleBots)
@@ -365,14 +448,33 @@ func TestIdleBotOnlyGameIsHeldByAWatchingSeat(t *testing.T) {
 	}
 	// Alice conceded but is still at the table (the fake reads her as
 	// present), watching the bots finish.
+	room := s.room(t, meta.ID)
 	s.at(time.Minute)
 	s.at(2 * time.Hour)
 	if s.archived(t, meta.ID) {
 		t.Fatal("closed while a conceded player watched")
 	}
+	if room.PlayingOut() {
+		t.Fatal("the bots play out fast while a conceded player watches")
+	}
 	s.away.set(alice, protocol.PresenceOffline, s.start.Add(2*time.Hour))
 	s.at(2*time.Hour + time.Minute)
-	s.at(3*time.Hour + 2*time.Minute)
+	if !room.PlayingOut() {
+		t.Fatal("not played out once the last watcher left")
+	}
+	// She looks in again: the table's own pace is back on the next sweep
+	// (and at once on her socket, ws.Hub.ServeWS).
+	s.away.set(alice, "", time.Time{})
+	s.at(2*time.Hour + 6*time.Minute)
+	if room.PlayingOut() {
+		t.Fatal("still playing out with a person back at the table")
+	}
+	s.away.set(alice, protocol.PresenceOffline, s.start.Add(2*time.Hour+7*time.Minute))
+	s.at(2*time.Hour + 8*time.Minute)
+	if !room.PlayingOut() {
+		t.Fatal("not played out again once she left")
+	}
+	s.at(3*time.Hour + 10*time.Minute)
 	if !s.archived(t, meta.ID) {
 		t.Fatal("still open an hour after the last watcher left")
 	}

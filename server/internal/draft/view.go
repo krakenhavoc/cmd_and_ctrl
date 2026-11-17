@@ -54,6 +54,13 @@ type View struct {
 	You     int          `json:"you"`
 	Players []PlayerView `json:"players"`
 
+	// SetAvgWinRate is the mean 17Lands games-in-hand win rate of the
+	// set's rated cards, in percent, one decimal (54.1): what a card's
+	// own `rating.value` is read against (#5848). It is a fact about the
+	// set, the same for every seat. Absent for a cube draft and for a
+	// set with no 17Lands data.
+	SetAvgWinRate float64 `json:"set_avg_win_rate,omitempty"`
+
 	// Pack is the pack the viewer holds, absent once it has picked. A
 	// card of Pack, Picks and Pool carries a `rating` (ratings.go).
 	Pack []Card `json:"pack,omitempty"`
@@ -197,6 +204,11 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 		Picks:        withRatings(append([]Card{}, me.picks...)),
 		Phase:        d.Phase(),
 		BestOf:       d.BestOf(),
+	}
+	if !d.cfg.Cube {
+		if avg, ok := ratingBook.Load().MeanPercent(d.cfg.Set); ok {
+			v.SetAvgWinRate = avg
+		}
 	}
 	for i, s := range d.seats {
 		v.Players = append(v.Players, PlayerView{

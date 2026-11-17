@@ -96,7 +96,7 @@ func (g *Game) ReturnFromGraveyardAsAuraForEffect(cardID, controller uuid.UUID, 
 	if ReturnedAuraSpecFor(key) == nil {
 		return uuid.Nil, ErrInvalidParam
 	}
-	return g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, true, entryThen{})
+	return g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, true, TargetRef{}, entryThen{})
 }
 
 // BecomeAuraForEffect is "it becomes an Aura with <the enchant clause

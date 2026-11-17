@@ -31,6 +31,10 @@ type attackParams struct {
 	// Exert is the choice to exert the attacker as it attacks
 	// (CR 701.43d, ADR 0130 §6). Set only on the twin move.
 	Exert bool `json:"exert,omitempty"`
+
+	// Enlist is the creature the attacker enlists as it attacks
+	// (CR 702.154a, #5658). Set only on the enlist twin moves.
+	Enlist string `json:"enlist,omitempty"`
 }
 
 type blockParams struct {
@@ -240,6 +244,30 @@ func (e *enumerator) combatMoves() {
 							Exert:         true,
 						}),
 					})
+				}
+				// #5658: enlist is an optional cost to attack too
+				// (CR 702.154b), so the attack is offered once more
+				// for each creature the attacker may enlist, through
+				// the function the verb checks. Never AlwaysLegal,
+				// for exert's reason.
+				if !deferTax {
+					for _, enlisted := range g.EnlistCandidatesForEffect(c) {
+						e.add(Move{
+							Type:   TypeDeclareAttacker,
+							Player: e.seat,
+							Kind:   KindAttack,
+							Label:  attackEnlistMoveLabel(g, t, c.Name, enlisted, price) + attackLifeLabel(phyLife),
+							Source: c.InstanceID,
+							Cost:   withPhyrexianLife(withAttackTax(nil, price.Cost), phyLife),
+							Params: mustJSON(attackParams{
+								Attacker:      c.InstanceID.String(),
+								Target:        t.ID.String(),
+								AutoTap:       autoTap,
+								PhyrexianLife: phyLife,
+								Enlist:        enlisted.String(),
+							}),
+						})
+					}
 				}
 			}
 		}
@@ -598,6 +626,21 @@ func attackMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string, pric
 func attackExertMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string, price game.AttackTaxPrice) string {
 	label := "Attack " + attackTargetLabel(g, t) + " with " + attacker +
 		" and exert it (it won't untap during your next untap step)"
+	if price.IsFree() {
+		return label
+	}
+	return label + " (pays " + price.Cost + ")"
+}
+
+// attackEnlistMoveLabel is the enlist twin's label (#5658): the attack,
+// and the creature tapped to pay enlist's cost (CR 702.154a).
+func attackEnlistMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string, enlisted uuid.UUID, price game.AttackTaxPrice) string {
+	name := "a creature"
+	if c, ok := g.LookupCardForEffect(enlisted); ok && c.Name != "" {
+		name = c.Name
+	}
+	label := "Attack " + attackTargetLabel(g, t) + " with " + attacker +
+		" and enlist " + name + " (tap it to add its power)"
 	if price.IsFree() {
 		return label
 	}

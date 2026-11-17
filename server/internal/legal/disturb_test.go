@@ -90,3 +90,35 @@ func TestEnumeratorTargetsADisturbedAuraWithTheBackFacesClause(t *testing.T) {
 	}
 	dispatchAll(t, g, seat.ID, moves)
 }
+
+// #5680: mana that may only pay a disturb cost (Unblinking Observer's
+// game.ManaRestrictAltCost) funds the disturb offer in the enumerator
+// exactly as it does in CastSpell, which dispatchAll proves; the same
+// mana tagged for another alternative cost funds nothing.
+func TestEnumeratorSpendsDisturbOnlyManaOnADisturbCast(t *testing.T) {
+	for _, tc := range []struct {
+		key  string
+		want int
+	}{
+		{"disturb", 1},
+		{"flashback", 0},
+	} {
+		g := newTable(t)
+		seat := g.Seats[g.Turn.ActiveSeat]
+		clearHand(seat)
+		advanceTo(t, g, game.StepPrecombatMain)
+		tags := []string{game.ManaRestrictAltCost(tc.key)}
+		seat.ManaPool = game.ManaPool{{Color: "U", Restrictions: tags}, {Color: "U", Restrictions: tags}}
+
+		angler := graveyardCard(seat, disturbCard(oracleBaithookAngler,
+			game.Face{Name: "Baithook Angler", TypeLine: "Creature — Human Peasant", ManaCost: "{1}{U}", Colors: []string{"U"}, Power: 2, Toughness: 1},
+			game.Face{Name: "Hook-Haunt Drifter", TypeLine: "Creature — Spirit", Colors: []string{"U"}, Power: 1, Toughness: 2},
+		))
+
+		moves := legal.EnumerateFor(g, seat.ID)
+		if casts := castPayloadsOf(t, moves, angler); len(casts) != tc.want {
+			t.Fatalf("mana for a %s cost: %d casts of the disturb card, want %d: %v", tc.key, len(casts), tc.want, labels(moves))
+		}
+		dispatchAll(t, g, seat.ID, moves)
+	}
+}

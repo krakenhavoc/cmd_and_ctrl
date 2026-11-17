@@ -23,9 +23,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a card type in common with the first, judged as the spell is cast
 // (CR 601.2c) and again as it resolves (CR 608.2b), on the types after the
 // layers (so an animated artifact shares "creature"). The exchange is all or
-// nothing (CR 701.12b): if either target is no longer legal nothing changes
+// nothing (CR 701.12a): if either target is no longer legal nothing changes
 // hands, and one player controlling both is a no-op the engine already
-// handles. Neither half states a duration, so both are indefinite.
+// handles (CR 701.12b). Neither half states a duration, so both are indefinite.
 //
 // No simplification.
 const bilboLuckwearerOracleID = "a73d9109-36e0-40ea-ab06-5c5f7eb4ac54"

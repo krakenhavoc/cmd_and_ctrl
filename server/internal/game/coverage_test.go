@@ -50,6 +50,15 @@ func TestNeedsCatalogEffectSilentOnCardsThatWork(t *testing.T) {
 		texts: []string{"Flying (This creature can't be blocked except by " +
 			"creatures with flying or reach.)"},
 	}, {
+		// #5784: flanking's trigger is the engine's (flanking.go),
+		// derived from the token the importer stamps, so a creature
+		// whose only text is flanking needs no Spec.
+		name:     "a creature whose only text is flanking",
+		typeLine: "Creature — Human Knight",
+		texts: []string{"Flanking (Whenever a creature without flanking " +
+			"blocks this creature, the blocking creature gets -1/-1 until " +
+			"end of turn.)"},
+	}, {
 		// A basic land's mana ability is granted by the type line
 		// (CR 305.6); the printed text is reminder only, and
 		// ManaAbilitiesForCard synthesises the ability.
@@ -348,5 +357,42 @@ func TestStripReminderTextIsTotal(t *testing.T) {
 		if got := stripReminderText(tc.in); got != tc.want {
 			t.Errorf("stripReminderText(%q) = %q, want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+// TestKeywordOnlyLineSplitsOnSemicolons — #5791. Older Oracle wording
+// separates keywords with semicolons, and such a line is as much a
+// keyword line as its comma-separated form. A sentence that lists
+// keywords between semicolons is still a rule, because its other items
+// are not keywords. Every line is real Oracle text from Scryfall, with
+// reminder text removed as printsUnhandledRules removes it.
+func TestKeywordOnlyLineSplitsOnSemicolons(t *testing.T) {
+	for line, want := range map[string]bool{
+		"Flying; trample; rampage 4": true, // Teeka's Dragon
+		"Trample; rampage 2":         true, // Gorilla Berserkers
+		// Built Bear: no full stop, and three of its items are
+		// keywords on their own.
+		"1 point each → Flash; deathtouch; reach; vigilance; or ward {2}": false,
+		// Catch of the Day.
+		"Keyword → Vigilance; ward {3}; or islandwalk.": false,
+		// Noxious Hydra Breath.
+		"Choose one — Noxious Hydra Breath deals 5 damage to each player; or destroy each tapped non-Head creature.": false,
+		";": false,
+	} {
+		if got := keywordOnlyLine(line); got != want {
+			t.Errorf("keywordOnlyLine(%q) = %v, want %v", line, got, want)
+		}
+	}
+
+	// Teeka's Dragon prints nothing but those keywords, so it needs no
+	// card file; Gorilla Berserkers' second line is a rule, so it does.
+	if NeedsCatalogEffect("Artifact Creature — Dragon",
+		"Flying; trample; rampage 4 (Whenever this creature becomes blocked, it gets +4/+4 until end of turn for each creature blocking it beyond the first.)") {
+		t.Error("Teeka's Dragon reads as needing a catalog Spec")
+	}
+	if !NeedsCatalogEffect("Creature — Ape Berserker",
+		"Trample; rampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)\n"+
+			"This creature can't be blocked except by three or more creatures.") {
+		t.Error("Gorilla Berserkers' block restriction reads as a keyword line")
 	}
 }

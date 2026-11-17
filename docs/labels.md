@@ -57,6 +57,7 @@ registered, or when this file is stale.
 | `turnPhase` | `turn and phase indicator` | generic | aria | `lib/components/board/PhaseDisplay.svelte` | the turn number, the active player and the step |
 | `abilityChip` | `<N> <kind> ability, or <N> <kind> abilities (kind: triggered, static or activated)` (contains ` abilit`) | button | aria | `lib/components/board/AbilityKindChips.svelte` | an art tile's ability chip (#2219): one per kind the card has, its hover or focus lists the server's labels; the e2e suite reads Mulldrifter's |
 | `crewedBadge` | `crewed by <names>, or crewed this turn` (starts with `crewed `) | generic | aria | `lib/components/board/Card.svelte` | a Vehicle's crewed badge (ADR 0186 §6): the creatures tapped this turn to crew it; the names come from the board, and an ID with no card there is left out |
+| `pairedBadge` | `paired with <name>, or paired` (starts with `paired`) | generic | aria | `lib/components/board/Card.svelte` | a paired creature's badge (#5675, CR 702.95b): the creature a soulbond ability paired it with; the name comes from the board, and an ID with no card there is left out |
 | `saddledBadge` | `saddled by <names> until end of turn, or saddled until end of turn` (starts with `saddled `) | generic | aria | `lib/components/board/Card.svelte` | a Mount's saddled badge (ADR 0186 §6): the creatures tapped this turn to saddle it; the names come from the board, and an ID with no card there is left out |
 | `actions` | `actions` | region | aria | `lib/components/board/ActionDock.svelte` | the action dock; the tutorial's move-along step and its detours anchor here |
 | `waitToRespond` | `wait, let me respond` | button | aria | `lib/components/board/ActionDock.svelte` | the stack hold countdown's one-click hold (#2853): keeps priority on the stack auto-pass was about to pass |
@@ -98,6 +99,9 @@ registered, or when this file is stale.
 | `attackAndExert` | `Attack and exert` | button | text | `lib/combatDock.ts` | ADR 0130 §7: the dock's choice for a creature that may be exerted, attacking and exerting it |
 | `declareAttackerAndExert` | `Declare attacker and exert` | menuitem | text | `lib/contextMenu.logic.ts` | ADR 0130 §7: the card menu's row beside Declare attacker, for a creature that may be exerted |
 | `exertAttacker` | `Exert <name>` (starts with `Exert `) | switch | aria | `lib/components/board/AttackDeclarationModal.svelte` | ADR 0130 §7: the Choose attackers picker's per-row Exert toggle |
+| `attackAndEnlist` | `Enlist <name>` (starts with `Enlist `) | button | text | `lib/combatDock.ts` | #5658: the dock's choice for an attacker with enlist, attacking and tapping that creature to add its power |
+| `declareAttackerAndEnlist` | `Declare attacker and enlist <name>` (starts with `Declare attacker and enlist `) | menuitem | text | `lib/contextMenu.logic.ts` | #5658: the card menu's row beside Declare attacker, one for each creature an attacker with enlist may enlist |
+| `enlistFor` | `creature enlisted by <name>` (starts with `creature enlisted by `) | combobox | aria | `lib/components/board/AttackDeclarationModal.svelte` | #5658: the Choose attackers picker's per-row choice of the creature an attacker with enlist enlists |
 | `attackPayWithLife` | `pay the attack tax with life` | group | aria | `lib/components/board/AttackLifeStepper.svelte` | #4198: the stepper that pays a Phyrexian attack tax (Norn's Annex's {W/P}) with 2 life per symbol; drawn in the Choose attackers picker and in the Pay the attack tax sheet |
 | `declareBlockers` | `declare blockers` | dialog, group | aria | `lib/combatDock.ts` | the block request's dialog and its row group |
 | `removeBlock` | `Remove block` | button | text | `lib/combatDock.ts` | #3898: the dock's button that takes the selected blocker's block back while blockers are declared on the board |
@@ -109,6 +113,9 @@ registered, or when this file is stale.
 | `discard` | `Discard <N> card(s)` (starts with `Discard `) | dialog | aria | `lib/components/board/DiscardPromptModal.svelte` | the discard request (cleanup or an effect) |
 | `crewCountsAs` | `counts as <N>` (starts with `counts as `) | generic | text | `lib/components/board/CrewCostModal.svelte` | ADR 0186 Decision 6 (#3550): the crew or saddle picker's note on a creature that counts for something other than its power on this cost |
 | `facePickerOmen` | `omen · CR 720.3` | generic | text | `lib/components/board/FacePickerModal.svelte` | #5191: the face picker's source tag on an omen card (CR 720.3: cast it normally or as an Omen), which Scryfall lays out as an adventure; known by the Omen spell type on its second half's type line |
+| `facePickerPrototype` | `prototype · CR 718.3` | generic | text | `lib/components/board/FacePickerModal.svelte` | #5656: the face picker's source tag on a prototype card (CR 718.3: cast it normally or prototyped) |
+| `facePrototyped` | `Prototyped` | generic | text | `lib/components/board/FacePickerModal.svelte` | #5656: the face picker's caption on a prototype card's inset, the choice that casts it with the smaller cost and size (CR 718.3b) |
+| `faceNotPrototyped` | `Not prototyped` | generic | text | `lib/components/board/FacePickerModal.svelte` | #5656: the face picker's caption on a prototype card cast normally |
 | `selectTarget` | `Select target for <card>` (starts with `Select target for `) | dialog | aria | `lib/targetingDock.ts` | the targeting request |
 | `targetPlayersLead` | `Players →` | generic | text | `lib/targetingDock.ts` | #4435: the lead of the targeting request's row of legal players, so a player a dialog or a hand covers on the board is still one press away |
 | `targetPlayer` | `Target <player>` (starts with `Target `) | button | aria | `lib/targetingDock.ts` | #4435: the targeting request's button for one legal player (a seat-colour dot and the name); it picks that player exactly as a click on their avatar does |
@@ -178,7 +185,7 @@ registered, or when this file is stale.
 | `makeNewShareLink` | `Make a new link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog, with a link: mints a new one, and the old one stops working |
 | `copyShareLink` | `Copy link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: copies the link just made; it is shown only once |
 | `revokeShareLink` | `Revoke link` | button | text | `lib/components/stats/ShareStatsDialog.svelte` | the share dialog: the link answers not found from now on (DELETE /me/stats/share-link) |
-| `deckStats` | `Deck stats` | link | text | `lib/components/decks/DeckCard.svelte` | a deck's card on #/decks: opens that deck's advanced stats page, #/stats/deck/<deck_id> (ADR 0217 §8) |
+| `deckStats` | `Deck stats` | link | text | `lib/components/decks/DeckCard.svelte`<br>`lib/components/draft/DraftStatsOverlay.svelte` | a deck's card on #/decks: opens that deck's advanced stats page, #/stats/deck/<deck_id> (ADR 0217 §8); also the heading and name of the draft room's full stats overlay (#5848) |
 | `statsVersionPicker` | `Deck version` | combobox | text | `routes/StatsDeck.svelte` | a deck's stats page: picks which list's games to show, since the last edit, all time or one earlier version (ADR 0217 §5) |
 | `statsAllDeckGames` | `Show all time` | button | text | `routes/StatsDeck.svelte` | a deck's stats page after an edit with no games yet: switches to every game with the deck |
 | `liveNow` | `live now` | region | aria | `lib/components/admin/LiveNow.svelte` | who is on now and the tables in play |
@@ -299,6 +306,10 @@ registered, or when this file is stale.
 | `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |
 | `gameClosed` | `This table was closed.` | status | text | `lib/gameClosed.ts`<br>`lib/connectionBanner.ts` | ADR 0211 §4, #5082: what a refused join, spectate, start, deck, bot or setup says for the server's `game_closed` code, and the connection banner's headline once a failed redial finds the table archived |
+| `idleCloseNotice` | `This game closes <when> unless someone moves` (ends with ` unless someone moves`) | status | text | `lib/idleClose.ts` | ADR 0211 §6: the one-line notice over the action dock once a started game has had no move by a person for 36 hours; `when` is the closing time in the viewer's own clock (`idle_close_at`), and any person's move takes it away |
+| `closedIdleLobby` | `Closed: never started` | generic | text | `lib/idleClose.ts` | ADR 0211 owner decision 4: the result chip in Tables › History and the admin views for a table the server closed after a day unstarted with no activity (`closed_reason: idle_lobby`) |
+| `closedIdleGame` | `Closed: no moves` | generic | text | `lib/idleClose.ts` | ADR 0211 owner decision 4: the result chip for a started game the server closed after two days with no move by a person (`closed_reason: idle_game`) |
+| `closedIdleBots` | `Closed: only bots left` | generic | text | `lib/idleClose.ts` | ADR 0211 owner decision 4: the result chip for a game the server closed after an hour with only bots playing and nobody at the table (`closed_reason: idle_bots`) |
 | `rememberThisAnswer` | `Remember this answer` | button | text | `lib/choiceDock.ts` | the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never) |
 | `recommendedAnswer` | `Recommended` | generic | text | `lib/choiceDock.ts` | the tag after the recommended answer of the which-skip question, "Use my skip" (ADR 0188 Decision 12); Enter takes it |
 | `choosingNextTurn` | `Choosing the next turn` | generic | text | `lib/components/board/PhaseDisplay.svelte` | the step label while the turn change waits on the which-skip question (turn.between_turns, ADR 0188 Decision 12): the old turn is over and the next has not begun |
@@ -343,6 +354,8 @@ registered, or when this file is stale.
 | `draftRatingsCredit` | `Card ratings from 17Lands` | link | text | `lib/components/draft/DraftRatingsBar.svelte` | the credit 17Lands' data is used on: shown wherever a 17Lands rating shows beside a draft card; links to 17lands.com (the owner's condition, 2026-11-11) |
 | `draftRatingsShow` | `Show card ratings` | checkbox | text | `lib/components/draft/DraftRatingsBar.svelte` | the viewer's switch for the rating beside each draft card, kept in this browser only; on by default |
 | `draftArchetypesTitle` | `Colour pairs` | heading | text | `routes/DraftSets.svelte`<br>`lib/components/draft/DraftArchetypesPanel.svelte` | a set's ten colour pairs with a short label and the gold uncommons that name each: the disclosure on the draftable sets page and the panel beside a draft |
+| `draftArchetypesHide` | `Hide colour pairs` | button | aria | `lib/components/draft/DraftArchetypesPanel.svelte` | #5848: the draft room's colour-pair panel's collapse button; the panel folds sideways into a narrow strip and the pack takes the width |
+| `draftArchetypesShow` | `Show colour pairs` | button | aria | `lib/components/draft/DraftArchetypesPanel.svelte` | #5848: the collapsed colour-pair strip, one button that opens the panel again; beside its label it shows a pip for each colour with three or more Main picks |
 | `draftThisSet` | `Draft this set` | link | text | `routes/DraftSets.svelte` | the draftable sets page: a ready set's link to the create form with that set chosen (#/draft?set=<code>) |
 | `draftAgainstBots` | `Draft against bots` | link | text | `routes/FrontPage.svelte` | the front page's way into a draft without an account: #/draft, a solo draft against bots when signed out |
 | `draftNewTitle` | `Start a draft` | heading | text | `lib/components/draft/DraftCreate.svelte` | the create form's page title, at #/draft |
@@ -367,6 +380,8 @@ registered, or when this file is stale.
 | `draftPack` | `the pack you hold` | group | aria | `lib/components/draft/DraftPack.svelte` | the pick screen's pack: one toggle button per card, named for the card |
 | `draftConfirmPick` | `Pick <n> card(s)` (starts with `Pick `) | button | text | `lib/draft.ts` | the pick screen's primary: sends draft_pick with the chosen cards, enabled only when exactly that many are chosen |
 | `draftTimer` | `pick timer` | timer | aria | `lib/components/draft/DraftRoom.svelte` | the pick screen's countdown, run from the server's clock; urgent in the last 10 seconds |
+| `draftDeckView` | `Deck view` | button | text | `lib/components/draft/DraftCornerButtons.svelte` | #5848: the pick screen's corner button (key D) that swaps the pack for the deckbuilding layout of the picks so far, while the pick clock keeps running |
+| `draftBackToPack` | `Back to the pack` | button | text | `lib/components/draft/DraftCornerButtons.svelte` | #5848: the corner button's other state, in Deck view (key D): returns to the pack |
 | `draftWaiting` | `Waiting for the others` | heading | text | `lib/components/draft/DraftRoom.svelte` | the pick screen after the viewer has picked, above the names of the seats still picking |
 | `draftYourPicks` | `Your picks` | heading | text | `lib/components/draft/DraftRoom.svelte` | the pick screen's list of the viewer's own picks so far, grouped by colour and mana value |
 | `draftYourPool` | `Your pool` | heading | text | `lib/components/draft/DraftRoom.svelte` | a finished draft's card pool, grouped by colour and mana value |
@@ -377,20 +392,66 @@ registered, or when this file is stale.
 | `draftSideboardZone` | `Sideboard` | heading | text | `lib/components/draft/DraftSplit.svelte` | #5699: the picks' sideboard, beside the pack and on the deckbuilding screen: every pick not in main, each a button that moves it back, and a drop target |
 | `draftBasicLands` | `Basic lands` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's steppers, one per basic land type; any number may be added |
 | `draftBasicStepper` | `how many <basic land>` (starts with `how many `) | group | aria | `lib/components/draft/DraftBuild.svelte` | one basic land's stepper on the deckbuilding screen: a fewer button, the count and a more button |
-| `draftCurve` | `mana curve of your deck` | img | aria | `lib/components/draft/DraftStats.svelte` | the stats' curve of the main cards (#5702), on the pick and deckbuilding screens: the cards that are not lands, counted by mana value from 0 to 6 and more |
-| `draftCurvePool` | `mana curve of your pool` | img | aria | `lib/components/draft/DraftStats.svelte` | the stats' curve of the whole pool (#5702): main and sideboard together, lands left out, counted by mana value from 0 to 6 and more |
-| `draftStats` | `Draft stats` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the area on the pick and deckbuilding screens that tallies the picks: creatures against the rest, card types, the mana curve and the colours, for main and for the whole pool |
-| `draftStatsPool` | `Whole pool` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' heading for every card picked, main and sideboard together |
-| `draftStatNonCreatures` | `Non-creatures` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' count of cards that are not creatures, beside the creature count |
-| `draftStatTypes` | `Card types` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' count for each card type; a card with two types is in both counts |
-| `draftStatCurve` | `Mana curve` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the heading above a stats curve |
-| `draftStatColours` | `Colours` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' count for each colour, then several colours and none; a card of two colours is in both counts |
-| `draftTypeCreature` | `Creatures` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' creature count |
-| `draftTypeInstant` | `Instants` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' instant count |
-| `draftTypeSorcery` | `Sorceries` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' sorcery count |
-| `draftTypeArtifact` | `Artifacts` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' artifact count |
-| `draftTypeEnchantment` | `Enchantments` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' enchantment count |
-| `draftTypePlaneswalker` | `Planeswalkers` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' planeswalker count |
+| `draftCurve` | `mana curve of your deck` | img | aria | `lib/components/draft/DraftCurve.svelte` | the stats' curve of the main cards (#5702), on the pick and deckbuilding screens: the cards that are not lands, counted by mana value from 0 to 6 and more |
+| `draftStatTypes` | `Card types` | heading | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5702: the stats' count for each card type; a card with two types is in both counts |
+| `draftStatCurve` | `Mana curve` | heading | text | `lib/components/draft/DraftStatsOverlay.svelte`<br>`lib/components/draft/DraftStatsStrip.svelte` | #5702: the heading above a stats curve |
+| `draftStatColours` | `Colours` | heading | text | `lib/components/draft/DraftStatsOverlay.svelte`<br>`lib/components/draft/DraftStatsStrip.svelte` | #5702: the stats' count for each colour, then several colours and none; a card of two colours is in both counts |
+| `draftTypeCreature` | `Creatures` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5702: the stats' creature count |
+| `draftTypeInstant` | `Instants` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5702: the stats' instant count |
+| `draftTypeSorcery` | `Sorceries` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5702: the stats' sorcery count |
+| `draftTypeArtifact` | `Artifacts` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5702: the stats' artifact count |
+| `draftTypeEnchantment` | `Enchantments` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5702: the stats' enchantment count |
+| `draftTypePlaneswalker` | `Planeswalkers` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5702: the stats' planeswalker count |
+| `draftFullStats` | `Full stats` | button | text | `lib/components/draft/DraftRoom.svelte` | #5848 §6: the corner button beside Deck view (key S) that opens the full-screen deck stats |
+| `draftStatsClose` | `Close` | button | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the full stats overlay's close button (Esc or S also close it); focus starts on it |
+| `draftStatsMore` | `More detail` | heading | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the overlay's section of type lines, creatures, what the cards do, and timing and colour, laid out in full |
+| `draftStatsPipsNote` | `coloured symbols in Main's costs` | text | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: says what the colour bar counts |
+| `draftStatsNoColour` | `No coloured cards in Main yet.` | text | text | `lib/components/draft/DraftColours.svelte` | #5848 §6: the colours' text when Main has no coloured mana symbols |
+| `draftStatsOtherSpells` | `Other spells` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the overlay's count of spells that are neither creatures nor lands |
+| `draftStatsNoCards` | `No cards in Main yet.` | text | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the overlay's text for a section when Main is empty |
+| `draftStatsTypeLines` | `Type lines` | heading | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the overlay's list of every type line in Main (Artifact Creature, Enchantment (Aura)) |
+| `draftStatsCreatureTypes` | `Creature types` | heading | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the overlay's eight most common creature types in Main |
+| `draftStatsSmall` | `Small (power 2 or less)` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: creatures with power of 2 or less |
+| `draftStatsMedium` | `Medium (power 3 to 4)` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: creatures with power of 3 or 4 |
+| `draftStatsBig` | `Big (power 5 or more)` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: creatures with power of 5 or more |
+| `draftStatsEvasive` | `Evasive` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: creatures with flying, trample, menace or that can't be blocked |
+| `draftStatsDo` | `What they do` | heading | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the overlay's roles section, read from keywords, type lines and rules text |
+| `draftStatsTiming` | `Timing and colour` | heading | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the overlay's section of instant speed, sorcery speed and colour counts |
+| `draftStatsInstant` | `Instant speed` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: instants and cards with flash |
+| `draftStatsSorcery` | `Sorcery speed` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: every spell that is not an instant or does not have flash |
+| `draftStatsTwoColours` | `Two or more colours` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards of more than one colour |
+| `draftRoleRemoval` | `Removal` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that destroy, exile or damage a creature |
+| `draftRoleFliers` | `Fliers` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: creatures with flying |
+| `draftRoleDraw` | `Card draw` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that draw cards |
+| `draftRoleTricks` | `Combat tricks` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: instants that pump a creature until end of turn |
+| `draftRoleCounters` | `Counterspells` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that counter a spell |
+| `draftRoleBounce` | `Bounce` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that return a permanent to its owner's hand |
+| `draftRoleTokens` | `Token makers` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that create tokens |
+| `draftRoleRamp` | `Mana and ramp` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that add mana or fetch a basic land |
+| `draftRoleLifegain` | `Life gain` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that gain life or have lifelink |
+| `draftRoleDiscard` | `Discard` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that make a player discard |
+| `draftRoleAnswers` | `Answers to artifacts or enchantments` | term | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: cards that destroy or exile an artifact or an enchantment |
+| `draftReasonRemoval` | `Removal: it deals with a creature, so it fits almost any deck in its colour.` | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason for a removal spell |
+| `draftReasonFlier` | `A flier: evasion wins a lot of limited games.` | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason for a creature with flying |
+| `draftReasonCounter` | `A counterspell: weaker in limited, because you have to leave mana open.` | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason for a counterspell |
+| `draftReasonDraw` | `Card draw: steady value, but it rarely wins a game alone.` | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason for a card that draws cards |
+| `draftReasonPlain` | `A plain creature: it fills a gap in your curve.` | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason for a creature with no keywords or rules text |
+| `draftReasonTwoColours` | `Two colours: strong, but only if you end up in both.` | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason for a card of two colours |
+| `draftReasonManyColours` | `Three or more colours: only worth it if your deck can cast all of them.` | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason for a card of three or more colours |
+| `draftReasonInHouse` | `No 17Lands win rate for this card yet, so this rating is C2's own, worked out from its text.` | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason for a card with no 17Lands data |
+| `draftStatsBasics` | `17 basics by pips: <list>` (starts with `17 basics by pips: `) | text | text | `lib/components/draft/DraftColours.svelte` | #5848 §6: the lands a 17-land deck wants, split by coloured mana symbols |
+| `draftStatsCards` | `<n> card(s)` (contains `card`) | text | text | `lib/components/draft/DraftColours.svelte` | #5848 §6: a colour's number of cards in Main |
+| `draftStatsCreatureNote` | `Most limited decks want 15–17 creatures; you have <n>.` (starts with `Most limited decks want`) | text | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: shown below 13 creatures in Main |
+| `draftStatsAverageMv` | `average mana value <n>` (starts with `average mana value `) | text | text | `lib/components/draft/DraftCurve.svelte` | #5848 §6: the curve's average mana value, lands left out |
+| `draftStatsAverageSize` | `average <power>/<toughness>` (starts with `average `) | text | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the creatures' average power and toughness |
+| `draftStatsMainSide` | `Main <n> · Sideboard <n>` (starts with `Main `) | text | text | `lib/components/draft/DraftStatsOverlay.svelte` | #5848 §6: the overlay header's counts of cards in Main and in the Sideboard |
+| `draftRatingHeading` | `Rating <value> (<grade>)` (starts with `Rating `) | heading | text | `lib/draftReasons.ts` | #5848 §3: the box under the large preview: the card's rating and, for 17Lands, its grade |
+| `draftReasonWinRate` | `Wins <rate>% of games when drawn, <+/-n> against this set's average.` (contains `of games when drawn`) | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason from the card's win rate when drawn against the set's |
+| `draftReasonWinRateOnly` | `Wins <rate>% of games when drawn.` (contains `of games when drawn`) | text | text | `lib/draftReasons.ts` | #5848 §3: a rating reason when the set's average is not known |
+| `draftFooterWinRate` | `GIH WR <rate>%` (starts with `GIH WR `) | text | text | `lib/draftReasons.ts` | #5848 §3: the preview box's footer: the 17Lands win rate when in hand |
+| `draftFooterManaValue` | `Mana value <n>` (starts with `Mana value `) | text | text | `lib/draftReasons.ts` | #5848 §3: the preview box's footer: the card's mana value |
+| `draftFooterSource` | `Source: 17Lands, <date> | Source: C2's own rating` (starts with `Source: `) | text | text | `lib/draftReasons.ts` | #5848 §3: the preview box's footer: where the rating comes from |
+| `draftStatsStripName` | `colours and curve of your main` | region | aria | `lib/components/draft/DraftStatsStrip.svelte` | #5848 §6: the compact colours and mana curve of Main, always in view under the picks and across the top of Deck view and the deckbuilding screen |
 | `draftUseSuggestion` | `Use the suggested lands` | button | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's button that sets the basic land steppers to the land-count suggestion |
 | `draftSubmitDeck` | `Submit deck` | button | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's primary: sends draft_deck; disabled below the 40-card minimum |
 | `draftMatchLength` | `Matches` | radiogroup | text | `lib/components/draft/DraftCreate.svelte` | the create form's choice of the draft's match length: best of one (the default) or best of three |

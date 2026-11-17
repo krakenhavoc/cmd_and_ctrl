@@ -65,7 +65,7 @@ func (c GainControl) Apply(ctx *Context) error {
 // ExchangeControl is "exchange control of two target permanents"
 // (CR 701.12) — Switcheroo.
 //
-// All or nothing (CR 701.12b): if either permanent has left the
+// All or nothing (CR 701.12a): if either permanent has left the
 // battlefield by the time the spell resolves, no control is
 // exchanged at all. The two halves share one CR 613.7 timestamp, so
 // a later control-changer beats both or neither.
@@ -83,7 +83,7 @@ func (e ExchangeControl) Apply(ctx *Context) error {
 }
 
 // ApplyAndReport is Apply that also says whether control was
-// exchanged (CR 701.12b: false when either object is gone) - Gilded
+// exchanged (CR 701.12a: false when either object is gone) - Gilded
 // Drake's "if you don't or can't make an exchange" (#2182).
 func (e ExchangeControl) ApplyAndReport(ctx *Context) (bool, error) {
 	return ctx.Game.ExchangeControlForEffect(ctx.Source(), e.A, e.B,

@@ -95,5 +95,5 @@ func (g *Game) FlipPermanentForEffect(cardID uuid.UUID) error {
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromGraveyardFlippedForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
-	return g.returnFromGraveyardOnFaceLocked(cardID, 1, true, IsFlipCard, controller, tapped, nil)
+	return g.returnFromGraveyardOnFaceLocked(cardID, 1, true, IsFlipCard, controller, tapped, nil, TargetRef{})
 }

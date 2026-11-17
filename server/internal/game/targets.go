@@ -727,6 +727,33 @@ type TargetSpec struct {
 	// refuses it alone. Build it with effects.TheyControl.
 	ControlledByChooser bool
 
+	// ControlledByAnotherThanChooser is "… another player controls" on a
+	// ChosenByTriggerActor clause, where "another" is relative to the
+	// player who chooses, not to the ability's controller: Confusion in
+	// the Ranks' "its controller chooses target permanent another player
+	// controls" (#5739). The candidate must be controlled by someone
+	// other than the chooser, so the controller's own permanents ARE on
+	// offer when someone else chooses. ControlledByChooser's opposite,
+	// read through the same event at announce and at the CR 608.2b
+	// re-check; a walk with no chooser admits nothing. Meaningless
+	// without ChosenByTriggerActor; effects.Register refuses it alone and
+	// beside ControlledByChooser. Build it with effects.AnotherPlayerControls.
+	ControlledByAnotherThanChooser bool
+
+	// SharesCardTypeWithEventObject is "that shares a card type with
+	// it" on a TRIGGERED ability's clause, where "it" is the object the
+	// triggering event is about: the permanent that entered, for
+	// Confusion in the Ranks (#5739). The candidate must have at least
+	// one card type (CR 205.2a) in common with that object, read as it
+	// is now while the same object (CR 400.7) is on the battlefield, so
+	// the 2004 ruling's "both when the target is chosen and when the
+	// ability resolves" holds, and from its last-known record once it
+	// has left (CR 608.2h). DATA, judged in sourceAdmits for
+	// ControlledByThatPlayer's reasons; a walk with no fired trigger or
+	// no event object admits NOTHING. Build it with
+	// effects.SharesACardTypeWithIt.
+	SharesCardTypeWithEventObject bool
+
 	// chooser is the opponent who chooses this clause, once bound
 	// (bindStepChoosers). Unexported and never set on a catalog spec,
 	// only on the value copies AnnouncedClauses hands out, like xBound.
@@ -2022,14 +2049,66 @@ func (s *TargetSpec) chooserAdmits(src TargetSource, c Card) bool {
 	return c.Controller != uuid.Nil && c.Controller != src.Controller
 }
 
+// otherThanChooserAdmits is ControlledByAnotherThanChooser's gate
+// (#5739): true without the flag; with it, a candidate controlled by a
+// player other than the clause's chooser, read off the walk's own event
+// (triggerChooserOf). No chooser admits nothing.
+func (s *TargetSpec) otherThanChooserAdmits(src TargetSource, c Card) bool {
+	if !s.ControlledByAnotherThanChooser {
+		return true
+	}
+	who := triggerChooserOf(src)
+	return who != uuid.Nil && c.Controller != uuid.Nil && c.Controller != who
+}
+
+// eventObjectTypeAdmits is SharesCardTypeWithEventObject's gate (#5739):
+// true without the flag; with it, a candidate that shares a card type
+// with the triggering event's object. That object is read live while it
+// is on the battlefield as the same object (CR 400.7), from its
+// last-known record once it has left (CR 608.2h), and from the event's
+// own snapshot when neither is there. No fired trigger or no event
+// object admits nothing.
+//
+// Caller must hold g.mu.
+func (s *TargetSpec) eventObjectTypeAdmits(g *Game, src TargetSource, c Card) bool {
+	if !s.SharesCardTypeWithEventObject {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() || src.Trigger.Object == nil {
+		return false
+	}
+	obj := src.Trigger.Object
+	if live := findBattlefieldCard(g, obj.ID); live != nil && live.ObjectEpoch == obj.Epoch {
+		return len(SharedCardTypes([]Card{*live, c})) > 0
+	}
+	ch := Characteristic{Types: obj.Types}
+	if info, ok := g.lastKnownPermanentLocked(obj.Ref()); ok {
+		ch = info.Characteristic
+	}
+	return len(SharedCardTypes([]Card{{effective: &ch}, c})) > 0
+}
+
 // triggerChooserOf is the player who answers a ChosenByTriggerActor
 // clause: the triggering event's Actor (the upkeep player of The Abyss),
 // except for damage, whose Actor is the damage source's controller and
 // whose "that player" is the one it was dealt to (Bladegriff Prototype's
-// "of that player's choice" after combat damage to a player).
+// "of that player's choice" after combat damage to a player), and for a
+// permanent entering, whose Actor is whoever put it there (Arboria's
+// distinction, ADR 0109) and whose "its controller" is the player it
+// entered under, as the trigger's own CR 603.10 snapshot recorded it
+// (Confusion in the Ranks, #5739). That snapshot rides the trigger, so
+// the announce, a restore and the CR 608.2b re-check read one answer.
 func triggerChooserOf(src TargetSource) uuid.UUID {
-	if src.Trigger != nil && src.Trigger.Fired() && src.Trigger.Event.Kind == EventDealDamage {
-		return src.Trigger.Event.Target
+	if src.Trigger != nil && src.Trigger.Fired() {
+		switch src.Trigger.Event.Kind {
+		case EventDealDamage:
+			return src.Trigger.Event.Target
+		case EventETB:
+			if src.Trigger.Object == nil {
+				return uuid.Nil
+			}
+			return src.Trigger.Object.Controller
+		}
 	}
 	return triggerActorOf(src)
 }
@@ -2051,7 +2130,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

@@ -21,6 +21,9 @@ type LiveTable struct {
 	Archived  bool
 	Practice  bool
 	Seats     []LiveSeat
+	// ClosedReason is the idle close's reason (ADR 0211 §4), "" for an
+	// open table and an admin's archive.
+	ClosedReason string
 }
 
 // LiveSeat is one seat of a LiveTable.
@@ -216,19 +219,27 @@ type AccountResponse struct {
 
 // Game is one table row (§3.3).
 type Game struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	State      string   `json:"state"`
-	CreatedAt  int64    `json:"created_at,omitempty"`
-	StartedAt  int64    `json:"started_at,omitempty"`
-	EndedAt    int64    `json:"ended_at,omitempty"`
-	ArchivedAt int64    `json:"archived_at,omitempty"`
-	Outcome    string   `json:"outcome,omitempty"`
-	WinnerSeat *int     `json:"winner_seat,omitempty"`
-	Creator    *Creator `json:"creator,omitempty"`
-	Practice   bool     `json:"practice"`
-	Loaded     bool     `json:"loaded"`
-	Seats      []Seat   `json:"seats"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	State      string `json:"state"`
+	CreatedAt  int64  `json:"created_at,omitempty"`
+	StartedAt  int64  `json:"started_at,omitempty"`
+	EndedAt    int64  `json:"ended_at,omitempty"`
+	ArchivedAt int64  `json:"archived_at,omitempty"`
+	Outcome    string `json:"outcome,omitempty"`
+	WinnerSeat *int   `json:"winner_seat,omitempty"`
+	// ClosedReason is why the server closed the table for being idle
+	// (ADR 0211 §4): idle_lobby, idle_game or idle_bots. Absent for an
+	// open table and an admin's archive.
+	ClosedReason string `json:"closed_reason,omitempty"`
+	// LastActiveAt is the table's last activity as the idle sweep last
+	// wrote it (games.last_active_at, at most one sweep stale), absent
+	// until the sweep first sees the table.
+	LastActiveAt int64    `json:"last_active_at,omitempty"`
+	Creator      *Creator `json:"creator,omitempty"`
+	Practice     bool     `json:"practice"`
+	Loaded       bool     `json:"loaded"`
+	Seats        []Seat   `json:"seats"`
 	// SpectatorsConnected is the table's live read-only sockets: loaded
 	// tables only, and only when the server knows its sockets.
 	SpectatorsConnected *int `json:"spectators_connected,omitempty"`
@@ -522,16 +533,18 @@ func (f GamesFilter) MatchesLive(t LiveTable) bool {
 // clients and host flags, and (when known) the connected counts.
 func MergeGame(r GameRow, ov Overlay) Game {
 	g := Game{
-		ID:         r.ID.String(),
-		Name:       r.Name,
-		State:      r.State,
-		CreatedAt:  ms(r.CreatedAt),
-		StartedAt:  ms(r.StartedAt),
-		EndedAt:    ms(r.EndedAt),
-		ArchivedAt: ms(r.ArchivedAt),
-		WinnerSeat: r.WinnerSeat,
-		TheirSeat:  r.TheirSeat,
-		Seats:      make([]Seat, 0, len(r.Seats)),
+		ID:           r.ID.String(),
+		Name:         r.Name,
+		State:        r.State,
+		CreatedAt:    ms(r.CreatedAt),
+		StartedAt:    ms(r.StartedAt),
+		EndedAt:      ms(r.EndedAt),
+		ArchivedAt:   ms(r.ArchivedAt),
+		WinnerSeat:   r.WinnerSeat,
+		ClosedReason: r.ClosedReason,
+		LastActiveAt: ms(r.LastActiveAt),
+		TheirSeat:    r.TheirSeat,
+		Seats:        make([]Seat, 0, len(r.Seats)),
 	}
 	if r.CreatorID != "" {
 		g.Creator = &Creator{ID: r.CreatorID, Name: r.CreatorName}
@@ -545,6 +558,8 @@ func MergeGame(r GameRow, ov Overlay) Game {
 			g.State = live.State
 		}
 		g.ArchivedAt = archivedAt(g.ArchivedAt, live.Archived)
+		// Memory is fresher here too: an unarchive clears the reason.
+		g.ClosedReason = live.ClosedReason
 		for _, s := range live.Seats {
 			byPlayer[s.PlayerID.String()] = s
 		}

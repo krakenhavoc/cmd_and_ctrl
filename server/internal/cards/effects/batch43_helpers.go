@@ -237,11 +237,28 @@ func b43GrantToAttachedWhen(when func(target *game.Card, g *game.Game, source *g
 // blocked attacker that kills its blocker banks a Jitte counter, and
 // a Sword of Fire and Ice on the same creature does nothing. Both
 // halves of that are printed.
-func b43AttachedCreatureDealtCombatDamage(ev game.Event, source *game.Card, _ *game.Game) bool {
+func b43AttachedCreatureDealtCombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
 	return source.IsAttachedTo(ev.Source)
+}
+
+// WheneverEquippedCreatureDealsCombatDamage is the printed "Whenever
+// equipped creature deals combat damage, …" (Umezawa's Jitte, Lost
+// Jitte, Banshee's Blade): one trigger per combat damage step, however
+// many objects and players the creature damaged in it (#5760).
+//
+// All combat damage of a step is dealt at once (CR 510.2), so a
+// trampler that deals damage to its blocker and to the player has
+// dealt combat damage once, and the ability triggers once for it
+// (CR 603.2c). The engine opens one EventDealDamage per recipient, so
+// the trigger is OncePerBatch: the first event of the step fires it and
+// the others are declined. The first-strike step and the regular step
+// are two combat damage steps (CR 510.4), so a double striker triggers
+// in each.
+func WheneverEquippedCreatureDealsCombatDamage(label string, effect Effect) game.TriggeredAbility {
+	return OncePerBatch(On(game.EventDealDamage, b43AttachedCreatureDealtCombatDamage, label, effect))
 }
 
 // b43AttachedCreature is "equipped creature" read off the Equipment —

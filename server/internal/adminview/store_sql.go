@@ -162,7 +162,7 @@ func (s *SQLStore) Account(ctx context.Context, id uuid.UUID) (AccountRows, erro
 func (s *SQLStore) accountGames(ctx context.Context, id uuid.UUID) ([]GameRow, bool, error) {
 	rows, err := s.q.QueryContext(ctx,
 		`SELECT g.id, g.name, g.state, g.created_at, g.started_at, g.ended_at, g.archived_at,
-		        g.winner_seat, g.outcome, g.host_player_id, g.created_by, c.display_name, s.seat
+		        g.winner_seat, g.outcome, g.host_player_id, g.created_by, c.display_name, g.closed_reason, g.last_active_at, s.seat
 		   FROM seats s
 		   JOIN games g ON g.id = s.game_id
 		   LEFT JOIN users c ON c.id = g.created_by
@@ -296,7 +296,7 @@ func (s *SQLStore) Games(ctx context.Context, q GamesQuery) (GamesResult, error)
 	}
 	rows, err := s.q.QueryContext(ctx,
 		`SELECT g.id, g.name, g.state, g.created_at, g.started_at, g.ended_at, g.archived_at,
-		        g.winner_seat, g.outcome, g.host_player_id, g.created_by, c.display_name
+		        g.winner_seat, g.outcome, g.host_player_id, g.created_by, c.display_name, g.closed_reason, g.last_active_at
 		   FROM games g
 		   LEFT JOIN users c ON c.id = g.created_by
 		  WHERE (@state = '' OR g.state = @state)
@@ -344,7 +344,7 @@ func (s *SQLStore) Games(ctx context.Context, q GamesQuery) (GamesResult, error)
 func (s *SQLStore) Game(ctx context.Context, id uuid.UUID) (GameRow, error) {
 	rows, err := s.q.QueryContext(ctx,
 		`SELECT g.id, g.name, g.state, g.created_at, g.started_at, g.ended_at, g.archived_at,
-		        g.winner_seat, g.outcome, g.host_player_id, g.created_by, c.display_name
+		        g.winner_seat, g.outcome, g.host_player_id, g.created_by, c.display_name, g.closed_reason, g.last_active_at
 		   FROM games g
 		   LEFT JOIN users c ON c.id = g.created_by
 		  WHERE g.id = ?`, id.String())
@@ -465,9 +465,11 @@ func scanGame(rows *sql.Rows, g *GameRow, seat *int) error {
 		created                               int64
 		started, ended, archived, winner      sql.NullInt64
 		outcome, host, creatorID, creatorName sql.NullString
+		closedReason                          sql.NullString
+		lastActive                            sql.NullInt64
 	)
 	dest := []any{&id, &g.Name, &g.State, &created, &started, &ended, &archived,
-		&winner, &outcome, &host, &creatorID, &creatorName}
+		&winner, &outcome, &host, &creatorID, &creatorName, &closedReason, &lastActive}
 	if seat != nil {
 		dest = append(dest, seat)
 	}
@@ -486,6 +488,7 @@ func scanGame(rows *sql.Rows, g *GameRow, seat *int) error {
 	}
 	g.Outcome, g.HostPlayerID = outcome.String, host.String
 	g.CreatorID, g.CreatorName = creatorID.String, creatorName.String
+	g.ClosedReason, g.LastActiveAt = closedReason.String, nullMillis(lastActive)
 	return nil
 }
 

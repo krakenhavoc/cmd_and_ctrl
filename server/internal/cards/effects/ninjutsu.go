@@ -22,7 +22,10 @@ import (
 // same stack item, the same cost validation, reaching the hand through
 // ActivatedAbilityShape.Zones (ADR 0062 Decision 1) — with a different
 // cost component and a different verb on the right of the colon.
-// Nothing in the engine knows the word "ninjutsu".
+// The engine knows the word "ninjutsu" in one place only: the keyword
+// bit on the ability (ActivatedAbilityShape.Ninjutsu, #5672), which
+// gates nothing and exists so a cost modifier can price "ninjutsu
+// abilities" (ANinjutsuAbilityCost, Silver-Fur Master).
 //
 // The two halves that did not exist before this file, and both are
 // engine shapes rather than card text:
@@ -103,8 +106,9 @@ func Ninjutsu(cost string) ActivatedAbility {
 	return ActivatedAbility{
 		Label: ninjutsuLabelPrefix + cost + " (" + cost + ", Return an unblocked attacker you control to hand: " +
 			"Put this card onto the battlefield from your hand tapped and attacking.)",
-		Cost:  Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
-		Zones: []game.ZoneKind{game.ZoneHand},
+		Cost:     Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
+		Zones:    []game.ZoneKind{game.ZoneHand},
+		Ninjutsu: true,
 		// ADR 0142: the cost pulls an attacker out of reach of whatever
 		// is on the stack (the guard asks for survive, protect or sac_outlet).
 		Purpose: game.Purpose{Answers: game.AnswerSurvive},
@@ -143,10 +147,11 @@ func CommanderNinjutsu(cost string) ActivatedAbility {
 	return ActivatedAbility{
 		Label: commanderNinjutsuLabelPrefix + cost + " (" + cost + ", Return an unblocked attacker you control to hand: " +
 			"Put this card onto the battlefield from your hand or the command zone tapped and attacking.)",
-		Cost:    Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
-		Zones:   []game.ZoneKind{game.ZoneHand, game.ZoneCommand},
-		Purpose: game.Purpose{Answers: game.AnswerSurvive}, // as Ninjutsu
-		Effect:  ninjutsuEnter,
+		Cost:     Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
+		Zones:    []game.ZoneKind{game.ZoneHand, game.ZoneCommand},
+		Ninjutsu: true,
+		Purpose:  game.Purpose{Answers: game.AnswerSurvive}, // as Ninjutsu
+		Effect:   ninjutsuEnter,
 	}
 }
 
@@ -224,4 +229,18 @@ const (
 // card printed it or a static granted it to a card in hand.
 func ANinjutsuAbility(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return strings.HasPrefix(ev.Label, ninjutsuLabelPrefix) || strings.HasPrefix(ev.Label, commanderNinjutsuLabelPrefix)
+}
+
+// ANinjutsuAbilityCost — the ability being priced is a ninjutsu ability
+// (CR 702.49a) or a commander ninjutsu ability, the variant of it (CR
+// 702.49d): Silver-Fur Master's "Ninjutsu abilities you activate cost
+// {1} less to activate" (#5672). Reads the keyword bit both
+// constructors set (game.AbilityCostSubject.Ninjutsu), so a ninjutsu
+// ability a static granted to a card in hand (Satoru Umezawa) is
+// matched too. Pair it with ActivatedByTheModifiersController for "you
+// activate".
+func ANinjutsuAbilityCost() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Ability != nil && q.Ability.Ninjutsu
+	}
 }
