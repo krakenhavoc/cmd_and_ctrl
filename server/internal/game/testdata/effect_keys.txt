@@ -271,6 +271,7 @@ body monarch/draw
 body msc-m5/origin-of-thor-counter
 body narset-of-the-ancient-way/damage
 body necropotence/deliver-exiled
+body nemata-primeval-warden/saproling
 body new-way-forward/prevented
 body new-way-forward/strike-back
 body nightmares-and-daydreams/target-player-mills
@@ -1645,6 +1646,7 @@ option option-pick/orvar-the-all-form-copy
 option option-pick/osseous-sticktwister-answer
 option option-pick/pavel-chekov-first-posting-kind
 option option-pick/perforating-artist-punisher
+option option-pick/phoenix-chick-attack
 option option-pick/pile-split-take
 option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
@@ -1870,6 +1872,7 @@ payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/passenger-ferry-unblockable
 payunless pay-unless/persistent-marshstalker-return
+payunless pay-unless/phoenix-chick-return
 payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/quantum-entanglement-blink
@@ -2124,6 +2127,7 @@ run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
 run prompt-run/provisions-merchant-sacrifice-pump
+run prompt-run/ragefire-hellkite-double-strike
 run prompt-run/reactor-raid-draw
 run prompt-run/redcap-gutter-dweller-sacrificed
 run prompt-run/reno-and-rude-sacrifice
@@ -3022,6 +3026,7 @@ tail sacrificed-one/prompt-run/lord-skitters-butcher-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
 tail sacrificed-one/prompt-run/namazu-trader-surveil
 tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump
+tail sacrificed-one/prompt-run/ragefire-hellkite-double-strike
 tail sacrificed-one/prompt-run/redcap-gutter-dweller-sacrificed
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
