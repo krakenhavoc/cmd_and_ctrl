@@ -175,6 +175,10 @@ var reviewedNotAWipe = map[string]string{
 	// #5479: "any number of target Equipment" are only those attached to
 	// the one creature it steals.
 	"Awaken the Sleeper": "destroys only Equipment attached to the one creature it steals, not a board",
+
+	// #5482: BRO batch 16.
+	"Calamity's Wake": "exiles every graveyard and bars noncreature spells for the turn: it touches no permanent",
+	"Urza's Command":  "one of its two chosen bullets gives opposing creatures -2/-0 until end of turn, which removes nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
