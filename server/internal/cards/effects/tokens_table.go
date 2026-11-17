@@ -494,4 +494,7 @@ var tokenTable = map[string]game.Card{
 
 	// Jared Carthalion (DMU, S82 batch 15): the printed all-colors Kavu.
 	"3/3 white and blue and black and red and green Kavu with trample": {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"W", "U", "B", "R", "G"}, Keywords: []string{"trample"}},
+
+	// #5487: Dominaria United Commander's Stangg Twin (Stangg, Echo Warrior).
+	"3/4 red and green Legendary Human Warrior named Stangg Twin": {Name: "Stangg Twin", TypeLine: "Token Legendary Creature — Human Warrior", Power: 3, Toughness: 4, Colors: []string{"R", "G"}},
 }

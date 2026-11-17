@@ -37,6 +37,12 @@ const (
 	// through the exempting permanent's text (CR 612.2). Appended last so
 	// no existing value moves.
 	LegendRuleExemptYourSubtype
+	// LegendRuleExemptYourTokens is "The legend rule doesn't apply to
+	// tokens you control" (Cadric, Soul Kindler): only the controller's
+	// permanents that are tokens right now. A legendary card they control,
+	// and anything an opponent controls, still answers to CR 704.5j.
+	// Appended last so no existing value moves.
+	LegendRuleExemptYourTokens
 )
 
 // LegendRuleExemption is one printed legend-rule exemption. Catalog data.
@@ -63,6 +69,9 @@ type legendRuleExempt struct {
 	// subtypeControllers are the subtypes each controller's permanents
 	// are covered for (LegendRuleExemptYourSubtype).
 	subtypeControllers map[uuid.UUID][]string
+	// tokenControllers are the controllers whose TOKENS are covered
+	// (LegendRuleExemptYourTokens).
+	tokenControllers map[uuid.UUID]bool
 }
 
 func (e legendRuleExempt) covers(controller uuid.UUID) bool {
@@ -72,7 +81,8 @@ func (e legendRuleExempt) covers(controller uuid.UUID) bool {
 // coversPermanent is covers for one permanent: its controller is exempt
 // outright, or it is a creature and the controller's creatures are.
 func (e legendRuleExempt) coversPermanent(c *Card) bool {
-	if e.covers(c.Controller) || (e.creatureControllers[c.Controller] && c.IsCreature()) {
+	if e.covers(c.Controller) || (e.creatureControllers[c.Controller] && c.IsCreature()) ||
+		(e.tokenControllers[c.Controller] && c.IsToken()) {
 		return true
 	}
 	for _, sub := range e.subtypeControllers[c.Controller] {
@@ -129,6 +139,11 @@ func (g *Game) legendRuleExemptControllersLocked() legendRuleExempt {
 					out.creatureControllers = map[uuid.UUID]bool{}
 				}
 				out.creatureControllers[src.Controller] = true
+			case LegendRuleExemptYourTokens:
+				if out.tokenControllers == nil {
+					out.tokenControllers = map[uuid.UUID]bool{}
+				}
+				out.tokenControllers[src.Controller] = true
 			case LegendRuleExemptYourSubtype:
 				if s.Subtype == "" {
 					continue
