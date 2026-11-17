@@ -228,23 +228,21 @@ func TestDMUB11TatyovaAnimatesALandOnlyWithSevenLands(t *testing.T) {
 	advanceToMain(t, g)
 
 	// The sixth land is not enough: the intervening "if" fails (CR 603.4).
-	sixth := avB1Hand(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
-	if err := g.PlayLand(me.ID, sixth); err != nil {
-		t.Fatalf("PlayLand: %v", err)
+	enter := func() {
+		g.WithWriteLock(func() {
+			id := uuid.New()
+			g.Battlefield.PushTop(game.Card{InstanceID: id, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+			g.EmitEvent(game.Event{Kind: game.EventETB, CardID: id, Actor: me.ID})
+		})
 	}
+	enter()
 	passPriorityAroundTable(t, g)
 	if latestPickTarget(g, me.ID) != nil || len(g.StackMeta) != 0 {
 		t.Fatal("the trigger went on the stack with six lands")
 	}
 
 	// A seventh land through an effect makes seven.
-	var seventh uuid.UUID
-	g.WithWriteLock(func() {
-		id := uuid.New()
-		g.Battlefield.PushTop(game.Card{InstanceID: id, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
-		g.EmitEvent(game.Event{Kind: game.EventETB, CardID: id, Actor: me.ID})
-		seventh = id
-	})
+	enter()
 	dmuB11PickIfAsked(t, g, me.ID, lands[0])
 	passPriorityAroundTable(t, g)
 	c := gaLayered(t, g, lands[0]).Effective()
@@ -254,7 +252,6 @@ func TestDMUB11TatyovaAnimatesALandOnlyWithSevenLands(t *testing.T) {
 	if !game.HasKeyword(&c, "flying") {
 		t.Error("the animated land creature lacks Tatyova's flying")
 	}
-	_ = seventh
 }
 
 func TestDMUB11RulikMonsPutsALandOrMakesAGoblin(t *testing.T) {
