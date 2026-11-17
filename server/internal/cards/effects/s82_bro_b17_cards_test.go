@@ -382,6 +382,7 @@ func TestBro17TheStoneBrainExilesNamedCardsAndDrawsForTheHandOnes(t *testing.T) 
 			opp.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Instant", Owner: opp.ID, Controller: opp.ID})
 		}
 	})
+	handBefore, libBefore, myHand := bro17HandSize(g, opp), opp.Library.Size(), bro17HandSize(g, me)
 	floatForTest(g, me, "CC")
 	if err := g.ActivateCatalogAbility(me.ID, brain, 0, game.ActivateAbilityParams{Strict: true,
 		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
@@ -416,12 +417,16 @@ func TestBro17TheStoneBrainExilesNamedCardsAndDrawsForTheHandOnes(t *testing.T) 
 	if inExile(g, lib) || inExile(g, other) {
 		t.Error("a card that was not taken left its zone")
 	}
-	// Two hand cards were exiled (3 -> 1), then two were drawn.
-	if got := bro17HandSize(g, opp); got != 3 {
-		t.Errorf("the opponent's hand is %d, want 3 (one left, two drawn)", got)
+	// Two hand cards were exiled, two were drawn: the hand is where it
+	// was and the library is two cards (and the exiled one) lighter.
+	if got := bro17HandSize(g, opp); got != handBefore {
+		t.Errorf("the opponent's hand is %d, want %d (two exiled, two drawn)", got, handBefore)
 	}
-	if me.Hand.Size() != 0 {
-		t.Errorf("the activator drew: hand %d", me.Hand.Size())
+	if got := opp.Library.Size(); got != libBefore-2-1 {
+		t.Errorf("the opponent's library is %d, want %d (one exiled, two drawn)", got, libBefore-3)
+	}
+	if got := bro17HandSize(g, me); got != myHand {
+		t.Errorf("the activator's hand changed: %d -> %d", myHand, got)
 	}
 }
 
