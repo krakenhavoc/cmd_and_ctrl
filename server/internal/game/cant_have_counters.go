@@ -59,11 +59,16 @@ func (g *Game) cantHaveCountersLocked(c *Card) bool {
 }
 
 // counterPlacementRefusedLocked reports whether `ev` is a counter
-// PLACEMENT (a positive delta on a permanent, not a player) onto a
-// permanent that can't have counters put on it. Caller must hold g.mu.
+// PLACEMENT (a positive delta) onto a permanent that can't have counters
+// put on it, or poison counters for a player who can't get any. Caller must hold g.mu.
 func (g *Game) counterPlacementRefusedLocked(ev *ReplacementEvent) bool {
-	if ev == nil || ev.Kind != RepEventCounter || ev.CounterPlayer != uuid.Nil || ev.CounterDelta <= 0 {
+	if ev == nil || ev.Kind != RepEventCounter || ev.CounterDelta <= 0 {
 		return false
+	}
+	if ev.CounterPlayer != uuid.Nil {
+		// A PLAYER placement: only Melira's "can't get additional poison
+		// counters this turn" refuses one (cant_get_poison.go).
+		return ev.CounterName == CounterPoison && g.playerCantGetPoisonLocked(ev.CounterPlayer)
 	}
 	return g.cantHaveCountersLocked(findBattlefieldCard(g, ev.CounterTarget))
 }

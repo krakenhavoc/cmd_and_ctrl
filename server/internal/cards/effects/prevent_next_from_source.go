@@ -141,6 +141,13 @@ type PreventNextDamageFromSource struct {
 	// CombatOnly is "the next time <source> would deal combat damage"
 	// (Impulsive Maneuvers): other damage passes it by, unspent.
 	CombatOnly bool
+	// ToPlayersOnly is "would deal combat damage to one or more players"
+	// (Ria Ivor): damage to a permanent passes the shield by, unspent.
+	// Needs CombatOnly and Protect: ShieldAnything.
+	ToPlayersOnly bool
+	// ThisCombat is "this combat": the shield ends with the combat phase
+	// it is made in (Ria Ivor), not the turn.
+	ThisCombat bool
 
 	// Question is the source prompt's header; Label the shield's. Both
 	// default to the card's name.
@@ -191,6 +198,9 @@ func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
 		Half:         p.Half,
 		CombatOnly:   p.CombatOnly,
 		Label:        label,
+
+		ToPlayersOnly: p.ToPlayersOnly,
+		ThisCombat:    p.ThisCombat,
 	}
 	if !p.protect(ctx, &shield) {
 		return nil

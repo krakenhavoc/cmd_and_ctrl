@@ -342,6 +342,12 @@ const (
 	// ScopeOpponentsAndTheirCreatures is the record Controller's
 	// opponents (scopeCoversPlayer). Reads Player.
 	ModCantGainLife ModKind = "cantGainLife"
+	// ModCantGetPoisonCounters is "<player> can't get additional poison
+	// counters this turn" (Melira, the Living Cure; CR 101.2): a rule
+	// gate, not a replacement, asked before the counter window opens
+	// (counterPlacementRefusedLocked). Scope ScopeGame with Player set to
+	// the one player. Reads Player.
+	ModCantGetPoisonCounters ModKind = "cantGetPoisonCounters"
 	// ModCantPlayLands is "<player> can't play lands this turn" (ADR
 	// 0109 §4, #1895; CR 101.2, CR 305.1): Turf Wound's, Solfatara's,
 	// Pardic Miner's and Moonhold's "target player …". Scope ScopeGame
@@ -1209,6 +1215,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
 	ModCantGainLife:           {reader: readerRule},
+	ModCantGetPoisonCounters:  {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},
 	// #4571: the power-up ban, read by the activation gate.
