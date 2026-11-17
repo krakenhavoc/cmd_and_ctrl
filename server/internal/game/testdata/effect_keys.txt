@@ -979,6 +979,7 @@ choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/thornplate-intimidator-punisher-discarded
 choose choose-cards/thousand-moons-smithy-tap-five
+choose choose-cards/tidal-terror-tap-two
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/toph-hardheaded-teacher-return
