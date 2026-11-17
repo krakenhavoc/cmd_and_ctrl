@@ -174,9 +174,10 @@ func TestOneVivisectionEvangelistDestroysOnlyWhenCorrupted(t *testing.T) {
 		castCatalogSpell(t, g, "Vivisection Evangelist", "Creature — Phyrexian Cleric", oneEvangelistOracle, nil)
 		passPriorityAroundTable(t, g)
 		if poison == 3 {
-			if len(g.PendingChoices) > 0 {
-				t.Logf("pending: %+v", g.PendingChoices[0].Kind)
-			}
+			pickTargetRefs(t, g, g.Seats[0].ID, nil, game.TargetRef{Kind: game.TargetCard, ID: victim})
+			passPriorityAroundTable(t, g)
+		} else if latestPickTarget(g, g.Seats[0].ID) != nil {
+			t.Error("uncorrupted: the trigger should not ask for a target")
 		}
 		alive := g.Battlefield.Contains(victim)
 		if poison == 2 && !alive {
@@ -227,10 +228,9 @@ func TestOneChitteringSkitterlingDrawsOncePerTurnWhenCorrupted(t *testing.T) {
 	acRefused(t, g, me.ID, skit, 0, game.ActivateAbilityParams{})
 	oneSetPoison(g, opp.ID, 3)
 	hand := me.Hand.Size()
-	if err := g.ActivateCatalogAbility(me.ID, skit, 0, game.ActivateAbilityParams{}); err != nil {
+	if err := g.ActivateCatalogAbility(me.ID, skit, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{fodder}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	answerSacrifice(t, g, me.ID, fodder)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(fodder) {
 		t.Error("the sacrificed creature is still on the battlefield")

@@ -21,7 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     label,
-			Purpose:   game.Purpose{Draws: 1},
+			Purpose:   game.Purpose{Draws: 1, Answers: game.AnswerSacOutlet},
 			Cost:      SacrificeN(1, "an artifact or creature", Or(Artifact(), Creature())),
 			Condition: corruptedAnd(OncePerTurnActivation(label)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
