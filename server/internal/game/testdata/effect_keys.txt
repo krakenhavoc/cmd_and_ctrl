@@ -124,6 +124,7 @@ body discard-by-opponent/return-the-discarded-card
 body discard-by-opponent/return-to-hand
 body discard-by-opponent/return-with-counter
 body diver-skaab/tuck
+body dmu-b07/draw-a-card
 body dont-move/destroy-the-tapped-creature
 body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
@@ -473,6 +474,7 @@ choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aetherworks-marvel-cast
 choose choose-cards/agency-outfitter-search
+choose choose-cards/aggressive-sabotage-burn
 choose choose-cards/ainok-wayfarer-land-or-counter
 choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/alpharael-discard-two-unless-artifact
@@ -976,6 +978,8 @@ choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/s82-bro-b13-play
+choose choose-cards/s82-dmu-b10-keep-one-on-top
+choose choose-cards/s82-dmu-shadow-prophecy-take
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
@@ -984,6 +988,7 @@ choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
+choose choose-cards/saheeli-filigree-master-tap-artifact
 choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
@@ -1363,6 +1368,7 @@ confirm confirm/pay-life-copy-that-ability
 confirm confirm/pay-life-draw
 confirm confirm/peace-in-our-time-draw
 confirm confirm/pemmins-aura-pump
+confirm confirm/phyrexian-dragon-engine-discard-hand
 confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
@@ -2034,6 +2040,7 @@ run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
+run prompt-run/choking-miasma-counter
 run prompt-run/cmdr2-b09-foul-rebirth-token
 run prompt-run/cmdr2-b09-promise-of-aclazotz-populate
 run prompt-run/cmdr2-s18-killer-service-rhino
@@ -2546,6 +2553,7 @@ tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
 tail distant-memories/offer
+tail dmu-b07/haste-then-sacrifice
 tail dominion-infiltration/haste-and-exile-copies
 tail dose-of-dawnglow/blight
 tail dragonhawk-fates-tempest/schedule-damage
@@ -2998,6 +3006,7 @@ tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
 tail rulik-mons/goblin-if-none-entered
 tail s82-bro-b11/tawnoss-tinkering-after
+tail s82-dmu/slimefoots-survey-look
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -3072,6 +3081,8 @@ tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/yuma-proud-protector-sacrifice
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
 tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
+tail saheeli-filigree-master/after-scry
+tail saheeli-filigree-master/thopter-haste
 tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
 tail saheeli-the-suns-brilliance/haste-and-sacrifice-copy
@@ -3173,6 +3184,7 @@ tail take/each-moved
 tail take/moved
 tail tashas-hideous-laughter/exile-step
 tail taster-of-wares/grant-cast-of-exiled-spell
+tail tawnos-solemn-survivor/mill-two
 tail tazri-stalwart-survivor/after-mill
 tail tchaka/after-mill
 tail tempestra-dame-of-games/haste-and-sacrifice-copy
@@ -3503,6 +3515,7 @@ tail will-riker/rest-on-bottom-then-sacrifice-those-lands
 tail winota/entered-indestructible
 tail winter-soldier-icy-assassin/attach
 tail wishclaw-talisman/hand-it-over
+tail wondrous-crucible/copy-and-cast
 tail worlds-within-worlds/return
 tail wrenn-and-realmbreaker/after-mill
 tail yavimaya-bloomsage/prepare

@@ -182,6 +182,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// #5487: its end-step sacrifice names only the tokens its own attack made.
 	"Stangg, Echo Warrior": "sacrifices only the tokens its own attack trigger created, not a board",
+
+	// #5482: one of six modes, chosen three at a time on an enters-or-attacks trigger.
+	"Mishra, Lost to Phyrexia": "its -1/-1 to opposing creatures is one of six modes, three chosen each time: a mode of a trigger, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

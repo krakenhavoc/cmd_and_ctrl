@@ -856,6 +856,8 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	out = g.appendEminenceCostModifiersLocked(out, q)
 	// ADR 0216 §6: a face-up plane's cost modifiers, all of them.
 	out = g.appendPlanarCostModifiersLocked(out, q)
+	// An emblem's cost modifiers (CR 114.3): Saheeli, Filigree Master's.
+	out = g.appendEmblemCostModifiersLocked(out, q)
 	// #1184: an ability's cost is not its source's cost, and #1319
 	// widens the same fact to a special action's. The self slot is
 	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the

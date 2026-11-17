@@ -195,6 +195,16 @@ const (
 	// a turn-face-up never satisfies it; combine it with
 	// ManaRestrictTurnFaceUp through ManaRestrictAnyOf.
 	ManaRestrictFaceDownSpell = "spell:face-down"
+	// ManaRestrictKickedSpell permits the token only on a spell cast
+	// with its kicker (or multikicker) paid (CR 702.33a): Volshe
+	// Tideturner's "cast an instant or sorcery spell or a kicked spell".
+	// The kicker is chosen at announcement (CR 601.2b), before any cost
+	// is paid, so the whole payment, the kicker's share and the mana
+	// cost's, is for a kicked spell. It asks about the spell being
+	// cast, so an activation never satisfies it, and a payment that
+	// does not say which optional costs it pays (ManaSpendForCast on
+	// its own) refuses it; ManaSpendForCastParams stamps the choice.
+	ManaRestrictKickedSpell = "spell:kicked"
 	// ManaRestrictSpellNotOwned permits the token only on a spell its
 	// payer does not own (#5457, CR 106.6, CR 108.3): Thieving Varmint's
 	// "Spend this mana only to cast spells you don't own". It compares
@@ -472,6 +482,12 @@ type ManaSpendContext struct {
 	// payment that is not a cast.
 	FaceDownSpell bool
 
+	// KickedSpell is set when the spell being cast has its kicker paid
+	// (CR 702.33a): what ManaRestrictKickedSpell reads. Set by
+	// ManaSpendForCastParams from the cast's chosen optional costs;
+	// false for every payment that is not a cast.
+	KickedSpell bool
+
 	// YourCommander is set when the spell being cast is a commander its
 	// caster owns (CR 903.3d): what ManaRestrictYourCommander reads.
 	// Set by ManaSpendForCast; false for every payment that is not a
@@ -595,6 +611,7 @@ func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
 	// #4694: the spell's mana value on the stack counts the X announced
 	// for it (CR 202.3e). Only an {X} in its MANA cost counts, so an
 	// alternative cost's X changes nothing here.
+	ctx.KickedSpell = KickedTimesPaid(c, params.OptionalCosts) > 0
 	return ctx.WithX(params.XValue)
 }
 
@@ -782,6 +799,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast && ctx.FaceDownSpell
 	case ManaRestrictSpellNoAbilities:
 		return ctx.Purpose == SpendPurposeCast && ctx.NoAbilitiesSpell
+	case ManaRestrictKickedSpell:
+		return ctx.Purpose == SpendPurposeCast && ctx.KickedSpell
 	case ManaRestrictSpellNotOwned:
 		return ctx.Purpose == SpendPurposeCast && ctx.Payer != uuid.Nil && ctx.SpellOwner != uuid.Nil && ctx.Payer != ctx.SpellOwner
 	case ManaRestrictUnlock:
