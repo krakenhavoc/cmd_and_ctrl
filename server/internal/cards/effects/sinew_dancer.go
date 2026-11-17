@@ -22,25 +22,15 @@ func init() {
 				Label:   "{3}{W}, {T}: Tap target creature.",
 				Cost:    Plus(ManaCost("{3}{W}"), TapCost()),
 				Targets: TargetCreature("target creature"),
-				Effect:  sinewDancerTap,
+				Effect:  thousandMoonsCrackshotTap,
 			},
 			{
 				Label:     "Corrupted — {W}, {T}: Tap target creature. Activate only if an opponent has three or more poison counters.",
 				Cost:      Plus(ManaCost("{W}"), TapCost()),
 				Targets:   TargetCreature("target creature"),
 				Condition: corruptedAnd(nil),
-				Effect:    sinewDancerTap,
+				Effect:    thousandMoonsCrackshotTap,
 			},
 		},
 	})
-}
-
-func sinewDancerTap(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return TapTarget{Target: t.ID}.Apply(ctx)
-		}
-	}
-	return nil
 }

@@ -24,18 +24,8 @@ func init() {
 			Targeting(
 				InterveningIf(CondCorrupted{}, On(game.EventETB, AllOf(Self, YouAreCorrupted),
 					"Corrupted — Vivisection Evangelist — destroy target creature or planeswalker an opponent controls",
-					destroyTheTargetPermanentOnResolve)),
+					destroyFirstLegalTarget)),
 				TargetPermanent("target creature or planeswalker an opponent controls", Or(Creature(), Planeswalker()), OpponentControls())),
 		},
 	})
-}
-
-func destroyTheTargetPermanentOnResolve(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return DestroyTarget{Target: t.ID}.Apply(ctx)
-		}
-	}
-	return nil
 }
