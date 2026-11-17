@@ -418,12 +418,12 @@ func TestBro17TheStoneBrainExilesNamedCardsAndDrawsForTheHandOnes(t *testing.T) 
 		t.Error("a card that was not taken left its zone")
 	}
 	// Two hand cards were exiled, two were drawn: the hand is where it
-	// was and the library is two cards (and the exiled one) lighter.
+	// was and the library is two cards lighter.
 	if got := bro17HandSize(g, opp); got != handBefore {
 		t.Errorf("the opponent's hand is %d, want %d (two exiled, two drawn)", got, handBefore)
 	}
-	if got := opp.Library.Size(); got != libBefore-2-1 {
-		t.Errorf("the opponent's library is %d, want %d (one exiled, two drawn)", got, libBefore-3)
+	if got := opp.Library.Size(); got != libBefore-2 {
+		t.Errorf("the opponent's library is %d, want %d (two drawn; the library copy was not taken)", got, libBefore-2)
 	}
 	if got := bro17HandSize(g, me); got != myHand {
 		t.Errorf("the activator's hand changed: %d -> %d", myHand, got)
