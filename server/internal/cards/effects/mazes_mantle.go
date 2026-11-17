@@ -21,7 +21,7 @@ func init() {
 	trig := InterveningIf(s82OneB05CondEnchantedHasToxic{},
 		On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			return s82OneB05AttachedHasToxic(g, source)
-		}), "Maze's Mantle — enchanted creature gains hexproof until end of turn", acceleratedEvolutionEnters))
+		}), "Maze's Mantle — enchanted creature gains hexproof until end of turn", mazesMantleEnters))
 	Register(Spec{
 		OracleID:        "b4e85b7c-3047-46d1-a6e6-2ec5eac0268a",
 		Name:            "Maze's Mantle",
@@ -31,4 +31,15 @@ func init() {
 		Static:          []game.StaticAbility{PumpAttached(2, 2)},
 		Triggered:       []game.TriggeredAbility{trig},
 	})
+}
+
+// mazesMantleEnters gives the enchanted creature hexproof until end of turn.
+func mazesMantleEnters(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	host, ok := enchantedCreatureAsItResolves(ctx)
+	if !ok {
+		return nil
+	}
+	return GrantKeywordUntilEOT{Target: host, Keywords: []string{"hexproof"},
+		Label: "Maze's Mantle — hexproof until end of turn"}.Apply(ctx)
 }

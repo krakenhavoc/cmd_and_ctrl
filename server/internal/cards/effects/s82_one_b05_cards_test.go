@@ -235,11 +235,10 @@ func TestOneB05SlaughterSingerPumpsAnotherAttackingToxicCreatureOnly(t *testing.
 	me, opp := g.Seats[0], g.Seats[1]
 	advanceToMain(t, g)
 	singer := b12Push(g, me.ID, "Slaughter Singer", oneB05SingerType, oneB05Singer, 2, 2)
-	other := oneB05ToxicCreature(g, me.ID, 2, 2)
+	other := b12Push(g, me.ID, "Flensing Raptor", "Creature — Phyrexian Bird", oneB05Raptor, 2, 2)
 	plain := b12Creature(g, me.ID, "Plain", "Creature — Bear", 2, 2)
 	declareAttack(t, g, opp.ID, singer, other, plain)
-	lockInAttacks(t, g)
-	passPriorityAroundTable(t, g)
+	settleOrderingTriggers(t, g)
 	if p := effectivePower(t, g, other); p != 3 {
 		t.Errorf("the other toxic attacker has power %d, want 3", p)
 	}
@@ -337,11 +336,11 @@ func TestOneB05NecrogenRotpriestGrantsDeathtouchToToxicCreatureOnly(t *testing.T
 	priest := b12Push(g, me.ID, "Necrogen Rotpriest", "Creature — Phyrexian Zombie Cleric", oneB05Rotpriest, 1, 5)
 	plain := b12Creature(g, me.ID, "Plain", "Creature — Bear", 2, 2)
 	b06AddMana(me, "C", "B", "G")
-	if err := g.ActivateCatalogAbility(me.ID, priest, 1, game.ActivateAbilityParams{
+	if err := g.ActivateCatalogAbility(me.ID, priest, 0, game.ActivateAbilityParams{
 		Strict: true, Targets: b16TargetCard(plain)}); err == nil {
 		t.Fatal("targeted a creature without toxic")
 	}
-	b16Activate(t, g, me.ID, priest, 1, game.ActivateAbilityParams{Targets: b16TargetCard(priest), Strict: true})
+	b16Activate(t, g, me.ID, priest, 0, game.ActivateAbilityParams{Targets: b16TargetCard(priest), Strict: true})
 	passPriorityAroundTable(t, g)
 	if !hasEffectiveKeyword(t, g, priest, "deathtouch") {
 		t.Error("Rotpriest did not gain deathtouch")
