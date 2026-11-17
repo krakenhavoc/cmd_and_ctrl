@@ -634,6 +634,7 @@ choose choose-cards/glamdring-cast
 choose choose-cards/glittering-wish-take
 choose choose-cards/gluntch-the-bestower-creature
 choose choose-cards/golden-wish-take
+choose choose-cards/goldwardens-gambit-attach
 choose choose-cards/granted-take
 choose choose-cards/gravelgill-scoundrel-tap
 choose choose-cards/great-intelligences-plan-cast
@@ -1148,6 +1149,7 @@ confirm confirm/arc-of-fortune-embark
 confirm confirm/arc-of-fortune-may-wheel
 confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
+confirm confirm/awaken-the-sleeper-destroy-equipment
 confirm confirm/barrowgoyf-mill
 confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
 confirm confirm/bebop-skull-and-crossbones-draw-lose
@@ -2536,6 +2538,7 @@ tail glorious-purpose/after-exile
 tail go-nuts/fight
 tail goblin-plate-mail/attach
 tail golden-argosy/schedule-return-tapped
+tail goldwardens-gambit/after-tokens
 tail grasping-tentacles/choose-artifact
 tail grave-researcher/become-prepared
 tail graveyard-auras/attach-and-schedule-sacrifice
@@ -2782,6 +2785,7 @@ tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
 tail recipient/marauding-raptor-dinosaur-pump
 tail recipient/reckless-blaze-watch-death
+tail recipient/s82-one-b14-loses-indestructible
 tail recipient/sonic-shrieker-player-discards
 tail reckless-handling/discard-at-random
 tail red-suns-zenith/shuffle-into-library
