@@ -15,13 +15,7 @@ func init() {
 		XMatters:     true,
 		OnResolve: ResolveSteps(
 			// The rad counters wait for a prompt the draws ask (CR 608.2c, #4155).
-			Instruction(func(ctx *Context) error {
-				x := ctx.X()
-				if x <= 0 {
-					return nil
-				}
-				return ctx.Game.DrawNForEffect(ctx.Controller(), x)
-			}),
+			Instruction(drawXCards),
 			Instruction(func(ctx *Context) error {
 				x := ctx.X()
 				if x <= 0 {
