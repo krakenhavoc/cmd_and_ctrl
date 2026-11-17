@@ -45,7 +45,7 @@ func init() {
 			Label:   activateLabel,
 			Cost:    ManaCost("{1}{B}{G}"),
 			Targets: TargetCreature("target creature you control with toxic", YouControl(), WithToxic()),
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "deathtouch")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)
