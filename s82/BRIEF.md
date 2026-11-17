@@ -38,10 +38,10 @@ You build ONE batch of cards from the ten sets that most recently left Standard 
 - Test gotchas: g.MoveCardByID takes the game lock itself (deadlocks inside WithWriteLock); attack triggers need lockInAttacks(t, g) after DeclareAttacker; batched triggers settle after g.RunStateChecksForTest().
 
 ## Oracle fixtures (you make them now)
-From server/: `CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json go test -p 1 ./internal/cards/coverage/ -run TestOracleFixtureCoversRegistry -update-oracle -oracle-ids=<your ids, comma-separated>`. Only your own ids; never regenerate them all. Commit the new files under testdata/oracle.
+From server/: `CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json go test -p 1 ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent -update-oracle -oracle-ids=<your ids, comma-separated>`. Only your own ids; never regenerate them all. Commit the new files under testdata/oracle.
 
 ## Before you push
-From server/, each as its own command: `go vet ./internal/cards/... ./internal/game/`; `go test ./internal/cards/effects/`; `CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json go test -timeout 40m ./internal/cards/coverage/` (it must pass; with this cut-down dump, a dump-wide audit may report cards from OTHER sets as missing from the dump: that alone is not your failure, say so in the commit message); `go test ./internal/game/` only if you touched internal/game; `go test ./internal/roadmap/`; `gofmt -l` on your files prints nothing.
+From server/, each as its own command: `go vet ./internal/cards/... ./internal/game/`; `go test ./internal/cards/effects/`; `CMDCTRL_SCRYFALL_DUMP=$PWD/../data/scryfall/default-cards.json go test -timeout 40m ./internal/cards/coverage/` (it must pass except the two dump-wide audits that the cut-down dump cannot satisfy, `TestPlanarCardListMatchesTheDump` and the "catalogued oracle IDs are not in the dump" check of `TestOracleFixtureIsCurrent`; name them in the commit message; CI runs them on the full dump); `go test ./internal/game/` only if you touched internal/game; `go test ./internal/roadmap/`; `gofmt -l` on your files prints nothing.
 
 ## Push and stop
 - Commit trailers exactly:
