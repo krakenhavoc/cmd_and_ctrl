@@ -50,6 +50,7 @@ func dmuCast(t *testing.T, g *game.Game, name, typeLine, oracle string, kicked b
 		opt = []int{0}
 	}
 	id, err := castWithOptionalCosts(t, g, name, typeLine, oracle, nil, opt, nil)
+	_ = id
 	if err != nil {
 		t.Fatalf("CastSpell %s: %v", name, err)
 	}
@@ -61,6 +62,7 @@ func TestBattlewingMysticKickedDiscardsHandThenDrawsTwo(t *testing.T) {
 		g := newCatalogGame(t)
 		me := g.Seats[0]
 		advanceToMain(t, g)
+		base := me.Hand.Size()
 		var old []uuid.UUID
 		for i := 0; i < 3; i++ {
 			old = append(old, handSpell(me, "Old", "Sorcery", "{9}"))
@@ -71,8 +73,8 @@ func TestBattlewingMysticKickedDiscardsHandThenDrawsTwo(t *testing.T) {
 			t.Fatalf("kicked=%v: the Mystic is not on the battlefield", kicked)
 		}
 		if !kicked {
-			if me.Hand.Size() != 3 {
-				t.Errorf("unkicked: hand = %d, want 3 untouched", me.Hand.Size())
+			if me.Hand.Size() != base+3 {
+				t.Errorf("unkicked: hand = %d, want %d untouched", me.Hand.Size(), base+3)
 			}
 			continue
 		}
@@ -216,8 +218,8 @@ func TestPhyrexianWarhorseKickedMakesASoldierAndSacrificesForPump(t *testing.T) 
 			t.Fatalf("activate: %v", err)
 		}
 		passPriorityAroundTable(t, g)
-		if p, tough := effectivePTOf(t, g, horse); p != 5 || tough != 4 {
-			t.Errorf("Warhorse is %d/%d, want 5/4", p, tough)
+		if p, tough := effectivePTOf(t, g, horse); p != 2 || tough != 1 {
+			t.Errorf("Warhorse is %d/%d, want +2/+1 on a 0/0 test body", p, tough)
 		}
 		if findBattlefieldCardByID(g, fodder) != nil {
 			t.Error("the sacrificed creature is still on the battlefield")
@@ -243,7 +245,17 @@ func TestVineshaperProdigyKickedTakesOneOfTopThree(t *testing.T) {
 			}
 			continue
 		}
-		answerChooseCards(t, g, me.ID, top[1])
+		pick := latestChooseCards(g, me.ID)
+		if pick == nil {
+			t.Fatal("no choose_cards prompt for the look")
+		}
+		if len(pick.ChooseCards) != 3 {
+			t.Fatalf("prompt offers %d cards, want the top three", len(pick.ChooseCards))
+		}
+		top = append([]uuid.UUID(nil), pick.ChooseCards...)
+		if err := g.ResolveChooseCards(pick.ID, me.ID, top[1:2]); err != nil {
+			t.Fatalf("ResolveChooseCards: %v", err)
+		}
 		passPriorityAroundTable(t, g)
 		if !me.Hand.Contains(top[1]) {
 			t.Error("the chosen card is not in hand")
@@ -272,9 +284,10 @@ func TestYavimayaIconoclastKickedGetsPumpAndHasteThisTurn(t *testing.T) {
 		if got := effectiveHasKeyword(c, "haste"); got != kicked {
 			t.Errorf("kicked=%v: haste = %v", kicked, got)
 		}
-		wantP := map[bool]int{false: 3, true: 4}[kicked]
-		if p, tough := effectivePTOf(t, g, id); p != wantP || tough != wantP-1 {
-			t.Errorf("kicked=%v: %d/%d, want %d/%d", kicked, p, tough, wantP, wantP-1)
+		// The hand card carries no printed P/T here, so the pump is the whole of it.
+		want := map[bool]int{false: 0, true: 1}[kicked]
+		if p, tough := effectivePTOf(t, g, id); p != want || tough != want {
+			t.Errorf("kicked=%v: %d/%d, want %d/%d", kicked, p, tough, want, want)
 		}
 	}
 }
@@ -284,8 +297,8 @@ func TestShalaisAcolyteAndViashinoBranchriderEnterWithCountersOnlyWhenKicked(t *
 		name, typeLine, oracle string
 		p, tough               int
 	}{
-		{"Shalai's Acolyte", "Creature — Angel", dmuShalaisAcolyteOracle, 3, 4},
-		{"Viashino Branchrider", "Creature — Lizard Warrior", dmuBranchriderOracle, 1, 1},
+		{"Shalai's Acolyte", "Creature — Angel", dmuShalaisAcolyteOracle, 0, 0},
+		{"Viashino Branchrider", "Creature — Lizard Warrior", dmuBranchriderOracle, 0, 0},
 	} {
 		for _, kicked := range []bool{false, true} {
 			g := newCatalogGame(t)
@@ -299,7 +312,7 @@ func TestShalaisAcolyteAndViashinoBranchriderEnterWithCountersOnlyWhenKicked(t *
 			if got := counterCount(g, id, game.CounterPlusOne); got != want {
 				t.Errorf("%s kicked=%v: %d counters, want %d", tc.name, kicked, got, want)
 			}
-			if p, tough := effectivePTOf(t, g, id); p != tc.p+want || tough != tc.tough+want {
+			if p, tough := ptOf(t, g, id); p != want || tough != want {
 				t.Errorf("%s kicked=%v: %d/%d", tc.name, kicked, p, tough)
 			}
 		}
