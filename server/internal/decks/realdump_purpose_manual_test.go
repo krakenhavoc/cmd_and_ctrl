@@ -110,6 +110,9 @@ var reviewedNotAWipe = map[string]string{
 	"Ill-Timed Explosion":   "damages each creature only if its controller discards two cards, for the greatest mana value among them: no fixed amount a sweep can declare, and none at all when declined",
 	"Abyssal Harvester":     "exiles only the Nightmare tokens its controller controls, not a board",
 	"Hex Magic":             "exiles the cards in its caster's own hand, not a board",
+	// #5479: the Invasion's enter trigger exiles its controller's hand and
+	// draws that many; the back face burns, but never every creature.
+	"Invasion of Kaldheim // Pyre of the World Tree": "exiles the cards in its controller's own hand and draws that many, not a board",
 	"Armageddon":            "destroys lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
 	// it created itself, every player's, never another permanent. #5802:
