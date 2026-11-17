@@ -996,6 +996,7 @@ choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
 choose choose-cards/trial-of-agony-chosen
+choose choose-cards/truga-cliffcharger-search
 choose choose-cards/trystan-penitent-culler-exile
 choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
