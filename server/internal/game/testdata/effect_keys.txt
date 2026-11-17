@@ -361,6 +361,7 @@ body searing-blood/3-to-its-controller
 body season-of-the-bold/damage
 body seasoned-cryomancer/tap-and-stun
 body selfcraft-mechan/counter-and-draw
+body serum-core-chimera/damage
 body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
@@ -929,6 +930,7 @@ choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/seed-of-hope-permanent
 choose choose-cards/sensational-spider-man-remove-stun
+choose choose-cards/serum-core-chimera-discarded
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
@@ -1413,6 +1415,7 @@ drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
 drawthen rowans-grim-search/lose-life
 drawthen seasoned-cryomancer/discard-two
+drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
 drawthen steamcore-scholar-discard
@@ -1772,6 +1775,7 @@ payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
 payunless pay-unless/lorthos-tap-and-freeze
+payunless pay-unless/magmatic-sprinter-oil
 payunless pay-unless/mana-vault-untap
 payunless pay-unless/marchesa-dealer-of-death-look
 payunless pay-unless/marooned-tap-enchanted-permanent
