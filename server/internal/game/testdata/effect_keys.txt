@@ -2054,6 +2054,7 @@ run prompt-run/fatal-grudge-draw
 run prompt-run/felothar-sacrifice
 run prompt-run/final-showdown-indestructible
 run prompt-run/fire-lord-ozai-add-red
+run prompt-run/first-responder-return
 run prompt-run/foreboding-steamboat-exile
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
@@ -2647,6 +2648,7 @@ tail finale-of-devastation/pump
 tail finneas-ace-archer/draw-on-power
 tail fireglass-mentor/choose-exiled
 tail firion-wild-rose-warrior/sacrifice-the-copy
+tail first-responder/counters
 tail fishing-gear/after-exile
 tail fishing-gear/entered
 tail flicker/return-exiled
