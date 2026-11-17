@@ -1634,6 +1634,7 @@ option option-pick/slumbering-walker-remove-a-counter
 option option-pick/sorcerous-spyglass-look
 option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
+option option-pick/steel-seraph-keyword
 option option-pick/step-between-worlds-shuffle
 option option-pick/tap-or-untap-that-permanent
 option option-pick/tasigur-the-golden-fang-opponent
@@ -2247,6 +2248,7 @@ tail anowon-the-ruin-thief/after-mill
 tail apocalypse/saprolings-per-mana-value
 tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
+tail arcane-proxy/copy-exiled
 tail archdruids-charm/bite
 tail arid-archway/surveil-if-desert-returned
 tail ark-of-hunger/play-the-milled-card
