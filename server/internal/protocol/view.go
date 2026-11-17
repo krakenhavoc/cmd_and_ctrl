@@ -13242,7 +13242,7 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		ManaAbilities: viewOfManaAbilities(c),
 		SummoningSick: game.HasSummoningSickness(c),
 		Abilities:     viewOfAbilityBadges(eff),
-		Restrictions:  eff.Restrictions.Names(),
+		Restrictions:  game.RestrictionNames(eff.Restrictions, eff.ExtraRestrictions),
 		// #4692: only a battlefield static writes it.
 		CantHaveCounters: eff.CantHaveCounters,
 		// ADR 0106 §2 (#1794): the owner chip's data, resolved here.

@@ -22,7 +22,7 @@ func init() {
 	effects.Register(effects.Spec{
 		OracleID: viewCantCrewOracle,
 		Name:     "View Cant Crew",
-		Static:   []game.StaticAbility{effects.RestrictSelf(game.CantCrew)},
+		Static:   []game.StaticAbility{effects.RestrictSelfExtra(0, game.CantCrew)},
 	})
 }
 

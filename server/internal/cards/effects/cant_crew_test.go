@@ -13,13 +13,41 @@ import (
 
 // cant_crew_test.go — #5673, CR 702.122d: "If an effect states that a
 // creature 'can't crew Vehicles,' that creature can't be tapped to pay
-// the crew cost of a Vehicle." The CantCrew restriction bit, and
-// Intercessor's Arrest, the card that prints it.
+// the crew cost of a Vehicle." The CantCrew restriction bit (the second
+// set, game.ExtraRestriction), and Intercessor's Arrest, the card that
+// prints it.
 
 const (
 	intercessorsArrestOracle = "d75357f4-d439-48ff-8fd7-52a02f07cc81"
-	intercessorsArrestBundle = game.CantAttackOrBlock | game.CantCrew | game.CantActivate
+	intercessorsArrestBundle = game.CantAttackOrBlock | game.CantActivate
 )
+
+// extraRestrictionsOf is restrictionsOf for the second set.
+func extraRestrictionsOf(t *testing.T, g *game.Game, id uuid.UUID) game.ExtraRestriction {
+	t.Helper()
+	var out game.ExtraRestriction
+	found := false
+	g.ReadSnapshot(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == id {
+				out = game.ExtraRestrictionsOn(&g.Battlefield.Cards[i])
+				found = true
+				return
+			}
+		}
+	})
+	if !found {
+		t.Fatalf("card %s is not on the battlefield", id)
+	}
+	return out
+}
+
+func assertExtraRestrictions(t *testing.T, g *game.Game, id uuid.UUID, want game.ExtraRestriction) {
+	t.Helper()
+	if got := extraRestrictionsOf(t, g, id); got != want {
+		t.Errorf("extra restrictions = %v, want %v", got.Names(), want.Names())
+	}
+}
 
 func castIntercessorsArrest(t *testing.T, g *game.Game, host uuid.UUID) uuid.UUID {
 	t.Helper()
@@ -68,7 +96,9 @@ func TestIntercessorsArrestStopsTheCreatureCrewing(t *testing.T) {
 
 	aura := castIntercessorsArrest(t, g, held)
 	assertRestrictions(t, g, held, intercessorsArrestBundle)
+	assertExtraRestrictions(t, g, held, game.CantCrew)
 	assertRestrictions(t, g, free, 0)
+	assertExtraRestrictions(t, g, free, 0)
 
 	if err := crewCostPowerVehicle(t, g, me.ID, vehicle, held); !errors.Is(err, game.ErrCantCrew) {
 		t.Fatalf("the enchanted creature crewing alone: err = %v, want ErrCantCrew", err)
@@ -98,6 +128,7 @@ func TestIntercessorsArrestStopsTheCreatureCrewing(t *testing.T) {
 		}
 	})
 	assertRestrictions(t, g, held, 0)
+	assertExtraRestrictions(t, g, held, 0)
 	if err := crewCostPowerVehicle(t, g, me.ID, vehicle, held); err != nil {
 		t.Fatalf("the creature could not crew once the Aura was gone: %v", err)
 	}
@@ -180,6 +211,7 @@ func TestIntercessorsArrestLocksAbilitiesButSparesMana(t *testing.T) {
 	})
 	castIntercessorsArrest(t, g, passage)
 	assertRestrictions(t, g, passage, intercessorsArrestBundle)
+	assertExtraRestrictions(t, g, passage, game.CantCrew)
 
 	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{C}{C}"); err != nil {
 		t.Fatal(err)
@@ -212,6 +244,7 @@ func TestIntercessorsArrestOnAVehicleStopsItBeingCrewed(t *testing.T) {
 		t.Error("the refused crew tapped the creature")
 	}
 	assertRestrictions(t, g, crewer, 0)
+	assertExtraRestrictions(t, g, crewer, 0)
 }
 
 // The bit as carried state: a turn-long "can't crew Vehicles" pinned to
@@ -226,18 +259,20 @@ func TestCantCrewRestrictionSurvivesARestore(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		ctx := &Context{Game: g}
-		if err := (RestrictUntilEOT{Target: held, Restrictions: game.CantCrew}).Apply(ctx); err != nil {
+		if err := (RestrictUntilEOT{Target: held, ExtraRestrictions: game.CantCrew}).Apply(ctx); err != nil {
 			t.Fatalf("RestrictUntilEOT: %v", err)
 		}
 	})
-	assertRestrictions(t, g, held, game.CantCrew)
+	assertRestrictions(t, g, held, 0)
+	assertExtraRestrictions(t, g, held, game.CantCrew)
 
 	restored := restoreRoundTrip(t, g, true)
-	assertRestrictions(t, restored, held, game.CantCrew)
+	assertRestrictions(t, restored, held, 0)
+	assertExtraRestrictions(t, restored, held, game.CantCrew)
 	if err := crewCostPowerVehicle(t, restored, me.ID, vehicle, held); !errors.Is(err, game.ErrCantCrew) {
 		t.Fatalf("after a restore: err = %v, want ErrCantCrew", err)
 	}
-	if got := restrictionsOf(t, restored, held).Names(); len(got) != 1 || got[0] != "cant_crew" {
+	if got := extraRestrictionsOf(t, restored, held).Names(); len(got) != 1 || got[0] != "cant_crew" {
 		t.Errorf("wire tokens = %v, want [cant_crew]", got)
 	}
 }
@@ -246,14 +281,37 @@ func TestCantCrewRestrictionSurvivesARestore(t *testing.T) {
 func TestCantCrewRestrictionLabels(t *testing.T) {
 	for _, tc := range []struct {
 		r    game.Restriction
+		x    game.ExtraRestriction
 		want string
 	}{
-		{game.CantCrew, "Can't crew Vehicles."},
-		{game.CantAttackOrBlock | game.CantCrew, "Can't attack, block, or crew Vehicles."},
-		{game.CantAttackOrBlock, "Can't attack or block."},
+		{0, game.CantCrew, "Can't crew Vehicles."},
+		{game.CantAttackOrBlock, game.CantCrew, "Can't attack, block, or crew Vehicles."},
+		{game.CantAttackOrBlock, 0, "Can't attack or block."},
+		{game.CantBeBlocked, game.CantCrew, "Can't crew Vehicles and can't be blocked."},
 	} {
-		if got := RestrictSelf(tc.r).Label; got != tc.want {
-			t.Errorf("RestrictSelf(%v).Label = %q, want %q", tc.r.Names(), got, tc.want)
+		if got := RestrictSelfExtra(tc.r, tc.x).Label; got != tc.want {
+			t.Errorf("RestrictSelfExtra(%v, %v).Label = %q, want %q", tc.r.Names(), tc.x.Names(), got, tc.want)
+		}
+	}
+	if got, want := RestrictAttachedExtra(game.CantAttackOrBlock, game.CantCrew).Label, "Attached creature can't attack, block, or crew Vehicles."; got != want {
+		t.Errorf("RestrictAttachedExtra label = %q, want %q", got, want)
+	}
+}
+
+// The first set is full (all eight bits) and stays uint8 on disk; the
+// second set's names reach the wire after the first's.
+func TestRestrictionSetsOnTheWire(t *testing.T) {
+	if game.PlayersCantPayLifeToCastOrActivate != 1<<7 {
+		t.Fatalf("PlayersCantPayLifeToCastOrActivate = %d; the first set's bits moved", game.PlayersCantPayLifeToCastOrActivate)
+	}
+	got := game.RestrictionNames(game.CantAttackOrBlock, game.CantCrew)
+	want := []string{"cant_attack", "cant_block", "cant_crew"}
+	if len(got) != len(want) {
+		t.Fatalf("RestrictionNames = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("RestrictionNames = %v, want %v", got, want)
 		}
 	}
 }

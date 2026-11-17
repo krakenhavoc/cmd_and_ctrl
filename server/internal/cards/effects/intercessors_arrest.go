@@ -11,7 +11,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 abilities."
 //
 // Faith's Fetters' lock with one more word. "Can't crew Vehicles" is
-// the CantCrew restriction (CR 702.122d): the enchanted creature can't
+// the CantCrew restriction, a bit of the second set
+// (game.ExtraRestriction; CR 702.122d): the enchanted creature can't
 // be tapped to pay a Vehicle's crew cost, so the crew validator refuses
 // it and neither the crew picker nor a bot is offered it. A saddle cost
 // and every other "tap a creature you control" cost still take it; the
@@ -34,7 +35,7 @@ func init() {
 		Targets:      EnchantPermanent(),
 		Purpose:      game.Purpose{Aura: game.AuraHarm},
 		Static: []game.StaticAbility{
-			RestrictAttached(game.CantAttackOrBlock | game.CantCrew | game.CantActivate),
+			RestrictAttachedExtra(game.CantAttackOrBlock|game.CantActivate, game.CantCrew),
 		},
 	})
 }

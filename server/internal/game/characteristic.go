@@ -251,6 +251,11 @@ type Characteristic struct {
 	// restrictions.go has the taxonomy.
 	Restrictions Restriction
 
+	// ExtraRestrictions is the second restriction set (CantCrew), for
+	// the bits that no longer fit in Restrictions; written and read
+	// the same way. restrictions.go.
+	ExtraRestrictions ExtraRestriction `json:",omitempty"`
+
 	// ManaAbilityLifeTax is the life each mana ability of this
 	// permanent costs on top of its own cost: Thran Portal's "Mana
 	// abilities of this land cost an additional 1 life to activate"

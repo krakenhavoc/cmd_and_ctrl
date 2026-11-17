@@ -1665,6 +1665,7 @@ extraTurns[].effects[].mods[].copy[].Toughness	number:int
 extraTurns[].effects[].mods[].copy[].TypeLine	string
 extraTurns[].effects[].mods[].copy[].VariableToughness	bool
 extraTurns[].effects[].mods[].damageSince	number:int
+extraTurns[].effects[].mods[].extraRestrictions	number:uint8
 extraTurns[].effects[].mods[].extraTurn	number:int
 extraTurns[].effects[].mods[].grants	array
 extraTurns[].effects[].mods[].grants[]	string
@@ -2299,6 +2300,7 @@ followUpParks[].then.records[].mods[].copy[].Toughness	number:int
 followUpParks[].then.records[].mods[].copy[].TypeLine	string
 followUpParks[].then.records[].mods[].copy[].VariableToughness	bool
 followUpParks[].then.records[].mods[].damageSince	number:int
+followUpParks[].then.records[].mods[].extraRestrictions	number:uint8
 followUpParks[].then.records[].mods[].extraTurn	number:int
 followUpParks[].then.records[].mods[].grants	array
 followUpParks[].then.records[].mods[].grants[]	string
@@ -2963,6 +2965,7 @@ frozenEntries[].event.counterTail.then.records[].mods[].copy[].Toughness	number:
 frozenEntries[].event.counterTail.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.counterTail.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.counterTail.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.counterTail.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.counterTail.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.counterTail.then.records[].mods[].grants	array
 frozenEntries[].event.counterTail.then.records[].mods[].grants[]	string
@@ -3605,6 +3608,7 @@ frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].Toughness	num
 frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.damageTail.each.each.records[].mods[].damageSince	number:int
+frozenEntries[].event.damageTail.each.each.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.damageTail.each.each.records[].mods[].extraTurn	number:int
 frozenEntries[].event.damageTail.each.each.records[].mods[].grants	array
 frozenEntries[].event.damageTail.each.each.records[].mods[].grants[]	string
@@ -4238,6 +4242,7 @@ frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].Toughness	num
 frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.damageTail.each.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.damageTail.each.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.damageTail.each.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.damageTail.each.then.records[].mods[].grants	array
 frozenEntries[].event.damageTail.each.then.records[].mods[].grants[]	string
@@ -4543,6 +4548,7 @@ frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[]	object
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].SourceName	string
+frozenEntries[].event.damageTail.sourceLki.ExtraRestrictions	number:uint8
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities	array
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -5054,6 +5060,7 @@ frozenEntries[].event.damageTail.then.records[].mods[].copy[].Toughness	number:i
 frozenEntries[].event.damageTail.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.damageTail.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.damageTail.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.damageTail.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.damageTail.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.damageTail.then.records[].mods[].grants	array
 frozenEntries[].event.damageTail.then.records[].mods[].grants[]	string
@@ -5810,6 +5817,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].grants	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].grants[]	string
@@ -6519,6 +6527,7 @@ frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].Toughness	num
 frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.entryTail.batch.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.entryTail.batch.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.entryTail.batch.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.entryTail.batch.then.records[].mods[].grants	array
 frozenEntries[].event.entryTail.batch.then.records[].mods[].grants[]	string
@@ -7152,6 +7161,7 @@ frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].Toughness	number:i
 frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.entryTail.keyed.records[].mods[].damageSince	number:int
+frozenEntries[].event.entryTail.keyed.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.entryTail.keyed.records[].mods[].extraTurn	number:int
 frozenEntries[].event.entryTail.keyed.records[].mods[].grants	array
 frozenEntries[].event.entryTail.keyed.records[].mods[].grants[]	string
@@ -7818,6 +7828,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].Tou
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].damageSince	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].extraTurn	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].grants	array
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].grants[]	string
@@ -8471,6 +8482,7 @@ frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].Toughness	nu
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.entryTail.tokens.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].grants	array
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].grants[]	string
@@ -9549,6 +9561,7 @@ frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].Toughness	n
 frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.keywordActionTail.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.keywordActionTail.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.keywordActionTail.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.keywordActionTail.then.records[].mods[].grants	array
 frozenEntries[].event.keywordActionTail.then.records[].mods[].grants[]	string
@@ -10205,6 +10218,7 @@ frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].Toughness	numbe
 frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.lifeTail.each.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.lifeTail.each.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.lifeTail.each.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.lifeTail.each.then.records[].mods[].grants	array
 frozenEntries[].event.lifeTail.each.then.records[].mods[].grants[]	string
@@ -10841,6 +10855,7 @@ frozenEntries[].event.lifeTail.then.records[].mods[].copy[].Toughness	number:int
 frozenEntries[].event.lifeTail.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.lifeTail.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.lifeTail.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.lifeTail.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.lifeTail.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.lifeTail.then.records[].mods[].grants	array
 frozenEntries[].event.lifeTail.then.records[].mods[].grants[]	string
@@ -12323,6 +12338,7 @@ frozenEntries[].event.millTail.run.then.records[].mods[].copy[].Toughness	number
 frozenEntries[].event.millTail.run.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.millTail.run.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.millTail.run.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.millTail.run.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.millTail.run.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.millTail.run.then.records[].mods[].grants	array
 frozenEntries[].event.millTail.run.then.records[].mods[].grants[]	string
@@ -12954,6 +12970,7 @@ frozenEntries[].event.millTail.then.records[].mods[].copy[].Toughness	number:int
 frozenEntries[].event.millTail.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.millTail.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.millTail.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.millTail.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.millTail.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.millTail.then.records[].mods[].grants	array
 frozenEntries[].event.millTail.then.records[].mods[].grants[]	string
@@ -13278,6 +13295,7 @@ frozenEntries[].event.sourceLki.DefenderWaivers[]	object
 frozenEntries[].event.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 frozenEntries[].event.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.DefenderWaivers[].SourceName	string
+frozenEntries[].event.sourceLki.ExtraRestrictions	number:uint8
 frozenEntries[].event.sourceLki.GrantedAbilities	array
 frozenEntries[].event.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -14584,6 +14602,7 @@ frozenEntries[].event.tokenTail.then.records[].mods[].copy[].Toughness	number:in
 frozenEntries[].event.tokenTail.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.tokenTail.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.tokenTail.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.tokenTail.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.tokenTail.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.tokenTail.then.records[].mods[].grants	array
 frozenEntries[].event.tokenTail.then.records[].mods[].grants[]	string
@@ -16515,6 +16534,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Toug
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].grants	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].grants[]	string
@@ -17181,6 +17201,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].damageSince	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].extraTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].grants	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].grants[]	string
@@ -17812,6 +17833,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].Toughness
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].grants	array
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].grants[]	string
@@ -18463,6 +18485,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].Toughne
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].grants	array
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].grants[]	string
@@ -19183,6 +19206,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Toughn
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].TypeLine	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].VariableToughness	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].damageSince	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].extraRestrictions	number:uint8
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].extraTurn	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].grants	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].grants[]	string
@@ -19917,6 +19941,7 @@ heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[]	object
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].Source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].SourceName	string
+heldCombatDamage.answers[].frame.SourceLKI.ExtraRestrictions	number:uint8
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities	array
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[]	object
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -20106,6 +20131,7 @@ lastKnownBattlefield{}.DefenderWaivers[]	object
 lastKnownBattlefield{}.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 lastKnownBattlefield{}.DefenderWaivers[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.DefenderWaivers[].SourceName	string
+lastKnownBattlefield{}.ExtraRestrictions	number:uint8
 lastKnownBattlefield{}.GrantedAbilities	array
 lastKnownBattlefield{}.GrantedAbilities[]	object
 lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -20299,6 +20325,7 @@ lastKnownPermanents{}[].characteristic.DefenderWaivers[]	object
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].SourceName	string
+lastKnownPermanents{}[].characteristic.ExtraRestrictions	number:uint8
 lastKnownPermanents{}[].characteristic.GrantedAbilities	array
 lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -23092,6 +23119,7 @@ movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].Toughness	number:
 movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].counterTail.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].counterTail.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].counterTail.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].counterTail.then.records[].mods[].grants	array
 movesAwaitingTokens[].counterTail.then.records[].mods[].grants[]	string
@@ -23734,6 +23762,7 @@ movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].Toughness	num
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].damageTail.each.each.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].grants	array
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].grants[]	string
@@ -24367,6 +24396,7 @@ movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].Toughness	num
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].damageTail.each.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].grants	array
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].grants[]	string
@@ -24672,6 +24702,7 @@ movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[]	object
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].SourceName	string
+movesAwaitingTokens[].damageTail.sourceLki.ExtraRestrictions	number:uint8
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities	array
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -25183,6 +25214,7 @@ movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].Toughness	number:i
 movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].damageTail.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].damageTail.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].damageTail.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].damageTail.then.records[].mods[].grants	array
 movesAwaitingTokens[].damageTail.then.records[].mods[].grants[]	string
@@ -25939,6 +25971,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].grants	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].grants[]	string
@@ -26648,6 +26681,7 @@ movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].Toughness	num
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].entryTail.batch.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].grants	array
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].grants[]	string
@@ -27281,6 +27315,7 @@ movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].Toughness	number:i
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].entryTail.keyed.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].grants	array
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].grants[]	string
@@ -27947,6 +27982,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].Tou
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].grants	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].grants[]	string
@@ -28600,6 +28636,7 @@ movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].Toughness	nu
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].grants	array
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].grants[]	string
@@ -29678,6 +29715,7 @@ movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].Toughness	n
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].keywordActionTail.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].grants	array
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].grants[]	string
@@ -30334,6 +30372,7 @@ movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].Toughness	numbe
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].lifeTail.each.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].grants	array
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].grants[]	string
@@ -30970,6 +31009,7 @@ movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].Toughness	number:int
 movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].lifeTail.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].lifeTail.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].lifeTail.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].lifeTail.then.records[].mods[].grants	array
 movesAwaitingTokens[].lifeTail.then.records[].mods[].grants[]	string
@@ -32452,6 +32492,7 @@ movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].Toughness	number
 movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].millTail.run.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].millTail.run.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].millTail.run.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].millTail.run.then.records[].mods[].grants	array
 movesAwaitingTokens[].millTail.run.then.records[].mods[].grants[]	string
@@ -33083,6 +33124,7 @@ movesAwaitingTokens[].millTail.then.records[].mods[].copy[].Toughness	number:int
 movesAwaitingTokens[].millTail.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].millTail.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].millTail.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].millTail.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].millTail.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].millTail.then.records[].mods[].grants	array
 movesAwaitingTokens[].millTail.then.records[].mods[].grants[]	string
@@ -33407,6 +33449,7 @@ movesAwaitingTokens[].sourceLki.DefenderWaivers[]	object
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].SourceName	string
+movesAwaitingTokens[].sourceLki.ExtraRestrictions	number:uint8
 movesAwaitingTokens[].sourceLki.GrantedAbilities	array
 movesAwaitingTokens[].sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -34713,6 +34756,7 @@ movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].Toughness	number:in
 movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].tokenTail.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].tokenTail.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].tokenTail.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].tokenTail.then.records[].mods[].grants	array
 movesAwaitingTokens[].tokenTail.then.records[].mods[].grants[]	string
@@ -36644,6 +36688,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Toug
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].grants	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].grants[]	string
@@ -37310,6 +37355,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].grants	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].grants[]	string
@@ -37941,6 +37987,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].Toughness
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].grants	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].grants[]	string
@@ -38592,6 +38639,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].Toughne
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].grants	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].grants[]	string
@@ -39312,6 +39360,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].Toughn
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].TypeLine	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].VariableToughness	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].damageSince	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].extraRestrictions	number:uint8
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].extraTurn	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].grants	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].grants[]	string
@@ -42721,6 +42770,7 @@ pendingChoices[].attackSplit.tail.records[].mods[].copy[].Toughness	number:int
 pendingChoices[].attackSplit.tail.records[].mods[].copy[].TypeLine	string
 pendingChoices[].attackSplit.tail.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].attackSplit.tail.records[].mods[].damageSince	number:int
+pendingChoices[].attackSplit.tail.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].attackSplit.tail.records[].mods[].extraTurn	number:int
 pendingChoices[].attackSplit.tail.records[].mods[].grants	array
 pendingChoices[].attackSplit.tail.records[].mods[].grants[]	string
@@ -44309,6 +44359,7 @@ pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[]	object
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].SourceName	string
+pendingChoices[].damageAssignment.SourceLKI.ExtraRestrictions	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -44844,6 +44895,7 @@ pendingChoices[].diceRoll.then.records[].mods[].copy[].Toughness	number:int
 pendingChoices[].diceRoll.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].diceRoll.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].diceRoll.then.records[].mods[].damageSince	number:int
+pendingChoices[].diceRoll.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].diceRoll.then.records[].mods[].extraTurn	number:int
 pendingChoices[].diceRoll.then.records[].mods[].grants	array
 pendingChoices[].diceRoll.then.records[].mods[].grants[]	string
@@ -45184,6 +45236,7 @@ pendingChoices[].divideShield.staged[].lki.DefenderWaivers[]	object
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].SourceName	string
+pendingChoices[].divideShield.staged[].lki.ExtraRestrictions	number:uint8
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities	array
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -45362,6 +45415,7 @@ pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[]	object
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].SourceName	string
+pendingChoices[].divideShield.staged[].sourceLki.ExtraRestrictions	number:uint8
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities	array
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -45878,6 +45932,7 @@ pendingChoices[].divideShield.walk.each.records[].mods[].copy[].Toughness	number
 pendingChoices[].divideShield.walk.each.records[].mods[].copy[].TypeLine	string
 pendingChoices[].divideShield.walk.each.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].divideShield.walk.each.records[].mods[].damageSince	number:int
+pendingChoices[].divideShield.walk.each.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].divideShield.walk.each.records[].mods[].extraTurn	number:int
 pendingChoices[].divideShield.walk.each.records[].mods[].grants	array
 pendingChoices[].divideShield.walk.each.records[].mods[].grants[]	string
@@ -46511,6 +46566,7 @@ pendingChoices[].divideShield.walk.then.records[].mods[].copy[].Toughness	number
 pendingChoices[].divideShield.walk.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].divideShield.walk.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].divideShield.walk.then.records[].mods[].damageSince	number:int
+pendingChoices[].divideShield.walk.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].divideShield.walk.then.records[].mods[].extraTurn	number:int
 pendingChoices[].divideShield.walk.then.records[].mods[].grants	array
 pendingChoices[].divideShield.walk.then.records[].mods[].grants[]	string
@@ -47150,6 +47206,7 @@ pendingChoices[].libraryOrder.then.records[].mods[].copy[].Toughness	number:int
 pendingChoices[].libraryOrder.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].libraryOrder.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].libraryOrder.then.records[].mods[].damageSince	number:int
+pendingChoices[].libraryOrder.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].libraryOrder.then.records[].mods[].extraTurn	number:int
 pendingChoices[].libraryOrder.then.records[].mods[].grants	array
 pendingChoices[].libraryOrder.then.records[].mods[].grants[]	string
@@ -47842,6 +47899,7 @@ pendingChoices[].nameThen.records[].mods[].copy[].Toughness	number:int
 pendingChoices[].nameThen.records[].mods[].copy[].TypeLine	string
 pendingChoices[].nameThen.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].nameThen.records[].mods[].damageSince	number:int
+pendingChoices[].nameThen.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].nameThen.records[].mods[].extraTurn	number:int
 pendingChoices[].nameThen.records[].mods[].grants	array
 pendingChoices[].nameThen.records[].mods[].grants[]	string
@@ -48962,6 +49020,7 @@ pendingChoices[].pickTail.records[].mods[].copy[].Toughness	number:int
 pendingChoices[].pickTail.records[].mods[].copy[].TypeLine	string
 pendingChoices[].pickTail.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].pickTail.records[].mods[].damageSince	number:int
+pendingChoices[].pickTail.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].pickTail.records[].mods[].extraTurn	number:int
 pendingChoices[].pickTail.records[].mods[].grants	array
 pendingChoices[].pickTail.records[].mods[].grants[]	string
@@ -49640,6 +49699,7 @@ pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].grants[]	string
@@ -50282,6 +50342,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].c
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].grants[]	string
@@ -50915,6 +50976,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].c
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].grants[]	string
@@ -51220,6 +51282,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[]	
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].SourceName	string
+pendingChoices[].replacementResume.event.damageTail.sourceLki.ExtraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -51731,6 +51794,7 @@ pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[]
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].grants[]	string
@@ -52487,6 +52551,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.recor
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].grants[]	string
@@ -53196,6 +53261,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].c
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].grants[]	string
@@ -53829,6 +53895,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[]
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].grants[]	string
@@ -54495,6 +54562,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].grants[]	string
@@ -55148,6 +55216,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].grants[]	string
@@ -56226,6 +56295,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[]
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].grants[]	string
@@ -56882,6 +56952,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].cop
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].grants[]	string
@@ -57518,6 +57589,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].T
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].grants[]	string
@@ -59000,6 +59072,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].grants[]	string
@@ -59631,6 +59704,7 @@ pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].T
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.millTail.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].grants[]	string
@@ -59955,6 +60029,7 @@ pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[]	object
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].SourceName	string
+pendingChoices[].replacementResume.event.sourceLki.ExtraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities	array
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[]	object
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -61261,6 +61336,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].grants[]	string
@@ -63192,6 +63268,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[]
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].grants[]	string
@@ -63858,6 +63935,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.rec
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].grants[]	string
@@ -64489,6 +64567,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].grants[]	string
@@ -65140,6 +65219,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mo
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].grants[]	string
@@ -65860,6 +65940,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].m
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].TypeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].damageSince	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].extraTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].grants	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].grants[]	string
@@ -66944,6 +67025,7 @@ pendingChoices[].scryThen.records[].mods[].copy[].Toughness	number:int
 pendingChoices[].scryThen.records[].mods[].copy[].TypeLine	string
 pendingChoices[].scryThen.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].scryThen.records[].mods[].damageSince	number:int
+pendingChoices[].scryThen.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].scryThen.records[].mods[].extraTurn	number:int
 pendingChoices[].scryThen.records[].mods[].grants	array
 pendingChoices[].scryThen.records[].mods[].grants[]	string
@@ -67623,6 +67705,7 @@ pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].Toughness	nu
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].TypeLine	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].VariableToughness	bool
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].damageSince	number:int
+pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].extraRestrictions	number:uint8
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].extraTurn	number:int
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].grants	array
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].grants[]	string
@@ -68182,6 +68265,7 @@ pendingChoices[].targetWalk.frame.lki.DefenderWaivers[]	object
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].SourceName	string
+pendingChoices[].targetWalk.frame.lki.ExtraRestrictions	number:uint8
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities	array
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[]	object
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -68965,6 +69049,7 @@ pendingChoices[].triggerFrame.lki.DefenderWaivers[]	object
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].SourceName	string
+pendingChoices[].triggerFrame.lki.ExtraRestrictions	number:uint8
 pendingChoices[].triggerFrame.lki.GrantedAbilities	array
 pendingChoices[].triggerFrame.lki.GrantedAbilities[]	object
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -70046,6 +70131,7 @@ phaseEffects[].effect.mods[].copy[].Toughness	number:int
 phaseEffects[].effect.mods[].copy[].TypeLine	string
 phaseEffects[].effect.mods[].copy[].VariableToughness	bool
 phaseEffects[].effect.mods[].damageSince	number:int
+phaseEffects[].effect.mods[].extraRestrictions	number:uint8
 phaseEffects[].effect.mods[].extraTurn	number:int
 phaseEffects[].effect.mods[].grants	array
 phaseEffects[].effect.mods[].grants[]	string
@@ -72593,6 +72679,7 @@ scopedEffects[].mods[].copy[].Toughness	number:int
 scopedEffects[].mods[].copy[].TypeLine	string
 scopedEffects[].mods[].copy[].VariableToughness	bool
 scopedEffects[].mods[].damageSince	number:int
+scopedEffects[].mods[].extraRestrictions	number:uint8
 scopedEffects[].mods[].extraTurn	number:int
 scopedEffects[].mods[].grants	array
 scopedEffects[].mods[].grants[]	string
