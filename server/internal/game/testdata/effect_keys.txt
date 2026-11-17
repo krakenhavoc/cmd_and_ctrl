@@ -471,6 +471,7 @@ choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aetherworks-marvel-cast
 choose choose-cards/agency-outfitter-search
+choose choose-cards/aggressive-sabotage-burn
 choose choose-cards/ainok-wayfarer-land-or-counter
 choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/alpharael-discard-two-unless-artifact
