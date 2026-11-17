@@ -407,6 +407,7 @@ body thunder-of-unity/drain
 body time-to-feed/gain-three-life
 body tip-the-scales/minus
 body tolarian-kraken/tap-or-untap
+body tranquil-frillback/modes
 body transformers/convert-this
 body treasure/create-tapped
 body ty-lee-artful-acrobat/cant-block
@@ -467,6 +468,7 @@ choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/arm-mounted-anchor-discard-two-unless-pirate
 choose choose-cards/armored-kincaller-reveal
 choose choose-cards/armored-skyhunter-attach
+choose choose-cards/arni-metalbrow-put
 choose choose-cards/as-enters-permanent
 choose choose-cards/ashiok-wicked-manipulator-take
 choose choose-cards/assimilation-assessor-assimilate
@@ -670,6 +672,7 @@ choose choose-cards/keldon-flamesage
 choose choose-cards/kellan-the-kid-if-you-dont
 choose choose-cards/king-narfis-betrayal-exile
 choose choose-cards/kinscaer-sentry-put
+choose choose-cards/kiora-sovereign-of-the-deep-cast
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/lady-octopus-cast
@@ -764,6 +767,7 @@ choose choose-cards/manhole-missile-bottom
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
 choose choose-cards/marvo-deep-operative-cast
 choose choose-cards/masterminds-acquisition-take
+choose choose-cards/mat-distribute-counters-among
 choose choose-cards/meanders-guide-tap
 choose choose-cards/memories-returning-bottom
 choose choose-cards/memories-returning-take
@@ -821,6 +825,7 @@ choose choose-cards/mog-moogle-warrior-discarded
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
+choose choose-cards/nahiris-resolve-exile
 choose choose-cards/nantuko-cultivator-discard
 choose choose-cards/narset-of-the-ancient-way-discarded
 choose choose-cards/narset-transcendent-take
@@ -976,6 +981,7 @@ choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/thornplate-intimidator-punisher-discarded
 choose choose-cards/thousand-moons-smithy-tap-five
+choose choose-cards/tidal-terror-tap-two
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/toph-hardheaded-teacher-return
@@ -1015,6 +1021,8 @@ choose choose-cards/ward-sacrifice-two-permanents
 choose choose-cards/web-of-inertia-exile-or-restrict
 choose choose-cards/west-coast-expansion-free-cast
 choose choose-cards/wick-the-whorled-mind-snail
+choose choose-cards/wicked-slumber-first-stun
+choose choose-cards/wicked-slumber-second-stun
 choose choose-cards/winota-joiner-of-forces-human
 choose choose-cards/winter-cynical-opportunist-exile
 choose choose-cards/winter-cynical-opportunist-put
@@ -1165,6 +1173,7 @@ confirm confirm/commander-spock-land
 confirm confirm/copy-this-spell
 confirm confirm/cori-steel-cutter-attach
 confirm confirm/corruption-of-towashi-draw
+confirm confirm/cosmic-rebirth-battlefield-or-hand
 confirm confirm/crawling-barrens-animate
 confirm confirm/create-tokens
 confirm confirm/dance-with-calamity-exile-top
@@ -1407,10 +1416,12 @@ number number/glissa-sunslayer-remove-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
+number number/mat-distribute-counters-share
 number number/necrodominance-draw-that-many
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plunge-into-darkness-look-at-that-many
 number number/rampaging-aetherhood-plus-one-counters-on-this
+number number/render-inert-remove-counters
 number number/resourceful-defense-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
@@ -1431,6 +1442,7 @@ option option-pick/apocalypse-demon-sacrifice-or-tap
 option option-pick/arachne-psionic-weaver-look
 option option-pick/aragorn-company-leader-counter
 option option-pick/archfiend-of-spite-life-or-sacrifice
+option option-pick/arni-metalbrow-attacks
 option option-pick/attach-source-to-player
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/blank-blank-rocketship-letter
@@ -1609,6 +1621,7 @@ option sticker/choose-sticker
 option sticker/name-position
 option venture/dungeon
 option venture/room
+payunless arni-metalbrow/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/ant-man-colony-commander-counter
@@ -1777,6 +1790,7 @@ payunless pay-unless/the-thing-double-counters
 payunless pay-unless/thousand-moons-crackshot-tap
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
+payunless pay-unless/tranquil-frillback-pay-g
 payunless pay-unless/trudge-garden-fungus-beast
 payunless pay-unless/ty-lee-artful-acrobat
 payunless pay-unless/ultimecia-exile
@@ -1871,6 +1885,7 @@ run prompt-run/bound-sacrificed
 run prompt-run/breena-the-demagogue-counters
 run prompt-run/bristlebud-farmer-sacrifice
 run prompt-run/brudiclad-tokens-become-copies
+run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
@@ -2156,6 +2171,7 @@ tail archdruids-charm/bite
 tail arid-archway/surveil-if-desert-returned
 tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
+tail arni-metalbrow/entered
 tail artistic-process/token-haste
 tail ascent-of-the-worthy/angel-warrior
 tail ashling-the-limitless/haste-and-pay-or-sacrifice
@@ -2682,7 +2698,11 @@ tail msh-a9/ultron-robot-villain
 tail mutinous-massacre/steal-everything
 tail myriad/exile-tokens-at-end-of-combat
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
+tail nahiri-forged-in-fury/free-equipment
+tail nahiris-resolve/schedule-return-at-next-upkeep
 tail nantuko-cultivator/discarded
+tail narset-enlightened-exile/copy-exiled
+tail nashi-moons-legacy/copy-exiled
 tail necromantic-selection/black-zombie-then-exile
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
@@ -2937,6 +2957,7 @@ tail take/each-moved
 tail take/moved
 tail tashas-hideous-laughter/exile-step
 tail taster-of-wares/grant-cast-of-exiled-spell
+tail tazri-stalwart-survivor/after-mill
 tail tchaka/after-mill
 tail tempestra-dame-of-games/haste-and-sacrifice-copy
 tail tempt-with-discovery/caster-search
@@ -2952,6 +2973,7 @@ tail the-end/after-exile
 tail the-end/draw-for-hand
 tail the-gitrog-ravenous-ride/sacrificed
 tail the-invincible-iron-man/attach-equipment
+tail the-kenriths-royal-funeral/draw-and-lose
 tail the-master-transcendent/green-mutant
 tail the-ring/tempts-you-next
 tail the-rise-of-sozin/named
@@ -3219,6 +3241,7 @@ tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
 tail unlucky-cabbage-merchant/after-search
+tail urborg-scavengers/counter
 tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail vaan-street-thief/exiled

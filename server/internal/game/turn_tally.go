@@ -660,6 +660,15 @@ type TurnTally struct {
 	// TimesCountersPutThisTurn. Additive within the snapshot schema:
 	// omitted when empty, flushed with the rest of the tally.
 	CountersPut map[string]int `json:"countersPut,omitempty"`
+	// PlusOneCountersPut is CountersPut for +1/+1 counters alone
+	// (Axgard Artisan's and Botanical Brawler's "for the first time each
+	// turn" / "if it's the first time +1/+1 counters have been put on that
+	// permanent this turn"): one per EventCounterPlaced that raised the
+	// +1/+1 count, keyed by ObjectTallyKey(id, epoch, "plusOneCounters").
+	// Read through TimesPlusOneCountersPutThisTurn. Additive within the
+	// snapshot schema: omitted when empty, flushed with the rest of the
+	// tally.
+	PlusOneCountersPut map[string]int `json:"plusOneCountersPut,omitempty"`
 	// Exerts is every exert this turn, in order (ADR 0130 §1, CR
 	// 701.43): one record per exert, so a creature exerted in two
 	// combats has two. Written only by exertLocked; read through
@@ -823,6 +832,29 @@ func (g *Game) noteCountersPutLocked(cardID uuid.UUID) {
 	maps.Copy(next, g.TurnTally.CountersPut)
 	next[key]++
 	g.TurnTally.CountersPut = next
+}
+
+// notePlusOneCountersPutLocked counts one placement of +1/+1 counters on
+// the object `cardID` names. Caller must hold g.mu.
+func (g *Game) notePlusOneCountersPutLocked(cardID uuid.UUID) {
+	key := g.objectTallyKeyLocked(cardID, "plusOneCounters")
+	next := make(map[string]int, len(g.TurnTally.PlusOneCountersPut)+1)
+	maps.Copy(next, g.TurnTally.PlusOneCountersPut)
+	next[key]++
+	g.TurnTally.PlusOneCountersPut = next
+}
+
+// TimesPlusOneCountersPutThisTurn is how many times +1/+1 counters have
+// been put on the OBJECT `cardID` names this turn: "the first time +1/+1
+// counters have been put on it this turn" is this reading 1 as the
+// trigger fires (the tally listener runs ahead of the trigger harvester).
+//
+// Caller must hold g.mu.
+func (g *Game) TimesPlusOneCountersPutThisTurn(cardID uuid.UUID) int {
+	if cardID == uuid.Nil || len(g.TurnTally.PlusOneCountersPut) == 0 {
+		return 0
+	}
+	return g.TurnTally.PlusOneCountersPut[g.objectTallyKeyLocked(cardID, "plusOneCounters")]
 }
 
 // TimesCountersPutThisTurn is how many times counters have been put on
@@ -2034,6 +2066,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.ReplacementsApplied = copyStringIntMap(t.ReplacementsApplied)
 	out.BecameTapped = copyStringIntMap(t.BecameTapped)
 	out.CountersPut = copyStringIntMap(t.CountersPut)
+	out.PlusOneCountersPut = copyStringIntMap(t.PlusOneCountersPut)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
 	}
@@ -2187,6 +2220,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 	case EventCounterPlaced:
 		if ev.Target != uuid.Nil && ev.Amount > g.counterCountBeforeLocked(ev) {
 			g.noteCountersPutLocked(ev.Target)
+			if ev.Label == CounterPlusOne {
+				g.notePlusOneCountersPutLocked(ev.Target)
+			}
 		}
 	case EventTapCard:
 		// #4576: a permanent became tapped. Every EventTapCard emitter
