@@ -88,6 +88,13 @@ type PlayerTurnTally struct {
 	// Change of Fortune's "for each card you've discarded this
 	// turn").
 	CardsDiscarded int `json:"cardsDiscarded,omitempty"`
+	// CardsPlayedFromExile counts the cards this player played from exile
+	// this turn: spells cast from exile (the cast event's old zone) and
+	// lands played from exile (CR 305.1, the play flag on the land's
+	// own entry). Visions of Phyrexia's "if you didn't play a card from
+	// exile this turn" (#5482). It only rises within a turn. Additive
+	// within the snapshot version.
+	CardsPlayedFromExile int `json:"cardsPlayedFromExile,omitempty"`
 	// EquipActivations counts the equip abilities (CR 702.6) this player
 	// activated this turn, written at the announce whether or not the
 	// ability resolves: Kíli the Resourceful's "the first equip ability
@@ -2191,6 +2198,11 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// hand or a library, whatever moved it. A routed move emits one of
 		// EventZoneMove, EventMill or EventDiscardCard, never two.
 		g.noteHandOrLibraryToGraveyardLocked(ev)
+		// #5482: a land played from exile is a card played from exile
+		// (the play flag is a land drop's, never a put, CR 305.1).
+		if ev.Kind == EventZoneMove && ev.Played && ev.NewZone == ZoneBattlefield && ev.OldZone == ZoneExile {
+			g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsPlayedFromExile++ })
+		}
 	case EventTokenCreated:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.TokensCreated++ })
 	case EventSacrifice:
@@ -2299,6 +2311,10 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// an Actor.
 		if ev.Kind == EventCast && ev.CardID != uuid.Nil {
 			g.TurnTally.Casts = append(g.TurnTally.Casts, ev.CardID)
+		}
+		// #5482: a spell cast from exile is a card played from exile.
+		if ev.Kind == EventCast && ev.OldZone == ZoneExile {
+			g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsPlayedFromExile++ })
 		}
 		// #628: the OTHER reason these two share an arm, and until
 		// #1238 the only one — they are decision events for the CR 732
