@@ -128,7 +128,7 @@ func TestS82OneB18GethReanimatesAtSorcerySpeedAndExilesTheCreatureWhenItLeaves(t
 	geth := pushCatalogPermanent(g, me.ID, "Geth, Thane of Contracts", "Legendary Creature — Phyrexian Zombie", s82OneB18GethOracle, false)
 	dead := pushGraveyardPermanent(me, "Fallen Bear", "Creature — Bear", "{1}{G}")
 	advanceToMain(t, g)
-	floatMana(t, g, me, "{1}{B}{B}")
+	floatMana(t, g, me, "{C}{B}{B}")
 	if err := g.ActivateCatalogAbility(me.ID, geth, 0, game.ActivateAbilityParams{Targets: cardRefs(dead), Strict: true}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestS82OneB18GethRefusesToActivateOutsideAMainPhase(t *testing.T) {
 	geth := pushCatalogPermanent(g, me.ID, "Geth, Thane of Contracts", "Legendary Creature — Phyrexian Zombie", s82OneB18GethOracle, false)
 	dead := pushGraveyardPermanent(me, "Fallen Bear", "Creature — Bear", "{1}{G}")
 	advanceTo(t, g, game.StepBeginCombat)
-	floatMana(t, g, me, "{1}{B}{B}")
+	floatMana(t, g, me, "{C}{B}{B}")
 	if err := g.ActivateCatalogAbility(me.ID, geth, 0, game.ActivateAbilityParams{Targets: cardRefs(dead), Strict: true}); err == nil {
 		t.Error("activated outside a main phase")
 	}

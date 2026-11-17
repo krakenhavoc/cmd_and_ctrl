@@ -29,7 +29,6 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{1}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains \"If this creature would leave the battlefield, exile it instead of putting it anywhere else.\" Activate only as a sorcery.",
-			Purpose:      game.Purpose{Answers: game.AnswerValue},
 			Cost:         Plus(ManaCost("{1}{B}{B}"), TapCost()),
 			Targets:      targetCreatureInYourGraveyard(),
 			SorcerySpeed: true,

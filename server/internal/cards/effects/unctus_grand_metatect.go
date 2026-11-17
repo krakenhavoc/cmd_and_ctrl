@@ -61,7 +61,6 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{U/P}: Until end of turn, target creature you control becomes a blue artifact in addition to its other colors and types. Activate only as a sorcery.",
-			Purpose:      game.Purpose{Answers: game.AnswerValue},
 			Cost:         ManaCost("{U/P}"),
 			Targets:      TargetCreature("target creature you control", YouControl()),
 			SorcerySpeed: true,

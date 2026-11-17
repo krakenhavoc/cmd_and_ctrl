@@ -34,7 +34,7 @@ func TestS82OneB18MonumentTutorsABasicSphereOrLocusLand(t *testing.T) {
 		searchTestLand("Mountain Gate", "Land — Gate"),
 		game.Card{Name: "Bear", TypeLine: "Creature — Bear"})
 	advanceToMain(t, g)
-	floatMana(t, g, me, "{3}")
+	floatMana(t, g, me, "{C}{C}{C}")
 	if err := g.ActivateCatalogAbility(me.ID, mon, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestS82OneB18MonumentBecomesAnIndestructibleToxicNineNineOnlyWithNineLandNa
 		b12Permanent(g, me.ID, l.name, l.tl)
 	}
 	advanceToMain(t, g)
-	floatMana(t, g, me, "{3}")
+	floatMana(t, g, me, "{C}{C}{C}")
 	if err := g.ActivateCatalogAbility(me.ID, mon, 1, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Fatal("activated with only eight differently named lands")
 	}
@@ -106,7 +106,7 @@ func TestS82OneB18MonumentBecomesAnIndestructibleToxicNineNineOnlyWithNineLandNa
 		t.Errorf("lacks toxic 9: %v", c.Effective().Abilities)
 	}
 	// It lost its abilities (the tutor is gone) and the animation is permanent.
-	floatMana(t, g, me, "{3}")
+	floatMana(t, g, me, "{C}{C}{C}")
 	if err := g.ActivateCatalogAbility(me.ID, mon, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Error("the Monument still has its tutor ability")
 	}
@@ -140,7 +140,8 @@ func TestS82OneB18KethekSacrificesForANonlegendaryCreatureWithLesserManaValue(t 
 	spell := s82OneB18LibraryCard(me, "A Spell", "Instant", "{G}")
 
 	advanceTo(t, g, game.StepEnd)
-	answerChooseCards(t, g, me.ID, fodder)
+	passPriorityAroundTable(t, g)
+	answerOwnPermanents(t, g, me.ID, fodder)
 	passPriorityAroundTable(t, g)
 
 	if onBattlefield(g, fodder) {
@@ -170,7 +171,8 @@ func TestS82OneB18KethekDoesNothingIfYouDeclineTheSacrifice(t *testing.T) {
 	fodder := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Fodder", TypeLine: "Creature — Bear", ManaCost: "{2}{G}", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
 	hit := s82OneB18LibraryCard(me, "The Hit", "Creature — Elf", "{1}")
 	advanceTo(t, g, game.StepEnd)
-	answerChooseCards(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerOwnPermanents(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if !onBattlefield(g, fodder) || onBattlefield(g, hit) {
 		t.Error("declining the sacrifice still revealed and put a creature onto the battlefield")
@@ -183,7 +185,7 @@ func TestS82OneB18KethekCantSacrificeItself(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Kethek, Crucible Goliath", "Legendary Creature — Phyrexian Beast", s82OneB18KethekOracle, false)
 	advanceTo(t, g, game.StepEnd)
 	passPriorityAroundTable(t, g)
-	if c := discardChoiceFor(g, me.ID); c != nil {
+	if len(g.PendingChoices) != 0 {
 		t.Error("asked for a sacrifice with no other creature")
 	}
 }
@@ -220,6 +222,7 @@ func TestS82OneB18UnctusGivesOtherBlueCreaturesALootOnTap(t *testing.T) {
 	seedLibraryTop(me, "Top Card", "Sorcery", "")
 	hand := handCardForTest(me, "Held Card", "Sorcery", "")
 	libBefore := me.Library.Size()
+	handBefore := me.Hand.Size()
 	declareAttack(t, g, opp.ID, blue)
 	passPriorityAroundTable(t, g)
 	if discardChoiceFor(g, me.ID) != nil {
@@ -229,8 +232,8 @@ func TestS82OneB18UnctusGivesOtherBlueCreaturesALootOnTap(t *testing.T) {
 	if got := me.Library.Size(); got != libBefore-1 {
 		t.Errorf("library %d -> %d, want one card drawn", libBefore, got)
 	}
-	if got := me.Hand.Size(); got != 1 {
-		t.Errorf("hand size %d, want 1 (drew one, discarded one)", got)
+	if got := me.Hand.Size(); got != handBefore {
+		t.Errorf("hand size %d, want %d (drew one, discarded one)", got, handBefore)
 	}
 	_ = hand
 }
@@ -305,11 +308,7 @@ func TestS82OneB18RiaPreventsTheTargetsNextCombatDamageToAPlayerAndMakesMites(t 
 	ogre := b12Creature(g, opp.ID, "Their Ogre", "Creature — Ogre", 3, 3)
 	mine := b12Creature(g, me.ID, "My Ogre", "Creature — Ogre", 4, 4)
 	advanceTo(t, g, game.StepBeginCombat)
-	// The trigger's target: an opposing creature, so its damage to me is prevented.
-	if len(g.StackMeta) == 0 {
-		t.Fatal("Ria's beginning-of-combat trigger is not on the stack")
-	}
-	g.StackMeta[len(g.StackMeta)-1].Targets = cardRefs(mine)
+	pickTriggerTarget(t, g, me.ID, mine)
 	passPriorityAroundTable(t, g)
 	life := opp.Life
 	declareAttack(t, g, opp.ID, mine)
