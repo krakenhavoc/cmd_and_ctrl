@@ -3076,6 +3076,7 @@ tail take/each-moved
 tail take/moved
 tail tashas-hideous-laughter/exile-step
 tail taster-of-wares/grant-cast-of-exiled-spell
+tail tawnos-solemn-survivor/mill-two
 tail tazri-stalwart-survivor/after-mill
 tail tchaka/after-mill
 tail tempestra-dame-of-games/haste-and-sacrifice-copy
@@ -3396,6 +3397,7 @@ tail will-riker/rest-on-bottom-then-sacrifice-those-lands
 tail winota/entered-indestructible
 tail winter-soldier-icy-assassin/attach
 tail wishclaw-talisman/hand-it-over
+tail wondrous-crucible/copy-and-cast
 tail worlds-within-worlds/return
 tail wrenn-and-realmbreaker/after-mill
 tail yavimaya-bloomsage/prepare
