@@ -485,9 +485,11 @@ choose choose-cards/arm-mounted-anchor-discard-two-unless-pirate
 choose choose-cards/armored-kincaller-reveal
 choose choose-cards/armored-skyhunter-attach
 choose choose-cards/arni-metalbrow-put
+choose choose-cards/as-enters-linked-permanent
 choose choose-cards/as-enters-permanent
 choose choose-cards/ashiok-wicked-manipulator-take
 choose choose-cards/assimilation-assessor-assimilate
+choose choose-cards/astor-bearer-of-blades-take
 choose choose-cards/atraxa-grand-unifier-card-type
 choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
@@ -579,6 +581,7 @@ choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
 choose choose-cards/cyclonus-connive-discarded
 choose choose-cards/cytoshape-copy
+choose choose-cards/danitha-benalias-hope-attach
 choose choose-cards/danse-macabre-return
 choose choose-cards/darkstar-augur-take
 choose choose-cards/dauthi-voidwalker-play
@@ -1501,6 +1504,7 @@ option option-pick/abstract-performance-opponent
 option option-pick/abstract-performance-pile
 option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
+option option-pick/anointed-peacekeeper-look
 option option-pick/apocalypse-demon-sacrifice-or-tap
 option option-pick/arachne-psionic-weaver-look
 option option-pick/aragorn-company-leader-counter
@@ -1846,6 +1850,7 @@ payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
 payunless pay-unless/seymour-flux-draw-and-counter
+payunless pay-unless/shanna-draw
 payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
@@ -2362,6 +2367,8 @@ tail cease/gain-and-draw
 tail cemetery-tampering/offer-the-exiled-card
 tail chandra-flameshaper/choose-exiled
 tail chandra-hopes-beacon/grant-cast
+tail chaotic-transformation/exiled
+tail chaotic-transformation/put-then-shuffle
 tail charming-prince/after-exile
 tail charnel-serenade/then
 tail chiss-goria-forge-tyrant/grant-cast

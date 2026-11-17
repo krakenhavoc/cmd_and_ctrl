@@ -77784,6 +77784,7 @@ seats[].statics[].nextSpell.filter.withCounter	string
 seats[].statics[].nextSpell.flash	bool
 seats[].statics[].nextSpell.followUp	string
 seats[].statics[].nextSpell.improvise	bool
+seats[].statics[].nextSpell.increase	number:int
 seats[].statics[].nextSpell.payLifeEqualToManaValue	bool
 seats[].statics[].nextSpell.reduce	number:int
 seats[].statics[].nextSpell.text	string
