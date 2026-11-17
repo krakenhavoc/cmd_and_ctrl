@@ -488,4 +488,7 @@ var tokenTable = map[string]game.Card{
 	"0/0 green Phyrexian Wurm with trample and toxic 1": {Name: "Phyrexian Wurm", TypeLine: "Token Creature — Phyrexian Wurm", Colors: []string{"G"}, Keywords: []string{"trample", "toxic 1"}, PrintedPTKnown: true},
 	// #5479: Phyrexia: All Will Be One's Beast (Goliath Hatchery, Viral Spawning, Lukka, Bound to Ruin).
 	"3/3 green Phyrexian Beast with toxic 1": {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"toxic 1"}},
+
+	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
+	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},
 }
