@@ -643,6 +643,7 @@ choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/feral-encounter
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/fireglass-mentor-play
+choose choose-cards/floriferous-vinewall-take
 choose choose-cards/forbidden-alchemy-take
 choose choose-cards/foreboding-steamboat-grave
 choose choose-cards/formidable-speaker-search
@@ -683,6 +684,7 @@ choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
 choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
+choose choose-cards/inscribed-tablet-take
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
 choose choose-cards/invasion-of-arcavios-outside
