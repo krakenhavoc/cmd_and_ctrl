@@ -748,6 +748,15 @@ type CastPermission struct {
 	// before this.
 	CostLess int `json:"costLess,omitempty"`
 
+	// AffinityFor is "it has affinity for <type>" (CR 702.41a; Chiss-Goria,
+	// Forge Tyrant): the spell cast through this permission costs {1}
+	// less for each permanent of that card type its caster controls as it
+	// is cast. It is CostLess counted off the board, taken off with it by
+	// the one pricer (grantReductionLocked) so the payment, the preview
+	// and the enumerator agree, and never below {0}. Empty is no
+	// affinity, which is every permission written before this.
+	AffinityFor string `json:"affinityFor,omitempty"`
+
 	// CostMore is "a spell cast this way costs {N} more to cast" (Zero,
 	// Incorporeal Sensate, #4973): generic mana added to the price of a
 	// spell cast through this permission. CostLess's twin, an INCREASE
@@ -3471,10 +3480,15 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 	// admit it takes nothing off (ForSpell).
 	// #4696: the permission that opens that face, as CastSpell finds it.
 	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
-	if grant == nil || grant.CostLess <= 0 {
+	if grant == nil {
 		return 0
 	}
-	return grant.CostLess
+	// The affinity is counted as the spell is cast (CR 702.41a).
+	reduction := grant.CostLess + g.affinityCountLocked(playerID, grant.AffinityFor)
+	if reduction <= 0 {
+		return 0
+	}
+	return reduction
 }
 
 // grantIncreaseLocked is CostQuery.GrantIncrease for one announcement: the

@@ -48,6 +48,7 @@ body annihilator/sacrifice
 body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-denial/draws
+body argentum-masticore/destroy
 body ascend/exile-listed-unless-citys-blessing
 body ashling-the-limitless/pay-wubrg-or-sacrifice
 body attach/sacrifice-the-returned-creature
@@ -472,6 +473,7 @@ choose choose-cards/another-round-picked
 choose choose-cards/anzrags-rampage-creature
 choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
+choose choose-cards/argentum-masticore-discard
 choose choose-cards/arm-mounted-anchor-discard-two-unless-pirate
 choose choose-cards/armored-kincaller-reveal
 choose choose-cards/armored-skyhunter-attach
@@ -510,6 +512,7 @@ choose choose-cards/buster-sword-cast
 choose choose-cards/calamity-galloping-inferno-copy
 choose choose-cards/call-the-spirit-dragons-pick
 choose choose-cards/caparocti-sunborn-tap-two
+choose choose-cards/capricious-hellraiser-copy
 choose choose-cards/captain-james-t-kirk-draw
 choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cecily-haunted-mage-cast
@@ -2304,6 +2307,7 @@ tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
 tail cantankerous-keepers/after-mill
+tail capricious-hellraiser/choose-and-copy
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
@@ -2314,6 +2318,7 @@ tail chandra-flameshaper/choose-exiled
 tail chandra-hopes-beacon/grant-cast
 tail charming-prince/after-exile
 tail charnel-serenade/then
+tail chiss-goria-forge-tyrant/grant-cast
 tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy
 tail city-of-the-daleks/bind-tagged-tokens
@@ -2839,6 +2844,7 @@ tail recipient/marauding-raptor-dinosaur-pump
 tail recipient/reckless-blaze-watch-death
 tail recipient/sonic-shrieker-player-discards
 tail reckless-handling/discard-at-random
+tail red-suns-twilight/haste-and-exile-copies
 tail red-suns-zenith/shuffle-into-library
 tail release-to-memory/spirit-per-creature-card
 tail renegade-bull/copy-exiled
