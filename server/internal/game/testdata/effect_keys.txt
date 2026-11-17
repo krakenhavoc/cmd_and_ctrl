@@ -514,6 +514,11 @@ choose choose-cards/brazen-bluff-cast
 choose choose-cards/breach-the-multiverse-graveyard
 choose choose-cards/break-out-reveal
 choose choose-cards/breeches-the-blastmaker-sacrifice
+choose choose-cards/bro-b06-airlift-chaplain-take-or-counter
+choose choose-cards/bro-b06-blanchwood-prowler-take-or-counter
+choose choose-cards/bro-b06-fallaji-archaeologist-take-or-counter
+choose choose-cards/bro-b06-ravenous-gigamole-take-or-counter
+choose choose-cards/bro-b06-tomakul-scrapsmith-take-or-counter
 choose choose-cards/bull-elephant-return-two-forests
 choose choose-cards/burning-wish-take
 choose choose-cards/buster-sword-cast
@@ -806,6 +811,7 @@ choose choose-cards/mill-then-take-first-contact-pick
 choose choose-cards/mill-then-take-midnight-tilling-pick
 choose choose-cards/mill-then-take-something-worth-saving-pick
 choose choose-cards/mill-then-take-temporal-anomaly-pick
+choose choose-cards/mill-then-take-wasteful-harvest-pick
 choose choose-cards/mill-three-return-land-tapped
 choose choose-cards/mimeoplasm-exile-creature-cards
 choose choose-cards/minas-tirith-garrison-tap-humans
@@ -2322,6 +2328,11 @@ tail brenard-ginger-sculptor/copy
 tail bring-to-light/cast
 tail bristlebud-farmer/after-mill
 tail bro-b05/zephyr-sentinel-counter
+tail bro-b06/airlift-chaplain/after-mill
+tail bro-b06/blanchwood-prowler/after-mill
+tail bro-b06/fallaji-archaeologist/after-mill
+tail bro-b06/ravenous-gigamole/after-mill
+tail bro-b06/tomakul-scrapsmith/after-mill
 tail brudiclad/choose-a-token
 tail bruse-tarl/ox-if-land
 tail budding-insurgent/draw-if-legendary-enchantment
@@ -2757,6 +2768,7 @@ tail mill-then-take/first-contact-first-spell
 tail mill-then-take/midnight-tilling
 tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
+tail mill-then-take/wasteful-harvest
 tail mill-then/lluwen-imperfect-naturalist
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
