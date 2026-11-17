@@ -219,6 +219,7 @@ body initiative/take
 body initiative/venture
 body inkshield/inklings
 body inti-seneschal-of-the-sun/counter-and-trample
+body invasion-of-new-capenna/exile
 body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
@@ -343,6 +344,7 @@ body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
+body s82-mom-b12/flitting-guerrilla-top
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -389,6 +391,7 @@ body teferi-hero/untap-two-lands
 body teo-spirited-glider/counter
 body terra-herald-of-hope/return
 body territorial-aetherkite/damage-each-other
+body terror-of-towashi/return
 body tester-of-the-tangential/move
 body tether-technician/strike
 body the-ancient-one/mill
@@ -822,6 +825,8 @@ choose choose-cards/mishras-command-draw
 choose choose-cards/mission-briefing-chosen
 choose choose-cards/mistbreath-elder-return
 choose choose-cards/mog-moogle-warrior-discarded
+choose choose-cards/moment-of-truth-graveyard
+choose choose-cards/moment-of-truth-take
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
@@ -899,6 +904,9 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
+choose choose-cards/s82-mom-b12-skaab-top
+choose choose-cards/s82-mom-b12-warcrafting-exile
+choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
 choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
@@ -908,6 +916,7 @@ choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
+choose choose-cards/seed-of-hope-permanent
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
@@ -989,6 +998,7 @@ choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
 choose choose-cards/trial-of-agony-chosen
+choose choose-cards/truga-cliffcharger-search
 choose choose-cards/trystan-penitent-culler-exile
 choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
@@ -1269,10 +1279,12 @@ confirm confirm/reactor-raid-sacrifice
 confirm confirm/reckless-endeavor-result
 confirm confirm/requiem-monolith-ping
 confirm confirm/rhystic-study-draw
+confirm confirm/rona-tolarian-obliterator-land
 confirm confirm/rotisserie-elemental-sacrifice
 confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
+confirm confirm/s82-mom-b12-guerrilla-exile
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
 confirm confirm/sauron-the-dark-lord-wheel
@@ -1639,6 +1651,7 @@ payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/bitter-chill-scry-draw
 payunless pay-unless/blaster-hulk-damage
+payunless pay-unless/bloodfeather-phoenix-return
 payunless pay-unless/bloodthirsty-adversary-times
 payunless pay-unless/brass-man-untap
 payunless pay-unless/brilliant-wings-attach
@@ -1785,6 +1798,7 @@ payunless pay-unless/sunstreak-phoenix-return
 payunless pay-unless/sylvia-tilly-joy-of-discovery-exile
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/terra-herald-of-hope-return
+payunless pay-unless/terror-of-towashi-return
 payunless pay-unless/tester-of-the-tangential-move
 payunless pay-unless/the-thing-double-counters
 payunless pay-unless/thousand-moons-crackshot-tap
@@ -1958,6 +1972,7 @@ run prompt-run/humiliate-counter
 run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
+run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
 run prompt-run/killmonger-sacrificed
@@ -2007,6 +2022,7 @@ run prompt-run/season-of-weaving-copy
 run prompt-run/seize-the-spotlight-gain-control
 run prompt-run/selfcraft-mechan-sacrificed
 run prompt-run/sephiroth-sacrifice-draw
+run prompt-run/seraph-of-new-phyrexia-pump
 run prompt-run/serendib-djinn-sacrificed
 run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
@@ -2180,6 +2196,7 @@ tail attacking-tokens/calamity-sacrifice-then-next-round
 tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
 tail attacking-tokens/dorotheas-retribution-sacrifice-the-spirit
 tail attacking-tokens/fire-navy-trebuchet-sacrifice-the-boulder
+tail attacking-tokens/furnace-blessed-conqueror-counters-and-sacrifice
 tail attacking-tokens/kari-zev-exile-ragavan
 tail attacking-tokens/kavaron-harrier-sacrifice-the-robot
 tail attacking-tokens/living-laser-exile-the-tokens
@@ -2201,6 +2218,7 @@ tail avatar-b34/then-spirit-token
 tail avatar-destiny/after-mill
 tail avatar-kyoshi-earthbender/untap-that-land
 tail axgard-armory/equipment-search
+tail ayara-furnace-queen/entered
 tail azog/amass-goblins-and-draw
 tail azula-cunning-usurper/graveyard
 tail bad-wolf-bay/return-at-next-end-step
@@ -2797,6 +2815,7 @@ tail risen-reef/rest-into-hand
 tail riverwheel-sweep/choose-one
 tail rohirrim-chargers/attach-then-rest
 tail role-tokens/attach-to-host
+tail rona-tolarian-obliterator/exiled
 tail rooms-b-helpers/after-mill
 tail rootborn-defenses/grant-indestructible
 tail rottenmouth-viper/punish
@@ -2804,6 +2823,7 @@ tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
+tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
@@ -2837,6 +2857,7 @@ tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
+tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
 tail sacrificed-one/prompt-run/larval-scoutlander-search
 tail sacrificed-one/prompt-run/lithobraking-sacrifice
@@ -2849,6 +2870,7 @@ tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
+tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
 tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/spirit-sisters-call-return
@@ -2879,6 +2901,7 @@ tail scholar-of-new-horizons/battlefield-or-hand
 tail scholar-of-new-horizons/rest-into-hand
 tail scout-the-city/after-mill
 tail search-then/tend-the-sprigs
+tail seed-of-hope/after-mill
 tail seek-thrills/after-mill
 tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
@@ -2892,6 +2915,7 @@ tail sin-spiras-punishment/repeat-for-a-land
 tail sinners-judgment/check
 tail sins-of-the-father/creature-cards-drain
 tail six/after-mill
+tail skyclave-invader/land-declined-into-hand
 tail skyserpent-seeker/rest-on-bottom-then-counter
 tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters
@@ -2947,6 +2971,9 @@ tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
+tail tail/s82-mom-b12-guerrilla-after-mill
+tail tail/s82-mom-b12-guerrilla-exiled
+tail tail/s82-mom-b12-skaab-after-mill
 tail tail/sensational-spider-man-after-stun
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile

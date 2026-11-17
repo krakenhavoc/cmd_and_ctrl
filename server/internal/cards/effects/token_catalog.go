@@ -221,6 +221,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedFableGoblinShamanToken,
 	printedFirebendingDragonToken,
 	printedFirebendingSoldierToken,
+	printedValorsReachWarriorToken,
 	printedReefWormFishToken,
 	printedReefWormWhaleToken,
 	printedDragonEggToken,

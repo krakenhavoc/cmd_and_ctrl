@@ -2651,6 +2651,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 					tally.InstantSorceryMaxManaValue = mv
 				}
 			}
+			if !characteristicHasSubtype(ch, "Phyrexian") {
+				tally.NonPhyrexian++
+			}
 			if characteristicHasType(ch, "Instant") {
 				tally.Instants++
 			}

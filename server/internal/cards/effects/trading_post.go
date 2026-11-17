@@ -44,14 +44,7 @@ func init() {
 				Label:   "{1}, {T}, Sacrifice a creature: Return target artifact card from your graveyard to your hand",
 				Cost:    Plus(postCost, SacrificeACreature()),
 				Targets: TargetCardInGraveyard("target artifact card in your graveyard", Artifact(), YouOwn()),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}.Apply(ctx)
-				},
+				Effect:  s82Mom16ReturnTargetToHand,
 			},
 			{
 				Label:   "{1}, {T}, Sacrifice an artifact: Draw a card",

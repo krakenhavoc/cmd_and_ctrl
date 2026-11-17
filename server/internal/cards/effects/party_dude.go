@@ -46,17 +46,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Party Dude — each player creates a Food token", avB30cEachPlayerCreatesAFood),
-			AtLevel(2, On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if !b23ArtifactPutIntoGraveyardFromBattlefield(ev, g) {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				if !ok {
-					return false
-				}
-				controller := leftUnderControlOf(ev, c)
-				return controller != uuid.Nil && controller != source.Controller
-			}, "Party Dude — draw a card", Do(DrawCards{N: 1}))),
+			AtLevel(2, On(game.EventLTB, s82MomB14OpponentArtifactPutIntoGraveyard, "Party Dude — draw a card", Do(DrawCards{N: 1}))),
 			AtLevel(3, OncePerBatch(Targeting(
 				On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					p := attackedPlayer(g, ev)

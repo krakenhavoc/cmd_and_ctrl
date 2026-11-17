@@ -15,13 +15,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Left: Door{Triggered: []game.TriggeredAbility{Targeting(
 			WhenYouUnlockThisDoor(game.DoorLeft, "Bottomless Pool — return up to one target creature to its owner's hand",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						return BounceToHand{Target: t.ID}.Apply(ctx)
-					}
-					return nil
-				}),
+				bounceUpToOneTarget),
 			TargetCreature("up to one target creature").WithCount(0, 1),
 		)}},
 		Right: Door{Triggered: []game.TriggeredAbility{

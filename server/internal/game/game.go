@@ -2163,6 +2163,12 @@ type CastTally struct {
 	// Alania you've cast this turn" reads Instants == 1 on an instant
 	// spell, and so on, because the tally is bumped before EventCast.
 	// Additive within the snapshot version.
+	// NonPhyrexian counts the spells the player cast this turn that are
+	// not Phyrexian, read as each spell became cast like InstantSorcery
+	// (CR 601.2i): Phyrexian Censor's "can't cast more than one
+	// non-Phyrexian spell each turn" refuses a non-Phyrexian spell once
+	// this is 1. Additive within the snapshot version.
+	NonPhyrexian            int `json:"nonPhyrexian,omitempty"`
 	Instants                int `json:"instants,omitempty"`
 	Sorceries               int `json:"sorceries,omitempty"`
 	OtterSpellsExceptAlania int `json:"otterSpellsExceptAlania,omitempty"`
