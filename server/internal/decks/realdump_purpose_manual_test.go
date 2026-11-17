@@ -171,6 +171,10 @@ var reviewedNotAWipe = map[string]string{
 	// #5479: the Invasion's enter trigger exiles its controller's hand and
 	// draws that many; the back face burns, but never every creature.
 	"Invasion of Kaldheim // Pyre of the World Tree": "exiles the cards in its controller's own hand and draws that many, not a board",
+
+	// #5479: "any number of target Equipment" are only those attached to
+	// the one creature it steals.
+	"Awaken the Sleeper": "destroys only Equipment attached to the one creature it steals, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -32,18 +32,7 @@ func init() {
 			Cost:      Plus(ManaCost("{W}"), TapCost()),
 			Targets:   TargetCardInGraveyard("target card from your graveyard", YouOwn()),
 			Condition: ControlsAtLeast(2, MatchColor("W")),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind != game.TargetCard {
-						continue
-					}
-					if err := g.TuckToLibraryForEffect(t.ID, true); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
+			Effect:    s82One13TuckTargetToLibraryBottom,
 		}},
 	})
 }

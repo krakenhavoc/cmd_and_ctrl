@@ -109,6 +109,11 @@ var knownUnmatchedTokens = map[string]string{
 	// so no printing matches; the template follows the card's oracle text
 	// (#4893).
 	"2/2 white Unicorn": "no 2/2 white Unicorn token card was ever printed; Blessed Sanctuary's oracle text says 2/2 white",
+	// Wurmquake (Phyrexia: All Will Be One, #5479) creates "an X/X green
+	// Phyrexian Wurm creature token with trample and toxic 1". Its printed
+	// token card (ONC) is */*, which a fixed size can never match; the
+	// template is 0/0 and the card sets X as it creates the token.
+	"0/0 green Phyrexian Wurm with trample and toxic 1": "the printed token card is */*; Wurmquake sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
