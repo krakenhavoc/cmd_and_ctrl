@@ -53,7 +53,7 @@ func init() {
 						return false
 					}
 					dead, ok := diedCreature(ev, g)
-					return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Phoenix")
+					return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Phoenix"))
 				},
 				Key:    "Syrix, Carrier of the Flame — you may cast this card from your graveyard",
 				Zones:  []game.ZoneKind{game.ZoneGraveyard},
