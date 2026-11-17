@@ -277,6 +277,8 @@ func TestSncB15RiveteersCharmEdictTakesTheGreatestManaValue(t *testing.T) {
 	castModal(t, g, "Riveteers Charm", "Instant", sncB15RiveteersCharm, []int{0},
 		[]game.TargetRef{modeRef(game.TargetPlayer, opp.ID, 0, 0)})
 	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, opp.ID, big)
+	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(big) || !g.Battlefield.Contains(small) {
 		t.Error("the greatest mana value permanent, and only it, must be sacrificed")
 	}
@@ -510,17 +512,16 @@ func TestSncB15BrokersConfluenceProliferateAddsACounter(t *testing.T) {
 		t.Fatal(err)
 	}
 	castModal(t, g, "Brokers Confluence", "Instant", sncB15BrokersConfluence, []int{0, 0, 0}, nil)
-	passPriorityAroundTable(t, g)
 	for i := 0; i < 3; i++ {
-		p := chooseCardsChoiceFor(g, me.ID)
-		if p == nil {
+		passPriorityAroundTable(t, g)
+		if proliferatePrompt(g) == nil {
 			break
 		}
-		answerChooseCards(t, g, me.ID, bear)
-		passPriorityAroundTable(t, g)
+		answerProliferate(t, g, bear)
 	}
-	if got := plusOnes(g, bear); got < 2 {
-		t.Errorf("%d counters after proliferating, want at least 2", got)
+	passPriorityAroundTable(t, g)
+	if got := plusOnes(g, bear); got != 4 {
+		t.Errorf("%d counters after proliferating three times, want 4", got)
 	}
 }
 
