@@ -89,6 +89,13 @@ type NextSpellPromise struct {
 	// stores the number, which is what the printed text says.
 	Reduce int `json:"reduce,omitempty"`
 
+	// Increase is "spells you cast this turn cost {N} more to cast": generic
+	// mana added as an ordinary CR 601.2f increase (Academy Loremaster's
+	// "spells they cast this turn cost {2} more"). Only an EveryMatchingSpell
+	// promise carries one: a tax on the next spell alone is not a printed
+	// shape. Additive within the schema version.
+	Increase int `json:"increase,omitempty"`
+
 	// AffinityFor is "has affinity for <type>" (CR 702.41a): the spell
 	// costs {1} less for each permanent of that card type the caster
 	// controls as they cast it (Saheeli, the Gifted's "artifacts").
@@ -281,7 +288,23 @@ func (g *Game) nextSpellCostModifiersLocked(player uuid.UUID, card Card) []bound
 	var out []boundCostModifier
 	for _, s := range p.Statics {
 		np := s.NextSpell
-		if (np.Reduce <= 0 && np.AffinityFor == "" && !np.Undaunted) || !g.livePromise(s) || !np.Matches(card) {
+		if !g.livePromise(s) || !np.Matches(card) {
+			continue
+		}
+		if np.Increase > 0 && np.EveryMatchingSpell {
+			inc := np.Increase
+			src := card
+			src.Controller = player
+			out = append(out, boundCostModifier{
+				modifier: CostModifier{
+					Kind:   CostIncrease,
+					Label:  np.Text,
+					Amount: func(CostQuery) int { return inc },
+				},
+				source: src,
+			})
+		}
+		if np.Reduce <= 0 && np.AffinityFor == "" && !np.Undaunted {
 			continue
 		}
 		n := np.Reduce + g.affinityCountLocked(player, np.AffinityFor)
