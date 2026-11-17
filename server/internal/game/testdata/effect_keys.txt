@@ -899,6 +899,8 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
+choose choose-cards/s82-mom-b21-djeru-exile
+choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
@@ -1058,6 +1060,7 @@ choose resolution-cast/kefka-life-loss
 choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
 choose resolution-cast/portent-of-calamity-rest-to-hand
+choose resolution-cast/s82-mom-b21-rashmi-after
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -1372,6 +1375,7 @@ drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
 drawthen glacial-dragonhunt/may-discard
+drawthen hidetsugu-and-kairi-put-back
 drawthen hoarders-greed/clash
 drawthen malcolm-discard
 drawthen marvo-deep-operative/free-cast
@@ -1768,6 +1772,8 @@ payunless pay-unless/ripples-of-undeath-take-one
 payunless pay-unless/rodolf-duskbringer-return
 payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
+payunless pay-unless/s82-mom-b21-elenda-and-azor-draw-x
+payunless pay-unless/s82-mom-b21-elenda-and-azor-vampire-knights
 payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
@@ -2947,6 +2953,9 @@ tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
+tail tail/s82-mom-b21-hidetsugu-exiled
+tail tail/s82-mom-b21-rashmi-exiled
+tail tail/s82-mom-b21-zimone-repeat
 tail tail/sensational-spider-man-after-stun
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
