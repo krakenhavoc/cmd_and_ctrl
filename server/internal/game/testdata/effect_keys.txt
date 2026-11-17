@@ -124,6 +124,7 @@ body discard-by-opponent/return-the-discarded-card
 body discard-by-opponent/return-to-hand
 body discard-by-opponent/return-with-counter
 body diver-skaab/tuck
+body dmu-b07/draw-a-card
 body dont-move/destroy-the-tapped-creature
 body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
@@ -2473,6 +2474,7 @@ tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
 tail distant-memories/offer
+tail dmu-b07/haste-then-sacrifice
 tail dominion-infiltration/haste-and-exile-copies
 tail dose-of-dawnglow/blight
 tail dragonhawk-fates-tempest/schedule-damage
