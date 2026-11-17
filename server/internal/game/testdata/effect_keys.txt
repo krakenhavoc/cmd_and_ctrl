@@ -468,6 +468,7 @@ choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/arm-mounted-anchor-discard-two-unless-pirate
 choose choose-cards/armored-kincaller-reveal
 choose choose-cards/armored-skyhunter-attach
+choose choose-cards/arni-metalbrow-put
 choose choose-cards/as-enters-permanent
 choose choose-cards/ashiok-wicked-manipulator-take
 choose choose-cards/assimilation-assessor-assimilate
@@ -671,6 +672,7 @@ choose choose-cards/keldon-flamesage
 choose choose-cards/kellan-the-kid-if-you-dont
 choose choose-cards/king-narfis-betrayal-exile
 choose choose-cards/kinscaer-sentry-put
+choose choose-cards/kiora-sovereign-of-the-deep-cast
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/lady-octopus-cast
@@ -1440,6 +1442,7 @@ option option-pick/apocalypse-demon-sacrifice-or-tap
 option option-pick/arachne-psionic-weaver-look
 option option-pick/aragorn-company-leader-counter
 option option-pick/archfiend-of-spite-life-or-sacrifice
+option option-pick/arni-metalbrow-attacks
 option option-pick/attach-source-to-player
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/blank-blank-rocketship-letter
@@ -1618,6 +1621,7 @@ option sticker/choose-sticker
 option sticker/name-position
 option venture/dungeon
 option venture/room
+payunless arni-metalbrow/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/ant-man-colony-commander-counter
@@ -2167,6 +2171,7 @@ tail archdruids-charm/bite
 tail arid-archway/surveil-if-desert-returned
 tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
+tail arni-metalbrow/entered
 tail artistic-process/token-haste
 tail ascent-of-the-worthy/angel-warrior
 tail ashling-the-limitless/haste-and-pay-or-sacrifice
@@ -2693,6 +2698,7 @@ tail msh-a9/ultron-robot-villain
 tail mutinous-massacre/steal-everything
 tail myriad/exile-tokens-at-end-of-combat
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
+tail nahiri-forged-in-fury/free-equipment
 tail nahiris-resolve/schedule-return-at-next-upkeep
 tail nantuko-cultivator/discarded
 tail narset-enlightened-exile/copy-exiled
@@ -2967,6 +2973,7 @@ tail the-end/after-exile
 tail the-end/draw-for-hand
 tail the-gitrog-ravenous-ride/sacrificed
 tail the-invincible-iron-man/attach-equipment
+tail the-kenriths-royal-funeral/draw-and-lose
 tail the-master-transcendent/green-mutant
 tail the-ring/tempts-you-next
 tail the-rise-of-sozin/named
