@@ -33,10 +33,6 @@ func init() {
 
 // frodoOrAnotherLegendaryCreatureYouControlEntered is "Frodo Baggins
 // or another legendary creature you control enters".
-func frodoOrAnotherLegendaryCreatureYouControlEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.CardID == source.InstanceID {
-		return true
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.Controller == source.Controller && c.IsCreature() && c.IsLegendary()
+func frodoOrAnotherLegendaryCreatureYouControlEntered(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	return thisOrAnotherLegendaryCreatureYouControlEntered(ev, source, lki, g)
 }
