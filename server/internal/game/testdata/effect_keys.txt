@@ -404,6 +404,7 @@ body teferi-hero/untap-two-lands
 body teo-spirited-glider/counter
 body terra-herald-of-hope/return
 body territorial-aetherkite/damage-each-other
+body terror-ballista/destroy
 body terror-of-towashi/return
 body tester-of-the-tangential/move
 body tether-technician/strike
@@ -678,6 +679,7 @@ choose choose-cards/heroes-hangout-play
 choose choose-cards/hide-in-plain-sight-cloak
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
+choose choose-cards/hurkyl-master-wizard-card-type
 choose choose-cards/ill-timed-explosion-discard
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
@@ -911,6 +913,33 @@ choose choose-cards/put-from-library-ao-the-dawn-sky-total-mana-value-4
 choose choose-cards/put-from-library-michelangelos-technique-total-mana-value-6
 choose choose-cards/put-from-library-ojer-kaslem-creature-and-or-land
 choose choose-cards/put-from-library-onto-battlefield
+choose choose-cards/put-from-library-s82-bro-total-mana-value-0
+choose choose-cards/put-from-library-s82-bro-total-mana-value-1
+choose choose-cards/put-from-library-s82-bro-total-mana-value-10
+choose choose-cards/put-from-library-s82-bro-total-mana-value-11
+choose choose-cards/put-from-library-s82-bro-total-mana-value-12
+choose choose-cards/put-from-library-s82-bro-total-mana-value-13
+choose choose-cards/put-from-library-s82-bro-total-mana-value-14
+choose choose-cards/put-from-library-s82-bro-total-mana-value-15
+choose choose-cards/put-from-library-s82-bro-total-mana-value-16
+choose choose-cards/put-from-library-s82-bro-total-mana-value-17
+choose choose-cards/put-from-library-s82-bro-total-mana-value-18
+choose choose-cards/put-from-library-s82-bro-total-mana-value-19
+choose choose-cards/put-from-library-s82-bro-total-mana-value-2
+choose choose-cards/put-from-library-s82-bro-total-mana-value-20
+choose choose-cards/put-from-library-s82-bro-total-mana-value-21
+choose choose-cards/put-from-library-s82-bro-total-mana-value-22
+choose choose-cards/put-from-library-s82-bro-total-mana-value-23
+choose choose-cards/put-from-library-s82-bro-total-mana-value-24
+choose choose-cards/put-from-library-s82-bro-total-mana-value-3
+choose choose-cards/put-from-library-s82-bro-total-mana-value-4
+choose choose-cards/put-from-library-s82-bro-total-mana-value-5
+choose choose-cards/put-from-library-s82-bro-total-mana-value-6
+choose choose-cards/put-from-library-s82-bro-total-mana-value-7
+choose choose-cards/put-from-library-s82-bro-total-mana-value-8
+choose choose-cards/put-from-library-s82-bro-total-mana-value-9
+choose choose-cards/put-from-library-s82-bro-total-mana-value-unbounded
+choose choose-cards/queen-kayla-bin-kroog-mana-value
 choose choose-cards/quintorius-history-chaser-draw-two-mill-one
 choose choose-cards/rakdos-patron-of-chaos-sacrifice
 choose choose-cards/rambling-possum-return-saddlers
@@ -938,6 +967,7 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
+choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take
 choose choose-cards/s82-mom-b12-skaab-top
@@ -1065,6 +1095,7 @@ choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
 choose choose-cards/ward-sacrifice-a-food
 choose choose-cards/ward-sacrifice-a-legendary-artifact-or-legendary-creature
+choose choose-cards/ward-sacrifice-a-permanent
 choose choose-cards/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
@@ -1112,6 +1143,7 @@ choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
 choose resolution-cast/portent-of-calamity-rest-to-hand
 choose resolution-cast/s82-mom-b21-rashmi-after
+choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -1386,6 +1418,7 @@ confirm confirm/ward-pay-life
 confirm confirm/ward-sacrifice-a-creature
 confirm confirm/ward-sacrifice-a-food
 confirm confirm/ward-sacrifice-a-legendary-artifact-or-legendary-creature
+confirm confirm/ward-sacrifice-a-permanent
 confirm confirm/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
@@ -1563,6 +1596,7 @@ option option-pick/face-down-piles-curator-of-destinies
 option option-pick/face-down-piles-riddles-in-the-dark
 option option-pick/fact-or-fiction-splitter
 option option-pick/fandaniel-telophoroi-ascian-sacrifice-or-lose-life
+option option-pick/fateful-handoff-opponent
 option option-pick/flicker-return-under-an-opponent
 option option-pick/ghostly-dancers-return-or-unlock
 option option-pick/gideon-blackblade-keyword
@@ -1572,6 +1606,9 @@ option option-pick/gluntch-the-bestower-third
 option option-pick/hand-of-vecna-creature
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/highway-robbery-cost
+option option-pick/hostile-negotiations-face-up
+option option-pick/hostile-negotiations-opponent
+option option-pick/hostile-negotiations-pile
 option option-pick/hunters-axe-keyword
 option option-pick/indulgent-tormentor-answer
 option option-pick/inspirit-flagship-vessel-counters
@@ -1644,6 +1681,7 @@ option option-pick/slumbering-walker-remove-a-counter
 option option-pick/sorcerous-spyglass-look
 option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
+option option-pick/steel-seraph-keyword
 option option-pick/step-between-worlds-shuffle
 option option-pick/tap-or-untap-that-permanent
 option option-pick/tasigur-the-golden-fang-opponent
@@ -1881,6 +1919,7 @@ payunless pay-unless/ultron-unlimited-robot-villain
 payunless pay-unless/unassuming-sage-sorcerer-role
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
+payunless pay-unless/urzas-sylex-search
 payunless pay-unless/vanille-cheerful-lcie-meld
 payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
@@ -1994,6 +2033,7 @@ run prompt-run/dead-drop-sacrifice
 run prompt-run/deadly-brew-return
 run prompt-run/dire-blunderbuss-sacrificed
 run prompt-run/disciple-of-bolas-payout
+run prompt-run/disciple-of-caelus-nin-phase-out
 run prompt-run/disciple-of-freyalise-payout
 run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
@@ -2123,6 +2163,7 @@ run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/tenured-tethermage-tokens
+run prompt-run/terror-ballista-sacrifice
 run prompt-run/the-death-of-gwen-stacy-lose-life
 run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-goose-mother-sacrifice-draw
@@ -2144,6 +2185,7 @@ run prompt-run/undercity-eliminator-sacrificed
 run prompt-run/unexpected-request-attach
 run prompt-run/unscrupulous-contractor-sacrifice
 run prompt-run/unstable-glyphbridge-destroy
+run prompt-run/urzas-sylex-keep-lands
 run prompt-run/vampire-gourmand-draw-unblockable
 run prompt-run/venom-lethal-protector-sacrificed
 run prompt-run/vicious-rumors-gain
@@ -2262,10 +2304,12 @@ tail anowon-the-ruin-thief/after-mill
 tail apocalypse/saprolings-per-mana-value
 tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
+tail arcane-proxy/copy-exiled
 tail archdruids-charm/bite
 tail arid-archway/surveil-if-desert-returned
 tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
+tail arms-race/entered
 tail arni-metalbrow/entered
 tail artistic-process/token-haste
 tail ascent-of-the-worthy/angel-warrior
@@ -2671,6 +2715,9 @@ tail hoarders-greed/draw-two
 tail hoarders-greed/repeat-if-won
 tail hoarding-broodlord/cast-permission
 tail hofri-ghostforge/copy
+tail hostile-negotiations/after-first-pile
+tail hostile-negotiations/after-second-pile
+tail hostile-negotiations/lose-life
 tail hotel-of-fears/praise-him
 tail hotshot-investigators/investigate
 tail hour-of-promise/zombies-if-three-deserts
@@ -2883,6 +2930,7 @@ tail put-from-library/rest-on-bottom-in-random-order
 tail put-from-library/songbirds-blessing-hand-or-bottom
 tail q-stacking-the-deck/gains-copy-ability
 tail quag-feast/after-mill
+tail queen-kayla-bin-kroog/after-discard
 tail queens-bay-paladin/lose-life
 tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
@@ -2985,6 +3033,7 @@ tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/spirit-sisters-call-return
 tail sacrificed-one/prompt-run/swarm-culler-draw
+tail sacrificed-one/prompt-run/terror-ballista-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
@@ -3006,6 +3055,7 @@ tail saheeli-rai/ping-each-opponent
 tail saheeli-the-gifted/haste-and-exile-copies
 tail saheeli-the-suns-brilliance/haste-and-sacrifice-copy
 tail salt-road-skirmish/warriors-haste-and-sacrifice
+tail sanwell-avenger-ace/after-exile
 tail saruman-of-many-colors/after-mill
 tail saruman-of-many-colors/copy-exiled
 tail sauron-lord-of-the-rings/mill-then-return
@@ -3295,6 +3345,8 @@ tail then/risky-research-draw-two-lose-two
 tail then/rivers-grasp-black-half
 tail then/rotisserie-elemental-exile
 tail then/rottenmouth-viper-punisher-sacrificed
+tail then/s82-bro-b13-choose-one-play
+tail then/s82-bro-b13-exiled-to-hand
 tail then/s82-one-b06-proliferate-if-done
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
@@ -3335,6 +3387,8 @@ tail then/the-key-to-the-vault-bottom-then-cast
 tail then/the-misty-mountains-cold-dragon
 tail then/the-neutrinos-return-attacking
 tail then/the-ring-goes-south-reveal
+tail then/the-stone-brain-draw
+tail then/the-stone-brain-named
 tail then/the-tale-of-tamiyo-copy-and-cast
 tail then/the-tale-of-tamiyo-milled
 tail then/this-is-how-it-ends-shuffle-choice

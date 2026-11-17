@@ -137,6 +137,11 @@ const (
 	// spell from their hand this turn (#5235, Outlaws of Thunder
 	// Junction). No step in the vocabulary casts a spell.
 	FootprintCondNoSpellsCastFromHand FootprintCond = "no_spells_cast_from_hand"
+	// FootprintCondNoCardsPlayedFromExile: the item's controller played
+	// no card from exile this turn (#5482, Visions of Phyrexia). The
+	// turn's tally only rises, and no step in the vocabulary casts a
+	// spell or plays a land.
+	FootprintCondNoCardsPlayedFromExile FootprintCond = "no_cards_played_from_exile"
 	// FootprintCondCastSpellMV: the item's controller has cast a spell
 	// with mana value N or greater this turn (Rhino, Barreling Brute).
 	// No step in the vocabulary casts a spell.
@@ -827,6 +832,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.CastTallyFor(you).Total == 0
 	case FootprintCondNoSpellsCastFromHand:
 		return g.CastTallyFor(you).FromHand() == 0
+	case FootprintCondNoCardsPlayedFromExile:
+		return tally.CardsPlayedFromExile == 0
 	case FootprintCondSpellsCast:
 		return g.CastTallyFor(you).Total >= atLeast
 	case FootprintCondCastSpellMV:
