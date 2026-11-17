@@ -1623,6 +1623,7 @@ option option-pick/resolution-exit
 option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
+option option-pick/s82-bro-b11-argivian-avenger-keyword
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/saurons-ransom-splitter
@@ -2917,6 +2918,7 @@ tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
+tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
 tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
