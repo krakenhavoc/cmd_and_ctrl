@@ -106,6 +106,7 @@ Temple of Silence | scry | a land's enters effect; a land play is not priced by 
 Temple of Triumph | scry | a land's enters effect; a land play is not priced by its purpose
 Thassa, God of the Sea | scry | on a triggered row that is not the card's enters effect, which nothing prices
 The Legend of Kuruk // Avatar Kuruk | scry | on a triggered row that is not the card's enters effect, which nothing prices
+The Temporal Anchor | scry | on a triggered row that is not the card's enters effect, which nothing prices
 There and Back Again | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Tidings of War | amass | the text makes it conditional or optional
 Took Reaper | ring | on a triggered row that is not the card's enters effect, which nothing prices

@@ -23,6 +23,7 @@ func init() {
 		OracleID:     "43bae4b3-57e8-4d9a-9d1b-9805b0e0fff5",
 		Name:         "Kayla's Reconstruction",
 		Completeness: CompletenessFull,
+		XMatters:     true,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			player := ctx.Controller()
 			looked := ctx.Game.LookAtTopOfLibraryForEffect(player, 7)
