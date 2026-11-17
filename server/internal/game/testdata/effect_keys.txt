@@ -822,6 +822,8 @@ choose choose-cards/mishras-command-draw
 choose choose-cards/mission-briefing-chosen
 choose choose-cards/mistbreath-elder-return
 choose choose-cards/mog-moogle-warrior-discarded
+choose choose-cards/moment-of-truth-graveyard
+choose choose-cards/moment-of-truth-take
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
@@ -908,6 +910,7 @@ choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
+choose choose-cards/seed-of-hope-permanent
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
@@ -2879,6 +2882,7 @@ tail scholar-of-new-horizons/battlefield-or-hand
 tail scholar-of-new-horizons/rest-into-hand
 tail scout-the-city/after-mill
 tail search-then/tend-the-sprigs
+tail seed-of-hope/after-mill
 tail seek-thrills/after-mill
 tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
