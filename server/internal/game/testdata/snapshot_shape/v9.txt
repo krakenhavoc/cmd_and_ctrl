@@ -77335,6 +77335,7 @@ spellsCastThisTurn{}.manaSpent	number:int
 spellsCastThisTurn{}.manaSpentLast	number:int
 spellsCastThisTurn{}.manaValue	number:int
 spellsCastThisTurn{}.maxManaValue	number:int
+spellsCastThisTurn{}.nonPhyrexian	number:int
 spellsCastThisTurn{}.notFromHand	number:int
 spellsCastThisTurn{}.otterSpellsExceptAlania	number:int
 spellsCastThisTurn{}.sorceries	number:int
