@@ -988,6 +988,7 @@ choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
 choose choose-cards/the-deck-of-many-things-reanimate
 choose choose-cards/the-gitrog-ravenous-ride-sacrifice
+choose choose-cards/the-grand-evolution-put
 choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
 choose choose-cards/the-ruinous-wrecking-crew-draw
@@ -2613,6 +2614,7 @@ tail incubate/transform-all-incubators
 tail infernal-vessel/demon
 tail insidious-roots/counter-on-each-plant
 tail intuition/choose
+tail invasion-of-pyrulea/reveal-then-draw
 tail invent/sorcery-search
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land
@@ -3016,6 +3018,7 @@ tail the-deck-of-many-things/curse
 tail the-end/after-exile
 tail the-end/draw-for-hand
 tail the-gitrog-ravenous-ride/sacrificed
+tail the-grand-evolution/after-mill
 tail the-invincible-iron-man/attach-equipment
 tail the-kenriths-royal-funeral/draw-and-lose
 tail the-master-transcendent/green-mutant
