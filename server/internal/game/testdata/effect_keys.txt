@@ -2733,6 +2733,8 @@ tail espers-to-magicite/copy-a-creature-exiled
 tail essence-flux/after-exile
 tail essence-flux/counter-if-spirit
 tail etali-primal-conqueror/after-mill
+tail evelyn-the-covetous/collect
+tail evelyn-the-covetous/exile-step
 tail evolving-door/cast
 tail exile-from-hand-and-plot/plot
 tail exile-then-token-copy/ardyn-the-usurper

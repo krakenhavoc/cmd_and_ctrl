@@ -359,6 +359,14 @@ type PermissionFilter struct {
 	// place for the same reason.
 	OwnedByHolder bool `json:"ownedByHolder,omitempty"`
 
+	// ExiledByHolderAbility is Evelyn, the Covetous's "if it was exiled
+	// by an ability you controlled" (#5876): the card must carry
+	// Card.ExiledByAbilityOf naming the permission's holder. Like the
+	// ownership clauses, the holder is not known to the pure-data Matches,
+	// so it is read in permissionReachesPileLocked beside them. A card a
+	// spell exiled, or one an opponent's ability exiled, does not qualify.
+	ExiledByHolderAbility bool `json:"exiledByHolderAbility,omitempty"`
+
 	// WithCounter is the name of a counter the card must carry — the
 	// "stash" counter on Tinybones' exiled cards. Counters on a card in
 	// exile are per object (CR 122.2, 400.7) and MoveCard clears them
@@ -592,6 +600,7 @@ func (f PermissionFilter) Matches(c Card) bool {
 func (f PermissionFilter) faceBlind() bool {
 	f.CardInZone = false
 	f.NotOwnedByHolder, f.OwnedByHolder = false, false
+	f.ExiledByHolderAbility = false
 	f.WithCounter = ""
 	f.ExiledWithSource, f.ExiledWith = false, PermissionCardRef{}
 	f.ExiledWithSourceThisTurn, f.ExiledOnTurn = false, 0
@@ -2629,6 +2638,9 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 		return false
 	}
 	if perm.Filter.OwnedByHolder && card.Owner != holder {
+		return false
+	}
+	if perm.Filter.ExiledByHolderAbility && (holder == uuid.Nil || card.ExiledByAbilityOf != holder) {
 		return false
 	}
 	if zone != ZoneGraveyard && zone != ZoneLibrary {

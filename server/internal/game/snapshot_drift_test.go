@@ -713,6 +713,8 @@ var cardFields = plan(
 	"ExiledWithAbility", carried, "",
 	// #4458: the turn that link was made on; zero is "not this turn".
 	"ExiledWithTurn", carried, "",
+	// #5876: whose ability exiled the card; zero is "nobody's ability".
+	"ExiledByAbilityOf", carried, "",
 	// #3867: cipher's encoding (CR 702.99b) and its layer-6 timestamp.
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",
