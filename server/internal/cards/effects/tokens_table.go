@@ -526,4 +526,8 @@ var tokenTable = map[string]game.Card{
 	"4/5 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 5, Colors: []string{"G"}},
 	// #5493: Kamigawa: Neon Dynasty's Shrine (Go-Shintai of Life's Origin).
 	"1/1 colorless Shrine enchantment": {Name: "Shrine", TypeLine: "Token Enchantment Creature — Shrine", Power: 1, Toughness: 1},
+	// S82 AFR batch 15: Drider, Lolth, Minsc and Drizzt.
+	"2/1 black Spider with menace and reach":                     {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace", "reach"}},
+	"1/1 red Legendary Hamster named Boo with trample and haste": {Name: "Boo", TypeLine: "Token Legendary Creature — Hamster", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
+	"4/1 green Legendary Cat named Guenhwyvar with trample":      {Name: "Guenhwyvar", TypeLine: "Token Legendary Creature — Cat", Power: 4, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"trample"}},
 }

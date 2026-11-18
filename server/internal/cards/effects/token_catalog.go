@@ -445,6 +445,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// or block alone, the first token printed with an attack limit.
 	printedTobyBeastToken,
 
+	// AFR batch 15: Mordenkainen's Dog Illusion and Minn's Illusion.
+	printedAfrB15DogIllusionToken,
+	printedAfrB15IllusionToken,
+
 	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
 	printedReliquaryDragonToken,
 	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
