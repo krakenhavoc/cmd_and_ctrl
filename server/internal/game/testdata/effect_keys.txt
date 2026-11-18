@@ -3858,6 +3858,7 @@ tail then/play-with-fire-scry
 tail then/polygraph-orb-punisher-sacrificed
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again
+tail then/promise-of-bunrei-spirits
 tail then/protection-from-chosen-color-until-eot
 tail then/pucas-eye-color-chosen
 tail then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield
