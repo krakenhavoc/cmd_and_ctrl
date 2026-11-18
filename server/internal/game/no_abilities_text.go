@@ -31,3 +31,33 @@ func NoAbilitiesInText(texts ...string) bool {
 func PrintsNoAbilities(c Card) bool {
 	return c.NoAbilitiesText == PrintedYes && !c.FaceDownIsPermanent()
 }
+
+// HasNoAbilities reports whether the permanent has no abilities as it is
+// now (S82, Jasmine Boreal of the Seven: "creatures you control with no
+// abilities"): no keyword in its layered view, no ability another effect
+// granted it, and no printed ability that an ability-removing effect has
+// not taken away (CR 113.1, CR 613.1f).
+//
+// A card off the battlefield has only its printed characteristics (CR
+// 109.3), so it answers PrintsNoAbilities. On the battlefield a card the
+// importer never read (a token, a fixture) is judged by what the engine
+// runs for it: no keyword and no catalog ability key.
+func (c Card) HasNoAbilities() bool {
+	ch := c.effective
+	if ch == nil {
+		return PrintsNoAbilities(c)
+	}
+	if len(ch.Abilities) > 0 || len(ch.GrantedAbilities) > 0 {
+		return false
+	}
+	if ch.AbilitiesRemoved || c.FaceDownIsPermanent() {
+		return true
+	}
+	switch c.NoAbilitiesText {
+	case PrintedYes:
+		return true
+	case PrintedNo:
+		return false
+	}
+	return catalogAbilityKeyOf(&c) == ""
+}

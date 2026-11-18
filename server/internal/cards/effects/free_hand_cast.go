@@ -63,6 +63,7 @@ type freeHandCastOffer struct {
 type freeCastSpell struct {
 	filter       game.PermissionFilter
 	maxManaValue *int
+	minManaValue *int
 }
 
 // anySpell is "a spell", with no quality.
@@ -84,12 +85,23 @@ func (s freeCastSpell) withManaValueAtMost(n int) freeCastSpell {
 	return s
 }
 
+// withManaValueAtLeast adds "with mana value N or more" to the clause
+// (Founding the Third Path's "mana value 1 or 2" is at least 1, at most 2).
+func (s freeCastSpell) withManaValueAtLeast(n int) freeCastSpell {
+	s.minManaValue = &n
+	return s
+}
+
 // on writes the clause onto a free-cast permission, a copy of it.
 func (s freeCastSpell) on(perm game.CastPermission) game.CastPermission {
 	perm.Filter = s.filter
 	if s.maxManaValue != nil {
 		n := *s.maxManaValue
 		perm.MaxSpellManaValue = &n
+	}
+	if s.minManaValue != nil {
+		n := *s.minManaValue
+		perm.MinSpellManaValue = &n
 	}
 	return perm
 }
