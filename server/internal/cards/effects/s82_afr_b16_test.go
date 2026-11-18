@@ -119,6 +119,7 @@ func TestS82AfrB16OchreJellySplitsWithHalfTheCountersAtTheNextEndStep(t *testing
 	if n := onBattlefieldNamed(g, "Ochre Jelly"); n != 0 {
 		t.Fatalf("%d Jellies at once, want 0 (the token waits for the end step)", n)
 	}
+	t.Logf("graveyard %d, delayed %d", g.Seats[0].Graveyard.Size(), len(g.DelayedTriggers))
 	advanceToEndStep(t, g)
 	passPriorityAroundTable(t, g)
 	if n := onBattlefieldNamed(g, "Ochre Jelly"); n != 1 {
@@ -152,7 +153,7 @@ func s82B16CastFromExile(t *testing.T, g *game.Game, name string) {
 	t.Helper()
 	me := g.Seats[0]
 	id := uuid.New()
-	g.Exile.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
+	g.Exile.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: "Instant", ManaCost: "{3}{G}", Owner: me.ID, Controller: me.ID})
 	g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
 		Player: me.ID, CastOnly: true, Duration: game.WhileInZoneDuration(), Cost: "{0}",
 	})
@@ -229,8 +230,12 @@ func TestS82AfrB16RodOfAbsorptionCastsExiledSpellsUpToTotalManaValueX(t *testing
 	if _, ok := battlefieldCard(g, rod); ok {
 		t.Fatal("the Rod must be sacrificed as a cost")
 	}
-	answerAllMayCast(t, g, me.ID, true)
-	passPriorityAroundTable(t, g)
+	if err := g.CastSpell(me.ID, a, game.CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
+		t.Fatalf("casting the first spell (mana value 2 of X = 3): %v", err)
+	}
+	if err := g.CastSpell(me.ID, b, game.CastSpellParams{FromZone: "exile", Strict: true}); err == nil {
+		t.Fatal("the second spell fit under the budget (total 4 > X = 3)")
+	}
 	left := 0
 	for _, id := range []uuid.UUID{a, b} {
 		if cmdr2S41InExile(g, id) != nil {
@@ -238,7 +243,7 @@ func TestS82AfrB16RodOfAbsorptionCastsExiledSpellsUpToTotalManaValueX(t *testing
 		}
 	}
 	if left != 1 {
-		t.Errorf("%d of the two mana value 2 spells remain exiled, want exactly 1 (total 4 > X = 3)", left)
+		t.Errorf("%d of the two mana value 2 spells remain exiled, want exactly 1", left)
 	}
 }
 
@@ -293,7 +298,7 @@ func TestS82AfrB16PhantomSteedAttackMakesATappedAttackingIllusionCopyThenSacrifi
 	steed := s82B16CastSteed(t, g, bear)
 	unsick(g, steed)
 	declareAttack(t, g, opp.ID, steed)
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	copies := socB8Named(g, me.ID, "Bear")
 	if len(copies) != 1 {
 		t.Fatalf("%d Bear tokens, want 1", len(copies))
@@ -359,7 +364,7 @@ func TestS82AfrB16DemilichCastsFromTheGraveyardByExilingFourInstantsOrSorceries(
 		pay = append(pay, graveyardCardOf(g, me, "Spent", typ, "{R}", ""))
 	}
 	creature := graveyardCardOf(g, me, "Dead Bear", "Creature — Bear", "{1}{G}", "")
-	payMana(t, g, me, "UUUU")
+	payMana(t, g, me, "{U}{U}{U}{U}")
 	cast := func(ids []uuid.UUID) error {
 		return g.CastSpell(me.ID, demi, game.CastSpellParams{
 			FromZone: "graveyard", AlternativeCost: "exile_from_graveyard_in_addition", AltCostIDs: ids, Strict: true,
@@ -389,7 +394,7 @@ func TestS82AfrB16DemilichAttackExilesAndCopiesAnInstantOrSorceryFromYourGraveya
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	demi := b12Push(g, me.ID, "Demilich", "Creature — Skeleton Wizard", demilichOracle, 4, 3)
-	spell := graveyardCardOf(g, me, "Old Bolt", "Instant", "", lightningBoltOracle)
+	spell := graveyardCardOf(g, me, "Old Bolt", "Instant", "{R}", "")
 	before := lifeOf(g, opp.ID)
 	declareAttack(t, g, opp.ID, demi)
 	answerPickTargetIfOpen(t, g, spell)
