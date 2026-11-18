@@ -1495,6 +1495,7 @@ confirm confirm/arcane-endeavor-result
 confirm confirm/archghoul-of-thraben-take
 confirm confirm/archghoul-of-thraben-to-graveyard
 confirm confirm/armor-wars-draw
+confirm confirm/ashcoat-mill-four
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/awaken-the-sleeper-destroy-equipment
 confirm confirm/barrowgoyf-mill
@@ -1809,6 +1810,7 @@ number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
 number number/necrodominance-draw-that-many
 number number/pia-nalaar-create-nalaar-aetherjet
+number number/plague-of-vermin-paid
 number number/plunge-into-darkness-look-at-that-many
 number number/rampaging-aetherhood-plus-one-counters-on-this
 number number/render-inert-remove-counters
@@ -3669,6 +3671,7 @@ tail terminal-velocity/gift
 tail terra-magical-adept/after-mill
 tail territorial-bruntar/cast-nonland-this-turn
 tail tetzin-gnome-champion/after-mill
+tail thada-adel/play-the-exiled-card
 tail the-binding-of-the-titans/gain-per-creature-exiled
 tail the-day-of-the-doctor/after-mill
 tail the-deck-of-many-things/curse
