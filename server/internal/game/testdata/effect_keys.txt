@@ -216,6 +216,7 @@ body havengul-lich/gains-its-abilities
 body hawkeye/trick-arrows
 body head-of-the-hunt/wolf
 body heroic-sacrifice/its-counters-and-draw
+body hidetsugu-devouring-chaos/damage
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
 body hylda-of-the-icy-crown/modes
@@ -3422,6 +3423,7 @@ tail then/harmonized-crescendo-type-chosen
 tail then/haunting-voyage-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
 tail then/heroes-hangout-choose
+tail then/hidetsugu-devouring-chaos-damage
 tail then/high-society-hunter-counter
 tail then/highway-robbery-draw-two
 tail then/hold-for-ransom-draw
@@ -3530,6 +3532,7 @@ tail then/sylvan-library-next-card
 tail then/sylvia-tilly-joy-of-discovery-when-you-do
 tail then/synth-eradicator-ask
 tail then/tamiyo-collector-named
+tail then/tamiyo-compleated-sage-copy
 tail then/teferi-temporal-pilgrim-shuffle-nonland
 tail then/temporary-lockdown-exiled-one
 tail then/thalia-and-the-gitrog-monster-draw

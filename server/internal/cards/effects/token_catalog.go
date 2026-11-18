@@ -118,6 +118,13 @@ type tokenTemplate struct {
 	Triggered []game.TriggeredAbility
 	Static    []game.StaticAbility
 
+	// CostModifiers are the token's printed "spells you cast cost {N}
+	// less" clauses (Tamiyo's Notebook, S82 NEO batch 20), written exactly
+	// as Spec.CostModifiers are and filed under the same token key. The
+	// engine reads a permanent's modifiers through its catalog key, a
+	// token's included.
+	CostModifiers []game.CostModifier
+
 	// BlockRules are the token's printed CR 509.1b block restrictions
 	// with a parameter — Avatar Kuruk's Spirit's "This token can't
 	// block or be blocked by non-Spirit creatures" (#750). Built with
@@ -443,6 +450,12 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedS82SncB18WizardToken,
 	// Jugan Defends the Temple (S82, NEO): the 1/1 green Human Monk with "{T}: Add {G}."
 	printedNeoHumanMonkToken,
+	// S82 NEO batch 20: Kamigawa: Neon Dynasty's Keimi (Tatsunari, Toad
+	// Rider), Tamiyo's Notebook (Tamiyo, Compleated Sage) and Kaito
+	// Shizuki's unblockable Ninja.
+	printedNeoB20KeimiToken,
+	printedNeoB20NotebookToken,
+	printedNeoB20NinjaToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
@@ -459,6 +472,7 @@ func buildTokenDef(t tokenTemplate) *game.CardDef {
 		Activated:     t.Activated,
 		Triggered:     t.Triggered,
 		Static:        t.Static,
+		CostModifiers: t.CostModifiers,
 		BlockRules:    t.BlockRules,
 		AttackLimits:  t.AttackLimits,
 		TokenText:     t.Text,
@@ -475,7 +489,7 @@ func checkTokenTemplate(t tokenTemplate) string {
 	switch {
 	case t.Slug == "":
 		return "declares no slug — the slug is its catalog identity"
-	case len(t.Mana) == 0 && len(t.Activated) == 0 && len(t.Triggered) == 0 && len(t.Static) == 0 && len(t.BlockRules) == 0 && len(t.AttackLimits) == 0:
+	case len(t.Mana) == 0 && len(t.Activated) == 0 && len(t.Triggered) == 0 && len(t.Static) == 0 && len(t.CostModifiers) == 0 && len(t.BlockRules) == 0 && len(t.AttackLimits) == 0:
 		// A template with nothing to register would hand out a key
 		// that resolves to an empty entry, which reads as "this
 		// token's abilities were removed" everywhere downstream. A
@@ -540,7 +554,7 @@ func checkTokenBack(t tokenTemplate) string {
 // hasAbilities reports whether the template declares any ability slot.
 func (t tokenTemplate) hasAbilities() bool {
 	return len(t.Mana) > 0 || len(t.Activated) > 0 || len(t.Triggered) > 0 ||
-		len(t.Static) > 0 || len(t.BlockRules) > 0 || len(t.AttackLimits) > 0
+		len(t.Static) > 0 || len(t.CostModifiers) > 0 || len(t.BlockRules) > 0 || len(t.AttackLimits) > 0
 }
 
 // tokenBackKey is the catalog key of a double-faced token's back face:
