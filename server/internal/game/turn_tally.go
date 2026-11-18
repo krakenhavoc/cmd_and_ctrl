@@ -1372,6 +1372,12 @@ type NoncombatDamageRecord struct {
 	// Victim is the player the damage was dealt to, or uuid.Nil when it
 	// was dealt to a permanent (#3172).
 	Victim uuid.UUID `json:"victim,omitempty"`
+	// Object and ObjectEpoch name the permanent the damage was dealt to
+	// (zero when it went to a player), as the object it was then: a
+	// permanent that left and came back is a new object (CR 400.7) and was
+	// not dealt this damage (Grisly Sigil). Additive (S82).
+	Object      uuid.UUID `json:"object,omitempty"`
+	ObjectEpoch int       `json:"objectEpoch,omitempty"`
 }
 
 // recordNoncombatDamageLocked notes `amount` of noncombat damage dealt
@@ -1389,17 +1395,36 @@ func (g *Game) recordNoncombatDamageLocked(ev *ReplacementEvent, amount int) {
 	if src == nil {
 		return
 	}
-	var victim uuid.UUID
+	var victim, object uuid.UUID
+	var epoch int
 	if g.playerByIDLocked(ev.DamageTarget) != nil {
 		victim = ev.DamageTarget
+	} else if ev.DamageTarget != uuid.Nil {
+		object = ev.DamageTarget
+		epoch = g.cardObjectEpochLocked(object)
 	}
 	g.TurnTally.NoncombatDamage = append(g.TurnTally.NoncombatDamage, NoncombatDamageRecord{
-		Source:     ev.DamageSource,
-		Controller: src.Controller,
-		Colors:     append([]string(nil), src.Colors...),
-		Amount:     amount,
-		Victim:     victim,
+		Source:      ev.DamageSource,
+		Controller:  src.Controller,
+		Colors:      append([]string(nil), src.Colors...),
+		Amount:      amount,
+		Victim:      victim,
+		Object:      object,
+		ObjectEpoch: epoch,
 	})
+}
+
+// PermanentWasDealtNoncombatDamageThisTurn reports whether the permanent
+// `id`, as the object it is now, was dealt noncombat damage this turn
+// (Grisly Sigil). Caller must hold g.mu.
+func (g *Game) PermanentWasDealtNoncombatDamageThisTurn(id uuid.UUID) bool {
+	epoch := g.cardObjectEpochLocked(id)
+	for _, r := range g.TurnTally.NoncombatDamage {
+		if r.Object == id && r.ObjectEpoch == epoch {
+			return true
+		}
+	}
+	return false
 }
 
 // WasDealtNoncombatDamageLastTurn reports whether `player` was dealt

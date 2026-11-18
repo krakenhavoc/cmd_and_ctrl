@@ -24,19 +24,6 @@ func init() {
 		XMatters:       true,
 		AdditionalCost: ExileXFromGraveyardCost("X cards", nil),
 		// The life loss waits for a prompt a draw asks (a dredge offer; CR 608.2c, #4155).
-		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				if x := ctx.X(); x > 0 {
-					return DrawCards{Player: ctx.Controller(), N: x}.Apply(ctx)
-				}
-				return nil
-			}),
-			Instruction(func(ctx *Context) error {
-				if x := ctx.X(); x > 0 {
-					return GainLife{Player: ctx.Controller(), Amount: -x}.Apply(ctx)
-				}
-				return nil
-			}),
-		),
+		OnResolve: ResolveSteps(drawXStep(), loseXStep()),
 	})
 }
