@@ -293,7 +293,7 @@ func TestMidB13WallOfMourningExilesOnePerOpponentThenCovenReturnsOne(t *testing.
 	if exiled != 3 {
 		t.Fatalf("%d cards exiled, want one per opponent (3)", exiled)
 	}
-	if len(g.ExiledWithForEffect(game.PermissionCardRef(game.ObjectRefOf(b12Card(t, g, wall))))) != 3 {
+	if len(g.ExiledWithForEffect(game.ObjectRefOf(b12Card(t, g, wall)))) != 3 {
 		t.Fatal("the exiled cards are not linked to the Wall")
 	}
 	// Coven: powers 0 (the Wall), 1, 2.
