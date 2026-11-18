@@ -19,10 +19,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(Targeting(WhenThisEnters("White Dragon — Cold Breath: tap target creature an opponent controls, it doesn't untap", func(g *game.Game, item *game.StackItem) error {
+			Targeting(WhenThisEnters("White Dragon — Cold Breath: tap target creature an opponent controls, it doesn't untap", func(g *game.Game, item *game.StackItem) error {
 				return b751TapFreezeTargets(NewContext(g, item), uuid.Nil, "White Dragon")
 			}),
-				TargetCreature("target creature an opponent controls", OpponentControls())), game.Purpose{Answers: game.AnswerRestrict}),
+				TargetCreature("target creature an opponent controls", OpponentControls())),
 		},
 	})
 }
