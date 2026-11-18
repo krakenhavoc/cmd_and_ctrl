@@ -31,7 +31,7 @@ type declarationAttackersPayload struct {
 // chosenAttackTaxCost is a chosen attack's CR 508.1h price as a move's
 // cost, nil when free.
 func chosenAttackTaxCost(price game.AttackTaxPrice) *MoveCost {
-	return withAttackTax(nil, price)
+	return attackTaxCost(price)
 }
 
 // controlledDeclarationMoves appends the moves of each declaration e's
