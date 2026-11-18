@@ -756,7 +756,7 @@ func TestNeoB20TamiyoPlusOneTapsAndFreezesAnArtifactOrCreature(t *testing.T) {
 	me, opp := g.Seats[seat], g.Seats[(seat+1)%len(g.Seats)]
 	tamiyo := s82Walker(g, me.ID, "Tamiyo, Compleated Sage", neoTamiyoOracle, 5)
 	bear := pushCreatureToBattlefieldForTest(g, opp.ID, "Bear")
-	rock := pushPermanent(g, opp.ID, game.Card{Name: "Mind Stone", TypeLine: "Artifact", ManaCost: "{2}"})
+	pushPermanent(g, opp.ID, game.Card{Name: "Mind Stone", TypeLine: "Artifact", ManaCost: "{2}"})
 	land := pushLandFor(g, opp.ID, "Island", "Basic Land — Island")
 	advanceToMainOf(t, g, seat)
 
@@ -778,7 +778,7 @@ func TestNeoB20TamiyoPlusOneTapsAndFreezesAnArtifactOrCreature(t *testing.T) {
 	seat = g2.Turn.ActiveSeat
 	me, opp = g2.Seats[seat], g2.Seats[(seat+1)%len(g2.Seats)]
 	tamiyo = s82Walker(g2, me.ID, "Tamiyo, Compleated Sage", neoTamiyoOracle, 5)
-	rock = pushPermanent(g2, opp.ID, game.Card{Name: "Mind Stone", TypeLine: "Artifact", ManaCost: "{2}"})
+	rock := pushPermanent(g2, opp.ID, game.Card{Name: "Mind Stone", TypeLine: "Artifact", ManaCost: "{2}"})
 	advanceToMainOf(t, g2, seat)
 	s82Activate(t, g2, me.ID, tamiyo, 0, game.ActivateAbilityParams{Targets: cardRefs(rock)})
 	passPriorityAroundTable(t, g2)
