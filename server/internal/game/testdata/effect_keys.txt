@@ -2696,8 +2696,8 @@ tail dice/scion-of-stygia-table
 tail dice/song-of-inspiration-result
 tail dice/spiked-pit-trap-table
 tail dice/swarming-goblins-tokens
-tail dice/sylvan-shepherd-life
 tail dice/sword-of-hours-double
+tail dice/sylvan-shepherd-life
 tail dice/the-deck-of-many-things-result
 tail dice/treasure-chest-found
 tail dice/treasure-chest-rolled
