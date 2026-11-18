@@ -2570,7 +2570,13 @@ func (g *Game) storedHandPermissionLocked(p *Player, card Card) *CastPermission 
 func (g *Game) storedHandPermissionForLocked(p *Player, card Card, key string) *CastPermission {
 	for i := range p.CastPermissions {
 		perm := &p.CastPermissions[i]
-		if perm.Scope == ScopeStanding || !perm.CoversCard(card, ZoneHand) {
+		if !perm.CoversCard(card, ZoneHand) {
+			continue
+		}
+		// #5922: the one standing rule over a hand is a stored one over
+		// ANOTHER player's (Sen Triplets), and it reaches the cards in
+		// that hand and no other.
+		if perm.Scope == ScopeStanding && (!perm.ForeignHandRule() || !g.permissionReachesPileLocked(p.ID, perm, card, ZoneHand)) {
 			continue
 		}
 		if key != "" && perm.AltCostKey != key {
@@ -2599,13 +2605,25 @@ func (g *Game) storedHandPermissionForLocked(p *Player, card Card, key string) *
 // CastSpell narrows once the claim is resolved and before the timing
 // gate; the enumerator narrows per offer, so the two agree.
 func (p *CastPermission) ForClaim(alt *AlternativeCost) *CastPermission {
-	if p == nil || p.Zone != ZoneHand {
+	if p == nil || p.Zone != ZoneHand || p.ForeignHandRule() {
 		return p
 	}
 	if alt == nil || AltCostKeyword(alt.Key) != p.AltCostKey {
 		return nil
 	}
 	return p
+}
+
+// ForeignHandRule reports a stored standing permission over ANOTHER
+// player's hand: "you may play lands and cast spells from that player's
+// hand this turn" (Sen Triplets, #5922). Unlike a hand grant that prices
+// one claim (miracle, ForClaim), it is the whole reason a cast of a card
+// in that hand exists, so it applies to every claim the card offers, at
+// the card's own timing and price, and to a land play (CR 305.1) that
+// spends the holder's land drop. Nil-safe.
+func (p *CastPermission) ForeignHandRule() bool {
+	return p != nil && p.Zone == ZoneHand && p.Scope == ScopeStanding &&
+		p.ZoneOwner != uuid.Nil && p.ZoneOwner != p.Player
 }
 
 // PileOwnerFor resolves WHOSE graveyard or library this permission
@@ -2666,6 +2684,13 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 	}
 	if perm.Filter.ExiledByHolderAbility && (holder == uuid.Nil || card.ExiledByAbilityOf != holder) {
 		return false
+	}
+	// #5922: a hand holds only its owner's cards (CR 400.3), and a standing rule over
+	// one names whose (ForeignHandRule). Asked of the hand itself rather
+	// than of the card's owner, since nothing else derives a hand rule.
+	if zone == ZoneHand {
+		owner := g.playerByIDLocked(perm.PileOwnerFor(holder))
+		return owner != nil && owner.Hand != nil && owner.Hand.Contains(card.InstanceID)
 	}
 	if zone != ZoneGraveyard && zone != ZoneLibrary {
 		return true

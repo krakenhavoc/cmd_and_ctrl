@@ -76,6 +76,8 @@
   interface Props {
     hand: ZoneView;
     isSelf: boolean;
+    // #5922: on an opponent's hand, called only for a card the server
+    // marks `castable_here` for this viewer (a rule over that hand).
     onPlayCard?: (card: CardView) => void;
     // #1508: drag a card out of the hand onto the table to cast it.
     // Called once the card is released past the line while castable;
@@ -321,6 +323,17 @@
   function handleCardClick(card: CardView): void {
     if (!isSelf) return;
     onPlayCard?.(card);
+  }
+
+  // #5922: a card in ANOTHER seat's hand that this viewer may play or
+  // cast from there (Sen Triplets: "you may play lands and cast spells
+  // from that player's hand this turn"). The server stamps
+  // `castable_here` on the holder's copy alone, already judged for
+  // timing, the land drop and the cost; the click runs the same cast
+  // chain a card in the viewer's own hand does, and the server finds
+  // the card in the hand it is in.
+  function foreignCastable(card: CardView): boolean {
+    return !isSelf && card.known_by_you === true && card.castable_here === true && !!onPlayCard;
   }
 
   // #3280: a card that cannot be played or cast right now but has
@@ -755,7 +768,7 @@
           <Card
             card={c}
             faceDown={!isSelf && c.known_by_you !== true}
-            showManaCost={isSelf}
+            showManaCost={isSelf || foreignCastable(c)}
             artOnly={isSelf && $settings.display.handArt}
             priority={isSelf}
             onActivateAbility={isSelf && (c.zone_abilities?.length ?? 0) > 0
@@ -777,13 +790,17 @@
             legalGate={isSelf ? legalGate : undefined}
             pips={cPips}
             readyZone="hand"
-            ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
+            ready={isSelf
+              ? legal.castableFrom(c.instance_id, "hand") || hasPips(cPips)
+              : foreignCastable(c)}
             idleHint={isSelf ? idleReadyHint(legal, c.instance_id, "hand") : undefined}
             onClick={isSelf && leg.legal
               ? () => handleCardClick(c)
-              : handCanOpenMenu(c)
-                ? () => openHandMenu(c)
-                : undefined}
+              : foreignCastable(c)
+                ? () => onPlayCard?.(c)
+                : handCanOpenMenu(c)
+                  ? () => openHandMenu(c)
+                  : undefined}
           />
         </div>
         {#if isSelf && !ownHandRevealed && (c.known_by_seats?.length ?? 0) > 0}
