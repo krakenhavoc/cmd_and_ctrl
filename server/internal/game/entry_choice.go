@@ -491,6 +491,10 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 		// EntersWithCounters below have to be applied to the new object
 		// rather than to the one that is about to be wiped.
 		if newID := g.resetAsNewObjectLocked(entered); newID != uuid.Nil {
+			// #5877: an "until" return's follow-up names the card it
+			// returns; it follows the card to the new object, before
+			// EventETB, so it can trigger on that object's entry.
+			g.followUntilThenLocked(entered, newID)
 			entered = newID
 			moved.InstanceID = newID
 		}

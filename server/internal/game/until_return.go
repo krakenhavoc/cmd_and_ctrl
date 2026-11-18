@@ -441,6 +441,40 @@ func (g *Game) scheduleUntilThenLocked(dt *DelayedTrigger) {
 	})
 }
 
+// followUntilThenLocked is the follow-up's half of CR 400.7 (#5877): the
+// exile return mints the entering permanent a fresh instance ID
+// (resetAsNewObjectLocked), so a follow-up waiting for the card `oldID`
+// is pointed at `newID` (already on the battlefield under it) before
+// EventETB is emitted. Only a follow-up whose object is the one entering
+// now (its epoch) is moved. The queue is
+// rewritten with copies, because a record may be shared with an undo
+// snapshot.
+//
+// Caller must hold g.mu (write).
+func (g *Game) followUntilThenLocked(oldID, newID uuid.UUID) {
+	c, ok := g.battlefieldCardLocked(newID)
+	if !ok {
+		return
+	}
+	var out []*DelayedTrigger
+	for i, dt := range g.DelayedTriggers {
+		if dt == nil || dt.Condition != untilThenEnteredCondition || len(dt.Cards) != 1 ||
+			dt.Cards[0] != oldID || dt.Params.Object.Epoch != c.ObjectEpoch {
+			continue
+		}
+		if out == nil {
+			out = append([]*DelayedTrigger(nil), g.DelayedTriggers...)
+		}
+		cp := cloneDelayedTrigger(dt)
+		cp.Cards = []uuid.UUID{newID}
+		cp.Params.Object.ID = newID
+		out[i] = cp
+	}
+	if out != nil {
+		g.DelayedTriggers = out
+	}
+}
+
 // untilToHandWord marks an "until" record whose card returns to its
 // owner's hand (UntilReturn.ToHand). An on-disk spelling: never renamed.
 const untilToHandWord = "to-hand"

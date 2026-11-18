@@ -443,6 +443,7 @@ body undercity-eliminator/exile
 body undying/return
 body unleash-the-inferno/destroy
 body unscrupulous-contractor/draw-and-lose
+body until-then/lagrella-two-plus-one-counters-on-it
 body until/return-to-battlefield
 body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
@@ -1265,6 +1266,7 @@ condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
+condition until/returned-under-your-control
 confirm avatar-b30/bison-whistle-take-creature
 confirm avatar-b30/bison-whistle-to-graveyard
 confirm bloomburrow-commander/fishers-talent-reveal
@@ -3406,6 +3408,7 @@ tail then/kindred-judgment-type-chosen
 tail then/kindred-summons-type-chosen
 tail then/king-solomons-frogs-exiled-one
 tail then/kogla-and-yidaro-shuffle-draw
+tail then/lagrella-the-magpie-exiled-one
 tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return

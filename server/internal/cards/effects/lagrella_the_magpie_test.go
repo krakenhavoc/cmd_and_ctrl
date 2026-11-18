@@ -73,6 +73,19 @@ func lagrellaStackHolds(g *game.Game, label string) int {
 	return n
 }
 
+// lagrellaReturned is the battlefield permanent named `name`: a card the
+// return brought back is a new object with a new instance ID (CR 400.7).
+func lagrellaReturned(t *testing.T, g *game.Game, name string) game.Card {
+	t.Helper()
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == name {
+			return c
+		}
+	}
+	t.Fatalf("%s is not on the battlefield", name)
+	return game.Card{}
+}
+
 func TestLagrellaIsRegisteredFull(t *testing.T) {
 	spec, ok := Lookup(lagrellaOracle)
 	if !ok || spec.Name != "Lagrella, the Magpie" || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
@@ -106,24 +119,24 @@ func TestLagrellaCountersOnlyOnACardReturnedUnderYourControl(t *testing.T) {
 
 	destroyNow(t, g, lagrella)
 	g.RunStateChecksForTest()
-	if !g.Battlefield.Contains(mine) || !g.Battlefield.Contains(theirs) {
+	if g.Exile.Contains(mine) || g.Exile.Contains(theirs) {
 		t.Fatal("both cards return as Lagrella leaves")
 	}
-	if c, _ := g.LookupCardForEffect(theirs); c.Controller != opp.ID {
+	if c := lagrellaReturned(t, g, "Their Bear"); c.Controller != opp.ID {
 		t.Fatalf("the opponent's card returns under its owner's control, got %v", c.Controller)
 	}
 	// The counters are a triggered ability: not there as it enters.
-	if got := counterOnBattlefieldCard(g, mine, game.CounterPlusOne); got != 0 {
+	if got := lagrellaReturned(t, g, "My Bear").Counters[game.CounterPlusOne]; got != 0 {
 		t.Fatalf("the counters are not 'enters with': %d before the trigger resolved", got)
 	}
 	if got := lagrellaStackHolds(g, lagrellaFollowUpLabel); got != 1 {
 		t.Fatalf("one follow-up trigger on the stack, got %d", got)
 	}
 	lagrellaSettle(t, g)
-	if got := counterOnBattlefieldCard(g, mine, game.CounterPlusOne); got != 2 {
+	if got := lagrellaReturned(t, g, "My Bear").Counters[game.CounterPlusOne]; got != 2 {
 		t.Errorf("my returned creature has %d +1/+1 counters, want 2", got)
 	}
-	if got := counterOnBattlefieldCard(g, theirs, game.CounterPlusOne); got != 0 {
+	if got := lagrellaReturned(t, g, "Their Bear").Counters[game.CounterPlusOne]; got != 0 {
 		t.Errorf("the opponent's returned creature has %d +1/+1 counters, want 0", got)
 	}
 
@@ -160,11 +173,11 @@ func TestLagrellaStolenCreatureReturnsToItsOwnerWithoutCounters(t *testing.T) {
 	destroyNow(t, g, lagrella)
 	g.RunStateChecksForTest()
 	lagrellaSettle(t, g)
-	c, ok := g.LookupCardForEffect(stolen)
-	if !ok || !g.Battlefield.Contains(stolen) || c.Controller != opp.ID {
-		t.Fatalf("the card returns under its owner's control: %+v", c)
+	c := lagrellaReturned(t, g, "Stolen Bear")
+	if c.Controller != opp.ID {
+		t.Fatalf("the card returns under its owner's control, got %v", c.Controller)
 	}
-	if got := counterOnBattlefieldCard(g, stolen, game.CounterPlusOne); got != 0 {
+	if got := c.Counters[game.CounterPlusOne]; got != 0 {
 		t.Errorf("it got %d +1/+1 counters entering under another player's control", got)
 	}
 }
@@ -231,9 +244,9 @@ func TestLagrellaThreeTargetsOneFollowUp(t *testing.T) {
 		t.Fatalf("one follow-up trigger, got %d", got)
 	}
 	lagrellaSettle(t, g)
-	if counterOnBattlefieldCard(g, mine, game.CounterPlusOne) != 2 ||
-		counterOnBattlefieldCard(g, bs, game.CounterPlusOne) != 0 ||
-		counterOnBattlefieldCard(g, cs, game.CounterPlusOne) != 0 {
+	if lagrellaReturned(t, g, "My Bear").Counters[game.CounterPlusOne] != 2 ||
+		lagrellaReturned(t, g, "B's Bear").Counters[game.CounterPlusOne] != 0 ||
+		lagrellaReturned(t, g, "C's Bear").Counters[game.CounterPlusOne] != 0 {
 		t.Error("only my creature gets the counters")
 	}
 }
@@ -288,7 +301,7 @@ func TestLagrellaFollowUpSurvivesSnapshotAndClone(t *testing.T) {
 		destroyNow(t, next, lagrella)
 		next.RunStateChecksForTest()
 		lagrellaSettle(t, next)
-		if got := counterOnBattlefieldCard(next, mine, game.CounterPlusOne); got != 2 {
+		if got := lagrellaReturned(t, next, "My Bear").Counters[game.CounterPlusOne]; got != 2 {
 			t.Errorf("after a restore or clone the returned creature has %d +1/+1 counters, want 2", got)
 		}
 	}
