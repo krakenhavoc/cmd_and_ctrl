@@ -371,6 +371,7 @@ body renown/grow
 body repeated-reverberation/copy-twice
 body repository-skaab/return
 body return/the-objects-together-under-your-control
+body return/vanish-into-memory
 body rewrite-history/return
 body rhinos-rampage/destroy-artifact
 body riddle-gate-gargoyle/lifelink
@@ -3937,6 +3938,7 @@ tail then/unwind-history-surveil
 tail then/urza-assembles-the-titans-may-reveal
 tail then/valakut-exploration-damage
 tail then/valiant-endeavor-knights
+tail then/vanish-into-memory-exiled
 tail then/vengeful-villagers-stun
 tail then/venture-into-the-dungeon
 tail then/vision-charm-basic-type-chosen
@@ -3994,6 +3996,7 @@ tail valduk-keeper-of-the-flame/exile-the-elementals
 tail valgavoths-onslaught/manifest-again
 tail valkyries-call/angel
 tail vanille-cheerful-lcie/after-mill
+tail vanish-into-memory/entered
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
