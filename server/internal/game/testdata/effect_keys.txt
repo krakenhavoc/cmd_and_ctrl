@@ -2113,6 +2113,7 @@ payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
+payunless pay-unless/flameshadow-conjuring-copy
 payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/forage-only
 payunless pay-unless/frenzied-goblin-cant-block
@@ -2680,6 +2681,7 @@ tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
 tail attacking-tokens/delina-token-made
 tail attacking-tokens/dorotheas-retribution-sacrifice-the-spirit
 tail attacking-tokens/fire-navy-trebuchet-sacrifice-the-boulder
+tail attacking-tokens/flamerush-rider-exile-at-end-of-combat
 tail attacking-tokens/furnace-blessed-conqueror-counters-and-sacrifice
 tail attacking-tokens/kari-zev-exile-ragavan
 tail attacking-tokens/kavaron-harrier-sacrifice-the-robot
@@ -3060,6 +3062,7 @@ tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
 tail fang-rokus-companion/spirit
 tail fecund-greenshell/land-declined-into-hand
+tail feldon-of-the-third-path/haste-and-sacrifice-copy
 tail fell-gravship/after-mill
 tail fetch-quest/after-mill
 tail fevered-suspicion/after-mill
@@ -3076,6 +3079,7 @@ tail firion-wild-rose-warrior/sacrifice-the-copy
 tail first-responder/counters
 tail fishing-gear/after-exile
 tail fishing-gear/entered
+tail flameshadow-conjuring/haste-and-exile-copy
 tail flameskull/after-exile
 tail flicker/return-exiled
 tail flicker/return-on-owners-end-step
