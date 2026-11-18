@@ -97,18 +97,4 @@ func precursorGolemCopies(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-var precursorGolemCopyInOrder = game.RegisterChooseCardsThen("choose-cards/precursor-golem-copy-order", func(g *game.Game, r game.CardsChosen) error {
-	// Unanswered, the caster has left the game, and so would the copies
-	// they controlled (CR 800.4a).
-	if len(r.Carry) < 2 || !r.Answered {
-		return nil
-	}
-	order := r.Picked
-	if len(order) != len(r.Candidates) {
-		order = r.Candidates
-	}
-	for _, id := range order {
-		g.CopySpellRetargetedForEffect(r.Carry[0], r.Chooser, r.Carry[1], id)
-	}
-	return nil
-})
+var precursorGolemCopyInOrder = game.RegisterChooseCardsThen("choose-cards/precursor-golem-copy-order", copySpellForEachChosenInOrder)

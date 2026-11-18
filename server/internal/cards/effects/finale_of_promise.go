@@ -48,10 +48,10 @@ func init() {
 // copied (it cannot have: nothing resolves between the cast and this).
 var finaleOfPromiseCopyTwice = game.RegisterCastFollowUp("finale-of-promise/copy-twice",
 	func(g *game.Game, f game.CastFollowUp) error {
-		for i := 0; i < 2; i++ {
-			if err := g.CopySpellForEffect(f.Spell, f.Player, true, nil); err != nil && err != game.ErrCardNotFound {
-				return err
-			}
+		// One instruction of two copies (#5918).
+		err := g.CopySpellTimesForEffect(game.SpellCopy{Spell: f.Spell, Controller: f.Player, Times: 2, MayChooseNewTargets: true})
+		if err != nil && err != game.ErrCardNotFound {
+			return err
 		}
 		return nil
 	})

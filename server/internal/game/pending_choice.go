@@ -2601,6 +2601,10 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// mustSettleNow, so this is never asked; the dice flow asks the
 		// roller the order of the choosers itself (dice_roll.go).
 		return ev.RollPlayer
+	case RepEventCopySpell:
+		// #5918. The player who would copy (CR 616.1). The window sets
+		// mustSettleNow, so this is never asked.
+		return ev.CopyPlayer
 	case RepEventLife:
 		return ev.LifePlayer
 	case RepEventCounter:
@@ -2978,6 +2982,10 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// #4307: unreachable. The window sets mustSettleNow, so no roll
 		// queues a CR 616 prompt; the dice flow asks its own keyed
 		// questions after the window settles (dice_roll.go).
+		return nil
+	case RepEventCopySpell:
+		// #5918: unreachable. The window sets mustSettleNow, so no copy
+		// instruction queues a CR 616 prompt (spell_copy_event.go).
 		return nil
 	case RepEventProduceMana:
 		// #1222: unreachable, and that is the decision rather than an
@@ -3358,6 +3366,10 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// #4307: RollDiceThenForEffect reads a cancelled roll inline (no
 		// dice, and the tail told so). The window never pauses, so
 		// nothing resumes into here.
+		return nil
+	case RepEventCopySpell:
+		// #5918: copySpellTimesLocked reads a cancelled instruction inline
+		// (no copies). The window never pauses, so nothing resumes here.
 		return nil
 	case RepEventProduceMana:
 		// #1222: a production cannot even reach this function — it

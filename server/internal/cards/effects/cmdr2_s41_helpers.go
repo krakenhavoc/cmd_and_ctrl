@@ -298,9 +298,8 @@ var cmdr2S41FeatherChosen = game.RegisterChooseCardsThen("choose-cards/cmdr2-s41
 // cmdr2S41FeatherCopies makes one copy of the spell for each creature, in
 // order. A creature that is no longer a legal target by now gets none.
 func cmdr2S41FeatherCopies(g *game.Game, spell, caster, feather uuid.UUID, creatures []uuid.UUID) error {
-	for _, id := range creatures {
-		g.CopySpellRetargetedForEffect(spell, caster, feather, id)
-	}
+	// One copy instruction for all the creatures (#5918).
+	g.CopySpellRetargetedEachForEffect(spell, caster, feather, creatures)
 	return nil
 }
 
