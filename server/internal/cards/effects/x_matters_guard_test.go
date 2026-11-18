@@ -55,7 +55,10 @@ import (
 // or a noncreature permanent — is a rider, and so is a fixed clause
 // that happens whatever X is.
 var xMattersAllowlist = map[string]string{
+	"lantern_flare.go Lantern Flare":                              "X exists only in the cleave cost: hard-cast it has no X (the creatures you control) and must stay on the list, which a declared XMatters floor of 1 would hide from the bot",
 	"kellan_the_kid.go Kellan, the Kid":                           "no X cost of its own: its trigger reads the triggering spell's XValue for that spell's mana value (CR 202.3e), not an X Kellan announced",
+	"long_rest.go Long Rest":                                      "X is the target count (CountFromX on its graveyard targets), which the scan cannot see; at X=0 it targets nothing and only exiles itself",
+	"meteor_swarm.go Meteor Swarm":                                "X is the target count (CountFromX on its divided targets), which the scan cannot see; at X=0 it has no target to divide the 8 damage among",
 	"lost_in_the_maze.go Lost in the Maze":                        "X is the target count of its enters trigger (CountFromX on an XFromCast row), which the scan cannot see; at X=0 the enchantment taps nothing",
 	"benevolent_hydra.go Benevolent Hydra":                        "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",
 	"chandra_chill_of_compliance.go Chandra, Chill of Compliance": "a planeswalker with no X cost of its own: her −X at X=0 still taps the target, and her other abilities never read X",
@@ -89,6 +92,7 @@ var xMattersAllowlist = map[string]string{
 	"song_of_totentanz.go Song of Totentanz":                      "\"Creatures you control gain haste until end of turn\" never reads X: at X=0 the spell makes no Rats and still gives the team haste",
 	"wild_hypothesis.go Wild Hypothesis":                          "the X counters scale with X but \"Surveil 2\" is a fixed rider: at X=0 the Fractal dies as a 0/0 and the spell still surveils 2, a real play",
 	"path_of_the_ghosthunter.go Path of the Ghosthunter":          "Will of the Planeswalkers never reads X: at X=0 the players still vote, and at a Planechase table the caster planeswalks or chaos ensues (#5648)",
+	"gorex_the_tombshell.go Gorex, the Tombshell":                 "no X cost of its own: X is the number of creature cards its optional additional cost exiles, read only by its {2}-per-card discount; at X=0 Gorex is still cast for its full cost (#5895)",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

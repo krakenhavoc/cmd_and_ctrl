@@ -1331,6 +1331,9 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 		case !rc.Variable && rc.N <= 0:
 			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters — a counter cost removes at least one", card, where, rc.N))
 		}
+		if rc.All && (!rc.Variable || rc.Counter == "" || rc.From != nil || rc.Among || rc.OnePermanent || rc.N != 0) {
+			panic(fmt.Sprintf("effects.Register: %q %s marks a counter removal All outside the self form with a printed kind and no floor — build it with RemoveAllCountersFromThis", card, where))
+		}
 		if rc.Counter == "" && !rc.Among && (rc.N > 1 || rc.Variable) {
 			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind with one kind choice — a removal that may mix kinds asks the kind per part: RemoveCountersOfAnyKindsFromThis for this permanent (#3987), RemoveCountersAmong across permanents (#943)", card, where, rc.N))
 		}
@@ -2075,7 +2078,12 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d sums a total over a clause that can pick a player", name, i))
 	case c.Different != nil || c.Same != nil || len(c.EachOf) > 0:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule beside another set rule — no reader searches for a set under both", name, i))
-	case c.CountFromX || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
+	case r.MaxIsX && (!c.CountFromX || !c.UpToX):
+		// #5898: "up to X target … with total mana value X or less"
+		// (Orcus, Prince of Undeath) is the one printed form, its count
+		// and its ceiling the same X.
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total of X on a clause not counted \"up to X\" — build it as Orcus, Prince of Undeath's", name, i))
+	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule and an X — no printed card has both yet", name, i))
 	}
 }

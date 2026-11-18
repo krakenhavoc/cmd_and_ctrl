@@ -186,8 +186,17 @@ var reviewedNotAWipe = map[string]string{
 	// #5482: one of six modes, chosen three at a time on an enters-or-attacks trigger.
 	"Mishra, Lost to Phyrexia": "its -1/-1 to opposing creatures is one of six modes, three chosen each time: a mode of a trigger, not a board wipe",
 
+	// #5495: VOW batch 6.
+	"Lantern of the Lost": "exiles the cards in every graveyard and draws a card: it touches no permanent",
+
 	// #5493: NEO batch 18.
 	"Behold the Unspeakable // Vision of the Unspeakable": "chapter I gives opposing creatures -2/-0 until your next turn, which removes nothing",
+
+	// #5499: AFR batch 14.
+	"Asmodeus the Archfiend": "its \"return all cards exiled with Asmodeus to their owner's hand\" moves only the cards its own draw replacement exiled face down, never a permanent on the board",
+
+	// S82 AFR batch 16.
+	"Wild-Magic Sorcerer": "gives the first spell you cast from exile each turn cascade: no permanents are affected, only a cascade offer",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

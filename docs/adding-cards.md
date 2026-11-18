@@ -770,6 +770,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Discard a card | `ManaAbilityCost{DiscardCards: DiscardACard().DiscardCards}` | Skirge Familiar |
 | Exile a card from your hand | `ManaAbilityCost{ExileCards: ExileACardFromHand()}` | Cadaverous Bloom (#1283) |
 | Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
+| {1}, Exile this card from your graveyard | `ManaAbility{Zones: []game.ZoneKind{game.ZoneGraveyard}, Cost: ManaAbilityCost{Mana: "{1}", ExileSelf: true}}` (the costed auto-tap pass plans it) | Jack-o'-Lantern (#5896) |
 | Exile a creature you control | `ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}` | Food Chain (#1600) |
 
 **"Mana abilities of this land cost an additional 1 life to activate"**
@@ -885,6 +886,13 @@ fields `ActivateAbilityParams` uses (`CounterSourceIDs`,
 `CounterCounts`, `CounterKind`), the view ships the same
 `counter_cost_*` fields, and the client opens the same
 `CounterCostModal`.
+
+`RemoveAllCountersFromThis(kind)` is "Remove all <kind> counters from this
+permanent" (Catti-brie of Mithral Hall, S82): `CounterRemovalCost.All`, a
+variable cost whose payment is every counter of the kind the source holds. A
+partial count is refused (`ErrInvalidParam`), no count at all means all of them,
+none held pays zero, and the view floors the stepper at the held count. The
+effect reads the number as `ctx.CountersRemoved()`.
 
 A zero floor means zero is an announcement (#2951): a payment with no
 counter fields, or `CounterCounts: []int{0}`, removes nothing and still
@@ -1376,6 +1384,13 @@ the grant. Never write a granted trigger on the GRANTOR watching the
 recipients: the controller, the removal and the LKI all come out wrong.
 See `dionus_elvish_archdruid.go`, `agent_of_the_iron_throne.go` and
 `thornbite_staff.go`.
+
+A granted trigger that names the PLAYER WHO GAVE IT ("When this permanent
+deals damage to the player who cast Hellish Rebuke, …") sets
+`EventTargetIsGrantActivator` on its row: the harvest passes it only when the
+event's Target is the "you" of the grant that very row came from
+(`GrantedAbility.Activator`, per occurrence, so two casters' grants each name
+their own caster). It never passes on an own row. See `hellish_rebuke.go`.
 
 A grant from a RESOLVING spell or ability ("until end of turn, target
 creature gains '…'", Urza's Saga's "this Saga gains '…'") is the same

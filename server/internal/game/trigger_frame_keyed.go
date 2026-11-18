@@ -550,7 +550,7 @@ func (g *Game) rebuildTargetWalkLocked(s *targetWalkSnapshot) (*pickTargetFrame,
 		return nil, false
 	}
 	spec := g.triggerTargetsLocked(p.ability, p.tc, &p.source)
-	steps := AnnouncedClauses(spec, p.ability.Modes, s.Modes)
+	steps := bindTriggerModeStepsCastX(p.ability, &p.source, AnnouncedClauses(spec, p.ability.Modes, s.Modes))
 	if s.Step < 0 || s.Step >= len(steps) {
 		return nil, false
 	}

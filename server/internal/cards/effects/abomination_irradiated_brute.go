@@ -27,13 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, msc16GammaOrVillainDealtCombatDamageToAPlayer,
 				"Abomination, Irradiated Brute — put that many +1/+1 counters on him",
-				Do(Instruction(func(ctx *Context) error {
-					n := ctx.Trigger().Event.Amount
-					if n <= 0 || !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-						return nil
-					}
-					return CounterOnThis{Kind: game.CounterPlusOne, N: n}.Apply(ctx)
-				}))),
+				Do(Instruction(afrB18CountersEqualToDamageOnThis))),
 		},
 	})
 }

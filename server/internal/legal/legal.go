@@ -1038,6 +1038,9 @@ type enumerator struct {
 	// rowEquip is whether that row is an equip ability, for the spend
 	// context's ManaRestrictEquip (#4600).
 	rowEquip bool
+	// rowClassLevel is whether that row is a Class level-up ability, for the
+	// spend context's ManaRestrictClassLevel (CR 716.2a).
+	rowClassLevel bool
 	// rowCostHasX is whether that row's cost contains {X}, for the
 	// spend context's ManaRestrictXCost (#4834).
 	rowCostHasX bool
@@ -1053,6 +1056,7 @@ func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
 	spend := game.ManaSpendForAbilityRow(*source, e.rowOrigin)
 	spend.PowerUp = e.rowPowerUp
 	spend.Equip = e.rowEquip
+	spend.ClassLevel = e.rowClassLevel
 	spend.CostHasX = e.rowCostHasX
 	return spend
 }

@@ -246,9 +246,13 @@ func TestManaAbilityNeedsPermanentSourceNamesTheComponent(t *testing.T) {
 		}
 	}
 	if ManaAbilityZoneUnsupported(ZoneHand) != "" {
-		t.Error("the hand is the one supported non-battlefield mana zone and was refused")
+		t.Error("the hand is a supported non-battlefield mana zone and was refused")
 	}
-	if ManaAbilityZoneUnsupported(ZoneGraveyard) == "" {
-		t.Error("the graveyard is not walked for mana abilities and was accepted")
+	// #5896: Jack-o'-Lantern's graveyard mana ability.
+	if ManaAbilityZoneUnsupported(ZoneGraveyard) != "" {
+		t.Error("the graveyard is a supported non-battlefield mana zone and was refused")
+	}
+	if ManaAbilityZoneUnsupported(ZoneExile) == "" {
+		t.Error("exile is not walked for mana abilities and was accepted")
 	}
 }

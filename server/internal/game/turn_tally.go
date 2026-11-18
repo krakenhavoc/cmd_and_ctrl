@@ -81,6 +81,12 @@ type PlayerTurnTally struct {
 	// It ends with the turn: "since your last turn" is
 	// Player.CombatDamagedSinceLastTurn (#5652, since_last_turn.go).
 	CombatDamageTaken int `json:"combatDamageTaken,omitempty"`
+	// DamageTaken is all the damage dealt TO this player this turn, combat
+	// or not, from any source (S82, Boarded Window's "if you were dealt 4 or
+	// more damage this turn"): damage actually dealt, so prevented damage is
+	// not counted, and infect damage still is. Read through
+	// Game.DamageTakenThisTurn. Additive within the snapshot schema.
+	DamageTaken int `json:"damageTaken,omitempty"`
 	// CardsDiscarded counts cards this player discarded (one event
 	// per card, CR 701.9a), whatever the discard's cause or eventual
 	// destination — a madness card exiled instead of binned, or one
@@ -288,6 +294,13 @@ type TurnTally struct {
 	// Additive within the current schema: a file without it restores zero
 	// (weaker, never stronger).
 	NontokenCreaturesDied int `json:"nontokenCreaturesDied,omitempty"`
+	// DiedNames counts the creatures that died this turn by the name they
+	// had as they died, any controller (Ebondeath, Dracolich's "a creature
+	// not named Ebondeath, Dracolich died this turn", S82). A face-down
+	// creature has no name and is counted under "". Additive within the
+	// current schema: a file without it restores empty (weaker, never
+	// stronger).
+	DiedNames map[string]int `json:"diedNames,omitempty"`
 	// NonlandPermanentsLeft is the table-wide count of nonland
 	// permanents that left the battlefield this turn, by any route, to
 	// any zone, whoever controlled them (void, CR 207.2c; #2128): a
@@ -1097,6 +1110,13 @@ func (g *Game) CombatDamageTakenThisTurn(playerID uuid.UUID) int {
 	return g.TurnTally.Players[playerID].CombatDamageTaken
 }
 
+// DamageTakenThisTurn is all the damage, combat or not, dealt to playerID
+// this turn by any source (PlayerTurnTally.DamageTaken). Caller must hold
+// g.mu.
+func (g *Game) DamageTakenThisTurn(playerID uuid.UUID) int {
+	return g.TurnTally.Players[playerID].DamageTaken
+}
+
 // TurnTallyFor returns playerID's tally for the current turn (the
 // zero value when nothing has been counted). Caller must hold g.mu.
 func (g *Game) TurnTallyFor(playerID uuid.UUID) PlayerTurnTally {
@@ -1790,6 +1810,37 @@ func (g *Game) recordDiedSubtypesLocked(ev Event, controller uuid.UUID) {
 	}
 }
 
+// recordDiedNameLocked files the creature an EventLTB to the graveyard
+// names under the name it had as it died (CR 608.2h).
+//
+// Caller must hold g.mu.
+func (g *Game) recordDiedNameLocked(ev Event, c *Card) {
+	name := c.Name
+	if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
+		name = lki.Name
+	}
+	if g.TurnTally.DiedNames == nil {
+		g.TurnTally.DiedNames = map[string]int{}
+	}
+	g.TurnTally.DiedNames[name]++
+}
+
+// DiedNamedThisTurn reports how many creatures died this turn, under any
+// controller, with exactly the name `name`.
+//
+// Caller must hold g.mu.
+func (g *Game) DiedNamedThisTurn(name string) int {
+	return g.TurnTally.DiedNames[name]
+}
+
+// DiedNotNamedThisTurn reports how many creatures died this turn, under
+// any controller, whose name was not `name`.
+//
+// Caller must hold g.mu.
+func (g *Game) DiedNotNamedThisTurn(name string) int {
+	return g.TurnTally.CreaturesDied - g.TurnTally.DiedNames[name]
+}
+
 // DiedWithSubtypeThisTurn reports how many creatures died under
 // playerID's control this turn having creature type `subtype` as they
 // died — "if a Phyrexian died under your control this turn" (Brimaz,
@@ -2079,6 +2130,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
 	out.SacrificedCardTypes = copyStringIntMap(t.SacrificedCardTypes)
 	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
+	out.DiedNames = copyStringIntMap(t.DiedNames)
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
 	if len(t.LoreCounterPut) > 0 {
 		out.LoreCounterPut = append([]PermissionCardRef(nil), t.LoreCounterPut...)
@@ -2196,6 +2248,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if lost := ev.DamageLifeLoss(); lost > 0 {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += lost })
 		}
+		g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.DamageTaken += ev.Amount })
 		if ev.Combat {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.CombatDamageTaken += ev.Amount })
 			// #5652: and the memory that outlives the turn.
@@ -2482,6 +2535,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if !c.IsToken() {
 			g.TurnTally.NontokenCreaturesDied++
 		}
+		g.recordDiedNameLocked(ev, c)
 		g.recordDiedPowerLocked(ev)
 		// #1682 / CR 603.10a: "died under your control" is the
 		// controller the permanent had as it left, which the exit

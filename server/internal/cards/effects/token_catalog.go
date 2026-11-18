@@ -241,6 +241,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0103: Spiked Corridor's Devil.
 	printedDevilToken,
 
+	// S82 AFR batch 12: Vrondiss's Dragon Spirit.
+	printedAfrDragonSpiritToken,
+
 	// Falcon, Winged Wonder's Redwing (#4455).
 	printedMshA3RedwingToken,
 
@@ -438,6 +441,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Blacksmith's Talent's Sword (Bloomburrow, #4467): an Equipment
 	// token, +1/+1, equip {2}.
 	printedBlacksmithsSwordToken,
+	// Icingdeath, Frost Tyrant's Icingdeath, Frost Tongue (AFR, S82): a
+	// legendary white Equipment token that taps a defender's creature.
+	printedIcingdeathFrostTongueToken,
 	// Aplan Mortarium's Alien Angel (Doctor Who plane, #4870): a 2/2
 	// artifact creature that stops being a creature when an opponent
 	// casts a creature spell.
@@ -446,6 +452,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Toby, Beastie Befriender's Beast (#5396): a 4/4 that can't attack
 	// or block alone, the first token printed with an attack limit.
 	printedTobyBeastToken,
+
+	// AFR batch 15: Mordenkainen's Dog Illusion and Minn's Illusion.
+	printedAfrB15DogIllusionToken,
+	printedAfrB15IllusionToken,
 
 	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
 	printedReliquaryDragonToken,
@@ -456,6 +466,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Mage's Attendant's Wizard (Streets of New Capenna, #5491): a 1/1 blue
 	// Wizard that sacrifices itself to counter a noncreature spell unless paid.
 	printedS82SncB18WizardToken,
+
+	// Torens, Fist of the Angels' Human Soldier (Crimson Vow, #5495).
+	printedHumanSoldierTrainingToken,
 	// Jugan Defends the Temple (S82, NEO): the 1/1 green Human Monk with "{T}: Add {G}."
 	printedNeoHumanMonkToken,
 	// S82 NEO batch 20: Kamigawa: Neon Dynasty's Keimi (Tatsunari, Toad

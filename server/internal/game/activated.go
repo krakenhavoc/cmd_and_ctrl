@@ -894,6 +894,13 @@ type ActivatedAbilityShape struct {
 	// label's spelling.
 	Equip bool
 
+	// ClassLevel marks a Class's "{cost}: Level N" ability (CR 716.2a). Set by
+	// effects.LevelUp. It gates nothing (the level and sorcery timing are the
+	// ability's Condition); it is the ability's NAME for a spend restriction,
+	// "spend this mana only to ... gain a Class level" (Sorcerer Class,
+	// ManaRestrictClassLevel, matched against ManaSpendContext.ClassLevel).
+	ClassLevel bool
+
 	// Reconfigure marks both CR 702.151a reconfigure abilities, the
 	// attach and the unattach. Set by effects.Reconfigure and by no
 	// card file. The engine reads it for CR 702.151b (a printed
@@ -2361,6 +2368,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		riderCtx.PowerUp = ab.PowerUp
 		// CR 702.6 (#4600): and "...or activate equip abilities".
 		riderCtx.Equip = ab.Equip
+		// CR 716.2a: and "...or to gain a Class level".
+		riderCtx.ClassLevel = ab.ClassLevel
 		// #4834: "spend this mana only on costs that contain {X}".
 		riderCtx.CostHasX = ab.Cost.XSlots() > 0
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a

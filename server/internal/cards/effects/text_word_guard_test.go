@@ -65,6 +65,8 @@ var textWordLiteralAllowed = map[string]string{
 	// token copy gains; it is a template edit of a token being created, not
 	// a word of the Saga's own text a text-changing effect could reach.
 	"the_apprentices_folly.go": "a type a created token gains",
+	// Phantom Steed's token copy "is an Illusion in addition to its other types": the same template edit.
+	"phantom_steed.go": "a type a created token gains",
 
 	// An alternative cost's condition ("If you control a Plains, you may
 	// tap an untapped creature you control rather than pay this spell's
@@ -127,6 +129,10 @@ var textWordLiteralAllowed = map[string]string{
 	// is cast (CR 601.2b, 601.2f), before anything can change its text.
 	"wolfkin_outcast.go": "self cost reduction, judged as cast",
 	"modes.go":           "mode count condition, judged as cast",
+
+	// Geistlight Snare and Supernatural Rescue (S82 VOW b13): the Spirit flash
+	// condition is judged as the spell is cast, Bard's Company's shape.
+	"s82_vow_b13_helpers.go": "flash condition, judged as cast",
 }
 
 // textWordHelperArgs are effects-package helpers that take a colour or

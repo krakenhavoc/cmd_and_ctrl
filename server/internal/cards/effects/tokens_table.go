@@ -267,6 +267,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 white Samurai with vigilance":                                 {Name: "Samurai", TypeLine: "Token Creature — Samurai", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/2 white Samurai with double strike":                             {Name: "Samurai", TypeLine: "Token Creature — Samurai", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"double strike"}},
 	"2/2 green Boar":                                                   {Name: "Boar", TypeLine: "Token Creature — Boar", Power: 2, Toughness: 2, Colors: []string{"G"}},
+	"3/1 green Boar":                                                   {Name: "Boar", TypeLine: "Token Creature — Boar", Power: 3, Toughness: 1, Colors: []string{"G"}},
 	"2/2 red Human Knight with trample and haste":                      {Name: "Human Knight", TypeLine: "Token Creature — Human Knight", Power: 2, Toughness: 2, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"2/2 white and blue and black and red and green Elemental":         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"W", "U", "B", "R", "G"}},
 	"2/2 green Elemental":                                              {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"G"}},
@@ -291,6 +292,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Beast":                                                  {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Raccoon":                                                {Name: "Raccoon", TypeLine: "Token Creature — Raccoon", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Elk":                                                    {Name: "Elk", TypeLine: "Token Creature — Elk", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"3/2 red Wolf":                                                     {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 3, Toughness: 2, Colors: []string{"R"}},
 	"3/2 colorless Shapeshifter with changeling":                       {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 3, Toughness: 2, Keywords: []string{"changeling"}},
 	"3/2 white Hero with vigilance":                                    {Name: "Hero", TypeLine: "Token Creature — Hero", Power: 3, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"3/3 colorless Robot Villain artifact named Doombot":               {Name: "Doombot", TypeLine: "Token Artifact Creature — Robot Villain", Power: 3, Toughness: 3},
@@ -524,4 +526,8 @@ var tokenTable = map[string]game.Card{
 	"4/5 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 5, Colors: []string{"G"}},
 	// #5493: Kamigawa: Neon Dynasty's Shrine (Go-Shintai of Life's Origin).
 	"1/1 colorless Shrine enchantment": {Name: "Shrine", TypeLine: "Token Enchantment Creature — Shrine", Power: 1, Toughness: 1},
+	// S82 AFR batch 15: Drider, Lolth, Minsc and Drizzt.
+	"2/1 black Spider with menace and reach":                     {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace", "reach"}},
+	"1/1 red Legendary Hamster named Boo with trample and haste": {Name: "Boo", TypeLine: "Token Legendary Creature — Hamster", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
+	"4/1 green Legendary Cat named Guenhwyvar with trample":      {Name: "Guenhwyvar", TypeLine: "Token Legendary Creature — Cat", Power: 4, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"trample"}},
 }
