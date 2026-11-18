@@ -257,6 +257,7 @@ body mana-rider/dispatch-targeted
 body massacre-girl/sweep
 body matt-murdock-justice-seeker/counter
 body meanders-guide/return
+body mechtitan-core/return-exiled
 body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
@@ -1237,6 +1238,7 @@ condition fra-creature-c/lyra-combat-damage-to-a-player
 condition good-king-mog/you-cast-a-noncreature-spell
 condition havengul-lich/you-cast-it
 condition loki-laufeyson/next-cast
+condition ltb/mechtitan-token
 condition ltb/the-listed-object
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
@@ -2740,6 +2742,7 @@ tail grave-researcher/become-prepared
 tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
+tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
 tail grubs-command/after-mill
@@ -2871,6 +2874,7 @@ tail mass/zero-point-ballad-return
 tail mazes-end/win-the-game
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
+tail mechtitan-core/token-created
 tail meek-attack/entered
 tail memory-vessel/ban-hands
 tail mgb/bull-elephant-after-return

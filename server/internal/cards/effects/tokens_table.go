@@ -503,4 +503,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 green Wurm":   {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"2/2 white Knight with protection from red": {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"protection from red"}},
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
+
+	// S82 NEO batch 13: Mechtitan, the Mechtitan Core token.
+	"10/10 white and blue and black and red and green Legendary Construct artifact named Mechtitan with flying, vigilance, trample, lifelink, and haste": {Name: "Mechtitan", TypeLine: "Token Legendary Artifact Creature — Construct", Power: 10, Toughness: 10, Colors: []string{"W", "U", "B", "R", "G"}, Keywords: []string{"flying", "vigilance", "trample", "lifelink", "haste"}},
 }
