@@ -375,6 +375,7 @@ body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
+body s82-mid-b14/lynde-return-curse
 body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
 body s82-neo-b06/biting-palm-ninja-reveal-exile
@@ -570,6 +571,7 @@ choose choose-cards/capricious-hellraiser-copy
 choose choose-cards/captain-james-t-kirk-draw
 choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cecily-haunted-mage-cast
+choose choose-cards/celestial-judgment-pick
 choose choose-cards/celestus-sanctifier-put
 choose choose-cards/cemetery-prowler-exile
 choose choose-cards/chain-of-plasma-discarded
@@ -1163,6 +1165,8 @@ choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-kin-exile
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
+choose choose-cards/sigardas-vanguard-double-strike
+choose choose-cards/sigardian-zealot-pump
 choose choose-cards/silvan-reveler-discarded
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/smugglers-surprise-put-creatures
@@ -1273,6 +1277,7 @@ choose choose-cards/vivien-champion-of-the-wilds-exile
 choose choose-cards/vohar-vodalian-desecrator-discarded
 choose choose-cards/vow-to-erebor-attach
 choose choose-cards/wake-to-slaughter-settle
+choose choose-cards/wall-of-mourning-pick
 choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
 choose choose-cards/ward-sacrifice-a-food
@@ -1882,6 +1887,7 @@ option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bro-b11-argivian-avenger-keyword
+option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3540,6 +3546,7 @@ tail then/congregation-at-dawn-order
 tail then/created-gain-keyword-until-eot
 tail then/crippling-fear-type-chosen
 tail then/crystal-spray-draw
+tail then/curse-of-silence-draw
 tail then/dance-with-calamity-exiled
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
@@ -3703,6 +3710,7 @@ tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
 tail then/std-b15-strongbox-raider-choose
 tail then/stronghold-arena-lose-life
+tail then/sungold-sentinel-color-chosen
 tail then/suspect-each
 tail then/sylvan-library-next-card
 tail then/sylvia-tilly-joy-of-discovery-when-you-do
@@ -3740,6 +3748,7 @@ tail then/venture-into-the-dungeon
 tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen
 tail then/volcanic-offering-damage
+tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
 tail then/winds-of-change-shuffled
 tail then/zoyowas-justice-shuffle-discover
