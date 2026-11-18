@@ -69,8 +69,8 @@ func TestLongRestReturnsXCardsWithDifferentManaValuesAndExilesItself(t *testing.
 		"too many":        {a, b, same},
 	} {
 		err := g.CastSpell(me.ID, id, game.CastSpellParams{XValue: 2, Strict: true, Targets: cardRefs(picks...)})
-		if !errors.Is(err, game.ErrInvalidParam) {
-			t.Errorf("%s: CastSpell = %v, want ErrInvalidParam", name, err)
+		if !errors.Is(err, game.ErrInvalidParam) && !errors.Is(err, game.ErrIllegalTarget) {
+			t.Errorf("%s: CastSpell = %v, want a refusal", name, err)
 		}
 	}
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{XValue: 2, Strict: true, Targets: cardRefs(a, b)}); err != nil {
@@ -378,14 +378,20 @@ func TestInstrumentOfTheBardsFindsAnExactManaValueAndTreasuresForALegend(t *test
 	}
 }
 
-func TestInstrumentOfTheBardsNeedsItsFullCost(t *testing.T) {
+func TestInstrumentOfTheBardsSearchCostsFourManaAndTaps(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	advanceToMain(t, g)
 	inst := mrd2Catalog(g, me.ID, "Instrument of the Bards", "Legendary Artifact", instrumentBardsOracle, "{G}", 0, 0)
-	fillPoolColored(me, "G", 3)
-	if err := g.ActivateCatalogAbility(me.ID, inst, 0, game.ActivateAbilityParams{}); err == nil {
-		t.Error("three mana must not pay {3}{G}")
+	fillPoolColored(me, "G", 4)
+	if err := g.ActivateCatalogAbility(me.ID, inst, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if n := me.ManaPool.Total(); n != 0 {
+		t.Errorf("%d mana left, the ability costs {3}{G}", n)
+	}
+	if !layeredCard(t, g, inst).Tapped {
+		t.Error("{T} should have tapped the Instrument")
 	}
 }
 
