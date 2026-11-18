@@ -3054,8 +3054,8 @@ tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-dmu/slimefoots-survey-look
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
-tail sacrificed-one/braids-frightful-return/each-opponent-discards
 tail s82-snc/life-of-the-party-goad-then-next
+tail sacrificed-one/braids-frightful-return/each-opponent-discards
 tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
