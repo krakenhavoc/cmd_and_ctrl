@@ -3307,6 +3307,8 @@ tail tail/hide-in-plain-sight-rest
 tail tail/intrude-on-the-mind-rest
 tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
+tail tail/mordenkainen-hand-to-library
+tail tail/mordenkainen-shuffle
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
 tail tail/s82-mom-b12-guerrilla-after-mill
