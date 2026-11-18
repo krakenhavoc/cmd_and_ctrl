@@ -134,6 +134,7 @@ body dragonhawk-fates-tempest/damage-per-exiled
 body draw/controller-one
 body draw/one-card
 body draw/the-inner-light-that-many
+body draw/viviens-stampede
 body dream-eater/bounce
 body eagles-are-coming/birds
 body earth-rumble/fight
@@ -222,6 +223,7 @@ body ill-timed-explosion/damage
 body immortal-coil/exile-per-prevented
 body incandescent-soulstoke/sacrifice
 body incinerator-of-the-guilty/damage
+body indulge-excess/citizen-tapped-and-attacking
 body initiative/take
 body initiative/venture
 body inkshield/inklings
@@ -235,6 +237,7 @@ body jace-reality-sculptor/attacker-gets-minus-five
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
 body kishla-trawlers/return-to-hand
+body kitt-kanto/boost-and-goad
 body koya-death-from-above/pay-or-return
 body kravens-last-hunt/damage
 body kroxa-and-kunoros/return
@@ -697,6 +700,8 @@ choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/jungle-basin-return-an-untapped-forest
 choose choose-cards/kaito-dancing-shadow-return
+choose choose-cards/kamiz-obscura-oculus-discarded
+choose choose-cards/kamiz-obscura-oculus-double-strike
 choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
@@ -710,6 +715,7 @@ choose choose-cards/kellan-the-kid-if-you-dont
 choose choose-cards/king-narfis-betrayal-exile
 choose choose-cards/kinscaer-sentry-put
 choose choose-cards/kiora-sovereign-of-the-deep-cast
+choose choose-cards/kitt-kanto-tap-two
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/kroxa-and-kunoros-exile-five
@@ -1162,6 +1168,7 @@ coinflip coin-flip/the-gold-saucer-treasure
 condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
 condition attach/this-aura-left
+condition attack/a-creature-you-control-attacks
 condition attack/a-creature-you-control-attacks-alone
 condition attack/a-sea-creature-attacks-summon-leviathan
 condition attack/attacks-an-opponent-of-the-controller
@@ -1433,6 +1440,7 @@ confirm may/carpet-of-flowers-add-mana
 confirm may/cemetery-tampering-mill
 confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
+confirm may/shakedown-heavy-draw
 confirm s82-bro-b07/sarinth-take-land
 confirm s82-bro-b07/sarinth-to-graveyard
 confirm std-b9/traveling-botanist-take-land
@@ -1548,6 +1556,7 @@ option option-pick/arni-metalbrow-attacks
 option option-pick/atraxas-skitterfang-keyword
 option option-pick/attach-source-to-player
 option option-pick/baleful-mastery-opponent-draws
+option option-pick/ballroom-brawlers-keyword
 option option-pick/blank-blank-rocketship-letter
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/bucolic-ranch-top-card
@@ -2353,6 +2362,7 @@ tail batch21-helpers/after-mill
 tail batch21-helpers/after-mill-2
 tail batch35-helpers/after-exile
 tail batch35-helpers/after-mill
+tail beamtown-bullies/haste-goad-exile
 tail beckett-mariner/promotion-check
 tail belanna-torres-scrapper/after-surveil
 tail beseech-the-mirror/cast-or-to-hand
@@ -2445,6 +2455,7 @@ tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
 tail connive/each
+tail connive/kamiz-obscura-oculus
 tail connive/x
 tail copy-and-cast/cast-copies-then-exile-self
 tail cori-steel-cutter/offer-attach
