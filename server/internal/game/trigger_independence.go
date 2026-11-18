@@ -99,6 +99,9 @@ const (
 	// FootprintCondLifeLost: the item's controller lost N or more life
 	// this turn (Lunar Convocation's Bat). The tally only rises.
 	FootprintCondLifeLost FootprintCond = "life_lost"
+	// FootprintCondOpponentLostLife: an opponent of the item's controller
+	// lost life this turn (Arrogant Outlaw). Each turn tally only rises.
+	FootprintCondOpponentLostLife FootprintCond = "opponent_lost_life"
 	// FootprintCondCardsDrawn: the item's controller drew N or more cards
 	// this turn (Lake-town Toymaker). The turn's tally only rises.
 	FootprintCondCardsDrawn FootprintCond = "cards_drawn"
@@ -814,6 +817,13 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.LifeGained >= atLeast
 	case FootprintCondLifeLost:
 		return tally.LifeLost >= atLeast
+	case FootprintCondOpponentLostLife:
+		for _, seat := range g.Seats {
+			if seat != nil && seat.ID != you && g.TurnTallyFor(seat.ID).LifeLost > 0 {
+				return true
+			}
+		}
+		return false
 	case FootprintCondCardsDrawn:
 		return tally.CardsDrawn >= atLeast
 	case FootprintCondCreatureDied:
