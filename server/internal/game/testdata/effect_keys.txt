@@ -3093,6 +3093,7 @@ tail oko-shadowmoor-scion/emblem-type
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail oona-queen-of-the-fae/after-mill
+tail orcus-prince-of-undeath/gain-haste-until-eot
 tail ormos-archive-keeper/then-draw
 tail ostrich-horse/after-mill
 tail outlaw-stitcher/token-counters
