@@ -2218,7 +2218,7 @@ type ManaAbility struct {
 	// hand — the zone, the exile cost and the label travel together
 	// and a declaration missing any of them is refused at boot.
 	//
-	// Only the hand is supported (game.supportedManaAbilityZones);
+	// Only the hand and the graveyard are supported (game.supportedManaAbilityZones);
 	// Register refuses the rest, because a zone no consumer walks is
 	// a mana ability the engine would silently never offer.
 	Zones []game.ZoneKind

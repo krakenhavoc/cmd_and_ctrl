@@ -100,14 +100,14 @@ func TestSpiritGuidesProduceTheirPrintedColours(t *testing.T) {
 func TestRegisterRefusesAnUnwalkedManaZone(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
-			t.Error("a graveyard mana ability registered — nothing walks a graveyard for one")
+			t.Error("an exile mana ability registered — nothing walks exile for one")
 		}
 	}()
 	Register(Spec{
-		OracleID: "test-mana-zone-graveyard",
-		Name:     "Graveyard Ritual",
+		OracleID: "test-mana-zone-exile",
+		Name:     "Exiled Ritual",
 		ManaAbilities: []ManaAbility{{
-			Zones:    []game.ZoneKind{game.ZoneGraveyard},
+			Zones:    []game.ZoneKind{game.ZoneExile},
 			Produced: "{B}",
 			Cost:     ManaAbilityCost{ExileSelf: true},
 		}},

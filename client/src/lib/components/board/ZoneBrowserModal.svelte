@@ -86,6 +86,14 @@
     // open a target picker, an X prompt or a mode picker, and those
     // are Board's chain, not this modal's.
     onActivateAbility?: (card: CardView, abilityIndex: number) => void;
+    // #5896: the CR 605 twin. A card in a browsed pile may print a MANA
+    // ability that functions from that zone (Jack-o'-Lantern's "{1},
+    // Exile this card from your graveyard: Add one mana of any color").
+    // The server ships those rows on `zone_mana_abilities`, to the owner
+    // alone, and the card's menu offers them as the hand's Spirit Guide
+    // does. The browser stays open: a mana ability resolves at once
+    // (CR 605.3b) and opens none of Board's prompts.
+    onActivateManaAbility?: (card: CardView, abilityIndex: number) => void;
     // The viewer's CR 307.1 window, or "" when it is open. Passed
     // through to Card so a sorcery-speed row (every keyword on this
     // surface prints "only as a sorcery") greys with the same reason
@@ -115,6 +123,7 @@
     onTargetCard,
     onCastCard,
     onActivateAbility,
+    onActivateManaAbility,
     sorcerySpeedBlocked = "",
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
@@ -132,6 +141,14 @@
       onClose();
       onActivateAbility(card, abilityIndex);
     };
+  }
+
+  // #5896: the mana-row callback for ONE browsed card, undefined when
+  // the server stamped no `zone_mana_abilities` on it (every card but
+  // the owner's own graveyard mana source).
+  function manaHandlerFor(card: CardView): ((abilityIndex: number) => void) | undefined {
+    if (!onActivateManaAbility || (card.zone_mana_abilities?.length ?? 0) === 0) return undefined;
+    return (abilityIndex: number) => onActivateManaAbility(card, abilityIndex);
   }
 
   // Source zone lookup — server broadcasts exile + stack as shared
@@ -457,6 +474,7 @@
                   : zoneKind}
               onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined}
               onActivateAbility={activateHandlerFor(card)}
+              onActivateManaAbility={manaHandlerFor(card)}
               {sorcerySpeedBlocked}
               {legal}
               {legalGate}

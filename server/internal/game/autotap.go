@@ -310,7 +310,7 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan, spend Mana
 				continue
 			}
 			entry.Name, entry.Zone = c.Name, kind
-			if ab := g.autoManaExileAbilityFor(controller, c, ManaAbilitiesForCard(c), kind); ab != nil {
+			if ab := g.zoneManaAbilityForPlanLocked(controller, c, planned, kind); ab != nil {
 				entry.Exiles = ab.ExileSelf
 			}
 			break
@@ -1184,21 +1184,29 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			out = appendTapSource(out, proto, slots)
 		}
 	}
-	if costed || landsOnly {
+	if landsOnly {
 		return out
 	}
-	return gatherManaZoneSources(g, controller, excluded, wish.kindSet(), identity, priceProduction, out)
+	// #5896: the costed pass walks the same piles for a card whose mana
+	// ability owes mana as well as its exile (Jack-o'-Lantern's "{1},
+	// Exile this card from your graveyard"), through the costed picker.
+	return gatherManaZoneSources(g, controller, excluded, wish.kindSet(), identity, priceProduction, costed, out)
 }
 
 // gatherManaZoneSources is gatherTapSources' NON-BATTLEFIELD half
 // (#1228, CR 113.6): the controller's own cards whose mana ability
 // says it functions from the zone they are sitting in.
 //
-// One pile today — the hand, which is all supportedManaAbilityZones
-// admits — holding the two Spirit Guides. The loop is written over
-// the supported set rather than over `p.Hand` directly so that adding
-// a zone is adding it in one place, the way legal.abilityZones and
-// protocol.stampZoneAbilities are each one list.
+// The piles supportedManaAbilityZones admits: the hand (the two Spirit
+// Guides) and the graveyard (Jack-o'-Lantern, #5896). The loop is
+// written over the supported set rather than over `p.Hand` directly so
+// that adding a zone is adding it in one place, the way
+// legal.abilityZones and protocol.stampZoneAbilities are each one list.
+//
+// `costed` is gatherSources' switch (#2455): false offers the abilities
+// that owe no mana (autoManaExileAbilityFor), true the ones that owe
+// mana besides the exile (autoManaExileCostedFor, #5896), each carrying
+// its priced cost for the costed solver.
 //
 // What it does NOT do, and each omission is a rule rather than a
 // shortcut:
@@ -1227,6 +1235,7 @@ func gatherManaZoneSources(
 	prefer ManaSourceKinds,
 	identity commanderIdentity,
 	priceProduction bool,
+	costed bool,
 	out []tapSource,
 ) []tapSource {
 	p := g.playerByIDLocked(controller)
@@ -1242,7 +1251,15 @@ func gatherManaZoneSources(
 			if excluded[c.InstanceID] {
 				continue
 			}
-			picked := g.autoManaExileAbilityFor(controller, c, ManaAbilitiesForCard(c), kind)
+			var (
+				picked *ManaAbilityShape
+				cost   ParsedCost
+			)
+			if costed {
+				picked, cost = g.autoManaExileCostedFor(controller, c, ManaAbilitiesForCard(c), kind)
+			} else {
+				picked = g.autoManaExileAbilityFor(controller, c, ManaAbilitiesForCard(c), kind)
+			}
 			if picked == nil {
 				continue
 			}
@@ -1270,6 +1287,8 @@ func gatherManaZoneSources(
 				CardID:     c.InstanceID,
 				Wanted:     prefer != 0 && manaSourceKindsOf(c).HasAny(prefer),
 				LeavesHand: true,
+				// #5896: the mana the ability owes; zero unless costed.
+				Cost: cost,
 			}, slots)
 		}
 	}
@@ -2073,42 +2092,56 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 	}
 	for i := range abilities {
 		a := abilities[i]
-		if !ManaAbilityFunctionsFromZone(a, zone) {
+		if !g.autoManaExileAccepts(asker, source, a, zone) {
 			continue
 		}
-		// The payment, and the whole of it. TapCost and
-		// SacrificeCost are unpayable here (effects.Register refuses
-		// them at boot) and a costless mana source would be an
-		// infinite one, so the picker demands the exile rather than
-		// merely tolerating it.
-		if !a.ExileSelf || a.TapCost || a.SacrificeCost || a.SacrificeOther != nil {
-			continue
-		}
-		if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
-			continue
-		}
-		if a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.Rider != nil {
-			continue
-		}
-		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
-			continue
-		}
-		// #5382: a taxed exile-only ability owes mana too.
+		// #5382: a taxed exile-only ability owes mana too. An ability
+		// that owes mana is the costed pass's (autoManaExileCostedFor,
+		// #5896), never this one's.
 		if g.ManaAbilityChargesManaForEffect(asker, source, a) {
 			priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
 			if err != nil || !priced.Empty() {
 				continue
 			}
 		}
-		if a.AddCounter != nil || a.RemoveCounters != nil {
-			continue
-		}
-		if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() || a.Branched() {
-			continue
-		}
 		return &a
 	}
 	return nil
+}
+
+// autoManaExileAccepts is every demand autoManaExileAbilityFor makes
+// of one ability except the mana it owes: split out (#5896) so the
+// costed off-battlefield picker asks the same questions.
+//
+// Caller must hold g.mu.
+func (g *Game) autoManaExileAccepts(asker uuid.UUID, source Card, a ManaAbilityShape, zone ZoneKind) bool {
+	if !ManaAbilityFunctionsFromZone(a, zone) {
+		return false
+	}
+	// The payment, and the whole of it. TapCost and
+	// SacrificeCost are unpayable here (effects.Register refuses
+	// them at boot) and a costless mana source would be an
+	// infinite one, so the picker demands the exile rather than
+	// merely tolerating it.
+	if !a.ExileSelf || a.TapCost || a.SacrificeCost || a.SacrificeOther != nil {
+		return false
+	}
+	if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
+		return false
+	}
+	if a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.Rider != nil {
+		return false
+	}
+	if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
+		return false
+	}
+	if a.AddCounter != nil || a.RemoveCounters != nil {
+		return false
+	}
+	if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() || a.Branched() {
+		return false
+	}
+	return true
 }
 
 // manaCounterCostPlannable reports whether the auto-tapper may plan

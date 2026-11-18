@@ -35,17 +35,20 @@ package game
 var defaultManaAbilityZones = []ZoneKind{ZoneBattlefield}
 
 // supportedManaAbilityZones is the set a mana ability may actually
-// declare. The HAND alone today, for the reason supportedStaticZones
-// is the graveyard alone (#1221): a zone the auto-tapper's gather,
-// the enumerator's walk and the view's stamp do not visit would be a
-// declaration the engine silently ignores — the card would register,
-// look complete on the catalog page, and never produce a mana.
+// declare: the HAND and the GRAVEYARD. A zone the auto-tapper's
+// gather, the enumerator's walk and the view's stamp do not visit
+// would be a declaration the engine silently ignores — the card would
+// register, look complete on the catalog page, and never produce a
+// mana.
 //
-// The graveyard, exile and the command zone are each one line here
-// plus one pile in gatherManaZoneSources on the day a printed card
-// asks. Nothing does today; the whole family is the two Spirit
-// Guides.
-var supportedManaAbilityZones = []ZoneKind{ZoneHand}
+// The hand holds the two Spirit Guides (#1228). The graveyard joined
+// with #5896 for Jack-o'-Lantern's "{1}, Exile this card from your
+// graveyard: Add one mana of any color.": every consumer already
+// walked the graveyard for CR 602 abilities, so the zone is this line
+// plus the costed auto-tap pass (autotap_zone_costed.go), because the
+// card's cost owes mana as well as the exile. Exile and the command
+// zone are each one line here on the day a printed card asks.
+var supportedManaAbilityZones = []ZoneKind{ZoneHand, ZoneGraveyard}
 
 // ManaAbilityZones is the zones a mana ability functions from. Never
 // empty.
@@ -100,7 +103,7 @@ func ManaAbilityZoneUnsupported(zone ZoneKind) string {
 			return ""
 		}
 	}
-	return "only the hand is walked for mana abilities (game.supportedManaAbilityZones); " +
+	return "only the hand and the graveyard are walked for mana abilities (game.supportedManaAbilityZones); " +
 		"a zone nothing walks is a mana ability the engine would silently never offer"
 }
 
@@ -131,9 +134,10 @@ func ManaAbilityNeedsPermanentSource(ab ManaAbilityShape) string {
 	// refuse — because a CR 602 ability may put a counter on a card
 	// in EXILE (a suspended card's time counters, CR 702.62a) and
 	// this refusal is only ever asked of a non-battlefield zone.
-	// Every zone a MANA ability may declare is the hand
-	// (supportedManaAbilityZones), and CR 122.6 keeps counters off a
-	// card in a hand, so both forms are unpayable here.
+	// Every zone a MANA ability may declare is the hand or the
+	// graveyard (supportedManaAbilityZones), and no printed mana
+	// ability off the battlefield puts or removes a counter, so both
+	// forms stay refused rather than half-supported.
 	//
 	// SacrificeOther and TapOthers are deliberately absent: they name
 	// OTHER permanents and a card in hand can name them perfectly
