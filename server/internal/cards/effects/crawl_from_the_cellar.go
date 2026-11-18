@@ -10,7 +10,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Two clauses, the second "up to one": it can be left empty, and either
 // one going illegal only loses its own sentence (CR 608.2b). The Zombie
-// is read through the layered view.
+// is read through the layered view. The counter is Cost of Brilliance's
+// costOfBrillianceCounter ("up to one target" in clause 1).
 //
 // No simplification.
 func init() {
@@ -32,13 +33,7 @@ func init() {
 				}
 				return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
 			}),
-			Instruction(func(ctx *Context) error {
-				t, ok := ctx.ClauseTarget(1)
-				if !ok || t.Kind != game.TargetCard {
-					return nil
-				}
-				return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-			}),
+			Instruction(costOfBrillianceCounter),
 		),
 	})
 }
