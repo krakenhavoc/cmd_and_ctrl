@@ -1113,6 +1113,7 @@ choose choose-cards/polygraph-orb-punisher-discarded
 choose choose-cards/populate
 choose choose-cards/port-of-karfell-return
 choose choose-cards/portent-of-calamity-card-type
+choose choose-cards/precursor-golem-copy-order
 choose choose-cards/professor-onyx-discard-or-lose
 choose choose-cards/professor-onyx-take
 choose choose-cards/proliferate
@@ -2262,6 +2263,7 @@ payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/weakstones-subjugation-tap
 payunless pay-unless/weapons-vendor-attach
+payunless pay-unless/well-of-lost-dreams-draw
 payunless pay-unless/widespread-thieving-play
 payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/wolfbat-return
@@ -2508,6 +2510,7 @@ run prompt-run/ss-botany-bay-opponents-exile
 run prompt-run/strefan-maurer-progenitor-put
 run prompt-run/summon-valefor-sonic-wings
 run prompt-run/sunder-the-gateway-transform
+run prompt-run/sundering-titan-destroy
 run prompt-run/suppression-ray-stun
 run prompt-run/swarm-culler-draw
 run prompt-run/syphon-flesh-zombies
@@ -3588,6 +3591,7 @@ tail sword-of-hearth-and-home/put-both
 tail sword-of-hearth-and-home/search-basic
 tail sword-of-hearth-and-home/shuffle
 tail sword-of-once-and-future/after-surveil
+tail sword-of-the-meek/attach
 tail synthesis-pod/exiled
 tail systems-override/schedule-charge-removal
 tail tablet-of-discovery/after-mill
