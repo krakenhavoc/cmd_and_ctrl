@@ -912,6 +912,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// here, stamped once the card has actually landed in exile.
 	stampExiledWithLocked(dstZone, ev.CardID, ev.ExiledWith, ev.exiledWithAbility(), g.Turn.Seq)
 	stampExileCounterLocked(dstZone, ev.CardID, ev.ExileCounter)
+	g.stampExiledByAbilityLocked(dstZone, ev.CardID, ev.moveCause())
 	if src.Kind == ZoneStack {
 		// #1318: the source zone decides, not a flag on the route. A
 		// card that has left the stack is no longer a spell (CR 400.7),
