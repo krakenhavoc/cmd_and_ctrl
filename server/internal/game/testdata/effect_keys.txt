@@ -3405,6 +3405,7 @@ tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
 tail then/nahiri-the-unforgiving-copy
+tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
 tail then/one-ring-to-rule-them-all-mill
