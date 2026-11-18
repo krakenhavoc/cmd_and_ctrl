@@ -661,6 +661,7 @@ choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
+choose choose-cards/discard-draw-and-add-red-kept
 choose choose-cards/discard-draw-as-many
 choose choose-cards/discard-draw-one-if-any
 choose choose-cards/discard-draw-one-more
@@ -882,6 +883,7 @@ choose choose-cards/london-mulligan-bottom
 choose choose-cards/lost-monarch-of-ifnir-return-creature
 choose choose-cards/ludevic-olag-copy
 choose choose-cards/mad-wizards-lair-cast
+choose choose-cards/maelstrom-archangel-cast
 choose choose-cards/mairsil-cage
 choose choose-cards/make-your-own-luck-plot
 choose choose-cards/malcolm-free-cast-offer
