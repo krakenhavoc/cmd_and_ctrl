@@ -356,6 +356,7 @@ body return/the-objects-together-under-your-control
 body rewrite-history/return
 body rhinos-rampage/destroy-artifact
 body riddle-gate-gargoyle/lifelink
+body rite-of-harmony/draw-a-card
 body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
 body rose-room-treasurer/damage
@@ -1139,6 +1140,7 @@ choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/vivien-champion-of-the-wilds-exile
 choose choose-cards/vohar-vodalian-desecrator-discarded
 choose choose-cards/vow-to-erebor-attach
+choose choose-cards/wake-to-slaughter-settle
 choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
 choose choose-cards/ward-sacrifice-a-food
@@ -1259,6 +1261,7 @@ condition dies/that-creature-you-control-your-commander
 condition dies/the-listed-object
 condition discard/opponent-caused-yours
 condition earthbend/this-object-left
+condition etb/each-creature-or-enchantment-you-control
 condition etb/each-creature-you-control
 condition etb/each-nontoken-creature-an-opponent-controls
 condition fra-creature-c/lyra-combat-damage-to-a-player
@@ -1798,6 +1801,7 @@ option option-pick/villainous-the-dalek-emperor
 option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
+option option-pick/wake-to-slaughter-opponent
 option option-pick/winding-way-type
 option option-pick/wingnut-bat-on-the-belfry-keyword
 option option-pick/winota-joiner-of-forces-attack
@@ -2506,6 +2510,7 @@ tail budoka-gardener/flip-with-ten-lands
 tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
+tail cant-stay-away/entered
 tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy
 tail card/break-the-spell-draw
@@ -2632,6 +2637,7 @@ tail dice/the-deck-of-many-things-result
 tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
+tail dire-strain-rampage/search
 tail distant-memories/offer
 tail dmu-b07/haste-then-sacrifice
 tail dominion-infiltration/haste-and-exile-copies
@@ -3611,6 +3617,7 @@ tail vis/karoo-after-return
 tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
+tail wake-to-slaughter/entered
 tail wanderwine-farewell/merfolk-tokens
 tail waste-management/rogue-per-creature
 tail whiskervale-forerunner/after-put
