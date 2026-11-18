@@ -74,12 +74,13 @@ import "github.com/google/uuid"
 // `inst` is the damage instance the damage belongs to; what it marks is
 // recorded for heal-on-damage (heal_damage.go).
 //
-// Returns ok=false when the card is not on the battlefield.
+// Returns ok=false when the card is not on the battlefield. excess is the
+// excess damage (CR 120.10) this event dealt, for the damage event to carry.
 //
 // Caller must hold g.mu.
-func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *damageTail, result DamageResultSource, inst DamageInstance) (ok bool, minusOneCounters int) {
+func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *damageTail, result DamageResultSource, inst DamageInstance) (ok bool, minusOneCounters, excess int) {
 	if amount <= 0 {
-		return false, 0
+		return false, 0, 0
 	}
 	if t == nil {
 		t = &damageTail{}
@@ -100,7 +101,7 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 		}
 	}
 	if idx < 0 {
-		return false, 0
+		return false, 0, 0
 	}
 	c := &g.Battlefield.Cards[idx]
 	isCreature := c.IsCreature()
@@ -108,7 +109,7 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 	isBattle := c.IsBattle()
 	// #5663: whether this is excess damage (CR 120.10) is read off the
 	// permanent as the damage finds it, before anything is marked.
-	g.recordExcessDamageLocked(c, amount, t.deathtouch)
+	excess = g.recordExcessDamageLocked(c, amount, t.deathtouch)
 
 	if isCreature {
 		// CR 120.3d / 120.3e: counters or marked damage, never both.
@@ -143,7 +144,7 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 	// planeswalker or battle has no effect). Returning true anyway:
 	// the damage WAS dealt, the event has already been emitted by the
 	// caller, and lifelink still triggers off it.
-	return true, minusOneCounters
+	return true, minusOneCounters, excess
 }
 
 // clearBattlefieldDamage wipes the damage marked on a permanent and
