@@ -24,7 +24,7 @@ func init() {
 		}),
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{U}, Exile this card from your graveyard: Draw a card.",
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Draws: 1, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{3}{U}"), ExileThis()),
 			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect:  Do(DrawCards{N: 1}),

@@ -17,7 +17,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Discard a creature card: Draw a card.",
-			Purpose: game.Purpose{Draws: 1, Discards: 1},
+			Purpose: game.Purpose{Draws: 1, Discards: 1, Answers: game.AnswerValue},
 			Cost: Plus(TapCost(), DiscardCardsMatching(1, "a creature card", func(c game.Card) bool {
 				return c.IsCreature()
 			})),
