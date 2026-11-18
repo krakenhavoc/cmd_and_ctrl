@@ -550,6 +550,8 @@ choose choose-cards/chain-of-smog-discarded
 choose choose-cards/chain-sacrifice-a-land
 choose choose-cards/chandra-flameshaper-play
 choose choose-cards/chandra-legacy-of-fire-remove
+choose choose-cards/change-of-plans-discarded
+choose choose-cards/change-of-plans-phase-out
 choose choose-cards/chaos-shrines-black-crystal-return
 choose choose-cards/charming-scoundrel-draw
 choose choose-cards/charnel-serenade-return
@@ -1662,6 +1664,7 @@ option option-pick/lim-duls-hex-pay
 option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
+option option-pick/master-of-ceremonies-answer
 option option-pick/memories-returning-opponent
 option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
@@ -1687,6 +1690,7 @@ option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
 option option-pick/polygraph-orb-punisher
 option option-pick/practiced-offense-keyword
+option option-pick/protection-racket-answer
 option option-pick/psychic-puppetry-tap-or-untap
 option option-pick/put-attacking-from-exile
 option option-pick/put-attacking-from-graveyard
@@ -2294,6 +2298,7 @@ steps then-steps/hunted-by-the-family-copy
 steps then-steps/kor-cause-of-vengeance-draw-then-pump
 steps then-steps/lieutenants-of-the-guard-votes
 steps then-steps/locke-treasure-hunter-payoff
+steps then-steps/master-of-ceremonies-clauses
 steps then-steps/master-of-the-wild-hunt-damage
 steps then-steps/messenger-jays-votes
 steps then-steps/midnight-clock-draw-then-exile
@@ -2497,6 +2502,7 @@ tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
+tail connive/change-of-plans
 tail connive/each
 tail connive/kamiz-obscura-oculus
 tail connive/x
@@ -3361,6 +3367,7 @@ tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
 tail then/locke-treasure-hunter-mug-step
+tail then/make-an-example-chosen-pile
 tail then/manhole-missile-draw-if-tucked
 tail then/manifest-dread
 tail then/mazemind-tome-gain-life
