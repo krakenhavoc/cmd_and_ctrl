@@ -403,6 +403,7 @@ body snaremaster-sprite/tap-and-stun
 body snc-b04/obscura-interceptor-return-spell
 body snc-b04/psychic-pickpocket-return-permanent
 body sorin-imperious-bloodlord/strike
+body spare-dagger/damage
 body specter-of-mortality/sweep
 body speed-young-avenger/unblockable
 body speed/increase
@@ -1462,6 +1463,7 @@ confirm confirm/slicer-hired-muscle-hand-over-or-convert
 confirm confirm/smellerbee-rebel-fighter-discard-hand
 confirm confirm/snort-wheel
 confirm confirm/social-snub-copy
+confirm confirm/spare-dagger-sacrifice
 confirm confirm/spm-cheering-crowd
 confirm confirm/staff-room-face-up-or-counter
 confirm confirm/star-athlete-sacrifice-or-damage
@@ -1484,6 +1486,7 @@ confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
 confirm confirm/titan-of-littjara-loot
 confirm confirm/transcendent-archaic-draw
+confirm confirm/tricksters-talisman-sacrifice
 confirm confirm/turtles-in-time-ask
 confirm confirm/tymna-the-weaver-pay-and-draw
 confirm confirm/ugins-binding-exile
@@ -3264,6 +3267,7 @@ tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
 tail sothera-the-supervoid/put-exiled-creature
 tail soul-shackled-zombie/drain-if-creature
+tail spare-dagger/sacrificed
 tail sparring-dummy/after-mill
 tail speak-secrets/after-mill
 tail specter-of-mortality/after-exile
@@ -3631,6 +3635,7 @@ tail trek-b31/artifact-creatures-protection-from-chosen-color
 tail trek-b31/borg-queen-exiled
 tail trek-b31/borg-queen-rest-on-bottom
 tail trek-b31/commander-spock-draw-if-on-top
+tail tricksters-talisman/sacrificed
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
