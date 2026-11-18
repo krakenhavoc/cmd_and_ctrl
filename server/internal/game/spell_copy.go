@@ -116,7 +116,8 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	if !ok {
 		return ErrCardNotFound
 	}
-	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except, nil)
+	// #5918: one copy instruction (spell_copy_event.go).
+	g.copySpellTimesLocked(src, item, controller, 1, mayChooseNewTargets, except, nil)
 	return nil
 }
 
@@ -159,7 +160,8 @@ func (g *Game) CopyLastKnownSpellGainingKeywordsForEffect(sourceID, spellID, con
 	if len(keywords) > 0 {
 		gains = &copyGrant{Source: sourceID, Keywords: append([]string(nil), keywords...), Label: label}
 	}
-	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, nil, gains)
+	// #5918: one copy instruction (spell_copy_event.go).
+	g.copySpellTimesLocked(src, item, controller, 1, mayChooseNewTargets, nil, gains)
 	return nil
 }
 

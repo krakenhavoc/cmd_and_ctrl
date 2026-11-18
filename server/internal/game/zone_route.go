@@ -502,6 +502,10 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// #4307: unreachable. A roll's window never pauses
 		// (mustSettleNow), so it has no prompt to drop or prune.
 		return nil
+	case RepEventCopySpell:
+		// #5918: unreachable. A copy instruction's window never pauses
+		// (mustSettleNow), so it has no prompt to drop or prune.
+		return nil
 	case RepEventMill:
 		// #569: an abandoned MILL has read no cards off the library —
 		// the plan is made after the amount settles — and the caller

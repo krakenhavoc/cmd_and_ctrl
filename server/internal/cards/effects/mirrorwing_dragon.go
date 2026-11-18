@@ -98,18 +98,4 @@ func mirrorwingCopies(g *game.Game, item *game.StackItem) error {
 // mirrorwingCopyInOrder makes the copies in the order the caster put the
 // creatures, keyed: the spell and the Dragon are the carry. A creature
 // that is no longer a legal target by the answer gets no copy.
-var mirrorwingCopyInOrder = game.RegisterChooseCardsThen("choose-cards/mirrorwing-dragon-copy-order", func(g *game.Game, r game.CardsChosen) error {
-	// Unanswered, the caster has left the game, and so would the copies
-	// they controlled (CR 800.4a).
-	if len(r.Carry) < 2 || !r.Answered {
-		return nil
-	}
-	order := r.Picked
-	if len(order) != len(r.Candidates) {
-		order = r.Candidates
-	}
-	for _, id := range order {
-		g.CopySpellRetargetedForEffect(r.Carry[0], r.Chooser, r.Carry[1], id)
-	}
-	return nil
-})
+var mirrorwingCopyInOrder = game.RegisterChooseCardsThen("choose-cards/mirrorwing-dragon-copy-order", copySpellForEachChosenInOrder)

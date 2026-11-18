@@ -590,6 +590,11 @@ var replacementEventFields = map[string]replacementEventField{
 	"RollPlanar":       repFieldGate,
 	"rollShields":      repFieldGate,
 	"rollIgnoreLowest": repFieldGate,
+	// #5918: a copy instruction's window never pauses (mustSettleNow).
+	"CopySpellID":    repFieldGate,
+	"CopyPlayer":     repFieldGate,
+	"CopyCount":      repFieldGate,
+	"copyAdditional": repFieldGate,
 }
 
 // replacementEventGatesClear reports whether every gate field of ev is

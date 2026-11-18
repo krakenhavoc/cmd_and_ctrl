@@ -78,16 +78,4 @@ func zadaCopies(g *game.Game, item *game.StackItem) error {
 // zadaCopyInOrder makes the copies in the order the controller put the
 // creatures, keyed: the spell and Zada are the carry. A creature that is
 // no longer a legal target by the answer gets no copy. An on-disk key.
-var zadaCopyInOrder = game.RegisterChooseCardsThen("choose-cards/zada-hedron-grinder-copy-order", func(g *game.Game, r game.CardsChosen) error {
-	if len(r.Carry) < 2 || !r.Answered {
-		return nil
-	}
-	order := r.Picked
-	if len(order) != len(r.Candidates) {
-		order = r.Candidates
-	}
-	for _, id := range order {
-		g.CopySpellRetargetedForEffect(r.Carry[0], r.Chooser, r.Carry[1], id)
-	}
-	return nil
-})
+var zadaCopyInOrder = game.RegisterChooseCardsThen("choose-cards/zada-hedron-grinder-copy-order", copySpellForEachChosenInOrder)
