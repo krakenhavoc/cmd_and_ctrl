@@ -149,6 +149,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 colorless Zombie artifact":                                 {Name: "Zombie", TypeLine: "Token Artifact Creature — Zombie", Power: 3, Toughness: 3},
 	"Scrap artifact":                                                {Name: "Scrap", TypeLine: "Token Artifact"},
 	"1/1 colorless Spirit":                                          {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1},
+	"2/2 red Spirit with menace":                                    {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"R"}, Keywords: []string{"menace"}},
 	"1/1 colorless Thopter artifact with flying":                    {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
 	"3/3 green Forest Tentacle":                                     {Name: "Forest Tentacle", TypeLine: "Token Land Creature — Forest Tentacle", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 green Forest Dryad":                                        {Name: "Forest Dryad", TypeLine: "Token Land Creature — Forest Dryad", Power: 1, Toughness: 1, Colors: []string{"G"}},
@@ -297,7 +298,6 @@ var tokenTable = map[string]game.Card{
 	"3/2 red and white Spirit":                                         {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 2, Colors: []string{"R", "W"}},
 	"2/2 red Rebel":                                                    {Name: "Rebel", TypeLine: "Token Creature — Rebel", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red and white Spirit":                                         {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"R", "W"}},
-	"2/2 red Spirit with menace":                                       {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"R"}, Keywords: []string{"menace"}},
 	"4/4 green Fungus Beast with trample":                              {Name: "Fungus Beast", TypeLine: "Token Creature — Fungus Beast", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"1/1 colorless Shapeshifter with changeling":                       {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 1, Toughness: 1, Keywords: []string{"changeling"}},
 	"3/3 green Centaur":                                                {Name: "Centaur", TypeLine: "Token Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
@@ -512,6 +512,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 green Wurm":   {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"2/2 white Knight with protection from red": {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"protection from red"}},
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
+	"3/1 red Construct artifact with haste":     {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 
 	// S82 NEO batch 13: Mechtitan, the Mechtitan Core token.
 	"10/10 white and blue and black and red and green Legendary Construct artifact named Mechtitan with flying, vigilance, trample, lifelink, and haste": {Name: "Mechtitan", TypeLine: "Token Legendary Artifact Creature — Construct", Power: 10, Toughness: 10, Colors: []string{"W", "U", "B", "R", "G"}, Keywords: []string{"flying", "vigilance", "trample", "lifelink", "haste"}},
