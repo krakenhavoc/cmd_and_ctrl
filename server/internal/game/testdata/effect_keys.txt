@@ -3178,6 +3178,7 @@ tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
 tail sin-spiras-punishment/copy-exiled
 tail sin-spiras-punishment/repeat-for-a-land
+tail sinister-concierge/exiled
 tail sinners-judgment/check
 tail sins-of-the-father/creature-cards-drain
 tail six/after-mill
