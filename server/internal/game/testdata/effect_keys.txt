@@ -30,6 +30,7 @@ anyplayer any-player/icy-prison-sacrifice
 anyplayer any-player/innocent-traveler-transform
 anyplayer any-player/nakaya-shade-pump
 anyplayer any-player/prowling-pangolin-sacrifice
+anyplayer any-player/reservoir-kraken-tap
 anyplayer any-player/rhystic-circle-shield
 anyplayer any-player/rhystic-scrying-discard
 anyplayer any-player/rhystic-shield-extra
@@ -234,6 +235,7 @@ body invisible-woman/pump
 body iroh-tea-master/ally
 body itzquinth/dinosaur-bites
 body jace-reality-sculptor/attacker-gets-minus-five
+body jailbreak/return-equal-or-lesser
 body jaya-fiery-negotiator/damage
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
@@ -439,6 +441,7 @@ body ugins-binding/bounce-all
 body undead-butler/return-to-hand
 body undercity-eliminator/exile
 body undying/return
+body unleash-the-inferno/destroy
 body unscrupulous-contractor/draw-and-lose
 body until/return-to-battlefield
 body uss-farragut/bottom-of-library
@@ -586,6 +589,7 @@ choose choose-cards/conspiracy-theorist-draw
 choose choose-cards/conspiracy-theorist-exile
 choose choose-cards/contagious-vorrac-take
 choose choose-cards/coral-atoll-return-an-untapped-island
+choose choose-cards/corpse-appraiser-take
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/cosmium-confluence-animate-cave
 choose choose-cards/court-of-ambition-discarded-3
@@ -690,6 +694,7 @@ choose choose-cards/green-goblin-revenant-draw
 choose choose-cards/green-suns-twilight-picked
 choose choose-cards/green-suns-twilight-placed
 choose choose-cards/green-suns-twilight-take
+choose choose-cards/grime-gorger-exile
 choose choose-cards/gurmag-nightwatch-rest
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
@@ -704,6 +709,7 @@ choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
 choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
+choose choose-cards/industrial-advancement-sacrifice
 choose choose-cards/inscribed-tablet-take
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
@@ -899,6 +905,7 @@ choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/necromantic-selection-pick
+choose choose-cards/next-of-kin-creature
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
@@ -1412,6 +1419,7 @@ confirm confirm/rysorian-badger-exile
 confirm confirm/s82-mom-b12-guerrilla-exile
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
+confirm confirm/sanguine-spy-pay-life-draw
 confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
@@ -1527,6 +1535,7 @@ drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
 drawthen steamcore-scholar-discard
+drawthen tainted-indulgence/discard-unless-five-mana-values
 drawthen talions-messenger/discard
 drawthen teferi-akosa-discard
 drawthen teo-spirited-glider/discard
@@ -1583,6 +1592,7 @@ option option-pick/abstract-performance-opponent
 option option-pick/abstract-performance-pile
 option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
+option option-pick/agents-toolkit-move
 option option-pick/anointed-peacekeeper-look
 option option-pick/apocalypse-demon-sacrifice-or-tap
 option option-pick/arachne-psionic-weaver-look
@@ -1591,10 +1601,13 @@ option option-pick/archfiend-of-spite-life-or-sacrifice
 option option-pick/arni-metalbrow-attacks
 option option-pick/atraxas-skitterfang-keyword
 option option-pick/attach-source-to-player
+option option-pick/aven-courier-counter
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/ballroom-brawlers-keyword
+option option-pick/bellowing-mauler-lose-or-sacrifice
 option option-pick/blank-blank-rocketship-letter
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
+option option-pick/bribe-taker-counter
 option option-pick/bucolic-ranch-top-card
 option option-pick/cabaretti-ascendancy-top-card
 option option-pick/change-text-word-replace
@@ -1609,6 +1622,8 @@ option option-pick/choose-second-player-as-enters
 option option-pick/cloak-and-dagger-entwined-choice
 option option-pick/cmdr2-s18-arthur-marigold-knight-attack
 option option-pick/coin-of-fate-opponent
+option option-pick/contractual-safeguard-kind
+option option-pick/contractual-safeguard-shield
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/dack-fayden-helping-hand-opponent
@@ -1635,6 +1650,7 @@ option option-pick/engine-clash
 option option-pick/engine-clash-opponent
 option option-pick/eumidian-wastewaker-choice
 option option-pick/eventides-shadow-remove
+option option-pick/exotic-pets-fish
 option option-pick/explosion-of-riches-draw
 option option-pick/extinction-event-parity
 option option-pick/extrapolate-the-impossible-opponent
@@ -2101,6 +2117,7 @@ run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
 run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
+run prompt-run/dusk-mangler-discard-and-life
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
 run prompt-run/entish-restoration-search
@@ -2123,6 +2140,7 @@ run prompt-run/fatal-grudge-draw
 run prompt-run/felothar-sacrifice
 run prompt-run/final-showdown-indestructible
 run prompt-run/fire-lord-ozai-add-red
+run prompt-run/first-responder-return
 run prompt-run/foreboding-steamboat-exile
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
@@ -2519,6 +2537,7 @@ tail connive/kamiz-obscura-oculus
 tail connive/x
 tail copy-and-cast/cast-copies-then-exile-self
 tail cori-steel-cutter/offer-attach
+tail corpse-appraiser/look-at-top-three
 tail counter/double-if-grew
 tail counter/double-plus-one
 tail counter/draw-per-counter
@@ -2707,9 +2726,11 @@ tail exile-until/record-return
 tail exile/grant-permission-over-landed
 tail exile/grant-permission-then-offer
 tail exile/kefka-dancing-mad-grant
+tail exotic-pets/fish
 tail exploratory-mission/play-nonland-then-mana
 tail explore-the-underdark/take-the-initiative
 tail extraction-family/after-exile
+tail extraction-specialist/cant-attack-or-block
 tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
 tail fang-rokus-companion/spirit
@@ -2727,6 +2748,7 @@ tail finale-of-devastation/pump
 tail finneas-ace-archer/draw-on-power
 tail fireglass-mentor/choose-exiled
 tail firion-wild-rose-warrior/sacrifice-the-copy
+tail first-responder/counters
 tail fishing-gear/after-exile
 tail fishing-gear/entered
 tail flicker/return-exiled
@@ -2771,6 +2793,7 @@ tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
+tail grime-gorger/counter-per-exiled-card
 tail grubs-command/after-mill
 tail gul-dukat/drain-each-opponent
 tail hama/choose-from-graveyard
@@ -3265,11 +3288,14 @@ tail then/ancient-vendetta-named
 tail then/angelic-intervention-protection-then-counter
 tail then/another-round-return
 tail then/arcum-dagsson-search
+tail then/audacious-swap-exiled
+tail then/audacious-swap-shuffle-exile
 tail then/aven-interrupter-plot
 tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
 tail then/barals-expertise-free-cast
+tail then/bellowing-mauler-sacrificed
 tail then/blastoneuron-copy
 tail then/blastoneuron-haste-and-sacrifice
 tail then/bloodline-bidding-type-chosen
@@ -3364,6 +3390,7 @@ tail then/highway-robbery-draw-two
 tail then/hold-for-ransom-draw
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
+tail then/industrial-advancement-sacrificed
 tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
@@ -3452,6 +3479,7 @@ tail then/skrelv-defector-mite-color-chosen
 tail then/sorcerers-strongbox-draw
 tail then/sorin-lord-of-innistrad-return
 tail then/sphinx-of-clear-skies-take
+tail then/spiteful-repossession-step
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed

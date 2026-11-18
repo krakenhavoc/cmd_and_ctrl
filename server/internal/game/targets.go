@@ -789,6 +789,18 @@ type TargetSpec struct {
 	// effects.SharesACardTypeWithIt.
 	SharesCardTypeWithEventObject bool
 
+	// ManaValueEqualsEventObject is "with the same mana value" on a
+	// TRIGGERED ability's clause, where the comparison is with the object
+	// the triggering event is about: the permanent that entered, for Boxing
+	// Ring's "it fights up to one target creature you don't control with
+	// the same mana value". The bound is the mana value the trigger's
+	// CR 603.10 snapshot recorded (ObjectSnapshot.ManaValue), so it is
+	// known when the target is chosen (CR 603.3d) and re-checked on
+	// resolution (CR 608.2b) even once the object has gone. DATA, judged
+	// in the same shared walk; a walk with no fired trigger or no event
+	// object admits NOTHING. Build it with effects.WithTheSameManaValueAsIt.
+	ManaValueEqualsEventObject bool
+
 	// chooser is the opponent who chooses this clause, once bound
 	// (bindStepChoosers). Unexported and never set on a catalog spec,
 	// only on the value copies AnnouncedClauses hands out, like xBound.
@@ -2137,6 +2149,23 @@ func (s *TargetSpec) eventObjectTypeAdmits(g *Game, src TargetSource, c Card) bo
 	return len(SharedCardTypes([]Card{{effective: &ch}, c})) > 0
 }
 
+// eventObjectManaValueAdmits is ManaValueEqualsEventObject's gate: true
+// without the flag; with it, a candidate whose mana value is exactly the
+// triggering event's object's, as its snapshot recorded it. No fired
+// trigger or no event object admits nothing.
+//
+// Caller must hold g.mu.
+func (s *TargetSpec) eventObjectManaValueAdmits(g *Game, src TargetSource, c Card) bool {
+	if !s.ManaValueEqualsEventObject {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() || src.Trigger.Object == nil {
+		return false
+	}
+	mv, ok := g.ManaValueForEffect(c)
+	return ok && mv == src.Trigger.Object.ManaValue
+}
+
 // triggerChooserOf is the player who answers a ChosenByTriggerActor
 // clause: the triggering event's Actor (the upkeep player of The Abyss),
 // except for damage, whose Actor is the damage source's controller and
@@ -2179,7 +2208,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

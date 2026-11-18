@@ -21,16 +21,6 @@ func snc6EntersWithShield(name string, n int) game.ReplacementEffect {
 	return b10EntersWithCounters(game.CounterShield, n, rowLabel)
 }
 
-// snc6ShieldOnFirstTarget puts a shield counter on the trigger's first
-// target, if it is still there (CR 608.2b).
-func snc6ShieldOnFirstTarget(ctx *Context) error {
-	t, ok := ctx.ClauseTarget(0)
-	if !ok {
-		return nil
-	}
-	return AddCounter{Target: t.ID, Kind: game.CounterShield, N: 1}.Apply(ctx)
-}
-
 // snc6AttacksPlayerOrPlaneswalker is the defender of an attack event
 // being a player or a planeswalker, never a battle (CR 506.2).
 func snc6AttacksPlayerOrPlaneswalker(g *game.Game, ev game.Event) bool {

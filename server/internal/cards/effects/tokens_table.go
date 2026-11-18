@@ -318,6 +318,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Elephant":                                               {Name: "Elephant", TypeLine: "Token Creature — Elephant", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/4 green Treefolk with reach":                                    {Name: "Treefolk", TypeLine: "Token Creature — Treefolk", Power: 3, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"3/3 red Ogre":                                                     {Name: "Ogre", TypeLine: "Token Creature — Ogre", Power: 3, Toughness: 3, Colors: []string{"R"}},
+	"4/3 black Ogre Warrior":                                           {Name: "Ogre Warrior", TypeLine: "Token Creature — Ogre Warrior", Power: 4, Toughness: 3, Colors: []string{"B"}},
 	"3/3 black Dalek artifact with menace":                             {Name: "Dalek", TypeLine: "Token Artifact Creature — Dalek", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"3/3 black Wraith with menace":                                     {Name: "Wraith", TypeLine: "Token Creature — Wraith", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"4/4 black Zombie Warrior with vigilance":                          {Name: "Zombie Warrior", TypeLine: "Token Creature — Zombie Warrior", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"vigilance"}},

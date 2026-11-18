@@ -2011,3 +2011,13 @@ func exileEachChosenCard(g *game.Game, r game.CardsChosen) error {
 	}
 	return nil
 }
+
+// shieldCounterOnFirstTarget puts a shield counter on the ability's first
+// target, if it is still there (CR 608.2b).
+func shieldCounterOnFirstTarget(ctx *Context) error {
+	t, ok := ctx.ClauseTarget(0)
+	if !ok {
+		return nil
+	}
+	return AddCounter{Target: t.ID, Kind: game.CounterShield, N: 1}.Apply(ctx)
+}

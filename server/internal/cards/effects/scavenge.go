@@ -63,7 +63,12 @@ func scavengeCounters(g *game.Game, item *game.StackItem) error {
 	// CR 107.1b: a negative power puts no counters on, and neither
 	// does a zero. Not an error — "a number of counters equal to 0"
 	// is a legal instruction that does nothing.
-	n := src.Power
+	//
+	// A `*` power is the card's own characteristic-defining ability,
+	// which functions in every zone (CR 113.6a, 604.3): Dodgy Jalopy's
+	// "greatest mana value among creatures you control" is read as the
+	// ability resolves, off the card in exile.
+	n := g.PowerAnywhereForEffect(src)
 	if n <= 0 {
 		return nil
 	}

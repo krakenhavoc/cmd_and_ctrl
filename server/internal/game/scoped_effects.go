@@ -1287,6 +1287,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModLoseAllCreatureTypes: {layer: Layer4Type},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
+	// #5869: its life-priced sibling (Sivitri, Dragon Master).
+	ModAttackTaxLife: {reader: readerRule},
 	// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt.
 	ModSkipTurns: {reader: readerRule},
 	// ADR 0188 Decision 3a (#3563): a step of one extra turn skipped.
