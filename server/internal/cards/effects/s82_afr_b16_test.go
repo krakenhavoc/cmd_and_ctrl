@@ -114,7 +114,9 @@ func s82B16Jelly(t *testing.T, g *game.Game, counters int) uuid.UUID {
 func TestS82AfrB16OchreJellySplitsWithHalfTheCountersAtTheNextEndStep(t *testing.T) {
 	g := newCatalogGame(t)
 	id := s82B16Jelly(t, g, 5)
+	t.Logf("counters before: %v", func() map[string]int { c, _ := battlefieldCard(g, id); return c.Counters }())
 	killCreature(t, g, g.Seats[0].ID, id)
+	t.Logf("lkc %v pending %d stack %d", g.LastKnownCountersForEffect(id), len(g.PendingTriggers), len(g.StackMeta))
 	passPriorityAroundTable(t, g)
 	if n := onBattlefieldNamed(g, "Ochre Jelly"); n != 0 {
 		t.Fatalf("%d Jellies at once, want 0 (the token waits for the end step)", n)
@@ -395,7 +397,6 @@ func TestS82AfrB16DemilichAttackExilesAndCopiesAnInstantOrSorceryFromYourGraveya
 	me, opp := g.Seats[0], g.Seats[1]
 	demi := b12Push(g, me.ID, "Demilich", "Creature — Skeleton Wizard", demilichOracle, 4, 3)
 	spell := graveyardCardOf(g, me, "Old Bolt", "Instant", "{R}", "")
-	before := lifeOf(g, opp.ID)
 	declareAttack(t, g, opp.ID, demi)
 	answerPickTargetIfOpen(t, g, spell)
 	passPriorityAroundTable(t, g)
@@ -405,11 +406,20 @@ func TestS82AfrB16DemilichAttackExilesAndCopiesAnInstantOrSorceryFromYourGraveya
 	if !g.Exile.Contains(spell) {
 		t.Error("the original must be exiled (and stay there)")
 	}
-	if got := countMayCastPrompts(g); got != 1 {
-		t.Fatalf("%d cast offers for the copy, want 1", got)
+	cp := copyOf(t, g, "Old Bolt")
+	if cp.InstanceID == spell || cp.Owner != me.ID {
+		t.Errorf("copy = %+v: a new object owned by Demilich's controller", cp)
 	}
-	_ = before
-	answerAllMayCast(t, g, me.ID, false)
+	g.ReadSnapshot(func() {
+		perm := g.CastPermissionOnCardForEffect(cp, game.ZoneExile)
+		if perm == nil || perm.Player != me.ID {
+			t.Fatalf("the controller has no permission over the copy: %+v", perm)
+		}
+		if perm.Cost == "{0}" {
+			t.Errorf("the copy must be cast paying its mana cost, not for free")
+		}
+	})
+	declineResolutionCasts(t, g, me.ID)
 }
 
 // --- Xanathar, Guild Kingpin ---------------------------------------------------
