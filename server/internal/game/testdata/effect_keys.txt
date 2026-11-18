@@ -2850,6 +2850,7 @@ tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
 tail dawnhand-eulogist/after-mill
+tail daxos-of-meletis/gain-life
 tail deathgorge-scavenger/exiled-card-riders
 tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
@@ -3212,6 +3213,7 @@ tail mass/ceaseless-conflict-spirits
 tail mass/culling-ritual-mana
 tail mass/deadly-tempest-loss
 tail mass/death-begets-life-draw
+tail mass/declaration-in-stone-clues
 tail mass/demonic-junker-counters
 tail mass/faerie-slumber-party-faeries
 tail mass/flood-of-tears-put
