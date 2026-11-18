@@ -271,6 +271,7 @@ func TestS82MidB14ConformityMakesNonlegendaryCreaturesThreeThreeAndTypeless(t *t
 
 	// A counter still applies on top of the base 3/3 (CR 613.4b, 613.4d).
 	g.WithWriteLock(func() { _ = g.AddCounterByForEffect(opp.ID, elf, game.CounterPlusOne, 1) })
+	t.Logf("counters on Elf: %d", countersOn(g, elf, game.CounterPlusOne))
 	if got := pt(elf); got != [2]int{4, 4} {
 		t.Errorf("Elf with a counter is %v, want 4/4", got)
 	}
