@@ -231,6 +231,7 @@ body immortal-coil/exile-per-prevented
 body incandescent-soulstoke/sacrifice
 body incinerator-of-the-guilty/damage
 body indulge-excess/citizen-tapped-and-attacking
+body inferno-of-the-star-mounts/damage
 body initiative/take
 body initiative/venture
 body inkshield/inklings
@@ -1285,6 +1286,7 @@ condition combat/your-creature-hit-a-player-or-planeswalker
 condition combat/your-creature-hit-the-player
 condition damage/a-creature-combat-to-you
 condition damage/each-creature-dealt-damage
+condition damage/each-opponent-creature-dealt-damage
 condition damage/either-of-those-creatures-deals-combat-damage
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player

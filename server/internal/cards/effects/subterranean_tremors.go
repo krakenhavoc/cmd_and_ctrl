@@ -27,15 +27,7 @@ func init() {
 		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				x := ctx.X()
-				if x <= 0 {
-					return nil
-				}
-				return ctx.Game.DamageInstanceForEffect(func() error {
-					return damageEachMatching(ctx, And(Creature(), WithoutKeyword("flying")), x)
-				})
-			}),
+			Instruction(afrB18DamageEachCreatureWithoutFlying),
 			Instruction(func(ctx *Context) error {
 				if ctx.X() < 4 {
 					return nil
