@@ -510,6 +510,7 @@ choose choose-cards/aminatous-augury-land
 choose choose-cards/amys-home-exile
 choose choose-cards/another-round-picked
 choose choose-cards/anzrags-rampage-creature
+choose choose-cards/arcane-endeavor-cast
 choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/argentum-masticore-discard
@@ -707,6 +708,7 @@ choose choose-cards/golden-wish-take
 choose choose-cards/goldwardens-gambit-attach
 choose choose-cards/goliath-hatchery-draw
 choose choose-cards/granted-take
+choose choose-cards/grave-endeavor-pick
 choose choose-cards/gravelgill-scoundrel-tap
 choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/green-goblin-revenant-draw
@@ -1309,6 +1311,7 @@ confirm confirm/ambulatory-edifice-pay-life
 confirm confirm/another-chance-mill
 confirm confirm/arc-of-fortune-embark
 confirm confirm/arc-of-fortune-may-wheel
+confirm confirm/arcane-endeavor-result
 confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/awaken-the-sleeper-destroy-equipment
@@ -1376,6 +1379,7 @@ confirm confirm/geier-reach-bandit-transform
 confirm confirm/gitaxian-anatomist-tap
 confirm confirm/gogo-copy
 confirm confirm/graha-tia-pay-and-create
+confirm confirm/grave-endeavor-result
 confirm confirm/hauntwoods-shrieker-face-up
 confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
@@ -1488,7 +1492,10 @@ confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/urza-assembles-the-titans-reveal
 confirm confirm/uss-enterprise-c-discard-hand
+confirm confirm/valiant-endeavor-result
 confirm confirm/vaultguard-trooper-discard-hand
+confirm confirm/vrondiss-dragon-spirit
+confirm confirm/vrondiss-self-damage
 confirm confirm/wandering-archaic-copy
 confirm confirm/ward-discard
 confirm confirm/ward-get-poison
@@ -1502,6 +1509,7 @@ confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
+confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zealot-il-vec-damage
@@ -2647,12 +2655,15 @@ tail devastating-onslaught/haste-and-sacrifice-copies
 tail dice/ancient-copper-dragon-treasures
 tail dice/ancient-gold-dragon-tokens
 tail dice/ancient-silver-dragon-draw
+tail dice/arcane-endeavor-rolled
 tail dice/berserkers-frenzy-result
+tail dice/bucknards-everfull-purse
 tail dice/clown-car-results
 tail dice/component-pouch-counters
 tail dice/danse-macabre-result
 tail dice/diviners-portent-result
 tail dice/entry-roll
+tail dice/grave-endeavor-rolled
 tail dice/hoarding-ogre-treasures
 tail dice/maddening-hex-burn-and-move
 tail dice/netherese-puzzle-ward-scry
@@ -2662,6 +2673,8 @@ tail dice/roll-cost
 tail dice/roll-to-visit
 tail dice/song-of-inspiration-result
 tail dice/the-deck-of-many-things-result
+tail dice/valiant-endeavor-rolled
+tail dice/wild-endeavor-rolled
 tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
@@ -3450,6 +3463,7 @@ tail then/glen-elendras-answer-counter-next
 tail then/god-pharaohs-gift-copy
 tail then/god-pharaohs-gift-haste
 tail then/grasp-of-fate-exiled-one
+tail then/grave-endeavor-drain
 tail then/grist-the-hunger-tide-mill
 tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
@@ -3598,6 +3612,7 @@ tail then/twisted-fates-counters
 tail then/unwind-history-surveil
 tail then/urza-assembles-the-titans-may-reveal
 tail then/valakut-exploration-damage
+tail then/valiant-endeavor-knights
 tail then/vengeful-villagers-stun
 tail then/venture-into-the-dungeon
 tail then/vision-charm-basic-type-chosen

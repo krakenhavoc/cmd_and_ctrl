@@ -241,6 +241,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0103: Spiked Corridor's Devil.
 	printedDevilToken,
 
+	// S82 AFR batch 12: Vrondiss's Dragon Spirit.
+	printedAfrDragonSpiritToken,
+
 	// Falcon, Winged Wonder's Redwing (#4455).
 	printedMshA3RedwingToken,
 
