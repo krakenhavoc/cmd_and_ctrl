@@ -118,6 +118,8 @@ var knownUnmatchedTokens = map[string]string{
 	// creature token, where X is the number of lands you control". The printed token
 	// card is */*; the card sets X/X as it creates the token.
 	"0/0 green Spirit": "the printed token card is */*; Kura, the Boundless Sky sets X/X as it creates it",
+	// Stitcher Geralf creates "an X/X blue Zombie creature token"; the printed token card is */*.
+	"0/0 blue Zombie": "the printed token card is */*; Stitcher Geralf sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
