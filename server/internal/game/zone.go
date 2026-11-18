@@ -505,6 +505,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	c.ExiledWith = PermissionCardRef{}
 	c.ExiledWithAbility = AbilityRef{}
 	c.ExiledWithTurn = 0
+	// #5876: "exiled by an ability you controlled" names the move that
+	// put the card in exile, and any move ends that.
+	c.ExiledByAbilityOf = uuid.Nil
 	// CR 702.99c / 400.7 (#3867): the card is encoded only while it
 	// stays in exile.
 	c.EncodedOn = PermissionCardRef{}

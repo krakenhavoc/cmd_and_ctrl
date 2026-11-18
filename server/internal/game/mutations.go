@@ -6838,6 +6838,10 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 	}
 	mark := leaveMark{cause: ev.LeaveCause, source: g.leaveSourceLocked(moveCause)}
 	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
+	if moveErr == nil {
+		// #5876: whose ability exiled the permanent, once it is there.
+		g.stampExiledByAbilityLocked(g.Exile, ev.CardID, ev.moveCause())
+	}
 	// ADR 0178: a replacement's declared life change ("instead exile it
 	// and you gain 2 life") lands after the move and before the route's
 	// continuation, which waits for it if it pauses.

@@ -1327,6 +1327,21 @@ type Card struct {
 	// the snapshot.
 	ExiledWithTurn int
 
+	// ExiledByAbilityOf is the player who controlled the resolving
+	// ABILITY whose instruction put this card into exile: Evelyn, the
+	// Covetous's "a card from exile with a collection counter on it if it
+	// was exiled by an ability you controlled" (#5876). The controller is
+	// the stack item's (CR 113.8), read off the move's cause
+	// (move_cause.go) as the card lands, so a stolen permanent's ability
+	// is its thief's and a later change of control does not rewrite it.
+	// A spell's exile, a cost, a special action, a rule and a manual
+	// move stamp nothing, and nor does a cause whose item cannot be told
+	// apart from a spell (weaker than printed, never stronger).
+	//
+	// Cleared by MoveCard on every move, so a card that leaves exile was
+	// exiled by nobody. Carried by the snapshot.
+	ExiledByAbilityOf uuid.UUID
+
 	// EncodedOn is CR 702.99b's "encoded": the permanent OBJECT
 	// {instance, epoch} a card with cipher was exiled encoded on as its
 	// spell resolved (#3867, cipher.go). A separate link from ExiledWith

@@ -1474,6 +1474,12 @@ type cardSnapshot struct {
 	// "not this turn", so a restored game's earlier links grant nothing
 	// this-turn clauses read, which is the safe direction.
 	ExiledWithTurn int `json:"exiledWithTurn,omitempty"`
+	// ExiledByAbilityOf is the player whose ability exiled the card
+	// (#5876, Evelyn, the Covetous). Additive within the version: a file
+	// without it restores "exiled by nobody's ability", so a restored
+	// game's earlier exiles open nothing that reads it, the safe
+	// direction. A pointer, so a card no ability exiled writes nothing.
+	ExiledByAbilityOf *uuid.UUID `json:"exiledByAbilityOf,omitempty"`
 	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
 	// the creature object a card in exile is encoded on and when. Carried
 	// because nothing else records it, and additive within v7: a file
@@ -3230,6 +3236,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
 		ExiledWithTurn:           c.ExiledWithTurn,
+		ExiledByAbilityOf:        uuidPtrOrNil(c.ExiledByAbilityOf),
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
 		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -4389,6 +4396,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
 		ExiledWithTurn:           c.ExiledWithTurn,
+		ExiledByAbilityOf:        uuidOrNil(c.ExiledByAbilityOf),
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
 		CreatedWith:              restoreEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
