@@ -114,14 +114,11 @@ func s82B16Jelly(t *testing.T, g *game.Game, counters int) uuid.UUID {
 func TestS82AfrB16OchreJellySplitsWithHalfTheCountersAtTheNextEndStep(t *testing.T) {
 	g := newCatalogGame(t)
 	id := s82B16Jelly(t, g, 5)
-	t.Logf("counters before: %v", func() map[string]int { c, _ := battlefieldCard(g, id); return c.Counters }())
 	killCreature(t, g, g.Seats[0].ID, id)
-	t.Logf("lkc %v pending %d stack %d", g.LastKnownCountersForEffect(id), len(g.PendingTriggers), len(g.StackMeta))
 	passPriorityAroundTable(t, g)
 	if n := onBattlefieldNamed(g, "Ochre Jelly"); n != 0 {
 		t.Fatalf("%d Jellies at once, want 0 (the token waits for the end step)", n)
 	}
-	t.Logf("graveyard %d, delayed %d", g.Seats[0].Graveyard.Size(), len(g.DelayedTriggers))
 	advanceToEndStep(t, g)
 	passPriorityAroundTable(t, g)
 	if n := onBattlefieldNamed(g, "Ochre Jelly"); n != 1 {
