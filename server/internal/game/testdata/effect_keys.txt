@@ -1896,6 +1896,7 @@ payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
+payunless pay-unless/replication-specialist-copy
 payunless pay-unless/rhystic-study-may-draw
 payunless pay-unless/riddle-gate-gargoyle-lifelink
 payunless pay-unless/rings-of-brighthearth-copy-ability
