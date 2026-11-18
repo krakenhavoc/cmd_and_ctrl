@@ -233,3 +233,196 @@ func TestS82NeoB14RecklessJoyExilesXAndLetsYouPlayTwoOfThem(t *testing.T) {
 		t.Errorf("played %d of the exiled cards, want exactly 2", played)
 	}
 }
+
+// neoOpenCastOffer is the seat's open resolution_cast prompt, or nil.
+func neoOpenCastOffer(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceResolutionCast && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
+}
+
+// --- Invoke Justice ---
+
+func TestS82NeoB14InvokeJusticeReturnsThenDistributesFourAmongTheChosenPlayersPermanents(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	dead := pushGraveyardPermanent(me, "Dead Rock", "Artifact", "{2}")
+	theirs := pushGraveyardPermanent(opp, "Their Rock", "Artifact", "{2}")
+	a := apcB1Push(g, opp.ID, "Ogre A", "Creature — Ogre", "", "{3}", 2, 2)
+	b := apcB1Push(g, opp.ID, "Ogre B", "Creature — Ogre", "", "{3}", 2, 2)
+	van := apcB1Push(g, opp.ID, "Van", "Artifact — Vehicle", "", "{3}", 4, 4)
+	land := apcB1Push(g, opp.ID, "Plains", "Basic Land — Plains", "", "", 0, 0)
+	advanceToMain(t, g)
+	neoMana(me, "W", "W", "W", "W", "W")
+	if _, err := neoCast(t, g, "Invoke Justice", "Sorcery", "{1}{W}{W}{W}{W}", neoInvokeJusticeOracle, game.CastSpellParams{
+		Targets: []game.TargetRef{neoCardTarget(theirs), playerTarget(opp.ID)}, Strict: true,
+	}); err == nil {
+		t.Fatal("a card from another graveyard was accepted")
+	}
+	if _, err := neoCast(t, g, "Invoke Justice", "Sorcery", "{1}{W}{W}{W}{W}", neoInvokeJusticeOracle, game.CastSpellParams{
+		Targets: []game.TargetRef{neoCardTarget(dead), playerTarget(opp.ID)}, Strict: true,
+	}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(dead) {
+		t.Fatal("the permanent card did not return")
+	}
+	pick := latestChooseCards(g, me.ID)
+	if pick == nil {
+		t.Fatal("no prompt for the creatures and Vehicles")
+	}
+	got := map[uuid.UUID]bool{}
+	for _, id := range pick.ChooseCards {
+		got[id] = true
+	}
+	if !got[a] || !got[b] || !got[van] || got[land] || got[dead] {
+		t.Errorf("candidates %v: want the two creatures and the Vehicle only", pick.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{a, van}); err != nil {
+		t.Fatalf("choose: %v", err)
+	}
+	answerNumber(t, g, me.ID, 3)
+	if n := countersOn(g, a, game.CounterPlusOne); n != 3 {
+		t.Errorf("Ogre A has %d counters, want 3", n)
+	}
+	if n := countersOn(g, van, game.CounterPlusOne); n != 1 {
+		t.Errorf("the Vehicle has %d counters, want the last 1", n)
+	}
+	if n := countersOn(g, b, game.CounterPlusOne); n != 0 {
+		t.Errorf("Ogre B has %d counters, want 0", n)
+	}
+}
+
+// --- Invoke the Ancients ---
+
+func TestS82NeoB14InvokeTheAncientsMakesTwoSpiritsEachWithItsOwnCounter(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	neoMana(me, "G", "G", "G", "G", "G")
+	if _, err := neoCast(t, g, "Invoke the Ancients", "Sorcery", "{1}{G}{G}{G}{G}", neoInvokeAncientsOracle, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	answerOptionPick(t, g, me.ID, 0) // reach
+	answerOptionPick(t, g, me.ID, 2) // trample
+	var spirits []game.Card
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Spirit" && c.Controller == me.ID {
+			spirits = append(spirits, c)
+		}
+	}
+	if len(spirits) != 2 {
+		t.Fatalf("%d Spirits, want 2", len(spirits))
+	}
+	reach, trample := 0, 0
+	for _, c := range spirits {
+		if c.Power != 4 || c.Toughness != 5 {
+			t.Errorf("a Spirit is %d/%d, want 4/5", c.Power, c.Toughness)
+		}
+		reach += countersOn(g, c.InstanceID, game.CounterReach)
+		trample += countersOn(g, c.InstanceID, game.CounterTrample)
+		if countersOn(g, c.InstanceID, game.CounterReach)+countersOn(g, c.InstanceID, game.CounterVigilance)+countersOn(g, c.InstanceID, game.CounterTrample) != 1 {
+			t.Errorf("%v does not carry exactly one counter", c.InstanceID)
+		}
+	}
+	if reach != 1 || trample != 1 {
+		t.Errorf("reach %d trample %d, want one each", reach, trample)
+	}
+}
+
+// --- Scrap Welder ---
+
+func TestS82NeoB14ScrapWelderSacrificesXAndReturnsLessThanXWithHaste(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	welder := apcB1Push(g, me.ID, "Scrap Welder", "Creature — Goblin Artificer", neoScrapWelderOracle, "{2}{R}", 3, 3)
+	four := apcB1Push(g, me.ID, "Four Rock", "Artifact", "", "{4}", 0, 0)
+	cheap := pushGraveyardPermanent(me, "Cheap Rock", "Artifact", "{3}")
+	same := pushGraveyardPermanent(me, "Equal Rock", "Artifact", "{4}")
+	advanceToMain(t, g)
+	if err := invB1Activate(g, me.ID, welder, 0, neoCardTarget(same)); err == nil {
+		t.Fatal("an artifact card with mana value equal to X was accepted")
+	}
+	if err := invB1Activate(g, me.ID, welder, 0, neoCardTarget(cheap)); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(four) {
+		t.Error("the artifact was not sacrificed")
+	}
+	if !g.Battlefield.Contains(cheap) {
+		t.Fatal("the artifact card did not return")
+	}
+	if !hasEffectiveKeyword(t, g, cheap, "haste") {
+		t.Error("the returned artifact did not gain haste")
+	}
+	if !findCardAnywhere(t, g, welder).Tapped {
+		t.Error("Scrap Welder did not tap")
+	}
+}
+
+// --- Tameshi, Reality Architect ---
+
+func neoBounce(g *game.Game, ids ...uuid.UUID) {
+	g.WithWriteLock(func() { g.BounceCardsToHandForEffect(ids) })
+}
+
+func TestS82NeoB14TameshiDrawsOncePerTurnForANoncreatureReturnedToHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	apcB1Push(g, me.ID, "Tameshi, Reality Architect", "Legendary Creature — Moonfolk Wizard", neoTameshiOracle, "{2}{U}", 2, 3)
+	bear := apcB1Push(g, opp.ID, "Bear", "Creature — Bear", "", "{1}{G}", 2, 2)
+	bear2 := apcB1Push(g, opp.ID, "Bear Two", "Creature — Bear", "", "{1}{G}", 2, 2)
+	rock := apcB1Push(g, opp.ID, "Rock", "Artifact", "", "{2}", 0, 0)
+	rock2 := apcB1Push(g, opp.ID, "Rock Two", "Artifact", "", "{2}", 0, 0)
+	advanceToMain(t, g)
+	before := me.Hand.Size()
+	neoBounce(g, bear)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != before {
+		t.Fatal("a bounced creature drew a card")
+	}
+	// A creature and an artifact bounced together are one batch with one noncreature in it.
+	neoBounce(g, bear2, rock)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != before+1 {
+		t.Fatalf("hand %d -> %d, want one card drawn for the batch", before, me.Hand.Size())
+	}
+	neoBounce(g, rock2)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != before+1 {
+		t.Errorf("a second bounce in the same turn drew again")
+	}
+}
+
+func TestS82NeoB14TameshiReturnsALandToGetBackAnArtifactOrEnchantmentUpToX(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	tameshi := apcB1Push(g, me.ID, "Tameshi, Reality Architect", "Legendary Creature — Moonfolk Wizard", neoTameshiOracle, "{2}{U}", 2, 3)
+	land := apcB1Push(g, me.ID, "Plains", "Basic Land — Plains", "", "", 0, 0)
+	cheap := pushGraveyardPermanent(me, "Cheap Aura", "Enchantment — Aura", "{1}{W}")
+	dear := pushGraveyardPermanent(me, "Dear Rock", "Artifact", "{4}")
+	bear := pushGraveyardPermanent(me, "Dead Bear", "Creature — Bear", "{1}")
+	advanceToMain(t, g)
+	neoMana(me, "W", "W", "W", "W")
+	for _, bad := range []uuid.UUID{dear, bear} {
+		if err := g.ActivateCatalogAbility(me.ID, tameshi, 1, game.ActivateAbilityParams{Strict: true, XValue: 2, Targets: []game.TargetRef{neoCardTarget(bad)}}); err == nil {
+			t.Fatalf("%v was accepted at X = 2", bad)
+		}
+	}
+	if err := g.ActivateCatalogAbility(me.ID, tameshi, 1, game.ActivateAbilityParams{Strict: true, XValue: 2, Targets: []game.TargetRef{neoCardTarget(cheap)}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if !me.Hand.Contains(land) {
+		t.Error("the land was not returned to hand as the cost")
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(cheap) {
+		t.Error("the enchantment card did not return")
+	}
+}
