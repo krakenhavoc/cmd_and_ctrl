@@ -294,6 +294,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Hallowed Haunting's Spirit Cleric: a */* token that sizes itself.
 	printedSpiritClericToken,
 
+	// Consuming Blob's Ooze: a */*+1 token that sizes itself.
+	printedConsumingBlobOozeToken,
+
 	// ADR 0185 (#2417): the Incubator, the first double-faced token.
 	printedIncubatorToken,
 

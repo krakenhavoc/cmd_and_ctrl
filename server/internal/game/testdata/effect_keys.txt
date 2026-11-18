@@ -232,6 +232,7 @@ body initiative/take
 body initiative/venture
 body inkshield/inklings
 body inti-seneschal-of-the-sun/counter-and-trample
+body intrepid-adversary/valor
 body invasion-of-new-capenna/exile
 body investigate/controller
 body invisible-woman/pump
@@ -341,6 +342,7 @@ body prevention/ria-ivor-create-mites
 body prevention/shield-gain-life-equal
 body prevention/that-many-counters-on-it
 body prevention/that-many-counters-on-this
+body primal-adversary/counters-and-wolves
 body primal-witchstalker/land
 body prishes-wanderings/counter
 body protean-hydra/two-counters
@@ -405,6 +407,7 @@ body snc-b04/obscura-interceptor-return-spell
 body snc-b04/psychic-pickpocket-return-permanent
 body sorin-imperious-bloodlord/strike
 body specter-of-mortality/sweep
+body spectral-adversary/phase-out
 body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
@@ -422,6 +425,7 @@ body swans-of-bryn-argoll/source-controller-draws
 body sylvia-tilly-joy-of-discovery/counter
 body synthetic-destiny/reveal-that-many-creatures
 body systems-override/remove-ten-charge-counters
+body tainted-adversary/counters-and-zombies
 body talions-messenger/counter
 body tarkir/damage
 body teferi-akosa/shuffle-into-library
@@ -1412,6 +1416,7 @@ confirm confirm/mistbreath-elder-return-self
 confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
 confirm confirm/moon-circuit-hacker-draw
+confirm confirm/moonveil-regent-discard-hand
 confirm confirm/msh-a6-nick-fury-transform
 confirm confirm/msh-a8-kingpin-pay-life
 confirm confirm/multiform-wonder-pump
@@ -1945,6 +1950,7 @@ payunless pay-unless/inalla-archmage-ritualist-copy
 payunless pay-unless/interceptor-shadows-hound-return
 payunless pay-unless/intet-the-dreamer-exile-top
 payunless pay-unless/inti-seneschal-of-the-sun-discard
+payunless pay-unless/intrepid-adversary-times
 payunless pay-unless/invisible-woman-pump
 payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/itzquinth-dinosaur-bites
@@ -1992,6 +1998,7 @@ payunless pay-unless/passenger-ferry-unblockable
 payunless pay-unless/persistent-marshstalker-return
 payunless pay-unless/phoenix-chick-return
 payunless pay-unless/pillar-tombs-of-aku-decline
+payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
@@ -2020,6 +2027,7 @@ payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
+payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
 payunless pay-unless/springheart-nantuko-copy-or-insect
@@ -2029,6 +2037,7 @@ payunless pay-unless/sunstreak-phoenix-return
 payunless pay-unless/sylvia-tilly-joy-of-discovery-exile
 payunless pay-unless/symmetry-matrix-draw
 payunless pay-unless/t-45-power-armor-untap-and-counter
+payunless pay-unless/tainted-adversary-times
 payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/terror-of-towashi-return
 payunless pay-unless/tester-of-the-tangential-move
@@ -2844,6 +2853,7 @@ tail ghostly-flicker/return-under-your-control
 tail ghouls-night-out/black-zombies
 tail gifts-ungiven/choose
 tail gilgamesh-master-at-arms/rest-then-attach-trigger
+tail gisa/decayed
 tail glamdring-foe-hammer/gleam-of-death-after-mill
 tail glimmer-of-genius/then
 tail glissas-retriever/exiled
