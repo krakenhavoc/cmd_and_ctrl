@@ -1050,7 +1050,7 @@ func (g *Game) buildOrPickTriggerLocked(tc TriggerContext, source Card, lki Char
 		return
 	}
 	spec := g.triggerTargetsLocked(t, tc, &source)
-	steps := AnnouncedClauses(spec, t.Modes, modes)
+	steps := bindTriggerModeStepsCastX(t, &source, AnnouncedClauses(spec, t.Modes, modes))
 	if len(steps) > 0 {
 		g.queuePickTargetLocked(tc, source, lki, t, doubledBy, modes, steps, spec)
 		return
