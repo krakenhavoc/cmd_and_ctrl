@@ -297,6 +297,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Hallowed Haunting's Spirit Cleric: a */* token that sizes itself.
 	printedSpiritClericToken,
 
+	// Consuming Blob's Ooze: a */*+1 token that sizes itself.
+	printedConsumingBlobOozeToken,
+
 	// ADR 0185 (#2417): the Incubator, the first double-faced token.
 	printedIncubatorToken,
 
@@ -341,6 +344,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// White Tiger's The Tiger God: a legendary 4/4 Cat God that can't be
 	// blocked by more than one creature.
 	printedTigerGodToken,
+
+	// S82 Midnight Hunt batch 11 (#5497): Ominous Roost's Bird and Seize the
+	// Storm's Elemental.
+	printedBirdBlocksOnlyFliersToken,
+	printedSeizeTheStormElementalToken,
 
 	// The Coming of Galactus's Galactus: flying, trample, destroys a land
 	// when he attacks.
