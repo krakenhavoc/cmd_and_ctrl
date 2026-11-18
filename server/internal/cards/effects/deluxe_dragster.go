@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Deluxe Dragster — Artifact — Vehicle {4}{U}, 4/3 (March of the Machine
 // Commander):
@@ -24,22 +20,7 @@ import (
 //
 // No simplification.
 func init() {
-	damage := WheneverThisDealsCombatDamageToAPlayer(
-		"Deluxe Dragster — you may cast target instant or sorcery card from that player's graveyard without paying its mana cost",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetCard {
-					cmdr2S42FreeGraveyardCast(ctx, "Deluxe Dragster", freeInstantOrSorcery(), true, []uuid.UUID{t.ID})
-					break
-				}
-			}
-			return nil
-		})
-	damage.TargetsFrom = func(tc game.TriggerContext, _ *game.Card, _ *game.Game) *game.TargetSpec {
-		return TargetCardInGraveyard("target instant or sorcery card from that player's graveyard",
-			Or(Instant(), Sorcery()), OwnedBy(tc.Event.Target))
-	}
+	damage := freeCastFromDamagedPlayersGraveyard("Deluxe Dragster")
 	Register(Spec{
 		OracleID:     "56ba8fe5-8693-4783-8406-9ced99de0b2a",
 		Name:         "Deluxe Dragster",

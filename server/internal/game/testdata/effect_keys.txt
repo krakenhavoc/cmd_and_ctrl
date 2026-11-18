@@ -536,6 +536,8 @@ choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/argentum-masticore-discard
 choose choose-cards/arm-mounted-anchor-discard-two-unless-pirate
+choose choose-cards/armed-and-armored-dwarf
+choose choose-cards/armed-and-armored-equipment
 choose choose-cards/armored-kincaller-reveal
 choose choose-cards/armored-skyhunter-attach
 choose choose-cards/arni-metalbrow-put
@@ -1341,6 +1343,7 @@ choose choose-cards/zara-renegade-recruiter-put
 choose choose-cards/zenos-yae-galvus-first-friend
 choose choose-cards/zero-point-ballad-return
 choose choose-cards/zimones-experiment-reveal
+choose choose-cards/zndrsplts-judgment-creature
 choose choose-cards/zurgo-and-ojutai-return
 choose choose-source/desperate-gambit
 choose choose-source/shield
@@ -2007,6 +2010,7 @@ option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
 option option-pick/zimones-hypothesis-parity
+option option-pick/zndrsplts-judgment-friend-or-foe
 option planechase/bottom-order
 option retarget/pinned-slot
 option sticker/choose-sticker
