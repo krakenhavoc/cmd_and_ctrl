@@ -118,8 +118,8 @@ func TestRprB07KnightExemplarLordsOnlyYourOtherKnights(t *testing.T) {
 	bear := rprB07Push(g, me.ID, "My Bear", "Creature — Bear", "", 2, 2)
 	for id, want := range map[uuid.UUID]int{exemplar: 2, mine: 3, theirs: 2, bear: 2} {
 		c, _ := battlefieldCard(g, id)
-		if c.CurrentPower() != want {
-			t.Errorf("%s power %d, want %d", c.Name, c.CurrentPower(), want)
+		if got := effectivePower(t, g, id); got != want {
+			t.Errorf("%s power %d, want %d", c.Name, got, want)
 		}
 		wantInd := id == mine
 		if got := hasEffectiveKeyword(t, g, id, "indestructible"); got != wantInd {
