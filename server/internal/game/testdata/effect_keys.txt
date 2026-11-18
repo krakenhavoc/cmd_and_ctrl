@@ -294,6 +294,7 @@ body nine-lives/incarnation-counter
 body noctis/warp-strike-return
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
+body ochre-jelly/split-token
 body offspring/granted-token
 body ondu-rising/attacker-gains-lifelink
 body overcharged-amalgam/counter
@@ -2462,6 +2463,7 @@ tail attacking-tokens/living-laser-exile-the-tokens
 tail attacking-tokens/loki-the-deceiver-sacrifice-the-token
 tail attacking-tokens/mirror-style-master-next
 tail attacking-tokens/mobilize-sacrifice-the-warriors
+tail attacking-tokens/phantom-steed-sacrifice-at-end-of-combat
 tail attacking-tokens/redoubled-stormsinger-next
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
 tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
@@ -2641,6 +2643,7 @@ tail dawnhand-eulogist/after-mill
 tail deathgorge-scavenger/exiled-card-riders
 tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
+tail demilich/copy-exiled
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail devastating-onslaught/haste-and-sacrifice-copies
