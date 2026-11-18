@@ -21,13 +21,7 @@ func init() {
 		Targets:      TargetAny(),
 		Purpose:      ForTargets(DamageXToTarget(0)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			if err := (DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: ctx.X()}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: ctx.Controller(), Amount: ctx.X()}.Apply(ctx)
+			return damageXToTheTargetAndGainX(item, ctx, ctx.X())
 		},
 	})
 }

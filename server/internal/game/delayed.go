@@ -287,6 +287,20 @@ type DelayedTrigger struct {
 	// priority and before the state-based actions.
 	Due bool
 
+	// UntilThen is the follow-up an "until" return to the battlefield
+	// carries (#5877): the body of a triggered ability that triggers
+	// when the returned card enters under this record's Controller's
+	// control THIS WAY — Lagrella, the Magpie's "When an exiled card
+	// enters under your control this way, put two +1/+1 counters on
+	// it." It is not a triggered ability of the source (which is gone
+	// by then, and the returned card is a new object no ability could
+	// name before it existed), so the flush schedules it as an
+	// event-conditioned delayed trigger immediately before the return
+	// (scheduleUntilThenLocked). UntilThenLabel is that trigger's label.
+	// Zero on every other record.
+	UntilThen      BodyRef
+	UntilThenLabel string
+
 	// --- CR 603.7b: a trigger that keeps triggering (#2169) ----------
 
 	// Repeats keeps an event-conditioned trigger queued after it fires:
@@ -593,6 +607,8 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		Until:              dt.Until,
 		UntilLeaves:        dt.UntilLeaves,
 		Due:                dt.Due,
+		UntilThen:          dt.UntilThen,
+		UntilThenLabel:     dt.UntilThenLabel,
 		Repeats:            dt.Repeats,
 		OncePerBatch:       dt.OncePerBatch,
 		ManaTapSubtype:     dt.ManaTapSubtype,

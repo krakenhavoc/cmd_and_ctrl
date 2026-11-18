@@ -713,6 +713,8 @@ var cardFields = plan(
 	"ExiledWithAbility", carried, "",
 	// #4458: the turn that link was made on; zero is "not this turn".
 	"ExiledWithTurn", carried, "",
+	// #5876: whose ability exiled the card; zero is "nobody's ability".
+	"ExiledByAbilityOf", carried, "",
 	// #3867: cipher's encoding (CR 702.99b) and its layer-6 timestamp.
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",
@@ -1107,6 +1109,8 @@ var delayedTriggerFields = plan(
 	"Until", carried, "",
 	"UntilLeaves", carried, "",
 	"Due", carried, "",
+	"UntilThen", carried, "",
+	"UntilThenLabel", carried, "",
 	"Repeats", carried, "", // #2169, CR 603.7b
 	"OncePerBatch", carried, "", // #3172, CR 603.2c
 	"ThroughCleanup", carried, "", // #4462, Stolen Uniform: kept past the cleanup sweep

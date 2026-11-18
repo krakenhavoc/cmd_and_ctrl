@@ -1535,8 +1535,26 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 		// visible to anything watching the graveyard shrink, and
 		// what makes the cards stay exiled when the spell is
 		// countered.
+		//
+		// #5880, CR 607.2q: for a permanent spell the exiles are linked
+		// to the spell object (permanentSpellCostLinkLocked, Fear of
+		// Abduction's link), and relinkCostExilesLocked moves the link to
+		// the permanent as it enters, so Skyway Robber's "cards exiled
+		// with this creature" names the five cards its escape cost
+		// exiled. Nothing reads a link but the object it names, so an
+		// escaped creature without such an ability is unaffected.
+		link := g.permanentSpellCostLinkLocked(castID)
 		for _, id := range ids {
-			if err := move(id, ZoneExile); err != nil {
+			if _, err := g.routeCardToZoneLocked(zoneRoute{
+				CardID:          id,
+				Dst:             ZoneExile,
+				Actor:           playerID,
+				Source:          castID,
+				Cause:           spellCostCause(playerID, castID),
+				MustSettleNow:   true,
+				commanderAnswer: commanderAnswerFor(answers, id),
+				ExiledWith:      link,
+			}); err != nil {
 				return err
 			}
 		}

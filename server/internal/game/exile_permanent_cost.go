@@ -201,6 +201,13 @@ type ExilePermanentsCost struct {
 	// from a stored cost.
 	FaceDown bool
 
+	// ArtifactCreatureOrVehicle is "artifact creatures and/or Vehicles":
+	// a material is an artifact creature, or has the subtype Vehicle
+	// (a Vehicle that is not crewed is no creature). Mechtitan Core's "Exile
+	// this Vehicle and four other artifact creatures and/or Vehicles you
+	// control". Additive, never read from a stored cost.
+	ArtifactCreatureOrVehicle bool
+
 	// Label is the clause as printed, without the verb — "a creature
 	// you control" — shown above the client's picker.
 	Label string
@@ -364,6 +371,9 @@ func (c *ExilePermanentsCost) matches(text *TextWords, card *Card) bool {
 		return false
 	}
 	if c.FaceDown && !card.FaceDownIsPermanent() {
+		return false
+	}
+	if c.ArtifactCreatureOrVehicle && !(card.HasCardType("artifact") && card.HasCardType("creature")) && !card.HasSubtypeWord("Vehicle") {
 		return false
 	}
 	if c.WithActivatedAbilities && !hasActivatedAbility(card) {

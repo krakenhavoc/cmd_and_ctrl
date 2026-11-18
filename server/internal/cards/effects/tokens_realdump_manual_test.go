@@ -114,6 +114,10 @@ var knownUnmatchedTokens = map[string]string{
 	// token card (ONC) is */*, which a fixed size can never match; the
 	// template is 0/0 and the card sets X as it creates the token.
 	"0/0 green Phyrexian Wurm with trample and toxic 1": "the printed token card is */*; Wurmquake sets X/X as it creates it",
+	// Kura, the Boundless Sky (Kamigawa: Neon Dynasty) creates "an X/X green Spirit
+	// creature token, where X is the number of lands you control". The printed token
+	// card is */*; the card sets X/X as it creates the token.
+	"0/0 green Spirit": "the printed token card is */*; Kura, the Boundless Sky sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

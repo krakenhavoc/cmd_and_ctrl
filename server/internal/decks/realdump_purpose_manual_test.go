@@ -188,6 +188,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// #5495: VOW batch 6.
 	"Lantern of the Lost": "exiles the cards in every graveyard and draws a card: it touches no permanent",
+
+	// #5493: NEO batch 18.
+	"Behold the Unspeakable // Vision of the Unspeakable": "chapter I gives opposing creatures -2/-0 until your next turn, which removes nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -170,6 +170,7 @@ battlefield.cards[].exileGrants[].activator	custom(uuid.UUID)
 battlefield.cards[].exileGrants[].key	string
 battlefield.cards[].exileGrants[].source	custom(uuid.UUID)
 battlefield.cards[].exileGrants[].untilEndOfTurn	bool
+battlefield.cards[].exiledByAbilityOf	custom(uuid.UUID)
 battlefield.cards[].exiledWith	object
 battlefield.cards[].exiledWith.epoch	number:int
 battlefield.cards[].exiledWith.id	custom(uuid.UUID)
@@ -599,6 +600,8 @@ delayedTriggers[].until	bool
 delayedTriggers[].untilLeaves	object
 delayedTriggers[].untilLeaves.epoch	number:int
 delayedTriggers[].untilLeaves.id	custom(uuid.UUID)
+delayedTriggers[].untilThen	string
+delayedTriggers[].untilThenLabel	string
 dilemmasFacedThisTurn	map:array
 dilemmasFacedThisTurn{}	number:int
 discardPending	map:array
@@ -742,6 +745,7 @@ enteringTokens[].exileGrants[].activator	custom(uuid.UUID)
 enteringTokens[].exileGrants[].key	string
 enteringTokens[].exileGrants[].source	custom(uuid.UUID)
 enteringTokens[].exileGrants[].untilEndOfTurn	bool
+enteringTokens[].exiledByAbilityOf	custom(uuid.UUID)
 enteringTokens[].exiledWith	object
 enteringTokens[].exiledWith.epoch	number:int
 enteringTokens[].exiledWith.id	custom(uuid.UUID)
@@ -1278,6 +1282,7 @@ exile.cards[].exileGrants[].activator	custom(uuid.UUID)
 exile.cards[].exileGrants[].key	string
 exile.cards[].exileGrants[].source	custom(uuid.UUID)
 exile.cards[].exileGrants[].untilEndOfTurn	bool
+exile.cards[].exiledByAbilityOf	custom(uuid.UUID)
 exile.cards[].exiledWith	object
 exile.cards[].exiledWith.epoch	number:int
 exile.cards[].exiledWith.id	custom(uuid.UUID)
@@ -2132,6 +2137,7 @@ followUpParks[].then.permission.filter.creatureOnly	bool
 followUpParks[].then.permission.filter.creatureType	string
 followUpParks[].then.permission.filter.creatureTypesAny	array
 followUpParks[].then.permission.filter.creatureTypesAny[]	string
+followUpParks[].then.permission.filter.exiledByHolderAbility	bool
 followUpParks[].then.permission.filter.exiledOnTurn	number:int
 followUpParks[].then.permission.filter.exiledWith	object
 followUpParks[].then.permission.filter.exiledWith.epoch	number:int
@@ -2803,6 +2809,7 @@ frozenEntries[].event.counterTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.creatureType	string
 frozenEntries[].event.counterTail.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.counterTail.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.counterTail.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.counterTail.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.counterTail.then.permission.filter.exiledWith	object
 frozenEntries[].event.counterTail.then.permission.filter.exiledWith.epoch	number:int
@@ -3452,6 +3459,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureType	string
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureTypesAny	array
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.damageTail.each.each.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.damageTail.each.each.permission.filter.exiledWith	object
 frozenEntries[].event.damageTail.each.each.permission.filter.exiledWith.epoch	number:int
@@ -4092,6 +4100,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureType	string
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.damageTail.each.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.damageTail.each.then.permission.filter.exiledWith	object
 frozenEntries[].event.damageTail.each.then.permission.filter.exiledWith.epoch	number:int
@@ -4916,6 +4925,7 @@ frozenEntries[].event.damageTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.creatureType	string
 frozenEntries[].event.damageTail.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.damageTail.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.damageTail.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.damageTail.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.damageTail.then.permission.filter.exiledWith	object
 frozenEntries[].event.damageTail.then.permission.filter.exiledWith.epoch	number:int
@@ -5679,6 +5689,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatu
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiledWith	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiledWith.epoch	number:int
@@ -6395,6 +6406,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.entryTail.batch.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.entryTail.batch.then.permission.filter.exiledWith	object
 frozenEntries[].event.entryTail.batch.then.permission.filter.exiledWith.epoch	number:int
@@ -7035,6 +7047,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureTypesAny	array
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.entryTail.keyed.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.entryTail.keyed.permission.filter.exiledWith	object
 frozenEntries[].event.entryTail.keyed.permission.filter.exiledWith.epoch	number:int
@@ -7708,6 +7721,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureO
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureTypesAny	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledWith	object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledWith.epoch	number:int
@@ -8368,6 +8382,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureType	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledWith	object
 frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledWith.epoch	number:int
@@ -8851,6 +8866,7 @@ frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].activator	custom
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].key	string
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
+frozenEntries[].event.keywordActionTail.armyToken.exiledByAbilityOf	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith	object
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -9455,6 +9471,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureType	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.keywordActionTail.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.keywordActionTail.then.permission.filter.exiledWith	object
 frozenEntries[].event.keywordActionTail.then.permission.filter.exiledWith.epoch	number:int
@@ -10118,6 +10135,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureType	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.lifeTail.each.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.lifeTail.each.then.permission.filter.exiledWith	object
 frozenEntries[].event.lifeTail.each.then.permission.filter.exiledWith.epoch	number:int
@@ -10761,6 +10779,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.creatureType	string
 frozenEntries[].event.lifeTail.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.lifeTail.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.lifeTail.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.lifeTail.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.lifeTail.then.permission.filter.exiledWith	object
 frozenEntries[].event.lifeTail.then.permission.filter.exiledWith.epoch	number:int
@@ -11233,6 +11252,7 @@ frozenEntries[].event.millTail.run.planned[].exileGrants[].activator	custom(uuid
 frozenEntries[].event.millTail.run.planned[].exileGrants[].key	string
 frozenEntries[].event.millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
+frozenEntries[].event.millTail.run.planned[].exiledByAbilityOf	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].exiledWith	object
 frozenEntries[].event.millTail.run.planned[].exiledWith.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -11657,6 +11677,7 @@ frozenEntries[].event.millTail.run.seen[].exileGrants[].activator	custom(uuid.UU
 frozenEntries[].event.millTail.run.seen[].exileGrants[].key	string
 frozenEntries[].event.millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
+frozenEntries[].event.millTail.run.seen[].exiledByAbilityOf	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].exiledWith	object
 frozenEntries[].event.millTail.run.seen[].exiledWith.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -12254,6 +12275,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.creatureType	string
 frozenEntries[].event.millTail.run.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.millTail.run.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.millTail.run.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.millTail.run.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.millTail.run.then.permission.filter.exiledWith	object
 frozenEntries[].event.millTail.run.then.permission.filter.exiledWith.epoch	number:int
@@ -12892,6 +12914,7 @@ frozenEntries[].event.millTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.creatureType	string
 frozenEntries[].event.millTail.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.millTail.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.millTail.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.millTail.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.millTail.then.permission.filter.exiledWith	object
 frozenEntries[].event.millTail.then.permission.filter.exiledWith.epoch	number:int
@@ -13938,6 +13961,7 @@ frozenEntries[].event.tokenGroups[].template.exileGrants[].activator	custom(uuid
 frozenEntries[].event.tokenGroups[].template.exileGrants[].key	string
 frozenEntries[].event.tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
+frozenEntries[].event.tokenGroups[].template.exiledByAbilityOf	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.exiledWith	object
 frozenEntries[].event.tokenGroups[].template.exiledWith.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -14536,6 +14560,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.creatureType	string
 frozenEntries[].event.tokenTail.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.tokenTail.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.tokenTail.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.tokenTail.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.tokenTail.then.permission.filter.exiledWith	object
 frozenEntries[].event.tokenTail.then.permission.filter.exiledWith.epoch	number:int
@@ -15022,6 +15047,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].activato
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].key	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.exiledByAbilityOf	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -15459,6 +15485,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].activator
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledByAbilityOf	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -15883,6 +15910,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	cu
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledByAbilityOf	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -16480,6 +16508,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureOn
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWith.epoch	number:int
@@ -17153,6 +17182,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.crea
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureTypesAny	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWith.epoch	number:int
@@ -17791,6 +17821,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureOnly	bo
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -18449,6 +18480,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureOnly	
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledWith	object
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -19176,6 +19208,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureOnly
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureTypesAny	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureTypesAny[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledByHolderAbility	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledOnTurn	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledWith	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -19642,6 +19675,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].activator	custo
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].exiledByAbilityOf	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -20721,6 +20755,7 @@ lastKnownStack[].card.exileGrants[].activator	custom(uuid.UUID)
 lastKnownStack[].card.exileGrants[].key	string
 lastKnownStack[].card.exileGrants[].source	custom(uuid.UUID)
 lastKnownStack[].card.exileGrants[].untilEndOfTurn	bool
+lastKnownStack[].card.exiledByAbilityOf	custom(uuid.UUID)
 lastKnownStack[].card.exiledWith	object
 lastKnownStack[].card.exiledWith.epoch	number:int
 lastKnownStack[].card.exiledWith.id	custom(uuid.UUID)
@@ -21627,6 +21662,7 @@ match.decks[].fixed[].exileGrants[].activator	custom(uuid.UUID)
 match.decks[].fixed[].exileGrants[].key	string
 match.decks[].fixed[].exileGrants[].source	custom(uuid.UUID)
 match.decks[].fixed[].exileGrants[].untilEndOfTurn	bool
+match.decks[].fixed[].exiledByAbilityOf	custom(uuid.UUID)
 match.decks[].fixed[].exiledWith	object
 match.decks[].fixed[].exiledWith.epoch	number:int
 match.decks[].fixed[].exiledWith.id	custom(uuid.UUID)
@@ -22049,6 +22085,7 @@ match.decks[].main[].exileGrants[].activator	custom(uuid.UUID)
 match.decks[].main[].exileGrants[].key	string
 match.decks[].main[].exileGrants[].source	custom(uuid.UUID)
 match.decks[].main[].exileGrants[].untilEndOfTurn	bool
+match.decks[].main[].exiledByAbilityOf	custom(uuid.UUID)
 match.decks[].main[].exiledWith	object
 match.decks[].main[].exiledWith.epoch	number:int
 match.decks[].main[].exiledWith.id	custom(uuid.UUID)
@@ -22474,6 +22511,7 @@ match.decks[].side[].exileGrants[].activator	custom(uuid.UUID)
 match.decks[].side[].exileGrants[].key	string
 match.decks[].side[].exileGrants[].source	custom(uuid.UUID)
 match.decks[].side[].exileGrants[].untilEndOfTurn	bool
+match.decks[].side[].exiledByAbilityOf	custom(uuid.UUID)
 match.decks[].side[].exiledWith	object
 match.decks[].side[].exiledWith.epoch	number:int
 match.decks[].side[].exiledWith.id	custom(uuid.UUID)
@@ -23111,6 +23149,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.creatureType	string
 movesAwaitingTokens[].counterTail.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].counterTail.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].counterTail.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].counterTail.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].counterTail.then.permission.filter.exiledWith.epoch	number:int
@@ -23760,6 +23799,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.creatureType	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].damageTail.each.each.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledWith	object
 movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledWith.epoch	number:int
@@ -24400,6 +24440,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.creatureType	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].damageTail.each.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledWith.epoch	number:int
@@ -25224,6 +25265,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.creatureType	string
 movesAwaitingTokens[].damageTail.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].damageTail.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].damageTail.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].damageTail.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].damageTail.then.permission.filter.exiledWith.epoch	number:int
@@ -25987,6 +26029,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.creatu
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.creatureType	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiledWith.epoch	number:int
@@ -26703,6 +26746,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.creatureType	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledWith.epoch	number:int
@@ -27343,6 +27387,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.creatureType	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].entryTail.keyed.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledWith	object
 movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledWith.epoch	number:int
@@ -28016,6 +28061,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.creatureO
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.creatureType	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledWith	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledWith.epoch	number:int
@@ -28676,6 +28722,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.creatureType	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledWith.epoch	number:int
@@ -29159,6 +29206,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].activator	custom
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].key	string
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.exiledByAbilityOf	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith	object
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -29763,6 +29811,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.creatureType	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledWith.epoch	number:int
@@ -30426,6 +30475,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.creatureType	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledWith.epoch	number:int
@@ -31069,6 +31119,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.creatureType	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].lifeTail.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].lifeTail.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].lifeTail.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].lifeTail.then.permission.filter.exiledWith.epoch	number:int
@@ -31541,6 +31592,7 @@ movesAwaitingTokens[].millTail.run.planned[].exileGrants[].activator	custom(uuid
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].key	string
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
+movesAwaitingTokens[].millTail.run.planned[].exiledByAbilityOf	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].exiledWith	object
 movesAwaitingTokens[].millTail.run.planned[].exiledWith.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -31965,6 +32017,7 @@ movesAwaitingTokens[].millTail.run.seen[].exileGrants[].activator	custom(uuid.UU
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].key	string
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
+movesAwaitingTokens[].millTail.run.seen[].exiledByAbilityOf	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].exiledWith	object
 movesAwaitingTokens[].millTail.run.seen[].exiledWith.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -32562,6 +32615,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.creatureType	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].millTail.run.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].millTail.run.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].millTail.run.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].millTail.run.then.permission.filter.exiledWith.epoch	number:int
@@ -33200,6 +33254,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.creatureType	string
 movesAwaitingTokens[].millTail.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].millTail.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].millTail.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].millTail.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].millTail.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].millTail.then.permission.filter.exiledWith.epoch	number:int
@@ -34246,6 +34301,7 @@ movesAwaitingTokens[].tokenGroups[].template.exileGrants[].activator	custom(uuid
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].key	string
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
+movesAwaitingTokens[].tokenGroups[].template.exiledByAbilityOf	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.exiledWith	object
 movesAwaitingTokens[].tokenGroups[].template.exiledWith.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -34844,6 +34900,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.creatureType	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].tokenTail.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].tokenTail.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].tokenTail.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].tokenTail.then.permission.filter.exiledWith.epoch	number:int
@@ -35330,6 +35387,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].activato
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].key	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledByAbilityOf	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -35767,6 +35825,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].activator
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledByAbilityOf	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -36191,6 +36250,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	cu
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledByAbilityOf	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -36788,6 +36848,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.creatureOn
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledWith.epoch	number:int
@@ -37461,6 +37522,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.crea
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWith.epoch	number:int
@@ -38099,6 +38161,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.creatureOnly	bo
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.creatureType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -38757,6 +38820,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.creatureOnly	
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.creatureType	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -39484,6 +39548,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.creatureOnly
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.creatureTypesAny	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.creatureTypesAny[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledByHolderAbility	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledOnTurn	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledWith	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -39950,6 +40015,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].activator	custo
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledByAbilityOf	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -41878,6 +41944,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].activator	c
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].key	string
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].attackSplit.settled.chosen[].template.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith	object
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith.id	custom(uuid.UUID)
@@ -42322,6 +42389,7 @@ pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].activator	c
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].key	string
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].attackSplit.settled.groups[].template.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith	object
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -42924,6 +42992,7 @@ pendingChoices[].attackSplit.tail.permission.filter.creatureOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.creatureType	string
 pendingChoices[].attackSplit.tail.permission.filter.creatureTypesAny	array
 pendingChoices[].attackSplit.tail.permission.filter.creatureTypesAny[]	string
+pendingChoices[].attackSplit.tail.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].attackSplit.tail.permission.filter.exiledOnTurn	number:int
 pendingChoices[].attackSplit.tail.permission.filter.exiledWith	object
 pendingChoices[].attackSplit.tail.permission.filter.exiledWith.epoch	number:int
@@ -43386,6 +43455,7 @@ pendingChoices[].attackSplit.template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.exileGrants[].key	string
 pendingChoices[].attackSplit.template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].attackSplit.template.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.exiledWith	object
 pendingChoices[].attackSplit.template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.template.exiledWith.id	custom(uuid.UUID)
@@ -44211,6 +44281,7 @@ pendingChoices[].copyWalk.src.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.exileGrants[].key	string
 pendingChoices[].copyWalk.src.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].copyWalk.src.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.exiledWith	object
 pendingChoices[].copyWalk.src.exiledWith.epoch	number:int
 pendingChoices[].copyWalk.src.exiledWith.id	custom(uuid.UUID)
@@ -45063,6 +45134,7 @@ pendingChoices[].diceRoll.then.permission.filter.creatureOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.creatureType	string
 pendingChoices[].diceRoll.then.permission.filter.creatureTypesAny	array
 pendingChoices[].diceRoll.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].diceRoll.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].diceRoll.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].diceRoll.then.permission.filter.exiledWith	object
 pendingChoices[].diceRoll.then.permission.filter.exiledWith.epoch	number:int
@@ -46106,6 +46178,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.creatureOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.creatureType	string
 pendingChoices[].divideShield.walk.each.permission.filter.creatureTypesAny	array
 pendingChoices[].divideShield.walk.each.permission.filter.creatureTypesAny[]	string
+pendingChoices[].divideShield.walk.each.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].divideShield.walk.each.permission.filter.exiledOnTurn	number:int
 pendingChoices[].divideShield.walk.each.permission.filter.exiledWith	object
 pendingChoices[].divideShield.walk.each.permission.filter.exiledWith.epoch	number:int
@@ -46746,6 +46819,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.creatureOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.creatureType	string
 pendingChoices[].divideShield.walk.then.permission.filter.creatureTypesAny	array
 pendingChoices[].divideShield.walk.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].divideShield.walk.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].divideShield.walk.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].divideShield.walk.then.permission.filter.exiledWith	object
 pendingChoices[].divideShield.walk.then.permission.filter.exiledWith.epoch	number:int
@@ -47392,6 +47466,7 @@ pendingChoices[].libraryOrder.then.permission.filter.creatureOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.creatureType	string
 pendingChoices[].libraryOrder.then.permission.filter.creatureTypesAny	array
 pendingChoices[].libraryOrder.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].libraryOrder.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].libraryOrder.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].libraryOrder.then.permission.filter.exiledWith	object
 pendingChoices[].libraryOrder.then.permission.filter.exiledWith.epoch	number:int
@@ -48091,6 +48166,7 @@ pendingChoices[].nameThen.permission.filter.creatureOnly	bool
 pendingChoices[].nameThen.permission.filter.creatureType	string
 pendingChoices[].nameThen.permission.filter.creatureTypesAny	array
 pendingChoices[].nameThen.permission.filter.creatureTypesAny[]	string
+pendingChoices[].nameThen.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].nameThen.permission.filter.exiledOnTurn	number:int
 pendingChoices[].nameThen.permission.filter.exiledWith	object
 pendingChoices[].nameThen.permission.filter.exiledWith.epoch	number:int
@@ -49222,6 +49298,7 @@ pendingChoices[].pickTail.permission.filter.creatureOnly	bool
 pendingChoices[].pickTail.permission.filter.creatureType	string
 pendingChoices[].pickTail.permission.filter.creatureTypesAny	array
 pendingChoices[].pickTail.permission.filter.creatureTypesAny[]	string
+pendingChoices[].pickTail.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].pickTail.permission.filter.exiledOnTurn	number:int
 pendingChoices[].pickTail.permission.filter.exiledWith	object
 pendingChoices[].pickTail.permission.filter.exiledWith.epoch	number:int
@@ -49907,6 +49984,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.crea
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exiledWith.epoch	number:int
@@ -50556,6 +50634,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.exiledWith.epoch	number:int
@@ -51196,6 +51275,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.exiledWith.epoch	number:int
@@ -52020,6 +52100,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creat
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exiledWith.epoch	number:int
@@ -52783,6 +52864,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.exiledWith.epoch	number:int
@@ -53499,6 +53581,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.exiledWith.epoch	number:int
@@ -54139,6 +54222,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creat
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exiledWith.epoch	number:int
@@ -54812,6 +54896,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.exiledWith.epoch	number:int
@@ -55472,6 +55557,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.exiledWith.epoch	number:int
@@ -55955,6 +56041,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].key	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -56559,6 +56646,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.exiledWith.epoch	number:int
@@ -57222,6 +57310,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.cr
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.exiledWith.epoch	number:int
@@ -57865,6 +57954,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatur
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledWith.epoch	number:int
@@ -58337,6 +58427,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].ac
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -58761,6 +58852,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].activ
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -59358,6 +59450,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.cre
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exiledWith.epoch	number:int
@@ -59996,6 +60089,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatur
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledWith.epoch	number:int
@@ -61042,6 +61136,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].ac
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].key	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -61640,6 +61735,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatu
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiledWith.epoch	number:int
@@ -62126,6 +62222,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exi
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].key	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -62563,6 +62660,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -62987,6 +63085,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGr
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -63584,6 +63683,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWith.epoch	number:int
@@ -64257,6 +64357,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWith.epoch	number:int
@@ -64895,6 +64996,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -65553,6 +65655,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -66280,6 +66383,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureTypesAny	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureTypesAny[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.exiledOnTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.exiledWith.epoch	number:int
@@ -66746,6 +66850,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrant
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -67373,6 +67478,7 @@ pendingChoices[].scryThen.permission.filter.creatureOnly	bool
 pendingChoices[].scryThen.permission.filter.creatureType	string
 pendingChoices[].scryThen.permission.filter.creatureTypesAny	array
 pendingChoices[].scryThen.permission.filter.creatureTypesAny[]	string
+pendingChoices[].scryThen.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].scryThen.permission.filter.exiledOnTurn	number:int
 pendingChoices[].scryThen.permission.filter.exiledWith	object
 pendingChoices[].scryThen.permission.filter.exiledWith.epoch	number:int
@@ -68059,6 +68165,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureType	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureTypesAny	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureTypesAny[]	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledByHolderAbility	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledOnTurn	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledWith	object
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledWith.epoch	number:int
@@ -69002,6 +69109,7 @@ pendingChoices[].targetWalk.frame.source.exileGrants[].activator	custom(uuid.UUI
 pendingChoices[].targetWalk.frame.source.exileGrants[].key	string
 pendingChoices[].targetWalk.frame.source.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].targetWalk.frame.source.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.exiledWith	object
 pendingChoices[].targetWalk.frame.source.exiledWith.epoch	number:int
 pendingChoices[].targetWalk.frame.source.exiledWith.id	custom(uuid.UUID)
@@ -69792,6 +69900,7 @@ pendingChoices[].triggerFrame.source.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.exileGrants[].key	string
 pendingChoices[].triggerFrame.source.exileGrants[].source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.exileGrants[].untilEndOfTurn	bool
+pendingChoices[].triggerFrame.source.exiledByAbilityOf	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.exiledWith	object
 pendingChoices[].triggerFrame.source.exiledWith.epoch	number:int
 pendingChoices[].triggerFrame.source.exiledWith.id	custom(uuid.UUID)
@@ -70962,6 +71071,7 @@ phasedOut.cards[].exileGrants[].activator	custom(uuid.UUID)
 phasedOut.cards[].exileGrants[].key	string
 phasedOut.cards[].exileGrants[].source	custom(uuid.UUID)
 phasedOut.cards[].exileGrants[].untilEndOfTurn	bool
+phasedOut.cards[].exiledByAbilityOf	custom(uuid.UUID)
 phasedOut.cards[].exiledWith	object
 phasedOut.cards[].exiledWith.epoch	number:int
 phasedOut.cards[].exiledWith.id	custom(uuid.UUID)
@@ -71389,6 +71499,7 @@ planechase.deck.cards[].exileGrants[].activator	custom(uuid.UUID)
 planechase.deck.cards[].exileGrants[].key	string
 planechase.deck.cards[].exileGrants[].source	custom(uuid.UUID)
 planechase.deck.cards[].exileGrants[].untilEndOfTurn	bool
+planechase.deck.cards[].exiledByAbilityOf	custom(uuid.UUID)
 planechase.deck.cards[].exiledWith	object
 planechase.deck.cards[].exiledWith.epoch	number:int
 planechase.deck.cards[].exiledWith.id	custom(uuid.UUID)
@@ -71816,6 +71927,7 @@ planechase.faceUp.cards[].exileGrants[].activator	custom(uuid.UUID)
 planechase.faceUp.cards[].exileGrants[].key	string
 planechase.faceUp.cards[].exileGrants[].source	custom(uuid.UUID)
 planechase.faceUp.cards[].exileGrants[].untilEndOfTurn	bool
+planechase.faceUp.cards[].exiledByAbilityOf	custom(uuid.UUID)
 planechase.faceUp.cards[].exiledWith	object
 planechase.faceUp.cards[].exiledWith.epoch	number:int
 planechase.faceUp.cards[].exiledWith.id	custom(uuid.UUID)
@@ -72487,6 +72599,7 @@ resolving.card.exileGrants[].activator	custom(uuid.UUID)
 resolving.card.exileGrants[].key	string
 resolving.card.exileGrants[].source	custom(uuid.UUID)
 resolving.card.exileGrants[].untilEndOfTurn	bool
+resolving.card.exiledByAbilityOf	custom(uuid.UUID)
 resolving.card.exiledWith	object
 resolving.card.exiledWith.epoch	number:int
 resolving.card.exiledWith.id	custom(uuid.UUID)
@@ -73527,6 +73640,7 @@ seats[].attractionDeck.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].attractionDeck.cards[].exileGrants[].key	string
 seats[].attractionDeck.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].attractionDeck.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].attractionDeck.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].attractionDeck.cards[].exiledWith	object
 seats[].attractionDeck.cards[].exiledWith.epoch	number:int
 seats[].attractionDeck.cards[].exiledWith.id	custom(uuid.UUID)
@@ -73896,6 +74010,7 @@ seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
 seats[].castPermissions[].filter.creatureTypesAny	array
 seats[].castPermissions[].filter.creatureTypesAny[]	string
+seats[].castPermissions[].filter.exiledByHolderAbility	bool
 seats[].castPermissions[].filter.exiledOnTurn	number:int
 seats[].castPermissions[].filter.exiledWith	object
 seats[].castPermissions[].filter.exiledWith.epoch	number:int
@@ -74125,6 +74240,7 @@ seats[].command.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].command.cards[].exileGrants[].key	string
 seats[].command.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].command.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].command.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].command.cards[].exiledWith	object
 seats[].command.cards[].exiledWith.epoch	number:int
 seats[].command.cards[].exiledWith.id	custom(uuid.UUID)
@@ -74554,6 +74670,7 @@ seats[].companion.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].companion.cards[].exileGrants[].key	string
 seats[].companion.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].companion.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].companion.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].companion.cards[].exiledWith	object
 seats[].companion.cards[].exiledWith.epoch	number:int
 seats[].companion.cards[].exiledWith.id	custom(uuid.UUID)
@@ -74992,6 +75109,7 @@ seats[].emblems.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].emblems.cards[].exileGrants[].key	string
 seats[].emblems.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].emblems.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].emblems.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].emblems.cards[].exiledWith	object
 seats[].emblems.cards[].exiledWith.epoch	number:int
 seats[].emblems.cards[].exiledWith.id	custom(uuid.UUID)
@@ -75517,6 +75635,7 @@ seats[].graveyard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].graveyard.cards[].exileGrants[].key	string
 seats[].graveyard.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].graveyard.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].graveyard.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].graveyard.cards[].exiledWith	object
 seats[].graveyard.cards[].exiledWith.epoch	number:int
 seats[].graveyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -75942,6 +76061,7 @@ seats[].hand.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].hand.cards[].exileGrants[].key	string
 seats[].hand.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].hand.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].hand.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].hand.cards[].exiledWith	object
 seats[].hand.cards[].exiledWith.epoch	number:int
 seats[].hand.cards[].exiledWith.id	custom(uuid.UUID)
@@ -76372,6 +76492,7 @@ seats[].junkyard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].junkyard.cards[].exileGrants[].key	string
 seats[].junkyard.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].junkyard.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].junkyard.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].junkyard.cards[].exiledWith	object
 seats[].junkyard.cards[].exiledWith.epoch	number:int
 seats[].junkyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -76823,6 +76944,7 @@ seats[].library.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].library.cards[].exileGrants[].key	string
 seats[].library.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].library.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].library.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].library.cards[].exiledWith	object
 seats[].library.cards[].exiledWith.epoch	number:int
 seats[].library.cards[].exiledWith.id	custom(uuid.UUID)
@@ -77289,6 +77411,7 @@ seats[].sideboard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].sideboard.cards[].exileGrants[].key	string
 seats[].sideboard.cards[].exileGrants[].source	custom(uuid.UUID)
 seats[].sideboard.cards[].exileGrants[].untilEndOfTurn	bool
+seats[].sideboard.cards[].exiledByAbilityOf	custom(uuid.UUID)
 seats[].sideboard.cards[].exiledWith	object
 seats[].sideboard.cards[].exiledWith.epoch	number:int
 seats[].sideboard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -77612,6 +77735,7 @@ seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
 seats[].statics[].cantBeCountered.filter.creatureTypesAny	array
 seats[].statics[].cantBeCountered.filter.creatureTypesAny[]	string
+seats[].statics[].cantBeCountered.filter.exiledByHolderAbility	bool
 seats[].statics[].cantBeCountered.filter.exiledOnTurn	number:int
 seats[].statics[].cantBeCountered.filter.exiledWith	object
 seats[].statics[].cantBeCountered.filter.exiledWith.epoch	number:int
@@ -77662,6 +77786,7 @@ seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
 seats[].statics[].castBan.filter.creatureTypesAny	array
 seats[].statics[].castBan.filter.creatureTypesAny[]	string
+seats[].statics[].castBan.filter.exiledByHolderAbility	bool
 seats[].statics[].castBan.filter.exiledOnTurn	number:int
 seats[].statics[].castBan.filter.exiledWith	object
 seats[].statics[].castBan.filter.exiledWith.epoch	number:int
@@ -77695,10 +77820,15 @@ seats[].statics[].castBan.filter.subtype	string
 seats[].statics[].castBan.filter.surveilledThisTurn	bool
 seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
+seats[].statics[].castBan.manaValue	number:int
 seats[].statics[].castBan.maxPerTurn	number:int
 seats[].statics[].creaturesEnterWithCounters	object
 seats[].statics[].creaturesEnterWithCounters.count	number:int
+seats[].statics[].creaturesEnterWithCounters.enchantmentOnly	bool
+seats[].statics[].creaturesEnterWithCounters.fired	bool
+seats[].statics[].creaturesEnterWithCounters.firedSeq	number:uint64
 seats[].statics[].creaturesEnterWithCounters.kind	string
+seats[].statics[].creaturesEnterWithCounters.once	bool
 seats[].statics[].duration	object
 seats[].statics[].duration.AfterTurn	number:int
 seats[].statics[].duration.Also	array
@@ -77763,6 +77893,7 @@ seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
 seats[].statics[].nextSpell.filter.creatureTypesAny	array
 seats[].statics[].nextSpell.filter.creatureTypesAny[]	string
+seats[].statics[].nextSpell.filter.exiledByHolderAbility	bool
 seats[].statics[].nextSpell.filter.exiledOnTurn	number:int
 seats[].statics[].nextSpell.filter.exiledWith	object
 seats[].statics[].nextSpell.filter.exiledWith.epoch	number:int
@@ -77821,6 +77952,7 @@ seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
 seats[].statics[].timing.filter.creatureTypesAny	array
 seats[].statics[].timing.filter.creatureTypesAny[]	string
+seats[].statics[].timing.filter.exiledByHolderAbility	bool
 seats[].statics[].timing.filter.exiledOnTurn	number:int
 seats[].statics[].timing.filter.exiledWith	object
 seats[].statics[].timing.filter.exiledWith.epoch	number:int
@@ -78082,6 +78214,7 @@ stack.cards[].exileGrants[].activator	custom(uuid.UUID)
 stack.cards[].exileGrants[].key	string
 stack.cards[].exileGrants[].source	custom(uuid.UUID)
 stack.cards[].exileGrants[].untilEndOfTurn	bool
+stack.cards[].exiledByAbilityOf	custom(uuid.UUID)
 stack.cards[].exiledWith	object
 stack.cards[].exiledWith.epoch	number:int
 stack.cards[].exiledWith.id	custom(uuid.UUID)

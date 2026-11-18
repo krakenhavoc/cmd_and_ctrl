@@ -1474,6 +1474,12 @@ type cardSnapshot struct {
 	// "not this turn", so a restored game's earlier links grant nothing
 	// this-turn clauses read, which is the safe direction.
 	ExiledWithTurn int `json:"exiledWithTurn,omitempty"`
+	// ExiledByAbilityOf is the player whose ability exiled the card
+	// (#5876, Evelyn, the Covetous). Additive within the version: a file
+	// without it restores "exiled by nobody's ability", so a restored
+	// game's earlier exiles open nothing that reads it, the safe
+	// direction. A pointer, so a card no ability exiled writes nothing.
+	ExiledByAbilityOf *uuid.UUID `json:"exiledByAbilityOf,omitempty"`
 	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
 	// the creature object a card in exile is encoded on and when. Carried
 	// because nothing else records it, and additive within v7: a file
@@ -1945,6 +1951,13 @@ type delayedTriggerSnapshot struct {
 	Until       bool       `json:"until,omitempty"`
 	UntilLeaves *ObjectRef `json:"untilLeaves,omitempty"`
 	Due         bool       `json:"due,omitempty"`
+
+	// #5877: the follow-up an "until" return carries (Lagrella, the
+	// Magpie). Additive: an older binary drops the keys and returns the
+	// card without the follow-up (weaker, never stronger); this binary
+	// refuses a follow-up body it does not have (ErrUnknownEffectKey).
+	UntilThen      string `json:"untilThen,omitempty"`
+	UntilThenLabel string `json:"untilThenLabel,omitempty"`
 
 	// #2169, CR 603.7b / 605.1b: a trigger that keeps triggering for its
 	// duration, and its triggered-mana twin. Additive: an older binary
@@ -3230,6 +3243,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
 		ExiledWithTurn:           c.ExiledWithTurn,
+		ExiledByAbilityOf:        uuidPtrOrNil(c.ExiledByAbilityOf),
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
 		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -3534,6 +3548,8 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Until:              d.Until,
 		UntilLeaves:        d.UntilLeaves.stamped(),
 		Due:                d.Due,
+		UntilThen:          d.UntilThen.key,
+		UntilThenLabel:     d.UntilThenLabel,
 		Repeats:            d.Repeats,
 		OncePerBatch:       d.OncePerBatch,
 		ThroughCleanup:     d.ThroughCleanup,
@@ -4389,6 +4405,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
 		ExiledWithTurn:           c.ExiledWithTurn,
+		ExiledByAbilityOf:        uuidOrNil(c.ExiledByAbilityOf),
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
 		CreatedWith:              restoreEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -4685,6 +4702,8 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Until:            d.Until,
 		UntilLeaves:      d.UntilLeaves.value(),
 		Due:              d.Due,
+		UntilThen:        BodyRef{key: d.UntilThen},
+		UntilThenLabel:   d.UntilThenLabel,
 		Repeats:          d.Repeats,
 		OncePerBatch:     d.OncePerBatch,
 		ThroughCleanup:   d.ThroughCleanup,
