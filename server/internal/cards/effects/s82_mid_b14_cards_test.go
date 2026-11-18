@@ -249,7 +249,10 @@ func TestS82MidB14ConformityMakesNonlegendaryCreaturesThreeThreeAndTypeless(t *t
 	theirs := push(other, "Bystander", "Creature — Bear", 2, 2)
 	mine := push(me, "Mine", "Creature — Bear", 2, 2)
 
-	pt := func(id uuid.UUID) [2]int { return [2]int{effectivePower(t, g, id), effectiveToughness(t, g, id)} }
+	pt := func(id uuid.UUID) [2]int {
+		c := layeredCard(t, g, id)
+		return [2]int{c.CurrentPower(), c.CurrentToughness()}
+	}
 	if got := pt(elf); got != [2]int{3, 3} {
 		t.Errorf("Elf is %v, want 3/3", got)
 	}
@@ -424,6 +427,11 @@ func TestS82MidB14LyndeReturnsADeadCurseAttachedToYouAtTheNextEndStep(t *testing
 	passPriorityAroundTable(t, g)
 	c, ok := battlefieldCard(g, curse)
 	if !ok {
+		for _, e := range g.Events {
+			t.Logf("event %s %s", e.Kind, e.Label)
+		}
+		_, inGY := cardInZone(me.Graveyard, curse)
+		t.Logf("in graveyard: %v; pending: %d; stack: %d", inGY, len(g.PendingChoices), len(g.Stack.Cards))
 		t.Fatal("the Curse did not return at the end step")
 	}
 	if c.AttachedTo.Kind != game.TargetPlayer || c.AttachedTo.ID != me.ID {
