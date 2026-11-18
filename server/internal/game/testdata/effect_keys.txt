@@ -1577,6 +1577,7 @@ confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
 confirm confirm/ill-timed-explosion-discard
+confirm confirm/illuna-apex-of-wishes-put
 confirm confirm/imposing-grandeur-may-wheel
 confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/innocuous-researcher-untap
@@ -1794,6 +1795,7 @@ maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
 milluntil until/creature-card-or-count
+milluntil until/illuna-nonland-permanent-card
 milluntil until/land-card
 milluntil until/legendary-card
 milluntil until/nonland-card
@@ -3212,6 +3214,7 @@ tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
+tail illuna-apex-of-wishes/after-exile
 tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
