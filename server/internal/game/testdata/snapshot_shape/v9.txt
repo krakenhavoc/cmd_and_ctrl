@@ -1080,6 +1080,7 @@ events[].discard_cause	string
 events[].entered_from	string
 events[].entered_from_owner	custom(uuid.UUID)
 events[].error_msg	string
+events[].excess_damage	number:int
 events[].exhaust	bool
 events[].exiled_with	object
 events[].exiled_with.epoch	number:int
@@ -1904,6 +1905,7 @@ followUpParks[].then.asked.trigger.Event.discard_cause	string
 followUpParks[].then.asked.trigger.Event.entered_from	string
 followUpParks[].then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.error_msg	string
+followUpParks[].then.asked.trigger.Event.excess_damage	number:int
 followUpParks[].then.asked.trigger.Event.exhaust	bool
 followUpParks[].then.asked.trigger.Event.exiled_with	object
 followUpParks[].then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -2576,6 +2578,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.discard_cause	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.counterTail.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.counterTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -3226,6 +3229,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.discard_cause	str
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.entered_from	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.error_msg	string
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.exiled_with.epoch	number:int
@@ -3867,6 +3871,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.discard_cause	str
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -4693,6 +4698,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.discard_cause	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.damageTail.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.damageTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -5457,6 +5463,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.disc
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -6174,6 +6181,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.discard_cause	str
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -6815,6 +6823,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.discard_cause	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.entered_from	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.error_msg	string
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.exiled_with.epoch	number:int
@@ -7489,6 +7498,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.discard
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.entered_from	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.error_msg	string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -8150,6 +8160,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.discard_cause	st
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -9240,6 +9251,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.discard_cause	s
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -9904,6 +9916,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.discard_cause	strin
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -10548,6 +10561,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.discard_cause	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -12046,6 +12060,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.discard_cause	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -12685,6 +12700,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.discard_cause	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.millTail.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.millTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -13708,6 +13724,7 @@ frozenEntries[].event.stackItem.trigger.Event.discard_cause	string
 frozenEntries[].event.stackItem.trigger.Event.entered_from	string
 frozenEntries[].event.stackItem.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.error_msg	string
+frozenEntries[].event.stackItem.trigger.Event.excess_damage	number:int
 frozenEntries[].event.stackItem.trigger.Event.exhaust	bool
 frozenEntries[].event.stackItem.trigger.Event.exiled_with	object
 frozenEntries[].event.stackItem.trigger.Event.exiled_with.epoch	number:int
@@ -14333,6 +14350,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.discard_cause	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -16284,6 +16302,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.discard_
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -16958,6 +16977,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.di
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.entered_from	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.error_msg	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -17597,6 +17617,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.discard_cause
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -18256,6 +18277,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.discard_cau
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -18984,6 +19006,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.discard_ca
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.entered_from	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.error_msg	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.excess_damage	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exhaust	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -21313,6 +21336,7 @@ lastKnownStack[].item.trigger.Event.discard_cause	string
 lastKnownStack[].item.trigger.Event.entered_from	string
 lastKnownStack[].item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.error_msg	string
+lastKnownStack[].item.trigger.Event.excess_damage	number:int
 lastKnownStack[].item.trigger.Event.exhaust	bool
 lastKnownStack[].item.trigger.Event.exiled_with	object
 lastKnownStack[].item.trigger.Event.exiled_with.epoch	number:int
@@ -22933,6 +22957,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.discard_cause	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -23583,6 +23608,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.discard_cause	str
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.exiled_with.epoch	number:int
@@ -24224,6 +24250,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.discard_cause	str
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -25050,6 +25077,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.discard_cause	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -25814,6 +25842,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.disc
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -26531,6 +26560,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.discard_cause	str
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -27172,6 +27202,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.discard_cause	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.exiled_with.epoch	number:int
@@ -27846,6 +27877,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.discard
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -28507,6 +28539,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.discard_cause	st
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -29597,6 +29630,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.discard_cause	s
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -30261,6 +30295,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.discard_cause	strin
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -30905,6 +30940,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.discard_cause	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -32403,6 +32439,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.discard_cause	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -33042,6 +33079,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.discard_cause	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -34065,6 +34103,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.discard_cause	string
 movesAwaitingTokens[].stackItem.trigger.Event.entered_from	string
 movesAwaitingTokens[].stackItem.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.error_msg	string
+movesAwaitingTokens[].stackItem.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].stackItem.trigger.Event.exhaust	bool
 movesAwaitingTokens[].stackItem.trigger.Event.exiled_with	object
 movesAwaitingTokens[].stackItem.trigger.Event.exiled_with.epoch	number:int
@@ -34690,6 +34729,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.discard_cause	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -36641,6 +36681,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.discard_
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -37315,6 +37356,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.di
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -37954,6 +37996,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.discard_cause
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -38613,6 +38656,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.discard_cau
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -39341,6 +39385,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.discard_ca
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.entered_from	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.error_msg	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.excess_damage	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.exhaust	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -40633,6 +40678,7 @@ pausedModeWalk.item.trigger.Event.discard_cause	string
 pausedModeWalk.item.trigger.Event.entered_from	string
 pausedModeWalk.item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.error_msg	string
+pausedModeWalk.item.trigger.Event.excess_damage	number:int
 pausedModeWalk.item.trigger.Event.exhaust	bool
 pausedModeWalk.item.trigger.Event.exiled_with	object
 pausedModeWalk.item.trigger.Event.exiled_with.epoch	number:int
@@ -40992,6 +41038,7 @@ pausedResolutionTail.item.trigger.Event.discard_cause	string
 pausedResolutionTail.item.trigger.Event.entered_from	string
 pausedResolutionTail.item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.error_msg	string
+pausedResolutionTail.item.trigger.Event.excess_damage	number:int
 pausedResolutionTail.item.trigger.Event.exhaust	bool
 pausedResolutionTail.item.trigger.Event.exiled_with	object
 pausedResolutionTail.item.trigger.Event.exiled_with.epoch	number:int
@@ -41345,6 +41392,7 @@ pausedStepWalk.item.trigger.Event.discard_cause	string
 pausedStepWalk.item.trigger.Event.entered_from	string
 pausedStepWalk.item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.error_msg	string
+pausedStepWalk.item.trigger.Event.excess_damage	number:int
 pausedStepWalk.item.trigger.Event.exhaust	bool
 pausedStepWalk.item.trigger.Event.exiled_with	object
 pausedStepWalk.item.trigger.Event.exiled_with.epoch	number:int
@@ -41545,6 +41593,7 @@ pendingChoices[].asked.trigger.Event.discard_cause	string
 pendingChoices[].asked.trigger.Event.entered_from	string
 pendingChoices[].asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.error_msg	string
+pendingChoices[].asked.trigger.Event.excess_damage	number:int
 pendingChoices[].asked.trigger.Event.exhaust	bool
 pendingChoices[].asked.trigger.Event.exiled_with	object
 pendingChoices[].asked.trigger.Event.exiled_with.epoch	number:int
@@ -42789,6 +42838,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.discard_cause	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.entered_from	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.error_msg	string
+pendingChoices[].attackSplit.tail.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Event.exhaust	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.exiled_with	object
 pendingChoices[].attackSplit.tail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -44066,6 +44116,7 @@ pendingChoices[].copyWalk.item.trigger.Event.discard_cause	string
 pendingChoices[].copyWalk.item.trigger.Event.entered_from	string
 pendingChoices[].copyWalk.item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.error_msg	string
+pendingChoices[].copyWalk.item.trigger.Event.excess_damage	number:int
 pendingChoices[].copyWalk.item.trigger.Event.exhaust	bool
 pendingChoices[].copyWalk.item.trigger.Event.exiled_with	object
 pendingChoices[].copyWalk.item.trigger.Event.exiled_with.epoch	number:int
@@ -44934,6 +44985,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.discard_cause	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.entered_from	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.error_msg	string
+pendingChoices[].diceRoll.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].diceRoll.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -45980,6 +46032,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.discard_cause	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.entered_from	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.error_msg	string
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.exhaust	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.exiled_with	object
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.exiled_with.epoch	number:int
@@ -46621,6 +46674,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.discard_cause	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.entered_from	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.error_msg	string
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -47268,6 +47322,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.discard_cause	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.entered_from	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.error_msg	string
+pendingChoices[].libraryOrder.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].libraryOrder.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -47968,6 +48023,7 @@ pendingChoices[].nameThen.asked.trigger.Event.discard_cause	string
 pendingChoices[].nameThen.asked.trigger.Event.entered_from	string
 pendingChoices[].nameThen.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.error_msg	string
+pendingChoices[].nameThen.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].nameThen.asked.trigger.Event.exhaust	bool
 pendingChoices[].nameThen.asked.trigger.Event.exiled_with	object
 pendingChoices[].nameThen.asked.trigger.Event.exiled_with.epoch	number:int
@@ -48616,6 +48672,7 @@ pendingChoices[].ordered.asked.trigger.Event.discard_cause	string
 pendingChoices[].ordered.asked.trigger.Event.entered_from	string
 pendingChoices[].ordered.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.error_msg	string
+pendingChoices[].ordered.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].ordered.asked.trigger.Event.exhaust	bool
 pendingChoices[].ordered.asked.trigger.Event.exiled_with	object
 pendingChoices[].ordered.asked.trigger.Event.exiled_with.epoch	number:int
@@ -49100,6 +49157,7 @@ pendingChoices[].pickTail.asked.trigger.Event.discard_cause	string
 pendingChoices[].pickTail.asked.trigger.Event.entered_from	string
 pendingChoices[].pickTail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.error_msg	string
+pendingChoices[].pickTail.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].pickTail.asked.trigger.Event.exhaust	bool
 pendingChoices[].pickTail.asked.trigger.Event.exiled_with	object
 pendingChoices[].pickTail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -49786,6 +49844,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.di
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -50436,6 +50495,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.exiled_with.epoch	number:int
@@ -51077,6 +51137,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -51903,6 +51964,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.dis
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -52667,6 +52729,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -53384,6 +53447,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -54025,6 +54089,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.dis
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.exiled_with.epoch	number:int
@@ -54699,6 +54764,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -55360,6 +55426,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -56450,6 +56517,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -57114,6 +57182,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -57758,6 +57827,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.disca
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -59256,6 +59326,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.d
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -59895,6 +59966,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.disca
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -60918,6 +60990,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.discard_cause	s
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.exiled_with.epoch	number:int
@@ -61543,6 +61616,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.disc
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -63494,6 +63568,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -64168,6 +64243,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -64807,6 +64883,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -65466,6 +65543,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -66194,6 +66272,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.entered_from	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.error_msg	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exhaust	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with.epoch	number:int
@@ -67290,6 +67369,7 @@ pendingChoices[].scryThen.asked.trigger.Event.discard_cause	string
 pendingChoices[].scryThen.asked.trigger.Event.entered_from	string
 pendingChoices[].scryThen.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.error_msg	string
+pendingChoices[].scryThen.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].scryThen.asked.trigger.Event.exhaust	bool
 pendingChoices[].scryThen.asked.trigger.Event.exiled_with	object
 pendingChoices[].scryThen.asked.trigger.Event.exiled_with.epoch	number:int
@@ -67977,6 +68057,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.discard_cause	st
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.entered_from	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.error_msg	string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.excess_damage	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.exhaust	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.exiled_with	object
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.exiled_with.epoch	number:int
@@ -69490,6 +69571,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.discard_cause	string
 pendingChoices[].targetWalk.frame.trigger.Event.entered_from	string
 pendingChoices[].targetWalk.frame.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.error_msg	string
+pendingChoices[].targetWalk.frame.trigger.Event.excess_damage	number:int
 pendingChoices[].targetWalk.frame.trigger.Event.exhaust	bool
 pendingChoices[].targetWalk.frame.trigger.Event.exiled_with	object
 pendingChoices[].targetWalk.frame.trigger.Event.exiled_with.epoch	number:int
@@ -70283,6 +70365,7 @@ pendingChoices[].triggerFrame.trigger.Event.discard_cause	string
 pendingChoices[].triggerFrame.trigger.Event.entered_from	string
 pendingChoices[].triggerFrame.trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.error_msg	string
+pendingChoices[].triggerFrame.trigger.Event.excess_damage	number:int
 pendingChoices[].triggerFrame.trigger.Event.exhaust	bool
 pendingChoices[].triggerFrame.trigger.Event.exiled_with	object
 pendingChoices[].triggerFrame.trigger.Event.exiled_with.epoch	number:int
@@ -70644,6 +70727,7 @@ pendingTriggers[].trigger.Event.discard_cause	string
 pendingTriggers[].trigger.Event.entered_from	string
 pendingTriggers[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.error_msg	string
+pendingTriggers[].trigger.Event.excess_damage	number:int
 pendingTriggers[].trigger.Event.exhaust	bool
 pendingTriggers[].trigger.Event.exiled_with	object
 pendingTriggers[].trigger.Event.exiled_with.epoch	number:int
@@ -72393,6 +72477,7 @@ promptRuns[].asked.trigger.Event.discard_cause	string
 promptRuns[].asked.trigger.Event.entered_from	string
 promptRuns[].asked.trigger.Event.entered_from_owner	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.error_msg	string
+promptRuns[].asked.trigger.Event.excess_damage	number:int
 promptRuns[].asked.trigger.Event.exhaust	bool
 promptRuns[].asked.trigger.Event.exiled_with	object
 promptRuns[].asked.trigger.Event.exiled_with.epoch	number:int
@@ -73196,6 +73281,7 @@ resolving.item.trigger.Event.discard_cause	string
 resolving.item.trigger.Event.entered_from	string
 resolving.item.trigger.Event.entered_from_owner	custom(uuid.UUID)
 resolving.item.trigger.Event.error_msg	string
+resolving.item.trigger.Event.excess_damage	number:int
 resolving.item.trigger.Event.exhaust	bool
 resolving.item.trigger.Event.exiled_with	object
 resolving.item.trigger.Event.exiled_with.epoch	number:int
@@ -78825,6 +78911,7 @@ stackMeta[].trigger.Event.discard_cause	string
 stackMeta[].trigger.Event.entered_from	string
 stackMeta[].trigger.Event.entered_from_owner	custom(uuid.UUID)
 stackMeta[].trigger.Event.error_msg	string
+stackMeta[].trigger.Event.excess_damage	number:int
 stackMeta[].trigger.Event.exhaust	bool
 stackMeta[].trigger.Event.exiled_with	object
 stackMeta[].trigger.Event.exiled_with.epoch	number:int
@@ -79017,7 +79104,11 @@ turnTally.damagedObjects[].combat	bool
 turnTally.damagedObjects[].source	object
 turnTally.damagedObjects[].source.epoch	number:int
 turnTally.damagedObjects[].source.id	custom(uuid.UUID)
+turnTally.damagedObjects[].sourceAllTypes	bool
 turnTally.damagedObjects[].sourceController	custom(uuid.UUID)
+turnTally.damagedObjects[].sourceSpell	bool
+turnTally.damagedObjects[].sourceSubtypes	array
+turnTally.damagedObjects[].sourceSubtypes[]	string
 turnTally.damagedObjects[].victim	object
 turnTally.damagedObjects[].victim.epoch	number:int
 turnTally.damagedObjects[].victim.id	custom(uuid.UUID)
