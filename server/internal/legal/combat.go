@@ -197,6 +197,11 @@ func (e *enumerator) combatMoves() {
 					if autoTap, phyLife, ok = e.attackTaxPayment(total); !ok {
 						continue
 					}
+					// #5869: and the life the tax charges, from what
+					// the Phyrexian payment leaves (CR 119.4).
+					if !e.g.CanPayLifeLocked(e.p, price.Life+phyLife*game.PhyrexianLifePerSymbol) {
+						continue
+					}
 				}
 				e.add(Move{
 					Type:   TypeDeclareAttacker,
@@ -211,7 +216,7 @@ func (e *enumerator) combatMoves() {
 					// make the engine refuse it — so a seat whose
 					// policy declines is not left holding the table.
 					AlwaysLegal: owedPair(owed, c.InstanceID, t.ID),
-					Cost:        withPhyrexianLife(withAttackTax(nil, price.Cost), phyLife),
+					Cost:        withPhyrexianLife(attackTaxCost(price), phyLife),
 					Params: mustJSON(attackParams{
 						Attacker:      c.InstanceID.String(),
 						Target:        t.ID.String(),
@@ -235,7 +240,7 @@ func (e *enumerator) combatMoves() {
 						Kind:   KindAttack,
 						Label:  attackExertMoveLabel(g, t, c.Name, price) + attackLifeLabel(phyLife),
 						Source: c.InstanceID,
-						Cost:   withPhyrexianLife(withAttackTax(nil, price.Cost), phyLife),
+						Cost:   withPhyrexianLife(attackTaxCost(price), phyLife),
 						Params: mustJSON(attackParams{
 							Attacker:      c.InstanceID.String(),
 							Target:        t.ID.String(),
@@ -258,7 +263,7 @@ func (e *enumerator) combatMoves() {
 							Kind:   KindAttack,
 							Label:  attackEnlistMoveLabel(g, t, c.Name, enlisted, price) + attackLifeLabel(phyLife),
 							Source: c.InstanceID,
-							Cost:   withPhyrexianLife(withAttackTax(nil, price.Cost), phyLife),
+							Cost:   withPhyrexianLife(attackTaxCost(price), phyLife),
 							Params: mustJSON(attackParams{
 								Attacker:      c.InstanceID.String(),
 								Target:        t.ID.String(),
@@ -618,7 +623,7 @@ func attackMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string, pric
 	if price.IsFree() {
 		return label
 	}
-	return label + " (pays " + price.Cost + ")"
+	return label + " (pays " + price.Describe() + ")"
 }
 
 // attackExertMoveLabel is attackMoveLabel for the twin move that also
@@ -629,7 +634,7 @@ func attackExertMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string,
 	if price.IsFree() {
 		return label
 	}
-	return label + " (pays " + price.Cost + ")"
+	return label + " (pays " + price.Describe() + ")"
 }
 
 // attackEnlistMoveLabel is the enlist twin's label (#5658): the attack,
@@ -644,7 +649,7 @@ func attackEnlistMoveLabel(g *game.Game, t game.AttackTargetRef, attacker string
 	if price.IsFree() {
 		return label
 	}
-	return label + " (pays " + price.Cost + ")"
+	return label + " (pays " + price.Describe() + ")"
 }
 
 // attackTaxPayment is how the seat pays an attack tax `total` (already
@@ -695,20 +700,14 @@ func attackLifeLabel(symbols int) string {
 	return fmt.Sprintf(" (paying %d life)", symbols*game.PhyrexianLifePerSymbol)
 }
 
-// withAttackTax adds the CR 508.1h mana price to a (possibly nil)
-// MoveCost, returning a fresh value so no two moves share one — the
-// contract withCounterPrice has, for the same reason.
-func withAttackTax(c *MoveCost, mana string) *MoveCost {
-	if mana == "" {
-		return c
+// attackTaxCost is the CR 508.1h price — its mana and (#5869) its life
+// — as a fresh MoveCost, nil when the attack is free. Fresh so no two
+// moves share one, the contract withCounterPrice has.
+func attackTaxCost(price game.AttackTaxPrice) *MoveCost {
+	if price.IsFree() {
+		return nil
 	}
-	out := MoveCost{}
-	if c != nil {
-		out = *c
-		out.Counters = append([]CounterPrice(nil), c.Counters...)
-	}
-	out.Mana = mana
-	return &out
+	return &MoveCost{Mana: price.Cost, Life: max(price.Life, 0)}
 }
 
 func attackTargetLabel(g *game.Game, t game.AttackTargetRef) string {

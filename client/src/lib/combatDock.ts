@@ -27,6 +27,7 @@ import {
   attackAllTaxLabel,
   attackLimitOn,
   attackTaxOn,
+  attackTaxText,
   eligibleAt,
   offersAttackPicker,
   seatLabel,
@@ -145,7 +146,7 @@ function attackRow(input: AttackRowInput): { lead?: string; row: DockAction[] } 
     row.push({
       id: `attack-all:${opp.id}`,
       label: seatLabel(opp),
-      note: attackTaxOn(view, opp.id) || undefined,
+      note: attackTaxText(view, opp.id) || undefined,
       seatColor: input.seatColor(opp.seat),
       title: attackAllTitle(view, plan, opp),
       disabled: eligibleAt(plan, opp.id).length === 0,

@@ -30,11 +30,8 @@ type declarationAttackersPayload struct {
 
 // chosenAttackTaxCost is a chosen attack's CR 508.1h price as a move's
 // cost, nil when free.
-func chosenAttackTaxCost(mana string) *MoveCost {
-	if mana == "" {
-		return nil
-	}
-	return &MoveCost{Mana: mana}
+func chosenAttackTaxCost(price game.AttackTaxPrice) *MoveCost {
+	return attackTaxCost(price)
 }
 
 // controlledDeclarationMoves appends the moves of each declaration e's
@@ -106,7 +103,7 @@ func (e *enumerator) attackTargetsMoves() {
 				Kind:   KindAttack,
 				Label:  attackMoveLabel(g, t, c.Name, price),
 				Source: c.InstanceID,
-				Cost:   chosenAttackTaxCost(price.Cost),
+				Cost:   chosenAttackTaxCost(price),
 				Params: mustJSON(attackParams{
 					Attacker: c.InstanceID.String(),
 					Target:   t.ID.String(),
@@ -130,7 +127,7 @@ func (e *enumerator) attackTargetsMoves() {
 	}
 	total := g.CostAsPaidByForEffect(e.seat, game.ManaSpendContext{}, price.Total, 0)
 	autoTap, phyLife, ok := e.attackTaxPayment(total)
-	if !ok {
+	if !ok || !g.CanPayLifeLocked(e.p, price.Life+phyLife*game.PhyrexianLifePerSymbol) {
 		return
 	}
 	payload.AutoTap, payload.PhyrexianLife = autoTap, phyLife
@@ -138,9 +135,9 @@ func (e *enumerator) attackTargetsMoves() {
 		Type:   TypeDeclareAttackers,
 		Player: e.seat,
 		Kind:   KindAttack,
-		Label:  "Confirm the attacks (pays " + price.Cost + ")" + attackLifeLabel(phyLife),
+		Label:  "Confirm the attacks (pays " + price.Describe() + ")" + attackLifeLabel(phyLife),
 		Source: uuid.Nil,
-		Cost:   withPhyrexianLife(chosenAttackTaxCost(price.Cost), phyLife),
+		Cost:   withPhyrexianLife(chosenAttackTaxCost(price), phyLife),
 		Params: mustJSON(payload),
 		// The pass is refused while a cost could be avoided by a free
 		// re-point; this is then an answer nothing else can refuse.

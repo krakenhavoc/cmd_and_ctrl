@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -54,12 +56,12 @@ import (
 //     check — attack_limits.go (#1507), judged before the tax is
 //     priced so a refused declaration owes nothing. ADR 0080 §8,
 //     ADR 0045 Decision 44.
-//   - A NON-MANA tax. Nothing printed charges one (Norn's Annex's
-//     {W/P} is mana with a life alternative, which the Phyrexian
-//     machinery already handles). A Sacrifice or PayLife sibling of
-//     ManaCost is an addition to this struct and one more branch in
-//     the payer, the shape AdditionalCost has with its three
-//     components — not a redesign.
+//   - A tax paid in anything but mana or life. Life is here (#5869,
+//     Sivitri, Dragon Master's "unless their controller pays 2 life for
+//     each of those creatures"): AttackTax.LifeCost and the
+//     attackTaxLife duration mod, totalled into AttackTaxPrice.Life and
+//     paid after the mana as CR 119.4 allows. A Sacrifice sibling would
+//     be one more field and one more branch in the payer.
 //   - A tax with a DURATION is attack_tax_duration.go (#3398): the
 //     SECOND source the pricer reads, a ModAttackTax ScopedEffect made
 //     by a resolving spell or ability (Summon: Yojimbo).
@@ -213,6 +215,12 @@ type AttackTax struct {
 	// that names no price simply does not apply.
 	ManaCost func(q AttackTaxQuery) string
 
+	// LifeCost is the life half of the clause FOR ONE attacking
+	// creature (#5869): "pays 2 life for each of those creatures" is 2.
+	// Nil, or a non-positive answer, charges no life. A tax may name
+	// both halves; each is totalled on its own.
+	LifeCost func(q AttackTaxQuery) int
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this tax applies only while its source has the designation
 	// named. The zero value is "no gate".
@@ -278,6 +286,10 @@ type AttackTaxLine struct {
 
 	// Mana is what this one line charges, e.g. "{2}".
 	Mana string
+
+	// Life is the life this one line charges (#5869), 0 for a mana
+	// tax.
+	Life int
 }
 
 // AttackTaxPrice is what one attack declaration costs at CR 508.1h.
@@ -296,6 +308,11 @@ type AttackTaxPrice struct {
 	// callers can disagree about what the string meant.
 	Total ParsedCost
 
+	// Life is the life the whole declaration charges (#5869): the sum
+	// of the lines' Life. Paid after the mana, and only from a life
+	// total at least this large (CR 119.4).
+	Life int
+
 	// Lines is the per-source, per-creature breakdown, in declaration
 	// order then battlefield order.
 	Lines []AttackTaxLine
@@ -303,7 +320,24 @@ type AttackTaxPrice struct {
 
 // IsFree reports that this declaration costs nothing, which is every
 // declaration at a table with no attack tax on the battlefield.
-func (p AttackTaxPrice) IsFree() bool { return p.Cost == "" }
+func (p AttackTaxPrice) IsFree() bool { return p.Cost == "" && p.Life <= 0 }
+
+// Describe is the price as a player reads it: "{2}{2}", "4 life", or
+// "{2} and 2 life". "" when free.
+func (p AttackTaxPrice) Describe() string { return describeAttackTax(p.Cost, p.Life) }
+
+// describeAttackTax renders a mana string and a life amount as one
+// price, Describe's body.
+func describeAttackTax(mana string, life int) string {
+	switch {
+	case life <= 0:
+		return mana
+	case mana == "":
+		return strconv.Itoa(life) + " life"
+	default:
+		return mana + " and " + strconv.Itoa(life) + " life"
+	}
+}
 
 // PriceAttackDeclaration prices a whole attack declaration at
 // CR 508.1h. Takes the read lock.
@@ -364,6 +398,7 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 		// duration (attack_tax_duration.go).
 		for _, l := range g.durationAttackTaxLines(defender, kind, d.Attacker) {
 			b.WriteString(l.Mana)
+			out.Life += l.Life
 			out.Lines = append(out.Lines, l)
 		}
 		if CatalogAttackTaxes == nil {
@@ -399,20 +434,25 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 				if t.AppliesTo != nil && !t.AppliesTo(q) {
 					continue
 				}
-				if t.ManaCost == nil {
-					continue
+				mana, life := "", 0
+				if t.ManaCost != nil {
+					mana = t.ManaCost(q)
 				}
-				mana := t.ManaCost(q)
-				if mana == "" {
+				if t.LifeCost != nil {
+					life = max(t.LifeCost(q), 0)
+				}
+				if mana == "" && life == 0 {
 					continue
 				}
 				b.WriteString(mana)
+				out.Life += life
 				out.Lines = append(out.Lines, AttackTaxLine{
 					Source:   src.InstanceID,
 					Label:    t.Label,
 					Defender: defender,
 					Attacker: d.Attacker,
 					Mana:     mana,
+					Life:     life,
 				})
 			}
 		}
@@ -453,9 +493,15 @@ func (g *Game) attackTaxAffordableLocked(payer uuid.UUID, price AttackTaxPrice, 
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	if err := g.attackTaxLifeRefusalLocked(p, price, params); err != nil {
+		return err
+	}
+	if price.Cost == "" {
+		return nil
+	}
 	cost, err := ParseCost(price.Cost)
 	if err != nil {
-		return &AttackTaxUnpaidError{Cost: price.Cost, Err: ErrUnparseableCost}
+		return &AttackTaxUnpaidError{Cost: price.Cost, Life: price.Life, Err: ErrUnparseableCost}
 	}
 	// #1600: widened as payAbilityManaCostLocked will widen it, then
 	// the Phyrexian symbols the player said they would pay with life
@@ -478,7 +524,32 @@ func (g *Game) attackTaxAffordableLocked(payer uuid.UUID, price AttackTaxPrice, 
 	}
 	return &AttackTaxUnpaidError{
 		Cost: price.Cost,
+		Life: price.Life,
 		Err:  &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, 0, ManaSpendContext{})},
+	}
+}
+
+// attackTaxLifeRefusalLocked is CR 119.4 for the life half of an
+// attack tax (#5869): "If a cost or effect allows a player to pay an
+// amount of life greater than 0, the player may do so only if their
+// life total is greater than or equal to the amount of the payment."
+// The amount is the tax's life plus the life the player said they would
+// pay for Phyrexian symbols, since both leave the same life total. Nil
+// when the price names no life.
+//
+// Caller must hold g.mu.
+func (g *Game) attackTaxLifeRefusalLocked(p *Player, price AttackTaxPrice, params DeclareAttackersParams) error {
+	if price.Life <= 0 {
+		return nil
+	}
+	need := price.Life + max(params.PhyrexianLife, 0)*PhyrexianLifePerSymbol
+	if g.CanPayLifeLocked(p, need) {
+		return nil
+	}
+	return &AttackTaxUnpaidError{
+		Cost: price.Cost,
+		Life: price.Life,
+		Err:  fmt.Errorf("%w: paying %d life needs a life total of at least %d (CR 119.4)", ErrInvalidParam, need, need),
 	}
 }
 
@@ -519,9 +590,17 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	// #5869: the life half is judged before anything is paid, so a
+	// refusal spends no mana either.
+	if err := g.attackTaxLifeRefusalLocked(p, price, params); err != nil {
+		return err
+	}
 	source, label := uuid.Nil, "attack tax"
 	if len(price.Lines) > 0 {
 		source, label = price.Lines[0].Source, price.Lines[0].Label
+	}
+	if price.Cost == "" {
+		return g.payAttackTaxLifeLocked(payer, source, price)
 	}
 	excluded := make(map[uuid.UUID]bool, len(params.LockedSources))
 	for _, id := range params.LockedSources {
@@ -535,7 +614,7 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 	// which is exactly what it did before.
 	taxCost, perr := ParseCost(price.Cost)
 	if perr != nil {
-		return &AttackTaxUnpaidError{Cost: price.Cost, Err: ErrInvalidParam}
+		return &AttackTaxUnpaidError{Cost: price.Cost, Life: price.Life, Err: ErrInvalidParam}
 	}
 	_, err := g.payAbilityManaCostLocked(p, source, label, taxCost, ActivateAbilityParams{
 		Strict:        true,
@@ -543,7 +622,23 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 		PhyrexianLife: params.PhyrexianLife,
 	}, ManaSpendContext{}, excluded)
 	if err != nil {
-		return &AttackTaxUnpaidError{Cost: price.Cost, Err: err}
+		return &AttackTaxUnpaidError{Cost: price.Cost, Life: price.Life, Err: err}
+	}
+	return g.payAttackTaxLifeLocked(payer, source, price)
+}
+
+// payAttackTaxLifeLocked pays the life half of `price` (#5869) once its
+// mana is paid, then tells the table. Paying life is losing it
+// (CR 119.4), through payLifeAsCostLocked's CR 614 window; the amount
+// was validated before any of the price was paid, so a refusal here is
+// that function's backstop (a life total that can't change, CR 119.8).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) payAttackTaxLifeLocked(payer, source uuid.UUID, price AttackTaxPrice) error {
+	if price.Life > 0 {
+		if err := g.payLifeAsCostLocked(source, payer, price.Life); err != nil {
+			return &AttackTaxUnpaidError{Cost: price.Cost, Life: price.Life, Err: err}
+		}
 	}
 	g.emitAttackTaxPaidLocked(payer, price)
 	return nil
@@ -568,12 +663,14 @@ func (g *Game) emitAttackTaxPaidLocked(payer uuid.UUID, price AttackTaxPrice) {
 	type pair struct{ defender, source uuid.UUID }
 	order := make([]pair, 0, 1)
 	mana := make(map[pair]string, 1)
+	life := make(map[pair]int, 1)
 	for _, l := range price.Lines {
 		k := pair{l.Defender, l.Source}
 		if _, seen := mana[k]; !seen {
 			order = append(order, k)
 		}
 		mana[k] += l.Mana
+		life[k] += l.Life
 	}
 	for _, k := range order {
 		g.EmitEvent(Event{
@@ -582,7 +679,7 @@ func (g *Game) emitAttackTaxPaidLocked(payer uuid.UUID, price AttackTaxPrice) {
 			Source: k.source,
 			CardID: k.source,
 			Target: k.defender,
-			Label:  mana[k],
+			Label:  describeAttackTax(mana[k], life[k]),
 		})
 	}
 }
@@ -596,8 +693,11 @@ func (g *Game) emitAttackTaxPaidLocked(payer uuid.UUID, price AttackTaxPrice) {
 // client's toast has to say what the attack cost and what was short,
 // and a bool would have meant a second call to find out.
 type AttackTaxUnpaidError struct {
-	// Cost is the declaration's whole price, e.g. "{2}{2}".
+	// Cost is the declaration's whole mana price, e.g. "{2}{2}".
 	Cost string
+
+	// Life is the declaration's life price (#5869), 0 for none.
+	Life int
 
 	// Err is why it could not be paid, unwrapped so
 	// errors.As(err, &InsufficientManaError{}) reaches the missing
@@ -606,10 +706,10 @@ type AttackTaxUnpaidError struct {
 }
 
 func (e *AttackTaxUnpaidError) Error() string {
-	if e.Cost == "" {
+	if e.Cost == "" && e.Life <= 0 {
 		return "game: the attack tax for this declaration was not paid"
 	}
-	return "game: attacking costs " + e.Cost + " and it was not paid"
+	return "game: attacking costs " + describeAttackTax(e.Cost, e.Life) + " and it was not paid"
 }
 
 // Unwrap lets errors.Is(err, ErrAttackTaxUnpaid) match, and — through

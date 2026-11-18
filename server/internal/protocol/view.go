@@ -6152,6 +6152,13 @@ type AttackTargetView struct {
 	// one. The field would go then, rather than grow a caveat.
 	Tax string `json:"tax,omitempty"`
 
+	// TaxLife is the life ONE creature pays to attack this target
+	// (#5869): 2 against a seat under Sivitri, Dragon Master's +1. A
+	// declaration of n attackers pays n times as much, after Tax's mana,
+	// and only from a life total at least that large (CR 119.4). Absent
+	// when attacking it costs no life.
+	TaxLife int `json:"tax_life,omitempty"`
+
 	// TaxPhyrexian is how many symbols in ONE creature's `tax` carry
 	// CR 107.4f's "or 2 life" option — 1 for Norn's Annex's {W/P}. A
 	// declaration of n attackers at this target prints n times as many
@@ -10055,10 +10062,11 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 			ID:   t.ID.String(),
 		}
 		if probe != uuid.Nil {
-			row.Tax = g.PriceAttackDeclarationForEffect([]game.AttackDeclaration{{
+			price := g.PriceAttackDeclarationForEffect([]game.AttackDeclaration{{
 				Attacker: probe,
 				Target:   t.ID,
-			}}).Cost
+			}})
+			row.Tax, row.TaxLife = price.Cost, price.Life
 			row.TaxPhyrexian, row.TaxPhyrexianGranted = phyrexianSymbolsIn(g, active.ID, row.Tax)
 		}
 		// #1533: the CR 508.1c room left under any attack limit.

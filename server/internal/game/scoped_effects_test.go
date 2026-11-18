@@ -419,6 +419,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,
+		// #5869: its life-priced sibling, same file.
+		ModAttackTaxLife: true,
 		// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt. Its
 		// cases are in turn_skip_test.go.
 		ModSkipTurns: true,

@@ -65,7 +65,9 @@
   import {
     attackLimitOn,
     attackLimitSentence,
+    attackPriceText,
     attackTaxLabelForCount,
+    attackTaxLifeOn,
     attackTaxOn,
     planAttackAll,
     eligibleAt,
@@ -149,6 +151,9 @@
   const defender = $derived(plan.defenders.find((s) => s.id === defenderSeatID) ?? null);
   const defenderName = $derived(defender ? defender.display_name || defender.name : "");
   const each = $derived(defenderSeatID ? attackTaxOn(view, defenderSeatID) : "");
+  // #5869: the life one creature pays (Sivitri, Dragon Master's +1).
+  const eachLife = $derived(defenderSeatID ? attackTaxLifeOn(view, defenderSeatID) : 0);
+  const eachText = $derived(attackPriceText(each, eachLife));
   // #1533: the most creatures this declaration may add at the defender
   // under a count limit. null means no limit applies, or the server
   // does not publish one; the server still refuses an over-full pick
@@ -323,10 +328,10 @@
       </p>
     {/if}
     <p class="prompt-hint">
-      {#if each}
-        Attacking {defenderName} costs {each} per creature. Pick which ones to send.
-        {#if attackTaxLabelForCount(each, liveSelected.length)}
-          <strong>{attackTaxLabelForCount(each, liveSelected.length)}</strong> for the
+      {#if eachText}
+        Attacking {defenderName} costs {eachText} per creature. Pick which ones to send.
+        {#if attackTaxLabelForCount(each, liveSelected.length, eachLife)}
+          <strong>{attackTaxLabelForCount(each, liveSelected.length, eachLife)}</strong> for the
           {liveSelected.length} checked below.
         {/if}
       {:else}

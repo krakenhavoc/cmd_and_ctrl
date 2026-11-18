@@ -63,3 +63,50 @@ func TestAnUnaffordableAnyDefenderTaxHidesEveryAttack(t *testing.T) {
 		}
 	}
 }
+
+// TestALifeTaxIsOfferedAtItsPriceAndHiddenWhenUnpayable — #5869:
+// Sivitri's "pays 2 life for each of those creatures" is a move cost in
+// life, and an attack the seat's life total can't pay is not offered
+// (CR 119.4).
+func TestALifeTaxIsOfferedAtItsPriceAndHiddenWhenUnpayable(t *testing.T) {
+	for _, tc := range []struct {
+		life    int
+		offered bool
+	}{{2, true}, {1, false}} {
+		g := newTable(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		clearHand(me)
+		freshCreature(g, me, "Bear")
+		var defenders []uuid.UUID
+		for _, p := range g.Seats {
+			if p.ID != me.ID {
+				defenders = append(defenders, p.ID)
+			}
+		}
+		g.WithWriteLock(func() {
+			for _, d := range defenders {
+				g.AttackTaxLifeForEffect(uuid.Nil, d, 2, game.AttackTaxOnPlayerOrPlaneswalkers, game.Duration{}, "Sivitri test")
+			}
+		})
+		advanceTo(t, g, game.StepDeclareAttackers)
+		me.Life = tc.life
+
+		moves := legal.EnumerateFor(g, me.ID)
+		n := 0
+		for _, m := range moves {
+			if m.Kind != legal.KindAttack {
+				continue
+			}
+			n++
+			if m.Cost == nil || m.Cost.Life != 2 || m.Cost.Mana != "" {
+				t.Errorf("life %d: attack %q costs %#v, want 2 life", tc.life, m.Label, m.Cost)
+			}
+		}
+		if tc.offered && n == 0 {
+			t.Errorf("life %d: no attack offered: %v", tc.life, labels(moves))
+		}
+		if !tc.offered && n != 0 {
+			t.Errorf("life %d: %d unpayable attacks offered", tc.life, n)
+		}
+	}
+}
