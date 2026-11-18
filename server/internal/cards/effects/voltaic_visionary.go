@@ -32,7 +32,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:        exileLabel,
-			Purpose:      game.Purpose{Answers: game.AnswerValue},
 			Cost:         TapCost(),
 			SorcerySpeed: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {
