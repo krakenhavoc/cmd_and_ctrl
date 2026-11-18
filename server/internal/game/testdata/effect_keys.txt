@@ -2616,6 +2616,7 @@ tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
+tail cleric-class/gain-life-equal-to-toughness
 tail cmdr-b9/gain-haste-until-eot
 tail cmdr-b9/then-proliferate
 tail cmdr2-b03/shuffle-rest-into-library
