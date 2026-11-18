@@ -393,6 +393,7 @@ body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
+body stensia-uprising/damage
 body stitched-assistant/scry-draw
 body stolen-uniform/unattach-the-equipment
 body storm/the-spell-just-cast
@@ -1352,6 +1353,7 @@ confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
 confirm confirm/ill-timed-explosion-discard
+confirm confirm/imposing-grandeur-may-wheel
 confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/innocuous-researcher-untap
 confirm confirm/invocation-of-the-founders-copy
@@ -1433,6 +1435,7 @@ confirm confirm/social-snub-copy
 confirm confirm/spm-cheering-crowd
 confirm confirm/staff-room-face-up-or-counter
 confirm confirm/star-athlete-sacrifice-or-damage
+confirm confirm/stensia-uprising-sacrifice
 confirm confirm/stromgald-spy-reveal-hand
 confirm confirm/sunfire-torch-sacrifice
 confirm confirm/superior-foes-exile-top
@@ -1491,6 +1494,7 @@ drawinstead dredge-3
 drawinstead dredge-4
 drawinstead dredge-5
 drawinstead dredge-6
+drawinstead eruth-tormented-prophet
 drawinstead forbidden-crypt
 drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
@@ -2325,6 +2329,7 @@ steps then-steps/glint-sleeve-siphoner-draw-and-lose
 steps then-steps/gluntch-the-bestower-counters
 steps then-steps/gluntch-the-bestower-draw
 steps then-steps/hunted-by-the-family-copy
+steps then-steps/imposing-grandeur-wheel
 steps then-steps/kor-cause-of-vengeance-draw-then-pump
 steps then-steps/lieutenants-of-the-guard-votes
 steps then-steps/locke-treasure-hunter-payoff
@@ -2497,6 +2502,8 @@ tail carrion-cruiser/after-mill
 tail carrion-locust/lose-life
 tail cease/gain-and-draw
 tail cemetery-tampering/offer-the-exiled-card
+tail chandra-dressed-to-kill/cast-if-red
+tail chandra-dressed-to-kill/ultimate
 tail chandra-flameshaper/choose-exiled
 tail chandra-hopes-beacon/grant-cast
 tail chaotic-transformation/exiled
@@ -2708,6 +2715,7 @@ tail ensign-pavel-chekov/after-exile
 tail ensnared-by-the-mara/after-mill
 tail ensnared-by-the-mara/after-mill-2
 tail erica-ortegas/return-a-land-at-end
+tail eruth-tormented-prophet/then-draw
 tail esper-origins/after-surveil
 tail esper-terra/copied
 tail espers-to-magicite/copy-a-creature-exiled
@@ -3337,6 +3345,7 @@ tail then/crystal-spray-draw
 tail then/dance-with-calamity-exiled
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
+tail then/demonic-bargain-search
 tail then/demonic-consultation-named
 tail then/demonic-covenant-mill
 tail then/demonic-covenant-milled
