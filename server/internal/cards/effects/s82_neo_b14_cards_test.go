@@ -96,7 +96,8 @@ func TestS82NeoB14WretchedSorrowDamagesAndGainsXForTheDiscountedPrice(t *testing
 func TestS82NeoB14WretchedSorrowHitsAPlaneswalkerAndRefusesALandOrPlayer(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	walker := apcB1Push(g, opp.ID, "Walker", "Legendary Planeswalker — Test", "", "{3}", 0, 0)
+	walker := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Walker", TypeLine: "Legendary Planeswalker — Test",
+		Counters: map[string]int{"loyalty": 4}, Owner: opp.ID, Controller: opp.ID})
 	land := apcB1Push(g, opp.ID, "Plains", "Basic Land — Plains", "", "", 0, 0)
 	advanceToMain(t, g)
 	neoMana(me, "B", "B", "B", "B", "B", "B")
@@ -203,7 +204,9 @@ func TestS82NeoB14RecklessJoyExilesXAndLetsYouPlayTwoOfThem(t *testing.T) {
 	me := g.Seats[0]
 	var top []uuid.UUID
 	for _, n := range []string{"Card A", "Card B", "Card C"} {
-		top = append(top, pushLibraryCardForTest(me, game.Card{Name: n, TypeLine: "Creature — Bear", ManaCost: "", Power: 1, Toughness: 1}))
+		id := uuid.New()
+		me.Library.PushTop(game.Card{InstanceID: id, Name: n, TypeLine: "Creature — Bear", Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
+		top = append(top, id)
 	}
 	advanceToMain(t, g)
 	neoMana(me, "R", "R", "R", "R")
