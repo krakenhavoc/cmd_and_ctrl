@@ -1081,6 +1081,15 @@ type TargetSpec struct {
 	// candidate the engine accepts.
 	ManaValueEqualsXPlus int
 
+	// ManaValueAtMostXPlus is the offset of "with mana value less than X"
+	// (March of Burgeoning Life): with ManaValueAtMostX set, a candidate
+	// admits at mana value X + N or less, so -1 is "less than X". Zero is
+	// plain "X or less". Additive within the snapshot version: it is only
+	// ever set by a catalog clause. The view still ships the clause as
+	// "X or less", a superset a client narrowing by X never over-hides;
+	// the announce check and the CR 608.2b re-check are the engine's.
+	ManaValueAtMostXPlus int
+
 	// PowerAtMostX and ToughnessAtMostX are "with power X or less" and
 	// "with toughness X or less" (ADR 0109 §9, #1842): the same
 	// announced-X bound as ManaValueAtMostX, on another statistic.
@@ -1265,6 +1274,15 @@ func (s *TargetSpec) WithTotal(r *TargetTotal) *TargetSpec {
 // (#1559). Mutates and returns the receiver, as WithCount does.
 func (s *TargetSpec) WithManaValueAtMostX() *TargetSpec {
 	s.ManaValueAtMostX = true
+	return s
+}
+
+// WithManaValueLessThanX marks the clause "with mana value less than X":
+// "X or less" shifted down by one (ManaValueAtMostXPlus). Mutates and
+// returns the receiver, as WithManaValueAtMostX does.
+func (s *TargetSpec) WithManaValueLessThanX() *TargetSpec {
+	s.ManaValueAtMostX = true
+	s.ManaValueAtMostXPlus = -1
 	return s
 }
 
