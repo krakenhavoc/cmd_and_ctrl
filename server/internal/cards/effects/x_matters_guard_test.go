@@ -55,6 +55,7 @@ import (
 // or a noncreature permanent — is a rider, and so is a fixed clause
 // that happens whatever X is.
 var xMattersAllowlist = map[string]string{
+	"lantern_flare.go Lantern Flare":                              "X exists only in the cleave cost: hard-cast it has no X (the creatures you control) and must stay on the list, which a declared XMatters floor of 1 would hide from the bot",
 	"kellan_the_kid.go Kellan, the Kid":                           "no X cost of its own: its trigger reads the triggering spell's XValue for that spell's mana value (CR 202.3e), not an X Kellan announced",
 	"lost_in_the_maze.go Lost in the Maze":                        "X is the target count of its enters trigger (CountFromX on an XFromCast row), which the scan cannot see; at X=0 the enchantment taps nothing",
 	"benevolent_hydra.go Benevolent Hydra":                        "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",

@@ -12,6 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // target; one that is no longer a player (it left the game in response)
 // does nothing, and the caster gains nothing either — the sentence is one
 // instruction about that player (CR 608.2b).
+//
+//nolint:unparam // the printed life amount, kept at the call site
 func targetPlayerLosesLifeYouGain(n int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {

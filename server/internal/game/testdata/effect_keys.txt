@@ -1064,6 +1064,7 @@ choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
 choose choose-cards/silvan-reveler-discarded
+choose choose-cards/skywarp-skaab-exile
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/smugglers-surprise-put-creatures
 choose choose-cards/smugglers-surprise-take-milled
@@ -1092,6 +1093,7 @@ choose choose-cards/std-b40-exile-from-hand
 choose choose-cards/steamcore-scholar-discard
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/strategic-betrayal-exile
+choose choose-cards/strefan-maurer-progenitor-put
 choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
 choose choose-cards/summoners-grimoire-put
@@ -1322,6 +1324,8 @@ confirm confirm/ambulatory-edifice-pay-life
 confirm confirm/another-chance-mill
 confirm confirm/arc-of-fortune-embark
 confirm confirm/arc-of-fortune-may-wheel
+confirm confirm/archghoul-of-thraben-take
+confirm confirm/archghoul-of-thraben-to-graveyard
 confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/awaken-the-sleeper-destroy-equipment
@@ -1804,6 +1808,7 @@ option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
 option option-pick/steel-seraph-keyword
 option option-pick/step-between-worlds-shuffle
+option option-pick/strefan-maurer-progenitor-attacks
 option option-pick/tap-or-untap-that-permanent
 option option-pick/tasigur-the-golden-fang-opponent
 option option-pick/teferis-realm-phase-out
@@ -1926,6 +1931,7 @@ payunless pay-unless/energy-sacrifice-this
 payunless pay-unless/era-of-innovation-get-energy
 payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
+payunless pay-unless/estwald-shieldbasher-indestructible
 payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
 payunless pay-unless/eye-of-vecna-draw-and-lose
@@ -1983,6 +1989,7 @@ payunless pay-unless/lorthos-tap-and-freeze
 payunless pay-unless/magmatic-sprinter-oil
 payunless pay-unless/mana-vault-untap
 payunless pay-unless/marchesa-dealer-of-death-look
+payunless pay-unless/markov-purifier-draw
 payunless pay-unless/marooned-tap-enchanted-permanent
 payunless pay-unless/master-of-death-return
 payunless pay-unless/matt-murdock-justice-seeker-counter
@@ -2149,6 +2156,7 @@ run prompt-run/awaken-the-maelstrom-copy
 run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
+run prompt-run/bloodcrazed-socialite-pump
 run prompt-run/boilerbilges-ripper-sacrifice
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
@@ -2307,9 +2315,11 @@ run prompt-run/smallpox-sacrifice-creatures
 run prompt-run/smallpox-sacrifice-lands
 run prompt-run/social-snub-drain
 run prompt-run/sorin-imperious-bloodlord-sacrifice
+run prompt-run/spiked-ripsaw-trample
 run prompt-run/spirit-sisters-call-return
 run prompt-run/springbloom-druid-search
 run prompt-run/ss-botany-bay-opponents-exile
+run prompt-run/strefan-maurer-progenitor-put
 run prompt-run/summon-valefor-sonic-wings
 run prompt-run/sunder-the-gateway-transform
 run prompt-run/suppression-ray-stun
@@ -2349,6 +2359,7 @@ run prompt-run/vile-mutilator-sacrifice-creatures
 run prompt-run/vivien-on-the-hunt-sacrificed
 run prompt-run/vonas-hunger-sacrifice
 run prompt-run/way-of-the-deathbringer-beast
+run prompt-run/wedding-security-counter-draw
 run prompt-run/west-wind-avatar-gain-3
 run prompt-run/white-plume-adventurer-untap
 run prompt-run/wilhelt-the-rotcleaver-draw
@@ -2626,6 +2637,7 @@ tail courier-of-comestibles/food-unless-found
 tail crabomination/cast-from-exiled
 tail crypt-incursion/gain-3-per-exiled
 tail cultivate/basic-land-to-hand
+tail cultivator-colossus/draw-and-repeat
 tail cumulative-upkeep/arctic-wolves-cumulative-upkeep-2
 tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cumulative-upkeep-1
@@ -2802,6 +2814,7 @@ tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
 tail exile-then/mysterious-limousine-return-others
+tail exile-then/skywarp-skaab-draw
 tail exile-then/trystan-penitent-culler
 tail exile-then/venom-deadly-devourer-counters
 tail exile-until-nonland/grant-cast
@@ -2893,6 +2906,7 @@ tail herald-of-amity/after-exile
 tail herigast-erupting-nullkite/draw-three
 tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
+tail hiveheart-shaman/insect-created
 tail hoarders-greed/draw-two
 tail hoarders-greed/repeat-if-won
 tail hoarding-broodlord/cast-permission
@@ -2953,6 +2967,7 @@ tail krenko-tin-street-kingpin/goblins
 tail krosan-verge/plains-search
 tail lady-loki/damage-then-cast
 tail lady-loki/spell-exiled
+tail lantern-of-the-lost/draw
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
 tail level-up/then-draw-if-power-10
@@ -3076,6 +3091,7 @@ tail okiba-salvage/counters
 tail oko-shadowmoor-scion/after-mill
 tail oko-shadowmoor-scion/emblem-type
 tail old-hob/token-haste-and-destroy
+tail old-rutstein/after-mill
 tail oona-queen-of-the-fae/after-mill
 tail ormos-archive-keeper/then-draw
 tail ostrich-horse/after-mill
@@ -3177,6 +3193,7 @@ tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
+tail sacrificed-one/prompt-run/bloodcrazed-socialite-pump
 tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
@@ -3230,7 +3247,9 @@ tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
 tail sacrificed-one/prompt-run/shrapnel-slinger-sacrifice
 tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
+tail sacrificed-one/prompt-run/spiked-ripsaw-trample
 tail sacrificed-one/prompt-run/spirit-sisters-call-return
+tail sacrificed-one/prompt-run/strefan-maurer-progenitor-put
 tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/terror-ballista-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
@@ -3243,6 +3262,7 @@ tail sacrificed-one/prompt-run/unscrupulous-contractor-sacrifice
 tail sacrificed-one/prompt-run/vampire-gourmand-draw-unblockable
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
 tail sacrificed-one/prompt-run/vivien-on-the-hunt-sacrificed
+tail sacrificed-one/prompt-run/wedding-security-counter-draw
 tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
@@ -3307,6 +3327,7 @@ tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
 tail stockpiling-celebrant/scry
 tail strago-and-relm/after-mill
+tail strefan-maurer-progenitor/indestructible
 tail study-the-classics/double
 tail study-the-classics/gain
 tail sudden-salvation/draw

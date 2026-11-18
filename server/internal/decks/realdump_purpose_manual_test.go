@@ -186,6 +186,9 @@ var reviewedNotAWipe = map[string]string{
 	// #5482: one of six modes, chosen three at a time on an enters-or-attacks trigger.
 	"Mishra, Lost to Phyrexia": "its -1/-1 to opposing creatures is one of six modes, three chosen each time: a mode of a trigger, not a board wipe",
 
+	// #5495: VOW batch 6.
+	"Lantern of the Lost": "exiles the cards in every graveyard and draws a card: it touches no permanent",
+
 	// #5493: NEO batch 18.
 	"Behold the Unspeakable // Vision of the Unspeakable": "chapter I gives opposing creatures -2/-0 until your next turn, which removes nothing",
 }
