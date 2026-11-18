@@ -272,7 +272,7 @@ func TestS82SncB21ErrantCopiesOnlyASpellThatWasNotCast(t *testing.T) {
 	advanceToMain(t, g)
 	errant := pushCatalogPermanent(g, me.ID, "Errant, Street Artist", "Legendary Creature — Human Rogue", sncErrantOracle, false)
 	bolt := sncBolt(g, me, "{R}")
-	floatMana(t, g, me, "{R}{1}{U}{C}{C}")
+	floatMana(t, g, me, "{R}{U}{C}")
 	if err := sncCastBolt(t, g, me, bolt, game.CastSpellParams{}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
@@ -335,15 +335,26 @@ func sncSchemeTable(t *testing.T, topType string) (g *game.Game, me, opp *game.P
 // and stops at whatever that raises.
 func sncResolveScheme(t *testing.T, g *game.Game, me *game.Player, yes bool) {
 	t.Helper()
-	for i := 0; i < 16 && latestConfirmFor(g, me.ID) == nil; i++ {
-		if err := g.PassPriority(); err != nil {
+	answer := func() bool {
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == me.ID {
+				if err := g.ResolveTriggerPrompt(c.ID, me.ID, yes); err != nil {
+					t.Fatalf("ResolveTriggerPrompt: %v", err)
+				}
+				return true
+			}
+		}
+		return false
+	}
+	for i := 0; i < 16; i++ {
+		if answer() {
+			return
+		}
+		if err := g.PassPriority(); err != nil && !answer() {
 			t.Fatalf("PassPriority: %v", err)
 		}
 	}
-	if latestConfirmFor(g, me.ID) == nil {
-		t.Fatal("the Scheme never asked whether to reveal")
-	}
-	answerConfirmFor(t, g, me, yes)
+	t.Fatal("the Scheme never asked whether to reveal")
 }
 
 func TestS82SncB21SwindlersSchemeCountersAndOffersTheSharedTypeCard(t *testing.T) {
