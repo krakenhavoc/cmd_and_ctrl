@@ -3,8 +3,6 @@ package effects
 import (
 	"slices"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -55,7 +53,7 @@ func init() {
 
 func raffOfferTap(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
-	candidates := raffUntappedCreatures(g, controller)
+	candidates := untappedCreaturesControlledBy(g, controller)
 	if len(candidates) < 2 {
 		return nil
 	}
@@ -80,7 +78,7 @@ var raffTap = askedPickRule("choose-cards/raff-weatherlight-stalwart-tap-two",
 		if len(r.Picked) != 2 {
 			return nil
 		}
-		still := raffUntappedCreatures(ctx.Game, ctx.Controller())
+		still := untappedCreaturesControlledBy(ctx.Game, ctx.Controller())
 		tapped := 0
 		for _, id := range r.Picked {
 			if !slices.Contains(still, id) {
@@ -96,14 +94,3 @@ var raffTap = askedPickRule("choose-cards/raff-weatherlight-stalwart-tap-two",
 		}
 		return DrawCards{N: 1}.Apply(ctx)
 	})
-
-// raffUntappedCreatures is every untapped creature `controller` controls.
-func raffUntappedCreatures(g *game.Game, controller uuid.UUID) []uuid.UUID {
-	var out []uuid.UUID
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && !c.Tapped && c.IsCreature() {
-			out = append(out, c.InstanceID)
-		}
-	}
-	return out
-}

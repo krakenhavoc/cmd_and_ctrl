@@ -44,18 +44,8 @@ func init() {
 	})
 }
 
-func kittKantoUntapped(g *game.Game, controller uuid.UUID) []uuid.UUID {
-	var out []uuid.UUID
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && !c.Tapped && c.IsCreature() {
-			out = append(out, c.InstanceID)
-		}
-	}
-	return out
-}
-
 func kittKantoAsk(g *game.Game, item *game.StackItem) error {
-	candidates := kittKantoUntapped(g, item.Controller)
+	candidates := untappedCreaturesControlledBy(g, item.Controller)
 	if len(candidates) < 2 || !onBattlefield(g, item.SourceCardID) {
 		return nil
 	}
@@ -82,7 +72,7 @@ var kittKantoTap = askedPickRule("choose-cards/kitt-kanto-tap-two",
 		if len(r.Picked) != 2 {
 			return nil
 		}
-		still := kittKantoUntapped(ctx.Game, ctx.Controller())
+		still := untappedCreaturesControlledBy(ctx.Game, ctx.Controller())
 		tapped := 0
 		for _, id := range r.Picked {
 			if !slices.Contains(still, id) {
