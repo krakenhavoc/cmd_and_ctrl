@@ -244,7 +244,10 @@ func TestNeoB08AssassinsInkDestroysCreatureOrPlaneswalker(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	victim := b12Creature(g, opp.ID, "Victim", "Creature — Bear", 2, 2)
-	walker := b12Permanent(g, opp.ID, "Walker", "Planeswalker — Test")
+	walker := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Walker", TypeLine: "Planeswalker — Test",
+		Counters: map[string]int{game.CounterLoyalty: 3}, Owner: opp.ID, Controller: opp.ID,
+	})
 	land := b12Permanent(g, opp.ID, "Island", "Basic Land — Island")
 	if _, err := neoB08Cast(t, g, me, "Assassin's Ink", "Instant", "", neoB08Ink, game.CastSpellParams{Targets: cardRefs(land), Strict: true}); err == nil {
 		t.Error("a land was a legal target")
