@@ -61,7 +61,6 @@ func init() {
 			Label:        "{X}{U}{U}{B}{B}, Exile X creature cards from your graveyard: Transform Ludevic. X can't be 0. Activate only as a sorcery.",
 			Cost:         Plus(ManaCost("{X}{U}{U}{B}{B}"), MinX(1), exile),
 			SorcerySpeed: true,
-			Purpose:      game.Purpose{Answers: game.AnswerValue},
 			Effect:       Do(TransformThis{}),
 		}},
 	})

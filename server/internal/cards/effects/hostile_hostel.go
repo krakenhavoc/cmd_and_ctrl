@@ -53,10 +53,8 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Sacrifice a creature: Put a soul counter on this land. Then if there are three or more soul counters on it, remove those counters, transform it, then untap it. Activate only as a sorcery.",
-			Cost:  Plus(ManaCost("{1}"), TapCost(), SacrificeACreature()),
-			// A sacrifice outlet that feeds a transformation.
-			Purpose:      game.Purpose{Answers: game.AnswerValue},
+			Label:        "{1}, {T}, Sacrifice a creature: Put a soul counter on this land. Then if there are three or more soul counters on it, remove those counters, transform it, then untap it. Activate only as a sorcery.",
+			Cost:         Plus(ManaCost("{1}"), TapCost(), SacrificeACreature()),
 			SorcerySpeed: true,
 			Effect:       hostileHostelSoulCounter,
 		}},
