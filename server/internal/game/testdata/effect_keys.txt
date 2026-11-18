@@ -447,6 +447,7 @@ body the-wrath-of-khan/gain-control-of-that-creature
 body thorin-mountain-king/damage
 body thousand-moons-crackshot/tap
 body thunder-of-unity/drain
+body tiger-tribe-hunter/damage
 body time-to-feed/gain-three-life
 body tip-the-scales/minus
 body tolarian-kraken/tap-or-untap
@@ -2314,6 +2315,7 @@ run prompt-run/the-legend-of-yangchen-exile
 run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
 run prompt-run/throne-of-the-grim-captain-put
+run prompt-run/tiger-tribe-hunter-sacrifice
 run prompt-run/time-wipe-return-and-destroy
 run prompt-run/tip-the-scales-sacrifice
 run prompt-run/titan-of-industry-shield
@@ -3216,6 +3218,7 @@ tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
+tail sacrificed-one/prompt-run/tiger-tribe-hunter-sacrifice
 tail sacrificed-one/prompt-run/tip-the-scales-sacrifice
 tail sacrificed-one/prompt-run/undercity-eliminator-sacrificed
 tail sacrificed-one/prompt-run/unscrupulous-contractor-sacrifice
