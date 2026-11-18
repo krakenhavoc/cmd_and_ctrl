@@ -133,6 +133,7 @@ body dmu-b07/draw-a-card
 body dont-move/destroy-the-tapped-creature
 body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
+body dovin-grand-arbiter/loyalty-counter
 body dr-leonard-mccoy/return-at-next-end-step
 body dr-leonard-mccoy/when-it-dies-this-turn
 body dragonhawk-fates-tempest/damage-per-exiled
@@ -1404,6 +1405,7 @@ condition cast/you-next-cast-from-hand
 condition cast/you-next-cast-x-in-mana-cost
 condition caveat-h2/vizkopa-guildmage-you-gain-life
 condition clone-saga/named-creature-combat-damage-to-player
+condition combat-damage/dovin-grand-arbiter-creature-connects
 condition combat/each-attacker-not-blocked
 condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-dealt-combat-damage
@@ -1811,7 +1813,10 @@ option option-pick/aven-courier-counter
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/ballroom-brawlers-keyword
 option option-pick/bellowing-mauler-lose-or-sacrifice
+option option-pick/benevolent-offering-life
+option option-pick/benevolent-offering-tokens
 option option-pick/blank-blank-rocketship-letter
+option option-pick/boreas-charger-search
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/bribe-taker-counter
 option option-pick/bucolic-ranch-top-card
@@ -3569,6 +3574,7 @@ tail tablet-of-discovery/after-mill
 tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
 tail tail/anzrags-rampage-exiled
+tail tail/boreas-charger-put
 tail tail/break-out-entered
 tail tail/deadly-cover-up-after-sweep
 tail tail/deadly-cover-up-draw
