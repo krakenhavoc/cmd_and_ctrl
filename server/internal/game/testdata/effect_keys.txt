@@ -2360,6 +2360,7 @@ run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
 run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
+run prompt-run/duneblast-destroy-the-rest
 run prompt-run/dusk-mangler-discard-and-life
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
