@@ -1904,6 +1904,7 @@ payunless pay-unless/lorthos-tap-and-freeze
 payunless pay-unless/magmatic-sprinter-oil
 payunless pay-unless/mana-vault-untap
 payunless pay-unless/marchesa-dealer-of-death-look
+payunless pay-unless/markov-purifier-draw
 payunless pay-unless/marooned-tap-enchanted-permanent
 payunless pay-unless/master-of-death-return
 payunless pay-unless/matt-murdock-justice-seeker-counter
@@ -2836,6 +2837,7 @@ tail krenko-tin-street-kingpin/goblins
 tail krosan-verge/plains-search
 tail lady-loki/damage-then-cast
 tail lady-loki/spell-exiled
+tail lantern-of-the-lost/draw
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
 tail level-up/then-draw-if-power-10

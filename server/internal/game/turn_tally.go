@@ -81,6 +81,12 @@ type PlayerTurnTally struct {
 	// It ends with the turn: "since your last turn" is
 	// Player.CombatDamagedSinceLastTurn (#5652, since_last_turn.go).
 	CombatDamageTaken int `json:"combatDamageTaken,omitempty"`
+	// DamageTaken is all the damage dealt TO this player this turn, combat
+	// or not, from any source (S82, Boarded Window's "if you were dealt 4 or
+	// more damage this turn"): damage actually dealt, so prevented damage is
+	// not counted, and infect damage still is. Read through
+	// Game.DamageTakenThisTurn. Additive within the snapshot schema.
+	DamageTaken int `json:"damageTaken,omitempty"`
 	// CardsDiscarded counts cards this player discarded (one event
 	// per card, CR 701.9a), whatever the discard's cause or eventual
 	// destination — a madness card exiled instead of binned, or one
@@ -1085,6 +1091,13 @@ func (g *Game) EnergyPaidOrLostThisTurn(playerID uuid.UUID) int {
 // by any source (PlayerTurnTally.CombatDamageTaken). Caller must hold g.mu.
 func (g *Game) CombatDamageTakenThisTurn(playerID uuid.UUID) int {
 	return g.TurnTally.Players[playerID].CombatDamageTaken
+}
+
+// DamageTakenThisTurn is all the damage, combat or not, dealt to playerID
+// this turn by any source (PlayerTurnTally.DamageTaken). Caller must hold
+// g.mu.
+func (g *Game) DamageTakenThisTurn(playerID uuid.UUID) int {
+	return g.TurnTally.Players[playerID].DamageTaken
 }
 
 // TurnTallyFor returns playerID's tally for the current turn (the
@@ -2186,6 +2199,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if lost := ev.DamageLifeLoss(); lost > 0 {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += lost })
 		}
+		g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.DamageTaken += ev.Amount })
 		if ev.Combat {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.CombatDamageTaken += ev.Amount })
 			// #5652: and the memory that outlives the turn.
