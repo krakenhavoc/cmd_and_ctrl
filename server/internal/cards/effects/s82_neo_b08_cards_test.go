@@ -249,9 +249,9 @@ func TestNeoB08AssassinsInkDestroysCreatureOrPlaneswalker(t *testing.T) {
 	if _, err := neoB08Cast(t, g, me, "Assassin's Ink", "Instant", "", neoB08Ink, game.CastSpellParams{Targets: cardRefs(land), Strict: true}); err == nil {
 		t.Error("a land was a legal target")
 	}
-	for _, id := range []uuid.UUID{victim, walker} {
+	for i, id := range []uuid.UUID{victim, walker} {
 		if _, err := neoB08Cast(t, g, me, "Assassin's Ink", "Instant", "", neoB08Ink, game.CastSpellParams{Targets: cardRefs(id), Strict: true}); err != nil {
-			t.Fatalf("cast: %v", err)
+			t.Fatalf("cast at target %d: %v", i, err)
 		}
 		passPriorityAroundTable(t, g)
 		if !opp.Graveyard.Contains(id) {
