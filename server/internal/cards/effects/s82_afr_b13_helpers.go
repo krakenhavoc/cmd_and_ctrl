@@ -8,29 +8,12 @@ import (
 
 // s82_afr_b13_helpers.go — shared helpers for AFR batch 13 (Warlock Class).
 
-// CondAnyCreatureDied is "if a creature died this turn" as an intervening-if
-// Condition, for InterveningIf and If: any player's creature, a token
-// included, read off the game-wide turn tally as the item resolves. The tally
-// only rises within a turn, so it declares a footprint condition the
-// trigger-independence check can argue (game.FootprintCondAnyCreatureDied).
-type CondAnyCreatureDied struct{}
-
-func (CondAnyCreatureDied) Holds(ctx *Context) bool {
-	return b11CreaturesDiedThisTurn(ctx.Game) > 0
-}
-
-func (CondAnyCreatureDied) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondAnyCreatureDied, 0), true
-}
-
 // AtYourEndStepIfAnyCreatureDied is "At the beginning of your end step, if a
 // creature died this turn, …": the intervening "if" is checked as the end
 // step begins and again as the trigger resolves (CR 603.4).
 func AtYourEndStepIfAnyCreatureDied(label string, effect Effect) game.TriggeredAbility {
 	return InterveningIf(CondAnyCreatureDied{},
-		On(game.EventBeginEndStep, AllOf(ByYou, func(_ game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
-			return b11CreaturesDiedThisTurn(g) > 0
-		}), label, effect))
+		On(game.EventBeginEndStep, AllOf(ByYou, s82AfrB07AnyCreatureDiedWhen), label, effect))
 }
 
 // BlocksAttackerThisCombat is "<Blocker> blocks <Attacker> this combat if

@@ -109,7 +109,8 @@ const (
 	// controller's control this turn (Faramir). The tally only rises.
 	FootprintCondCreatureDied FootprintCond = "creature_died"
 	// FootprintCondAnyCreatureDied: a creature died this turn under any
-	// controller (Bulette's "if a creature died this turn", S82). The
+	// controller (Bulette's and Warlock Class's "if a creature died this
+	// turn", S82). The
 	// table-wide tally only rises.
 	FootprintCondAnyCreatureDied FootprintCond = "any_creature_died"
 	// FootprintCondEquipmentOrSpacecraftEntered: an Equipment or
@@ -187,10 +188,6 @@ const (
 	// dealt excess damage this turn (Rith, Liberated Primeval, #5663).
 	// The tally only rises within a turn.
 	FootprintCondOpponentPermanentDealtExcessDamage FootprintCond = "opponent_permanent_dealt_excess_damage"
-	// FootprintCondAnyCreatureDied: a creature, any player's and a token
-	// included, died this turn (Warlock Class's "if a creature died this
-	// turn"). The game-wide tally only rises within a turn.
-	FootprintCondAnyCreatureDied FootprintCond = "any_creature_died"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -866,8 +863,6 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return !g.DealtCombatDamageSinceLastTurnForEffect(you)
 	case FootprintCondOpponentPermanentDealtExcessDamage:
 		return g.OpponentPermanentDealtExcessDamageThisTurn(you)
-	case FootprintCondAnyCreatureDied:
-		return g.TurnTally.CreaturesDied > 0
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:
