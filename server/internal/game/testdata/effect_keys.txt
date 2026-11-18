@@ -233,6 +233,7 @@ body invisible-woman/pump
 body iroh-tea-master/ally
 body itzquinth/dinosaur-bites
 body jace-reality-sculptor/attacker-gets-minus-five
+body jailbreak/return-equal-or-lesser
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
 body kishla-trawlers/return-to-hand
@@ -578,6 +579,7 @@ choose choose-cards/conspiracy-theorist-draw
 choose choose-cards/conspiracy-theorist-exile
 choose choose-cards/contagious-vorrac-take
 choose choose-cards/coral-atoll-return-an-untapped-island
+choose choose-cards/corpse-appraiser-take
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/cosmium-confluence-animate-cave
 choose choose-cards/court-of-ambition-discarded-3
@@ -680,6 +682,7 @@ choose choose-cards/green-goblin-revenant-draw
 choose choose-cards/green-suns-twilight-picked
 choose choose-cards/green-suns-twilight-placed
 choose choose-cards/green-suns-twilight-take
+choose choose-cards/grime-gorger-exile
 choose choose-cards/gurmag-nightwatch-rest
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
@@ -885,6 +888,7 @@ choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/necromantic-selection-pick
+choose choose-cards/next-of-kin-creature
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
@@ -2491,6 +2495,7 @@ tail connive/each
 tail connive/x
 tail copy-and-cast/cast-copies-then-exile-self
 tail cori-steel-cutter/offer-attach
+tail corpse-appraiser/look-at-top-three
 tail counter/double-if-grew
 tail counter/double-plus-one
 tail counter/draw-per-counter
@@ -2682,6 +2687,7 @@ tail exotic-pets/fish
 tail exploratory-mission/play-nonland-then-mana
 tail explore-the-underdark/take-the-initiative
 tail extraction-family/after-exile
+tail extraction-specialist/cant-attack-or-block
 tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
 tail fang-rokus-companion/spirit
@@ -2744,6 +2750,7 @@ tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
+tail grime-gorger/counter-per-exiled-card
 tail grubs-command/after-mill
 tail gul-dukat/drain-each-opponent
 tail hama/choose-from-graveyard
