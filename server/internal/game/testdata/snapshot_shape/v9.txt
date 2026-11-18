@@ -2113,6 +2113,7 @@ followUpParks[].then.permission.duration.Player	custom(uuid.UUID)
 followUpParks[].then.permission.duration.Source	custom(uuid.UUID)
 followUpParks[].then.permission.duration.SourceEnteredAt	number:int64
 followUpParks[].then.permission.duration.SourceEpoch	number:int
+followUpParks[].then.permission.eachPlayer	bool
 followUpParks[].then.permission.energyEqualToManaValue	bool
 followUpParks[].then.permission.entersTapped	bool
 followUpParks[].then.permission.entersWithCounterKind	string
@@ -2174,6 +2175,7 @@ followUpParks[].then.permission.followUp	string
 followUpParks[].then.permission.followUpObject	object
 followUpParks[].then.permission.followUpObject.epoch	number:int
 followUpParks[].then.permission.followUpObject.id	custom(uuid.UUID)
+followUpParks[].then.permission.followUpOnLandPlay	bool
 followUpParks[].then.permission.forage	bool
 followUpParks[].then.permission.gainsAbilities	array
 followUpParks[].then.permission.gainsAbilities[]	string
@@ -2785,6 +2787,7 @@ frozenEntries[].event.counterTail.then.permission.duration.Player	custom(uuid.UU
 frozenEntries[].event.counterTail.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.counterTail.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.counterTail.then.permission.eachPlayer	bool
 frozenEntries[].event.counterTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.counterTail.then.permission.entersTapped	bool
 frozenEntries[].event.counterTail.then.permission.entersWithCounterKind	string
@@ -2846,6 +2849,7 @@ frozenEntries[].event.counterTail.then.permission.followUp	string
 frozenEntries[].event.counterTail.then.permission.followUpObject	object
 frozenEntries[].event.counterTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.counterTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.counterTail.then.permission.forage	bool
 frozenEntries[].event.counterTail.then.permission.gainsAbilities	array
 frozenEntries[].event.counterTail.then.permission.gainsAbilities[]	string
@@ -3435,6 +3439,7 @@ frozenEntries[].event.damageTail.each.each.permission.duration.Player	custom(uui
 frozenEntries[].event.damageTail.each.each.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.damageTail.each.each.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.damageTail.each.each.permission.eachPlayer	bool
 frozenEntries[].event.damageTail.each.each.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.each.each.permission.entersTapped	bool
 frozenEntries[].event.damageTail.each.each.permission.entersWithCounterKind	string
@@ -3496,6 +3501,7 @@ frozenEntries[].event.damageTail.each.each.permission.followUp	string
 frozenEntries[].event.damageTail.each.each.permission.followUpObject	object
 frozenEntries[].event.damageTail.each.each.permission.followUpObject.epoch	number:int
 frozenEntries[].event.damageTail.each.each.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.permission.followUpOnLandPlay	bool
 frozenEntries[].event.damageTail.each.each.permission.forage	bool
 frozenEntries[].event.damageTail.each.each.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.each.permission.gainsAbilities[]	string
@@ -4076,6 +4082,7 @@ frozenEntries[].event.damageTail.each.then.permission.duration.Player	custom(uui
 frozenEntries[].event.damageTail.each.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.damageTail.each.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.damageTail.each.then.permission.eachPlayer	bool
 frozenEntries[].event.damageTail.each.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.each.then.permission.entersTapped	bool
 frozenEntries[].event.damageTail.each.then.permission.entersWithCounterKind	string
@@ -4137,6 +4144,7 @@ frozenEntries[].event.damageTail.each.then.permission.followUp	string
 frozenEntries[].event.damageTail.each.then.permission.followUpObject	object
 frozenEntries[].event.damageTail.each.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.damageTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.damageTail.each.then.permission.forage	bool
 frozenEntries[].event.damageTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.then.permission.gainsAbilities[]	string
@@ -4901,6 +4909,7 @@ frozenEntries[].event.damageTail.then.permission.duration.Player	custom(uuid.UUI
 frozenEntries[].event.damageTail.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.damageTail.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.damageTail.then.permission.eachPlayer	bool
 frozenEntries[].event.damageTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.then.permission.entersTapped	bool
 frozenEntries[].event.damageTail.then.permission.entersWithCounterKind	string
@@ -4962,6 +4971,7 @@ frozenEntries[].event.damageTail.then.permission.followUp	string
 frozenEntries[].event.damageTail.then.permission.followUpObject	object
 frozenEntries[].event.damageTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.damageTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.damageTail.then.permission.forage	bool
 frozenEntries[].event.damageTail.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.then.permission.gainsAbilities[]	string
@@ -5665,6 +5675,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.duration.Play
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.eachPlayer	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.entersWithCounterKind	string
@@ -5726,6 +5737,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUp	stri
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpObject	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.forage	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
@@ -6382,6 +6394,7 @@ frozenEntries[].event.entryTail.batch.then.permission.duration.Player	custom(uui
 frozenEntries[].event.entryTail.batch.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.entryTail.batch.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.entryTail.batch.then.permission.eachPlayer	bool
 frozenEntries[].event.entryTail.batch.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.batch.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.entersWithCounterKind	string
@@ -6443,6 +6456,7 @@ frozenEntries[].event.entryTail.batch.then.permission.followUp	string
 frozenEntries[].event.entryTail.batch.then.permission.followUpObject	object
 frozenEntries[].event.entryTail.batch.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.batch.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.entryTail.batch.then.permission.forage	bool
 frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities[]	string
@@ -7023,6 +7037,7 @@ frozenEntries[].event.entryTail.keyed.permission.duration.Player	custom(uuid.UUI
 frozenEntries[].event.entryTail.keyed.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.entryTail.keyed.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.entryTail.keyed.permission.eachPlayer	bool
 frozenEntries[].event.entryTail.keyed.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.keyed.permission.entersTapped	bool
 frozenEntries[].event.entryTail.keyed.permission.entersWithCounterKind	string
@@ -7084,6 +7099,7 @@ frozenEntries[].event.entryTail.keyed.permission.followUp	string
 frozenEntries[].event.entryTail.keyed.permission.followUpObject	object
 frozenEntries[].event.entryTail.keyed.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.keyed.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.permission.followUpOnLandPlay	bool
 frozenEntries[].event.entryTail.keyed.permission.forage	bool
 frozenEntries[].event.entryTail.keyed.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.keyed.permission.gainsAbilities[]	string
@@ -7697,6 +7713,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.duration.Player	
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.eachPlayer	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.entersTapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.entersWithCounterKind	string
@@ -7758,6 +7775,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUp	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpObject	object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpOnLandPlay	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.forage	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
@@ -8358,6 +8376,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.duration.Player	custom(uu
 frozenEntries[].event.entryTail.tokens.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.entryTail.tokens.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.eachPlayer	bool
 frozenEntries[].event.entryTail.tokens.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.tokens.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.entersWithCounterKind	string
@@ -8419,6 +8438,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.followUp	string
 frozenEntries[].event.entryTail.tokens.then.permission.followUpObject	object
 frozenEntries[].event.entryTail.tokens.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.entryTail.tokens.then.permission.forage	bool
 frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities[]	string
@@ -9447,6 +9467,7 @@ frozenEntries[].event.keywordActionTail.then.permission.duration.Player	custom(u
 frozenEntries[].event.keywordActionTail.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.keywordActionTail.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.keywordActionTail.then.permission.eachPlayer	bool
 frozenEntries[].event.keywordActionTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.keywordActionTail.then.permission.entersTapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.entersWithCounterKind	string
@@ -9508,6 +9529,7 @@ frozenEntries[].event.keywordActionTail.then.permission.followUp	string
 frozenEntries[].event.keywordActionTail.then.permission.followUpObject	object
 frozenEntries[].event.keywordActionTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.keywordActionTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.keywordActionTail.then.permission.forage	bool
 frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities	array
 frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities[]	string
@@ -10111,6 +10133,7 @@ frozenEntries[].event.lifeTail.each.then.permission.duration.Player	custom(uuid.
 frozenEntries[].event.lifeTail.each.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.lifeTail.each.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.lifeTail.each.then.permission.eachPlayer	bool
 frozenEntries[].event.lifeTail.each.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.lifeTail.each.then.permission.entersTapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.entersWithCounterKind	string
@@ -10172,6 +10195,7 @@ frozenEntries[].event.lifeTail.each.then.permission.followUp	string
 frozenEntries[].event.lifeTail.each.then.permission.followUpObject	object
 frozenEntries[].event.lifeTail.each.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.lifeTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.lifeTail.each.then.permission.forage	bool
 frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities[]	string
@@ -10755,6 +10779,7 @@ frozenEntries[].event.lifeTail.then.permission.duration.Player	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.lifeTail.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.lifeTail.then.permission.eachPlayer	bool
 frozenEntries[].event.lifeTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.lifeTail.then.permission.entersTapped	bool
 frozenEntries[].event.lifeTail.then.permission.entersWithCounterKind	string
@@ -10816,6 +10841,7 @@ frozenEntries[].event.lifeTail.then.permission.followUp	string
 frozenEntries[].event.lifeTail.then.permission.followUpObject	object
 frozenEntries[].event.lifeTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.lifeTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.lifeTail.then.permission.forage	bool
 frozenEntries[].event.lifeTail.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.then.permission.gainsAbilities[]	string
@@ -12251,6 +12277,7 @@ frozenEntries[].event.millTail.run.then.permission.duration.Player	custom(uuid.U
 frozenEntries[].event.millTail.run.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.millTail.run.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.millTail.run.then.permission.eachPlayer	bool
 frozenEntries[].event.millTail.run.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.millTail.run.then.permission.entersTapped	bool
 frozenEntries[].event.millTail.run.then.permission.entersWithCounterKind	string
@@ -12312,6 +12339,7 @@ frozenEntries[].event.millTail.run.then.permission.followUp	string
 frozenEntries[].event.millTail.run.then.permission.followUpObject	object
 frozenEntries[].event.millTail.run.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.millTail.run.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.millTail.run.then.permission.forage	bool
 frozenEntries[].event.millTail.run.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.run.then.permission.gainsAbilities[]	string
@@ -12890,6 +12918,7 @@ frozenEntries[].event.millTail.then.permission.duration.Player	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.millTail.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.millTail.then.permission.eachPlayer	bool
 frozenEntries[].event.millTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.millTail.then.permission.entersTapped	bool
 frozenEntries[].event.millTail.then.permission.entersWithCounterKind	string
@@ -12951,6 +12980,7 @@ frozenEntries[].event.millTail.then.permission.followUp	string
 frozenEntries[].event.millTail.then.permission.followUpObject	object
 frozenEntries[].event.millTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.millTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.millTail.then.permission.forage	bool
 frozenEntries[].event.millTail.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.then.permission.gainsAbilities[]	string
@@ -14536,6 +14566,7 @@ frozenEntries[].event.tokenTail.then.permission.duration.Player	custom(uuid.UUID
 frozenEntries[].event.tokenTail.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.tokenTail.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.tokenTail.then.permission.eachPlayer	bool
 frozenEntries[].event.tokenTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.tokenTail.then.permission.entersTapped	bool
 frozenEntries[].event.tokenTail.then.permission.entersWithCounterKind	string
@@ -14597,6 +14628,7 @@ frozenEntries[].event.tokenTail.then.permission.followUp	string
 frozenEntries[].event.tokenTail.then.permission.followUpObject	object
 frozenEntries[].event.tokenTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.tokenTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.tokenTail.then.permission.forage	bool
 frozenEntries[].event.tokenTail.then.permission.gainsAbilities	array
 frozenEntries[].event.tokenTail.then.permission.gainsAbilities[]	string
@@ -16484,6 +16516,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.duration.Player	c
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.eachPlayer	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.entersWithCounterKind	string
@@ -16545,6 +16578,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
@@ -17158,6 +17192,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.duration.Pl
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.eachPlayer	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.entersWithCounterKind	string
@@ -17219,6 +17254,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUp	st
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpOnLandPlay	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
@@ -17797,6 +17833,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.duration.Player	custom
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.eachPlayer	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.entersWithCounterKind	string
@@ -17858,6 +17895,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
@@ -18456,6 +18494,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.duration.Player	cust
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.eachPlayer	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.entersWithCounterKind	string
@@ -18517,6 +18556,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
@@ -19184,6 +19224,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.duration.Player	cus
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.duration.Source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.duration.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.duration.SourceEpoch	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.eachPlayer	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.entersWithCounterKind	string
@@ -19245,6 +19286,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
@@ -23125,6 +23167,7 @@ movesAwaitingTokens[].counterTail.then.permission.duration.Player	custom(uuid.UU
 movesAwaitingTokens[].counterTail.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].counterTail.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].counterTail.then.permission.eachPlayer	bool
 movesAwaitingTokens[].counterTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].counterTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].counterTail.then.permission.entersWithCounterKind	string
@@ -23186,6 +23229,7 @@ movesAwaitingTokens[].counterTail.then.permission.followUp	string
 movesAwaitingTokens[].counterTail.then.permission.followUpObject	object
 movesAwaitingTokens[].counterTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].counterTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].counterTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].counterTail.then.permission.forage	bool
 movesAwaitingTokens[].counterTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].counterTail.then.permission.gainsAbilities[]	string
@@ -23775,6 +23819,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.duration.Player	custom(uui
 movesAwaitingTokens[].damageTail.each.each.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].damageTail.each.each.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].damageTail.each.each.permission.eachPlayer	bool
 movesAwaitingTokens[].damageTail.each.each.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].damageTail.each.each.permission.entersTapped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.entersWithCounterKind	string
@@ -23836,6 +23881,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.followUp	string
 movesAwaitingTokens[].damageTail.each.each.permission.followUpObject	object
 movesAwaitingTokens[].damageTail.each.each.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.each.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].damageTail.each.each.permission.forage	bool
 movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities[]	string
@@ -24416,6 +24462,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.duration.Player	custom(uui
 movesAwaitingTokens[].damageTail.each.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].damageTail.each.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].damageTail.each.then.permission.eachPlayer	bool
 movesAwaitingTokens[].damageTail.each.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].damageTail.each.then.permission.entersTapped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.entersWithCounterKind	string
@@ -24477,6 +24524,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.followUp	string
 movesAwaitingTokens[].damageTail.each.then.permission.followUpObject	object
 movesAwaitingTokens[].damageTail.each.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].damageTail.each.then.permission.forage	bool
 movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities[]	string
@@ -25241,6 +25289,7 @@ movesAwaitingTokens[].damageTail.then.permission.duration.Player	custom(uuid.UUI
 movesAwaitingTokens[].damageTail.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].damageTail.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].damageTail.then.permission.eachPlayer	bool
 movesAwaitingTokens[].damageTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].damageTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].damageTail.then.permission.entersWithCounterKind	string
@@ -25302,6 +25351,7 @@ movesAwaitingTokens[].damageTail.then.permission.followUp	string
 movesAwaitingTokens[].damageTail.then.permission.followUpObject	object
 movesAwaitingTokens[].damageTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].damageTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].damageTail.then.permission.forage	bool
 movesAwaitingTokens[].damageTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.then.permission.gainsAbilities[]	string
@@ -26005,6 +26055,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.duration.Play
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.eachPlayer	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.entersWithCounterKind	string
@@ -26066,6 +26117,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUp	stri
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
@@ -26722,6 +26774,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.duration.Player	custom(uui
 movesAwaitingTokens[].entryTail.batch.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].entryTail.batch.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].entryTail.batch.then.permission.eachPlayer	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.entersWithCounterKind	string
@@ -26783,6 +26836,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.followUp	string
 movesAwaitingTokens[].entryTail.batch.then.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.batch.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities[]	string
@@ -27363,6 +27417,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.duration.Player	custom(uuid.UUI
 movesAwaitingTokens[].entryTail.keyed.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].entryTail.keyed.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].entryTail.keyed.permission.eachPlayer	bool
 movesAwaitingTokens[].entryTail.keyed.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.keyed.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.entersWithCounterKind	string
@@ -27424,6 +27479,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.followUp	string
 movesAwaitingTokens[].entryTail.keyed.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.keyed.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.keyed.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].entryTail.keyed.permission.forage	bool
 movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities[]	string
@@ -28037,6 +28093,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.duration.Player	
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.eachPlayer	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.entersWithCounterKind	string
@@ -28098,6 +28155,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUp	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.forage	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
@@ -28698,6 +28756,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.duration.Player	custom(uu
 movesAwaitingTokens[].entryTail.tokens.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].entryTail.tokens.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].entryTail.tokens.then.permission.eachPlayer	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.entersWithCounterKind	string
@@ -28759,6 +28818,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.followUp	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.tokens.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities[]	string
@@ -29787,6 +29847,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.duration.Player	custom(u
 movesAwaitingTokens[].keywordActionTail.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].keywordActionTail.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].keywordActionTail.then.permission.eachPlayer	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.entersWithCounterKind	string
@@ -29848,6 +29909,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.followUp	string
 movesAwaitingTokens[].keywordActionTail.then.permission.followUpObject	object
 movesAwaitingTokens[].keywordActionTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.forage	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities[]	string
@@ -30451,6 +30513,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.duration.Player	custom(uuid.
 movesAwaitingTokens[].lifeTail.each.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].lifeTail.each.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].lifeTail.each.then.permission.eachPlayer	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.entersTapped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.entersWithCounterKind	string
@@ -30512,6 +30575,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.followUp	string
 movesAwaitingTokens[].lifeTail.each.then.permission.followUpObject	object
 movesAwaitingTokens[].lifeTail.each.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.each.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.forage	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities[]	string
@@ -31095,6 +31159,7 @@ movesAwaitingTokens[].lifeTail.then.permission.duration.Player	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].lifeTail.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].lifeTail.then.permission.eachPlayer	bool
 movesAwaitingTokens[].lifeTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].lifeTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].lifeTail.then.permission.entersWithCounterKind	string
@@ -31156,6 +31221,7 @@ movesAwaitingTokens[].lifeTail.then.permission.followUp	string
 movesAwaitingTokens[].lifeTail.then.permission.followUpObject	object
 movesAwaitingTokens[].lifeTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].lifeTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].lifeTail.then.permission.forage	bool
 movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities[]	string
@@ -32591,6 +32657,7 @@ movesAwaitingTokens[].millTail.run.then.permission.duration.Player	custom(uuid.U
 movesAwaitingTokens[].millTail.run.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].millTail.run.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].millTail.run.then.permission.eachPlayer	bool
 movesAwaitingTokens[].millTail.run.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].millTail.run.then.permission.entersTapped	bool
 movesAwaitingTokens[].millTail.run.then.permission.entersWithCounterKind	string
@@ -32652,6 +32719,7 @@ movesAwaitingTokens[].millTail.run.then.permission.followUp	string
 movesAwaitingTokens[].millTail.run.then.permission.followUpObject	object
 movesAwaitingTokens[].millTail.run.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].millTail.run.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].millTail.run.then.permission.forage	bool
 movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities[]	string
@@ -33230,6 +33298,7 @@ movesAwaitingTokens[].millTail.then.permission.duration.Player	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].millTail.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].millTail.then.permission.eachPlayer	bool
 movesAwaitingTokens[].millTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].millTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].millTail.then.permission.entersWithCounterKind	string
@@ -33291,6 +33360,7 @@ movesAwaitingTokens[].millTail.then.permission.followUp	string
 movesAwaitingTokens[].millTail.then.permission.followUpObject	object
 movesAwaitingTokens[].millTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].millTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].millTail.then.permission.forage	bool
 movesAwaitingTokens[].millTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.then.permission.gainsAbilities[]	string
@@ -34876,6 +34946,7 @@ movesAwaitingTokens[].tokenTail.then.permission.duration.Player	custom(uuid.UUID
 movesAwaitingTokens[].tokenTail.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].tokenTail.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].tokenTail.then.permission.eachPlayer	bool
 movesAwaitingTokens[].tokenTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].tokenTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].tokenTail.then.permission.entersWithCounterKind	string
@@ -34937,6 +35008,7 @@ movesAwaitingTokens[].tokenTail.then.permission.followUp	string
 movesAwaitingTokens[].tokenTail.then.permission.followUpObject	object
 movesAwaitingTokens[].tokenTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].tokenTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].tokenTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].tokenTail.then.permission.forage	bool
 movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities[]	string
@@ -36824,6 +36896,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.duration.Player	c
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.eachPlayer	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.entersWithCounterKind	string
@@ -36885,6 +36958,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
@@ -37498,6 +37572,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.duration.Pl
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.eachPlayer	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.entersWithCounterKind	string
@@ -37559,6 +37634,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUp	st
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
@@ -38137,6 +38213,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.duration.Player	custom
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.eachPlayer	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.entersWithCounterKind	string
@@ -38198,6 +38275,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
@@ -38796,6 +38874,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.duration.Player	cust
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.eachPlayer	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.entersWithCounterKind	string
@@ -38857,6 +38936,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
@@ -39524,6 +39604,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.duration.Player	cus
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.duration.Source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.duration.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.duration.SourceEpoch	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.eachPlayer	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.entersWithCounterKind	string
@@ -39585,6 +39666,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
@@ -42968,6 +43050,7 @@ pendingChoices[].attackSplit.tail.permission.duration.Player	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].attackSplit.tail.permission.duration.SourceEpoch	number:int
+pendingChoices[].attackSplit.tail.permission.eachPlayer	bool
 pendingChoices[].attackSplit.tail.permission.energyEqualToManaValue	bool
 pendingChoices[].attackSplit.tail.permission.entersTapped	bool
 pendingChoices[].attackSplit.tail.permission.entersWithCounterKind	string
@@ -43029,6 +43112,7 @@ pendingChoices[].attackSplit.tail.permission.followUp	string
 pendingChoices[].attackSplit.tail.permission.followUpObject	object
 pendingChoices[].attackSplit.tail.permission.followUpObject.epoch	number:int
 pendingChoices[].attackSplit.tail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.permission.followUpOnLandPlay	bool
 pendingChoices[].attackSplit.tail.permission.forage	bool
 pendingChoices[].attackSplit.tail.permission.gainsAbilities	array
 pendingChoices[].attackSplit.tail.permission.gainsAbilities[]	string
@@ -45110,6 +45194,7 @@ pendingChoices[].diceRoll.then.permission.duration.Player	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].diceRoll.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].diceRoll.then.permission.eachPlayer	bool
 pendingChoices[].diceRoll.then.permission.energyEqualToManaValue	bool
 pendingChoices[].diceRoll.then.permission.entersTapped	bool
 pendingChoices[].diceRoll.then.permission.entersWithCounterKind	string
@@ -45171,6 +45256,7 @@ pendingChoices[].diceRoll.then.permission.followUp	string
 pendingChoices[].diceRoll.then.permission.followUpObject	object
 pendingChoices[].diceRoll.then.permission.followUpObject.epoch	number:int
 pendingChoices[].diceRoll.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.permission.followUpOnLandPlay	bool
 pendingChoices[].diceRoll.then.permission.forage	bool
 pendingChoices[].diceRoll.then.permission.gainsAbilities	array
 pendingChoices[].diceRoll.then.permission.gainsAbilities[]	string
@@ -46154,6 +46240,7 @@ pendingChoices[].divideShield.walk.each.permission.duration.Player	custom(uuid.U
 pendingChoices[].divideShield.walk.each.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].divideShield.walk.each.permission.duration.SourceEpoch	number:int
+pendingChoices[].divideShield.walk.each.permission.eachPlayer	bool
 pendingChoices[].divideShield.walk.each.permission.energyEqualToManaValue	bool
 pendingChoices[].divideShield.walk.each.permission.entersTapped	bool
 pendingChoices[].divideShield.walk.each.permission.entersWithCounterKind	string
@@ -46215,6 +46302,7 @@ pendingChoices[].divideShield.walk.each.permission.followUp	string
 pendingChoices[].divideShield.walk.each.permission.followUpObject	object
 pendingChoices[].divideShield.walk.each.permission.followUpObject.epoch	number:int
 pendingChoices[].divideShield.walk.each.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.permission.followUpOnLandPlay	bool
 pendingChoices[].divideShield.walk.each.permission.forage	bool
 pendingChoices[].divideShield.walk.each.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.each.permission.gainsAbilities[]	string
@@ -46795,6 +46883,7 @@ pendingChoices[].divideShield.walk.then.permission.duration.Player	custom(uuid.U
 pendingChoices[].divideShield.walk.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].divideShield.walk.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].divideShield.walk.then.permission.eachPlayer	bool
 pendingChoices[].divideShield.walk.then.permission.energyEqualToManaValue	bool
 pendingChoices[].divideShield.walk.then.permission.entersTapped	bool
 pendingChoices[].divideShield.walk.then.permission.entersWithCounterKind	string
@@ -46856,6 +46945,7 @@ pendingChoices[].divideShield.walk.then.permission.followUp	string
 pendingChoices[].divideShield.walk.then.permission.followUpObject	object
 pendingChoices[].divideShield.walk.then.permission.followUpObject.epoch	number:int
 pendingChoices[].divideShield.walk.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.permission.followUpOnLandPlay	bool
 pendingChoices[].divideShield.walk.then.permission.forage	bool
 pendingChoices[].divideShield.walk.then.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.then.permission.gainsAbilities[]	string
@@ -47442,6 +47532,7 @@ pendingChoices[].libraryOrder.then.permission.duration.Player	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].libraryOrder.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].libraryOrder.then.permission.eachPlayer	bool
 pendingChoices[].libraryOrder.then.permission.energyEqualToManaValue	bool
 pendingChoices[].libraryOrder.then.permission.entersTapped	bool
 pendingChoices[].libraryOrder.then.permission.entersWithCounterKind	string
@@ -47503,6 +47594,7 @@ pendingChoices[].libraryOrder.then.permission.followUp	string
 pendingChoices[].libraryOrder.then.permission.followUpObject	object
 pendingChoices[].libraryOrder.then.permission.followUpObject.epoch	number:int
 pendingChoices[].libraryOrder.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.permission.followUpOnLandPlay	bool
 pendingChoices[].libraryOrder.then.permission.forage	bool
 pendingChoices[].libraryOrder.then.permission.gainsAbilities	array
 pendingChoices[].libraryOrder.then.permission.gainsAbilities[]	string
@@ -48142,6 +48234,7 @@ pendingChoices[].nameThen.permission.duration.Player	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].nameThen.permission.duration.SourceEpoch	number:int
+pendingChoices[].nameThen.permission.eachPlayer	bool
 pendingChoices[].nameThen.permission.energyEqualToManaValue	bool
 pendingChoices[].nameThen.permission.entersTapped	bool
 pendingChoices[].nameThen.permission.entersWithCounterKind	string
@@ -48203,6 +48296,7 @@ pendingChoices[].nameThen.permission.followUp	string
 pendingChoices[].nameThen.permission.followUpObject	object
 pendingChoices[].nameThen.permission.followUpObject.epoch	number:int
 pendingChoices[].nameThen.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].nameThen.permission.followUpOnLandPlay	bool
 pendingChoices[].nameThen.permission.forage	bool
 pendingChoices[].nameThen.permission.gainsAbilities	array
 pendingChoices[].nameThen.permission.gainsAbilities[]	string
@@ -49274,6 +49368,7 @@ pendingChoices[].pickTail.permission.duration.Player	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].pickTail.permission.duration.SourceEpoch	number:int
+pendingChoices[].pickTail.permission.eachPlayer	bool
 pendingChoices[].pickTail.permission.energyEqualToManaValue	bool
 pendingChoices[].pickTail.permission.entersTapped	bool
 pendingChoices[].pickTail.permission.entersWithCounterKind	string
@@ -49335,6 +49430,7 @@ pendingChoices[].pickTail.permission.followUp	string
 pendingChoices[].pickTail.permission.followUpObject	object
 pendingChoices[].pickTail.permission.followUpObject.epoch	number:int
 pendingChoices[].pickTail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].pickTail.permission.followUpOnLandPlay	bool
 pendingChoices[].pickTail.permission.forage	bool
 pendingChoices[].pickTail.permission.gainsAbilities	array
 pendingChoices[].pickTail.permission.gainsAbilities[]	string
@@ -49960,6 +50056,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.duration.Pl
 pendingChoices[].replacementResume.event.counterTail.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.counterTail.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.entersWithCounterKind	string
@@ -50021,6 +50118,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.followUp	st
 pendingChoices[].replacementResume.event.counterTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.counterTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilities[]	string
@@ -50610,6 +50708,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.duratio
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.entersWithCounterKind	string
@@ -50671,6 +50770,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.followU
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUpObject	object
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAbilities[]	string
@@ -51251,6 +51351,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.duratio
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.entersWithCounterKind	string
@@ -51312,6 +51413,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.followU
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAbilities[]	string
@@ -52076,6 +52178,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.duration.Pla
 pendingChoices[].replacementResume.event.damageTail.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.damageTail.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.entersWithCounterKind	string
@@ -52137,6 +52240,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.followUp	str
 pendingChoices[].replacementResume.event.damageTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.damageTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbilities[]	string
@@ -52840,6 +52944,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.entersWithCounterKind	string
@@ -52901,6 +53006,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
@@ -53557,6 +53663,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.duratio
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.entersWithCounterKind	string
@@ -53618,6 +53725,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followU
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAbilities[]	string
@@ -54198,6 +54306,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.duration.Pla
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.entersWithCounterKind	string
@@ -54259,6 +54368,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUp	str
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbilities[]	string
@@ -54872,6 +54982,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.entersWithCounterKind	string
@@ -54933,6 +55044,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
@@ -55533,6 +55645,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.durati
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.entersWithCounterKind	string
@@ -55594,6 +55707,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.follow
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsAbilities[]	string
@@ -56622,6 +56736,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.durat
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.entersWithCounterKind	string
@@ -56683,6 +56798,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.follo
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsAbilities[]	string
@@ -57286,6 +57402,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.duration.
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.entersWithCounterKind	string
@@ -57347,6 +57464,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUp	
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.forage	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbilities[]	string
@@ -57930,6 +58048,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.duration.Playe
 pendingChoices[].replacementResume.event.lifeTail.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.lifeTail.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.entersWithCounterKind	string
@@ -57991,6 +58110,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.followUp	strin
 pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities[]	string
@@ -59426,6 +59546,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.duration.P
 pendingChoices[].replacementResume.event.millTail.run.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.entersWithCounterKind	string
@@ -59487,6 +59608,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.followUp	s
 pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.forage	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbilities[]	string
@@ -60065,6 +60187,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.duration.Playe
 pendingChoices[].replacementResume.event.millTail.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.millTail.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.entersWithCounterKind	string
@@ -60126,6 +60249,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.followUp	strin
 pendingChoices[].replacementResume.event.millTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.millTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities[]	string
@@ -61711,6 +61835,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.duration.Play
 pendingChoices[].replacementResume.event.tokenTail.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.tokenTail.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.entersWithCounterKind	string
@@ -61772,6 +61897,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.followUp	stri
 pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilities[]	string
@@ -63659,6 +63785,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.entersWithCounterKind	string
@@ -63720,6 +63847,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
@@ -64333,6 +64461,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.entersWithCounterKind	string
@@ -64394,6 +64523,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
@@ -64972,6 +65102,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.dur
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.entersWithCounterKind	string
@@ -65033,6 +65164,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fol
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
@@ -65631,6 +65763,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.d
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.entersWithCounterKind	string
@@ -65692,6 +65825,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
@@ -66359,6 +66493,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.duration.SourceEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.eachPlayer	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.energyEqualToManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.entersWithCounterKind	string
@@ -66420,6 +66555,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUpOnLandPlay	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
@@ -67454,6 +67590,7 @@ pendingChoices[].scryThen.permission.duration.Player	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].scryThen.permission.duration.SourceEpoch	number:int
+pendingChoices[].scryThen.permission.eachPlayer	bool
 pendingChoices[].scryThen.permission.energyEqualToManaValue	bool
 pendingChoices[].scryThen.permission.entersTapped	bool
 pendingChoices[].scryThen.permission.entersWithCounterKind	string
@@ -67515,6 +67652,7 @@ pendingChoices[].scryThen.permission.followUp	string
 pendingChoices[].scryThen.permission.followUpObject	object
 pendingChoices[].scryThen.permission.followUpObject.epoch	number:int
 pendingChoices[].scryThen.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].scryThen.permission.followUpOnLandPlay	bool
 pendingChoices[].scryThen.permission.forage	bool
 pendingChoices[].scryThen.permission.gainsAbilities	array
 pendingChoices[].scryThen.permission.gainsAbilities[]	string
@@ -68141,6 +68279,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.duration.Player	custom(uu
 pendingChoices[].searchPrompt.spec.thenTail.permission.duration.Source	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.permission.duration.SourceEnteredAt	number:int64
 pendingChoices[].searchPrompt.spec.thenTail.permission.duration.SourceEpoch	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.eachPlayer	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.energyEqualToManaValue	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.entersTapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.entersWithCounterKind	string
@@ -68202,6 +68341,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.followUp	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.followUpObject	object
 pendingChoices[].searchPrompt.spec.thenTail.permission.followUpObject.epoch	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.permission.followUpOnLandPlay	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.forage	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities[]	string
@@ -73986,6 +74126,7 @@ seats[].castPermissions[].duration.Player	custom(uuid.UUID)
 seats[].castPermissions[].duration.Source	custom(uuid.UUID)
 seats[].castPermissions[].duration.SourceEnteredAt	number:int64
 seats[].castPermissions[].duration.SourceEpoch	number:int
+seats[].castPermissions[].eachPlayer	bool
 seats[].castPermissions[].energyEqualToManaValue	bool
 seats[].castPermissions[].entersTapped	bool
 seats[].castPermissions[].entersWithCounterKind	string
@@ -74047,6 +74188,7 @@ seats[].castPermissions[].followUp	string
 seats[].castPermissions[].followUpObject	object
 seats[].castPermissions[].followUpObject.epoch	number:int
 seats[].castPermissions[].followUpObject.id	custom(uuid.UUID)
+seats[].castPermissions[].followUpOnLandPlay	bool
 seats[].castPermissions[].forage	bool
 seats[].castPermissions[].gainsAbilities	array
 seats[].castPermissions[].gainsAbilities[]	string

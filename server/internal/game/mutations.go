@@ -1985,7 +1985,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if spendsGrant {
 				g.consumeLimitedGrantLocked(playerID, grantCard, grant)
 			}
-			return nil
+			return g.runLandPlayFollowUpLocked(grant, followUp, playerID, grantSource, cardID, followUpObject)
 		}
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 			g.clearReplacementEventLocked(ev.ID)
@@ -2025,6 +2025,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// it, as a spell cast through it does at the end of this function.
 		if spendsGrant {
 			g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+		}
+		if err := g.runLandPlayFollowUpLocked(grant, followUp, playerID, grantSource, cardID, followUpObject); err != nil {
+			return err
 		}
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style

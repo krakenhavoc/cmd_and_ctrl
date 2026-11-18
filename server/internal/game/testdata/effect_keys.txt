@@ -397,6 +397,7 @@ body seasoned-cryomancer/tap-and-stun
 body selfcraft-mechan/counter-and-draw
 body serum-core-chimera/damage
 body seven-of-nine-tertiary-adjunct/charge
+body share-the-spoils/exile-their-top
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
 body shrapnel-slinger/destroy
@@ -498,6 +499,7 @@ castfollowup kefka-dancing-mad-life-loss
 castfollowup kyloxs-voltstrider-bottom-instead-of-graveyard
 castfollowup maralen-fae-ascendant-once-each-turn
 castfollowup msc6/helmut-zemo-mastermind-counter
+castfollowup share-the-spoils-played
 castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
 choose any-player-each/cleansing-destroy
