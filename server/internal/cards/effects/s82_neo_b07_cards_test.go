@@ -720,6 +720,6 @@ func neoB07Holds(t *testing.T, g *game.Game, id uuid.UUID) int {
 // neoB07PT is the power and toughness after a layer recompute.
 func neoB07PT(t *testing.T, g *game.Game, id uuid.UUID) (int, int) {
 	t.Helper()
-	eff := s58p6View(t, g, id).Effective()
-	return eff.Power, eff.Toughness
+	p, th, _, _ := earthbentBody(t, g, id)
+	return p, th
 }
