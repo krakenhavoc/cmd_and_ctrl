@@ -250,8 +250,9 @@ func TestNeoB10UpriserRenegadeGrowsPerOtherModifiedCreature(t *testing.T) {
 	}
 	// Its own counter does not count: "other".
 	neoB10Modify(g, up)
-	if p := effectivePower(t, g, up); p != 6 { // +1 from its own counter, +4 from the others
-		t.Errorf("with its own counter: power %d, want 6 (+1 counter, +4 others)", p)
+	// effectivePower leaves counters out; the Renegade's own counter must not add to the +2s.
+	if p := effectivePower(t, g, up); p != 5 {
+		t.Errorf("with its own counter: power %d, want 5 (its own modification is not \"other\")", p)
 	}
 }
 
@@ -311,11 +312,11 @@ func TestNeoB10WalkingSkyscraperCostsLessAndHasHexproofWhileUntapped(t *testing.
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Walking Skyscraper", TypeLine: "Artifact Creature — Construct",
 		ManaCost: "{8}", OracleID: neoB10WalkingSky, Power: 8, Toughness: 8, Owner: me.ID, Controller: me.ID})
-	floatMana(t, g, me, "{5}")
+	floatMana(t, g, me, "{C}{C}{C}{C}{C}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err == nil {
 		t.Fatal("two modified creatures make it cost {6}; five mana must not pay for it")
 	}
-	floatMana(t, g, me, "{1}")
+	floatMana(t, g, me, "{C}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("six mana pays for {8} with two modified creatures: %v", err)
 	}
@@ -359,8 +360,9 @@ func TestNeoB10TowashiGuideBotCountersOnEnterAndDrawsForLess(t *testing.T) {
 	me := g.Seats[0]
 	advanceToMain(t, g)
 	bear := b12Creature(g, me.ID, "Bear", neoB10Bear, 2, 2)
-	bot := b12PlayFromHand(t, g, "Towashi Guide-Bot", "Artifact Creature — Construct", neoB10GuideBot,
-		game.CastSpellParams{Targets: b16TargetCard(bear)})
+	bot := b12PlayFromHand(t, g, "Towashi Guide-Bot", "Artifact Creature — Construct", neoB10GuideBot, game.CastSpellParams{})
+	b04WaitForPick(t, g, me.ID)
+	pickCard(t, g, me.ID, bear)
 	passPriorityAroundTable(t, g)
 	if n := counterCount(g, bear, "+1/+1"); n != 1 {
 		t.Fatalf("the enter trigger put %d counters on the Bear, want 1", n)
@@ -375,13 +377,13 @@ func TestNeoB10TowashiGuideBotCountersOnEnterAndDrawsForLess(t *testing.T) {
 	})
 	seedLibrary(me, "A", "B", "C")
 	// One modified creature (the Bear): the ability costs {3}.
-	floatMana(t, g, me, "{2}")
-	if err := g.ActivateCatalogAbility(me.ID, bot, 0, game.ActivateAbilityParams{}); err == nil {
+	floatMana(t, g, me, "{C}{C}")
+	if err := g.ActivateCatalogAbility(me.ID, bot, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Fatal("{2} must not pay for a {3} ability")
 	}
-	floatMana(t, g, me, "{1}")
+	floatMana(t, g, me, "{C}")
 	hand := handSize(me)
-	if err := g.ActivateCatalogAbility(me.ID, bot, 0, game.ActivateAbilityParams{}); err != nil {
+	if err := g.ActivateCatalogAbility(me.ID, bot, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("one modified creature makes it cost {3}: %v", err)
 	}
 	passPriorityAroundTable(t, g)

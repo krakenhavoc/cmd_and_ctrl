@@ -31,7 +31,6 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:        label,
-			Purpose:      game.Purpose{Answers: game.AnswerValue},
 			Cost:         RemoveCountersFromThis(game.CounterPlusOne, 1),
 			SorcerySpeed: true,
 			Condition:    OncePerTurnActivation(label),
