@@ -552,6 +552,7 @@ choose choose-cards/capricious-hellraiser-copy
 choose choose-cards/captain-james-t-kirk-draw
 choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cecily-haunted-mage-cast
+choose choose-cards/celestial-judgment-pick
 choose choose-cards/celestus-sanctifier-put
 choose choose-cards/cemetery-prowler-exile
 choose choose-cards/chain-of-plasma-discarded
@@ -1033,6 +1034,8 @@ choose choose-cards/serum-core-chimera-discarded
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
+choose choose-cards/sigardas-vanguard-double-strike
+choose choose-cards/sigardian-zealot-pump
 choose choose-cards/silvan-reveler-discarded
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/smugglers-surprise-put-creatures
@@ -1139,6 +1142,7 @@ choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/vivien-champion-of-the-wilds-exile
 choose choose-cards/vohar-vodalian-desecrator-discarded
 choose choose-cards/vow-to-erebor-attach
+choose choose-cards/wall-of-mourning-pick
 choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
 choose choose-cards/ward-sacrifice-a-food
@@ -3514,6 +3518,7 @@ tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
 tail then/std-b15-strongbox-raider-choose
 tail then/stronghold-arena-lose-life
+tail then/sungold-sentinel-color-chosen
 tail then/suspect-each
 tail then/sylvan-library-next-card
 tail then/sylvia-tilly-joy-of-discovery-when-you-do
@@ -3550,6 +3555,7 @@ tail then/venture-into-the-dungeon
 tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen
 tail then/volcanic-offering-damage
+tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
 tail then/winds-of-change-shuffled
 tail then/zoyowas-justice-shuffle-discover
