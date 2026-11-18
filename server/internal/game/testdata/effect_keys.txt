@@ -678,6 +678,7 @@ choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
+choose choose-cards/discard-draw-and-add-red-kept
 choose choose-cards/discard-draw-as-many
 choose choose-cards/discard-draw-one-if-any
 choose choose-cards/discard-draw-one-more
@@ -733,6 +734,7 @@ choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/feral-encounter
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/fireglass-mentor-play
+choose choose-cards/firja-judge-of-valor-take
 choose choose-cards/floriferous-vinewall-take
 choose choose-cards/forbidden-alchemy-take
 choose choose-cards/foreboding-steamboat-grave
@@ -764,6 +766,7 @@ choose choose-cards/green-suns-twilight-placed
 choose choose-cards/green-suns-twilight-take
 choose choose-cards/grime-gorger-exile
 choose choose-cards/gurmag-nightwatch-rest
+choose choose-cards/gyruda-reanimate
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
 choose choose-cards/hellkite-courser-commander
@@ -897,6 +900,7 @@ choose choose-cards/london-mulligan-bottom
 choose choose-cards/lost-monarch-of-ifnir-return-creature
 choose choose-cards/ludevic-olag-copy
 choose choose-cards/mad-wizards-lair-cast
+choose choose-cards/maelstrom-archangel-cast
 choose choose-cards/mairsil-cage
 choose choose-cards/make-your-own-luck-plot
 choose choose-cards/malcolm-free-cast-offer
@@ -1164,6 +1168,7 @@ choose choose-cards/reanimate-one-milled
 choose choose-cards/reckoner-shakedown-counters
 choose choose-cards/recruit-discarded
 choose choose-cards/rejoin-the-fight-pick
+choose choose-cards/relic-of-progenitus-exile
 choose choose-cards/rent-is-due-tap-two
 choose choose-cards/research-shuffle
 choose choose-cards/return-chosen-from-graveyard
@@ -2040,6 +2045,7 @@ payunless cadric-soul-kindler/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
+payunless pay-unless/alesha-who-smiles-at-death-return
 payunless pay-unless/ancestral-katana-attach
 payunless pay-unless/ant-man-colony-commander-counter
 payunless pay-unless/antagonist-incorporator-borg
@@ -2192,6 +2198,7 @@ payunless pay-unless/neo-go-shintai-hidden-cruelty
 payunless pay-unless/neo-go-shintai-lost-wisdom
 payunless pay-unless/neo-go-shintai-shared-purpose
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
+payunless pay-unless/nihil-spellbomb-draw
 payunless pay-unless/nothing
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/pact-lose-the-game
@@ -2383,6 +2390,7 @@ run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
 run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
+run prompt-run/duneblast-destroy-the-rest
 run prompt-run/dusk-mangler-discard-and-life
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
@@ -2881,6 +2889,7 @@ tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
 tail dawnhand-eulogist/after-mill
+tail daxos-of-meletis/gain-life
 tail deathgorge-scavenger/exiled-card-riders
 tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
@@ -3137,9 +3146,11 @@ tail grime-gorger/counter-per-exiled-card
 tail grolnok/croak-counter
 tail grubs-command/after-mill
 tail gul-dukat/drain-each-opponent
+tail gyruda/even-creature-among-milled
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
 tail harried-dronesmith/haste-then-sacrifice
+tail hate-mirage/haste-and-exile-copies
 tail heartless-conscription/play-exiled-then-exile-this
 tail heirloom-auntie/remove-counter
 tail heirloom-mirror/check-ritual
@@ -3245,6 +3256,7 @@ tail mass/ceaseless-conflict-spirits
 tail mass/culling-ritual-mana
 tail mass/deadly-tempest-loss
 tail mass/death-begets-life-draw
+tail mass/declaration-in-stone-clues
 tail mass/demonic-junker-counters
 tail mass/faerie-slumber-party-faeries
 tail mass/flood-of-tears-put
@@ -3382,6 +3394,7 @@ tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
+tail put-from-library/rest-on-bottom-in-any-order-s82-rpr-b15
 tail put-from-library/rest-on-bottom-in-random-order
 tail put-from-library/songbirds-blessing-hand-or-bottom
 tail q-stacking-the-deck/gains-copy-ability

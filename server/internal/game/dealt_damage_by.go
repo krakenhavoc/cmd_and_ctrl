@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -71,6 +72,16 @@ type ObjectDamageRecord struct {
 	// counts for nothing — weaker, never stronger.
 	Amount           int       `json:"amount,omitempty"`
 	SourceController uuid.UUID `json:"sourceController,omitempty"`
+	// SourceSpell marks a source that was a spell on the stack as it dealt
+	// the damage, and SourceSubtypes / SourceAllTypes its subtypes and
+	// whether it was every creature type (CR 702.73a) as it dealt it, for
+	// "if a Giant, Wizard, or spell you controlled dealt damage to it this
+	// turn" (Aegar, the Freezing Flame, #5908). Additive: a record
+	// restored from before these fields existed reads false and empty, so
+	// it counts for nothing, weaker and never stronger.
+	SourceSpell    bool     `json:"sourceSpell,omitempty"`
+	SourceSubtypes []string `json:"sourceSubtypes,omitempty"`
+	SourceAllTypes bool     `json:"sourceAllTypes,omitempty"`
 }
 
 // recordDamagedObjectLocked notes the damage event `ev`, dealt to a
@@ -89,7 +100,7 @@ func (g *Game) recordDamagedObjectLocked(ev Event) {
 	if src == nil {
 		return
 	}
-	g.TurnTally.DamagedObjects = append(g.TurnTally.DamagedObjects, ObjectDamageRecord{
+	rec := ObjectDamageRecord{
 		Source: ObjectRef{ID: src.InstanceID, Epoch: src.ObjectEpoch},
 		Victim: ObjectRef{ID: victim.InstanceID, Epoch: victim.ObjectEpoch},
 		Combat: ev.Combat,
@@ -98,7 +109,49 @@ func (g *Game) recordDamagedObjectLocked(ev Event) {
 
 		Amount:           ev.Amount,
 		SourceController: src.Controller,
-	})
+	}
+	if _, item, ok := g.stackSpellLocked(ev.Source); ok && item != nil {
+		rec.SourceSpell = true
+		rec.SourceController = item.Controller
+	}
+	if lki := g.damageSourceLKILocked(ev.Source); lki != nil {
+		rec.SourceSubtypes = append([]string(nil), lki.Subtypes...)
+		rec.SourceAllTypes = lki.AllCreatureTypes
+	}
+	g.TurnTally.DamagedObjects = append(g.TurnTally.DamagedObjects, rec)
+}
+
+// PermanentDealtDamageThisTurnByKindForEffect is "if a <subtype> or spell
+// you controlled dealt damage to it this turn": the permanent `victimID`
+// (read as the object it is now or most recently was, PermanentRefForEffect)
+// was dealt damage this turn by a source `controller` controlled as it
+// dealt it that was a spell (when spell is set) or had any of `subtypes`
+// (or was every creature type) as it dealt it. Caller must hold g.mu.
+func (g *Game) PermanentDealtDamageThisTurnByKindForEffect(victimID, controller uuid.UUID, spell bool, subtypes ...string) bool {
+	if len(g.TurnTally.DamagedObjects) == 0 || controller == uuid.Nil {
+		return false
+	}
+	victim, ok := g.PermanentRefForEffect(victimID)
+	if !ok {
+		return false
+	}
+	for _, rec := range g.TurnTally.DamagedObjects {
+		if rec.Victim != victim || rec.SourceController != controller || rec.Amount <= 0 {
+			continue
+		}
+		if spell && rec.SourceSpell {
+			return true
+		}
+		if len(subtypes) > 0 && rec.SourceAllTypes {
+			return true
+		}
+		for _, st := range subtypes {
+			if slices.Contains(rec.SourceSubtypes, st) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // DamageDealtToObjectThisTurnByControlledForEffect is the total damage
