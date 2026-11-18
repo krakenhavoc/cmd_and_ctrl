@@ -358,6 +358,8 @@ body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
 body s82-mom-b12/flitting-guerrilla-top
+body s82-neo-b18/kirin-touched-orochi-counter
+body s82-neo-b18/kirin-touched-orochi-spirit
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1695,6 +1697,7 @@ option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bro-b11-argivian-avenger-keyword
+option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/sanctuary-warden-remove-a-counter
@@ -2173,6 +2176,7 @@ run prompt-run/rise-of-the-witch-king-return
 run prompt-run/roiling-regrowth-fetch
 run prompt-run/ruthless-lawbringer-sacrifice
 run prompt-run/ruthless-technomancer-treasures
+run prompt-run/s82-neo-b18-echo-of-deaths-wail
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -3074,6 +3078,7 @@ tail sacrificed-one/prompt-run/redcap-gutter-dweller-sacrificed
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
+tail sacrificed-one/prompt-run/s82-neo-b18-echo-of-deaths-wail
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
 tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
 tail sacrificed-one/prompt-run/shrapnel-slinger-sacrifice
@@ -3192,6 +3197,9 @@ tail tail/s82-mom-b12-skaab-after-mill
 tail tail/s82-mom-b21-hidetsugu-exiled
 tail tail/s82-mom-b21-rashmi-exiled
 tail tail/s82-mom-b21-zimone-repeat
+tail tail/s82-neo-b18-behold-the-unspeakable-draw-two
+tail tail/s82-neo-b18-kirin-orochi-counter
+tail tail/s82-neo-b18-kirin-orochi-spirit
 tail tail/sensational-spider-man-after-stun
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile

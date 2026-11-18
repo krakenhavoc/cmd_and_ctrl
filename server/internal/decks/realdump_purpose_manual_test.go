@@ -185,6 +185,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// #5482: one of six modes, chosen three at a time on an enters-or-attacks trigger.
 	"Mishra, Lost to Phyrexia": "its -1/-1 to opposing creatures is one of six modes, three chosen each time: a mode of a trigger, not a board wipe",
+
+	// #5493: NEO batch 18.
+	"Behold the Unspeakable // Vision of the Unspeakable": "chapter I gives opposing creatures -2/-0 until your next turn, which removes nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
