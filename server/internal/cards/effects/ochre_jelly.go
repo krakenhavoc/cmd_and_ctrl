@@ -50,7 +50,13 @@ func init() {
 // the token will enter with and schedules the token for the next end step.
 func ochreJellySplit(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	had := g.LastKnownCountersForEffect(ctx.Trigger().Event.CardID)[game.CounterPlusOne]
+	// The permanent's last-known record (CR 603.10a) holds the counters it had;
+	// the bare departure map is already spent by the time the trigger resolves.
+	info, ok := g.LastKnownPermanentForEffect(ctx.Trigger().Event.CardID)
+	if !ok {
+		return nil
+	}
+	had := info.Counters[game.CounterPlusOne]
 	if had < 2 {
 		return nil
 	}
