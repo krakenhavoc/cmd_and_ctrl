@@ -196,6 +196,13 @@ type AttackTargetRestriction struct {
 	// planeswalker or a battle may still be attacked (the 2022 ruling),
 	// so it is not a defending-player clause.
 	PlayerMustHaveActedLastTurn bool `json:",omitempty"`
+	// NotAnAbility marks a restriction that is the effect of a resolved
+	// ability rather than an ability of the creature (CR 611.2a): Chaos
+	// Dragon's "this creature can't attack those players or planeswalkers
+	// they control this combat" (#5897). Its Source may be the creature
+	// itself, yet a later "loses all abilities" (CR 613.1f) does not take
+	// it, so dropSelfAttackTargetRestrictions keeps it.
+	NotAnAbility bool `json:",omitempty"`
 }
 
 // Equal reports whether r and o are the same restriction. A method rather
@@ -213,7 +220,8 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
-		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn
+		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn &&
+		r.NotAnAbility == o.NotAnAbility
 }
 
 // inactiveLastTurnRefuses is the PlayerMustHaveActedLastTurn clause:
@@ -577,14 +585,15 @@ func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
 
 // dropSelfAttackTargetRestrictions removes the restrictions `c` imposes
 // on itself, for a layer-6 "loses all abilities": each is one of its own
-// abilities (CR 613.1f). A restriction another permanent imposes stays.
+// abilities (CR 613.1f). A restriction another permanent imposes stays,
+// and so does one that is a resolved ability's effect (NotAnAbility).
 func dropSelfAttackTargetRestrictions(ch *Characteristic, c *Card) {
 	if len(ch.AttackTargetRestrictions) == 0 {
 		return
 	}
 	kept := ch.AttackTargetRestrictions[:0:0]
 	for _, r := range ch.AttackTargetRestrictions {
-		if r.Source != c.InstanceID {
+		if r.Source != c.InstanceID || r.NotAnAbility {
 			kept = append(kept, r)
 		}
 	}

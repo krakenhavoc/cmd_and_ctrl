@@ -189,7 +189,9 @@ const ModCantAttackUnlessDefenderControls ModKind = "cantAttackUnlessDefenderCon
 // restriction, so both declaration verbs, the CR 508.1d search, the
 // enumerator and the chip follow. The restriction is on the creature, so
 // it is lost with the creature (a new object, CR 400.7) and, when the
-// source is the creature itself, with "loses all abilities".
+// source is the creature itself, with "loses all abilities" — unless the
+// Amount marks it as a resolved ability's effect (CantAttackPlayerByEffectMod,
+// #5897), which no ability removal takes.
 const ModCantAttackPlayer ModKind = "cantAttackPlayer" // layer 6
 
 // ModCantAttackOwner is "<affected> gains 'This creature can't attack
@@ -1595,9 +1597,18 @@ func CantAttackPlayerMod(player uuid.UUID) Mod {
 	return Mod{Kind: ModCantAttackPlayer, Player: player}
 }
 
-// cantAttackPlayerAndPermanents is the Amount that makes a ModCantAttackPlayer
-// also close the battles the player controls (CantAttackPlayerOrPermanentsMod).
-const cantAttackPlayerAndPermanents = 1
+// The Amount bits of a ModCantAttackPlayer. Zero is "<player> or
+// planeswalkers they control", given as an ability of the record's source.
+const (
+	// cantAttackPlayerAndPermanents also closes the battles the player
+	// controls (CantAttackPlayerOrPermanentsMod).
+	cantAttackPlayerAndPermanents = 1
+	// cantAttackPlayerByEffect marks the restriction as an effect of a
+	// resolved ability and not an ability the creature has
+	// (CantAttackPlayerThisCombatMod, #5897), so a later "loses all
+	// abilities" leaves it (AttackTargetRestriction.NotAnAbility).
+	cantAttackPlayerByEffect = 2
+)
 
 // CantAttackPlayerOrPermanentsMod is "can't attack you or a permanent you
 // control" from a resolved effect (Immortal Obligation, CR 508.1c): the
@@ -1605,6 +1616,18 @@ const cantAttackPlayerAndPermanents = 1
 // Reads Player.
 func CantAttackPlayerOrPermanentsMod(player uuid.UUID) Mod {
 	return Mod{Kind: ModCantAttackPlayer, Player: player, Amount: cantAttackPlayerAndPermanents}
+}
+
+// CantAttackPlayerByEffectMod is "<this creature> can't attack <player> or
+// planeswalkers they control" as the effect of a resolved ability on the
+// creature it names (Chaos Dragon's "this creature can't attack those
+// players or planeswalkers they control this combat", #5897, CR 508.1c,
+// 611.2a). It is CantAttackPlayerMod, except that the restriction is not
+// an ability the creature gains: the record's source may be the creature
+// itself and a later "loses all abilities" (CR 613.1f) still leaves it.
+// Reads Player.
+func CantAttackPlayerByEffectMod(player uuid.UUID) Mod {
+	return Mod{Kind: ModCantAttackPlayer, Player: player, Amount: cantAttackPlayerByEffect}
 }
 
 // CantAttackOwnerMod is "gains 'This creature can't attack its owner'"
@@ -2446,9 +2469,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		}
 	case ModCantAttackPlayer:
 		protected := m.Player
-		battles := m.Amount == cantAttackPlayerAndPermanents
+		battles := m.Amount&cantAttackPlayerAndPermanents != 0
+		byEffect := m.Amount&cantAttackPlayerByEffect != 0
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
-			r := AttackTargetRestriction{NotPlayer: protected, NotPlayerBattles: battles}
+			r := AttackTargetRestriction{NotPlayer: protected, NotPlayerBattles: battles, NotAnAbility: byEffect}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}

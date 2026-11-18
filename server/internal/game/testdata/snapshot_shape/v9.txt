@@ -4510,6 +4510,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMu
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].NotOwner	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -13343,6 +13344,7 @@ frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderMustControl[]
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+frozenEntries[].event.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].NotOwner	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -20050,6 +20052,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderMu
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].NotAnAbility	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].NotOwner	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -20240,6 +20243,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Supertyp
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+lastKnownBattlefield{}.AttackTargetRestrictions[].NotAnAbility	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwner	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -20434,6 +20438,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustCo
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotAnAbility	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwner	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -24850,6 +24855,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderMu
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].NotOwner	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -33683,6 +33689,7 @@ movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderMustControl[]
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].NotOwner	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -44695,6 +44702,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderM
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -45579,6 +45587,7 @@ pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderMu
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -45758,6 +45767,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].Defe
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -51685,6 +51695,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestri
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -60518,6 +60529,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].De
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -68831,6 +68843,7 @@ pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderMustCon
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
@@ -69622,6 +69635,7 @@ pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderMustControl
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderMustControl[].Types	array
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderMustControl[].Types[]	string
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
+pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
