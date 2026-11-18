@@ -412,11 +412,8 @@ func TestMidB17LudevicMillsWhenItEnters(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	before := me.Graveyard.Size()
-	for i := 0; i < 2; i++ {
-		me.ManaPool.AddMana(game.ManaToken{Color: "U"})
-		me.ManaPool.AddMana(game.ManaToken{Color: "B"})
-		break
-	}
+	me.ManaPool.AddMana(game.ManaToken{Color: "U"})
+	me.ManaPool.AddMana(game.ManaToken{Color: "B"})
 	importAndCast(t, g, midB17LudevicRow(), me)
 	monSettle(t, g)
 	if me.Graveyard.Size() != before+1 {
