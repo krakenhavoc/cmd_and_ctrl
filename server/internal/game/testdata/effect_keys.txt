@@ -30,6 +30,7 @@ anyplayer any-player/icy-prison-sacrifice
 anyplayer any-player/innocent-traveler-transform
 anyplayer any-player/nakaya-shade-pump
 anyplayer any-player/prowling-pangolin-sacrifice
+anyplayer any-player/reservoir-kraken-tap
 anyplayer any-player/rhystic-circle-shield
 anyplayer any-player/rhystic-scrying-discard
 anyplayer any-player/rhystic-shield-extra
@@ -1557,6 +1558,7 @@ option option-pick/abstract-performance-pile
 option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/anointed-peacekeeper-look
+option option-pick/agents-toolkit-move
 option option-pick/apocalypse-demon-sacrifice-or-tap
 option option-pick/arachne-psionic-weaver-look
 option option-pick/aragorn-company-leader-counter
@@ -1564,9 +1566,11 @@ option option-pick/archfiend-of-spite-life-or-sacrifice
 option option-pick/arni-metalbrow-attacks
 option option-pick/atraxas-skitterfang-keyword
 option option-pick/attach-source-to-player
+option option-pick/aven-courier-counter
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/blank-blank-rocketship-letter
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
+option option-pick/bribe-taker-counter
 option option-pick/bucolic-ranch-top-card
 option option-pick/change-text-word-replace
 option option-pick/change-text-word-with
@@ -1580,6 +1584,8 @@ option option-pick/choose-second-player-as-enters
 option option-pick/cloak-and-dagger-entwined-choice
 option option-pick/cmdr2-s18-arthur-marigold-knight-attack
 option option-pick/coin-of-fate-opponent
+option option-pick/contractual-safeguard-kind
+option option-pick/contractual-safeguard-shield
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/dack-fayden-helping-hand-opponent
@@ -1605,6 +1611,7 @@ option option-pick/engine-clash
 option option-pick/engine-clash-opponent
 option option-pick/eumidian-wastewaker-choice
 option option-pick/eventides-shadow-remove
+option option-pick/exotic-pets-fish
 option option-pick/explosion-of-riches-draw
 option option-pick/extinction-event-parity
 option option-pick/extrapolate-the-impossible-opponent
@@ -2664,6 +2671,7 @@ tail exile-until/record-return
 tail exile/grant-permission-over-landed
 tail exile/grant-permission-then-offer
 tail exile/kefka-dancing-mad-grant
+tail exotic-pets/fish
 tail exploratory-mission/play-nonland-then-mana
 tail explore-the-underdark/take-the-initiative
 tail extraction-family/after-exile
