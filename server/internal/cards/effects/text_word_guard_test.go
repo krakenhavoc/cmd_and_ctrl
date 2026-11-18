@@ -127,6 +127,10 @@ var textWordLiteralAllowed = map[string]string{
 	// is cast (CR 601.2b, 601.2f), before anything can change its text.
 	"wolfkin_outcast.go": "self cost reduction, judged as cast",
 	"modes.go":           "mode count condition, judged as cast",
+
+	// Geistlight Snare and Supernatural Rescue (S82 VOW b13): the Spirit flash
+	// condition is judged as the spell is cast, Bard's Company's shape.
+	"s82_vow_b13_helpers.go": "flash condition, judged as cast",
 }
 
 // textWordHelperArgs are effects-package helpers that take a colour or

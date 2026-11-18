@@ -448,6 +448,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Mage's Attendant's Wizard (Streets of New Capenna, #5491): a 1/1 blue
 	// Wizard that sacrifices itself to counter a noncreature spell unless paid.
 	printedS82SncB18WizardToken,
+
+	// Torens, Fist of the Angels' Human Soldier (Crimson Vow, #5495).
+	printedHumanSoldierTrainingToken,
 	// Jugan Defends the Temple (S82, NEO): the 1/1 green Human Monk with "{T}: Add {G}."
 	printedNeoHumanMonkToken,
 	// S82 NEO batch 20: Kamigawa: Neon Dynasty's Keimi (Tatsunari, Toad
