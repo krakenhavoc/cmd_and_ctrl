@@ -24,7 +24,7 @@ import {
   attackAllLabel,
   attackAllParams,
   attackAllTaxLabel,
-  attackTaxOn,
+  attackTaxText,
   eligibleAt,
   enlistChoiceAt,
   exertChoiceAt,
@@ -2013,7 +2013,7 @@ function combatItems(
                 // ADR 0080 (#1063): the seat's CR 508.1h attack tax, stated
                 // on the control that charges it. Read off the server's
                 // price, never derived.
-                hint: attackTaxOn(view, s.id) ? `costs ${attackTaxOn(view, s.id)}` : undefined,
+                hint: attackTaxText(view, s.id) ? `costs ${attackTaxText(view, s.id)}` : undefined,
                 action: {
                   type: "declare_attacker" as ActionType,
                   // auto_tap: the tax may need lands tapped for it. Inert

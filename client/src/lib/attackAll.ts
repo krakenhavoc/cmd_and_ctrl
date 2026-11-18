@@ -339,6 +339,29 @@ export function attackTaxOn(view: GameView | null | undefined, defenderSeatID: s
   return row?.tax ?? "";
 }
 
+// attackTaxLifeOn is the life one creature pays to attack a seat
+// (#5869, `attack_targets[].tax_life`), 0 when none.
+export function attackTaxLifeOn(view: GameView | null | undefined, defenderSeatID: string): number {
+  const row = view?.turn?.attack_targets?.find(
+    (t) => t.kind === "player" && t.id === defenderSeatID,
+  );
+  return row?.tax_life ?? 0;
+}
+
+// attackPriceText renders a mana string and a life amount as one price,
+// the way the server's AttackTaxPrice.Describe does: "{2}", "2 life",
+// "{2} and 2 life". "" when both are empty.
+export function attackPriceText(mana: string, life: number): string {
+  if (life <= 0) return mana;
+  return mana ? `${mana} and ${life} life` : `${life} life`;
+}
+
+// attackTaxText is the per-creature price of attacking a seat, mana and
+// life together, for a control's hint. "" when attacking it is free.
+export function attackTaxText(view: GameView | null | undefined, defenderSeatID: string): string {
+  return attackPriceText(attackTaxOn(view, defenderSeatID), attackTaxLifeOn(view, defenderSeatID));
+}
+
 // attackTaxLabelForCount is attackAllTaxLabel's arithmetic,
 // parameterised by an arbitrary attacker count rather than
 // `plan.eligible.length` — factored out for #1162's subset picker,
@@ -350,10 +373,13 @@ export function attackTaxOn(view: GameView | null | undefined, defenderSeatID: s
 // concatenates (three attackers into Propaganda is "{2}{2}{2}"). No
 // arithmetic here means no way for the client to disagree with the
 // price it is about to commit the player to.
-export function attackTaxLabelForCount(each: string, n: number): string {
-  if (!each || n <= 0) return "";
-  if (n === 1) return `costs ${each}`;
-  return `costs ${each} each, ${each.repeat(n)} for all ${n}`;
+//
+// `life` (#5869) is the life one creature pays; the total is it times n.
+export function attackTaxLabelForCount(each: string, n: number, life = 0): string {
+  if ((!each && life <= 0) || n <= 0) return "";
+  const one = attackPriceText(each, life);
+  if (n === 1) return `costs ${one}`;
+  return `costs ${one} each, ${attackPriceText(each.repeat(n), life * n)} for all ${n}`;
 }
 
 // attackAllTaxLabel is the clause the attack-all control appends when
@@ -368,6 +394,7 @@ export function attackAllTaxLabel(
   return attackTaxLabelForCount(
     attackTaxOn(view, defenderSeatID),
     eligibleAt(plan, defenderSeatID).length,
+    attackTaxLifeOn(view, defenderSeatID),
   );
 }
 
@@ -453,7 +480,7 @@ export function offersAttackPicker(
   plan: AttackAllPlan,
   defenderSeatID: string,
 ): boolean {
-  if (attackTaxOn(view, defenderSeatID)) return true;
+  if (attackTaxText(view, defenderSeatID)) return true;
   if (attackLimitOn(view, defenderSeatID) === 0) return false;
   // ADR 0130 §7: a creature that may be exerted is a choice to make,
   // even when it is the only attacker.

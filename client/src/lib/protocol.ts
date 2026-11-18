@@ -6066,6 +6066,11 @@ export interface AttackTargetView {
   // in the client re-derives what an attack costs, for the same
   // reason nothing re-derives who may attack (#429, ADR 0045 §6).
   tax?: string;
+  // #5869: the life ONE creature pays to attack this target (2 under
+  // Sivitri, Dragon Master's +1), paid after `tax`'s mana and only from
+  // a life total at least that large (CR 119.4). Absent when attacking
+  // it costs no life. A declaration of n attackers pays n times as much.
+  tax_life?: number;
   // #4198: how many symbols in ONE creature's `tax` carry CR 107.4f's
   // "or 2 life" option (Norn's Annex's {W/P} is 1). Absent when none
   // does. A declaration of n attackers prints n times as many, and the

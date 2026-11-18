@@ -7,8 +7,11 @@ import {
   attackAllTaxLabel,
   attackBlocker,
   attackRefusal,
+  attackPriceText,
   attackTaxLabelForCount,
+  attackTaxLifeOn,
   attackTaxOn,
+  attackTaxText,
   blockedSummary,
   eligibleAt,
   planAttackAll,
@@ -596,5 +599,39 @@ describe("attack with all, per seat", () => {
   it("a frame with no list counts every eligible creature at every seat, as before", () => {
     const bare = planAttackAll(view([alice, bob, carol], v.battlefield.cards), "a");
     expect(eligibleAt(bare, "b").map((c) => c.instance_id)).toEqual(["bear", "xantcha"]);
+  });
+});
+
+describe("an attack tax paid in life (#5869)", () => {
+  const alice = seat("a", "Alice");
+  const bob = seat("b", "Bob", { seat: 1 });
+  const lifeView = () => {
+    const v = view([alice, bob]);
+    v.turn.attack_targets = [
+      { kind: "player", id: "a" },
+      { kind: "player", id: "b", tax_life: 2 },
+    ];
+    return v;
+  };
+
+  it("reads the server's life price and names it", () => {
+    expect(attackTaxLifeOn(lifeView(), "b")).toBe(2);
+    expect(attackTaxLifeOn(lifeView(), "a")).toBe(0);
+    expect(attackTaxText(lifeView(), "b")).toBe("2 life");
+    expect(attackTaxText(lifeView(), "a")).toBe("");
+  });
+
+  it("prices mana and life together", () => {
+    expect(attackPriceText("{2}", 0)).toBe("{2}");
+    expect(attackPriceText("", 2)).toBe("2 life");
+    expect(attackPriceText("{2}", 2)).toBe("{2} and 2 life");
+  });
+
+  it("totals the life per attacker", () => {
+    expect(attackTaxLabelForCount("", 1, 2)).toBe("costs 2 life");
+    expect(attackTaxLabelForCount("", 3, 2)).toBe("costs 2 life each, 6 life for all 3");
+    expect(attackTaxLabelForCount("{1}", 2, 2)).toBe(
+      "costs {1} and 2 life each, {1}{1} and 4 life for all 2",
+    );
   });
 });
