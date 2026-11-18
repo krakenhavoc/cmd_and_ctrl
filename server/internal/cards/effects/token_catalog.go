@@ -434,6 +434,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
 	// "When this creature dies, it deals 2 damage to each opponent."
 	printedImpDamageToken,
+
+	// Mage's Attendant's Wizard (Streets of New Capenna, #5491): a 1/1 blue
+	// Wizard that sacrifices itself to counter a noncreature spell unless paid.
+	printedS82SncB18WizardToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

@@ -243,6 +243,8 @@ var tokenTable = map[string]game.Card{
 	"2/2 blue Drake with flying":                                       {Name: "Drake", TypeLine: "Token Creature — Drake", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 colorless Assembly-Worker artifact":                           {Name: "Assembly-Worker", TypeLine: "Token Artifact Creature — Assembly-Worker", Power: 2, Toughness: 2},
 	"2/2 green Cat":                                                    {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 2, Colors: []string{"G"}},
+	"2/2 green Cat with haste":                                         {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"haste"}},
+	"3/1 green Dog with vigilance":                                     {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 3, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"vigilance"}},
 	"2/2 colorless Spawn artifact":                                     {Name: "Spawn", TypeLine: "Token Artifact Creature — Spawn", Power: 2, Toughness: 2},
 	"2/2 white Alien":                                                  {Name: "Alien", TypeLine: "Token Creature — Alien", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/4 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 4, Colors: []string{"W"}},
