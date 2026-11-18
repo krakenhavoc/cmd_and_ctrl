@@ -1000,6 +1000,7 @@ choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
 choose choose-cards/s82-mom-b21-djeru-exile
 choose choose-cards/s82-mom-b21-omnath-reveal
+choose choose-cards/s82-snc-turf-war-take
 choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
@@ -3047,6 +3048,7 @@ tail s82-dmu/slimefoots-survey-look
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
+tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
@@ -3351,6 +3353,7 @@ tail then/heart-shaped-herb-return-and-monarch
 tail then/heroes-hangout-choose
 tail then/high-society-hunter-counter
 tail then/highway-robbery-draw-two
+tail then/hold-for-ransom-draw
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
 tail then/intrude-on-the-mind-take
