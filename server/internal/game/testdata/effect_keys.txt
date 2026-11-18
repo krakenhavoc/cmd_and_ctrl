@@ -511,6 +511,7 @@ choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/black-suns-twilight-return
+choose choose-cards/blossom-prancer-take
 choose choose-cards/bolster
 choose choose-cards/bonny-pall-land-from-hand-or-graveyard
 choose choose-cards/borborygmos-and-fblthp-discard
@@ -1890,6 +1891,7 @@ payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nothing
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/pact-lose-the-game
+payunless pay-unless/papercraft-decoy-draw
 payunless pay-unless/passenger-ferry-unblockable
 payunless pay-unless/persistent-marshstalker-return
 payunless pay-unless/pillar-tombs-of-aku-decline
@@ -2097,6 +2099,7 @@ run prompt-run/gastal-blockbuster-sacrifice
 run prompt-run/gearbane-orangutan-sacrifice
 run prompt-run/general-traag-sacrifice
 run prompt-run/genesis-device-sacrifice
+run prompt-run/geothermal-kami-return
 run prompt-run/ghouls-night-out-return
 run prompt-run/gideons-sacrifice-redirect
 run prompt-run/glorifier-of-suffering-sacrifice
@@ -2780,6 +2783,7 @@ tail janice-rand-essential-aide/reveal-until-land
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
 tail kaito-bane-of-nightmares/draw-per-opponent-who-lost-life
+tail kami-of-industry/entered
 tail kang-prime/time-counters
 tail kav-landseeker/sacrifice-the-lander-next-turn
 tail kaya-geist-hunter/spirits
