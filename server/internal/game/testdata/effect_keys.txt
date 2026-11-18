@@ -1491,6 +1491,7 @@ drawinstead dredge-3
 drawinstead dredge-4
 drawinstead dredge-5
 drawinstead dredge-6
+drawinstead engine/next-draw-exile-top-play
 drawinstead forbidden-crypt
 drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
@@ -2682,6 +2683,7 @@ tail engine/manifest-dread-finished
 tail engine/meld-entered
 tail engine/meld-exiled
 tail engine/move-tokens-created
+tail engine/next-draw-exile-top-done
 tail engine/omen-shuffled
 tail engine/opening-hand-entered
 tail engine/ordered-picks-sacrificed
