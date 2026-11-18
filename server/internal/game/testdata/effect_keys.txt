@@ -694,6 +694,7 @@ choose choose-cards/imprint-exile-from-hand
 choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/inscribed-tablet-take
+choose choose-cards/industrial-advancement-sacrifice
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
 choose choose-cards/invasion-of-arcavios-outside
@@ -1570,6 +1571,7 @@ option option-pick/atraxas-skitterfang-keyword
 option option-pick/attach-source-to-player
 option option-pick/aven-courier-counter
 option option-pick/baleful-mastery-opponent-draws
+option option-pick/bellowing-mauler-lose-or-sacrifice
 option option-pick/blank-blank-rocketship-letter
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/bribe-taker-counter
@@ -2074,6 +2076,7 @@ run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
 run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
+run prompt-run/dusk-mangler-discard-and-life
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
 run prompt-run/entish-restoration-search
@@ -3234,6 +3237,7 @@ tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
 tail then/barals-expertise-free-cast
+tail then/bellowing-mauler-sacrificed
 tail then/blastoneuron-copy
 tail then/blastoneuron-haste-and-sacrifice
 tail then/bloodline-bidding-type-chosen
@@ -3327,6 +3331,7 @@ tail then/high-society-hunter-counter
 tail then/highway-robbery-draw-two
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
+tail then/industrial-advancement-sacrificed
 tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
