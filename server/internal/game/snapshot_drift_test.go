@@ -423,6 +423,7 @@ var cardFields = plan(
 	"ManaAbilityText", carried, "",
 	"NoAbilitiesText", carried, "",
 	"WarpText", carried, "",
+	"FlashbackText", carried, "",
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",

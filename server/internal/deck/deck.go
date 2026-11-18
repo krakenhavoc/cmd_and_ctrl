@@ -993,6 +993,10 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// of the Swarm's "target exiled card with warp" on a card the
 		// catalog does not run.
 		WarpText: game.PrintedFactOf(game.WarpInText(oracleTexts(c)...)),
+		// S82: whether the printed text has the flashback keyword, for
+		// "a card with flashback or disturb" (Phantom Carriage) on a card
+		// the catalog does not run.
+		FlashbackText: game.PrintedFactOf(game.FlashbackInText(oracleTexts(c)...)),
 		// #4464: whether the printed text is empty, for "a creature card
 		// with no abilities" (Fang-Druid Summoner, Rise from the Wreck).
 		NoAbilitiesText: game.PrintedFactOf(game.NoAbilitiesInText(oracleTexts(c)...)),
