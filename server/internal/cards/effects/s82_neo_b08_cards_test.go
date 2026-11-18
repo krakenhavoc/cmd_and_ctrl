@@ -152,9 +152,10 @@ func TestNeoB08KamiDrawsAndGainsOnlyWithBoth(t *testing.T) {
 			t.Fatalf("cast: %v", err)
 		}
 		passPriorityAroundTable(t, g)
-		wantHand, wantLife := hand-1, life
+		// The Kami is put in hand by the cast helper and leaves it again.
+		wantHand, wantLife := hand, life
 		if both {
-			wantHand, wantLife = hand, life+1 // the Kami left the hand, a card was drawn
+			wantHand, wantLife = hand+1, life+1
 		}
 		if me.Hand.Size() != wantHand || me.Life != wantLife {
 			t.Errorf("both=%v: hand %d->%d (want %d), life %d->%d (want %d)", both, hand, me.Hand.Size(), wantHand, life, me.Life, wantLife)
@@ -243,7 +244,7 @@ func TestNeoB08AssassinsInkDestroysCreatureOrPlaneswalker(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	victim := b12Creature(g, opp.ID, "Victim", "Creature — Bear", 2, 2)
-	walker := b12Permanent(g, opp.ID, "Walker", "Legendary Planeswalker — Test")
+	walker := b12Permanent(g, opp.ID, "Walker", "Planeswalker — Test")
 	land := b12Permanent(g, opp.ID, "Island", "Basic Land — Island")
 	if _, err := neoB08Cast(t, g, me, "Assassin's Ink", "Instant", "", neoB08Ink, game.CastSpellParams{Targets: cardRefs(land), Strict: true}); err == nil {
 		t.Error("a land was a legal target")
