@@ -3449,7 +3449,10 @@
       handleActivateAbility(card, activate.index);
       return;
     }
-    const ability = (card.mana_abilities ?? []).find((a) => a.index === activate.index);
+    // #5896: a graveyard card's rows ride `zone_mana_abilities`.
+    const ability = (card.mana_abilities ?? card.zone_mana_abilities ?? []).find(
+      (a) => a.index === activate.index,
+    );
     if (ability && manaAbilityNeedsPrompt(ability)) {
       handleManaAbilityCost(card, ability, activate.colors);
       return;
@@ -3464,8 +3467,11 @@
     // #1864: an "Any player may activate this ability" row on another
     // player's permanent (Mana Cache) is the viewer's activation, and the
     // mana goes to the viewer's pool (CR 602.1a, CR 106.4).
+    // Off the battlefield the owner is the activator (CR 108.4).
     const activator =
-      ability?.any_player && viewerID && card.controller !== viewerID ? viewerID : card.controller;
+      ability?.any_player && viewerID && card.controller !== viewerID
+        ? viewerID
+        : card.controller || card.owner;
     guardedSendAction("activate_mana_ability", params, activator);
   }
 
@@ -5376,6 +5382,7 @@
       onTargetCard={handleTargetCard}
       onCastCard={handlePlayCard}
       onActivateAbility={handleActivateAbility}
+      onActivateManaAbility={(card, index) => handleMenuActivate(card, { kind: "mana", index })}
       sorcerySpeedBlocked={browsedZoneSorcerySpeedBlocked}
       {legal}
       {legalGate}

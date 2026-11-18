@@ -511,9 +511,18 @@ jobs:
         env:
           CENSUS_ENFORCE: ${{ github.event_name == 'push' && '1' || '' }}
           SHARD_ARGS: ${{ steps.shard.outputs.args }}
+        #
+        # #5906: the effects shard runs without -cover. Compiling
+        # internal/cards/effects with -race -cover drove the compiler to
+        # ~13.9 GB and the hosted runner killed it (exit 143, no output);
+        # without -cover it builds well inside the runner. Nothing reads
+        # the coverage figure, which was only printed. The lasting fix is
+        # splitting the package (#5906 stays open for it).
         run: |
           set -f
-          go test -race -cover -timeout 30m $SHARD_ARGS
+          cover=-cover
+          if [ "${{ matrix.shard }}" = effects ]; then cover=; fi
+          go test -race $cover -timeout 30m $SHARD_ARGS
 
       # The commit-and-push half of this used to live here (Discussion
       # #1231 P1a / #1247: "Census -- commit refresh"). Luke's review

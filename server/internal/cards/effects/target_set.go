@@ -98,6 +98,19 @@ func UpToCardsFromASingleGraveyard(label string, n int, preds ...CardPredicate) 
 	return TargetCardInGraveyard(label, preds...).WithCount(0, n).AllShare(FromASingleGraveyard())
 }
 
+// TotalManaValueAtMostX is "with total mana value X or less" (Orcus,
+// Prince of Undeath, #5898): TotalManaValueAtMost whose ceiling is the
+// X the clause is announced under, written in by the engine as the
+// clause is bound (game.TargetTotal.MaxIsX). Only on an "up to X
+// target" clause (CountFromX with UpToX); Register refuses it elsewhere.
+func TotalManaValueAtMostX() *game.TargetTotal {
+	return &game.TargetTotal{
+		Label:  "have total mana value X or less",
+		Stat:   game.TargetTotalManaValue,
+		MaxIsX: true,
+	}
+}
+
 // TotalManaValueAtMost is "with total mana value n or less" (#4616) —
 // the third kind of set rule, attached with TargetSpec.WithTotal: the
 // picks' mana values summed may not exceed n. The Super Hero Civil

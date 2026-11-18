@@ -108,6 +108,7 @@ func LevelUp(level int, cost game.AbilityCost) ActivatedAbility {
 		Label:        label,
 		Cost:         cost,
 		SorcerySpeed: true,
+		ClassLevel:   true,
 		Condition: func(g *game.Game, _ uuid.UUID, source uuid.UUID) bool {
 			return g.ClassLevelFor(source) == level-1
 		},

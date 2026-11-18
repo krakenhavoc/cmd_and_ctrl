@@ -445,6 +445,10 @@ func conditionalLandPlayRows(v reflect.Value) []string {
 		return []string{fmt.Sprintf("%d+ | You may play an additional land on each of your turns.", cp.AtCharge)}
 	case cp.AtCharge > 0 && cp.Plays > 1:
 		return []string{fmt.Sprintf("%d+ | You may play %d additional lands on each of your turns.", cp.AtCharge, cp.Plays)}
+	case cp.AtLevel > 0 && cp.Plays == 1:
+		return []string{"You may play an additional land on each of your turns."}
+	case cp.AtLevel > 0 && cp.Plays > 1:
+		return []string{fmt.Sprintf("You may play %d additional lands on each of your turns.", cp.Plays)}
 	case cp.Plays == 1:
 		return []string{fmt.Sprintf("As long as you control another %s, you may play an additional land on each of your turns.", cp.Another)}
 	case cp.Plays > 1:

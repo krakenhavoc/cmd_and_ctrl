@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -136,6 +137,16 @@ type TargetTotal struct {
 
 	// Max is the printed ceiling, inclusive: "6 or less" is 6.
 	Max int
+
+	// MaxIsX is "with total mana value X or less" (Orcus, Prince of
+	// Undeath, #5898): the ceiling is the X the clause is announced
+	// under, written into Max (and the number into Label) on the
+	// per-announcement clause copy by bindStepsBound — at the target
+	// walk and again from StackItem.XValue for the CR 608.2b re-check —
+	// so the catalog's declaration is never touched. A clause copy not
+	// yet bound reads Max as declared, 0. Build it with
+	// effects.TotalManaValueAtMostX.
+	MaxIsX bool
 }
 
 // TargetTotalStat is what a TargetTotal sums.
@@ -320,6 +331,14 @@ func bindStepsBound(steps []AnnouncedClause, b AnnouncedBound) {
 		if c := &steps[i].Clause; hasXBound(c) {
 			c.xBound, c.xBoundSet = b.valueFor(c), true
 		}
+		if c := &steps[i].Clause; c.Total != nil && c.Total.MaxIsX {
+			// #5898: a fresh Total, since the copy shares the catalog's
+			// pointer.
+			t := *c.Total
+			t.Max = max(b.X, 0)
+			t.Label = "have total mana value " + strconv.Itoa(t.Max) + " or less"
+			c.Total = &t
+		}
 	}
 }
 
@@ -341,7 +360,7 @@ func BindStepsXForEffect(steps []AnnouncedClause, x int) {
 // announcement through an X bound. Pure.
 func StepsBoundByX(steps []AnnouncedClause) bool {
 	for i := range steps {
-		if hasXBound(&steps[i].Clause) {
+		if c := &steps[i].Clause; hasXBound(c) || (c.Total != nil && c.Total.MaxIsX) {
 			return true
 		}
 	}

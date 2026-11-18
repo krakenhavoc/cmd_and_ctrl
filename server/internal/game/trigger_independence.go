@@ -109,7 +109,8 @@ const (
 	// controller's control this turn (Faramir). The tally only rises.
 	FootprintCondCreatureDied FootprintCond = "creature_died"
 	// FootprintCondAnyCreatureDied: a creature died this turn under any
-	// controller (Bulette's "if a creature died this turn", S82). The
+	// controller (Bulette's and Warlock Class's "if a creature died this
+	// turn", S82). The
 	// table-wide tally only rises.
 	FootprintCondAnyCreatureDied FootprintCond = "any_creature_died"
 	// FootprintCondEquipmentOrSpacecraftEntered: an Equipment or

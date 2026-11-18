@@ -204,3 +204,18 @@ func TestExcessDamageConditionReadsNothingWhileItHolds(t *testing.T) {
 		t.Errorf("read the board or the monarch: %+v", a)
 	}
 }
+
+// "If a creature died this turn" (any player's) only rises within a turn:
+// it reads nothing while it holds, and is refused before any creature died,
+// since another item of the batch could kill one.
+func TestAnyCreatureDiedConditionReadsNothingWhileItHolds(t *testing.T) {
+	f := newCondFixture(t)
+	if _, ok := f.access(t, cond(FootprintCondAnyCreatureDied, 0), drawOne); ok {
+		t.Error("before any creature died the condition is false, and the step is refused")
+	}
+	f.g.TurnTally.CreaturesDied = 1
+	a := f.mustAccess(t, cond(FootprintCondAnyCreatureDied, 0), drawOne)
+	if a.boardReads || a.monarchRead {
+		t.Errorf("read the board or the monarch: %+v", a)
+	}
+}

@@ -2646,6 +2646,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if src.Kind != ZoneHand {
 		tally.NotFromHand++
 	}
+	if src.Kind == ZoneExile {
+		tally.FromExile++
+	}
 	// ADR 0108 §9: the colours of the instants and sorceries cast this
 	// turn (Refraction Trap), read off the spell as it is on the stack.
 	for i := range g.Stack.Cards {
@@ -3689,7 +3692,10 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if card == nil || card.Owner != p.ID {
 		return
 	}
-	ab := g.autoManaExileAbilityFor(p.ID, *card, manaAbilitiesOf(card), zone)
+	// #5896: a Costed entry (Jack-o'-Lantern's "{1}, Exile this card
+	// from your graveyard") re-finds its ability through the costed
+	// picker, every other through the ordinary one.
+	ab := g.zoneManaAbilityForPlanLocked(p.ID, *card, planned, zone)
 	if ab == nil {
 		return
 	}
@@ -3746,6 +3752,20 @@ func (g *Game) materializeExiledManaSourceLocked(
 	// reason, one zone over: by the time the mana is minted the card
 	// is in exile and this pointer is dangling.
 	srcKinds := manaSourceKindsOf(*card)
+	// #5896: a Costed entry's mana cost, paid FIRST — the component
+	// order ActivateManaAbility pays in, mana before the exile — out of
+	// the tokens the plan named for it, as the battlefield arm pays a
+	// Signet's {1}. A cost the pool can no longer pay drops the entry
+	// with the card still in its zone.
+	if planned.Costed {
+		spent, ok := g.payPlannedManaCostLocked(p, *card, ab, planned.FundedBy)
+		if !ok {
+			return
+		}
+		if len(spent) > 0 {
+			g.EmitEvent(manaSpentEvent(p.ID, cardID, spent))
+		}
+	}
 	// #1183: the activation record, written at the last point before
 	// the card is committed — the placement and the argument the
 	// battlefield arm gives for its own write, with the exile in the
@@ -3781,6 +3801,14 @@ func (g *Game) materializeExiledManaSourceLocked(
 		if si == oneColorIdx {
 			color = planned.OneColor
 			for k := 0; k < slot.AmountFor(color); k++ {
+				bookColorRequirement(color, pending)
+			}
+		} else if ps, ok := plannedSlotColor(planned, si, len(slots), slot.Options); ok {
+			// #5896: an explicit (costed) plan's colour, as the
+			// battlefield arm reads it. Mana that funds a later Costed
+			// entry books none of the cost being paid.
+			color = ps.Color
+			if !ps.Funds {
 				bookColorRequirement(color, pending)
 			}
 		} else {

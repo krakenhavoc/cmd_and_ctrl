@@ -151,6 +151,15 @@ type TriggeredAbility struct {
 	// notifyListenersLocked). MUST NOT call public locking mutators.
 	AppliesTo func(ev Event, source *Card, sourceLKI Characteristic, g *Game) bool
 
+	// EventTargetIsGrantActivator narrows a row of a GRANTED bundle to an
+	// event whose Target is the player the granting effect named as "you"
+	// (GrantedAbility.Activator), per grant: "When this permanent deals
+	// damage to the player who cast Hellish Rebuke" (S82 AFR). A row that
+	// is not a granted one never passes it. Judged beside AppliesTo, in the
+	// battlefield harvest, against the grant this very row came from, so
+	// two Rebukes from two casters each give their own caster's trigger.
+	EventTargetIsGrantActivator bool
+
 	// Build constructs the StackItem to append to PendingTriggers.
 	// The item carries the trigger's announce-time choices (targets
 	// picked now, per CR 603.3d) and an Effect callback that runs
@@ -829,6 +838,9 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 			if t.AppliesTo != nil && !t.AppliesTo(ev, source, lki, g) {
 				continue
 			}
+			if t.EventTargetIsGrantActivator && !eventTargetIsGrantActivator(t, source, ev) {
+				continue
+			}
 			g.harvestMatchLocked(pass, *source, lki, t, origin)
 		}
 	}
@@ -1050,7 +1062,7 @@ func (g *Game) buildOrPickTriggerLocked(tc TriggerContext, source Card, lki Char
 		return
 	}
 	spec := g.triggerTargetsLocked(t, tc, &source)
-	steps := AnnouncedClauses(spec, t.Modes, modes)
+	steps := bindTriggerModeStepsCastX(t, &source, AnnouncedClauses(spec, t.Modes, modes))
 	if len(steps) > 0 {
 		g.queuePickTargetLocked(tc, source, lki, t, doubledBy, modes, steps, spec)
 		return

@@ -241,6 +241,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0103: Spiked Corridor's Devil.
 	printedDevilToken,
 
+	// S82 AFR batch 12: Vrondiss's Dragon Spirit.
+	printedAfrDragonSpiritToken,
+
 	// Falcon, Winged Wonder's Redwing (#4455).
 	printedMshA3RedwingToken,
 
@@ -441,6 +444,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Toby, Beastie Befriender's Beast (#5396): a 4/4 that can't attack
 	// or block alone, the first token printed with an attack limit.
 	printedTobyBeastToken,
+
+	// AFR batch 15: Mordenkainen's Dog Illusion and Minn's Illusion.
+	printedAfrB15DogIllusionToken,
+	printedAfrB15IllusionToken,
 
 	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
 	printedReliquaryDragonToken,
