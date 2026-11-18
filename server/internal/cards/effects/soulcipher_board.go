@@ -32,7 +32,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, {T}: Look at the top two cards of your library. Put one of them into your graveyard.",
-			Purpose: game.Purpose{SelfMillTutor: 1},
+			Purpose: game.Purpose{SelfMillTutor: 1, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{1}{U}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				player := item.Controller
@@ -79,10 +79,10 @@ func init() {
 		BlockRules:      nemBlocksOnlyFlyers(OnSelf()),
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{U}: Draw two cards, then discard a card.",
-			Purpose: game.Purpose{Draws: 2, Discards: 1},
+			Purpose: game.Purpose{Draws: 2, Discards: 1, Answers: game.AnswerValue},
 			Cost:    ManaCost("{3}{U}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return drawThenDiscard(g, item.Controller, item.SourceCardID, 2, 1, "Cipherbound Spirit — discard a card")
+				return drawThenDiscard(g, item.Controller, item.SourceCardID, 2, 1, "")
 			},
 		}},
 	})
