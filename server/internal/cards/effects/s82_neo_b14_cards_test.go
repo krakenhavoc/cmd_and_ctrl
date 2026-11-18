@@ -222,7 +222,7 @@ func TestS82NeoB14RecklessJoyExilesXAndLetsYouPlayTwoOfThem(t *testing.T) {
 	played := 0
 	for _, id := range top {
 		neoMana(me, "R")
-		if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err == nil {
+		if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: string(game.ZoneExile)}); err == nil {
 			played++
 			passPriorityAroundTable(t, g)
 		} else {
