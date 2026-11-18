@@ -16,8 +16,11 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample", "haste"},
 		Activated: []ActivatedAbility{{
-			Label:   "Channel — {1}{R}, Discard this card: Target creature gets +3/+1 and gains trample until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Label: "Channel — {1}{R}, Discard this card: Target creature gets +3/+1 and gains trample until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(game.TargetPurpose{
+				Slot: 0, UntilEndOfTurn: game.TargetBenefit,
+				Pump: &game.Pump{Power: 3, Toughness: 1, Keywords: []string{"trample"}},
+			})},
 			Cost:    Plus(ManaCost("{1}{R}"), DiscardThis()),
 			Zones:   []game.ZoneKind{game.ZoneHand},
 			Targets: TargetCreature("target creature"),

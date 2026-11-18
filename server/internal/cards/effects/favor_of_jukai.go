@@ -28,8 +28,11 @@ func init() {
 			b43GrantToAttachedWhen(cmdr2B19AttachedIsCreature, "reach"),
 		},
 		Activated: []ActivatedAbility{{
-			Label:   "Channel — {1}{G}, Discard this card: Target creature gets +3/+3 and gains reach until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Label: "Channel — {1}{G}, Discard this card: Target creature gets +3/+3 and gains reach until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(game.TargetPurpose{
+				Slot: 0, UntilEndOfTurn: game.TargetBenefit,
+				Pump: &game.Pump{Power: 3, Toughness: 3, Keywords: []string{"reach"}},
+			})},
 			Cost:    Plus(ManaCost("{1}{G}"), DiscardThis()),
 			Zones:   []game.ZoneKind{game.ZoneHand},
 			Targets: TargetCreature("target creature"),

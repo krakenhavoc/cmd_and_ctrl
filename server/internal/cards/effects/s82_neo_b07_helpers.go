@@ -65,14 +65,3 @@ var neoB07AnimateLand = CardTail("then/neo-roaring-earth-animate-land", func(ctx
 		"Roaring Earth — becomes a 0/0 green Spirit creature with haste that's still a land")
 	return nil
 })
-
-// neoB07BounceTheTarget is "Return target creature to its owner's hand." as
-// an activated ability's whole effect.
-func neoB07BounceTheTarget(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	return BounceToHand{Target: id}.Apply(ctx)
-}

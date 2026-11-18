@@ -42,7 +42,7 @@ func init() {
 				Cost:    Plus(ManaCost("{1}{U}"), DiscardThis()),
 				Zones:   []game.ZoneKind{game.ZoneHand},
 				Targets: TargetCreature("target creature"),
-				Effect:  neoB07BounceTheTarget,
+				Effect:  bounceTheTargetToHand,
 			},
 		},
 	})
