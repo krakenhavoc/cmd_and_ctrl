@@ -243,6 +243,7 @@ body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
 body itzquinth/dinosaur-bites
+body jace-architect-of-thought/attacker-gets-minus-one-zero
 body jace-reality-sculptor/attacker-gets-minus-five
 body jailbreak/return-equal-or-lesser
 body jaya-fiery-negotiator/damage
@@ -1409,6 +1410,7 @@ coinflip coin-flip/the-gold-saucer-treasure
 condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
 condition attach/this-aura-left
+condition attack/a-creature-an-opponent-controls-attacks
 condition attack/a-creature-you-control-attacks
 condition attack/a-creature-you-control-attacks-alone
 condition attack/a-sea-creature-attacks-summon-leviathan
@@ -1635,6 +1637,7 @@ confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
 confirm confirm/s82-mom-b12-guerrilla-exile
+confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
 confirm confirm/sanguine-spy-pay-life-draw
@@ -1972,6 +1975,7 @@ option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bro-b11-argivian-avenger-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
+option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/sanctuary-warden-remove-a-counter
@@ -2229,6 +2233,7 @@ payunless pay-unless/s82-mom-b21-elenda-and-azor-draw-x
 payunless pay-unless/s82-mom-b21-elenda-and-azor-vampire-knights
 payunless pay-unless/s82-neo-sokenzan-smelter
 payunless pay-unless/s82-one-b06-proliferate
+payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
@@ -2974,6 +2979,7 @@ tail earthen-arms/awaken
 tail earthshape/shield
 tail echoing-assault/sacrifice-at-next-end-step
 tail eerie-gravestone/after-mill
+tail elemental-mastery/exile-the-elementals
 tail elemental-teachings/choose
 tail elkin-lair/may-play-exiled
 tail elven-passage/behold-an-elf
@@ -3866,6 +3872,8 @@ tail then/s82-bro-b13-choose-one-play
 tail then/s82-bro-b13-exiled-to-hand
 tail then/s82-mid-scry-n
 tail then/s82-one-b06-proliferate-if-done
+tail then/s82-rpr-b25-jace-architect-searched
+tail then/s82-rpr-b25-jace-architect-take
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
 tail then/saurons-ransom-take
