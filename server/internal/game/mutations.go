@@ -2636,6 +2636,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if src.Kind != ZoneHand {
 		tally.NotFromHand++
 	}
+	if src.Kind == ZoneExile {
+		tally.FromExile++
+	}
 	// ADR 0108 §9: the colours of the instants and sorceries cast this
 	// turn (Refraction Trap), read off the spell as it is on the stack.
 	for i := range g.Stack.Cards {

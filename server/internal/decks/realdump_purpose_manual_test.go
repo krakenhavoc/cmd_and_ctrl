@@ -194,6 +194,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// #5499: AFR batch 14.
 	"Asmodeus the Archfiend": "its \"return all cards exiled with Asmodeus to their owner's hand\" moves only the cards its own draw replacement exiled face down, never a permanent on the board",
+
+	// S82 AFR batch 16.
+	"Wild-Magic Sorcerer": "gives the first spell you cast from exile each turn cascade: no permanents are affected, only a cascade offer",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
