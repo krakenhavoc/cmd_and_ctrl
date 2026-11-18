@@ -99,14 +99,20 @@ func TestNeoB04TrashBotCountsArtifactAndOrEnchantmentCardsInYourGraveyard(t *tes
 	if p := effectivePower(t, g, bot); p != 0 {
 		t.Fatalf("power %d with an empty graveyard, want 0", p)
 	}
-	pushGraveyardPermanent(me, "Rock", "Artifact", "{1}")
-	pushGraveyardPermanent(me, "Anthem", "Enchantment", "{1}{W}")
-	pushGraveyardPermanent(me, "Gearbot", "Artifact Creature — Construct", "{2}")
-	pushGraveyardPermanent(me, "Shrine Thing", "Enchantment Creature — Spirit", "{2}")
-	pushGraveyardPermanent(me, "Bear", "Creature — Bear", "{1}{G}")
-	pushGraveyardPermanent(me, "Bolt", "Instant", "{R}")
-	pushGraveyardPermanent(opp, "Their Rock", "Artifact", "{1}")
-	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	toGraveyard := func(p *game.Player, name, typeLine string) {
+		id := uuid.New()
+		p.Hand.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: typeLine, Owner: p.ID, Controller: p.ID})
+		if err := g.MoveCardByID(game.ZoneRef{Kind: game.ZoneHand, Owner: p.ID}, game.ZoneRef{Kind: game.ZoneGraveyard, Owner: p.ID}, id); err != nil {
+			t.Fatalf("MoveCardByID: %v", err)
+		}
+	}
+	toGraveyard(me, "Rock", "Artifact")
+	toGraveyard(me, "Anthem", "Enchantment")
+	toGraveyard(me, "Gearbot", "Artifact Creature — Construct")
+	toGraveyard(me, "Shrine Thing", "Enchantment Creature — Spirit")
+	toGraveyard(me, "Bear", "Creature — Bear")
+	toGraveyard(me, "Bolt", "Instant")
+	toGraveyard(opp, "Their Rock", "Artifact")
 	if p := effectivePower(t, g, bot); p != 4 {
 		t.Errorf("power %d, want 4 (four artifact and/or enchantment cards of mine)", p)
 	}
@@ -188,7 +194,7 @@ func TestNeoB04OperativeIsAOneOneCitizenWhileTapped(t *testing.T) {
 	}
 	// A +1/+1 counter still applies on top of the base 1/1.
 	addCountersForTest(g, op, game.CounterPlusOne, 1)
-	if p := effectivePower(t, g, op); p != 2 {
+	if p := effectivePowerWithCounters(t, g, op); p != 2 {
 		t.Errorf("tapped power %d with a counter, want 2", p)
 	}
 }
@@ -370,6 +376,8 @@ func TestNeoB04GloomshriekerReturnsAPermanentCardAndExilesInsteadOfDying(t *test
 	rock := pushGraveyardPermanent(me, "Rock", "Artifact", "{1}")
 	bolt := pushGraveyardPermanent(me, "Bolt", "Instant", "{R}")
 	castCatalogSpell(t, g, "Gloomshrieker", "Enchantment Creature — Cat Beast", neoB04Gloom, nil)
+	passPriorityAroundTable(t, g)
+	pickIfAsked(t, g, me.ID, rock)
 	passPriorityAroundTable(t, g)
 	if _, ok := handCardByID(g, me, rock); !ok {
 		t.Fatalf("the permanent card did not return to hand; hand %v", me.Hand.Cards)
