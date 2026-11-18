@@ -887,6 +887,8 @@ func (ctx ManaSpendContext) matchesKeyed(key, value string) bool {
 		return containsFold(ctx.Colors, value)
 	case manaValueKey:
 		return ctx.matchesManaValue(value)
+	case colorCountKey:
+		return ctx.matchesColorCount(value)
 	case altCostKey:
 		// #5680: a clause about the cost a spell is cast for.
 		return ctx.Purpose == SpendPurposeCast && ctx.AltCost == value
