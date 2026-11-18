@@ -53,7 +53,6 @@ func init() {
 		OracleID:     ludevicOracle,
 		Name:         "Ludevic, Necrogenius",
 		Completeness: CompletenessFull,
-		XMatters:     true,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersOrAttacks("Ludevic — mill a card", Do(MillCards{N: 1})),
 		},

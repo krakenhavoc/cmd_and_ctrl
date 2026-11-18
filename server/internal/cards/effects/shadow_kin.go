@@ -162,21 +162,30 @@ func shadowKinPicked(ctx *Context, r game.CardsChosen) error {
 		// owner's are still on offer.
 		return shadowKinOffer(ctx, r.Carry)
 	}
-	g := ctx.Game
-	id := r.Picked[0]
-	values, ok := g.CopiableValuesForEffect(id)
-	if err := g.ExileCardForEffect(id); err != nil {
-		return err
-	}
-	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile || !ok {
-		return nil
-	}
-	return BecomeCopy{
-		Targets:  []uuid.UUID{ctx.Source()},
-		Of:       id,
-		Values:   &values,
-		Duration: CopyIndefinite,
-		Except:   func(v *game.PrintedValues) { v.GrantAbility(shadowKinGrant) },
-		Label:    "Shadow Kin — becomes a copy",
-	}.Apply(ctx)
+	return ctx.Game.ExileCardKeyedForEffect(r.Picked[0], ctx.ItemTail(shadowKinAfterExile))
 }
+
+// shadowKinAfterExile is "if you do": the card reached exile, so Shadow
+// Kin becomes a copy of it. A card a replacement sent elsewhere is not
+// exiled, and nothing is copied.
+var shadowKinAfterExile = CardTail("shadow-kin/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	for _, id := range o.IDs {
+		z := ctx.Game.FindCardZoneForEffect(id)
+		if z == nil || z.Kind != game.ZoneExile {
+			continue
+		}
+		values, ok := ctx.Game.CopiableValuesForEffect(id)
+		if !ok {
+			return nil
+		}
+		return BecomeCopy{
+			Targets:  []uuid.UUID{ctx.Source()},
+			Of:       id,
+			Values:   &values,
+			Duration: CopyIndefinite,
+			Except:   func(v *game.PrintedValues) { v.GrantAbility(shadowKinGrant) },
+			Label:    "Shadow Kin — becomes a copy",
+		}.Apply(ctx)
+	}
+	return nil
+})

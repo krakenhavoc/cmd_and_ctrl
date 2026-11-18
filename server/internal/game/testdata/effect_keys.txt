@@ -602,6 +602,7 @@ choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
 choose choose-cards/crashing-wave-stun-among
 choose choose-cards/crashing-wave-stun-two
+choose choose-cards/creeping-inn-exile
 choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
 choose choose-cards/cyclonus-connive-discarded
@@ -834,6 +835,7 @@ choose choose-cards/lluwen-imperfect-naturalist-top
 choose choose-cards/loamcrafter-faun-discard
 choose choose-cards/london-mulligan-bottom
 choose choose-cards/lost-monarch-of-ifnir-return-creature
+choose choose-cards/ludevic-olag-copy
 choose choose-cards/mad-wizards-lair-cast
 choose choose-cards/mairsil-cage
 choose choose-cards/make-your-own-luck-plot
@@ -1031,6 +1033,7 @@ choose choose-cards/seed-of-hope-permanent
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/serum-core-chimera-discarded
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
+choose choose-cards/shadow-kin-exile
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
 choose choose-cards/silvan-reveler-discarded
@@ -1921,6 +1924,7 @@ payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/itzquinth-dinosaur-bites
 payunless pay-unless/jace-multiverse-architect-cant-attack
 payunless pay-unless/jedit-ojanen-mercenary-cat-warrior
+payunless pay-unless/jerren-transform
 payunless pay-unless/jolted-awake-return
 payunless pay-unless/kalastria-highborn-drain
 payunless pay-unless/karn-living-legacy-look
@@ -2365,6 +2369,7 @@ steps then-steps/sail-into-the-west-embark
 steps then-steps/sauron-the-dark-lord-wheel
 steps then-steps/scavenging-ooze-grow
 steps then-steps/seize-the-spotlight-fortune
+steps then-steps/shadow-kin-payoff
 steps then-steps/shadow-mysterious-assassin-drain
 steps then-steps/snort-wheel
 steps then-steps/soul-shackled-zombie-drain
@@ -3195,6 +3200,7 @@ tail seed-of-hope/after-mill
 tail seek-thrills/after-mill
 tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
+tail shadow-kin/after-exile
 tail sheoldred-the-true-scriptures/flicker-this
 tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
@@ -3495,6 +3501,7 @@ tail then/screaming-nemesis-cant-gain-life
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
 tail then/servant-of-the-stinger-search
+tail then/shadow-kin-mill-step
 tail then/shadow-mysterious-assassin-sacrificed
 tail then/shatter-the-oath-role
 tail then/shimmering-mirage-draw

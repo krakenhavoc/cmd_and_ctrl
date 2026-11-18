@@ -50,6 +50,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{2}: Target Human you control gains lifelink until end of turn.",
 			Cost:    ManaCost("{2}"),
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink")),
 			Targets: TargetCreature("target Human you control", YouControl(), Subtype("Human")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
@@ -70,7 +71,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice another creature: Draw a card.",
 			Cost:    SacrificeAnotherN(1, "another creature", Creature()),
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Draws: 1, Answers: game.AnswerSacOutlet},
 			Effect:  Do(DrawCards{N: 1}),
 		}},
 	})
@@ -88,7 +89,7 @@ func jerrenEntersOrAnotherHumanDied(ev game.Event, source *game.Card, _ game.Cha
 	}
 	dead, ok := diedCreature(ev, g)
 	return ok && !IsToken(dead) && leftUnderControlOf(ev, dead) == source.Controller &&
-		leftAsSubtype(ev, dead, "Human")
+		leftAsSubtype(ev, dead, source.TextSubtype("Human"))
 }
 
 // jerrenHasExactly13Life is the end-step ability's intervening "if".
