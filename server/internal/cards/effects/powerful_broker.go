@@ -32,15 +32,21 @@ func init() {
 			Cost:         TapCost(),
 			SorcerySpeed: true,
 			Targets:      ardennTargetPermanentOrPlayer(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					return mshA6AnotherOfEachKind(ctx, t)
-				}
-				return nil
-			},
+			Effect:       mshA6AnotherOfEachKindOnTarget,
 		}},
 	})
+}
+
+// mshA6AnotherOfEachKindOnTarget is the body of "for each kind of counter on
+// target permanent or player, give that permanent or player another counter of
+// that kind" (Powerful Broker, Skyship Plunderer): the first legal target, if
+// there is one, gets one more counter of each kind it has.
+func mshA6AnotherOfEachKindOnTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		return mshA6AnotherOfEachKind(ctx, t)
+	}
+	return nil
 }
 
 // mshA6AnotherOfEachKind gives the target one more counter of each kind it
