@@ -44,6 +44,7 @@ body activation-count/sacrifice-this-creature
 body agathas-soul-cauldron/counter
 body all-out-assault/untap-each-creature-you-control
 body ambulatory-edifice/shrink
+body ancestral-katana/attach
 body angel-of-suffering/mill-twice
 body annihilator/sacrifice
 body ant-man-colony-commander/counter
@@ -1789,6 +1790,7 @@ payunless cadric-soul-kindler/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
+payunless pay-unless/ancestral-katana-attach
 payunless pay-unless/ant-man-colony-commander-counter
 payunless pay-unless/antagonist-incorporator-borg
 payunless pay-unless/anthropede-destroy-room
