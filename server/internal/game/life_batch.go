@@ -139,17 +139,33 @@ func (g *Game) settleBatchEndTriggersLocked() {
 	staged := g.stagedBatchTriggers
 	g.stagedBatchTriggers = nil
 	for _, s := range staged {
+		// The source is still on the battlefield, or (#5487) still in a
+		// zone its ability declared: a graveyard card's trigger that was
+		// staged from there. "You" in a card's ability off the battlefield
+		// is its owner (CR 108.4), as the declared-zone walk reads it.
+		from := ZoneBattlefield
 		if g.Battlefield == nil || !g.Battlefield.Contains(s.Source) {
-			continue
+			z := g.findCardZoneLocked(s.Source)
+			if z == nil {
+				continue
+			}
+			from = z.Kind
 		}
 		source := g.findCardByIDLocked(s.Source)
 		if source == nil {
 			continue
 		}
 		src := *source
+		origin := triggerOfPermanent
+		triggers := triggersOf(&src)
+		if from != ZoneBattlefield {
+			src.Controller = src.Owner
+			origin = triggerOfNonPermanent
+			triggers = TriggersForCard(src)
+		}
 		lki := src.Effective()
-		for _, t := range triggersOf(&src) {
-			if t.Key != s.Key || t.AtBatchEnd == nil {
+		for _, t := range triggers {
+			if t.Key != s.Key || t.AtBatchEnd == nil || !TriggerWatchesFromZone(t, from) {
 				continue
 			}
 			if !t.AtBatchEnd.holds(&src, g, s.Event) {
@@ -166,7 +182,7 @@ func (g *Game) settleBatchEndTriggersLocked() {
 			}
 			pass := g.newHarvestPassLocked(ev)
 			pass.settled = true
-			g.harvestMatchLocked(&pass, src, lki, t, triggerOfPermanent)
+			g.harvestMatchLocked(&pass, src, lki, t, origin)
 		}
 	}
 }

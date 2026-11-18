@@ -359,6 +359,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Synapse Necromage's Fungus: can't block (The Lost Caverns of
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
+	// The Raven Man's Bird: flying, can't block (Dominaria United, #5487).
+	printedRavenManBirdToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.
