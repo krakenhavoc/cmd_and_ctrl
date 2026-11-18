@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Death Grasp — Sorcery {X}{W}{B} (Apocalypse, #5614):
 //
 //	"Death Grasp deals X damage to any target. You gain X life."
@@ -20,14 +18,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
 		Purpose:      ForTargets(DamageXToTarget(0)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			if err := (DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: ctx.X()}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: ctx.Controller(), Amount: ctx.X()}.Apply(ctx)
-		},
+		OnResolve:    damageXToTheTargetAndGainX,
 	})
 }

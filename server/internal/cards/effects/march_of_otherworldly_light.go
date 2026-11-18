@@ -25,12 +25,7 @@ func init() {
 		},
 		Targets: TargetPermanent("target artifact, creature, or enchantment with mana value X or less",
 			Or(Artifact(), Creature(), Enchantment())).WithManaValueAtMostX(),
-		Purpose: game.Purpose{Answers: game.AnswerRemove},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			return ExileTarget{Target: item.Targets[0].ID}.Apply(ctx)
-		},
+		Purpose:   game.Purpose{Answers: game.AnswerRemove},
+		OnResolve: ResolveSteps(Instruction(exileTheFirstTargetIfLegal)),
 	})
 }
