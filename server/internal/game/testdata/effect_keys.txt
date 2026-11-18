@@ -1068,6 +1068,7 @@ choose choose-cards/nick-fury-spymaster-put
 choose choose-cards/nicol-bolas-god-pharaoh-exile-two
 choose choose-cards/nihiloor-tap-for-opponent
 choose choose-cards/ninjas-blades-loot
+choose choose-cards/niv-mizzet-reborn-color-pair
 choose choose-cards/north-wind-avatar-take
 choose choose-cards/northampton-farm-return
 choose choose-cards/nothing
@@ -2414,6 +2415,7 @@ run prompt-run/killmonger-sacrificed
 run prompt-run/kishla-trawlers-exile
 run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
+run prompt-run/kroxa-titan-of-deaths-hunger-life
 run prompt-run/kylox-sacrifice
 run prompt-run/larval-scoutlander-search
 run prompt-run/lich-knights-conquest-sacrifice
