@@ -180,20 +180,39 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		g.emitAttachSkippedLocked(attachmentID, host, "this permanent can't be attached to that host")
 		return nil
 	}
+	// CR 701.3d: moving an attachment off one permanent or player onto
+	// another makes it "become unattached" from the first, so a "whenever
+	// this Equipment becomes unattached from a permanent" ability
+	// (Grafted Exoskeleton) sees an Equipment re-equipped elsewhere. Only
+	// a move to a different object: onto the host it is on, nothing
+	// happened (CR 701.3b).
+	oldHost, leftOld := c.AttachedTo, moved && c.IsAttached() && c.AttachedTo != host
+	// Read before the first event: a listener may reshape the battlefield
+	// slice c points into.
+	actor, kind := c.Controller, attachmentKindOf(c)
 	c.AttachedTo = host
 	c.AttachedEpoch = hostEpoch
 	c.AttachedPinned = host.Kind == TargetCard
 	c.AttachedAt = timeNowUnixNano()
+	if leftOld {
+		g.EmitEvent(Event{
+			Kind:   EventUnattach,
+			Actor:  actor,
+			Source: attachmentID,
+			CardID: attachmentID,
+			Target: oldHost.ID,
+		})
+	}
 	g.EmitEvent(Event{
 		Kind:   EventAttach,
-		Actor:  c.Controller,
-		Source: c.InstanceID,
-		CardID: c.InstanceID,
+		Actor:  actor,
+		Source: attachmentID,
+		CardID: attachmentID,
 		Target: host.ID,
 		// #4444: what it is, for the log's line and the client's cue, and
 		// whether it moved at all (CR 701.3b: onto the host it is already
 		// on, the effect does nothing).
-		Label:           attachmentKindOf(c),
+		Label:           kind,
 		AlreadyAttached: !moved,
 	})
 	// #2709: the attachment's "As this Equipment becomes attached to a

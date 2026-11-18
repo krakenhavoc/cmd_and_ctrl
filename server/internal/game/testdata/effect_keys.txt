@@ -3105,6 +3105,7 @@ tail gul-dukat/drain-each-opponent
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
 tail harried-dronesmith/haste-then-sacrifice
+tail hate-mirage/haste-and-exile-copies
 tail heartless-conscription/play-exiled-then-exile-this
 tail heirloom-auntie/remove-counter
 tail heirloom-mirror/check-ritual
