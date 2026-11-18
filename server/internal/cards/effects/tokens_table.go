@@ -148,6 +148,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 colorless Zombie artifact":                                 {Name: "Zombie", TypeLine: "Token Artifact Creature — Zombie", Power: 3, Toughness: 3},
 	"Scrap artifact":                                                {Name: "Scrap", TypeLine: "Token Artifact"},
 	"1/1 colorless Spirit":                                          {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1},
+	"2/2 red Spirit with menace":                                    {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"R"}, Keywords: []string{"menace"}},
 	"1/1 colorless Thopter artifact with flying":                    {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
 	"3/3 green Forest Tentacle":                                     {Name: "Forest Tentacle", TypeLine: "Token Land Creature — Forest Tentacle", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 green Forest Dryad":                                        {Name: "Forest Dryad", TypeLine: "Token Land Creature — Forest Dryad", Power: 1, Toughness: 1, Colors: []string{"G"}},
