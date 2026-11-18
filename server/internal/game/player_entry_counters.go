@@ -20,6 +20,19 @@ import "github.com/google/uuid"
 type EntryCounterGrant struct {
 	Kind  string `json:"kind"`
 	Count int    `json:"count"`
+
+	// EnchantmentOnly narrows the grant to enchantment creatures
+	// (Storyweave, #5493). Additive within a snapshot version (#522).
+	EnchantmentOnly bool `json:"enchantmentOnly,omitempty"`
+	// Once makes it "the next time one or more creatures enter": the
+	// first entry that takes it spends it, and so does every other card
+	// of that same simultaneous entry (CR 614.1, 603.2c). FiredSeq is the
+	// event-log position at that first use. No event is emitted between
+	// the replacement windows of one simultaneous entry, so a later window
+	// at the same position is the same entry; a later position is a new one.
+	Once     bool   `json:"once,omitempty"`
+	Fired    bool   `json:"fired,omitempty"`
+	FiredSeq uint64 `json:"firedSeq,omitempty"`
 }
 
 // GrantCreaturesEnterWithCountersForEffect gives `player` the grant for
@@ -39,7 +52,7 @@ func (g *Game) GrantCreaturesEnterWithCountersForEffect(player uuid.UUID, kind s
 
 // entryCountersFor is the counters a creature entering under `controller`
 // gets from live grants, summed per kind in declaration order.
-func (g *Game) entryCountersFor(controller uuid.UUID) []EntryCounterGrant {
+func (g *Game) entryCountersFor(controller uuid.UUID, entering Card) []EntryCounterGrant {
 	p := g.playerByIDLocked(controller)
 	if p == nil {
 		return nil
@@ -49,9 +62,57 @@ func (g *Game) entryCountersFor(controller uuid.UUID) []EntryCounterGrant {
 		if s.CreaturesEnterWithCounters == nil || g.durationExpiredLocked(s.Duration, false) {
 			continue
 		}
-		out = append(out, *s.CreaturesEnterWithCounters)
+		grant := *s.CreaturesEnterWithCounters
+		if grant.EnchantmentOnly && !entering.IsEnchantment() {
+			continue
+		}
+		if grant.Once && grant.Fired && grant.FiredSeq != g.eventSeq {
+			continue
+		}
+		out = append(out, grant)
 	}
 	return out
+}
+
+// spendOnceEntryCountersLocked marks every live "next time" grant that
+// just applied to an entering creature as used at the current log position.
+func (g *Game) spendOnceEntryCountersLocked(controller uuid.UUID, entering Card) {
+	p := g.playerByIDLocked(controller)
+	if p == nil {
+		return
+	}
+	for i := range p.Statics {
+		grant := p.Statics[i].CreaturesEnterWithCounters
+		if grant == nil || !grant.Once || g.durationExpiredLocked(p.Statics[i].Duration, false) {
+			continue
+		}
+		if grant.EnchantmentOnly && !entering.IsEnchantment() {
+			continue
+		}
+		if grant.Fired && grant.FiredSeq != g.eventSeq {
+			continue
+		}
+		// A fresh copy: clones share the pointer (clonePlayerStatics is shallow).
+		spent := *grant
+		spent.Fired, spent.FiredSeq = true, g.eventSeq
+		p.Statics[i].CreaturesEnterWithCounters = &spent
+	}
+}
+
+// GrantNextEntryCountersForEffect gives `player` "the next time one or more
+// <enchantment> creatures you control enter this turn, each enters with N
+// additional <kind> counters" for duration d (Storyweave, #5493).
+func (g *Game) GrantNextEntryCountersForEffect(player uuid.UUID, kind string, count int, enchantmentOnly bool, label string, source uuid.UUID, d Duration) {
+	p := g.playerByIDLocked(player)
+	if p == nil || kind == "" || count <= 0 {
+		return
+	}
+	p.Statics = append(p.Statics, PlayerStatic{
+		CreaturesEnterWithCounters: &EntryCounterGrant{Kind: kind, Count: count, EnchantmentOnly: enchantmentOnly, Once: true},
+		Source:                     source,
+		Label:                      label,
+		Duration:                   d,
+	})
 }
 
 // playerEntryCountersReplacement is the built-in reader.
@@ -62,16 +123,17 @@ var playerEntryCountersReplacement = ReplacementEffect{
 			return false
 		}
 		entering, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && entering.IsCreature() && len(g.entryCountersFor(entering.Controller)) > 0
+		return ok && entering.IsCreature() && len(g.entryCountersFor(entering.Controller, entering)) > 0
 	},
 	Replace: func(ev *ReplacementEvent, g *Game, _ *Card) error {
 		entering, ok := g.LookupCardForEffect(ev.CardID)
 		if !ok {
 			return nil
 		}
-		for _, grant := range g.entryCountersFor(entering.Controller) {
+		for _, grant := range g.entryCountersFor(entering.Controller, entering) {
 			ev.AddCounterAtETB(grant.Kind, grant.Count)
 		}
+		g.spendOnceEntryCountersLocked(entering.Controller, entering)
 		return nil
 	},
 	Controller: func(ev *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
