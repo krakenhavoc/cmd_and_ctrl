@@ -4,7 +4,8 @@ import "github.com/google/uuid"
 
 // ExileCardsFaceDownChosenKeyedForEffect exiles cards the effect has
 // already CHOSEN face down, with no permission yet: "exile one of them face
-// down" (Discover the Impossible, #5493). They land as FaceDownPermitted,
+// down" (Discover the Impossible, #5493; The Dragon-Kami Reborn's "exile
+// one of them face down with a hatching counter on it", S82). They land as FaceDownPermitted,
 // so a grant made over them afterwards makes its holder their one viewer
 // (stampPermittedViewersLocked), as ExileTopFaceDownUnseenKeyedForEffect's
 // cards. `then` is told the cards that landed in exile once the batch is

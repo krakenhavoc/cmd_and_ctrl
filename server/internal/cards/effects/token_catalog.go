@@ -441,6 +441,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Mage's Attendant's Wizard (Streets of New Capenna, #5491): a 1/1 blue
 	// Wizard that sacrifices itself to counter a noncreature spell unless paid.
 	printedS82SncB18WizardToken,
+	// Jugan Defends the Temple (S82, NEO): the 1/1 green Human Monk with "{T}: Add {G}."
+	printedNeoHumanMonkToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

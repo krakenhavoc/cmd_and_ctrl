@@ -77695,6 +77695,7 @@ seats[].statics[].castBan.filter.subtype	string
 seats[].statics[].castBan.filter.surveilledThisTurn	bool
 seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
+seats[].statics[].castBan.manaValue	number:int
 seats[].statics[].castBan.maxPerTurn	number:int
 seats[].statics[].creaturesEnterWithCounters	object
 seats[].statics[].creaturesEnterWithCounters.count	number:int
