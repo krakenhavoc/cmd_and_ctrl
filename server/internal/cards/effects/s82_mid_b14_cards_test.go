@@ -270,15 +270,253 @@ func TestS82MidB14ConformityMakesNonlegendaryCreaturesThreeThreeAndTypeless(t *t
 	}
 
 	// A counter still applies on top of the base 3/3 (CR 613.4b, 613.4d).
-	g.WithWriteLock(func() { _ = g.AddCounterByForEffect(opp.ID, elf, game.CounterPlusOne, 1) })
-	t.Logf("counters on Elf: %d", countersOn(g, elf, game.CounterPlusOne))
-	if got := pt(elf); got != [2]int{4, 4} {
-		t.Errorf("Elf with a counter is %v, want 4/4", got)
+	boosted := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Boosted", TypeLine: "Creature — Elf", Power: 1, Toughness: 1,
+		Counters: map[string]int{game.CounterPlusOne: 1}, Owner: opp.ID, Controller: opp.ID,
+	})
+	if got := pt(boosted); got != [2]int{4, 4} {
+		t.Errorf("a creature with a counter is %v, want 4/4", got)
 	}
 
-	// The Curse leaving ends it: a 1/1 with a counter.
+	// The Curse leaving ends it.
 	b15Destroy(t, g, curse)
-	if got := pt(elf); got != [2]int{2, 2} {
-		t.Errorf("Elf after the Curse left is %v, want 2/2", got)
+	if got := pt(elf); got != [2]int{1, 1} {
+		t.Errorf("Elf after the Curse left is %v, want 1/1", got)
+	}
+	if got := pt(boosted); got != [2]int{2, 2} {
+		t.Errorf("a creature with a counter after the Curse left is %v, want 2/2", got)
+	}
+}
+
+// --- Curse of Silence ------------------------------------------------------
+
+func TestS82MidB14SilenceTaxesAndOffersASacrificeForACard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	curse := castCatalogSpell(t, g, "Curse of Silence", curseAuraTypeLine, s82MidB14Silence,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	passPriorityAroundTable(t, g)
+	actNameFor(t, g, me.ID, "Lightning Bolt")
+	if host := attachmentHostOf(t, g, curse); host.Kind != game.TargetPlayer || host.ID != opp.ID {
+		t.Fatalf("attached to %+v, want the opponent", host)
+	}
+
+	price := func(p *game.Player, name string) string {
+		var total string
+		g.ReadSnapshot(func() {
+			c := game.Card{InstanceID: uuid.New(), Name: name, TypeLine: "Instant", ManaCost: "{R}", Owner: p.ID, Controller: p.ID}
+			pr, err := g.PriceCastForEffect(p.ID, c, game.CastSpellParams{})
+			if err != nil {
+				t.Fatalf("PriceCast: %v", err)
+			}
+			total = pr.Total.String()
+		})
+		return total
+	}
+	if got := price(opp, "Lightning Bolt"); got != "{2}{R}" {
+		t.Errorf("the enchanted player's named spell costs %s, want {2}{R}", got)
+	}
+	if got := price(opp, "Shock"); got != "{R}" {
+		t.Errorf("an unnamed spell costs %s, want {R}", got)
+	}
+	if got := price(me, "Lightning Bolt"); got != "{R}" {
+		t.Errorf("the Curse's controller's named spell costs %s, want {R}", got)
+	}
+}
+
+func TestS82MidB14SilenceSacrificeDrawsOnlyIfYouSacrificeIt(t *testing.T) {
+	for _, accept := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		curse := castCatalogSpell(t, g, "Curse of Silence", curseAuraTypeLine, s82MidB14Silence,
+			[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+		passPriorityAroundTable(t, g)
+		actNameFor(t, g, me.ID, "Test Sorcery")
+
+		advanceToMainOf(t, g, 1)
+		cardID := uuid.New()
+		opp.Hand.PushTop(game.Card{InstanceID: cardID, Name: "Test Sorcery", TypeLine: "Sorcery", Owner: opp.ID, Controller: opp.ID})
+		if err := g.AddManaForEffect(opp.ID, uuid.Nil, "{C}{C}"); err != nil {
+			t.Fatal(err)
+		}
+		if err := g.CastSpell(opp.ID, cardID, game.CastSpellParams{Strict: true}); err != nil {
+			t.Fatalf("CastSpell: %v", err)
+		}
+		before := s82MidB14HandSize(me)
+		passPriorityAroundTable(t, g)
+		answerLatestTriggerPrompt(t, g, me.ID, accept)
+		passPriorityAroundTable(t, g)
+		_, onBF := battlefieldCard(g, curse)
+		gained := s82MidB14HandSize(me) - before
+		if accept && (onBF || gained != 1) {
+			t.Errorf("accepted: on battlefield %v, cards drawn %d; want sacrificed and 1 drawn", onBF, gained)
+		}
+		if !accept && (!onBF || gained != 0) {
+			t.Errorf("declined: on battlefield %v, cards drawn %d; want it kept and none drawn", onBF, gained)
+		}
+	}
+}
+
+// --- Curse of Surveillance -------------------------------------------------
+
+func TestS82MidB14SurveillanceDrawsForEachCurseOnThatPlayer(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, a, b := g.Seats[0], g.Seats[1], g.Seats[2], g.Seats[3]
+	s82MidB14Curse(g, me, opp, "Curse of Surveillance", s82MidB14Surveil)
+	s82MidB14Curse(g, a, opp, "Curse of Opulence", curseOpulenceOracle)
+	s82MidB14Curse(g, a, b, "Curse of Opulence", curseOpulenceOracle) // not on the enchanted player
+
+	advanceToUpkeepOfSeat(t, g, 1)
+	monSettle(t, g)
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no target prompt")
+	}
+	before := map[uuid.UUID]int{me.ID: s82MidB14HandSize(me), a.ID: s82MidB14HandSize(a), opp.ID: s82MidB14HandSize(opp), b.ID: s82MidB14HandSize(b)}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{
+		{Kind: game.TargetPlayer, ID: me.ID}, {Kind: game.TargetPlayer, ID: a.ID},
+	}); err != nil {
+		t.Fatalf("ResolvePickTargets: %v", err)
+	}
+	monSettle(t, g)
+	for _, p := range []*game.Player{me, a} {
+		if got := s82MidB14HandSize(p) - before[p.ID]; got != 2 {
+			t.Errorf("%s drew %d, want 2 (two Curses attached to the enchanted player)", p.Name, got)
+		}
+	}
+	if got := s82MidB14HandSize(b) - before[b.ID]; got != 0 {
+		t.Errorf("an untargeted player drew %d", got)
+	}
+	if got := s82MidB14HandSize(opp) - before[opp.ID]; got != 0 {
+		t.Errorf("the enchanted player drew %d", got)
+	}
+}
+
+func TestS82MidB14SurveillanceCannotTargetTheEnchantedPlayer(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	s82MidB14Curse(g, me, opp, "Curse of Surveillance", s82MidB14Surveil)
+	advanceToUpkeepOfSeat(t, g, 1)
+	monSettle(t, g)
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no target prompt")
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}); err == nil {
+		t.Error("the enchanted player was accepted as a target")
+	}
+}
+
+// --- Lynde, Cheerful Tormentor ---------------------------------------------
+
+func TestS82MidB14LyndeReturnsADeadCurseAttachedToYouAtTheNextEndStep(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushPermanentForTest(g, me.ID, "Lynde, Cheerful Tormentor", s82MidB14Lynde, "Legendary Creature — Human Warlock")
+	curse := s82MidB14Curse(g, me, opp, "Curse of Opulence", curseOpulenceOracle)
+
+	b15Destroy(t, g, curse)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCard(g, curse); ok {
+		t.Fatal("the Curse came back at once; it returns at the beginning of the next end step")
+	}
+	advanceToEndStepOf(t, g, g.Turn.ActiveSeat)
+	passPriorityAroundTable(t, g)
+	c, ok := battlefieldCard(g, curse)
+	if !ok {
+		t.Fatal("the Curse did not return at the end step")
+	}
+	if c.AttachedTo.Kind != game.TargetPlayer || c.AttachedTo.ID != me.ID {
+		t.Errorf("the Curse is attached to %+v, want Lynde's controller", c.AttachedTo)
+	}
+}
+
+func TestS82MidB14LyndeIgnoresAnotherPlayersCurseAndNonCurses(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushPermanentForTest(g, me.ID, "Lynde, Cheerful Tormentor", s82MidB14Lynde, "Legendary Creature — Human Warlock")
+	theirs := s82MidB14Curse(g, opp, me, "Curse of Opulence", curseOpulenceOracle)
+	aura := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Pacifism", TypeLine: "Enchantment — Aura", Owner: me.ID, Controller: me.ID,
+		AttachedTo: game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID},
+	})
+	b15Destroy(t, g, theirs)
+	b15Destroy(t, g, aura)
+	advanceToEndStepOf(t, g, g.Turn.ActiveSeat)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCard(g, theirs); ok {
+		t.Error("an opponent's Curse returned: it went to their graveyard, not Lynde's controller's")
+	}
+	if _, ok := battlefieldCard(g, aura); ok {
+		t.Error("a non-Curse Aura returned")
+	}
+}
+
+func TestS82MidB14LyndeDoesNotFollowACurseThatLeftTheGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushPermanentForTest(g, me.ID, "Lynde, Cheerful Tormentor", s82MidB14Lynde, "Legendary Creature — Human Warlock")
+	curse := s82MidB14Curse(g, me, opp, "Curse of Opulence", curseOpulenceOracle)
+	b15Destroy(t, g, curse)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() {
+		if _, err := g.ExileCardForEffect(curse); err != nil {
+			t.Fatalf("exile: %v", err)
+		}
+	})
+	advanceToEndStepOf(t, g, g.Turn.ActiveSeat)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCard(g, curse); ok {
+		t.Error("a Curse exiled from the graveyard came back")
+	}
+}
+
+func TestS82MidB14LyndeUpkeepMovesACurseToAnOpponentAndDrawsTwo(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushPermanentForTest(g, me.ID, "Lynde, Cheerful Tormentor", s82MidB14Lynde, "Legendary Creature — Human Warlock")
+	curse := s82MidB14Curse(g, opp, me, "Curse of Opulence", curseOpulenceOracle)
+	advanceToUpkeepOfSeat(t, g, 0)
+	before := s82MidB14HandSize(me)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	pick := latestOptionPickFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("no pair prompt")
+	}
+	idx := -1
+	for i, o := range pick.PickOptions {
+		if o.Player == opp.ID {
+			idx = i
+		}
+	}
+	if idx < 1 {
+		t.Fatalf("the opponent is not offered: %+v", pick.PickOptions)
+	}
+	answerOptionPick(t, g, me.ID, idx)
+	passPriorityAroundTable(t, g)
+	c, _ := battlefieldCard(g, curse)
+	if c.AttachedTo.Kind != game.TargetPlayer || c.AttachedTo.ID != opp.ID {
+		t.Errorf("the Curse is attached to %+v, want the opponent", c.AttachedTo)
+	}
+	if got := s82MidB14HandSize(me) - before; got != 2 {
+		t.Errorf("drew %d, want 2", got)
+	}
+}
+
+func TestS82MidB14LyndeUpkeepDeclineAndNoCurseDrawNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushPermanentForTest(g, me.ID, "Lynde, Cheerful Tormentor", s82MidB14Lynde, "Legendary Creature — Human Warlock")
+	curse := s82MidB14Curse(g, opp, me, "Curse of Opulence", curseOpulenceOracle)
+	advanceToUpkeepOfSeat(t, g, 0)
+	before := s82MidB14HandSize(me)
+	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	if c, _ := battlefieldCard(g, curse); c.AttachedTo.ID != me.ID {
+		t.Error("the Curse moved although the player declined")
+	}
+	if s82MidB14HandSize(me) != before {
+		t.Error("declining drew cards")
 	}
 }
