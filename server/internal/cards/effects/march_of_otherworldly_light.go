@@ -19,7 +19,6 @@ func init() {
 		OracleID:       "ed06e421-480c-40c8-8c3e-1e466e5327b2",
 		Name:           "March of Otherworldly Light",
 		Completeness:   CompletenessFull,
-		XMatters:       true,
 		AdditionalCost: ExileAnyNumberFromHandCost("white cards", "W"),
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessPerExiledFromHand("{2}", "This spell costs {2} less to cast for each card exiled this way"),

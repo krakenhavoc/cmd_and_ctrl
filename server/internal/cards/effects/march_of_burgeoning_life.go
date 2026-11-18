@@ -24,7 +24,6 @@ func init() {
 		OracleID:       "a81fd70c-c2bc-4863-97a0-facde86f024c",
 		Name:           "March of Burgeoning Life",
 		Completeness:   CompletenessFull,
-		XMatters:       true,
 		AdditionalCost: ExileAnyNumberFromHandCost("green cards", "G"),
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessPerExiledFromHand("{2}", "This spell costs {2} less to cast for each card exiled this way"),

@@ -67,6 +67,9 @@ func invokeCalamityResolve(item *game.StackItem, ctx *Context) error {
 		cands = append(cands, id)
 	}
 	if len(cands) == 0 {
+		if sourceIsNewObject(g, item) {
+			return nil
+		}
 		return g.ExileCardForEffect(item.SourceCardID)
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{

@@ -36,7 +36,6 @@ func init() {
 		OracleID:     "b47b3cfe-7005-4b33-9d41-83b60808e12b",
 		Name:         "Tameshi, Reality Architect",
 		Completeness: CompletenessFull,
-		XMatters:     true,
 		Triggered: []game.TriggeredAbility{
 			TriggersOnlyOnceEachTurn(OncePerBatch(On(game.EventLTB, tameshiNoncreaturePermanentReturned,
 				"Tameshi, Reality Architect — draw a card", Do(DrawCards{N: 1})))),
