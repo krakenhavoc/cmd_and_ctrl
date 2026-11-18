@@ -142,6 +142,7 @@ body earth-rumble/fight
 body earthbend/return-tapped
 body earthbender-ascension/grow
 body eden/return-from-graveyard
+body edgars-awakening/return-to-hand
 body electric-seaweed/one-damage-to-each-non-wall-creature
 body electro-assaulting-battery/damage
 body elektra-femme-fatale/damage
@@ -1703,6 +1704,7 @@ option option-pick/nick-fury-spymaster-attacks
 option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
+option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
@@ -1859,6 +1861,7 @@ payunless pay-unless/dont-make-a-sound-surveil
 payunless pay-unless/draw-a-card
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
+payunless pay-unless/edgars-awakening-return
 payunless pay-unless/eirdu-transform
 payunless pay-unless/electro-assaulting-battery-damage
 payunless pay-unless/electrozoa-tap
@@ -3212,6 +3215,7 @@ tail stockpiling-celebrant/scry
 tail strago-and-relm/after-mill
 tail study-the-classics/double
 tail study-the-classics/gain
+tail sudden-salvation/draw
 tail summoners-sending/after-exile
 tail summoners-sending/counter-if-big
 tail sunder-the-gateway/choose-an-incubator-and-transform
@@ -3426,6 +3430,7 @@ tail then/mondo-gecko-color-chosen
 tail then/nahiri-the-unforgiving-copy
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
+tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
 tail then/oona-queen-of-the-fae-color-chosen
 tail then/optimus-prime-bolstered
