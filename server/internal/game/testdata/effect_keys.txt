@@ -732,6 +732,7 @@ choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/feral-encounter
+choose choose-cards/fiend-of-the-shadows-exile
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/fireglass-mentor-play
 choose choose-cards/firja-judge-of-valor-take
