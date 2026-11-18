@@ -1177,6 +1177,7 @@ choose resolution-cast/portent-of-calamity-rest-to-hand
 choose resolution-cast/s82-mom-b21-rashmi-after
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/smugglers-buggy-after-cast
+choose resolution-cast/swindlers-scheme-free-cast
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -1382,6 +1383,7 @@ confirm confirm/ophidian-draw
 confirm confirm/orcish-squatters-gain-control
 confirm confirm/painful-quandary-discard-or-lose-life
 confirm confirm/palantir-of-orthanc-draw-or-mill
+confirm confirm/parnesse-the-subtle-brush-copy
 confirm confirm/partner-with-search
 confirm confirm/pay-life-copy-that-ability
 confirm confirm/pay-life-draw

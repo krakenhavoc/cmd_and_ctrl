@@ -214,34 +214,9 @@ func trekB39HughIsTheGrantor(g *game.Game, source *game.Card, caster uuid.UUID, 
 // copied from last-known information (CR 608.2h). A copy of an artifact
 // spell becomes a token as it resolves (CR 111.13, CR 608.3f).
 func trekB39HughReplicate(label string) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Keyword: KeywordReplicate,
-		Key:     label,
-		Watches: []game.EventKind{game.EventCast},
-		AppliesTo: socB32YouCastASpellThat(func(spell game.Card, source *game.Card, g *game.Game) bool {
-			return spell.IsArtifact() && trekB39HughPaid(g, spell.InstanceID) > 0 &&
-				trekB39HughIsTheGrantor(g, source, source.Controller, spell)
-		}),
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			item.Controller, item.Owner = ev.Actor, ev.Actor
-			item.Params.Object = game.ObjectRef{ID: ev.CardID}
-			item.Params.Amount = trekB39HughPaid(g, ev.CardID)
-			return item
-		},
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			if item.Params.Amount <= 0 {
-				return nil
-			}
-			return CopySpell{
-				StackID:          item.Params.Object.ID,
-				Controller:       item.Controller,
-				Count:            item.Params.Amount,
-				ChooseNewTargets: true,
-				FromLastKnown:    true,
-			}.Apply(NewContext(g, item))
-		},
-	}
+	return s82SncReplicateTrigger(label, func(_ *game.Game, _ uuid.UUID, spell game.Card) bool {
+		return spell.IsArtifact()
+	})
 }
 
 // --- Jurati, Cordial Queen -----------------------------------------------
