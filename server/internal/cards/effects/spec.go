@@ -1670,6 +1670,12 @@ type Spec struct {
 	// Not combined with the other two conditions.
 	AdditionalLandPlaysAtCharge int
 
+	// AdditionalLandPlaysAtLevel makes AdditionalLandPlays count only
+	// while the permanent is a Class of at least this level (CR 716.2a):
+	// Druid Class's level 2. Read live by EffectiveLandDropsLocked. Not
+	// combined with the other conditions.
+	AdditionalLandPlaysAtLevel int
+
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the
 	// battlefield (ADR 0066) — "each nonland card in your graveyard
