@@ -1335,6 +1335,7 @@ choose choose-cards/yue-the-moon-spirit-cast
 choose choose-cards/yuffie-materia-hunter-attach
 choose choose-cards/yunas-decision-put
 choose choose-cards/zack-fair-move-equipment
+choose choose-cards/zada-hedron-grinder-copy-order
 choose choose-cards/zara-renegade-recruiter-put
 choose choose-cards/zenos-yae-galvus-first-friend
 choose choose-cards/zero-point-ballad-return
@@ -3918,6 +3919,7 @@ tail turtle-tracks/search-step
 tail turtle-van/double
 tail turtles-forever/library-found
 tail twinflame/exile-copies
+tail tymaret-chosen-from-death/gain-per-creature
 tail ugin-eye-of-the-storms/free-cast-permission
 tail uldaros-theorix/copy-exiled
 tail ultimecia/transform
@@ -3931,6 +3933,7 @@ tail urborg-scavengers/counter
 tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail vaan-street-thief/exiled
+tail valduk-keeper-of-the-flame/exile-the-elementals
 tail valgavoths-onslaught/manifest-again
 tail valkyries-call/angel
 tail vanille-cheerful-lcie/after-mill
