@@ -295,6 +295,7 @@ func TestVowB15JacobTransformsWhenYouPaySixAndInsightPlaysACardFreeOncePerTurn(t
 	if z := vowB15Zone(g, second); z != game.ZoneExile {
 		t.Fatalf("the upkeep exile left the top card in %q", z)
 	}
+	advanceToMain(t, g)
 	if err := g.CastSpell(me.ID, first, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
 		t.Fatalf("cast the front-face card free: %v", err)
 	}
