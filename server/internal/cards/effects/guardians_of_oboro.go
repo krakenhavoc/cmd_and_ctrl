@@ -20,19 +20,18 @@ func init() {
 		Name:            "Guardians of Oboro",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"defender"},
-		Static: []game.StaticAbility{{
-			Label: "Modified creatures you control can attack as though they didn't have defender.",
-			Layer: game.Layer6Ability,
-			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.IsCreature() && target.Controller == source.Controller && b07IsModified(g, *target)
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-				w := game.DefenderWaiver{}
-				if source != nil {
-					w.Source, w.SourceName = source.InstanceID, source.Name
-				}
-				c.DefenderWaivers = append(c.DefenderWaivers, w)
-			},
-		}},
+		Static:          []game.StaticAbility{guardiansOfOboroWaiver()},
 	})
+}
+
+// guardiansOfOboroWaiver is Bristlepack Sentry's waiver static, aimed at each
+// modified creature its controller controls instead of at itself.
+func guardiansOfOboroWaiver() game.StaticAbility {
+	ab := avB18CanAttackAsThoughNoDefenderWhile(
+		"Modified creatures you control can attack as though they didn't have defender.",
+		func(*game.Game, *game.Card) bool { return true })
+	ab.AppliesTo = func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return target.IsCreature() && target.Controller == source.Controller && b07IsModified(g, *target)
+	}
+	return ab
 }
