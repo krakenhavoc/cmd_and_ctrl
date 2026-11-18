@@ -140,6 +140,16 @@ type PlayerTurnTally struct {
 	// land that dies counts. The Lady of Otaria's end-step "if" reads it
 	// through Game.LandToGraveyardThisTurn. Additive within schema v7.
 	LandsToGraveyard int `json:"landsToGraveyard,omitempty"`
+	// EnchantmentsToGraveyard counts the enchantments put into this
+	// player's graveyard from the battlefield this turn (#5493, Kami of
+	// Transience's "an enchantment was put into your graveyard from the
+	// battlefield this turn"): destroyed, sacrificed, or put there by any
+	// other route, including an Aura that fell off. The graveyard is the
+	// OWNER's (CR 404.1), whoever controlled the permanent; an enchantment
+	// that was bounced or exiled does not count. The permanent is read as
+	// it last existed (CR 608.2h). Read through
+	// Game.EnchantmentToGraveyardThisTurn. Additive within the schema version.
+	EnchantmentsToGraveyard int `json:"enchantmentsToGraveyard,omitempty"`
 	// CardsToGraveyardFromHandOrLibrary counts the cards put into this
 	// player's graveyard from their hand or their library this turn:
 	// discarded, milled, or put there by any other route (Welcome the
@@ -2417,9 +2427,16 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 		wasCreature := c.IsCreature()
 		wasLand := c.IsLand()
+		wasEnchantment := c.IsEnchantment()
 		if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
 			wasCreature = hasTypeFold(lki.Types, "creature")
 			wasLand = hasTypeFold(lki.Types, "land")
+			wasEnchantment = hasTypeFold(lki.Types, "enchantment")
+		}
+		if wasEnchantment {
+			// #5493: an enchantment put into its owner's graveyard from the battlefield.
+			owner := c.Owner
+			g.bumpPlayerTally(owner, func(p *PlayerTurnTally) { p.EnchantmentsToGraveyard++ })
 		}
 		if wasLand {
 			// #2664: a land put into a graveyard from the battlefield,
@@ -2667,6 +2684,15 @@ func (g *Game) PermanentReturnedToHandThisTurn(playerID uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) LandToGraveyardThisTurn(playerID uuid.UUID) bool {
 	return g.TurnTallyFor(playerID).LandsToGraveyard > 0
+}
+
+// EnchantmentToGraveyardThisTurn reports whether an enchantment was put
+// into `playerID`'s graveyard from the battlefield this turn (#5493, Kami
+// of Transience's end-step "if", CR 603.4).
+//
+// Caller must hold g.mu.
+func (g *Game) EnchantmentToGraveyardThisTurn(playerID uuid.UUID) bool {
+	return g.TurnTallyFor(playerID).EnchantmentsToGraveyard > 0
 }
 
 // CardsToGraveyardFromHandOrLibraryThisTurn is how many cards were put into
