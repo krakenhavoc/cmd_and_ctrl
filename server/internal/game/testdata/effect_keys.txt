@@ -1835,6 +1835,7 @@ option option-pick/court-of-ambition-answer-6
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
 option option-pick/dathon-his-heart-open-counter-kind
+option option-pick/demanding-dragon-answer
 option option-pick/demonlord-of-ashmouth-choice
 option option-pick/demonstrate-opponent-copies
 option option-pick/development-opponent-round-1

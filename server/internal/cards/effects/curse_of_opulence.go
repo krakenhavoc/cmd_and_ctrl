@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Curse of Opulence — Enchantment — Aura Curse for {R}:
 //
@@ -62,37 +58,10 @@ func init() {
 }
 
 // curseOfOpulenceEachAttackingOpponent is "each opponent attacking
-// that player does the same": a Gold token for the ATTACKING player,
-// not the Curse's controller. Key is separate from the controller's
-// own ability above so the two OncePerBatch guards don't collide, and
-// BatchKey groups by the attacker's controller so a multi-creature
-// swing from the same player still mints only one Gold.
+// that player does the same": a Gold token for the ATTACKING player, not
+// the Curse's controller (eachAttackingOpponentDoesTheSame batches it per
+// attacker, so a multi-creature swing still mints one Gold).
 func curseOfOpulenceEachAttackingOpponent() game.TriggeredAbility {
-	const label = "Curse of Opulence — the attacking opponent creates a Gold token"
-	t := game.TriggeredAbility{
-		Watches: []game.EventKind{game.EventAttack},
-		Key:     label,
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			if source.AttachedTo.Kind != game.TargetPlayer || source.AttachedTo.ID != ev.Target {
-				return false
-			}
-			return ev.Actor != uuid.Nil && ev.Actor != source.Controller
-		},
-		// A fill-in Build (ADR 0041 P9): the attacking opponent becomes
-		// the item's controller, a fact of the moment the trigger fired.
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			item.Controller, item.Owner = ev.Actor, ev.Actor
-			return item
-		},
-		Effect: Do(CreateToken{
-			Template: GoldToken(),
-			N:        1,
-		}),
-	}
-	t.OncePerBatch = true
-	t.BatchKey = func(ev game.Event, _ *game.Card, _ *game.Game) string {
-		return ev.Actor.String()
-	}
-	return t
+	return eachAttackingOpponentDoesTheSame("Curse of Opulence — the attacking opponent creates a Gold token",
+		Do(CreateToken{Template: GoldToken(), N: 1}))
 }
