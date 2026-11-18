@@ -23,12 +23,6 @@ func init() {
 			TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())))},
 		Targets: TargetPermanent("target creature or planeswalker with mana value 2 or less",
 			Or(Creature(), Planeswalker()), ManaValueLE(2)),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			t, ok := ctx.ClauseTarget(0)
-			if !ok {
-				return nil
-			}
-			return DestroyTarget{Target: t.ID}.Apply(ctx)
-		},
+		OnResolve: s82MidDestroyTheTarget,
 	})
 }
