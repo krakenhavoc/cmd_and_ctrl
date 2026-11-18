@@ -202,6 +202,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Spirit":                                                 {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"3/3 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 black Vampire":                                                {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Vampire with lifelink":                                  {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
@@ -275,6 +276,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 green Elemental":                                              {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"2/2 green Wolf":                                                   {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 2, Toughness: 2, Colors: []string{"G"}},
+	"1/1 green Ooze":                                                   {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"2/2 green Ooze":                                                   {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"0/0 green Ooze with trample":                                      {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 0, Toughness: 0, Colors: []string{"G"}, Keywords: []string{"trample"}, PrintedPTKnown: true},
 	"2/2 white Pegasus with flying":                                    {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -505,6 +507,7 @@ var tokenTable = map[string]game.Card{
 	// S82 NEO batch 20: Kura, the Boundless Sky's X/X Spirit (printed */*; a 0/0 placeholder,
 	// set to the number of lands as it is created).
 	"0/0 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Colors: []string{"G"}, PrintedPTKnown: true},
+	"0/0 green Hydra":  {Name: "Hydra", TypeLine: "Token Creature — Hydra", Colors: []string{"G"}, PrintedPTKnown: true},
 
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
 	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},

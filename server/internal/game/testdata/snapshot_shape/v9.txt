@@ -13686,6 +13686,7 @@ frozenEntries[].event.stackItem.payload[].splice	number:int
 frozenEntries[].event.stackItem.promisedCounters	array
 frozenEntries[].event.stackItem.promisedCounters[]	object
 frozenEntries[].event.stackItem.promisedCounters[].count	number:int
+frozenEntries[].event.stackItem.promisedCounters[].ifOpponentDealtDamage	bool
 frozenEntries[].event.stackItem.promisedCounters[].kind	string
 frozenEntries[].event.stackItem.promisedCounters[].perSubtype	string
 frozenEntries[].event.stackItem.promisedCounters[].source	custom(uuid.UUID)
@@ -21323,6 +21324,7 @@ lastKnownStack[].item.payload[].splice	number:int
 lastKnownStack[].item.promisedCounters	array
 lastKnownStack[].item.promisedCounters[]	object
 lastKnownStack[].item.promisedCounters[].count	number:int
+lastKnownStack[].item.promisedCounters[].ifOpponentDealtDamage	bool
 lastKnownStack[].item.promisedCounters[].kind	string
 lastKnownStack[].item.promisedCounters[].perSubtype	string
 lastKnownStack[].item.promisedCounters[].source	custom(uuid.UUID)
@@ -34132,6 +34134,7 @@ movesAwaitingTokens[].stackItem.payload[].splice	number:int
 movesAwaitingTokens[].stackItem.promisedCounters	array
 movesAwaitingTokens[].stackItem.promisedCounters[]	object
 movesAwaitingTokens[].stackItem.promisedCounters[].count	number:int
+movesAwaitingTokens[].stackItem.promisedCounters[].ifOpponentDealtDamage	bool
 movesAwaitingTokens[].stackItem.promisedCounters[].kind	string
 movesAwaitingTokens[].stackItem.promisedCounters[].perSubtype	string
 movesAwaitingTokens[].stackItem.promisedCounters[].source	custom(uuid.UUID)
@@ -40730,6 +40733,7 @@ pausedModeWalk.item.payload[].splice	number:int
 pausedModeWalk.item.promisedCounters	array
 pausedModeWalk.item.promisedCounters[]	object
 pausedModeWalk.item.promisedCounters[].count	number:int
+pausedModeWalk.item.promisedCounters[].ifOpponentDealtDamage	bool
 pausedModeWalk.item.promisedCounters[].kind	string
 pausedModeWalk.item.promisedCounters[].perSubtype	string
 pausedModeWalk.item.promisedCounters[].source	custom(uuid.UUID)
@@ -41091,6 +41095,7 @@ pausedResolutionTail.item.payload[].splice	number:int
 pausedResolutionTail.item.promisedCounters	array
 pausedResolutionTail.item.promisedCounters[]	object
 pausedResolutionTail.item.promisedCounters[].count	number:int
+pausedResolutionTail.item.promisedCounters[].ifOpponentDealtDamage	bool
 pausedResolutionTail.item.promisedCounters[].kind	string
 pausedResolutionTail.item.promisedCounters[].perSubtype	string
 pausedResolutionTail.item.promisedCounters[].source	custom(uuid.UUID)
@@ -41446,6 +41451,7 @@ pausedStepWalk.item.payload[].splice	number:int
 pausedStepWalk.item.promisedCounters	array
 pausedStepWalk.item.promisedCounters[]	object
 pausedStepWalk.item.promisedCounters[].count	number:int
+pausedStepWalk.item.promisedCounters[].ifOpponentDealtDamage	bool
 pausedStepWalk.item.promisedCounters[].kind	string
 pausedStepWalk.item.promisedCounters[].perSubtype	string
 pausedStepWalk.item.promisedCounters[].source	custom(uuid.UUID)
@@ -44179,6 +44185,7 @@ pendingChoices[].copyWalk.item.payload[].splice	number:int
 pendingChoices[].copyWalk.item.promisedCounters	array
 pendingChoices[].copyWalk.item.promisedCounters[]	object
 pendingChoices[].copyWalk.item.promisedCounters[].count	number:int
+pendingChoices[].copyWalk.item.promisedCounters[].ifOpponentDealtDamage	bool
 pendingChoices[].copyWalk.item.promisedCounters[].kind	string
 pendingChoices[].copyWalk.item.promisedCounters[].perSubtype	string
 pendingChoices[].copyWalk.item.promisedCounters[].source	custom(uuid.UUID)
@@ -61103,6 +61110,7 @@ pendingChoices[].replacementResume.event.stackItem.payload[].splice	number:int
 pendingChoices[].replacementResume.event.stackItem.promisedCounters	array
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[]	object
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[].count	number:int
+pendingChoices[].replacementResume.event.stackItem.promisedCounters[].ifOpponentDealtDamage	bool
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[].kind	string
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[].perSubtype	string
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[].source	custom(uuid.UUID)
@@ -70871,6 +70879,7 @@ pendingTriggers[].payload[].splice	number:int
 pendingTriggers[].promisedCounters	array
 pendingTriggers[].promisedCounters[]	object
 pendingTriggers[].promisedCounters[].count	number:int
+pendingTriggers[].promisedCounters[].ifOpponentDealtDamage	bool
 pendingTriggers[].promisedCounters[].kind	string
 pendingTriggers[].promisedCounters[].perSubtype	string
 pendingTriggers[].promisedCounters[].source	custom(uuid.UUID)
@@ -73434,6 +73443,7 @@ resolving.item.payload[].splice	number:int
 resolving.item.promisedCounters	array
 resolving.item.promisedCounters[]	object
 resolving.item.promisedCounters[].count	number:int
+resolving.item.promisedCounters[].ifOpponentDealtDamage	bool
 resolving.item.promisedCounters[].kind	string
 resolving.item.promisedCounters[].perSubtype	string
 resolving.item.promisedCounters[].source	custom(uuid.UUID)
@@ -79087,6 +79097,7 @@ stackMeta[].payload[].splice	number:int
 stackMeta[].promisedCounters	array
 stackMeta[].promisedCounters[]	object
 stackMeta[].promisedCounters[].count	number:int
+stackMeta[].promisedCounters[].ifOpponentDealtDamage	bool
 stackMeta[].promisedCounters[].kind	string
 stackMeta[].promisedCounters[].perSubtype	string
 stackMeta[].promisedCounters[].source	custom(uuid.UUID)

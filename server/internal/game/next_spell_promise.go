@@ -231,6 +231,12 @@ type PromisedCounter struct {
 	// comparable. Additive within a snapshot version; empty is a plain
 	// total.
 	PerSubtype string `json:"perSubtype,omitempty"`
+	// IfOpponentDealtDamage makes the mark bloodthirst's (CR 702.54a): the
+	// counters are put on only if an opponent of the spell's controller was
+	// dealt damage this turn, read as the permanent enters, not as the mark
+	// was written. Bloodlord of Vaasgoth's "it gains bloodthirst 3". Additive
+	// within a snapshot version; false is an unconditional mark.
+	IfOpponentDealtDamage bool `json:"ifOpponentDealtDamage,omitempty"`
 }
 
 // copyPromisedCounters gives a mark slice its own backing array. Nil
@@ -435,6 +441,9 @@ func (g *Game) promisedEntryCountersLocked(ev *ReplacementEvent, item *StackItem
 	}
 	for _, m := range item.PromisedCounters {
 		n := m.Count
+		if m.IfOpponentDealtDamage && !g.opponentWasDealtDamageThisTurnLocked(item.Controller) {
+			continue
+		}
 		if m.PerSubtype != "" {
 			n *= g.countControlledWithSubtypesLocked(item.Controller, strings.Split(m.PerSubtype, "|"))
 		}
@@ -442,6 +451,21 @@ func (g *Game) promisedEntryCountersLocked(ev *ReplacementEvent, item *StackItem
 			ev.AddCounterAtETB(m.Kind, n)
 		}
 	}
+}
+
+// opponentWasDealtDamageThisTurnLocked is bloodthirst's condition (CR
+// 702.54a): damage dealt this turn to a player other than `controller`.
+// Damage, not life lost, so a drain does not count; damage to a creature
+// or planeswalker is not damage to an opponent.
+//
+// Caller must hold g.mu.
+func (g *Game) opponentWasDealtDamageThisTurnLocked(controller uuid.UUID) bool {
+	for _, ev := range g.EventsThisTurn() {
+		if ev.Kind == EventDealDamage && ev.Amount > 0 && ev.Target != controller && g.playerByIDLocked(ev.Target) != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // countControlledWithSubtypesLocked is how many battlefield permanents

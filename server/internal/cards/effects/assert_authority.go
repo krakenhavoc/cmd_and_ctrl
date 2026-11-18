@@ -24,13 +24,7 @@ func init() {
 		SelfCostModifiers: []game.CostModifier{
 			AffinityFor("Affinity for artifacts", Artifact()),
 		},
-		Targets: TargetSpell("target spell"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			t, ok := ctx.ClauseTarget(0)
-			if !ok || t.Kind != game.TargetCard {
-				return nil
-			}
-			return CounterTarget{StackID: t.ID, Dest: game.ZoneRef{Kind: game.ZoneExile}}.Apply(ctx)
-		},
+		Targets:   TargetSpell("target spell"),
+		OnResolve: counterTargetSpellAndExileIt,
 	})
 }
