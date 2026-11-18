@@ -1176,6 +1176,7 @@ choose resolution-cast/looked-at-rest-to-bottom
 choose resolution-cast/portent-of-calamity-rest-to-hand
 choose resolution-cast/s82-mom-b21-rashmi-after
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
+choose resolution-cast/smugglers-buggy-after-cast
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -1528,6 +1529,7 @@ drawthen tezzeret-betrayer-of-flesh-discard
 drawthen the-ancient-one/discard
 drawthen the-theorist/counters-equal-to-hand
 drawthen trade-route-envoy-counter-unless-drew
+drawthen wiretapping/after-draw
 drawthen yunas-decision/put
 keywordinstead return-this-instead-of-learning
 maycast may-cast/free-play-back-land-or-hand
@@ -1981,6 +1983,7 @@ payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/weakstones-subjugation-tap
 payunless pay-unless/weapons-vendor-attach
+payunless pay-unless/widespread-thieving-play
 payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/wolfbat-return
 payunless pay-unless/zoraline-cosmos-caller-return
