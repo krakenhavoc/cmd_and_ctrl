@@ -43,7 +43,7 @@ func init() {
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.OldZone != game.ZoneBattlefield || ev.NewZone != game.ZoneGraveyard {
+				if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 					return false
 				}
 				c, ok := g.LookupCardForEffect(ev.CardID)
