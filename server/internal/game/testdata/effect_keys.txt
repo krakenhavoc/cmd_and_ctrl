@@ -889,6 +889,9 @@ choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/necromantic-selection-pick
+choose choose-cards/neo-distribute-counters-among-players-permanents
+choose choose-cards/neo-invoke-calamity-exile
+choose choose-cards/neo-invoke-calamity-picked
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
@@ -1661,6 +1664,7 @@ option option-pick/multiform-wonder-keyword
 option option-pick/mutinous-massacre-parity
 option option-pick/narset-of-the-ancient-way-mana
 option option-pick/nazgul-battle-mace-pay-or-take
+option option-pick/neo-invoke-the-ancients-counter
 option option-pick/nesting-grounds-counter-kind
 option option-pick/nick-fury-spymaster-attacks
 option option-pick/noctis-warp-strike-attack
@@ -2917,6 +2921,7 @@ tail nashi-moons-legacy/copy-exiled
 tail necromantic-selection/black-zombie-then-exile
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
+tail neo-invoke-the-ancients/counters
 tail nesting-grounds/remove
 tail nezumi-graverobber/after-exile
 tail nick-fury-spymaster/indestructible
