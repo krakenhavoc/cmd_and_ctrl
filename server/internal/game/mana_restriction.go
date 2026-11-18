@@ -213,6 +213,16 @@ const (
 	// does a cast whose payer or owner the payment did not name (weaker
 	// than printed, never stronger).
 	ManaRestrictSpellNotOwned = "spell:not-owned"
+	// ManaRestrictSpellNoAbilities permits the token only on a spell with
+	// no abilities (S82, CR 106.6, CR 113.1): Jasmine Boreal of the
+	// Seven's "Spend this mana only to cast creature spells with no
+	// abilities". It asks about the spell being cast, as the card prints
+	// it (PrintsNoAbilities) or face down (CR 708.2a: a face-down spell
+	// has no abilities), so an activation never satisfies it, and a card
+	// whose text the importer never read is not known to have none
+	// (weaker than printed, never stronger). Combine it with
+	// ManaRestrictType("Creature") for the printed clause.
+	ManaRestrictSpellNoAbilities = "spell:no-abilities"
 )
 
 // ManaRestrictAltCost builds "spend this mana only to pay a [keyword]
@@ -484,6 +494,12 @@ type ManaSpendContext struct {
 	// cast.
 	YourCommander bool
 
+	// NoAbilitiesSpell is set when the spell being cast has no abilities
+	// (a vanilla card, or one cast face down): what
+	// ManaRestrictSpellNoAbilities reads. False for every payment that
+	// is not a cast.
+	NoAbilitiesSpell bool
+
 	// SpellOwner is the owner of the spell being cast (CR 108.3): what
 	// ManaRestrictSpellNotOwned compares with Payer (#5457). Set by
 	// ManaSpendForCast; zero for every payment that is not a cast.
@@ -695,6 +711,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		FaceDownSpell:    c.FaceDown,
+		NoAbilitiesSpell: c.FaceDown || PrintsNoAbilities(c),
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		SpellOwner:       c.Owner,
 		wish:             newSpendWish(c),
@@ -780,6 +797,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast && ctx.ManaCostHasX
 	case ManaRestrictFaceDownSpell:
 		return ctx.Purpose == SpendPurposeCast && ctx.FaceDownSpell
+	case ManaRestrictSpellNoAbilities:
+		return ctx.Purpose == SpendPurposeCast && ctx.NoAbilitiesSpell
 	case ManaRestrictKickedSpell:
 		return ctx.Purpose == SpendPurposeCast && ctx.KickedSpell
 	case ManaRestrictSpellNotOwned:

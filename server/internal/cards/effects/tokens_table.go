@@ -488,4 +488,19 @@ var tokenTable = map[string]game.Card{
 	"0/0 green Phyrexian Wurm with trample and toxic 1": {Name: "Phyrexian Wurm", TypeLine: "Token Creature — Phyrexian Wurm", Colors: []string{"G"}, Keywords: []string{"trample", "toxic 1"}, PrintedPTKnown: true},
 	// #5479: Phyrexia: All Will Be One's Beast (Goliath Hatchery, Viral Spawning, Lukka, Bound to Ruin).
 	"3/3 green Phyrexian Beast with toxic 1": {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"toxic 1"}},
+
+	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
+	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},
+
+	// Jared Carthalion (DMU, S82 batch 15): the printed all-colors Kavu.
+	"3/3 white and blue and black and red and green Kavu with trample": {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"W", "U", "B", "R", "G"}, Keywords: []string{"trample"}},
+
+	// #5487: Dominaria United Commander's Stangg Twin (Stangg, Echo Warrior).
+	"3/4 red and green Legendary Human Warrior named Stangg Twin": {Name: "Stangg Twin", TypeLine: "Token Legendary Creature — Human Warrior", Power: 3, Toughness: 4, Colors: []string{"R", "G"}},
+
+	// S82 DMU batch 18: Dominaria United's tokens for Greensleeves, Baru, Rasputin and Jedit Ojanen.
+	"3/3 green Badger": {Name: "Badger", TypeLine: "Token Creature — Badger", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"4/4 green Wurm":   {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 4, Toughness: 4, Colors: []string{"G"}},
+	"2/2 white Knight with protection from red": {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"protection from red"}},
+	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
 }

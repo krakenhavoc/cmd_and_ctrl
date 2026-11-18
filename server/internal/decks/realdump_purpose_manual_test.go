@@ -180,6 +180,9 @@ var reviewedNotAWipe = map[string]string{
 	"Calamity's Wake": "exiles every graveyard and bars noncreature spells for the turn: it touches no permanent",
 	"Urza's Command":  "one of its two chosen bullets gives opposing creatures -2/-0 until end of turn, which removes nothing",
 
+	// #5487: its end-step sacrifice names only the tokens its own attack made.
+	"Stangg, Echo Warrior": "sacrifices only the tokens its own attack trigger created, not a board",
+
 	// #5482: one of six modes, chosen three at a time on an enters-or-attacks trigger.
 	"Mishra, Lost to Phyrexia": "its -1/-1 to opposing creatures is one of six modes, three chosen each time: a mode of a trigger, not a board wipe",
 }

@@ -46,3 +46,13 @@ func LegendRuleDoesntApply() []game.LegendRuleExemption {
 		Whose: game.LegendRuleExemptEveryone,
 	}}
 }
+
+// LegendRuleDoesntApplyToYourTokens is "The "legend rule" doesn't apply to
+// tokens you control." (Cadric, Soul Kindler): only the controller's
+// permanents that are tokens right now.
+func LegendRuleDoesntApplyToYourTokens() []game.LegendRuleExemption {
+	return []game.LegendRuleExemption{{
+		Label: "The \"legend rule\" doesn't apply to tokens you control.",
+		Whose: game.LegendRuleExemptYourTokens,
+	}}
+}
