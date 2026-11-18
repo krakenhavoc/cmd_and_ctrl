@@ -182,12 +182,12 @@ func neoSacrificeAnArtifactWithManaValueX(label string) game.AbilityCost {
 // announced X, not the damage dealt, so it is gained in full when the
 // damage is prevented; a target that is gone stops the whole spell
 // (CR 608.2b), so no life is gained then.
-func damageXToTheTargetAndGainX(item *game.StackItem, ctx *Context) error {
+func damageXToTheTargetAndGainX(item *game.StackItem, ctx *Context, x int) error {
 	if len(item.Targets) == 0 {
 		return nil
 	}
-	if err := (DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: ctx.X()}).Apply(ctx); err != nil {
+	if err := (DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: x}).Apply(ctx); err != nil {
 		return err
 	}
-	return GainLife{Player: ctx.Controller(), Amount: ctx.X()}.Apply(ctx)
+	return GainLife{Player: ctx.Controller(), Amount: x}.Apply(ctx)
 }
