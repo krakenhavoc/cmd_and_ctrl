@@ -770,6 +770,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Discard a card | `ManaAbilityCost{DiscardCards: DiscardACard().DiscardCards}` | Skirge Familiar |
 | Exile a card from your hand | `ManaAbilityCost{ExileCards: ExileACardFromHand()}` | Cadaverous Bloom (#1283) |
 | Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
+| {1}, Exile this card from your graveyard | `ManaAbility{Zones: []game.ZoneKind{game.ZoneGraveyard}, Cost: ManaAbilityCost{Mana: "{1}", ExileSelf: true}}` (the costed auto-tap pass plans it) | Jack-o'-Lantern (#5896) |
 | Exile a creature you control | `ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}` | Food Chain (#1600) |
 
 **"Mana abilities of this land cost an additional 1 life to activate"**

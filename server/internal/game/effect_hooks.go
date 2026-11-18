@@ -293,7 +293,7 @@ type ManaAbilityShape struct {
 	// "the field plus its accessor is the same two lines on the day
 	// one does".
 	//
-	// Only the HAND is supported — supportedManaAbilityZones — and
+	// Only the HAND and the GRAVEYARD are supported — supportedManaAbilityZones — and
 	// effects.Register refuses anything else at boot, for the reason
 	// StaticZoneUnsupported exists: a zone no consumer walks is a
 	// declaration the engine silently ignores, and the card would

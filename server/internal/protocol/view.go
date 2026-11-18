@@ -3864,10 +3864,11 @@ type CardView struct {
 	// sends for a permanent. Added for #660, widened by #1221.
 	ZoneAbilities []ActivatedAbilityView `json:"zone_abilities,omitempty"`
 	// ZoneManaAbilities are the CR 605 MANA abilities this card offers
-	// from the non-battlefield zone it is sitting in (#1228) — a hand,
-	// today and only a hand (game.supportedManaAbilityZones). The
-	// Spirit Guides' "Exile this card from your hand: Add {R}" is the
-	// whole printed family.
+	// from the non-battlefield zone it is sitting in (#1228) — a hand
+	// or a graveyard (game.supportedManaAbilityZones). The Spirit
+	// Guides' "Exile this card from your hand: Add {R}" and
+	// Jack-o'-Lantern's "{1}, Exile this card from your graveyard: Add
+	// one mana of any color" (#5896) are the printed family.
 	//
 	// `zone_abilities`' twin, one ability kind over, and separate from
 	// it for the reason `mana_abilities` is separate from
@@ -3878,10 +3879,9 @@ type CardView struct {
 	// Not public, and it rides castOffers for the same reason
 	// `zone_abilities` does — an activation row answers "what may YOU
 	// announce about this card, from here". A hand is already hidden
-	// wholesale, so today that is belt-and-braces; it is written this
-	// way because the graveyard is one entry in
-	// supportedManaAbilityZones away and a public pile would ship one
-	// seat's answer to the table (#1055, #1167).
+	// wholesale; the graveyard (#5896) is a public pile, and this is
+	// what keeps one seat's answer from shipping to the table (#1055,
+	// #1167).
 	//
 	// `index` is the ability's index in the card's FULL mana-ability
 	// list, so the client sends the same activate_mana_ability payload
@@ -9639,10 +9639,9 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 			continue
 		}
 		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, *card, you, kind, restricted))
-		// #1228: nil for every pile today — game.supportedManaAbilityZones
-		// is the hand alone, so the zone predicate answers no here —
-		// and the call is made anyway so that adding a zone to that
-		// list is adding it in one place rather than two.
+		// #1228: the CR 605 rows beside the CR 602 ones. Since #5896 a
+		// graveyard card can carry one (Jack-o'-Lantern); the zone
+		// predicate answers no for every other pile.
 		c.stampZoneManaAbilitiesFor(you, viewOfManaAbilitiesFromZone(card, kind))
 	}
 }

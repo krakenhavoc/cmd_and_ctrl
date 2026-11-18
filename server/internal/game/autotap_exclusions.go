@@ -180,10 +180,9 @@ func autoTapMayUse(excluded map[uuid.UUID]bool, id uuid.UUID, ab *ManaAbilitySha
 // #1297: the exile ids are here for the hand form. A Spirit Guide named
 // to Holistic Wisdom's "Exile a card from your hand" is also a mana
 // source (#1228), and the planner would otherwise exile it for mana
-// first and leave the cost with nothing to pay. No card in a GRAVEYARD
-// is a mana source today (supportedManaAbilityZones is the hand alone),
-// so for the graveyard form this is the list being right in advance
-// rather than a live exclusion.
+// first and leave the cost with nothing to pay. The graveyard form is
+// live since #5896: a Jack-o'-Lantern named to a delve or "exile a card
+// from your graveyard" cost is not also exiled for its mana.
 //
 // #1404: and the source when the cost EXILES it. From the battlefield
 // that is the sacrifice-this reason exactly: a permanent that is also
