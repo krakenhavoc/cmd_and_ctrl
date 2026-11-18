@@ -612,6 +612,7 @@ choose choose-cards/darkstar-augur-take
 choose choose-cards/dauthi-voidwalker-play
 choose choose-cards/deadly-cover-up-exile
 choose choose-cards/death-wish-take
+choose choose-cards/deathbonnet-hulk-exile
 choose choose-cards/deepfathom-echo-copy
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
@@ -2822,6 +2823,8 @@ tail hama/grant-waterbend-cast
 tail harried-dronesmith/haste-then-sacrifice
 tail heartless-conscription/play-exiled-then-exile-this
 tail heirloom-auntie/remove-counter
+tail heirloom-mirror/check-ritual
+tail heirloom-mirror/transform
 tail hellcat/loses-abilities-gains-haste
 tail helm-of-obedience/after-mill
 tail herald-of-amity/after-exile
@@ -2841,6 +2844,7 @@ tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
 tail if-it-was/cling-to-dust-life-or-draw
 tail if-it-was/consuming-ashes-surveil
+tail if-it-was/deathbonnet-hulk-counter
 tail if-it-was/deluge-of-the-dead-zombie
 tail if-it-was/feral-appetite-pest
 tail if-it-was/ignis-scientia-food
@@ -3209,6 +3213,8 @@ tail skyclave-invader/land-declined-into-hand
 tail skyserpent-seeker/rest-on-bottom-then-counter
 tail slip-on-the-ring/after-exile
 tail smile-at-death/plus-one-counters
+tail smoldering-egg/check-ember
+tail smoldering-egg/transform
 tail smugglers-surprise/after-mill
 tail smugglers-surprise/protect
 tail snc-b04/obscura-interceptor-connive
