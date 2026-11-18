@@ -3140,6 +3140,7 @@ tail grave-researcher/become-prepared
 tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
+tail graveyard-exile/hour-of-eternity-zombie-copies
 tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
