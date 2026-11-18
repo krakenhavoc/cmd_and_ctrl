@@ -1012,6 +1012,7 @@ choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take
+choose choose-cards/s82-mid-b03-take-reveal-rest-graveyard
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
@@ -2841,6 +2842,7 @@ tail hotel-of-fears/praise-him
 tail hotshot-investigators/investigate
 tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
+tail hungry-for-more/sacrifice-at-next-end-step
 tail if-it-was/cling-to-dust-life-or-draw
 tail if-it-was/consuming-ashes-surveil
 tail if-it-was/deluge-of-the-dead-zombie
@@ -3020,6 +3022,7 @@ tail oviya-automech-artisan/two-counters-on-an-artifact
 tail palantir-of-orthanc/ask-opponent
 tail palantir-of-orthanc/opponent-loses-total-mana-value
 tail path-to-exile/after-exile
+tail path-to-the-festival/scry-on-three-types
 tail patient-naturalist/after-mill
 tail pavel-chekov-first-posting/taken
 tail pay-unless/paid
