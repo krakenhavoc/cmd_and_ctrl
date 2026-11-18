@@ -19,11 +19,13 @@ Champions from Beyond | scry | on a triggered row that is not the card's enters 
 Chimil, the Inner Sun | discover | on a triggered row that is not the card's enters effect, which nothing prices
 Clockwork Droid | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Colleen Wing, Street Samurai | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Contact Other Plane | scry | the amount is a d20 results-table row (2 or 3), not a fixed number
 Corsairs of Umbar | amass | on a triggered row that is not the card's enters effect, which nothing prices
 Crystal Grotto | scry | a land's enters effect; a land play is not priced by its purpose
 Data, Exploring Humanity | discover | on a triggered row that is not the card's enters effect, which nothing prices
 Deep-Fried Plague Myr | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Digsite Conservator | discover | the text makes it conditional or optional
+Djinni Windseer | scry | the amount is a d20 results-table row (1, 2 or 3), not a fixed number
 Down, Down to Goblin-town | amass | on a triggered row that is not the card's enters effect, which nothing prices
 Dreadhorde Invasion | amass | on a triggered row that is not the card's enters effect, which nothing prices
 Dream Strix | learn | on a triggered row that is not the card's enters effect, which nothing prices
