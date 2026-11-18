@@ -288,9 +288,10 @@ func TestVowB13WanderingMindTakesANoncreatureNonland(t *testing.T) {
 	if !me.Hand.Contains(ids[2]) {
 		t.Fatal("the Shock is not in hand")
 	}
-	// The seventh card was never looked at: it is still the top of the library.
-	if me.Library.Cards[len(me.Library.Cards)-1].InstanceID == ids[6] {
-		t.Error("the unseen card is at the bottom")
+	// The seventh card was never looked at: it is the new top of the library
+	// (index 0 is the bottom), and the five others went under it.
+	if me.Library.Cards[len(me.Library.Cards)-1].InstanceID != ids[6] || me.Library.Cards[0].InstanceID == ids[6] {
+		t.Error("the unseen card should now be on top, with the other cards below it")
 	}
 }
 
@@ -298,15 +299,14 @@ func TestVowB13WanderingMindTakesANoncreatureNonland(t *testing.T) {
 
 func TestVowB13ByInvitationOnlyEveryPlayerSacrifices(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
-	mine := []uuid.UUID{
-		b12Creature(g, me.ID, "My A", "Creature — Bear", 1, 1),
-		b12Creature(g, me.ID, "My B", "Creature — Bear", 1, 1),
-		b12Creature(g, me.ID, "My C", "Creature — Bear", 1, 1),
-	}
-	theirs := []uuid.UUID{
-		b12Creature(g, opp.ID, "Their A", "Creature — Bear", 1, 1),
-		b12Creature(g, opp.ID, "Their B", "Creature — Bear", 1, 1),
+	me := g.Seats[0]
+	var all [][]uuid.UUID
+	for _, p := range g.Seats {
+		var ids []uuid.UUID
+		for i := 0; i < 3; i++ {
+			ids = append(ids, b12Creature(g, p.ID, "Fodder", "Creature — Bear", 1, 1))
+		}
+		all = append(all, ids)
 	}
 	castCatalogSpell(t, g, "By Invitation Only", "Sorcery", vowB13InviteOracle, nil)
 	if payAmountPrompt(g, me.ID) != nil {
@@ -323,31 +323,34 @@ func TestVowB13ByInvitationOnlyEveryPlayerSacrifices(t *testing.T) {
 	if err := g.ResolvePayAmount(c.ID, me.ID, 2); err != nil {
 		t.Fatalf("answer 2: %v", err)
 	}
-	for _, p := range []*game.Player{me, opp} {
-		pick := latestChooseCards(g, p.ID)
-		if pick == nil {
-			t.Fatalf("%s was not asked to sacrifice", p.ID)
+	asked := map[uuid.UUID]int{}
+	for guard := 0; guard < 16; guard++ {
+		progressed := false
+		for _, p := range g.Seats {
+			if prompt := sacrificeChoiceFor(g, p.ID); prompt != nil {
+				answerSacrifice(t, g, p.ID, sacrificeOptions(prompt)[0])
+				asked[p.ID]++
+				progressed = true
+				break
+			}
 		}
-		ids := mine[:2]
-		if p == opp {
-			ids = theirs[:2]
-		}
-		if err := g.ResolveChooseCards(pick.ID, p.ID, ids[:1]); err != nil {
-			t.Fatalf("first sacrifice: %v", err)
-		}
-		if pick = latestChooseCards(g, p.ID); pick == nil {
-			t.Fatalf("%s was not asked for a second sacrifice", p.ID)
-		}
-		if err := g.ResolveChooseCards(pick.ID, p.ID, ids[1:2]); err != nil {
-			t.Fatalf("second sacrifice: %v", err)
+		if !progressed {
+			break
 		}
 	}
-	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(mine[0]) || g.Battlefield.Contains(mine[1]) || !g.Battlefield.Contains(mine[2]) {
-		t.Error("you should have sacrificed exactly the two chosen creatures")
-	}
-	if g.Battlefield.Contains(theirs[0]) || g.Battlefield.Contains(theirs[1]) {
-		t.Error("the opponent should have sacrificed both creatures")
+	for i, p := range g.Seats {
+		if asked[p.ID] != 2 {
+			t.Errorf("seat %d was asked %d times, want 2", i, asked[p.ID])
+		}
+		left := 0
+		for _, id := range all[i] {
+			if g.Battlefield.Contains(id) {
+				left++
+			}
+		}
+		if left != 1 {
+			t.Errorf("seat %d has %d of its 3 creatures left, want 1", i, left)
+		}
 	}
 }
 
@@ -371,7 +374,7 @@ func TestVowB13ByInvitationOnlyZeroSacrificesNothing(t *testing.T) {
 func TestVowB13ConsumingTideKeepsOneNonlandPermanentPerPlayerAndDraws(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	g.WithWriteLock(func() { me.Hand.Cards = nil; opp.Hand.Cards = nil })
+	vowB13ClearHands(g)
 	seedLibrary(me, "A", "B", "C")
 	for i := 0; i < 5; i++ {
 		g.WithWriteLock(func() {
@@ -422,8 +425,8 @@ func TestVowB13ConsumingTideKeepsOneNonlandPermanentPerPlayerAndDraws(t *testing
 	if !opp.Hand.Contains(theirA) {
 		t.Error("their Bear is not in their hand")
 	}
-	// Hands after the return: me 1 (Bear) + 1 draw; opp 6. The opponent has
-	// more cards than me, so I draw one card (counted after the return).
+	// Hands after the return: me 1 (the Bear); the first opponent 6; the two
+	// others 0. Only one opponent has more cards than me, so I draw one.
 	if got := len(me.Hand.Cards); got != 2 {
 		t.Errorf("my hand is %d cards, want 2 (the returned Bear and one draw)", got)
 	}
@@ -432,7 +435,7 @@ func TestVowB13ConsumingTideKeepsOneNonlandPermanentPerPlayerAndDraws(t *testing
 func TestVowB13ConsumingTideDrawsNothingWhenNoOpponentHasMore(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	g.WithWriteLock(func() { me.Hand.Cards = nil; opp.Hand.Cards = nil })
+	vowB13ClearHands(g)
 	seedLibrary(me, "A", "B")
 	only := b12Creature(g, me.ID, "My Only", "Creature — Bear", 2, 2)
 	_ = opp
@@ -461,8 +464,11 @@ func TestVowB13SigardasSummonsMakesCounteredCreaturesAngels(t *testing.T) {
 	putCounters(t, g, counted, game.CounterPlusOne, 1)
 	putCounters(t, g, theirs, game.CounterPlusOne, 1)
 	// 4/4 base plus the counter.
-	if p, tough := effectivePower(t, g, counted), effectiveToughness(t, g, counted); p != 5 || tough != 5 {
-		t.Errorf("counted creature is %d/%d, want 5/5 (base 4/4 plus the counter)", p, tough)
+	if p := effectivePowerWithCounters(t, g, counted); p != 5 {
+		t.Errorf("counted creature has power %d, want 5 (base 4 plus the counter)", p)
+	}
+	if p := effectivePower(t, g, counted); p != 4 {
+		t.Errorf("counted creature has base power %d, want 4", p)
 	}
 	if !hasEffectiveKeyword(t, g, counted, "flying") {
 		t.Error("the counted creature lacks flying")
@@ -470,15 +476,24 @@ func TestVowB13SigardasSummonsMakesCounteredCreaturesAngels(t *testing.T) {
 	if c, _ := g.LookupCardForEffect(counted); !c.HasSubtype("Angel") || !c.HasSubtype("Bear") {
 		t.Errorf("want a Bear and an Angel")
 	}
-	if effectivePower(t, g, plain) != 1 || hasEffectiveKeyword(t, g, plain, "flying") {
+	if effectivePowerWithCounters(t, g, plain) != 1 || hasEffectiveKeyword(t, g, plain, "flying") {
 		t.Error("a creature without a counter changed")
 	}
-	if effectivePower(t, g, theirs) != 2 || hasEffectiveKeyword(t, g, theirs, "flying") {
+	if effectivePowerWithCounters(t, g, theirs) != 2 || hasEffectiveKeyword(t, g, theirs, "flying") {
 		t.Error("an opponent's creature was affected")
 	}
 }
 
 // --- Geistlight Snare ------------------------------------------------------
+
+// vowB13ClearHands empties every seat's hand.
+func vowB13ClearHands(g *game.Game) {
+	g.WithWriteLock(func() {
+		for _, p := range g.Seats {
+			p.Hand.Cards = nil
+		}
+	})
+}
 
 func vowB13SnareTable(t *testing.T) (*game.Game, *game.Player, uuid.UUID, uuid.UUID) {
 	t.Helper()

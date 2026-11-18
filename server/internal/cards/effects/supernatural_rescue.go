@@ -19,19 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	cast := WhenYouCastThisSpell("Supernatural Rescue — tap up to two target creatures you don't control",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := (TapTarget{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+	cast := WhenYouCastThisSpell("Supernatural Rescue — tap up to two target creatures you don't control", msc13TapTheLegalTargets)
 	cast.Targets = TargetCreature("up to two target creatures you don't control", Not(YouControl())).WithCount(0, 2)
 	Register(Spec{
 		OracleID:     "a77510ef-baf0-4cc5-b659-6aaaed0b02f4",
