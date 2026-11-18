@@ -80,6 +80,18 @@ const (
 	// granted cap and a printed one can never disagree about what "one
 	// spell this turn" means.
 	CastBanMaxPerTurn CastBanKind = "max_per_turn"
+
+	// CastBanManaValue is "can't cast spells with mana value N" (Living
+	// Breakthrough, S82): the rule's ManaValue is the one value, read off the
+	// spell being cast as ManaValueForEffect reads it (a card in a hand or
+	// another zone has X as 0, CR 202.3e), and the filter narrows it further
+	// the way it does the outright kind.
+	//
+	// A kind of its own, for CastBanNamed's reason: a binary from before it
+	// drops `manaValue` on a restore point it did not write, and an outright
+	// ban would then forbid every spell. Under an unknown kind it forbids
+	// nothing, so a rollback only ends the ban early, weaker than printed.
+	CastBanManaValue CastBanKind = "mana_value"
 )
 
 // CastBanRule is the RULES half of a granted per-player "can't cast"
@@ -118,6 +130,11 @@ type CastBanRule struct {
 	// zero", which is why the two need different Kinds rather than one
 	// letting MaxPerTurn's zero value stand for "no count".
 	MaxPerTurn int `json:"maxPerTurn,omitempty"`
+
+	// ManaValue is CastBanManaValue's printed number. Zero is a real value
+	// (the ban on mana value 0), which is why the kind and not this field
+	// is the presence bit. Ignored by every other kind. Additive.
+	ManaValue int `json:"manaValue,omitempty"`
 }
 
 // forbids reports whether this rule bans `playerID` from casting
@@ -134,6 +151,9 @@ func (r CastBanRule) forbids(g *Game, playerID uuid.UUID, card Card, zone ZoneKi
 		return r.ExceptFromZone == "" || zone != r.ExceptFromZone
 	case CastBanNamed:
 		return r.Filter.Named != "" && r.Filter.Matches(card)
+	case CastBanManaValue:
+		mv, ok := g.ManaValueForEffect(card)
+		return ok && mv == r.ManaValue && r.Filter.Matches(card)
 	case CastBanMaxPerTurn:
 		if !r.Filter.Matches(card) {
 			return false

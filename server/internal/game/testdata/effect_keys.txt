@@ -343,6 +343,7 @@ body reckless-blaze/add-red
 body red-hulk/damage
 body redirection/that-much-to-the-sources-controller
 body rediscover-the-way/double-strike
+body remnant-of-the-rising-star/counters
 body renown/grow
 body repeated-reverberation/copy-twice
 body repository-skaab/return
@@ -419,6 +420,7 @@ body the-fire-nation-drill/destroy
 body the-last-ronin/attacks-alone
 body the-last-ronin/return
 body the-mindskinner/each-opponent-mills
+body the-restoration-of-eiganjo/return-tapped
 body the-ring/sacrifice-blocker-at-end-of-combat
 body the-thing/double-counters
 body the-wrath-of-khan/gain-control-of-that-creature
@@ -897,6 +899,7 @@ choose choose-cards/ninjas-blades-loot
 choose choose-cards/north-wind-avatar-take
 choose choose-cards/northampton-farm-return
 choose choose-cards/nothing
+choose choose-cards/o-kagachi-made-manifest-pick
 choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
@@ -1071,10 +1074,12 @@ choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
 choose choose-cards/the-deck-of-many-things-reanimate
+choose choose-cards/the-dragon-kami-reborn-pick
 choose choose-cards/the-gitrog-ravenous-ride-sacrifice
 choose choose-cards/the-grand-evolution-put
 choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
+choose choose-cards/the-restoration-of-eiganjo-return
 choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-ur-sphinx-cast
 choose choose-cards/the-world-spell-take
@@ -1909,6 +1914,7 @@ payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
+payunless pay-unless/remnant-of-the-rising-star-x-counters
 payunless pay-unless/rhystic-study-may-draw
 payunless pay-unless/riddle-gate-gargoyle-lifelink
 payunless pay-unless/rings-of-brighthearth-copy-ability
@@ -3215,6 +3221,7 @@ tail tetzin-gnome-champion/after-mill
 tail the-binding-of-the-titans/gain-per-creature-exiled
 tail the-day-of-the-doctor/after-mill
 tail the-deck-of-many-things/curse
+tail the-dragon-kami-reborn/after-exile
 tail the-end/after-exile
 tail the-end/draw-for-hand
 tail the-gitrog-ravenous-ride/sacrificed

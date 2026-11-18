@@ -432,6 +432,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
 	// "When this creature dies, it deals 2 damage to each opponent."
 	printedImpDamageToken,
+	// Jugan Defends the Temple (S82, NEO): the 1/1 green Human Monk with "{T}: Add {G}."
+	printedNeoHumanMonkToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
