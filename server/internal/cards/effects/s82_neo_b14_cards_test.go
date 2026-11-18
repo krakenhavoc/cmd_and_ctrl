@@ -411,11 +411,11 @@ func TestS82NeoB14TameshiReturnsALandToGetBackAnArtifactOrEnchantmentUpToX(t *te
 	advanceToMain(t, g)
 	neoMana(me, "W", "W", "W", "W")
 	for _, bad := range []uuid.UUID{dear, bear} {
-		if err := g.ActivateCatalogAbility(me.ID, tameshi, 1, game.ActivateAbilityParams{Strict: true, XValue: 2, ReturnIDs: []uuid.UUID{land}, Targets: []game.TargetRef{neoCardTarget(bad)}}); err == nil {
+		if err := g.ActivateCatalogAbility(me.ID, tameshi, 0, game.ActivateAbilityParams{Strict: true, XValue: 2, ReturnIDs: []uuid.UUID{land}, Targets: []game.TargetRef{neoCardTarget(bad)}}); err == nil {
 			t.Fatalf("%v was accepted at X = 2", bad)
 		}
 	}
-	if err := g.ActivateCatalogAbility(me.ID, tameshi, 1, game.ActivateAbilityParams{Strict: true, XValue: 2, ReturnIDs: []uuid.UUID{land}, Targets: []game.TargetRef{neoCardTarget(cheap)}}); err != nil {
+	if err := g.ActivateCatalogAbility(me.ID, tameshi, 0, game.ActivateAbilityParams{Strict: true, XValue: 2, ReturnIDs: []uuid.UUID{land}, Targets: []game.TargetRef{neoCardTarget(cheap)}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	if !me.Hand.Contains(land) {
