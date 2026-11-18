@@ -2,6 +2,12 @@
 
 You build ONE batch of cards from the ten sets that most recently left Standard (MAT, MOM, ONE, BRO, DMU, SNC, NEO, VOW, MID, AFR, with their Commander sets). Your prompt names the set and the batch number. You push a branch and stop; you do not open a PR.
 
+## Reprint pass (set "RPR", issue #5908)
+If your prompt says set RPR: the cards are reprints and bonus-sheet cards that the dev catalog counts in the S82 sets, Edge of Eternities, Star Trek and TMNT (most are older cards). Same rules as below. Branch `feat/s82-rpr-b<NN>`, commit subject `feat(server): RPR cards, batch <NN>`, trailer `Issue: #5908`. There are no per-batch planner notes in #5908; read each card from the dump. Many of these cards share mechanics with cards already on develop: grep for the mechanic and reuse.
+
+## Do not stop early
+Nobody answers you mid-run. Never end your turn while a test, build or lint is still running: wait in the foreground (raise the Bash timeout) or with an until-loop, and keep going until the final commit is pushed.
+
 ## Where things are (this session cannot reach Scryfall)
 - The batch's card list: `git fetch origin work/s82-batches` then `git show FETCH_HEAD:plan/s82-batches.json`; pick the row with your `set` and `batch`. Build exactly its `missing` cards.
 - The set issue (`issue` in that row) has the planner's notes for each batch: read your batch's section (`gh issue view <n>` or `curl -s https://api.github.com/repos/krakenhavoc/cmd_and_ctrl/issues/<n>`).

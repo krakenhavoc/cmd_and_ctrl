@@ -1,6 +1,6 @@
 # work/s82-cards — data only, never merge
 
-`s82-cards.json.gz` is the Scryfall default-cards dump (refreshed 2026-11-04) cut down to every printing of every card in the S82 ten (MAT, MOM/MOC, ONE/ONC, BRO/BRC/BRR, DMU/DMC, SNC/NCC, NEO/NEC, VOW/VOC, MID/MIC, AFR/AFC, and their token sets), plus the related tokens and all their printings. Same format as `data/scryfall/default-cards.json`.
+`s82-cards.json.gz` is the Scryfall default-cards dump (refreshed 2026-11-04) cut down to every printing of every card in the S82 ten (MAT, MOM/MOC, ONE/ONC, BRO/BRC/BRR, DMU/DMC, SNC/NCC, NEO/NEC, VOW/VOC, MID/MIC, AFR/AFC, and their token sets), plus the related tokens and all their printings. Since 2026-11-18 it also holds every printing of the #5908 reprint-pass cards that were not already in it (Multiverse Legends, Stellar Sights, and the Star Trek and TMNT extras) and their tokens. Same format as `data/scryfall/default-cards.json`.
 
 Use it in a cloud worker:
 
