@@ -1272,6 +1272,7 @@
       {sendAction}
       {onDeclareAttack}
       {onTargetPlayer}
+      onActivateAbility={isSelf ? onActivateAbility : undefined}
       {considering}
       seated={!header}
       {header}

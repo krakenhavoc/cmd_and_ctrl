@@ -13,7 +13,7 @@
 
   import { untrack } from "svelte";
   import { get } from "svelte/store";
-  import type { ActionPayload, ActionType, PlayerView } from "../../protocol";
+  import type { ActionPayload, ActionType, CardView, PlayerView } from "../../protocol";
   import { seatColor } from "../../colors";
   import { floatUp, fadeOut } from "../../animations";
   import { play } from "../../sounds";
@@ -38,6 +38,7 @@
   import { turnSkipChip } from "../../turn";
   import { avatarExpand } from "../../boardExpand";
   import EmblemLevelChip from "./EmblemLevelChip.svelte";
+  import { emblemAbilityBlocked, emblemAbilityCost, emblemAsCard } from "../../emblemAbilities";
   import DungeonChip from "./DungeonChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
@@ -61,6 +62,10 @@
     sendAction: ActionSender;
     onDeclareAttack?: (targetPlayerID: string) => void;
     onTargetPlayer?: (targetPlayerID: string) => void;
+    // #5868: an emblem's activated ability (CR 114.4), handed to Board's
+    // announce chain with the emblem standing in for a card. Undefined
+    // where nobody may announce (an opponent's seat, a spectator).
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // Scryfall id of the seat's commander (command zone or
     // battlefield), for the art-crop avatar when the seat has no
     // Discord avatar. Precedence: Discord → commander art → seat disc.
@@ -101,6 +106,7 @@
     sendAction,
     onDeclareAttack,
     onTargetPlayer,
+    onActivateAbility,
     commanderScryfallID = null,
     considering = false,
     seated = false,
@@ -729,6 +735,26 @@
             <Icon name="star" size={11} />{emblem.label}
           </span>
         {/if}
+        {#if onActivateAbility}
+          <!-- #5868: the emblem's activated abilities, on its owner's
+               frame only (the server sends no rows to anyone else). -->
+          {#each emblem.zone_abilities ?? [] as row (row.index)}
+            {@const why = emblemAbilityBlocked(row, hasPriority)}
+            <button
+              type="button"
+              class="emblem emblem-ability"
+              disabled={why !== ""}
+              aria-label={L.emblemAbility(emblem.label, emblemAbilityCost(row))}
+              title={why === "" ? (row.label ?? "") : `${row.label ?? ""} (${why})`}
+              onclick={(e) => {
+                e.stopPropagation();
+                onActivateAbility(emblemAsCard(emblem, seat.id), row.index);
+              }}
+            >
+              <Icon name="bolt" size={11} />{emblemAbilityCost(row)}
+            </button>
+          {/each}
+        {/if}
       {/each}
     </div>
   {/if}
@@ -1314,6 +1340,24 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     cursor: default;
+  }
+  /* #5868: an emblem's activated ability — the chip's shape, as a
+     button the owner can press. */
+  .emblem-ability {
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .emblem-ability:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+  .emblem-ability:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .emblem-ability:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
   }
 
   .tag {

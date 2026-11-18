@@ -86,3 +86,55 @@ describe("PlayerIdentity emblems", () => {
     expect(container.querySelectorAll(".emblems")).toHaveLength(0);
   });
 });
+
+// #5868, CR 114.4: an emblem with an activated ability (Karn, Living
+// Legacy's) is a button on its owner's frame, and a click hands the
+// announce chain the emblem standing in for a card.
+describe("PlayerIdentity emblem abilities", () => {
+  const karn = {
+    instance_id: "e1",
+    label: "Karn, Living Legacy emblem",
+    text: "Tap an untapped artifact you control: This emblem deals 1 damage to any target.",
+    zone_abilities: [
+      {
+        index: 0,
+        label: "Tap an untapped artifact you control: This emblem deals 1 damage to any target.",
+      },
+    ],
+  };
+
+  it("activates the row with the emblem as the source", () => {
+    const calls: [string, number][] = [];
+    const { container } = render(
+      PlayerIdentity as never,
+      {
+        ...props(seat([karn])),
+        isSelf: true,
+        hasPriority: true,
+        onActivateAbility: (card: { instance_id: string }, i: number) =>
+          calls.push([card.instance_id, i]),
+      } as never,
+    );
+    const btn = container.querySelector<HTMLButtonElement>("button.emblem-ability");
+    expect(btn).not.toBeNull();
+    expect(btn!.disabled).toBe(false);
+    expect(btn!.getAttribute("aria-label")).toBe(
+      "Activate emblem Karn, Living Legacy emblem: Tap an untapped artifact you control",
+    );
+    btn!.click();
+    expect(calls).toEqual([["e1", 0]]);
+  });
+
+  it("is greyed without priority and absent with no handler", () => {
+    const greyed = render(
+      PlayerIdentity as never,
+      { ...props(seat([karn])), isSelf: true, onActivateAbility: () => {} } as never,
+    );
+    expect(
+      greyed.container.querySelector<HTMLButtonElement>("button.emblem-ability")!.disabled,
+    ).toBe(true);
+    cleanup();
+    const none = render(PlayerIdentity as never, props(seat([karn])) as never);
+    expect(none.container.querySelectorAll("button.emblem-ability")).toHaveLength(0);
+  });
+});

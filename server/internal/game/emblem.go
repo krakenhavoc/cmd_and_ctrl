@@ -327,6 +327,45 @@ func (g *Game) forEachEmblemLocked(fn func(src *Card) bool) {
 	}
 }
 
+// emblemByIDLocked is the emblem with instance ID `id` and the zone it
+// is in (the command zone, CR 114.2), or (nil, "") when no seat has
+// one. It is how the activation verb finds an emblem whose ability is
+// activated (#5868, CR 113.6): an emblem is not in the card index, so
+// every other lookup still cannot name it.
+//
+// The pointer is into p.Emblems.Cards and is valid under the lock the
+// caller holds. Caller must hold g.mu (read or write).
+func (g *Game) emblemByIDLocked(id uuid.UUID) (*Card, ZoneKind) {
+	var found *Card
+	if id == uuid.Nil {
+		return nil, ""
+	}
+	g.forEachEmblemLocked(func(src *Card) bool {
+		if src.InstanceID == id {
+			found = src
+			return false
+		}
+		return true
+	})
+	if found == nil {
+		return nil, ""
+	}
+	return found, ZoneCommand
+}
+
+// EmblemObjectLocked is a copy of the emblem object with instance ID
+// `id`, for a projection that reads its activated abilities (#5868).
+// False when no seat has that emblem.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) EmblemObjectLocked(id uuid.UUID) (Card, bool) {
+	c, _ := g.emblemByIDLocked(id)
+	if c == nil {
+		return Card{}, false
+	}
+	return *c, true
+}
+
 // harvestFromEmblemsLocked is the emblem half of the trigger
 // harvester's walk. It is harvestFromZone over each seat's emblem
 // zone, which is all an emblem's triggered ability needs: the harvest

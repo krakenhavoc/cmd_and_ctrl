@@ -3273,6 +3273,32 @@ type EmblemView struct {
 	// table can show the lines still to come beside the ones gained
 	// (ADR 0114 owner decision 1). Absent on every other emblem.
 	Lines []EmblemLineView `json:"lines,omitempty"`
+	// ZoneAbilities are the emblem's CR 602 activated abilities (#5868,
+	// CR 114.4): Karn, Living Legacy's "Tap an untapped artifact you
+	// control: This emblem deals 1 damage to any target." The same rows
+	// a card's `zone_abilities` carries, read for the emblem's owner
+	// with the emblem in the command zone, and sent as an ordinary
+	// `activate_ability` with the emblem's instance_id as `source_card_id`.
+	// OWNER ONLY, like a graveyard card's rows (#1055): the target sets
+	// are narrowed by who is asking, so FilterViewFor takes them off
+	// every other seat's frame (the controller of the owner's whole
+	// turn keeps them, ADR 0167 §9). Absent on an emblem with none.
+	ZoneAbilities []ActivatedAbilityView `json:"zone_abilities,omitempty"`
+}
+
+// emblemsWithoutAbilityRows is `in` with every emblem's ZoneAbilities
+// taken off, as a copy, so the owner's frame built from the same view
+// keeps its rows (#5868). Returns `in` itself when no emblem has any.
+func emblemsWithoutAbilityRows(in []EmblemView) []EmblemView {
+	if !slices.ContainsFunc(in, func(e EmblemView) bool { return len(e.ZoneAbilities) > 0 }) {
+		return in
+	}
+	out := make([]EmblemView, len(in))
+	for i, e := range in {
+		e.ZoneAbilities = nil
+		out[i] = e
+	}
+	return out
 }
 
 // EmblemLineView is one line of the Ring: its text, and how many
@@ -11392,6 +11418,12 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		for _, l := range e.Lines {
 			ev.Lines = append(ev.Lines, EmblemLineView{Text: l.Text, At: l.At})
 		}
+		// #5868: the emblem's activated abilities, as its owner may
+		// activate them from the command zone. FilterViewFor keeps them
+		// on the owner's frame alone.
+		if obj, ok := g.EmblemObjectLocked(e.InstanceID); ok {
+			ev.ZoneAbilities = viewOfActivatedAbilities(g, obj, p.ID, game.ZoneCommand, g.AnyActivationRestrictionsForEffect())
+		}
 		emblems = append(emblems, ev)
 	}
 	// ADR 0172 §5: the companion waiting outside the game, public.
@@ -11894,6 +11926,12 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// controller's), as the companion's {3} row is.
 		if viewerID != "" && p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
 			out.IgnorableEffects = nil
+		}
+		// #5868: an emblem's ability rows are its owner's (or the
+		// controller's of the owner's whole turn), for the reason a
+		// graveyard card's are: their targets are narrowed by who asks.
+		if p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
+			out.Emblems = emblemsWithoutAbilityRows(p.Emblems)
 		}
 		// #1530, #1968: the trigger-ordering preference is the seat's own.
 		if p.ID != viewerID {

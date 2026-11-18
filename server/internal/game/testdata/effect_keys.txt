@@ -1861,6 +1861,7 @@ payunless pay-unless/jace-multiverse-architect-cant-attack
 payunless pay-unless/jedit-ojanen-mercenary-cat-warrior
 payunless pay-unless/jolted-awake-return
 payunless pay-unless/kalastria-highborn-drain
+payunless pay-unless/karn-living-legacy-look
 payunless pay-unless/kavaron-harrier-robot
 payunless pay-unless/kazuul-ogre
 payunless pay-unless/kinzu-of-the-bleak-coven-exile
