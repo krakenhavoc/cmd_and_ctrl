@@ -41,7 +41,7 @@ func init() {
 					}
 					return nil
 				}),
-				CreateToken{Template: TokenCard("1/2 green Spider with reach"), N: 1})),
+					CreateToken{Template: TokenCard("1/2 green Spider with reach"), N: 1})),
 		},
 	})
 }
