@@ -613,6 +613,7 @@ choose choose-cards/dauthi-voidwalker-play
 choose choose-cards/deadly-cover-up-exile
 choose choose-cards/death-wish-take
 choose choose-cards/deepfathom-echo-copy
+choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/dihada-binder-of-wills-take
@@ -2028,6 +2029,7 @@ payunless pay-unless/wolfbat-return
 payunless pay-unless/zoraline-cosmos-caller-return
 payunless pay-unless/zoyowa-lava-tongue-damage
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
+pick revealed-pick/check-for-traps-life-loss
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/cruelclaws-heist-may-cast
 pick revealed-pick/deep-cavern-bat-return
