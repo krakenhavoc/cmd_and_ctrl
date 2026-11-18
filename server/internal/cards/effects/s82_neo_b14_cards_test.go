@@ -345,10 +345,10 @@ func TestS82NeoB14ScrapWelderSacrificesXAndReturnsLessThanXWithHaste(t *testing.
 	cheap := pushGraveyardPermanent(me, "Cheap Rock", "Artifact", "{3}")
 	same := pushGraveyardPermanent(me, "Equal Rock", "Artifact", "{4}")
 	advanceToMain(t, g)
-	if err := invB1Activate(g, me.ID, welder, 0, neoCardTarget(same)); err == nil {
+	if err := g.ActivateCatalogAbility(me.ID, welder, 0, game.ActivateAbilityParams{Strict: true, XValue: 4, SacrificeIDs: []uuid.UUID{four}, Targets: []game.TargetRef{neoCardTarget(same)}}); err == nil {
 		t.Fatal("an artifact card with mana value equal to X was accepted")
 	}
-	if err := invB1Activate(g, me.ID, welder, 0, neoCardTarget(cheap)); err != nil {
+	if err := g.ActivateCatalogAbility(me.ID, welder, 0, game.ActivateAbilityParams{Strict: true, XValue: 4, SacrificeIDs: []uuid.UUID{four}, Targets: []game.TargetRef{neoCardTarget(cheap)}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)
@@ -411,11 +411,11 @@ func TestS82NeoB14TameshiReturnsALandToGetBackAnArtifactOrEnchantmentUpToX(t *te
 	advanceToMain(t, g)
 	neoMana(me, "W", "W", "W", "W")
 	for _, bad := range []uuid.UUID{dear, bear} {
-		if err := g.ActivateCatalogAbility(me.ID, tameshi, 1, game.ActivateAbilityParams{Strict: true, XValue: 2, Targets: []game.TargetRef{neoCardTarget(bad)}}); err == nil {
+		if err := g.ActivateCatalogAbility(me.ID, tameshi, 1, game.ActivateAbilityParams{Strict: true, XValue: 2, ReturnIDs: []uuid.UUID{land}, Targets: []game.TargetRef{neoCardTarget(bad)}}); err == nil {
 			t.Fatalf("%v was accepted at X = 2", bad)
 		}
 	}
-	if err := g.ActivateCatalogAbility(me.ID, tameshi, 1, game.ActivateAbilityParams{Strict: true, XValue: 2, Targets: []game.TargetRef{neoCardTarget(cheap)}}); err != nil {
+	if err := g.ActivateCatalogAbility(me.ID, tameshi, 1, game.ActivateAbilityParams{Strict: true, XValue: 2, ReturnIDs: []uuid.UUID{land}, Targets: []game.TargetRef{neoCardTarget(cheap)}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	if !me.Hand.Contains(land) {
