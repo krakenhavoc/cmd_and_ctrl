@@ -513,15 +513,6 @@ func TestAfrB18KlauthAddsRestrictedManaForTotalAttackingPower(t *testing.T) {
 	}
 }
 
-func latestChoiceForAfr(g *game.Game, who uuid.UUID) bool {
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Chooser == who {
-			return true
-		}
-	}
-	return false
-}
-
 // Klauth's Will.
 func afrB18CastWill(t *testing.T, g *game.Game, x int, modes []int, targets []game.TargetRef) error {
 	t.Helper()

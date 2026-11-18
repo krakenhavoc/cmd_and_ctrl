@@ -36,15 +36,6 @@ func afrB18OptionalBeholdChosen(article, subtype string) game.AdditionalCost {
 	return c
 }
 
-// afrB18SmashRelicsTargets is Klauth's Will's "up to X target artifacts
-// and/or enchantments": the announced X is the ceiling on the count.
-func afrB18SmashRelicsTargets() *game.TargetSpec {
-	spec := TargetPermanent("up to X target artifacts and/or enchantments", Or(Artifact(), Enchantment()))
-	spec.CountFromX = true
-	spec.UpToX = true
-	return spec
-}
-
 // afrB18TotalPowerOfAttackingCreatures is the sum of the current power of
 // every attacking creature on the battlefield, whoever controls it.
 func afrB18TotalPowerOfAttackingCreatures(g *game.Game) int {
@@ -65,4 +56,29 @@ func afrB18PowerOf(g *game.Game, id uuid.UUID) (int, bool) {
 		return 0, false
 	}
 	return c.CurrentPower(), true
+}
+
+// afrB18CountersEqualToDamageOnThis is "put that many +1/+1 counters on
+// <this creature>" for a trigger whose event is the damage it dealt: the
+// counters land only while the source is still the permanent that triggered
+// (CR 400.7). Westgate Regent and Abomination, Irradiated Brute share it.
+func afrB18CountersEqualToDamageOnThis(ctx *Context) error {
+	n := ctx.Trigger().Event.Amount
+	if n <= 0 || !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+		return nil
+	}
+	return CounterOnThis{Kind: game.CounterPlusOne, N: n}.Apply(ctx)
+}
+
+// afrB18DamageEachCreatureWithoutFlying is "deals X damage to each creature
+// without flying", X the announced X, as one damage instance. Klauth's Will
+// and Subterranean Tremors share it.
+func afrB18DamageEachCreatureWithoutFlying(ctx *Context) error {
+	x := ctx.X()
+	if x <= 0 {
+		return nil
+	}
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		return damageEachMatching(ctx, And(Creature(), WithoutKeyword("flying")), x)
+	})
 }

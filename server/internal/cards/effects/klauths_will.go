@@ -29,16 +29,10 @@ func init() {
 		Modes: ChooseOne(
 			ModeWithPurpose(ModeDoing("Breathe Flame — Klauth's Will deals X damage to each creature without flying.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
-					x := ctx.X()
-					if x <= 0 {
-						return nil
-					}
-					return ctx.Game.DamageInstanceForEffect(func() error {
-						return damageEachMatching(ctx, And(Creature(), WithoutKeyword("flying")), x)
-					})
+					return afrB18DamageEachCreatureWithoutFlying(ctx)
 				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true, Partial: true}}),
 			ModeWithPurpose(ModeDoing("Smash Relics — Destroy up to X target artifacts and/or enchantments.",
-				afrB18SmashRelicsTargets(),
+				socB10PestInfestationTargets(),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					for _, t := range ctx.ModeTargets(occ) {
 						if !ctx.IsTargetLegal(t) {
