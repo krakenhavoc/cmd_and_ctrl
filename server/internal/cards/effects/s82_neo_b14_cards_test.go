@@ -205,7 +205,7 @@ func TestS82NeoB14RecklessJoyExilesXAndLetsYouPlayTwoOfThem(t *testing.T) {
 	var top []uuid.UUID
 	for _, n := range []string{"Card A", "Card B", "Card C"} {
 		id := uuid.New()
-		me.Library.PushTop(game.Card{InstanceID: id, Name: n, TypeLine: "Creature — Bear", Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
+		me.Library.PushTop(game.Card{InstanceID: id, Name: n, TypeLine: "Creature — Bear", ManaCost: "{R}", Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
 		top = append(top, id)
 	}
 	advanceToMain(t, g)
@@ -221,9 +221,12 @@ func TestS82NeoB14RecklessJoyExilesXAndLetsYouPlayTwoOfThem(t *testing.T) {
 	}
 	played := 0
 	for _, id := range top {
+		neoMana(me, "R")
 		if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err == nil {
 			played++
 			passPriorityAroundTable(t, g)
+		} else {
+			t.Logf("cast refused: %v", err)
 		}
 	}
 	if played != 2 {
