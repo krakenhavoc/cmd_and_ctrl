@@ -301,6 +301,15 @@ type CostQuery struct {
 	// cast, and for an activation or special action.
 	AltBlitz bool
 
+	// AltFlashback reports that the alternative cost this cast claims is
+	// the card's flashback cost (CR 702.34a): Visions of Glory's "This
+	// spell costs {X} less to cast this way" is a reduction of the
+	// flashback cast alone, which a graveyard cast through some other
+	// permission (Patrician Geist's graveyard, an escape cost) must not
+	// get. Filled by the one pricer and by the enumerator from the offer
+	// it is announcing, as AltBlitz is. False for every other cast.
+	AltFlashback bool
+
 	// GrantReduction is the generic mana a cast permission takes off the
 	// spell cast through it (CastPermission.CostLess, #3787): Urianger
 	// Augurelt's "spells you cast this way cost {2} less to cast". Read

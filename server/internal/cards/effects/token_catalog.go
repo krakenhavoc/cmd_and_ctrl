@@ -339,6 +339,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// blocked by more than one creature.
 	printedTigerGodToken,
 
+	// S82 Midnight Hunt batch 11 (#5497): Ominous Roost's Bird and Seize the
+	// Storm's Elemental.
+	printedBirdBlocksOnlyFliersToken,
+	printedSeizeTheStormElementalToken,
+
 	// The Coming of Galactus's Galactus: flying, trample, destroys a land
 	// when he attacks.
 	printedGalactusToken,

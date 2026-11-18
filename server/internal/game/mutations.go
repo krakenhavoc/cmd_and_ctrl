@@ -3988,6 +3988,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// #5667, CR 702.152a: whether the claimed offer is a blitz cost
 		// (Henzie "Toolbox" Torre's "Blitz costs you pay cost {1} less").
 		AltBlitz: g.altBlitzLocked(p.ID, card, params),
+		// CR 702.34a: whether the claimed offer is the flashback cost.
+		AltFlashback: g.altFlashbackLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 		// and its "costs {N} more" (Zero, Incorporeal Sensate).
