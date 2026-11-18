@@ -1237,6 +1237,19 @@ func RemoveCountersXFromThis(kind string, min int) game.AbilityCost {
 	}}
 }
 
+// RemoveAllCountersFromThis is "Remove all <kind> counters from this
+// permanent" (Catti-brie of Mithral Hall): the cost takes every counter of
+// the kind the source holds, never fewer, and the number removed reaches the
+// effect as ctx.CountersRemoved(), zero when none were there (CR 118.3 lets
+// a cost of removing nothing be paid).
+func RemoveAllCountersFromThis(kind string) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		Counter:  kind,
+		Variable: true,
+		All:      true,
+	}}
+}
+
 // RemoveCountersAmong is "Remove N <kind> counters from among <a
 // clause>" — Iron Spider, Stark Upgrade's "from among artifacts you
 // control", Hopeful Initiate's "from among creatures you control"
