@@ -78881,6 +78881,8 @@ turnTally.noncombatDamage[].amount	number:int
 turnTally.noncombatDamage[].colors	array
 turnTally.noncombatDamage[].colors[]	string
 turnTally.noncombatDamage[].controller	custom(uuid.UUID)
+turnTally.noncombatDamage[].object	custom(uuid.UUID)
+turnTally.noncombatDamage[].objectEpoch	number:int
 turnTally.noncombatDamage[].source	custom(uuid.UUID)
 turnTally.noncombatDamage[].victim	custom(uuid.UUID)
 turnTally.nonlandPermanentsLeft	number:int

@@ -3215,6 +3215,8 @@ tail then/ancient-vendetta-named
 tail then/angelic-intervention-protection-then-counter
 tail then/another-round-return
 tail then/arcum-dagsson-search
+tail then/audacious-swap-exiled
+tail then/audacious-swap-shuffle-exile
 tail then/aven-interrupter-plot
 tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
