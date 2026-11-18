@@ -17,6 +17,14 @@ import (
 
 const chaosDragonOracle = "a04f46b4-b0b0-4aef-907f-1df1a2e261de"
 
+// chaosDragonID is the Dragon's fixed instance ID. The roll stream is keyed
+// by its source, and a permanent pushed straight onto the battlefield has no
+// source ordinal, so the stream is keyed by the ID's own bytes: a fresh
+// uuid.New() per run would give different rolls under every key, and the
+// key search in chaosDragonFind would then miss a rare pattern (the tie) on
+// some runs. A fixed ID makes the rolls a function of the key alone.
+var chaosDragonID = uuid.MustParse("c4a05d2a-90e5-4d1b-8a3e-000000005897")
+
 // chaosDragonTable is a four-seat table with Chaos Dragon under seat 0, each seat
 // but seat 0 with a planeswalker, at seat 0's beginning of combat with the
 // Dragon's trigger on the stack and not yet resolved.
@@ -34,7 +42,8 @@ func chaosDragonSetup(t *testing.T, key [32]byte, eliminate ...int) chaosDragonT
 		g.Seats[i].Eliminated = true
 	}
 	me := g.Seats[0]
-	dragon := pushTestPermanent(g, me.ID, game.Card{Name: "Chaos Dragon", OracleID: chaosDragonOracle,
+	dragon := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: chaosDragonID,
+		Owner: me.ID, Controller: me.ID, Name: "Chaos Dragon", OracleID: chaosDragonOracle,
 		TypeLine: "Creature — Dragon", Power: 4, Toughness: 4})
 	walkers := map[uuid.UUID]uuid.UUID{}
 	for _, p := range g.Seats[1:] {
@@ -70,7 +79,8 @@ func chaosDragonPeek(tb chaosDragonTable) map[uuid.UUID]int {
 }
 
 // chaosDragonFind sets up tables under keys 0..255 until the players' rolls (seat
-// order) satisfy want.
+// order) satisfy want. With the Dragon's fixed ID (chaosDragonID) the search
+// is deterministic: the same key is found on every run.
 func chaosDragonFind(t *testing.T, want func(r []int) bool, eliminate ...int) (chaosDragonTable, map[uuid.UUID]int) {
 	t.Helper()
 	for k := 0; k < 256; k++ {

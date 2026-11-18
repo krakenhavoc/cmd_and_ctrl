@@ -1335,6 +1335,30 @@ type CastPermission struct {
 	// (#3157). Nil names nothing, which is every permission before it.
 	FollowUpObject *ObjectRef `json:"followUpObject,omitempty"`
 
+	// FollowUpOnLandPlay makes FollowUp run for a LAND played through
+	// this permission too, not only for a spell cast through it (#5904,
+	// Share the Spoils: "you may play a land or cast a spell from among
+	// cards exiled with this enchantment ... When they do, exile the top
+	// card of their library"). Playing a land is not casting (CR 305.1,
+	// 116.2a), so a follow-up written for a cast never runs for one; a
+	// permission whose "when they do" covers both says so here. The body
+	// is handed the land as Spell. False is every permission before it.
+	// Additive within a snapshot version.
+	FollowUpOnLandPlay bool `json:"followUpOnLandPlay,omitempty"`
+
+	// EachPlayer makes a CATALOG standing permission a grant to every
+	// player in the game rather than only to the granting permanent's
+	// controller (#5904, Share the Spoils: "During each player's turn,
+	// that player may play a land or cast a spell from among cards exiled
+	// with this enchantment"). standingCastPermissionsLocked derives it
+	// for each seat from the permanent wherever it sits, so it still ends
+	// the moment the permanent leaves, and each holder's gate Condition
+	// is asked with that holder (a per-player once-each-turn budget).
+	// "During that player's turn" is the permission's Timing
+	// (TimingYourTurnOnly), read against the holder. Meaningless on a
+	// stored permission, which names its one Player. Additive.
+	EachPlayer bool `json:"eachPlayer,omitempty"`
+
 	// RequiresNoSpellsCast ends the permission the moment its holder
 	// has cast any spell this turn. It is the "if you haven't cast a
 	// spell this turn, you may cast that card" half of Conduit of
@@ -2750,7 +2774,8 @@ var CatalogGatedCastPermissions func(oracleID string) []CastPermissionGate
 
 // standingCastPermissionsLocked derives every ScopeStanding
 // permission the player currently holds, from the permanents they
-// control. Nothing is stored, which IS the duration: a source that
+// control, and from any permanent's permissions that name EACH player
+// (CastPermission.EachPlayer, #5904). Nothing is stored, which IS the duration: a source that
 // leaves stops granting on the next query, and two sources compose.
 //
 // CatalogAbilityKey rather than CatalogKey, for the reason
@@ -2778,7 +2803,10 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 	var out []CastPermission
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != p.ID {
+		// #5904: a permanent another player controls grants this one
+		// only the permissions it gives EACH player (Share the Spoils).
+		foreign := c.Controller != p.ID
+		if foreign && p.Eliminated {
 			continue
 		}
 		// The empty KEY is the skip, not an empty oracle ID — a token
@@ -2789,6 +2817,9 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 		}
 		if CatalogCastPermissions != nil {
 			for _, perm := range CatalogCastPermissions(key) {
+				if foreign && !perm.EachPlayer {
+					continue
+				}
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
@@ -2803,6 +2834,9 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			return gp.ActiveWhen
 		})
 		for _, gp := range gated {
+			if foreign && !gp.Permission.EachPlayer {
+				continue
+			}
 			if gp.Condition != nil && !gp.Condition(g, p.ID, c.InstanceID) {
 				continue
 			}
