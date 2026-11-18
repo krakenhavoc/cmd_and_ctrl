@@ -619,6 +619,7 @@ choose choose-cards/ego-drain-exile
 choose choose-cards/electrodominance-cast
 choose choose-cards/elemental-teachings-settle
 choose choose-cards/ellywick-tumblestrum-take
+choose choose-cards/elspeth-resplendent-dig
 choose choose-cards/elven-passage-behold
 choose choose-cards/emergent-ultimatum-picked
 choose choose-cards/emeritus-of-ideation-exile-eight
@@ -817,6 +818,7 @@ choose choose-cards/mill-then-take-first-contact-pick
 choose choose-cards/mill-then-take-midnight-tilling-pick
 choose choose-cards/mill-then-take-something-worth-saving-pick
 choose choose-cards/mill-then-take-temporal-anomaly-pick
+choose choose-cards/mill-then-take-vivien-on-the-hunt-pick
 choose choose-cards/mill-then-take-wasteful-harvest-pick
 choose choose-cards/mill-three-return-land-tapped
 choose choose-cards/mimeoplasm-exile-creature-cards
@@ -1551,6 +1553,7 @@ option option-pick/baleful-mastery-opponent-draws
 option option-pick/blank-blank-rocketship-letter
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/bucolic-ranch-top-card
+option option-pick/cabaretti-ascendancy-top-card
 option option-pick/change-text-word-replace
 option option-pick/change-text-word-with
 option option-pick/choose-a-door
@@ -1579,6 +1582,7 @@ option option-pick/discerning-financier-chosen
 option option-pick/done-for-the-day-reward
 option option-pick/dwarven-armorer-counter
 option option-pick/elemental-teachings-opponent
+option option-pick/elspeth-resplendent-keyword-counter
 option option-pick/emergent-ultimatum-opponent
 option option-pick/emeria-shepherd-return
 option option-pick/enchanters-bane-answer
@@ -2191,6 +2195,7 @@ run prompt-run/venom-lethal-protector-sacrificed
 run prompt-run/vicious-rumors-gain
 run prompt-run/victimize-return
 run prompt-run/vile-mutilator-sacrifice-creatures
+run prompt-run/vivien-on-the-hunt-sacrificed
 run prompt-run/vonas-hunger-sacrifice
 run prompt-run/way-of-the-deathbringer-beast
 run prompt-run/west-wind-avatar-gain-3
@@ -2627,6 +2632,7 @@ tail exile-from-hand-and-plot/plot
 tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
+tail exile-then/mysterious-limousine-return-others
 tail exile-then/trystan-penitent-culler
 tail exile-then/venom-deadly-devourer-counters
 tail exile-until-nonland/grant-cast
@@ -2836,6 +2842,7 @@ tail mill-then-take/first-contact-first-spell
 tail mill-then-take/midnight-tilling
 tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
+tail mill-then-take/vivien-on-the-hunt
 tail mill-then-take/wasteful-harvest
 tail mill-then/lluwen-imperfect-naturalist
 tail mill-then/trystan-callous-cultivator
@@ -3043,6 +3050,7 @@ tail sacrificed-one/prompt-run/undercity-eliminator-sacrificed
 tail sacrificed-one/prompt-run/unscrupulous-contractor-sacrifice
 tail sacrificed-one/prompt-run/vampire-gourmand-draw-unblockable
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
+tail sacrificed-one/prompt-run/vivien-on-the-hunt-sacrificed
 tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
