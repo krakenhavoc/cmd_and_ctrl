@@ -51,6 +51,7 @@ body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-denial/draws
 body argentum-masticore/destroy
+body armix-filigree-thrasher/shrink
 body ascend/exile-listed-unless-citys-blessing
 body ashling-the-limitless/pay-wubrg-or-sacrifice
 body atraxas-skitterfang/grant
@@ -604,6 +605,7 @@ choose choose-cards/charming-scoundrel-draw
 choose choose-cards/charnel-serenade-return
 choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
+choose choose-cards/chrome-courier-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/civil-servant-tap
 choose choose-cards/cloak-a-card-from-your-hand
@@ -2022,6 +2024,7 @@ payunless pay-unless/antagonist-incorporator-borg
 payunless pay-unless/anthropede-destroy-room
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
+payunless pay-unless/armix-filigree-thrasher-discard
 payunless pay-unless/ashling-the-limitless-sacrifice-token
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
@@ -2066,6 +2069,7 @@ payunless pay-unless/cyclops-superconductor-damage
 payunless pay-unless/death-priest-of-myrkul-skeleton
 payunless pay-unless/descendant-of-storms-endure
 payunless pay-unless/digsite-conservator-discover
+payunless pay-unless/digsite-engineer-construct
 payunless pay-unless/divert-change-target
 payunless pay-unless/divert-disaster-lander
 payunless pay-unless/dont-make-a-sound-surveil
@@ -2155,6 +2159,7 @@ payunless pay-unless/meathook-massacre-ii-opponent-declined
 payunless pay-unless/meathook-massacre-ii-you-paid
 payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
+payunless pay-unless/mirrorworks-copy
 payunless pay-unless/mtenda-lion-prevent-combat-damage
 payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
