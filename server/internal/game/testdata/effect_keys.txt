@@ -1941,6 +1941,7 @@ payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
 payunless pay-unless/s82-mom-b21-elenda-and-azor-draw-x
 payunless pay-unless/s82-mom-b21-elenda-and-azor-vampire-knights
+payunless pay-unless/s82-neo-sokenzan-smelter
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/scavengers-talent-return
@@ -2172,6 +2173,7 @@ run prompt-run/megatron-tyrant-sacrifice
 run prompt-run/mica-reader-of-ruins-copy
 run prompt-run/midnight-crusader-shuttle-take
 run prompt-run/momentum-breaker-discard
+run prompt-run/mukotai-soulripper-grow
 run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/osseous-sticktwister-discarded
@@ -2196,6 +2198,7 @@ run prompt-run/rise-of-the-witch-king-return
 run prompt-run/roiling-regrowth-fetch
 run prompt-run/ruthless-lawbringer-sacrifice
 run prompt-run/ruthless-technomancer-treasures
+run prompt-run/s82-neo-sokenzan-smelter-construct
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -3096,6 +3099,7 @@ tail sacrificed-one/prompt-run/larval-scoutlander-search
 tail sacrificed-one/prompt-run/lithobraking-sacrifice
 tail sacrificed-one/prompt-run/lord-skitters-butcher-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
+tail sacrificed-one/prompt-run/mukotai-soulripper-grow
 tail sacrificed-one/prompt-run/namazu-trader-surveil
 tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump
 tail sacrificed-one/prompt-run/ragefire-hellkite-double-strike
@@ -3103,6 +3107,7 @@ tail sacrificed-one/prompt-run/redcap-gutter-dweller-sacrificed
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
+tail sacrificed-one/prompt-run/s82-neo-sokenzan-smelter-construct
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
 tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
 tail sacrificed-one/prompt-run/shrapnel-slinger-sacrifice
