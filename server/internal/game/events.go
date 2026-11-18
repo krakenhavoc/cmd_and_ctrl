@@ -1499,6 +1499,15 @@ const (
 	// permanent entering does. ADR 0145.
 	EventMeld EventKind = "meld"
 
+	// EventMutate — a mutating creature spell merged with a creature
+	// (CR 702.140c, 730.2; ADR 0223). CardID is the mutated permanent
+	// (the same object it was before, CR 730.2c), Source the card that
+	// merged into it and Label its name, Actor the spell's controller,
+	// and Amount 1 when it went under (0 on top). It is what "whenever
+	// this creature mutates" reads (CR 702.140d). Not a zone move and
+	// not an entry (CR 730.2b).
+	EventMutate EventKind = "mutate"
+
 	// EventPhaseOut / EventPhaseIn — CardID phased out or in
 	// (CR 702.26). Actor is its controller; Source, on a phase-out, is
 	// the card whose effect said so (uuid.Nil for CR 502.1's

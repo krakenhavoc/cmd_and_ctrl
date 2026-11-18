@@ -93,6 +93,9 @@
     return [];
   });
   const meldedFromNames = $derived(card?.melded_from?.map((p) => p.name).join(" + ") ?? "");
+  // ADR 0223 — mutate. A mutated permanent lists its cards top to
+  // bottom: the first is the one whose characteristics it has.
+  const mergedFromNames = $derived(card?.merged_from?.map((p) => p.name).join(" over ") ?? "");
 
   // Subscribe to the card's metadata store. Re-subscribed per hovered
   // PRINTING, not per hovered card: two copies of one card share a
@@ -493,7 +496,7 @@
           {/if}
         </section>
       {/if}
-      {#if isToken(card) || card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || (card.stickers?.length ?? 0) > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
+      {#if isToken(card) || card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || (card.stickers?.length ?? 0) > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames || mergedFromNames}
         <footer class="info-foot">
           {#if isToken(card)}
             <!-- #3043: a token copy shows the original's art and oracle
@@ -508,6 +511,11 @@
           {#if meldedFromNames}
             <span class="state" title="one permanent, two cards (CR 712.4a)"
               >melded from {meldedFromNames}</span
+            >
+          {/if}
+          {#if mergedFromNames}
+            <span class="state" title="one mutated permanent, top card first (CR 702.140)"
+              >mutated: {mergedFromNames}</span
             >
           {/if}
           <!-- #781: first in the footer, ahead of tapped / attacking.

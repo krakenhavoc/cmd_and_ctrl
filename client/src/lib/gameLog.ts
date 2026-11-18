@@ -223,6 +223,8 @@ const LOG_TONE: Record<LogKind, string> = {
   flip_permanent: "tone-zone",
   // ADR 0145: two cards becoming one permanent, toned like a turn-over.
   meld: "tone-zone",
+  // ADR 0223: a card merging into a creature (mutate), toned the same.
+  mutate: "tone-zone",
   phase_out: "tone-zone",
   phase_in: "tone-zone",
   // The game becoming day or night turns permanents over with no card

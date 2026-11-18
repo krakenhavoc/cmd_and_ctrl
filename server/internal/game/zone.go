@@ -593,8 +593,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// cards, each pushed as its own card (meld.go). The returned value
 	// is still the melded object, so a caller can name the card that
 	// is not its carrier (meldPassengers) and owe it a landing.
-	if c.IsMelded() && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
-		for _, part := range splitMeldedForMove(c, dst.Kind) {
+	//
+	// ADR 0223, CR 730.3: a merged (mutated) permanent is split the same
+	// way, into every component.
+	if isMultiCardPtr(&c) && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
+		for _, part := range splitComponentsForMove(c, dst.Kind) {
 			stampGraveyardArrival(&part, src.Kind, dst.Kind)
 			dst.PushTop(part)
 		}

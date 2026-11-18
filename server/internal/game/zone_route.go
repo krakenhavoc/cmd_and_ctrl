@@ -1022,7 +1022,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// gets its own landing here. CR 903.9c first: a melded commander
 	// sent to the command zone instead takes only its commander card
 	// there, and the other goes where the move was going.
-	if moved.IsMelded() {
+	if isMultiCardPtr(&moved) {
 		landed := dstZone
 		if redirected && dstZone.Kind == ZoneCommand {
 			g.sendMeldPassengersOnLocked(moved, dstZone, r.Dst, actor, leave)

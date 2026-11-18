@@ -1431,6 +1431,7 @@ export type LogKind =
   // `card_id` is the melded permanent and `label` names the two cards
   // it was melded from.
   | "meld"
+  | "mutate"
   // #1199, ADR 0084: a permanent phased out or in (CR 702.26).
   // Narrated for `transform`'s reason and one more that is stronger
   // here — phasing out is not a zone change (CR 702.26d), so no
@@ -5755,6 +5756,12 @@ export interface CardView extends CastSurfaceView {
   // is the permanent; this is what it is made of, and what its owner
   // gets back when it leaves. Absent on every other card.
   melded_from?: CardFaceView[];
+  // ADR 0223 (CR 702.140c, 730.2): a MUTATED permanent's components,
+  // topmost first. Everything above describes the permanent (the top
+  // card plus every component's abilities); this is what it is made
+  // of, and what its owner gets back when it leaves. Absent on every
+  // other card.
+  merged_from?: CardFaceView[];
   // ADR 0145 (CR 712.4): a meld card's combined back face — the
   // permanent it and its partner become when they meld. Absent on
   // every other card and on a melded permanent.

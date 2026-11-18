@@ -538,6 +538,12 @@ type CardDef struct {
 	// GrantTextFor.
 	GrantText string
 
+	// MergedComponent marks the definition a "merged:" part resolves to
+	// (ADR 0223, mutate.go): every ability of a component under a
+	// mutated permanent. mergeCatalogParts merges its replacement
+	// effects too, which no other granted part carries.
+	MergedComponent bool
+
 	// XMatters says everything the card does scales with the
 	// announced X, so X=0 does nothing at all. Read only by the
 	// legal-move enumerator, through XMattersFor; see

@@ -580,6 +580,15 @@ type TargetSpec struct {
 	// one with effects.ExiledWithThis.
 	ExiledWithSource bool
 
+	// OwnedBySourceOwner is "with the same owner as this spell": the
+	// candidate's owner must be the clause's source's owner — mutate's
+	// target (CR 702.140a, ADR 0223), which is not always the caster's
+	// own creature (a spell cast from another player's cards targets
+	// that player's). DATA judged in the shared walk beside CardOK, for
+	// the reason ExiledWithSource is. With no source object the clause
+	// admits nothing.
+	OwnedBySourceOwner bool
+
 	// OfSourcesChosenType is "target card of the chosen type": the
 	// candidate must have the creature type chosen for the clause's own
 	// source as it entered (Card.NamedTribe, CR 614.12) — Dawn-Blessed
@@ -2226,7 +2235,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
@@ -2246,6 +2255,16 @@ func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
 		}
 	}
 	return true
+}
+
+// sourceOwnerAdmits is OwnedBySourceOwner's gate: true without the
+// flag; with it, a candidate owned by the source object's owner. No
+// source object admits nothing (ADR 0223).
+func (s *TargetSpec) sourceOwnerAdmits(src TargetSource, c Card) bool {
+	if !s.OwnedBySourceOwner {
+		return true
+	}
+	return src.Object != nil && src.Object.Owner != uuid.Nil && c.Owner == src.Object.Owner
 }
 
 // validateTargetsLocked is the announce-time gate (CR 601.2c) for a

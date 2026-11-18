@@ -3838,6 +3838,17 @@ var items = []Item{
 		Examples: []string{"Nighthowler", "Boon Satyr", "Eidolon of Countless Battles"},
 	},
 	{
+		// #5910 (ADR 0223): mutate. A creature spell merges with a
+		// creature you own, over or under, and the merged creature has
+		// every card's abilities.
+		Slug: "mutate", Name: "Mutate", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Creatures you may cast for their mutate cost onto a non-Human creature you own, putting the card over or under it. The creature becomes the card on top plus all abilities of the cards under it, \"whenever this creature mutates\" abilities trigger, and when it leaves the battlefield every card goes with it. If the target is gone, the spell is an ordinary creature spell.",
+		Rules:    []string{"702.140", "730.2", "730.3", "608.3d", "903.3c"},
+		ADR:      "0223-mutate-merged-permanents.md",
+		Mechanic: "mutate",
+		Examples: []string{"Everquill Phoenix"},
+	},
+	{
 		Slug: "prototype", Name: "Prototype", Kind: KindSeam, Status: StatusImplemented,
 		Summary:  "Artifact creatures you may cast for a smaller, coloured cost as a smaller creature. A prototyped spell and the permanent it becomes have the inset's mana cost, colour, power and toughness, and keep their abilities and types.",
 		Rules:    []string{"702.160", "718"},

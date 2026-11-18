@@ -1329,6 +1329,9 @@ type cardSnapshot struct {
 	// card.
 	Meld       *MeldPrint     `json:"meld,omitempty"`
 	MeldedFrom []cardSnapshot `json:"meldedFrom,omitempty"`
+	// MergedFrom is Card.MergedFrom: a mutated permanent's components,
+	// topmost first (ADR 0223).
+	MergedFrom []cardSnapshot `json:"mergedFrom,omitempty"`
 	// MeldSplitFrom is CR 712.21c's link from the card that carried a
 	// melded permanent out of play to the other card it became, carried
 	// because a delayed "return it" can outlive a restore. ADR 0145.
@@ -1792,6 +1795,10 @@ type stackItemSnapshot struct {
 	CastFromZone   ZoneKind        `json:"castFromZone,omitempty"`
 	AltCost        string          `json:"altCost,omitempty"`
 	Foretold       bool            `json:"foretold,omitempty"`
+
+	// MutateUnder is StackItem.MutateUnder (ADR 0223).
+	MutateUnder bool `json:"mutateUnder,omitempty"`
+
 	// OwnFlashCast (#3156): the spell was cast with its own flash
 	// permission when a sorcery couldn't have been. Carried: the timing
 	// of the cast cannot be recomputed after a restore.
@@ -3280,6 +3287,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 	for i := range c.MeldedFrom {
 		out.MeldedFrom = append(out.MeldedFrom, snapshotCard(c.MeldedFrom[i], cen))
 	}
+	for i := range c.MergedFrom {
+		out.MergedFrom = append(out.MergedFrom, snapshotCard(c.MergedFrom[i], cen))
+	}
 	return out
 }
 
@@ -3405,6 +3415,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
+		MutateUnder:      s.MutateUnder,
 		Foretold:         s.Foretold,
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
@@ -4476,6 +4487,9 @@ func restoreCard(c *cardSnapshot) Card {
 	for i := range c.MeldedFrom {
 		out.MeldedFrom = append(out.MeldedFrom, restoreCard(&c.MeldedFrom[i]))
 	}
+	for i := range c.MergedFrom {
+		out.MergedFrom = append(out.MergedFrom, restoreCard(&c.MergedFrom[i]))
+	}
 	return out
 }
 
@@ -4615,6 +4629,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
+		MutateUnder:      s.MutateUnder,
 		Foretold:         s.Foretold,
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),

@@ -756,6 +756,14 @@ func deepenCard(out *Card) {
 			deepenCard(&out.MeldedFrom[i])
 		}
 	}
+	// ADR 0223: a mutated permanent's components, the same shape.
+	if from := out.MergedFrom; len(from) > 0 {
+		out.MergedFrom = make([]Card, len(from))
+		copy(out.MergedFrom, from)
+		for i := range out.MergedFrom {
+			deepenCard(&out.MergedFrom[i])
+		}
+	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.

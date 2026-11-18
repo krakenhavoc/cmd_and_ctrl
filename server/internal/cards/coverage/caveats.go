@@ -412,6 +412,14 @@ var mechanics = []Mechanic{
 		Adopt:      `Bestow("{cost}") — it bundles the enchant creature target and the Aura spell (ADR 0141)`,
 	},
 	{
+		Name:       "mutate",
+		Phrases:    []string{"mutate", "mutates"},
+		Implements: altCost(game.MutateKey),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "mutate") resolves`,
+		Confidence: Exact,
+		Adopt:      `Mutate("{cost}"), and On(game.EventMutate, ThisCreatureMutates, …) for "whenever this creature mutates" (ADR 0223)`,
+	},
+	{
 		// ADR 0154 (#1780): an Aura whose enchant clause is a card in a
 		// graveyard (Animate Dead, Dance of the Dead).
 		Name:    "graveyard aura",

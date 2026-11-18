@@ -87,6 +87,7 @@ AttackSplit.settled                          rebuilt                            
 Card.ActivatedAbilities                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities
 Card.ManaAbilities                           census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities
 Card.MeldedFrom                              rebuilt                            # Game.simultaneousExit.MeldedFrom
+Card.MergedFrom                              rebuilt                            # Game.simultaneousExit.MergedFrom
 CopySelector.Candidates                      rebuilt                            # Game.BuiltinReplacements.CopySelector.Candidates
 CopySelector.Except                          rebuilt                            # Game.BuiltinReplacements.CopySelector.Except
 CostModifier.Amount                          census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.CostModifiers.Amount

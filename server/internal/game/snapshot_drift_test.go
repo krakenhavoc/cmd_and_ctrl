@@ -639,6 +639,7 @@ var cardFields = plan(
 	// which are what its owner gets back when it leaves.
 	"Meld", carried, "",
 	"MeldedFrom", carried, "",
+	"MergedFrom", carried, "",
 	"MeldSplitFrom", carried, "",
 	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
 	// designations. Carried, and the reason is sharper than for the
@@ -986,6 +987,7 @@ var stackItemFields = plan(
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
+	"MutateUnder", carried, "",
 	// CR 702.143c (#658). Carried: a restore that lost it would make
 	// "if this spell was foretold" false for a spell already on the
 	// stack, and the fact cannot be recomputed — the card turned face

@@ -439,6 +439,13 @@ type StackItem struct {
 	// CR 608.2b re-check's choice of target clause. Added in S22.
 	AltCost string
 
+	// MutateUnder is a mutating creature spell's answer to CR
+	// 702.140c's question: true puts it under the creature it merges
+	// with, false (the default, and the answer of a chooser who left)
+	// on top. Written by the over/under prompt while the resolution's
+	// tail is held (mutate.go, ADR 0223).
+	MutateUnder bool
+
 	// Foretold marks a spell cast from a FORETOLD CARD — CR 702.143c's
 	// "if this spell was foretold", which Poison the Cup, Haunting
 	// Voyage and Starnheim Unleashed read.
