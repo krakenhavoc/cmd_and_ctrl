@@ -504,6 +504,10 @@ var tokenTable = map[string]game.Card{
 	// set to the number of lands as it is created).
 	"0/0 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Colors: []string{"G"}, PrintedPTKnown: true},
 
+	// S82 RPR batch 32: Stitcher Geralf's X/X blue Zombie (printed */*; a 0/0 placeholder,
+	// set to the total power exiled as it is created).
+	"0/0 blue Zombie": {Name: "Zombie", TypeLine: "Token Creature — Zombie", Colors: []string{"U"}, PrintedPTKnown: true},
+
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
 	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},
 

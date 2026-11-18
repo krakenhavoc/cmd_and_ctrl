@@ -1225,6 +1225,7 @@ choose choose-cards/std-b26-nashi-to-hand
 choose choose-cards/std-b40-exile-from-hand
 choose choose-cards/steamcore-scholar-discard
 choose choose-cards/stillness-in-motion-restack
+choose choose-cards/stitcher-geralf-exile
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/strefan-maurer-progenitor-put
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -2144,6 +2145,7 @@ payunless pay-unless/lazotep-chancellor-amass
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
+payunless pay-unless/lilianas-devotee-zombie
 payunless pay-unless/lorthos-tap-and-freeze
 payunless pay-unless/magmatic-sprinter-oil
 payunless pay-unless/mana-vault-untap
@@ -3545,6 +3547,8 @@ tail std-b26/nashi-after-mill
 tail std-b26/niko-after-exile
 tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
+tail stitcher-geralf/ask
+tail stitcher-geralf/exiled
 tail stockpiling-celebrant/scry
 tail strago-and-relm/after-mill
 tail strefan-maurer-progenitor/indestructible

@@ -198,7 +198,24 @@ const (
 	// colour, so it is its own kind and Value is empty. An unknown
 	// source matches nothing, as for every characteristic quality.
 	ProtectionQualityColorless
+	// ProtectionQualityCreatureSubtype is "protection from creatures of
+	// type <T>" (Riders of Gavony's "creatures of the chosen type"): the
+	// source is a CREATURE with the creature type T, a changeling being
+	// every type. Unlike ProtectionQualitySubtype ("protection from
+	// Vampires") a non-creature object carrying the type (a Kindred
+	// spell) does not match. Value is the canonical creature type.
+	ProtectionQualityCreatureSubtype
 )
+
+// protectionCreaturesOfType heads the token of ProtectionQualityCreatureSubtype,
+// lowercase: "protection from creatures of type Vampire".
+const protectionCreaturesOfType = "creatures of type "
+
+// ProtectionFromCreaturesOfType is the token for protection from creatures
+// of one creature type.
+func ProtectionFromCreaturesOfType(creatureType string) string {
+	return protectionPrefix + protectionCreaturesOfType + creatureType
+}
 
 // String is the stable wire token for a quality kind, for the
 // protocol projection (and through it the client's badge and the
@@ -241,6 +258,9 @@ func (k ProtectionQualityKind) String() string {
 		return "mana_value_at_least"
 	case ProtectionQualityColorless:
 		return "colorless"
+	case ProtectionQualityCreatureSubtype:
+		// Same wire kind as a creature-type quality: the badge reads Value.
+		return "subtype"
 	}
 	return ""
 }
@@ -478,6 +498,12 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	}
 	if ct, ok := protectionCardTypes[lower]; ok {
 		return ProtectionQuality{Kind: ProtectionQualityCardType, Value: ct, Printed: printed}, true
+	}
+	if rest, ok := strings.CutPrefix(lower, protectionCreaturesOfType); ok {
+		if ct, ok := CanonicalCreatureType(strings.TrimSpace(rest)); ok {
+			return ProtectionQuality{Kind: ProtectionQualityCreatureSubtype, Value: ct, Printed: printed}, true
+		}
+		return ProtectionQuality{}, false
 	}
 	// A subtype, and only a CREATURE type: those are the ones printed
 	// protection names (Demons, Dragons, Goblins) and the ones
@@ -885,6 +911,9 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:
 		return typeListHas(src.Types, q.Value)
+	case ProtectionQualityCreatureSubtype:
+		return typeListHas(src.Types, "creature") &&
+			(typeListHas(src.Subtypes, q.Value) || (src.AllCreatureTypes && IsCreatureType(q.Value)))
 	case ProtectionQualitySubtype:
 		if typeListHas(src.Subtypes, q.Value) {
 			return true
