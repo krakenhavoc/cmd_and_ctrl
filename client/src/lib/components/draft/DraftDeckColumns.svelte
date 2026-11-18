@@ -52,14 +52,18 @@
 
   // A drop on the area the card is already in is not a move: the zones
   // never report one, so the drag's own `ondrop` is only ever the other area.
-  function move(card: DraftCard, to: Zone): void {
+  //
+  // The view stays where it is (#5921): no scroll to the other area. A
+  // click's button is gone from its area, so focus follows the card to
+  // the other one instead of to nowhere, without scrolling to it. A drag
+  // leaves focus alone, as in DraftSplit.
+  function move(card: DraftCard, to: Zone, keepFocus: boolean): void {
     onmove(card.id, to);
     said = `Moved ${card.name} to ${to === "main" ? "main" : "sideboard"}.`;
-    // The button that was pressed is gone from its area; focus follows
-    // the card to the other one instead of to nowhere.
+    if (!keepFocus) return;
     void tick().then(() => {
       for (const el of root?.querySelectorAll<HTMLElement>("[data-move-id]") ?? []) {
-        if (el.dataset.moveId === card.id) el.focus();
+        if (el.dataset.moveId === card.id) el.focus({ preventScroll: true });
       }
     });
   }
@@ -75,9 +79,9 @@
     use:draftCard={{
       card,
       scope,
-      drag: { from: to === "side" ? "main" : "side", ondrop: (z) => move(card, z) },
+      drag: { from: to === "side" ? "main" : "side", ondrop: (z) => move(card, z, false) },
     }}
-    onclick={() => move(card, to)}
+    onclick={() => move(card, to, true)}
   >
     <DraftCardArt {card} />
   </button>

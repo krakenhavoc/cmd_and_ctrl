@@ -206,6 +206,19 @@ describe("dragging between Main and the Sideboard", () => {
     );
   });
 
+  it("keeps the view in place on a click: focus follows the card with no scroll (#5921)", async () => {
+    const onmove = vi.fn();
+    const r = split([], onmove);
+    onmove.mockImplementation((id: string) => r.setProps({ side: [id] } as never));
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    click(move(r.container, "m", "Thundertrap Trainer"));
+    await vi.runAllTimersAsync();
+    flushSync();
+    const moved = move(r.container, "s", "Thundertrap Trainer");
+    expect(document.activeElement).toBe(moved);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
   it("is not draggable with the old HTML5 drag, and cancels the browser's own", () => {
     const { container: c } = split();
     const btn = move(c, "m", "Thundertrap Trainer");
@@ -320,19 +333,52 @@ describe("dragging from the pack", () => {
     expect(onpick).toHaveBeenCalledExactlyOnceWith(["c1"]);
   });
 
-  it("with two to take, chooses the dropped card for its pile and sends both on the primary", () => {
-    const { onpick, onaside, side, btn, container } = pickPack(2);
+  it("with two to take, holds the first card dropped and sends both on the second drop, no confirm (#5921)", () => {
+    const { onpick, onaside, side, main, btn, container } = pickPack(2);
     drag(btn("Lightning Bolt"), side);
+    // The server takes the pair in one pick: the first waits, chosen for its pile.
     expect(onpick).not.toHaveBeenCalled();
     vi.advanceTimersByTime(100);
     expect(btn("Lightning Bolt").getAttribute("aria-pressed")).toBe("true");
     expect(text(container.querySelector(".prompt"))).toContain(
       `Lightning Bolt to ${L.draftSideboardZone}`,
     );
-    click(btn("Counterspell"));
-    click(container.querySelector<HTMLElement>("button.primary")!);
+    expect(text(container.querySelector('[data-testid="draft-pack-said"]'))).toBe(
+      `Chose Lightning Bolt for ${L.draftSideboardZone}. Drag or choose 1 more.`,
+    );
+    drag(btn("Counterspell"), main);
     expect(onaside).toHaveBeenCalledExactlyOnceWith(["c1"]);
     expect(onpick).toHaveBeenCalledExactlyOnceWith(["c1", "c9"]);
+    expect(onaside.mock.invocationCallOrder[0]).toBeLessThan(onpick.mock.invocationCallOrder[0]);
+    expect(text(container.querySelector('[data-testid="draft-pack-said"]'))).toBe(
+      `Picked Lightning Bolt into ${L.draftSideboardZone} and Counterspell into ${L.draftDeckZone}.`,
+    );
+  });
+
+  it("with two to take, a drop that completes a pair chosen by a click sends it at once (#5921)", () => {
+    const { onpick, onaside, side, btn } = pickPack(2);
+    click(btn("Counterspell"));
+    expect(onpick).not.toHaveBeenCalled();
+    drag(btn("Lightning Bolt"), side);
+    expect(onaside).toHaveBeenCalledExactlyOnceWith(["c1"]);
+    expect(onpick).toHaveBeenCalledExactlyOnceWith(["c9", "c1"]);
+  });
+
+  it("with one to take, a drop replaces a card chosen by a click and picks the dropped one (#5921)", () => {
+    const { onpick, onaside, main, btn } = pickPack();
+    click(btn("Lightning Bolt"));
+    drag(btn("Counterspell"), main);
+    expect(onaside).not.toHaveBeenCalled();
+    expect(onpick).toHaveBeenCalledExactlyOnceWith(["c9"]);
+  });
+
+  it("keeps click then confirm for clicks with two to take", () => {
+    const { onpick, btn, container } = pickPack(2);
+    click(btn("Counterspell"));
+    click(btn("Lightning Bolt"));
+    expect(onpick).not.toHaveBeenCalled();
+    click(container.querySelector<HTMLElement>("button.primary")!);
+    expect(onpick).toHaveBeenCalledExactlyOnceWith(["c9", "c1"]);
   });
 
   it("cannot be dragged while a pick is on its way", () => {

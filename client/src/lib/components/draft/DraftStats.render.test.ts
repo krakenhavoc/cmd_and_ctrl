@@ -94,6 +94,40 @@ describe("Deck view's cards (#5848 §1, §2)", () => {
     expect(onmove).toHaveBeenCalledExactlyOnceWith("c3", "main");
   });
 
+  it("keep the view in place on a move: focus follows the card with no scroll (#5921)", async () => {
+    const { container: c, setProps } = deck(
+      [],
+      vi.fn((id: string) => setProps({ side: [id] } as never)),
+    );
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    const scroll = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scroll;
+    click(tile(c, "c2"));
+    await vi.runAllTimersAsync();
+    flushSync();
+    // The card is now in the Sideboard, and it has focus, reached with no scroll.
+    expect(zone(c, "side").contains(tile(c, "c2"))).toBe(true);
+    expect(document.activeElement).toBe(tile(c, "c2"));
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(focus.mock.calls.every(([o]) => o?.preventScroll === true)).toBe(true);
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
+  it("leave focus alone on a drag (#5921)", async () => {
+    const { container: c, setProps } = deck(
+      [],
+      vi.fn((id: string) => setProps({ side: [id] } as never)),
+    );
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    fire(tile(c, "c2"), "pointerdown", 10, 10);
+    hit = zone(c, "side");
+    fire(window, "pointermove", 60, 200);
+    fire(window, "pointerup", 60, 200);
+    await vi.runAllTimersAsync();
+    expect(zone(c, "side").contains(tile(c, "c2"))).toBe(true);
+    expect(focus).not.toHaveBeenCalled();
+  });
+
   it("still move with a click, and say so", () => {
     const { container: c, onmove } = deck();
     click(tile(c, "c2"));

@@ -7,8 +7,9 @@
   // page's first-use tip is drawn under the lede (PageTipSlot), never
   // over the page's controls. The body follows.
   //
-  // Two widths: "wide" (1200px) for tables and grids, "prose" (72ch) for
-  // reading. One breakpoint: the design target is a tablet (820px and
+  // Three widths: "wide" (1200px) for tables and grids, "prose" (72ch) for
+  // reading, and "full" (the window less the gutters) for a work surface
+  // that grows with a large screen, the draft room (#5921). One breakpoint: the design target is a tablet (820px and
   // up); below it the head wraps, and nothing gets a layout of its own.
   //
   // The footer is not here: App.svelte draws it once, below every page.
@@ -31,7 +32,7 @@
     meta?: Snippet;
     /** Buttons on the head's right. */
     actions?: Snippet;
-    width?: "wide" | "prose";
+    width?: "wide" | "prose" | "full";
     children: Snippet;
   }
 
@@ -82,6 +83,7 @@
   .site-page.wide {
     max-width: calc(1200px + 2 * var(--page-gutter));
   }
+  /* .site-page.full has no cap: the gutters alone frame it. */
   .site-page.prose {
     max-width: calc(72ch + 2 * var(--page-gutter));
   }
