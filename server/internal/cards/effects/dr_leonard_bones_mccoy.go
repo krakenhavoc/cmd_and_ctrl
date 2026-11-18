@@ -34,13 +34,7 @@ func init() {
 	etb.Modes = ChooseOne(
 		ModeDoing("Return target non-Doctor permanent card from your graveyard to your hand.",
 			TargetCardInGraveyard("target non-Doctor permanent card from your graveyard", YouOwn(), Permanent(), Not(Subtype("Doctor"))),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok || t.Kind != game.TargetCard {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
-			}),
+			neoB08ReturnTheModesTargetToHand),
 		ModeDoing("Choose up to one other target creature. When it dies this turn, return that card to the battlefield under its owner's control with a +1/+1 counter on it at the beginning of the next end step.",
 			Another(TargetCreature("up to one other target creature")).WithCount(0, 1),
 			func(_ *game.StackItem, ctx *Context, occ int) error {

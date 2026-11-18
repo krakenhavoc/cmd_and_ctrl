@@ -23,12 +23,7 @@ func init() {
 			CostsLess(1, "This spell costs {1} less to cast if you control an artifact.", YouControlA(Artifact())),
 			CostsLess(1, "This spell costs {1} less to cast if you control an enchantment.", YouControlA(Enchantment())),
 		},
-		Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
-		},
+		Targets:   TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		OnResolve: destroyTheTargetPermanent,
 	})
 }

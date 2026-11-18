@@ -58,7 +58,7 @@ var neoB08ModeCondition = game.ModeCondition("you-control-an-artifact-and-an-enc
 // neoB08SamuraiToken is the 2/2 white Samurai creature token with vigilance.
 func neoB08SamuraiToken() game.Card { return TokenCard("2/2 white Samurai with vigilance") }
 
-// neoB08ReturnTheModesTargetToHand is "return target … card from your
+// neoB08ReturnTheModesTargetToHand (shared with Dr. Leonard "Bones" McCoy) is "return target … card from your
 // graveyard to your hand" as a modal bullet's body (Soul Transfer).
 func neoB08ReturnTheModesTargetToHand(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
