@@ -8,10 +8,12 @@ import (
 )
 
 // castFromExileLine is the printed clause on its own line: "You may cast
-// this card from exile." Rebound's reminder text ("… you may cast this
+// this card from exile." or, for a card whose text opens the graveyard too
+// (Squee, the Immortal), "You may cast this card from your graveyard or
+// from exile." Rebound's reminder text ("… you may cast this
 // card from exile without paying its mana cost.") is a different sentence
 // in parentheses and does not match.
-var castFromExileLine = regexp.MustCompile(`(?im)^you may cast this card from exile\.$`)
+var castFromExileLine = regexp.MustCompile(`(?im)^you may cast this card from (?:your graveyard or from )?exile\.$`)
 
 // TestEveryExileCastableCardPrintsTheClause holds Spec.CastsItselfFromExile
 // to the printed text (ADR 0066, amendment of 2026-11-05). The marker is
@@ -53,6 +55,10 @@ func TestCastFromExileLineMatchesTheClauseAndNotRebound(t *testing.T) {
 	rebound := "Draw a card.\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)"
 	if !castFromExileLine.MatchString(khan) {
 		t.Error("the probe misses Khan's printed clause")
+	}
+	squee := "You may cast this card from your graveyard or from exile."
+	if !castFromExileLine.MatchString(squee) {
+		t.Error("the probe misses Squee, the Immortal's printed clause")
 	}
 	if castFromExileLine.MatchString(rebound) {
 		t.Error("the probe matches rebound's reminder text")
