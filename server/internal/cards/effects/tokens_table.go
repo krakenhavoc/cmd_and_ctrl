@@ -510,4 +510,6 @@ var tokenTable = map[string]game.Card{
 
 	// S82 NEO batch 13: Mechtitan, the Mechtitan Core token.
 	"10/10 white and blue and black and red and green Legendary Construct artifact named Mechtitan with flying, vigilance, trample, lifelink, and haste": {Name: "Mechtitan", TypeLine: "Token Legendary Artifact Creature — Construct", Power: 10, Toughness: 10, Colors: []string{"W", "U", "B", "R", "G"}, Keywords: []string{"flying", "vigilance", "trample", "lifelink", "haste"}},
+	// S82 NEO batch 14: Invoke the Ancients.
+	"4/5 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 5, Colors: []string{"G"}},
 }
