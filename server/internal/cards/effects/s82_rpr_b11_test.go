@@ -20,7 +20,6 @@ const (
 	rprMidnightHauntOracle   = "a79e21fc-89bd-4547-8bef-5510554e1431"
 	rprMycosynthFiendOracle  = "e7c4bc25-806c-4a75-85bf-a0e66308d5d8"
 	rprPhantomGeneralOracle  = "b800c3e5-4ed9-4603-a987-d830e90cf25e"
-	rprArtifactTypeLine      = "Artifact"
 	rprCreatureTypeLineTest  = "Creature — Test"
 	rprInfectKeywordForCheck = "infect"
 )
