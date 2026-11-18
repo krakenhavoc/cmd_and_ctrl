@@ -200,6 +200,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 RPR batch 15.
 	"Relic of Progenitus": "its second ability exiles the cards in every graveyard and draws a card: it touches no permanent",
+
+	// S82 RPR batch 31.
+	"Angel of Glory's Rise": "exiles only the Zombies, one creature type, then returns Human creature cards from its controller's graveyard: a type-specific exile, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -380,9 +380,11 @@ func decodeGraveyardReplacementID(id ReplacementEffectID) (serial, slot int, ok 
 
 // gatherGraveyardReplacementsLocked appends the FromGraveyard
 // replacements of the affected player's graveyard that apply to ev.
-// Only a draw and a learn consult a graveyard, and only the affected
-// player's: dredge says "your graveyard", and so does Retriever
-// Phoenix.
+// A draw and a learn consult only the affected player's graveyard:
+// dredge says "your graveyard", and so does Retriever Phoenix. A move onto
+// the battlefield consults every graveyard, because a card there that says
+// "each Human creature you control enters with …" (Dearly Departed) judges
+// whose entry it replaces in its own AppliesTo.
 //
 // The source is a copy of the card, never a pointer into the zone's
 // slice, because a prompt can outlive the slice it was gathered from.
@@ -393,26 +395,39 @@ func (g *Game) gatherGraveyardReplacementsLocked(ev *ReplacementEvent, applied m
 		return out
 	}
 	var player uuid.UUID
+	// anyGraveyard is an entry replacement (Dearly Departed's "each Human
+	// creature you control enters with an additional +1/+1 counter"): the
+	// card in the graveyard is the source, whoever's graveyard holds it, and
+	// its own AppliesTo says whose entry it replaces.
+	anyGraveyard := false
 	switch {
 	case ev.Kind == RepEventDraw && ev.DrawCount > 0:
 		player = ev.DrawPlayer
 	case ev.Kind == RepEventKeywordAction && ev.KeywordAction == KeywordActionLearn:
 		// #3525: the learning player's graveyard.
 		player = ev.Actor
+	case ev.Kind == RepEventMove && ev.NewZone == ZoneBattlefield:
+		anyGraveyard = true
 	default:
 		return out
 	}
-	seat := -1
-	for i, p := range g.Seats {
-		if p != nil && p.ID == player {
-			seat = i
-			break
+	for _, p := range g.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
 		}
+		if !anyGraveyard && p.ID != player {
+			continue
+		}
+		out = g.gatherOneGraveyardReplacementsLocked(p.Graveyard, ev, applied, serials, out)
 	}
-	if seat < 0 || g.Seats[seat].Graveyard == nil {
-		return out
-	}
-	gy := g.Seats[seat].Graveyard
+	return out
+}
+
+// gatherOneGraveyardReplacementsLocked is gatherGraveyardReplacementsLocked
+// for one graveyard.
+//
+// Caller must hold g.mu.
+func (g *Game) gatherOneGraveyardReplacementsLocked(gy *Zone, ev *ReplacementEvent, applied map[ReplacementEffectID]bool, serials *replacementSerialMinter, out []activeReplacement) []activeReplacement {
 	for cardIdx := range gy.Cards {
 		card := &gy.Cards[cardIdx]
 		key := catalogAbilityKeyOf(card)

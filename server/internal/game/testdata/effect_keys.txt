@@ -373,6 +373,7 @@ body renown/grow
 body repeated-reverberation/copy-twice
 body repository-skaab/return
 body return/the-objects-together-under-your-control
+body return/vanish-into-memory
 body rewrite-history/return
 body rhinos-rampage/destroy-artifact
 body riddle-gate-gargoyle/lifelink
@@ -736,6 +737,7 @@ choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/feral-encounter
+choose choose-cards/fiend-of-the-shadows-exile
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/fireglass-mentor-play
 choose choose-cards/firja-judge-of-valor-take
@@ -1256,6 +1258,7 @@ choose choose-cards/std-b26-nashi-to-hand
 choose choose-cards/std-b40-exile-from-hand
 choose choose-cards/steamcore-scholar-discard
 choose choose-cards/stillness-in-motion-restack
+choose choose-cards/stitcher-geralf-exile
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/strefan-maurer-progenitor-put
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -1503,6 +1506,7 @@ confirm confirm/arcane-endeavor-result
 confirm confirm/archghoul-of-thraben-take
 confirm confirm/archghoul-of-thraben-to-graveyard
 confirm confirm/armor-wars-draw
+confirm confirm/ashcoat-mill-four
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/awaken-the-sleeper-destroy-equipment
 confirm confirm/barrowgoyf-mill
@@ -1818,6 +1822,7 @@ number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
 number number/necrodominance-draw-that-many
 number number/pia-nalaar-create-nalaar-aetherjet
+number number/plague-of-vermin-paid
 number number/plunge-into-darkness-look-at-that-many
 number number/rampaging-aetherhood-plus-one-counters-on-this
 number number/render-inert-remove-counters
@@ -1879,6 +1884,7 @@ option option-pick/court-of-ambition-answer-6
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
 option option-pick/dathon-his-heart-open-counter-kind
+option option-pick/demanding-dragon-answer
 option option-pick/demonlord-of-ashmouth-choice
 option option-pick/demonstrate-opponent-copies
 option option-pick/development-opponent-round-1
@@ -2196,6 +2202,7 @@ payunless pay-unless/lazotep-chancellor-amass
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
+payunless pay-unless/lilianas-devotee-zombie
 payunless pay-unless/lorthos-tap-and-freeze
 payunless pay-unless/magmatic-sprinter-oil
 payunless pay-unless/mana-vault-untap
@@ -3165,6 +3172,7 @@ tail grave-researcher/become-prepared
 tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
+tail graveyard-exile/hour-of-eternity-zombie-copies
 tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
@@ -3399,6 +3407,7 @@ tail permanents-pick/sacrificed
 tail pestilent-cauldron/draw-a-card
 tail phelia-exuberant-shepherd/counter-if-yours
 tail phelia-exuberant-shepherd/schedule-return
+tail phthisis/controller-loses-life
 tail picklock-prankster/after-mill
 tail pinnacle-starcage/record-returns
 tail pinnacle-starcage/robots-then-sacrifice
@@ -3619,6 +3628,8 @@ tail std-b26/nashi-after-mill
 tail std-b26/niko-after-exile
 tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
+tail stitcher-geralf/ask
+tail stitcher-geralf/exiled
 tail stockpiling-celebrant/scry
 tail strago-and-relm/after-mill
 tail strefan-maurer-progenitor/indestructible
@@ -3689,6 +3700,7 @@ tail terminal-velocity/gift
 tail terra-magical-adept/after-mill
 tail territorial-bruntar/cast-nonland-this-turn
 tail tetzin-gnome-champion/after-mill
+tail thada-adel/play-the-exiled-card
 tail the-binding-of-the-titans/gain-per-creature-exiled
 tail the-day-of-the-doctor/after-mill
 tail the-deck-of-many-things/curse
@@ -3961,6 +3973,7 @@ tail then/unwind-history-surveil
 tail then/urza-assembles-the-titans-may-reveal
 tail then/valakut-exploration-damage
 tail then/valiant-endeavor-knights
+tail then/vanish-into-memory-exiled
 tail then/vengeful-villagers-stun
 tail then/venture-into-the-dungeon
 tail then/vision-charm-basic-type-chosen
@@ -4018,6 +4031,7 @@ tail valduk-keeper-of-the-flame/exile-the-elementals
 tail valgavoths-onslaught/manifest-again
 tail valkyries-call/angel
 tail vanille-cheerful-lcie/after-mill
+tail vanish-into-memory/entered
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
