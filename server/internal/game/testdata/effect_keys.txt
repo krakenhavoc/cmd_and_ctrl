@@ -1871,6 +1871,7 @@ payunless pay-unless/energy-sacrifice-this
 payunless pay-unless/era-of-innovation-get-energy
 payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
+payunless pay-unless/estwald-shieldbasher-indestructible
 payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
 payunless pay-unless/eye-of-vecna-draw-and-lose
