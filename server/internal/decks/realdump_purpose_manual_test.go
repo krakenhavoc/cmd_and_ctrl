@@ -197,6 +197,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 AFR batch 16.
 	"Wild-Magic Sorcerer": "gives the first spell you cast from exile each turn cascade: no permanents are affected, only a cascade offer",
+
+	// S82 RPR batch 15.
+	"Relic of Progenitus": "its second ability exiles the cards in every graveyard and draws a card: it touches no permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
