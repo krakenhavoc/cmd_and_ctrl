@@ -360,6 +360,9 @@ body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
 body s82-mom-b12/flitting-guerrilla-top
+body s82-neo-b06/biting-palm-ninja-reveal-exile
+body s82-neo-b06/dokuchi-silencer-destroy
+body s82-neo-b06/kappa-tech-wrecker-exile
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -622,6 +625,7 @@ choose choose-cards/discard-two-unless-creature
 choose choose-cards/discard-two-unless-creature-identity
 choose choose-cards/discard-two-unless-enchantment
 choose choose-cards/disturbing-mirth-sacrifice
+choose choose-cards/dokuchi-silencer-destroy
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
 choose choose-cards/dormant-volcano-return-an-untapped-mountain
@@ -1364,6 +1368,7 @@ confirm confirm/merciful-mandate-end-combat
 confirm confirm/mistbreath-elder-return-self
 confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
+confirm confirm/moon-circuit-hacker-draw
 confirm confirm/msh-a6-nick-fury-transform
 confirm confirm/msh-a8-kingpin-pay-life
 confirm confirm/multiform-wonder-pump
