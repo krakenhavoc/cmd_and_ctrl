@@ -102,6 +102,7 @@ func TestVowB10WretchedThrongFindsAnotherWhenItDies(t *testing.T) {
 	me.Library.PushTop(game.Card{InstanceID: decoy, Name: "Wretched Thing", TypeLine: "Creature — Zombie", Owner: me.ID, Controller: me.ID})
 	killCreature(t, g, me.ID, throng)
 	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
 	search := searchChoiceFor(g, me.ID)
 	if search == nil {
 		t.Fatalf("no search prompt: %+v", g.PendingChoices)
@@ -130,14 +131,10 @@ func TestVowB10WretchedThrongMayDeclineTheSearch(t *testing.T) {
 	me.Library.PushTop(game.Card{InstanceID: other, Name: "Wretched Throng", TypeLine: "Creature — Zombie Horror", OracleID: vowB10ThrongOracle, Owner: me.ID, Controller: me.ID})
 	killCreature(t, g, me.ID, throng)
 	passPriorityAroundTable(t, g)
-	search := searchChoiceFor(g, me.ID)
-	if search == nil {
-		t.Fatalf("no search prompt: %+v", g.PendingChoices)
+	answerMayChoice(t, g, me.ID, false)
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Fatal("a search prompt followed a declined search")
 	}
-	if err := g.ResolveSearchLibrary(search.ID, me.ID, nil); err != nil {
-		t.Fatalf("decline the search: %v", err)
-	}
-	g.SettleResolution()
 	passPriorityAroundTable(t, g)
 	if me.Hand.Contains(other) {
 		t.Error("the search was declined but a card was taken")
@@ -238,8 +235,8 @@ func TestVowB10SkywarpSkaabExilesTwoCreatureCardsToDraw(t *testing.T) {
 	if zoneOf(g, ids[2]) != game.ZoneGraveyard || zoneOf(g, rock) != game.ZoneGraveyard {
 		t.Error("an unchosen card left the graveyard")
 	}
-	if me.Hand.Size() != hand {
-		t.Errorf("hand %d, want %d (Skaab cast, one card drawn)", me.Hand.Size(), hand)
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d, want %d (Skaab cast, one card drawn)", me.Hand.Size(), hand+1)
 	}
 }
 
@@ -256,8 +253,8 @@ func TestVowB10SkywarpSkaabDeclinedExilesNothingAndDrawsNothing(t *testing.T) {
 			t.Errorf("a creature card is in %q after declining", zoneOf(g, id))
 		}
 	}
-	if me.Hand.Size() != hand-1 {
-		t.Errorf("hand %d, want %d: nothing is drawn", me.Hand.Size(), hand-1)
+	if me.Hand.Size() != hand {
+		t.Errorf("hand %d, want %d: nothing is drawn", me.Hand.Size(), hand)
 	}
 }
 
@@ -269,7 +266,7 @@ func TestVowB10SkywarpSkaabWithOneCreatureCardDoesNothing(t *testing.T) {
 	vowB10CastSkaab(t, g, me)
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
-	if zoneOf(g, ids[0]) != game.ZoneGraveyard || me.Hand.Size() != hand-1 {
+	if zoneOf(g, ids[0]) != game.ZoneGraveyard || me.Hand.Size() != hand {
 		t.Error("one creature card is not enough to pay for the draw")
 	}
 }

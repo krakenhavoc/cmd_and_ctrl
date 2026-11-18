@@ -201,11 +201,16 @@ func TestVowB10FearOfDeathMillsTwoAndShrinksByTheGraveyard(t *testing.T) {
 	}
 	// Your graveyard only, read live.
 	pushCatalogGraveyardCard(opp, "Their Card", vowB10CreatureTypeLine, "", 1, 1)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
 	if got := apaLive(g, victim).CurrentPower(); got != 3 {
 		t.Errorf("power %d after an opponent's graveyard grew, want 3", got)
 	}
-	pushCatalogGraveyardCard(me, "Another", vowB10CreatureTypeLine, "", 1, 1)
-	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	spmB17Top(me, game.Card{Name: "Milled C", TypeLine: vowB10SorceryTypeLine})
+	g.WithWriteLock(func() {
+		if _, err := g.MillToZoneForEffect(me.ID, 1, game.ZoneGraveyard); err != nil {
+			t.Fatalf("mill: %v", err)
+		}
+	})
 	if got := apaLive(g, victim).CurrentPower(); got != 2 {
 		t.Errorf("power %d after your graveyard grew, want 2", got)
 	}
