@@ -1454,6 +1454,7 @@ confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
 confirm confirm/sephiroth-cell-counter
+confirm confirm/shessra-pay-life-draw
 confirm confirm/shirei-return
 confirm confirm/sita-varma-base-pt
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
@@ -1886,6 +1887,7 @@ payunless pay-unless/crystal-shard-return-to-hand
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/curious-forager-return
 payunless pay-unless/cyclops-superconductor-damage
+payunless pay-unless/death-priest-of-myrkul-skeleton
 payunless pay-unless/descendant-of-storms-endure
 payunless pay-unless/digsite-conservator-discover
 payunless pay-unless/divert-change-target
