@@ -1380,6 +1380,7 @@ coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/sorcerers-strongbox
+coinflip coin-flip/tavern-swindler-gain
 coinflip coin-flip/the-gold-saucer-treasure
 condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability

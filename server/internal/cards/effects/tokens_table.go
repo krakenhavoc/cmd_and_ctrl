@@ -503,6 +503,7 @@ var tokenTable = map[string]game.Card{
 	// S82 NEO batch 20: Kura, the Boundless Sky's X/X Spirit (printed */*; a 0/0 placeholder,
 	// set to the number of lands as it is created).
 	"0/0 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Colors: []string{"G"}, PrintedPTKnown: true},
+	"0/0 green Hydra":  {Name: "Hydra", TypeLine: "Token Creature — Hydra", Colors: []string{"G"}, PrintedPTKnown: true},
 
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
 	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},
