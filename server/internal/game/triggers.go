@@ -930,7 +930,11 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 	// each player lose" is not answerable yet. Park the match; the
 	// settle pass asks again with the final totals and comes back here
 	// with pass.settled set.
-	if t.AtBatchEnd != nil && !pass.settled && origin == triggerOfPermanent && t.Key != "" {
+	// #5487: a card's ability that works from another zone (CR 113.6) waits
+	// for the batch too (Phoenix Chick's graveyard "attack with three or more
+	// creatures"); an emblem's does not.
+	if t.AtBatchEnd != nil && !pass.settled && t.Key != "" &&
+		(origin == triggerOfPermanent || (origin == triggerOfNonPermanent && len(t.Zones) > 0)) {
 		g.stageBatchEndTriggerLocked(pass.ev, source.InstanceID, t.Key, t.AtBatchEnd.group(pass.ev))
 		return
 	}

@@ -361,6 +361,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedFungusCantBlockToken,
 	// Streets of New Capenna's Fish: 1/1 blue, can't be blocked (S82 SNC b07, #5491).
 	printedS82SncB07FishToken,
+	// The Raven Man's Bird: flying, can't block (Dominaria United, #5487).
+	printedRavenManBirdToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.

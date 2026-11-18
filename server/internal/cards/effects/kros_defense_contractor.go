@@ -39,13 +39,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				AtYourUpkeep("Kros, Defense Contractor — put a shield counter on target creature an opponent controls",
-					Do(Instruction(func(ctx *Context) error {
-						t, ok := ctx.ClauseTarget(0)
-						if !ok {
-							return nil
-						}
-						return AddCounter{Target: t.ID, Kind: game.CounterShield, N: 1}.Apply(ctx)
-					}))),
+					Do(Instruction(shieldCounterOnFirstTarget))),
 				TargetCreature("target creature an opponent controls", OpponentControls())),
 			counters,
 		},
