@@ -1604,6 +1604,7 @@ option option-pick/devouring-sugarmaw-sacrifice-or-tap
 option option-pick/dinas-guidance-placed
 option option-pick/discerning-financier-chosen
 option option-pick/done-for-the-day-reward
+option option-pick/dramatists-puppet-put-or-remove
 option option-pick/dwarven-armorer-counter
 option option-pick/elemental-teachings-opponent
 option option-pick/emergent-ultimatum-opponent
