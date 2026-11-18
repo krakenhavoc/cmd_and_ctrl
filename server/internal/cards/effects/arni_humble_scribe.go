@@ -19,13 +19,7 @@ func init() {
 		Name:         "Arni, Humble Scribe",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-				if !AnotherCreatureEnteredUnderYourControl(ev, source, lki, g) {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && !c.IsToken()
-			}, "Arni, Humble Scribe — untap Arni",
+			On(game.EventETB, anotherNontokenCreatureEnteredUnderYourControl, "Arni, Humble Scribe — untap Arni",
 				func(g *game.Game, item *game.StackItem) error {
 					return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
 				}),

@@ -61,15 +61,9 @@ func init() {
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label: "+1: Create three 1/1 white Soldier creature tokens.",
-				Cost:  LoyaltyCost(1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					return CreateToken{
-						Controller: item.Controller,
-						Template:   TokenCard("1/1 white Soldier"),
-						N:          3,
-					}.Apply(NewContext(g, item))
-				},
+				Label:  "+1: Create three 1/1 white Soldier creature tokens.",
+				Cost:   LoyaltyCost(1),
+				Effect: createThreeSoldiers,
 			},
 			{
 				Label: "−3: Destroy all creatures with power 4 or greater.",

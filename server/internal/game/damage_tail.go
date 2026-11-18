@@ -853,9 +853,9 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 		if t.commanderSource != uuid.Nil {
 			p.RecordCommanderDamage(t.commanderSource, ev.DamageAmount)
 		}
-		g.emitDealDamageLocked(ev, t, notLost)
+		g.emitDealDamageLocked(ev, t, notLost, 0)
 	} else {
-		g.emitDealDamageLocked(ev, t, notLost)
+		g.emitDealDamageLocked(ev, t, notLost, 0)
 		if loseLife {
 			p.ChangeLife(-lifeLoss)
 			g.noteLifeLostLocked(p.ID, lifeLoss)
@@ -897,11 +897,12 @@ func (g *Game) damageLifeLossThroughReplacementsLocked(player, source uuid.UUID,
 		return lifeLoss, nil
 	}
 	lev := &ReplacementEvent{
-		Kind:          RepEventLife,
-		Source:        source,
-		LifePlayer:    player,
-		LifeDelta:     -lifeLoss,
-		mustSettleNow: true,
+		Kind:           RepEventLife,
+		Source:         source,
+		LifePlayer:     player,
+		LifeDelta:      -lifeLoss,
+		LifeFromDamage: true,
+		mustSettleNow:  true,
 	}
 	out, err := g.applyReplacementsLocked(lev)
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -947,11 +948,11 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 	// ADR 0108 §10: a battlefield static can make the damage dealt as
 	// though its source had wither (Everlasting Torment), read as it
 	// lands (damage_as_though.go).
-	ok, minusOne := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t), ev.DamageInstance)
+	ok, minusOne, excess := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t), ev.DamageInstance)
 	if !ok {
 		return 0, ErrCardNotFound
 	}
-	g.emitDealDamageLocked(ev, t, 0)
+	g.emitDealDamageLocked(ev, t, 0, excess)
 	// ADR 0056 Decision 3, CR 120.3d: damage to a creature from a
 	// source with infect or wither is -1/-1 counters rather than marked
 	// damage. They are a RESULT, not a write, so they go through the
@@ -1045,8 +1046,11 @@ func (g *Game) placeDamageResultCountersLocked(ev *ReplacementEvent, t *damageTa
 // notLifeLoss is Event.DamageNotLifeLoss (#2105): the part of damage to
 // a player that cost no life. Always 0 for damage to a permanent.
 //
+// excess is the excess damage (CR 120.10) the event dealt to a creature or
+// planeswalker, 0 for any other.
+//
 // Caller must hold g.mu.
-func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLifeLoss int) {
+func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLifeLoss, excess int) {
 	// #2662: the noncombat amount, recorded here rather than by the
 	// tally listener because the event's source snapshot is in hand
 	// here and gone from the emitted Event.
@@ -1065,6 +1069,7 @@ func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLife
 		Target:            ev.DamageTarget,
 		Amount:            ev.DamageAmount,
 		DamageNotLifeLoss: notLifeLoss,
+		ExcessDamage:      excess,
 		DamageInstance:    ev.DamageInstance,
 		Combat:            t.combat,
 		CombatStep:        t.combatStep,

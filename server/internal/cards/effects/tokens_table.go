@@ -159,6 +159,7 @@ var tokenTable = map[string]game.Card{
 	"5/4 green Snake":                                               {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 5, Toughness: 4, Colors: []string{"G"}},
 	"1/1 green Frog":                                                {Name: "Frog", TypeLine: "Token Creature — Frog", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"1/1 green Phyrexian Insect with infect":                        {Name: "Phyrexian Insect", TypeLine: "Token Creature — Phyrexian Insect", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"infect"}},
 	"1/1 green Insect with flying and deathtouch":                   {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"flying", "deathtouch"}},
 	"2/1 white Insect with flying":                                  {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 2, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 green Phyrexian Saproling":                                 {Name: "Phyrexian Saproling", TypeLine: "Token Creature — Phyrexian Saproling", Power: 1, Toughness: 1, Colors: []string{"G"}},
@@ -225,6 +226,7 @@ var tokenTable = map[string]game.Card{
 	"3/1 red Knight":                                                   {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 3, Toughness: 1, Colors: []string{"R"}},
 	"3/1 black Mindless-One":                                           {Name: "Mindless-One", TypeLine: "Token Creature — Mindless-One", Power: 3, Toughness: 1, Colors: []string{"B"}},
 	"2/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
+	"3/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}}, // Valduk, Keeper of the Flame
 	"2/1 red Dwarf Berserker":                                          {Name: "Dwarf Berserker", TypeLine: "Token Creature — Dwarf Berserker", Power: 2, Toughness: 1, Colors: []string{"R"}},
 	"2/2 red Soldier":                                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red Dwarf":                                                    {Name: "Dwarf", TypeLine: "Token Creature — Dwarf", Power: 2, Toughness: 2, Colors: []string{"R"}}, // The Hobbit (#4475)
