@@ -1572,6 +1572,7 @@ number esper-terra/lore-counters
 number number/aether-refinery-create-an-aetherborn
 number number/aether-spike-counter-unless-paid
 number number/arcane-denial-draw-up-to-two
+number number/by-invitation-only-sacrifice
 number number/cmdr2-aetherborn-marauder-move
 number number/deal-that-much-damage-to-the-target
 number number/die-young-minus-one-for-each
@@ -2310,6 +2311,7 @@ run prompt-run/yunas-decision-sacrificed
 run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
+run run/consuming-tide-return
 run run/krenkos-buzzcrusher-destroy
 run soulbond/pair
 run the-city-on-the-edge-of-forever/gain-five
