@@ -100,7 +100,8 @@ func (g *Game) payBeholdExileLocked(playerID, castID, id uuid.UUID, answers map[
 
 // relinkCostExilesLocked is CR 607.2q at the moment a spell becomes a
 // permanent: every card in exile linked to the spell OBJECT `spell` (an
-// exiling behold paid for it, payBeholdExileLocked) is linked to the
+// exiling behold paid for it, payBeholdExileLocked; a linked graveyard
+// exile, payExileCardsCostToLocked) is linked to the
 // permanent `permanentID` instead, as the object it now is. Nothing else
 // in exile names a stack object, so a spell that exiled nothing to pay
 // for itself relinks nothing.
