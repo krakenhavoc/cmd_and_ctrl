@@ -1043,6 +1043,7 @@ choose choose-cards/std-b40-exile-from-hand
 choose choose-cards/steamcore-scholar-discard
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/strategic-betrayal-exile
+choose choose-cards/strefan-maurer-progenitor-put
 choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
 choose choose-cards/summoners-grimoire-put
@@ -1729,6 +1730,7 @@ option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
 option option-pick/steel-seraph-keyword
 option option-pick/step-between-worlds-shuffle
+option option-pick/strefan-maurer-progenitor-attacks
 option option-pick/tap-or-untap-that-permanent
 option option-pick/tasigur-the-golden-fang-opponent
 option option-pick/teferis-realm-phase-out
@@ -2059,6 +2061,7 @@ run prompt-run/awaken-the-maelstrom-copy
 run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
+run prompt-run/bloodcrazed-socialite-pump
 run prompt-run/boilerbilges-ripper-sacrifice
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
@@ -2213,6 +2216,7 @@ run prompt-run/sorin-imperious-bloodlord-sacrifice
 run prompt-run/spirit-sisters-call-return
 run prompt-run/springbloom-druid-search
 run prompt-run/ss-botany-bay-opponents-exile
+run prompt-run/strefan-maurer-progenitor-put
 run prompt-run/summon-valefor-sonic-wings
 run prompt-run/sunder-the-gateway-transform
 run prompt-run/suppression-ray-stun
@@ -2251,6 +2255,7 @@ run prompt-run/victimize-return
 run prompt-run/vile-mutilator-sacrifice-creatures
 run prompt-run/vonas-hunger-sacrifice
 run prompt-run/way-of-the-deathbringer-beast
+run prompt-run/wedding-security-counter-draw
 run prompt-run/west-wind-avatar-gain-3
 run prompt-run/white-plume-adventurer-untap
 run prompt-run/wilhelt-the-rotcleaver-draw
@@ -3052,6 +3057,7 @@ tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
+tail sacrificed-one/prompt-run/bloodcrazed-socialite-pump
 tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
@@ -3103,6 +3109,7 @@ tail sacrificed-one/prompt-run/shrapnel-slinger-sacrifice
 tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/spirit-sisters-call-return
+tail sacrificed-one/prompt-run/strefan-maurer-progenitor-put
 tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/terror-ballista-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
@@ -3114,6 +3121,7 @@ tail sacrificed-one/prompt-run/undercity-eliminator-sacrificed
 tail sacrificed-one/prompt-run/unscrupulous-contractor-sacrifice
 tail sacrificed-one/prompt-run/vampire-gourmand-draw-unblockable
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
+tail sacrificed-one/prompt-run/wedding-security-counter-draw
 tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
@@ -3177,6 +3185,7 @@ tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
 tail stockpiling-celebrant/scry
 tail strago-and-relm/after-mill
+tail strefan-maurer-progenitor/indestructible
 tail study-the-classics/double
 tail study-the-classics/gain
 tail summoners-sending/after-exile
