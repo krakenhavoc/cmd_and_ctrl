@@ -687,3 +687,25 @@ func GrantTextFor(key string) string {
 	}
 	return ""
 }
+
+// eventTargetIsGrantActivator is TriggeredAbility.EventTargetIsGrantActivator's
+// test: the row must be one of a layer-6 grant, and the event's Target the
+// "you" of the grant it came from (GrantedAbility.Activator, the occurrence
+// numbering triggerGrantor uses). A row with no grant, or one whose grant
+// has no live record (a last-known snapshot), never passes.
+func eventTargetIsGrantActivator(t TriggeredAbility, source *Card, ev Event) bool {
+	if ev.Target == uuid.Nil || !strings.HasPrefix(t.row.key, GrantKeyPrefix) {
+		return false
+	}
+	n := 0
+	for _, gr := range layeredGrants(source) {
+		if gr.Key != t.row.key {
+			continue
+		}
+		if n == t.row.occurrence {
+			return gr.Activator != uuid.Nil && gr.Activator == ev.Target
+		}
+		n++
+	}
+	return false
+}
