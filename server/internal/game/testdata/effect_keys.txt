@@ -2185,6 +2185,7 @@ run prompt-run/liliana-dreadhorde-general-keep
 run prompt-run/lithobraking-sacrifice
 run prompt-run/lord-skitters-butcher-sacrifice
 run prompt-run/lotus-field-sacrifice
+run prompt-run/loyal-gryff-return
 run prompt-run/malevolent-witchkite-sacrifice
 run prompt-run/manifest-from-hand
 run prompt-run/megatron-tyrant-sacrifice
