@@ -362,6 +362,7 @@ body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
+body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
@@ -3439,6 +3440,7 @@ tail then/phenomenon-investigators-draw
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
 tail then/planetary-annihilation-damage
+tail then/play-with-fire-scry
 tail then/polygraph-orb-punisher-sacrificed
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again
@@ -3461,6 +3463,7 @@ tail then/rotisserie-elemental-exile
 tail then/rottenmouth-viper-punisher-sacrificed
 tail then/s82-bro-b13-choose-one-play
 tail then/s82-bro-b13-exiled-to-hand
+tail then/s82-mid-scry-n
 tail then/s82-one-b06-proliferate-if-done
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
