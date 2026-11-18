@@ -886,6 +886,13 @@ fields `ActivateAbilityParams` uses (`CounterSourceIDs`,
 `counter_cost_*` fields, and the client opens the same
 `CounterCostModal`.
 
+`RemoveAllCountersFromThis(kind)` is "Remove all <kind> counters from this
+permanent" (Catti-brie of Mithral Hall, S82): `CounterRemovalCost.All`, a
+variable cost whose payment is every counter of the kind the source holds. A
+partial count is refused (`ErrInvalidParam`), no count at all means all of them,
+none held pays zero, and the view floors the stepper at the held count. The
+effect reads the number as `ctx.CountersRemoved()`.
+
 A zero floor means zero is an announcement (#2951): a payment with no
 counter fields, or `CounterCounts: []int{0}`, removes nothing and still
 taps, and the enumerator offers it when the source holds no counters

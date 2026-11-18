@@ -108,6 +108,10 @@ const (
 	// FootprintCondCreatureDied: a creature died under the item's
 	// controller's control this turn (Faramir). The tally only rises.
 	FootprintCondCreatureDied FootprintCond = "creature_died"
+	// FootprintCondAnyCreatureDied: a creature died this turn under any
+	// controller (Bulette's "if a creature died this turn", S82). The
+	// table-wide tally only rises.
+	FootprintCondAnyCreatureDied FootprintCond = "any_creature_died"
 	// FootprintCondEquipmentOrSpacecraftEntered: an Equipment or
 	// Spacecraft entered the battlefield under the item's controller's
 	// control this turn (Sulu, Space Swashbuckler). The turn's entry
@@ -828,6 +832,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.CardsDrawn >= atLeast
 	case FootprintCondCreatureDied:
 		return tally.CreaturesDied > 0
+	case FootprintCondAnyCreatureDied:
+		return g.TurnTally.CreaturesDied > 0
 	case FootprintCondEquipmentOrSpacecraftEntered:
 		return g.EnteredWithSubtypeThisTurn(you, "Equipment") > 0 || g.EnteredWithSubtypeThisTurn(you, "Spacecraft") > 0
 	case FootprintCondPermanentReturned:
