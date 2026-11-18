@@ -204,6 +204,7 @@ battlefield.cards[].faces[].StartingLoyalty	number:int
 battlefield.cards[].faces[].Toughness	number:int
 battlefield.cards[].faces[].TypeLine	string
 battlefield.cards[].faces[].VariableToughness	bool
+battlefield.cards[].flashbackText	number:uint8
 battlefield.cards[].flipped	bool
 battlefield.cards[].fused	bool
 battlefield.cards[].goadedBy	custom(uuid.UUID)
@@ -778,6 +779,7 @@ enteringTokens[].faces[].StartingLoyalty	number:int
 enteringTokens[].faces[].Toughness	number:int
 enteringTokens[].faces[].TypeLine	string
 enteringTokens[].faces[].VariableToughness	bool
+enteringTokens[].flashbackText	number:uint8
 enteringTokens[].flipped	bool
 enteringTokens[].fused	bool
 enteringTokens[].goadedBy	custom(uuid.UUID)
@@ -1314,6 +1316,7 @@ exile.cards[].faces[].StartingLoyalty	number:int
 exile.cards[].faces[].Toughness	number:int
 exile.cards[].faces[].TypeLine	string
 exile.cards[].faces[].VariableToughness	bool
+exile.cards[].flashbackText	number:uint8
 exile.cards[].flipped	bool
 exile.cards[].fused	bool
 exile.cards[].goadedBy	custom(uuid.UUID)
@@ -8887,6 +8890,7 @@ frozenEntries[].event.keywordActionTail.armyToken.faces[].StartingLoyalty	number
 frozenEntries[].event.keywordActionTail.armyToken.faces[].Toughness	number:int
 frozenEntries[].event.keywordActionTail.armyToken.faces[].TypeLine	string
 frozenEntries[].event.keywordActionTail.armyToken.faces[].VariableToughness	bool
+frozenEntries[].event.keywordActionTail.armyToken.flashbackText	number:uint8
 frozenEntries[].event.keywordActionTail.armyToken.flipped	bool
 frozenEntries[].event.keywordActionTail.armyToken.fused	bool
 frozenEntries[].event.keywordActionTail.armyToken.goadedBy	custom(uuid.UUID)
@@ -11269,6 +11273,7 @@ frozenEntries[].event.millTail.run.planned[].faces[].StartingLoyalty	number:int
 frozenEntries[].event.millTail.run.planned[].faces[].Toughness	number:int
 frozenEntries[].event.millTail.run.planned[].faces[].TypeLine	string
 frozenEntries[].event.millTail.run.planned[].faces[].VariableToughness	bool
+frozenEntries[].event.millTail.run.planned[].flashbackText	number:uint8
 frozenEntries[].event.millTail.run.planned[].flipped	bool
 frozenEntries[].event.millTail.run.planned[].fused	bool
 frozenEntries[].event.millTail.run.planned[].goadedBy	custom(uuid.UUID)
@@ -11693,6 +11698,7 @@ frozenEntries[].event.millTail.run.seen[].faces[].StartingLoyalty	number:int
 frozenEntries[].event.millTail.run.seen[].faces[].Toughness	number:int
 frozenEntries[].event.millTail.run.seen[].faces[].TypeLine	string
 frozenEntries[].event.millTail.run.seen[].faces[].VariableToughness	bool
+frozenEntries[].event.millTail.run.seen[].flashbackText	number:uint8
 frozenEntries[].event.millTail.run.seen[].flipped	bool
 frozenEntries[].event.millTail.run.seen[].fused	bool
 frozenEntries[].event.millTail.run.seen[].goadedBy	custom(uuid.UUID)
@@ -13974,6 +13980,7 @@ frozenEntries[].event.tokenGroups[].template.faces[].StartingLoyalty	number:int
 frozenEntries[].event.tokenGroups[].template.faces[].Toughness	number:int
 frozenEntries[].event.tokenGroups[].template.faces[].TypeLine	string
 frozenEntries[].event.tokenGroups[].template.faces[].VariableToughness	bool
+frozenEntries[].event.tokenGroups[].template.flashbackText	number:uint8
 frozenEntries[].event.tokenGroups[].template.flipped	bool
 frozenEntries[].event.tokenGroups[].template.fused	bool
 frozenEntries[].event.tokenGroups[].template.goadedBy	custom(uuid.UUID)
@@ -15058,6 +15065,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.faces[].StartingLoyalt
 frozenEntries[].event.tokensAfterMove[].groups[].template.faces[].Toughness	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.faces[].TypeLine	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.faces[].VariableToughness	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.flashbackText	number:uint8
 frozenEntries[].event.tokensAfterMove[].groups[].template.flipped	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.fused	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.goadedBy	custom(uuid.UUID)
@@ -15495,6 +15503,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].faces[].StartingLoyalty
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].faces[].Toughness	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].faces[].TypeLine	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].faces[].VariableToughness	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].flashbackText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].flipped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].fused	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].goadedBy	custom(uuid.UUID)
@@ -15919,6 +15928,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].faces[].StartingLoyalty	nu
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].faces[].Toughness	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].faces[].TypeLine	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].faces[].VariableToughness	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].flashbackText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].flipped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].fused	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].goadedBy	custom(uuid.UUID)
@@ -19678,6 +19688,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].faces[].StartingLoyalty	numbe
 frozenEntries[].event.zoneRoute.simultaneousExit[].faces[].Toughness	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].faces[].TypeLine	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].faces[].VariableToughness	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].flashbackText	number:uint8
 frozenEntries[].event.zoneRoute.simultaneousExit[].flipped	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].fused	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].goadedBy	custom(uuid.UUID)
@@ -20757,6 +20768,7 @@ lastKnownStack[].card.faces[].StartingLoyalty	number:int
 lastKnownStack[].card.faces[].Toughness	number:int
 lastKnownStack[].card.faces[].TypeLine	string
 lastKnownStack[].card.faces[].VariableToughness	bool
+lastKnownStack[].card.flashbackText	number:uint8
 lastKnownStack[].card.flipped	bool
 lastKnownStack[].card.fused	bool
 lastKnownStack[].card.goadedBy	custom(uuid.UUID)
@@ -21663,6 +21675,7 @@ match.decks[].fixed[].faces[].StartingLoyalty	number:int
 match.decks[].fixed[].faces[].Toughness	number:int
 match.decks[].fixed[].faces[].TypeLine	string
 match.decks[].fixed[].faces[].VariableToughness	bool
+match.decks[].fixed[].flashbackText	number:uint8
 match.decks[].fixed[].flipped	bool
 match.decks[].fixed[].fused	bool
 match.decks[].fixed[].goadedBy	custom(uuid.UUID)
@@ -22085,6 +22098,7 @@ match.decks[].main[].faces[].StartingLoyalty	number:int
 match.decks[].main[].faces[].Toughness	number:int
 match.decks[].main[].faces[].TypeLine	string
 match.decks[].main[].faces[].VariableToughness	bool
+match.decks[].main[].flashbackText	number:uint8
 match.decks[].main[].flipped	bool
 match.decks[].main[].fused	bool
 match.decks[].main[].goadedBy	custom(uuid.UUID)
@@ -22510,6 +22524,7 @@ match.decks[].side[].faces[].StartingLoyalty	number:int
 match.decks[].side[].faces[].Toughness	number:int
 match.decks[].side[].faces[].TypeLine	string
 match.decks[].side[].faces[].VariableToughness	bool
+match.decks[].side[].flashbackText	number:uint8
 match.decks[].side[].flipped	bool
 match.decks[].side[].fused	bool
 match.decks[].side[].goadedBy	custom(uuid.UUID)
@@ -29195,6 +29210,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.faces[].StartingLoyalty	number
 movesAwaitingTokens[].keywordActionTail.armyToken.faces[].Toughness	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.faces[].TypeLine	string
 movesAwaitingTokens[].keywordActionTail.armyToken.faces[].VariableToughness	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.flashbackText	number:uint8
 movesAwaitingTokens[].keywordActionTail.armyToken.flipped	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.fused	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.goadedBy	custom(uuid.UUID)
@@ -31577,6 +31593,7 @@ movesAwaitingTokens[].millTail.run.planned[].faces[].StartingLoyalty	number:int
 movesAwaitingTokens[].millTail.run.planned[].faces[].Toughness	number:int
 movesAwaitingTokens[].millTail.run.planned[].faces[].TypeLine	string
 movesAwaitingTokens[].millTail.run.planned[].faces[].VariableToughness	bool
+movesAwaitingTokens[].millTail.run.planned[].flashbackText	number:uint8
 movesAwaitingTokens[].millTail.run.planned[].flipped	bool
 movesAwaitingTokens[].millTail.run.planned[].fused	bool
 movesAwaitingTokens[].millTail.run.planned[].goadedBy	custom(uuid.UUID)
@@ -32001,6 +32018,7 @@ movesAwaitingTokens[].millTail.run.seen[].faces[].StartingLoyalty	number:int
 movesAwaitingTokens[].millTail.run.seen[].faces[].Toughness	number:int
 movesAwaitingTokens[].millTail.run.seen[].faces[].TypeLine	string
 movesAwaitingTokens[].millTail.run.seen[].faces[].VariableToughness	bool
+movesAwaitingTokens[].millTail.run.seen[].flashbackText	number:uint8
 movesAwaitingTokens[].millTail.run.seen[].flipped	bool
 movesAwaitingTokens[].millTail.run.seen[].fused	bool
 movesAwaitingTokens[].millTail.run.seen[].goadedBy	custom(uuid.UUID)
@@ -34282,6 +34300,7 @@ movesAwaitingTokens[].tokenGroups[].template.faces[].StartingLoyalty	number:int
 movesAwaitingTokens[].tokenGroups[].template.faces[].Toughness	number:int
 movesAwaitingTokens[].tokenGroups[].template.faces[].TypeLine	string
 movesAwaitingTokens[].tokenGroups[].template.faces[].VariableToughness	bool
+movesAwaitingTokens[].tokenGroups[].template.flashbackText	number:uint8
 movesAwaitingTokens[].tokenGroups[].template.flipped	bool
 movesAwaitingTokens[].tokenGroups[].template.fused	bool
 movesAwaitingTokens[].tokenGroups[].template.goadedBy	custom(uuid.UUID)
@@ -35366,6 +35385,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.faces[].StartingLoyalt
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.faces[].Toughness	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.faces[].TypeLine	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.faces[].VariableToughness	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.flashbackText	number:uint8
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.flipped	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.fused	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.goadedBy	custom(uuid.UUID)
@@ -35803,6 +35823,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].faces[].StartingLoyalty
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].faces[].Toughness	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].faces[].TypeLine	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].faces[].VariableToughness	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].flashbackText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].flipped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].fused	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].goadedBy	custom(uuid.UUID)
@@ -36227,6 +36248,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].faces[].StartingLoyalty	nu
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].faces[].Toughness	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].faces[].TypeLine	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].faces[].VariableToughness	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].flashbackText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].flipped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].fused	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].goadedBy	custom(uuid.UUID)
@@ -39986,6 +40008,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].faces[].StartingLoyalty	numbe
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].faces[].Toughness	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].faces[].TypeLine	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].faces[].VariableToughness	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].flashbackText	number:uint8
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].flipped	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].fused	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].goadedBy	custom(uuid.UUID)
@@ -41914,6 +41937,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.faces[].StartingLoyalty	n
 pendingChoices[].attackSplit.settled.chosen[].template.faces[].Toughness	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.faces[].TypeLine	string
 pendingChoices[].attackSplit.settled.chosen[].template.faces[].VariableToughness	bool
+pendingChoices[].attackSplit.settled.chosen[].template.flashbackText	number:uint8
 pendingChoices[].attackSplit.settled.chosen[].template.flipped	bool
 pendingChoices[].attackSplit.settled.chosen[].template.fused	bool
 pendingChoices[].attackSplit.settled.chosen[].template.goadedBy	custom(uuid.UUID)
@@ -42358,6 +42382,7 @@ pendingChoices[].attackSplit.settled.groups[].template.faces[].StartingLoyalty	n
 pendingChoices[].attackSplit.settled.groups[].template.faces[].Toughness	number:int
 pendingChoices[].attackSplit.settled.groups[].template.faces[].TypeLine	string
 pendingChoices[].attackSplit.settled.groups[].template.faces[].VariableToughness	bool
+pendingChoices[].attackSplit.settled.groups[].template.flashbackText	number:uint8
 pendingChoices[].attackSplit.settled.groups[].template.flipped	bool
 pendingChoices[].attackSplit.settled.groups[].template.fused	bool
 pendingChoices[].attackSplit.settled.groups[].template.goadedBy	custom(uuid.UUID)
@@ -43422,6 +43447,7 @@ pendingChoices[].attackSplit.template.faces[].StartingLoyalty	number:int
 pendingChoices[].attackSplit.template.faces[].Toughness	number:int
 pendingChoices[].attackSplit.template.faces[].TypeLine	string
 pendingChoices[].attackSplit.template.faces[].VariableToughness	bool
+pendingChoices[].attackSplit.template.flashbackText	number:uint8
 pendingChoices[].attackSplit.template.flipped	bool
 pendingChoices[].attackSplit.template.fused	bool
 pendingChoices[].attackSplit.template.goadedBy	custom(uuid.UUID)
@@ -44247,6 +44273,7 @@ pendingChoices[].copyWalk.src.faces[].StartingLoyalty	number:int
 pendingChoices[].copyWalk.src.faces[].Toughness	number:int
 pendingChoices[].copyWalk.src.faces[].TypeLine	string
 pendingChoices[].copyWalk.src.faces[].VariableToughness	bool
+pendingChoices[].copyWalk.src.flashbackText	number:uint8
 pendingChoices[].copyWalk.src.flipped	bool
 pendingChoices[].copyWalk.src.fused	bool
 pendingChoices[].copyWalk.src.goadedBy	custom(uuid.UUID)
@@ -55991,6 +56018,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.faces[].Sta
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.faces[].Toughness	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.faces[].TypeLine	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.faces[].VariableToughness	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.flashbackText	number:uint8
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.flipped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.fused	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.goadedBy	custom(uuid.UUID)
@@ -58373,6 +58401,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].faces[].Starting
 pendingChoices[].replacementResume.event.millTail.run.planned[].faces[].Toughness	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].faces[].TypeLine	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].faces[].VariableToughness	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].flashbackText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.planned[].flipped	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].fused	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].goadedBy	custom(uuid.UUID)
@@ -58797,6 +58826,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].faces[].StartingLoy
 pendingChoices[].replacementResume.event.millTail.run.seen[].faces[].Toughness	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].faces[].TypeLine	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].faces[].VariableToughness	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].flashbackText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.seen[].flipped	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].fused	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].goadedBy	custom(uuid.UUID)
@@ -61078,6 +61108,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.faces[].Starting
 pendingChoices[].replacementResume.event.tokenGroups[].template.faces[].Toughness	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.faces[].TypeLine	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.faces[].VariableToughness	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.flashbackText	number:uint8
 pendingChoices[].replacementResume.event.tokenGroups[].template.flipped	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.fused	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.goadedBy	custom(uuid.UUID)
@@ -62162,6 +62193,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.fac
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.faces[].Toughness	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.faces[].TypeLine	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.faces[].VariableToughness	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.flashbackText	number:uint8
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.flipped	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.fused	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.goadedBy	custom(uuid.UUID)
@@ -62599,6 +62631,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].face
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].faces[].Toughness	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].faces[].TypeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].faces[].VariableToughness	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].flashbackText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].flipped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].fused	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].goadedBy	custom(uuid.UUID)
@@ -63023,6 +63056,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].faces[]
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].faces[].Toughness	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].faces[].TypeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].faces[].VariableToughness	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].flashbackText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].flipped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].fused	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].goadedBy	custom(uuid.UUID)
@@ -66782,6 +66816,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].faces[].St
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].faces[].Toughness	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].faces[].TypeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].faces[].VariableToughness	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].flashbackText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].flipped	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].fused	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].goadedBy	custom(uuid.UUID)
@@ -69038,6 +69073,7 @@ pendingChoices[].targetWalk.frame.source.faces[].StartingLoyalty	number:int
 pendingChoices[].targetWalk.frame.source.faces[].Toughness	number:int
 pendingChoices[].targetWalk.frame.source.faces[].TypeLine	string
 pendingChoices[].targetWalk.frame.source.faces[].VariableToughness	bool
+pendingChoices[].targetWalk.frame.source.flashbackText	number:uint8
 pendingChoices[].targetWalk.frame.source.flipped	bool
 pendingChoices[].targetWalk.frame.source.fused	bool
 pendingChoices[].targetWalk.frame.source.goadedBy	custom(uuid.UUID)
@@ -69828,6 +69864,7 @@ pendingChoices[].triggerFrame.source.faces[].StartingLoyalty	number:int
 pendingChoices[].triggerFrame.source.faces[].Toughness	number:int
 pendingChoices[].triggerFrame.source.faces[].TypeLine	string
 pendingChoices[].triggerFrame.source.faces[].VariableToughness	bool
+pendingChoices[].triggerFrame.source.flashbackText	number:uint8
 pendingChoices[].triggerFrame.source.flipped	bool
 pendingChoices[].triggerFrame.source.fused	bool
 pendingChoices[].triggerFrame.source.goadedBy	custom(uuid.UUID)
@@ -70998,6 +71035,7 @@ phasedOut.cards[].faces[].StartingLoyalty	number:int
 phasedOut.cards[].faces[].Toughness	number:int
 phasedOut.cards[].faces[].TypeLine	string
 phasedOut.cards[].faces[].VariableToughness	bool
+phasedOut.cards[].flashbackText	number:uint8
 phasedOut.cards[].flipped	bool
 phasedOut.cards[].fused	bool
 phasedOut.cards[].goadedBy	custom(uuid.UUID)
@@ -71425,6 +71463,7 @@ planechase.deck.cards[].faces[].StartingLoyalty	number:int
 planechase.deck.cards[].faces[].Toughness	number:int
 planechase.deck.cards[].faces[].TypeLine	string
 planechase.deck.cards[].faces[].VariableToughness	bool
+planechase.deck.cards[].flashbackText	number:uint8
 planechase.deck.cards[].flipped	bool
 planechase.deck.cards[].fused	bool
 planechase.deck.cards[].goadedBy	custom(uuid.UUID)
@@ -71852,6 +71891,7 @@ planechase.faceUp.cards[].faces[].StartingLoyalty	number:int
 planechase.faceUp.cards[].faces[].Toughness	number:int
 planechase.faceUp.cards[].faces[].TypeLine	string
 planechase.faceUp.cards[].faces[].VariableToughness	bool
+planechase.faceUp.cards[].flashbackText	number:uint8
 planechase.faceUp.cards[].flipped	bool
 planechase.faceUp.cards[].fused	bool
 planechase.faceUp.cards[].goadedBy	custom(uuid.UUID)
@@ -72523,6 +72563,7 @@ resolving.card.faces[].StartingLoyalty	number:int
 resolving.card.faces[].Toughness	number:int
 resolving.card.faces[].TypeLine	string
 resolving.card.faces[].VariableToughness	bool
+resolving.card.flashbackText	number:uint8
 resolving.card.flipped	bool
 resolving.card.fused	bool
 resolving.card.goadedBy	custom(uuid.UUID)
@@ -73563,6 +73604,7 @@ seats[].attractionDeck.cards[].faces[].StartingLoyalty	number:int
 seats[].attractionDeck.cards[].faces[].Toughness	number:int
 seats[].attractionDeck.cards[].faces[].TypeLine	string
 seats[].attractionDeck.cards[].faces[].VariableToughness	bool
+seats[].attractionDeck.cards[].flashbackText	number:uint8
 seats[].attractionDeck.cards[].flipped	bool
 seats[].attractionDeck.cards[].fused	bool
 seats[].attractionDeck.cards[].goadedBy	custom(uuid.UUID)
@@ -74161,6 +74203,7 @@ seats[].command.cards[].faces[].StartingLoyalty	number:int
 seats[].command.cards[].faces[].Toughness	number:int
 seats[].command.cards[].faces[].TypeLine	string
 seats[].command.cards[].faces[].VariableToughness	bool
+seats[].command.cards[].flashbackText	number:uint8
 seats[].command.cards[].flipped	bool
 seats[].command.cards[].fused	bool
 seats[].command.cards[].goadedBy	custom(uuid.UUID)
@@ -74590,6 +74633,7 @@ seats[].companion.cards[].faces[].StartingLoyalty	number:int
 seats[].companion.cards[].faces[].Toughness	number:int
 seats[].companion.cards[].faces[].TypeLine	string
 seats[].companion.cards[].faces[].VariableToughness	bool
+seats[].companion.cards[].flashbackText	number:uint8
 seats[].companion.cards[].flipped	bool
 seats[].companion.cards[].fused	bool
 seats[].companion.cards[].goadedBy	custom(uuid.UUID)
@@ -75028,6 +75072,7 @@ seats[].emblems.cards[].faces[].StartingLoyalty	number:int
 seats[].emblems.cards[].faces[].Toughness	number:int
 seats[].emblems.cards[].faces[].TypeLine	string
 seats[].emblems.cards[].faces[].VariableToughness	bool
+seats[].emblems.cards[].flashbackText	number:uint8
 seats[].emblems.cards[].flipped	bool
 seats[].emblems.cards[].fused	bool
 seats[].emblems.cards[].goadedBy	custom(uuid.UUID)
@@ -75553,6 +75598,7 @@ seats[].graveyard.cards[].faces[].StartingLoyalty	number:int
 seats[].graveyard.cards[].faces[].Toughness	number:int
 seats[].graveyard.cards[].faces[].TypeLine	string
 seats[].graveyard.cards[].faces[].VariableToughness	bool
+seats[].graveyard.cards[].flashbackText	number:uint8
 seats[].graveyard.cards[].flipped	bool
 seats[].graveyard.cards[].fused	bool
 seats[].graveyard.cards[].goadedBy	custom(uuid.UUID)
@@ -75978,6 +76024,7 @@ seats[].hand.cards[].faces[].StartingLoyalty	number:int
 seats[].hand.cards[].faces[].Toughness	number:int
 seats[].hand.cards[].faces[].TypeLine	string
 seats[].hand.cards[].faces[].VariableToughness	bool
+seats[].hand.cards[].flashbackText	number:uint8
 seats[].hand.cards[].flipped	bool
 seats[].hand.cards[].fused	bool
 seats[].hand.cards[].goadedBy	custom(uuid.UUID)
@@ -76408,6 +76455,7 @@ seats[].junkyard.cards[].faces[].StartingLoyalty	number:int
 seats[].junkyard.cards[].faces[].Toughness	number:int
 seats[].junkyard.cards[].faces[].TypeLine	string
 seats[].junkyard.cards[].faces[].VariableToughness	bool
+seats[].junkyard.cards[].flashbackText	number:uint8
 seats[].junkyard.cards[].flipped	bool
 seats[].junkyard.cards[].fused	bool
 seats[].junkyard.cards[].goadedBy	custom(uuid.UUID)
@@ -76859,6 +76907,7 @@ seats[].library.cards[].faces[].StartingLoyalty	number:int
 seats[].library.cards[].faces[].Toughness	number:int
 seats[].library.cards[].faces[].TypeLine	string
 seats[].library.cards[].faces[].VariableToughness	bool
+seats[].library.cards[].flashbackText	number:uint8
 seats[].library.cards[].flipped	bool
 seats[].library.cards[].fused	bool
 seats[].library.cards[].goadedBy	custom(uuid.UUID)
@@ -77325,6 +77374,7 @@ seats[].sideboard.cards[].faces[].StartingLoyalty	number:int
 seats[].sideboard.cards[].faces[].Toughness	number:int
 seats[].sideboard.cards[].faces[].TypeLine	string
 seats[].sideboard.cards[].faces[].VariableToughness	bool
+seats[].sideboard.cards[].flashbackText	number:uint8
 seats[].sideboard.cards[].flipped	bool
 seats[].sideboard.cards[].fused	bool
 seats[].sideboard.cards[].goadedBy	custom(uuid.UUID)
@@ -78118,6 +78168,7 @@ stack.cards[].faces[].StartingLoyalty	number:int
 stack.cards[].faces[].Toughness	number:int
 stack.cards[].faces[].TypeLine	string
 stack.cards[].faces[].VariableToughness	bool
+stack.cards[].flashbackText	number:uint8
 stack.cards[].flipped	bool
 stack.cards[].fused	bool
 stack.cards[].goadedBy	custom(uuid.UUID)
