@@ -86,6 +86,13 @@ func (u PreventionUnit) Valid() bool { return u == ThenPerRecipient || u == Then
 func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
 	if a.effect.DrawInstead.key != "" {
 		g.recordDrawInsteadLocked(ev, a)
+		// A record-backed draw replacement (#5875) spends its record
+		// as it applies; no card declares both.
+		if a.effect.Replace != nil {
+			if err := a.effect.Replace(ev, g, a.source); err != nil {
+				g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+			}
+		}
 		return
 	}
 	if a.effect.KeywordInstead.key != "" {

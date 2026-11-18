@@ -1205,6 +1205,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// #4307 (ADR 0208, 2026-10-26): a die added to the next roll, and a
 	// chooser for the roll to ignore.
 	ModRollExtraDieIgnoreOne: {reader: readerReplacement},
+	// #5875: the next draw replaced by an impulse exile this turn.
+	ModNextDrawExileTopPlay: {reader: readerReplacement},
 	// #4973: Brad Boimler's one more counter of each kind this turn.
 	ModOneMoreCounter: {reader: readerReplacement},
 	// #5235: Prairie Dog's one more +1/+1 counter this turn.

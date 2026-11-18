@@ -158,6 +158,11 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a rollExtraDieIgnoreOne replacement names no player"
 		}
+	case ModNextDrawExileTopPlay:
+		// #5875: Urabrask, Heretic Praetor names the player who draws.
+		if m.Player == uuid.Nil {
+			return "a nextDrawExileTopPlay replacement names no player"
+		}
 	case ModOneMoreCounter:
 		// #4973: Brad Boimler names whose permanents get the extra counter.
 		if m.Player == uuid.Nil {
@@ -190,6 +195,8 @@ var (
 	watchLife     = []EventKind{EventChangeLife}
 	// watchRollDie is a dice roll instruction (RepEventRollDice, #4307).
 	watchRollDie = []EventKind{EventRollDie}
+	// watchDraw is a card draw (RepEventDraw, #5875).
+	watchDraw = []EventKind{EventDrawCard}
 	// watchMoveOrDiscard is "from anywhere": a discard is its own
 	// replacement window (RepEventDiscard, #650), not a RepEventMove.
 	watchMoveOrDiscard = []EventKind{EventZoneMove, EventDiscardCard}
@@ -208,6 +215,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchLife
 	case ModRollExtraDieIgnoreOne:
 		return watchRollDie
+	case ModNextDrawExileTopPlay:
+		return watchDraw
 	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		return watchCounterPlaced
 	case ModMultiplyTokens:
@@ -629,7 +638,9 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource,
 				ModPreventFromSource, ModRedirectDamage,
 				// #4307: the roller orders dice replacements (CR 616.1).
-				ModRollExtraDieIgnoreOne:
+				ModRollExtraDieIgnoreOne,
+				// #5875: and the drawer draw replacements.
+				ModNextDrawExileTopPlay:
 				// CR 616.1 gives the ordering choice to the AFFECTED
 				// player — whoever is being dealt the damage — so a
 				// prevention shield or a redirection reports no
@@ -651,6 +662,12 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 			return e.Controller
 		},
 		Label: label,
+	}
+	if kind == ModNextDrawExileTopPlay {
+		// #5875: the draw is replaced by a body that runs once the
+		// window has settled (draw_instead.go); Replace above still runs
+		// as it applies, to spend the record.
+		eff.DrawInstead = nextDrawExileTopInstead
 	}
 	return eff
 }
@@ -737,6 +754,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
 	case ModRollExtraDieIgnoreOne:
 		return rollExtraDieAppliesLocked(m, ev)
+	case ModNextDrawExileTopPlay:
+		return nextDrawExileTopAppliesLocked(m, ev)
 	case ModOneMoreCounter:
 		return oneMoreCounterAppliesLocked(g, m, ev)
 	case ModOneMorePlusOneCounter:
@@ -825,6 +844,8 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		ev.Cancel()
 	case ModRollExtraDieIgnoreOne:
 		g.applyRollExtraDieLocked(e, ev)
+	case ModNextDrawExileTopPlay:
+		g.applyNextDrawExileTopLocked(e, ev)
 	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		// "That many plus one": one window per kind, so one more each.
 		ev.CounterDelta++

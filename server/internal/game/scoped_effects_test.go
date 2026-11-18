@@ -337,6 +337,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #4307: Squid Fire Knight's dice replacement, read by no layer.
 		// Its cases are in dice_roll_test.go and cards/effects.
 		ModRollExtraDieIgnoreOne: true,
+		// #5875: Urabrask, Heretic Praetor's next-draw replacement, read
+		// by no layer. Its cases are in next_draw_exile_top_test.go and
+		// cards/effects.
+		ModNextDrawExileTopPlay: true,
 		// #4973: Brad Boimler's extra counter, read by no layer. Its cases
 		// are in one_more_counter_test.go and cards/effects.
 		ModOneMoreCounter: true,
