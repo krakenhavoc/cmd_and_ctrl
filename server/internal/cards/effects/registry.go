@@ -1331,6 +1331,9 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 		case !rc.Variable && rc.N <= 0:
 			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters — a counter cost removes at least one", card, where, rc.N))
 		}
+		if rc.All && (!rc.Variable || rc.Counter == "" || rc.From != nil || rc.Among || rc.OnePermanent || rc.N != 0) {
+			panic(fmt.Sprintf("effects.Register: %q %s marks a counter removal All outside the self form with a printed kind and no floor — build it with RemoveAllCountersFromThis", card, where))
+		}
 		if rc.Counter == "" && !rc.Among && (rc.N > 1 || rc.Variable) {
 			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind with one kind choice — a removal that may mix kinds asks the kind per part: RemoveCountersOfAnyKindsFromThis for this permanent (#3987), RemoveCountersAmong across permanents (#943)", card, where, rc.N))
 		}

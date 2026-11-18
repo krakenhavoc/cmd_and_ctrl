@@ -2440,7 +2440,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// graveyard-leaves watcher lands above it and a countered spell does not
 	// give the cards back (CR 601.2h).
 	if len(params.ExileIDs) > 0 {
-		if err := g.payExileCardsCostLocked(playerID, cardID, params.ExileIDs, params.commanderAnswers); err != nil {
+		// #5895, CR 607.2q: a LinkToSource clause (Gorex, the Tombshell's
+		// "exiled with Gorex") links each card to the spell object, which
+		// the permanent it becomes inherits; every other clause links none.
+		var link PermissionCardRef
+		if ec := planExileCards(costPlan); ec != nil && ec.LinkToSource {
+			link = g.permanentSpellCostLinkLocked(cardID)
+		}
+		if err := g.payExileCardsCostToLocked(playerID, cardID, params.ExileIDs, params.commanderAnswers, link); err != nil {
 			slog.Error("cast_spell: exile-cards cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,

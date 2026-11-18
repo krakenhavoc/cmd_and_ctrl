@@ -291,7 +291,10 @@ type ExileCost struct {
 	// cost, as it lands in exile (Kylox's Voltstrider, #4452: "Collect
 	// evidence 6: ... cast an instant or sorcery spell from among cards
 	// exiled with it"). Read it with ExiledWithThis / Game.ExiledWithForEffect.
-	// Meaningful on an ability's cost; false (no link) for every other
+	// Meaningful on an ability's cost, and on a permanent spell's
+	// graveyard exile (#5895, Gorex, the Tombshell: CR 607.2q), where the
+	// cards are linked to the spell object and relinked to the permanent
+	// it becomes (relinkCostExilesLocked); false (no link) for every other
 	// clause, additive.
 	LinkToSource bool
 
@@ -685,6 +688,18 @@ func (g *Game) payExileCardsCostLinkedLocked(playerID, sourceID uuid.UUID, ids [
 			ref = PermissionCardRef{ID: sourceID, Epoch: epoch}
 		}
 	}
+	return g.payExileCardsCostToLocked(playerID, sourceID, ids, answers, ref)
+}
+
+// payExileCardsCostToLocked is the payer with the link named outright: each
+// card lands in exile "exiled with" `ref`, or with nothing when `ref` is
+// zero. A cast's graveyard exile that is LinkToSource passes the SPELL
+// object (permanentSpellCostLinkLocked), which relinkCostExilesLocked moves
+// to the permanent the spell becomes (CR 607.2q, Gorex, the Tombshell,
+// #5895).
+//
+// Caller must hold g.mu and have validated the list.
+func (g *Game) payExileCardsCostToLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool, ref PermissionCardRef) error {
 	for _, id := range ids {
 		if _, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:        id,

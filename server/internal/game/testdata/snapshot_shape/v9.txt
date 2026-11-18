@@ -78976,6 +78976,8 @@ turnTally.damagedPlayers[].source	object
 turnTally.damagedPlayers[].source.epoch	number:int
 turnTally.damagedPlayers[].source.id	custom(uuid.UUID)
 turnTally.damagedPlayers[].victim	custom(uuid.UUID)
+turnTally.diedNames	map:string
+turnTally.diedNames{}	number:int
 turnTally.diedPowerBySubtype	map:string
 turnTally.diedPowerBySubtype{}	number:int
 turnTally.diedSubtypes	map:string
