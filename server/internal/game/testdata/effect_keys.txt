@@ -2236,6 +2236,7 @@ run prompt-run/smallpox-sacrifice-creatures
 run prompt-run/smallpox-sacrifice-lands
 run prompt-run/social-snub-drain
 run prompt-run/sorin-imperious-bloodlord-sacrifice
+run prompt-run/spiked-ripsaw-trample
 run prompt-run/spirit-sisters-call-return
 run prompt-run/springbloom-druid-search
 run prompt-run/ss-botany-bay-opponents-exile
@@ -2550,6 +2551,7 @@ tail courier-of-comestibles/food-unless-found
 tail crabomination/cast-from-exiled
 tail crypt-incursion/gain-3-per-exiled
 tail cultivate/basic-land-to-hand
+tail cultivator-colossus/draw-and-repeat
 tail cumulative-upkeep/arctic-wolves-cumulative-upkeep-2
 tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cumulative-upkeep-1
@@ -2810,6 +2812,7 @@ tail herald-of-amity/after-exile
 tail herigast-erupting-nullkite/draw-three
 tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
+tail hiveheart-shaman/insect-created
 tail hoarders-greed/draw-two
 tail hoarders-greed/repeat-if-won
 tail hoarding-broodlord/cast-permission
@@ -2987,6 +2990,7 @@ tail nyla-shirshu-sleuth/lose-x-make-x-clues
 tail oko-shadowmoor-scion/after-mill
 tail oko-shadowmoor-scion/emblem-type
 tail old-hob/token-haste-and-destroy
+tail old-rutstein/after-mill
 tail oona-queen-of-the-fae/after-mill
 tail ormos-archive-keeper/then-draw
 tail ostrich-horse/after-mill
@@ -3137,6 +3141,7 @@ tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
 tail sacrificed-one/prompt-run/shrapnel-slinger-sacrifice
 tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
+tail sacrificed-one/prompt-run/spiked-ripsaw-trample
 tail sacrificed-one/prompt-run/spirit-sisters-call-return
 tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/terror-ballista-sacrifice
