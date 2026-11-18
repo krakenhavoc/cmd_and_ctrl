@@ -102,13 +102,13 @@ func TestAfrB01EntersTriggersOnYourself(t *testing.T) {
 		check func(t *testing.T, g *game.Game, handBefore, lifeBefore int)
 	}{
 		{"Owlbear", func(t *testing.T, g *game.Game, hand, _ int) {
-			if got := g.Seats[0].Hand.Size(); got != hand {
-				t.Errorf("hand %d, want %d (cast one, drew one)", got, hand)
+			if got := g.Seats[0].Hand.Size(); got != hand+1 {
+				t.Errorf("hand %d, want %d (cast one, drew one)", got, hand+1)
 			}
 		}},
 		{"Priest of Ancient Lore", func(t *testing.T, g *game.Game, hand, life int) {
-			if got := g.Seats[0].Hand.Size(); got != hand {
-				t.Errorf("hand %d, want %d", got, hand)
+			if got := g.Seats[0].Hand.Size(); got != hand+1 {
+				t.Errorf("hand %d, want %d", got, hand+1)
 			}
 			if got := g.Seats[0].Life; got != life+1 {
 				t.Errorf("life %d, want %d", got, life+1)
@@ -146,14 +146,15 @@ func TestAfrB01EntersTriggersOnYourself(t *testing.T) {
 
 func TestAfrB01SilverRavenScriesOne(t *testing.T) {
 	g := newCatalogGame(t)
+	me := g.Seats[0]
 	afrB01Cast(t, g, afrB01Named("Silver Raven"))
-	if len(randomEvents(g, game.EventScry)) != 0 {
-		t.Fatal("scried before the trigger resolved")
-	}
 	passPriorityAroundTable(t, g)
-	evs := randomEvents(g, game.EventScry)
-	if len(evs) != 1 || evs[0].Amount != 1 {
-		t.Fatalf("scry events: %+v", evs)
+	scry := latestChoiceOfKind(g, game.PendingChoiceScry)
+	if scry == nil || len(scry.ScryCards) != 1 {
+		t.Fatalf("scry prompt: %+v", scry)
+	}
+	if err := g.ResolveScry(scry.ID, me.ID, nil, scry.ScryCards); err != nil {
+		t.Fatalf("ResolveScry: %v", err)
 	}
 }
 
