@@ -3554,6 +3554,7 @@ tail then/shuffle
 tail then/shuffle-each-carried
 tail then/shuffle-if-it-went
 tail then/shuffle-then-draw-n
+tail then/silver-bolt-destroy-werewolf
 tail then/skrelv-defector-mite-color-chosen
 tail then/sorcerers-strongbox-draw
 tail then/sorin-lord-of-innistrad-return
