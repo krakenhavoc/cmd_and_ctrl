@@ -435,7 +435,7 @@ func TestNeoB07EarthChannelAnimatesALandWithXCounters(t *testing.T) {
 	if !slices.Contains(v.Effective().Colors, "G") {
 		t.Errorf("colours %v, want green", v.Effective().Colors)
 	}
-	if p, th := effectivePTOf(t, g, land); p != 3 || th != 3 {
+	if p, th := neoB07PT(t, g, land); p != 3 || th != 3 {
 		t.Errorf("the land is %d/%d, want 3/3 (0/0 with three counters)", p, th)
 	}
 	if !hasEffectiveKeyword(t, g, land, "haste") {
@@ -443,7 +443,7 @@ func TestNeoB07EarthChannelAnimatesALandWithXCounters(t *testing.T) {
 	}
 	advanceToNextSeatsTurn(t, g)
 	advanceToNextSeatsTurn(t, g)
-	if p, _ := effectivePTOf(t, g, land); p != 3 {
+	if p, _ := neoB07PT(t, g, land); p != 3 {
 		t.Errorf("a turn later it is %d/_, want it to stay a creature (no duration)", p)
 	}
 }
@@ -717,19 +717,9 @@ func neoB07Holds(t *testing.T, g *game.Game, id uuid.UUID) int {
 	return len(c.NextUntapSkips)
 }
 
-func TestNeoB07DebugEarth(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
-	if _, err := neoB07Channel(t, g, "Roaring Earth", "Enchantment", neoB07Earth, "{C}{C}{C}{G}{G}", 0,
-		game.ActivateAbilityParams{Targets: cardTarget(land), XValue: 3}); err != nil {
-		t.Fatal(err)
-	}
-	passPriorityAroundTable(t, g)
-	t.Logf("counters %v pending %d", countersOn(g, land, game.CounterPlusOne), len(g.PendingChoices))
-	for _, c := range g.PendingChoices {
-		if c != nil {
-			t.Logf("choice %+v", c.Kind)
-		}
-	}
+// neoB07PT is the power and toughness after a layer recompute.
+func neoB07PT(t *testing.T, g *game.Game, id uuid.UUID) (int, int) {
+	t.Helper()
+	eff := s58p6View(t, g, id).Effective()
+	return eff.Power, eff.Toughness
 }
