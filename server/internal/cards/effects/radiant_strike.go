@@ -20,15 +20,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      TargetPermanent("target artifact or tapped creature", Or(Artifact(), And(Creature(), tappedPermanent()))),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			if err := (DestroyTarget{Target: id}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Amount: 3}.Apply(ctx)
-		},
+		OnResolve:    destroyTargetThenGainLife(3),
 	})
 }
