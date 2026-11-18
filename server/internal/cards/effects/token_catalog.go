@@ -255,6 +255,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Scriv, the Obligator's Contract: a white Aura token (#4834).
 	printedContractToken,
 
+	// Smoke Spirits' Aid's Smoke Blessing (S82 NEO batch 15, #5493).
+	printedSmokeBlessingToken,
+
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
 	printedCursedRoleToken,
