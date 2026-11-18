@@ -68,6 +68,15 @@ type ExileUntil struct {
 	// Game.ExiledWithRowForEffect. The return is unchanged: moving the
 	// card out of exile clears the link.
 	Linked bool
+
+	// ThenEnters is a triggered ability that follows the return
+	// (#5877): "When an exiled card enters under your control this way,
+	// <ThenEnters>" (Lagrella, the Magpie), a registered delayed body
+	// that reads the returned permanent from the item's Targets and
+	// Params.Object. ThenEntersLabel is its label. Only on the plain
+	// "until this leaves the battlefield" form.
+	ThenEnters      game.BodyRef
+	ThenEntersLabel string
 }
 
 // Apply is CR 610.3a/b first — an "until" whose event has already
@@ -115,6 +124,9 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		}
 		if record {
 			t.Carry, t.N = []uuid.UUID{u.Leaves.ID}, u.Leaves.Epoch
+			if key := e.ThenEnters.Key(); key != "" {
+				t.Words = []string{key, e.ThenEntersLabel}
+			}
 		}
 		if !e.ThenTail.IsZero() {
 			next := e.ThenTail
@@ -201,9 +213,10 @@ func exileUntilEventRecord(g *game.Game, o game.TailOutcome) {
 // exileUntilRecorded is ExileUntil's keyed tail (#4253 slice 10a), told
 // the card when it reached exile: the grant (the tail's Permission) and the
 // return's record, "until <Carry[0] at epoch N> leaves the battlefield",
-// labelled with the tail's Word, for the effect of Player and Source. A
-// tail with no Carry exiles with no record (an item that names no source
-// object). The tail's Next, when set, is the caller's ExileUntil.ThenTail,
+// labelled with the tail's Word, for the effect of Player and Source, with
+// the follow-up body Words[0] labelled Words[1] when there are Words
+// (#5877). A tail with no Carry exiles with no record (an item that names
+// no source object). The tail's Next, when set, is the caller's ExileUntil.ThenTail,
 // told the same IDs once the record is written. An on-disk key.
 var exileUntilRecorded = game.RegisterTail("exile-until/record-return", func(g *game.Game, o game.TailOutcome) error {
 	if len(o.IDs) == 1 {
@@ -225,12 +238,18 @@ func exileUntilRecord(g *game.Game, o game.TailOutcome) {
 		g.GrantCastPermissionOverCardForEffect(target, perm)
 	}
 	if len(o.Tail.Carry) > 0 {
-		g.ScheduleUntilReturnForEffect(target, game.UntilReturn{
+		u := game.UntilReturn{
 			Controller:   o.Tail.Player,
 			SourceCardID: o.Tail.Source,
 			Label:        o.Tail.Word,
 			Leaves:       game.ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N},
-		})
+		}
+		if w := o.Tail.Words; len(w) == 2 {
+			if body, ok := game.BodyRefByKey(w[0]); ok {
+				u.ThenEnters, u.ThenEntersLabel = body, w[1]
+			}
+		}
+		g.ScheduleUntilReturnForEffect(target, u)
 	}
 }
 

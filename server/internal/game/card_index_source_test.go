@@ -142,6 +142,7 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"cloneDelayedTrigger":                     "DelayedTrigger.Cards",
 		"snapshotDelayedTrigger":                  "a delayed trigger snapshot's Cards",
 		"restoreDelayedTrigger":                   "DelayedTrigger.Cards",
+		"followUntilThenLocked":                   "DelayedTrigger.Cards: an until return's follow-up pointed at the new object (#5877)",
 		"cloneChoiceOptions":                      "a choice option's Cards",
 		"reassignChoiceLocked":                    "a pick option's Cards",
 		"withoutPicked":                           "a pick option's Cards",

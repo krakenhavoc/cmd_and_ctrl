@@ -1946,6 +1946,13 @@ type delayedTriggerSnapshot struct {
 	UntilLeaves *ObjectRef `json:"untilLeaves,omitempty"`
 	Due         bool       `json:"due,omitempty"`
 
+	// #5877: the follow-up an "until" return carries (Lagrella, the
+	// Magpie). Additive: an older binary drops the keys and returns the
+	// card without the follow-up (weaker, never stronger); this binary
+	// refuses a follow-up body it does not have (ErrUnknownEffectKey).
+	UntilThen      string `json:"untilThen,omitempty"`
+	UntilThenLabel string `json:"untilThenLabel,omitempty"`
+
 	// #2169, CR 603.7b / 605.1b: a trigger that keeps triggering for its
 	// duration, and its triggered-mana twin. Additive: an older binary
 	// drops the keys and fires a repeating trigger once (weaker, never
@@ -3534,6 +3541,8 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Until:              d.Until,
 		UntilLeaves:        d.UntilLeaves.stamped(),
 		Due:                d.Due,
+		UntilThen:          d.UntilThen.key,
+		UntilThenLabel:     d.UntilThenLabel,
 		Repeats:            d.Repeats,
 		OncePerBatch:       d.OncePerBatch,
 		ThroughCleanup:     d.ThroughCleanup,
@@ -4685,6 +4694,8 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Until:            d.Until,
 		UntilLeaves:      d.UntilLeaves.value(),
 		Due:              d.Due,
+		UntilThen:        BodyRef{key: d.UntilThen},
+		UntilThenLabel:   d.UntilThenLabel,
 		Repeats:          d.Repeats,
 		OncePerBatch:     d.OncePerBatch,
 		ThroughCleanup:   d.ThroughCleanup,
