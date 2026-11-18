@@ -1016,6 +1016,7 @@ choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-mysterious-assassin-sacrifice
 choose choose-cards/show-and-tell-pick
 choose choose-cards/silvan-reveler-discarded
+choose choose-cards/skywarp-skaab-exile
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/smugglers-surprise-put-creatures
 choose choose-cards/smugglers-surprise-take-milled
@@ -1266,6 +1267,8 @@ confirm confirm/ambulatory-edifice-pay-life
 confirm confirm/another-chance-mill
 confirm confirm/arc-of-fortune-embark
 confirm confirm/arc-of-fortune-may-wheel
+confirm confirm/archghoul-of-thraben-take
+confirm confirm/archghoul-of-thraben-to-graveyard
 confirm confirm/armor-wars-draw
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/awaken-the-sleeper-destroy-equipment
@@ -2690,6 +2693,7 @@ tail exile-from-hand-and-plot/plot
 tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
+tail exile-then/skywarp-skaab-draw
 tail exile-then/trystan-penitent-culler
 tail exile-then/venom-deadly-devourer-counters
 tail exile-until-nonland/grant-cast

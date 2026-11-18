@@ -102,10 +102,12 @@ func TestVowB10WretchedThrongFindsAnotherWhenItDies(t *testing.T) {
 	me.Library.PushTop(game.Card{InstanceID: decoy, Name: "Wretched Thing", TypeLine: "Creature — Zombie", Owner: me.ID, Controller: me.ID})
 	killCreature(t, g, me.ID, throng)
 	passPriorityAroundTable(t, g)
-	answerMayChoice(t, g, me.ID, true)
 	search := searchChoiceFor(g, me.ID)
 	if search == nil {
 		t.Fatalf("no search prompt: %+v", g.PendingChoices)
+	}
+	if err := g.BeginSearchLibrary(search.ID, me.ID); err != nil {
+		t.Fatalf("begin the search: %v", err)
 	}
 	if err := g.ResolveSearchLibrary(search.ID, me.ID, []uuid.UUID{decoy}); err == nil {
 		t.Fatal("a card with another name was accepted")
@@ -131,10 +133,14 @@ func TestVowB10WretchedThrongMayDeclineTheSearch(t *testing.T) {
 	me.Library.PushTop(game.Card{InstanceID: other, Name: "Wretched Throng", TypeLine: "Creature — Zombie Horror", OracleID: vowB10ThrongOracle, Owner: me.ID, Controller: me.ID})
 	killCreature(t, g, me.ID, throng)
 	passPriorityAroundTable(t, g)
-	answerMayChoice(t, g, me.ID, false)
-	if searchChoiceFor(g, me.ID) != nil {
-		t.Fatal("a search prompt followed a declined search")
+	search := searchChoiceFor(g, me.ID)
+	if search == nil {
+		t.Fatalf("no search prompt: %+v", g.PendingChoices)
 	}
+	if err := g.DeclineSearchLibrary(search.ID, me.ID); err != nil {
+		t.Fatalf("decline the search: %v", err)
+	}
+	g.SettleResolution()
 	passPriorityAroundTable(t, g)
 	if me.Hand.Contains(other) {
 		t.Error("the search was declined but a card was taken")
