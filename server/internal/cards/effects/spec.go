@@ -1068,6 +1068,14 @@ type Spec struct {
 	// per-instance permissions.
 	CastableZonesIf []game.ConditionalCastZone
 
+	// CastsOnlyFromGraveyard is "You may cast this card from your graveyard,
+	// but not from anywhere else" (Haakon, Stromgald Scourge): the card is
+	// refused from every zone but a graveyard, under any permission (the
+	// zone half of CR 702.127a's aftermath rule, read through
+	// aftermathZoneRule), and its owner's graveyard is open to it. Declare
+	// it with no CastableZones entry; Register refuses the pair. Additive.
+	CastsOnlyFromGraveyard bool
+
 	// SpecialActions are the CR 116.2 special actions this card
 	// offers from its owner's hand — foretell (CR 702.143) and
 	// suspend (CR 702.62). A special action does NOT use the stack
