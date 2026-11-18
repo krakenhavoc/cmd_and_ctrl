@@ -500,13 +500,13 @@ func TestAfrB18KlauthAddsRestrictedManaForTotalAttackingPower(t *testing.T) {
 		t.Fatalf("DeclareAttackers: %v", err)
 	}
 	lockInAttacks(t, g)
-	for i := 0; i < 6 && me.ManaPool.Total() == 0; i++ {
-		if ch := latestChoiceForAfr(g, me.ID); ch {
-			break
-		}
+	for i := 0; i < 6 && riderLatestManaPick(g, me.ID) == nil && me.ManaPool.Total() == 0; i++ {
 		if err := g.PassPriority(); err != nil {
 			break
 		}
+	}
+	if n := riderAnswerManaPicks(t, g, me.ID, "R"); n != 7 {
+		t.Errorf("answered %d colour picks, want 7", n)
 	}
 	if got := me.ManaPool.Total(); got != 7 {
 		t.Errorf("pool holds %d mana, want 7", got)
@@ -554,7 +554,7 @@ func TestAfrB18KlauthsWillSmashRelicsDestroysUpToX(t *testing.T) {
 	a := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Rock", TypeLine: "Artifact"})
 	e := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Aura", TypeLine: "Enchantment"})
 	c := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Gem", TypeLine: "Artifact"})
-	if err := afrB18CastWill(t, g, 2, []int{1}, slotted(a, e)); err != nil {
+	if err := afrB18CastWill(t, g, 2, []int{1}, cardRefs(a, e)); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
 	passPriorityAroundTable(t, g)
