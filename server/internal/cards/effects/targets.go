@@ -799,6 +799,19 @@ func AnotherPlayerControls(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// WithTheSameManaValueAsIt is "with the same mana value" on a triggered
+// ability's clause, where "it" is the object the triggering event is about:
+// the permanent that entered (game.TargetSpec.ManaValueEqualsEventObject).
+// Judged in the one shared walk, so the legal set, the announce, the CR
+// 608.2b re-check, the client's picker and the bot's moves are one answer. A
+// walk with no fired trigger admits nothing.
+//
+//	WithTheSameManaValueAsIt(TargetCreature("up to one target creature you don't control with the same mana value", OpponentControls()))
+func WithTheSameManaValueAsIt(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ManaValueEqualsEventObject = true
+	return spec
+}
+
 // SharesACardTypeWithIt is "that shares a card type with it" on a
 // triggered ability's clause, where "it" is the object the triggering
 // event is about: the permanent that entered (game.TargetSpec.

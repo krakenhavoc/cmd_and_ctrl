@@ -3412,6 +3412,7 @@ tail then/skrelv-defector-mite-color-chosen
 tail then/sorcerers-strongbox-draw
 tail then/sorin-lord-of-innistrad-return
 tail then/sphinx-of-clear-skies-take
+tail then/spiteful-repossession-step
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed
