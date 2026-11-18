@@ -460,7 +460,7 @@ func TestS82MidB14LyndeDoesNotFollowACurseThatLeftTheGraveyard(t *testing.T) {
 	b15Destroy(t, g, curse)
 	passPriorityAroundTable(t, g)
 	g.WithWriteLock(func() {
-		if _, err := g.ExileCardForEffect(curse); err != nil {
+		if err := g.ExileCardForEffect(curse); err != nil {
 			t.Fatalf("exile: %v", err)
 		}
 	})
