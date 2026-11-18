@@ -34,16 +34,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets: TargetCreature("two target creatures controlled by different players").
 			WithCount(2, 2).EachDifferent(EachDifferentController()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := (BounceToHand{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		OnResolve: func(_ *game.StackItem, ctx *Context) error { return neoB20BounceTargetedPermanents(ctx) },
 	})
 }

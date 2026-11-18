@@ -77820,10 +77820,15 @@ seats[].statics[].castBan.filter.subtype	string
 seats[].statics[].castBan.filter.surveilledThisTurn	bool
 seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
+seats[].statics[].castBan.manaValue	number:int
 seats[].statics[].castBan.maxPerTurn	number:int
 seats[].statics[].creaturesEnterWithCounters	object
 seats[].statics[].creaturesEnterWithCounters.count	number:int
+seats[].statics[].creaturesEnterWithCounters.enchantmentOnly	bool
+seats[].statics[].creaturesEnterWithCounters.fired	bool
+seats[].statics[].creaturesEnterWithCounters.firedSeq	number:uint64
 seats[].statics[].creaturesEnterWithCounters.kind	string
+seats[].statics[].creaturesEnterWithCounters.once	bool
 seats[].statics[].duration	object
 seats[].statics[].duration.AfterTurn	number:int
 seats[].statics[].duration.Also	array

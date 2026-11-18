@@ -41,14 +41,27 @@ const FreeCastOrHandLabel = "Cast it without paying its mana cost"
 //
 // Caller must hold g.mu.
 func (g *Game) CastExiledFreeOrToHandForEffect(player, source, cardID uuid.UUID, maxMV int) error {
+	return g.CastExiledFreeOrToHandFilteredForEffect(player, source, cardID, maxMV, PermissionFilter{})
+}
+
+// CastExiledFreeOrToHandFilteredForEffect is CastExiledFreeOrToHandForEffect
+// for a clause that also names the kind of spell: "you may cast the exiled
+// card without paying its mana cost if it's an instant spell with mana value
+// 2 or less. If you don't, put that card into your hand" (Discover the
+// Impossible, #5493). The filter rides the stamped permission, so the offer
+// and the cast it opens judge the same card; a card the filter refuses goes
+// straight to the hand.
+//
+// Caller must hold g.mu.
+func (g *Game) CastExiledFreeOrToHandFilteredForEffect(player, source, cardID uuid.UUID, maxMV int, filter PermissionFilter) error {
 	c, ok := g.cardInZoneLocked(g.Exile, cardID)
 	if !ok {
 		return nil
 	}
-	if perm := g.freeCastOrHandPermissionLocked(player, source, maxMV); !perm.OffersASpell(c) || !g.playerInGameLocked(player) {
+	if perm := g.freeCastOrHandPermissionLocked(player, source, maxMV, filter); !perm.OffersASpell(c) || !g.playerInGameLocked(player) {
 		return g.putExiledIntoHandLocked(player, source, cardID)
 	}
-	g.grantFreeCastOrHandLocked(player, source, cardID, maxMV)
+	g.grantFreeCastOrHandLocked(player, source, cardID, maxMV, filter)
 	reason := "Cast it free"
 	if src, _ := g.findCardAndZoneLocked(source); src != nil && src.Name != "" {
 		reason = src.Name
@@ -71,12 +84,12 @@ func (g *Game) CastExiledFreeOrToHandForEffect(player, source, cardID uuid.UUID,
 // chooser's next pass).
 //
 // Caller must hold g.mu.
-func (g *Game) grantFreeCastOrHandLocked(player, source, cardID uuid.UUID, maxMV int) {
+func (g *Game) grantFreeCastOrHandLocked(player, source, cardID uuid.UUID, maxMV int, filter PermissionFilter) {
 	c, ok := g.cardInZoneLocked(g.Exile, cardID)
 	if !ok {
 		return
 	}
-	perm := g.freeCastOrHandPermissionLocked(player, source, maxMV)
+	perm := g.freeCastOrHandPermissionLocked(player, source, maxMV, filter)
 	g.GrantCastPermissionToCardsForEffect(*perm, []Card{c})
 }
 
@@ -86,7 +99,7 @@ func (g *Game) grantFreeCastOrHandLocked(player, source, cardID uuid.UUID, maxMV
 // cast it opens judge the same faces by the same cap.
 //
 // Caller must hold g.mu.
-func (g *Game) freeCastOrHandPermissionLocked(player, source uuid.UUID, maxMV int) *CastPermission {
+func (g *Game) freeCastOrHandPermissionLocked(player, source uuid.UUID, maxMV int, filter PermissionFilter) *CastPermission {
 	limit := maxMV
 	return &CastPermission{
 		Player:            player,
@@ -96,6 +109,7 @@ func (g *Game) freeCastOrHandPermissionLocked(player, source uuid.UUID, maxMV in
 		Timing:            TimingFlash,
 		CastOnly:          true,
 		MaxSpellManaValue: &limit,
+		Filter:            filter,
 		LapseOnPass:       LapseToHand,
 		Source:            source,
 		Label:             FreeCastOrHandLabel,

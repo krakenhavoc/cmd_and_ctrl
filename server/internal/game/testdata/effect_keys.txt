@@ -217,6 +217,7 @@ body havengul-lich/gains-its-abilities
 body hawkeye/trick-arrows
 body head-of-the-hunt/wolf
 body heroic-sacrifice/its-counters-and-draw
+body hidetsugu-devouring-chaos/damage
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
 body hylda-of-the-icy-crown/modes
@@ -263,6 +264,7 @@ body mana-rider/dispatch-targeted
 body massacre-girl/sweep
 body matt-murdock-justice-seeker/counter
 body meanders-guide/return
+body mechtitan-core/return-exiled
 body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
@@ -279,6 +281,10 @@ body msc-m5/origin-of-thor-counter
 body narset-of-the-ancient-way/damage
 body necropotence/deliver-exiled
 body nemata-primeval-warden/saproling
+body neo-go-shintai/ancient-wars-damage
+body neo-go-shintai/boundless-vigor-counters
+body neo-go-shintai/hidden-cruelty-destroy
+body neo-go-shintai/lost-wisdom-mill
 body new-way-forward/prevented
 body new-way-forward/strike-back
 body nightmares-and-daydreams/target-player-mills
@@ -349,6 +355,7 @@ body reckless-blaze/add-red
 body red-hulk/damage
 body redirection/that-much-to-the-sources-controller
 body rediscover-the-way/double-strike
+body remnant-of-the-rising-star/counters
 body renown/grow
 body repeated-reverberation/copy-twice
 body repository-skaab/return
@@ -367,6 +374,8 @@ body s82-mom-b12/flitting-guerrilla-top
 body s82-neo-b06/biting-palm-ninja-reveal-exile
 body s82-neo-b06/dokuchi-silencer-destroy
 body s82-neo-b06/kappa-tech-wrecker-exile
+body s82-neo-b18/kirin-touched-orochi-counter
+body s82-neo-b18/kirin-touched-orochi-spirit
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -428,6 +437,7 @@ body the-fire-nation-drill/destroy
 body the-last-ronin/attacks-alone
 body the-last-ronin/return
 body the-mindskinner/each-opponent-mills
+body the-restoration-of-eiganjo/return-tapped
 body the-ring/sacrifice-blocker-at-end-of-combat
 body the-thing/double-counters
 body the-wrath-of-khan/gain-control-of-that-creature
@@ -912,6 +922,10 @@ choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/necromantic-selection-pick
+choose choose-cards/neo-discover-the-impossible-exile
+choose choose-cards/neo-distribute-counters-among-players-permanents
+choose choose-cards/neo-invoke-calamity-exile
+choose choose-cards/neo-invoke-calamity-picked
 choose choose-cards/next-of-kin-creature
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
@@ -921,6 +935,7 @@ choose choose-cards/ninjas-blades-loot
 choose choose-cards/north-wind-avatar-take
 choose choose-cards/northampton-farm-return
 choose choose-cards/nothing
+choose choose-cards/o-kagachi-made-manifest-pick
 choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
@@ -1096,10 +1111,12 @@ choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
 choose choose-cards/the-deck-of-many-things-reanimate
+choose choose-cards/the-dragon-kami-reborn-pick
 choose choose-cards/the-gitrog-ravenous-ride-sacrifice
 choose choose-cards/the-grand-evolution-put
 choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
+choose choose-cards/the-restoration-of-eiganjo-return
 choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-ur-sphinx-cast
 choose choose-cards/the-world-spell-take
@@ -1265,6 +1282,7 @@ condition fra-creature-c/lyra-combat-damage-to-a-player
 condition good-king-mog/you-cast-a-noncreature-spell
 condition havengul-lich/you-cast-it
 condition loki-laufeyson/next-cast
+condition ltb/mechtitan-token
 condition ltb/the-listed-object
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
@@ -1709,6 +1727,7 @@ option option-pick/multiform-wonder-keyword
 option option-pick/mutinous-massacre-parity
 option option-pick/narset-of-the-ancient-way-mana
 option option-pick/nazgul-battle-mace-pay-or-take
+option option-pick/neo-invoke-the-ancients-counter
 option option-pick/nesting-grounds-counter-kind
 option option-pick/nick-fury-spymaster-attacks
 option option-pick/noctis-warp-strike-attack
@@ -1744,6 +1763,7 @@ option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bro-b11-argivian-avenger-keyword
+option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/sanctuary-warden-remove-a-counter
@@ -1949,6 +1969,11 @@ payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/mtenda-lion-prevent-combat-damage
 payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
+payunless pay-unless/neo-go-shintai-ancient-wars
+payunless pay-unless/neo-go-shintai-boundless-vigor
+payunless pay-unless/neo-go-shintai-hidden-cruelty
+payunless pay-unless/neo-go-shintai-lost-wisdom
+payunless pay-unless/neo-go-shintai-shared-purpose
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nothing
 payunless pay-unless/oreplate-pangolin-counter
@@ -1961,6 +1986,7 @@ payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
+payunless pay-unless/remnant-of-the-rising-star-x-counters
 payunless pay-unless/replication-specialist-copy
 payunless pay-unless/rhystic-study-may-draw
 payunless pay-unless/riddle-gate-gargoyle-lifelink
@@ -2210,6 +2236,7 @@ run prompt-run/momentum-breaker-discard
 run prompt-run/mukotai-soulripper-grow
 run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
+run prompt-run/neo-invoke-despair-after
 run prompt-run/osseous-sticktwister-discarded
 run prompt-run/osseous-sticktwister-sacrificed
 run prompt-run/phenomenon-investigators-return
@@ -2232,6 +2259,7 @@ run prompt-run/rise-of-the-witch-king-return
 run prompt-run/roiling-regrowth-fetch
 run prompt-run/ruthless-lawbringer-sacrifice
 run prompt-run/ruthless-technomancer-treasures
+run prompt-run/s82-neo-b18-echo-of-deaths-wail
 run prompt-run/s82-neo-sokenzan-smelter-construct
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
@@ -2814,6 +2842,7 @@ tail grave-researcher/become-prepared
 tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
+tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
 tail grime-gorger/counter-per-exiled-card
@@ -2947,6 +2976,7 @@ tail mass/zero-point-ballad-return
 tail mazes-end/win-the-game
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
+tail mechtitan-core/token-created
 tail meek-attack/entered
 tail memory-vessel/ban-hands
 tail mgb/bull-elephant-after-return
@@ -2994,6 +3024,8 @@ tail nashi-moons-legacy/copy-exiled
 tail necromantic-selection/black-zombie-then-exile
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
+tail neo-b15/discover-the-impossible-cast
+tail neo-invoke-the-ancients/counters
 tail nesting-grounds/remove
 tail nezumi-graverobber/after-exile
 tail nick-fury-spymaster/indestructible
@@ -3154,6 +3186,7 @@ tail sacrificed-one/prompt-run/redcap-gutter-dweller-sacrificed
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
+tail sacrificed-one/prompt-run/s82-neo-b18-echo-of-deaths-wail
 tail sacrificed-one/prompt-run/s82-neo-sokenzan-smelter-construct
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
 tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
@@ -3274,6 +3307,9 @@ tail tail/s82-mom-b12-skaab-after-mill
 tail tail/s82-mom-b21-hidetsugu-exiled
 tail tail/s82-mom-b21-rashmi-exiled
 tail tail/s82-mom-b21-zimone-repeat
+tail tail/s82-neo-b18-behold-the-unspeakable-draw-two
+tail tail/s82-neo-b18-kirin-orochi-counter
+tail tail/s82-neo-b18-kirin-orochi-spirit
 tail tail/sensational-spider-man-after-stun
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
@@ -3297,6 +3333,7 @@ tail tetzin-gnome-champion/after-mill
 tail the-binding-of-the-titans/gain-per-creature-exiled
 tail the-day-of-the-doctor/after-mill
 tail the-deck-of-many-things/curse
+tail the-dragon-kami-reborn/after-exile
 tail the-end/after-exile
 tail the-end/draw-for-hand
 tail the-gitrog-ravenous-ride/sacrificed
@@ -3412,6 +3449,7 @@ tail then/harmonized-crescendo-type-chosen
 tail then/haunting-voyage-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
 tail then/heroes-hangout-choose
+tail then/hidetsugu-devouring-chaos-damage
 tail then/high-society-hunter-counter
 tail then/highway-robbery-draw-two
 tail then/hold-for-ransom-draw
@@ -3451,6 +3489,7 @@ tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
 tail then/nahiri-the-unforgiving-copy
+tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
@@ -3521,6 +3560,7 @@ tail then/sylvan-library-next-card
 tail then/sylvia-tilly-joy-of-discovery-when-you-do
 tail then/synth-eradicator-ask
 tail then/tamiyo-collector-named
+tail then/tamiyo-compleated-sage-copy
 tail then/teferi-temporal-pilgrim-shuffle-nonland
 tail then/temporary-lockdown-exiled-one
 tail then/thalia-and-the-gitrog-monster-draw

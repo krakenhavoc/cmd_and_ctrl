@@ -104,6 +104,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Horror":                                              {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Rat":                                                 {Name: "Rat", TypeLine: "Token Creature — Rat", Power: 1, Toughness: 1, Colors: []string{"B"}},
+	"1/1 black Rat Rogue":                                           {Name: "Rat Rogue", TypeLine: "Token Creature — Rat Rogue", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Rat with lifelink":                                   {Name: "Rat", TypeLine: "Token Creature — Rat", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
 	"1/1 black Snail":                                               {Name: "Snail", TypeLine: "Token Creature — Snail", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Slug":                                                {Name: "Slug", TypeLine: "Token Creature — Slug", Power: 1, Toughness: 1, Colors: []string{"B"}},
@@ -493,6 +494,10 @@ var tokenTable = map[string]game.Card{
 	// #5479: Phyrexia: All Will Be One's Beast (Goliath Hatchery, Viral Spawning, Lukka, Bound to Ruin).
 	"3/3 green Phyrexian Beast with toxic 1": {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"toxic 1"}},
 
+	// S82 NEO batch 20: Kura, the Boundless Sky's X/X Spirit (printed */*; a 0/0 placeholder,
+	// set to the number of lands as it is created).
+	"0/0 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Colors: []string{"G"}, PrintedPTKnown: true},
+
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
 	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},
 
@@ -508,4 +513,11 @@ var tokenTable = map[string]game.Card{
 	"2/2 white Knight with protection from red": {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"protection from red"}},
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
 	"3/1 red Construct artifact with haste":     {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+
+	// S82 NEO batch 13: Mechtitan, the Mechtitan Core token.
+	"10/10 white and blue and black and red and green Legendary Construct artifact named Mechtitan with flying, vigilance, trample, lifelink, and haste": {Name: "Mechtitan", TypeLine: "Token Legendary Artifact Creature — Construct", Power: 10, Toughness: 10, Colors: []string{"W", "U", "B", "R", "G"}, Keywords: []string{"flying", "vigilance", "trample", "lifelink", "haste"}},
+	// S82 NEO batch 14: Invoke the Ancients.
+	"4/5 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 5, Colors: []string{"G"}},
+	// #5493: Kamigawa: Neon Dynasty's Shrine (Go-Shintai of Life's Origin).
+	"1/1 colorless Shrine enchantment": {Name: "Shrine", TypeLine: "Token Enchantment Creature — Shrine", Power: 1, Toughness: 1},
 }
