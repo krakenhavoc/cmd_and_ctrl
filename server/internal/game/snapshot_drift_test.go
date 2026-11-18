@@ -1107,6 +1107,8 @@ var delayedTriggerFields = plan(
 	"Until", carried, "",
 	"UntilLeaves", carried, "",
 	"Due", carried, "",
+	"UntilThen", carried, "",
+	"UntilThenLabel", carried, "",
 	"Repeats", carried, "", // #2169, CR 603.7b
 	"OncePerBatch", carried, "", // #3172, CR 603.2c
 	"ThroughCleanup", carried, "", // #4462, Stolen Uniform: kept past the cleanup sweep

@@ -256,6 +256,9 @@ var carriedFixture = map[string]any{
 	// a key it has no body or condition for, so an invented one would
 	// fail the restore rather than test the carry.
 	"DelayedTrigger.Body": carriedTestBodyKey,
+	// #5877: an until return's follow-up names a registered body the
+	// same way.
+	"DelayedTrigger.UntilThen": carriedTestBodyKey,
 	// ADR 0203: restore refuses a venture marker on a dungeon or room
 	// this binary does not register, so the marker names a registered
 	// test dungeon.
