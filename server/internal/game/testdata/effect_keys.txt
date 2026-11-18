@@ -2912,6 +2912,7 @@ tail noctis/entered-unblockable
 tail now-for-wrath/vigilance-and-temptation
 tail nurturing-pixie/counter-if-returned
 tail nyla-shirshu-sleuth/lose-x-make-x-clues
+tail okiba-salvage/counters
 tail oko-shadowmoor-scion/after-mill
 tail oko-shadowmoor-scion/emblem-type
 tail old-hob/token-haste-and-destroy
