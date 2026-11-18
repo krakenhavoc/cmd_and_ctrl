@@ -21,7 +21,7 @@ func init() {
 		Targets:      TargetCreature("target creature"),
 		Purpose:      game.Purpose{Scry: 1, Answers: game.AnswerSurvive},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := snc6ShieldOnFirstTarget(ctx); err != nil {
+			if err := shieldCounterOnFirstTarget(ctx); err != nil {
 				return err
 			}
 			return Scry{N: 1}.Apply(ctx)

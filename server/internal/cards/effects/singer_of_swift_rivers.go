@@ -26,14 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			withTargetsFrom(
 				WhenThisEnters("Singer of Swift Rivers — put a shield counter on another target creature you control",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						id, ok := b16FirstLegalTargetCard(ctx)
-						if !ok {
-							return nil
-						}
-						return AddCounter{Target: id, Kind: game.CounterShield, N: 1}.Apply(ctx)
-					}),
+					shieldCounterOnTarget),
 				AnotherTarget(func(other CardPredicate) *game.TargetSpec {
 					return TargetCreature("another target creature you control", YouControl(), other)
 				})),

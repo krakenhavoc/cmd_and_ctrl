@@ -19,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisDies("Brokers Veteran — put a shield counter on target creature you control",
-				Do(Instruction(snc6ShieldOnFirstTarget))),
+				Do(Instruction(shieldCounterOnFirstTarget))),
 				TargetCreature("target creature you control", YouControl())),
 		},
 	})
