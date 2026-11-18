@@ -2708,6 +2708,7 @@ tail dice/bag-of-devouring-rolled
 tail dice/bag-of-tricks-reveal
 tail dice/berserkers-frenzy-result
 tail dice/chaos-channeler-exile
+tail dice/chaos-dragon-each-player-rolls
 tail dice/clown-car-results
 tail dice/component-pouch-counters
 tail dice/contact-other-plane-table
