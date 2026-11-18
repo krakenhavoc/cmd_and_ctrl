@@ -178,7 +178,6 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 		"855a4837-7fc8-4b97-afbd-daa88e322c89": "Walking Atlas",
 		"872ef617-7cdb-4a7a-85f5-efc9e12bece5": "Elvish Piper",
 		"2e358f7e-c282-4b92-8255-1436c99cda49": "Power Conduit",
-		"18ed0c8a-db8f-4247-87c4-544b833f01bd": "Master of Ceremonies",
 	} {
 		if _, ok := Lookup(oracle); ok {
 			t.Errorf("%s is declared skipped on #391 but is registered — update the issue", name)
