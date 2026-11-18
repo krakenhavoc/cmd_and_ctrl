@@ -123,3 +123,4 @@ Witch-king of Angmar | ring | on a triggered row that is not the card's enters e
 Woe Strider | scry | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
 Zoetic Glyph | discover | on a triggered row that is not the card's enters effect, which nothing prices
 Hylda of the Icy Crown | scry | the scry is a mode of the reflexive trigger raised only after the {1} is paid, built at resolution, where no catalog slot can carry it (the mode itself declares Scry 2)
+You Find the Villains' Lair | learn | "Learn Their Secrets" is a bullet's name, not the learn keyword action: the bullet draws two cards, then discards two
