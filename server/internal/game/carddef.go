@@ -240,6 +240,10 @@ type CardDef struct {
 	// You may cast this card from your graveyard"). Read through
 	// cardOpensZoneLocked, beside CastableZones.
 	CastableZonesIf []ConditionalCastZone
+	// CastsOnlyFromGraveyard is Haakon's "cast this card from your graveyard,
+	// but not from anywhere else" (Spec.CastsOnlyFromGraveyard), read by
+	// aftermathZoneRule.
+	CastsOnlyFromGraveyard bool
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -993,6 +997,12 @@ func init() {
 			return d.CastableZones
 		}
 		return nil
+	}
+	CatalogCastsOnlyFromGraveyard = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.CastsOnlyFromGraveyard
+		}
+		return false
 	}
 	CatalogCastableZonesIf = func(key string) []ConditionalCastZone {
 		if d := catalogDef(key); d != nil {

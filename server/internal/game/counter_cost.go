@@ -83,6 +83,14 @@ type CounterRemovalCost struct {
 	// it is spelled Among with no From (#3987).
 	Counter string
 
+	// Kinds narrows an any-kind cost (empty Counter) to a short list of
+	// kinds: Ion Storm's "Remove a +1/+1 counter or a charge counter from a
+	// permanent you control". The activator still names the kind with the
+	// permanent, but only a listed kind is offered or accepted. Empty means
+	// every kind. Only meaningful with an empty Counter; effects.Register
+	// refuses it beside a printed kind. Additive.
+	Kinds []string
+
 	// N is how many counters are removed — or, when Variable is set,
 	// the FLOOR on how many the activator may announce. Always at
 	// least 1 for a fixed cost; effects.Register panics at boot
@@ -273,6 +281,15 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 			continue
 		}
 		kinds := g.counterKindsPaying(c, rc.Counter, floor)
+		if len(rc.Kinds) > 0 && rc.Counter == "" {
+			kept := kinds[:0:0]
+			for _, k := range kinds {
+				if rc.admitsKind(k.Kind) {
+					kept = append(kept, k)
+				}
+			}
+			kinds = kept
+		}
 		if len(kinds) == 0 {
 			continue
 		}
@@ -280,6 +297,20 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].most() > out[j].most() })
 	return out
+}
+
+// admitsKind reports whether a counter of `kind` may pay rc's any-kind
+// cost: always, unless Kinds narrows it.
+func (rc *CounterRemovalCost) admitsKind(kind string) bool {
+	if rc.Counter != "" || len(rc.Kinds) == 0 {
+		return true
+	}
+	for _, k := range rc.Kinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
 }
 
 // counterCostPayerMayUse reports whether `c` may pay part of `rc` for
@@ -686,6 +717,9 @@ func counterPaymentKinds(rc *CounterRemovalCost, pay CounterCostPayment, n int) 
 			if rc.Counter != "" && k != rc.Counter {
 				return nil, ErrInvalidParam
 			}
+			if !rc.admitsKind(k) {
+				return nil, ErrInvalidParam
+			}
 			if pay.Kind != "" && k != pay.Kind {
 				return nil, ErrInvalidParam
 			}
@@ -695,7 +729,7 @@ func counterPaymentKinds(rc *CounterRemovalCost, pay CounterCostPayment, n int) 
 	}
 	kind := rc.Counter
 	if kind == "" {
-		if pay.Kind == "" {
+		if pay.Kind == "" || !rc.admitsKind(pay.Kind) {
 			return nil, ErrInvalidParam
 		}
 		kind = pay.Kind

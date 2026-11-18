@@ -1850,6 +1850,12 @@ type Event struct {
 	// reads 6 with no new field and no snapshot change.
 	DamageNotLifeLoss int `json:"damage_not_life_loss,omitempty"`
 
+	// ExcessDamage is, on an EventDealDamage to a creature or planeswalker,
+	// how much of Amount was excess damage (CR 120.10, the greatest of the
+	// amounts for a permanent that is both), judged as the damage landed.
+	// 0 for any other event. Additive (#5908): "is dealt excess damage".
+	ExcessDamage int `json:"excess_damage,omitempty"`
+
 	// DamageInstance is the ADR 0108 damage instance an EventDealDamage
 	// was dealt in (2026-10-13 amendment): every damage event one
 	// instruction or one combat damage step opens shares it, which is
