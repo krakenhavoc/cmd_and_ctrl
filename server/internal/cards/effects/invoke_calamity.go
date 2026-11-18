@@ -63,9 +63,7 @@ func invokeCalamityResolve(item *game.StackItem, ctx *Context) error {
 			cands = append(cands, id)
 		}
 	}
-	for _, id := range graveyardCardIDs(ctx, you, perm.OffersASpell) {
-		cands = append(cands, id)
-	}
+	cands = append(cands, graveyardCardIDs(ctx, you, perm.OffersASpell)...)
 	if len(cands) == 0 {
 		if sourceIsNewObject(g, item) {
 			return nil

@@ -196,10 +196,6 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Soldier with lifelink":                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"3/1 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 red Gremlin":                                                  {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 1, Toughness: 1, Colors: []string{"R"}},
-
-	// #5493 S82 NEO batch 14: Invoke the Ancients.
-	"4/5 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 5, Colors: []string{"G"}},
-
 	"1/1 white Spirit":                                                 {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -507,4 +503,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 green Wurm":   {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"2/2 white Knight with protection from red": {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"protection from red"}},
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
+
+	// S82 NEO batch 14: Invoke the Ancients.
+	"4/5 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 5, Colors: []string{"G"}},
 }

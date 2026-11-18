@@ -27,8 +27,10 @@ func init() {
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessPerExiledFromHand("{2}", "This spell costs {2} less to cast for each card exiled this way"),
 		},
-		Targets:   TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
-		Purpose:   ForTargets(DamageXToTarget(0)),
-		OnResolve: damageXToTheTargetAndGainX,
+		Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		Purpose: ForTargets(DamageXToTarget(0)),
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			return damageXToTheTargetAndGainX(item, ctx, ctx.X())
+		},
 	})
 }
