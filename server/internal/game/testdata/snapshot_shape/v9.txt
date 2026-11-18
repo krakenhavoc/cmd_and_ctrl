@@ -264,6 +264,8 @@ battlefield.cards[].meldSplitFrom.epoch	number:int
 battlefield.cards[].meldSplitFrom.id	custom(uuid.UUID)
 battlefield.cards[].meldedFrom	array
 battlefield.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+battlefield.cards[].mergedFrom	array
+battlefield.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 battlefield.cards[].modesChosen	map:string
 battlefield.cards[].modesChosen{}	array
 battlefield.cards[].modesChosen{}[]	number:int
@@ -840,6 +842,8 @@ enteringTokens[].meldSplitFrom.epoch	number:int
 enteringTokens[].meldSplitFrom.id	custom(uuid.UUID)
 enteringTokens[].meldedFrom	array
 enteringTokens[].meldedFrom[]	recursive(game.cardSnapshot)
+enteringTokens[].mergedFrom	array
+enteringTokens[].mergedFrom[]	recursive(game.cardSnapshot)
 enteringTokens[].modesChosen	map:string
 enteringTokens[].modesChosen{}	array
 enteringTokens[].modesChosen{}[]	number:int
@@ -1378,6 +1382,8 @@ exile.cards[].meldSplitFrom.epoch	number:int
 exile.cards[].meldSplitFrom.id	custom(uuid.UUID)
 exile.cards[].meldedFrom	array
 exile.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+exile.cards[].mergedFrom	array
+exile.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 exile.cards[].modesChosen	map:string
 exile.cards[].modesChosen{}	array
 exile.cards[].modesChosen{}[]	number:int
@@ -8984,6 +8990,8 @@ frozenEntries[].event.keywordActionTail.armyToken.meldSplitFrom.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.meldSplitFrom.id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.meldedFrom	array
 frozenEntries[].event.keywordActionTail.armyToken.meldedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.keywordActionTail.armyToken.mergedFrom	array
+frozenEntries[].event.keywordActionTail.armyToken.mergedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.keywordActionTail.armyToken.modesChosen	map:string
 frozenEntries[].event.keywordActionTail.armyToken.modesChosen{}	array
 frozenEntries[].event.keywordActionTail.armyToken.modesChosen{}[]	number:int
@@ -11377,6 +11385,8 @@ frozenEntries[].event.millTail.run.planned[].meldSplitFrom.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].meldSplitFrom.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].meldedFrom	array
 frozenEntries[].event.millTail.run.planned[].meldedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.millTail.run.planned[].mergedFrom	array
+frozenEntries[].event.millTail.run.planned[].mergedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.millTail.run.planned[].modesChosen	map:string
 frozenEntries[].event.millTail.run.planned[].modesChosen{}	array
 frozenEntries[].event.millTail.run.planned[].modesChosen{}[]	number:int
@@ -11803,6 +11813,8 @@ frozenEntries[].event.millTail.run.seen[].meldSplitFrom.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].meldSplitFrom.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].meldedFrom	array
 frozenEntries[].event.millTail.run.seen[].meldedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.millTail.run.seen[].mergedFrom	array
+frozenEntries[].event.millTail.run.seen[].mergedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.millTail.run.seen[].modesChosen	map:string
 frozenEntries[].event.millTail.run.seen[].modesChosen{}	array
 frozenEntries[].event.millTail.run.seen[].modesChosen{}[]	number:int
@@ -13529,6 +13541,7 @@ frozenEntries[].event.stackItem.kind	string
 frozenEntries[].event.stackItem.label	string
 frozenEntries[].event.stackItem.modes	array
 frozenEntries[].event.stackItem.modes[]	number:int
+frozenEntries[].event.stackItem.mutateUnder	bool
 frozenEntries[].event.stackItem.optional	object
 frozenEntries[].event.stackItem.optional.answerCard	string
 frozenEntries[].event.stackItem.optional.answerKey	string
@@ -14093,6 +14106,8 @@ frozenEntries[].event.tokenGroups[].template.meldSplitFrom.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.meldSplitFrom.id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.meldedFrom	array
 frozenEntries[].event.tokenGroups[].template.meldedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.tokenGroups[].template.mergedFrom	array
+frozenEntries[].event.tokenGroups[].template.mergedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.tokenGroups[].template.modesChosen	map:string
 frozenEntries[].event.tokenGroups[].template.modesChosen{}	array
 frozenEntries[].event.tokenGroups[].template.modesChosen{}[]	number:int
@@ -15182,6 +15197,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.meldSplitFrom.epoch	nu
 frozenEntries[].event.tokensAfterMove[].groups[].template.meldSplitFrom.id	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.meldedFrom	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.meldedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.tokensAfterMove[].groups[].template.mergedFrom	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.mergedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.tokensAfterMove[].groups[].template.modesChosen	map:string
 frozenEntries[].event.tokensAfterMove[].groups[].template.modesChosen{}	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.modesChosen{}[]	number:int
@@ -15621,6 +15638,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].meldSplitFrom.epoch	num
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].meldSplitFrom.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].meldedFrom	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].meldedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].mergedFrom	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].mergedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].modesChosen	map:string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].modesChosen{}	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].modesChosen{}[]	number:int
@@ -16047,6 +16066,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].meldSplitFrom.epoch	number
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].meldSplitFrom.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].meldedFrom	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].meldedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].mergedFrom	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].mergedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].modesChosen	map:string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].modesChosen{}	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].modesChosen{}[]	number:int
@@ -19823,6 +19844,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].meldSplitFrom.epoch	number:in
 frozenEntries[].event.zoneRoute.simultaneousExit[].meldSplitFrom.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].meldedFrom	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].meldedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.zoneRoute.simultaneousExit[].mergedFrom	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].mergedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.zoneRoute.simultaneousExit[].modesChosen	map:string
 frozenEntries[].event.zoneRoute.simultaneousExit[].modesChosen{}	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].modesChosen{}[]	number:int
@@ -20907,6 +20930,8 @@ lastKnownStack[].card.meldSplitFrom.epoch	number:int
 lastKnownStack[].card.meldSplitFrom.id	custom(uuid.UUID)
 lastKnownStack[].card.meldedFrom	array
 lastKnownStack[].card.meldedFrom[]	recursive(game.cardSnapshot)
+lastKnownStack[].card.mergedFrom	array
+lastKnownStack[].card.mergedFrom[]	recursive(game.cardSnapshot)
 lastKnownStack[].card.modesChosen	map:string
 lastKnownStack[].card.modesChosen{}	array
 lastKnownStack[].card.modesChosen{}[]	number:int
@@ -21146,6 +21171,7 @@ lastKnownStack[].item.kind	string
 lastKnownStack[].item.label	string
 lastKnownStack[].item.modes	array
 lastKnownStack[].item.modes[]	number:int
+lastKnownStack[].item.mutateUnder	bool
 lastKnownStack[].item.optional	object
 lastKnownStack[].item.optional.answerCard	string
 lastKnownStack[].item.optional.answerKey	string
@@ -21815,6 +21841,8 @@ match.decks[].fixed[].meldSplitFrom.epoch	number:int
 match.decks[].fixed[].meldSplitFrom.id	custom(uuid.UUID)
 match.decks[].fixed[].meldedFrom	array
 match.decks[].fixed[].meldedFrom[]	recursive(game.cardSnapshot)
+match.decks[].fixed[].mergedFrom	array
+match.decks[].fixed[].mergedFrom[]	recursive(game.cardSnapshot)
 match.decks[].fixed[].modesChosen	map:string
 match.decks[].fixed[].modesChosen{}	array
 match.decks[].fixed[].modesChosen{}[]	number:int
@@ -22239,6 +22267,8 @@ match.decks[].main[].meldSplitFrom.epoch	number:int
 match.decks[].main[].meldSplitFrom.id	custom(uuid.UUID)
 match.decks[].main[].meldedFrom	array
 match.decks[].main[].meldedFrom[]	recursive(game.cardSnapshot)
+match.decks[].main[].mergedFrom	array
+match.decks[].main[].mergedFrom[]	recursive(game.cardSnapshot)
 match.decks[].main[].modesChosen	map:string
 match.decks[].main[].modesChosen{}	array
 match.decks[].main[].modesChosen{}[]	number:int
@@ -22666,6 +22696,8 @@ match.decks[].side[].meldSplitFrom.epoch	number:int
 match.decks[].side[].meldSplitFrom.id	custom(uuid.UUID)
 match.decks[].side[].meldedFrom	array
 match.decks[].side[].meldedFrom[]	recursive(game.cardSnapshot)
+match.decks[].side[].mergedFrom	array
+match.decks[].side[].mergedFrom[]	recursive(game.cardSnapshot)
 match.decks[].side[].modesChosen	map:string
 match.decks[].side[].modesChosen{}	array
 match.decks[].side[].modesChosen{}[]	number:int
@@ -29381,6 +29413,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.meldSplitFrom.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.meldSplitFrom.id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.meldedFrom	array
 movesAwaitingTokens[].keywordActionTail.armyToken.meldedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].keywordActionTail.armyToken.mergedFrom	array
+movesAwaitingTokens[].keywordActionTail.armyToken.mergedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].keywordActionTail.armyToken.modesChosen	map:string
 movesAwaitingTokens[].keywordActionTail.armyToken.modesChosen{}	array
 movesAwaitingTokens[].keywordActionTail.armyToken.modesChosen{}[]	number:int
@@ -31774,6 +31808,8 @@ movesAwaitingTokens[].millTail.run.planned[].meldSplitFrom.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].meldSplitFrom.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].meldedFrom	array
 movesAwaitingTokens[].millTail.run.planned[].meldedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].millTail.run.planned[].mergedFrom	array
+movesAwaitingTokens[].millTail.run.planned[].mergedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].millTail.run.planned[].modesChosen	map:string
 movesAwaitingTokens[].millTail.run.planned[].modesChosen{}	array
 movesAwaitingTokens[].millTail.run.planned[].modesChosen{}[]	number:int
@@ -32200,6 +32236,8 @@ movesAwaitingTokens[].millTail.run.seen[].meldSplitFrom.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].meldSplitFrom.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].meldedFrom	array
 movesAwaitingTokens[].millTail.run.seen[].meldedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].millTail.run.seen[].mergedFrom	array
+movesAwaitingTokens[].millTail.run.seen[].mergedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].millTail.run.seen[].modesChosen	map:string
 movesAwaitingTokens[].millTail.run.seen[].modesChosen{}	array
 movesAwaitingTokens[].millTail.run.seen[].modesChosen{}[]	number:int
@@ -33926,6 +33964,7 @@ movesAwaitingTokens[].stackItem.kind	string
 movesAwaitingTokens[].stackItem.label	string
 movesAwaitingTokens[].stackItem.modes	array
 movesAwaitingTokens[].stackItem.modes[]	number:int
+movesAwaitingTokens[].stackItem.mutateUnder	bool
 movesAwaitingTokens[].stackItem.optional	object
 movesAwaitingTokens[].stackItem.optional.answerCard	string
 movesAwaitingTokens[].stackItem.optional.answerKey	string
@@ -34490,6 +34529,8 @@ movesAwaitingTokens[].tokenGroups[].template.meldSplitFrom.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.meldSplitFrom.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.meldedFrom	array
 movesAwaitingTokens[].tokenGroups[].template.meldedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].tokenGroups[].template.mergedFrom	array
+movesAwaitingTokens[].tokenGroups[].template.mergedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].tokenGroups[].template.modesChosen	map:string
 movesAwaitingTokens[].tokenGroups[].template.modesChosen{}	array
 movesAwaitingTokens[].tokenGroups[].template.modesChosen{}[]	number:int
@@ -35579,6 +35620,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.meldSplitFrom.epoch	nu
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.meldSplitFrom.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.meldedFrom	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.meldedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.mergedFrom	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.mergedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.modesChosen	map:string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.modesChosen{}	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.modesChosen{}[]	number:int
@@ -36018,6 +36061,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].meldSplitFrom.epoch	num
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].meldSplitFrom.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].meldedFrom	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].meldedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].mergedFrom	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].mergedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].modesChosen	map:string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].modesChosen{}	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].modesChosen{}[]	number:int
@@ -36444,6 +36489,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].meldSplitFrom.epoch	number
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].meldSplitFrom.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].meldedFrom	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].meldedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].mergedFrom	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].mergedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].modesChosen	map:string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].modesChosen{}	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].modesChosen{}[]	number:int
@@ -40220,6 +40267,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].meldSplitFrom.epoch	number:in
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].meldSplitFrom.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].meldedFrom	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].meldedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].mergedFrom	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].mergedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].modesChosen	map:string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].modesChosen{}	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].modesChosen{}[]	number:int
@@ -40506,6 +40555,7 @@ pausedModeWalk.item.kind	string
 pausedModeWalk.item.label	string
 pausedModeWalk.item.modes	array
 pausedModeWalk.item.modes[]	number:int
+pausedModeWalk.item.mutateUnder	bool
 pausedModeWalk.item.optional	object
 pausedModeWalk.item.optional.answerCard	string
 pausedModeWalk.item.optional.answerKey	string
@@ -40865,6 +40915,7 @@ pausedResolutionTail.item.kind	string
 pausedResolutionTail.item.label	string
 pausedResolutionTail.item.modes	array
 pausedResolutionTail.item.modes[]	number:int
+pausedResolutionTail.item.mutateUnder	bool
 pausedResolutionTail.item.optional	object
 pausedResolutionTail.item.optional.answerCard	string
 pausedResolutionTail.item.optional.answerKey	string
@@ -41218,6 +41269,7 @@ pausedStepWalk.item.kind	string
 pausedStepWalk.item.label	string
 pausedStepWalk.item.modes	array
 pausedStepWalk.item.modes[]	number:int
+pausedStepWalk.item.mutateUnder	bool
 pausedStepWalk.item.optional	object
 pausedStepWalk.item.optional.answerCard	string
 pausedStepWalk.item.optional.answerKey	string
@@ -42151,6 +42203,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.meldSplitFrom.epoch	numbe
 pendingChoices[].attackSplit.settled.chosen[].template.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.meldedFrom	array
 pendingChoices[].attackSplit.settled.chosen[].template.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].attackSplit.settled.chosen[].template.mergedFrom	array
+pendingChoices[].attackSplit.settled.chosen[].template.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].attackSplit.settled.chosen[].template.modesChosen	map:string
 pendingChoices[].attackSplit.settled.chosen[].template.modesChosen{}	array
 pendingChoices[].attackSplit.settled.chosen[].template.modesChosen{}[]	number:int
@@ -42597,6 +42651,8 @@ pendingChoices[].attackSplit.settled.groups[].template.meldSplitFrom.epoch	numbe
 pendingChoices[].attackSplit.settled.groups[].template.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.meldedFrom	array
 pendingChoices[].attackSplit.settled.groups[].template.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].attackSplit.settled.groups[].template.mergedFrom	array
+pendingChoices[].attackSplit.settled.groups[].template.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].attackSplit.settled.groups[].template.modesChosen	map:string
 pendingChoices[].attackSplit.settled.groups[].template.modesChosen{}	array
 pendingChoices[].attackSplit.settled.groups[].template.modesChosen{}[]	number:int
@@ -43666,6 +43722,8 @@ pendingChoices[].attackSplit.template.meldSplitFrom.epoch	number:int
 pendingChoices[].attackSplit.template.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.meldedFrom	array
 pendingChoices[].attackSplit.template.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].attackSplit.template.mergedFrom	array
+pendingChoices[].attackSplit.template.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].attackSplit.template.modesChosen	map:string
 pendingChoices[].attackSplit.template.modesChosen{}	array
 pendingChoices[].attackSplit.template.modesChosen{}[]	number:int
@@ -43941,6 +43999,7 @@ pendingChoices[].copyWalk.item.kind	string
 pendingChoices[].copyWalk.item.label	string
 pendingChoices[].copyWalk.item.modes	array
 pendingChoices[].copyWalk.item.modes[]	number:int
+pendingChoices[].copyWalk.item.mutateUnder	bool
 pendingChoices[].copyWalk.item.optional	object
 pendingChoices[].copyWalk.item.optional.answerCard	string
 pendingChoices[].copyWalk.item.optional.answerKey	string
@@ -44493,6 +44552,8 @@ pendingChoices[].copyWalk.src.meldSplitFrom.epoch	number:int
 pendingChoices[].copyWalk.src.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.meldedFrom	array
 pendingChoices[].copyWalk.src.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].copyWalk.src.mergedFrom	array
+pendingChoices[].copyWalk.src.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].copyWalk.src.modesChosen	map:string
 pendingChoices[].copyWalk.src.modesChosen{}	array
 pendingChoices[].copyWalk.src.modesChosen{}[]	number:int
@@ -56288,6 +56349,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.meldSplitFr
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.meldedFrom	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.mergedFrom	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.modesChosen	map:string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.modesChosen{}	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.modesChosen{}[]	number:int
@@ -58681,6 +58744,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].meldSplitFrom.ep
 pendingChoices[].replacementResume.event.millTail.run.planned[].meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].meldedFrom	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.millTail.run.planned[].mergedFrom	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.millTail.run.planned[].modesChosen	map:string
 pendingChoices[].replacementResume.event.millTail.run.planned[].modesChosen{}	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].modesChosen{}[]	number:int
@@ -59107,6 +59172,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].meldSplitFrom.epoch
 pendingChoices[].replacementResume.event.millTail.run.seen[].meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].meldedFrom	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.millTail.run.seen[].mergedFrom	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.millTail.run.seen[].modesChosen	map:string
 pendingChoices[].replacementResume.event.millTail.run.seen[].modesChosen{}	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].modesChosen{}[]	number:int
@@ -60833,6 +60900,7 @@ pendingChoices[].replacementResume.event.stackItem.kind	string
 pendingChoices[].replacementResume.event.stackItem.label	string
 pendingChoices[].replacementResume.event.stackItem.modes	array
 pendingChoices[].replacementResume.event.stackItem.modes[]	number:int
+pendingChoices[].replacementResume.event.stackItem.mutateUnder	bool
 pendingChoices[].replacementResume.event.stackItem.optional	object
 pendingChoices[].replacementResume.event.stackItem.optional.answerCard	string
 pendingChoices[].replacementResume.event.stackItem.optional.answerKey	string
@@ -61397,6 +61465,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.meldSplitFrom.ep
 pendingChoices[].replacementResume.event.tokenGroups[].template.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.meldedFrom	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.tokenGroups[].template.mergedFrom	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.tokenGroups[].template.modesChosen	map:string
 pendingChoices[].replacementResume.event.tokenGroups[].template.modesChosen{}	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.modesChosen{}[]	number:int
@@ -62486,6 +62556,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.mel
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.meldedFrom	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.mergedFrom	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.modesChosen	map:string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.modesChosen{}	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.modesChosen{}[]	number:int
@@ -62925,6 +62997,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].meld
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].meldedFrom	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].mergedFrom	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].modesChosen	map:string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].modesChosen{}	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].modesChosen{}[]	number:int
@@ -63351,6 +63425,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].meldSpl
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].meldedFrom	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].mergedFrom	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].modesChosen	map:string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].modesChosen{}	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].modesChosen{}[]	number:int
@@ -67127,6 +67203,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].meldSplitF
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].meldedFrom	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].mergedFrom	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].modesChosen	map:string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].modesChosen{}	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].modesChosen{}[]	number:int
@@ -69392,6 +69470,8 @@ pendingChoices[].targetWalk.frame.source.meldSplitFrom.epoch	number:int
 pendingChoices[].targetWalk.frame.source.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.meldedFrom	array
 pendingChoices[].targetWalk.frame.source.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].targetWalk.frame.source.mergedFrom	array
+pendingChoices[].targetWalk.frame.source.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].targetWalk.frame.source.modesChosen	map:string
 pendingChoices[].targetWalk.frame.source.modesChosen{}	array
 pendingChoices[].targetWalk.frame.source.modesChosen{}[]	number:int
@@ -70185,6 +70265,8 @@ pendingChoices[].triggerFrame.source.meldSplitFrom.epoch	number:int
 pendingChoices[].triggerFrame.source.meldSplitFrom.id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.meldedFrom	array
 pendingChoices[].triggerFrame.source.meldedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].triggerFrame.source.mergedFrom	array
+pendingChoices[].triggerFrame.source.mergedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].triggerFrame.source.modesChosen	map:string
 pendingChoices[].triggerFrame.source.modesChosen{}	array
 pendingChoices[].triggerFrame.source.modesChosen{}[]	number:int
@@ -70575,6 +70657,7 @@ pendingTriggers[].kind	string
 pendingTriggers[].label	string
 pendingTriggers[].modes	array
 pendingTriggers[].modes[]	number:int
+pendingTriggers[].mutateUnder	bool
 pendingTriggers[].optional	object
 pendingTriggers[].optional.answerCard	string
 pendingTriggers[].optional.answerKey	string
@@ -71357,6 +71440,8 @@ phasedOut.cards[].meldSplitFrom.epoch	number:int
 phasedOut.cards[].meldSplitFrom.id	custom(uuid.UUID)
 phasedOut.cards[].meldedFrom	array
 phasedOut.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+phasedOut.cards[].mergedFrom	array
+phasedOut.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 phasedOut.cards[].modesChosen	map:string
 phasedOut.cards[].modesChosen{}	array
 phasedOut.cards[].modesChosen{}[]	number:int
@@ -71786,6 +71871,8 @@ planechase.deck.cards[].meldSplitFrom.epoch	number:int
 planechase.deck.cards[].meldSplitFrom.id	custom(uuid.UUID)
 planechase.deck.cards[].meldedFrom	array
 planechase.deck.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+planechase.deck.cards[].mergedFrom	array
+planechase.deck.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 planechase.deck.cards[].modesChosen	map:string
 planechase.deck.cards[].modesChosen{}	array
 planechase.deck.cards[].modesChosen{}[]	number:int
@@ -72215,6 +72302,8 @@ planechase.faceUp.cards[].meldSplitFrom.epoch	number:int
 planechase.faceUp.cards[].meldSplitFrom.id	custom(uuid.UUID)
 planechase.faceUp.cards[].meldedFrom	array
 planechase.faceUp.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+planechase.faceUp.cards[].mergedFrom	array
+planechase.faceUp.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 planechase.faceUp.cards[].modesChosen	map:string
 planechase.faceUp.cards[].modesChosen{}	array
 planechase.faceUp.cards[].modesChosen{}[]	number:int
@@ -72888,6 +72977,8 @@ resolving.card.meldSplitFrom.epoch	number:int
 resolving.card.meldSplitFrom.id	custom(uuid.UUID)
 resolving.card.meldedFrom	array
 resolving.card.meldedFrom[]	recursive(game.cardSnapshot)
+resolving.card.mergedFrom	array
+resolving.card.mergedFrom[]	recursive(game.cardSnapshot)
 resolving.card.modesChosen	map:string
 resolving.card.modesChosen{}	array
 resolving.card.modesChosen{}[]	number:int
@@ -73127,6 +73218,7 @@ resolving.item.kind	string
 resolving.item.label	string
 resolving.item.modes	array
 resolving.item.modes[]	number:int
+resolving.item.mutateUnder	bool
 resolving.item.optional	object
 resolving.item.optional.answerCard	string
 resolving.item.optional.answerKey	string
@@ -73930,6 +74022,8 @@ seats[].attractionDeck.cards[].meldSplitFrom.epoch	number:int
 seats[].attractionDeck.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].meldedFrom	array
 seats[].attractionDeck.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].attractionDeck.cards[].mergedFrom	array
+seats[].attractionDeck.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].attractionDeck.cards[].modesChosen	map:string
 seats[].attractionDeck.cards[].modesChosen{}	array
 seats[].attractionDeck.cards[].modesChosen{}[]	number:int
@@ -74533,6 +74627,8 @@ seats[].command.cards[].meldSplitFrom.epoch	number:int
 seats[].command.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].command.cards[].meldedFrom	array
 seats[].command.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].command.cards[].mergedFrom	array
+seats[].command.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].command.cards[].modesChosen	map:string
 seats[].command.cards[].modesChosen{}	array
 seats[].command.cards[].modesChosen{}[]	number:int
@@ -74964,6 +75060,8 @@ seats[].companion.cards[].meldSplitFrom.epoch	number:int
 seats[].companion.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].companion.cards[].meldedFrom	array
 seats[].companion.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].companion.cards[].mergedFrom	array
+seats[].companion.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].companion.cards[].modesChosen	map:string
 seats[].companion.cards[].modesChosen{}	array
 seats[].companion.cards[].modesChosen{}[]	number:int
@@ -75404,6 +75502,8 @@ seats[].emblems.cards[].meldSplitFrom.epoch	number:int
 seats[].emblems.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].emblems.cards[].meldedFrom	array
 seats[].emblems.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].emblems.cards[].mergedFrom	array
+seats[].emblems.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].emblems.cards[].modesChosen	map:string
 seats[].emblems.cards[].modesChosen{}	array
 seats[].emblems.cards[].modesChosen{}[]	number:int
@@ -75931,6 +76031,8 @@ seats[].graveyard.cards[].meldSplitFrom.epoch	number:int
 seats[].graveyard.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].graveyard.cards[].meldedFrom	array
 seats[].graveyard.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].graveyard.cards[].mergedFrom	array
+seats[].graveyard.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].graveyard.cards[].modesChosen	map:string
 seats[].graveyard.cards[].modesChosen{}	array
 seats[].graveyard.cards[].modesChosen{}[]	number:int
@@ -76358,6 +76460,8 @@ seats[].hand.cards[].meldSplitFrom.epoch	number:int
 seats[].hand.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].hand.cards[].meldedFrom	array
 seats[].hand.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].hand.cards[].mergedFrom	array
+seats[].hand.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].hand.cards[].modesChosen	map:string
 seats[].hand.cards[].modesChosen{}	array
 seats[].hand.cards[].modesChosen{}[]	number:int
@@ -76790,6 +76894,8 @@ seats[].junkyard.cards[].meldSplitFrom.epoch	number:int
 seats[].junkyard.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].junkyard.cards[].meldedFrom	array
 seats[].junkyard.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].junkyard.cards[].mergedFrom	array
+seats[].junkyard.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].junkyard.cards[].modesChosen	map:string
 seats[].junkyard.cards[].modesChosen{}	array
 seats[].junkyard.cards[].modesChosen{}[]	number:int
@@ -77243,6 +77349,8 @@ seats[].library.cards[].meldSplitFrom.epoch	number:int
 seats[].library.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].library.cards[].meldedFrom	array
 seats[].library.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].library.cards[].mergedFrom	array
+seats[].library.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].library.cards[].modesChosen	map:string
 seats[].library.cards[].modesChosen{}	array
 seats[].library.cards[].modesChosen{}[]	number:int
@@ -77711,6 +77819,8 @@ seats[].sideboard.cards[].meldSplitFrom.epoch	number:int
 seats[].sideboard.cards[].meldSplitFrom.id	custom(uuid.UUID)
 seats[].sideboard.cards[].meldedFrom	array
 seats[].sideboard.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+seats[].sideboard.cards[].mergedFrom	array
+seats[].sideboard.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 seats[].sideboard.cards[].modesChosen	map:string
 seats[].sideboard.cards[].modesChosen{}	array
 seats[].sideboard.cards[].modesChosen{}[]	number:int
@@ -78516,6 +78626,8 @@ stack.cards[].meldSplitFrom.epoch	number:int
 stack.cards[].meldSplitFrom.id	custom(uuid.UUID)
 stack.cards[].meldedFrom	array
 stack.cards[].meldedFrom[]	recursive(game.cardSnapshot)
+stack.cards[].mergedFrom	array
+stack.cards[].mergedFrom[]	recursive(game.cardSnapshot)
 stack.cards[].modesChosen	map:string
 stack.cards[].modesChosen{}	array
 stack.cards[].modesChosen{}[]	number:int
@@ -78758,6 +78870,7 @@ stackMeta[].kind	string
 stackMeta[].label	string
 stackMeta[].modes	array
 stackMeta[].modes[]	number:int
+stackMeta[].mutateUnder	bool
 stackMeta[].optional	object
 stackMeta[].optional.answerCard	string
 stackMeta[].optional.answerKey	string

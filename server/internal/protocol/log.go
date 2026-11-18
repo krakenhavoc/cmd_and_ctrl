@@ -512,6 +512,11 @@ const (
 	// entry each name one object. Narrated for LogTransform's reason.
 	// ADR 0145.
 	LogMeld LogKind = "meld"
+	// LogMutate — a mutating creature spell merged with a creature (CR
+	// 702.140c). `CardID` is the mutated permanent (named as it is now),
+	// `Label` the card that merged into it, and `Amount` 1 when it went
+	// under (0 on top). No zone move or entry says it. ADR 0223.
+	LogMutate LogKind = "mutate"
 	// LogDayNight — the game became day or night (CR 731.1). `Label` is
 	// the new designation ("day" or "night"). Narrated because the
 	// untap-step check (CR 502.2) changes it with no spell or ability
@@ -2504,6 +2509,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventMutate:
+		// CR 702.140c. Not a zone move and not an entry (CR 730.2b), so
+		// this is the only line that says the creature mutated.
+		base.Kind = LogMutate
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventMeld:
 		// CR 701.42a. The entry already logged the permanent arriving;
 		// this is the line that says it is two cards.
@@ -3663,6 +3677,12 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s has max speed", actor)
 		}
 		return fmt.Sprintf("%s's speed is now %d", actor, e.Amount)
+	case LogMutate:
+		merged := nameOr(e.Label, "a card")
+		if e.Amount == 1 {
+			return fmt.Sprintf("%s mutated: %s went under it", card, merged)
+		}
+		return fmt.Sprintf("%s mutated: %s went on top", card, merged)
 	case LogMeld:
 		if e.Label == "" {
 			return fmt.Sprintf("%s was melded", card)

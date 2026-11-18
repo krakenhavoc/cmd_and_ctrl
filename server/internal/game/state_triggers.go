@@ -243,6 +243,11 @@ func mayHaveStateTrigger(c *Card, keys map[string]struct{}) bool {
 		if lender, ok := TriggersOfKeyLender(k); ok {
 			k = lender
 		}
+		// ADR 0223: so does a "merged" part (a mutated permanent's
+		// component).
+		if lender, ok := MergedPartLender(k); ok {
+			k = lender
+		}
 		_, ok := keys[k]
 		return ok && k != ""
 	}

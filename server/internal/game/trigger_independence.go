@@ -1795,7 +1795,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// what it finds while its permanent is there.
 	"ControlsOpponentsSearches": defFieldOwnRules,
 	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
-	"GrantText": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
+	"GrantText": defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,

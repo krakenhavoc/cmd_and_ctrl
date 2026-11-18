@@ -477,6 +477,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedNeoB20KeimiToken,
 	printedNeoB20NotebookToken,
 	printedNeoB20NinjaToken,
+	// ADR 0223 (#5910): Everquill Phoenix's Feather.
+	printedFeatherToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

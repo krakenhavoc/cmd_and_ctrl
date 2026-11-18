@@ -58,6 +58,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"Emblem":                     "an emblem's presentation",
 	"TokenText":                  "a token's printed text, already token_text",
 	"GrantText":                  "a grant bundle's printed text, already granted_abilities",
+	"MergedComponent":            "a flag on a mutated permanent's component part (ADR 0223); its rows are the slots it merges",
 	"XMatters":                   "an enumerator hint",
 	"MadnessLife":                "the life a madness cost charges, read when pricing the cast",
 	"XCeiling":                   "a bound on a spell's announced X, read at cast",

@@ -228,6 +228,9 @@ func splitMeldedForMove(m Card, dst ZoneKind) []Card {
 // carrier, as MoveCard pushed them: the IDs a caller of MoveCard owes
 // a landing (landMeldPassengersLocked). Empty for every other card.
 func meldPassengers(moved Card) []uuid.UUID {
+	if IsMergedPtr(&moved) {
+		return mergedPassengers(moved)
+	}
 	if len(moved.MeldedFrom) < 2 {
 		return nil
 	}
@@ -311,7 +314,14 @@ func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKin
 	if command == nil || command.Kind != ZoneCommand {
 		return
 	}
-	for _, id := range meldPassengers(moved) {
+	// ADR 0223: a merged permanent's carrier is its own card, which may
+	// not be the commander (a commander that mutated onto it, CR 903.3c),
+	// so it is sent on too when it is not one.
+	ids := meldPassengers(moved)
+	if IsMergedPtr(&moved) {
+		ids = append(ids, moved.InstanceID)
+	}
+	for _, id := range ids {
 		card, ok := g.cardInZoneLocked(command, id)
 		if !ok || card.IsCommander {
 			continue
@@ -557,7 +567,7 @@ func meldOrderChosen(g *Game, r OptionPicked) error {
 //
 // Caller must hold g.mu.
 func (g *Game) queueMeldOrderLocked(moved Card, dst *Zone) {
-	if dst == nil || (dst.Kind != ZoneGraveyard && dst.Kind != ZoneLibrary) || len(moved.MeldedFrom) != 2 {
+	if dst == nil || (dst.Kind != ZoneGraveyard && dst.Kind != ZoneLibrary) || componentCount(moved) != 2 {
 		return
 	}
 	carrier, passengers := moved.InstanceID, meldPassengers(moved)

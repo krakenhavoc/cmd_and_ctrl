@@ -4296,6 +4296,14 @@ type CardView struct {
 	// other card.
 	MeldedFrom []CardFaceView `json:"melded_from,omitempty"`
 
+	// MergedFrom is a MUTATED permanent's components (CR 702.140c, 730.2;
+	// ADR 0223), topmost first: their names, costs, type lines, P/T and
+	// art. The fields above already describe the permanent (the topmost
+	// component's characteristics plus every component's abilities);
+	// this is what the hover panel lists, and what the cards will be
+	// when it leaves. Absent on every other card.
+	MergedFrom []CardFaceView `json:"merged_from,omitempty"`
+
 	// MeldsInto is a meld card's combined back face (CR 712.4): the
 	// permanent this card and its partner become when they meld, for
 	// the hover panel's preview. Absent on every other card and on a
@@ -12862,6 +12870,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// name the card as loudly as its faces do.
 	out.MeldedFrom = nil
 	out.MeldsInto = nil
+	out.MergedFrom = nil
 	// #95: everything below is read off the card's own text or type
 	// line — the catalog entry, its abilities, its target prompt — and
 	// so names it as surely as the fields above. A face-down Forest
@@ -13306,6 +13315,7 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		Layout:       c.Layout,
 		Faces:        viewOfFaces(c),
 		MeldedFrom:   viewOfMeldedFrom(c),
+		MergedFrom:   viewOfMergedFrom(c),
 		MeldsInto:    viewOfMeldsInto(c),
 		ActiveFace:   c.ActiveFace,
 		// ADR 0083. A token has no printing behind it, so there is no
@@ -14749,6 +14759,29 @@ func viewOfMeldedFrom(c *game.Card) []CardFaceView {
 	}
 	out := make([]CardFaceView, 0, len(c.MeldedFrom))
 	for _, part := range c.MeldedFrom {
+		v := CardFaceView{
+			Name:      part.Name,
+			TypeLine:  part.TypeLine,
+			ManaCost:  part.ManaCost,
+			Power:     part.Power,
+			Toughness: part.Toughness,
+		}
+		if part.ScryfallID != "" {
+			v.Image = fmt.Sprintf("/cards/%s/image", part.ScryfallID)
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// viewOfMergedFrom projects a mutated permanent's components, topmost
+// first (ADR 0223). nil for every other card.
+func viewOfMergedFrom(c *game.Card) []CardFaceView {
+	if !game.IsMergedPtr(c) {
+		return nil
+	}
+	out := make([]CardFaceView, 0, len(c.MergedFrom))
+	for _, part := range c.MergedFrom {
 		v := CardFaceView{
 			Name:      part.Name,
 			TypeLine:  part.TypeLine,

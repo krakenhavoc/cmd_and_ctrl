@@ -4561,6 +4561,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 	if g.bestowTargetIllegalLocked(&top, item) {
 		g.endBestowOnStackLocked(&top, item)
 	}
+	// ADR 0223, CR 702.140b: and a mutating creature spell, which
+	// resolves on as a creature spell.
+	if g.mutateTargetIllegalLocked(item) {
+		g.endMutateOnStackLocked(item)
+	}
 	if spellWithSplicedTextAllTargetsIllegalLocked(g, item) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
@@ -4626,6 +4631,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// entry begins, so a replacement of the roll that asks which roll to
 	// ignore is one more prompt the tail below waits for (dice_cost.go).
 	g.rollEntryDiceLocked(top, item)
+	// ADR 0223, CR 702.140c: a mutating creature spell's controller
+	// chooses over or under as it resolves; the merge below waits for
+	// the answer like any other question the resolution asks.
+	g.askMutateOverUnderLocked(top, item)
 	// #3613, CR 608.2c / 608.2n: an effect that asked something is not
 	// finished until the answer is in, so neither is the spell. The
 	// rest of this resolution — the exit below and the log's
@@ -4681,6 +4690,12 @@ func (g *Game) finishSpellResolutionStageLocked(top Card, item *StackItem, ciphe
 	// says a copy in any zone other than the stack has already ceased
 	// to exist, so a copy that moved ITSELF never resolves and never
 	// becomes a token.
+	// ADR 0223, CR 702.140c and 608.3d: a mutating creature spell
+	// whose target is legal does not enter the battlefield; it merges
+	// with that creature.
+	if merged := g.mergeMutatingSpellLocked(top, item); merged {
+		return nil
+	}
 	if item.IsCopy && top.IsPermanent() {
 		return g.resolvePermanentSpellCopyLocked(top, item)
 	}
@@ -7033,7 +7048,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// destruction or sacrifice is bound for a graveyard, which is where
 	// a CR 903.9c command-zone redirect sends the card that is not the
 	// commander.
-	if moved.IsMelded() {
+	if isMultiCardPtr(&moved) {
 		if dest == ZoneCommand {
 			g.sendMeldPassengersOnLocked(moved, destZone, ZoneGraveyard, actor, mark)
 		} else {

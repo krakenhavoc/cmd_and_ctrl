@@ -393,6 +393,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// combined back face both name the card.
 		MeldedFrom: []CardFaceView{{Name: "Hidden Half", Image: "/cards/half/image"}},
 		MeldsInto:  &CardFaceView{Name: "Hidden Whole", Image: "/cards/whole/image"},
+		// ADR 0223: a mutated permanent's components name the card too.
+		MergedFrom: []CardFaceView{{Name: "Hidden Component", Image: "/cards/component/image"}},
 	}
 }
 

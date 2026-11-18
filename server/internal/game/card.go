@@ -625,6 +625,17 @@ type Card struct {
 	// it leaves the battlefield (CR 712.21). See meld.go.
 	MeldedFrom []Card
 
+	// MergedFrom is every component of a MERGED (mutated) permanent,
+	// topmost first (CR 730.2, 702.140c; ADR 0223). The entry whose
+	// InstanceID is this permanent's own stands for the card the
+	// permanent was before it first merged; every other entry is a card
+	// or token that merged into it, as it sat on the stack. Empty on
+	// every other object. The flat printed fields are the topmost
+	// component's plus every other component's abilities (mutate.go),
+	// and MoveCard splits the permanent back into these components when
+	// it leaves the battlefield (CR 730.3).
+	MergedFrom []Card
+
 	// MeldSplitFrom is, on the card that carried a melded permanent's
 	// identity as it left the battlefield, the OTHER card that permanent
 	// became (CR 712.21c): "if an effect can find the new object that a
