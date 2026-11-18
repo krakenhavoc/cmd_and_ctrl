@@ -58,7 +58,7 @@ func s82AfrB07SkeletonPump() game.StaticAbility {
 }
 
 // CondAnyCreatureDied is "if a creature died this turn": any creature, any
-// controller, tokens included (Bulette). Unlike CondCreatureDied it is not
+// controller, tokens included (Bulette, Warlock Class). Unlike CondCreatureDied it is not
 // limited to creatures that died under the controller's control.
 type CondAnyCreatureDied struct{}
 

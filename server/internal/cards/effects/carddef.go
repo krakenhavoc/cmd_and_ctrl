@@ -64,6 +64,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			Exhaust:       a.Exhaust,
 			Boast:         a.Boast,
 			PowerUp:       a.PowerUp,
+			ClassLevel:    a.ClassLevel,
 			Ninjutsu:      a.Ninjutsu,
 			OnlyOnce:      a.OnlyOnce,
 			CostModifiers: a.CostModifiers,
@@ -516,7 +517,7 @@ func foldProduced(a ManaAbility) func(g *game.Game, controller, source uuid.UUID
 // AdditionalLandPlaysForEachPlayer has none of those, its plays are
 // ConditionalLandPlays.
 func unconditionalLandPlays(spec Spec) int {
-	if spec.AdditionalLandPlaysNeedsAnother != "" || spec.AdditionalLandPlaysForEachPlayer || spec.AdditionalLandPlaysAtCharge > 0 {
+	if spec.AdditionalLandPlaysNeedsAnother != "" || spec.AdditionalLandPlaysForEachPlayer || spec.AdditionalLandPlaysAtCharge > 0 || spec.AdditionalLandPlaysAtLevel > 0 {
 		return 0
 	}
 	return spec.AdditionalLandPlays
@@ -531,6 +532,9 @@ func conditionalLandPlays(spec Spec) game.ConditionalLandPlays {
 	}
 	if spec.AdditionalLandPlaysAtCharge > 0 {
 		return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, AtCharge: spec.AdditionalLandPlaysAtCharge}
+	}
+	if spec.AdditionalLandPlaysAtLevel > 0 {
+		return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, AtLevel: spec.AdditionalLandPlaysAtLevel}
 	}
 	if spec.AdditionalLandPlaysNeedsAnother == "" {
 		return game.ConditionalLandPlays{}

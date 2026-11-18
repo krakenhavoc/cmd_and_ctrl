@@ -1574,6 +1574,18 @@ type Card struct {
 	// battlefield.
 	WarpText PrintedFact
 
+	// FlashbackText records whether the card's printed oracle text has the
+	// flashback keyword (CR 702.34a), per FlashbackInText (S82, MID batch
+	// 7). Stamped by the deck importer beside WarpText, for the same
+	// reason: game.Card carries no oracle text, and flashback is not a
+	// canonical keyword token, so Keywords does not carry it.
+	// PrintedUnknown (the zero value) on a card that was never imported.
+	// Re-derived from the face that is up by SetFace. Read through
+	// HasFlashback, for Phantom Carriage's "a card with flashback or
+	// disturb" on a card the catalog does not run. Not a copiable value,
+	// for WarpText's reason.
+	FlashbackText PrintedFact
+
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
 	// object's colour-defining ability (devoid) at all. A copiable

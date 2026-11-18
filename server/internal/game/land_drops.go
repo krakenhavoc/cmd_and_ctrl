@@ -81,6 +81,11 @@ type ConditionalLandPlays struct {
 	// "3+ | You may play an additional land on each of your turns",
 	// CR 721.2a). Another is empty with it.
 	AtCharge int
+	// AtLevel, when positive, makes Plays count only while the permanent
+	// is a Class of at least that level (CR 716.2a): Druid Class's
+	// "{2}{G}: Level 2 — You may play an additional land on each of your
+	// turns". Another is empty with it.
+	AtLevel int
 }
 
 // CatalogConditionalLandPlays returns a battlefield permanent's
@@ -134,6 +139,10 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 					n += cp.Plays
 				} else if cp.Plays > 0 && cp.AtCharge > 0 {
 					if c.Counters[CounterCharge] >= cp.AtCharge {
+						n += cp.Plays
+					}
+				} else if cp.Plays > 0 && cp.AtLevel > 0 {
+					if ClassLevelOf(*c) >= cp.AtLevel {
 						n += cp.Plays
 					}
 				} else if cp.Plays > 0 && g.controlsAnotherSubtypeLocked(p.ID, c.InstanceID, cp.Another) {

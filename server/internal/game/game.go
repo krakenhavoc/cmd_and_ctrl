@@ -2245,6 +2245,13 @@ type CastTally struct {
 	// rest of the turn (weaker, never stronger). Additive within the
 	// snapshot version.
 	NotFromHand int `json:"notFromHand,omitempty"`
+	// FromExile counts the spells the player cast this turn from exile,
+	// read like NotFromHand off the zone the card was in as the cast was
+	// proposed: Wild-Magic Sorcerer's "the first spell you cast from exile
+	// each turn" is FromExile == 1 once the tally is bumped, which is before
+	// EventCast. A copy of a spell is not cast (CR 707.10). Additive within
+	// the snapshot version.
+	FromExile int `json:"fromExile,omitempty"`
 }
 
 // FromHand is how many of the player's spells this turn were cast from

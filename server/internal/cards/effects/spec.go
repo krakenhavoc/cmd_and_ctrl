@@ -1670,6 +1670,12 @@ type Spec struct {
 	// Not combined with the other two conditions.
 	AdditionalLandPlaysAtCharge int
 
+	// AdditionalLandPlaysAtLevel makes AdditionalLandPlays count only
+	// while the permanent is a Class of at least this level (CR 716.2a):
+	// Druid Class's level 2. Read live by EffectiveLandDropsLocked. Not
+	// combined with the other conditions.
+	AdditionalLandPlaysAtLevel int
+
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the
 	// battlefield (ADR 0066) — "each nonland card in your graveyard
@@ -2102,6 +2108,10 @@ type ActivatedAbility struct {
 	// reduction itself (game/power_up.go). Set it through the PowerUp
 	// constructor (power_up.go), which also writes the label.
 	PowerUp bool
+	// ClassLevel marks a Class's "{cost}: Level N" ability (CR 716.2a). Set
+	// by LevelUp and by no card file: it names the ability for the spend
+	// restriction "only to gain a Class level" (game.ManaRestrictClassLevel).
+	ClassLevel bool
 	// Ninjutsu marks a ninjutsu or commander ninjutsu ability (CR
 	// 702.49a, 702.49d; #5672). It gates nothing; it names the keyword
 	// for a cost modifier that prices "ninjutsu abilities"
