@@ -372,6 +372,10 @@ var tokenTable = map[string]game.Card{
 	"4/4 black Legendary God Horror named The Atropal with deathtouch": {Name: "The Atropal", TypeLine: "Token Legendary Creature — God Horror", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"20/20 black Marit Lage":                                           {Name: "Marit Lage", TypeLine: "Token Legendary Creature — Avatar", Power: 20, Toughness: 20, Colors: []string{"B"}, Keywords: []string{"flying", "indestructible"}},
 
+	// S82 MID batch 3: Hungry for More's Vampire and Rise of the Ants's Insect.
+	"3/1 black and red Vampire with trample, lifelink, and haste": {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 3, Toughness: 1, Colors: []string{"B", "R"}, Keywords: []string{"trample", "lifelink", "haste"}},
+	"3/3 green Insect": {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 3, Toughness: 3, Colors: []string{"G"}},
+
 	// A key longer than every row above: kept in its own block so gofmt
 	// does not re-align the whole table (and every open PR's rows) for it.
 	"6/12 colorless Construct artifact with trample": {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 6, Toughness: 12, Keywords: []string{"trample"}},
