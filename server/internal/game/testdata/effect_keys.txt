@@ -1906,6 +1906,7 @@ payunless pay-unless/gryffwing-cavalry-flying
 payunless pay-unless/guide-of-souls-angel
 payunless pay-unless/halo-forager-x-cast
 payunless pay-unless/hashaton-scarabs-fist-zombie-copy
+payunless pay-unless/haunted-library-spirit
 payunless pay-unless/hawkeye-trick-arrows
 payunless pay-unless/heavyweight-demolisher-tap
 payunless pay-unless/hellkite-charger-extra-combat
