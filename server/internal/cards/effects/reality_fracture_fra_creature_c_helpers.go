@@ -243,7 +243,7 @@ func rfCreatureCDifferentPowers(g *game.Game, controller, _ uuid.UUID) int {
 	seen := map[int]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() {
-			seen[c.CurrentPower()] = true
+			seen[c.PowerForComparison()] = true
 		}
 	}
 	return len(seen)
