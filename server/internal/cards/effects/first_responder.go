@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // First Responder — Creature — Ogre Citizen {3}{G}, 3/3 (Streets of New
 // Capenna Commander):
@@ -33,20 +29,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("First Responder — you may return another creature you control to its owner's hand, then put +1/+1 counters equal to its power on this creature",
 				func(g *game.Game, item *game.StackItem) error {
-					self := item.SourceCardID
-					return ChoosePermanents{
-						Question: "First Responder — return another creature you control to its owner's hand?",
-						Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-							var out []uuid.UUID
-							for _, c := range g.BattlefieldCardsForEffect() {
-								if c.Controller == of && c.IsCreature() && c.InstanceID != self {
-									out = append(out, c.InstanceID)
-								}
-							}
-							return out, 0, 1
-						},
-						Keyed: firstResponderReturned,
-					}.Apply(NewContext(g, item))
+					return chooseAnotherCreatureYouControl(g, item,
+						"First Responder — return another creature you control to its owner's hand?", firstResponderReturned)
 				}),
 		},
 	})
