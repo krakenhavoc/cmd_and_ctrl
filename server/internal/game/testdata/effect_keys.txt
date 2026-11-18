@@ -1389,6 +1389,7 @@ confirm confirm/rysorian-badger-exile
 confirm confirm/s82-mom-b12-guerrilla-exile
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
+confirm confirm/sanguine-spy-pay-life-draw
 confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
@@ -1502,6 +1503,7 @@ drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
 drawthen steamcore-scholar-discard
+drawthen tainted-indulgence/discard-unless-five-mana-values
 drawthen talions-messenger/discard
 drawthen teferi-akosa-discard
 drawthen teo-spirited-glider/discard
