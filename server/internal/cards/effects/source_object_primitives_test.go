@@ -678,6 +678,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"approach_of_the_second_sun.go": true,
 		// "Exile The Needs of the Many." (#4973)
 		"the_needs_of_the_many.go": true,
+		// "return Haunting Imitation to its owner's hand." (S82 VOW b17)
+		"haunting_imitation.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)
