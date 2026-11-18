@@ -426,3 +426,65 @@ func TestS82NeoB14TameshiReturnsALandToGetBackAnArtifactOrEnchantmentUpToX(t *te
 		t.Error("the enchantment card did not return")
 	}
 }
+
+// --- Invoke Calamity ---
+
+func TestS82NeoB14InvokeCalamityCastsTwoFreeWithinSixAndExilesThemAndItself(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	inHand := pushHandCardWithManaCost(me, "Hand Instant", "Instant", "{1}{R}")
+	inYard := pushGraveyardPermanent(me, "Yard Sorcery", "Sorcery", "{2}{R}")
+	dear := pushGraveyardPermanent(me, "Dear Instant", "Instant", "{4}{R}")
+	creature := pushHandCardWithManaCost(me, "Bear", "Creature — Bear", "{1}")
+	advanceToMain(t, g)
+	neoMana(me, "R", "R", "R", "R", "R")
+	spell, err := neoCast(t, g, "Invoke Calamity", "Instant", "{1}{R}{R}{R}{R}", neoInvokeCalamityOracle, game.CastSpellParams{Strict: true})
+	if err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	pick := latestChooseCards(g, me.ID)
+	if pick == nil {
+		t.Fatal("no prompt for the cards to cast")
+	}
+	offered := map[uuid.UUID]bool{}
+	for _, id := range pick.ChooseCards {
+		offered[id] = true
+	}
+	if !offered[inHand] || !offered[inYard] || !offered[dear] || offered[creature] {
+		t.Errorf("candidates %v: want instants and sorceries from hand and graveyard only", pick.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{inYard, dear}); err == nil {
+		t.Fatal("mana value 3 + 5 was accepted against a total of 6")
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{inHand, inYard}); err != nil {
+		t.Fatalf("choose: %v", err)
+	}
+	for _, id := range []uuid.UUID{inHand, inYard} {
+		offer := neoOpenCastOffer(g, me.ID)
+		if offer == nil {
+			t.Fatalf("no cast offer for %v", id)
+		}
+		zone := game.ZoneGraveyard
+		if me.Hand.Contains(id) {
+			zone = game.ZoneHand
+		}
+		if err := g.CastForResolutionChoice(me.ID, offer.ID, id, game.CastSpellParams{FromZone: string(zone)}); err != nil {
+			t.Fatalf("cast %v for free: %v", id, err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	if neoOpenCastOffer(g, me.ID) != nil {
+		if o := neoOpenCastOffer(g, me.ID); o != nil {
+			_ = g.ResolvePendingChoice(o.ID, me.ID, nil)
+		}
+	}
+	for _, id := range []uuid.UUID{inHand, inYard, spell} {
+		if !g.Exile.Contains(id) {
+			t.Errorf("%v is not in exile", id)
+		}
+	}
+	if !me.Graveyard.Contains(dear) {
+		t.Error("the card that was not picked left the graveyard")
+	}
+}
