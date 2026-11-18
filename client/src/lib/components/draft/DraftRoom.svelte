@@ -193,6 +193,10 @@
   });
 
   const take = $derived(view ? takeOf(view) : 0);
+  // The pack, the picks, the build and the pool fill a large screen,
+  // gutters kept (#5921); the lobby's form and the notices stay at the
+  // site's 1200px column.
+  const roomWidth = $derived(view && view.state !== "lobby" ? "full" : "wide");
   const host = $derived(view ? isHost(view) : false);
   const hostName = $derived(view?.players.find((p) => p.host)?.name ?? "the host");
   const inviteLink = $derived(
@@ -483,7 +487,7 @@
   title={closed && view?.state !== "done" ? L.draftGone : (view?.name ?? "Draft")}
   {meta}
   {actions}
-  width="wide"
+  width={roomWidth}
 >
   <!-- Said once per change, never per second (DESIGN.md §8). -->
   <p class="sr-only" aria-live="polite" data-testid="draft-announce">{announce}</p>

@@ -305,8 +305,10 @@ counter, the checks, the button and the live-region line change all the same.
 - **One breakpoint for site pages: 819px** (`max-width: 819px`). Don't add
   page-specific breakpoints.
 - **Site pages sit in `Page.svelte`**: the header, then a centred column, `wide`
-  (1200px, tables and grids) or `prose` (72ch, reading). The footer is drawn
-  once by `App.svelte`. No horizontal page scroll at 820px.
+  (1200px, tables and grids) or `prose` (72ch, reading). `full` drops the cap
+  and keeps the gutters, for a work surface that should grow with a large
+  screen: today only the draft room's pick, build and pool (#5921). The footer
+  is drawn once by `App.svelte`. No horizontal page scroll at 820px.
 - **The table is its own world.** `routes/Game.svelte` is fixed-position, has
   its own command bar and the action dock, and never shows the site header or
   footer. The bottom-right corner belongs to the action dock; the stack pile is
