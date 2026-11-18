@@ -25,7 +25,7 @@ func init() {
 		Name:            "Hunter's Mark",
 		Completeness:    CompletenessFull,
 		CantBeCountered: true,
-		Purpose:         game.Purpose{Answers: game.AnswerRemove}, // a one-sided fight at a creature or planeswalker
+		Purpose:         huntersMarkPurpose(),
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),
 			TargetPermanent("target creature or planeswalker you don't control",
@@ -48,4 +48,12 @@ func init() {
 			}),
 		),
 	})
+}
+
+// huntersMarkPurpose: a one-sided fight at a creature or planeswalker, the
+// first target pumped until end of turn.
+func huntersMarkPurpose() game.Purpose {
+	p := ForTargets(game.TargetPurpose{Slot: 0, UntilEndOfTurn: game.TargetBenefit})
+	p.Answers = game.AnswerRemove
+	return p
 }

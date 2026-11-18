@@ -150,6 +150,20 @@ func TestHuntersMarkPumpsThenBites(t *testing.T) {
 	}
 }
 
+func TestHuntersMarkCantBeCountered(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := b12Creature(g, me.ID, "Mine", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Wall", 0, 5)
+	id := b12PlayFromHand(t, g, "Hunter's Mark", "Instant", huntersMarkOracle,
+		game.CastSpellParams{Targets: cardRefs(mine, theirs), Strict: true})
+	var uncounterable bool
+	g.ReadSnapshot(func() { uncounterable = g.SpellCantBeCounteredForEffect(id) })
+	if !uncounterable {
+		t.Errorf("Hunter's Mark on the stack is counterable, want can't be countered")
+	}
+}
+
 func TestHuntersMarkCostsThreeLessOnlyAgainstABlueOpposingPermanent(t *testing.T) {
 	cast := func(blue bool, mana int) error {
 		g := newCatalogGame(t)

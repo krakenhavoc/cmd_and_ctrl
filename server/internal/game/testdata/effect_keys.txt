@@ -364,6 +364,7 @@ body return/the-objects-together-under-your-control
 body rewrite-history/return
 body rhinos-rampage/destroy-artifact
 body riddle-gate-gargoyle/lifelink
+body ride-the-avalanche/counters
 body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
 body rose-room-treasurer/damage
@@ -1068,6 +1069,7 @@ choose choose-cards/specter-of-mortality-exile
 choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
 choose choose-cards/spirit-of-resilience-copy
+choose choose-cards/split-the-party-return
 choose choose-cards/spm-black-cat-exile
 choose choose-cards/spry-and-mighty-two
 choose choose-cards/ss-botany-bay-you-exile
@@ -2894,6 +2896,7 @@ tail incubate/transform-all-incubators
 tail indoctrination-attendant/mite
 tail infernal-vessel/demon
 tail insidious-roots/counter-on-each-plant
+tail instrument-of-the-bards/treasure-if-legendary
 tail intuition/choose
 tail invasion-of-arcavios/library-found
 tail invasion-of-kaldheim/draw-and-play
