@@ -78,6 +78,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		if d.Condition != "" && !KnownEffectCondition(d.Condition) {
 			unknown = append(unknown, "delayed-trigger condition "+d.Condition)
 		}
+		if d.UntilThen != "" && !KnownEffectBody(d.UntilThen) {
+			unknown = append(unknown, "until-return follow-up body "+d.UntilThen)
+		}
 		// A spell filter is a closed vocabulary too (#1568 review).
 		for _, p := range []*EffectParams{d.Params, d.CondParams} {
 			if p != nil && !p.Filter.Valid() {
