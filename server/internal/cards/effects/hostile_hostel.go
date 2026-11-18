@@ -70,7 +70,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{4}: This creature phases out.",
 			Cost:    ManaCost("{4}"),
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return PhaseOut{Targets: ctx.withoutNewSourceObject([]uuid.UUID{ctx.Source()})}.Apply(ctx)

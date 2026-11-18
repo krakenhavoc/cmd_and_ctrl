@@ -51,7 +51,6 @@ func init() {
 			Label:   "{2}: Target Human you control gains lifelink until end of turn.",
 			Cost:    ManaCost("{2}"),
 			Targets: TargetCreature("target Human you control", YouControl(), Subtype("Human")),
-			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				target, ok := b16FirstLegalTargetCard(ctx)

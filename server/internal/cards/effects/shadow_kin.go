@@ -30,7 +30,8 @@ const shadowKinLabel = "Shadow Kin — each player mills three cards; you may ex
 // replacement exiled instead of milling is still one of "the cards milled
 // this way", CR 701.17c, but only a card in a graveyard can be exiled
 // from there). The controller then picks a creature card among them or
-// none. The exile and the copy are one answer: the copy is of the card's
+// none; a pick names the cards of one graveyard, so each owner's are
+// offered in turn until one is chosen or all are declined. The exile and the copy are one answer: the copy is of the card's
 // copiable values as it was in the graveyard (CR 707.2), has no
 // duration (CR 611.2a) and keeps this very ability through a grant
 // bundle that names the trigger, so a copy of a copy still mills. A Shadow
@@ -99,29 +100,67 @@ var shadowKinPayoff = RegisterThenSteps("then-steps/shadow-kin-payoff",
 				cards = append(cards, id)
 			}
 		}
-		if len(cards) == 0 {
-			return nil
-		}
-		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-			Chooser:  ctx.Controller(),
-			Source:   ctx.Source(),
-			Question: "Shadow Kin — you may exile a creature card from among the cards milled this way",
-			Cards:    cards,
-			Min:      0,
-			Max:      1,
-			ThenKey:  shadowKinPick,
-			LiveZone: game.ZoneGraveyard,
-			Asked:    game.NewAskedItem(ctx.Item),
-		})
-		return nil
+		return shadowKinOffer(ctx, cards)
 	}),
 )
 
+// shadowKinOffer asks the controller about the creature cards of ONE
+// graveyard's owner (a pick names the cards of a single zone), and
+// carries the cards of the other owners on the prompt. Declining asks
+// about the next owner's cards; choosing one ends it, so the controller
+// exiles at most one card among all of them.
+func shadowKinOffer(ctx *Context, cards []uuid.UUID) error {
+	if len(cards) == 0 {
+		return nil
+	}
+	owner := uuid.Nil
+	var here, rest []uuid.UUID
+	for _, id := range cards {
+		c, ok := ctx.Game.LookupCardForEffect(id)
+		if !ok {
+			continue
+		}
+		if owner == uuid.Nil {
+			owner = c.Owner
+		}
+		if c.Owner == owner {
+			here = append(here, id)
+		} else {
+			rest = append(rest, id)
+		}
+	}
+	if len(here) == 0 {
+		return nil
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    ctx.Controller(),
+		FromPlayer: owner,
+		Source:     ctx.Source(),
+		Question:   "Shadow Kin — you may exile a creature card from among the cards milled this way",
+		Cards:      here,
+		Min:        0,
+		Max:        1,
+		ThenKey:    shadowKinPick,
+		Carry:      rest,
+		LiveZone:   game.ZoneGraveyard,
+		Asked:      game.NewAskedItem(ctx.Item),
+	})
+	return nil
+}
+
 // shadowKinPick exiles the chosen card and, if it reached exile, makes
 // Shadow Kin a copy of it. An on-disk key.
-var shadowKinPick = askedPick("choose-cards/shadow-kin-exile", func(ctx *Context, r game.CardsChosen) error {
+var shadowKinPick game.ChooseCardsThen
+
+func init() {
+	shadowKinPick = askedPick("choose-cards/shadow-kin-exile", shadowKinPicked)
+}
+
+func shadowKinPicked(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
-		return nil
+		// Nothing chosen from that graveyard: the cards of the next
+		// owner's are still on offer.
+		return shadowKinOffer(ctx, r.Carry)
 	}
 	g := ctx.Game
 	id := r.Picked[0]
@@ -140,4 +179,4 @@ var shadowKinPick = askedPick("choose-cards/shadow-kin-exile", func(ctx *Context
 		Except:   func(v *game.PrintedValues) { v.GrantAbility(shadowKinGrant) },
 		Label:    "Shadow Kin — becomes a copy",
 	}.Apply(ctx)
-})
+}
