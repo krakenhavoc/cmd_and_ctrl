@@ -93,6 +93,7 @@ var xMattersAllowlist = map[string]string{
 	"wild_hypothesis.go Wild Hypothesis":                          "the X counters scale with X but \"Surveil 2\" is a fixed rider: at X=0 the Fractal dies as a 0/0 and the spell still surveils 2, a real play",
 	"path_of_the_ghosthunter.go Path of the Ghosthunter":          "Will of the Planeswalkers never reads X: at X=0 the players still vote, and at a Planechase table the caster planeswalks or chaos ensues (#5648)",
 	"gorex_the_tombshell.go Gorex, the Tombshell":                 "no X cost of its own: X is the number of creature cards its optional additional cost exiles, read only by its {2}-per-card discount; at X=0 Gorex is still cast for its full cost (#5895)",
+	"sylvan_offering.go Sylvan Offering":                          "X is read in the registered choose-an-opponent continuations (ChoosePlayerThen), which the scan cannot see: at X=0 it makes no token that lives",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

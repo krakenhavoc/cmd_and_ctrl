@@ -1783,6 +1783,7 @@ number number/plunge-into-darkness-look-at-that-many
 number number/rampaging-aetherhood-plus-one-counters-on-this
 number number/render-inert-remove-counters
 number number/resourceful-defense-move-counters
+number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
 number number/territorial-aetherkite-damage-each-other-creature
@@ -1963,6 +1964,8 @@ option option-pick/std-b26-reluctant-role-model-counter
 option option-pick/steel-seraph-keyword
 option option-pick/step-between-worlds-shuffle
 option option-pick/strefan-maurer-progenitor-attacks
+option option-pick/sylvan-offering-elves
+option option-pick/sylvan-offering-treefolk
 option option-pick/tap-or-untap-that-permanent
 option option-pick/tasigur-the-golden-fang-opponent
 option option-pick/teferis-realm-phase-out
@@ -2451,6 +2454,7 @@ run prompt-run/ragefire-hellkite-double-strike
 run prompt-run/ravenous-rotbelly-sacrifice
 run prompt-run/reactor-raid-draw
 run prompt-run/redcap-gutter-dweller-sacrificed
+run prompt-run/reign-of-the-pit-demon
 run prompt-run/reno-and-rude-sacrifice
 run prompt-run/return-chosen-permanent-to-hand
 run prompt-run/rhovanion-rampager-sacrifice
@@ -2491,6 +2495,7 @@ run prompt-run/swarm-culler-draw
 run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
 run prompt-run/temporal-firestorm-phase-out
+run prompt-run/temur-sabertooth-return
 run prompt-run/tenured-tethermage-tokens
 run prompt-run/terror-ballista-sacrifice
 run prompt-run/the-death-of-gwen-stacy-lose-life
@@ -3377,6 +3382,7 @@ tail recipient/sonic-shrieker-player-discards
 tail reckless-handling/discard-at-random
 tail red-suns-twilight/haste-and-exile-copies
 tail red-suns-zenith/shuffle-into-library
+tail rekindling-phoenix/haste
 tail release-to-memory/spirit-per-creature-card
 tail renegade-bull/copy-exiled
 tail reno-and-rude/exiled
@@ -3608,6 +3614,7 @@ tail tchaka/after-mill
 tail tempestra-dame-of-games/haste-and-sacrifice-copy
 tail tempt-with-discovery/caster-search
 tail tempt-with-discovery/next-offer
+tail temur-sabertooth/indestructible
 tail terminal-velocity/gift
 tail terra-magical-adept/after-mill
 tail territorial-bruntar/cast-nonland-this-turn
