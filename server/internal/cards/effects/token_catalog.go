@@ -300,6 +300,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Consuming Blob's Ooze: a */*+1 token that sizes itself.
 	printedConsumingBlobOozeToken,
 
+	// Mitotic Slime's 2/2 Ooze, which splits into two 1/1 Oozes when it dies.
+	printedMitoticSlimeOozeToken,
+
 	// ADR 0185 (#2417): the Incubator, the first double-faced token.
 	printedIncubatorToken,
 

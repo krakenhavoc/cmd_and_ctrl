@@ -156,11 +156,12 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The four declared skips must stay out until their seam lands:
+	// The declared skips must stay out until their seam lands:
 	// a put-a-card-from-hand-onto-the-battlefield prompt (Walking
-	// Atlas, Elvish Piper), a counter-removal cost on an ability that
-	// MOVES a counter rather than spending it (Power Conduit), and an
-	// opponent's three-way choice at resolution (Master of Ceremonies).
+	// Atlas, Elvish Piper), and an opponent's three-way choice at
+	// resolution (Master of Ceremonies). Power Conduit came off this list
+	// in the S82 reprint pass (#5908): Scholar of New Horizons' any-kind
+	// counter cost is the seam it was waiting for.
 	//
 	// Staff of the Storyteller came off this list in slice
 	// fra-reprint-b: its counter is spent ("Remove a story counter:
@@ -177,7 +178,6 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 	for oracle, name := range map[string]string{
 		"855a4837-7fc8-4b97-afbd-daa88e322c89": "Walking Atlas",
 		"872ef617-7cdb-4a7a-85f5-efc9e12bece5": "Elvish Piper",
-		"2e358f7e-c282-4b92-8255-1436c99cda49": "Power Conduit",
 	} {
 		if _, ok := Lookup(oracle); ok {
 			t.Errorf("%s is declared skipped on #391 but is registered — update the issue", name)
