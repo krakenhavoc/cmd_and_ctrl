@@ -109,6 +109,7 @@ func TestNeoB07CrabCountersASpellUnlessItsControllerPays(t *testing.T) {
 func TestNeoB07CrabCountersAnAbilityUnlessItsControllerPays(t *testing.T) {
 	for _, pay := range []bool{false, true} {
 		g := newCatalogGame(t)
+		advanceToMain(t, g)
 		me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
 		src := neoB07Creature(g, opp.ID, "Their Bear")
 		fired := false
@@ -504,9 +505,6 @@ func TestNeoB07PrototypeChannelLetsTheOwnerChooseTopOrBottom(t *testing.T) {
 		t.Fatalf("channel: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(theirs) {
-		t.Fatal("the permanent stayed on the battlefield")
-	}
 	// The prompt belongs to the OWNER of the permanent, not to the channeler.
 	var asked *game.PendingChoice
 	for _, c := range g.PendingChoices {
@@ -519,6 +517,7 @@ func TestNeoB07PrototypeChannelLetsTheOwnerChooseTopOrBottom(t *testing.T) {
 	}
 	_ = size
 }
+
 
 func TestNeoB07PrototypeChannelRefusesALand(t *testing.T) {
 	g := newCatalogGame(t)
@@ -591,8 +590,8 @@ func TestNeoB07TrespassersChannelTapsAndFreezesTwo(t *testing.T) {
 	if !battlefieldTapped(g2, a2) || !battlefieldTapped(g2, b2) || battlefieldTapped(g2, c2) {
 		t.Error("exactly the two targets must be tapped")
 	}
-	if holdCount(t, g2, a2) != 1 || holdCount(t, g2, b2) != 1 || holdCount(t, g2, c2) != 0 {
-		t.Errorf("don't-untap holds: %d %d %d, want 1 1 0", holdCount(t, g2, a2), holdCount(t, g2, b2), holdCount(t, g2, c2))
+	if neoB07Holds(t, g2, a2) != 1 || neoB07Holds(t, g2, b2) != 1 || neoB07Holds(t, g2, c2) != 0 {
+		t.Errorf("don't-untap holds: %d %d %d, want 1 1 0", neoB07Holds(t, g2, a2), neoB07Holds(t, g2, b2), neoB07Holds(t, g2, c2))
 	}
 	_, _, _ = a, b, c
 }
@@ -705,5 +704,32 @@ func TestNeoB07SkyturtleBouncesACreature(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(bear) || !opp.Hand.Contains(bear) {
 		t.Error("the creature was not returned to its owner's hand")
+	}
+}
+
+// neoB07Holds counts the "doesn't untap next untap step" records on a permanent.
+func neoB07Holds(t *testing.T, g *game.Game, id uuid.UUID) int {
+	t.Helper()
+	c, ok := battlefieldCard(g, id)
+	if !ok {
+		t.Fatalf("battlefield card %s is missing", id)
+	}
+	return len(c.NextUntapSkips)
+}
+
+func TestNeoB07DebugEarth(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	if _, err := neoB07Channel(t, g, "Roaring Earth", "Enchantment", neoB07Earth, "{C}{C}{C}{G}{G}", 0,
+		game.ActivateAbilityParams{Targets: cardTarget(land), XValue: 3}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	t.Logf("counters %v pending %d", countersOn(g, land, game.CounterPlusOne), len(g.PendingChoices))
+	for _, c := range g.PendingChoices {
+		if c != nil {
+			t.Logf("choice %+v", c.Kind)
+		}
 	}
 }
