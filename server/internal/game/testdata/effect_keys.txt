@@ -1025,6 +1025,7 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
+choose choose-cards/s82-afr-b08-holy-avenger-aura
 choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take

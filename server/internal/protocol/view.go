@@ -14341,6 +14341,10 @@ func counterCostView(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterR
 			// walk the engine validates against — so a player can
 			// never name a number the server then refuses.
 			v.CounterCostMax = g.MaxCounterPaymentForEffect(caster, sourceID, rc)
+			if rc.All {
+				// All of them: the stepper has nothing to choose.
+				v.CounterCostN = v.CounterCostMax
+			}
 		}
 	}
 	if ac != nil && ac.N > 0 {
