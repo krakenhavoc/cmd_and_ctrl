@@ -438,6 +438,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Mage's Attendant's Wizard (Streets of New Capenna, #5491): a 1/1 blue
 	// Wizard that sacrifices itself to counter a noncreature spell unless paid.
 	printedS82SncB18WizardToken,
+	// Torens, Fist of the Angels' Human Soldier (Crimson Vow, #5495).
+	printedHumanSoldierTrainingToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
