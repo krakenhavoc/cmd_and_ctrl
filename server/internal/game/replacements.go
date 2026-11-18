@@ -1220,6 +1220,13 @@ type ReplacementEvent struct {
 	// Event.FromRadiation.
 	LifeFromRadiation bool
 
+	// LifeFromDamage marks life lost because damage was dealt to the
+	// player (CR 120.3a), the life window damageLifeLossThroughReplacementsLocked
+	// runs. A replacement worded about damage, Archon of Coronation's
+	// "damage doesn't cause you to lose life", reads it; a drain or a
+	// life payment never carries it.
+	LifeFromDamage bool
+
 	// LifePayment marks a life loss that is a PAYMENT (CR 118.3, CR 119.4):
 	// the cost-shaped path payLifeAsCostLocked takes, which every "pay N
 	// life" runs through (a Phyrexian symbol, a ward, a shockland, an

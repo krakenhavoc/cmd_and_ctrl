@@ -897,11 +897,12 @@ func (g *Game) damageLifeLossThroughReplacementsLocked(player, source uuid.UUID,
 		return lifeLoss, nil
 	}
 	lev := &ReplacementEvent{
-		Kind:          RepEventLife,
-		Source:        source,
-		LifePlayer:    player,
-		LifeDelta:     -lifeLoss,
-		mustSettleNow: true,
+		Kind:           RepEventLife,
+		Source:         source,
+		LifePlayer:     player,
+		LifeDelta:      -lifeLoss,
+		LifeFromDamage: true,
+		mustSettleNow:  true,
 	}
 	out, err := g.applyReplacementsLocked(lev)
 	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {

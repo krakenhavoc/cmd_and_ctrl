@@ -9855,6 +9855,7 @@ frozenEntries[].event.lifeAfterMove[].delta	number:int
 frozenEntries[].event.lifeAfterMove[].player	custom(uuid.UUID)
 frozenEntries[].event.lifeAfterMove[].source	custom(uuid.UUID)
 frozenEntries[].event.lifeDelta	number:int
+frozenEntries[].event.lifeFromDamage	bool
 frozenEntries[].event.lifeFromRadiation	bool
 frozenEntries[].event.lifePayment	bool
 frozenEntries[].event.lifePlayer	custom(uuid.UUID)
@@ -30274,6 +30275,7 @@ movesAwaitingTokens[].lifeAfterMove[].delta	number:int
 movesAwaitingTokens[].lifeAfterMove[].player	custom(uuid.UUID)
 movesAwaitingTokens[].lifeAfterMove[].source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeDelta	number:int
+movesAwaitingTokens[].lifeFromDamage	bool
 movesAwaitingTokens[].lifeFromRadiation	bool
 movesAwaitingTokens[].lifePayment	bool
 movesAwaitingTokens[].lifePlayer	custom(uuid.UUID)
@@ -57215,6 +57217,7 @@ pendingChoices[].replacementResume.event.lifeAfterMove[].delta	number:int
 pendingChoices[].replacementResume.event.lifeAfterMove[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeAfterMove[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeDelta	number:int
+pendingChoices[].replacementResume.event.lifeFromDamage	bool
 pendingChoices[].replacementResume.event.lifeFromRadiation	bool
 pendingChoices[].replacementResume.event.lifePayment	bool
 pendingChoices[].replacementResume.event.lifePlayer	custom(uuid.UUID)
