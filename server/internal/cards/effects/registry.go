@@ -296,6 +296,9 @@ func Register(spec Spec) {
 				spec.Name))
 		}
 	}
+	if spec.CastsOnlyFromGraveyard && !zoneDeclared(spec.CastableZones, game.ZoneGraveyard) {
+		panic(fmt.Sprintf("effects.Register: %q sets CastsOnlyFromGraveyard but does not list the graveyard in CastableZones", spec.Name))
+	}
 	// ADR 0066 amendment (2026-10-13): a conditional zone is a card-level
 	// declaration too, so the same refusals apply, plus a nil condition,
 	// which would be an unconditional zone written the long way round.
@@ -1330,6 +1333,9 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 			panic(fmt.Sprintf("effects.Register: %q %s sets a negative floor %d on a variable counter cost", card, where, rc.N))
 		case !rc.Variable && rc.N <= 0:
 			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters — a counter cost removes at least one", card, where, rc.N))
+		}
+		if len(rc.Kinds) > 0 && (rc.Counter != "" || len(rc.Kinds) < 2) {
+			panic(fmt.Sprintf("effects.Register: %q %s lists Kinds beside a printed kind or with fewer than two kinds — build it with RemoveCountersOfKindsFrom", card, where))
 		}
 		if rc.All && (!rc.Variable || rc.Counter == "" || rc.From != nil || rc.Among || rc.OnePermanent || rc.N != 0) {
 			panic(fmt.Sprintf("effects.Register: %q %s marks a counter removal All outside the self form with a printed kind and no floor — build it with RemoveAllCountersFromThis", card, where))

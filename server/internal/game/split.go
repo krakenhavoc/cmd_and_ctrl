@@ -269,7 +269,7 @@ func isAftermathHalf(c Card) bool {
 // reminder text and rides this one gate, so the engine, the bot
 // enumerator and the view cannot disagree about it.
 func aftermathZoneRule(c Card, zone ZoneKind) (opens bool, err error) {
-	if !castsOnlyFromGraveyard(c) {
+	if !castsOnlyFromGraveyard(c) && !(CatalogCastsOnlyFromGraveyard != nil && CatalogCastsOnlyFromGraveyard(CatalogKey(c))) {
 		return false, nil
 	}
 	if zone != ZoneGraveyard {
