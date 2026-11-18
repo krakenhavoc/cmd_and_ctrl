@@ -101,12 +101,7 @@ func TestVowB15KrothussCopiesAnAttackerAndTwiceForAKraken(t *testing.T) {
 		other := b12Creature(g, me.ID, "Other", tc.typeLine, 2, 2)
 		declareAttack(t, g, opp.ID, k, other)
 		answerTriggerTargets(t, g, me.ID, other)
-		for i := 0; i < 4; i++ {
-			if len(g.PendingChoices) == 0 {
-				break
-			}
-			answerChooseCardsOrDiscard(t, g, me)
-		}
+		passAndSettleAttackSplit(t, g, me.ID)
 		passPriorityAroundTable(t, g)
 		n := 0
 		for _, c := range g.Battlefield.Cards {
@@ -227,9 +222,7 @@ func TestVowB15VisionaryOnlyAtSorcerySpeedAndNotForOtherExiledCards(t *testing.T
 	me := g.Seats[0]
 	v := vowB15Put(t, g, vowB15VisionaryRow(), me)
 	advanceTo(t, g, game.StepUpkeep)
-	if err := g.ActivateAbility(me.ID, v, game.AbilityParams{
-		Label: "{T}: This creature deals 2 damage to you. Exile the top card of your library. You may play that card this turn. Activate only as a sorcery.",
-	}); err == nil {
+	if err := g.ActivateCatalogAbility(me.ID, v, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Error("activated outside a main phase")
 	}
 	advanceToMain(t, g)

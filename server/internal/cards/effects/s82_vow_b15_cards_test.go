@@ -89,7 +89,7 @@ func vowB15Activate(t *testing.T, g *game.Game, p *game.Player, id uuid.UUID, la
 	for _, tgt := range targets {
 		refs = append(refs, game.TargetRef{Kind: game.TargetCard, ID: tgt})
 	}
-	if err := g.ActivateAbility(p.ID, id, game.AbilityParams{Label: label, Targets: refs}); err != nil {
+	if err := g.ActivateCatalogAbility(p.ID, id, 0, game.ActivateAbilityParams{Strict: true, Targets: refs}); err != nil {
 		t.Fatalf("activate %q: %v", label, err)
 	}
 	passPriorityAroundTable(t, g)
@@ -162,8 +162,8 @@ func TestVowB15DeadlyDancerPumpsItselfAndAnotherCreature(t *testing.T) {
 	}
 	// "another" target: itself is not a legal target.
 	vowB15Mana(me, "R", "R")
-	if err := g.ActivateAbility(me.ID, dancer, game.AbilityParams{
-		Label:   "{R}{R}: This creature and another target creature each get +1/+0 until end of turn.",
+	if err := g.ActivateCatalogAbility(me.ID, dancer, 0, game.ActivateAbilityParams{
+		Strict:  true,
 		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: dancer}},
 	}); err == nil {
 		t.Error("the Dancer targeted itself")
@@ -358,11 +358,15 @@ func TestVowB15SerpentSacrificesTwoIslandsToBecomeUnblockable(t *testing.T) {
 	iwTransform(t, g, egg)
 	label := "Sacrifice two Islands: This creature can't be blocked this turn."
 	i1 := b12Permanent(g, me.ID, "Island", "Basic Land — Island")
-	if err := g.ActivateAbility(me.ID, egg, game.AbilityParams{Label: label}); err == nil {
+	if err := g.ActivateCatalogAbility(me.ID, egg, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{i1}}); err == nil {
 		t.Fatal("activated with one Island")
 	}
 	i2 := b12Permanent(g, me.ID, "Island", "Basic Land — Island")
-	vowB15Activate(t, g, me, egg, label)
+	if err := g.ActivateCatalogAbility(me.ID, egg, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{i1, i2}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	_ = label
 	for _, id := range []uuid.UUID{i1, i2} {
 		if _, ok := battlefieldCard(g, id); ok {
 			t.Error("an Island was not sacrificed")
