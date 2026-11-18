@@ -518,7 +518,6 @@ func TestNeoB07PrototypeChannelLetsTheOwnerChooseTopOrBottom(t *testing.T) {
 	_ = size
 }
 
-
 func TestNeoB07PrototypeChannelRefusesALand(t *testing.T) {
 	g := newCatalogGame(t)
 	land := seedLandOnBattlefield(g, g.Seats[1].ID, "Forest", "Basic Land — Forest")

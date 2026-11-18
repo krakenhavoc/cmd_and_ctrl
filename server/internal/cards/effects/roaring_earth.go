@@ -29,6 +29,7 @@ func init() {
 		OracleID:     "43abfce5-b1dd-4784-bb91-d57b2c28f6a6",
 		Name:         "Roaring Earth",
 		Completeness: CompletenessFull,
+		XMatters:     true,
 		Triggered: []game.TriggeredAbility{
 			Targeting(Landfall("Roaring Earth — put a +1/+1 counter on target creature or Vehicle you control", PlusOneCounterOnTheTarget),
 				TargetPermanent("target creature or Vehicle you control", Or(Creature(), HasSubtype("Vehicle")), YouControl())),

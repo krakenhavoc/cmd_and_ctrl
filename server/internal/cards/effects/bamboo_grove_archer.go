@@ -26,14 +26,7 @@ func init() {
 			Cost:    Plus(ManaCost("{4}{G}"), DiscardThis()),
 			Zones:   []game.ZoneKind{game.ZoneHand},
 			Targets: TargetCreature("target creature with flying", HasKeyword("flying")),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return DestroyTarget{Target: id}.Apply(ctx)
-			},
+			Effect:  destroyFirstLegalTarget,
 		}},
 	})
 }

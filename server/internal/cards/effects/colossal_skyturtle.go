@@ -42,14 +42,7 @@ func init() {
 				Cost:    Plus(ManaCost("{1}{U}"), DiscardThis()),
 				Zones:   []game.ZoneKind{game.ZoneHand},
 				Targets: TargetCreature("target creature"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return BounceToHand{Target: id}.Apply(ctx)
-				},
+				Effect:  neoB07BounceTheTarget,
 			},
 		},
 	})
