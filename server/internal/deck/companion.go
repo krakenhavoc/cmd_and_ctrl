@@ -53,6 +53,12 @@ var companionConditions = map[string]companionCondition{
 		Text:      "no card in your starting deck may have more than one of the same mana symbol in its mana cost",
 		Offenders: offendersEach(repeatsAManaSymbol),
 	},
+	// Gyruda, Doom of Depths: "Your starting deck contains only cards
+	// with even mana values."
+	gyrudaOracleID: {
+		Text:      "your starting deck may contain only cards with even mana values",
+		Offenders: offendersEach(hasOddManaValue),
+	},
 	// Yorion, Sky Nomad: "Your starting deck contains at least twenty
 	// cards more than the minimum deck size." A Commander deck's
 	// minimum is also its maximum, exactly 100 (CR 903.5a), so this is
@@ -62,6 +68,29 @@ var companionConditions = map[string]companionCondition{
 		Text:  fmt.Sprintf("your starting deck must contain at least %d cards, twenty more than the minimum deck size", commanderDeckSize+yorionExtraCards),
 		Unmet: yorionUnmet,
 	},
+}
+
+// gyrudaOracleID is Gyruda, Doom of Depths.
+const gyrudaOracleID = "25eaa977-ca85-4f8d-8be5-9297a3edb14f"
+
+// hasOddManaValue is Gyruda's test: "Your starting deck contains only
+// cards with even mana values." The value is the card's outside the game
+// (companionManaCosts): a split card's halves combined (CR 202.3d), a
+// double-faced or adventurer card's front, {X} as 0 (CR 202.3e), a hybrid
+// symbol at its largest component (CR 202.3f) and a Phyrexian symbol as 1
+// (CR 202.3g). A land or other card with no mana cost is 0, which is
+// even (CR 202.3a). A cost the engine can't read breaks the condition,
+// stricter than printed rather than looser.
+func hasOddManaValue(c cards.Card) bool {
+	total := 0
+	for _, cost := range companionManaCosts(c) {
+		parsed, err := game.ParseCost(cost)
+		if err != nil {
+			return true
+		}
+		total += parsed.ManaValue()
+	}
+	return total%2 != 0
 }
 
 // commanderDeckSize is the Commander deck size, which is both the

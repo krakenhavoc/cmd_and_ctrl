@@ -73,19 +73,30 @@ func planeswalkerExcessDamage(c *Card, amount int) int {
 // layers first where a resolution may have left them stale
 // (CurrentToughness reads the effective toughness). Caller must hold
 // g.mu.
-func (g *Game) recordExcessDamageLocked(c *Card, amount int, deathtouch bool) {
+//
+// It returns the excess amount (CR 120.10: the greatest of the amounts
+// calculated for a permanent that is both), zero when the damage is not
+// excess; the damage event carries it as Event.ExcessDamage.
+func (g *Game) recordExcessDamageLocked(c *Card, amount int, deathtouch bool) int {
+	creatureExcess, walkerExcess := 0, 0
+	if c.IsCreature() {
+		creatureExcess = creatureExcessDamage(c, amount, deathtouch)
+	}
+	if c.IsPlaneswalker() {
+		walkerExcess = planeswalkerExcessDamage(c, amount)
+	}
 	rec := ExcessDamageRecord{
 		Controller:   c.Controller,
-		Creature:     c.IsCreature() && creatureExcessDamage(c, amount, deathtouch) > 0,
-		Planeswalker: c.IsPlaneswalker() && planeswalkerExcessDamage(c, amount) > 0,
+		Creature:     creatureExcess > 0,
+		Planeswalker: walkerExcess > 0,
 	}
 	if !rec.Creature && !rec.Planeswalker {
-		return
+		return 0
 	}
-	if slices.Contains(g.TurnTally.ExcessDamaged, rec) {
-		return
+	if !slices.Contains(g.TurnTally.ExcessDamaged, rec) {
+		g.TurnTally.ExcessDamaged = append(g.TurnTally.ExcessDamaged, rec)
 	}
-	g.TurnTally.ExcessDamaged = append(g.TurnTally.ExcessDamaged, rec)
+	return max(creatureExcess, walkerExcess)
 }
 
 // OpponentPermanentDealtExcessDamageThisTurn reports whether a creature

@@ -188,6 +188,15 @@ const (
 	// dealt excess damage this turn (Rith, Liberated Primeval, #5663).
 	// The tally only rises within a turn.
 	FootprintCondOpponentPermanentDealtExcessDamage FootprintCond = "opponent_permanent_dealt_excess_damage"
+	// FootprintCondDamagedByGiantWizardOrSpell: the permanent the item's
+	// trigger event names was dealt damage this turn by a Giant, a Wizard
+	// or a spell the item's controller controlled (Aegar, the Freezing
+	// Flame, #5908). The damage record only grows within a turn.
+	FootprintCondDamagedByGiantWizardOrSpell FootprintCond = "damaged_by_giant_wizard_or_spell"
+	// FootprintCondPlusOneCounterPutOnYourPermanent: a +1/+1 counter was put
+	// this turn on a permanent the item's controller controls (Fairgrounds
+	// Trumpeter, #5908). The event log only grows within a turn.
+	FootprintCondPlusOneCounterPutOnYourPermanent FootprintCond = "plus_one_counter_put_on_your_permanent"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -863,6 +872,11 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return !g.DealtCombatDamageSinceLastTurnForEffect(you)
 	case FootprintCondOpponentPermanentDealtExcessDamage:
 		return g.OpponentPermanentDealtExcessDamageThisTurn(you)
+	case FootprintCondPlusOneCounterPutOnYourPermanent:
+		return g.PlusOneCounterPutOnYourPermanentThisTurnForEffect(you)
+	case FootprintCondDamagedByGiantWizardOrSpell:
+		return t.Trigger != nil &&
+			g.PermanentDealtDamageThisTurnByKindForEffect(t.Trigger.Event.Target, you, true, "Giant", "Wizard")
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:
