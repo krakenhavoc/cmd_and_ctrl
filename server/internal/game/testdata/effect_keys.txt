@@ -915,11 +915,11 @@ choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/necromantic-selection-pick
-choose choose-cards/next-of-kin-creature
+choose choose-cards/neo-discover-the-impossible-exile
 choose choose-cards/neo-distribute-counters-among-players-permanents
 choose choose-cards/neo-invoke-calamity-exile
 choose choose-cards/neo-invoke-calamity-picked
-choose choose-cards/neo-discover-the-impossible-exile
+choose choose-cards/next-of-kin-creature
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
@@ -3001,8 +3001,8 @@ tail nashi-moons-legacy/copy-exiled
 tail necromantic-selection/black-zombie-then-exile
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
-tail neo-invoke-the-ancients/counters
 tail neo-b15/discover-the-impossible-cast
+tail neo-invoke-the-ancients/counters
 tail nesting-grounds/remove
 tail nezumi-graverobber/after-exile
 tail nick-fury-spymaster/indestructible
