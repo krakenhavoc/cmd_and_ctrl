@@ -35,6 +35,7 @@ func init() {
 		OracleID:     "d32345c1-ed20-4bfc-a5fa-6ac7b99542ec",
 		Name:         "Rod of Absorption",
 		Completeness: CompletenessFull,
+		XMatters:     true,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, anInstantOrSorceryWasCast,
 				"Rod of Absorption — exile that spell instead of putting it into a graveyard as it resolves",
@@ -43,6 +44,8 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{X}, {T}, Sacrifice this artifact: You may cast any number of spells from among cards exiled with this artifact with total mana value X or less without paying their mana costs.",
 			Cost:  Plus(ManaCost("{X}"), TapCost(), SacrificeThis()),
+			// Casts spells from exile: nothing a stop on an opponent's item answers.
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return rodOfAbsorptionCast(g, item)
 			},

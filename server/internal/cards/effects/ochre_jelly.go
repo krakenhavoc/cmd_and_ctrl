@@ -35,6 +35,7 @@ func init() {
 		OracleID:                   "2b757d32-09a3-49cd-ada4-84b5335178ce",
 		Name:                       "Ochre Jelly",
 		Completeness:               CompletenessFull,
+		XMatters:                   true,
 		PrintedKeywords:            []string{"trample"},
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
 		Triggered: []game.TriggeredAbility{
