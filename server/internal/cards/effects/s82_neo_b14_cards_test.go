@@ -469,7 +469,7 @@ func TestS82NeoB14InvokeCalamityCastsTwoFreeWithinSixAndExilesThemAndItself(t *t
 		if me.Hand.Contains(id) {
 			zone = game.ZoneHand
 		}
-		if err := g.CastForResolutionChoice(me.ID, offer.ID, id, game.CastSpellParams{FromZone: string(zone)}); err != nil {
+		if err := g.CastForResolutionChoice(me.ID, offer.ID, id, game.CastSpellParams{FromZone: string(zone), AlternativeCost: game.AltCostKeyGrantedCost}); err != nil {
 			t.Fatalf("cast %v for free: %v", id, err)
 		}
 		passPriorityAroundTable(t, g)
