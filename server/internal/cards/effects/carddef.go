@@ -241,6 +241,7 @@ func buildDef(spec Spec) *game.CardDef {
 		WardSuppressions:                    spec.WardSuppressions,
 		CastableZones:                       spec.CastableZones,
 		CastableZonesIf:                     spec.CastableZonesIf,
+		CastsOnlyFromGraveyard:              spec.CastsOnlyFromGraveyard,
 		SpecialActions:                      spec.SpecialActions,
 		SpecialActionGrants:                 spec.SpecialActionGrants,
 		UntapStep:                           spec.UntapStep,

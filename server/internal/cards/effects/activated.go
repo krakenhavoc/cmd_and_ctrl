@@ -1217,6 +1217,21 @@ func RemoveCountersFrom(kind string, n int, label string, preds ...CardPredicate
 	}}
 }
 
+// RemoveCountersOfKindsFrom is RemoveCountersFrom for a clause that names
+// two or more kinds: Ion Storm's "Remove a +1/+1 counter or a charge counter
+// from a permanent you control" is
+//
+//	RemoveCountersOfKindsFrom(1, "a permanent you control",
+//	    []string{game.CounterPlusOne, "charge"})
+//
+// The activator names the permanent and which listed kind comes off it; a
+// kind outside the list is neither offered nor accepted.
+func RemoveCountersOfKindsFrom(n int, label string, kinds []string, preds ...CardPredicate) game.AbilityCost {
+	c := RemoveCountersFrom("", n, label, preds...)
+	c.RemoveCounters.Kinds = append([]string(nil), kinds...)
+	return c
+}
+
 // RemoveCountersXFromThis is "Remove X <kind> counters from this
 // permanent" and "Remove any number of <kind> counters from this
 // permanent" — they are the same cost, because what X can be is
