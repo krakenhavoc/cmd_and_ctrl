@@ -363,6 +363,7 @@ body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
+body s82-mid-b14/lynde-return-curse
 body s82-mom-b12/flitting-guerrilla-top
 body s82-neo-b06/biting-palm-ninja-reveal-exile
 body s82-neo-b06/dokuchi-silencer-destroy
@@ -1744,6 +1745,7 @@ option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bro-b11-argivian-avenger-keyword
+option option-pick/s82-mid-b14-lynde-attach
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/sanctuary-warden-remove-a-counter
@@ -3358,6 +3360,7 @@ tail then/congregation-at-dawn-order
 tail then/created-gain-keyword-until-eot
 tail then/crippling-fear-type-chosen
 tail then/crystal-spray-draw
+tail then/curse-of-silence-draw
 tail then/dance-with-calamity-exiled
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
