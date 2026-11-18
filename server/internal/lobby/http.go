@@ -82,6 +82,10 @@ const maxDeckBodyBytes = 2 * 1024 * 1024
 // lobby having to know about auth.
 type Config struct {
 	Lobby *Lobby
+	// LimiterClock replaces the wall clock of every rate limiter built in
+	// Register, for tests that must not race the refill (#5888). Nil
+	// (production) means time.Now.
+	LimiterClock func() time.Time
 	// DraftSets is the draftable-set list a draft's set is checked
 	// against and its packs are drawn from (ADR 0222 §4, §5): the same
 	// Lister GET /draft/sets serves. Nil refuses every set.
@@ -544,7 +548,7 @@ func Handler(c Config) http.Handler {
 		if relaxed {
 			return ratelimit.New(1<<20, 1<<20)
 		}
-		return ratelimit.New(rate, burst)
+		return ratelimit.NewWithClock(rate, burst, c.LimiterClock)
 	}
 
 	// Rate-limit the two endpoints that accept untrusted credentials:

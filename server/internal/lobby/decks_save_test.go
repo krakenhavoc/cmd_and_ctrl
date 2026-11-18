@@ -323,17 +323,22 @@ func TestSaveDeckBodyShape(t *testing.T) {
 
 // The save rides the /me/decks* bucket.
 func TestSaveDeckIsThrottled(t *testing.T) {
-	s := newDeckStack(t, false, nil)
+	// Time is frozen so the bucket (1/s, burst 5) never refills between
+	// saves, however slow the machine is (#5888).
+	frozen := time.Unix(1_000_000, 0)
+	s := newDeckStack(t, false, func(c *Config) { c.LimiterClock = func() time.Time { return frozen } })
 	tok, _ := s.person(t, "111", "Alice")
-	throttled := false
+	throttled := 0
 	for i := range 12 {
 		code, _, _ := s.save(t, tok, map[string]string{"text": needyText(s.tc), "name": fmt.Sprintf("D%d", i)})
 		if code == http.StatusTooManyRequests {
-			throttled = true
+			throttled++
 		}
 	}
-	if !throttled {
-		t.Error("12 rapid saves never hit 429")
+	// The person() login may spend nothing from this bucket, but allow for
+	// it: at most the burst of 5 gets through, so at least 7 are refused.
+	if throttled < 7 {
+		t.Errorf("12 rapid saves: %d hit 429, want at least 7", throttled)
 	}
 }
 

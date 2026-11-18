@@ -53,6 +53,16 @@ func New(rate, burst float64) *Limiter {
 	}
 }
 
+// NewWithClock is New with an injected clock, so a test can freeze or
+// step time instead of racing the wall clock. A nil now means time.Now.
+func NewWithClock(rate, burst float64, now func() time.Time) *Limiter {
+	l := New(rate, burst)
+	if now != nil {
+		l.now = now
+	}
+	return l
+}
+
 // Allow attempts to consume a token for key. Returns true if one was
 // available, false if the caller should be throttled.
 func (l *Limiter) Allow(key string) bool {
