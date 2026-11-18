@@ -110,6 +110,7 @@ body dash/return
 body death-to-our-enemies/divided-damage
 body decayed/sacrifice
 body decayed/schedule
+body delayed/biolume-egg-return-transformed
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
 body desperate-measures/draw-two
@@ -1018,6 +1019,8 @@ choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
 choose choose-cards/s82-mom-b21-djeru-exile
 choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/s82-snc-turf-war-take
+choose choose-cards/s82-vow-b15-jacob-hauken-exile
+choose choose-cards/s82-vow-b15-runo-reveal
 choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
@@ -1045,6 +1048,7 @@ choose choose-cards/sorin-the-mirthless-take
 choose choose-cards/sothera-exile-creature
 choose choose-cards/sothera-put-exiled-creature
 choose choose-cards/soul-of-windgrace-land
+choose choose-cards/soulcipher-board-put-one-into-graveyard
 choose choose-cards/sparring-dummy-milled-land
 choose choose-cards/spawnsire-of-ulamog-cast
 choose choose-cards/specter-of-mortality-exile
