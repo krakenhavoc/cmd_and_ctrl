@@ -3505,6 +3505,7 @@ tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
 tail shadow-kin/after-exile
 tail sheoldred-the-true-scriptures/flicker-this
+tail shifting-shadow/attach-then-bottom
 tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
 tail silvan-rally/after-mill
