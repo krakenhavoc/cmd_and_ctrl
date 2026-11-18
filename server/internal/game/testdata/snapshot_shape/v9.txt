@@ -41758,6 +41758,7 @@ pendingChoices[].assist.spend.AbilityOrigin.Ref	string
 pendingChoices[].assist.spend.AllCreatureTypes	bool
 pendingChoices[].assist.spend.AltCost	string
 pendingChoices[].assist.spend.CastFrom	string
+pendingChoices[].assist.spend.ClassLevel	bool
 pendingChoices[].assist.spend.Colors	array
 pendingChoices[].assist.spend.Colors[]	string
 pendingChoices[].assist.spend.Controller	custom(uuid.UUID)

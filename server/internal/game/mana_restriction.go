@@ -103,6 +103,14 @@ const (
 	// say (an Equipment has other abilities that are not equip). Combine
 	// it with the cast clause through ManaRestrictAnyOf.
 	ManaRestrictEquip = "purpose:equip"
+	// ManaRestrictClassLevel permits the token only on the cost of a Class's
+	// level-up ability (CR 716.2a): the "gain a Class level" half of Sorcerer
+	// Class's "Spend this mana only to cast an instant or sorcery spell or to
+	// gain a Class level". A purpose tag like ManaRestrictEquip: it needs an
+	// activation AND that the ability is a level-up one
+	// (ManaSpendContext.ClassLevel). Combine it with the cast clause through
+	// ManaRestrictAnyOf.
+	ManaRestrictClassLevel = "purpose:class_level"
 	// ManaRestrictUnlock permits the token only on an unlock cost
 	// (CR 709.5e, ADR 0103) — the "unlock doors" half of Smoky
 	// Lounge's and Creeping Peeper's restrictions. Combine it with a
@@ -455,6 +463,13 @@ type ManaSpendContext struct {
 	// mirrored row and carries the bit.
 	Equip bool
 
+	// ClassLevel is set when the ability being paid for is a Class's level-up
+	// ability (CR 716.2a): what ManaRestrictClassLevel reads. Set by the same
+	// sites as Equip, from ActivatedAbility.ClassLevel; false for a cast, a
+	// mana ability and every unnamed payment, which therefore can't spend
+	// level-up-only mana.
+	ClassLevel bool
+
 	// CostHasX is set when the cost being paid contains {X}: what
 	// ManaRestrictXCost reads (#4834). ManaSpendForCast sets it from the
 	// spell's mana cost (ManaSpendForCastParams from the alternative
@@ -789,6 +804,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate && ctx.PowerUp
 	case ManaRestrictEquip:
 		return ctx.Purpose == SpendPurposeActivate && ctx.Equip
+	case ManaRestrictClassLevel:
+		return ctx.Purpose == SpendPurposeActivate && ctx.ClassLevel
 	case ManaRestrictXCost:
 		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasX
 	case ManaRestrictYourCommander:

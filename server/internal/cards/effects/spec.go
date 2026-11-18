@@ -2102,6 +2102,10 @@ type ActivatedAbility struct {
 	// reduction itself (game/power_up.go). Set it through the PowerUp
 	// constructor (power_up.go), which also writes the label.
 	PowerUp bool
+	// ClassLevel marks a Class's "{cost}: Level N" ability (CR 716.2a). Set
+	// by LevelUp and by no card file: it names the ability for the spend
+	// restriction "only to gain a Class level" (game.ManaRestrictClassLevel).
+	ClassLevel bool
 	// Ninjutsu marks a ninjutsu or commander ninjutsu ability (CR
 	// 702.49a, 702.49d; #5672). It gates nothing; it names the keyword
 	// for a cost modifier that prices "ninjutsu abilities"
