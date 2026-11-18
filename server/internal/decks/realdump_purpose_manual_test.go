@@ -197,6 +197,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 AFR batch 16.
 	"Wild-Magic Sorcerer": "gives the first spell you cast from exile each turn cascade: no permanents are affected, only a cascade offer",
+
+	// S82 RPR batch 31.
+	"Angel of Glory's Rise": "exiles only the Zombies, one creature type, then returns Human creature cards from its controller's graveyard: a type-specific exile, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
