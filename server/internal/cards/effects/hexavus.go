@@ -36,14 +36,7 @@ func init() {
 				Label:   "{1}, Remove a +1/+1 counter from this creature: Put a flying counter on another target creature.",
 				Cost:    Plus(ManaCost("{1}"), RemoveCountersFromThis(game.CounterPlusOne, 1)),
 				Targets: Another(TargetCreature("another target creature")),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return AddCounter{Target: id, Kind: game.CounterFlying, N: 1}.Apply(ctx)
-				},
+				Effect:  putAFlyingCounterOnTheTarget,
 			},
 			{
 				Label:   "{1}, Remove a counter from another creature you control: Put a +1/+1 counter on this creature.",
