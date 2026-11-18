@@ -2660,6 +2660,7 @@ tail attacking-tokens/delina-token-made
 tail attacking-tokens/dorotheas-retribution-sacrifice-the-spirit
 tail attacking-tokens/fire-navy-trebuchet-sacrifice-the-boulder
 tail attacking-tokens/furnace-blessed-conqueror-counters-and-sacrifice
+tail attacking-tokens/geist-of-saint-traft-exile-angel
 tail attacking-tokens/kari-zev-exile-ragavan
 tail attacking-tokens/kavaron-harrier-sacrifice-the-robot
 tail attacking-tokens/living-laser-exile-the-tokens
