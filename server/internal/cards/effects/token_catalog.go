@@ -434,6 +434,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
 	// "When this creature dies, it deals 2 damage to each opponent."
 	printedImpDamageToken,
+	// Torens, Fist of the Angels' Human Soldier (Crimson Vow, #5495).
+	printedHumanSoldierTrainingToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
