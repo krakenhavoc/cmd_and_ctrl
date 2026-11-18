@@ -122,6 +122,7 @@ body dies/exile-from-graveyard
 body dies/manifest-dread
 body dimension-x-pizzasaur/destroy
 body dire-blunderbuss/damage
+body diregraf-horde/exile
 body discard-by-opponent/return-the-discarded-card
 body discard-by-opponent/return-to-hand
 body discard-by-opponent/return-with-counter
@@ -370,6 +371,7 @@ body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
+body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
 body s82-neo-b06/biting-palm-ninja-reveal-exile
 body s82-neo-b06/dokuchi-silencer-destroy
@@ -1026,6 +1028,7 @@ choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take
+choose choose-cards/s82-mid-b03-take-reveal-rest-graveyard
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
@@ -2162,6 +2165,7 @@ run prompt-run/druid-of-purification-destroy
 run prompt-run/dusk-mangler-discard-and-life
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
+run prompt-run/empty-the-laboratory-sacrifice
 run prompt-run/entish-restoration-search
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
@@ -2227,6 +2231,7 @@ run prompt-run/liliana-dreadhorde-general-keep
 run prompt-run/lithobraking-sacrifice
 run prompt-run/lord-skitters-butcher-sacrifice
 run prompt-run/lotus-field-sacrifice
+run prompt-run/loyal-gryff-return
 run prompt-run/malevolent-witchkite-sacrifice
 run prompt-run/manifest-from-hand
 run prompt-run/megatron-tyrant-sacrifice
@@ -2870,6 +2875,7 @@ tail hotel-of-fears/praise-him
 tail hotshot-investigators/investigate
 tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
+tail hungry-for-more/sacrifice-at-next-end-step
 tail if-it-was/cling-to-dust-life-or-draw
 tail if-it-was/consuming-ashes-surveil
 tail if-it-was/deluge-of-the-dead-zombie
@@ -3052,6 +3058,7 @@ tail oviya-automech-artisan/two-counters-on-an-artifact
 tail palantir-of-orthanc/ask-opponent
 tail palantir-of-orthanc/opponent-loses-total-mana-value
 tail path-to-exile/after-exile
+tail path-to-the-festival/scry-on-three-types
 tail patient-naturalist/after-mill
 tail pavel-chekov-first-posting/taken
 tail pay-unless/paid
@@ -3424,6 +3431,7 @@ tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
 tail then/elesh-norn-argent-etchings-flicker
+tail then/empty-the-laboratory-reveal
 tail then/end-blaze-epiphany-choose
 tail then/epharas-dispersal-surveil
 tail then/expose-the-culprit-cloak
@@ -3507,6 +3515,7 @@ tail then/phenomenon-investigators-draw
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
 tail then/planetary-annihilation-damage
+tail then/play-with-fire-scry
 tail then/polygraph-orb-punisher-sacrificed
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again
@@ -3529,6 +3538,7 @@ tail then/rotisserie-elemental-exile
 tail then/rottenmouth-viper-punisher-sacrificed
 tail then/s82-bro-b13-choose-one-play
 tail then/s82-bro-b13-exiled-to-hand
+tail then/s82-mid-scry-n
 tail then/s82-one-b06-proliferate-if-done
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
