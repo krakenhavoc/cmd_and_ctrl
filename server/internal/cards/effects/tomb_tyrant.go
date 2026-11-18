@@ -28,7 +28,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{2}{B}, {T}, Sacrifice a creature: Return a Zombie creature card at random from your graveyard to the battlefield. Activate only during your turn and only if there are at least three Zombie creature cards in your graveyard.",
-			Purpose:   game.Purpose{Answers: game.AnswerValue | game.AnswerSacOutlet},
+			Purpose:   game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost:      Plus(ManaCost("{2}{B}"), TapCost(), SacrificeN(1, "a creature", Creature())),
 			Condition: AllConditions(DuringYourTurn(), GraveyardAtLeast(3, tombTyrantZombieCard)),
 			Effect: func(g *game.Game, item *game.StackItem) error {

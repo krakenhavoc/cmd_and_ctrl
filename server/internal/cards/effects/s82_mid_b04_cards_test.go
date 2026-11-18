@@ -378,8 +378,8 @@ func TestMidB04CrawlFromTheCellarReturnsACreatureAndGrowsAZombie(t *testing.T) {
 	if !me.Hand.Contains(dead) {
 		t.Error("the creature card is not back in hand")
 	}
-	if p, tough := effectivePTOf(t, g, zombie); p != 3 || tough != 3 {
-		t.Errorf("Zombie is %d/%d, want 3/3", p, tough)
+	if c, ok := battlefieldCard(g, zombie); !ok || c.Counters[game.CounterPlusOne] != 1 {
+		t.Errorf("the Zombie has %d +1/+1 counters, want 1", c.Counters[game.CounterPlusOne])
 	}
 }
 
@@ -417,6 +417,7 @@ func TestMidB04TombTyrantAnthemAndReanimation(t *testing.T) {
 	z3 := b17GraveyardCard(me, "Dead Zombie 3", "Creature — Zombie", "{B}")
 	advanceToMain(t, g)
 	fodder := b12Creature(g, me.ID, "Fodder", "Creature — Goblin", 1, 1)
+	fillPoolColored(me, "B", 3)
 	if err := g.ActivateCatalogAbility(me.ID, tyrant, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{fodder}, Strict: true}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
@@ -447,6 +448,7 @@ func TestMidB04TombTyrantNeedsThreeZombieCardsAndYourTurn(t *testing.T) {
 	b17GraveyardCard(me, "Dead Bear", "Creature — Bear", "{B}")
 	advanceToMain(t, g)
 	fodder := b12Creature(g, me.ID, "Fodder", "Creature — Goblin", 1, 1)
+	fillPoolColored(me, "B", 3)
 	params := game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{fodder}, Strict: true}
 	if err := g.ActivateCatalogAbility(me.ID, tyrant, 0, params); err == nil {
 		t.Fatal("activated with only two Zombie cards in the graveyard")
@@ -488,10 +490,6 @@ func TestMidB04EmptyTheLaboratorySacrificesXZombiesAndRevealsThatMany(t *testing
 	if !g.Battlefield.Contains(hit1) || !g.Battlefield.Contains(hit2) {
 		t.Error("the two Zombie creature cards revealed did not enter the battlefield")
 	}
-	if len(me.Library.Cards) == 0 || me.Library.Cards[0].Name == "Middle" {
-		// The bottom of the library is index 0: the revealed Sorcery went there.
-		_ = 0
-	}
 	foundMiddle := false
 	for i := 0; i < 3 && i < len(me.Library.Cards); i++ {
 		if me.Library.Cards[i].Name == "Middle" {
@@ -507,7 +505,7 @@ func TestMidB04EmptyTheLaboratoryWithFewerZombiesThanXSacrificesThemAll(t *testi
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	z1 := midB04Zombie(g, me.ID, "Zombie 1")
-	hit := seedLibraryTop(me, "Library Zombie", "Creature — Zombie", "{B}")
+	seedLibraryTop(me, "Library Zombie", "Creature — Zombie", "{B}")
 	seedLibraryTop(me, "Library Zombie 2", "Creature — Zombie", "{B}")
 	paCast(t, g, "Empty the Laboratory", "Sorcery", "{X}{U}{U}", midB04EmptyTheLab, game.CastSpellParams{XValue: 3})
 	passPriorityAroundTable(t, g)
@@ -531,8 +529,7 @@ func TestMidB04EmptyTheLaboratoryWithFewerZombiesThanXSacrificesThemAll(t *testi
 			entered++
 		}
 	}
-	if entered != 1 || !g.Battlefield.Contains(me.Library.Cards[len(me.Library.Cards)-1].InstanceID) && false {
+	if entered != 1 {
 		t.Errorf("%d library Zombies entered, want exactly 1 (the number sacrificed)", entered)
 	}
-	_ = hit
 }
