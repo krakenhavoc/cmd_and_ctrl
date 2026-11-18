@@ -369,6 +369,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}StackAbilityButtons.svelte`],
     doc: "#1865: a spell's ability that works while it is on the stack (Lightning Storm's discard a land card), on every stack surface beside Counter; offered to each seat that may activate it",
   }),
+  emblemAbility: dynamicLabel({
+    stem: "Activate emblem ",
+    match: "prefix",
+    shape: "Activate emblem <emblem name>: <cost>",
+    make: (emblem: string, cost: string) => `Activate emblem ${emblem}: ${cost}`,
+    example: ["Karn, Living Legacy emblem", "Tap an untapped artifact you control"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}PlayerIdentity.svelte`],
+    doc: "#5868: an emblem's activated ability (Karn, Living Legacy's), the button beside its owner's emblem chip; only the owner's frame carries the row",
+  }),
   stackAbilityGone: dynamicLabel({
     stem: " left the stack",
     match: "suffix",

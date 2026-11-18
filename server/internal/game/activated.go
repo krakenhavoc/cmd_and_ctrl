@@ -1587,6 +1587,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// (CR 702.29a), not a fork.
 	source, srcZone := g.findCardAndZoneLocked(cardID)
 	if source == nil {
+		// #5868, CR 113.6 / CR 114.4: an emblem's activated ability
+		// functions from the command zone. An emblem is not in the card
+		// index (ADR 0064: no verb can name it), so it is found here, by
+		// the one verb that may: its owner activating its ability. The
+		// "else" arm below holds it to its owner (CR 114.2: the owner is
+		// its controller).
+		source, srcZone = g.emblemByIDLocked(cardID)
+	}
+	if source == nil {
 		return ErrCardNotFound
 	}
 	if srcZone == ZoneBattlefield {

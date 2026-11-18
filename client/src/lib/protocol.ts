@@ -3205,6 +3205,13 @@ export interface EmblemView {
   // is gained at, so the table can show the lines still to come.
   // Absent on every other emblem.
   lines?: EmblemLineView[];
+  // #5868, CR 114.4: the emblem's activated abilities (Karn, Living
+  // Legacy's "Tap an untapped artifact you control: This emblem deals 1
+  // damage to any target."), the same rows a card's `zone_abilities`
+  // carries. OWNER ONLY: present on your own emblems and absent on every
+  // other seat's. Sent as `activate_ability` with the emblem's
+  // instance_id as `source_card_id`.
+  zone_abilities?: ActivatedAbilityView[];
 }
 
 export interface EmblemLineView {
