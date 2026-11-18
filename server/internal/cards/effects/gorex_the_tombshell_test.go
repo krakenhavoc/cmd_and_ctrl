@@ -156,7 +156,7 @@ func TestGorexWithNothingExiledPaysFullAndReturnsNothing(t *testing.T) {
 	me := g.Seats[g.Turn.ActiveSeat]
 	fuel := exileXFuel(me, "Creature — Zombie", 2)
 	advanceToMain(t, g)
-	floatMana(t, g, me, "{6}{B}{B}")
+	floatMana(t, g, me, "{C}{C}{C}{C}{C}{C}{B}{B}")
 	gorex, err := castGorex(t, g, game.CastSpellParams{Strict: true})
 	if err != nil {
 		t.Fatalf("Gorex with nothing exiled and {6}{B}{B} floating: %v", err)
