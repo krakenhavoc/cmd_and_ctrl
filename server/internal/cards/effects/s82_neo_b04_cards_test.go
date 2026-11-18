@@ -276,6 +276,16 @@ func TestNeoB04KamiGrowsOnEachEnchantmentSpellOnly(t *testing.T) {
 	}
 }
 
+// neoB04PassToConfirm passes priority until the player has a yes/no prompt.
+func neoB04PassToConfirm(t *testing.T, g *game.Game, who uuid.UUID) {
+	t.Helper()
+	for i := 0; i < 12 && latestConfirmFor(g, who) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+}
+
 // kamiInGraveyard puts a Kami of Transience into me's graveyard.
 func neoB04KamiInGraveyard(me *game.Player) uuid.UUID {
 	id := uuid.New()
@@ -296,7 +306,7 @@ func TestNeoB04KamiReturnsAtEndStepAfterAnEnchantmentWentToYourGraveyard(t *test
 	advanceToMain(t, g)
 	killCreature(t, g, me.ID, ench) // moves the permanent to its owner's graveyard
 	advanceTo(t, g, game.StepEnd)
-	passPriorityUntilChoice(t, g)
+	neoB04PassToConfirm(t, g, me.ID)
 	answerMayChoice(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if _, ok := handCardByID(g, me, kami); !ok {
@@ -318,7 +328,7 @@ func TestNeoB04KamiMayDeclineAndNeedsAnEnchantmentFromTheBattlefield(t *testing.
 	advanceToMain(t, g)
 	killCreature(t, g, me.ID, ench)
 	advanceTo(t, g, game.StepEnd)
-	passPriorityUntilChoice(t, g)
+	neoB04PassToConfirm(t, g, me.ID)
 	answerMayChoice(t, g, me.ID, false)
 	passPriorityAroundTable(t, g)
 	if !me.Graveyard.Contains(kami) {
@@ -360,7 +370,7 @@ func TestNeoB04KamiReturnsOnAnOpponentsEndStepToo(t *testing.T) {
 	advanceToMainOf(t, g, 1) // the opponent's turn
 	killCreature(t, g, me.ID, ench)
 	advanceTo(t, g, game.StepEnd)
-	passPriorityUntilChoice(t, g)
+	neoB04PassToConfirm(t, g, me.ID)
 	answerMayChoice(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if _, ok := handCardByID(g, me, kami); !ok {
