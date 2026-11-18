@@ -122,6 +122,7 @@ body dies/exile-from-graveyard
 body dies/manifest-dread
 body dimension-x-pizzasaur/destroy
 body dire-blunderbuss/damage
+body diregraf-horde/exile
 body discard-by-opponent/return-the-discarded-card
 body discard-by-opponent/return-to-hand
 body discard-by-opponent/return-with-counter
@@ -2138,6 +2139,7 @@ run prompt-run/druid-of-purification-destroy
 run prompt-run/dusk-mangler-discard-and-life
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
+run prompt-run/empty-the-laboratory-sacrifice
 run prompt-run/entish-restoration-search
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
@@ -3389,6 +3391,7 @@ tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
 tail then/elesh-norn-argent-etchings-flicker
+tail then/empty-the-laboratory-reveal
 tail then/end-blaze-epiphany-choose
 tail then/epharas-dispersal-surveil
 tail then/expose-the-culprit-cloak
