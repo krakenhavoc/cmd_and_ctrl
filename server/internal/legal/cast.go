@@ -160,7 +160,10 @@ func (e *enumerator) castZones(anyGrant bool) []castZone {
 		}
 		out = append(out,
 			castZone{other.Graveyard, game.ZoneGraveyard, "graveyard", false},
-			castZone{other.Library, game.ZoneLibrary, "library", false})
+			castZone{other.Library, game.ZoneLibrary, "library", false},
+			// #5922: another seat's hand, open only under a stored
+			// permission over it (Sen Triplets).
+			castZone{other.Hand, game.ZoneHand, "hand", false})
 	}
 	return out
 }
@@ -274,6 +277,12 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 		// this loop offered a bot reached the frame with no announce
 		// stamps at all.
 		if perm == nil && !(mine && g.CardCastableFromAnyFaceLocked(c, kind)) {
+			return
+		}
+	case game.ZoneHand:
+		// #5922: a card in ANOTHER seat's hand is open only under a
+		// permission (castSourceZoneLocked finds it there only under one).
+		if !mine && perm == nil {
 			return
 		}
 	}

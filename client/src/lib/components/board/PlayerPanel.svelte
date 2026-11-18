@@ -1297,7 +1297,7 @@
       <Hand
         hand={seat.hand}
         {isSelf}
-        onPlayCard={isSelf ? onPlayCard : undefined}
+        onPlayCard={(c) => onPlayCard(c)}
         // #1920: a dragged land goes the click path's way (no strict/auto_tap
         // stamp: there is nothing to pay), so the action is the same one.
         onDragCast={isSelf ? (c) => onPlayCard(c, undefined, undefined, !isLand(c)) : undefined}

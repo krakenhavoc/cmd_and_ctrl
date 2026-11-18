@@ -318,6 +318,17 @@ type PlayerStatic struct {
 	// shallow copy clonePlayerStatics makes shares it safely.
 	ManaAbility *PlayerManaAbility `json:"manaAbility,omitempty"`
 
+	// CantActivateAbilities is a granted "<player> can't activate
+	// abilities" for a duration (Sen Triplets' "this turn, that player
+	// can't cast spells or activate abilities", #5922),
+	// player_activation_ban.go. The FIFTEENTH payload, told apart by the
+	// bit; it carries no Keyword. It is stored on the RESTRICTED player,
+	// and it reaches every ability, mana abilities included: the clause
+	// names no exception (CR 602.5, CR 605.1a). Its READER is
+	// playerActivationBanLocked, the first source ActivationGateLocked
+	// asks.
+	CantActivateAbilities bool `json:"cantActivateAbilities,omitempty"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored

@@ -6358,6 +6358,10 @@ func ViewOfGame(g *game.Game) GameView {
 				// one card, its top, which is the LAST element.
 				stampGrantedPermissions(g, view.Seats, &view.Seats[si].Library, seat.Library,
 					id, len(view.Seats[si].Library.Cards)-1)
+				// #5922: and a hand, for a standing rule over another
+				// seat's (Sen Triplets). The owner's own cast is the
+				// ordinary one stampLegalTargets stamped.
+				stampGrantedPermissions(g, view.Seats, &view.Seats[si].Hand, seat.Hand, id, 0)
 			}
 		}
 		stampLibraryTop(g, view.Seats)
@@ -6830,9 +6834,10 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// is not seat B's to read, wherever the card is
 				// sitting.
 				//
-				// `castable_here` was never part of this: castStampsFor
-				// only ever sets it for a graveyard or a library top,
-				// so a hand card has never carried one.
+				// `castable_here` is not part of this: castStampsFor sets
+				// it on a hand card only under a standing rule over
+				// ANOTHER seat's hand (#5922), which
+				// stampGrantedPermissions files for that holder alone.
 				//
 				// #1686: the grant is no longer hard-coded nil. A hand
 				// card's own printed text never needed a permission
@@ -8044,6 +8049,14 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 		if kind == game.ZoneOutside && haveLive {
 			// The sideboard tab's price tag, as the exile strip's.
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
+		}
+	case game.ZoneHand:
+		// #5922: a card in ANOTHER seat's hand that a standing rule over
+		// that hand opens (Sen Triplets). Reached only through
+		// stampGrantedPermissions, filed under the holder's seat; the
+		// owner's own hand cards never carry the bit, as before.
+		if grant.ForeignHandRule() {
+			out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offerGrants)
 		}
 	case game.ZoneExile:
 		// #1389: exile joins them, for the castable-from-exile strip.
@@ -13474,6 +13487,12 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 		v := &zone.Cards[i]
 		card := live.Cards[i]
 		perm := g.CastPermissionOnCardForEffect(card, kind)
+		if kind == game.ZoneHand && !perm.ForeignHandRule() {
+			// #5922: a hand's only foreign holder is a standing rule over
+			// it. A hand grant its owner holds (miracle) is the owner's
+			// own answer, stamped by stampLegalTargets.
+			continue
+		}
 		if perm == nil {
 			// THE fast negative for the per-holder walk below, and it
 			// is exact rather than approximate: the only permission

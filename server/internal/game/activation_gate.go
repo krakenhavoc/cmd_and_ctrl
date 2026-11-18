@@ -316,6 +316,12 @@ func (g *Game) ActivationGateLocked(activator uuid.UUID, card Card, zone ZoneKin
 	if g == nil || g.Battlefield == nil {
 		return nil
 	}
+	// #5922: a granted "<player> can't activate abilities" with a
+	// duration, on the activator (Sen Triplets). Every ability, mana
+	// abilities too, so it is asked before anything about the ability.
+	if reason, source, ok := g.playerActivationBanLocked(activator); ok {
+		return &CantActivateError{Reason: reason, Source: source}
+	}
 	// The THIRD source, the one the header promised: a ban with a
 	// duration, a ScopedEffect swept when it ends (#4571, Kang the
 	// Conqueror's "power-up abilities can't be activated" for an extra
@@ -365,6 +371,9 @@ func (g *Game) AnyActivationRestrictionsForEffect() bool {
 		return false
 	}
 	if _, _, ok := g.powerUpBanLocked(); ok {
+		return true
+	}
+	if g.anyPlayerActivationBanLocked() {
 		return true
 	}
 	if CatalogActivationRestrictions == nil {
