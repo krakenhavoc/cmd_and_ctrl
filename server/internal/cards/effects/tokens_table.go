@@ -503,4 +503,6 @@ var tokenTable = map[string]game.Card{
 	"4/4 green Wurm":   {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"2/2 white Knight with protection from red": {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"protection from red"}},
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
+	// #5493: Kamigawa: Neon Dynasty's Shrine (Go-Shintai of Life's Origin).
+	"1/1 colorless Shrine enchantment": {Name: "Shrine", TypeLine: "Token Enchantment Creature — Shrine", Power: 1, Toughness: 1},
 }
