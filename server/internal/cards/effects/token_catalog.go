@@ -485,6 +485,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedFeatherToken,
 	// S82 BNS batch 02: Outlaws' Merriment's Human Rogue.
 	printedBnsHumanRogueToken,
+	// S82 BNS batch 51: Ozox, the Clattering King's Jumblebones.
+	printedBnsB51JumblebonesToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

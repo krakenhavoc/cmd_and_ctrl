@@ -2232,6 +2232,16 @@ type Event struct {
 	// schema v9.
 	XCost bool `json:"x_cost,omitempty"`
 
+	// ActivatedFrom is, on an EventActivateAbility, the zone the ability's
+	// source was in as it was activated (CR 602.2): the graveyard for an
+	// unearth or a graveyard ability, the hand for cycling, the battlefield
+	// for nearly every other. "Whenever you ... activate an ability of a
+	// card in your graveyard" (Neerdiv, Devious Diver, S82 BNS batch 51)
+	// reads it, for Exhaust's reason: a cost may already have moved the
+	// source (an embalm or eternalize exiles it) by the time a watcher runs.
+	// Empty for the battlefield and on every other event. Additive within the schema.
+	ActivatedFrom ZoneKind `json:"activated_from,omitempty"`
+
 	// LifePaid is, on an EventActivateAbility, the life the activator
 	// paid to activate the ability: PaidCost.LifePaid as the
 	// announcement finished paying, so a printed "Pay N life" component

@@ -227,6 +227,7 @@ body heroic-sacrifice/its-counters-and-draw
 body hidetsugu-devouring-chaos/damage
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
+body hurska-sweet-tooth/pump
 body hylda-of-the-icy-crown/modes
 body hypothesizzle/damage
 body icewrought-sentry/tap
@@ -245,6 +246,7 @@ body invasion-of-new-capenna/exile
 body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
+body isareth/return-with-corpse-counter
 body itzquinth/dinosaur-bites
 body jace-architect-of-thought/attacker-gets-minus-one-zero
 body jace-reality-sculptor/attacker-gets-minus-five
@@ -2188,6 +2190,7 @@ payunless pay-unless/hellkite-charger-extra-combat
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike
 payunless pay-unless/human-torch-share-damage
+payunless pay-unless/hurska-sweet-tooth-pump
 payunless pay-unless/hylda-of-the-icy-crown
 payunless pay-unless/icewrought-sentry-tap
 payunless pay-unless/inalla-archmage-ritualist-copy
@@ -2196,6 +2199,7 @@ payunless pay-unless/intet-the-dreamer-exile-top
 payunless pay-unless/inti-seneschal-of-the-sun-discard
 payunless pay-unless/intrepid-adversary-times
 payunless pay-unless/invisible-woman-pump
+payunless pay-unless/isareth-x-reanimate
 payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/itzquinth-dinosaur-bites
 payunless pay-unless/jace-multiverse-architect-cant-attack
@@ -3253,6 +3257,7 @@ tail invasion-of-arcavios/library-found
 tail invasion-of-kaldheim/draw-and-play
 tail invasion-of-pyrulea/reveal-then-draw
 tail invent/sorcery-search
+tail isareth/exile-instead
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land
 tail jaya-fiery-negotiator/choose-exiled
