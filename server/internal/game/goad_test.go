@@ -69,7 +69,7 @@ func weightsAt(g *Game, x uuid.UUID, targets ...*Player) []int {
 	g.WithWriteLock(func() {
 		g.recomputeLayersLocked()
 		c := findBattlefieldCard(g, x)
-		reqs := g.attackRequirementsOfLocked(c)
+		reqs := g.attackRequirementsOfLocked(c, g.currentAttackAssignmentLocked())
 		for i, p := range targets {
 			out[i] = g.requirementWeightLocked(reqs, p.ID)
 		}

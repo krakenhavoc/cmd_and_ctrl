@@ -4490,6 +4490,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackRequirements	array
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[]	object
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].MustAttackPermanent	object
@@ -13389,6 +13390,7 @@ frozenEntries[].event.sourceLki.AttackRequirements	array
 frozenEntries[].event.sourceLki.AttackRequirements[]	object
 frozenEntries[].event.sourceLki.AttackRequirements[].AfterTurn	number:int
 frozenEntries[].event.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+frozenEntries[].event.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 frozenEntries[].event.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackRequirements[].MustAttackPermanent	object
@@ -20147,6 +20149,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[]	object
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AfterTurn	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].IfSourceAttacks	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].MustAttack	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].MustAttackPermanent	object
@@ -20338,6 +20341,7 @@ lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
 lastKnownBattlefield{}.AttackRequirements[].AfterTurn	number:int
 lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].IfSourceAttacks	bool
 lastKnownBattlefield{}.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].MustAttack	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].MustAttackPermanent	object
@@ -20533,6 +20537,7 @@ lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
 lastKnownPermanents{}[].characteristic.AttackRequirements[].AfterTurn	number:int
 lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].IfSourceAttacks	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MustAttack	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MustAttackPermanent	object
@@ -24982,6 +24987,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[]	object
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].MustAttackPermanent	object
@@ -33881,6 +33887,7 @@ movesAwaitingTokens[].sourceLki.AttackRequirements	array
 movesAwaitingTokens[].sourceLki.AttackRequirements[]	object
 movesAwaitingTokens[].sourceLki.AttackRequirements[].AfterTurn	number:int
 movesAwaitingTokens[].sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+movesAwaitingTokens[].sourceLki.AttackRequirements[].IfSourceAttacks	bool
 movesAwaitingTokens[].sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackRequirements[].MustAttackPermanent	object
@@ -44985,6 +44992,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MustAttackPermanent	object
@@ -45875,6 +45883,7 @@ pendingChoices[].divideShield.staged[].lki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[]	object
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].MustAttackPermanent	object
@@ -46055,6 +46064,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[]	object
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].MustAttackPermanent	object
@@ -52026,6 +52036,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].MustAttackPermanent	object
@@ -60925,6 +60936,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[]	object
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].MustAttackPermanent	object
@@ -69299,6 +69311,7 @@ pendingChoices[].targetWalk.frame.lki.AttackRequirements	array
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[]	object
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].MustAttackPermanent	object
@@ -70097,6 +70110,7 @@ pendingChoices[].triggerFrame.lki.AttackRequirements	array
 pendingChoices[].triggerFrame.lki.AttackRequirements[]	object
 pendingChoices[].triggerFrame.lki.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].triggerFrame.lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].triggerFrame.lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].triggerFrame.lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackRequirements[].MustAttackPermanent	object

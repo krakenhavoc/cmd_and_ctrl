@@ -82,6 +82,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Winning, losing, and "can't lose" (S40, ADR 0057)](#winning-losing-and-cant-lose-s40-adr-0057)
   - [Skipping all combat phases of a player's next turn (#5075, CR 500.11, 614.10)](#skipping-all-combat-phases-of-a-players-next-turn-5075-cr-50011-61410)
   - [Skipping a player's next combat phase (#5838, CR 500.11, 614.10)](#skipping-a-players-next-combat-phase-5838-cr-50011-61410)
+  - ["Attacking creatures become blocked" (#5839, CR 509.1h)](#attacking-creatures-become-blocked-5839-cr-5091h)
   - [Exert (ADR 0130, #2048, CR 701.43)](#exert-adr-0130-2048-cr-70143)
   - [Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)](#whenever-you-waterbend-earthbend-firebend-or-airbend-5276-adr-0081-amendment-2026-11-07)
   - [When NOT to add a catalog entry](#when-not-to-add-a-catalog-entry)
@@ -8154,6 +8155,26 @@ REDUCES the mana half, which the pricer does not read), Firecat Blitz's
 creatures" price (Battle Screech, Prismatic Strands), which is a tap
 component the struct does not have.
 
+**Returning N permanents as the price (#5837).** Daze's "return an Island
+you control to its owner's hand rather than pay this spell's mana cost" is
+`ReturnInstead`; the count is the clause's `WithCount(n, n)`, one when the
+clause is a plain `PermanentYouControl`:
+
+```go
+AlternativeCosts: []game.AlternativeCost{                                          // Gush
+    ReturnInstead(
+        "Return two Islands you control to their owner's hand",
+        PermanentYouControl("two Islands you control", HasSubtype("Island")).WithCount(2, 2),
+        "two Islands you control",
+    ),
+},
+```
+
+The caster names exactly n distinct permanents they control in
+`alt_cost_ids`; a board with fewer can't pay it (CR 118.3), so the offer is
+not shown. Each goes to its owner's hand (CR 400.3) with the spell already
+on the stack. `Register` refuses any count but a fixed one of at least one.
+
 **A behold as part of the price (#4689, CR 701.4a, ADR 0025 amendment
 2026-11-03).** "Flashback—{1}{R}, Behold three Elementals" (Kindle the
 Inner Flame) is `AlternativeCost.Behold` (a `game.RevealCost{Behold:
@@ -11857,6 +11878,21 @@ skip above) does not use it up (CR 614.10a). A waiting record for a
 player who has left goes as the next turn begins.
 `Game.NextCombatPhaseSkipsForLocked(player)` counts what is owed.
 
+### "Attacking creatures become blocked" (#5839, CR 509.1h)
+
+An effect that makes an attacker blocked with no creature blocking it
+(Fog Patch) is `Game.BecomeBlockedForEffect(ids)`, from
+[become_blocked.go](../server/internal/game/become_blocked.go). It writes
+the same blocked record the block declaration writes, so the attacker
+stays blocked for the rest of combat, rides a snapshot, and assigns no
+combat damage unless it has trample, which assigns all of it to what it
+is attacking (CR 510.1c, 702.19d). An attacker that was unblocked gets
+its one `EventBecomesBlocked` (CR 509.3c), with its defending player as
+`Actor`, so afflict and "whenever this creature becomes blocked" fire;
+one already blocked does not become blocked again, and no `EventBlock`
+is emitted, so "becomes blocked by a creature" does not (CR 509.3d). It
+does nothing before the declare blockers step.
+
 ### Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)
 
 The four Avatar bending actions are engine events, each raised where the
@@ -14887,6 +14923,12 @@ reading the `CardDef` and are not set by the catalog any more.
   continuously since the beginning of the turn", `forceTheChosenCreature(label)` is the whole Effect, and
   `mustAttackOrBeDestroyed` is the shared body (an attack-requirement scoped effect until end of turn, and a delayed
   trigger on `destroyUnlessItAttackedBody`).
+- **"If this creature attacks, all creatures you control attack if able"** (Viashino Bey, #5840) is
+  `IfThisAttacksAllYourCreaturesAttack()`, a static, not a trigger. It writes a requirement with
+  `game.AttackRequirement.IfSourceAttacks` set, which exists only in a declaration that has its source attacking
+  (CR 508.1d, "attacks if some condition is met"). Declaring nothing stays legal; declaring the source owes an attack from
+  every other creature that can attack for free. For another "if <it> attacks, <creatures> attack if able" card, set
+  the same flag on a requirement from `requirementFrom(source, …)` and scope the static's `AppliesTo`.
 - **"For as long as this remains tapped"** is read from the moment the ability is activated (ADR 0109's amendment of
   2026-10-19). Build the duration with `DurationWhileThisRemainsTapped` or `WhileYouControlThisAndItRemainsTapped`
   (through `GainControlOfTargetFor`, `TargetGetsWhileThisRemainsTapped` or `TapAndHoldWhileThisRemainsTapped`) and the

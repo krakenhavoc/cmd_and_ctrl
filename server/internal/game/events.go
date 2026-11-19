@@ -1410,7 +1410,10 @@ const (
 	// OncePerBatch ability sees one occurrence. Added in #830. Also
 	// emitted by stampEntryBlockerLocked when a creature put onto the
 	// battlefield blocking blocks an attacker that was unblocked at
-	// that time (CR 509.3c, #4956).
+	// that time (CR 509.3c, #4956), and by BecomeBlockedForEffect when an
+	// effect makes an unblocked attacker blocked with no creature
+	// blocking it (Fog Patch, CR 509.1h, #5839); Actor is then the
+	// attacker's defending player, and no EventBlock goes with it.
 	EventBecomesBlocked EventKind = "becomes_blocked"
 
 	// EventBlockersDeclared — the defending player named by Actor has
