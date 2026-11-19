@@ -2415,6 +2415,7 @@ run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
+run prompt-run/covetous-elegy-keep
 run prompt-run/cruel-grimnarch-gain
 run prompt-run/cycle-of-renewal-fetch
 run prompt-run/dahar-master-sacrifice
