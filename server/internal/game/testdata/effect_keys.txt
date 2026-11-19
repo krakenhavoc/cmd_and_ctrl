@@ -2574,6 +2574,8 @@ run prompt-run/planar-engineering-search
 run prompt-run/planetary-annihilation-keep-lands
 run prompt-run/plunge-into-darkness-sacrifice
 run prompt-run/pox-plague-sacrifice
+run prompt-run/pox-sacrifice-creatures
+run prompt-run/pox-sacrifice-lands
 run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
@@ -3383,6 +3385,7 @@ tail mass/overwhelming-forces-draw
 tail mass/overwrite-the-multiverse-empower
 tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
+tail mass/rain-of-daggers-lose-life
 tail mass/settle-the-wreckage-fetch-basics
 tail mass/shredders-technique-enchantment-loss
 tail mass/starfall-invocation-return
