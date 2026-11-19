@@ -2903,7 +2903,10 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no symbol floor — "+
 				"a clause with no floor would be free", name, where))
 		}
-		if !symbols && !ec.IsCollectEvidence() {
+		// A floor on the total mana value of a chosen KIND of card (The
+		// Capitoline Triad's historic cards) names its match: it is not
+		// collect evidence, which takes any card (#5948).
+		if !symbols && !ec.IsCollectEvidence() && ec.Match == nil {
 			panic(fmt.Sprintf("effects.Register: %q %s has a mana value floor that is not collect evidence — build it with CollectEvidenceN (#5193)", name, where))
 		}
 	} else if ec.CountIsX {

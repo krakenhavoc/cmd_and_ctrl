@@ -1273,6 +1273,7 @@ choose choose-cards/soul-of-windgrace-land
 choose choose-cards/soulcipher-board-put-one-into-graveyard
 choose choose-cards/sparring-dummy-milled-land
 choose choose-cards/spawnsire-of-ulamog-cast
+choose choose-cards/spear-of-leonidas-draw
 choose choose-cards/specter-of-mortality-exile
 choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
@@ -2036,6 +2037,7 @@ option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bns-b45-alchemists-gift-keyword
 option option-pick/s82-bro-b11-argivian-avenger-keyword
+option option-pick/s82-gap-b36-assassin-initiate-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/s82-rpr-b25-jace-architect-splitter
@@ -3311,6 +3313,7 @@ tail invasion-of-pyrulea/reveal-then-draw
 tail invent/sorcery-search
 tail isareth/exile-instead
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
+tail jacob-frye/copy-and-cast
 tail janice-rand-essential-aide/reveal-until-land
 tail jaya-fiery-negotiator/choose-exiled
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
