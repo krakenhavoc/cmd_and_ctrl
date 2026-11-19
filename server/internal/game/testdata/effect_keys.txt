@@ -75,6 +75,7 @@ body breathkeeper-seraph/may-return-the-object
 body breeches/blast
 body breeches/copy-that-spell
 body bullseye-death-dealer/damage
+body caesar-legions-emperor/modes
 body cait-sith/boost
 body campsite-cuisine/boost-attackers
 body cascade/bottom-if-not-cast
@@ -2453,6 +2454,7 @@ run prompt-run/bound-sacrificed
 run prompt-run/breena-the-demagogue-counters
 run prompt-run/bristlebud-farmer-sacrifice
 run prompt-run/brudiclad-tokens-become-copies
+run prompt-run/caesar-legions-emperor-sacrifice
 run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
@@ -3587,6 +3589,7 @@ tail sacrificed-one/prompt-run/bloodcrazed-socialite-pump
 tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
+tail sacrificed-one/prompt-run/caesar-legions-emperor-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/cmdr2-b09-foul-rebirth-token
 tail sacrificed-one/prompt-run/cmdr2-b09-promise-of-aclazotz-populate

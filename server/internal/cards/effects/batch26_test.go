@@ -142,7 +142,9 @@ func TestBatch26CardsAreRegistered(t *testing.T) {
 	for _, skipped := range []string{
 		// Deadpool, Trading Card came off this list with #3213: it ships
 		// with the text-box exchange declared as a caveat.
-		"8e62d05a-6efd-4764-bca8-97895e0cb613", // Caesar, Legion's Emperor — modal reflexive trigger
+		// Caesar, Legion's Emperor came off this list with the Fallout
+		// GAP batch 61 (#5948): the sacrifice is maySacrificeOne and the
+		// bullets are a reflexive modal trigger (caesar_legions_emperor.go).
 		// Great Divide Guide came off this list with ADR 0093 and ships
 		// in great_divide_guide.go.
 		"8d35cef8-a52d-45fb-8f5f-cccea26826d0", // Wyll's Reversal — a die roll and target redirection

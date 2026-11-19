@@ -490,6 +490,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
 	printedGapB05BlackLotusToken,
 	printedGapB05LordOfThePitToken,
+
+	// The Prydwen, Steel Flagship's Human Knight (Fallout, #5948): 2/2 white,
+	// +2/+2 while an artifact entered under its controller's control this turn.
+	printedGapB61HumanKnightToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
