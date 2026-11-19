@@ -162,6 +162,7 @@ body erica-ortegas/return-a-land-you-control
 body esoteric-duplicator/copy-the-artifact
 body espers-to-magicite/copy
 body evereth-viceroy-of-plunder/damage
+body evie-frye/unblockable
 body evoke/sacrifice
 body evolve/grow
 body exalted/pump
@@ -432,6 +433,7 @@ body slumbering-walker/return-from-graveyard
 body snaremaster-sprite/tap-and-stun
 body snc-b04/obscura-interceptor-return-spell
 body snc-b04/psychic-pickpocket-return-permanent
+body sokrates/draw-half-prevented
 body sorin-imperious-bloodlord/strike
 body spare-dagger/damage
 body sparktongue-dragon/damage
@@ -743,6 +745,7 @@ choose choose-cards/eumidian-wastewaker-discard
 choose choose-cards/evercoat-ursine-play-one
 choose choose-cards/everglades-return-an-untapped-swamp
 choose choose-cards/evidence-examiner-collect-evidence
+choose choose-cards/evie-frye-discarded
 choose choose-cards/exile-from-hand-and-plot
 choose choose-cards/exile-top-face-down-linked
 choose choose-cards/experimental-augury-take
@@ -855,6 +858,7 @@ choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
+choose choose-cards/leonardo-da-vinci-discarded
 choose choose-cards/leyline-dowser-milled
 choose choose-cards/lichs-mastery-exile
 choose choose-cards/lightstall-inquisitor-exile
@@ -1808,10 +1812,12 @@ drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
+drawthen evie-frye/discard
 drawthen glacial-dragonhunt/may-discard
 drawthen hidetsugu-and-kairi-put-back
 drawthen hoarders-greed/clash
 drawthen hypothesizzle/may-discard-nonland
+drawthen leonardo-da-vinci/discard
 drawthen malcolm-discard
 drawthen marvo-deep-operative/free-cast
 drawthen messenger-jays-discard
@@ -3337,6 +3343,7 @@ tail lady-loki/spell-exiled
 tail lantern-of-the-lost/draw
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
+tail leonardo-da-vinci/after-exile
 tail level-up/then-draw-if-power-10
 tail leyline-dowser/after-mill
 tail lieutenant-nyota-uhura/after-exile
