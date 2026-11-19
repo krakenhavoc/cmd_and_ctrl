@@ -1402,6 +1402,7 @@ choose resolution-cast/s82-mom-b21-rashmi-after
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/smugglers-buggy-after-cast
 choose resolution-cast/swindlers-scheme-free-cast
+choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -1548,6 +1549,7 @@ confirm confirm/disorienting-choice-exile
 confirm confirm/dragons-approach-exile
 confirm confirm/draw-cards
 confirm confirm/dwarven-vigilantes-damage
+confirm confirm/eager-construct-scry
 confirm confirm/ebony-fly-becomes
 confirm confirm/eden-sacrifice
 confirm confirm/emet-selch-unsundered-transform
@@ -2295,6 +2297,7 @@ payunless pay-unless/unassuming-sage-sorcerer-role
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
 payunless pay-unless/urzas-sylex-search
+payunless pay-unless/valkyries-sword-angel-and-attach
 payunless pay-unless/vanille-cheerful-lcie-meld
 payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
@@ -3001,6 +3004,7 @@ tail dune-chanter/after-mill
 tail each-player/exile-top-step
 tail each-player/mill-step
 tail each-player/mill-until-land-step
+tail eager-construct/ask-next
 tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
