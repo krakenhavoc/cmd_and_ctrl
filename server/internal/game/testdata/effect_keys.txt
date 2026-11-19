@@ -1702,6 +1702,7 @@ confirm confirm/shirei-return
 confirm confirm/sita-varma-base-pt
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
 confirm confirm/smellerbee-rebel-fighter-discard-hand
+confirm confirm/smokestack-add-soot
 confirm confirm/snort-wheel
 confirm confirm/social-snub-copy
 confirm confirm/spare-dagger-sacrifice
