@@ -729,6 +729,7 @@ choose choose-cards/dyadrine-remove-two-counters
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
+choose choose-cards/eladamri-korvecdal-reveal
 choose choose-cards/electrodominance-cast
 choose choose-cards/elemental-teachings-settle
 choose choose-cards/ellywick-tumblestrum-take
@@ -1723,6 +1724,8 @@ confirm confirm/tempt-with-bunnies
 confirm confirm/tempt-with-discovery-search
 confirm confirm/tempt-with-vengeance
 confirm confirm/terrapact-intimidator-landers-or-counters
+confirm confirm/territory-culler-take
+confirm confirm/territory-culler-to-graveyard
 confirm confirm/the-celestus-loot
 confirm confirm/the-day-of-the-doctor-exile-others
 confirm confirm/the-falcon-sacrifice
@@ -1943,6 +1946,7 @@ option option-pick/discerning-financier-chosen
 option option-pick/done-for-the-day-reward
 option option-pick/dramatists-puppet-put-or-remove
 option option-pick/dwarven-armorer-counter
+option option-pick/eladamri-korvecdal-source
 option option-pick/elemental-teachings-opponent
 option option-pick/elspeth-resplendent-keyword-counter
 option option-pick/emergent-ultimatum-opponent
