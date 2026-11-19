@@ -533,6 +533,11 @@ var tokenTable = map[string]game.Card{
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
 	"3/1 red Construct artifact with haste":     {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 
+	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
+	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
+	// S82 BNS batch 54: Giant Opportunity's Giant.
+	"7/7 green Giant": {Name: "Giant", TypeLine: "Token Creature — Giant", Power: 7, Toughness: 7, Colors: []string{"G"}},
+
 	// S82 NEO batch 13: Mechtitan, the Mechtitan Core token.
 	"10/10 white and blue and black and red and green Legendary Construct artifact named Mechtitan with flying, vigilance, trample, lifelink, and haste": {Name: "Mechtitan", TypeLine: "Token Legendary Artifact Creature — Construct", Power: 10, Toughness: 10, Colors: []string{"W", "U", "B", "R", "G"}, Keywords: []string{"flying", "vigilance", "trample", "lifelink", "haste"}},
 	// S82 NEO batch 14: Invoke the Ancients.
@@ -549,10 +554,4 @@ var tokenTable = map[string]game.Card{
 
 	// S82 BNS batch 25: Foundations Jumpstart's Akroan Crusader.
 	"1/1 red Soldier with haste": {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
-
-	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
-	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
-
-	// S82 BNS batch 54: Giant Opportunity's Giant.
-	"7/7 green Giant": {Name: "Giant", TypeLine: "Token Creature — Giant", Power: 7, Toughness: 7, Colors: []string{"G"}},
 }
