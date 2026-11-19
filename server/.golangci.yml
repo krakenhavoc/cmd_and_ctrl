@@ -21,8 +21,13 @@ run:
   # an ordinary PR lints in about 5m.
   # 20m (#5434): the push of a roll-up to develop (hundreds of cards/effects files
   # and internal/game together, cold cache) ran past 10m twice with 0 issues.
+  # 35m (#5906): internal/cards/effects passed 20,000 files. develop's own push
+  # on 2026-11-19 (run 44563592850) linted in 19m30s with 0 issues, and PR #5941,
+  # which changes no Go, ran past 20m with 0 issues (run 44571275077). The job
+  # has no timeout-minutes of its own, so this is the only bound. The lasting fix
+  # is #5906's split of the effects package.
   # `migrate` drops this key (v2 has no timeout by default); it is kept on purpose.
-  timeout: 20m
+  timeout: 35m
 
 linters:
   default: none

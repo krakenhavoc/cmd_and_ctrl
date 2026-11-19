@@ -25,6 +25,11 @@
 # timestamp. Exit non-zero on any curl/jq failure — cron will mail the
 # operator.
 #
+# A stalled dump download fails within about a minute and is retried
+# (three attempts in all), rather than sitting on curl's 10-minute
+# --max-time (#5920). Under GitHub Actions a fatal error is also an
+# ::error:: annotation, so a red CI job says why on its summary.
+#
 # Freshness: if last-refresh is less than 24 hours old (and the dump
 # exists), the download is skipped — the ~400-500 MB dump only changes
 # daily. Pass --force to refresh regardless.
@@ -57,6 +62,17 @@ SETS_TARGET="$SCRYFALL_DIR/sets.json"
 STAMP="$SCRYFALL_DIR/last-refresh"
 
 mkdir -p "$SCRYFALL_DIR"
+
+# fail prints a fatal error and exits 1. Under GitHub Actions the line
+# is an ::error:: annotation (#5920); cron gets the plain message.
+fail() {
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    echo "::error::scryfall-refresh: $*" >&2
+  else
+    echo "scryfall-refresh: $*" >&2
+  fi
+  exit 1
+}
 
 # fetch_sets downloads Scryfall's set list (a few hundred KB, one
 # unpaginated list object) to sets.json, atomically like the dump. Any
@@ -114,14 +130,13 @@ fi
 catalog_uri="https://api.scryfall.com/bulk-data"
 catalog="$(curl --fail --silent --show-error --max-time 30 \
   -H 'Accept: application/json' -A 'cmd_and_ctrl-scryfall-refresh/1.0' \
-  "$catalog_uri")"
+  "$catalog_uri")" || fail "could not fetch the bulk-data catalog ($catalog_uri)"
 entry="$(jq -c '.data[] | select(.type == "default_cards")' <<<"$catalog")"
 download_uri="$(jq -r '.download_uri // empty' <<<"$entry")"
 jsonl_uri="$(jq -r '.jsonl_download_uri // empty' <<<"$entry")"
 
 if [[ -z "$download_uri" && -z "$jsonl_uri" ]]; then
-  echo "scryfall-refresh: could not locate a default_cards download URI in bulk-data catalog" >&2
-  exit 1
+  fail "could not locate a default_cards download URI in bulk-data catalog"
 fi
 
 # Step 2 — stream download into a tmp file under the same directory
@@ -129,27 +144,49 @@ fi
 tmp="$(mktemp "$SCRYFALL_DIR/default-cards.XXXXXX.json.tmp")"
 trap 'rm -f "$tmp"' EXIT
 
-if [[ -n "$download_uri" ]]; then
-  echo "scryfall-refresh: downloading $download_uri"
-  curl --fail --silent --show-error --location --max-time 600 \
-       --output "$tmp" \
-       "$download_uri"
-else
-  echo "scryfall-refresh: downloading $jsonl_uri (JSONL → JSON array)"
-  # Streamed: gunzip → wrap lines in [ , ] without buffering the whole
-  # ~500 MB dump in memory (jq -s would). Blank lines are skipped.
-  curl --fail --silent --show-error --location --max-time 600 \
-       "$jsonl_uri" \
-    | gzip -dc \
-    | awk 'BEGIN { printf "[" } NF { if (n++) printf ","; printf "%s", $0 } END { print "]" }' \
-    > "$tmp"
-fi
+# #5920: a stalled download fails fast instead of sitting on
+# --max-time. Under 100 KB/s for 60 s aborts the attempt (a healthy
+# one runs at tens of MB/s, the whole dump in seconds), and a connect
+# that never completes gives up after 30 s. --max-time stays the cap on
+# a download that is slow but still moving.
+dl_curl=(curl --fail --silent --show-error --location --max-time 600
+  --connect-timeout 30 --speed-limit 102400 --speed-time 60)
+
+# download writes the dump to $tmp as one JSON array; non-zero if any
+# part of the pipeline fails (pipefail).
+download() {
+  if [[ -n "$download_uri" ]]; then
+    echo "scryfall-refresh: downloading $download_uri"
+    "${dl_curl[@]}" --output "$tmp" "$download_uri"
+  else
+    echo "scryfall-refresh: downloading $jsonl_uri (JSONL → JSON array)"
+    # Streamed: gunzip → wrap lines in [ , ] without buffering the whole
+    # ~500 MB dump in memory (jq -s would). Blank lines are skipped.
+    "${dl_curl[@]}" "$jsonl_uri" \
+      | gzip -dc \
+      | awk 'BEGIN { printf "[" } NF { if (n++) printf ","; printf "%s", $0 } END { print "]" }' \
+      > "$tmp"
+  fi
+}
+
+# Three attempts, each from the start: `> "$tmp"` truncates. Not
+# curl's own --retry, which part-way through the JSONL stream would
+# feed gzip a second copy of the bytes it already had.
+attempts=3
+attempt=1
+until download; do
+  if (( attempt >= attempts )); then
+    fail "default_cards download failed $attempts times; curl's error is above"
+  fi
+  echo "scryfall-refresh: download attempt $attempt of $attempts failed; retrying in $((attempt * 15))s" >&2
+  sleep $((attempt * 15))
+  attempt=$((attempt + 1))
+done
 
 # Step 3 — sanity check that the downloaded file is a JSON array
 # (Scryfall occasionally serves HTML error pages on maintenance).
 if ! head -c 1 "$tmp" | grep -q '\['; then
-  echo "scryfall-refresh: download is not a JSON array, refusing to publish" >&2
-  exit 1
+  fail "download is not a JSON array, refusing to publish"
 fi
 
 mv -f "$tmp" "$TARGET"
