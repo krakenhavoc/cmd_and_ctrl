@@ -1234,6 +1234,8 @@ choose choose-cards/sigardian-zealot-pump
 choose choose-cards/silvan-reveler-discarded
 choose choose-cards/skywarp-skaab-exile
 choose choose-cards/slaughter-the-strong-keep-leg
+choose choose-cards/sludge-titan-creature
+choose choose-cards/sludge-titan-land
 choose choose-cards/smugglers-surprise-put-creatures
 choose choose-cards/smugglers-surprise-take-milled
 choose choose-cards/snc-b04-obscura-interceptor-discarded
@@ -3344,6 +3346,7 @@ tail mill-then-take/temporal-anomaly
 tail mill-then-take/vivien-on-the-hunt
 tail mill-then-take/wasteful-harvest
 tail mill-then/lluwen-imperfect-naturalist
+tail mill-then/sludge-titan
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
 tail mimic-vat/return-others
@@ -3941,6 +3944,7 @@ tail then/silver-bolt-destroy-werewolf
 tail then/skrelv-defector-mite-color-chosen
 tail then/sorcerers-strongbox-draw
 tail then/sorin-lord-of-innistrad-return
+tail then/spawn-of-mayhem-counter
 tail then/sphinx-of-clear-skies-take
 tail then/spiteful-repossession-step
 tail then/standstill-opponents-draw-three
