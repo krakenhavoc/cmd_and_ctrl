@@ -5,7 +5,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Hit It! — Enchantment {1}{R}{G} (Star Trek, #4973):
 //
 //	"Creatures you control have haste.
-//	 When this enchantment enters, reveal the top five cards of your
+//	 When this enchantment enters, look at the top five cards of your
 //	 library. Put a land card from among them onto the battlefield tapped
 //	 and the rest into your graveyard."
 //
@@ -13,7 +13,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controls, CR 613.1f) with Shigeki, Jukai Visionary's dig. The put is not
 // a "may": with a land among the five, one of them enters tapped (its
 // controller picks which); with none, all five go to the graveyard. A
-// revealed card that left the library before the put is ignored.
+// looked-at card that left the library before the put is ignored.
+//
+// "Look at", not "reveal" (CR 701.20e): the card printed "reveal" and its
+// 2026 Oracle update reads "look at" (#5949), so only its controller sees
+// the five cards before they are put; the other players see the land that
+// enters and the cards that go to the graveyard. The put is still not a
+// "may": only a search lets a player fail to find (CR 701.23b).
 //
 // No simplification.
 func init() {
@@ -26,14 +32,12 @@ func init() {
 			TribalKeywordGrant(TribeFilter{YoursOnly: true}, "haste"),
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Hit It! — reveal the top five cards; put a land card from among them onto the battlefield tapped and the rest into your graveyard",
+			WhenThisEnters("Hit It! — look at the top five cards; put a land card from among them onto the battlefield tapped and the rest into your graveyard",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					revealed := g.RevealTopOfLibraryForEffect(item.Controller, ctx.Source(), 5,
-						"Hit It! — revealed from the top of the library")
 					return PutFromLibraryOntoBattlefield{
 						Player:   item.Controller,
-						Cards:    revealed,
+						Cards:    g.LookAtTopOfLibraryForEffect(item.Controller, 5),
 						Match:    Land(),
 						Max:      1,
 						Tapped:   true,
