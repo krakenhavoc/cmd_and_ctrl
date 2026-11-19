@@ -2020,6 +2020,8 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController, game.TargetSharesCardType, game.TargetSharesCreatureType, game.TargetCardSharesCreatureType:
 			case game.TargetInTargetPlayersGraveyard:
 				checkPlayersGraveyardRelation(name, i, spec.Clause(r.Slot), spec.Clause(i))
+			case game.TargetControlledByOpponentOfPlayer:
+				checkOpponentsControlRelation(name, i, spec.Clause(r.Slot), spec.Clause(i))
 			default:
 				panic(fmt.Sprintf("effects.Register: %q target clause %d has an unknown target relation", name, i))
 			}

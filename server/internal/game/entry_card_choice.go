@@ -213,6 +213,15 @@ type EntryCardChoice struct {
 	// enchantments"). Only meaningful for EntryCardChoose.
 	AnyController bool
 
+	// Bounce makes an EntryCardChoose "as this enters, you may return a
+	// <permanent> you control to its owner's hand. If you do, ..." (Rescuer
+	// Sphinx): the named permanents are returned like a sacrifice is (a hand
+	// is a CR 903.9 destination, so the return can pause and the entry waits
+	// for it), and Then runs only when every one of them really reached a
+	// hand. A return that did not happen is the decline branch, so there is
+	// no "if you do" payoff.
+	Bounce bool
+
 	// SuggestKey, when set, names an EntryChoiceSuggestion filed with
 	// RegisterEntryChoiceSuggestion: the declaration's recommended
 	// answer to an EntryCardChoose prompt. It rides the prompt as
@@ -599,6 +608,9 @@ func (g *Game) ResolveEntryCardChoice(choiceID, chooserID uuid.UUID, picks []uui
 	case spec != nil && spec.Action == EntryCardSacrifice:
 		g.freezeEntryChoiceLocked(ev, chosen)
 		return g.SacrificeAllKeyedForEffect(source, append([]uuid.UUID(nil), picks...), entryChoiceActedTail(ev, picks))
+	case spec != nil && spec.Action == EntryCardChoose && spec.Bounce:
+		g.freezeEntryChoiceLocked(ev, chosen)
+		return g.BounceCardsToHandKeyedForEffect(append([]uuid.UUID(nil), picks...), entryChoiceActedTail(ev, picks))
 	case spec != nil && spec.Action == EntryCardChoose:
 		// ADR 0170: nothing happens to the named permanents except what
 		// Then does to them, inline, before the entry resumes.
