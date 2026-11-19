@@ -53,9 +53,10 @@ type Pool struct {
 	Mythics   []Card
 	// Lands are the set's basic lands, one printing each.
 	Lands []Card
-	// Bonus is the set's bonus sheet, empty when Recipe.BonusSheet is
-	// empty or names a set the dump does not hold.
-	Bonus []Card
+	// Bonus holds the cards of each of Recipe.Bonus, by the slot's
+	// index: one Card per oracle ID its sources name. A slot whose
+	// printings the dump does not hold is empty, and never opens.
+	Bonus [][]Card
 }
 
 // inBoosters reports whether a printing is a card a booster of its set
@@ -337,13 +338,15 @@ func sortCards(cs []Card) {
 // slot of this model, so no pack can contain it and it is left out.
 //
 // The recipe decides which slots exist. With no land slot the basic
-// lands are left out, with no mythic rate the mythic rares are, and with
-// no bonus slot the bonus sheet is: a pack cannot contain them, so the
-// draftable check never sees them.
+// lands are left out, with no mythic rate the mythic rares are, and a
+// bonus slot that cannot open (Recipe.bonusOn: it is off, or replaces a
+// slot the recipe does not have) has no cards: a pack cannot contain
+// them, so the draftable check never sees them.
 //
-// bonus is the bonus sheet's printings, nil for none. A card that is in
-// both the set and its bonus sheet stays in the set's own slot.
-func buildPool(set string, r Recipe, main, bonus map[uuid.UUID]cards.Card) Pool {
+// bonus holds the printings of each of r.Bonus, by index (bonusPrintings).
+// A card that is in both the set and a bonus slot stays in the set's own
+// slot, and a basic land is never a bonus card.
+func buildPool(set string, r Recipe, main map[uuid.UUID]cards.Card, bonus []map[uuid.UUID]cards.Card) Pool {
 	p := Pool{Set: set, Recipe: r}
 	for _, c := range main {
 		pc := toCard(c)
@@ -364,21 +367,112 @@ func buildPool(set string, r Recipe, main, bonus map[uuid.UUID]cards.Card) Pool 
 			}
 		}
 	}
-	if !r.UsesBonusSheet() {
-		bonus = nil
+	if len(r.Bonus) > 0 {
+		p.Bonus = make([][]Card, len(r.Bonus))
 	}
-	for id, c := range bonus {
-		if _, dup := main[id]; dup {
+	for i, b := range r.Bonus {
+		if !r.bonusOn(b) || i >= len(bonus) {
 			continue
 		}
-		if pc := toCard(c); !pc.Basic {
-			p.Bonus = append(p.Bonus, pc)
+		for id, c := range bonus[i] {
+			if _, dup := main[id]; dup {
+				continue
+			}
+			if pc := toCard(c); !pc.Basic {
+				p.Bonus[i] = append(p.Bonus[i], pc)
+			}
 		}
+		sortCards(p.Bonus[i])
 	}
-	for _, s := range [][]Card{p.Commons, p.Uncommons, p.Rares, p.Mythics, p.Lands, p.Bonus} {
+	for _, s := range [][]Card{p.Commons, p.Uncommons, p.Rares, p.Mythics, p.Lands} {
 		sortCards(s)
 	}
 	return p
+}
+
+// matches reports whether a printing of the source's set is one the
+// source names. A whole-set source is resolved by collect, not here.
+func (s Source) matches(number string) bool {
+	if len(s.Numbers) > 0 {
+		for _, n := range s.Numbers {
+			if strings.EqualFold(n, number) {
+				return true
+			}
+		}
+		return false
+	}
+	n, ok := plainNumber(number)
+	return ok && n >= s.From && n <= s.To
+}
+
+// wholeSets are the sets r's bonus slots draw from whole, which collect
+// must be asked for.
+func (r Recipe) wholeSets() []string {
+	var out []string
+	for _, b := range r.Bonus {
+		for _, s := range b.Sources {
+			if s.wholeSet() {
+				out = append(out, s.Set)
+			}
+		}
+	}
+	return out
+}
+
+// bonusPrintings resolves r's bonus slots against the index: for each
+// slot, by index, the one printing per oracle ID that stands for each
+// card its sources name. A whole-set source takes the set's booster
+// printings from found, which must hold every set r.wholeSets names. A
+// range or a list takes the paper printings with those collector numbers
+// whatever their booster flag: The List and Special Guests are not
+// boosters of their own, so Scryfall need not flag them.
+func bonusPrintings(idx *cards.Index, r Recipe, found setPrintings) []map[uuid.UUID]cards.Card {
+	if len(r.Bonus) == 0 {
+		return nil
+	}
+	out := make([]setPrintings, len(r.Bonus))
+	narrow := false
+	for i, b := range r.Bonus {
+		out[i] = setPrintings{}
+		for _, s := range b.Sources {
+			if !s.wholeSet() {
+				narrow = true
+				continue
+			}
+			for _, c := range found[s.Set] {
+				out[i].add(c)
+			}
+		}
+	}
+	if narrow && idx != nil {
+		idx.EachPrinting(func(c cards.Card) {
+			if !paperCard(c) {
+				return
+			}
+			code := strings.ToLower(c.SetCode)
+			for i, b := range r.Bonus {
+				for _, s := range b.Sources {
+					if s.Set == code && !s.wholeSet() && s.matches(c.CollectorNo) {
+						out[i].add(c)
+						break
+					}
+				}
+			}
+		})
+	}
+	// Each slot's printings are one pool, whatever sets they are in.
+	merged := make([]map[uuid.UUID]cards.Card, len(out))
+	for i, bySet := range out {
+		merged[i] = map[uuid.UUID]cards.Card{}
+		for _, m := range bySet {
+			for id, c := range m {
+				if cur, ok := merged[i][id]; !ok || plainer(c, cur) {
+					merged[i][id] = c
+				}
+			}
+		}
+	}
+	return merged
 }
 
 // setMeta is what the data says about a set as a whole.
@@ -425,32 +519,24 @@ func metaFor(idx *cards.Index, code string, main map[uuid.UUID]cards.Card) setMe
 
 // PoolFor builds the pool of one set from the index, to the set's
 // recipe: the recipe of the era the set was released in, with its
-// override (RecipeFor). It walks every printing once (twice for a set
-// with a bonus sheet), so a caller making many packs builds the pool
-// once and calls Pool.Pack on it.
+// override (RecipeFor). It walks every printing a few times (once more
+// for a set with bonus slots), so a caller making many packs builds the
+// pool once and calls Pool.Pack on it.
 func PoolFor(idx *cards.Index, set string) Pool {
 	set = strings.ToLower(strings.TrimSpace(set))
 	main := collect(idx, map[string]bool{set: true})[set]
-	r := RecipeFor(set, metaFor(idx, set, main).Released)
-	if !r.UsesBonusSheet() || r.BonusSheet == set {
-		return buildPool(set, r, main, nil)
-	}
-	return buildPool(set, r, main, collect(idx, map[string]bool{r.BonusSheet: true})[r.BonusSheet])
+	return poolFor(idx, set, RecipeFor(set, metaFor(idx, set, main).Released))
 }
 
 // poolFor is PoolFor to a recipe the caller gives.
 func poolFor(idx *cards.Index, set string, r Recipe) Pool {
 	set = strings.ToLower(strings.TrimSpace(set))
 	want := map[string]bool{set: true}
-	if r.BonusSheet != "" {
-		want[r.BonusSheet] = true
+	for _, code := range r.wholeSets() {
+		want[code] = true
 	}
 	found := collect(idx, want)
-	var bonus map[uuid.UUID]cards.Card
-	if r.BonusSheet != "" && r.BonusSheet != set {
-		bonus = found[r.BonusSheet]
-	}
-	return buildPool(set, r, found[set], bonus)
+	return buildPool(set, r, found[set], bonusPrintings(idx, r, found))
 }
 
 // CanFill reports whether the pool can make a pack at all: it has a
@@ -466,7 +552,8 @@ func (p Pool) CanFill() bool {
 func (p Pool) Contents() []Card {
 	var out []Card
 	seen := map[uuid.UUID]bool{}
-	for _, s := range [][]Card{p.Commons, p.Uncommons, p.Rares, p.Mythics, p.Lands, p.Bonus} {
+	all := [][]Card{p.Commons, p.Uncommons, p.Rares, p.Mythics, p.Lands}
+	for _, s := range append(all, p.Bonus...) {
 		for _, c := range s {
 			if !seen[c.OracleID] {
 				seen[c.OracleID] = true

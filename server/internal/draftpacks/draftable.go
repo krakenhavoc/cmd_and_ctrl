@@ -43,8 +43,8 @@ func CatalogIsFull(idx *cards.Index) IsFull {
 //
 // The pool is built to the set's own recipe, so a slot the recipe does
 // not have cannot block: a draft booster from before mythic rares holds
-// no mythic, and a bonus sheet counts only where the recipe has a bonus
-// slot and names the sheet.
+// no mythic, and a bonus card counts only where the recipe has a bonus
+// slot that names it.
 //
 // Basic lands are exempt. The engine plays a basic land without a
 // catalog entry (there is nothing on one to automate), so the catalog
@@ -131,11 +131,7 @@ func setsAndPools(idx *cards.Index, isFull IsFull, table map[string]Override) (R
 			continue
 		}
 		r := recipeFor(table, code, released)
-		var bonus map[uuid.UUID]cards.Card
-		if r.UsesBonusSheet() && r.BonusSheet != code {
-			bonus = found[r.BonusSheet]
-		}
-		pool := buildPool(code, r, main, bonus)
+		pool := buildPool(code, r, main, bonusPrintings(idx, r, found))
 		if !pool.CanFill() {
 			continue
 		}
