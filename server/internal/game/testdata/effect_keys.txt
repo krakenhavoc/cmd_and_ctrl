@@ -735,6 +735,7 @@ choose choose-cards/elspeth-resplendent-dig
 choose choose-cards/elven-passage-behold
 choose choose-cards/emergent-ultimatum-picked
 choose choose-cards/emeritus-of-ideation-exile-eight
+choose choose-cards/emperor-of-bones-reanimate
 choose choose-cards/end-blaze-epiphany-play
 choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
@@ -1597,6 +1598,7 @@ confirm confirm/explore-graveyard
 confirm confirm/fabricate
 confirm confirm/farrels-mantle-damage
 confirm confirm/farrels-zealot-damage
+confirm confirm/fetid-gargantua-draw
 confirm confirm/firebender-ascension-copy
 confirm confirm/fishing-gear-put
 confirm confirm/flip-this
@@ -3223,6 +3225,7 @@ tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
 tail gandalf-shadows-foe/return-lands-tapped
+tail gap-b49/emperor-of-bones-entered
 tail gardens-of-tranquil-repose/its-controller-scries
 tail gemstone-mine/sacrifice-if-empty
 tail georgiou-terran-emperor/draw-then-officers
