@@ -209,6 +209,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 BNS batch 49.
 	"Uncomfortable Chill": "-2/-0 until end of turn to opposing creatures kills nothing, then draws a card",
+
+	// S82 GAP batch 34.
+	"Ruination": "destroys the nonbasic lands, which no sweep class holds alone",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
