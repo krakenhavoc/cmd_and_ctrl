@@ -14091,9 +14091,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// gate's reason, from the one function the engine and the
 		// enumerator call. Behind the fast negative taken once for
 		// the whole card, because almost no board restricts anything.
+		// The identity is ActivationAbilityOf's, the one the engine and
+		// the enumerator build, so a restriction keyed on a keyword bit
+		// (power-up, cycling: Stabilizer, #5843) greys the same rows
+		// the engine refuses.
 		if restricted {
-			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone,
-				game.ActivationAbility{Label: a.Label, PowerUp: a.PowerUp})
+			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone, game.ActivationAbilityOf(a))
 		}
 		// ADR 0129 §8: the energy component, and the refusal's own text
 		// when the controller is short of the printed part (CR 118.3),
