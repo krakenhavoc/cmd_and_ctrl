@@ -533,6 +533,7 @@ castfollowup share-the-spoils-played
 castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
 choose any-player-each/cleansing-destroy
+choose any-player-each/killing-wave-sacrifice
 choose avatar-b30/azula-experience-after-discard
 choose avatar-b30/jet-rebel-leader-put-attacking
 choose choose-cards/abandon-attachments-draw
@@ -2933,6 +2934,7 @@ tail cmdr2-s43/stolen-goods-grant
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
+tail compelling-deterrence/discard
 tail condemn/gain-life
 tail conflux/next-search
 tail connive/change-of-plans
@@ -4076,6 +4078,7 @@ tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
 tail thrasios-triton-hero/reveal-top
 tail threats-undetected/choose
+tail through-the-breach/entered
 tail through-the-forest-gate/shuffle-and-gain-8
 tail thunderbolts-conspiracy/hero
 tail thunderous-debut/shuffle-after-put

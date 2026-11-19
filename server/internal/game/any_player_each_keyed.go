@@ -160,9 +160,11 @@ func (g *Game) queueAnyPlayerEachKeyedLocked(p AnyPlayerPaysForEach, refs []Obje
 		EachLife:   p.EachLife,
 		Objects:    cloneObjectRefs(refs),
 		Noun:       p.Noun,
+
+		OwnObjectsOnly: p.OwnObjectsOnly,
 	}
 	for _, who := range order {
-		if g.anyPlayerEachAffordableLocked(who, p.EachLife, len(refs)) == 0 {
+		if g.anyPlayerEachAffordableLocked(who, p.EachLife, len(g.anyPlayerEachObjectsForLocked(offer, who))) == 0 {
 			// A prompt whose only answer is "none" is a wasted click.
 			g.EmitEvent(Event{Kind: EventAnyPlayerDeclined, Actor: who, Source: p.Source, Label: words})
 		}
@@ -205,17 +207,9 @@ func (g *Game) anyPlayerEachLegAnsweredLocked(r CardsChosen, fn AnyPlayerEachFun
 func (g *Game) queueNextAnyPlayerEachLegLocked(st eachOfferState, offer *AnyPlayerOffer, from int) error {
 	for i := from; i < len(offer.Order); i++ {
 		who := offer.Order[i]
-		affordable := g.anyPlayerEachAffordableLocked(who, offer.EachLife, len(offer.Objects))
-		if affordable == 0 {
-			continue
-		}
-		var cards []uuid.UUID
-		for _, ref := range offer.Objects {
-			if c := findBattlefieldCard(g, ref.ID); c != nil && c.ObjectEpoch == ref.Epoch {
-				cards = append(cards, ref.ID)
-			}
-		}
-		if len(cards) == 0 {
+		cards := g.anyPlayerEachObjectsForLocked(offer, who)
+		affordable := g.anyPlayerEachAffordableLocked(who, offer.EachLife, len(cards))
+		if affordable == 0 || len(cards) == 0 {
 			continue
 		}
 		hi := min(affordable, len(cards))
@@ -249,6 +243,22 @@ func (g *Game) queueNextAnyPlayerEachLegLocked(st eachOfferState, offer *AnyPlay
 		return nil
 	}
 	return g.settleAnyPlayerEachLocked(st, offer)
+}
+
+// anyPlayerEachObjectsForLocked are the offer's objects that are still the
+// objects they were and that `who` may be asked about: all of them on an
+// any-player offer, only the ones `who` controls on an OwnObjectsOnly one.
+// Caller must hold g.mu.
+func (g *Game) anyPlayerEachObjectsForLocked(offer *AnyPlayerOffer, who uuid.UUID) []uuid.UUID {
+	var cards []uuid.UUID
+	for _, ref := range offer.Objects {
+		c := findBattlefieldCard(g, ref.ID)
+		if c == nil || c.ObjectEpoch != ref.Epoch || (offer.OwnObjectsOnly && c.Controller != who) {
+			continue
+		}
+		cards = append(cards, ref.ID)
+	}
+	return cards
 }
 
 // anyPlayerEachDeclinedBeforeLocked are the seats before offer.Order[at]
@@ -292,7 +302,7 @@ func (g *Game) settleAnyPlayerEachLocked(st eachOfferState, offer *AnyPlayerOffe
 	for _, entry := range offer.Picks {
 		paid := 0
 		for _, id := range entry.Cards {
-			if !same(id) {
+			if !same(id) || (offer.OwnObjectsOnly && findBattlefieldCard(g, id).Controller != entry.Seat) {
 				continue
 			}
 			pl := g.playerByIDLocked(entry.Seat)

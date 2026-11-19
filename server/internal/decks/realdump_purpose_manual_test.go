@@ -209,6 +209,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 BNS batch 49.
 	"Uncomfortable Chill": "-2/-0 until end of turn to opposing creatures kills nothing, then draws a card",
+
+	// S82 GAP batch 15.
+	"Summary Dismissal": "exiles the other spells and counters the abilities on the stack: it touches no permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
