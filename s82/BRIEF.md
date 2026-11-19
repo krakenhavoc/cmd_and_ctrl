@@ -5,6 +5,9 @@ You build ONE batch of cards from the ten sets that most recently left Standard 
 ## Reprint pass (set "RPR", issue #5908)
 If your prompt says set RPR: the cards are reprints and bonus-sheet cards that the dev catalog counts in the S82 sets, Edge of Eternities, Star Trek and TMNT (most are older cards). Same rules as below. Branch `feat/s82-rpr-b<NN>`, commit subject `feat(server): RPR cards, batch <NN>`, trailer `Issue: #5908`. There are no per-batch planner notes in #5908; read each card from the dump. Many of these cards share mechanics with cards already on develop: grep for the mechanic and reuse.
 
+## Bonus sheets and child sets (set "BNS", issue #5929)
+If your prompt says set BNS: the cards are bonus-sheet cards that real draft and play boosters open (Enchanting Tales, Breaking News, Special Guests, The List) and the cards of Ravnica: Clue Edition and Foundations Jumpstart, which the dev catalog counts under MKM and FDN. Most are reprints of older cards. Same rules as below. Branch `feat/s82-bns-b<NN>`, commit subject `feat(server): BNS cards, batch <NN>`, trailer `Issue: #5929`. The plan row also carries `oracle_ids` in the same order as `missing`: use them, since a few names have several printings. Read each card from the dump. Many share mechanics with cards already on develop: grep for the mechanic and reuse. If a card is already on origin/develop, skip it and say so.
+
 ## Do not stop early
 Nobody answers you mid-run. Never end your turn while a test, build or lint is still running: wait in the foreground (raise the Bash timeout) or with an until-loop, and keep going until the final commit is pushed.
 
