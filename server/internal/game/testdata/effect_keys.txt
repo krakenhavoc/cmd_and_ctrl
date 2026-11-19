@@ -675,6 +675,7 @@ choose choose-cards/cyclonus-connive-discarded
 choose choose-cards/cytoshape-copy
 choose choose-cards/danitha-benalias-hope-attach
 choose choose-cards/danse-macabre-return
+choose choose-cards/dark-bargain-take
 choose choose-cards/darkstar-augur-take
 choose choose-cards/dauthi-voidwalker-play
 choose choose-cards/deadly-cover-up-exile
