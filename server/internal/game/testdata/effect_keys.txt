@@ -1746,6 +1746,7 @@ confirm may/cemetery-tampering-mill
 confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
 confirm may/shakedown-heavy-draw
+confirm s82-bns-b28/draugr-to-graveyard
 confirm s82-bro-b07/sarinth-take-land
 confirm s82-bro-b07/sarinth-to-graveyard
 confirm s82-dmu-b16/ajani-bottom
