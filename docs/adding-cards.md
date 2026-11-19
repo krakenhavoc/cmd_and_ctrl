@@ -81,6 +81,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Shared vocabulary, and the clone gate](#shared-vocabulary-and-the-clone-gate)
   - [Winning, losing, and "can't lose" (S40, ADR 0057)](#winning-losing-and-cant-lose-s40-adr-0057)
   - [Skipping all combat phases of a player's next turn (#5075, CR 500.11, 614.10)](#skipping-all-combat-phases-of-a-players-next-turn-5075-cr-50011-61410)
+  - [Skipping a player's next combat phase (#5838, CR 500.11, 614.10)](#skipping-a-players-next-combat-phase-5838-cr-50011-61410)
   - [Exert (ADR 0130, #2048, CR 701.43)](#exert-adr-0130-2048-cr-70143)
   - [Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)](#whenever-you-waterbend-earthbend-firebend-or-airbend-5276-adr-0081-amendment-2026-11-07)
   - [When NOT to add a catalog entry](#when-not-to-add-a-catalog-entry)
@@ -11825,8 +11826,36 @@ record goes as the next turn begins; a waiting one for a player who has
 left goes then too. `Game.CombatPhaseSkipsForLocked(player)` counts what
 is owed, the turn in progress included.
 
-"Skip your next combat phase" (Moment of Silence) is not this: it skips
-one phase of THIS turn, and is not built.
+"Skip their next combat phase" is not this either: see the next
+subsection. "Target player skips their next combat phase this turn"
+(Moment of Silence) skips one phase of THIS turn, and is not built.
+
+### Skipping a player's next combat phase (#5838, CR 500.11, 614.10)
+
+"Whenever this creature deals combat damage to a player, that player
+skips their next combat phase" (Blinding Angel) skips ONE combat phase,
+the next one of that player's that would begin, in whatever turn it
+falls. The trigger's body is one function from
+[skip_combat_phases.go](../server/internal/cards/effects/skip_combat_phases.go):
+
+```go
+WheneverThisDealsCombatDamageToAPlayer("Blinding Angel — that player skips their next combat phase",
+    DamagedPlayerSkipsNextCombatPhase),
+```
+
+It writes a `skipNextCombatPhase` ScopedEffect record
+(`Game.SkipNextCombatPhaseForEffect(player, source, label)`) that is
+spent at step entry: as a combat step of that player's turn is about to
+begin and its combat phase has not begun, the oldest record goes and the
+rest of that phase comes out of the plan, so nothing in it happens
+(CR 500.11). A turn with two combat phases loses only the first; two
+records skip two (CR 614.10a). A combat phase that has begun can't be
+skipped, so a record made during that player's own combat waits for the
+next one (CR 614.10); one made before their combat in their own turn
+takes that turn's. A combat phase another effect skips (the whole-turn
+skip above) does not use it up (CR 614.10a). A waiting record for a
+player who has left goes as the next turn begins.
+`Game.NextCombatPhaseSkipsForLocked(player)` counts what is owed.
 
 ### Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)
 

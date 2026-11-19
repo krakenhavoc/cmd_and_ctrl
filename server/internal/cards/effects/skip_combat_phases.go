@@ -34,3 +34,21 @@ func (TargetPlayerSkipsCombatPhasesOfNextTurn) Apply(ctx *Context) error {
 	}
 	return nil
 }
+
+// DamagedPlayerSkipsNextCombatPhase is "that player skips their next
+// combat phase" on a "deals combat damage to a player" trigger (Blinding
+// Angel, #5838; CR 500.11, 614.10): the damaged player, read off the
+// damage event, skips ONE combat phase, the next one of theirs that would
+// begin, in whatever turn it falls (game.SkipNextCombatPhaseForEffect).
+// A turn with two combat phases loses only the first, and two of these
+// skip two (CR 614.10a). Not targeted, so hexproof does not stop it. A
+// player who has left the game in response skips nothing.
+func DamagedPlayerSkipsNextCombatPhase(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	label := ""
+	if item != nil {
+		label = item.Label
+	}
+	g.SkipNextCombatPhaseForEffect(ctx.Trigger().Event.Target, ctx.Source(), label)
+	return nil
+}

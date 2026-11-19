@@ -1310,6 +1310,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipNextUntapStep: {reader: readerRule},
 	// S79 (#5075): "skips all combat phases of their next turn".
 	ModSkipCombatPhases: {reader: readerRule},
+	// #5838: "skips their next combat phase" (Blinding Angel).
+	ModSkipNextCombatPhase: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1877,6 +1879,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipCombatPhasesModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipNextCombatPhaseModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := attackPermanentModProblem(m); problem != "" {
