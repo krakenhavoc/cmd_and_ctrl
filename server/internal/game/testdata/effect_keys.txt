@@ -427,12 +427,14 @@ body snc-b04/obscura-interceptor-return-spell
 body snc-b04/psychic-pickpocket-return-permanent
 body sorin-imperious-bloodlord/strike
 body spare-dagger/damage
+body sparktongue-dragon/damage
 body specter-of-mortality/sweep
 body spectral-adversary/phase-out
 body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
+body spined-tyrranax/counter
 body stensia-uprising/damage
 body stitched-assistant/scry-draw
 body stolen-uniform/unattach-the-equipment
@@ -2289,9 +2291,11 @@ payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
+payunless pay-unless/sparktongue-dragon-damage
 payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
+payunless pay-unless/spined-tyrranax-counter
 payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/subway-train-basic-land
