@@ -73,6 +73,19 @@ describe("the seat keyword badge", () => {
     expect(got[0].title).toBe("Hexproof");
   });
 
+  // #5842: Gilded Light's player shroud (CR 702.18a). The tooltip says
+  // it stops the player's own spells too — the difference from hexproof.
+  it("shows a shroud badge with its icon, saying it stops their own spells too", () => {
+    const { container } = render(PlayerIdentity as never, props(seat(["shroud"])) as never);
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].title).toMatch(/^Shroud/);
+    expect(got[0].title).toContain("even their own");
+    expect(container.querySelector(".seat-keywords .kw-badge svg")).not.toBeNull();
+    // The icon is the face, never the raw wire token.
+    expect(got[0].text).not.toBe("shroud");
+  });
+
   it("shows a protection badge that titles the quality rather than the raw token", () => {
     const { container } = render(
       PlayerIdentity as never,

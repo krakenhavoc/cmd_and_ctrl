@@ -3084,7 +3084,8 @@ export interface PlayerView {
   // directly.
   outside_play?: { source_name: string; can_name?: boolean };
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
-  // right now — bare engine tokens, "hexproof" or a general
+  // right now — bare engine tokens, "hexproof", "shroud" (CR 702.18a,
+  // Gilded Light, #5842) or a general
   // "protection from <quality>" ("protection from everything" is the
   // only quality a catalogued card grants a player today — Teferi's
   // Protection, The One Ring, Leyline of Sanctity, Aegis of the

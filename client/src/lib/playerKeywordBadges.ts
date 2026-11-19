@@ -4,7 +4,8 @@
 //
 // PlayerView.keywords (docs/protocol.md, server/internal/protocol/
 // view.go) carries the bare engine tokens a seat has right now:
-// "hexproof", or a general "protection from <quality>" (CR 702.16i /
+// "hexproof", "shroud" (Gilded Light, #5842), or a general
+// "protection from <quality>" (CR 702.16i /
 // CR 702.11d). Unlike CardView.protection, the wire does not parse
 // the quality into a structured ProtectionView for a seat — there is
 // exactly one production quality today ("everything", from Teferi's
@@ -35,8 +36,8 @@ export interface PlayerKeywordBadge {
   short: string;
   // Tooltip / aria-label text.
   title: string;
-  // Present only for a token KEYWORD_ICONS recognizes (hexproof
-  // today); the badge renders this instead of `short`.
+  // Present only for a token KEYWORD_ICONS recognizes (hexproof and
+  // shroud today); the badge renders this instead of `short`.
   icon?: string;
   // Which of KeywordBadgeRow's badge shells this is — "protection"
   // gets the blue shield tint, "plain" the neutral dark one (an icon
@@ -318,6 +319,20 @@ export function playerKeywordBadges(
         short: "HEX",
         title: "Hexproof",
         icon: KEYWORD_ICONS.hexproof,
+        kind: "plain",
+      });
+      continue;
+    }
+
+    // #5842 (CR 702.18a): Gilded Light's "you gain shroud". Unlike
+    // hexproof it stops the player's own spells too, so the tooltip says
+    // so: a player whose own spell finds no target needs the reason.
+    if (token === "shroud") {
+      badges.push({
+        key: token,
+        short: "SHR",
+        title: "Shroud — can't be the target of spells or abilities, even their own",
+        icon: KEYWORD_ICONS.shroud,
         kind: "plain",
       });
       continue;
