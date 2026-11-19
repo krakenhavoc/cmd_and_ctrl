@@ -582,14 +582,61 @@ jobs:
           restore-keys: |
             scryfall-default-cards-
 
+      # #5920: seconds when it works (0-7 s in every attempt on
+      # 2026-11-18). The script fails a stalled download within about a
+      # minute per try, three tries; this timeout is the backstop that
+      # names the step if anything else in it hangs.
       - name: Refresh Scryfall bulk data
+        timeout-minutes: 15
         run: scripts/scryfall-refresh.sh
 
-      - name: Token templates — match against the real Scryfall dump
+      # #5920: three attempts on 2026-11-18 (runs 44353212188,
+      # 44359823264, 44383220688) sat until the job's 30-minute cancel
+      # and kept no log, but the jobs API still showed where: each was
+      # in the one `go test` step, after a refresh of 0-7 s. That step
+      # was 3-4 minutes of compiling internal/cards/effects and a few
+      # seconds of test, and two more attempts (44299054336,
+      # 44459209655) died in it two minutes in with "The runner has
+      # received a shutdown signal", exit 143: the out-of-memory
+      # signature #5906 measured for this package's compile. Measured
+      # on a 4-core, 15 GB machine on 2026-11-19, this plain `go test
+      # -c` (no -race, no -cover) reached 13.5 GB and was OOM-killed;
+      # with GOGC=30 it peaked at 10.9 GB and built, in about 4 min. The
+      # hosted runner has 16 GB, so at the default it is at the edge:
+      # killed, or (the likeliest reading of the hangs, unproven without
+      # a log) thrashing until the job's timeout. So:
+      #   - the compile and the run are separate steps, each with its
+      #     own timeout, so a hang fails fast on the half it was in;
+      #   - GOGC=30 keeps the compile's peak under the runner's memory;
+      #   - on any failure the last step prints the runner's memory,
+      #     disk and kernel OOM lines while the log can still be kept.
+      - name: Token templates — build the test binary
         working-directory: server
+        timeout-minutes: 12
+        env:
+          GOGC: "30"
+        run: |
+          free -m
+          go test -c -o "$RUNNER_TEMP/effects.test" ./internal/cards/effects/
+
+      # Run from the package directory, as `go test` would. The test
+      # takes seconds; -test.timeout panics with every goroutine's stack
+      # if it ever hangs.
+      - name: Token templates — match against the real Scryfall dump
+        working-directory: server/internal/cards/effects
+        timeout-minutes: 5
         env:
           CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
-        run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v -count=1
+        run: |
+          "$RUNNER_TEMP/effects.test" -test.run RealDumpEveryTokenTemplate -test.v -test.timeout 4m
+
+      - name: Report where token-dump-check stopped
+        if: failure()
+        run: |
+          echo "::error::token-dump-check failed or timed out in the step marked failed above (#5920). Runner memory, disk and any kernel OOM kill follow."
+          free -m
+          df -h / "$RUNNER_TEMP"
+          sudo -n dmesg 2>/dev/null | grep -iE 'out of memory|oom-kill|killed process' | tail -n 20 || true
 
   # The realdump purpose audit on the PR that touches a card (#3348).
   # TestRealDumpPurposeAudit (with its two siblings in
