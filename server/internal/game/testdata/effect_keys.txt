@@ -2220,6 +2220,7 @@ payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/mirrorworks-copy
 payunless pay-unless/mtenda-lion-prevent-combat-damage
+payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
 payunless pay-unless/neo-go-shintai-ancient-wars
