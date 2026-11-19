@@ -50,7 +50,7 @@ func init() {
 				Label:     "Tap an untapped Gate you control: Untap this creature.",
 				Purpose:   game.Purpose{Answers: game.AnswerValue},
 				Cost:      TapAnUntapped("an untapped Gate you control", OfSubtype("Gate")),
-				Effect:    gapB44UntapThis,
+				Effect:    untapThisPermanentEffect,
 			},
 		},
 	})

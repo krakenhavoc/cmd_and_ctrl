@@ -63,10 +63,11 @@ func gapB44MagmarchSoleTarget(g *game.Game, spell, caster uuid.UUID) (uuid.UUID,
 	return sole.ID, true
 }
 
-// gapB44UntapThis is "Untap this creature" as an activated ability's effect
-// (Sage of the Maze): the source is untapped only while it is still the
-// permanent that was activated (CR 400.7).
-func gapB44UntapThis(g *game.Game, item *game.StackItem) error {
+// untapThisPermanentEffect is "Untap this creature (artifact)" as an
+// activated ability's effect (Sage of the Maze, Honor-Worn Shaku): the source
+// is untapped only while it is still the permanent that was activated
+// (CR 400.7).
+func untapThisPermanentEffect(g *game.Game, item *game.StackItem) error {
 	if !sourceIsStillThisPermanent(g, item) {
 		return nil
 	}
