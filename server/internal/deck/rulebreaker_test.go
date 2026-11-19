@@ -13,9 +13,7 @@ func rulebreakerDeck(commander cards.Card, extra ...cards.Card) *List {
 	for i := 0; i < 99; i++ {
 		list.Mainboard = append(list.Mainboard, basicLegal("Swamp", "Basic Land — Swamp", "B"))
 	}
-	for i, c := range extra {
-		list.Mainboard[i] = c
-	}
+	copy(list.Mainboard, extra)
 	return list
 }
 
