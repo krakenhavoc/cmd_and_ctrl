@@ -37,6 +37,7 @@ anyplayer any-player/rhystic-shield-extra
 anyplayer any-player/rhystic-tutor-search
 anyplayer any-player/soul-strings-return
 anyplayer any-player/tuck-this-on-top-of-library
+anyplayer any-player/vexing-devil-sacrifice
 anyplayer any-player/wild-might-extra
 anyplayer any-player/worms-of-the-earth-destroy
 body aang-at-the-crossroads/transform
@@ -50,6 +51,7 @@ body annihilator/sacrifice
 body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-denial/draws
+body archangel-avacyn/transform
 body argentum-masticore/destroy
 body armix-filigree-thrasher/shrink
 body ascend/exile-listed-unless-citys-blessing
@@ -93,6 +95,8 @@ body clone-saga/copy-creature-spell-not-legendary
 body codie-vociferous-codex/exile-until-lesser-instant-or-sorcery
 body combat/untap-and-remove-the-payload
 body commander/return-listed-to-command-zone
+body conduit-of-emrakul/add-colorless
+body conduit-of-storms/add-red
 body conspire/copy
 body construct-a-cosmic-cube/control
 body copy/surge-to-victory-exiled-card
@@ -2205,6 +2209,7 @@ payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/forage-only
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
+payunless pay-unless/furyblade-vampire-pump
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-dirigible-untap
