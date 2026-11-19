@@ -6892,6 +6892,18 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		moveCause = MoveCause{Kind: MoveCauseCost}
 	}
 	mark := leaveMark{cause: ev.LeaveCause, source: g.leaveSourceLocked(moveCause)}
+	if !ev.mustSettleNow {
+		// #5929: the controller of the spell or ability whose resolution moved
+		// it, on the exit event ("a spell or ability an opponent controls
+		// destroys ..."). A cost names nobody's resolution.
+		cause := ev.moveCause()
+		if cause.Kind == "" {
+			cause = g.resolutionCauseLocked()
+		}
+		if cause.Kind == MoveCauseEffect {
+			mark.controller = cause.Controller
+		}
+	}
 	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
 	if moveErr == nil {
 		// #5876: whose ability exiled the permanent, once it is there.

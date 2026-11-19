@@ -2201,6 +2201,7 @@ payunless pay-unless/krenko-baron-of-tin-street-goblin
 payunless pay-unless/krovod-haunch-dogs
 payunless pay-unless/krydle-of-baldurs-gate-unblockable
 payunless pay-unless/lazotep-chancellor-amass
+payunless pay-unless/leyline-of-lightning-ping
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
@@ -3611,6 +3612,7 @@ tail smugglers-surprise/after-mill
 tail smugglers-surprise/protect
 tail snc-b04/obscura-interceptor-connive
 tail snc-b04/psychic-pickpocket-connive
+tail sneak-attack/entered
 tail sold-out/clue
 tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires

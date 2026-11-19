@@ -648,6 +648,18 @@ type TargetSpec struct {
 	// naming no Actor. Build it with effects.ControlledByThatEventActor.
 	ControlledByEventActor bool
 
+	// ControlledByEventLeaveController is "…that opponent controls" where that
+	// opponent is the controller of the spell or ability whose resolution
+	// moved the permanent in the triggering event (Event.LeaveController): Karmic Justice's
+	// "Whenever a spell or ability an opponent controls destroys a
+	// noncreature permanent you control, you may destroy target permanent
+	// that opponent controls" (#5929). ControlledByEventActor's twin for a
+	// zone move, whose Actor is not the player behind it. DATA, judged in
+	// sourceAdmits for ControlledByThatPlayer's reasons, and like it admits
+	// NOTHING on a walk with no fired trigger or an event with no recorded
+	// leave controller. Build it with effects.ControlledByThatEventLeaveController.
+	ControlledByEventLeaveController bool
+
 	// ManaValueAtMostEventAmount is "with mana value X or less, where X is
 	// the amount of damage" the triggering event dealt (Venerable Warsinger:
 	// "return target creature card with mana value X or less from your
@@ -2095,6 +2107,21 @@ func (s *TargetSpec) eventActorAdmits(src TargetSource, c Card) bool {
 	return who != uuid.Nil && c.Controller == who
 }
 
+// eventLeaveAdmits is ControlledByEventLeaveController's gate: true without
+// the flag, and with it only a candidate controlled by the controller of the
+// spell or ability behind the triggering event. No trigger, or an event with
+// no recorded cause controller, admits nothing.
+func (s *TargetSpec) eventLeaveAdmits(src TargetSource, c Card) bool {
+	if !s.ControlledByEventLeaveController {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return false
+	}
+	who := src.Trigger.Event.LeaveController
+	return who != uuid.Nil && c.Controller == who
+}
+
 // eventAmountAdmits is ManaValueAtMostEventAmount's and
 // ManaValueEqualsEventAmount's gate: true without either flag, and with one
 // only a candidate whose mana value is at most (or exactly) the
@@ -2235,7 +2262,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

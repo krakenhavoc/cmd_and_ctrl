@@ -71,8 +71,10 @@ import (
 //   - it is not a resolving spell (stackItem): an Aura spell is attached
 //     to its target by attachResolvedAuraLocked (CR 303.4a, 608.3c);
 //   - it is not face down (CR 708.2: the object is a 2/2 creature);
-//   - it does not enter as a copy (Copy Enchantment's shape has no
-//     catalog card yet);
+//   - it does not enter as a copy, unless it is a permanent SPELL that is not
+//     an Aura spell and enters as a copy of an Aura (Copy Enchantment,
+//     #5929): the copy's own types and enchant clause decide, and the host
+//     is attached by the stack-site finisher (entry_choice.go);
 //   - the entering card is an Aura with a catalogued enchant clause. An
 //     uncatalogued Aura is a manual object in this sandbox and is left
 //     alone, as attachmentLegalLocked leaves it; a Role token has no
@@ -112,8 +114,19 @@ const PendingChoiceAuraHost PendingChoiceKind = "aura_host"
 // Caller must hold g.mu.
 func (g *Game) enteringAuraLocked(ev *ReplacementEvent) (Card, *TargetSpec, bool) {
 	if ev == nil || ev.Kind != RepEventMove || ev.NewZone != ZoneBattlefield ||
-		ev.OldZone == ZoneBattlefield || ev.OldZone == ZoneStack || ev.stackItem != nil ||
-		ev.FaceDown != FaceDownNone || ev.EntersAsCopyOf != nil || ev.Canceled {
+		ev.OldZone == ZoneBattlefield || ev.FaceDown != FaceDownNone || ev.Canceled {
+		return Card{}, nil, false
+	}
+	// A resolving Aura SPELL is attached to its target (CR 303.4a), not asked.
+	// But a permanent spell that is not an Aura spell and enters as a copy of an
+	// Aura (Copy Enchantment copying Pacifism, #5929) is an Aura entering by
+	// other means, and chooses what it enchants as it enters (CR 303.4f): the
+	// copy's own types and enchant clause decide.
+	if ev.OldZone == ZoneStack || ev.stackItem != nil {
+		if ev.EntersAsCopyOf == nil {
+			return Card{}, nil, false
+		}
+	} else if ev.EntersAsCopyOf != nil {
 		return Card{}, nil, false
 	}
 	var card Card
@@ -141,6 +154,9 @@ func (g *Game) enteringAuraLocked(ev *ReplacementEvent) (Card, *TargetSpec, bool
 			return Card{}, nil, false
 		}
 		return card, spec, true
+	}
+	if found && ev.EntersAsCopyOf != nil {
+		card.applyCopy(*ev.EntersAsCopyOf, Card{})
 	}
 	if !found || !card.IsAura() || card.IsRole() || card.IsCreature() {
 		return Card{}, nil, false
@@ -440,7 +456,7 @@ func singleAuraHost(targets []TargetRef) (TargetRef, bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) attachEnteringAuraLocked(entered uuid.UUID, ev *ReplacementEvent) {
-	if ev == nil || ev.stackItem != nil || ev.auraHost.Kind == "" {
+	if ev == nil || ev.auraHost.Kind == "" {
 		return
 	}
 	if !ev.auraHostSettled && !ev.auraHostFixed {
