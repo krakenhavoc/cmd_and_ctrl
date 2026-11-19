@@ -1779,6 +1779,7 @@ drawinstead dredge-6
 drawinstead engine/next-draw-exile-top-play
 drawinstead eruth-tormented-prophet
 drawinstead forbidden-crypt
+drawinstead hullbreacher-treasure
 drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
 drawinstead pavel-chekov-first-posting
