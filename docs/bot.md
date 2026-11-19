@@ -2587,6 +2587,53 @@ The model tiers' primer names the game: a Standard deck's says two players,
 sixty cards, twenty life and no commander (`model.DeckProfile.Format`). A
 Commander deck's primer is unchanged.
 
+### The draft bot
+
+The booster-draft bot lives in `server/internal/draft`, not in `aiseat/`:
+`rating.go`, `picker.go` (`BotPicker`) and `botdeck.go` (`BuildDeck`). What it
+does and its measure (`TestTheDraftBotMeasure`, at least 19 of 20 seeded
+drafts sane) are in ADR 0222, §7 and "Draft bots as built". Two build rules
+were added when the packs took the published play-booster shape (#5916),
+which has fewer commons and so fewer creatures to draft. Both follow from the
+deck shape the ADR already gives the build (at least `MinDeckCreatures`, 13,
+and at most `MaxTopEnd`, six cards of five mana or more):
+
+- **The top end is kept for creatures.** If the deck can reach 13 creatures
+  only by playing dear ones, the top-end slots those creatures need are not
+  given to dear noncreature spells. A five-mana Aura no longer takes the slot
+  a six-mana creature needs. A deck that needs more than six dear creatures
+  still plays them, because the creature count comes first, as it did before.
+- **A splash can supply creatures.** If the two colours have fewer than 13
+  creatures, the build tries a splash for them before the creature slots give
+  way. It takes the third colour with the most creatures it could splash, up
+  to the shortfall and at most `SplashCards` (three). Each creature has one
+  symbol of that colour and is rated playable, and the deck gets
+  `SplashLands`. The splash is kept only when it adds creatures and leaves
+  the deck no shorter. A deck the two colours do not fill still splashes as
+  before, in the same colour.
+
+The picks did not change. Changing the creature-need weights only moved the
+measure within noise. The drafts that came up short of creatures were short
+because of what the packs held, not because the weights were wrong.
+
+On the fixture set, 100 drafts of other seeds (`-draft-wide=100`), sane drafts
+of 100:
+
+| Mode, bots | Before (#5916 packs) | After |
+|---|---|---|
+| pick one, 8 | 97 | 97 |
+| pick one, 4 | 95 | 97 |
+| pick one, 2 | 94 | 99 |
+| pick two, 8 | 95 | 98 |
+| pick two, 4 | 93 | 96 |
+| pick two, 2 | 86 | 97 |
+
+The fixed seeds of the CI gate pass 20 of 20 in both modes. The bots' mean
+deck rating is unchanged in every shape. The random-pick baseline is built by
+the same `BuildDeck`, so its decks splash for creatures too. That costs them
+a little rating, which is part of why the "out-rates the random-pick deck"
+counts rose.
+
 ## Improvisation, and why an undo is free
 
 > **Which tiers.** `assisted` and `strong` only. `random` and

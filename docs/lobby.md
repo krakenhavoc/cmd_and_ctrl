@@ -684,15 +684,50 @@ by release date (`draftpacks.Eras`):
 
 | Released | Booster | Cards | Slots |
 |---|---|---|---|
-| on or after 2024-02-09 | play | 14 | 6 commons, 1 common that may be a bonus-sheet card, 3 uncommons, 1 rare or mythic (1 mythic in 7), 1 basic land, 2 wildcards |
+| on or after 2024-02-09 | play | 14 | 7 commons, 3 uncommons, 1 rare or mythic (1 mythic in 7), 1 basic land, 1 wildcard, 1 foil (drawn as a plain card) |
 | 2008-10-03 to 2024-02-08 | draft | 15 | 10 commons, 3 uncommons, 1 rare or mythic (1 mythic in 8), 1 basic land |
 | before 2008-10-03 | draft | 15 | 11 commons, 3 uncommons, 1 rare |
 
-The dates and rates are named constants in `draftpacks/recipe.go` and have
-not been checked against a Wizards source; `draftpacks/overrides.json`
-corrects one set. A set with no release date in the data gets the play
-booster. One printing of each card, no foils or other treatments, no
-tokens. The client's `#/draft/sets` page renders this list, names each
+The play and draft shapes, and the wildcard's and foil's rarity splits, are
+read from MTGJSON v5's collation of each set's draft product
+(`data.booster.play` from MKM on, `data.booster.draft` before it; fetched
+2026-11-18). Each constant in `draftpacks/recipe.go` names its source; the
+1-in-8 mythic rate of an uncollated draft booster is the rate Wizards
+announced with Shards of Alara. `draftpacks/overrides.json` has an entry,
+derived from that data and citing it, for each of the 22 collated sets:
+WOE, LCI, MKM, OTJ, BLB, DSK, FDN, DFT, TDM, FIN, EOE, SPM, TLA, MOM, ONE,
+BRO, DMU, SNC, NEO, VOW, MID and AFR. An entry sets the set's own mythic
+rate and wildcard and foil splits, and its bonus slots. A bonus slot takes
+the place of another slot (a common unless it says otherwise) 1 time in N,
+and draws from a whole set, a collector-number range or a list of
+printings:
+
+| Set | Bonus slot | Rate | In place of |
+|---|---|---|---|
+| WOE | Enchanting Tales (`wot` 1–83) | every pack | a common |
+| MOM | Multiverse Legends (`mul` 1–65) | every pack | a common |
+| BRO | Retro Artifacts (`brr` 1–126) | every pack | the basic land |
+| OTJ | Breaking News (`otp` 1–65) | every pack | a common |
+| OTJ | The List (`big` 1–30, `spg` 29–38) | 1 in 5 | a common |
+| MKM | The List (40 `plst` printings, `spg` 19–28) | 1 in 8 | a common |
+| BLB, FDN | Special Guests (`spg` 54–63, 74–83) | 1 in 67 | a common |
+| DSK, DFT, TDM | Special Guests (`spg` 64–73, 84–93, 104–113) | 1 in 64 | a common |
+| EOE | Special Guests (`spg` 119–128) | 1 in 56 | a common |
+| EOE | Stellar Sights (`eos` 1–45) | 1 in 8, 1 in 80 | the wildcard, the foil |
+| FIN | Through the Ages (`fca` 1–64) | 1 in 3 | a common |
+| SPM | Source Material (`mar` 1–40) | 1 in 24 | a common |
+| TLA | Source Material (`tle` 1–61) | 1 in 26 | a common |
+
+A bonus card counts toward `cards` and can block its set like any other.
+LCI's land slot is a full-art Cave, a common of the set, so LCI's entry
+has an eleventh common and no basic land. Not modelled: foils (a draft
+booster's foil stays a common, a play booster's is a plain card),
+DMU's legendary uncommon or rare slot, MOM's battle slot, the double-faced
+card slots of LCI, MOM, NEO, VOW and MID (their cards are drawn by rarity),
+ONE's prototype praetors, BRO's mech basic land, and the rarity weights
+inside a bonus sheet (a bonus card is drawn evenly). A set with no release
+date in the data gets the play booster. One printing of each card, no
+treatments, no tokens. The client's `#/draft/sets` page renders this list, names each
 set's booster and says packs are approximations.
 
 ### `GET /draft/sets/{code}/archetypes`

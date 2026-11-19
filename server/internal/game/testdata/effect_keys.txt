@@ -393,6 +393,7 @@ body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
 body s82-bns-b02/back-for-more-fight
 body s82-bns-b05/mistbind-clique-tap-lands
+body s82-bns-b27/dinosaur-spell-gains-fight
 body s82-mid-b14/lynde-return-curse
 body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
@@ -429,12 +430,14 @@ body snc-b04/obscura-interceptor-return-spell
 body snc-b04/psychic-pickpocket-return-permanent
 body sorin-imperious-bloodlord/strike
 body spare-dagger/damage
+body sparktongue-dragon/damage
 body specter-of-mortality/sweep
 body spectral-adversary/phase-out
 body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
+body spined-tyrranax/counter
 body stensia-uprising/damage
 body stitched-assistant/scry-draw
 body stolen-uniform/unattach-the-equipment
@@ -824,6 +827,7 @@ choose choose-cards/karoo-return-an-untapped-plains
 choose choose-cards/kastral-put-bird
 choose choose-cards/kaya-spirits-justice-copy
 choose choose-cards/kaya-spirits-justice-exile
+choose choose-cards/kazandu-stomper-return-lands
 choose choose-cards/keldon-flamesage
 choose choose-cards/kellan-the-kid-if-you-dont
 choose choose-cards/king-narfis-betrayal-exile
@@ -1423,6 +1427,7 @@ choose resolution-cast/s82-mom-b21-rashmi-after
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/smugglers-buggy-after-cast
 choose resolution-cast/swindlers-scheme-free-cast
+choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -1505,6 +1510,7 @@ condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
+condition s82-bns-b27/you-cast-a-dinosaur
 condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
 condition until/returned-under-your-control
@@ -1570,6 +1576,7 @@ confirm confirm/disorienting-choice-exile
 confirm confirm/dragons-approach-exile
 confirm confirm/draw-cards
 confirm confirm/dwarven-vigilantes-damage
+confirm confirm/eager-construct-scry
 confirm confirm/ebony-fly-becomes
 confirm confirm/eden-sacrifice
 confirm confirm/emet-selch-unsundered-transform
@@ -1749,6 +1756,7 @@ confirm may/cemetery-tampering-mill
 confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
 confirm may/shakedown-heavy-draw
+confirm s82-bns-b28/draugr-to-graveyard
 confirm s82-bro-b07/sarinth-take-land
 confirm s82-bro-b07/sarinth-to-graveyard
 confirm s82-dmu-b16/ajani-bottom
@@ -1803,6 +1811,7 @@ drawthen messenger-jays-discard
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
 drawthen rowans-grim-search/lose-life
+drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -2220,6 +2229,7 @@ payunless pay-unless/jace-multiverse-architect-cant-attack
 payunless pay-unless/jedit-ojanen-mercenary-cat-warrior
 payunless pay-unless/jerren-transform
 payunless pay-unless/jolted-awake-return
+payunless pay-unless/jubilant-mascot-support
 payunless pay-unless/kalastria-highborn-drain
 payunless pay-unless/karn-living-legacy-look
 payunless pay-unless/kavaron-harrier-robot
@@ -2250,6 +2260,7 @@ payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/mirrorworks-copy
 payunless pay-unless/mtenda-lion-prevent-combat-damage
+payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
 payunless pay-unless/neo-go-shintai-ancient-wars
@@ -2298,9 +2309,11 @@ payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
+payunless pay-unless/sparktongue-dragon-damage
 payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
+payunless pay-unless/spined-tyrranax-counter
 payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/subway-train-basic-land
@@ -2327,6 +2340,7 @@ payunless pay-unless/unassuming-sage-sorcerer-role
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
 payunless pay-unless/urzas-sylex-search
+payunless pay-unless/valkyries-sword-angel-and-attach
 payunless pay-unless/vanille-cheerful-lcie-meld
 payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
@@ -2752,6 +2766,7 @@ tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
 tail arcane-proxy/copy-exiled
 tail archdruids-charm/bite
+tail archfiends-vessel/demon
 tail arid-archway/surveil-if-desert-returned
 tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
@@ -2829,6 +2844,7 @@ tail blitzwing/convert-if-none-lost
 tail bloodthirsty-adversary/copy-and-cast
 tail blue-mages-cane/copy-exiled
 tail bob-reluctant-hydra-agent/drain
+tail boneclad-necromancer/zombie-if-exiled
 tail borg-cube/assimilated
 tail borrowed-knowledge/draw-opponents-hand
 tail bounding-felidar/gain-life
@@ -3039,6 +3055,7 @@ tail dune-chanter/after-mill
 tail each-player/exile-top-step
 tail each-player/mill-step
 tail each-player/mill-until-land-step
+tail eager-construct/ask-next
 tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
@@ -3529,6 +3546,7 @@ tail ruinous-intrusion/after-exile
 tail rulik-mons/goblin-if-none-entered
 tail s82-bns-b02/grindstone-after-mill
 tail s82-bns-b05/mistbind-clique-championed
+tail s82-bns-b27/cavalier-of-gales-shuffle-scry
 tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-dmu/slimefoots-survey-look
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
