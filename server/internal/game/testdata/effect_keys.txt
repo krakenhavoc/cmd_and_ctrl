@@ -3304,12 +3304,14 @@ tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
 tail mass/gain-two-life-for-each
 tail mass/genesis-of-the-daleks-drain
+tail mass/indomitable-creativity-reveal
 tail mass/join-the-collective-borg
 tail mass/kayas-wrath-life
 tail mass/krenkos-buzzcrusher-search
 tail mass/mass-polymorph-reveal
 tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
+tail mass/overwhelming-forces-draw
 tail mass/overwrite-the-multiverse-empower
 tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
@@ -3838,6 +3840,7 @@ tail then/highway-robbery-draw-two
 tail then/hold-for-ransom-draw
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
+tail then/indomitable-creativity-shuffle
 tail then/industrial-advancement-sacrificed
 tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
