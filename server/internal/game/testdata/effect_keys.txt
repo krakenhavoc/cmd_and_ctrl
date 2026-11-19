@@ -3904,6 +3904,7 @@ tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
+tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
 tail then/god-pharaohs-gift-copy
 tail then/god-pharaohs-gift-haste
