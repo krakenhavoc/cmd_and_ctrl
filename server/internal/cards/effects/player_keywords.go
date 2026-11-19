@@ -51,6 +51,12 @@ const ProtectionFromEachOfYourOpponents = game.ProtectionFromEachOfYourOpponents
 // that compares against it.
 const KeywordHexproof = game.KeywordHexproof
 
+// KeywordShroud is CR 702.18a's token on a player, "you can't be the
+// target of spells or abilities" (Gilded Light, #5842), re-exported for
+// KeywordHexproof's reason. Unlike hexproof it stops the player's own
+// spells too.
+const KeywordShroud = game.KeywordShroud
+
 // YouHaveWhile is a permanent's printed "<condition>, you have
 // <keyword>": the controller has the ability while `while` holds, asked
 // on every query with the permanent as it is now (CR 611.3a). For
@@ -107,7 +113,7 @@ type GainPlayerKeyword struct {
 	// Player is the seat that gains it. Zero is a no-op.
 	Player uuid.UUID
 	// Keyword is the engine token — ProtectionFromEverything,
-	// KeywordHexproof, or any "protection from <quality>" the closed
+	// KeywordHexproof, KeywordShroud, or any "protection from <quality>" the closed
 	// grammar parses.
 	Keyword string
 	// Label is the log's attribution, "<card> — <clause>".

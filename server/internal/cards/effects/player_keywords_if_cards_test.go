@@ -175,14 +175,16 @@ func TestPlayerKeywordsIfRefusesAnEntryWithNoCondition(t *testing.T) {
 }
 
 // TestPlayerKeywordsIfRefusesATokenNobodyReads: the vocabulary is
-// PlayerKeywords', so shroud is refused here too.
+// PlayerKeywords', so a creature keyword no player walk reads is refused
+// here too. (Shroud was the example until Gilded Light gave a player
+// shroud, #5842.)
 func TestPlayerKeywordsIfRefusesATokenNobodyReads(t *testing.T) {
 	defer func() {
 		if recover() == nil {
-			t.Error("checkPlayerKeywords accepted shroud as a conditional player ability")
+			t.Error("checkPlayerKeywords accepted flying as a conditional player ability")
 		}
 	}()
 	checkPlayerKeywords(Spec{Name: "Test", PlayerKeywordsIf: []game.PlayerKeywordIf{
-		YouHaveWhile("shroud", "You have shroud.", func(*game.Game, game.Card) bool { return true }),
+		YouHaveWhile("flying", "You have flying.", func(*game.Game, game.Card) bool { return true }),
 	}})
 }
