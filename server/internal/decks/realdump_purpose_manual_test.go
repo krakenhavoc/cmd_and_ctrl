@@ -203,6 +203,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 RPR batch 31.
 	"Angel of Glory's Rise": "exiles only the Zombies, one creature type, then returns Human creature cards from its controller's graveyard: a type-specific exile, not a board wipe",
+
+	// S82 BNS batch 41.
+	"Waker of Waves": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
