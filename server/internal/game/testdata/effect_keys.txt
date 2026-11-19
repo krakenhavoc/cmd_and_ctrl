@@ -3307,6 +3307,7 @@ tail kav-landseeker/sacrifice-the-lander-next-turn
 tail kaya-geist-hunter/spirits
 tail kaya-intangible-slayer/ask-next
 tail kaya-orzhov-usurper/gain-2-if-creature
+tail kiki-jiki-mirror-breaker/sacrifice-the-token
 tail kindred-charge/haste-and-exile-copies
 tail kinscaer-sentry/entered
 tail kinzu-of-the-bleak-coven/copy
