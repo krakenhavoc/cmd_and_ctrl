@@ -96,7 +96,7 @@ func TestPlayBoosterRecipeIsFourteenCards(t *testing.T) {
 	}
 	// The synthetic sets of these tests are dated 2026, so the tests
 	// below that take the set's own recipe run on a play booster.
-	if got := RecipeFor("syn", "2026-03-01"); got != PlayBoosterRecipe() {
+	if got := RecipeFor("syn", "2026-03-01"); !reflect.DeepEqual(got, PlayBoosterRecipe()) {
 		t.Fatalf("a set released in 2026 gets %+v, want the play booster", got)
 	}
 }
@@ -112,8 +112,9 @@ func TestPackSlotCounts(t *testing.T) {
 			t.Fatalf("seed %d: %d cards, want %d", seed, len(pack.Cards), PlayBoosterSize)
 		}
 		got := slotCounts(pack)
-		// No bonus sheet in the data: the seventh common slot is a common.
-		want := map[Slot]int{SlotCommon: 7, SlotUncommon: 3, SlotRare: 1, SlotLand: 1, SlotWildcard: 2}
+		// No bonus slot: 7 commons, 3 uncommons, the rare, a land, a
+		// wildcard and the foil.
+		want := map[Slot]int{SlotCommon: 7, SlotUncommon: 3, SlotRare: 1, SlotLand: 1, SlotWildcard: 1, SlotFoil: 1}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("seed %d: slots %v, want %v", seed, got, want)
 		}
@@ -135,15 +136,15 @@ func TestPackSlotCounts(t *testing.T) {
 				if !c.Basic {
 					t.Fatalf("seed %d card %d: land slot holds %q, not a basic land", seed, i, c.Name)
 				}
-			case SlotWildcard:
+			case SlotWildcard, SlotFoil:
 				if c.Basic {
-					t.Fatalf("seed %d card %d: wildcard is a basic land", seed, i)
+					t.Fatalf("seed %d card %d: the %s is a basic land", seed, i, c.Slot)
 				}
 			}
 		}
 		// Slot order is the pack's order.
 		order := []Slot{SlotCommon, SlotCommon, SlotCommon, SlotCommon, SlotCommon, SlotCommon, SlotCommon,
-			SlotUncommon, SlotUncommon, SlotUncommon, SlotRare, SlotLand, SlotWildcard, SlotWildcard}
+			SlotUncommon, SlotUncommon, SlotUncommon, SlotRare, SlotLand, SlotWildcard, SlotFoil}
 		for i, c := range pack.Cards {
 			if c.Slot != order[i] {
 				t.Fatalf("seed %d: card %d is in slot %s, want %s", seed, i, c.Slot, order[i])
@@ -167,18 +168,20 @@ func within(t *testing.T, what string, hits, n int, p float64) {
 
 func TestPackRarityRates(t *testing.T) {
 	idx := retailSized(t)
-	// A bonus sheet, so the seventh-slot rate is measured too.
+	// A bonus slot in place of a common 1 time in 8, so its rate is
+	// measured too.
 	for i := range 40 {
 		idx.Put(synthCard("bon", fmt.Sprintf("Bonus %02d", i), "mythic", fmt.Sprint(i+1)))
 	}
-	sheet := "bon"
-	pool := poolFor(idx, "syn", Override{BonusSheet: &sheet}.Apply(PlayBoosterRecipe()))
-	if len(pool.Bonus) != 40 {
-		t.Fatalf("bonus sheet has %d cards, want 40", len(pool.Bonus))
+	slots := []BonusSlot{{Name: "Bonus", OneIn: 8, Sources: []Source{{Set: "bon"}}}}
+	pool := poolFor(idx, "syn", Override{Bonus: &slots}.Apply(PlayBoosterRecipe()))
+	if len(pool.Bonus) != 1 || len(pool.Bonus[0]) != 40 {
+		t.Fatalf("bonus slot has %v cards, want one slot of 40", len(pool.Bonus))
 	}
 
 	const packs = 40_000
-	var mythicRare, bonus, wild, wildC, wildU, wildR, wildM int
+	var mythicRare, bonus int
+	byRarity := map[Slot]map[Rarity]int{SlotWildcard: {}, SlotFoil: {}}
 	for seed := range uint64(packs) {
 		pack, err := pool.Pack(seeded(seed))
 		if err != nil {
@@ -198,32 +201,31 @@ func TestPackRarityRates(t *testing.T) {
 				if c.Set != "bon" {
 					t.Fatalf("seed %d: bonus slot holds a %q card", seed, c.Set)
 				}
-			case SlotWildcard:
-				wild++
-				switch c.Rarity {
-				case Common:
-					wildC++
-				case Uncommon:
-					wildU++
-				case Rare:
-					wildR++
-				case Mythic:
-					wildM++
-				}
+			case SlotWildcard, SlotFoil:
+				byRarity[c.Slot][c.Rarity]++
 			}
 		}
 	}
 	within(t, "mythic in the rare slot", mythicRare, packs, 1.0/MythicOneIn)
-	within(t, "bonus sheet in the seventh common slot", bonus, packs, 1.0/BonusSheetOneIn)
-	if wild != packs*WildcardSlots {
-		t.Fatalf("%d wildcards over %d packs, want %d", wild, packs, packs*WildcardSlots)
+	within(t, "bonus card in place of a common", bonus, packs, 1.0/8)
+	for _, tc := range []struct {
+		slot  Slot
+		split RaritySplit
+	}{
+		{SlotWildcard, PlayBoosterRecipe().Wildcard},
+		{SlotFoil, PlayBoosterRecipe().Foil},
+	} {
+		got := byRarity[tc.slot]
+		n := got[Common] + got[Uncommon] + got[Rare] + got[Mythic]
+		if n != packs {
+			t.Fatalf("%d %s cards over %d packs, want one a pack", n, tc.slot, packs)
+		}
+		total := float64(tc.split.Common + tc.split.Uncommon + tc.split.Rare + tc.split.Mythic)
+		within(t, string(tc.slot)+" common", got[Common], n, float64(tc.split.Common)/total)
+		within(t, string(tc.slot)+" uncommon", got[Uncommon], n, float64(tc.split.Uncommon)/total)
+		within(t, string(tc.slot)+" rare", got[Rare], n, float64(tc.split.Rare)/total)
+		within(t, string(tc.slot)+" mythic", got[Mythic], n, float64(tc.split.Mythic)/total)
 	}
-	total := float64(WildcardCommonWeight + WildcardUncommonWeight + WildcardRareOrMythicWeight)
-	pRM := WildcardRareOrMythicWeight / total
-	within(t, "common wildcard", wildC, wild, WildcardCommonWeight/total)
-	within(t, "uncommon wildcard", wildU, wild, WildcardUncommonWeight/total)
-	within(t, "rare wildcard", wildR, wild, pRM*(1-1.0/MythicOneIn))
-	within(t, "mythic wildcard", wildM, wild, pRM/MythicOneIn)
 }
 
 func TestPackIsDeterministicForASeed(t *testing.T) {
@@ -406,18 +408,23 @@ func TestOnePlainPrintingPerCard(t *testing.T) {
 }
 
 func TestOverridesAreDataPerSet(t *testing.T) {
-	table, err := parseOverrides([]byte(`{"sets":{"SYN":{"note":"test","mythic_one_in":2,"bonus_sheet":"BON","wildcards":1,"uncommons":4}}}`))
+	table, err := parseOverrides([]byte(`{"sets":{"SYN":{"note":"test","mythic_one_in":2,"wildcards":2,"uncommons":4,
+		"bonus":[{"name":"B","one_in":3,"sources":[{"set":"BON","from":1,"to":9}]}]}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	r := recipeFor(table, "syn", "2026-03-01")
-	if r.MythicOneIn != 2 || r.BonusSheet != "bon" || r.Wildcards != 1 || r.Uncommons != 4 {
+	if r.MythicOneIn != 2 || r.Wildcards != 2 || r.Uncommons != 4 || len(r.Bonus) != 1 ||
+		r.Bonus[0].OneIn != 3 || r.Bonus[0].Slot() != SlotCommon ||
+		!reflect.DeepEqual(r.Bonus[0].Sources, []Source{{Set: "bon", From: 1, To: 9}}) {
 		t.Fatalf("override not applied: %+v", r)
 	}
-	if r.Commons != CommonSlots || r.BonusSheetOneIn != BonusSheetOneIn || r.Kind != KindPlay {
+	play := PlayBoosterRecipe()
+	if r.Commons != CommonSlots || r.Foils != FoilSlots || r.Kind != KindPlay ||
+		r.Wildcard != play.Wildcard || r.Foil != play.Foil {
 		t.Fatalf("an unset field lost its era's value: %+v", r)
 	}
-	if got := recipeFor(table, "other", "2026-03-01"); got != PlayBoosterRecipe() {
+	if got := recipeFor(table, "other", "2026-03-01"); !reflect.DeepEqual(got, play) {
 		t.Fatalf("a set with no override got %+v, want its era's recipe", got)
 	}
 
@@ -440,6 +447,20 @@ func TestOverridesAreDataPerSet(t *testing.T) {
 		}
 	}
 	within(t, "mythic in the rare slot at 1 in 2", mythics, packs, 0.5)
+}
+
+func TestOverridesRefuseAMalformedEntry(t *testing.T) {
+	for _, body := range []string{
+		`{"sets":{"syn":{"note":"x","bonus_sheet":"bon"}}}`,
+		`{"sets":{"syn":{"note":"x","bonus":[{"name":"B","one_in":8,"replaces":"rare","sources":[{"set":"bon"}]}]}}}`,
+		`{"sets":{"syn":{"note":"x","bonus":[{"name":"B","one_in":8,"sources":[]}]}}}`,
+		`{"sets":{"syn":{"note":"x","bonus":[{"name":"B","one_in":8,"sources":[{"set":"bon","from":9,"to":2}]}]}}}`,
+		`{"sets":{"syn":{"note":"x","bonus":[{"name":"B","one_in":8,"sources":[{"set":"bon","to":2,"numbers":["1"]}]}]}}}`,
+	} {
+		if _, err := parseOverrides([]byte(body)); err == nil {
+			t.Errorf("parseOverrides accepted %s", body)
+		}
+	}
 }
 
 func TestOverridesFileParses(t *testing.T) {

@@ -111,8 +111,8 @@ func TestABonusSheetCardBlocks(t *testing.T) {
 	bonus := synthCard("bon", "Bonus Card", "mythic", "1")
 	bonus.SetType = "masterpiece"
 	idx.Put(bonus)
-	sheet := "bon"
-	table := map[string]Override{"syn": {BonusSheet: &sheet}}
+	slots := []BonusSlot{{Name: "Bonus", OneIn: 8, Sources: []Source{{Set: "bon"}}}}
+	table := map[string]Override{"syn": {Bonus: &slots}}
 
 	s := findSet(t, sets(idx, allFullExcept("Bonus Card"), table), "syn")
 	if s.Draftable || !reflect.DeepEqual(s.Blockers, []string{"Bonus Card"}) {

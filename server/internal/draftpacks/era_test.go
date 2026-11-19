@@ -43,7 +43,7 @@ func TestErasAreOrderedAndSized(t *testing.T) {
 	if pre.Kind != KindDraft || pre.Size() != DraftBoosterSize || pre.Size() != 15 {
 		t.Fatalf("pre-mythic draft booster: kind %q, %d cards, want draft and 15", pre.Kind, pre.Size())
 	}
-	if pre.Commons != 11 || pre.Uncommons != 3 || pre.Lands != 0 || pre.Wildcards != 0 || pre.BonusSlots != 0 {
+	if pre.Commons != 11 || pre.Uncommons != 3 || pre.Lands != 0 || pre.Wildcards != 0 || pre.Foils != 0 || len(pre.Bonus) != 0 {
 		t.Fatalf("pre-mythic draft booster slots: %+v", pre)
 	}
 	if pre.HasMythics() || pre.HasLands() || pre.UsesBonusSheet() {
@@ -56,16 +56,18 @@ func TestErasAreOrderedAndSized(t *testing.T) {
 		t.Fatalf("draft booster: kind %q, %d cards, want draft and 15", draft.Kind, draft.Size())
 	}
 	if draft.Commons != 10 || draft.Uncommons != 3 || draft.Lands != 1 || draft.MythicOneIn != 8 ||
-		draft.Wildcards != 0 || draft.BonusSlots != 0 {
+		draft.Wildcards != 0 || draft.Foils != 0 || len(draft.Bonus) != 0 {
 		t.Fatalf("draft booster slots: %+v", draft)
 	}
 
-	// The play booster is the 14-card recipe the package began with.
-	if play != PlayBoosterRecipe() || play.Kind != KindPlay || play.Size() != 14 {
+	// The play booster: 7 commons, 3 uncommons, 1 rare (a mythic 1 in
+	// 7), 1 land, 1 wildcard and 1 foil, 14 cards, as MTGJSON collates
+	// every play booster. Bonus slots are per set.
+	if !reflect.DeepEqual(play, PlayBoosterRecipe()) || play.Kind != KindPlay || play.Size() != 14 {
 		t.Fatalf("play booster: %+v", play)
 	}
-	if play.Commons != 6 || play.BonusSlots != 1 || play.Uncommons != 3 || play.Lands != 1 ||
-		play.Wildcards != 2 || play.MythicOneIn != 7 || play.BonusSheetOneIn != 8 {
+	if play.Commons != 7 || play.Uncommons != 3 || play.Lands != 1 || play.Wildcards != 1 ||
+		play.Foils != 1 || play.MythicOneIn != 7 || len(play.Bonus) != 0 {
 		t.Fatalf("play booster slots: %+v", play)
 	}
 }
@@ -97,10 +99,10 @@ func TestEraBoundaries(t *testing.T) {
 	}
 	idx := cards.NewIndex()
 	for i, c := range cases {
-		if got := RecipeFor("anyset", c.released); got != c.want {
+		if got := RecipeFor("anyset", c.released); !reflect.DeepEqual(got, c.want) {
 			t.Errorf("RecipeFor(released %q, %s) = %+v, want %+v", c.released, c.why, got, c.want)
 		}
-		if got := EraFor(c.released).Recipe; got != c.want {
+		if got := EraFor(c.released).Recipe; !reflect.DeepEqual(got, c.want) {
 			t.Errorf("EraFor(%q).Recipe = %+v, want %+v", c.released, got, c.want)
 		}
 		datedSet(idx, fmt.Sprintf("e%02d", i), c.released, 14, 5, 3, 2, true)
@@ -111,7 +113,7 @@ func TestEraBoundaries(t *testing.T) {
 	resp := sets(idx, allFullExcept(), nil)
 	for i, c := range cases {
 		code := fmt.Sprintf("e%02d", i)
-		if got := PoolFor(idx, code).Recipe; got != c.want {
+		if got := PoolFor(idx, code).Recipe; !reflect.DeepEqual(got, c.want) {
 			t.Errorf("PoolFor of a set released %q (%s): recipe %+v, want %+v", c.released, c.why, got, c.want)
 		}
 		if got := findSet(t, resp, code).Booster; got != c.want.Kind {
@@ -138,7 +140,7 @@ func TestEraComesFromThePrintingsWithoutASetTable(t *testing.T) {
 		put(fmt.Sprintf("pri Uncommon %02d", i), "uncommon")
 	}
 	put("pri Rare", "rare")
-	if got := PoolFor(idx, "pri").Recipe; got != DraftBoosterRecipe() {
+	if got := PoolFor(idx, "pri").Recipe; !reflect.DeepEqual(got, DraftBoosterRecipe()) {
 		t.Fatalf("recipe %+v, want the draft booster", got)
 	}
 	s := findSet(t, sets(idx, allFullExcept(), nil), "pri")
@@ -263,10 +265,12 @@ func TestASlotTheRecipeLacksCannotBlock(t *testing.T) {
 		idx.Put(bonus)
 		return idx
 	}
-	sheet := "bon"
-	withSheet := map[string]Override{"old": {BonusSheet: &sheet}}
+	// A bonus slot in place of the wildcard, which only a play booster
+	// has.
+	wild := []BonusSlot{{Name: "Bonus", OneIn: 8, Replaces: SlotWildcard, Sources: []Source{{Set: "bon"}}}}
+	withSheet := map[string]Override{"old": {Bonus: &wild}}
 
-	// Before mythic rares: no mythic slot, no land slot, no bonus slot.
+	// Before mythic rares: no mythic slot, no land slot, no wildcard.
 	idx := build("1999-10-04")
 	s := findSet(t, sets(idx, notFull, withSheet), "old")
 	if !s.Draftable || len(s.Blockers) != 0 {
@@ -280,7 +284,8 @@ func TestASlotTheRecipeLacksCannotBlock(t *testing.T) {
 	}
 
 	// A draft booster with mythics: the mythic blocks, the bonus sheet
-	// still cannot (the recipe has no bonus slot), basics never do.
+	// still cannot (the recipe has no wildcard for it to replace), basics
+	// never do.
 	idx = build("2015-07-17")
 	s = findSet(t, sets(idx, notFull, withSheet), "old")
 	if s.Draftable || !reflect.DeepEqual(s.Blockers, []string{"old Mythic 00"}) {
@@ -290,17 +295,18 @@ func TestASlotTheRecipeLacksCannotBlock(t *testing.T) {
 		t.Fatalf("Cards = %d, want %d", s.Cards, 14+5+3+1+5)
 	}
 
-	// A play booster has the bonus slot, so the named sheet blocks too.
+	// A play booster has the wildcard, so the bonus sheet blocks too.
 	idx = build("2026-03-01")
 	s = findSet(t, sets(idx, notFull, withSheet), "old")
 	if want := []string{"Bonus Card", "old Mythic 00"}; s.Draftable || !reflect.DeepEqual(s.Blockers, want) {
 		t.Fatalf("a play-booster set: blockers %v, want %v", s.Blockers, want)
 	}
 
-	// A draft-booster set whose override gives it a bonus slot.
-	one, rate := 1, 4
+	// A draft-booster set whose override gives it a bonus slot in place
+	// of a common.
 	idx = build("2015-07-17")
-	withSlot := map[string]Override{"old": {BonusSheet: &sheet, BonusSlots: &one, BonusSheetOneIn: &rate}}
+	common := []BonusSlot{{Name: "Bonus", OneIn: 4, Sources: []Source{{Set: "bon"}}}}
+	withSlot := map[string]Override{"old": {Bonus: &common}}
 	s = findSet(t, sets(idx, notFull, withSlot), "old")
 	if want := []string{"Bonus Card", "old Mythic 00"}; !reflect.DeepEqual(s.Blockers, want) {
 		t.Fatalf("with a bonus slot from the override: blockers %v, want %v", s.Blockers, want)
@@ -312,7 +318,7 @@ func TestASlotTheRecipeLacksCannotBlock(t *testing.T) {
 func TestAnOverrideWinsOverTheEra(t *testing.T) {
 	table, err := parseOverrides([]byte(`{"sets":{
 		"OLD":{"note":"test","kind":"play","lands":1,"mythic_one_in":4},
-		"MID":{"note":"test","bonus_sheet":"BON","bonus_slots":1,"bonus_sheet_one_in":4,"commons":9},
+		"MID":{"note":"test","bonus":[{"name":"Bonus","one_in":4,"sources":[{"set":"BON"}]}]},
 		"BAD":{"note":"test","kind":"collector"}}}`))
 	if err != nil {
 		t.Fatal(err)
@@ -321,14 +327,14 @@ func TestAnOverrideWinsOverTheEra(t *testing.T) {
 	old := recipeFor(table, "old", "1999-10-04")
 	want := PreMythicDraftBoosterRecipe()
 	want.Kind, want.Lands, want.MythicOneIn = KindPlay, 1, 4
-	if old != want {
+	if !reflect.DeepEqual(old, want) {
 		t.Fatalf("override over the pre-mythic era: %+v, want %+v", old, want)
 	}
 
 	mid := recipeFor(table, "mid", "2015-07-17")
 	want = DraftBoosterRecipe()
-	want.BonusSheet, want.BonusSlots, want.BonusSheetOneIn, want.Commons = "bon", 1, 4, 9
-	if mid != want {
+	want.Bonus = []BonusSlot{{Name: "Bonus", OneIn: 4, Sources: []Source{{Set: "bon"}}}}
+	if !reflect.DeepEqual(mid, want) {
 		t.Fatalf("override over the draft era: %+v, want %+v", mid, want)
 	}
 	if mid.Size() != DraftBoosterSize || !mid.UsesBonusSheet() {
@@ -337,16 +343,16 @@ func TestAnOverrideWinsOverTheEra(t *testing.T) {
 
 	// A kind that is not a draft product is ignored: set and collector
 	// boosters are not modelled.
-	if got := recipeFor(table, "bad", "2015-07-17"); got != DraftBoosterRecipe() {
+	if got := recipeFor(table, "bad", "2015-07-17"); !reflect.DeepEqual(got, DraftBoosterRecipe()) {
 		t.Fatalf("an unknown kind changed the recipe: %+v", got)
 	}
 	// A set with no entry keeps its era's recipe.
-	if got := recipeFor(table, "none", "1999-10-04"); got != PreMythicDraftBoosterRecipe() {
+	if got := recipeFor(table, "none", "1999-10-04"); !reflect.DeepEqual(got, PreMythicDraftBoosterRecipe()) {
 		t.Fatalf("a set with no override got %+v", got)
 	}
 
-	// The overridden bonus slot changes the packs: 9 commons, then a
-	// slot that is a bonus-sheet card 1 time in 4.
+	// The overridden bonus slot changes the packs: 1 time in 4 it takes
+	// the place of the tenth common, after the other nine.
 	idx := cards.NewIndex()
 	datedSet(idx, "mid", "2015-07-17", 80, 100, 60, 20, true)
 	for i := range 40 {
