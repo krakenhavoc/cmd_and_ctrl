@@ -176,6 +176,7 @@ body extra-combat/untap-all-you-control
 body extra-combat/untap-attackers-at-that-combat
 body extra-combat/untap-creatures-that-attacked
 body extra-turn/lose-the-game
+body ezio-auditore/lose-the-game
 body facedown/ward
 body faebloom-trick/tap
 body fatal-fissure/earthbend-4
@@ -2211,6 +2212,7 @@ payunless pay-unless/estwald-shieldbasher-indestructible
 payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
 payunless pay-unless/eye-of-vecna-draw-and-lose
+payunless pay-unless/ezio-auditore-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
@@ -2784,6 +2786,7 @@ tail airbend/grant-and-announce
 tail ajani-outland-chaperone/shuffle
 tail ajanis-chosen/offer-attach
 tail alien-invasion/grow
+tail altair-ibn-la-ahad/after-exile
 tail aminatous-augury/after-mill
 tail anchor-to-reality/scry-if-cheaper
 tail ancient-adamantoise/after-exile
