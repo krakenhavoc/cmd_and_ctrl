@@ -2422,6 +2422,8 @@ run prompt-run/danse-macabre-roll
 run prompt-run/daretti-return
 run prompt-run/dead-drop-sacrifice
 run prompt-run/deadly-brew-return
+run prompt-run/death-cloud-sacrifice-creatures
+run prompt-run/death-cloud-sacrifice-lands
 run prompt-run/dire-blunderbuss-sacrificed
 run prompt-run/disciple-of-bolas-payout
 run prompt-run/disciple-of-caelus-nin-phase-out
