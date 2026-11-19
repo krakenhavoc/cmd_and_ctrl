@@ -438,6 +438,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5075 (Empty City Ruse): a player's next turn's combat phases
 		// skipped. Its cases are in skip_combat_phases_test.go.
 		ModSkipCombatPhases: true,
+		// #5838 (Blinding Angel): a player's next combat phase skipped.
+		// Its cases are in skip_next_combat_phase_test.go.
+		ModSkipNextCombatPhase: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,

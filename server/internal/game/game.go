@@ -2591,6 +2591,15 @@ func (g *Game) runStepEntryHooksLocked() {
 		g.runStepEntryHooksLocked()
 		return
 	}
+	// #5838 (CR 500.11, 614.10a): "skips their next combat phase" is
+	// spent by the first combat phase of the player's that would begin
+	// and is not skipped above; the rest of that phase leaves the plan
+	// and the cursor walks on (skip_next_combat_phase.go).
+	if g.spendNextCombatSkipLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step
