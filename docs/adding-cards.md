@@ -11242,7 +11242,9 @@ card types too, so an artifact creature would stop being an artifact.
 **"…and isn't a Human"** is `game.LoseSubtypesMod(ctx.TextSubtype("Human"))`
 in the same kind of record (#4072, layer 4, CR 613.1d): it removes the
 named subtypes and nothing else, so a Human lord stops pumping the
-creature while the effect lasts (Werewolf Pack Leader). The kind
+creature while the effect lasts. Dancing Sword's "it isn't an
+Equipment" uses it; Werewolf Pack Leader did until its Oracle text
+became "is a Werewolf", a `SetCreatureTypesMod` (#5949). The kind
 `loseSubtypes` is an on-disk identity. A changeling stays every
 creature type, since that is a flag and not a list.
 
