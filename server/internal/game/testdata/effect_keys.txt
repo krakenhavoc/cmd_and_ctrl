@@ -181,6 +181,7 @@ body felothar-dawn-of-the-abzan/counters
 body feral-encounter/bite
 body fight-for-the-throne/monarch
 body fight-the-blank-fight/fight
+body filigree-racer/jump-start
 body fin/return-the-objects-to-hand
 body fin/unattach-the-objects
 body fire-lord-sozin/reanimate
@@ -2080,6 +2081,7 @@ option option-pick/torment-of-scarabs-answer
 option option-pick/trigger-opponent-chooser
 option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
+option option-pick/twins-of-discord-parity
 option option-pick/ultra-magnus-tactician-attacks
 option option-pick/unlock-a-locked-door-of-a-room-you-control
 option option-pick/vial-smasher-the-fierce-recipient
@@ -2198,6 +2200,7 @@ payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
 payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
+payunless pay-unless/filigree-racer-jump-start
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
 payunless pay-unless/flameshadow-conjuring-copy
@@ -2485,6 +2488,7 @@ run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
 run prompt-run/duneblast-destroy-the-rest
 run prompt-run/dusk-mangler-discard-and-life
+run prompt-run/eldrazi-monument-sacrificed
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
 run prompt-run/empty-the-laboratory-sacrifice
@@ -2837,6 +2841,7 @@ tail beckett-mariner/promotion-check
 tail belanna-torres-scrapper/after-surveil
 tail beseech-the-mirror/cast-or-to-hand
 tail bind-to-life/after-mill
+tail bismuth-mindrender/after-exile
 tail blb/coiling-rebirth-copy
 tail blb/driftgloom-coyote-counter
 tail blb/splash-portal-draw-if-tribe

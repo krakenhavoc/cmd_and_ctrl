@@ -487,6 +487,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedBnsHumanRogueToken,
 	// S82 BNS batch 51: Ozox, the Clattering King's Jumblebones.
 	printedBnsB51JumblebonesToken,
+	// S82 GAP batch 43: Disa the Restless' Tarmogoyf (Modern Horizons 3
+	// Commander), a */1+* Lhurgoyf with the card's characteristic-defining ability.
+	printedGapB43TarmogoyfToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
