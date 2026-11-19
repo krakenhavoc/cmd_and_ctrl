@@ -8154,6 +8154,26 @@ REDUCES the mana half, which the pricer does not read), Firecat Blitz's
 creatures" price (Battle Screech, Prismatic Strands), which is a tap
 component the struct does not have.
 
+**Returning N permanents as the price (#5837).** Daze's "return an Island
+you control to its owner's hand rather than pay this spell's mana cost" is
+`ReturnInstead`; the count is the clause's `WithCount(n, n)`, one when the
+clause is a plain `PermanentYouControl`:
+
+```go
+AlternativeCosts: []game.AlternativeCost{                                          // Gush
+    ReturnInstead(
+        "Return two Islands you control to their owner's hand",
+        PermanentYouControl("two Islands you control", HasSubtype("Island")).WithCount(2, 2),
+        "two Islands you control",
+    ),
+},
+```
+
+The caster names exactly n distinct permanents they control in
+`alt_cost_ids`; a board with fewer can't pay it (CR 118.3), so the offer is
+not shown. Each goes to its owner's hand (CR 400.3) with the spell already
+on the stack. `Register` refuses any count but a fixed one of at least one.
+
 **A behold as part of the price (#4689, CR 701.4a, ADR 0025 amendment
 2026-11-03).** "Flashback—{1}{R}, Behold three Elementals" (Kindle the
 Inner Flame) is `AlternativeCost.Behold` (a `game.RevealCost{Behold:
