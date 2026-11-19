@@ -227,6 +227,7 @@ body hidetsugu-devouring-chaos/damage
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
 body hylda-of-the-icy-crown/modes
+body hypothesizzle/damage
 body icewrought-sentry/tap
 body ill-timed-explosion/damage
 body immortal-coil/exile-per-prevented
@@ -386,6 +387,7 @@ body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
+body s82-bns-b02/back-for-more-fight
 body s82-mid-b14/lynde-return-curse
 body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
@@ -781,6 +783,7 @@ choose choose-cards/hide-in-plain-sight-cloak
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/hurkyl-master-wizard-card-type
+choose choose-cards/hypothesizzle-discarded
 choose choose-cards/ill-timed-explosion-discard
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
@@ -1772,6 +1775,7 @@ drawthen enter-the-infinite-put-back
 drawthen glacial-dragonhunt/may-discard
 drawthen hidetsugu-and-kairi-put-back
 drawthen hoarders-greed/clash
+drawthen hypothesizzle/may-discard-nonland
 drawthen malcolm-discard
 drawthen marvo-deep-operative/free-cast
 drawthen messenger-jays-discard
@@ -3483,6 +3487,7 @@ tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
 tail rulik-mons/goblin-if-none-entered
+tail s82-bns-b02/grindstone-after-mill
 tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-dmu/slimefoots-survey-look
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
