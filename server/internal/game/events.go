@@ -2066,6 +2066,13 @@ type Event struct {
 	// radiation"; rad_counters.go, #2042). False on every other event.
 	FromRadiation bool `json:"from_radiation,omitempty"`
 
+	// LifePayment marks an EventChangeLife that was life PAID as a cost
+	// (CR 119.4, payLifeAsCostLocked), as against life an effect made a
+	// player lose: "whenever a spell or ability you control causes you to
+	// lose life" (Sahir, Visitor in Darkness, #5948) reads the second only.
+	// False on every other event. Additive within the snapshot version.
+	LifePayment bool `json:"life_payment,omitempty"`
+
 	// CardIDs are the cards one keyword action moved together, on the
 	// event that names the action rather than a single card: the cards
 	// an EventCollectEvidence exiled, in the order named (#5223). Nil on
