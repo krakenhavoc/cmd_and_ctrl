@@ -14947,6 +14947,12 @@ reading the `CardDef` and are not set by the catalog any more.
   continuously since the beginning of the turn", `forceTheChosenCreature(label)` is the whole Effect, and
   `mustAttackOrBeDestroyed` is the shared body (an attack-requirement scoped effect until end of turn, and a delayed
   trigger on `destroyUnlessItAttackedBody`).
+- **"If this creature attacks, all creatures you control attack if able"** (Viashino Bey, #5840) is
+  `IfThisAttacksAllYourCreaturesAttack()`, a static, not a trigger. It writes a requirement with
+  `game.AttackRequirement.IfSourceAttacks` set, which exists only in a declaration that has its source attacking
+  (CR 508.1d, "attacks if some condition is met"). Declaring nothing stays legal; declaring the source owes an attack from
+  every other creature that can attack for free. For another "if <it> attacks, <creatures> attack if able" card, set
+  the same flag on a requirement from `requirementFrom(source, …)` and scope the static's `AppliesTo`.
 - **"For as long as this remains tapped"** is read from the moment the ability is activated (ADR 0109's amendment of
   2026-10-19). Build the duration with `DurationWhileThisRemainsTapped` or `WhileYouControlThisAndItRemainsTapped`
   (through `GainControlOfTargetFor`, `TargetGetsWhileThisRemainsTapped` or `TapAndHoldWhileThisRemainsTapped`) and the
