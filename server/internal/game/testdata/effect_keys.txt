@@ -2754,6 +2754,7 @@ steps then-steps/twilight-prophet-drain
 steps then-steps/will-of-the-jeskai-may-wheel
 steps then-steps/will-of-the-sultai-bullet
 steps then-steps/zealot-il-vec-yes
+tail aberrant-researcher/after-mill
 tail abstract-performance/after-face-down
 tail abstract-performance/after-face-up
 tail abstract-performance/offer-cast
@@ -3250,6 +3251,7 @@ tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
 tail grime-gorger/counter-per-exiled-card
+tail grizzled-angler/after-mill
 tail grolnok/croak-counter
 tail grubs-command/after-mill
 tail gul-dukat/drain-each-opponent
