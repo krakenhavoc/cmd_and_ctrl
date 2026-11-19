@@ -85,6 +85,9 @@ var teamPumpTails = map[string]string{
 	// "Activate only as a sorcery.": a timing restriction, SorcerySpeed
 	// on the row, not an effect.
 	"Shefet Dunes": "a timing restriction",
+	// "Activate only during your turn.": a timing restriction, the
+	// row's Condition, not an effect.
+	"Steadfast Unicorn": "a timing restriction",
 }
 
 // TestTeamPumpRowsDeclareTheirPump holds every catalog activated row of
