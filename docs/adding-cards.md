@@ -14836,6 +14836,15 @@ g.PermanentEnteredFaceDownThisTurn(you) || g.TurnedPermanentFaceUpThisTurn(you) 
   paying a special action's cost, and a special action carries no X (not in
   `SpecialActionParams`, the enumerator or the client's row), so Aurelia's
   Vindicator is left out.
+- **"All morph costs cost {2} more"** (Exiled Doomsayer, #5844) is
+  `SpecialActionCostsMore(2, "…", AMorphCost())` in `Spec.CostModifiers`, the
+  increase twin of `SpecialActionCostsLess`. `AMorphCost` reads the offer's
+  route (`CostQuery.SpecialAction.Route`), so it taxes morph and megamorph
+  (CR 702.37b) and a manifested card's morph route (CR 701.40c), and never a
+  disguise cost, a manifested or cloaked card's mana cost, or the {3}
+  face-down cast. Increases come before reductions (CR 601.2f), and one
+  reaches a turn-face-up cost that prints no mana: every reader asks
+  `SpecialActionChargesManaForEffect`, never `sa.Cost != ""`.
 
 ### "You may look at face-down creatures you don't control" (#5251)
 
