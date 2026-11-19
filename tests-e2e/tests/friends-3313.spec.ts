@@ -138,6 +138,25 @@ async function stub(page: Page): Promise<Seen[]> {
         ? json(route, 200, { games: [] })
         : route.fallback(),
   );
+  // The lobby reads the Add-bot picker's options and the pre-built decks
+  // on mount (Lobby.svelte's onMount). Both are session-gated, so the
+  // real server answers the fake token with a 401, and authFetch signs
+  // the page out on a 401: the lobby turns into the signed-out front
+  // page and the header has no Friends button (#5963).
+  await page.route(
+    (url) => url.pathname === "/bot/options" || url.pathname === "/decks",
+    (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const p = new URL(route.request().url()).pathname;
+      return json(
+        route,
+        200,
+        p === "/decks"
+          ? { decks: [] }
+          : { tiers: [], decks: [], enabled: false },
+      );
+    },
+  );
   await page.addInitScript((user) => {
     localStorage.setItem(
       "cmdctrl.session",
