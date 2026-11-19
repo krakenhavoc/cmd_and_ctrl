@@ -545,4 +545,7 @@ var tokenTable = map[string]game.Card{
 	// S82 BNS batch 02: Outlaws' Merriment's Warrior and Cleric.
 	"3/1 red and white Human Warrior with trample and haste": {Name: "Human Warrior", TypeLine: "Token Creature — Human Warrior", Power: 3, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"trample", "haste"}},
 	"2/1 red and white Human Cleric with lifelink and haste": {Name: "Human Cleric", TypeLine: "Token Creature — Human Cleric", Power: 2, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"lifelink", "haste"}},
+
+	// S82 BNS batch 25: Foundations Jumpstart's Akroan Crusader.
+	"1/1 red Soldier with haste": {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 }

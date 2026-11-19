@@ -2742,6 +2742,7 @@ tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
 tail arcane-proxy/copy-exiled
 tail archdruids-charm/bite
+tail archfiends-vessel/demon
 tail arid-archway/surveil-if-desert-returned
 tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
