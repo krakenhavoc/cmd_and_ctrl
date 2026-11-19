@@ -78478,6 +78478,7 @@ spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.cardTypes	string
 spellsCastThisTurn{}.colors	string
+spellsCastThisTurn{}.enchantment	number:int
 spellsCastThisTurn{}.flyingCreatureSubtypes	string
 spellsCastThisTurn{}.fromExile	number:int
 spellsCastThisTurn{}.instantSorcery	number:int

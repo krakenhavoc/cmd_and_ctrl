@@ -65,6 +65,8 @@ body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
 body blitz/sacrifice
 body bloodthirsty-adversary/copy
+body bns-b52/slinza-fight
+body bns-b52/taeko-cant-be-blocked
 body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
 body borborygmos-and-fblthp/damage
@@ -1523,6 +1525,7 @@ confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
 confirm confirm/bebop-skull-and-crossbones-draw-lose
 confirm confirm/belanna-torres-scrapper-reveal
 confirm confirm/black-widow-counter-or-cast
+confirm confirm/bns-b52-taborax-draw-lose-life
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
 confirm confirm/break-out-put
@@ -2105,6 +2108,8 @@ payunless pay-unless/bitter-chill-scry-draw
 payunless pay-unless/blaster-hulk-damage
 payunless pay-unless/bloodfeather-phoenix-return
 payunless pay-unless/bloodthirsty-adversary-times
+payunless pay-unless/bns-b52-slinza-fight
+payunless pay-unless/bns-b52-taeko-unblockable
 payunless pay-unless/brass-man-untap
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
@@ -2396,6 +2401,7 @@ run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
 run prompt-run/bloodcrazed-socialite-pump
+run prompt-run/bns-b52-sutina-return-land
 run prompt-run/boilerbilges-ripper-sacrifice
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
@@ -3758,6 +3764,7 @@ tail then/bellowing-mauler-sacrificed
 tail then/blastoneuron-copy
 tail then/blastoneuron-haste-and-sacrifice
 tail then/bloodline-bidding-type-chosen
+tail then/bns-b52-pol-jamaar-type-chosen
 tail then/bonehoard-dracosaur-exiled
 tail then/boommobile-color-chosen
 tail then/borborygmos-and-fblthp-discarded

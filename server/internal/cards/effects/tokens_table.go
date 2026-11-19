@@ -543,4 +543,6 @@ var tokenTable = map[string]game.Card{
 	// S82 BNS batch 02: Outlaws' Merriment's Warrior and Cleric.
 	"3/1 red and white Human Warrior with trample and haste": {Name: "Human Warrior", TypeLine: "Token Creature — Human Warrior", Power: 3, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"trample", "haste"}},
 	"2/1 red and white Human Cleric with lifelink and haste": {Name: "Human Cleric", TypeLine: "Token Creature — Human Cleric", Power: 2, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"lifelink", "haste"}},
+	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
+	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
 }

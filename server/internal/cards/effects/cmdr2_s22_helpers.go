@@ -69,19 +69,8 @@ func cmdr2S22HexproofAndTapThis(label string) Effect {
 // not a candidate (it is in hand) but one the draw let you play is.
 func cmdr2S22DrawThenMayReturnALand(g *game.Game, item *game.StackItem) error {
 	return Do(DrawCards{N: 1}, Instruction(func(ctx *Context) error {
-		return ChoosePermanents{
-			Question: "Kefnet the Mindful — you may return a land you control to its owner's hand",
-			Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-				var out []uuid.UUID
-				for _, id := range PermanentsControlledBy(g, of) {
-					if c, ok := g.LookupCardForEffect(id); ok && c.IsLand() {
-						out = append(out, id)
-					}
-				}
-				return out, 0, 1
-			},
-			Keyed: cmdr2S22LandReturned,
-		}.Apply(ctx)
+		return mayReturnALandYouControl("Kefnet the Mindful — you may return a land you control to its owner's hand",
+			cmdr2S22LandReturned).Apply(ctx)
 	}))(g, item)
 }
 
