@@ -33,13 +33,7 @@ func init() {
 			Label:   "{2}{W}: Exile enchanted creature.",
 			Cost:    ManaCost("{2}{W}"),
 			Purpose: game.Purpose{Answers: game.AnswerRemove},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				id := coopedUpHost(g, item.SourceCardID)
-				if id == uuid.Nil {
-					return nil
-				}
-				return ExileTarget{Target: id}.Apply(NewContext(g, item))
-			},
+			Effect:  coopedUpExileEnchanted,
 		}},
 	})
 }

@@ -19,17 +19,7 @@ func init() {
 		Name:         "Alania's Pathmaker",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Alania's Pathmaker — exile the top card of your library; until the end of your next turn, you may play it", Do(
-				Instruction(func(ctx *Context) error {
-					window := ctx.Game.UntilEndOfYourNextTurnDuration(ctx.Controller())
-					return ExileTopWithPermission{
-						From:    ctx.Controller(),
-						GrantTo: ctx.Controller(),
-						N:       1,
-						Window:  &window,
-					}.Apply(ctx)
-				}),
-			)),
+			WhenThisEnters("Alania's Pathmaker — exile the top card of your library; until the end of your next turn, you may play it", Do(Instruction(bnsB50ImpulseTopUntilYourNextTurnEnds))),
 		},
 	})
 }

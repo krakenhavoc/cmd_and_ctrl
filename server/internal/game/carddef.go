@@ -139,6 +139,11 @@ type CardDef struct {
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
 	// the battlefield through DelveForLocked.
 	SpellsYouCastHaveDelve bool
+
+	// AsYouCascadePutALand is "As you cascade, you may put a land card from
+	// among the exiled cards onto the battlefield tapped" (Averna, the Chaos
+	// Bloom), read live off the battlefield by CascadeForEffect.
+	AsYouCascadePutALand bool
 	// SplitSecondGrants are a permanent's "<spells> you control have
 	// split second" (Samut, Tyrant of Naktamun; #3502). Read live off
 	// the battlefield through CatalogSplitSecondGrants; see
@@ -889,6 +894,12 @@ func init() {
 			return d.GrantedOptionalCosts
 		}
 		return nil
+	}
+	CatalogAsYouCascadePutsALand = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.AsYouCascadePutALand
+		}
+		return false
 	}
 	CatalogSpellsHaveDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
