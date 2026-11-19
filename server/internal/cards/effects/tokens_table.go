@@ -546,4 +546,6 @@ var tokenTable = map[string]game.Card{
 	"2/1 red and white Human Cleric with lifelink and haste": {Name: "Human Cleric", TypeLine: "Token Creature — Human Cleric", Power: 2, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"lifelink", "haste"}},
 	// S82 BNS batch 41: Voice of the Woods.
 	"7/7 green Elemental with trample": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 7, Toughness: 7, Colors: []string{"G"}, Keywords: []string{"trample"}},
+	// S82 BNS batch 25: Foundations Jumpstart's Akroan Crusader.
+	"1/1 red Soldier with haste": {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 }
