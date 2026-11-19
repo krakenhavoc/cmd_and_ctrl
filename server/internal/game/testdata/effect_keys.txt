@@ -475,6 +475,7 @@ body tip-the-scales/minus
 body tolarian-kraken/tap-or-untap
 body tranquil-frillback/modes
 body transformers/convert-this
+body transluminant/spirit-token
 body treasure/create-tapped
 body ty-lee-artful-acrobat/cant-block
 body ugins-binding/bounce-all
@@ -4019,6 +4020,7 @@ tail trek-b31/artifact-creatures-protection-from-chosen-color
 tail trek-b31/borg-queen-exiled
 tail trek-b31/borg-queen-rest-on-bottom
 tail trek-b31/commander-spock-draw-if-on-top
+tail tribune-of-rot/after-mill
 tail tricksters-talisman/sacrificed
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
