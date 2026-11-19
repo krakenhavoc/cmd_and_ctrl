@@ -1608,6 +1608,15 @@ type DamageAssignmentFrame struct {
 	// of it to what it attacks. Zero in every other prompt, and in a
 	// frame restored from before the field, which is what those were.
 	AsThoughUnblocked bool `json:",omitempty"`
+	// Banding marks a prompt whose chooser is NOT the source's controller
+	// (ADR 0224): CR 702.22j hands an attacker's division to the
+	// defending player when a creature with banding blocks it, and
+	// CR 702.22k hands a blocker's division to the active player when it
+	// blocks a creature with banding. Either way the chooser divides as
+	// they choose among BlockerIDs; AllowTrample and AsThoughUnblocked are
+	// false. Zero in every other prompt, and in a frame restored from
+	// before the field, which is what those were.
+	Banding bool `json:",omitempty"`
 	// HasDeathtouch is true when the attacker has deathtouch (CR
 	// 702.2c — 1 damage is lethal). The server uses this to relax
 	// trample's lethal-to-every-blocker rule (CR 702.19b): 1 damage

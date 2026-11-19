@@ -24,6 +24,8 @@ announcedBecameBlocked	map:array
 announcedBecameBlocked{}	bool
 announcedBlocks	map:array
 announcedBlocks{}	custom(uuid.UUID)
+attackBands	map:array
+attackBands{}	custom(uuid.UUID)
 attackDefenders	map:array
 attackDefenders{}	custom(uuid.UUID)
 attackHandoff	object
@@ -20127,6 +20129,7 @@ heldCombatDamage.answers[].frame.AllowTrample	bool
 heldCombatDamage.answers[].frame.AsThoughUnblocked	bool
 heldCombatDamage.answers[].frame.AttackerID	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.AttackerPower	number:int
+heldCombatDamage.answers[].frame.Banding	bool
 heldCombatDamage.answers[].frame.BlockerDivides	bool
 heldCombatDamage.answers[].frame.BlockerIDs	array
 heldCombatDamage.answers[].frame.BlockerIDs[]	custom(uuid.UUID)
@@ -44970,6 +44973,7 @@ pendingChoices[].damageAssignment.AllowTrample	bool
 pendingChoices[].damageAssignment.AsThoughUnblocked	bool
 pendingChoices[].damageAssignment.AttackerID	custom(uuid.UUID)
 pendingChoices[].damageAssignment.AttackerPower	number:int
+pendingChoices[].damageAssignment.Banding	bool
 pendingChoices[].damageAssignment.BlockerDivides	bool
 pendingChoices[].damageAssignment.BlockerIDs	array
 pendingChoices[].damageAssignment.BlockerIDs[]	custom(uuid.UUID)
