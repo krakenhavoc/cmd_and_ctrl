@@ -1759,6 +1759,7 @@ confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
+confirm confirm/zagorka-sanctum
 confirm confirm/zealot-il-vec-damage
 confirm fin-b1/sidequest-catch-a-fish-take
 confirm may/alania-divergent-storm-draw-and-copy
