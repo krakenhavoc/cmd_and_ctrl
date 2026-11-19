@@ -126,6 +126,11 @@ var knownUnmatchedTokens = map[string]string{
 	// enchantment creature token". No Nymph token card was ever printed, so the
 	// template follows the card's oracle text (as Shuri's Robot Hero does).
 	"2/2 white Nymph enchantment creature": "no Nymph token card was ever printed; Psemilla, Meletian Poet's oracle text says a 2/2 white Nymph enchantment creature",
+
+	// Jeskai Baller (Mystery Booster 2) creates "a 1/1 white Athlete creature
+	// token". The Athlete token was never printed as a token card; the
+	// template follows the oracle text.
+	"1/1 white Athlete": "no Athlete token card was printed for Jeskai Baller",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
