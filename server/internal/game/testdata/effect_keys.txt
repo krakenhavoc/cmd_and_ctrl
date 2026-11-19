@@ -2205,6 +2205,7 @@ payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/forage-only
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
+payunless pay-unless/gap-b54-volatile-stormdrake-sacrifice
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-dirigible-untap
