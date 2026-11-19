@@ -1875,6 +1875,7 @@ number number/resourceful-defense-move-counters
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
+number number/temporary-truce-draw-up-to-two
 number number/territorial-aetherkite-damage-each-other-creature
 number number/volcano-hellion-damage-to-you-and-target
 number number/wrath-of-the-skies-destroy-up-to-that-value
@@ -2749,6 +2750,7 @@ steps then-steps/starving-revenant-card
 steps then-steps/summon-kujata-fire
 steps then-steps/sycorax-commander-wheel
 steps then-steps/sylvan-library-pay
+steps then-steps/temporary-truce-rest
 steps then-steps/the-gitrog-ravenous-ride-draw
 steps then-steps/the-legend-of-yangchen-draws
 steps then-steps/tivit-seller-of-secrets-tokens
