@@ -98,6 +98,9 @@ var untilEndOfTurnExempt = map[string]string{
 	// The target is a card in a graveyard, which a permanent direction
 	// cannot describe: it gains embalm until end of turn.
 	"Cursecloth Wrappings": "the target is a graveyard card, not a permanent",
+	// The target is the opponent given an emblem; the "until end of turn" is
+	// the emblem's, about the creatures that attack them.
+	"Garruk, Apex Predator": "the target is an opponent given an emblem",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
@@ -211,6 +214,9 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// Inversion's change without the type loss: the power is a benefit, the
 	// toughness a harm, and it is cast as often to kill an X/3 as to pump.
 	"Eldrazi Confluence": "partly a benefit and partly a harm",
+	// The target creature is copied, not changed: its copies are the lands it
+	// does not target, until end of turn.
+	"March from Velis Vel": "the target is copied, not changed",
 }
 
 // spellText is a catalog card's printed text, from the coverage package's
