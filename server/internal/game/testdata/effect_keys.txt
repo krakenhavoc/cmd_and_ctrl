@@ -1667,6 +1667,7 @@ confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
 confirm confirm/sephiroth-cell-counter
+confirm confirm/shard-of-broken-glass-mill-two
 confirm confirm/shessra-pay-life-draw
 confirm confirm/shirei-return
 confirm confirm/sita-varma-base-pt
@@ -3886,6 +3887,7 @@ tail then/midnight-clock-after-tuck
 tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/mystery-key-draw-three
 tail then/nahiri-the-unforgiving-copy
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
