@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Void Helix — Instant {4}{B}{B} (Marvel Super Heroes Commander,
 // #4455): "Void Helix deals 5 damage to any target and you gain 5
 // life." Lightning Helix's shape at five: the life gain waits for a
@@ -17,13 +15,7 @@ func init() {
 		Targets:      TargetAny(),
 		Purpose:      ForTargets(DamageToTarget(0, 5)),
 		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				var target game.TargetRef
-				if len(ctx.Item.Targets) > 0 {
-					target = ctx.Item.Targets[0]
-				}
-				return DealDamage{Source: ctx.Source(), Target: target.ID, Amount: 5}.Apply(ctx)
-			}),
+			Instruction(s82B48DamageToTheFirstTarget(5)),
 			GainLife{Amount: 5},
 		),
 	})
