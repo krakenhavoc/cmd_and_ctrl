@@ -777,6 +777,11 @@ type Spec struct {
 	//	SpellsYouCastHaveDelve: true, // Teval, Arbiter of Virtue
 	SpellsYouCastHaveDelve bool
 
+	// AsYouCascadePutALand is "As you cascade, you may put a land card from
+	// among the exiled cards onto the battlefield tapped" (Averna, the Chaos
+	// Bloom): cascade's land step for this permanent's controller.
+	AsYouCascadePutALand bool
+
 	// SplitSecondGrants declares a permanent's "<spells> you control have
 	// split second" (CR 702.61; Samut, Tyrant of Naktamun; #3502). A
 	// static ability of the permanent (CR 604.1), read LIVE off the

@@ -159,6 +159,7 @@ body enlist/pump
 body erica-ortegas/return-a-land-you-control
 body esoteric-duplicator/copy-the-artifact
 body espers-to-magicite/copy
+body evereth-viceroy-of-plunder/damage
 body evoke/sacrifice
 body evolve/grow
 body exalted/pump
@@ -260,6 +261,7 @@ body kroxa-and-kunoros/return
 body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
 body lichs-relic/destroy
+body life/aphelia-half-their-life
 body lithobraking/damage-each-creature
 body loamcrafter-faun/return-to-hand
 body lockjaw/unblockable
@@ -600,6 +602,7 @@ choose choose-cards/call-the-spirit-dragons-pick
 choose choose-cards/caparocti-sunborn-tap-two
 choose choose-cards/capricious-hellraiser-copy
 choose choose-cards/captain-james-t-kirk-draw
+choose choose-cards/cascade-put-a-land
 choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cataclysmic-gearhulk-keep-artifact
 choose choose-cards/cataclysmic-gearhulk-keep-artifact-creature
@@ -680,6 +683,7 @@ choose choose-cards/cyclonus-connive-discarded
 choose choose-cards/cytoshape-copy
 choose choose-cards/danitha-benalias-hope-attach
 choose choose-cards/danse-macabre-return
+choose choose-cards/dark-bargain-take
 choose choose-cards/darkstar-augur-take
 choose choose-cards/dauthi-voidwalker-play
 choose choose-cards/deadly-cover-up-exile
@@ -769,6 +773,7 @@ choose choose-cards/glacial-dragonhunt-discarded
 choose choose-cards/glamdring-cast
 choose choose-cards/glittering-wish-take
 choose choose-cards/gluntch-the-bestower-creature
+choose choose-cards/godsend-exile
 choose choose-cards/golden-wish-take
 choose choose-cards/goldwardens-gambit-attach
 choose choose-cards/goliath-hatchery-draw
@@ -1334,6 +1339,7 @@ choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
+choose choose-cards/torment-of-scarabs-discarded
 choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
 choose choose-cards/trial-of-agony-chosen
@@ -1474,6 +1480,7 @@ condition damage/a-creature-combat-to-you
 condition damage/each-creature-dealt-damage
 condition damage/each-opponent-creature-dealt-damage
 condition damage/either-of-those-creatures-deals-combat-damage
+condition damage/gorgons-or-snakes-combat-to-player
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
 condition damage/your-creature-combat-damage-to-a-player
@@ -2020,6 +2027,7 @@ option option-pick/resolution-exit
 option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
+option option-pick/s82-bns-b45-alchemists-gift-keyword
 option option-pick/s82-bro-b11-argivian-avenger-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
@@ -2061,6 +2069,7 @@ option option-pick/tireless-provisioner-token
 option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
+option option-pick/torment-of-scarabs-answer
 option option-pick/trigger-opponent-chooser
 option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
@@ -2096,8 +2105,10 @@ option sticker/choose-sticker
 option sticker/name-position
 option venture/dungeon
 option venture/room
+payunless aphelia-viper-whisperer/paid
 payunless arni-metalbrow/paid
 payunless cadric-soul-kindler/paid
+payunless evereth-viceroy-of-plunder/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
@@ -2318,6 +2329,7 @@ payunless pay-unless/the-thing-double-counters
 payunless pay-unless/thousand-moons-crackshot-tap
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
+payunless pay-unless/trail-of-crumbs-look-at-top-two
 payunless pay-unless/tranquil-frillback-pay-g
 payunless pay-unless/trudge-garden-fungus-beast
 payunless pay-unless/ty-lee-artful-acrobat
@@ -2511,6 +2523,7 @@ run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/indoctrination-attendant-return
+run prompt-run/insatiable-appetite-sacrifice
 run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
@@ -3575,6 +3588,7 @@ tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
+tail sacrificed-one/prompt-run/insatiable-appetite-sacrifice
 tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
 tail sacrificed-one/prompt-run/kethek-crucible-goliath-sacrifice
 tail sacrificed-one/prompt-run/kill-zone-acrobat-flying
@@ -3801,6 +3815,7 @@ tail then/breeches-the-blastmaker-flip
 tail then/bringer-of-the-last-gift-return
 tail then/cait-sith-fortune-teller-boost
 tail then/calamitous-tide-loot
+tail then/cascade-finish
 tail then/case-of-the-burning-masks-choose
 tail then/caustic-bronco-life
 tail then/cecil-dark-knight-darkness
