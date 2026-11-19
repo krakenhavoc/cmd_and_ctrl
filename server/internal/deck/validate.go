@@ -405,6 +405,10 @@ func validateCommander(list *List) error {
 	if len(vs) == 0 {
 		return nil
 	}
+	vs = gapB06DropRulebreakerAuras(list, vs)
+	if len(vs) == 0 {
+		return nil
+	}
 	return &ValidationError{Violations: vs}
 }
 

@@ -497,6 +497,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedSeleniasCurseToken,
 	// S82 GAP batch 3: Zagorka, Mother of Sanctum's Sanctum.
 	printedSanctumToken,
+	// S82 GAP batch 06: Feroz's Ban, Greensleeves's Giant Badger and Worzel's Cat.
+	printedGapB06FerozsBanToken,
+	printedGapB06GiantBadgerToken,
+	printedGapB06LoyaltyCatToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

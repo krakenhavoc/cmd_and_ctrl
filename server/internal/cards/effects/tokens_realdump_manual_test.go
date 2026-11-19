@@ -126,6 +126,9 @@ var knownUnmatchedTokens = map[string]string{
 	// enchantment creature token". No Nymph token card was ever printed, so the
 	// template follows the card's oracle text (as Shuri's Robot Hero does).
 	"2/2 white Nymph enchantment creature": "no Nymph token card was ever printed; Psemilla, Meletian Poet's oracle text says a 2/2 white Nymph enchantment creature",
+	// Worzel, the Protector (Mystery Booster Commander) creates "ten Scryb Sprites tokens". Scryb Sprites
+	// is printed only as a card ("Creature — Faerie"), never as a token card; the template follows the oracle text.
+	"1/1 green Faerie with flying named Scryb Sprites": "Scryb Sprites was never printed as a token card; Worzel's oracle text says a green 1/1 Faerie with flying",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

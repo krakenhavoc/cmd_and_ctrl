@@ -2073,6 +2073,7 @@ option option-pick/thanos-destroy-parity
 option option-pick/the-black-gate-most-life
 option option-pick/the-cloning-of-shredder-copy
 option option-pick/the-master-gallifreys-end-opponent
+option option-pick/the-unluckiest-planeswalker-attach
 option option-pick/thornplate-intimidator-punisher
 option option-pick/threats-undetected-opponent
 option option-pick/thrull-wizard-pay
@@ -3904,6 +3905,7 @@ tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
+tail then/gap-b06-greensleeves-take-permanents
 tail then/get-energy
 tail then/glen-elendras-answer-counter-next
 tail then/god-pharaohs-gift-copy
