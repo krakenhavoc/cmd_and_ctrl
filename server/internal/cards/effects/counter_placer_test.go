@@ -49,6 +49,10 @@ var countersOnOptIns = map[string]string{
 	"Lae'zel, Vlaakith's Champion": `"on a creature or planeswalker you control or on
 		yourself" — the "or on yourself" clause was dead before ADR 0056
 		and shipped as a declared caveat.`,
+	"Halving Season": `"If an opponent would put one or more counters on a permanent or
+		player, they put half that many" — the clause names players, and only
+		an opponent's placements (the reverse test tries a placer who is not
+		the controller).`,
 	"Innkeeper's Talent": `level 3: "If you would put one or more counters on a
 		permanent or player" — Vorinclex's doubling half, players included.`,
 }
@@ -132,16 +136,18 @@ func TestTheCountersOnPlayersOptInsAreStillRegistered(t *testing.T) {
 			InstanceID: uuid.New(), Name: spec.Name, OracleID: spec.OracleID,
 			Owner: me, Controller: me,
 		}
-		ev := &game.ReplacementEvent{
-			Kind:          game.RepEventCounter,
-			CounterPlayer: me,
-			CounterPlacer: me,
-			CounterName:   game.CounterPoison,
-			CounterDelta:  1,
-		}
-		for _, r := range spec.Replacements {
-			if r.AppliesTo != nil && watchesCounters(r.Watches) && r.AppliesTo(ev, g, src) {
-				seen[spec.Name] = true
+		for _, placer := range []uuid.UUID{me, uuid.New()} {
+			ev := &game.ReplacementEvent{
+				Kind:          game.RepEventCounter,
+				CounterPlayer: me,
+				CounterPlacer: placer,
+				CounterName:   game.CounterPoison,
+				CounterDelta:  1,
+			}
+			for _, r := range spec.Replacements {
+				if r.AppliesTo != nil && watchesCounters(r.Watches) && r.AppliesTo(ev, g, src) {
+					seen[spec.Name] = true
+				}
 			}
 		}
 	}
