@@ -1775,7 +1775,7 @@ const (
 var cardDefFieldClass = map[string]defFieldClass{
 	"Resolve": defFieldInert, "ResumeResolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
-	"TargetMode": defFieldInert, "Targets": defFieldInert, "ReturnedAura": defFieldInert, "AttachOnlyTo": defFieldInert, "Modes": defFieldInert,
+	"TargetMode": defFieldInert, "Targets": defFieldInert, "ReturnedAura": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
 	"EntersWithCountersFromCast": defFieldInert, "PrintedKeywords": defFieldInert,
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,
@@ -1808,7 +1808,11 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// #3998: Opposition Agent controls an opponent's search and exiles
 	// what it finds while its permanent is there.
 	"ControlsOpponentsSearches": defFieldOwnRules,
-	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
+	// #5846: an Equipment's "can be attached only to …" (Konda's Banner)
+	// decides what another item's attach step does and when CR 704.5n
+	// unattaches it, while its permanent is there.
+	"AttachOnlyTo": defFieldOwnRules,
+	"LifeForMana":  defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
