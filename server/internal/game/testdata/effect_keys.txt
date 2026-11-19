@@ -1138,6 +1138,7 @@ choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/otc-gonti-lord-of-luxury-exile
 choose choose-cards/ovinomancer-return-three-basic-lands
+choose choose-cards/pack-guardian-discard-land
 choose choose-cards/path-of-the-schemer-reanimate
 choose choose-cards/patient-naturalist-land
 choose choose-cards/perforating-artist-punisher-discarded
@@ -1808,6 +1809,7 @@ drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
+drawthen gap-b05-gustha-put-back
 drawthen glacial-dragonhunt/may-discard
 drawthen hidetsugu-and-kairi-put-back
 drawthen hoarders-greed/clash
@@ -1873,6 +1875,7 @@ number number/resourceful-defense-move-counters
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
+number number/temporary-truce-draw-up-to-two
 number number/territorial-aetherkite-damage-each-other-creature
 number number/volcano-hellion-damage-to-you-and-target
 number number/wrath-of-the-skies-destroy-up-to-that-value
@@ -2462,6 +2465,7 @@ run prompt-run/cmdr2-s18-killer-service-rhino
 run prompt-run/cmdr2-s22-kefnet-return-land
 run prompt-run/cmdr2-s34-each-player-may-put-counters
 run prompt-run/comet-crawler-pump
+run prompt-run/common-black-removal-menace
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
@@ -2574,6 +2578,8 @@ run prompt-run/planar-engineering-search
 run prompt-run/planetary-annihilation-keep-lands
 run prompt-run/plunge-into-darkness-sacrifice
 run prompt-run/pox-plague-sacrifice
+run prompt-run/pox-sacrifice-creatures
+run prompt-run/pox-sacrifice-lands
 run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
@@ -2634,6 +2640,7 @@ run prompt-run/the-huntsmans-redemption-sacrificed
 run prompt-run/the-legend-of-yangchen-exile
 run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
+run prompt-run/thomil-the-destroyer-add-bbb
 run prompt-run/throne-of-the-grim-captain-put
 run prompt-run/tiger-tribe-hunter-sacrifice
 run prompt-run/time-wipe-return-and-destroy
@@ -2743,6 +2750,7 @@ steps then-steps/starving-revenant-card
 steps then-steps/summon-kujata-fire
 steps then-steps/sycorax-commander-wheel
 steps then-steps/sylvan-library-pay
+steps then-steps/temporary-truce-rest
 steps then-steps/the-gitrog-ravenous-ride-draw
 steps then-steps/the-legend-of-yangchen-draws
 steps then-steps/tivit-seller-of-secrets-tokens
@@ -3384,6 +3392,7 @@ tail mass/overwhelming-forces-draw
 tail mass/overwrite-the-multiverse-empower
 tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
+tail mass/rain-of-daggers-lose-life
 tail mass/settle-the-wreckage-fetch-basics
 tail mass/shredders-technique-enchantment-loss
 tail mass/starfall-invocation-return
@@ -3565,6 +3574,7 @@ tail s82-bns-b05/mistbind-clique-championed
 tail s82-bns-b27/cavalier-of-gales-shuffle-scry
 tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-dmu/slimefoots-survey-look
+tail s82-gap-b21/anax-kynaios-land-then-draw
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
@@ -3637,6 +3647,7 @@ tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
+tail sacrificed-one/prompt-run/thomil-the-destroyer-add-bbb
 tail sacrificed-one/prompt-run/tiger-tribe-hunter-sacrifice
 tail sacrificed-one/prompt-run/tip-the-scales-sacrifice
 tail sacrificed-one/prompt-run/undercity-eliminator-sacrificed
@@ -3899,6 +3910,7 @@ tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
+tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
 tail then/god-pharaohs-gift-copy
 tail then/god-pharaohs-gift-haste
@@ -3941,6 +3953,7 @@ tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
 tail then/locke-treasure-hunter-mug-step
 tail then/make-an-example-chosen-pile
+tail then/manabond-discard-hand
 tail then/manhole-missile-draw-if-tucked
 tail then/manifest-dread
 tail then/mazemind-tome-gain-life

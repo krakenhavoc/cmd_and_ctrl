@@ -768,6 +768,7 @@ var playerFields = plan(
 	"ID", carried, "",
 	"Name", carried, "",
 	"Seat", carried, "",
+	"StartingDeckSize", carried, "",
 	"Life", carried, "",
 	"Poison", carried, "",
 	"Energy", carried, "",

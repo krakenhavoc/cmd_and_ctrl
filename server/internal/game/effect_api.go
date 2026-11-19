@@ -179,6 +179,11 @@ type DiscardPrompt struct {
 	// "discards half the cards in their hand"). N is ignored. Plain data,
 	// so a run over several seats gives each its own count.
 	HalfHand bool
+	// ThirdHandUp makes the count a third of the cards in the discarding
+	// player's hand, rounded up, read as that player is asked (Pox's
+	// "discards a third of the cards in their hand"). N is ignored. Plain
+	// data, like HalfHand.
+	ThirdHandUp bool
 	// UpTo makes N a ceiling rather than an exact count ("discard up
 	// to two cards"), which is the difference between a floor of N
 	// and a floor of zero on the underlying pick.
@@ -306,6 +311,10 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 		// "half the cards in their hand, rounded down" (Pox Plague), read as
 		// this seat is asked, so a run asks each seat for its own count.
 		n = player.Hand.Size() / 2
+	}
+	if p.ThirdHandUp {
+		// "a third of the cards in their hand, round up" (Pox).
+		n = (player.Hand.Size() + 2) / 3
 	}
 	if g.effectDiscardBlockedLocked(p.Player) {
 		// #2178: an opponent's spell or ability can't make this player

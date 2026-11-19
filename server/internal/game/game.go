@@ -1494,6 +1494,7 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 		g.setDeckSourceOrdinalLocked(c.InstanceID, seat, i)
 		seatDeckCard(p, c)
 	}
+	p.StartingDeckSize = p.Library.Size() + p.Command.Size()
 
 	g.Seats = append(g.Seats, p)
 	return p, nil
@@ -1553,6 +1554,7 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 		g.setDeckSourceOrdinalLocked(c.InstanceID, p.Seat, i)
 		seatDeckCard(p, c)
 	}
+	p.StartingDeckSize = p.Library.Size() + p.Command.Size()
 	p.DeckImported = true
 	return nil
 }
