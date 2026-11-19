@@ -58,6 +58,7 @@ func TestFamilyConstructorLabels(t *testing.T) {
 		{"CreaturesYouControlWithCountersHave", CreaturesYouControlWithCountersHave("+1/+1", true, "trample").Label, "Other creatures you control with a +1/+1 counter on them have trample."},
 		{"ThisHasWhileItHasCounter", ThisHasWhileItHasCounter("", "trample").Label, "Has trample while it has a counter on it."},
 		{"CantAttackItsOwner", CantAttackItsOwner().Label, "Can't attack its owner."},
+		{"IfThisAttacksAllYourCreaturesAttack", IfThisAttacksAllYourCreaturesAttack().Label, "If this creature attacks, all creatures you control attack if able."},
 		{"RestrictSelf cannot block and unblockable", RestrictSelf(game.CantBlock | game.CantBeBlocked).Label, "Can't block and can't be blocked."},
 		{"CantAttackUnlessYouHaveTheCitysBlessing", CantAttackUnlessYouHaveTheCitysBlessing().Label, "Can't attack unless you have the city's blessing."},
 		{"impendingNotACreature", impendingNotACreature().Label, "Isn't a creature while it has a time counter on it."},
