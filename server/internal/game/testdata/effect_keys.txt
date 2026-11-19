@@ -1330,6 +1330,7 @@ choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
+choose choose-cards/torment-of-scarabs-discarded
 choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
 choose choose-cards/trial-of-agony-chosen
@@ -2052,6 +2053,7 @@ option option-pick/tireless-provisioner-token
 option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
+option option-pick/torment-of-scarabs-answer
 option option-pick/trigger-opponent-chooser
 option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
