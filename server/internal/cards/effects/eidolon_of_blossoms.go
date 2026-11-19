@@ -21,13 +21,7 @@ func init() {
 		Name:         "Eidolon of Blossoms",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.CardID == source.InstanceID {
-					return true
-				}
-				c, ok := enteredUnderYourControl(ev, source, g, true)
-				return ok && c.IsEnchantment()
-			}, "Eidolon of Blossoms — draw a card (constellation)", Do(DrawCards{N: 1})),
+			On(game.EventETB, constellationTriggers, "Eidolon of Blossoms — draw a card (constellation)", Do(DrawCards{N: 1})),
 		},
 	})
 }
