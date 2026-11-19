@@ -120,6 +120,10 @@ var knownUnmatchedTokens = map[string]string{
 	"0/0 green Spirit": "the printed token card is */*; Kura, the Boundless Sky sets X/X as it creates it",
 	// Stitcher Geralf creates "an X/X blue Zombie creature token"; the printed token card is */*.
 	"0/0 blue Zombie": "the printed token card is */*; Stitcher Geralf sets X/X as it creates it",
+	// Psemilla, Meletian Poet (Foundations Jumpstart) creates "a 2/2 white Nymph
+	// enchantment creature token". No Nymph token card was ever printed, so the
+	// template follows the card's oracle text (as Shuri's Robot Hero does).
+	"2/2 white Nymph enchantment creature": "no Nymph token card was ever printed; Psemilla, Meletian Poet's oracle text says a 2/2 white Nymph enchantment creature",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
