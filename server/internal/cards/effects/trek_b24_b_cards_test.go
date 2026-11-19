@@ -278,6 +278,44 @@ func TestTrekB24HitItWithNoLandPutsAllFiveInTheGraveyard(t *testing.T) {
 	}
 }
 
+// #5949: the Oracle text reads "look at the top five cards", not "reveal"
+// (CR 701.20e). While its controller picks between two lands, only they
+// know the five cards, and no reveal is logged.
+func TestTrekB24HitItLooksAtTheTopFiveWithoutRevealing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	ids := seedSearchLibrary(me,
+		game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"},
+		game.Card{Name: "Bolt", TypeLine: "Instant"},
+		game.Card{Name: "Mountain", TypeLine: "Basic Land — Mountain"},
+		game.Card{Name: "Ritual", TypeLine: "Sorcery"},
+		game.Card{Name: "Relic", TypeLine: "Artifact"},
+	)
+	castCatalogSpell(t, g, "Hit It!", "Enchantment", trekB24HitItOracle, nil)
+	passPriorityAroundTable(t, g)
+	if len(g.PendingChoices) == 0 {
+		t.Fatal("no land prompt is open with two lands among the five")
+	}
+	for i, id := range ids {
+		c, ok := g.LookupCardForEffect(id)
+		if !ok || !me.Library.Contains(id) {
+			t.Fatalf("card %d left the library before the pick", i)
+		}
+		if !c.IsKnownTo(me.ID) {
+			t.Errorf("card %d is not known to its controller", i)
+		}
+		if c.IsKnownTo(opp.ID) {
+			t.Errorf("card %d is known to an opponent", i)
+		}
+	}
+	for _, ev := range g.EventsThisTurn() {
+		if ev.Kind == game.EventRevealCards {
+			t.Errorf("a reveal was logged for %v", ev.CardID)
+		}
+	}
+}
+
 // --- The Inner Light ------------------------------------------------------------
 
 func TestTrekB24TheInnerLightChapterOneReturnsAGreenOrWhiteCreature(t *testing.T) {

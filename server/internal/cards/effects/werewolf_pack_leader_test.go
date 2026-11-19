@@ -100,3 +100,36 @@ func TestHWWerewolfPackLeaderStopsBeingAHumanUntilEndOfTurn(t *testing.T) {
 		t.Errorf("next turn: human %v, power %d, trample %v, want a 3-power Human without trample", c.HasSubtype("Human"), c.CurrentPower(), hwHasKeyword(c, "trample"))
 	}
 }
+
+// #5949: the ability reads "is a Werewolf" since the card's Oracle
+// update, which SETS its creature types (CR 205.1a): a creature type an
+// earlier effect gave it is replaced along with Human, where the old
+// "isn't a Human" left it.
+func TestHWWerewolfPackLeaderBecomesOnlyAWerewolf(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	leader := pushDiesCreatureForTest(g, me.ID, "Werewolf Pack Leader", hwWerewolfPackLeader, "Creature — Human Werewolf", 3, 3)
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(leader),
+			[]game.Mod{game.AddSubtypesMod("Zombie")},
+			g.UntilEndOfTurnDuration(), "test — the leader is a Zombie in addition to its other types") {
+			t.Fatal("setup: the grant registered nothing")
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	if c := layeredCard(t, g, leader); !c.HasSubtype("Zombie") || !c.HasSubtype("Human") {
+		t.Fatalf("setup: subtypes %v, want a Human Werewolf Zombie", c.Effective().Subtypes)
+	}
+	advanceToStepInTurn(t, g, game.StepPrecombatMain)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{G}{C}{C}{C}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, leader, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	c := layeredCard(t, g, leader)
+	if !c.HasSubtype("Werewolf") || c.HasSubtype("Human") || c.HasSubtype("Zombie") {
+		t.Errorf("subtypes %v, want only Werewolf", c.Effective().Subtypes)
+	}
+}

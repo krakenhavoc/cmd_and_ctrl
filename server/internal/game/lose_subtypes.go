@@ -1,9 +1,11 @@
 package game
 
-// lose_subtypes.go is "<it> isn't a <creature type>" from a resolved
-// effect (#4072): Werewolf Pack Leader's "{3}{G}: Until end of turn, this
-// creature has base power and toughness 5/3, gains trample, and isn't a
-// Human."
+// lose_subtypes.go is "<it> isn't a <subtype>" from a resolved effect
+// (#4072). It was written for Werewolf Pack Leader's "… and isn't a
+// Human.", which the card's 2026 Oracle update changed to "is a Werewolf"
+// (a creature-type set, SetCreatureTypesMod, #5949). Dancing Sword's
+// "isn't an Equipment" uses it today, and a snapshot taken while an old
+// Pack Leader activation lasted still restores it.
 
 // ModLoseSubtypes removes the named subtypes from the object (layer 4,
 // CR 613.1d). Reads Subtypes, at least one; the match ignores case, like

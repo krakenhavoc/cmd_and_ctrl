@@ -13,7 +13,7 @@ import (
 //	"For each creature target player controls, create a token that's a
 //	 copy of that creature, except it has haste and 'At the beginning of
 //	 the end step, if you don't control a planeswalker, sacrifice this
-//	 creature.'"
+//	 token.'"
 //
 // The creatures are read once as the spell resolves, then each is copied
 // under the caster's control (the copies' "you" is the caster). Haste
@@ -26,6 +26,9 @@ import (
 // step, not only the caster's, and checks "if you don't control a
 // planeswalker" both when the step begins and again on resolution
 // (CR 603.4), so a planeswalker arriving in response saves the token.
+// The 2026 Oracle update reads "sacrifice this token" where the card
+// printed "this creature" (#5949): either way it names the token itself,
+// so the sacrifice did not change.
 //
 // No simplifications.
 func init() {
@@ -38,10 +41,10 @@ func init() {
 			Key: faceYourselfSacrifice,
 			Triggered: []game.TriggeredAbility{
 				On(game.EventStepBegan, AllOf(StepBegan(game.StepEnd, false), controllerHasNoPlaneswalker),
-					"Face Yourself — sacrifice this creature unless you control a planeswalker",
+					"Face Yourself — sacrifice this token unless you control a planeswalker",
 					faceYourselfSacrificeUnlessWalker),
 			},
-			Text: "At the beginning of the end step, if you don't control a planeswalker, sacrifice this creature.",
+			Text: "At the beginning of the end step, if you don't control a planeswalker, sacrifice this token.",
 		}},
 		// The sacrifice rider waits for the prompts the copies ask (a CR 616 order on each token;
 		// CR 608.2c, #4155). The event log's position before the copies is filed for it.
