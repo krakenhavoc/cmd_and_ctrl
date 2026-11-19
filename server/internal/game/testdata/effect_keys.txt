@@ -388,6 +388,7 @@ body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
 body s82-bns-b02/back-for-more-fight
+body s82-bns-b05/mistbind-clique-tap-lands
 body s82-mid-b14/lynde-return-curse
 body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
@@ -1198,6 +1199,8 @@ choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/s82-afr-b04-interrogate-play
 choose choose-cards/s82-afr-b08-holy-avenger-aura
+choose choose-cards/s82-bns-b05-mistbind-clique-champion
+choose choose-cards/s82-bns-b05-wanderwine-prophets-champion
 choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take
@@ -2618,6 +2621,7 @@ run run/consuming-tide-return
 run run/krenkos-buzzcrusher-destroy
 run soulbond/pair
 run the-city-on-the-edge-of-forever/gain-five
+run wanderwine-prophets/extra-turn
 searchrule search/aangs-journey-basic-land-and-shrine
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
@@ -3490,6 +3494,7 @@ tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
 tail rulik-mons/goblin-if-none-entered
 tail s82-bns-b02/grindstone-after-mill
+tail s82-bns-b05/mistbind-clique-championed
 tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-dmu/slimefoots-survey-look
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
@@ -3577,6 +3582,7 @@ tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/yuma-proud-protector-sacrifice
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
 tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
+tail sacrificed-one/wanderwine-prophets/extra-turn
 tail saheeli-filigree-master/after-scry
 tail saheeli-filigree-master/thopter-haste
 tail saheeli-rai/ping-each-opponent
