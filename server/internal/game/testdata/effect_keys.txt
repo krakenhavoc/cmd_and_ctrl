@@ -1138,6 +1138,7 @@ choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/otc-gonti-lord-of-luxury-exile
 choose choose-cards/ovinomancer-return-three-basic-lands
+choose choose-cards/pack-guardian-discard-land
 choose choose-cards/path-of-the-schemer-reanimate
 choose choose-cards/patient-naturalist-land
 choose choose-cards/perforating-artist-punisher-discarded
