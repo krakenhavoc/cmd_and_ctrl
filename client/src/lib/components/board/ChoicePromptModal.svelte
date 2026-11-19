@@ -2937,9 +2937,9 @@
             so you divide its {damageFrame.attacker_power} damage among them however you like.
           {:else}
             <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
-            is blocked by {damageFrame.blocker_card_ids.length} of your creatures, and one of them has banding,
-            so you divide its {damageFrame.attacker_power} damage among them however you like. None of it
-            tramples over.
+            is blocked by {damageFrame.blocker_card_ids.length} of your creatures, and one of them has
+            banding, so you divide its {damageFrame.attacker_power} damage among them however you like.
+            None of it tramples over.
           {/if}
         </p>
       {:else if damageFrame.blocker_divides}

@@ -81,7 +81,14 @@ describe("attackAllParams with a band", () => {
       battlefield: zone("battlefield", undefined, cards),
       stack: zone("stack", undefined, []),
       exile: zone("exile", undefined, []),
-      turn: { seq: 1, number: 3, active_seat: 0, priority_holder: 0, phase: "combat", step: "declare_attackers" },
+      turn: {
+        seq: 1,
+        number: 3,
+        active_seat: 0,
+        priority_holder: 0,
+        phase: "combat",
+        step: "declare_attackers",
+      },
       mulligans_open: false,
       legal_actions: {
         pass: true,

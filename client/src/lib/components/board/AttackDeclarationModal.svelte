@@ -448,9 +448,9 @@
     {/if}
     {#if anyBanding}
       <p class="prompt-hint" role="note">
-        Creatures toggled to Band attack {defenderName} as one band: blocking one of them blocks them all,
-        and whoever controls a creature with banding divides the damage dealt to their creatures. A band
-        has any number of creatures with banding and at most one without.
+        Creatures toggled to Band attack {defenderName} as one band: blocking one of them blocks them
+        all, and whoever controls a creature with banding divides the damage dealt to their creatures.
+        A band has any number of creatures with banding and at most one without.
       </p>
       {#if bandError}
         <p class="limit-reason" role="alert">

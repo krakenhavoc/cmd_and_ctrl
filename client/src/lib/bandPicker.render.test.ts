@@ -60,7 +60,8 @@ function snap(withHero = true): GameView {
   const cards = [creature("bear", "Bear"), creature("giant", "Giant")];
   if (withHero) cards.unshift(creature("hero", "Benalish Hero", ["banding"]));
   const sources: Record<string, unknown> = {};
-  for (const c of cards) sources[c.instance_id] = { kinds: ["attack"], moves: 1, attack_targets: ["bob"] };
+  for (const c of cards)
+    sources[c.instance_id] = { kinds: ["attack"], moves: 1, attack_targets: ["bob"] };
   return {
     id: "g1",
     state: "active",

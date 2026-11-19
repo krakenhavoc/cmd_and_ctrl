@@ -24,7 +24,9 @@ export function hasBanding(card: Pick<CardView, "abilities"> | null | undefined)
  * refused (CR 702.22c), or null when the band is legal or is not a band
  * at all (fewer than two members). The server checks it again.
  */
-export function bandProblem(members: readonly Pick<CardView, "abilities" | "name">[]): string | null {
+export function bandProblem(
+  members: readonly Pick<CardView, "abilities" | "name">[],
+): string | null {
   if (members.length < 2) return null;
   const without = members.filter((c) => !hasBanding(c));
   if (without.length <= 1) return null;
