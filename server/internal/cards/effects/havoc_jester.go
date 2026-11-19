@@ -26,13 +26,7 @@ func init() {
 			Targets: TargetAny(),
 			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Key:     "Havoc Jester — deal 1 damage to any target",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 {
-					return nil
-				}
-				ctx := NewContext(g, item)
-				return DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: 1}.Apply(ctx)
-			},
+			Effect:  DamageToFirstTarget(1),
 		}},
 	})
 }
