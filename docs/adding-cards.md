@@ -82,6 +82,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Winning, losing, and "can't lose" (S40, ADR 0057)](#winning-losing-and-cant-lose-s40-adr-0057)
   - [Skipping all combat phases of a player's next turn (#5075, CR 500.11, 614.10)](#skipping-all-combat-phases-of-a-players-next-turn-5075-cr-50011-61410)
   - [Skipping a player's next combat phase (#5838, CR 500.11, 614.10)](#skipping-a-players-next-combat-phase-5838-cr-50011-61410)
+  - ["Attacking creatures become blocked" (#5839, CR 509.1h)](#attacking-creatures-become-blocked-5839-cr-5091h)
   - [Exert (ADR 0130, #2048, CR 701.43)](#exert-adr-0130-2048-cr-70143)
   - [Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)](#whenever-you-waterbend-earthbend-firebend-or-airbend-5276-adr-0081-amendment-2026-11-07)
   - [When NOT to add a catalog entry](#when-not-to-add-a-catalog-entry)
@@ -11856,6 +11857,21 @@ takes that turn's. A combat phase another effect skips (the whole-turn
 skip above) does not use it up (CR 614.10a). A waiting record for a
 player who has left goes as the next turn begins.
 `Game.NextCombatPhaseSkipsForLocked(player)` counts what is owed.
+
+### "Attacking creatures become blocked" (#5839, CR 509.1h)
+
+An effect that makes an attacker blocked with no creature blocking it
+(Fog Patch) is `Game.BecomeBlockedForEffect(ids)`, from
+[become_blocked.go](../server/internal/game/become_blocked.go). It writes
+the same blocked record the block declaration writes, so the attacker
+stays blocked for the rest of combat, rides a snapshot, and assigns no
+combat damage unless it has trample, which assigns all of it to what it
+is attacking (CR 510.1c, 702.19d). An attacker that was unblocked gets
+its one `EventBecomesBlocked` (CR 509.3c), with its defending player as
+`Actor`, so afflict and "whenever this creature becomes blocked" fire;
+one already blocked does not become blocked again, and no `EventBlock`
+is emitted, so "becomes blocked by a creature" does not (CR 509.3d). It
+does nothing before the declare blockers step.
 
 ### Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)
 

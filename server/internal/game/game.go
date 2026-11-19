@@ -676,10 +676,12 @@ type Game struct {
 	//
 	// blockedAttackers is the CR 509.1h state: "a creature remains
 	// blocked even if all the creatures blocking it are removed from
-	// combat". It is written in two places —
+	// combat". It is written in three places —
 	// commitBlockDeclarationLocked, the block declaration's lock-in,
-	// and stampEntryBlockerLocked, a creature put onto the battlefield
-	// blocking (put_blocking.go) — and read by both combat damage
+	// stampEntryBlockerLocked, a creature put onto the battlefield
+	// blocking (put_blocking.go), and BecomeBlockedForEffect, an effect
+	// that says an attacker becomes blocked (become_blocked.go, #5839)
+	// — and read by both combat damage
 	// steps, which never ask the live battlefield whether an attacker
 	// is blocked (#715: they used to, so an attacker whose chump
 	// blocker died hit the player). The same set is the CR 506.4
