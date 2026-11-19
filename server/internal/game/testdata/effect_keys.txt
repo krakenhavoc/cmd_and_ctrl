@@ -286,6 +286,7 @@ body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
 body melira/return-listed-to-the-battlefield
+body memory-jar/discard-and-return
 body memory-vampire/cast-from-graveyard
 body merry-bards/young-hero-role
 body miasma-demon/shrink
@@ -2717,6 +2718,7 @@ steps then-steps/lieutenants-of-the-guard-votes
 steps then-steps/locke-treasure-hunter-payoff
 steps then-steps/master-of-ceremonies-clauses
 steps then-steps/master-of-the-wild-hunt-damage
+steps then-steps/memory-jar-discard-and-return
 steps then-steps/messenger-jays-votes
 steps then-steps/midnight-clock-draw-then-exile
 steps then-steps/mog-moogle-warrior-draw
@@ -3400,6 +3402,8 @@ tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail mechtitan-core/token-created
 tail meek-attack/entered
+tail memory-jar/exile-hand-step
+tail memory-jar/schedule-return
 tail memory-vessel/ban-hands
 tail mgb/bull-elephant-after-return
 tail mgb/ovinomancer-after-return
