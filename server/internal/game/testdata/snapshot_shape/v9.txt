@@ -2082,6 +2082,7 @@ followUpParks[].then.permission	object
 followUpParks[].then.permission.affinityFor	string
 followUpParks[].then.permission.altCostKey	string
 followUpParks[].then.permission.anyColor	bool
+followUpParks[].then.permission.anyColorFrom	string
 followUpParks[].then.permission.anyNumber	bool
 followUpParks[].then.permission.anyType	bool
 followUpParks[].then.permission.bottomInsteadOfGraveyard	bool
@@ -2759,6 +2760,7 @@ frozenEntries[].event.counterTail.then.permission	object
 frozenEntries[].event.counterTail.then.permission.affinityFor	string
 frozenEntries[].event.counterTail.then.permission.altCostKey	string
 frozenEntries[].event.counterTail.then.permission.anyColor	bool
+frozenEntries[].event.counterTail.then.permission.anyColorFrom	string
 frozenEntries[].event.counterTail.then.permission.anyNumber	bool
 frozenEntries[].event.counterTail.then.permission.anyType	bool
 frozenEntries[].event.counterTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -3414,6 +3416,7 @@ frozenEntries[].event.damageTail.each.each.permission	object
 frozenEntries[].event.damageTail.each.each.permission.affinityFor	string
 frozenEntries[].event.damageTail.each.each.permission.altCostKey	string
 frozenEntries[].event.damageTail.each.each.permission.anyColor	bool
+frozenEntries[].event.damageTail.each.each.permission.anyColorFrom	string
 frozenEntries[].event.damageTail.each.each.permission.anyNumber	bool
 frozenEntries[].event.damageTail.each.each.permission.anyType	bool
 frozenEntries[].event.damageTail.each.each.permission.bottomInsteadOfGraveyard	bool
@@ -4060,6 +4063,7 @@ frozenEntries[].event.damageTail.each.then.permission	object
 frozenEntries[].event.damageTail.each.then.permission.affinityFor	string
 frozenEntries[].event.damageTail.each.then.permission.altCostKey	string
 frozenEntries[].event.damageTail.each.then.permission.anyColor	bool
+frozenEntries[].event.damageTail.each.then.permission.anyColorFrom	string
 frozenEntries[].event.damageTail.each.then.permission.anyNumber	bool
 frozenEntries[].event.damageTail.each.then.permission.anyType	bool
 frozenEntries[].event.damageTail.each.then.permission.bottomInsteadOfGraveyard	bool
@@ -4891,6 +4895,7 @@ frozenEntries[].event.damageTail.then.permission	object
 frozenEntries[].event.damageTail.then.permission.affinityFor	string
 frozenEntries[].event.damageTail.then.permission.altCostKey	string
 frozenEntries[].event.damageTail.then.permission.anyColor	bool
+frozenEntries[].event.damageTail.then.permission.anyColorFrom	string
 frozenEntries[].event.damageTail.then.permission.anyNumber	bool
 frozenEntries[].event.damageTail.then.permission.anyType	bool
 frozenEntries[].event.damageTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -5660,6 +5665,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.affinityFor	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyColor	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyColorFrom	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyNumber	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyType	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.bottomInsteadOfGraveyard	bool
@@ -6382,6 +6388,7 @@ frozenEntries[].event.entryTail.batch.then.permission	object
 frozenEntries[].event.entryTail.batch.then.permission.affinityFor	string
 frozenEntries[].event.entryTail.batch.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.batch.then.permission.anyColor	bool
+frozenEntries[].event.entryTail.batch.then.permission.anyColorFrom	string
 frozenEntries[].event.entryTail.batch.then.permission.anyNumber	bool
 frozenEntries[].event.entryTail.batch.then.permission.anyType	bool
 frozenEntries[].event.entryTail.batch.then.permission.bottomInsteadOfGraveyard	bool
@@ -7028,6 +7035,7 @@ frozenEntries[].event.entryTail.keyed.permission	object
 frozenEntries[].event.entryTail.keyed.permission.affinityFor	string
 frozenEntries[].event.entryTail.keyed.permission.altCostKey	string
 frozenEntries[].event.entryTail.keyed.permission.anyColor	bool
+frozenEntries[].event.entryTail.keyed.permission.anyColorFrom	string
 frozenEntries[].event.entryTail.keyed.permission.anyNumber	bool
 frozenEntries[].event.entryTail.keyed.permission.anyType	bool
 frozenEntries[].event.entryTail.keyed.permission.bottomInsteadOfGraveyard	bool
@@ -7707,6 +7715,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission	object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.affinityFor	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.altCostKey	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyColor	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyColorFrom	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyNumber	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyType	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.bottomInsteadOfGraveyard	bool
@@ -8373,6 +8382,7 @@ frozenEntries[].event.entryTail.tokens.then.permission	object
 frozenEntries[].event.entryTail.tokens.then.permission.affinityFor	string
 frozenEntries[].event.entryTail.tokens.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.tokens.then.permission.anyColor	bool
+frozenEntries[].event.entryTail.tokens.then.permission.anyColorFrom	string
 frozenEntries[].event.entryTail.tokens.then.permission.anyNumber	bool
 frozenEntries[].event.entryTail.tokens.then.permission.anyType	bool
 frozenEntries[].event.entryTail.tokens.then.permission.bottomInsteadOfGraveyard	bool
@@ -9470,6 +9480,7 @@ frozenEntries[].event.keywordActionTail.then.permission	object
 frozenEntries[].event.keywordActionTail.then.permission.affinityFor	string
 frozenEntries[].event.keywordActionTail.then.permission.altCostKey	string
 frozenEntries[].event.keywordActionTail.then.permission.anyColor	bool
+frozenEntries[].event.keywordActionTail.then.permission.anyColorFrom	string
 frozenEntries[].event.keywordActionTail.then.permission.anyNumber	bool
 frozenEntries[].event.keywordActionTail.then.permission.anyType	bool
 frozenEntries[].event.keywordActionTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -10140,6 +10151,7 @@ frozenEntries[].event.lifeTail.each.then.permission	object
 frozenEntries[].event.lifeTail.each.then.permission.affinityFor	string
 frozenEntries[].event.lifeTail.each.then.permission.altCostKey	string
 frozenEntries[].event.lifeTail.each.then.permission.anyColor	bool
+frozenEntries[].event.lifeTail.each.then.permission.anyColorFrom	string
 frozenEntries[].event.lifeTail.each.then.permission.anyNumber	bool
 frozenEntries[].event.lifeTail.each.then.permission.anyType	bool
 frozenEntries[].event.lifeTail.each.then.permission.bottomInsteadOfGraveyard	bool
@@ -10789,6 +10801,7 @@ frozenEntries[].event.lifeTail.then.permission	object
 frozenEntries[].event.lifeTail.then.permission.affinityFor	string
 frozenEntries[].event.lifeTail.then.permission.altCostKey	string
 frozenEntries[].event.lifeTail.then.permission.anyColor	bool
+frozenEntries[].event.lifeTail.then.permission.anyColorFrom	string
 frozenEntries[].event.lifeTail.then.permission.anyNumber	bool
 frozenEntries[].event.lifeTail.then.permission.anyType	bool
 frozenEntries[].event.lifeTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -12296,6 +12309,7 @@ frozenEntries[].event.millTail.run.then.permission	object
 frozenEntries[].event.millTail.run.then.permission.affinityFor	string
 frozenEntries[].event.millTail.run.then.permission.altCostKey	string
 frozenEntries[].event.millTail.run.then.permission.anyColor	bool
+frozenEntries[].event.millTail.run.then.permission.anyColorFrom	string
 frozenEntries[].event.millTail.run.then.permission.anyNumber	bool
 frozenEntries[].event.millTail.run.then.permission.anyType	bool
 frozenEntries[].event.millTail.run.then.permission.bottomInsteadOfGraveyard	bool
@@ -12940,6 +12954,7 @@ frozenEntries[].event.millTail.then.permission	object
 frozenEntries[].event.millTail.then.permission.affinityFor	string
 frozenEntries[].event.millTail.then.permission.altCostKey	string
 frozenEntries[].event.millTail.then.permission.anyColor	bool
+frozenEntries[].event.millTail.then.permission.anyColorFrom	string
 frozenEntries[].event.millTail.then.permission.anyNumber	bool
 frozenEntries[].event.millTail.then.permission.anyType	bool
 frozenEntries[].event.millTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -14600,6 +14615,7 @@ frozenEntries[].event.tokenTail.then.permission	object
 frozenEntries[].event.tokenTail.then.permission.affinityFor	string
 frozenEntries[].event.tokenTail.then.permission.altCostKey	string
 frozenEntries[].event.tokenTail.then.permission.anyColor	bool
+frozenEntries[].event.tokenTail.then.permission.anyColorFrom	string
 frozenEntries[].event.tokenTail.then.permission.anyNumber	bool
 frozenEntries[].event.tokenTail.then.permission.anyType	bool
 frozenEntries[].event.tokenTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -16562,6 +16578,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.affinityFor	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyColor	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyType	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.bottomInsteadOfGraveyard	bool
@@ -17241,6 +17258,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyType	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.bottomInsteadOfGraveyard	bool
@@ -17885,6 +17903,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.affinityFor	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyColor	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyColorFrom	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyType	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -18549,6 +18568,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission	object
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.affinityFor	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyColor	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyColorFrom	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyType	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -19282,6 +19302,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.affinityFor	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyColor	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyNumber	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyType	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -23251,6 +23272,7 @@ movesAwaitingTokens[].counterTail.then.permission	object
 movesAwaitingTokens[].counterTail.then.permission.affinityFor	string
 movesAwaitingTokens[].counterTail.then.permission.altCostKey	string
 movesAwaitingTokens[].counterTail.then.permission.anyColor	bool
+movesAwaitingTokens[].counterTail.then.permission.anyColorFrom	string
 movesAwaitingTokens[].counterTail.then.permission.anyNumber	bool
 movesAwaitingTokens[].counterTail.then.permission.anyType	bool
 movesAwaitingTokens[].counterTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -23906,6 +23928,7 @@ movesAwaitingTokens[].damageTail.each.each.permission	object
 movesAwaitingTokens[].damageTail.each.each.permission.affinityFor	string
 movesAwaitingTokens[].damageTail.each.each.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.each.each.permission.anyColor	bool
+movesAwaitingTokens[].damageTail.each.each.permission.anyColorFrom	string
 movesAwaitingTokens[].damageTail.each.each.permission.anyNumber	bool
 movesAwaitingTokens[].damageTail.each.each.permission.anyType	bool
 movesAwaitingTokens[].damageTail.each.each.permission.bottomInsteadOfGraveyard	bool
@@ -24552,6 +24575,7 @@ movesAwaitingTokens[].damageTail.each.then.permission	object
 movesAwaitingTokens[].damageTail.each.then.permission.affinityFor	string
 movesAwaitingTokens[].damageTail.each.then.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.each.then.permission.anyColor	bool
+movesAwaitingTokens[].damageTail.each.then.permission.anyColorFrom	string
 movesAwaitingTokens[].damageTail.each.then.permission.anyNumber	bool
 movesAwaitingTokens[].damageTail.each.then.permission.anyType	bool
 movesAwaitingTokens[].damageTail.each.then.permission.bottomInsteadOfGraveyard	bool
@@ -25383,6 +25407,7 @@ movesAwaitingTokens[].damageTail.then.permission	object
 movesAwaitingTokens[].damageTail.then.permission.affinityFor	string
 movesAwaitingTokens[].damageTail.then.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.then.permission.anyColor	bool
+movesAwaitingTokens[].damageTail.then.permission.anyColorFrom	string
 movesAwaitingTokens[].damageTail.then.permission.anyNumber	bool
 movesAwaitingTokens[].damageTail.then.permission.anyType	bool
 movesAwaitingTokens[].damageTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -26152,6 +26177,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.affinityFor	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.anyColor	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.anyColorFrom	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.anyNumber	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.anyType	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.bottomInsteadOfGraveyard	bool
@@ -26874,6 +26900,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission	object
 movesAwaitingTokens[].entryTail.batch.then.permission.affinityFor	string
 movesAwaitingTokens[].entryTail.batch.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.batch.then.permission.anyColor	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.anyColorFrom	string
 movesAwaitingTokens[].entryTail.batch.then.permission.anyNumber	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.anyType	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.bottomInsteadOfGraveyard	bool
@@ -27520,6 +27547,7 @@ movesAwaitingTokens[].entryTail.keyed.permission	object
 movesAwaitingTokens[].entryTail.keyed.permission.affinityFor	string
 movesAwaitingTokens[].entryTail.keyed.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.keyed.permission.anyColor	bool
+movesAwaitingTokens[].entryTail.keyed.permission.anyColorFrom	string
 movesAwaitingTokens[].entryTail.keyed.permission.anyNumber	bool
 movesAwaitingTokens[].entryTail.keyed.permission.anyType	bool
 movesAwaitingTokens[].entryTail.keyed.permission.bottomInsteadOfGraveyard	bool
@@ -28199,6 +28227,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.affinityFor	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.anyColor	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.anyColorFrom	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.anyNumber	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.anyType	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.bottomInsteadOfGraveyard	bool
@@ -28865,6 +28894,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission	object
 movesAwaitingTokens[].entryTail.tokens.then.permission.affinityFor	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.anyColor	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.anyColorFrom	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.anyNumber	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.anyType	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.bottomInsteadOfGraveyard	bool
@@ -29962,6 +29992,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission	object
 movesAwaitingTokens[].keywordActionTail.then.permission.affinityFor	string
 movesAwaitingTokens[].keywordActionTail.then.permission.altCostKey	string
 movesAwaitingTokens[].keywordActionTail.then.permission.anyColor	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.anyColorFrom	string
 movesAwaitingTokens[].keywordActionTail.then.permission.anyNumber	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.anyType	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -30632,6 +30663,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission	object
 movesAwaitingTokens[].lifeTail.each.then.permission.affinityFor	string
 movesAwaitingTokens[].lifeTail.each.then.permission.altCostKey	string
 movesAwaitingTokens[].lifeTail.each.then.permission.anyColor	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.anyColorFrom	string
 movesAwaitingTokens[].lifeTail.each.then.permission.anyNumber	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.anyType	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.bottomInsteadOfGraveyard	bool
@@ -31281,6 +31313,7 @@ movesAwaitingTokens[].lifeTail.then.permission	object
 movesAwaitingTokens[].lifeTail.then.permission.affinityFor	string
 movesAwaitingTokens[].lifeTail.then.permission.altCostKey	string
 movesAwaitingTokens[].lifeTail.then.permission.anyColor	bool
+movesAwaitingTokens[].lifeTail.then.permission.anyColorFrom	string
 movesAwaitingTokens[].lifeTail.then.permission.anyNumber	bool
 movesAwaitingTokens[].lifeTail.then.permission.anyType	bool
 movesAwaitingTokens[].lifeTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -32788,6 +32821,7 @@ movesAwaitingTokens[].millTail.run.then.permission	object
 movesAwaitingTokens[].millTail.run.then.permission.affinityFor	string
 movesAwaitingTokens[].millTail.run.then.permission.altCostKey	string
 movesAwaitingTokens[].millTail.run.then.permission.anyColor	bool
+movesAwaitingTokens[].millTail.run.then.permission.anyColorFrom	string
 movesAwaitingTokens[].millTail.run.then.permission.anyNumber	bool
 movesAwaitingTokens[].millTail.run.then.permission.anyType	bool
 movesAwaitingTokens[].millTail.run.then.permission.bottomInsteadOfGraveyard	bool
@@ -33432,6 +33466,7 @@ movesAwaitingTokens[].millTail.then.permission	object
 movesAwaitingTokens[].millTail.then.permission.affinityFor	string
 movesAwaitingTokens[].millTail.then.permission.altCostKey	string
 movesAwaitingTokens[].millTail.then.permission.anyColor	bool
+movesAwaitingTokens[].millTail.then.permission.anyColorFrom	string
 movesAwaitingTokens[].millTail.then.permission.anyNumber	bool
 movesAwaitingTokens[].millTail.then.permission.anyType	bool
 movesAwaitingTokens[].millTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -35092,6 +35127,7 @@ movesAwaitingTokens[].tokenTail.then.permission	object
 movesAwaitingTokens[].tokenTail.then.permission.affinityFor	string
 movesAwaitingTokens[].tokenTail.then.permission.altCostKey	string
 movesAwaitingTokens[].tokenTail.then.permission.anyColor	bool
+movesAwaitingTokens[].tokenTail.then.permission.anyColorFrom	string
 movesAwaitingTokens[].tokenTail.then.permission.anyNumber	bool
 movesAwaitingTokens[].tokenTail.then.permission.anyType	bool
 movesAwaitingTokens[].tokenTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -37054,6 +37090,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.affinityFor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.anyColor	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.anyNumber	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.anyType	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.bottomInsteadOfGraveyard	bool
@@ -37733,6 +37770,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.anyNumber	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.anyType	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.bottomInsteadOfGraveyard	bool
@@ -38377,6 +38415,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.affinityFor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.anyColor	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.anyColorFrom	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.anyNumber	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.anyType	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -39041,6 +39080,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.affinityFor	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.anyColor	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.anyColorFrom	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.anyNumber	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.anyType	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -39774,6 +39814,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.affinityFor	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.anyColor	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.anyNumber	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.anyType	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -43251,6 +43292,7 @@ pendingChoices[].attackSplit.tail.permission	object
 pendingChoices[].attackSplit.tail.permission.affinityFor	string
 pendingChoices[].attackSplit.tail.permission.altCostKey	string
 pendingChoices[].attackSplit.tail.permission.anyColor	bool
+pendingChoices[].attackSplit.tail.permission.anyColorFrom	string
 pendingChoices[].attackSplit.tail.permission.anyNumber	bool
 pendingChoices[].attackSplit.tail.permission.anyType	bool
 pendingChoices[].attackSplit.tail.permission.bottomInsteadOfGraveyard	bool
@@ -45410,6 +45452,7 @@ pendingChoices[].diceRoll.then.permission	object
 pendingChoices[].diceRoll.then.permission.affinityFor	string
 pendingChoices[].diceRoll.then.permission.altCostKey	string
 pendingChoices[].diceRoll.then.permission.anyColor	bool
+pendingChoices[].diceRoll.then.permission.anyColorFrom	string
 pendingChoices[].diceRoll.then.permission.anyNumber	bool
 pendingChoices[].diceRoll.then.permission.anyType	bool
 pendingChoices[].diceRoll.then.permission.bottomInsteadOfGraveyard	bool
@@ -46461,6 +46504,7 @@ pendingChoices[].divideShield.walk.each.permission	object
 pendingChoices[].divideShield.walk.each.permission.affinityFor	string
 pendingChoices[].divideShield.walk.each.permission.altCostKey	string
 pendingChoices[].divideShield.walk.each.permission.anyColor	bool
+pendingChoices[].divideShield.walk.each.permission.anyColorFrom	string
 pendingChoices[].divideShield.walk.each.permission.anyNumber	bool
 pendingChoices[].divideShield.walk.each.permission.anyType	bool
 pendingChoices[].divideShield.walk.each.permission.bottomInsteadOfGraveyard	bool
@@ -47107,6 +47151,7 @@ pendingChoices[].divideShield.walk.then.permission	object
 pendingChoices[].divideShield.walk.then.permission.affinityFor	string
 pendingChoices[].divideShield.walk.then.permission.altCostKey	string
 pendingChoices[].divideShield.walk.then.permission.anyColor	bool
+pendingChoices[].divideShield.walk.then.permission.anyColorFrom	string
 pendingChoices[].divideShield.walk.then.permission.anyNumber	bool
 pendingChoices[].divideShield.walk.then.permission.anyType	bool
 pendingChoices[].divideShield.walk.then.permission.bottomInsteadOfGraveyard	bool
@@ -47759,6 +47804,7 @@ pendingChoices[].libraryOrder.then.permission	object
 pendingChoices[].libraryOrder.then.permission.affinityFor	string
 pendingChoices[].libraryOrder.then.permission.altCostKey	string
 pendingChoices[].libraryOrder.then.permission.anyColor	bool
+pendingChoices[].libraryOrder.then.permission.anyColorFrom	string
 pendingChoices[].libraryOrder.then.permission.anyNumber	bool
 pendingChoices[].libraryOrder.then.permission.anyType	bool
 pendingChoices[].libraryOrder.then.permission.bottomInsteadOfGraveyard	bool
@@ -48464,6 +48510,7 @@ pendingChoices[].nameThen.permission	object
 pendingChoices[].nameThen.permission.affinityFor	string
 pendingChoices[].nameThen.permission.altCostKey	string
 pendingChoices[].nameThen.permission.anyColor	bool
+pendingChoices[].nameThen.permission.anyColorFrom	string
 pendingChoices[].nameThen.permission.anyNumber	bool
 pendingChoices[].nameThen.permission.anyType	bool
 pendingChoices[].nameThen.permission.bottomInsteadOfGraveyard	bool
@@ -49604,6 +49651,7 @@ pendingChoices[].pickTail.permission	object
 pendingChoices[].pickTail.permission.affinityFor	string
 pendingChoices[].pickTail.permission.altCostKey	string
 pendingChoices[].pickTail.permission.anyColor	bool
+pendingChoices[].pickTail.permission.anyColorFrom	string
 pendingChoices[].pickTail.permission.anyNumber	bool
 pendingChoices[].pickTail.permission.anyType	bool
 pendingChoices[].pickTail.permission.bottomInsteadOfGraveyard	bool
@@ -50295,6 +50343,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission	object
 pendingChoices[].replacementResume.event.counterTail.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -50950,6 +50999,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission	object
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.affinityFor	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyColor	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyType	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.bottomInsteadOfGraveyard	bool
@@ -51596,6 +51646,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission	object
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.bottomInsteadOfGraveyard	bool
@@ -52427,6 +52478,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission	object
 pendingChoices[].replacementResume.event.damageTail.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -53196,6 +53248,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.bottomInsteadOfGraveyard	bool
@@ -53918,6 +53971,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.bottomInsteadOfGraveyard	bool
@@ -54564,6 +54618,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission	object
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.affinityFor	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyColor	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyType	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.bottomInsteadOfGraveyard	bool
@@ -55243,6 +55298,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.affinityFor	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyColor	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyType	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.bottomInsteadOfGraveyard	bool
@@ -55909,6 +55965,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.bottomInsteadOfGraveyard	bool
@@ -57006,6 +57063,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission	objec
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -57676,6 +57734,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.bottomInsteadOfGraveyard	bool
@@ -58325,6 +58384,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission	object
 pendingChoices[].replacementResume.event.lifeTail.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -59832,6 +59892,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission	object
 pendingChoices[].replacementResume.event.millTail.run.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.bottomInsteadOfGraveyard	bool
@@ -60476,6 +60537,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission	object
 pendingChoices[].replacementResume.event.millTail.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.millTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.millTail.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.millTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -62136,6 +62198,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission	object
 pendingChoices[].replacementResume.event.tokenTail.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.bottomInsteadOfGraveyard	bool
@@ -64098,6 +64161,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.bottomInsteadOfGraveyard	bool
@@ -64777,6 +64841,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyType	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.bottomInsteadOfGraveyard	bool
@@ -65421,6 +65486,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission	obj
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -66085,6 +66151,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission	o
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -66818,6 +66885,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission	
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.affinityFor	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyColor	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyNumber	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyType	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.bottomInsteadOfGraveyard	bool
@@ -67921,6 +67989,7 @@ pendingChoices[].scryThen.permission	object
 pendingChoices[].scryThen.permission.affinityFor	string
 pendingChoices[].scryThen.permission.altCostKey	string
 pendingChoices[].scryThen.permission.anyColor	bool
+pendingChoices[].scryThen.permission.anyColorFrom	string
 pendingChoices[].scryThen.permission.anyNumber	bool
 pendingChoices[].scryThen.permission.anyType	bool
 pendingChoices[].scryThen.permission.bottomInsteadOfGraveyard	bool
@@ -68613,6 +68682,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission	object
 pendingChoices[].searchPrompt.spec.thenTail.permission.affinityFor	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.altCostKey	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyColor	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.anyColorFrom	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyNumber	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyType	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.bottomInsteadOfGraveyard	bool
@@ -74502,6 +74572,7 @@ seats[].castPermissions[]	object
 seats[].castPermissions[].affinityFor	string
 seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
+seats[].castPermissions[].anyColorFrom	string
 seats[].castPermissions[].anyNumber	bool
 seats[].castPermissions[].anyType	bool
 seats[].castPermissions[].bottomInsteadOfGraveyard	bool

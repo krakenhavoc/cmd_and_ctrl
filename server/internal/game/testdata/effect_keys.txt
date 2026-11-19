@@ -3490,6 +3490,7 @@ tail phthisis/controller-loses-life
 tail picklock-prankster/after-mill
 tail pinnacle-starcage/record-returns
 tail pinnacle-starcage/robots-then-sacrifice
+tail planar-genesis/after-land
 tail plargg-and-nassari/after-mill
 tail ponder/ask-shuffle
 tail port-of-karfell/after-mill
