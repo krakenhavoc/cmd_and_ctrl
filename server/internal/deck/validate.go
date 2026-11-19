@@ -307,7 +307,11 @@ func validateCommander(list *List) error {
 			}
 		}
 		allowedList := commanderIdentityList(allowed)
+		rulebreaks := commanderRulebreaks(list.Commanders)
 		for _, c := range list.Mainboard {
+			if rulebreaks.exempts(c) {
+				continue
+			}
 			for _, sym := range c.ColorIdentity {
 				if _, ok := allowed[sym]; !ok {
 					vs = append(vs, Violation{
