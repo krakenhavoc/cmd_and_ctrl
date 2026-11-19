@@ -290,6 +290,7 @@ body memory-vampire/cast-from-graveyard
 body merry-bards/young-hero-role
 body miasma-demon/shrink
 body mindleech-ghoul/exile
+body minsc-and-boo/damage
 body miracle/granted-offer
 body miracle/offer
 body modular/move-counters
@@ -2561,6 +2562,7 @@ run prompt-run/manifest-from-hand
 run prompt-run/megatron-tyrant-sacrifice
 run prompt-run/mica-reader-of-ruins-copy
 run prompt-run/midnight-crusader-shuttle-take
+run prompt-run/minsc-and-boo-sacrifice
 run prompt-run/momentum-breaker-discard
 run prompt-run/mukotai-soulripper-grow
 run prompt-run/namazu-trader-surveil
@@ -3613,6 +3615,7 @@ tail sacrificed-one/prompt-run/larval-scoutlander-search
 tail sacrificed-one/prompt-run/lithobraking-sacrifice
 tail sacrificed-one/prompt-run/lord-skitters-butcher-sacrifice
 tail sacrificed-one/prompt-run/mica-reader-of-ruins-copy
+tail sacrificed-one/prompt-run/minsc-and-boo-sacrifice
 tail sacrificed-one/prompt-run/mukotai-soulripper-grow
 tail sacrificed-one/prompt-run/namazu-trader-surveil
 tail sacrificed-one/prompt-run/provisions-merchant-sacrifice-pump
