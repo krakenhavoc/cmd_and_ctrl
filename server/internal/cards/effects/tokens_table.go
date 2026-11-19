@@ -558,4 +558,9 @@ var tokenTable = map[string]game.Card{
 	"7/7 green Elemental with trample": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 7, Toughness: 7, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	// S82 BNS batch 50: Cynette, Jelly Drover's Jellyfish.
 	"1/1 blue Jellyfish with flying": {Name: "Jellyfish", TypeLine: "Token Creature — Jellyfish", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	// S82 GAP batch 4: Chief Magistrate of Mercadia's Goblin.
+	"2/1 red Goblin with haste": {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+	// S82 GAP batch 4: Balefang the Unslayable's Baneslayer Angel token,
+	// a {3}{W}{W} 5/5 Angel with the printed card's five keywords.
+	"5/5 white Angel named Baneslayer Angel": {Name: "Baneslayer Angel", TypeLine: "Token Creature — Angel", ManaCost: "{3}{W}{W}", Power: 5, Toughness: 5, Colors: []string{"W"}, Keywords: []string{"flying", "first strike", "lifelink", "protection from Demons", "protection from Dragons"}},
 }

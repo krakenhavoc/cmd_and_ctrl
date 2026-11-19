@@ -126,6 +126,8 @@ var knownUnmatchedTokens = map[string]string{
 	// enchantment creature token". No Nymph token card was ever printed, so the
 	// template follows the card's oracle text (as Shuri's Robot Hero does).
 	"2/2 white Nymph enchantment creature": "no Nymph token card was ever printed; Psemilla, Meletian Poet's oracle text says a 2/2 white Nymph enchantment creature",
+	// Balefang the Unslayable creates "a tapped Baneslayer Angel token"; Scryfall lists no token card for it.
+	"5/5 white Angel named Baneslayer Angel": "no Baneslayer Angel token card was printed for Balefang the Unslayable",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
