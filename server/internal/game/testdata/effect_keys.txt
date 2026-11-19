@@ -3024,6 +3024,7 @@ tail engine/become-monstrous
 tail engine/become-renowned
 tail engine/cleanup-discarded
 tail engine/counter-exiled-instead
+tail engine/countered-onto-battlefield
 tail engine/countered-to-library
 tail engine/countered-told
 tail engine/discard-leg-settled

@@ -647,6 +647,13 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 			zoneRoute:    &r,
 		})
 	}
+	if src.Kind == ZoneStack && r.Countered && r.Dst == ZoneBattlefield {
+		// #5931: a counter that puts the card onto the battlefield
+		// instead of into its owner's graveyard (Desertion) is an ENTRY,
+		// owed the CR 614 entry window, the controller stamp and the
+		// ETB. counter_onto_battlefield.go.
+		return false, g.counterOntoBattlefieldLocked(&r)
+	}
 	dstZone, _, err := g.routeDestinationLocked(r.CardID, r.Dst, r.DstOwner)
 	if err != nil {
 		return false, err
