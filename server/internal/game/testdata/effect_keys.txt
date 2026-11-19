@@ -3898,6 +3898,8 @@ tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
+tail then/gap-b07-chalice-of-life-check
+tail then/gap-b07-soul-separator-tokens
 tail then/get-energy
 tail then/glen-elendras-answer-counter-next
 tail then/god-pharaohs-gift-copy

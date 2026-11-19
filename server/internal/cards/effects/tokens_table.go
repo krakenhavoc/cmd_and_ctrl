@@ -558,4 +558,7 @@ var tokenTable = map[string]game.Card{
 	"7/7 green Elemental with trample": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 7, Toughness: 7, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	// S82 BNS batch 50: Cynette, Jelly Drover's Jellyfish.
 	"1/1 blue Jellyfish with flying": {Name: "Jellyfish", TypeLine: "Token Creature — Jellyfish", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+
+	// S82 GAP batch 07: Soul Separator's Zombie (printed */*, sized from the exiled card as it is created).
+	"0/0 black Zombie": {Name: "Zombie", TypeLine: "Token Creature — Zombie", Colors: []string{"B"}, PrintedPTKnown: true},
 }
