@@ -1655,7 +1655,14 @@ func (g *Game) ExileSpellForEffect(stackID uuid.UUID) error {
 // commander gets the CR 903.9 command-zone choice — #364. When the
 // prompt is queued nothing has moved, the stack item is still
 // registered, and both complete when the owner answers.
+//
+// The sandbox action takes no battlefield destination: only an effect's
+// counter puts the card there (#5931, CounterTargetToZoneForEffect), with
+// the entry window and the controller its card names.
 func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
+	if dst != nil && dst.Kind == ZoneBattlefield {
+		return ErrInvalidStackDestination
+	}
 	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true)
 }
 
@@ -1720,18 +1727,28 @@ func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback Zo
 	// Resolve the destination. nil → the fallback at the spell's
 	// owner (a countered spell's graveyard, a returned spell's hand),
 	// or exile when that player has left the game (the primitive's
-	// own fallback). Battlefield / stack are illegal — an effect that
-	// "puts the spell onto the battlefield" would be a different
-	// effect, and either verb MUST move the spell off the stack.
+	// own fallback). The stack is illegal, and so is the battlefield for
+	// anything but a counter (#5931): either verb MUST move the spell off
+	// the stack.
 	destKind, destOwner := fallback, item.Owner
 	if dst != nil {
-		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
+		if dst.Kind == ZoneStack || (dst.Kind == ZoneBattlefield && !countered) {
 			return zoneRoute{}, ErrInvalidStackDestination
 		}
-		if g.zoneFromRefLocked(*dst) == nil {
+		switch {
+		case dst.Kind == ZoneBattlefield:
+			// #5931: a COUNTER that puts the card onto the battlefield
+			// instead of into its owner's graveyard (Desertion). The
+			// route's DstOwner names the controller it enters under;
+			// routeCardToZoneLocked hands it to the entry pipeline
+			// (counter_onto_battlefield.go). Only a counter: a bounce or
+			// a plain exit onto the battlefield is still refused above.
+			destKind, destOwner = ZoneBattlefield, dst.Owner
+		case g.zoneFromRefLocked(*dst) == nil:
 			return zoneRoute{}, ErrZoneNotFound
+		default:
+			destKind, destOwner = dst.Kind, dst.Owner
 		}
-		destKind, destOwner = dst.Kind, dst.Owner
 	}
 	// S29 flashback: "exile this card instead of putting it anywhere
 	// else ANY TIME it would leave the stack" (CR 702.34a). It beats
