@@ -27,6 +27,7 @@ import (
 //     basic land cards". Any "<types> cards of any color identity" clause is
 //     read the same way: a card whose type line holds every word of one of
 //     the "and"-joined type groups.
+//     The Unluckiest Planeswalker (GAP batch 6) is "Aura cards".
 //   - Grizzlegom, Hurloon Hero (GAP batch 3): "can have any land cards".
 //   - Maular, the Next Evolution (GAP batch 3): "can have creature cards with
 //     mana value 7 or greater of any color identity and any basic land cards."
