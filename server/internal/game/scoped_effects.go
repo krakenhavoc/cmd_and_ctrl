@@ -548,6 +548,13 @@ const (
 	// blocker's creature types are read live, so a changeling counts as a
 	// Wall and a creature that stops being one leaves the barred set.
 	ModCantBeBlockedBySubtypes ModKind = "cantBeBlockedBySubtypes"
+	// ModCantBlockSubtypes is "<creature type>s can't block this turn"
+	// (Pyrophobia's Cowards, CR 509.1b). Reads Subtypes, an any-of of
+	// creature types, and Text, the clause as the refusal sentence reads
+	// it. Registered under ScopeCreatures with no snapshot, so a creature
+	// that arrives afterwards is bound too (the effect changes no
+	// characteristic, CR 611.2c) and the blocker's types are read live.
+	ModCantBlockSubtypes ModKind = "cantBlockSubtypes"
 	// ModCantBeBlockedByObject is "target creature can't block <this
 	// creature> this turn" (a Wrinkly Monkey Shenanigans ability sticker,
 	// #4307, CR 509.1b). Reads Objects[0], the one blocker the rule bars
@@ -1259,6 +1266,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBeBlockedByPowerAtLeast: {reader: readerBlockRule},
 	ModCantBeBlockedByColor:        {reader: readerBlockRule},
 	ModCantBeBlockedBySubtypes:     {reader: readerBlockRule},
+	ModCantBlockSubtypes:           {reader: readerBlockRule},
 	ModCantBeBlockedByObject:       {reader: readerBlockRule},
 	ModCantBeBlockedByMoreThan:     {reader: readerBlockRule},
 	// #1651: "can't have" is a layer-6 record; the waiver is read by
