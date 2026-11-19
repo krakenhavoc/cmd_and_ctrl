@@ -1199,6 +1199,10 @@ type cardSnapshot struct {
 	// arrival was a surveil's graveyard leg. Absent from every earlier
 	// file, which restores as "not surveilled".
 	Surveilled bool `json:"surveilled,omitempty"`
+	// Milled is Card.Milled (Raul, Trouble Shooter): the arrival was a
+	// mill's graveyard leg. Absent from every earlier file, which restores
+	// as "not milled".
+	Milled bool `json:"milled,omitempty"`
 	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
 	// effect gave suspend. Absent from every earlier file, which restores as
 	// "has only its printed abilities".
@@ -3201,6 +3205,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		Surveilled:               c.Surveilled,
+		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -4369,6 +4374,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		Surveilled:               c.Surveilled,
+		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,

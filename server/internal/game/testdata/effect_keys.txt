@@ -2496,6 +2496,7 @@ run prompt-run/empty-the-laboratory-sacrifice
 run prompt-run/entish-restoration-search
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
+run prompt-run/exploit-colonel-autumn
 run prompt-run/exploit-diver-skaab
 run prompt-run/exploit-fell-stinger
 run prompt-run/exploit-graf-reaver
@@ -3298,6 +3299,7 @@ tail if-it-was/deluge-of-the-dead-zombie
 tail if-it-was/diregraf-scavenger-drain
 tail if-it-was/feral-appetite-pest
 tail if-it-was/froghemoth-counter-or-life
+tail if-it-was/generals-enforcer-token
 tail if-it-was/ignis-scientia-food
 tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
@@ -3600,6 +3602,7 @@ tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
+tail sacrificed-one/prompt-run/exploit-colonel-autumn
 tail sacrificed-one/prompt-run/exploit-diver-skaab
 tail sacrificed-one/prompt-run/exploit-fell-stinger
 tail sacrificed-one/prompt-run/exploit-graf-reaver
