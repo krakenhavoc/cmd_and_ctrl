@@ -262,6 +262,7 @@ body kitt-kanto/boost-and-goad
 body koya-death-from-above/pay-or-return
 body kravens-last-hunt/damage
 body kroxa-and-kunoros/return
+body labyrinth-adversary/cant-block
 body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
 body lichs-relic/destroy
@@ -370,6 +371,7 @@ body quantum-entanglement/blink
 body rad/mill
 body rampage/pump
 body ratchet-field-medic/return
+body ratonhnhaketon/return-equipment
 body ravenous-rotbelly/edict
 body rebound/cast
 body rebound/the-spell-you-just-cast
@@ -728,6 +730,7 @@ choose choose-cards/dyadrine-remove-two-counters
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
+choose choose-cards/eivor-wolf-kissed-put
 choose choose-cards/electrodominance-cast
 choose choose-cards/elemental-teachings-settle
 choose choose-cards/ellywick-tumblestrum-take
@@ -2048,6 +2051,7 @@ option option-pick/secret-choice
 option option-pick/seize-the-spotlight-answer
 option option-pick/shah-of-naar-isle-draw
 option option-pick/shifting-ceratops-keyword
+option option-pick/sigurd-boast-lore
 option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
 option option-pick/slumbering-walker-remove-a-counter
@@ -2250,6 +2254,7 @@ payunless pay-unless/koya-death-from-above-return
 payunless pay-unless/krenko-baron-of-tin-street-goblin
 payunless pay-unless/krovod-haunch-dogs
 payunless pay-unless/krydle-of-baldurs-gate-unblockable
+payunless pay-unless/labyrinth-adversary-cant-block
 payunless pay-unless/lazotep-chancellor-amass
 payunless pay-unless/leyline-of-lightning-ping
 payunless pay-unless/leyline-tyrant-damage
@@ -3075,6 +3080,7 @@ tail earthen-arms/awaken
 tail earthshape/shield
 tail echoing-assault/sacrifice-at-next-end-step
 tail eerie-gravestone/after-mill
+tail eivor-wolf-kissed/after-mill
 tail elemental-mastery/exile-the-elementals
 tail elemental-teachings/choose
 tail elkin-lair/may-play-exiled
@@ -3522,6 +3528,7 @@ tail ragnarok-divine-deliverance/return
 tail random-encounter/entered
 tail random-encounter/milled
 tail rapid-rescue/after-mill
+tail ratonhnhaketon/token-created
 tail read-the-runes/sacrificed
 tail reality-fracture-helpers/after-exile
 tail reality-fracture/surveil-keep-noncreature-nonland
