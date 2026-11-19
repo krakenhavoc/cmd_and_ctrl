@@ -209,6 +209,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 BNS batch 49.
 	"Uncomfortable Chill": "-2/-0 until end of turn to opposing creatures kills nothing, then draws a card",
+
+	// S82 GAP batch 41.
+	"Abstergo Entertainment": "its last ability returns a historic card then exiles the cards in every graveyard: it touches no permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

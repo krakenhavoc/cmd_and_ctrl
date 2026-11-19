@@ -315,6 +315,7 @@ body nuka-nuke-launcher/defender-gets-two-rad-counters
 body ochre-jelly/split-token
 body offspring/granted-token
 body ondu-rising/attacker-gains-lifelink
+body origin-of-the-hidden-ones/assassin-tapped-and-attacking
 body overcharged-amalgam/counter
 body overlook/brokers-hideout-fetch
 body overlook/cabaretti-courtyard-fetch
@@ -575,10 +576,12 @@ choose choose-cards/azula-cunning-usurper-creature
 choose choose-cards/azula-cunning-usurper-graveyard
 choose choose-cards/back-for-seconds-pick
 choose choose-cards/bag-of-devouring-return
+choose choose-cards/ballad-of-the-black-flag-historic
 choose choose-cards/bandits-talent-discard
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barals-expertise-cast
 choose choose-cards/barrowin-of-clan-undurr-return
+choose choose-cards/battlefield-improvisation-equipment
 choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
@@ -1457,6 +1460,7 @@ condition attack/a-creature-an-opponent-controls-attacks
 condition attack/a-creature-you-control-attacks
 condition attack/a-creature-you-control-attacks-alone
 condition attack/a-sea-creature-attacks-summon-leviathan
+condition attack/an-assassin-you-control-attacks
 condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
 condition attack/each-creature-you-control-unblocked
@@ -2503,6 +2507,7 @@ run prompt-run/exploit-stitched-assistant
 run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
+run prompt-run/fall-of-the-first-civilization-keep
 run prompt-run/fanatic-of-the-harrowing-draw
 run prompt-run/fatal-grudge-draw
 run prompt-run/felothar-sacrifice
@@ -2825,6 +2830,7 @@ tail ayara-furnace-queen/entered
 tail azog/amass-goblins-and-draw
 tail azula-cunning-usurper/graveyard
 tail bad-wolf-bay/return-at-next-end-step
+tail ballad-of-the-black-flag/after-mill
 tail baral-and-kari-zev/ragavan-haste
 tail barrowgoyf/after-mill
 tail batch18/exiled-creatures-controllers-fetch
@@ -3816,6 +3822,8 @@ tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
 tail then/barals-expertise-free-cast
+tail then/become-anonymous-cloak
+tail then/become-anonymous-target-exiled
 tail then/bellowing-mauler-sacrificed
 tail then/blastoneuron-copy
 tail then/blastoneuron-haste-and-sacrifice
@@ -3838,6 +3846,7 @@ tail then/caustic-bronco-life
 tail then/cecil-dark-knight-darkness
 tail then/celebrate-the-mountain-king-exiled-one
 tail then/cerebral-download-draw
+tail then/chain-assassination-draw
 tail then/chain-lightning-offer-red-payment
 tail then/chain-of-acid-offer-copy
 tail then/chain-of-vapor-offer-chain
