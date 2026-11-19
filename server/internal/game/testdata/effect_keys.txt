@@ -159,6 +159,7 @@ body enlist/pump
 body erica-ortegas/return-a-land-you-control
 body esoteric-duplicator/copy-the-artifact
 body espers-to-magicite/copy
+body evereth-viceroy-of-plunder/damage
 body evoke/sacrifice
 body evolve/grow
 body exalted/pump
@@ -260,6 +261,7 @@ body kroxa-and-kunoros/return
 body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
 body lichs-relic/destroy
+body life/aphelia-half-their-life
 body lithobraking/damage-each-creature
 body loamcrafter-faun/return-to-hand
 body lockjaw/unblockable
@@ -597,6 +599,7 @@ choose choose-cards/call-the-spirit-dragons-pick
 choose choose-cards/caparocti-sunborn-tap-two
 choose choose-cards/capricious-hellraiser-copy
 choose choose-cards/captain-james-t-kirk-draw
+choose choose-cards/cascade-put-a-land
 choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cataclysmic-gearhulk-keep-artifact
 choose choose-cards/cataclysmic-gearhulk-keep-artifact-creature
@@ -767,6 +770,7 @@ choose choose-cards/glacial-dragonhunt-discarded
 choose choose-cards/glamdring-cast
 choose choose-cards/glittering-wish-take
 choose choose-cards/gluntch-the-bestower-creature
+choose choose-cards/godsend-exile
 choose choose-cards/golden-wish-take
 choose choose-cards/goldwardens-gambit-attach
 choose choose-cards/goliath-hatchery-draw
@@ -1471,6 +1475,7 @@ condition damage/a-creature-combat-to-you
 condition damage/each-creature-dealt-damage
 condition damage/each-opponent-creature-dealt-damage
 condition damage/either-of-those-creatures-deals-combat-damage
+condition damage/gorgons-or-snakes-combat-to-player
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
 condition damage/your-creature-combat-damage-to-a-player
@@ -2091,8 +2096,10 @@ option sticker/choose-sticker
 option sticker/name-position
 option venture/dungeon
 option venture/room
+payunless aphelia-viper-whisperer/paid
 payunless arni-metalbrow/paid
 payunless cadric-soul-kindler/paid
+payunless evereth-viceroy-of-plunder/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
@@ -3790,6 +3797,7 @@ tail then/breeches-the-blastmaker-flip
 tail then/bringer-of-the-last-gift-return
 tail then/cait-sith-fortune-teller-boost
 tail then/calamitous-tide-loot
+tail then/cascade-finish
 tail then/case-of-the-burning-masks-choose
 tail then/caustic-bronco-life
 tail then/cecil-dark-knight-darkness

@@ -20,6 +20,8 @@ func legendRuleExemptionRows(v reflect.Value) []string {
 			out = append(out, "The legend rule doesn't apply.")
 		case LegendRuleExemptYourCreatures:
 			out = append(out, "The legend rule doesn't apply to creatures you control.")
+		case LegendRuleExemptNamedPair:
+			out = append(out, e.Label)
 		default:
 			out = append(out, "The legend rule doesn't apply to permanents you control.")
 		}

@@ -88,6 +88,115 @@ func (g *Game) CascadeForEffect(controller, source uuid.UUID, lessThan int) erro
 	if err != nil {
 		return err
 	}
+	// "As you cascade, you may put a land card from among the exiled cards
+	// onto the battlefield tapped" (Averna, the Chaos Bloom): after the last
+	// card is exiled and before the hit is offered. A land is never the hit,
+	// so the lands are in the pile.
+	if g.playerInGameLocked(controller) && g.asYouCascadePutsALandLocked(controller) {
+		var lands, rest []uuid.UUID
+		for _, id := range pile {
+			if c, ok := g.cardInZoneLocked(g.Exile, id); ok && c.IsLand() {
+				lands = append(lands, id)
+			} else {
+				rest = append(rest, id)
+			}
+		}
+		if len(lands) > 0 {
+			carry := append([]uuid.UUID{hit}, rest...)
+			if g.queueRevealPickKeyedLocked(RevealPickPrompt{
+				Chooser:  controller,
+				Owner:    controller,
+				Source:   source,
+				Question: "Cascade — you may put a land card from among the exiled cards onto the battlefield tapped",
+				Cards:    lands,
+				Min:      0,
+				Max:      1,
+				ThenKey:  cascadeLandThen,
+				Carry:    carry,
+				Nums:     []int{lessThan},
+			}) > 0 {
+				return nil
+			}
+		}
+	}
+	return g.cascadeFinishLocked(controller, source, lessThan, pile, hit)
+}
+
+// CatalogAsYouCascadePutsALand is the catalog hook for a permanent's "As you
+// cascade, you may put a land card from among the exiled cards onto the
+// battlefield tapped" (Averna, the Chaos Bloom), wired at init through
+// CardDef.AsYouCascadePutALand. Nil, or false, means the permanent grants
+// nothing.
+var CatalogAsYouCascadePutsALand func(key string) bool
+
+// asYouCascadePutsALandLocked reports whether a permanent `controller`
+// controls says it, read live off the battlefield and stored nowhere
+// (keyed by CatalogAbilityKey, so a permanent that lost its abilities
+// grants nothing). Caller must hold g.mu.
+func (g *Game) asYouCascadePutsALandLocked(controller uuid.UUID) bool {
+	if CatalogAsYouCascadePutsALand == nil || g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != controller {
+			continue
+		}
+		if key := catalogAbilityKeyOf(c); key != "" && CatalogAsYouCascadePutsALand(key) {
+			return true
+		}
+	}
+	return false
+}
+
+// cascadeLandThen is the answer to the land prompt: the chosen land (at most
+// one) enters tapped, and the cascade carries on once its entry has settled
+// (a land may ask its own question first). The prompt's Carry is the hit
+// (uuid.Nil when the library ran out) then the non-land cards passed over;
+// the lands not chosen rejoin the pile. An on-disk key: never renamed,
+// never reused.
+var cascadeLandThen = RegisterChooseCardsThen("choose-cards/cascade-put-a-land", func(g *Game, r CardsChosen) error {
+	if len(r.Carry) == 0 || len(r.Nums) == 0 {
+		return nil
+	}
+	hit := r.Carry[0]
+	pile := append([]uuid.UUID(nil), r.Carry[1:]...)
+	var picked uuid.UUID
+	if r.Answered && len(r.Picked) > 0 {
+		picked = r.Picked[0]
+	}
+	for _, id := range r.Candidates {
+		if id != picked {
+			pile = append(pile, id)
+		}
+	}
+	finish := KeyedTail{
+		Ref:    cascadeFinishTail,
+		Player: r.Chooser,
+		Source: r.Source,
+		Carry:  append([]uuid.UUID{hit}, pile...),
+		N:      r.Nums[0],
+	}
+	if picked == uuid.Nil {
+		return finish.Run(g, nil)
+	}
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(
+		[]BatchEntry{{CardID: picked, From: ZoneExile}},
+		ZoneEntryOptions{Controller: r.Chooser, Tapped: true}, finish)
+})
+
+// cascadeFinishTail is the rest of the cascade after the land step.
+var cascadeFinishTail = RegisterTail("then/cascade-finish", func(g *Game, o TailOutcome) error {
+	t := o.Tail
+	if len(t.Carry) == 0 {
+		return nil
+	}
+	return g.cascadeFinishLocked(t.Player, t.Source, t.N, t.Carry[1:], t.Carry[0])
+})
+
+// cascadeFinishLocked is the hit and the bottoming: everything CR 702.85a
+// says after the exiling. `hit` is uuid.Nil when no card qualified.
+func (g *Game) cascadeFinishLocked(controller, source uuid.UUID, lessThan int, pile []uuid.UUID, hit uuid.UUID) error {
 	if hit == uuid.Nil {
 		// Ran the library out without finding anything. Everything
 		// exiled goes back to the bottom; the deck is reordered but
