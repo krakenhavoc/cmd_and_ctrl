@@ -209,6 +209,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 BNS batch 49.
 	"Uncomfortable Chill": "-2/-0 until end of turn to opposing creatures kills nothing, then draws a card",
+
+	// S82 GAP batch 35.
+	"Yggdrasil, Rebirth Engine": "exiles only the creature cards in its controller's graveyard, which are no permanents",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

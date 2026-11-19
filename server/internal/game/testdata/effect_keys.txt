@@ -433,6 +433,7 @@ body shrapnel-slinger/destroy
 body shriek-treblemaker/cant-block
 body skyfisher-spider/destroy
 body slumbering-walker/return-from-graveyard
+body smoke-bomb/unblockable
 body snaremaster-sprite/tap-and-stun
 body snc-b04/obscura-interceptor-return-spell
 body snc-b04/psychic-pickpocket-return-permanent
@@ -1402,6 +1403,7 @@ choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/worldsouls-rage-lands
+choose choose-cards/yggdrasil-return
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yotia-declares-war-tap
 choose choose-cards/yue-the-moon-spirit-cast
@@ -4172,6 +4174,7 @@ tail wrenn-and-realmbreaker/after-mill
 tail yavimaya-bloomsage/prepare
 tail yawgmoths-vile-offering/destroy-then-exile-this
 tail yenna-redtooth-regent/after-copy
+tail yggdrasil/haste
 tail zara-renegade-recruiter/return-at-end-step
 tail zimones-experiment/creatures-then-rest
 tail zombie-apocalypse/destroy-humans
