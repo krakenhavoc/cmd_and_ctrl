@@ -2878,6 +2878,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// loyalty ability is one with a loyalty symbol in its cost
 		// (CR 606.2), granted or printed.
 		Loyalty: ab.Cost.Loyalty != nil,
+		// Neerdiv, Devious Diver: the zone the source was activated from.
+		ActivatedFrom: activatedFromZone(srcZone),
 		// CR 107.3a: an {X} mana symbol in the activation cost.
 		XCost: ab.Cost.XSlots() > 0,
 		// #5662: every point of life this announcement paid, for "if
@@ -3306,4 +3308,14 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 	paid.Mana = spent
 	g.EmitEvent(manaSpentEvent(p.ID, sourceID, spent))
 	return paid, note, nil
+}
+
+// activatedFromZone is Event.ActivatedFrom's value: empty for the
+// battlefield, which is nearly every activation, so those events keep the
+// shape they had; the zone itself for a hand or graveyard ability.
+func activatedFromZone(z ZoneKind) ZoneKind {
+	if z == ZoneBattlefield {
+		return ""
+	}
+	return z
 }

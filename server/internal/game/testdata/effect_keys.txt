@@ -65,6 +65,8 @@ body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
 body blitz/sacrifice
 body bloodthirsty-adversary/copy
+body bns-b52/slinza-fight
+body bns-b52/taeko-cant-be-blocked
 body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
 body borborygmos-and-fblthp/damage
@@ -228,6 +230,7 @@ body heroic-sacrifice/its-counters-and-draw
 body hidetsugu-devouring-chaos/damage
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
+body hurska-sweet-tooth/pump
 body hylda-of-the-icy-crown/modes
 body hypothesizzle/damage
 body icewrought-sentry/tap
@@ -246,6 +249,7 @@ body invasion-of-new-capenna/exile
 body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
+body isareth/return-with-corpse-counter
 body itzquinth/dinosaur-bites
 body jace-architect-of-thought/attacker-gets-minus-one-zero
 body jace-reality-sculptor/attacker-gets-minus-five
@@ -533,6 +537,7 @@ choose avatar-b30/azula-experience-after-discard
 choose avatar-b30/jet-rebel-leader-put-attacking
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
+choose choose-cards/adventure-awaits-take
 choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aetherworks-marvel-cast
@@ -766,6 +771,7 @@ choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gerrards-verdict-life
 choose choose-cards/gert-and-old-lace-search
 choose choose-cards/gift-of-perfection-assimilate
+choose choose-cards/gift-of-the-gargantuan-take
 choose choose-cards/gifts-ungiven-settle
 choose choose-cards/gilgamesh-master-at-arms-equipment
 choose choose-cards/gilgamesh-master-at-arms-samurai
@@ -1542,6 +1548,7 @@ confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
 confirm confirm/bebop-skull-and-crossbones-draw-lose
 confirm confirm/belanna-torres-scrapper-reveal
 confirm confirm/black-widow-counter-or-cast
+confirm confirm/bns-b52-taborax-draw-lose-life
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
 confirm confirm/break-out-put
@@ -2132,6 +2139,8 @@ payunless pay-unless/bitter-chill-scry-draw
 payunless pay-unless/blaster-hulk-damage
 payunless pay-unless/bloodfeather-phoenix-return
 payunless pay-unless/bloodthirsty-adversary-times
+payunless pay-unless/bns-b52-slinza-fight
+payunless pay-unless/bns-b52-taeko-unblockable
 payunless pay-unless/brass-man-untap
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
@@ -2215,6 +2224,7 @@ payunless pay-unless/hellkite-charger-extra-combat
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike
 payunless pay-unless/human-torch-share-damage
+payunless pay-unless/hurska-sweet-tooth-pump
 payunless pay-unless/hylda-of-the-icy-crown
 payunless pay-unless/icewrought-sentry-tap
 payunless pay-unless/inalla-archmage-ritualist-copy
@@ -2223,6 +2233,7 @@ payunless pay-unless/intet-the-dreamer-exile-top
 payunless pay-unless/inti-seneschal-of-the-sun-discard
 payunless pay-unless/intrepid-adversary-times
 payunless pay-unless/invisible-woman-pump
+payunless pay-unless/isareth-x-reanimate
 payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/itzquinth-dinosaur-bites
 payunless pay-unless/jace-multiverse-architect-cant-attack
@@ -2414,6 +2425,7 @@ run braids-frightful-return/each-opponent-discards
 run braids-frightful-return/edict
 run dalek-intensive-care/exile
 run engine/explore-each-pick
+run giant-opportunity/sacrifice-two-foods
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
 run prompt-run/altar-of-the-wretched-payout
@@ -2431,6 +2443,7 @@ run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
 run prompt-run/bloodcrazed-socialite-pump
+run prompt-run/bns-b52-sutina-return-land
 run prompt-run/boilerbilges-ripper-sacrifice
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
@@ -2848,6 +2861,7 @@ tail boneclad-necromancer/zombie-if-exiled
 tail borg-cube/assimilated
 tail borrowed-knowledge/draw-opponents-hand
 tail bounding-felidar/gain-life
+tail bounty-of-skemfar/elf-then-rest
 tail brago-king-eternal/return-exiled
 tail brass-tunnel-grinder/check-bore
 tail brass-tunnel-grinder/transform
@@ -3295,6 +3309,7 @@ tail invasion-of-arcavios/library-found
 tail invasion-of-kaldheim/draw-and-play
 tail invasion-of-pyrulea/reveal-then-draw
 tail invent/sorcery-search
+tail isareth/exile-instead
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land
 tail jaya-fiery-negotiator/choose-exiled
@@ -3804,6 +3819,7 @@ tail then/bellowing-mauler-sacrificed
 tail then/blastoneuron-copy
 tail then/blastoneuron-haste-and-sacrifice
 tail then/bloodline-bidding-type-chosen
+tail then/bns-b52-pol-jamaar-type-chosen
 tail then/bonehoard-dracosaur-exiled
 tail then/boommobile-color-chosen
 tail then/borborygmos-and-fblthp-discarded
