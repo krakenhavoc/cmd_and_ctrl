@@ -559,14 +559,8 @@ func b27LoseOneAndYouGainOne(g *game.Game, item *game.StackItem) error {
 // with a fixed one counter instead of the source's toughness.
 func b27OtherCreaturesYouControlEnterWithACounter(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
-		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield || src == nil || ev.CardID == src.InstanceID {
-				return false
-			}
-			entering, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && entering.IsCreature() && entering.Controller == src.Controller
-		},
+		Watches:   []game.EventKind{game.EventZoneMove},
+		AppliesTo: bnsB13OtherCreatureYouControlEnters,
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.AddCounterAtETB("+1/+1", 1)
 			return nil

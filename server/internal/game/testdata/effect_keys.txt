@@ -278,6 +278,7 @@ body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
 body melira/return-listed-to-the-battlefield
+body memory-vampire/cast-from-graveyard
 body merry-bards/young-hero-role
 body miasma-demon/shrink
 body mindleech-ghoul/exile
@@ -919,6 +920,7 @@ choose choose-cards/meanders-guide-tap
 choose choose-cards/memories-returning-bottom
 choose choose-cards/memories-returning-take
 choose choose-cards/memory-theft-adventure-to-graveyard
+choose choose-cards/memory-vampire-collect-evidence
 choose choose-cards/miasma-demon-discarded
 choose choose-cards/mill-then-take-cache-grab-pick
 choose choose-cards/mill-then-take-first-contact-first-spell-pick
@@ -1593,6 +1595,7 @@ confirm confirm/kaya-intangible-slayer-scry
 confirm confirm/kellan-daring-traveler-to-graveyard
 confirm confirm/killmonger-sacrifice
 confirm confirm/kimahri-ronso-rage-copy
+confirm confirm/kraul-harpooner-fight
 confirm confirm/krile-baldesion-return
 confirm confirm/kukemssa-pirates-gain-control
 confirm confirm/kwain-draw
