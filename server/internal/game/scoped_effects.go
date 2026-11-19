@@ -1276,6 +1276,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #3860: Vines of Vastwood's "can't be the target of spells or
 	// abilities your opponents control this turn".
 	ModCantBeTargetedByOpponents: {reader: readerTargeting},
+	// #5948: Tax Collector's timed cost increase, read by the cast pricer
+	// (scoped_cost_tax.go).
+	ModSpellsCostMoreForOpponents: {reader: readerRule},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named
@@ -1825,6 +1828,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := hexproofModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := scopedCostTaxModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := copyModProblem(m); problem != "" {

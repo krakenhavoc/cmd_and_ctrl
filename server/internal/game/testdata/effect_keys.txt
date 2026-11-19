@@ -103,6 +103,7 @@ body copy/the-spell-you-just-cast-twice
 body copy/token-copy-of-the-payload
 body cornered-crook/damage
 body counter/plus-one-and-haste-for-the-payload
+body counter/plus-one-on-the-attacking-assassin
 body counter/plus-one-on-the-payload-creature
 body curious-forager/return-from-graveyard
 body curse-of-the-werefox/fight
@@ -540,6 +541,7 @@ choose choose-cards/abdel-adrian-exile
 choose choose-cards/adventure-awaits-take
 choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
+choose choose-cards/aesir-escape-valhalla-exile
 choose choose-cards/aetherworks-marvel-cast
 choose choose-cards/agency-outfitter-search
 choose choose-cards/aggressive-sabotage-burn
@@ -1459,6 +1461,7 @@ condition attack/a-creature-you-control-attacks-alone
 condition attack/a-sea-creature-attacks-summon-leviathan
 condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
+condition attack/each-assassin-you-control
 condition attack/each-creature-you-control-unblocked
 condition attack/nontoken-creatures-attack
 condition attack/that-creature-attacks-an-opponent-of-the-controller
@@ -2046,6 +2049,7 @@ option option-pick/saurons-ransom-splitter
 option option-pick/season-of-gathering-type
 option option-pick/secret-choice
 option option-pick/seize-the-spotlight-answer
+option option-pick/senu-keen-eyed-protector-attack
 option option-pick/shah-of-naar-isle-draw
 option option-pick/shifting-ceratops-keyword
 option option-pick/skullwinder-opponent
@@ -2760,6 +2764,7 @@ tail abstract-performance/offer-cast
 tail abyssal-harvester/exile-other-nightmares
 tail abyssal-harvester/nightmare-copy
 tail advanced-reconstruction/exile-random
+tail aesir-escape-valhalla/after-exile
 tail aether-rift/offer-return-of-discarded-creature
 tail afflicted-deserter/damage-controller-if-destroyed
 tail agathas-soul-cauldron/after-exile
@@ -3669,6 +3674,7 @@ tail seed-of-hope/after-mill
 tail seek-thrills/after-mill
 tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
+tail senu-keen-eyed-protector/entered
 tail shadow-kin/after-exile
 tail sheoldred-the-true-scriptures/flicker-this
 tail shifting-shadow/attach-then-bottom
