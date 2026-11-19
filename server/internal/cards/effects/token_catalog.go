@@ -487,6 +487,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedBnsHumanRogueToken,
 	// S82 BNS batch 51: Ozox, the Clattering King's Jumblebones.
 	printedBnsB51JumblebonesToken,
+	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
+	printedGapB05BlackLotusToken,
+	printedGapB05LordOfThePitToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

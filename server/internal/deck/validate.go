@@ -245,7 +245,16 @@ func validateCommander(list *List) error {
 
 	// Total count: commanders + mainboard should be 100.
 	total := len(list.Commanders) + len(list.Mainboard)
-	if total != 100 {
+	if rb := commanderRulebreaker(list.Commanders); rb.noMaxDeckSize {
+		// "No maximum deck size" (rulebreaker.go): a deck still holds at
+		// least 100 cards.
+		if total < 100 {
+			vs = append(vs, Violation{
+				Code:    CodeWrongCardCount,
+				Message: fmt.Sprintf("deck has %d cards; expected at least 100", total),
+			})
+		}
+	} else if total != 100 {
 		vs = append(vs, Violation{
 			Code:    CodeWrongCardCount,
 			Message: fmt.Sprintf("deck has %d cards; expected 100", total),
@@ -306,19 +315,8 @@ func validateCommander(list *List) error {
 				allowed[sym] = struct{}{}
 			}
 		}
-		allowedList := commanderIdentityList(allowed)
-		for _, c := range list.Mainboard {
-			for _, sym := range c.ColorIdentity {
-				if _, ok := allowed[sym]; !ok {
-					vs = append(vs, Violation{
-						Code:    CodeColorIdentity,
-						Card:    c.Name,
-						Message: fmt.Sprintf("%q has color identity %v but commander allows %v", c.Name, c.ColorIdentity, allowedList),
-					})
-					break // one violation per card — don't spam
-				}
-			}
-		}
+		// A Rulebreaker commander (rulebreaker.go) widens what a deck may hold.
+		vs = append(vs, colorIdentityViolations(list, allowed)...)
 	}
 
 	// The sideboard (ADR 0191). Commander uses none (CR 903.5e), so the

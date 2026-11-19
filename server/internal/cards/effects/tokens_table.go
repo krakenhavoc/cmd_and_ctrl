@@ -558,4 +558,7 @@ var tokenTable = map[string]game.Card{
 	"7/7 green Elemental with trample": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 7, Toughness: 7, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	// S82 BNS batch 50: Cynette, Jelly Drover's Jellyfish.
 	"1/1 blue Jellyfish with flying": {Name: "Jellyfish", TypeLine: "Token Creature — Jellyfish", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+
+	// S82 GAP batch 05: Nivea, Beloved Battlemage's Akroma.
+	"6/6 white Legendary Angel named Akroma, Angel of Wrath with flying, first strike, vigilance, trample, haste and protection from black and from red": {Name: "Akroma, Angel of Wrath", TypeLine: "Token Legendary Creature — Angel", Power: 6, Toughness: 6, Colors: []string{"W"}, Keywords: []string{"flying", "first strike", "vigilance", "trample", "haste", "protection from black", "protection from red"}},
 }

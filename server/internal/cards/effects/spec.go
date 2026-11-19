@@ -777,6 +777,16 @@ type Spec struct {
 	//	SpellsYouCastHaveDelve: true, // Teval, Arbiter of Virtue
 	SpellsYouCastHaveDelve bool
 
+	// FirstSpellHasAssist is a permanent's "The first spell you cast during
+	// each of your turns has assist" (Yume, Chronicler of Valor): a static
+	// ability of the permanent (CR 604.1), read off the battlefield as a
+	// spell is announced (game.SpellHasAssistLocked), so it gives assist to
+	// the first spell its controller casts on their own turn while it is
+	// there, and to none once it has gone or lost its abilities:
+	//
+	//	FirstSpellHasAssist: true, // Yume, Chronicler of Valor
+	FirstSpellHasAssist bool
+
 	// AsYouCascadePutALand is "As you cascade, you may put a land card from
 	// among the exiled cards onto the battlefield tapped" (Averna, the Chaos
 	// Bloom): cascade's land step for this permanent's controller.

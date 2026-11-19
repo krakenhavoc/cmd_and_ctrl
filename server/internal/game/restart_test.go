@@ -389,7 +389,7 @@ func TestRestartWithAShortDeckLosesAtTheFirstCheck(t *testing.T) {
 // side, here and in restartedPlayer, or this fails.
 func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 	carried := map[string]bool{
-		"ID": true, "Name": true, "Seat": true, "DeckImported": true,
+		"ID": true, "Name": true, "Seat": true, "DeckImported": true, "StartingDeckSize": true,
 		"DiscordID": true, "DiscordAvatarHash": true, "DisplayName": true,
 		"IsBot": true, "BotTier": true, "BotDeck": true, "Agent": true, "AgentClient": true,
 		"TriggerOrder": true, "AutoAnswers": true,

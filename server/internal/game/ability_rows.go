@@ -251,6 +251,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "TriggerDoublers", fallback: "Abilities trigger an additional time", ownLabel: true},
 	{field: "TriggerSuppressors", fallback: "Stops abilities from triggering", ownLabel: true},
 	{field: "SpellsYouCastHaveDelve", label: boolRow("Spells you cast have delve.")},
+	{field: "FirstSpellHasAssist", label: boolRow("The first spell you cast during each of your turns has assist.")},
 	{field: "AsYouCascadePutALand", label: boolRow("As you cascade, you may put a land card from among the exiled cards onto the battlefield tapped.")},
 	{field: "SplitSecondGrants", fallback: "Your spells have split second", ownLabel: true},
 	{field: "GrantedOptionalCosts", fallback: "Spells you cast have an additional cost", ownLabel: true},
