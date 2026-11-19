@@ -175,14 +175,16 @@ func TestPlayerKeywordsIfRefusesAnEntryWithNoCondition(t *testing.T) {
 }
 
 // TestPlayerKeywordsIfRefusesATokenNobodyReads: the vocabulary is
-// PlayerKeywords', so shroud is refused here too.
+// PlayerKeywords', so a token no player consumer reads (flying) is
+// refused here too. It used to be shroud, until Gilded Light (#5842)
+// gave a player's shroud a reader.
 func TestPlayerKeywordsIfRefusesATokenNobodyReads(t *testing.T) {
 	defer func() {
 		if recover() == nil {
-			t.Error("checkPlayerKeywords accepted shroud as a conditional player ability")
+			t.Error("checkPlayerKeywords accepted flying as a conditional player ability")
 		}
 	}()
 	checkPlayerKeywords(Spec{Name: "Test", PlayerKeywordsIf: []game.PlayerKeywordIf{
-		YouHaveWhile("shroud", "You have shroud.", func(*game.Game, game.Card) bool { return true }),
+		YouHaveWhile("flying", "You have flying.", func(*game.Game, game.Card) bool { return true }),
 	}})
 }

@@ -73,6 +73,17 @@ describe("the seat keyword badge", () => {
     expect(got[0].title).toBe("Hexproof");
   });
 
+  // #5842 (CR 702.18a): Gilded Light's shroud gets its own icon badge,
+  // and the tooltip says it stops the seat's own spells too.
+  it("shows a shroud badge naming Shroud, with an icon rather than the raw token", () => {
+    const { container } = render(PlayerIdentity as never, props(seat(["shroud"])) as never);
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].title).toMatch(/^Shroud — /);
+    expect(got[0].title).toContain("their own included");
+    expect(container.querySelector(".seat-keywords .kw-badge svg")).not.toBeNull();
+  });
+
   it("shows a protection badge that titles the quality rather than the raw token", () => {
     const { container } = render(
       PlayerIdentity as never,

@@ -491,8 +491,9 @@ const KeywordFlanking = "flanking"
 // would wrongly protect it there.
 //
 // Players are not covered HERE, and since #1197 that is a split
-// rather than a gap: hexproof and protection on a PLAYER (Leyline of
-// Sanctity, Teferi's Protection) are answered by
+// rather than a gap: hexproof, shroud and protection on a PLAYER
+// (Leyline of Sanctity, Gilded Light, Teferi's Protection) are
+// answered by
 // canPlayerBeTargetedByLocked in player_statics.go, at the same two
 // targeting call sites and on the same `targeting` switch. A
 // TargetPlayer ref goes there; a TargetCard ref comes here. Two

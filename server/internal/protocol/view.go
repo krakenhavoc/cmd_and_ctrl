@@ -3057,8 +3057,8 @@ type PlayerView struct {
 	OutsidePlay *OutsidePlayView `json:"outside_play,omitempty"`
 
 	// Keywords are the abilities this PLAYER has right now
-	// (CR 702.11d, CR 702.16i) — engine tokens, "hexproof" or
-	// "protection from everything". Derived grants from a controlled
+	// (CR 702.11d, CR 702.16i, CR 702.18a) — engine tokens, "hexproof",
+	// "shroud" (Gilded Light) or "protection from everything". Derived grants from a controlled
 	// permanent (Leyline of Sanctity, Aegis of the Gods) first, then
 	// the ones granted for a duration (Teferi's Protection, The One
 	// Ring). Absent for every seat that has none, which is nearly

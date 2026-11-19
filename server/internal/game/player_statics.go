@@ -48,7 +48,7 @@ import "github.com/google/uuid"
 // THREE CONSUMERS, one predicate each, all of them a branch that
 // already existed and returned early:
 //
-//	targeting   canPlayerBeTargetedByLocked   targets.go               CR 702.11c / 702.16b
+//	targeting   canPlayerBeTargetedByLocked   targets.go               CR 702.11c / 702.16b / 702.18a
 //	damage      protectionPreventsDamageLocked builtin_replacements.go CR 702.16e
 //	attachment  attachmentLegalLocked          attach.go               CR 702.16c
 //
@@ -73,6 +73,13 @@ import "github.com/google/uuid"
 // hand-written token grants nothing at all — the same argument
 // ProtectionFromChosenPlayer carries in protection.go.
 const KeywordHexproof = "hexproof"
+
+// KeywordShroud is CR 702.18a's token: "This permanent or player can't
+// be the target of spells or abilities." The same spelling a
+// permanent's shroud uses (keywords.go reads it there), named here for
+// a player's because Gilded Light (#5842) grants it and a card file
+// spells it.
+const KeywordShroud = "shroud"
 
 // PlayerStatic is ONE ability a player has, with the duration it has
 // it for. The player-level twin of ScopedEffect, and deliberately
@@ -614,10 +621,12 @@ func (g *Game) PlayerProtectedFromLocked(p *Player, src *Characteristic) (Protec
 //     stated quality, or of abilities from a SOURCE with it. Tested
 //     against the source OBJECT, never its controller, exactly as it
 //     is for a permanent.
-//
-// Shroud is absent on purpose: no card prints shroud on a player, and
-// a token with no card behind it is what CanonicalKeywords refuses a
-// bare "protection" for.
+//   - shroud (CR 702.18a) — can't be the target of spells or
+//     abilities AT ALL, the player's own included (#5842, Gilded
+//     Light). It asks neither who nor what, so it refuses whatever
+//     else the player has, and no hexproof waiver touches it: Kaya's
+//     "as though they didn't have hexproof" says nothing about shroud,
+//     exactly as canBeTargetedBy treats a permanent's.
 //
 // A nil player returns true — a caller that has lost the seat has an
 // existence problem, which the walk that wraps this reports
@@ -642,6 +651,12 @@ func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 		allowed   = true
 	)
 	g.playerAbilityTokensLocked(p, func(tok string) bool {
+		if tok == KeywordShroud {
+			// CR 702.18a asks nothing: nobody may target this
+			// player, the player included.
+			allowed = false
+			return false
+		}
 		if tok == KeywordHexproof {
 			// CR 702.11c asks WHO, and only who — unless a static
 			// on the battlefield lets this source's controller

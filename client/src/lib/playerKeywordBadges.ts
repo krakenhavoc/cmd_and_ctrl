@@ -4,8 +4,8 @@
 //
 // PlayerView.keywords (docs/protocol.md, server/internal/protocol/
 // view.go) carries the bare engine tokens a seat has right now:
-// "hexproof", or a general "protection from <quality>" (CR 702.16i /
-// CR 702.11d). Unlike CardView.protection, the wire does not parse
+// "hexproof", "shroud" (#5842), or a general "protection from
+// <quality>" (CR 702.16i / CR 702.11d). Unlike CardView.protection, the wire does not parse
 // the quality into a structured ProtectionView for a seat — there is
 // exactly one production quality today ("everything", from Teferi's
 // Protection, The One Ring, Leyline of Sanctity and Aegis of the
@@ -318,6 +318,20 @@ export function playerKeywordBadges(
         short: "HEX",
         title: "Hexproof",
         icon: KEYWORD_ICONS.hexproof,
+        kind: "plain",
+      });
+      continue;
+    }
+
+    // #5842 (CR 702.18a): shroud on a seat (Gilded Light). Same icon as
+    // a card's shroud badge; the tooltip says what sets it apart from
+    // hexproof, since the seat's own spells can't target it either.
+    if (token === "shroud") {
+      badges.push({
+        key: token,
+        short: "SHR",
+        title: "Shroud — can't be the target of spells or abilities, their own included",
+        icon: KEYWORD_ICONS.shroud,
         kind: "plain",
       });
       continue;

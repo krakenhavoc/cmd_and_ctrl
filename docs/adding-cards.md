@@ -3879,6 +3879,12 @@ two declarations: the player half there, and the creature half as an
 ordinary layer-6 grant (`ThisHasDuringYourTurn(KeywordHexproof)`). Gruul
 Spellbreaker and Captain America, Super-Soldier are the two cards.
 
+**"You gain shroud" (#5842, CR 702.18a).** A player can have shroud:
+`GainPlayerKeyword{Keyword: KeywordShroud, …}` (Gilded Light), or
+`Spec.PlayerKeywords`. Unlike hexproof it refuses every spell and
+ability, the player's own included, and a hexproof waiver does not
+reach it.
+
 **Ward costs** (`effects.Ward(cost, label)`): `WardMana("{2}")`,
 `WardWaterbend`, `WardLife(2)`, `WardSacrifice("a creature", Creature())`
 and, since #3172, `WardDiscard(1)` ("Ward—Discard a card"). Each is one
