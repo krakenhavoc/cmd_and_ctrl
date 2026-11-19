@@ -535,6 +535,7 @@ choose avatar-b30/azula-experience-after-discard
 choose avatar-b30/jet-rebel-leader-put-attacking
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
+choose choose-cards/adventure-awaits-take
 choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aetherworks-marvel-cast
