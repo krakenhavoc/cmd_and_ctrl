@@ -27,6 +27,8 @@ func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 		{Kind: ModCantBeBlockedByPower, Amount: 2},                           // no text
 		{Kind: ModCantBeBlockedBySubtypes, Text: "Walls"},                    // no subtype
 		{Kind: ModCantBeBlockedBySubtypes, Subtypes: []string{"Wall"}},       // no text
+		{Kind: ModCantBlockSubtypes, Text: "Cowards"},                        // no subtype
+		{Kind: ModCantBlockSubtypes, Subtypes: []string{"Coward"}},           // no text
 	}
 	for _, m := range bad {
 		if blockRuleModProblem(m) == "" {
@@ -41,6 +43,7 @@ func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 		{Kind: ModCantBeBlockedByPower, Amount: 2, Text: "creatures with power 2 or less"},
 		{Kind: ModCantBeBlockedByPower, Amount: 0, Text: "creatures with power 0 or less"},
 		{Kind: ModCantBeBlockedBySubtypes, Subtypes: []string{"Wall"}, Text: "Walls"},
+		{Kind: ModCantBlockSubtypes, Subtypes: []string{"Coward"}, Text: "Cowards"},
 	}
 	for _, m := range ok {
 		if p := blockRuleModProblem(m); p != "" {
