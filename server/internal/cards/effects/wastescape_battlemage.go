@@ -27,13 +27,7 @@ func init() {
 			castTriggerIfKickedWith("{G}",
 				"Wastescape Battlemage — kicked with {G}, exile target artifact or enchantment an opponent controls",
 				TargetPermanent("target artifact or enchantment an opponent controls", And(Or(Artifact(), Enchantment()), OpponentControls())),
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						return ExileTarget{Target: t.ID}.Apply(ctx)
-					}
-					return nil
-				}),
+				exileTheFirstLegalTarget),
 			castTriggerIfKickedWith("{1}{U}",
 				"Wastescape Battlemage — kicked with {1}{U}, return target creature an opponent controls to its owner's hand",
 				TargetCreature("target creature an opponent controls", OpponentControls()),
