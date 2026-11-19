@@ -822,6 +822,7 @@ choose choose-cards/jaya-fiery-negotiator-play
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/jungle-basin-return-an-untapped-forest
+choose choose-cards/kaalia-of-the-vast-put
 choose choose-cards/kaito-dancing-shadow-return
 choose choose-cards/kamiz-obscura-oculus-discarded
 choose choose-cards/kamiz-obscura-oculus-double-strike
@@ -1617,6 +1618,7 @@ confirm confirm/hauntwoods-shrieker-face-up
 confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
+confirm confirm/horrid-shadowspinner-loot
 confirm confirm/ill-timed-explosion-discard
 confirm confirm/illuna-apex-of-wishes-put
 confirm confirm/imposing-grandeur-may-wheel
