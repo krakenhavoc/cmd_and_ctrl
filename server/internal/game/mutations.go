@@ -2687,6 +2687,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
 			}
+			// Psemilla's "first enchantment spell you cast each turn".
+			if characteristicHasType(ch, "Enchantment") {
+				tally.Enchantment++
+			}
 			// Serah Farron's "first legendary creature spell you cast each turn".
 			if characteristicHasType(ch, "Creature") && characteristicHasSupertype(ch, "Legendary") {
 				tally.LegendaryCreature++

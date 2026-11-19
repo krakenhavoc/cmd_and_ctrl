@@ -2143,6 +2143,12 @@ type CastTally struct {
 	// spell while Artifact is still 0: a cost is determined (CR 601.2f)
 	// before the spell is counted here.
 	Artifact int `json:"artifact,omitempty"`
+	// Enchantment counts the enchantment spells the player cast this turn,
+	// read as each spell became cast like Artifact (CR 601.2i): Psemilla,
+	// Meletian Poet's "whenever you cast your first enchantment spell each
+	// turn" reads 1 on the cast event, which is bumped before it. Additive
+	// within the snapshot version.
+	Enchantment int `json:"enchantment,omitempty"`
 	// LegendaryCreature counts the legendary creature spells the player
 	// cast this turn, read as each spell became cast like Artifact:
 	// Serah Farron's "the first legendary creature spell you cast each

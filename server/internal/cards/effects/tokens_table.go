@@ -548,4 +548,7 @@ var tokenTable = map[string]game.Card{
 
 	// S82 BNS batch 25: Foundations Jumpstart's Akroan Crusader.
 	"1/1 red Soldier with haste": {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+
+	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
+	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
 }
