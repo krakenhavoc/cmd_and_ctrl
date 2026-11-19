@@ -709,6 +709,7 @@ choose choose-cards/dormant-volcano-return-an-untapped-mountain
 choose choose-cards/drake-familiar-return
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/duelists-flame-exile
+choose choose-cards/duskmantle-seer-take
 choose choose-cards/dyadrine-remove-two-counters
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
