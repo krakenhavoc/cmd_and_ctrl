@@ -3169,6 +3169,7 @@ tail go-nuts/fight
 tail goblin-plate-mail/attach
 tail golden-argosy/schedule-return-tapped
 tail goldwardens-gambit/after-tokens
+tail gorging-vulture/after-mill
 tail grasping-tentacles/choose-artifact
 tail grave-researcher/become-prepared
 tail graveyard-auras/attach-and-schedule-sacrifice
