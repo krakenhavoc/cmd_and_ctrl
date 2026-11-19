@@ -123,6 +123,13 @@ type ActivationAbility struct {
 	// activated". Derived from ActivatedAbilityShape.PowerUp by
 	// ActivationAbilityOf, never set by a card file.
 	PowerUp bool
+
+	// Cycling marks a cycling ability, typecycling included (CR 702.29f:
+	// "typecycling abilities are cycling abilities"), because
+	// Stabilizer's clause names the action: "Players can't cycle cards"
+	// (#5843). Derived from ActivatedAbilityShape.Cycling by
+	// ActivationAbilityOf, never set by a card file.
+	Cycling bool
 }
 
 // ActivationAbilityOf is the one place an activated ability's shape
@@ -141,6 +148,7 @@ func ActivationAbilityOf(ab ActivatedAbilityShape) ActivationAbility {
 		Loyalty:      ab.Cost.Loyalty != nil,
 		Equip:        ab.Equip,
 		PowerUp:      ab.PowerUp,
+		Cycling:      ab.Cycling,
 	}
 }
 

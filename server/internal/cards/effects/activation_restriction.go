@@ -173,6 +173,29 @@ func ChosenNameCantActivate(label string, exemptMana bool) game.ActivationRestri
 	}
 }
 
+// PlayersCantCycle is Stabilizer's "Players can't cycle cards" (#5843):
+// every cycling ability is refused, for every player, the source's
+// controller included, while the restricting permanent is on the
+// battlefield.
+//
+// It keys on the ability's CYCLING bit (ActivationAbility.Cycling, from
+// ActivatedAbilityShape.Cycling) and nothing about the card: cycling a
+// card is activating its cycling ability (CR 702.29a), and CR 702.29f
+// says an effect that stops players from cycling also stops typecycling,
+// which effects.Typecycling builds on the same bit. No zone test, unlike
+// SourcesCantActivate: the clause names the action, not a type of
+// permanent, so a cycling ability is refused wherever it would function
+// from. Mana abilities are never cycling abilities, so there is no
+// exemption to choose.
+func PlayersCantCycle(label string) game.ActivationRestriction {
+	return game.ActivationRestriction{
+		Label: label,
+		Forbids: func(q game.ActivationQuery) bool {
+			return q.Ability.Cycling
+		},
+	}
+}
+
 // ChooseCardNameAsEnters builds the `Spec.AsEnters` for a permanent
 // whose text opens "As this permanent enters, choose a card name"
 // (CR 614.12) — Pithing Needle, Phyrexian Revoker, Sorcerous
