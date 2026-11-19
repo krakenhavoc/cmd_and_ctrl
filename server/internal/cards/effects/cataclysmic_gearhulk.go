@@ -130,9 +130,19 @@ func gearhulkPresent(cards []game.Card) []string {
 }
 
 func cataclysmicGearhulkEffect(g *game.Game, item *game.StackItem) error {
+	return gearhulkKeepOneOfEach(g, item, false)
+}
+
+// gearhulkKeepOneOfEach is the Gearhulk's resolution for every player, or,
+// with opponentsOnly, for each opponent of the effect's controller (Ajani,
+// Nacatl Avenger's −4).
+func gearhulkKeepOneOfEach(g *game.Game, item *game.StackItem, opponentsOnly bool) error {
 	var legs []game.ChooseCardsPrompt
 	var seats []uuid.UUID
 	for _, seat := range apnapLivingSeats(g) {
+		if opponentsOnly && seat == item.Controller {
+			continue
+		}
 		board := gearhulkBoard(g, seat)
 		if len(board) == 0 {
 			continue

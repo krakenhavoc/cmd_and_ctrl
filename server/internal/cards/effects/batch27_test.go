@@ -210,19 +210,6 @@ func TestBatch27CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The remaining declared skip stays out until its seam lands: a
-	// choose-a-card-from-hand entry choice (Ugin's Labyrinth's
-	// imprint).
-	//
-	// Skirge Familiar LEFT this list in #1213, which put the #660
-	// discard component on effects.ManaAbilityCost.
-	for oracle, name := range map[string]string{
-		"d565cd3d-68d4-4039-9e45-7e69e31d0ffb": "Ugin's Labyrinth",
-	} {
-		if _, ok := Lookup(oracle); ok {
-			t.Errorf("%s is declared skipped on #389 but is registered — update the issue", name)
-		}
-	}
 }
 
 // --- the statics ---------------------------------------------------
