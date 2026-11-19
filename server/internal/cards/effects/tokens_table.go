@@ -552,4 +552,7 @@ var tokenTable = map[string]game.Card{
 
 	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
 	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
+
+	// S82 BNS batch 54: Giant Opportunity's Giant.
+	"7/7 green Giant": {Name: "Giant", TypeLine: "Token Creature — Giant", Power: 7, Toughness: 7, Colors: []string{"G"}},
 }

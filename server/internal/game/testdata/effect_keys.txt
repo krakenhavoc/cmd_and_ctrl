@@ -767,6 +767,7 @@ choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gerrards-verdict-life
 choose choose-cards/gert-and-old-lace-search
 choose choose-cards/gift-of-perfection-assimilate
+choose choose-cards/gift-of-the-gargantuan-take
 choose choose-cards/gifts-ungiven-settle
 choose choose-cards/gilgamesh-master-at-arms-equipment
 choose choose-cards/gilgamesh-master-at-arms-samurai
@@ -2412,6 +2413,7 @@ run braids-frightful-return/each-opponent-discards
 run braids-frightful-return/edict
 run dalek-intensive-care/exile
 run engine/explore-each-pick
+run giant-opportunity/sacrifice-two-foods
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
 run prompt-run/altar-of-the-wretched-payout
@@ -2846,6 +2848,7 @@ tail boneclad-necromancer/zombie-if-exiled
 tail borg-cube/assimilated
 tail borrowed-knowledge/draw-opponents-hand
 tail bounding-felidar/gain-life
+tail bounty-of-skemfar/elf-then-rest
 tail brago-king-eternal/return-exiled
 tail brass-tunnel-grinder/check-bore
 tail brass-tunnel-grinder/transform
