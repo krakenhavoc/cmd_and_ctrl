@@ -242,11 +242,17 @@ func TestTrekB24HitItGivesHasteAndPutsALandFromTheTopFive(t *testing.T) {
 	}
 	for _, i := range []int{0, 2, 3, 4} {
 		if !me.Graveyard.Contains(ids[i]) {
-			t.Errorf("revealed card %d is not in the graveyard", i)
+			t.Errorf("card %d of the five is not in the graveyard", i)
 		}
 	}
 	if !me.Library.Contains(ids[5]) {
 		t.Error("the sixth card left the library")
+	}
+	// "Look at", not "reveal" (#5949's erratum): nothing is shown to the table.
+	for i, id := range ids[:5] {
+		if hornRevealed(g, id) {
+			t.Errorf("card %d was revealed; Hit It! only looks at the top five", i)
+		}
 	}
 	bear := b16Creature(g, me.ID, "Fresh Bear", "Creature — Bear", 2, 2)
 	if !hasEffectiveKeyword(t, g, bear, "haste") {

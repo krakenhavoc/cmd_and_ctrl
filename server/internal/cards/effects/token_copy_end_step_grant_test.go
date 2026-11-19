@@ -163,7 +163,7 @@ func TestTokenCopyEndStepSacrificeTriggersAtEachEndStep(t *testing.T) {
 }
 
 // Face Yourself's "except it has haste and 'At the beginning of the end
-// step, if you don't control a planeswalker, sacrifice this creature.'" is
+// step, if you don't control a planeswalker, sacrifice this token.'" is
 // the same CR 707.9a grant: a token copy of one of its tokens has the
 // trigger too, and both are sacrificed with no planeswalker.
 func TestFaceYourselfSacrificeIsCopiedWithTheToken(t *testing.T) {

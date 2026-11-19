@@ -11,7 +11,7 @@ import (
 //	"Pack tactics — Whenever this creature attacks, if you attacked with
 //	 creatures with total power 6 or greater this combat, draw a card.
 //	 {3}{G}: Until end of turn, this creature has base power and
-//	 toughness 5/3, gains trample, and isn't a Human."
+//	 toughness 5/3, gains trample, and is a Werewolf."
 //
 // Pack tactics is an ability word. Its trigger is an intervening "if"
 // (CR 603.4): the total power of the creatures declared as attackers is
@@ -22,10 +22,15 @@ import (
 // had (CR 608.2h).
 //
 // The activated ability is one record until end of turn (CR 611.2c, 613.1):
-// "isn't a Human" is a layer-4 subtype loss (game.LoseSubtypesMod, CR
-// 613.1d, #4072), the base 5/3 layer 7b and trample layer 6. While it
-// lasts a Human lord (Mayor of Avabruck) no longer pumps the creature,
-// and a non-Human lord (Mikaeus, the Unhallowed) does.
+// "is a Werewolf" sets the creature types (game.SetCreatureTypesMod,
+// layer 4, CR 205.1a, 613.1d), the base 5/3 layer 7b and trample layer 6.
+// The printed card is a Human Werewolf, so while it lasts it is not a
+// Human: a Human lord (Mayor of Avabruck) no longer pumps it, and a
+// non-Human lord (Mikaeus, the Unhallowed) does. Every other creature
+// type it had gained goes too, changeling's "every creature type" with
+// them; a later type grant applies on top (CR 613.7). The Oracle text
+// said "isn't a Human" until an erratum (#5949), which removed Human
+// alone (#4072).
 //
 // No simplification.
 func init() {
@@ -47,15 +52,15 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:   "{3}{G}: Until end of turn, this creature has base power and toughness 5/3, gains trample, and isn't a Human.",
+			Label:   "{3}{G}: Until end of turn, this creature has base power and toughness 5/3, gains trample, and is a Werewolf.",
 			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{3}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return untilEndOfTurn(ctx, ctx.Source(), nil,
-					"Werewolf Pack Leader — base 5/3, trample and not a Human until end of turn",
+					"Werewolf Pack Leader — base 5/3, trample and only a Werewolf until end of turn",
 					game.SetBasePowerMod(5), game.SetBaseToughnessMod(3), game.AddKeywordsMod("trample"),
-					game.LoseSubtypesMod(ctx.TextSubtype("Human")))
+					game.SetCreatureTypesMod(ctx.TextSubtypes("Werewolf")...))
 			},
 		}},
 	})
