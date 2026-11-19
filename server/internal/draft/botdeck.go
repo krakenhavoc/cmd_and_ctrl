@@ -46,7 +46,8 @@ const (
 	HeavyAverage = 3.3
 	// SplashCards is the most cards of a third colour a deck splashes,
 	// and SplashLands the lands it plays for them. A deck splashes only
-	// when its two colours do not fill it.
+	// when its two colours do not fill it, or have too few creatures for
+	// it (MinDeckCreatures).
 	SplashCards = 3
 	SplashLands = 3
 	// MinColourLands is the fewest lands a deck plays of a colour it
@@ -111,47 +112,15 @@ func (r Rater) BuildDeck(pool []Card, basics BasicLands, seed uint64) (main []st
 	})
 
 	x, y := bestColours(spells)
-	in := func(c rated, allowed ...int) bool {
-		for _, col := range c.colours {
-			ok := false
-			for _, a := range allowed {
-				ok = ok || col == a
-			}
-			if !ok {
-				return false
-			}
-		}
-		return true
-	}
 	var cands, rest []rated
 	for _, c := range spells {
-		if in(c, x, y) {
+		if onlyIn(c, x, y) {
 			cands = append(cands, c)
 		} else {
 			rest = append(rest, c)
 		}
 	}
-	chosen := chooseSpells(cands, DeckSpells)
-
-	// A splash, only when the pool forces it: the two colours do not
-	// fill the deck.
-	splash := -1
-	if len(chosen) < DeckSpells-1 {
-		splash = bestSplash(rest, x, y)
-		taken := 0
-		for _, c := range rest {
-			if splash < 0 || taken >= SplashCards || len(chosen) >= DeckSpells {
-				break
-			}
-			if in(c, x, y, splash) && pips(c.c.ManaCost)[splash] <= 1 && c.r >= RatingPlayable {
-				chosen = append(chosen, c)
-				taken++
-			}
-		}
-		if taken == 0 {
-			splash = -1
-		}
-	}
+	chosen, splash := chooseDeck(cands, rest, x, y)
 
 	// 23 and 17, or 22 and 18 for a heavy deck.
 	if len(chosen) == DeckSpells && averageManaValue(chosen) > HeavyAverage {
@@ -176,6 +145,77 @@ func (r Rater) BuildDeck(pool []Card, basics BasicLands, seed uint64) (main []st
 	}
 	lands = splitLands(chosen, DeckSize-len(chosen), basics, x, y, splash)
 	return main, lands
+}
+
+// chooseDeck takes the deck's nonland cards: chooseSpells over the
+// cards of its two colours, and a splash only when the pool forces it.
+// The two colours force it when they do not fill the deck, and when
+// they have too few creatures for it: the slots kept for creatures look
+// to a splash before they give way, as long as the deck comes out no
+// shorter for it. splash is -1 when the deck has none.
+func chooseDeck(cands, rest []rated, x, y int) (chosen []rated, splash int) {
+	chosen, splash = fillSplash(chooseSpells(cands, DeckSpells), rest, x, y, -1)
+	short := MinDeckCreatures - bodies(chosen)
+	if short <= 0 {
+		return chosen, splash
+	}
+	z, extra := creatureSplash(rest, x, y, min(short, SplashCards))
+	if z < 0 {
+		return chosen, splash
+	}
+	with, ws := fillSplash(chooseSpells(append(cands[:len(cands):len(cands)], extra...), DeckSpells), rest, x, y, z)
+	if bodies(with) > bodies(chosen) && len(with) >= min(len(chosen), DeckSpells-1) {
+		return with, ws
+	}
+	return chosen, splash
+}
+
+// fillSplash adds cards of a third colour to a deck its two colours do
+// not fill: up to SplashCards in all, each with a single symbol of it
+// and rated playable. The colour is `splash`, or the best one
+// (bestSplash) when that is -1. It returns the deck and its splash
+// colour, -1 when it has no card of one.
+func fillSplash(chosen, rest []rated, x, y, splash int) ([]rated, int) {
+	inDeck := map[string]bool{}
+	taken := 0
+	for _, c := range chosen {
+		inDeck[c.c.ID] = true
+		if !onlyIn(c, x, y) {
+			taken++
+		}
+	}
+	if len(chosen) < DeckSpells-1 {
+		if splash < 0 {
+			splash = bestSplash(rest, x, y)
+		}
+		for _, c := range rest {
+			if splash < 0 || taken >= SplashCards || len(chosen) >= DeckSpells {
+				break
+			}
+			if !inDeck[c.c.ID] && onlyIn(c, x, y, splash) && pips(c.c.ManaCost)[splash] <= 1 && c.r >= RatingPlayable {
+				chosen = append(chosen, c)
+				taken++
+			}
+		}
+	}
+	if taken == 0 {
+		splash = -1
+	}
+	return chosen, splash
+}
+
+// onlyIn reports whether every colour of the card is one of these.
+func onlyIn(c rated, allowed ...int) bool {
+	for _, col := range c.colours {
+		ok := false
+		for _, a := range allowed {
+			ok = ok || col == a
+		}
+		if !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // bestColours is the two colours whose cards make the best deck: for
@@ -221,6 +261,46 @@ func bestColours(sorted []rated) (int, int) {
 	return bx, by
 }
 
+// bodies is how many of the cards are creatures (rated.body).
+func bodies(cs []rated) int {
+	n := 0
+	for _, c := range cs {
+		if c.body() {
+			n++
+		}
+	}
+	return n
+}
+
+// creatureSplash is the third colour with the most creatures the deck
+// could splash, up to n of them, and those creatures: each a card of the
+// two colours and that one, with a single symbol of it, rated playable.
+// A tie goes to the better creatures. -1 when there is none.
+func creatureSplash(rest []rated, x, y, n int) (int, []rated) {
+	best, bestTotal := -1, 0.0
+	var bestCards []rated
+	for z := range 5 {
+		if z == x || z == y {
+			continue
+		}
+		var cards []rated
+		total := 0.0
+		for _, c := range rest {
+			if len(cards) == n {
+				break
+			}
+			if len(c.colours) > 0 && onlyIn(c, x, y, z) && c.body() && pips(c.c.ManaCost)[z] <= 1 && c.r >= RatingPlayable {
+				cards = append(cards, c)
+				total += c.r
+			}
+		}
+		if len(cards) > len(bestCards) || (len(cards) == len(bestCards) && len(cards) > 0 && total > bestTotal) {
+			best, bestTotal, bestCards = z, total, cards
+		}
+	}
+	return best, bestCards
+}
+
 // bestSplash is the third colour whose light cards add most.
 func bestSplash(rest []rated, x, y int) int {
 	best, bestTotal := -1, 0.0
@@ -258,10 +338,13 @@ func chooseSpells(cands []rated, n int) []rated {
 	var chosen []rated
 	var shape deckShape
 	used := make([]bool, len(cands))
-	creaturesLeft := 0
+	creaturesLeft, cheapCreaturesLeft := 0, 0
 	for _, c := range cands {
 		if c.body() {
 			creaturesLeft++
+			if c.f.ManaValue < TopEndManaValue {
+				cheapCreaturesLeft++
+			}
 		}
 	}
 	for len(chosen) < n {
@@ -271,12 +354,24 @@ func chooseSpells(cands []rated, n int) []rated {
 		// takes no more than MaxTopEnd cards of TopEndManaValue or more.
 		// Either gives way when the pool has nothing else.
 		reserve := creaturesLeft > 0 && MinDeckCreatures-shape.creatures >= n-len(chosen)
-		topFull := shape.topEnd() >= MaxTopEnd
+		// The top end is kept for creatures in the same way: when the
+		// deck can reach MinDeckCreatures only with dear creatures, the
+		// top-end slots they need are not spent on dear spells.
+		dearNeeded := max(MinDeckCreatures-shape.creatures-cheapCreaturesLeft, 0)
+		topFull := func(c rated) bool {
+			if c.f.ManaValue < TopEndManaValue {
+				return false
+			}
+			if c.body() {
+				return shape.topEnd() >= MaxTopEnd
+			}
+			return shape.topEnd()+dearNeeded >= MaxTopEnd
+		}
 		best := -1
-		for _, strict := range []struct{ reserve, top bool }{{reserve, topFull}, {reserve, false}, {false, topFull}, {false, false}} {
+		for _, strict := range []struct{ reserve, top bool }{{reserve, true}, {reserve, false}, {false, true}, {false, false}} {
 			bestScore := 0.0
 			for i, c := range cands {
-				if used[i] || (strict.reserve && !c.body()) || (strict.top && c.f.ManaValue >= TopEndManaValue) {
+				if used[i] || (strict.reserve && !c.body()) || (strict.top && topFull(c)) {
 					continue
 				}
 				if s := c.r + shape.need(c, progress); best < 0 || s > bestScore {
@@ -295,6 +390,9 @@ func chooseSpells(cands []rated, n int) []rated {
 		shape.add(cands[best])
 		if cands[best].body() {
 			creaturesLeft--
+			if cands[best].f.ManaValue < TopEndManaValue {
+				cheapCreaturesLeft--
+			}
 		}
 	}
 	return chosen

@@ -231,6 +231,63 @@ func TestBuildDeckSplashesOnlyWhenForced(t *testing.T) {
 	}
 }
 
+// When the deck can reach its creature count only with dear creatures,
+// the top end is kept for them: a five-mana Aura that rates higher does
+// not take a slot a six-mana creature needs.
+func TestBuildDeckKeepsTheTopEndForCreatures(t *testing.T) {
+	fx := loadBotFixture(t)
+	var pool []Card
+	pool = append(pool, repeatCards(fx, t, "m", 6, "Mind Control")...) // five mana, rated above the Giant
+	pool = append(pool, repeatCards(fx, t, "g", 10, "C2 Fixture Blue Giant")...)
+	pool = append(pool, repeatCards(fx, t, "c", 6, "C2 Fixture Blue Cub")...)
+	pool = append(pool, repeatCards(fx, t, "d", 10, "Divination")...)
+	if fx.rating(t, "Mind Control") <= fx.rating(t, "C2 Fixture Blue Giant") {
+		t.Fatal("the test needs Mind Control to rate above the Giant")
+	}
+	main, lands := fx.rater.BuildDeck(pool, nil, 1)
+	checkLegal(t, pool, nil, main, lands)
+	rep := reportDeck(fx.rater, pool, main, lands)
+	if rep.Creatures < MinDeckCreatures {
+		t.Errorf("%d creatures, want at least %d", rep.Creatures, MinDeckCreatures)
+	}
+	// Six cheap creatures, so seven dear ones and nothing else dear.
+	if top, want := rep.Curve[5]+rep.Curve[6], MinDeckCreatures-6; top != want {
+		t.Errorf("%d cards of five mana or more, want the %d creatures the count needs", top, want)
+	}
+	for _, id := range main {
+		if id[0] == 'm' {
+			t.Error("a Mind Control took a top-end slot the creatures needed")
+		}
+	}
+}
+
+// Two colours with too few creatures splash a third for them, lightly,
+// before the slots kept for creatures give way.
+func TestBuildDeckSplashesForCreatures(t *testing.T) {
+	fx := loadBotFixture(t)
+	var pool []Card
+	pool = append(pool, repeatCards(fx, t, "m", 12, "Murder")...)
+	pool = append(pool, repeatCards(fx, t, "b", 6, "C2 Fixture Black Cub")...)
+	pool = append(pool, repeatCards(fx, t, "l", 6, "Lightning Strike")...)
+	pool = append(pool, repeatCards(fx, t, "r", 5, "C2 Fixture Red Cub")...)
+	pool = append(pool, repeatCards(fx, t, "g", 3, "C2 Fixture Green Cub")...) // one green symbol each
+	main, lands := fx.rater.BuildDeck(pool, nil, 1)
+	checkLegal(t, pool, nil, main, lands)
+	rep := reportDeck(fx.rater, pool, main, lands)
+	if !reflect.DeepEqual(rep.Main, []string{"B", "R"}) || !reflect.DeepEqual(rep.Splash, []string{"G"}) {
+		t.Fatalf("colours %v, splash %v: want black and red, splashing green", rep.Main, rep.Splash)
+	}
+	if rep.Creatures != MinDeckCreatures {
+		t.Errorf("%d creatures, want %d: the eleven of black and red and two splashed", rep.Creatures, MinDeckCreatures)
+	}
+	if rep.Colours["G"] != MinDeckCreatures-11 {
+		t.Errorf("%d green cards splashed, want only the %d creatures the count needs", rep.Colours["G"], MinDeckCreatures-11)
+	}
+	if lands["Forest"] != SplashLands || len(main) != DeckSpells {
+		t.Errorf("%d nonland cards and lands %v, want %d and %d Forests", len(main), lands, DeckSpells, SplashLands)
+	}
+}
+
 // The edges: a pool too thin for 23 cards fills with lands and is still
 // 40, an empty pool is 40 lands, and the same pool and seed give the
 // same deck.
