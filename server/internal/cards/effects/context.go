@@ -217,6 +217,26 @@ func (c *Context) SacrificedPermanents() []game.PermanentInfo {
 	return out
 }
 
+// ReturnedPermanents is the permanents the activation's return-to-hand
+// cost returned, each as it last existed on the battlefield (CR 400.7j,
+// CR 608.2h; PaidCost.ReturnedObjects): Wonderscape Sage's "that land".
+// In the order named; nil when the cost returned nothing.
+//
+// Must be called under the write lock the resolution holds.
+func (c *Context) ReturnedPermanents() []game.PermanentInfo {
+	refs := c.Paid().ReturnedObjects
+	if len(refs) == 0 || c.Game == nil {
+		return nil
+	}
+	out := make([]game.PermanentInfo, 0, len(refs))
+	for _, ref := range refs {
+		if info, ok := c.Game.PermanentForEffect(ref); ok {
+			out = append(out, info)
+		}
+	}
+	return out
+}
+
 // SacrificedPermanent is the first permanent the cost sacrificed, as it
 // last existed on the battlefield — the reader for a clause that
 // sacrifices exactly one ("the sacrificed creature"). ok is false when
