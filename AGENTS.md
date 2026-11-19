@@ -251,9 +251,9 @@ long on purpose; open the subsection you need, not the whole file.
 
 Rules that must not be missed:
 
-- **One file per card**, `server/internal/cards/effects/<snake_name>.go`, one
-  `init()` each. The catalog is opt-in per Scryfall `oracle_id` (never
-  `scryfall_id`).
+- **One file per card**, one `init()` each, placed per
+  [Where a card goes](docs/adding-cards.md#where-a-card-goes). Opt-in
+  per Scryfall `oracle_id` (never `scryfall_id`).
 - **Declare `Completeness` truthfully.** The zero value is `Unreviewed` and is a
   legal thing to ship; never stamp `Full` to tidy it. `Caveats` are written for
   a player, one sentence, no engine vocabulary.

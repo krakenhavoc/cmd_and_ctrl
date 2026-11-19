@@ -1985,6 +1985,7 @@ func checkOffering(spec Spec) {
 // no AsEnters), which means a missed check would silently apply
 // nothing rather than triggering the manual fallback correctly.
 func Lookup(oracleID string) (Spec, bool) {
+	requireCompleteCatalog("Lookup")
 	s, ok := registry[oracleID]
 	return s, ok
 }
@@ -1995,6 +1996,7 @@ func Lookup(oracleID string) (Spec, bool) {
 // catalog. The returned slice is freshly allocated — callers can
 // mutate it freely without leaking into the registry.
 func All() []Spec {
+	requireCompleteCatalog("All")
 	out := make([]Spec, 0, len(registry))
 	for _, s := range registry {
 		out = append(out, s)
@@ -2005,6 +2007,7 @@ func All() []Spec {
 // Has reports whether the catalog knows the given oracle ID.
 // Convenience wrapper for the auto-badge bit (sub-PR 3).
 func Has(oracleID string) bool {
+	requireCompleteCatalog("Has")
 	_, ok := registry[oracleID]
 	return ok
 }

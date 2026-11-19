@@ -93,6 +93,13 @@ linters:
           - errcheck
           - unparam
         path: _test\.go
+      # The catalog's test helpers, lifted out of _test.go files when
+      # internal/cards/effects was split (#5906, ADR 0224): test code in
+      # non-test files, held to the same rules as the tests that call them.
+      - linters:
+          - errcheck
+          - unparam
+        path: internal/cards/effects/effectstest/
     paths:
       - third_party$
       - builtin$
