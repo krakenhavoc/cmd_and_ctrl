@@ -223,6 +223,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice)
 		checkAltCostSetRule(spec.Name, ac)
+		checkAltCostReturnCount(spec.Name, ac)
 		checkAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkAltCostRemoveCounters(spec.Name, ac)
@@ -1556,6 +1557,22 @@ func checkAltCostSetRule(card string, ac game.AlternativeCost) {
 			card, where, len(spec.EachOf), spec.Min, spec.Max))
 	}
 	checkSetRuleEntries(card, where, spec)
+}
+
+// checkAltCostReturnCount holds a return-to-hand alternative cost to a
+// fixed count (#5837): Daze's one Island, Gush's two, Thwart's three, as
+// ReturnInstead(…, PermanentYouControl(…).WithCount(n, n), …). The engine
+// reads Min as the number the caster names, exactly, so a Max above it
+// would be a range nothing reads, and an X count has no announce path.
+func checkAltCostReturnCount(card string, ac game.AlternativeCost) {
+	s := ac.ReturnToHand
+	if s == nil {
+		return
+	}
+	if s.CountFromX || s.Min < 1 || s.Max != s.Min {
+		panic(fmt.Sprintf("effects.Register: %q alternative cost %q returns %d to %d permanents — a return alternative cost names a fixed count, WithCount(n, n) with n >= 1",
+			card, ac.Key, s.Min, s.Max))
+	}
 }
 
 // checkAltCostXBound is #3175's guard for an alternative cost whose card
