@@ -2462,6 +2462,7 @@ run prompt-run/cmdr2-s18-killer-service-rhino
 run prompt-run/cmdr2-s22-kefnet-return-land
 run prompt-run/cmdr2-s34-each-player-may-put-counters
 run prompt-run/comet-crawler-pump
+run prompt-run/common-black-removal-menace
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
