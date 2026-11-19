@@ -702,6 +702,9 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 	// un-paused path orders it.
 	if ev.stackItem != nil {
 		g.attachResolvedAuraLocked(l.entered, ev.stackItem)
+		// #5929: a permanent spell that entered as a copy of an Aura (Copy
+		// Enchantment) chose its host as it entered (CR 303.4f).
+		g.attachEnteringAuraLocked(l.entered, ev)
 	} else {
 		// CR 303.4f (#3158): an Aura put onto the battlefield enters
 		// attached to the host its window settled, at the same point.

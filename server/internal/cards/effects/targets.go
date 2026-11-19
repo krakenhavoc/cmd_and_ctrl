@@ -700,6 +700,23 @@ func ControlledByThatEventActor(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// ControlledByThatEventLeaveController narrows a TRIGGERED ability's clause to
+// what the controller of the spell or ability behind the triggering zone
+// change controls (Karmic Justice's "destroy target permanent that opponent
+// controls" after "a spell or ability an opponent controls destroys a
+// noncreature permanent you control", #5929). ControlledByThatEventActor's
+// twin for an event whose Actor is not that player: this reads
+// Event.LeaveController. Data on the clause
+// (game.TargetSpec.ControlledByEventLeaveController), judged in the one shared
+// walk; on a spell, an activation or an event with no cause controller it
+// admits nothing.
+//
+//	ControlledByThatEventLeaveController(TargetPermanent("target permanent that opponent controls"))
+func ControlledByThatEventLeaveController(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ControlledByEventLeaveController = true
+	return spec
+}
+
 // ManaValueAtMostTheEventAmount narrows a TRIGGERED ability's clause to cards
 // whose mana value is at most the triggering event's Amount: "target creature
 // card with mana value X or less …, where X is the amount of damage this

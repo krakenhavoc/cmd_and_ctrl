@@ -355,6 +355,9 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if gr.MaxManaValueFunc != nil && gr.MaxManaValueText == "" {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a MaxManaValueFunc and no MaxManaValueText — the ability row words it", name, o.Key))
 		}
+		if gr.MaxManaValueOfSource != nil && gr.MaxManaValueText == "" {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a MaxManaValueOfSource and no MaxManaValueText — the ability row words it", name, o.Key))
+		}
 		if gr.LifeEqualToManaValue && (o.ManaCost != "" || o.Energy != 0 || gr.PricedAtManaCost) {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q pays life equal to mana value and also declares another price", name, o.Key))
 		}

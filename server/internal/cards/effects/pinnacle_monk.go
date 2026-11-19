@@ -29,16 +29,7 @@ func init() {
 		PrintedKeywords: []string{game.KeywordProwess},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Pinnacle Monk — return target instant or sorcery card from your graveyard to your hand",
-				func(g *game.Game, item *game.StackItem) error {
-					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-						return nil
-					}
-					ctx := NewContext(g, item)
-					if !ctx.IsTargetLegal(item.Targets[0]) {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneHand}.Apply(ctx)
-				}),
+				returnTargetInstantOrSorceryFromYourGraveyard),
 				TargetCardInGraveyard("target instant or sorcery card from your graveyard",
 					YouOwn(), Or(Instant(), Sorcery())),
 			),

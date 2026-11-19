@@ -280,6 +280,7 @@ body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
 body melira/return-listed-to-the-battlefield
+body memory-vampire/cast-from-graveyard
 body merry-bards/young-hero-role
 body miasma-demon/shrink
 body mindleech-ghoul/exile
@@ -478,6 +479,7 @@ body tip-the-scales/minus
 body tolarian-kraken/tap-or-untap
 body tranquil-frillback/modes
 body transformers/convert-this
+body transluminant/spirit-token
 body treasure/create-tapped
 body ty-lee-artful-acrobat/cant-block
 body ugins-binding/bounce-all
@@ -926,6 +928,7 @@ choose choose-cards/meanders-guide-tap
 choose choose-cards/memories-returning-bottom
 choose choose-cards/memories-returning-take
 choose choose-cards/memory-theft-adventure-to-graveyard
+choose choose-cards/memory-vampire-collect-evidence
 choose choose-cards/miasma-demon-discarded
 choose choose-cards/mill-then-take-cache-grab-pick
 choose choose-cards/mill-then-take-first-contact-first-spell-pick
@@ -1184,6 +1187,7 @@ choose choose-cards/rejoin-the-fight-pick
 choose choose-cards/relic-of-progenitus-exile
 choose choose-cards/rent-is-due-tap-two
 choose choose-cards/research-shuffle
+choose choose-cards/resonance-technician-investigate-twice
 choose choose-cards/return-chosen-from-graveyard
 choose choose-cards/return-picked-to-hand
 choose choose-cards/ring-bearer
@@ -1240,6 +1244,8 @@ choose choose-cards/sigardian-zealot-pump
 choose choose-cards/silvan-reveler-discarded
 choose choose-cards/skywarp-skaab-exile
 choose choose-cards/slaughter-the-strong-keep-leg
+choose choose-cards/sludge-titan-creature
+choose choose-cards/sludge-titan-land
 choose choose-cards/smugglers-surprise-put-creatures
 choose choose-cards/smugglers-surprise-take-milled
 choose choose-cards/snc-b04-obscura-interceptor-discarded
@@ -1602,6 +1608,7 @@ confirm confirm/kaya-intangible-slayer-scry
 confirm confirm/kellan-daring-traveler-to-graveyard
 confirm confirm/killmonger-sacrifice
 confirm confirm/kimahri-ronso-rage-copy
+confirm confirm/kraul-harpooner-fight
 confirm confirm/krile-baldesion-return
 confirm confirm/kukemssa-pirates-gain-control
 confirm confirm/kwain-draw
@@ -2212,6 +2219,7 @@ payunless pay-unless/krenko-baron-of-tin-street-goblin
 payunless pay-unless/krovod-haunch-dogs
 payunless pay-unless/krydle-of-baldurs-gate-unblockable
 payunless pay-unless/lazotep-chancellor-amass
+payunless pay-unless/leyline-of-lightning-ping
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
@@ -2250,6 +2258,7 @@ payunless pay-unless/phoenix-chick-return
 payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
+payunless pay-unless/pyrewild-shaman-return
 payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
 payunless pay-unless/remnant-of-the-rising-star-x-counters
@@ -2417,6 +2426,7 @@ run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
+run prompt-run/covetous-elegy-keep
 run prompt-run/cruel-grimnarch-gain
 run prompt-run/cycle-of-renewal-fetch
 run prompt-run/dahar-master-sacrifice
@@ -3184,6 +3194,7 @@ tail go-nuts/fight
 tail goblin-plate-mail/attach
 tail golden-argosy/schedule-return-tapped
 tail goldwardens-gambit/after-tokens
+tail gorging-vulture/after-mill
 tail grasping-tentacles/choose-artifact
 tail grave-researcher/become-prepared
 tail graveyard-auras/attach-and-schedule-sacrifice
@@ -3354,6 +3365,7 @@ tail mill-then-take/temporal-anomaly
 tail mill-then-take/vivien-on-the-hunt
 tail mill-then-take/wasteful-harvest
 tail mill-then/lluwen-imperfect-naturalist
+tail mill-then/sludge-titan
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
 tail mimic-vat/return-others
@@ -3632,6 +3644,7 @@ tail smugglers-surprise/after-mill
 tail smugglers-surprise/protect
 tail snc-b04/obscura-interceptor-connive
 tail snc-b04/psychic-pickpocket-connive
+tail sneak-attack/entered
 tail sold-out/clue
 tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
@@ -3956,6 +3969,7 @@ tail then/silver-bolt-destroy-werewolf
 tail then/skrelv-defector-mite-color-chosen
 tail then/sorcerers-strongbox-draw
 tail then/sorin-lord-of-innistrad-return
+tail then/spawn-of-mayhem-counter
 tail then/sphinx-of-clear-skies-take
 tail then/spiteful-repossession-step
 tail then/standstill-opponents-draw-three
@@ -4030,6 +4044,7 @@ tail trek-b31/artifact-creatures-protection-from-chosen-color
 tail trek-b31/borg-queen-exiled
 tail trek-b31/borg-queen-rest-on-bottom
 tail trek-b31/commander-spock-draw-if-on-top
+tail tribune-of-rot/after-mill
 tail tricksters-talisman/sacrificed
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile

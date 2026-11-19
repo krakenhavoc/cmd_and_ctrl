@@ -173,6 +173,14 @@ type PlayerTurnTally struct {
 	// not count. Read through Game.CardsToGraveyardFromHandOrLibraryThisTurn.
 	// Additive within the schema version.
 	CardsToGraveyardFromHandOrLibrary int `json:"cardsToGraveyardFromHandOrLibrary,omitempty"`
+	// CardsToGraveyard counts the cards put into this player's graveyard
+	// from anywhere this turn (Fraying Sanity's "the number of cards put into
+	// their graveyard from anywhere this turn", #5929): discarded, milled,
+	// destroyed, countered, resolved, or put there by any other route. Keyed
+	// on the card's OWNER, whose graveyard it lands in (CR 400.3). A token
+	// is not a card and never counts. Read through
+	// Game.CardsToGraveyardThisTurn. Additive within the schema version.
+	CardsToGraveyard int `json:"cardsToGraveyard,omitempty"`
 	// LifeLow / LifeLowSet are this player's lowest life total this
 	// turn, and PoisonHigh their highest poison count: the CR 732 loop
 	// breaker's progress marks (#2450, ADR 0055's 2026-10-07 amendment,
@@ -2292,6 +2300,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })
 	case EventDiscardCard:
 		g.noteHandOrLibraryToGraveyardLocked(ev)
+		g.noteAnyToGraveyardLocked(ev)
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDiscarded++ })
 		// #4628, CR 702.187b: mayhem's "you discarded this card this
 		// turn". Written for the card that landed in a graveyard, under
@@ -2307,6 +2316,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// hand or a library, whatever moved it. A routed move emits one of
 		// EventZoneMove, EventMill or EventDiscardCard, never two.
 		g.noteHandOrLibraryToGraveyardLocked(ev)
+		g.noteAnyToGraveyardLocked(ev)
 		// #5482: a land played from exile is a card played from exile
 		// (the play flag is a land drop's, never a put, CR 305.1).
 		if ev.Kind == EventZoneMove && ev.Played && ev.NewZone == ZoneBattlefield && ev.OldZone == ZoneExile {
@@ -2790,6 +2800,24 @@ func (g *Game) EnchantmentToGraveyardThisTurn(playerID uuid.UUID) bool {
 // Dead). Caller must hold g.mu.
 func (g *Game) CardsToGraveyardFromHandOrLibraryThisTurn(playerID uuid.UUID) int {
 	return g.TurnTallyFor(playerID).CardsToGraveyardFromHandOrLibrary
+}
+
+// CardsToGraveyardThisTurn is how many cards were put into playerID's
+// graveyard from anywhere this turn (Fraying Sanity). Caller must hold g.mu.
+func (g *Game) CardsToGraveyardThisTurn(playerID uuid.UUID) int {
+	return g.TurnTallyFor(playerID).CardsToGraveyard
+}
+
+// noteAnyToGraveyardLocked counts one card put into its owner's graveyard
+// from any zone (CardsToGraveyard). A token is not a card (CR 111.1).
+// Caller must hold g.mu.
+func (g *Game) noteAnyToGraveyardLocked(ev Event) {
+	if ev.NewZone != ZoneGraveyard || ev.CardID == uuid.Nil {
+		return
+	}
+	if c := g.findCardByIDLocked(ev.CardID); c != nil && c.Owner != uuid.Nil && !c.IsToken() {
+		g.bumpPlayerTally(c.Owner, func(p *PlayerTurnTally) { p.CardsToGraveyard++ })
+	}
 }
 
 // noteHandOrLibraryToGraveyardLocked counts one card put into its owner's

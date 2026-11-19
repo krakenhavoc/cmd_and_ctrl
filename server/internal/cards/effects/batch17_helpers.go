@@ -539,14 +539,8 @@ func b17FoodPerCreatureYouControl(ctx *Context, destroyed []game.Card) error {
 // (counters and anthems included).
 func b17OtherCreaturesYouControlEnterWithCounters(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
-		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield || src == nil || ev.CardID == src.InstanceID {
-				return false
-			}
-			entering, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && entering.IsCreature() && entering.Controller == src.Controller
-		},
+		Watches:   []game.EventKind{game.EventZoneMove},
+		AppliesTo: bnsB13OtherCreatureYouControlEnters,
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) error {
 			ev.AddCounterAtETB("+1/+1", src.CurrentToughness())
 			return nil
