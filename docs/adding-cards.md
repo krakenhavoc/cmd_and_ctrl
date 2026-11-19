@@ -50,6 +50,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Skip that draw" (#5246, CR 614.1b)](#skip-that-draw-5246-cr-6141b)
   - ["This ability triggers only once" (#5245)](#this-ability-triggers-only-once-5245)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
+  - ["Can be attached only to a legendary creature" (#5846)](#can-be-attached-only-to-a-legendary-creature-5846)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
   - [Tapping the grantor, and an ability a card is given until end of turn (#4465, #4464)](#tapping-the-grantor-and-an-ability-a-card-is-given-until-end-of-turn-4465-4464)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
@@ -4811,6 +4812,29 @@ around, and almost every ability should carry on from last known
 information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
+
+### "Can be attached only to a legendary creature" (#5846)
+
+An Equipment's "<this> can be attached only to <a quality>" (Konda's
+Banner) is `Spec.AttachOnlyTo`, built with `AttachedOnlyTo(label, preds…)`:
+
+```go
+AttachOnlyTo: AttachedOnlyTo("a legendary creature", Legendary()),
+Activated:    []ActivatedAbility{EquipAbility("{2}")}, // as printed
+```
+
+`game.attachmentLegalLocked` reads it, so the three places an attach is
+decided all honour it with no card code: an equip or an effect that would
+attach the Equipment to a creature the clause refuses leaves it where it is
+(`AttachForEffect`, CR 301.5b, CR 701.3b), `AttachLegalForEffect` leaves that
+creature out of a "move an Equipment" choice, and an Equipment on a host that
+stops meeting the clause becomes unattached (CR 301.5c, CR 704.5n). Leave the
+equip ability as printed: "Equip {2}" still targets any creature you control,
+and aimed at one the clause refuses it resolves and does nothing (the rulings
+on Gate Smasher and O-Naginata). Narrowing the target instead is CR 702.6c's
+"Equip legendary creature", a different card (`EquipOnlyAbility`). The clause
+is a static ability, so a copy has it and an Equipment that has lost all
+abilities does not.
 
 ### An Equipment that arrives on its own token (#5654)
 

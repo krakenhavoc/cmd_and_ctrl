@@ -98,6 +98,17 @@ func EquipPayingAbility(label string, cost game.AbilityCost) ActivatedAbility {
 	return ab
 }
 
+// AttachedOnlyTo is the clause of an Equipment's "<this> can be attached
+// only to <label>" for Spec.AttachOnlyTo (#5846): Konda's Banner is
+// AttachedOnlyTo("a legendary creature", Legendary()). The creature is
+// implied, as an Equipment equips only a creature (CR 301.5c). Leave the
+// card's EquipAbility as printed: the restriction is on what the
+// Equipment may be attached to, not on what its equip ability targets
+// (the engine refuses the attach at resolution, CR 301.5b).
+func AttachedOnlyTo(label string, preds ...CardPredicate) *game.TargetSpec {
+	return TargetCreature(label, preds...)
+}
+
 // AttachSourceToTarget is the equip ability's resolution: attach the
 // source permanent to the chosen creature.
 //

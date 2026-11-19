@@ -204,6 +204,7 @@ func buildDef(spec Spec) *game.CardDef {
 		TargetMode:                          spec.TargetMode,
 		Targets:                             spec.Targets,
 		ReturnedAura:                        spec.ReturnedAura,
+		AttachOnlyTo:                        spec.AttachOnlyTo,
 		Modes:                               spec.Modes,
 		Purpose:                             spec.Purpose,
 		Replacements:                        spec.Replacements,
