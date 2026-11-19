@@ -2689,17 +2689,13 @@ func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool
 // rule the engine does not enforce. The grammar is closed, so the
 // list of what a player may be granted is short and checkable.
 //
-// Two shapes are accepted, and they are exactly the two the three
-// consumers read:
+// The shapes accepted are exactly the ones the three consumers read:
 //
 //   - "hexproof" (CR 702.11d), the bare token;
+//   - "shroud" (CR 702.18a), the bare token (Gilded Light, #5842);
 //   - any "protection from <quality>" the closed grammar parses
 //     (CR 702.16i) — "protection from everything" is the only one a
 //     catalogued card prints, but the grammar is the grammar.
-//
-// Shroud is refused: no card prints shroud on a player, and a token
-// with no card behind it is what game.CanonicalKeywords refuses a
-// bare "protection" for.
 //
 // PlayerKeywordsIf (#2013) is held to the same vocabulary, and each
 // entry must carry its condition and its printed sentence: a nil While
@@ -2727,10 +2723,11 @@ func checkPlayerKeywords(spec Spec) {
 }
 
 // playerKeywordHonoured reports whether a token is one the player walk's
-// consumers read: bare hexproof, the chosen-card-type placeholder, or a
-// protection or hexproof-from token the closed grammar parses.
+// consumers read: bare hexproof or shroud, the chosen-card-type
+// placeholder, or a protection or hexproof-from token the closed
+// grammar parses.
 func playerKeywordHonoured(kw string) bool {
-	if kw == game.KeywordHexproof || kw == game.ProtectionFromTheChosenCardType {
+	if kw == game.KeywordHexproof || kw == game.KeywordShroud || kw == game.ProtectionFromTheChosenCardType {
 		return true
 	}
 	if _, ok := game.ParseProtectionQuality(kw); ok {

@@ -1049,3 +1049,28 @@ would be the same rule in two clicks.
   the granted token is a string in an until-end-of-turn keyword grant.
 - **§10 is unchanged.** "Protection from all colors" and "from
   monocolored" stay outside the grammar until a card prints them.
+
+## Amendment (2026-11-19, #5842): shroud on a player (CR 702.18a)
+
+> 702.18a Shroud is a static ability. "Shroud" means "This permanent or
+> player can't be the target of spells or abilities."
+
+A3 left shroud on a player out because no card printed it. Gilded Light
+(Scourge) does: "You gain shroud until end of turn."
+
+**Decision: `shroud` is a player token beside `hexproof`.**
+`game.KeywordShroud` rides `Player.Statics` through `GainPlayerKeyword`,
+and `canPlayerBeTargetedByLocked` refuses every source when the player has
+it. It asks nothing about the source's controller, so the player's own
+spell is refused too: that is the whole difference from A3's hexproof.
+No hexproof waiver reaches it (Kaya, Bane of the Dead names hexproof).
+`checkPlayerKeywords` accepts it for `Spec.PlayerKeywords` as well, so a
+future "You have shroud" permanent needs no engine change.
+
+- **Consumers.** Targeting only. Shroud does not prevent damage or drop an
+  "enchant player" Aura (CR 702.18a says nothing about either), so the
+  damage and attachment readers of A2 are unchanged. A cost or other
+  non-targeting choice that names the player is still legal.
+- **Wire.** No new field: `PlayerView.keywords` carries `"shroud"`, and
+  the client's seat badge draws it with the card shroud icon.
+- **Snapshot.** Nothing new: the grant is a string in `Player.Statics`.

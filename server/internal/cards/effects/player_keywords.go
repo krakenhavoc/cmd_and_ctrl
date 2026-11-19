@@ -51,6 +51,11 @@ const ProtectionFromEachOfYourOpponents = game.ProtectionFromEachOfYourOpponents
 // that compares against it.
 const KeywordHexproof = game.KeywordHexproof
 
+// KeywordShroud is CR 702.18a's token on a player ("You gain shroud
+// until end of turn", Gilded Light, #5842), re-exported for the same
+// reason. Unlike hexproof it stops the player's own spells too.
+const KeywordShroud = game.KeywordShroud
+
 // YouHaveWhile is a permanent's printed "<condition>, you have
 // <keyword>": the controller has the ability while `while` holds, asked
 // on every query with the permanent as it is now (CR 611.3a). For
