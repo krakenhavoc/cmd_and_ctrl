@@ -1133,11 +1133,12 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 		}
 		// #3862: a static over objects off the battlefield is a layer-4
 		// or layer-5 effect from the battlefield — what the zone layer
-		// step applies (game/zone_layers.go).
+		// step applies (game/zone_layers.go) — or, since The Muckslinger
+		// Gang (#5948), a layer-7c power and toughness modifier.
 		if len(s.AffectsZones) > 0 {
 			switch {
-			case s.Layer != game.Layer4Type && s.Layer != game.Layer5Color:
-				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield in layer %d — the zone layer step applies layers 4 and 5 only", card, what, i, s.Layer))
+			case s.Layer != game.Layer4Type && s.Layer != game.Layer5Color && !(s.Layer == game.Layer7PT && s.SubLayer == game.SubLayer7C_Modify):
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield in layer %d — the zone layer step applies layers 4, 5 and 7c only", card, what, i, s.Layer))
 			case s.AppliesTo == nil || s.Apply == nil:
 				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield but has no AppliesTo or Apply", card, what, i))
 			case len(s.Zones) > 0 || s.AffectsSpells || s.GrantZone != "":

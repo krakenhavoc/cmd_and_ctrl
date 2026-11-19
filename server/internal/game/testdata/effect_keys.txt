@@ -1334,6 +1334,7 @@ choose choose-cards/the-key-to-the-vault
 choose choose-cards/the-restoration-of-eiganjo-return
 choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-ur-sphinx-cast
+choose choose-cards/the-weaver-king-reanimate
 choose choose-cards/the-world-spell-take
 choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
@@ -1348,6 +1349,7 @@ choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/torment-of-scarabs-discarded
 choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
+choose choose-cards/tresserhorns-lord-returned-sacrifice
 choose choose-cards/trial-of-agony-chosen
 choose choose-cards/truga-cliffcharger-search
 choose choose-cards/trystan-penitent-culler-exile
@@ -2079,6 +2081,7 @@ option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
 option option-pick/torment-of-scarabs-answer
+option option-pick/tresserhorns-lord-returned-choice
 option option-pick/trigger-opponent-chooser
 option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
