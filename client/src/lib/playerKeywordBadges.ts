@@ -323,6 +323,20 @@ export function playerKeywordBadges(
       continue;
     }
 
+    // #5842 (CR 702.18a): shroud on a seat (Gilded Light). Stops every
+    // spell and ability, the seat's own included, so the tooltip says
+    // so: that is the half a player would not expect from hexproof.
+    if (token === "shroud") {
+      badges.push({
+        key: token,
+        short: "SHR",
+        title: "Shroud — can't be the target of spells or abilities, including their own",
+        icon: KEYWORD_ICONS.shroud,
+        kind: "plain",
+      });
+      continue;
+    }
+
     if (token.startsWith(PROTECTION_PREFIX)) {
       const quality = token.slice(PROTECTION_PREFIX.length);
       badges.push({
