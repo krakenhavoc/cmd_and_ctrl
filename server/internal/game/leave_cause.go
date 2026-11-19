@@ -71,12 +71,17 @@ const (
 type leaveMark struct {
 	cause  LeaveCause
 	source uuid.UUID
+	// controller is the controller of the resolving spell or ability behind
+	// the exit (Event.LeaveController, #5929). uuid.Nil for a cost, a rule
+	// and every exit nobody's resolution made.
+	controller uuid.UUID
 }
 
 // stamp writes the mark onto an event. A zero mark leaves it as it was.
 func (m leaveMark) stamp(ev *Event) {
 	ev.LeaveCause = m.cause
 	ev.LeaveSource = m.source
+	ev.LeaveController = m.controller
 }
 
 // leaveCauseOfExit is the cause of a route that takes the destroy /

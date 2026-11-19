@@ -2129,6 +2129,13 @@ type Event struct {
 	// a battlefield exit. Additive within the snapshot version.
 	LeaveCause  LeaveCause `json:"leave_cause,omitempty"`
 	LeaveSource uuid.UUID  `json:"leave_source,omitempty"`
+	// LeaveController is the controller of the resolving spell or ability
+	// behind a battlefield exit made by an effect (#5929, Karmic Justice's
+	// "a spell or ability an opponent controls destroys ..."): the player who
+	// controlled the object whose resolution moved it, uuid.Nil for a cost, a
+	// rule, a state-based action nobody's resolution caused, and every other
+	// event. Additive within the snapshot version.
+	LeaveController uuid.UUID `json:"leave_controller,omitempty"`
 
 	// PublicNames maps a referenced token's ID to its name, captured
 	// when the event was emitted so the log can still name a token that
