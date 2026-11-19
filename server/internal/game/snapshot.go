@@ -1010,6 +1010,10 @@ type playerSnapshot struct {
 	// amendment, #3016). Additive: a file written before it restores
 	// with none, so every batch is asked by hand again.
 	TriggerOrderMemory map[string]RememberedTriggerOrder `json:"triggerOrderMemory,omitempty"`
+
+	// StartingDeckSize is Player.StartingDeckSize (Whtz, the Bibliophile).
+	// Additive within version 9 (#522): absent in older saves, read as 0.
+	StartingDeckSize int `json:"startingDeckSize,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -3298,6 +3302,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		ID:                         p.ID,
 		Name:                       p.Name,
 		Seat:                       p.Seat,
+		StartingDeckSize:           p.StartingDeckSize,
 		Life:                       p.Life,
 		Poison:                     p.Poison,
 		Energy:                     p.Energy,
@@ -4498,6 +4503,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		ID:                         p.ID,
 		Name:                       p.Name,
 		Seat:                       p.Seat,
+		StartingDeckSize:           p.StartingDeckSize,
 		Life:                       p.Life,
 		Poison:                     p.Poison,
 		Energy:                     p.Energy,

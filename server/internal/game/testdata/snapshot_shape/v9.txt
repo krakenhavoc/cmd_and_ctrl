@@ -78291,6 +78291,7 @@ seats[].sideboard.cards[].warpText	number:uint8
 seats[].sideboard.kind	string
 seats[].sideboard.owner	custom(uuid.UUID)
 seats[].speed	number:int
+seats[].startingDeckSize	number:int
 seats[].statics	array
 seats[].statics[]	object
 seats[].statics[].activationTiming	object

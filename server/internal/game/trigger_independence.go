@@ -1781,7 +1781,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,
 	"OptionalCosts": defFieldInert, "AlternativeCosts": defFieldInert,
 	"TapCost": defFieldInert, "Delve": defFieldInert, "Splice": defFieldInert, "SpendOnly": defFieldInert,
-	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "AsYouCascadePutALand": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
+	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "FirstSpellHasAssist": defFieldInert, "AsYouCascadePutALand": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert, "PowerUpExtras": defFieldInert,
 	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,

@@ -222,6 +222,7 @@ func buildDef(spec Spec) *game.CardDef {
 		SpendOnly:                           spec.SpendOnly,
 		SpendOnlySources:                    spec.SpendOnlySources,
 		SpellsYouCastHaveDelve:              spec.SpellsYouCastHaveDelve,
+		FirstSpellHasAssist:                 spec.FirstSpellHasAssist,
 		AsYouCascadePutALand:                spec.AsYouCascadePutALand,
 		SplitSecondGrants:                   spec.SplitSecondGrants,
 		GrantedOptionalCosts:                spec.GrantedOptionalCosts,

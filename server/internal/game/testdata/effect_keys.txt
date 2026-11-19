@@ -1808,6 +1808,7 @@ drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
+drawthen gap-b05-gustha-put-back
 drawthen glacial-dragonhunt/may-discard
 drawthen hidetsugu-and-kairi-put-back
 drawthen hoarders-greed/clash
@@ -2634,6 +2635,7 @@ run prompt-run/the-huntsmans-redemption-sacrificed
 run prompt-run/the-legend-of-yangchen-exile
 run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
+run prompt-run/thomil-the-destroyer-add-bbb
 run prompt-run/throne-of-the-grim-captain-put
 run prompt-run/tiger-tribe-hunter-sacrifice
 run prompt-run/time-wipe-return-and-destroy
@@ -3637,6 +3639,7 @@ tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
+tail sacrificed-one/prompt-run/thomil-the-destroyer-add-bbb
 tail sacrificed-one/prompt-run/tiger-tribe-hunter-sacrifice
 tail sacrificed-one/prompt-run/tip-the-scales-sacrifice
 tail sacrificed-one/prompt-run/undercity-eliminator-sacrificed
