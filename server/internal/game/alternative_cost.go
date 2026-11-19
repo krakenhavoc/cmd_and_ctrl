@@ -733,7 +733,13 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 		}
 		return a.DiscardFromHand, ZoneHand, n
 	case a.ReturnToHand != nil:
-		return a.ReturnToHand, ZoneBattlefield, 1
+		// Gush's "return two Islands": the clause's count, one for every
+		// earlier card (Daze, Snuff Out's kin).
+		n := a.ReturnToHand.Min
+		if n < 1 {
+			n = 1
+		}
+		return a.ReturnToHand, ZoneBattlefield, n
 	case a.ExileFromGraveyard != nil:
 		n := a.ExileFromGraveyard.Min
 		if n < 1 {
@@ -1518,7 +1524,12 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 			commanderAnswers: answers,
 		})
 	case alt.ReturnToHand != nil:
-		return move(ids[0], ZoneHand)
+		for _, id := range ids {
+			if err := move(id, ZoneHand); err != nil {
+				return err
+			}
+		}
+		return nil
 	case alt.CollectEvidence != nil:
 		// CR 701.59a: collect evidence N, exiled as a cost with the
 		// spell already on the stack, then announced once, so "whenever

@@ -3966,6 +3966,7 @@ tail then/orcrist-type-chosen
 tail then/outbreak-type-chosen
 tail then/pact-of-the-serpent-type-chosen
 tail then/palanis-hatcher-dinosaur
+tail then/paradoxical-outcome-draw
 tail then/patriarchs-bidding-type-chosen
 tail then/perforating-artist-punisher-sacrificed
 tail then/phenomenon-investigators-draw
