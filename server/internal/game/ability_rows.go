@@ -246,6 +246,7 @@ type staticRowSlot struct {
 // list slot is one row. A slot's entries are designation-gated when
 // their type declares ActiveWhen.
 var staticRowSlots = []staticRowSlot{
+	{field: "AttachOnlyTo", label: attachOnlyToRows},
 	{field: "Replacements", fallback: "Replacement effect", ownLabel: true},
 	{field: "EntersWithCountersFromCast", label: entersWithCountersRows},
 	{field: "TriggerDoublers", fallback: "Abilities trigger an additional time", ownLabel: true},
@@ -403,6 +404,19 @@ func boolRow(label string) func(reflect.Value) []string {
 		}
 		return nil
 	}
+}
+
+// attachOnlyToRows is the AttachOnlyTo slot's row (#5846): "Can be
+// attached only to a legendary creature." from the clause's label.
+func attachOnlyToRows(v reflect.Value) []string {
+	spec, _ := v.Interface().(*TargetSpec)
+	if spec == nil {
+		return nil
+	}
+	if spec.Label == "" {
+		return []string{"Can be attached only to some objects"}
+	}
+	return []string{"Can be attached only to " + spec.Label + "."}
 }
 
 // extraVoteRows is the ExtraVote slot's row (ADR 0146).
