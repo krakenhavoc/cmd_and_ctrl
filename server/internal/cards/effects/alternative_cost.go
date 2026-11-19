@@ -805,6 +805,14 @@ func PayLifeInstead(label string, life int, condition func(g *game.Game, control
 // already on the stack — the Island is back in hand before the spell
 // Daze is answering has resolved, and before its controller decides
 // whether to pay the {1}.
+//
+// The count is `from`'s Min == Max (#5837), one for Daze. Gush's
+// "return two Islands you control to their owner's hand" is
+//
+//	ReturnInstead(label, PermanentYouControl("two Islands you control",
+//		HasSubtype("Island")).WithCount(2, 2), "two Islands you control")
+//
+// and the caster names exactly two; Register refuses any other range.
 func ReturnInstead(label string, from *game.TargetSpec, payLabel string) game.AlternativeCost {
 	return game.AlternativeCost{
 		Key:          "return",
