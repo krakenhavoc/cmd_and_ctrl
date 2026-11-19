@@ -2487,6 +2487,7 @@ run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/indoctrination-attendant-return
+run prompt-run/insatiable-appetite-sacrifice
 run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
@@ -3544,6 +3545,7 @@ tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
+tail sacrificed-one/prompt-run/insatiable-appetite-sacrifice
 tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
 tail sacrificed-one/prompt-run/kethek-crucible-goliath-sacrifice
 tail sacrificed-one/prompt-run/kill-zone-acrobat-flying
