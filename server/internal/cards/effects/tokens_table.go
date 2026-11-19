@@ -91,6 +91,7 @@ var tokenTable = map[string]game.Card{
 	"0/1 green Sheep":                                               {Name: "Sheep", TypeLine: "Token Creature — Sheep", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"0/1 red Kobolds of Kher Keep":                                  {Name: "Kobolds of Kher Keep", TypeLine: "Token Creature — Kobold", Power: 0, Toughness: 1, Colors: []string{"R"}},
 	"0/1 white Goat":                                                {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
+	"0/3 blue Crab":                                                 {Name: "Crab", TypeLine: "Token Creature — Crab", Power: 0, Toughness: 3, Colors: []string{"U"}},
 	"0/4 colorless Wall artifact with defender":                     {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
 	"1/1 colorless Robot artifact with flying":                      {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
 	"3/3 red Ape Villain with haste":                                {Name: "Ape Villain", TypeLine: "Token Creature — Ape Villain", Power: 3, Toughness: 3, Colors: []string{"R"}, Keywords: []string{"haste"}},
@@ -540,4 +541,7 @@ var tokenTable = map[string]game.Card{
 	"2/1 black Spider with menace and reach":                     {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace", "reach"}},
 	"1/1 red Legendary Hamster named Boo with trample and haste": {Name: "Boo", TypeLine: "Token Legendary Creature — Hamster", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"4/1 green Legendary Cat named Guenhwyvar with trample":      {Name: "Guenhwyvar", TypeLine: "Token Legendary Creature — Cat", Power: 4, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"trample"}},
+	// S82 BNS batch 02: Outlaws' Merriment's Warrior and Cleric.
+	"3/1 red and white Human Warrior with trample and haste": {Name: "Human Warrior", TypeLine: "Token Creature — Human Warrior", Power: 3, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"trample", "haste"}},
+	"2/1 red and white Human Cleric with lifelink and haste": {Name: "Human Cleric", TypeLine: "Token Creature — Human Cleric", Power: 2, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"lifelink", "haste"}},
 }

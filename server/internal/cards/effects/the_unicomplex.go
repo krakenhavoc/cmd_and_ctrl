@@ -39,13 +39,7 @@ func init() {
 			Modes: ChooseOne(
 				ModeDoing("Put target creature card from your graveyard on top of your library.",
 					TargetCardInGraveyard("target creature card from your graveyard", Creature(), YouOwn()),
-					func(_ *game.StackItem, ctx *Context, occ int) error {
-						t, ok := ModeTarget(ctx, occ)
-						if !ok || t.Kind != game.TargetCard {
-							return nil
-						}
-						return ctx.Game.TuckToLibraryForEffect(t.ID, false)
-					}),
+					tuckTheModesTargetOnTopOfItsOwnersLibrary),
 				ModeDoing("Surveil 1.", nil,
 					func(item *game.StackItem, ctx *Context, _ int) error {
 						return Surveil{Player: item.Controller, N: 1}.Apply(ctx)

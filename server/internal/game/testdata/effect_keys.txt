@@ -88,6 +88,7 @@ body cipher/cast
 body claim-the-kingdom/indestructible
 body clockwork/remove-a-plus-one-counter-at-end-of-combat
 body clone-saga/copy-creature-spell-not-legendary
+body codie-vociferous-codex/exile-until-lesser-instant-or-sorcery
 body combat/untap-and-remove-the-payload
 body commander/return-listed-to-command-zone
 body conspire/copy
@@ -227,6 +228,7 @@ body hidetsugu-devouring-chaos/damage
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
 body hylda-of-the-icy-crown/modes
+body hypothesizzle/damage
 body icewrought-sentry/tap
 body ill-timed-explosion/damage
 body immortal-coil/exile-per-prevented
@@ -387,6 +389,8 @@ body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
+body s82-bns-b02/back-for-more-fight
+body s82-bns-b05/mistbind-clique-tap-lands
 body s82-mid-b14/lynde-return-curse
 body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
@@ -707,6 +711,7 @@ choose choose-cards/dormant-volcano-return-an-untapped-mountain
 choose choose-cards/drake-familiar-return
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/duelists-flame-exile
+choose choose-cards/duskmantle-seer-take
 choose choose-cards/dyadrine-remove-two-counters
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
@@ -783,6 +788,7 @@ choose choose-cards/hide-in-plain-sight-cloak
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/hurkyl-master-wizard-card-type
+choose choose-cards/hypothesizzle-discarded
 choose choose-cards/ill-timed-explosion-discard
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
@@ -905,6 +911,7 @@ choose choose-cards/living-wish-take
 choose choose-cards/lluwen-imperfect-naturalist-top
 choose choose-cards/loamcrafter-faun-discard
 choose choose-cards/london-mulligan-bottom
+choose choose-cards/lord-windgrace-draw
 choose choose-cards/lost-monarch-of-ifnir-return-creature
 choose choose-cards/ludevic-olag-copy
 choose choose-cards/mad-wizards-lair-cast
@@ -1199,6 +1206,8 @@ choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/s82-afr-b04-interrogate-play
 choose choose-cards/s82-afr-b08-holy-avenger-aura
+choose choose-cards/s82-bns-b05-mistbind-clique-champion
+choose choose-cards/s82-bns-b05-wanderwine-prophets-champion
 choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take
@@ -1666,6 +1675,7 @@ confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
 confirm confirm/sephiroth-cell-counter
+confirm confirm/shard-of-broken-glass-mill-two
 confirm confirm/shessra-pay-life-draw
 confirm confirm/shirei-return
 confirm confirm/sita-varma-base-pt
@@ -1779,6 +1789,7 @@ drawthen enter-the-infinite-put-back
 drawthen glacial-dragonhunt/may-discard
 drawthen hidetsugu-and-kairi-put-back
 drawthen hoarders-greed/clash
+drawthen hypothesizzle/may-discard-nonland
 drawthen malcolm-discard
 drawthen marvo-deep-operative/free-cast
 drawthen messenger-jays-discard
@@ -2423,6 +2434,8 @@ run prompt-run/danse-macabre-roll
 run prompt-run/daretti-return
 run prompt-run/dead-drop-sacrifice
 run prompt-run/deadly-brew-return
+run prompt-run/death-cloud-sacrifice-creatures
+run prompt-run/death-cloud-sacrifice-lands
 run prompt-run/dire-blunderbuss-sacrificed
 run prompt-run/disciple-of-bolas-payout
 run prompt-run/disciple-of-caelus-nin-phase-out
@@ -2624,6 +2637,7 @@ run run/consuming-tide-return
 run run/krenkos-buzzcrusher-destroy
 run soulbond/pair
 run the-city-on-the-edge-of-forever/gain-five
+run wanderwine-prophets/extra-turn
 searchrule search/aangs-journey-basic-land-and-shrine
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
@@ -2876,6 +2890,7 @@ tail cmdr2-s43/stolen-goods-grant
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
+tail condemn/gain-life
 tail conflux/next-search
 tail connive/change-of-plans
 tail connive/each
@@ -3311,12 +3326,14 @@ tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
 tail mass/gain-two-life-for-each
 tail mass/genesis-of-the-daleks-drain
+tail mass/indomitable-creativity-reveal
 tail mass/join-the-collective-borg
 tail mass/kayas-wrath-life
 tail mass/krenkos-buzzcrusher-search
 tail mass/mass-polymorph-reveal
 tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
+tail mass/overwhelming-forces-draw
 tail mass/overwrite-the-multiverse-empower
 tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
@@ -3444,6 +3461,7 @@ tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
+tail put-from-library/rest-on-bottom-in-any-order
 tail put-from-library/rest-on-bottom-in-any-order-s82-rpr-b15
 tail put-from-library/rest-on-bottom-in-random-order
 tail put-from-library/songbirds-blessing-hand-or-bottom
@@ -3495,6 +3513,8 @@ tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
 tail ruinous-intrusion/after-exile
 tail rulik-mons/goblin-if-none-entered
+tail s82-bns-b02/grindstone-after-mill
+tail s82-bns-b05/mistbind-clique-championed
 tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-dmu/slimefoots-survey-look
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
@@ -3582,6 +3602,7 @@ tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/yuma-proud-protector-sacrifice
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
 tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
+tail sacrificed-one/wanderwine-prophets/extra-turn
 tail saheeli-filigree-master/after-scry
 tail saheeli-filigree-master/thopter-haste
 tail saheeli-rai/ping-each-opponent
@@ -3846,6 +3867,7 @@ tail then/highway-robbery-draw-two
 tail then/hold-for-ransom-draw
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
+tail then/indomitable-creativity-shuffle
 tail then/industrial-advancement-sacrificed
 tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
@@ -3879,6 +3901,7 @@ tail then/midnight-clock-after-tuck
 tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/mystery-key-draw-three
 tail then/nahiri-the-unforgiving-copy
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land

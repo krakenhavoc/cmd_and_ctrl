@@ -94,6 +94,13 @@ type PlayerTurnTally struct {
 	// Change of Fortune's "for each card you've discarded this
 	// turn").
 	CardsDiscarded int `json:"cardsDiscarded,omitempty"`
+	// LibrarySearches counts the searches this player made of their own
+	// library this turn (S82, Archive Trap's "if an opponent searched
+	// their library this turn"). A plain shuffle (Label "shuffle") is not
+	// a search, and a search of another player's library is not counted
+	// for either seat. Additive within the snapshot schema: a file
+	// without it restores zero (weaker, never stronger).
+	LibrarySearches int `json:"librarySearches,omitempty"`
 	// CardsPlayedFromExile counts the cards this player played from exile
 	// this turn: spells cast from exile (the cast event's old zone) and
 	// lands played from exile (CR 305.1, the play flag on the land's
@@ -2284,6 +2291,10 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// named counts only what came off.
 		if ev.Label == CounterEnergy && ev.Amount < 0 && g.playerByIDLocked(ev.Target) != nil {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.EnergyPaidOrLost -= ev.Amount })
+		}
+	case EventSearchLibrary:
+		if ev.Label != "shuffle" && ev.Actor == ev.Target {
+			g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.LibrarySearches++ })
 		}
 	case EventDrawCard:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })

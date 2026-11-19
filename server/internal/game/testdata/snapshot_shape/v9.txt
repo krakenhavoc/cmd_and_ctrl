@@ -79567,6 +79567,7 @@ turnTally.players{}.firebends	number:int
 turnTally.players{}.investigates	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.landsToGraveyard	number:int
+turnTally.players{}.librarySearches	number:int
 turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int
 turnTally.players{}.lifeLow	number:int
