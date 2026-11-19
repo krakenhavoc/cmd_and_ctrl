@@ -811,6 +811,7 @@ choose choose-cards/karoo-return-an-untapped-plains
 choose choose-cards/kastral-put-bird
 choose choose-cards/kaya-spirits-justice-copy
 choose choose-cards/kaya-spirits-justice-exile
+choose choose-cards/kazandu-stomper-return-lands
 choose choose-cards/keldon-flamesage
 choose choose-cards/kellan-the-kid-if-you-dont
 choose choose-cards/king-narfis-betrayal-exile
