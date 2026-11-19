@@ -88,6 +88,7 @@ body cipher/cast
 body claim-the-kingdom/indestructible
 body clockwork/remove-a-plus-one-counter-at-end-of-combat
 body clone-saga/copy-creature-spell-not-legendary
+body codie-vociferous-codex/exile-until-lesser-instant-or-sorcery
 body combat/untap-and-remove-the-payload
 body commander/return-listed-to-command-zone
 body conspire/copy
@@ -903,6 +904,7 @@ choose choose-cards/living-wish-take
 choose choose-cards/lluwen-imperfect-naturalist-top
 choose choose-cards/loamcrafter-faun-discard
 choose choose-cards/london-mulligan-bottom
+choose choose-cards/lord-windgrace-draw
 choose choose-cards/lost-monarch-of-ifnir-return-creature
 choose choose-cards/ludevic-olag-copy
 choose choose-cards/mad-wizards-lair-cast
