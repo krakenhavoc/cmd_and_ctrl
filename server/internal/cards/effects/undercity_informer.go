@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Undercity Informer — Creature — Human Rogue {2}{B}, 2/3:
 //
 //	"{1}, Sacrifice a creature: Target player reveals cards from the
@@ -23,15 +21,7 @@ func init() {
 			Label:   "{1}, Sacrifice a creature: Target player reveals cards from the top of their library until they reveal a land card, then puts those cards into their graveyard.",
 			Cost:    Plus(ManaCost("{1}"), SacrificeACreature()),
 			Targets: TargetPlayer("target player"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetPlayer {
-						return b14MillUntilLand(ctx, t.ID)
-					}
-				}
-				return nil
-			},
+			Effect:  targetPlayerMillsUntilLand,
 		}},
 	})
 }
