@@ -2012,6 +2012,7 @@ option option-pick/resolution-exit
 option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
+option option-pick/s82-bns-b45-alchemists-gift-keyword
 option option-pick/s82-bro-b11-argivian-avenger-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
