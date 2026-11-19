@@ -24,14 +24,7 @@ func init() {
 			On(game.EventCast,
 				AllOf(YouCast(Or(Instant(), Sorcery())), youCastYourFirstInstantOrSorceryEachTurn),
 				"Double Vision — copy that spell; you may choose new targets for the copy",
-				func(g *game.Game, item *game.StackItem) error {
-					return CopySpell{
-						StackID:          item.Trigger.Event.CardID,
-						Controller:       item.Controller,
-						ChooseNewTargets: true,
-						FromLastKnown:    true,
-					}.Apply(NewContext(g, item))
-				}),
+				copyTheTriggeringSpellWithNewTargets),
 		},
 	})
 }
