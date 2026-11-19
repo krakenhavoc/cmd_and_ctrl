@@ -103,6 +103,7 @@ var silentEventKinds = map[string]string{
 	"EventInvestigate":   "the Clue token's creation is already a line (CR 701.16a); the event exists for \"whenever you investigate\" triggers (Erdwal Illuminator, #5425), whose own LogTrigger line follows",
 	"EventGiftGiven":     "the gift's own effect (the card drawn, the token created) is already a line; the event exists for \"whenever you give a gift\" triggers (Jolly Gerbils, #4467)",
 	"EventExploited":     "the sacrifice is already a line (CR 702.110b); the event exists for \"whenever a creature you control exploits\" triggers (Skull Skaab, #5676), whose own LogTrigger line follows",
+	"EventMentored":      "the +1/+1 counter is already a line (CR 702.134a); the event exists for \"whenever equipped creature mentors a creature\" triggers (Aegis of the Legion, #5932), whose own LogTrigger line follows",
 	"EventConnived":      "every step of a connive is already a line: the draw, the discard and the +1/+1 counter (CR 701.50a); the event exists for \"whenever a creature you control connives\" triggers (#4641)",
 
 	// --- the step spine ----------------------------------------------

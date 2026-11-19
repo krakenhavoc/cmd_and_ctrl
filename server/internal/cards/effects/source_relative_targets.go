@@ -74,7 +74,8 @@ func GreaterToughness() game.SourceComparison {
 // lesser power." The clause is relative to the mentor, so it is
 // re-judged at resolution against the mentor's power then (or its
 // last-known power if it has left), and CR 603.3d drops the trigger
-// when no attacker qualifies.
+// when no attacker qualifies. As it resolves it records
+// game.EventMentored (CR 702.134c, mentors.go).
 func Mentor(key string) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches:   []game.EventKind{game.EventAttack},
@@ -83,7 +84,7 @@ func Mentor(key string) game.TriggeredAbility {
 		Targets: RelativeToSource(
 			TargetCreature("target attacking creature with lesser power", attackingPred()),
 			LesserPower()),
-		Effect: b36CounterOnChosenAnimal,
+		Effect: mentorResolves,
 	}
 }
 
