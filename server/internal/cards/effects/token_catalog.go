@@ -483,6 +483,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedNeoB20NinjaToken,
 	// ADR 0223 (#5910): Everquill Phoenix's Feather.
 	printedFeatherToken,
+	// S82 BNS batch 02: Outlaws' Merriment's Human Rogue.
+	printedBnsHumanRogueToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

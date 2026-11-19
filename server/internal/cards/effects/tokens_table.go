@@ -539,4 +539,7 @@ var tokenTable = map[string]game.Card{
 	"2/1 black Spider with menace and reach":                     {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace", "reach"}},
 	"1/1 red Legendary Hamster named Boo with trample and haste": {Name: "Boo", TypeLine: "Token Legendary Creature — Hamster", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"4/1 green Legendary Cat named Guenhwyvar with trample":      {Name: "Guenhwyvar", TypeLine: "Token Legendary Creature — Cat", Power: 4, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"trample"}},
+	// S82 BNS batch 02: Outlaws' Merriment's Warrior and Cleric.
+	"3/1 red and white Human Warrior with trample and haste": {Name: "Human Warrior", TypeLine: "Token Creature — Human Warrior", Power: 3, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"trample", "haste"}},
+	"2/1 red and white Human Cleric with lifelink and haste": {Name: "Human Cleric", TypeLine: "Token Creature — Human Cleric", Power: 2, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"lifelink", "haste"}},
 }
