@@ -1116,6 +1116,7 @@ events[].leave_cause	string
 events[].leave_controller	custom(uuid.UUID)
 events[].leave_source	custom(uuid.UUID)
 events[].life_paid	number:int
+events[].life_payment	bool
 events[].log_deferred	bool
 events[].looked_at	number:int
 events[].loyalty	bool
@@ -1945,6 +1946,7 @@ followUpParks[].then.asked.trigger.Event.leave_cause	string
 followUpParks[].then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.life_paid	number:int
+followUpParks[].then.asked.trigger.Event.life_payment	bool
 followUpParks[].then.asked.trigger.Event.log_deferred	bool
 followUpParks[].then.asked.trigger.Event.looked_at	number:int
 followUpParks[].then.asked.trigger.Event.loyalty	bool
@@ -2622,6 +2624,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.leave_cause	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.counterTail.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Event.loyalty	bool
@@ -3277,6 +3280,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.leave_cause	strin
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.loyalty	bool
@@ -3923,6 +3927,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.leave_cause	strin
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.loyalty	bool
@@ -4755,6 +4760,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.leave_cause	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.damageTail.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Event.loyalty	bool
@@ -5524,6 +5530,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.leav
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.loyalty	bool
@@ -6246,6 +6253,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.leave_cause	strin
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.loyalty	bool
@@ -6892,6 +6900,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.leave_cause	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.loyalty	bool
@@ -7571,6 +7580,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.leave_c
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.loyalty	bool
@@ -8237,6 +8247,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.leave_cause	stri
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.loyalty	bool
@@ -9334,6 +9345,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.leave_cause	str
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.loyalty	bool
@@ -10004,6 +10016,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.leave_cause	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.loyalty	bool
@@ -10653,6 +10666,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.leave_cause	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.loyalty	bool
@@ -12160,6 +12174,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.leave_cause	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.loyalty	bool
@@ -12804,6 +12819,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.leave_cause	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.millTail.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Event.loyalty	bool
@@ -13835,6 +13851,7 @@ frozenEntries[].event.stackItem.trigger.Event.leave_cause	string
 frozenEntries[].event.stackItem.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.life_paid	number:int
+frozenEntries[].event.stackItem.trigger.Event.life_payment	bool
 frozenEntries[].event.stackItem.trigger.Event.log_deferred	bool
 frozenEntries[].event.stackItem.trigger.Event.looked_at	number:int
 frozenEntries[].event.stackItem.trigger.Event.loyalty	bool
@@ -14465,6 +14482,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.leave_cause	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.loyalty	bool
@@ -16427,6 +16445,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.leave_ca
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.loyalty	bool
@@ -17106,6 +17125,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.le
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.loyalty	bool
@@ -17750,6 +17770,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.leave_cause	s
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.loyalty	bool
@@ -18414,6 +18435,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.leave_cause
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.loyalty	bool
@@ -19147,6 +19169,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.leave_caus
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.life_paid	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.life_payment	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.log_deferred	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.looked_at	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.loyalty	bool
@@ -21490,6 +21513,7 @@ lastKnownStack[].item.trigger.Event.leave_cause	string
 lastKnownStack[].item.trigger.Event.leave_controller	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.leave_source	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.life_paid	number:int
+lastKnownStack[].item.trigger.Event.life_payment	bool
 lastKnownStack[].item.trigger.Event.log_deferred	bool
 lastKnownStack[].item.trigger.Event.looked_at	number:int
 lastKnownStack[].item.trigger.Event.loyalty	bool
@@ -23119,6 +23143,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.leave_cause	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.loyalty	bool
@@ -23774,6 +23799,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.leave_cause	strin
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.loyalty	bool
@@ -24420,6 +24446,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.leave_cause	strin
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.loyalty	bool
@@ -25252,6 +25279,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.leave_cause	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.loyalty	bool
@@ -26021,6 +26049,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.leav
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.loyalty	bool
@@ -26743,6 +26772,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.leave_cause	strin
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.loyalty	bool
@@ -27389,6 +27419,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.leave_cause	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.loyalty	bool
@@ -28068,6 +28099,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.leave_c
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.loyalty	bool
@@ -28734,6 +28766,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.leave_cause	stri
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.loyalty	bool
@@ -29831,6 +29864,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.leave_cause	str
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.loyalty	bool
@@ -30501,6 +30535,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.leave_cause	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.loyalty	bool
@@ -31150,6 +31185,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.leave_cause	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.loyalty	bool
@@ -32657,6 +32693,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.leave_cause	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.loyalty	bool
@@ -33301,6 +33338,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.leave_cause	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.loyalty	bool
@@ -34332,6 +34370,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.leave_cause	string
 movesAwaitingTokens[].stackItem.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].stackItem.trigger.Event.life_payment	bool
 movesAwaitingTokens[].stackItem.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].stackItem.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].stackItem.trigger.Event.loyalty	bool
@@ -34962,6 +35001,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.leave_cause	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.loyalty	bool
@@ -36924,6 +36964,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.leave_ca
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.loyalty	bool
@@ -37603,6 +37644,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.le
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.loyalty	bool
@@ -38247,6 +38289,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.leave_cause	s
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.loyalty	bool
@@ -38911,6 +38954,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.leave_cause
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.loyalty	bool
@@ -39644,6 +39688,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.leave_caus
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.life_paid	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.life_payment	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.log_deferred	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.looked_at	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.loyalty	bool
@@ -40945,6 +40990,7 @@ pausedModeWalk.item.trigger.Event.leave_cause	string
 pausedModeWalk.item.trigger.Event.leave_controller	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.leave_source	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.life_paid	number:int
+pausedModeWalk.item.trigger.Event.life_payment	bool
 pausedModeWalk.item.trigger.Event.log_deferred	bool
 pausedModeWalk.item.trigger.Event.looked_at	number:int
 pausedModeWalk.item.trigger.Event.loyalty	bool
@@ -41309,6 +41355,7 @@ pausedResolutionTail.item.trigger.Event.leave_cause	string
 pausedResolutionTail.item.trigger.Event.leave_controller	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.leave_source	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.life_paid	number:int
+pausedResolutionTail.item.trigger.Event.life_payment	bool
 pausedResolutionTail.item.trigger.Event.log_deferred	bool
 pausedResolutionTail.item.trigger.Event.looked_at	number:int
 pausedResolutionTail.item.trigger.Event.loyalty	bool
@@ -41667,6 +41714,7 @@ pausedStepWalk.item.trigger.Event.leave_cause	string
 pausedStepWalk.item.trigger.Event.leave_controller	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.leave_source	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.life_paid	number:int
+pausedStepWalk.item.trigger.Event.life_payment	bool
 pausedStepWalk.item.trigger.Event.log_deferred	bool
 pausedStepWalk.item.trigger.Event.looked_at	number:int
 pausedStepWalk.item.trigger.Event.loyalty	bool
@@ -41870,6 +41918,7 @@ pendingChoices[].asked.trigger.Event.leave_cause	string
 pendingChoices[].asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.life_paid	number:int
+pendingChoices[].asked.trigger.Event.life_payment	bool
 pendingChoices[].asked.trigger.Event.log_deferred	bool
 pendingChoices[].asked.trigger.Event.looked_at	number:int
 pendingChoices[].asked.trigger.Event.loyalty	bool
@@ -43121,6 +43170,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.leave_cause	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.life_paid	number:int
+pendingChoices[].attackSplit.tail.asked.trigger.Event.life_payment	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Event.loyalty	bool
@@ -44407,6 +44457,7 @@ pendingChoices[].copyWalk.item.trigger.Event.leave_cause	string
 pendingChoices[].copyWalk.item.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.life_paid	number:int
+pendingChoices[].copyWalk.item.trigger.Event.life_payment	bool
 pendingChoices[].copyWalk.item.trigger.Event.log_deferred	bool
 pendingChoices[].copyWalk.item.trigger.Event.looked_at	number:int
 pendingChoices[].copyWalk.item.trigger.Event.loyalty	bool
@@ -45281,6 +45332,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.leave_cause	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].diceRoll.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Event.loyalty	bool
@@ -46334,6 +46386,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.leave_cause	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.life_paid	number:int
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.life_payment	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.log_deferred	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.looked_at	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.loyalty	bool
@@ -46980,6 +47033,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.leave_cause	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.loyalty	bool
@@ -47632,6 +47686,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.leave_cause	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].libraryOrder.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Event.loyalty	bool
@@ -48337,6 +48392,7 @@ pendingChoices[].nameThen.asked.trigger.Event.leave_cause	string
 pendingChoices[].nameThen.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.life_paid	number:int
+pendingChoices[].nameThen.asked.trigger.Event.life_payment	bool
 pendingChoices[].nameThen.asked.trigger.Event.log_deferred	bool
 pendingChoices[].nameThen.asked.trigger.Event.looked_at	number:int
 pendingChoices[].nameThen.asked.trigger.Event.loyalty	bool
@@ -48990,6 +49046,7 @@ pendingChoices[].ordered.asked.trigger.Event.leave_cause	string
 pendingChoices[].ordered.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.life_paid	number:int
+pendingChoices[].ordered.asked.trigger.Event.life_payment	bool
 pendingChoices[].ordered.asked.trigger.Event.log_deferred	bool
 pendingChoices[].ordered.asked.trigger.Event.looked_at	number:int
 pendingChoices[].ordered.asked.trigger.Event.loyalty	bool
@@ -49477,6 +49534,7 @@ pendingChoices[].pickTail.asked.trigger.Event.leave_cause	string
 pendingChoices[].pickTail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.life_paid	number:int
+pendingChoices[].pickTail.asked.trigger.Event.life_payment	bool
 pendingChoices[].pickTail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].pickTail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].pickTail.asked.trigger.Event.loyalty	bool
@@ -50168,6 +50226,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.le
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.loyalty	bool
@@ -50823,6 +50882,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.loyalty	bool
@@ -51469,6 +51529,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.loyalty	bool
@@ -52301,6 +52362,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.lea
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.loyalty	bool
@@ -53070,6 +53132,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.loyalty	bool
@@ -53792,6 +53855,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.loyalty	bool
@@ -54438,6 +54502,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.lea
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.loyalty	bool
@@ -55117,6 +55182,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.loyalty	bool
@@ -55783,6 +55849,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.loyalty	bool
@@ -56880,6 +56947,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.loyalty	bool
@@ -57550,6 +57618,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.loyalty	bool
@@ -58199,6 +58268,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.leave
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.loyalty	bool
@@ -59706,6 +59776,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.l
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.loyalty	bool
@@ -60350,6 +60421,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.leave
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.loyalty	bool
@@ -61381,6 +61453,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.leave_cause	str
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.loyalty	bool
@@ -62011,6 +62084,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.leav
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.loyalty	bool
@@ -63973,6 +64047,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.loyalty	bool
@@ -64652,6 +64727,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.loyalty	bool
@@ -65296,6 +65372,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.loyalty	bool
@@ -65960,6 +66037,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.loyalty	bool
@@ -66693,6 +66771,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.life_paid	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.life_payment	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.log_deferred	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.looked_at	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.loyalty	bool
@@ -67796,6 +67875,7 @@ pendingChoices[].scryThen.asked.trigger.Event.leave_cause	string
 pendingChoices[].scryThen.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.life_paid	number:int
+pendingChoices[].scryThen.asked.trigger.Event.life_payment	bool
 pendingChoices[].scryThen.asked.trigger.Event.log_deferred	bool
 pendingChoices[].scryThen.asked.trigger.Event.looked_at	number:int
 pendingChoices[].scryThen.asked.trigger.Event.loyalty	bool
@@ -68488,6 +68568,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.leave_cause	stri
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.life_paid	number:int
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.life_payment	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.log_deferred	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.looked_at	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.loyalty	bool
@@ -70009,6 +70090,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.leave_cause	string
 pendingChoices[].targetWalk.frame.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.life_paid	number:int
+pendingChoices[].targetWalk.frame.trigger.Event.life_payment	bool
 pendingChoices[].targetWalk.frame.trigger.Event.log_deferred	bool
 pendingChoices[].targetWalk.frame.trigger.Event.looked_at	number:int
 pendingChoices[].targetWalk.frame.trigger.Event.loyalty	bool
@@ -70808,6 +70890,7 @@ pendingChoices[].triggerFrame.trigger.Event.leave_cause	string
 pendingChoices[].triggerFrame.trigger.Event.leave_controller	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.leave_source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.life_paid	number:int
+pendingChoices[].triggerFrame.trigger.Event.life_payment	bool
 pendingChoices[].triggerFrame.trigger.Event.log_deferred	bool
 pendingChoices[].triggerFrame.trigger.Event.looked_at	number:int
 pendingChoices[].triggerFrame.trigger.Event.loyalty	bool
@@ -71174,6 +71257,7 @@ pendingTriggers[].trigger.Event.leave_cause	string
 pendingTriggers[].trigger.Event.leave_controller	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.leave_source	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.life_paid	number:int
+pendingTriggers[].trigger.Event.life_payment	bool
 pendingTriggers[].trigger.Event.log_deferred	bool
 pendingTriggers[].trigger.Event.looked_at	number:int
 pendingTriggers[].trigger.Event.loyalty	bool
@@ -72932,6 +73016,7 @@ promptRuns[].asked.trigger.Event.leave_cause	string
 promptRuns[].asked.trigger.Event.leave_controller	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.leave_source	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.life_paid	number:int
+promptRuns[].asked.trigger.Event.life_payment	bool
 promptRuns[].asked.trigger.Event.log_deferred	bool
 promptRuns[].asked.trigger.Event.looked_at	number:int
 promptRuns[].asked.trigger.Event.loyalty	bool
@@ -73742,6 +73827,7 @@ resolving.item.trigger.Event.leave_cause	string
 resolving.item.trigger.Event.leave_controller	custom(uuid.UUID)
 resolving.item.trigger.Event.leave_source	custom(uuid.UUID)
 resolving.item.trigger.Event.life_paid	number:int
+resolving.item.trigger.Event.life_payment	bool
 resolving.item.trigger.Event.log_deferred	bool
 resolving.item.trigger.Event.looked_at	number:int
 resolving.item.trigger.Event.loyalty	bool
@@ -79400,6 +79486,7 @@ stackMeta[].trigger.Event.leave_cause	string
 stackMeta[].trigger.Event.leave_controller	custom(uuid.UUID)
 stackMeta[].trigger.Event.leave_source	custom(uuid.UUID)
 stackMeta[].trigger.Event.life_paid	number:int
+stackMeta[].trigger.Event.life_payment	bool
 stackMeta[].trigger.Event.log_deferred	bool
 stackMeta[].trigger.Event.looked_at	number:int
 stackMeta[].trigger.Event.loyalty	bool

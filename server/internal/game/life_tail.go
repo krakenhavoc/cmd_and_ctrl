@@ -188,6 +188,7 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 		Target:        ev.LifePlayer,
 		Amount:        ev.LifeDelta,
 		FromRadiation: ev.LifeFromRadiation,
+		LifePayment:   ev.LifePayment,
 	})
 	// #793: the rest of the effect, with the amount that actually
 	// moved. Runs after the event so a continuation that reads the log

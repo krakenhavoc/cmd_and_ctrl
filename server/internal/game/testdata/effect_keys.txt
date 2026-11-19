@@ -1632,6 +1632,7 @@ confirm confirm/kimahri-ronso-rage-copy
 confirm confirm/kraul-harpooner-fight
 confirm confirm/krile-baldesion-return
 confirm confirm/kukemssa-pirates-gain-control
+confirm confirm/kuroki-thief-of-talents
 confirm confirm/kwain-draw
 confirm confirm/laccolith-blocked-damage
 confirm confirm/laccolith-rig-damage
@@ -1723,6 +1724,7 @@ confirm confirm/tempt-with-vengeance
 confirm confirm/terrapact-intimidator-landers-or-counters
 confirm confirm/the-celestus-loot
 confirm confirm/the-day-of-the-doctor-exile-others
+confirm confirm/the-everforger-copy
 confirm confirm/the-falcon-sacrifice
 confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
