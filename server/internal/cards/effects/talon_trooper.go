@@ -1,0 +1,18 @@
+package effects
+
+// Talon Trooper — Creature — Bird Scout {1}{W}{U}, 2/3 (Alara Reborn,
+// #5586):
+//
+//	"Flying"
+//
+// The printed keyword the engine enforces.
+//
+// No simplification.
+func init() {
+	Register(Spec{
+		OracleID:        "518d0773-40fa-4b02-a89e-5711c19617cd",
+		Name:            "Talon Trooper",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+	})
+}
