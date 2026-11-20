@@ -25,6 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{W}, {T}: Choose a permanent you control. Prevent all combat damage target creature would deal this turn if it shares a color with that permanent.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
 			Cost:    Plus(ManaCost("{2}{W}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

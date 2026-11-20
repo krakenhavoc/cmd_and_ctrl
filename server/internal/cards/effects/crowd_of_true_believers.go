@@ -22,7 +22,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target creature you control that's attacking alone gets +1/+0 until end of turn. You gain 1 life.",
 			Cost:    game.AbilityCost{Tap: true},
-			Purpose: ForTargets(BenefitUntilEOT(0, 1, 0)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 0)), game.AnswerPump),
 			Targets: TargetCreature("target creature you control that's attacking alone", YouControl(), AttackingAlone()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

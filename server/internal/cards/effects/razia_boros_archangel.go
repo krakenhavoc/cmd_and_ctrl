@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Razia, Boros Archangel — Legendary Creature — Angel {4}{R}{R}{W}{W}, 6/3:
 //
 //	"Flying, vigilance, haste
@@ -18,12 +20,12 @@ func init() {
 		Name:         "Razia, Boros Archangel",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			redirectRow("{T}: The next 3 damage that would be dealt to target creature you control this turn is dealt to another target creature instead.",
+			alsoAnswers(game.AnswerRemove, redirectRow("{T}: The next 3 damage that would be dealt to target creature you control this turn is dealt to another target creature instead.",
 				TapCost(), Clauses(
 					TargetCreature("target creature you control", YouControl()),
 					Distinct(TargetCreature("another target creature")),
 				),
-				RedirectDamage{Protect: ShieldClause(0), Amount: 3, To: RedirectToClause(1)}),
+				RedirectDamage{Protect: ShieldClause(0), Amount: 3, To: RedirectToClause(1)})),
 		},
 	})
 }

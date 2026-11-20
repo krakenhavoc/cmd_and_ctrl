@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Serra Advocate — Creature — Angel {3}{W}, 2/2 (Urza's Destiny, #5621):
 //
 //	"Flying
@@ -19,7 +21,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target attacking or blocking creature gets +2/+2 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 2, 2)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 2, 2)), game.AnswerPump),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
 			Effect:  boostTargetUntilEOT("Serra Advocate — +2/+2", 2, 2),

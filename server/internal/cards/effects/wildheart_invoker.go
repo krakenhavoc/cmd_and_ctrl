@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Wildheart Invoker — Creature — Elf Shaman {2}{G}{G}, 4/3
 // (Foundations, #4465):
 //
@@ -19,7 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{8}: Target creature gets +5/+5 and gains trample until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 5, 5, "trample")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 5, 5, "trample")), game.AnswerPump|game.AnswerCombatGrant),
 			Cost:    ManaCost("{8}"),
 			Targets: TargetCreature("target creature"),
 			Effect:  pumpAndGrantFirstTarget(5, 5, "Wildheart Invoker — +5/+5 and trample", "trample"),

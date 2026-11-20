@@ -49,25 +49,36 @@ func (g *Game) stampEntryBlockerLocked(id, attacker uuid.UUID) {
 		c.clearBlocking()
 		return
 	}
+	// ADR 0224, CR 702.22h: blocking one member of a band blocks every
+	// member, so the band-mates are blocked by this creature too.
+	blocked := g.withBandMatesLocked([]uuid.UUID{attacker})
 	// Asked BEFORE the stamp: once this creature is blocking it, the
 	// attacker no longer reads as unblocked.
-	becomesBlocked := g.UnblockedAttackerForEffect(attacker)
-	c.setBlockingSet([]uuid.UUID{attacker})
+	becomes := make([]bool, len(blocked))
+	for i, a := range blocked {
+		becomes[i] = g.UnblockedAttackerForEffect(a)
+	}
+	c.setBlockingSet(blocked)
 	if g.announcedBlocks == nil {
 		g.announcedBlocks = map[uuid.UUID][]uuid.UUID{}
 	}
-	g.announcedBlocks[id] = []uuid.UUID{attacker}
+	g.announcedBlocks[id] = append([]uuid.UUID(nil), blocked...)
 	if g.blockedAttackers == nil {
 		g.blockedAttackers = map[uuid.UUID]bool{}
 	}
-	g.blockedAttackers[attacker] = true
-	if becomesBlocked {
+	for _, a := range blocked {
+		g.blockedAttackers[a] = true
+	}
+	for i, a := range blocked {
+		if !becomes[i] {
+			continue
+		}
 		g.EmitEvent(Event{
 			Kind:   EventBecomesBlocked,
 			Actor:  c.Controller,
-			Source: attacker,
-			CardID: attacker,
-			Target: attacker,
+			Source: a,
+			CardID: a,
+			Target: a,
 		})
 	}
 }

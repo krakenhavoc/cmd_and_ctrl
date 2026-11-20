@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e7871b4d-a408-4377-beee-6b1d3c7dd57d",
 		Name:         "Winds of Qal Sisma",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if b24ControlsCreatureWithPowerAtLeast(ctx.Game, ctx.Controller(), 4) {

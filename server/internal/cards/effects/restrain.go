@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "5aa66cb0-86b9-4e85-9a17-df78416d682d",
 		Name:         "Restrain",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target attacking creature", AttackingCreature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

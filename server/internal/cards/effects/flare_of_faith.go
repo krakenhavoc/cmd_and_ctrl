@@ -18,7 +18,7 @@ func init() {
 		Name:         "Flare of Faith",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 2)),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 2, 2)), game.AnswerSurvive|game.AnswerPump),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			t, ok := ctx.ClauseTarget(0)
 			if !ok {

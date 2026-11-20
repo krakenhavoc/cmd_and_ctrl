@@ -22,7 +22,7 @@ import "github.com/google/uuid"
 //	"if mana from a Treasure was spent"          Hired Hexblade
 //	"three or more mana from creatures"          Inga and Esika
 //	"mana from an artifact was spent"            Shadow the Hedgehog
-//	"{S}" in a cost                              the snow half, unused
+//	"{S}" in a cost                              the snow half (#5986)
 //
 // NOT the full type line, and not the Card. A copy of the card would
 // be a second object the snapshot, the clone and the undo stack all
@@ -42,17 +42,16 @@ import "github.com/google/uuid"
 type ManaSourceKinds uint16
 
 const (
-	// ManaSourceSnow is the SNOW supertype (CR 205.4h) on the
+	// ManaSourceSnow is the SNOW supertype (CR 205.4g) on the
 	// permanent that produced the mana — what a `{S}` symbol in a
-	// cost would be paid with (CR 107.4g).
+	// cost is paid with (CR 107.4h): one mana of any type from a snow
+	// source.
 	//
-	// Recorded and read by nothing in the catalog today: a scan of
-	// the Scryfall dump finds no card whose oracle text asks whether
-	// "snow mana was spent", because snow reaches a payment as a COST
-	// symbol and `ParsedCost.HasSnow` is still informational
-	// (mana_cost.go:39). It is here because it is one bit of the same
-	// snapshot and because the `{S}` work has nowhere else to read
-	// from; stated rather than left as a silent hook.
+	// The payment reads it (#5986): the pool solver's coloured pass
+	// (colourRun.snow), the auto-tapper's slots (tapSource.Snow) and
+	// the pool top-up all pay an {S} with this mana and nothing else,
+	// through ColorRequirement.PaidBy. No card asks afterwards whether
+	// snow mana was spent; ManaSpent.Snow is there for the first one.
 	ManaSourceSnow ManaSourceKinds = 1 << iota
 
 	// ManaSourceTreasure is the TREASURE subtype — the kind eighteen

@@ -71,14 +71,8 @@ func gossipsTalentFlicker() game.TriggeredAbility {
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			return combatDamageToPlayerBy(ev, source.Controller, g)
 		},
-		Key: label,
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			if c, ok := g.LookupCardForEffect(ev.Source); ok {
-				item.Params.Object = game.ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch}
-			}
-			return item
-		},
+		Key:   label,
+		Build: BuildPinnedToEventSource(label),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return stdB27FlickerObject(NewContext(g, item), item.Params.Object)
 		},

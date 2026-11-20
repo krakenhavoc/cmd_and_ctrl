@@ -85,6 +85,13 @@ func assistCardSettle(t *testing.T, g *game.Game, chooser uuid.UUID, pick *game.
 		if stackFullyEmpty(g) {
 			return
 		}
+		// #5793: any other prompt that holds the table (a pay-unless the
+		// resolving trigger asked) is the caller's to answer.
+		for _, c := range g.PendingChoices {
+			if c != nil && g.ChoicePromptBlocksTable(c) {
+				return
+			}
+		}
 		passPriorityAroundTable(t, g)
 	}
 	t.Fatal("the stack did not settle")

@@ -89,6 +89,7 @@ cmd_and_ctrl/
 │   │   ├── routes/      # one Svelte page per route: FrontPage, Lobby, Join, Game, Decks, Catalog, Roadmap, Stats, Pods, Friends, Draft, DraftSets, MyDrafts, MyCubes, Admin, Privacy, …
 │   │   └── sw/          # the service worker (ADR 0031)
 │   ├── public/          # static files: card backs, fonts, icons, the web manifest, sounds and voices
+│   ├── tools/           # dev tools that never ship: the fx preview harness (fx-preview/, `npm run fx-preview`, #4868) and the icon and card-back generators
 │   ├── index.html
 │   ├── vite.config.ts
 │   ├── svelte.config.js

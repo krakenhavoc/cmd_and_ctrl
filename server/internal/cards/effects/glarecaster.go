@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Glarecaster — Creature — Bird Cleric {4}{W}{W}, 3/3:
 //
 //	"Flying
@@ -18,9 +20,9 @@ func init() {
 		Name:         "Glarecaster",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			redirectRow("{5}{W}: The next time damage would be dealt to this creature and/or you this turn, that damage is dealt to any target instead.",
+			alsoAnswers(game.AnswerRemove, redirectRow("{5}{W}: The next time damage would be dealt to this creature and/or you this turn, that damage is dealt to any target instead.",
 				ManaCost("{5}{W}"), TargetAny(),
-				RedirectDamage{Protect: ShieldThis, AlsoYou: true, Next: true, To: RedirectToClause(0)}),
+				RedirectDamage{Protect: ShieldThis, AlsoYou: true, Next: true, To: RedirectToClause(0)})),
 		},
 	})
 }

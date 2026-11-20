@@ -129,6 +129,7 @@
     infect: "Infect",
     wither: "Wither",
     flanking: "Flanking",
+    banding: "Banding",
     riot: "Riot",
     soulbond: "Soulbond",
     unleash: "Unleash",

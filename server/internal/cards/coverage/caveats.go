@@ -918,6 +918,18 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{game.KeywordFlanking} — the engine does the rest`,
 	},
 	{
+		// #5723 (ADR 0224): banding is a canonicalKeywords token the
+		// engine runs itself (game/banding.go): the attack declaration's
+		// bands, the block lock-in and the damage division. "Bands with
+		// other" is a different phrase and stays unrecognised.
+		Name:       "banding",
+		Phrases:    []string{"banding"},
+		Implements: printedKeywordProbe(game.KeywordBanding),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "banding"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordBanding} — the engine does the rest`,
+	},
+	{
 		// #2075 (ADR 0113 §4): undying and persist are canonicalKeywords
 		// tokens whose dies triggers the engine derives from the
 		// departed permanent's last-known ability list

@@ -1004,6 +1004,9 @@ func TestB12LifecraftersBestiaryScriesOnUpkeepAndSellsADrawPerCreature(t *testin
 	if me.Hand.Size() != before+1 {
 		t.Errorf("paying draws one: hand %d → %d", before, me.Hand.Size())
 	}
+	// #5793: the question held the table, so the Bear is still on the
+	// stack under the trigger that asked. Let it resolve.
+	passPriorityAroundTable(t, g)
 
 	before = me.Hand.Size()
 	castCatalogSpell(t, g, "Rock", "Artifact", "", nil)

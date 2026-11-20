@@ -797,7 +797,8 @@ func (c Card) ColorSymbols(color string) int {
 	}
 	n := 0
 	for _, req := range cost.Required {
-		if slices.Contains(req.Options, color) {
+		// #5986: {S} is not a {C} symbol, whatever its Options hold.
+		if !req.Snow && slices.Contains(req.Options, color) {
 			n++
 		}
 	}
