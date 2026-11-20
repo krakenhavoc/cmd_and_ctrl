@@ -304,6 +304,7 @@ var familyLabelExemptions = map[string]string{
 	"redirectYourDamageToAttached":    "delegates to staticRedirection, which words the row from the card's header",
 	"redirectYourDamageToThis":        "delegates to staticRedirection, which words the row from the card's header",
 	"CreaturesMatchingCantAttackYou":  "delegates to CreaturesMatchingCantAttackYouWhile, which sets the Label from its label argument",
+	"eveB1HatchlingCounters":          "delegates to b10EntersWithCounters, which sets the Label from its label argument",
 }
 
 // familyLabelPending are constructors that should carry wording and do
