@@ -47,12 +47,16 @@ func partingThoughtsX(ctx *Context) int {
 	if len(ctx.Item.Targets) == 0 || ctx.Item.Targets[0].Kind != game.TargetCard {
 		return 0
 	}
-	id := ctx.Item.Targets[0].ID
-	if onBattlefield(ctx.Game, id) {
-		if c, found := ctx.Game.LookupCardForEffect(id); found {
-			return socB9CountersOn(c)
-		}
+	// The live permanent, or its last-known record once it has left
+	// (departedCreaturePower's read): the trigger-time counter map
+	// (LastKnownCountersForEffect) is gone by the next step.
+	ref, ok := ctx.Game.PermanentRefForEffect(ctx.Item.Targets[0].ID)
+	if !ok {
 		return 0
 	}
-	return cmdr2B25CounterTotal(ctx.Game.LastKnownCountersForEffect(id))
+	info, ok := ctx.Game.PermanentForEffect(ref)
+	if !ok {
+		return 0
+	}
+	return cmdr2B25CounterTotal(info.Counters)
 }

@@ -20,7 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Flip a coin. If you win the flip, destroy all nonland permanents.",
-			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy}},
+			Purpose: game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy}},
 			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				g.FlipCoinForEffect(game.CoinFlipSpec{

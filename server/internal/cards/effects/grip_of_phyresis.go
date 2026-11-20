@@ -35,7 +35,7 @@ func init() {
 			return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
 				Controller: ctx.Controller(),
 				Source:     item.SourceCardID,
-				Groups:     []game.TokenGroup{{Template: TokenCard(livingWeaponGermToken), Count: 1}},
+				Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard(livingWeaponGermToken)), Count: 1}},
 			}, ctx.ItemTail(gripOfPhyresisAttach))
 		},
 	})

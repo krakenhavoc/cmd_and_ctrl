@@ -1438,6 +1438,7 @@ choose resolution-cast/swindlers-scheme-free-cast
 choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
+coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-psychopath
@@ -2495,6 +2496,7 @@ run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
 run prompt-run/empty-the-laboratory-sacrifice
 run prompt-run/entish-restoration-search
+run prompt-run/entrapment-maneuver-soldiers
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
 run prompt-run/exploit-diver-skaab
@@ -3253,6 +3255,7 @@ tail goldwardens-gambit/after-tokens
 tail gorging-vulture/after-mill
 tail grasping-tentacles/choose-artifact
 tail grave-researcher/become-prepared
+tail grave-upheaval/haste
 tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
@@ -3261,6 +3264,7 @@ tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
 tail grime-gorger/counter-per-exiled-card
+tail grip-of-phyresis/attach
 tail grolnok/croak-counter
 tail grubs-command/after-mill
 tail gul-dukat/drain-each-opponent
