@@ -231,11 +231,30 @@ func TestC14B1MaliciousAfflictionMorbidCopiesItself(t *testing.T) {
 	hmlSetColors(g, second, "G")
 	castCatalogSpell(t, g, "Malicious Affliction", "Instant", c14MaliciousAfflictionOracle, cardTarget(first))
 	answerLatestTriggerPrompt(t, g, me.ID, true)
-	if latestRetarget(g, me.ID) == nil {
-		t.Fatal("the copy offered no new target")
+	// The copy asks for its new target as a target pick (CR 707.10c), as
+	// Bygone Marvels' copies do.
+	picks := 0
+	for i := 0; i < 60 && (g.Stack.Size() > 0 || len(g.PendingChoices) > 0); i++ {
+		if ch := latestPickTarget(g, me.ID); ch != nil {
+			picks++
+			if err := g.ResolvePickTarget(ch.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: second}); err != nil {
+				t.Fatalf("new target for the copy: %v", err)
+			}
+			continue
+		}
+		if ch := latestConfirmFor(g, me.ID); ch != nil {
+			if err := g.ResolveConfirm(ch.ID, me.ID, true); err != nil {
+				t.Fatalf("confirm: %v", err)
+			}
+			continue
+		}
+		if err := g.PassPriority(); err != nil && !errors.Is(err, game.ErrChoicePending) {
+			t.Fatalf("PassPriority: %v", err)
+		}
 	}
-	answerRetargetWith(t, g, me.ID, cardTarget(second))
-	passPriorityAroundTable(t, g)
+	if picks != 1 {
+		t.Fatalf("the copy offered %d new-target picks, want 1", picks)
+	}
 	if g.Battlefield.Contains(first) || g.Battlefield.Contains(second) {
 		t.Error("the spell and its copy did not destroy both creatures")
 	}
