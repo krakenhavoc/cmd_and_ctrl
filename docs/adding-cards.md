@@ -131,6 +131,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Plane cards (ADR 0216 slice 4, #4870)](#plane-cards-adr-0216-slice-4-4870)
 
   - [Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)](#aetherdrift-leftovers-no-abilities-exile-x-and-an-event-amount-4464)
+  - [Ante cards: built, with their ante text inert (#5724, CR 407)](#ante-cards-built-with-their-ante-text-inert-5724-cr-407)
   - [When in doubt](#when-in-doubt)
 
 ### Recipe
@@ -15296,6 +15297,41 @@ Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 - **"<This>'s power and toughness are each equal to your life total"** is `powerAndToughnessEqualToYourLifeTotal()`
   (Serra Avatar, Angelic Enforcer). It declares `DependsOnLifeTotal`; a life-keyed static without it keeps a stale
   size until something unrelated drops the layer cache.
+
+### Ante cards: built, with their ante text inert (#5724, CR 407)
+
+**Owner decision, 2026-11-16: ante cards go in the catalog.** C2 never plays for
+ante, so their ante text does nothing in any game here, and the rest of each card
+is built as printed. A set-coverage batch builds them like any other card; it
+neither asks again nor lists them as excluded. The ante cards are Contract from
+Below, Darkpact and Demonic Attorney (Alpha), Jeweled Bird (Arabian Nights),
+Bronze Tablet (Antiquities), Rebirth and Tempest Efreet (Legends), Timmerian
+Fiends (Homelands) and Amulet of Quoz (Ice Age).
+
+C2 has no ante zone. The rules still let a card ante something even in a game
+not played for ante (CR 407.3 only keeps these cards out of decks; CR 407.4 says
+what anteing is), so treating anteing as impossible is the owner's call, not a
+rule. With it, each piece of ante text reads like this:
+
+- **"Remove this card from your deck before playing if you're not playing for
+  ante."** Not an ability. Declare nothing for it. Whether such a card may be in a
+  deck is deck legality (CR 407.3, and these cards are banned in Commander), not
+  the catalog's business.
+- **"Ante the top card of your library", "each player antes …".** The instruction
+  is impossible, so it does nothing and the rest of the effect still happens
+  (CR 609.3). Contract from Below is "discard your hand, then draw seven cards".
+- **"If you do" / "if a player does" after an ante.** Nothing was anted, so the
+  contingent part never happens. Build only what can happen: Jeweled Bird is a
+  tap ability that does nothing.
+- **"Target card in the ante".** Nothing is ever in the ante, so the spell has no
+  legal target and can't be cast (CR 601.2c, 601.2e). Build Darkpact only if a
+  target constructor can say "a card in the ante" honestly, so the engine refuses
+  the cast; otherwise leave it out and note that on its set's issue.
+
+Inert ante text is how the card plays here, not a simplification, so a card whose
+other text is exact is `CompletenessFull` with no `Caveats`. Say in its header
+comment that the ante clause is inert and link this section. If the non-ante text
+needs a seam the engine lacks, the usual rule applies: leave the card out.
 
 ### When in doubt
 
