@@ -27,18 +27,3 @@ func ravB4TargetOpponentCreates(label, token string, n int) game.TriggeredAbilit
 		}),
 		TargetPlayer("target opponent", Opponent()))
 }
-
-// ravB4TargetCantBlockThisCreature is "Target creature can't block this
-// creature this turn." as an activated row's body (Screeching Griffin):
-// Burning-Tree Bloodscale's pairing of the one target with the source. A
-// target gone by resolution gets nothing (CR 608.2b).
-func ravB4TargetCantBlockThisCreature(label string) Effect {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
-		if !ok {
-			return nil
-		}
-		return CantBlockThisCreatureThisTurn{Blocker: id, Attacker: item.SourceCardID, Label: label}.Apply(ctx)
-	}
-}
