@@ -142,6 +142,32 @@ func b28SelfBlocked(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventBlock && ev.CardID == source.InstanceID && ev.Target != uuid.Nil
 }
 
+// WheneverThisBlocksItDoesntUntap is "Whenever this creature blocks a
+// creature, that creature doesn't untap during its controller's next
+// untap step" (Labyrinth Minotaur, Cleric of Chill Depths). One trigger
+// per attacker blocked (CR 509.3b, b28SelfBlocked). The trigger stamps
+// the attacker's object (Params.Object, CR 400.7), so one that left and
+// came back before it resolved is a new object and is not marked. The
+// mark is ADR 0058's controller-keyed one-shot, which follows the
+// creature through a change of control.
+func WheneverThisBlocksItDoesntUntap(label string) game.TriggeredAbility {
+	t := On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return b28SelfBlocked(ev, source)
+	}, label, func(g *game.Game, item *game.StackItem) error {
+		attacker := item.Params.Object
+		if attacker.ID == uuid.Nil || !onBattlefield(g, attacker.ID) || g.ObjectEpochForEffect(attacker.ID) != attacker.Epoch {
+			return nil
+		}
+		return DoesntUntapNextUntapStep{Targets: []uuid.UUID{attacker.ID}, Label: label}.Apply(NewContext(g, item))
+	})
+	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+		item := game.NewTriggeredItem(source, label)
+		item.Params.Object = game.ObjectRef{ID: ev.Target, Epoch: g.ObjectEpochForEffect(ev.Target)}
+		return item
+	}
+	return t
+}
+
 // selfBlocksOnce is "whenever this creature blocks" with no object —
 // CR 509.3a, which triggers ONCE however many attackers the creature
 // blocks (#1706: High Ground, Palace Guard). The lock-in emits one

@@ -804,6 +804,10 @@ func (g *Game) emptyAllManaPoolsLocked() {
 // before #787 that symbol read as a plain "{W/U}" and the life option
 // vanished from the message.
 func formatRequirement(req ColorRequirement) string {
+	// #5986: a snow slot is "{S}", never the "{C}" its Options hold.
+	if req.Snow {
+		return "S"
+	}
 	if len(req.Options) == 0 {
 		return "?"
 	}

@@ -21,7 +21,7 @@ func init() {
 		Name:         "Efflorescence",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "trample", "indestructible")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "trample", "indestructible")), game.AnswerSurvive|game.AnswerPump|game.AnswerCombatGrant),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
 				if t.Kind != game.TargetCard {

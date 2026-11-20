@@ -28,7 +28,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{R}{R}{R}: Target creature gets +3/+0 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 3, 0)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 3, 0)), game.AnswerPump),
 			Cost:    ManaCost("{R}{R}{R}"),
 			Targets: TargetCreature("target creature"),
 			Effect:  boostTargetUntilEOT("Avatar Roku, Firebender — +3/+0", 3, 0),

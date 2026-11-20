@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Endoskeleton — you may choose not to untap this artifact")},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}: Target creature gets +0/+3 for as long as this artifact remains tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect:  TargetGetsWhileThisRemainsTapped("Endoskeleton — +0/+3 while tapped", game.ModifyPTMod(0, 3)),

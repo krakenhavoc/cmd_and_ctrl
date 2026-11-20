@@ -22,6 +22,7 @@ func init() {
 		AlternativeCosts: []game.AlternativeCost{Morph("{2}{B}")},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}: Regenerate target Zombie.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    ManaCost("{1}{B}"),
 			Targets: TargetPermanent("target Zombie", HasSubtype("Zombie")),
 			Effect:  regenerateTheTargetPermanent,

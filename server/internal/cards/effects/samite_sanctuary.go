@@ -26,6 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{2}: Prevent the next 1 damage that would be dealt to target creature this turn. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerPrevent},
 			Cost:      game.AbilityCost{Mana: "{2}"},
 			Targets:   TargetCreature("target creature"),
 			AnyPlayer: true,

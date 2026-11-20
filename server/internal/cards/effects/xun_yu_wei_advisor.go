@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Xun Yu, Wei Advisor — Legendary Creature — Human Advisor {1}{B}{B}, 1/1 (#4062):
 //
 //	"{T}: Target creature you control gets +2/+0 until end of turn.
@@ -24,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Target creature you control gets +2/+0 until end of turn. Activate only during your turn, before attackers are declared.",
-			Purpose:   ForTargets(BenefitUntilEOT(0, 2, 0)),
+			Purpose:   withAnswers(ForTargets(BenefitUntilEOT(0, 2, 0)), game.AnswerPump),
 			Cost:      TapCost(),
 			Targets:   TargetCreature("target creature you control", YouControl()),
 			Condition: DuringYourTurnBeforeAttackersAreDeclared(),

@@ -156,3 +156,29 @@ func pairedWithSource(target *game.Card, g *game.Game, source *game.Card) bool {
 	p := g.PairedPartner(source)
 	return p != nil && (target.InstanceID == source.InstanceID || target.InstanceID == p.InstanceID)
 }
+
+// PairedCreaturesHaveKeyword is "As long as <this> is paired with
+// another creature, both creatures have <keyword>" (Avacyn Restored's
+// Elgaud Shieldmate, Hanweir Lancer, Wingcrafter, ...): KeywordGrant's
+// layer-6 grant to the source and to the creature it is paired with,
+// for as long as the pair lasts (CR 702.95e). `label` is the printed
+// sentence, for the static-ability chip.
+func PairedCreaturesHaveKeyword(label, keyword string) game.StaticAbility {
+	ab := KeywordGrant(pairedWithSource, keyword)
+	ab.Label = label
+	return ab
+}
+
+// PairedCreaturesGet is "As long as <this> is paired with another
+// creature, each of those creatures gets +P/+T" (Avacyn Restored's
+// Trusted Forcemage, Druid's Familiar, Wolfir Silverheart): a layer-7c
+// modify of the source and its partner while they are paired.
+func PairedCreaturesGet(label string, power, toughness int) game.StaticAbility {
+	return game.StaticAbility{
+		Label:     label,
+		Layer:     game.Layer7PT,
+		SubLayer:  game.SubLayer7C_Modify,
+		AppliesTo: pairedWithSource,
+		Apply:     pumpBy(power, toughness),
+	}
+}

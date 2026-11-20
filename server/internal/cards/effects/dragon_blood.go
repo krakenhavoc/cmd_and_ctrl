@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Dragon Blood — Artifact {3} (Urza's Saga):
 //
 //	"{3}, {T}: Put a +1/+1 counter on target creature."
@@ -14,6 +16,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, {T}: Put a +1/+1 counter on target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect:  PlusOneCounterOnTheTarget,

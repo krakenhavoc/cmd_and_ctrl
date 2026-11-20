@@ -26,6 +26,7 @@ func init() {
 		Triggered:    []game.TriggeredAbility{Hideaway(name, 5)},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}: Put a +1/+1 counter on target creature you control. Then if you control three or more creatures with different powers, you may play the exiled card without paying its mana cost.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: Do(

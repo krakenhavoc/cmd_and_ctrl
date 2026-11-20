@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Samite Ministration — Instant {1}{W}:
 //
 //	"Prevent all damage that would be dealt to you this turn by a source of your choice. Whenever damage from a black or red source is prevented this way this turn, you gain that much life."
@@ -18,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "af669df1-3526-46ca-b90c-19b112b7ba44",
 		Name:         "Samite Ministration",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromChosenSource(ShieldYou).WithThen(preventedBlackOrRedTriggerBody)),
 	})

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Ingenious Leonin — Creature — Cat Soldier {4}{W}, 4/4 (Foundations,
 // #4465):
 //
@@ -22,6 +24,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{W}: Put a +1/+1 counter on another target attacking creature you control. If that creature is a Cat, it gains first strike until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Cost:    ManaCost("{3}{W}"),
 			Targets: Another(TargetCreature("another target attacking creature you control", AttackingCreature(), YouControl())),
 			Effect: Do(

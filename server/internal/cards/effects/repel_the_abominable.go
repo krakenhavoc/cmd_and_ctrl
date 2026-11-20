@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Repel the Abominable — Instant {1}{W}:
 //
 //	"Prevent all damage that would be dealt this turn by non-Human
@@ -17,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ed198c68-c219-469f-b133-737b060cfbfc",
 		Name:         "Repel the Abominable",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromSource{Protect: ShieldAnything, Filter: exceptSubtypes("Human")}),
 	})

@@ -1489,6 +1489,10 @@ func dispatch(g *game.Game, a Action) error {
 				Exert bool `json:"exert,omitempty"`
 				// Enlist: #5658, the creature this attacker enlists.
 				Enlist string `json:"enlist,omitempty"`
+				// Band: ADR 0224, the band this attacker is in (CR
+				// 702.22c). Entries sharing a positive number are one
+				// band; absent or 0 is none.
+				Band int `json:"band,omitempty"`
 			} `json:"attackers"`
 			attackTaxParams
 		}
@@ -1523,7 +1527,10 @@ func dispatch(g *game.Game, a Action) error {
 			if err != nil {
 				return err
 			}
-			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: e.Exert, Enlist: enlistID})
+			if e.Band < 0 {
+				return fmt.Errorf("%w: declare_attackers band must not be negative", ErrMissingParams)
+			}
+			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: e.Exert, Enlist: enlistID, Band: e.Band})
 		}
 		declParams, err := p.decode("declare_attackers")
 		if err != nil {

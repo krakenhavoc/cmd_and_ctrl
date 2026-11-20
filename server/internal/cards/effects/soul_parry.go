@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Soul Parry — Instant {1}{W}:
 //
 //	"Prevent all damage one or two target creatures would deal this turn."
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8b36335b-119b-4f90-a5d7-b77d8f47f55f",
 		Name:         "Soul Parry",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("one or two target creatures").WithCount(1, 2),
 		OnResolve:    shieldAgainstTargetsSpell(false),

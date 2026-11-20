@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Draconian Cylix — Artifact {3}:
 //
 //	"{2}, {T}, Discard a card at random: Regenerate target creature."
@@ -20,6 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Discard a card at random: Regenerate target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    Plus(ManaCost("{2}"), TapCost(), DiscardAtRandom(1, "a card at random")),
 			Targets: TargetCreature("target creature"),
 			Effect:  regenerateTheTargetPermanent,

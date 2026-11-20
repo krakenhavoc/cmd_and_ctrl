@@ -26,8 +26,9 @@ func init() {
 		Completeness:  CompletenessFull,
 		ManaAbilities: []ManaAbility{colorlessTapRow()},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: Put two +1/+1 counters on target non-Human creature that entered this turn.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: Put two +1/+1 counters on target non-Human creature that entered this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: TargetCreature("target non-Human creature that entered this turn",
 				Not(HasSubtype("Human")),
 				func(g *game.Game, _ uuid.UUID, c game.Card) bool { return b06EnteredThisTurn(g, c.InstanceID) }),
