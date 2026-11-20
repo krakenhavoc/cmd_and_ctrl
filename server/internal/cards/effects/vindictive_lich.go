@@ -40,13 +40,7 @@ func init() {
 			TheModesTargetDiscards(2)),
 		ModeDoing("Target opponent loses 5 life.",
 			Distinct(TargetPlayer("target opponent", Opponent())),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok || t.Kind != game.TargetPlayer {
-					return nil
-				}
-				return GainLife{Player: t.ID, Amount: -5}.Apply(ctx)
-			}),
+			vindictiveLichTargetLosesFive),
 	)
 	Register(Spec{
 		OracleID:     "6dc7f837-158f-4ccf-86a5-a07a20891ec5",
@@ -54,4 +48,15 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{dies},
 	})
+}
+
+// vindictiveLichTargetLosesFive is the third bullet, "Target opponent loses
+// 5 life": its own declaration, so its target read is never mistaken for a
+// gate on the first bullet's sacrifice.
+func vindictiveLichTargetLosesFive(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
+	}
+	return GainLife{Player: t.ID, Amount: -5}.Apply(ctx)
 }

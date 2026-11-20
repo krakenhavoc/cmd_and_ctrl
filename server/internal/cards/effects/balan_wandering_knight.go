@@ -30,9 +30,11 @@ func init() {
 		PrintedKeywords: []string{"first strike"},
 		Static:          []game.StaticAbility{doubleStrike},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{W}: Attach all Equipment you control to Balan.",
-			Cost:   ManaCost("{1}{W}"),
-			Effect: c17AttachAllEquipmentToSource,
+			Label: "{1}{W}: Attach all Equipment you control to Balan.",
+			// The Equipment's bonuses, and Balan's double strike with two.
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    ManaCost("{1}{W}"),
+			Effect:  c17AttachAllEquipmentToSource,
 		}},
 	})
 }

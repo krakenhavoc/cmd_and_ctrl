@@ -36,6 +36,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     label,
+			Purpose:   game.Purpose{Answers: game.AnswerPump},
 			Condition: AllConditions(DuringYourTurn(), OncePerTurnActivation(label)),
 			Cost:      game.AbilityCost{Life: 5},
 			Effect: func(g *game.Game, item *game.StackItem) error {

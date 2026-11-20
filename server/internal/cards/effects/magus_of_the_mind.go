@@ -24,8 +24,9 @@ func init() {
 		Name:         "Magus of the Mind",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{U}, {T}, Sacrifice this creature: Shuffle your library, then exile the top X cards, where X is one plus the number of spells cast this turn. Until end of turn, you may play lands and cast spells from among cards exiled this way without paying their mana costs.",
-			Cost:  game.AbilityCost{Mana: "{U}", Tap: true, SacrificeSelf: true},
+			Label:   "{U}, {T}, Sacrifice this creature: Shuffle your library, then exile the top X cards, where X is one plus the number of spells cast this turn. Until end of turn, you may play lands and cast spells from among cards exiled this way without paying their mana costs.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    game.AbilityCost{Mana: "{U}", Tap: true, SacrificeSelf: true},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				me := ctx.Controller()
