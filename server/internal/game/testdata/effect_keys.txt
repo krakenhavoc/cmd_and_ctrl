@@ -476,6 +476,7 @@ body the-fire-nation-drill/destroy
 body the-last-ronin/attacks-alone
 body the-last-ronin/return
 body the-mindskinner/each-opponent-mills
+body the-motherlode/destroy-and-no-blocks
 body the-restoration-of-eiganjo/return-tapped
 body the-ring/sacrifice-blocker-at-end-of-combat
 body the-thing/double-counters
@@ -717,6 +718,7 @@ choose choose-cards/discard-two-unless-creature
 choose choose-cards/discard-two-unless-creature-identity
 choose choose-cards/discard-two-unless-enchantment
 choose choose-cards/disturbing-mirth-sacrifice
+choose choose-cards/dogmeat-return-aura-or-equipment
 choose choose-cards/dokuchi-silencer-destroy
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
@@ -2340,6 +2342,7 @@ payunless pay-unless/tainted-adversary-times
 payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/terror-of-towashi-return
 payunless pay-unless/tester-of-the-tangential-move
+payunless pay-unless/the-motherlode-paid
 payunless pay-unless/the-thing-double-counters
 payunless pay-unless/thousand-moons-crackshot-tap
 payunless pay-unless/tilonallis-summoner-attacking-elementals
@@ -2454,6 +2457,7 @@ run prompt-run/bound-sacrificed
 run prompt-run/breena-the-demagogue-counters
 run prompt-run/bristlebud-farmer-sacrifice
 run prompt-run/brudiclad-tokens-become-copies
+run prompt-run/cait-cage-brawler-discarded
 run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
@@ -3452,6 +3456,7 @@ tail mutinous-massacre/steal-everything
 tail myr-custodian/ask-opponents
 tail myriad/exile-tokens-at-end-of-combat
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
+tail mysterious-stranger/copy-one-at-random
 tail nahiri-forged-in-fury/free-equipment
 tail nahiris-resolve/schedule-return-at-next-upkeep
 tail nantuko-cultivator/discarded
