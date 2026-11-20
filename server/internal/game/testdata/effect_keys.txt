@@ -2148,6 +2148,7 @@ payunless pay-unless/bloodfeather-phoenix-return
 payunless pay-unless/bloodthirsty-adversary-times
 payunless pay-unless/bns-b52-slinza-fight
 payunless pay-unless/bns-b52-taeko-unblockable
+payunless pay-unless/boneyard-scourge-return
 payunless pay-unless/brass-man-untap
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
@@ -2457,6 +2458,7 @@ run prompt-run/bound-sacrificed
 run prompt-run/breena-the-demagogue-counters
 run prompt-run/bristlebud-farmer-sacrifice
 run prompt-run/brudiclad-tokens-become-copies
+run prompt-run/c17-wasitora-sacrificed
 run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
@@ -3851,6 +3853,7 @@ tail then/braids-arisen-nightmare-ask-opponents
 tail then/braids-arisen-nightmare-next-opponent
 tail then/breeches-the-blastmaker-flip
 tail then/bringer-of-the-last-gift-return
+tail then/c17-put-found-hammer-of-nazahn-onto-battlefield
 tail then/cait-sith-fortune-teller-boost
 tail then/calamitous-tide-loot
 tail then/cascade-finish
