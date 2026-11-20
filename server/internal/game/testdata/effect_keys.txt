@@ -2121,6 +2121,7 @@ payunless aphelia-viper-whisperer/paid
 payunless arni-metalbrow/paid
 payunless cadric-soul-kindler/paid
 payunless evereth-viceroy-of-plunder/paid
+payunless god-favored-general/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
@@ -2374,6 +2375,8 @@ payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/wolfbat-return
 payunless pay-unless/zoraline-cosmos-caller-return
 payunless pay-unless/zoyowa-lava-tongue-damage
+payunless pheres-band-raiders/paid
+payunless satyr-nyx-smith/paid
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/check-for-traps-life-loss
 pick revealed-pick/cloak-and-dagger-entwined-return

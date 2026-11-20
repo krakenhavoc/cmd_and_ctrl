@@ -23,7 +23,7 @@ func init() {
 		Purpose:      purpose,
 		Targets:      TargetAny(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
+			if t, ok := ctx.ClauseTarget(0); ok {
 				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 3}).Apply(ctx); err != nil {
 					return err
 				}
