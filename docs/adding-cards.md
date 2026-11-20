@@ -9317,7 +9317,13 @@ Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
 applies: it queues a `pay_unless` prompt for the taxed player and
 returns; the "unless" consequence runs later as its registered `Else` when
 they answer "Don't pay" — or "Pay" without the mana in pool +
-untapped sources. Read the payer's ID off the triggering event at
+untapped sources. The table waits for that answer (#5793): the engine
+anchors every pay-unless a resolution asks to the step it is asked in, so
+nothing passes, the step does not end, and a spell's later instructions and
+its exit wait until the payer has answered (CR 118.12, 608.2g, 117.3b). This
+holds for a spell or activated ability too ("return target creature unless
+its controller pays {1}. Draw a card."): plain `PayUnless{Else}` inside
+`ResolveSteps` is the whole recipe, with no flag on the card. Read the payer's ID off the triggering event at
 resolution (`item.Trigger.Event.Actor` for cast / draw events — not
 captured in a `Build`, which would put the row on the legacy list) and
 read the controller off the `Context` inside `Else`. See
@@ -10355,14 +10361,17 @@ that question — the gated verbs ask it and so does `internal/legal`,
 which is what keeps the bots and the engine from disagreeing the way
 they did for the whole life of the allowlist (#794). Deny by default:
 an unclassified kind blocks, and `pay_unless` is still the one kind
-that does not (ADR 0018 §6). That row answers for the KIND; a live
+that does not (ADR 0018 §6) — but only for a prompt queued outside a
+resolution: since #5793 every pay-unless a resolution asks is owed in
+its step, below. That row answers for the KIND; a live
 PROMPT is asked through `(*game.Game).ChoicePromptBlocksTable`, which
 adds two one-way narrowings on top of it, both DERIVED from the board
 rather than declared by a card — `PendingChoice.GuardsStackItem`, a
 prompt whose decline counters an object still on the stack (#951,
 `counter_unless_paid.go`), and `PendingChoice.OwedInStep`, a prompt the
 payer owes before the step it was asked in can end (#997,
-`upkeep_pay_unless.go`). Both can only make a prompt block, never let
+`upkeep_pay_unless.go`; derived since #5793 for every pay-unless a
+resolution asks, `resolution_pay_unless.go`). Both can only make a prompt block, never let
 one through, and both lift by themselves when the thing they are about
 has gone — which is what stops either being a wedge. There is no
 card-level "please block" switch: #567 shipped one and the next two
@@ -10415,19 +10424,19 @@ string.
 
 Two things that are not obvious:
 
-- **The prompt blocks the table**, which no other `pay_unless` does.
-  Use `effects.UpkeepPayUnless` (never `PayUnless`) for "at the
-  beginning of your upkeep, pay or else": it goes through
+- **The prompt blocks the table**, as every `pay_unless` a resolution
+  asks does since #5793. Still use `effects.UpkeepPayUnless` (never
+  `PayUnless`) for "at the beginning of your upkeep, pay or else": its
+  anchor is the card's own, so ADR 0127 never offers a standing
+  "Always / Never pay" for it (the derived anchor keeps one). It goes through
   `Game.QueueUpkeepPayUnlessForEffect`, which anchors the prompt to the
   step it was raised in (`PendingChoice.OwedInStep`), and
   `game.ChoicePromptBlocksTable` holds the table there until it is
   answered — read by the engine gate and by `internal/legal` alike.
-  ADR 0018 §6's latitude is Rhystic Study's: a question to a *different*
-  player after the ability left the stack. This one asks the active
-  player during their own upkeep, and the answer decides whether a
-  permanent is still on the battlefield. The narrowing is one-way and
-  per prompt — the `pay_unless` **kind** is unchanged, so Rhystic Study
-  still plays as it did. Stasis and Pact of Negation are the same door
+  This one asks the active player during their own upkeep, and the
+  answer decides whether a permanent is still on the battlefield. The
+  narrowing is one-way and per prompt — the `pay_unless` **kind** is
+  unchanged. Stasis and Pact of Negation are the same door
   (#997); nothing declares a halt on the card. So is a beginning-of-end-step
   "sacrifice it unless you pay", such as Ashling, the Limitless's delayed
   trigger for its token (#5803).

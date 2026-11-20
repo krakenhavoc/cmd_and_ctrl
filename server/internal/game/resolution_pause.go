@@ -47,9 +47,10 @@ package game
 //
 // Only a prompt that blocks the table holds (ChoicePromptBlocksTable).
 // A blocking prompt already stops every pass, so holding the boundary
-// behind it stops nothing that was not already stopped. A pay_unless
-// asked after its ability has left the stack does not block, so it
-// does not hold, and play goes on around it as ADR 0018 §6 decided.
+// behind it stops nothing that was not already stopped. A pay_unless a
+// resolution asks blocks since #5793 (resolution_pay_unless.go: it is
+// owed in its step, CR 118.12), so it holds like any other; one asked
+// outside a resolution keeps ADR 0018 §6's kind and does not hold.
 // Every blocking kind has an always-legal answer (legal.choiceMoves),
 // and a seat that leaves has its prompts dropped or reassigned by the
 // departure table (ADR 0018 §6, ADR 0060). A dropped prompt no longer
