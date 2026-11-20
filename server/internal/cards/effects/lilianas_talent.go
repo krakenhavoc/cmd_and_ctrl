@@ -31,15 +31,9 @@ func init() {
 		Grants: []AbilityGrant{{
 			Key: lilianasTalentGrant,
 			Activated: []ActivatedAbility{{
-				Label: "−8: Put all creature cards from all graveyards onto the battlefield under your control.",
-				Cost:  LoyaltyCost(-8),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					return ReturnFromGraveyardTogether{
-						Targets:    allGraveyardsCardIDs(ctx, game.Card.IsCreature),
-						Controller: ctx.Controller(),
-					}.Apply(ctx)
-				},
+				Label:  "−8: Put all creature cards from all graveyards onto the battlefield under your control.",
+				Cost:   LoyaltyCost(-8),
+				Effect: putAllCreatureCardsFromAllGraveyardsOntoTheBattlefield,
 			}},
 			Text: "[−8]: Put all creature cards from all graveyards onto the battlefield under your control.",
 		}},
