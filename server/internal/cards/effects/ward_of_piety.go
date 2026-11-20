@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Ward of Piety — Enchantment — Aura {1}{W}:
 //
 //	"Enchant creature
@@ -19,9 +21,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
 		Activated: []ActivatedAbility{
-			redirectRow("{1}{W}: The next 1 damage that would be dealt to enchanted creature this turn is dealt to any target instead.",
+			alsoAnswers(game.AnswerRemove, redirectRow("{1}{W}: The next 1 damage that would be dealt to enchanted creature this turn is dealt to any target instead.",
 				ManaCost("{1}{W}"), TargetAny(),
-				RedirectDamage{Protect: ShieldEnchantedCreature, Amount: 1, To: RedirectToClause(0)}),
+				RedirectDamage{Protect: ShieldEnchantedCreature, Amount: 1, To: RedirectToClause(0)})),
 		},
 	})
 }

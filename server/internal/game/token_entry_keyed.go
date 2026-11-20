@@ -84,6 +84,12 @@ type tokenEntryRun struct {
 	Created  []uuid.UUID        `json:"created,omitempty"`
 	Source   uuid.UUID          `json:"source"`
 	Then     *keyedTailSnapshot `json:"then,omitempty"`
+	// NotCreated marks the token a copy of a permanent spell becomes
+	// (putSpellCopyTokenLocked, #4994): CR 111.13, it is not "created",
+	// so announceEntryLocked tells its arrival as a move from no zone
+	// rather than as EventTokenCreated. Additive within schema v9: a
+	// file without it is a created token, which every run before it was.
+	NotCreated bool `json:"notCreated,omitempty"`
 	// report is a synchronous door's result (tokenTail.report). Never
 	// written: a creation that paused has returned to the door already.
 	report *[]uuid.UUID
@@ -147,7 +153,7 @@ func (g *Game) enterStagedTokensLocked(r *tokenEntryRun) error {
 	ev := createdTokenEntryEvent(card, next.Entry.options(), r.Source)
 	ev.entryTail = &entryTail{tokens: &tokenEntryRun{
 		Token: next.ID, Blocking: next.Blocking, Rest: rest[1:], Created: r.Created, Source: r.Source,
-		Then: r.Then, report: r.report,
+		Then: r.Then, NotCreated: r.NotCreated, report: r.report,
 	}}
 	_, err := g.enterBattlefieldThroughPipelineLocked(ev)
 	if err != nil {
@@ -176,8 +182,15 @@ func (g *Game) runTokenEntryStepLocked(r *tokenEntryRun, entered uuid.UUID) erro
 		}
 	}
 	return g.enterStagedTokensLocked(&tokenEntryRun{
-		Rest: r.Rest, Created: landed, Source: r.Source, Then: r.Then, report: r.report,
+		Rest: r.Rest, Created: landed, Source: r.Source, Then: r.Then, NotCreated: r.NotCreated, report: r.report,
 	})
+}
+
+// entryTokenNotCreated reports whether ev is the entry of a token that is
+// not "created" (tokenEntryRun.NotCreated, CR 111.13). Read by
+// announceEntryLocked, before the deferred entry tail clears the run.
+func (ev *ReplacementEvent) entryTokenNotCreated() bool {
+	return ev != nil && ev.entryTail != nil && ev.entryTail.tokens != nil && ev.entryTail.tokens.NotCreated
 }
 
 // createdTokenEntryEvent is a staged token's battlefield entry event,

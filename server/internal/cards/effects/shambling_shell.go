@@ -21,6 +21,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{Dredge(3)},
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice this creature: Put a +1/+1 counter on target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    SacrificeThis(),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

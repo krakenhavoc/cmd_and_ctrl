@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Warning — Instant {W}:
 //
 //	"Prevent all combat damage that would be dealt by target attacking creature this turn."
@@ -12,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "c5ba0f0f-65c5-4ffa-987a-f320b401ec8f",
 		Name:         "Warning",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target attacking creature", AttackingCreature()),
 		OnResolve:    shieldAgainstTargetsSpell(true),

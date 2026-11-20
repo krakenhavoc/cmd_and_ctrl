@@ -20,7 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ada82f93-dc93-4a95-a13f-42b5942b3413",
 		Name:         "Magic Damper",
-		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 1, "hexproof")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1, "hexproof")), game.AnswerProtect|game.AnswerPump),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

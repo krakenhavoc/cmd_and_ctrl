@@ -27,6 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2c306e87-e3c8-4066-9be5-570e2f2d6bad",
 		Name:         "Moonmist",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// The set of Humans is read once, before any of them turns

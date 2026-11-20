@@ -29,6 +29,8 @@ export interface StagedAttack {
   exert?: true;
   // #5658: the creature this attacker enlists (CR 702.154a).
   enlist?: string;
+  // ADR 0224: the band this attacker is in (CR 702.22c).
+  band?: number;
 }
 
 /** isStaged reports whether a creature is in the staged set. */

@@ -2397,6 +2397,7 @@
     exertIDs: string[] = [],
     phyrexianLife = 0,
     enlist: Record<string, string> = {},
+    band: string[] = [],
   ): void {
     const defenderSeatID = attackPickerDefenderID;
     const keepsStage = attackPickerGroup !== null;
@@ -2413,6 +2414,8 @@
       enlist,
       // #4198: the Phyrexian symbols of the tax paid with life.
       phyrexianLife,
+      // ADR 0224: the rows the player toggled into one band.
+      band,
     });
     if (!params) return;
     if (keepsStage) {

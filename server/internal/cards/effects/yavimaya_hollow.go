@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Yavimaya Hollow — Legendary Land:
 //
 //	"{T}: Add {C}.
@@ -27,6 +29,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{G}, {T}: Regenerate target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    Plus(ManaCost("{G}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect:  regenerateTheTargetPermanent,

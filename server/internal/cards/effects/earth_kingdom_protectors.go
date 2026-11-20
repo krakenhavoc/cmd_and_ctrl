@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Earth Kingdom Protectors — Creature — Human Soldier Ally {W}, 1/1
 // (Avatar: The Last Airbender, #4459):
 //
@@ -22,7 +24,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice this creature: Another target Ally you control gains indestructible until end of turn.",
 			Cost:    SacrificeThis(),
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")), game.AnswerSurvive),
 			Targets: Another(TargetPermanent("another target Ally you control", HasSubtype("Ally"), YouControl())),
 			Effect:  firstTargetGainsUntilEndOfTurn(0, "Earth Kingdom Protectors — indestructible until end of turn", "indestructible"),
 		}},

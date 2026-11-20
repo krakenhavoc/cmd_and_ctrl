@@ -21,7 +21,7 @@ func init() {
 		Name:         "Water Wings",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "flying", "hexproof")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "flying", "hexproof")), game.AnswerProtect|game.AnswerPump|game.AnswerCombatGrant),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)
 			if !ok {

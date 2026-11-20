@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "04046ae4-5c51-434b-930c-f3b1d348bf4b",
 		Name:         "Rootborn Defenses",
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive | game.AnswerMakesBlocker}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return Populate{ThenTail: ctx.ItemTail(rootbornDefensesGrant)}.Apply(ctx)

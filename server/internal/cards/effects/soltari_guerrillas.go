@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Soltari Guerrillas — Creature — Soltari Soldier {2}{R}{W}, 3/2:
 //
 //	"Shadow
@@ -17,9 +19,9 @@ func init() {
 		Name:         "Soltari Guerrillas",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			redirectRow("{0}: The next time this creature would deal combat damage to an opponent this turn, it deals that damage to target creature instead.",
+			alsoAnswers(game.AnswerRemove, redirectRow("{0}: The next time this creature would deal combat damage to an opponent this turn, it deals that damage to target creature instead.",
 				ManaCost("{0}"), TargetCreature("target creature"),
-				RedirectDamage{FromThis: true, Opponents: true, CombatOnly: true, Next: true, To: RedirectToClause(0)}),
+				RedirectDamage{FromThis: true, Opponents: true, CombatOnly: true, Next: true, To: RedirectToClause(0)})),
 		},
 	})
 }

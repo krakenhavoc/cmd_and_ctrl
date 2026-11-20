@@ -1000,11 +1000,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// way.
 	lifeReserved := offerLife(offer) + branchLife(addCost)
 	// #5659: an announced optional cost's fixed life (a Defiler's "you
-	// may pay 2 life") is owed too, and a set whose life the seat can't
-	// pay (CR 119.4, a locked life total) is a cast the engine refuses.
+	// may pay 2 life", Slaughter's "Buyback—Pay 4 life", #5782) is owed
+	// too, and a set whose life the seat can't pay (CR 119.4, a locked
+	// life total, "can't pay life to cast spells") is a cast the engine
+	// refuses. On top of the rule, the policy the branches' life follows
+	// (castCostBranches): an optional payment that would leave the seat
+	// at 0 life is never offered, because the next state-based check
+	// would kill it (CR 704.5a) for a kicker or a buyback.
 	if owed := optionalLife(optional, chosen); owed > 0 {
 		lifeReserved += owed
-		if !e.g.CanPayLifeLocked(e.p, lifeReserved) {
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, lifeReserved) || e.p.Life <= lifeReserved {
 			return
 		}
 	}
@@ -1992,7 +1997,8 @@ func (e *enumerator) castMoveEmitter(
 			// price Force of Will's pitch as free. See MoveCost.
 			// #1677: and the Phyrexian symbols this move pays with
 			// life, which Params names only as a count.
-			// ADR 0100: and a branch's fixed "pay 3 life".
+			// ADR 0100: and a branch's fixed "pay 3 life", and an
+			// announced optional cost's ("Buyback—Pay 4 life", #5782).
 			// ADR 0129 §5: and the energy the cast pays — the offer's
 			// and a replicate's, once per payment.
 			// ADR 0136 §2: and the mana it charges in all, which the
@@ -2000,7 +2006,7 @@ func (e *enumerator) castMoveEmitter(
 			// cast always carries a Cost.
 			// #5390: and the counters the offer removes, priced against
 			// the creatures they come off as an activation's are.
-			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying)+optionalLife(optional, chosen), 0), phyLife),
 				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax), counters.prices()),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is

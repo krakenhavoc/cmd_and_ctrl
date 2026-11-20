@@ -113,9 +113,10 @@ func TestCumulativeUpkeepSacrificesOnDecline(t *testing.T) {
 	}
 }
 
-// The prompt BLOCKS the table, unlike every other pay_unless: the
-// question is the active player's own and the rest of their turn
-// depends on the answer (ADR 0018 §6, effects.UpkeepPayUnless).
+// The prompt BLOCKS the table: the question is the active player's own
+// and the rest of their turn depends on the answer (#997,
+// effects.UpkeepPayUnless). Since #5793 every pay_unless a resolution
+// asks blocks too; this one's anchor is the card's own.
 func TestCumulativeUpkeepPromptBlocksTheTable(t *testing.T) {
 	g := newCatalogGame(t)
 	owner := g.Seats[1]
@@ -137,8 +138,8 @@ func TestCumulativeUpkeepPromptBlocksTheTable(t *testing.T) {
 	if _, err := g.AdvanceStep(); !errors.Is(err, game.ErrChoicePending) {
 		t.Fatalf("advance_step past the cumulative-upkeep prompt: %v, want ErrChoicePending", err)
 	}
-	// And the kind itself is untouched: Rhystic Study still does not
-	// block, which is what ADR 0018 §6 decided.
+	// And the kind itself is untouched: the halt is per prompt (#997,
+	// #5793), not per kind.
 	if game.ChoiceBlocksTable(game.PendingChoicePayUnless) {
 		t.Error("the pay_unless KIND now blocks — this change is per prompt, not per kind")
 	}
@@ -195,9 +196,14 @@ func TestMysticRemoraTaxesOpponentNoncreatureSpells(t *testing.T) {
 	if prompt.PayCost != "{4}" {
 		t.Errorf("Remora's tax = %q, want {4}", prompt.PayCost)
 	}
-	if prompt.OwedInStep.NamesAStep() {
-		t.Errorf("the Rhystic half anchored itself to %v and blocks the table — "+
-			"ADR 0018 §6 says it must not", prompt.OwedInStep)
+	// #5793: the tax is part of the trigger's resolution (CR 118.12), so
+	// the engine anchors it to the step it is asked in, and it still takes
+	// a standing answer (ADR 0127's 2026-11-20 amendment).
+	if !prompt.OwedInStep.NamesAStep() {
+		t.Error("the Rhystic half is not owed in the step it was asked in (#5793)")
+	}
+	if prompt.AutoAnswerKey == "" {
+		t.Error("the Rhystic half lost its standing answer to the derived step anchor (ADR 0127)")
 	}
 	// "You may draw": a question, asked after the decline.
 	if got := owner.Hand.Size() - handBefore; got != 0 {

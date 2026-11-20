@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Alaborn Veteran — Creature — Human Knight {2}{W}, 2/2 (#4062):
 //
 //	"{T}: Target creature gets +2/+2 until end of turn.
@@ -24,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Target creature gets +2/+2 until end of turn. Activate only during your turn, before attackers are declared.",
-			Purpose:   ForTargets(BenefitUntilEOT(0, 2, 2)),
+			Purpose:   withAnswers(ForTargets(BenefitUntilEOT(0, 2, 2)), game.AnswerPump),
 			Cost:      TapCost(),
 			Targets:   TargetCreature("target creature"),
 			Condition: DuringYourTurnBeforeAttackersAreDeclared(),
