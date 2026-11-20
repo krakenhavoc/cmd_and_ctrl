@@ -199,10 +199,9 @@ func (m ManaSpent) From(kinds ManaSourceKinds) bool {
 func (m ManaSpent) FromTreasure() bool { return m.From(ManaSourceTreasure) }
 
 // Snow reports whether any of the mana came from a snow source
-// (CR 205.4h) — what a `{S}` symbol in a cost is paid with.
+// (CR 205.4g) — what a `{S}` symbol in a cost is paid with (CR 107.4h).
 //
-// Nothing in the catalog reads it: no printed card asks whether snow
-// mana was spent, and `ParsedCost.HasSnow` is still informational
-// (mana_cost.go:39). It is here because the snapshot records the bit
-// anyway and the `{S}` work has nowhere else to read from.
+// Nothing in the catalog reads it: the payment pays an {S} with snow
+// mana (#5986, ColorRequirement.PaidBy), but no printed card the
+// catalog carries asks afterwards whether snow mana was spent.
 func (m ManaSpent) Snow() bool { return m.From(ManaSourceSnow) }

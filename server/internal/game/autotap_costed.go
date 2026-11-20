@@ -338,6 +338,8 @@ func floatingSources(pool ManaPool) []tapSource {
 			out = append(out, tapSource{
 				CardID: tok.Source,
 				Slots:  []ProducedManaEntry{{Options: []string{tok.Color}}},
+				// #5986: floating snow mana still pays an {S}.
+				Snow: tok.SourceKinds.Has(ManaSourceSnow),
 			})
 		}
 	}

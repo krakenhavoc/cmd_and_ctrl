@@ -3201,7 +3201,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 	defer g.pushCounterPlacerLocked(p.ID)()
 	// Colour-picked one requirement at a time, a folded run written out
 	// (#3909).
-	pending := append([]ColorRequirement(nil), cost.unfolded().Required...)
+	pending := colourLedger(cost.unfolded().Required)
 	identity := commanderIdentityFor(g, p)
 	for _, planned := range plan {
 		cardID := planned.CardID
@@ -3865,6 +3865,22 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 		return bestOpt
 	}
 	return options[0]
+}
+
+// colourLedger is the executor's colour ledger for a cost's coloured
+// requirements: a copy of them, less every snow slot (#5986). An {S} is
+// paid by any mana a snow source makes (CR 107.4h), so it never asks a
+// source for a colour, and the plan already booked a snow source for
+// it (slotPays). Left on the ledger it would read as a {C} (its
+// Options), and a Sol Ring's {C} would tick it off.
+func colourLedger(reqs []ColorRequirement) []ColorRequirement {
+	out := make([]ColorRequirement, 0, len(reqs))
+	for _, r := range reqs {
+		if !r.Snow {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // bookColorRequirement ticks off one still-unsatisfied requirement
