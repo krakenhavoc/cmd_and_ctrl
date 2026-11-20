@@ -90,6 +90,7 @@
   import { offersRulings } from "../../rulings";
   import { crewNames } from "../../crewedBy";
   import { ringBearerTitle } from "../../ringEmblem";
+  import { bandTitle } from "../../banding";
   import {
     DROP_PIP_LABEL,
     NO_LEGAL_ACTIONS,
@@ -1121,6 +1122,15 @@
         >MUST BLOCK</span
       >
     {/if}
+    {#if card.attack_band}
+      <!-- ADR 0224, CR 702.22c: the band this attacker is in. Blocking
+           one creature with the same number blocks them all. -->
+      <span
+        class="badge band"
+        title={bandTitle(card.attack_band)}
+        aria-label={`attacking in band ${card.attack_band}`}>BAND {card.attack_band}</span
+      >
+    {/if}
     {#if card.echo_due}
       <!-- ADR 0108 §5: its echo triggers at its controller's next upkeep
            (CR 702.30a). -->
@@ -1307,6 +1317,15 @@
     {#if card.must_block}
       <span class="badge must-attack" title="must block this combat" aria-label="must block"
         >MUST BLOCK</span
+      >
+    {/if}
+    {#if card.attack_band}
+      <!-- ADR 0224, CR 702.22c: the band this attacker is in. Blocking
+           one creature with the same number blocks them all. -->
+      <span
+        class="badge band"
+        title={bandTitle(card.attack_band)}
+        aria-label={`attacking in band ${card.attack_band}`}>BAND {card.attack_band}</span
       >
     {/if}
     {#if card.echo_due}
@@ -2105,6 +2124,15 @@
     color: var(--danger);
     background: rgba(60, 0, 0, 0.85);
     border-color: rgba(255, 122, 122, 0.5);
+  }
+  .badge.band {
+    /* ADR 0224: top centre, clear of CMD (top-left), GOAD and FACE DOWN
+       (top-right) and the bottom-edge requirement badges. The accent,
+       like the attacking outline it sits inside. */
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    white-space: nowrap;
   }
   .badge.echo-due {
     /* ADR 0108 §5: above the bottom edge, so a creature that must

@@ -1656,6 +1656,20 @@ var items = []Item{
 		Examples: []string{"Zhalfirin Crusader", "Knight of the Holy Nimbus", "Outrider en-Kor"},
 	},
 	{
+		// #5723 (ADR 0224): banding is the engine's (game/banding.go). The
+		// bands are announced on declare_attackers, the block lock-in
+		// widens a blocker of one member to the band, and the damage
+		// division changes hands. "Bands with other" is not covered.
+		Slug: "banding", Name: "Banding", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Creatures with banding, and up to one without, can attack in a band, and blocking one creature in a band blocks them all. When a creature with banding is blocking or being blocked by a creature, its controller divides that creature's combat damage. \"Bands with other\" is not supported yet.",
+		Rules:    []string{"702.22", "508.1e"},
+		Issue:    5723,
+		Keywords: []string{game.KeywordBanding},
+		Mechanic: "banding",
+		Printed:  printedKeyword("banding"),
+		Examples: []string{"Benalish Hero", "Mesa Pegasus", "Timber Wolves"},
+	},
+	{
 		// #2075 (ADR 0113 §4): dies keywords whose triggers the engine
 		// derives from the departed permanent's LAST-KNOWN ability list
 		// (game/undying_persist.go), so a printed, token or granted

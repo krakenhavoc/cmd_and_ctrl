@@ -88,6 +88,7 @@ var tokenTable = map[string]game.Card{
 	"0/1 green Egg with defender":                                   {Name: "Egg", TypeLine: "Token Creature — Egg", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/2 green Plant with defender":                                 {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
+	"1/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"0/1 green Sheep":                                               {Name: "Sheep", TypeLine: "Token Creature — Sheep", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"0/1 red Kobolds of Kher Keep":                                  {Name: "Kobolds of Kher Keep", TypeLine: "Token Creature — Kobold", Power: 0, Toughness: 1, Colors: []string{"R"}},
 	"0/1 white Goat":                                                {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
@@ -101,6 +102,7 @@ var tokenTable = map[string]game.Card{
 	"0/4 white Wall with defender and flying":                       {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"defender", "flying"}},
 	"0/4 white Wall with defender":                                  {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"defender"}},
 	"1/3 white Wall with defender":                                  {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 1, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"defender"}},
+	"0/3 white Wall with defender":                                  {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"defender"}},
 	"1/1 black Bat with flying":                                     {Name: "Bat", TypeLine: "Token Creature — Bat", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"1/1 black Horror":                                              {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}},
@@ -178,9 +180,11 @@ var tokenTable = map[string]game.Card{
 	"1/1 red Human":                                                    {Name: "Human", TypeLine: "Token Creature — Human", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red Goblin with haste":                                        {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 	"1/1 red Warrior":                                                  {Name: "Warrior", TypeLine: "Token Creature — Warrior", Power: 1, Toughness: 1, Colors: []string{"R"}},
+	"1/1 red Survivor":                                                 {Name: "Survivor", TypeLine: "Token Creature — Survivor", Power: 1, Toughness: 1, Colors: []string{"R"}}, // Varchild, Betrayer of Kjeldor
 	"1/1 red and white Soldier with haste":                             {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"haste"}},
 	"1/1 blue Bird with flying":                                        {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"3/3 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 red Goblin Wizard with prowess":                               {Name: "Goblin Wizard", TypeLine: "Token Creature — Goblin Wizard", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"prowess"}},
 	"1/1 red Monk with prowess":                                        {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"prowess"}},
 	"1/1 white Monk with prowess":                                      {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"prowess"}},
@@ -200,6 +204,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Kor Soldier":                                            {Name: "Kor Soldier", TypeLine: "Token Creature — Kor Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Kor Ally":                                               {Name: "Kor Ally", TypeLine: "Token Creature — Kor Ally", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Soldier":                                                {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	"1/1 white Soldier Ally":                                           {Name: "Soldier Ally", TypeLine: "Token Creature — Soldier Ally", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Soldier with lifelink":                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"3/1 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 red Gremlin":                                                  {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 1, Toughness: 1, Colors: []string{"R"}},
@@ -292,6 +297,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 white and blue Knight with vigilance":                         {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W", "U"}, Keywords: []string{"vigilance"}},
 	"2/2 white and blue Detective":                                     {Name: "Detective", TypeLine: "Token Creature — Detective", Power: 2, Toughness: 2, Colors: []string{"W", "U"}},
 	"3/1 red Dinosaur":                                                 {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 3, Toughness: 1, Colors: []string{"R"}},
+	"1/1 red Dinosaur with haste":                                      {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}}, // #5512: Forbidden Friendship
 	"1/1 white Kithkin Soldier":                                        {Name: "Kithkin Soldier", TypeLine: "Token Creature — Kithkin Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 black and green Worm":                                         {Name: "Worm", TypeLine: "Token Creature — Worm", Power: 1, Toughness: 1, Colors: []string{"B", "G"}},
 	"1/1 black and red Goblin":                                         {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 1, Toughness: 1, Colors: []string{"B", "R"}},
@@ -481,6 +487,10 @@ var tokenTable = map[string]game.Card{
 	"3/3 blue Robot Warrior artifact": {Name: "Robot Warrior", TypeLine: "Token Artifact Creature — Robot Warrior", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"2/2 black Horror":                {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 2, Toughness: 2, Colors: []string{"B"}},
 
+	// #5600: Ravnica: City of Guilds's Hunted Dragon Knights and Hunted Lammasu Horror.
+	"2/2 white Knight with first strike": {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"first strike"}},
+	"4/4 black Horror":                   {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 4, Toughness: 4, Colors: []string{"B"}},
+
 	// #5368: Duskmourn's Horror (Phenomenon Investigators) and Demon (Demonic Covenant).
 	"2/2 black Horror enchantment": {Name: "Horror", TypeLine: "Token Enchantment Creature — Horror", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"5/5 black Demon with flying":  {Name: "Demon", TypeLine: "Token Creature — Demon", Power: 5, Toughness: 5, Colors: []string{"B"}, Keywords: []string{"flying"}},
@@ -569,4 +579,10 @@ var tokenTable = map[string]game.Card{
 
 	// S82 GAP batch 05: Nivea, Beloved Battlemage's Akroma.
 	"6/6 white Legendary Angel named Akroma, Angel of Wrath with flying, first strike, vigilance, trample, haste and protection from black and from red": {Name: "Akroma, Angel of Wrath", TypeLine: "Token Legendary Creature — Angel", Power: 6, Toughness: 6, Colors: []string{"W"}, Keywords: []string{"flying", "first strike", "vigilance", "trample", "haste", "protection from black", "protection from red"}},
+
+	// #5559: Born of the Gods' enchantment creature tokens (Fated
+	// Intervention, Pheres-Band Raiders, God-Favored General, Satyr Nyx-Smith).
+	"3/3 green Centaur enchantment":            {Name: "Centaur", TypeLine: "Token Enchantment Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"1/1 white Soldier enchantment":            {Name: "Soldier", TypeLine: "Token Enchantment Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	"3/1 red Elemental enchantment with haste": {Name: "Elemental", TypeLine: "Token Enchantment Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 }

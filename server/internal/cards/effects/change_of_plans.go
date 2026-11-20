@@ -33,6 +33,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b2f43df5-ec64-4375-b67f-b198732ab0b1",
 		Name:         "Change of Plans",
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive | game.AnswerPump}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      targetsCountedByX(TargetCreature("X target creatures you control", YouControl())),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

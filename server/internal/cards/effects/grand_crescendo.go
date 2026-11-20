@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Grand Crescendo — Instant {X}{W}{W}:
 //
 //	"Create X 1/1 green and white Citizen creature tokens. Creatures
@@ -18,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "dc600c06-8239-409e-b53d-20f813a3f5e7",
 		Name:         "Grand Crescendo",
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive | game.AnswerMakesBlocker}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The indestructible grant waits for a prompt the tokens' creation asks (CR 608.2c, #4155).

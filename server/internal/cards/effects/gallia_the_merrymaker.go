@@ -43,6 +43,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{R}, {T}: Put a +1/+1 counter on target creature that entered this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{1}{R}"), TapCost()),
 			Targets: TargetCreature("target creature that entered this turn", rfCreatureBEnteredThisTurn()),
 			Effect:  plusOneCounterOnChosenTargets,

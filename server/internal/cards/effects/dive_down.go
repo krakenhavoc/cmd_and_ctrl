@@ -17,7 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2f990b54-fbf3-4949-85bb-9ba39710e72a",
 		Name:         "Dive Down",
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 3, "hexproof")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 0, 3, "hexproof")), game.AnswerProtect|game.AnswerPump),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

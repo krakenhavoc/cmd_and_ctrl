@@ -278,11 +278,15 @@ func reduceByManaCost(cost ParsedCost, by ParsedCost) ParsedCost {
 // takeRequirement removes one requirement of `req` that mana of `color`
 // pays, an exact single-colour one first, and reports whether there was
 // one. `req` is the caller's own copy.
+//
+// Never a snow {S} (#5986): its Options read {C}, but a reduction by
+// {C} is not a reduction by {S}, and CR 107.4h has no reduction take
+// one off.
 func takeRequirement(req []ColorRequirement, color string) ([]ColorRequirement, bool) {
 	exact := -1
 	loose := -1
 	for i, r := range req {
-		if !slices.Contains(r.Options, color) {
+		if r.Snow || !slices.Contains(r.Options, color) {
 			continue
 		}
 		if len(r.Options) == 1 && !r.HasNumericAlt {

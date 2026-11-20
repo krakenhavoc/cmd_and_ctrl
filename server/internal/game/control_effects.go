@@ -188,6 +188,8 @@ func (g *Game) removeFromCombatLocked(c *Card) {
 	c.clearBlocking()
 	delete(g.announcedAttacks, c.InstanceID)
 	g.forgetAttackDefenderLocked(c.InstanceID)
+	// CR 702.22f: an attacker removed from combat leaves its band.
+	g.leaveBandLocked(c.InstanceID)
 	delete(g.announcedBlocks, c.InstanceID)
 	// Its own blocked state only: an attacker removed from combat is
 	// no longer blocked because it is no longer in combat at all

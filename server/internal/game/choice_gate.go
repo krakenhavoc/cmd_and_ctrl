@@ -85,6 +85,13 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 //	the cursor: the answer spends from the chooser's pool or runs
 //	OnDecline, neither of which reads the step.
 //
+//	#5793 retired that latitude for every pay_unless a resolution
+//	asks (ADR 0018's 2026-11-20 amendment): CR 118.12 makes the
+//	payment part of the resolution, and CR 117.3b gives priority only
+//	after it. The row stays `false` because it is still the answer for
+//	a prompt asked OUTSIDE a resolution, and the halt is derived on
+//	the prompt (OwedInStep, below), not on the kind.
+//
 // That row is about the KIND, and it is not the whole answer for a
 // PROMPT of that kind. Two narrowings sit on top of it, both read by
 // Game.ChoicePromptBlocksTable below, and neither able to loosen the
@@ -104,7 +111,10 @@ func (e *ChoicePendingError) Unwrap() error { return ErrChoicePending }
 //     player — is still in the game for the rest of the turn. CR
 //     117.3 does not pass priority on with a required action
 //     outstanding and CR 500.2 does not end the step until it is
-//     taken.
+//     taken. Since #5793 the engine also stamps it on every pay_unless
+//     a resolution asks (resolution_pay_unless.go): the payment is a
+//     cost paid as the spell or ability resolves (CR 118.12), so the
+//     resolution, and the table, wait for it.
 //
 // Both are DERIVED by the engine from what the prompt is about rather
 // than declared by each card. #951 earned that: six
@@ -139,8 +149,9 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// KIND only. A pay_unless prompt still blocks when its decline
 	// counters an object on the stack (GuardsStackItem, #951) or when
 	// the payer owes it before the current step can end (OwedInStep,
-	// #997); see the doc block above, counter_unless_paid.go and
-	// upkeep_pay_unless.go.
+	// #997), which every pay_unless a resolution asks is (#5793); see
+	// the doc block above, counter_unless_paid.go, upkeep_pay_unless.go
+	// and resolution_pay_unless.go.
 	PendingChoicePayUnless: false,
 
 	// Everything else stops the table.

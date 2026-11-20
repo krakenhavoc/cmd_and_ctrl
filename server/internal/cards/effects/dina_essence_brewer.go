@@ -42,6 +42,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice another creature: You gain X life and put X +1/+1 counters on target creature you control, where X is the sacrificed creature's power",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet},
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeAnotherN(1, "another creature", Creature())),
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: Do(

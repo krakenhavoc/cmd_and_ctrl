@@ -17,6 +17,7 @@ func returnThisRegenerateRow() ActivatedAbility {
 		Label:   "Return this enchantment to its owner's hand: Regenerate target creature.",
 		Cost:    ReturnThis(),
 		Targets: TargetCreature("target creature"),
+		Purpose: game.Purpose{Answers: game.AnswerSurvive}, // #4734 slice 7
 		Effect:  regenerateTheTargetPermanent,
 	}
 }

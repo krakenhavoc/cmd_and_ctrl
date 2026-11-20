@@ -622,8 +622,10 @@ func checkTapListAlone(spec Spec) {
 //     gift's opponent, "pay X life";
 //   - an unparseable branch mana cost.
 //
-// And, outside a branch, the two components that exist only for one:
-// a fixed PayLife in an optional cost and a mandatory mana cost.
+// And, outside a branch, the components that exist only for one: an
+// optional cost's own branches and a mandatory mana cost. A fixed
+// PayLife is a branch's or an optional cost's (KickerPayLife,
+// BuybackPayLife; ADR 0100's 2026-11-20 amendment).
 func checkEitherCost(spec Spec) {
 	if ac := spec.AdditionalCost; ac != nil && ac.DiscardLand && ac.DiscardCards <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q narrows a discard to land cards but discards nothing (DiscardLandCost)", spec.Name))
@@ -649,8 +651,16 @@ func checkEitherCost(spec Spec) {
 		if oc.ExileCards != nil && oc.Key != game.CollectEvidenceKey {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles cards from a graveyard — only the mandatory slot may (#3536), or an optional collect evidence (OptionalCollectEvidence)", spec.Name, oc.Key))
 		}
-		if oc.PayLife != 0 || len(oc.Either) > 0 || oc.Forage {
-			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays fixed life or has branches — both exist only on a branch of the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
+		if len(oc.Either) > 0 || oc.Forage {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q has branches — they exist only on the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
+		}
+		// ADR 0100's 2026-11-20 amendment (#5782): a kicker or buyback may
+		// pay a fixed amount of life ("Buyback—Pay 4 life", Slaughter),
+		// offered only while the caster's life total is at least that much
+		// (CR 119.4). A negative amount is a typo, and a repeated life
+		// payment is refused with the other non-mana repeats above.
+		if oc.PayLife < 0 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays a negative amount of life", spec.Name, oc.Key))
 		}
 		// An optional reveal is only the behold cost (#4642); checkOptionalBehold
 		// holds its shape.
@@ -1071,6 +1081,41 @@ func BuybackSacrifice(label string, preds ...CardPredicate) game.AdditionalCost 
 		Key:       game.BuybackKey,
 		Sacrifice: sacrificeSpec(label, preds...),
 		Label:     "Buyback—Sacrifice " + label,
+	}
+}
+
+// BuybackPayLife is a NON-MANA buyback that pays life — "Buyback—Pay 4
+// life" (Slaughter, #5782). KickerPayLife is the kicker twin, "Kicker—
+// Pay 3 life" (Phyrexian Scuta).
+//
+// The life is the fixed PayLife component the either/or branches use
+// (ADR 0100 §2, opened to optional costs by its 2026-11-20 amendment):
+// paid with the total cost, with the spell on the stack (CR 601.2h), and
+// the offer can be taken only by a caster whose life total is at least n
+// and who is allowed to pay life (CR 119.4). The cast path, the view's
+// `life_short` and the bot enumerator all ask the same CR 119.4 reader,
+// so nobody is offered a payment the server refuses.
+//
+//	OptionalCosts: []game.AdditionalCost{BuybackPayLife(4)},   // Slaughter
+func BuybackPayLife(n int) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional: true,
+		Key:      game.BuybackKey,
+		PayLife:  n,
+		Label:    fmt.Sprintf("Buyback—Pay %d life", n),
+	}
+}
+
+// KickerPayLife is "Kicker—Pay N life" (Phyrexian Scuta): BuybackPayLife
+// keyed as a kicker, so ctx.WasKicked() and game.CardKickedTimes read it.
+//
+//	OptionalCosts: []game.AdditionalCost{KickerPayLife(3)},   // Phyrexian Scuta
+func KickerPayLife(n int) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional: true,
+		Key:      game.KickerKey,
+		PayLife:  n,
+		Label:    fmt.Sprintf("Kicker—Pay %d life", n),
 	}
 }
 

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Herald of the Sun — Creature — Angel {4}{W}{W}, 4/4 (Foundations
 // Jumpstart, BNS batch 32):
 //
@@ -19,6 +21,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{W}: Put a +1/+1 counter on another target creature with flying.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{3}{W}"),
 			Targets: Another(TargetCreature("another target creature with flying", HasKeyword("flying"))),
 			Effect:  PlusOneCounterOnTheTarget,

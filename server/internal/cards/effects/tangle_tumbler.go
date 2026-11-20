@@ -28,6 +28,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{3}, {T}: Put a +1/+1 counter on target creature.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
 				Cost:    Plus(ManaCost("{3}"), TapCost()),
 				Targets: TargetCreature("target creature"),
 				Effect:  PlusOneCounterOnTheTarget,

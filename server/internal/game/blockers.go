@@ -256,6 +256,11 @@ func (g *Game) commitBlockDeclarationLocked() {
 	// attacker was good and only found out otherwise when the arrow
 	// vanished.
 	//
+	// ADR 0224, CR 702.22h: a blocker of one member of a band blocks
+	// the whole band. Widened before the pairs are read, so the
+	// band-mates are announced, and become blocked, with the rest.
+	g.expandBandBlocksLocked()
+
 	// Pass 1: the per-pair blocks. "Whenever this creature blocks"
 	// (CR 509.3a) and "becomes blocked by a creature" read these, and
 	// so does the public game log.

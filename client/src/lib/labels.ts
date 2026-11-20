@@ -758,6 +758,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}AttackDeclarationModal.svelte`],
     doc: "ADR 0130 §7: the Choose attackers picker's per-row Exert toggle",
   }),
+  bandAttacker: dynamicLabel({
+    stem: "Band ",
+    match: "prefix",
+    shape: "Band <name>",
+    make: (name: string) => `Band ${name}`,
+    example: ["Benalish Hero"],
+    kind: "aria",
+    role: "switch",
+    owners: [`${BOARD}AttackDeclarationModal.svelte`],
+    doc: "ADR 0224: the Choose attackers picker's per-row Band toggle, shown when a creature there has banding",
+  }),
   attackAndEnlist: dynamicLabel({
     stem: "Enlist ",
     match: "prefix",

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Serene Sunset — Instant {X}{G}:
 //
 //	"Prevent all combat damage X target creatures would deal this turn."
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e2ef027d-0ef7-4c8b-a594-3918290b02d9",
 		Name:         "Serene Sunset",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      targetsCountedByX(TargetCreature("X target creatures")),
 		OnResolve:    shieldAgainstTargetsSpell(true),
