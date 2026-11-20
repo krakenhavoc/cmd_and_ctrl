@@ -171,10 +171,7 @@ func TestBandingBlockingOneMemberBlocksTheBand(t *testing.T) {
 	}
 	// EventBlock for the band-mate's pair names the blocker, at a place
 	// past the first, so "whenever this creature blocks" stays one.
-	var pairs []Event
-	for _, ev := range blockDeclEvents(g, EventBlock, wall) {
-		pairs = append(pairs, ev)
-	}
+	pairs := blockDeclEvents(g, EventBlock, wall)
 	if len(pairs) != 2 || pairs[0].Target != bear || pairs[0].Amount != 1 || pairs[1].Target != hero || pairs[1].Amount != 2 {
 		t.Errorf("EventBlock pairs = %+v, want bear at 1 and the Hero at 2", pairs)
 	}
