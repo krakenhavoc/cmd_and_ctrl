@@ -23,7 +23,7 @@ func init() {
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {
-			mountains := b08LandsWithSubtypeControlled(ctx.Game, ctx.Controller(), "Mountain")
+			mountains := b08LandsWithSubtypeControlled(ctx.Game, ctx.Controller(), ctx.TextSubtype("Mountain"))
 			return DealDamage{Source: ctx.Source(), Target: id, Amount: mountains}.Apply(ctx)
 		})),
 	})
