@@ -212,6 +212,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 34.
 	"Ruination": "destroys the nonbasic lands, which no sweep class holds alone",
+
+	// #5521: RNA batch 1.
+	"Azorius Skyguard": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
