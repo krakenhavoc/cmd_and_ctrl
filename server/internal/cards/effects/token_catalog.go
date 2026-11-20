@@ -269,6 +269,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Smoke Spirits' Aid's Smoke Blessing (S82 NEO batch 15, #5493).
 	printedSmokeBlessingToken,
 
+	// Goblin Spymaster's Goblin, whose controller's creatures attack
+	// each combat (Commander 2016, #5537).
+	printedSpymasterGoblinToken,
+
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
 	printedCursedRoleToken,
