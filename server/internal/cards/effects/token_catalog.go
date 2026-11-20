@@ -493,6 +493,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedBnsHumanRogueToken,
 	// S82 BNS batch 51: Ozox, the Clattering King's Jumblebones.
 	printedBnsB51JumblebonesToken,
+	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
+	printedGapB05BlackLotusToken,
+	printedGapB05LordOfThePitToken,
 	// S82 GAP batch 3: Selenia, the Cursed Heart's Selenia's Curse.
 	printedSeleniasCurseToken,
 	// S82 GAP batch 3: Zagorka, Mother of Sanctum's Sanctum.

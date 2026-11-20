@@ -126,6 +126,17 @@ var knownUnmatchedTokens = map[string]string{
 	// enchantment creature token". No Nymph token card was ever printed, so the
 	// template follows the card's oracle text (as Shuri's Robot Hero does).
 	"2/2 white Nymph enchantment creature": "no Nymph token card was ever printed; Psemilla, Meletian Poet's oracle text says a 2/2 white Nymph enchantment creature",
+	// Balefang the Unslayable creates "a tapped Baneslayer Angel token"; Scryfall lists no token card for it.
+	"5/5 white Angel named Baneslayer Angel": "no Baneslayer Angel token card was printed for Balefang the Unslayable",
+	// Nivea, Beloved Battlemage (Mystery Booster Commander) creates an Akroma, Angel of Wrath
+	// token; no such token card is in the dump, so the template follows the card's oracle text.
+	"6/6 white Legendary Angel named Akroma, Angel of Wrath with flying, first strike, vigilance, trample, haste and protection from black and from red": "no Akroma token card is in the dump; Nivea's oracle text defines it",
+
+	// Jeskai Baller (Mystery Booster 2) creates "a 1/1 white Athlete creature
+	// token". The Athlete token was never printed as a token card; the
+	// template follows the oracle text.
+	"1/1 white Athlete": "no Athlete token card was printed for Jeskai Baller",
+
 	// Worzel, the Protector (Mystery Booster Commander) creates "ten Scryb Sprites tokens". Scryb Sprites
 	// is printed only as a card ("Creature — Faerie"), never as a token card; the template follows the oracle text.
 	"1/1 green Faerie with flying named Scryb Sprites": "Scryb Sprites was never printed as a token card; Worzel's oracle text says a green 1/1 Faerie with flying",

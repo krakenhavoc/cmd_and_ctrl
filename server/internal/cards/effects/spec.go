@@ -176,6 +176,17 @@ type Spec struct {
 	// WhenThisDiesReturnItAsAnAura.
 	ReturnedAura *game.TargetSpec
 
+	// AttachOnlyTo is an Equipment's "<this> can be attached only to
+	// <a quality>" (Konda's Banner, #5846): AttachedOnlyTo("a legendary
+	// creature", Legendary()). The engine holds every attach of the
+	// permanent to it (CR 301.5b, CR 701.3b: an equip or an effect aimed
+	// elsewhere doesn't move it) and unattaches it from a host that stops
+	// meeting it (CR 301.5c, CR 704.5n). The equip ability is left as
+	// printed: "Equip {2}" still targets any creature you control, and on
+	// one this rejects it resolves and does nothing (Gate Smasher's and
+	// O-Naginata's rulings). Nil for every other card.
+	AttachOnlyTo *game.TargetSpec
+
 	// ManaAbilities is the list of activated mana abilities the card
 	// exposes from the battlefield. Each entry is one tap-or-cost-
 	// for-mana ability — Sol Ring's "{T}: Add {C}{C}", Birds of
@@ -776,6 +787,16 @@ type Spec struct {
 	//
 	//	SpellsYouCastHaveDelve: true, // Teval, Arbiter of Virtue
 	SpellsYouCastHaveDelve bool
+
+	// FirstSpellHasAssist is a permanent's "The first spell you cast during
+	// each of your turns has assist" (Yume, Chronicler of Valor): a static
+	// ability of the permanent (CR 604.1), read off the battlefield as a
+	// spell is announced (game.SpellHasAssistLocked), so it gives assist to
+	// the first spell its controller casts on their own turn while it is
+	// there, and to none once it has gone or lost its abilities:
+	//
+	//	FirstSpellHasAssist: true, // Yume, Chronicler of Valor
+	FirstSpellHasAssist bool
 
 	// AsYouCascadePutALand is "As you cascade, you may put a land card from
 	// among the exiled cards onto the battlefield tapped" (Averna, the Chaos

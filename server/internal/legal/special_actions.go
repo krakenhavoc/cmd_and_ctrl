@@ -127,7 +127,9 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 		// (CR 107.3d), with the X open from 0 to that, as an X cast's
 		// is (ADR 0122 §6.2). Nothing else in the move is sized by X.
 		x, xv := 0, (*MoveValue)(nil)
-		if sa.Cost != "" {
+		// #5844: the engine's own payment gate, so a tax on a cost that
+		// prints no mana is priced here as it is charged there.
+		if g.SpecialActionChargesManaForEffect(e.seat, card, sa.Kind, sa) {
 			cost, err := g.SpecialActionManaCostForEffect(e.seat, card, sa.Kind, sa)
 			if err != nil {
 				continue

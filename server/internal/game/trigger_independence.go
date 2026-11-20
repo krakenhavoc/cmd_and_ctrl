@@ -1781,7 +1781,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,
 	"OptionalCosts": defFieldInert, "AlternativeCosts": defFieldInert,
 	"TapCost": defFieldInert, "Delve": defFieldInert, "Splice": defFieldInert, "SpendOnly": defFieldInert,
-	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "AsYouCascadePutALand": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
+	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "FirstSpellHasAssist": defFieldInert, "AsYouCascadePutALand": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert, "PowerUpExtras": defFieldInert,
 	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
@@ -1808,7 +1808,11 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// #3998: Opposition Agent controls an opponent's search and exiles
 	// what it finds while its permanent is there.
 	"ControlsOpponentsSearches": defFieldOwnRules,
-	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
+	// #5846: an Equipment's "can be attached only to …" (Konda's Banner)
+	// decides what another item's attach step does and when CR 704.5n
+	// unattaches it, while its permanent is there.
+	"AttachOnlyTo": defFieldOwnRules,
+	"LifeForMana":  defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,

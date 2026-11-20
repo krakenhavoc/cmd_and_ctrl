@@ -132,6 +132,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Sheep":                                               {Name: "Sheep", TypeLine: "Token Creature — Sheep", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Mouse":                                               {Name: "Mouse", TypeLine: "Token Creature — Mouse", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Ally":                                                {Name: "Ally", TypeLine: "Token Creature — Ally", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	"1/1 white Athlete":                                             {Name: "Athlete", TypeLine: "Token Creature — Athlete", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 black Faerie Rogue with flying":                            {Name: "Faerie Rogue", TypeLine: "Token Creature — Faerie Rogue", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"1/1 colorless Construct artifact":                              {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 1, Toughness: 1},
 	"1/1 colorless Gnome artifact":                                  {Name: "Gnome", TypeLine: "Token Artifact Creature — Gnome", Power: 1, Toughness: 1},
@@ -223,6 +224,7 @@ var tokenTable = map[string]game.Card{
 	"2/1 green Varmint":                                                {Name: "Varmint", TypeLine: "Token Creature — Varmint", Power: 2, Toughness: 1, Colors: []string{"G"}}, // Rise of the Varmints (#4468)
 	"2/1 black and green Spider with menace and reach":                 {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 1, Colors: []string{"B", "G"}, Keywords: []string{"menace", "reach"}},
 	"1/2 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 1, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
+	"2/4 black Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"reach"}}, // Penumbra Spider (#5596)
 	"1/2 blue Moonfolk with flying":                                    {Name: "Moonfolk", TypeLine: "Token Creature — Moonfolk", Power: 1, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/2 white Moogle with lifelink":                                   {Name: "Moogle", TypeLine: "Token Creature — Moogle", Power: 1, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"10/10 colorless Eldrazi":                                          {Name: "Eldrazi", TypeLine: "Token Creature — Eldrazi", Power: 10, Toughness: 10},
@@ -559,6 +561,14 @@ var tokenTable = map[string]game.Card{
 	"7/7 green Elemental with trample": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 7, Toughness: 7, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	// S82 BNS batch 50: Cynette, Jelly Drover's Jellyfish.
 	"1/1 blue Jellyfish with flying": {Name: "Jellyfish", TypeLine: "Token Creature — Jellyfish", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	// S82 GAP batch 4: Chief Magistrate of Mercadia's Goblin.
+	"2/1 red Goblin with haste": {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+	// S82 GAP batch 4: Balefang the Unslayable's Baneslayer Angel token,
+	// a {3}{W}{W} 5/5 Angel with the printed card's five keywords.
+	"5/5 white Angel named Baneslayer Angel": {Name: "Baneslayer Angel", TypeLine: "Token Creature — Angel", ManaCost: "{3}{W}{W}", Power: 5, Toughness: 5, Colors: []string{"W"}, Keywords: []string{"flying", "first strike", "lifelink", "protection from Demons", "protection from Dragons"}},
+
+	// S82 GAP batch 05: Nivea, Beloved Battlemage's Akroma.
+	"6/6 white Legendary Angel named Akroma, Angel of Wrath with flying, first strike, vigilance, trample, haste and protection from black and from red": {Name: "Akroma, Angel of Wrath", TypeLine: "Token Legendary Creature — Angel", Power: 6, Toughness: 6, Colors: []string{"W"}, Keywords: []string{"flying", "first strike", "vigilance", "trample", "haste", "protection from black", "protection from red"}},
 
 	// S82 GAP batch 06: Worzel, the Protector's Scryb Sprites.
 	"1/1 green Faerie with flying named Scryb Sprites": {Name: "Scryb Sprites", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"flying"}},

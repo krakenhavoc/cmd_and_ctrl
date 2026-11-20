@@ -223,6 +223,50 @@ func (a *assistAnswer) lessFrom(cost ParsedCost, x int) ParsedCost {
 // HasAssist reports whether the card, as it would be cast, has assist.
 func HasAssist(c *Card) bool { return HasKeyword(c, KeywordAssist) }
 
+// CatalogFirstSpellHasAssist is the catalog hook for a permanent's "The first
+// spell you cast during each of your turns has assist" (Yume, Chronicler of
+// Valor), wired at init through CardDef.FirstSpellHasAssist. Nil, or false,
+// means the permanent grants nothing.
+var CatalogFirstSpellHasAssist func(key string) bool
+
+// SpellHasAssistLocked reports whether `card`, cast by `caster` now, has assist:
+// it prints the keyword, or it is the first spell `caster` casts during their
+// own turn while they control a permanent that grants that. The grant is a
+// static ability of the permanent (CR 604.1), read off the battlefield as the
+// spell is announced and stored nowhere, so a permanent that has gone or lost
+// its abilities (CR 613.1f) grants nothing. "The first spell" is asked before
+// this spell counts itself in the turn's cast tally, so it is the spell that
+// finds the tally empty.
+//
+// Caller must hold g.mu.
+func (g *Game) SpellHasAssistLocked(caster uuid.UUID, card *Card) bool {
+	if HasAssist(card) {
+		return true
+	}
+	if CatalogFirstSpellHasAssist == nil || g.Battlefield == nil || caster == uuid.Nil {
+		return false
+	}
+	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+		return false
+	}
+	if active := g.Seats[g.Turn.ActiveSeat]; active == nil || active.ID != caster {
+		return false
+	}
+	if g.CastTallyFor(caster).Total != 0 {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		if src.Controller != caster {
+			continue
+		}
+		if key := catalogAbilityKeyOf(src); key != "" && CatalogFirstSpellHasAssist(key) {
+			return true
+		}
+	}
+	return false
+}
+
 // validateAssistChoiceLocked is CR 702.132a's "choose another player",
 // checked with the rest of CR 601.2b: only a spell with assist, only
 // another player, and only one still in the game. Refused rather than
@@ -234,7 +278,7 @@ func (g *Game) validateAssistChoiceLocked(caster uuid.UUID, card *Card, params C
 	if params.AssistPlayer == uuid.Nil {
 		return nil
 	}
-	if !HasAssist(card) || params.ForceCast {
+	if !g.SpellHasAssistLocked(caster, card) || params.ForceCast {
 		return ErrAssistNotOffered
 	}
 	if params.AssistPlayer == caster || !g.playerInGameLocked(params.AssistPlayer) {
@@ -546,7 +590,7 @@ func (g *Game) AssistPlayersLocked(caster uuid.UUID) []uuid.UUID {
 //
 // Caller must hold g.mu.
 func (g *Game) AssistOfferLocked(caster uuid.UUID, card Card, zone ZoneKind) (int, []uuid.UUID, bool) {
-	if !HasAssist(&card) {
+	if !g.SpellHasAssistLocked(caster, &card) {
 		return 0, nil, false
 	}
 	p := g.playerByIDLocked(caster)

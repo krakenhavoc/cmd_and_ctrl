@@ -9831,7 +9831,9 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 		// foretell discount. Left nil on a pricing error, exactly as
 		// ActivatedAbilityView.ChargedManaCost does, so the client
 		// falls back to Cost rather than showing a stale charge.
-		if sa.Cost != "" {
+		// #5844: and a tax on a cost that prints no mana, the engine's
+		// payment gate (SpecialActionChargesManaForEffect).
+		if g.SpecialActionChargesManaForEffect(owner, card, sa.Kind, sa) {
 			if charged, err := g.SpecialActionManaCostForEffect(owner, card, sa.Kind, sa); err == nil {
 				s := charged.String()
 				view.ChargedCost = &s
