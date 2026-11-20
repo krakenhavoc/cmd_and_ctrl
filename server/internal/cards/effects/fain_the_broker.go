@@ -47,6 +47,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{T}, Sacrifice a creature: Put two +1/+1 counters on target creature.",
+				Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet},
 				Cost:    Plus(TapCost(), SacrificeACreature()),
 				Targets: TargetCreature("target creature"),
 				Effect:  b31CountersOnChosenCreature,

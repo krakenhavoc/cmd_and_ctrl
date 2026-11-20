@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -227,6 +228,12 @@ func settleBlueStack(t *testing.T, g *game.Game, me uuid.UUID) {
 			return
 		}
 		if err := g.PassPriority(); err != nil {
+			// #5793: a prompt another seat owes mid-resolution (Rhystic
+			// Study's tax) holds the table until that seat answers, which
+			// the test does next.
+			if errors.Is(err, game.ErrChoicePending) {
+				return
+			}
 			t.Fatalf("PassPriority: %v", err)
 		}
 	}

@@ -37,6 +37,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Transfer Symbiont — {2}{G}, Discard this card: Put two +1/+1 counters on target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    game.AbilityCost{Mana: "{2}{G}", DiscardSelf: true},
 			Zones:   []game.ZoneKind{game.ZoneHand},
 			Targets: TargetCreature("target creature"),

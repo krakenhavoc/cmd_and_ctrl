@@ -1119,8 +1119,11 @@ type PendingChoice struct {
 	// (Game.ChoicePromptBlocksTable, choice_gate.go): CR 117.3 does
 	// not let priority pass on with a required action outstanding and
 	// CR 500.2 does not let the step end until it has been taken. Set
-	// only by QueueUpkeepPayUnlessForEffect (upkeep_pay_unless.go),
-	// which is the one door into this shape.
+	// by a door whose card anchors the prompt to its step
+	// (QueueUpkeepPayUnlessForEffect, upkeep_pay_unless.go; a keyed
+	// pay-unless's InThisStep), and since #5793 derived by
+	// QueueChoiceForEffect for every pay_unless a resolution asks
+	// (resolution_pay_unless.go, CR 118.12).
 	//
 	// It replaced a per-card "please block" boolean in #997, for the
 	// reason #951 gives for deriving the other narrowing: the boolean
@@ -1608,6 +1611,15 @@ type DamageAssignmentFrame struct {
 	// of it to what it attacks. Zero in every other prompt, and in a
 	// frame restored from before the field, which is what those were.
 	AsThoughUnblocked bool `json:",omitempty"`
+	// Banding marks a prompt whose chooser is NOT the source's controller
+	// (ADR 0224): CR 702.22j hands an attacker's division to the
+	// defending player when a creature with banding blocks it, and
+	// CR 702.22k hands a blocker's division to the active player when it
+	// blocks a creature with banding. Either way the chooser divides as
+	// they choose among BlockerIDs; AllowTrample and AsThoughUnblocked are
+	// false. Zero in every other prompt, and in a frame restored from
+	// before the field, which is what those were.
+	Banding bool `json:",omitempty"`
 	// HasDeathtouch is true when the attacker has deathtouch (CR
 	// 702.2c — 1 damage is lethal). The server uses this to relax
 	// trample's lethal-to-every-blocker rule (CR 702.19b): 1 damage
@@ -1755,6 +1767,10 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 	// ADR 0127 §2: a covered pay_unless or confirm is filed under the
 	// key of the resolution or branch that asks it.
 	g.keyResolutionPromptLocked(&choice)
+	// #5793: a pay_unless a resolution asks is owed in the step it is
+	// asked in. After the key, on purpose: ADR 0127's coverage reads the
+	// card's own step anchor, not this derived one (auto_answer.go).
+	g.oweResolutionPayUnlessInStepLocked(&choice)
 	g.PendingChoices = append(g.PendingChoices, &choice)
 	return choice.ID
 }

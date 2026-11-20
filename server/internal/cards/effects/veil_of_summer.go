@@ -38,6 +38,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "002965be-a36f-4a09-9ce0-c6535bca1703",
 		Name:         "Veil of Summer",
+		Purpose:      game.Purpose{Answers: game.AnswerProtect}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The rest of the spell waits for a prompt the draw asks (CR 608.2c, #4155).

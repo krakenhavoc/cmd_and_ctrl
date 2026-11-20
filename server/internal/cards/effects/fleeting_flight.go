@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Fleeting Flight — Instant {W}:
 //
 //	"Put a +1/+1 counter on target creature. It gains flying until end of
@@ -14,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6336401f-4e2d-4ebe-8c5b-24aa6f516abf",
 		Name:         "Fleeting Flight",
+		Purpose:      game.Purpose{Answers: game.AnswerPump | game.AnswerPrevent | game.AnswerCombatGrant}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		// Each sentence is a step: the keyword and the shield wait for a prompt

@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "9cefff18-96b1-4090-93cc-1ca981a58fbd",
 		Name:         "Temper",
+		Purpose:      game.Purpose{Answers: game.AnswerPump | game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Targets:      TargetCreature("target creature"),

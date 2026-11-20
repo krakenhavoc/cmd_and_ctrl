@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Welding Jar — Artifact {0}:
 //
 //	"Sacrifice this artifact: Regenerate target artifact."
@@ -28,6 +30,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice this artifact: Regenerate target artifact.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    SacrificeThis(),
 			Targets: TargetPermanent("target artifact", Artifact()),
 			Effect:  regenerateTheTargetPermanent,

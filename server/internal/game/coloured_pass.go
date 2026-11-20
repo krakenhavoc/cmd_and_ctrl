@@ -238,7 +238,10 @@ type ownerSeg struct {
 type colourRun struct {
 	pool  int    // index into the pool
 	color string // the run's mana
-	free  int    // mana the pass may book: N less what was already used
+	// snow is whether the run's mana came from a snow source
+	// (ManaSourceSnow), which is what pays an {S} (#5986, CR 107.4h).
+	snow bool
+	free int // mana the pass may book: N less what was already used
 	// booked is how many of the run's first mana are booked, and
 	// owners which requirement run each belongs to, in order.
 	booked int
@@ -365,7 +368,7 @@ func colouredPassX(pool ManaPool, used []int, order []int, reqs []reqRun, favor 
 	s := colourSolver{reqs: reqs, runs: make([]colourRun, 0, len(order)), favor: favor}
 	for _, i := range order {
 		if free := pool[i].N() - used[i]; free > 0 {
-			s.runs = append(s.runs, colourRun{pool: i, color: pool[i].Color, free: free})
+			s.runs = append(s.runs, colourRun{pool: i, color: pool[i].Color, snow: pool[i].SourceKinds.Has(ManaSourceSnow), free: free})
 		}
 	}
 	for ri, rr := range reqs {
@@ -397,13 +400,14 @@ func colouredPassX(pool ManaPool, used []int, order []int, reqs []reqRun, favor 
 }
 
 // walk is the first-match walk for m requirements of run ri: each takes
-// the first free mana, in order, of a colour the requirement PRINTS
-// (matchColor over Options; a widened slot is asked the same question,
+// the first free mana, in order, that the requirement PRINTS (PaidBy:
+// a colour in Options, or for an {S} any mana from a snow source,
+// #5986; a widened slot is asked the same question,
 // and what it admits beyond its printed colours is paid in the generic
 // pass instead, #1600). The m requirements are identical, so they fill
 // the matching runs in order. Returns how many it could not book.
 func (s *colourSolver) walk(ri, m int) int {
-	opts := s.reqs[ri].req.Options
+	req := s.reqs[ri].req
 	if s.reqs[ri].x && len(s.favor) > 0 {
 		// The X part takes the favoured colours' mana before any other:
 		// the same runs, in another order (colouredPassX).
@@ -413,7 +417,7 @@ func (s *colourSolver) walk(ri, m int) int {
 					break
 				}
 				c := &s.runs[k]
-				if !matchColor(c.color, opts) || containsFold(s.favor, c.color) != favoured {
+				if !req.PaidBy(c.color, c.snow) || containsFold(s.favor, c.color) != favoured {
 					continue
 				}
 				if t := min(m, c.free-c.booked); t > 0 {
@@ -429,7 +433,7 @@ func (s *colourSolver) walk(ri, m int) int {
 			break
 		}
 		c := &s.runs[k]
-		if !matchColor(c.color, opts) {
+		if !req.PaidBy(c.color, c.snow) {
 			continue
 		}
 		if t := min(m, c.free-c.booked); t > 0 {
@@ -488,7 +492,8 @@ func (s *colourSolver) reassign(ri, m int) int {
 //
 // It visits the runs in order and each run's mana in order. A free mana
 // ends the search. A booked one is freed by moving its owner, unless
-// the owner is a widened slot, or prints the same colours as r: any
+// the owner is a widened slot, or is paid by the same mana as r
+// (sameAdmitted: the same colours and the same snow bit): any
 // mana such an owner could move to, this search reaches next with the
 // same mana visited, and taking it here books the same mana, while
 // following it would rescan the pool once per level (#3895).
@@ -506,10 +511,10 @@ func (s *colourSolver) augment(r int) (int, int, bool) {
 	if s.failed[r] {
 		return 0, 0, false
 	}
-	opts := s.reqs[r].req.Options
+	req := s.reqs[r].req
 	for k := range s.runs {
 		c := &s.runs[k]
-		if !matchColor(c.color, opts) {
+		if !req.PaidBy(c.color, c.snow) {
 			continue
 		}
 		for c.visited < c.free {
@@ -522,7 +527,7 @@ func (s *colourSolver) augment(r int) (int, int, bool) {
 			seg := c.owners[si]
 			end := start + seg.n
 			prev := s.reqs[seg.ri].req
-			if prev.AnyMana || slices.Equal(prev.Options, opts) {
+			if prev.AnyMana || sameAdmitted(prev, req) {
 				c.visited = end
 				continue
 			}

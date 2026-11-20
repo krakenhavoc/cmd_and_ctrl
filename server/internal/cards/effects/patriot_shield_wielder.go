@@ -21,7 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}: Another target creature you control gets +2/+0 and gains hexproof until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 2, 0, "hexproof")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 2, 0, "hexproof")), game.AnswerPump|game.AnswerProtect),
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
