@@ -433,6 +433,19 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    activated ability, a `Repeatable` spec or a raised count. A card
    that lets someone choose instead (Typhoid Mary) is not this.
 
+   **"An opponent chooses one —" (#5771, CR 700.2e)** is
+   `OpponentChoosesOne(…)` on a **spell's** `Modes` (Fatal Lore, Library
+   of Lat-Nam, Misfortune). The opponent chooses as the spell is cast, the
+   caster picks which opponent when more than one could, and the caster
+   picks the chosen bullet's targets after; the engine parks the cast and
+   asks all of it (`game/opponent_mode.go`), so the card file declares the
+   bullets and nothing else. That opponent is "that player": read it with
+   `ctx.ModeChooser()`, and write "target … that player controls" as
+   `ThatPlayerControls(…)`. Declare each bullet's `Purpose` from the
+   caster's side, as for any modal spell: a bot choosing for somebody else
+   prices it as the caster's gain. `Register` refuses it on a trigger or an
+   activated ability, and beside a cost, a raised count or a repeat.
+
    **"When this enters, choose up to X" (#4617, CR 107.3m)** is
    `ChooseUpToX(…)` on the **enters trigger's** `Modes` (The Ruinous
    Wrecking Crew), where X is the X paid for the spell that became the

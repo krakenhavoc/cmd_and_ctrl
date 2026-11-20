@@ -386,6 +386,16 @@ type StackItem struct {
 	// item without such a clause.
 	TargetChoosers []TargetChooser
 
+	// ModeChooser is the opponent who chose this spell's mode, for a
+	// spell whose ModeSpec is ChosenByOpponent ("An opponent chooses one
+	// —", CR 700.2e, #5771): the "that player" of its bullets (Fatal
+	// Lore's "target creatures that player controls", Misfortune's
+	// "deals 4 damage to that player"). Fixed as the spell is cast, read
+	// by the CR 608.2b re-check (TargetSource.modeChooser) and by the
+	// card (effects.Context.ModeChooser). Carried by clone, snapshot and
+	// copy (CR 707.10). uuid.Nil on every other item.
+	ModeChooser uuid.UUID
+
 	// Paid is what this announcement actually cost: the counters
 	// removed or added, the life paid, and — since #761 — the mana
 	// tokens that left the pool, or the fact that the engine waived

@@ -719,3 +719,24 @@ describe("targeting an ability on the stack — #1211, CR 115.4", () => {
     cancel();
   });
 });
+
+describe("an opponent chooses the mode — #5771, CR 700.2e", () => {
+  it("opens no mode picker: the card is cast with no mode", () => {
+    const card = {
+      instance_id: "lore",
+      name: "Fatal Lore",
+      modes: {
+        prompt: "An opponent chooses one",
+        min: 1,
+        max: 1,
+        chosen_by_opponent: true,
+        options: [
+          { label: "You draw three cards." },
+          { label: "You destroy up to two target creatures that player controls." },
+        ],
+      },
+    } as unknown as CardView;
+    expect(isModal(card)).toBe(false);
+    expect(isModal({ ...card, modes: { ...card.modes!, chosen_by_opponent: false } })).toBe(true);
+  });
+});

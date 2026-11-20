@@ -2481,6 +2481,13 @@ export interface PendingChoiceView {
   mode_used_options?: string[];
   mode_used_indexes?: number[];
   mode_not_chosen?: ModeNotChosen;
+  // #5771, CR 700.2e: on a mode_pick an opponent answers for an "An
+  // opponent chooses one" spell, the player id casting it, and the
+  // spell's name (its card is still in the caster's hand, out of the
+  // chooser's sight, while the cast waits). Absent on a trigger's own
+  // mode_pick.
+  mode_chosen_for?: string;
+  mode_spell_name?: string;
 }
 
 // ModeNotChosen is a "that hasn't been chosen" restriction (ADR 0097):
@@ -3279,6 +3286,13 @@ export interface ModeSpecView {
   // to more; the server refuses a selection that does. Absent for a
   // modal card without pawprints.
   pawprints?: number;
+  // #5771, CR 700.2e: "An opponent chooses one —" (Fatal Lore). The
+  // caster does not choose the mode: the card is cast with no mode and
+  // no target and no picker opens. The server asks the caster which
+  // opponent (an option_pick, when more than one could choose), that
+  // opponent a mode_pick (`mode_chosen_for`), then the caster any
+  // targets (a pick_target).
+  chosen_by_opponent?: boolean;
 }
 
 // EscalateView is ModeSpecView.escalate. Discards ride cast_spell's

@@ -264,6 +264,7 @@ body kravens-last-hunt/damage
 body kroxa-and-kunoros/return
 body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
+body library-of-lat-nam/draw-three
 body lichs-relic/destroy
 body life/aphelia-half-their-life
 body lithobraking/damage-each-creature
@@ -1860,6 +1861,7 @@ number number/cmdr2-aetherborn-marauder-move
 number number/deal-that-much-damage-to-the-target
 number number/die-young-minus-one-for-each
 number number/expel-the-interlopers-destroy-power-at-least
+number number/fatal-lore-draw-up-to-three
 number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
@@ -2009,6 +2011,7 @@ option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
 option option-pick/olivia-crimson-bride-attack
+option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy

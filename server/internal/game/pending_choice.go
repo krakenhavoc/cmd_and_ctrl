@@ -689,6 +689,14 @@ type PendingChoice struct {
 	ModeUsedLabel []string
 	ModeNotChosen ModeMemory
 
+	// ModePickFor is, on a mode_pick an opponent answers for an "An
+	// opponent chooses one" spell (#5771, opponent_mode.go), the player
+	// casting it. uuid.Nil on every mode_pick a controller answers for
+	// their own trigger. Read by the wire (the chooser is told whose
+	// spell it is, and a bot choosing for somebody else's spell prices
+	// the bullets the other way round) and never by a rule.
+	ModePickFor uuid.UUID
+
 	// modePickResume is the server-only continuation for a
 	// PendingChoiceModePick: the captured trigger, so the answer
 	// continues into the CR 603.3d target walk and then Build.
@@ -2256,6 +2264,16 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 		}
 		c.PickTargetPlayers, c.PickTargetCards = players, keep(c.PickTargetCards)
 		if len(c.PickTargetPlayers) == 0 && len(c.PickTargetCards) == 0 {
+			return false
+		}
+	case PendingChoiceModePick:
+		// #5771, CR 800.4g: an opponent's mode choice passes to another
+		// OPPONENT of the caster ("that player chooses another opponent
+		// if possible"), never to the caster, and the bullets on offer are
+		// judged again with the new chooser as "that player". One who can
+		// choose none does not get the prompt.
+		if !c.isOpponentModePick() || newChooser == c.opponentTargetResume.controller ||
+			!g.refreshOpponentModeOfferLocked(c, newChooser) {
 			return false
 		}
 	case PendingChoiceOptionPick:

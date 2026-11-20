@@ -496,6 +496,8 @@ func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
 	src.spell = cf.item.Kind == StackItemSpell
 	// #5860, CR 707.10: a copy keeps what its original fixed as it was cast.
 	src.castValues = cf.item.CastValues
+	// #5771, CR 707.10: and the opponent who chose its mode.
+	src.modeChooser = cf.item.ModeChooser
 	return src
 }
 
@@ -660,7 +662,10 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 		// #2055, CR 707.10: the opponents named are a choice made as
 		// the original was announced, and the copy keeps them.
 		TargetChoosers: copyTargetChoosers(item.TargetChoosers),
-		SplitSecond:    item.SplitSecond,
+		// #5771, CR 707.10: the mode is copied, and so is who chose it,
+		// the "that player" of its text.
+		ModeChooser: item.ModeChooser,
+		SplitSecond: item.SplitSecond,
 		// #3781, CR 707.10: what the original fixed as it was cast.
 		CastValues: copyStringIntMap(item.CastValues),
 		IsCopy:     true,

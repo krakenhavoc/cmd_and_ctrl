@@ -13590,6 +13590,7 @@ frozenEntries[].event.stackItem.id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.isCopy	bool
 frozenEntries[].event.stackItem.kind	string
 frozenEntries[].event.stackItem.label	string
+frozenEntries[].event.stackItem.modeChooser	custom(uuid.UUID)
 frozenEntries[].event.stackItem.modes	array
 frozenEntries[].event.stackItem.modes[]	number:int
 frozenEntries[].event.stackItem.mutateUnder	bool
@@ -21245,6 +21246,7 @@ lastKnownStack[].item.id	custom(uuid.UUID)
 lastKnownStack[].item.isCopy	bool
 lastKnownStack[].item.kind	string
 lastKnownStack[].item.label	string
+lastKnownStack[].item.modeChooser	custom(uuid.UUID)
 lastKnownStack[].item.modes	array
 lastKnownStack[].item.modes[]	number:int
 lastKnownStack[].item.mutateUnder	bool
@@ -34087,6 +34089,7 @@ movesAwaitingTokens[].stackItem.id	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.isCopy	bool
 movesAwaitingTokens[].stackItem.kind	string
 movesAwaitingTokens[].stackItem.label	string
+movesAwaitingTokens[].stackItem.modeChooser	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.modes	array
 movesAwaitingTokens[].stackItem.modes[]	number:int
 movesAwaitingTokens[].stackItem.mutateUnder	bool
@@ -40700,6 +40703,7 @@ pausedModeWalk.item.id	custom(uuid.UUID)
 pausedModeWalk.item.isCopy	bool
 pausedModeWalk.item.kind	string
 pausedModeWalk.item.label	string
+pausedModeWalk.item.modeChooser	custom(uuid.UUID)
 pausedModeWalk.item.modes	array
 pausedModeWalk.item.modes[]	number:int
 pausedModeWalk.item.mutateUnder	bool
@@ -41064,6 +41068,7 @@ pausedResolutionTail.item.id	custom(uuid.UUID)
 pausedResolutionTail.item.isCopy	bool
 pausedResolutionTail.item.kind	string
 pausedResolutionTail.item.label	string
+pausedResolutionTail.item.modeChooser	custom(uuid.UUID)
 pausedResolutionTail.item.modes	array
 pausedResolutionTail.item.modes[]	number:int
 pausedResolutionTail.item.mutateUnder	bool
@@ -41422,6 +41427,7 @@ pausedStepWalk.item.id	custom(uuid.UUID)
 pausedStepWalk.item.isCopy	bool
 pausedStepWalk.item.kind	string
 pausedStepWalk.item.label	string
+pausedStepWalk.item.modeChooser	custom(uuid.UUID)
 pausedStepWalk.item.modes	array
 pausedStepWalk.item.modes[]	number:int
 pausedStepWalk.item.mutateUnder	bool
@@ -41946,6 +41952,11 @@ pendingChoices[].assist.announce	object
 pendingChoices[].assist.announce.commander	map:array
 pendingChoices[].assist.announce.commander{}	bool
 pendingChoices[].assist.announce.opponent	array
+pendingChoices[].assist.announce.opponentMode	object
+pendingChoices[].assist.announce.opponentMode.answered	bool
+pendingChoices[].assist.announce.opponentMode.chooser	custom(uuid.UUID)
+pendingChoices[].assist.announce.opponentMode.modes	array
+pendingChoices[].assist.announce.opponentMode.modes[]	number:int
 pendingChoices[].assist.announce.opponent[]	object
 pendingChoices[].assist.announce.opponent[].answered	bool
 pendingChoices[].assist.announce.opponent[].chooser	custom(uuid.UUID)
@@ -44162,6 +44173,7 @@ pendingChoices[].copyWalk.item.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.isCopy	bool
 pendingChoices[].copyWalk.item.kind	string
 pendingChoices[].copyWalk.item.label	string
+pendingChoices[].copyWalk.item.modeChooser	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.modes	array
 pendingChoices[].copyWalk.item.modes[]	number:int
 pendingChoices[].copyWalk.item.mutateUnder	bool
@@ -48227,6 +48239,7 @@ pendingChoices[].modeOptionIndex	array
 pendingChoices[].modeOptionIndex[]	number:int
 pendingChoices[].modeOptionLabel	array
 pendingChoices[].modeOptionLabel[]	string
+pendingChoices[].modePickFor	custom(uuid.UUID)
 pendingChoices[].modeRepeatable	bool
 pendingChoices[].modeUsedIndex	array
 pendingChoices[].modeUsedIndex[]	number:int
@@ -49190,6 +49203,11 @@ pendingChoices[].parked.cast	object
 pendingChoices[].parked.cast.commander	map:array
 pendingChoices[].parked.cast.commander{}	bool
 pendingChoices[].parked.cast.opponent	array
+pendingChoices[].parked.cast.opponentMode	object
+pendingChoices[].parked.cast.opponentMode.answered	bool
+pendingChoices[].parked.cast.opponentMode.chooser	custom(uuid.UUID)
+pendingChoices[].parked.cast.opponentMode.modes	array
+pendingChoices[].parked.cast.opponentMode.modes[]	number:int
 pendingChoices[].parked.cast.opponent[]	object
 pendingChoices[].parked.cast.opponent[].answered	bool
 pendingChoices[].parked.cast.opponent[].chooser	custom(uuid.UUID)
@@ -61136,6 +61154,7 @@ pendingChoices[].replacementResume.event.stackItem.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.isCopy	bool
 pendingChoices[].replacementResume.event.stackItem.kind	string
 pendingChoices[].replacementResume.event.stackItem.label	string
+pendingChoices[].replacementResume.event.stackItem.modeChooser	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.modes	array
 pendingChoices[].replacementResume.event.stackItem.modes[]	number:int
 pendingChoices[].replacementResume.event.stackItem.mutateUnder	bool
@@ -70929,6 +70948,7 @@ pendingTriggers[].id	custom(uuid.UUID)
 pendingTriggers[].isCopy	bool
 pendingTriggers[].kind	string
 pendingTriggers[].label	string
+pendingTriggers[].modeChooser	custom(uuid.UUID)
 pendingTriggers[].modes	array
 pendingTriggers[].modes[]	number:int
 pendingTriggers[].mutateUnder	bool
@@ -73497,6 +73517,7 @@ resolving.item.id	custom(uuid.UUID)
 resolving.item.isCopy	bool
 resolving.item.kind	string
 resolving.item.label	string
+resolving.item.modeChooser	custom(uuid.UUID)
 resolving.item.modes	array
 resolving.item.modes[]	number:int
 resolving.item.mutateUnder	bool
@@ -79156,6 +79177,7 @@ stackMeta[].id	custom(uuid.UUID)
 stackMeta[].isCopy	bool
 stackMeta[].kind	string
 stackMeta[].label	string
+stackMeta[].modeChooser	custom(uuid.UUID)
 stackMeta[].modes	array
 stackMeta[].modes[]	number:int
 stackMeta[].mutateUnder	bool

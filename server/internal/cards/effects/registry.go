@@ -62,9 +62,14 @@ func Register(spec Spec) {
 		checkUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
 		checkUpToCount(spec.Name, "a spell's Modes", spec.Modes, nil)
 		checkPawprints(spec.Name, "a spell's Modes", spec.Modes, true)
+		// #5771: "An opponent chooses one".
+		checkOpponentChoosesMode(spec.Name, spec.Modes)
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
+			}
+			if !spec.Modes.ChosenByOpponent {
+				refuseThatPlayerControls(spec.Name, "a mode's", o.Targets)
 			}
 			checkFlatClauses(spec.Name, o.Targets)
 			refuseOpponentChoice(spec.Name, "a mode's", o.Targets)
@@ -78,6 +83,7 @@ func Register(spec Spec) {
 	checkSplice(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
 	refuseTriggerActorChoice(spec.Name, "a spell's", spec.Targets)
+	refuseThatPlayerControls(spec.Name, "a spell's", spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkTargetAtRandom(spec.Name, "a spell's", spec.Targets, false)
 	checkExhaustAbilities(spec)
@@ -92,6 +98,8 @@ func Register(spec Spec) {
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
 		refuseTriggerActorChoice(spec.Name, "an activated ability's", a.Targets)
+		refuseThatPlayerControls(spec.Name, "an activated ability's", a.Targets)
+		refuseOpponentChoosesMode(spec.Name, "an activated ability's Modes", a.Modes)
 		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, true)
 		checkActivatedAtRandom(spec.Name, a.Targets)
 		// #1723: an X-bound target clause is allowed on an activated
@@ -128,6 +136,7 @@ func Register(spec Spec) {
 				}
 				checkFlatClauses(spec.Name, o.Targets)
 				refuseOpponentChoice(spec.Name, "an activated mode's", o.Targets)
+				refuseThatPlayerControls(spec.Name, "an activated mode's", o.Targets)
 				checkModeCost(spec.Name, "activated mode", i, o.Cost, false)
 				checkTargetAtRandom(spec.Name, "an activated mode's", o.Targets, false)
 			}
@@ -143,9 +152,12 @@ func Register(spec Spec) {
 		checkNoXBound(spec.Name, "a trigger's", t.Targets, false, false)
 		checkNoDivideX(spec.Name, "a trigger's", t.Targets)
 		checkTargetAtRandom(spec.Name, "a trigger's", t.Targets, true)
+		refuseThatPlayerControls(spec.Name, "a trigger's", t.Targets)
+		refuseOpponentChoosesMode(spec.Name, "a trigger's Modes", t.Modes)
 		if t.Modes != nil {
 			for _, o := range t.Modes.Options {
 				refuseOpponentChoice(spec.Name, "a trigger mode's", o.Targets)
+				refuseThatPlayerControls(spec.Name, "a trigger mode's", o.Targets)
 				checkNoXBound(spec.Name, "a trigger mode's", o.Targets, false, false)
 				checkNoDivideX(spec.Name, "a trigger mode's", o.Targets)
 				checkTargetAtRandom(spec.Name, "a trigger mode's", o.Targets, true)
