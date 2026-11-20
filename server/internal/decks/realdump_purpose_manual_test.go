@@ -209,6 +209,8 @@ var reviewedNotAWipe = map[string]string{
 	// S82 BNS batch 41.
 	"Waker of Waves": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 
+	// S82 CON batch 2.
+	"Cumber Stone": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 	// S82 DGM batch 1.
 	"Haunter of Nightveil": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 
