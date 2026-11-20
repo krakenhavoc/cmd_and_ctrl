@@ -2288,6 +2288,7 @@ payunless pay-unless/neo-go-shintai-shared-purpose
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nihil-spellbomb-draw
 payunless pay-unless/nothing
+payunless pay-unless/order-of-the-golden-cricket-flying
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/papercraft-decoy-draw
