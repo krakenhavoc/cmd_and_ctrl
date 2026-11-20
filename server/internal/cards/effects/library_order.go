@@ -161,7 +161,7 @@ type PutIntoLibraryAtDepthOrBottom struct {
 func (p PutIntoLibraryAtDepthOrBottom) Apply(ctx *Context) error {
 	c, ok := ctx.Game.LookupCardForEffect(p.Card)
 	z := ctx.Game.FindCardZoneForEffect(p.Card)
-	if !ok || z == nil || ctx.isNewSourceObject(p.Card) { // #1432
+	if !ok || z == nil || ctx.IsNewSourceObject(p.Card) { // #1432
 		return nil
 	}
 	chooser := p.Chooser
@@ -230,7 +230,7 @@ func TakeRestOnBottomInAnyOrder(g *game.Game, res TakeFromLibraryResult) error {
 		Cards:     res.Rest,
 		From:      game.ZoneLibrary,
 		Placement: game.LibraryPlaceBottom,
-		Reason:    libraryOrderLabel(g, res.Source, "put the rest on the bottom of your library in any order"),
+		Reason:    LibraryOrderLabel(g, res.Source, "put the rest on the bottom of your library in any order"),
 	})
 }
 
@@ -250,7 +250,7 @@ func LookAtTopThenTakeOneRestOnBottom(n int, label string) Effect {
 			Cards:  g.LookAtTopOfLibraryForEffect(player, n),
 			Max:    1,
 			Label:  label,
-			Key:    takeRestBottomAny,
+			Key:    TakeRestBottomAny,
 		}.Apply(ctx)
 	}
 }
@@ -281,7 +281,7 @@ func (p PutFromHandOnTopInAnyOrder) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	hand := allHandCardIDs(ctx.Game, player)
+	hand := AllHandCardIDs(ctx.Game, player)
 	if len(hand) == 0 || p.N <= 0 {
 		return nil
 	}
@@ -352,7 +352,7 @@ type PutIntoLibrary struct {
 }
 
 func (p PutIntoLibrary) Apply(ctx *Context) error {
-	if ctx.isNewSourceObject(p.Card) { // #1432
+	if ctx.IsNewSourceObject(p.Card) { // #1432
 		return p.ThenTail.Run(ctx.Game, nil)
 	}
 	opts := game.TuckOptions{ToBottom: p.ToBottom, Depth: p.Depth}
@@ -361,7 +361,7 @@ func (p PutIntoLibrary) Apply(ctx *Context) error {
 
 // libraryOrderLabel is "<source card name> — <clause>", or the clause
 // alone when the source cannot be found.
-func libraryOrderLabel(g *game.Game, source uuid.UUID, clause string) string {
+func LibraryOrderLabel(g *game.Game, source uuid.UUID, clause string) string {
 	if c, ok := g.LookupCardForEffect(source); ok && c.Name != "" {
 		return c.Name + " — " + clause
 	}

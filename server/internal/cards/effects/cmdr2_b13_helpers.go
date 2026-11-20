@@ -11,7 +11,7 @@ import (
 // ability: the printed {T}: Add {C}, the life-cost coloured mana
 // (CR 118.4, a cost paid before the land taps), and the cash-in row the
 // caller supplies. The Desert sacrificed may be this land or another.
-func cmdr2B13DesertLand(oracleID, name, colour string, cashIn ActivatedAbility) Spec {
+func Cmdr2B13DesertLand(oracleID, name, colour string, cashIn ActivatedAbility) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -25,7 +25,7 @@ func cmdr2B13DesertLand(oracleID, name, colour string, cashIn ActivatedAbility) 
 }
 
 // cmdr2B13SacrificeADesert is the "Sacrifice a Desert" cost component.
-func cmdr2B13SacrificeADesert() game.AbilityCost {
+func Cmdr2B13SacrificeADesert() game.AbilityCost {
 	return SacrificeN(1, "a Desert", HasSubtype("Desert"))
 }
 
@@ -37,7 +37,7 @@ func cmdr2B13SacrificeADesert() game.AbilityCost {
 // and the base power and toughness (layer 7b). Nothing is removed, so the
 // land stays a land and keeps its mana ability, which the engine refuses
 // while it is a summoning-sick creature (CR 302.6).
-func cmdr2B13Animate(ctx *Context, target uuid.UUID, label string, power, toughness int, subtype string, colours []string, keywords ...string) error {
+func Cmdr2B13Animate(ctx *Context, target uuid.UUID, label string, power, toughness int, subtype string, colours []string, keywords ...string) error {
 	mods := []game.Mod{
 		game.AddTypesMod("Creature"),
 		game.AddSubtypesMod(ctx.TextSubtypes(subtype)...),
@@ -61,10 +61,10 @@ func cmdr2B13Animate(ctx *Context, target uuid.UUID, label string, power, toughn
 // watcher listens to the three event kinds that can put a card into a
 // graveyard: EventLTB for a battlefield exit, EventMill for a mill and
 // EventZoneMove for every other zone.
-var cmdr2B13LandCardToYourGraveyard = gitrogLandToGraveyard
+var Cmdr2B13LandCardToYourGraveyard = GitrogLandToGraveyard
 
 // cmdr2B13OneOrMoreLandCardsToYourGraveyard is the "one or more land
 // cards" form of the same trigger: one batch fires it once (CR 603.2c).
-func cmdr2B13OneOrMoreLandCardsToYourGraveyard(label string, effect Effect) game.TriggeredAbility {
-	return OncePerBatch(OnAny([]game.EventKind{game.EventMill, game.EventZoneMove, game.EventLTB}, cmdr2B13LandCardToYourGraveyard, label, effect))
+func Cmdr2B13OneOrMoreLandCardsToYourGraveyard(label string, effect Effect) game.TriggeredAbility {
+	return OncePerBatch(OnAny([]game.EventKind{game.EventMill, game.EventZoneMove, game.EventLTB}, Cmdr2B13LandCardToYourGraveyard, label, effect))
 }

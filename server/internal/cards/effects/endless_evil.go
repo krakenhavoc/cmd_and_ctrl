@@ -45,7 +45,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Endless Evil — create a 1/1 token copy of enchanted creature", endlessEvilCopy),
 			On(game.EventLTB, endlessEvilHorrorDied,
-				"Endless Evil — return this card to its owner's hand", endlessEvilReturn),
+				"Endless Evil — return this card to its owner's hand", EndlessEvilReturn),
 		},
 	})
 }
@@ -53,18 +53,18 @@ func init() {
 // endlessEvilHorrorDied is the dies trigger's condition: the enchanted
 // creature died and was a Horror as it last existed.
 func endlessEvilHorrorDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !equippedCreatureDied(ev, source) {
+	if !EquippedCreatureDied(ev, source) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	// "Horror" is a word of the Aura's text (CR 612.2, #3984).
-	return ok && leftAsSubtype(ev, c, source.TextSubtype("Horror"))
+	return ok && LeftAsSubtype(ev, c, source.TextSubtype("Horror"))
 }
 
 // endlessEvilCopy is the upkeep body: a 1/1 token copy of the enchanted
 // creature for the Aura's controller.
 func endlessEvilCopy(g *game.Game, item *game.StackItem) error {
-	host := attachedHostFor(g, item.SourceCardID)
+	host := AttachedHostFor(g, item.SourceCardID)
 	if host == nil {
 		return nil
 	}
@@ -81,9 +81,9 @@ func endlessEvilCopy(g *game.Game, item *game.StackItem) error {
 }
 
 // endlessEvilReturn puts the Aura back into its owner's hand.
-func endlessEvilReturn(g *game.Game, item *game.StackItem) error {
+func EndlessEvilReturn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if !sourceCardInGraveyardAfterLeaving(ctx) {
+	if !SourceCardInGraveyardAfterLeaving(ctx) {
 		return nil
 	}
 	return ReturnFromGraveyard{Target: item.SourceCardID, Dest: game.ZoneHand}.Apply(ctx)

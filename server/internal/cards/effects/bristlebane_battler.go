@@ -26,27 +26,27 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Replacements: []game.ReplacementEffect{
-			b10EntersWithCounters(game.CounterMinusOne, 5, "Bristlebane Battler: enters with five -1/-1 counters"),
+			B10EntersWithCounters(game.CounterMinusOne, 5, "Bristlebane Battler: enters with five -1/-1 counters"),
 		},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{2}"), "Bristlebane Battler — ward {2}"),
-			On(game.EventETB, AllOf(AnotherCreatureEnteredUnderYourControl, thisHasAMinusOneCounter),
+			On(game.EventETB, AllOf(AnotherCreatureEnteredUnderYourControl, ThisHasAMinusOneCounter),
 				"Bristlebane Battler — remove a -1/-1 counter from this creature",
-				removeAMinusOneCounterFromThis),
+				RemoveAMinusOneCounterFromThis),
 		},
 	})
 }
 
 // thisHasAMinusOneCounter is "while this creature has a -1/-1 counter on
 // it", read off the source permanent as the event happens.
-func thisHasAMinusOneCounter(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func ThisHasAMinusOneCounter(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return source.Counters[game.CounterMinusOne] > 0
 }
 
 // removeAMinusOneCounterFromThis removes one -1/-1 counter from the
 // source, if it is still the permanent the ability came from (AddCounter
 // asks) and still has one.
-func removeAMinusOneCounterFromThis(g *game.Game, item *game.StackItem) error {
+func RemoveAMinusOneCounterFromThis(g *game.Game, item *game.StackItem) error {
 	c, ok := g.LookupCardForEffect(item.SourceCardID)
 	if !ok || c.Counters[game.CounterMinusOne] <= 0 {
 		return nil

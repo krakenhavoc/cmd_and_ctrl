@@ -34,7 +34,7 @@ func init() {
 						Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 4),
 						Max:    2,
 						Label:  "Polygraph Orb — put two of them into your hand and the rest into your graveyard",
-						Key:    takeRestGraveyard,
+						Key:    TakeRestGraveyard,
 					}.Apply(ctx)
 				}), GainLife{Amount: -2})),
 		},
@@ -43,7 +43,7 @@ func init() {
 			Cost:    Plus(ManaCost("{2}"), TapCost(), CollectEvidenceN(3)),
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return polygraphOrbPunisher.start(NewContext(g, item), 1)
+				return polygraphOrbPunisher.Start(NewContext(g, item), 1)
 			},
 		}},
 	})
@@ -51,4 +51,4 @@ func init() {
 
 // polygraphOrbPunisher is the printed punisher: 3 life a refusal, or a
 // discard, or a creature sacrificed.
-var polygraphOrbPunisher = punisherRepeat{Name: "Polygraph Orb", Life: 3, Creature: true}
+var polygraphOrbPunisher = PunisherRepeat{Name: "Polygraph Orb", Life: 3, Creature: true}

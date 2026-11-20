@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfAmonkhetOracleID,
+		OracleID:     InvasionOfAmonkhetOracleID,
 		Name:         "Invasion of Amonkhet",
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -29,9 +29,9 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Invasion of Amonkhet — each player mills three cards, then each opponent discards a card and you draw a card", Do(
 				Instruction(func(ctx *Context) error {
-					return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(3), game.KeyedTail{})
+					return MillEachPlayerInTurn(ctx, ApnapPlayers(ctx.Game), ConstantMill(3), game.KeyedTail{})
 				}),
-				Instruction(func(ctx *Context) error { return eachOpponentDiscardsOne(ctx.Game, ctx.Item) }),
+				Instruction(func(ctx *Context) error { return EachOpponentDiscardsOne(ctx.Game, ctx.Item) }),
 				DrawCards{N: 1},
 			)),
 			DefeatedTrigger("Invasion of Amonkhet — defeated: exile it, then cast Lazotep Convert", SiegeDefeated()),
@@ -41,4 +41,4 @@ func init() {
 
 // invasionOfAmonkhetOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfAmonkhetOracleID = "fd9b8889-a78a-4cda-9a6b-39f5536c3a0b"
+const InvasionOfAmonkhetOracleID = "fd9b8889-a78a-4cda-9a6b-39f5536c3a0b"

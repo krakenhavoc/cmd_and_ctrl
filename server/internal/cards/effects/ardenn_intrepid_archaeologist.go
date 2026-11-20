@@ -39,13 +39,13 @@ func init() {
 			Targeting(
 				AtBeginningOfYourCombat("Ardenn, Intrepid Archaeologist — attach any number of Auras and Equipment you control to target permanent or player",
 					ardennAttach),
-				ardennTargetPermanentOrPlayer()),
+				ArdennTargetPermanentOrPlayer()),
 		},
 	})
 }
 
 // ardennTargetPermanentOrPlayer is "target permanent or player".
-func ardennTargetPermanentOrPlayer() *game.TargetSpec {
+func ArdennTargetPermanentOrPlayer() *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:    "any",
 		Label:   "target permanent or player",

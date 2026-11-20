@@ -15,13 +15,13 @@ import (
 func s82OneB20BeastToken() game.Card { return TokenCard("3/3 green Phyrexian Beast with toxic 1") }
 
 // s82OneB20CreateBeasts creates n Beast tokens under the effect's controller.
-func s82OneB20CreateBeasts(g *game.Game, item *game.StackItem, n int) error {
+func S82OneB20CreateBeasts(g *game.Game, item *game.StackItem, n int) error {
 	return CreateToken{Controller: item.Controller, Template: s82OneB20BeastToken(), N: n}.Apply(NewContext(g, item))
 }
 
 // s82OneB20LandsControlled counts the permanents `controller` controls with
 // the land subtype `sub` (a word of the source's text, CR 612.2).
-func s82OneB20LandsControlled(g *game.Game, controller uuid.UUID, sub string) int {
+func S82OneB20LandsControlled(g *game.Game, controller uuid.UUID, sub string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.HasSubtype(sub) {
@@ -35,8 +35,8 @@ func s82OneB20LandsControlled(g *game.Game, controller uuid.UUID, sub string) in
 // artifact creature with deathtouch and "When this token leaves the
 // battlefield, each opponent loses 2 life and you gain 2 life." The slug is
 // an on-disk identity: never renamed, never reused.
-func printedS82OneB20DroneToken() tokenTemplate {
-	return tokenTemplate{
+func printedS82OneB20DroneToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "drone-deathtouch-drain",
 		Card: game.Card{
 			Name:      "Drone",
@@ -54,13 +54,13 @@ func printedS82OneB20DroneToken() tokenTemplate {
 }
 
 // s82OneB20DroneToken is the Drone's card value for CreateToken.
-func s82OneB20DroneToken() game.Card { return tokenFromCatalog(printedS82OneB20DroneToken) }
+func S82OneB20DroneToken() game.Card { return TokenFromCatalog(printedS82OneB20DroneToken) }
 
 // s82OneB20ManaValueBelowLoyalty is "with mana value less than <this
 // planeswalker>'s loyalty" (Nahiri, the Unforgiving): judged at targeting
 // and again on resolution, against the loyalty the source has then (its
 // last-known count once it has left, CR 608.2h).
-func s82OneB20ManaValueBelowLoyalty() game.SourceComparison {
+func S82OneB20ManaValueBelowLoyalty() game.SourceComparison {
 	return game.SourceComparison{Stat: game.SourceManaValueVsLoyalty, Cmp: game.CmpLess}
 }
 
@@ -68,7 +68,7 @@ func s82OneB20ManaValueBelowLoyalty() game.SourceComparison {
 // resolving: its loyalty counters now while it is on the battlefield, and
 // as it last existed there once it has left (CR 608.2h). Zero when neither
 // is known.
-func s82OneB20SourceLoyalty(ctx *Context) int {
+func S82OneB20SourceLoyalty(ctx *Context) int {
 	ref, ok := ctx.SourceRef()
 	if !ok {
 		return 0
@@ -84,7 +84,7 @@ func s82OneB20SourceLoyalty(ctx *Context) int {
 // is the greatest power among creatures you control as you activate this
 // ability" (Lukka, Bound to Ruin): read once, at announce, and the number
 // divided whatever happens to the board afterwards.
-var s82OneB20DivideGreatestPower = game.RegisterDivideAmount("greatest-power-among-your-creatures",
+var S82OneB20DivideGreatestPower = game.RegisterDivideAmount("greatest-power-among-your-creatures",
 	func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
 		best := 0
 		for _, c := range g.BattlefieldCardsForEffect() {

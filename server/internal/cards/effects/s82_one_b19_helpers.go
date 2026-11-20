@@ -14,7 +14,7 @@ import (
 // discarded card's mana value, fixed when it was discarded (as it left the
 // hand) and carried as Params.Amount.
 var argentumMasticoreDestroyBody = game.ReflexiveBody("argentum-masticore/destroy",
-	simpleBody(argentumMasticoreDestroy),
+	SimpleBody(argentumMasticoreDestroy),
 	func(_ uuid.UUID, p game.EffectParams) *game.TargetSpec {
 		return TargetPermanent("target nonland permanent an opponent controls with mana value less than or equal to the discarded card's mana value",
 			Nonland(), OpponentControls(), ManaValueLE(p.Amount))
@@ -23,9 +23,9 @@ var argentumMasticoreDestroyBody = game.ReflexiveBody("argentum-masticore/destro
 // capriciousHellraiserNineInGraveyard is the cost gate "if you have nine or
 // more cards in your graveyard", read at CR 601.2f off the graveyard as it
 // stands.
-func capriciousHellraiserNineInGraveyard(q game.CostQuery) bool {
+func CapriciousHellraiserNineInGraveyard(q game.CostQuery) bool {
 	if q.Game == nil {
 		return false
 	}
-	return len(graveyardIDs(q.Game, q.Controller, nil)) >= 9
+	return len(GraveyardIDs(q.Game, q.Controller, nil)) >= 9
 }

@@ -13,7 +13,7 @@ import (
 // hand" for the resolving item's legal player targets: each picks one card
 // of their own hand (a floor of one) and an empty hand exiles nothing
 // (CR 609.3). The answer is exileEachChosenCard.
-func targetPlayerExilesFromHand(ctx *Context, question string) error {
+func TargetPlayerExilesFromHand(ctx *Context, question string) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
 			continue
@@ -34,7 +34,7 @@ func targetPlayerExilesFromHand(ctx *Context, question string) error {
 			Cards:      cards,
 			Min:        1,
 			Max:        1,
-			ThenKey:    stdB40ExileFromHand,
+			ThenKey:    StdB40ExileFromHand,
 			LiveZone:   game.ZoneHand,
 		})
 	}
@@ -43,7 +43,7 @@ func targetPlayerExilesFromHand(ctx *Context, question string) error {
 
 // stdB40ExileFromHand is the keyed answer to targetPlayerExilesFromHand.
 // An on-disk key: never renamed, never reused.
-var stdB40ExileFromHand = game.RegisterChooseCardsThen("choose-cards/std-b40-exile-from-hand", exileEachChosenCard)
+var StdB40ExileFromHand = game.RegisterChooseCardsThen("choose-cards/std-b40-exile-from-hand", ExileEachChosenCard)
 
 // OfAnArtifactYouControl — "activated abilities of artifacts you control":
 // the ability's source is an artifact on the battlefield under the

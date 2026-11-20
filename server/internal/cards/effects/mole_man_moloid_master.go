@@ -28,18 +28,18 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			Landfall("Mole Man — create a 1/1 green Minion named Moloid",
-				Do(CreateToken{Template: mshB6MoloidToken(), N: 1})),
+				Do(CreateToken{Template: MshB6MoloidToken(), N: 1})),
 		},
 	})
 }
 
 // mshB6MoloidToken is the 1/1 green Minion named Moloid with "Whenever this
 // token attacks, you may mill a card."
-func mshB6MoloidToken() game.Card { return tokenFromCatalog(printedMshB6MoloidToken) }
+func MshB6MoloidToken() game.Card { return TokenFromCatalog(printedMshB6MoloidToken) }
 
 // printedMshB6MoloidToken is the Moloid as PRINTED.
-func printedMshB6MoloidToken() tokenTemplate {
-	return tokenTemplate{
+func printedMshB6MoloidToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "moloid",
 		Card: game.Card{
 			Name:      "Moloid",

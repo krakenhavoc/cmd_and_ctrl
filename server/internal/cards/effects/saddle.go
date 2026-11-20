@@ -60,7 +60,7 @@ func Saddle(n int) ActivatedAbility {
 // does not saddle the new one. The creatures that paid are on the
 // item's payment record, as the objects they were.
 func saddleEffect(g *game.Game, item *game.StackItem) error {
-	if sourceIsNewObject(g, item) {
+	if SourceIsNewObject(g, item) {
 		return nil
 	}
 	var by []game.ObjectRef
@@ -92,7 +92,7 @@ func AttacksWhileSaddled(label string, effect func(g *game.Game, item *game.Stac
 		Watches: []game.EventKind{game.EventAttack},
 		Key:     label,
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			return attackDeclared(ev, source) && isSaddledSource(source)
+			return AttackDeclared(ev, source) && isSaddledSource(source)
 		},
 		Effect: effect,
 	}
@@ -120,9 +120,9 @@ func SaddledKeywords(keywords ...string) game.StaticAbility {
 		Label:      "Has " + joinWords(keywords) + " while saddled.",
 		Layer:      game.Layer6Ability,
 		ActiveWhen: Saddled(),
-		AppliesTo:  selfOnly,
+		AppliesTo:  SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			appendKeywordsTo(c, kws)
+			AppendKeywordsTo(c, kws)
 		},
 	}
 }
@@ -141,10 +141,10 @@ func (b BecomeSaddled) Apply(ctx *Context) error {
 	target := b.Target
 	if target == uuid.Nil {
 		target = ctx.Source()
-		if ctx.isNewSourceObjectAsThis(target) {
+		if ctx.IsNewSourceObjectAsThis(target) {
 			return nil
 		}
-	} else if ctx.isNewSourceObject(target) {
+	} else if ctx.IsNewSourceObject(target) {
 		return nil
 	}
 	ctx.Game.SaddleForEffect(target, nil)

@@ -26,7 +26,7 @@ func (CondFacedADilemmaThisTurn) Holds(ctx *Context) bool {
 	return ctx.Game.DilemmasFacedThisTurnFor(ctx.Controller()) > 0
 }
 
-func (CondFacedADilemmaThisTurn) condition() (game.FootprintStep, bool) {
+func (CondFacedADilemmaThisTurn) Condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }
 
@@ -35,12 +35,12 @@ func (CondFacedADilemmaThisTurn) condition() (game.FootprintStep, bool) {
 // controls with that subtype in the layered view (a changeling has every
 // creature type). The subtype is a word of the source's text (CR 612.2),
 // read through its lens while the source is on the battlefield.
-func trekPermanentsWithSubtypeYouControl(g *game.Game, item *game.StackItem, controller uuid.UUID, subtype string) int {
+func TrekPermanentsWithSubtypeYouControl(g *game.Game, item *game.StackItem, controller uuid.UUID, subtype string) int {
 	var reader *game.Card
-	if src, ok := g.LookupCardForEffect(item.SourceCardID); ok && onBattlefield(g, item.SourceCardID) {
+	if src, ok := g.LookupCardForEffect(item.SourceCardID); ok && OnBattlefield(g, item.SourceCardID) {
 		reader = &src
 	}
-	return countControlled(g, controller, func(c game.Card) bool {
+	return CountControlled(g, controller, func(c game.Card) bool {
 		return game.ThroughTextOf(reader, c).HasSubtypeWord(subtype)
 	})
 }

@@ -61,7 +61,7 @@ func revokerChosenNameCantActivate(label string) game.ActivationRestriction {
 			if named == "" {
 				return false
 			}
-			return nonlandFaceNamed(q.Card, named)
+			return NonlandFaceNamed(q.Card, named)
 		},
 	}
 }
@@ -70,7 +70,7 @@ func revokerChosenNameCantActivate(label string) game.ActivationRestriction {
 // (case-insensitive, CR 201.2b) whose own type line is not a land's.
 // The active face is judged by the card's printed type line, every
 // other face by its own.
-func nonlandFaceNamed(c game.Card, named string) bool {
+func NonlandFaceNamed(c game.Card, named string) bool {
 	if c.FaceDown {
 		return false
 	}

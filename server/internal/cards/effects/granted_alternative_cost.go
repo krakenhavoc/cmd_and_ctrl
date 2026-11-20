@@ -105,7 +105,7 @@ func WebSlingingForSpellsYouCast(cost string, spells game.PermissionFilter) game
 			Key:          GrantedAltCostWebSlinging,
 			Label:        "Web-slinging " + cost,
 			ManaCost:     cost,
-			ReturnToHand: PermanentYouControl("a tapped creature you control", Creature(), b751Tapped()),
+			ReturnToHand: PermanentYouControl("a tapped creature you control", Creature(), B751Tapped()),
 			PayLabel:     "a tapped creature you control",
 		},
 		Spells: spells,
@@ -240,7 +240,7 @@ func EmergeForCreatureSpellsYouCast() game.GrantedAlternativeCost {
 		Offer: game.AlternativeCost{
 			Key:                          GrantedAltCostEmerge,
 			Label:                        "Emerge",
-			Sacrifice:                    sacrificeSpec(what, Creature()).WithCount(1, 1),
+			Sacrifice:                    SacrificeSpec(what, Creature()).WithCount(1, 1),
 			ReducedBySacrificedManaValue: true,
 			PayLabel:                     what,
 		},

@@ -72,7 +72,7 @@ func isItemEffectSteps(item *game.StackItem, steps []Applier) bool {
 	if item == nil || len(steps) == 0 {
 		return false
 	}
-	own, ok := doStepsOf(item.Effect)
+	own, ok := DoStepsOf(item.Effect)
 	return ok && len(own) == len(steps) && &own[0] == &steps[0]
 }
 
@@ -107,7 +107,7 @@ func resumeDoSteps(g *game.Game, item *game.StackItem, path []int) error {
 	if item == nil || len(path) == 0 {
 		return nil
 	}
-	steps, ok := doStepsOf(item.Effect)
+	steps, ok := DoStepsOf(item.Effect)
 	if !ok {
 		return nil
 	}

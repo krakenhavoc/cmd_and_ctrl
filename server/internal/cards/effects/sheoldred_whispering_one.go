@@ -40,7 +40,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				AtYourUpkeep("Sheoldred, Whispering One — return a creature card from your graveyard to the battlefield",
-					sheoldredReanimate),
+					SheoldredReanimate),
 				TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature())),
 			On(game.EventBeginUpkeep, ByAnOpponent,
 				"Sheoldred, Whispering One — that player sacrifices a creature",
@@ -51,7 +51,7 @@ func init() {
 
 // sheoldredReanimate returns the target to the battlefield, if it is
 // still a legal target (CR 608.2b).
-func sheoldredReanimate(g *game.Game, item *game.StackItem) error {
+func SheoldredReanimate(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -68,7 +68,7 @@ func sheoldredEdict(g *game.Game, item *game.StackItem) error {
 	if player == uuid.Nil {
 		return nil
 	}
-	g.PlayerSacrificesForEffect(item.SourceCardID, player, sacrificeSpec("a creature", Creature()),
+	g.PlayerSacrificesForEffect(item.SourceCardID, player, SacrificeSpec("a creature", Creature()),
 		"Sheoldred, Whispering One — sacrifice a creature")
 	return nil
 }

@@ -27,14 +27,14 @@ func init() {
 				N:        1,
 				UpTo:     true,
 				Question: "Abandon Attachments — you may discard a card; if you do, draw two",
-			}, abandonAttachmentsDraw, nil)
+			}, AbandonAttachmentsDraw, nil)
 		},
 	})
 }
 
 // abandonAttachmentsDraw is "if you do, draw two cards", keyed (#4256):
 // a table waiting on the discard is a restore point.
-var abandonAttachmentsDraw = game.RegisterDiscardThen("choose-cards/abandon-attachments-draw", func(g *game.Game, r game.DiscardsDone) error {
+var AbandonAttachmentsDraw = game.RegisterDiscardThen("choose-cards/abandon-attachments-draw", func(g *game.Game, r game.DiscardsDone) error {
 	if !r.Discarded.Discarded(r.Player) {
 		return nil
 	}

@@ -16,7 +16,7 @@ import (
 // Battlemage's three. The discarding player picks the cards (CR
 // 701.9a), so it opens a real prompt rather than discarding at
 // random. A target that left the game is skipped.
-func targetPlayerDiscards(n int) Effect {
+func TargetPlayerDiscards(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 			return nil
@@ -45,7 +45,7 @@ func targetPlayerDiscards(n int) Effect {
 // The clause is a cast trigger, not an enters trigger, so it goes on
 // the stack above the Battlemage and resolves even if the Battlemage
 // is countered.
-func castTriggerIfKickedWith(cost, label string, targets *game.TargetSpec, effect Effect) game.TriggeredAbility {
+func CastTriggerIfKickedWith(cost, label string, targets *game.TargetSpec, effect Effect) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		FromStack: true,
 		Watches:   []game.EventKind{game.EventCast},
@@ -69,9 +69,9 @@ func castTriggerIfKickedWith(cost, label string, targets *game.TargetSpec, effec
 // to its power to its controller". The creature is the damage source
 // (so lifelink, deathtouch and protection see it), its power is read
 // after the tap, and its controller is read before the damage.
-func tapTargetThenItDealsItsPowerToItsController(g *game.Game, item *game.StackItem) error {
+func TapTargetThenItDealsItsPowerToItsController(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -86,6 +86,6 @@ func tapTargetThenItDealsItsPowerToItsController(g *game.Game, item *game.StackI
 }
 
 // untappedCreature matches a creature that is not tapped.
-func untappedCreature() CardPredicate {
+func UntappedCreature() CardPredicate {
 	return And(Creature(), func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return !c.Tapped })
 }

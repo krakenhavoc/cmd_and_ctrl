@@ -113,14 +113,14 @@ func meldPartnerFor(g *game.Game, src, controller uuid.UUID, partner, partnerTyp
 // creature attacks" does not fire for them (CR 508.4) — the source's
 // own trigger included. A defender that has left the game by
 // resolution gets no tokens rather than tokens attacking nobody.
-func whenThisAttacksTokensTappedAndAttacking(label, template string, n int) game.TriggeredAbility {
+func WhenThisAttacksTokensTappedAndAttacking(label, template string, n int) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches:   []game.EventKind{game.EventAttack},
 		AppliesTo: ThisAttacked,
 		Key:       label,
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label)
-			item.Params.Player = b17DefendingPlayer(g, ev)
+			item.Params.Player = B17DefendingPlayer(g, ev)
 			return item
 		},
 		Effect: func(g *game.Game, item *game.StackItem) error {

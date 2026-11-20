@@ -43,7 +43,7 @@ func init() {
 		Modes: ChooseOne(
 			// #4734: damage that can kill a planeswalker.
 			ModeWithPurpose(Mode("Boros Charm deals 4 damage to target player or planeswalker.",
-				targetPlayerOrPlaneswalker()), game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 4)), Answers: game.AnswerRemove}),
+				TargetPlayerOrPlaneswalker()), game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 4)), Answers: game.AnswerRemove}),
 			// #4734: indestructible survives a Wrath.
 			ModeWithPurpose(Mode("Permanents you control gain indestructible until end of turn."),
 				game.Purpose{Answers: game.AnswerSurvive}),
@@ -84,7 +84,7 @@ func init() {
 // file-local rather than added to targets.go so a concurrent batch
 // touching that file doesn't collide; if a second card wants it,
 // move it there.
-func targetPlayerOrPlaneswalker() *game.TargetSpec {
+func TargetPlayerOrPlaneswalker() *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:    "any",
 		Label:   "target player or planeswalker",

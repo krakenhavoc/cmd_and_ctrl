@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // gatingReturn is the gating trigger for `card`, whose clause names the
 // colours `first` and `second` as letters ("W", "U", "B", "R", "G").
-func gatingReturn(card, first, second string) game.TriggeredAbility {
+func GatingReturn(card, first, second string) game.TriggeredAbility {
 	clause := "return a " + game.ColorName(first) + " or " + game.ColorName(second) + " creature you control"
 	return WhenThisEnters(card+" — "+clause, Do(ReturnOneYouControl{
 		Match: func(c game.Card) bool {

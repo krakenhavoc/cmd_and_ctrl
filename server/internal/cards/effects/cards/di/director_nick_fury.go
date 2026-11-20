@@ -1,0 +1,40 @@
+package cardsdi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Director Nick Fury — Legendary Creature — Human Spy Hero {U}{R}{W}, 2/4
+// (Marvel Super Heroes Commander, #4455):
+//
+//	"Hero spells you cast cost {1} less to cast.
+//	 Whenever you attack, look at the top four cards of your library. You
+//	 may reveal a Hero card from among them and put that card into your
+//	 hand. Put the rest on the bottom of your library in a random order."
+//
+// The discount is the cast modifier over Hero spells the controller casts
+// (a changeling spell counts; "Hero" is a word of Fury's text). "Whenever
+// you attack" is one trigger per attack declaration (Great Gilded Boat's
+// shape); the look is Bucky Barnes's LookAtTopThenMayTakeToHand, which puts
+// the rest underneath in a random order.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "04b907bf-c80c-4e92-9fea-26dc3d1aaf2a",
+		Name:         "Director Nick Fury",
+		Completeness: effects.CompletenessFull,
+		CostModifiers: []game.CostModifier{
+			effects.CostsLess(1, "Hero spells you cast cost {1} less to cast.",
+				effects.YourSpell(), effects.SpellOfCreatureType("Hero")),
+		},
+		Triggered: []game.TriggeredAbility{
+			effects.OncePerBatch(effects.On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return effects.AttackDeclaredByYou(ev, source.Controller)
+			}, "Director Nick Fury — look at the top four cards; you may take a Hero",
+				effects.LookAtTopThenMayTakeToHand(4, effects.AnySubtype("Hero"), 1, "Director Nick Fury — you may reveal a Hero card and put it into your hand"))),
+		},
+	})
+}

@@ -24,7 +24,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDiscover, AllOf(YouDiscovered, curatorFirstThisTurn(label)), label,
+			On(game.EventDiscover, AllOf(YouDiscovered, CuratorFirstThisTurn(label)), label,
 				func(g *game.Game, item *game.StackItem) error {
 					n := 0
 					if item.Trigger != nil {
@@ -37,8 +37,8 @@ func init() {
 }
 
 // curatorFirstThisTurn is "this ability triggers only once each turn".
-func curatorFirstThisTurn(label string) When {
+func CuratorFirstThisTurn(label string) When {
 	return func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return source != nil && !b11TriggeredThisTurn(g, source.InstanceID, label)
+		return source != nil && !B11TriggeredThisTurn(g, source.InstanceID, label)
 	}
 }

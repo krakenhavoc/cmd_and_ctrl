@@ -64,21 +64,21 @@ func encoreTokens(g *game.Game, item *game.StackItem) error {
 	TokenCopyGainsHaste(&tmpl)
 	var groups []game.TokenGroup
 	for _, opp := range ctx.Opponents() {
-		groups = append(groups, game.TokenGroup{Template: copiedToken(tmpl), Count: 1, Tag: opp})
+		groups = append(groups, game.TokenGroup{Template: CopiedToken(tmpl), Count: 1, Tag: opp})
 	}
 	if len(groups) == 0 {
 		return nil
 	}
 	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller, Source: item.SourceCardID, Groups: groups,
-	}, ctx.ItemTail(encoreBindTokens))
+	}, ctx.ItemTail(EncoreBindTokens))
 }
 
 // encoreBindTokens is "that attacks that opponent this turn if able ...
 // Sacrifice them at the beginning of the next end step" over the tokens
 // the creation made, each bound to the opponent its group was tagged with.
 // An on-disk key: never renamed, never reused.
-var encoreBindTokens = CardTail("encore/bind-tokens", func(ctx *Context, o game.TailOutcome) error {
+var EncoreBindTokens = CardTail("encore/bind-tokens", func(ctx *Context, o game.TailOutcome) error {
 	tags := game.TokenTags(o, 0)
 	var all []uuid.UUID
 	for _, tok := range o.IDs {
@@ -102,6 +102,6 @@ var encoreBindTokens = CardTail("encore/bind-tokens", func(ctx *Context, o game.
 	return ScheduleDelayedTrigger{
 		Label: "Encore — sacrifice the tokens",
 		Cards: all,
-		Body:  sacrificeListedCardsBody,
+		Body:  SacrificeListedCardsBody,
 	}.Apply(ctx)
 })

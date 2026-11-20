@@ -25,7 +25,7 @@ import (
 // it is a creature on the battlefield. A damage event of 0 is no damage
 // and never matches (CR 120.8).
 func eachCreatureDealtDamage(ev game.Event, _ *game.DelayedTrigger, g *game.Game, _ game.EffectParams) []uuid.UUID {
-	c, ok := b28CreatureWasDealtDamage(ev, g)
+	c, ok := B28CreatureWasDealtDamage(ev, g)
 	if !ok {
 		return nil
 	}
@@ -36,7 +36,7 @@ func eachCreatureDealtDamage(ev game.Event, _ *game.DelayedTrigger, g *game.Game
 // it was a creature as it last existed on the battlefield (CR 700.4,
 // 603.10a).
 func eachCreatureDied(ev game.Event, _ *game.DelayedTrigger, g *game.Game, _ game.EffectParams) []uuid.UUID {
-	if _, ok := diedCreature(ev, g); !ok {
+	if _, ok := DiedCreature(ev, g); !ok {
 		return nil
 	}
 	return []uuid.UUID{ev.CardID}
@@ -44,7 +44,7 @@ func eachCreatureDied(ev game.Event, _ *game.DelayedTrigger, g *game.Game, _ gam
 
 // payloadObject is the fired instance's object: the first card on its
 // payload, with the epoch the dispatch recorded.
-func payloadObject(ctx *Context) (game.ObjectRef, bool) {
+func PayloadObject(ctx *Context) (game.ObjectRef, bool) {
 	for _, ref := range ctx.Payload() {
 		if ref.Kind == game.TargetCard && ref.ID != uuid.Nil {
 			return ref.Object(), true
@@ -58,11 +58,11 @@ func payloadObject(ctx *Context) (game.ObjectRef, bool) {
 // the damage, or left and came back as a new object, is not affected.
 func destroyThePayloadPermanent(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	obj, ok := payloadObject(ctx)
+	obj, ok := PayloadObject(ctx)
 	if !ok {
 		return nil
 	}
-	c, ok := battlefieldCardForEffect(g, obj.ID)
+	c, ok := BattlefieldCardForEffect(g, obj.ID)
 	if !ok || c.ObjectEpoch != obj.Epoch {
 		return nil
 	}
@@ -76,7 +76,7 @@ func destroyThePayloadPermanent(g *game.Game, item *game.StackItem) error {
 // less loses no life.
 func diedControllerLosesLifeEqualToToughness(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	obj, ok := payloadObject(ctx)
+	obj, ok := PayloadObject(ctx)
 	if !ok {
 		return nil
 	}

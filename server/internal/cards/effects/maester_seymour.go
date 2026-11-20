@@ -39,7 +39,7 @@ func init() {
 					if !ok || self.Power <= 0 {
 						return nil
 					}
-					return nothingIfGone(g.AddCounterByForEffect(item.Controller, ts[0].ID, game.CounterPlusOne, self.Power))
+					return NothingIfGone(g.AddCounterByForEffect(item.Controller, ts[0].ID, game.CounterPlusOne, self.Power))
 				}),
 				Another(TargetCreature("another target creature you control", YouControl()))),
 		},
@@ -47,7 +47,7 @@ func init() {
 			MonstrosityXWhere(ManaCost("{3}{G}{G}"),
 				"{3}{G}{G}: Monstrosity X, where X is the number of counters among creatures you control.",
 				func(g *game.Game, item *game.StackItem) int {
-					return countersAmongCreaturesControlledBy(g, item.Controller)
+					return CountersAmongCreaturesControlledBy(g, item.Controller)
 				}),
 		},
 	})
@@ -56,7 +56,7 @@ func init() {
 // countersAmongCreaturesControlledBy is "the number of counters among
 // creatures you control": every counter of every kind on each creature
 // `controller` controls.
-func countersAmongCreaturesControlledBy(g *game.Game, controller uuid.UUID) int {
+func CountersAmongCreaturesControlledBy(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || !c.IsCreature() {

@@ -12,10 +12,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // damage is dealt by the token as it last existed there.
 
 // MeteoriteToken is the Meteorite template.
-func MeteoriteToken() game.Card { return tokenFromCatalog(printedMeteoriteToken) }
+func MeteoriteToken() game.Card { return TokenFromCatalog(printedMeteoriteToken) }
 
-func printedMeteoriteToken() tokenTemplate {
-	return tokenTemplate{
+func printedMeteoriteToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "meteorite",
 		Card: game.Card{
 			Name:     "Meteorite",
@@ -29,7 +29,7 @@ func printedMeteoriteToken() tokenTemplate {
 		}},
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(Targeting(WhenThisEnters("Meteorite — 2 damage to any target",
-				sourceDealsDamageToEachLegalTarget(2)), TargetAny()), ForTargets(DamageToTarget(0, 2))),
+				SourceDealsDamageToEachLegalTarget(2)), TargetAny()), ForTargets(DamageToTarget(0, 2))),
 		},
 	}
 }

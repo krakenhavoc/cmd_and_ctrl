@@ -23,16 +23,16 @@ import (
 // battlefield after the replacement decided it; an untapped entry by
 // another effect's say-so (a "lands you control enter untapped" static)
 // triggers it too, as printed.
-func trekB29SurveilLand(oracleID, name, colour string, mode game.ModeOption) {
+func TrekB29SurveilLand(oracleID, name, colour string, mode game.ModeOption) {
 	trigger := On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return b27SelfEnteredUntapped(ev, source)
+		return B27SelfEnteredUntapped(ev, source)
 	}, name+" — choose one", func(*game.Game, *game.StackItem) error { return nil })
 	trigger.Modes = ChooseOne(mode, ModeSteps("Surveil 1.", nil, Surveil{N: 1}))
 	Register(Spec{
 		OracleID:     oracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{EntersTappedUnless(otherLandsAtLeast(2))},
+		Replacements: []game.ReplacementEffect{EntersTappedUnless(OtherLandsAtLeast(2))},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{" + colour + "}",
@@ -45,7 +45,7 @@ func trekB29SurveilLand(oracleID, name, colour string, mode game.ModeOption) {
 // trekB29TargetCreatureUntilEOT is a surveil land's targeted bullet:
 // "Target creature gets +p/+t and gains <keyword> until end of turn". A
 // target gone illegal by resolution gets nothing (CR 608.2b).
-func trekB29TargetCreatureUntilEOT(label string, power, toughness int, keyword string) game.ModeOption {
+func TrekB29TargetCreatureUntilEOT(label string, power, toughness int, keyword string) game.ModeOption {
 	return ModeDoing(label, TargetCreature("target creature"),
 		func(_ *game.StackItem, ctx *Context, occ int) error {
 			t, ok := ModeTarget(ctx, occ)
@@ -62,15 +62,15 @@ func trekB29TargetCreatureUntilEOT(label string, power, toughness int, keyword s
 // trekB29NewPlanet is an anomaly land's last sentence, "Create a tapped
 // Planet land token named New Planet with "{T}: Add one mana of any
 // color."" — Genesis Effect's printed token (ttrk 27).
-func trekB29NewPlanet(ctx *Context) error {
-	return CreateTokenAdvanced{Spec: Token(trekB16NewPlanetToken()).EntersTapped(), N: 1}.Apply(ctx)
+func TrekB29NewPlanet(ctx *Context) error {
+	return CreateTokenAdvanced{Spec: Token(TrekB16NewPlanetToken()).EntersTapped(), N: 1}.Apply(ctx)
 }
 
 // trekB29AnomalyCost is an anomaly land's "{cost}, {T}, Sacrifice this
 // land" — the sacrifice is a cost, so the land is gone before the
 // ability resolves and "it" is read by last known information (CR
 // 608.2h).
-func trekB29AnomalyCost(mana string) game.AbilityCost {
+func TrekB29AnomalyCost(mana string) game.AbilityCost {
 	return Plus(ManaCost(mana), TapCost(), SacrificeThis())
 }
 
@@ -96,7 +96,7 @@ func trekCreatureTypesAmongNonBorg(g *game.Game, controller uuid.UUID, borg stri
 
 // trekB29StarfleetAcademyAmount is Starfleet Academy's amount, read off
 // the land's own text for the word "Borg".
-func trekB29StarfleetAcademyAmount(g *game.Game, controller, source uuid.UUID) int {
+func TrekB29StarfleetAcademyAmount(g *game.Game, controller, source uuid.UUID) int {
 	borg := "Borg"
 	if c, ok := g.LookupCardForEffect(source); ok {
 		borg = c.TextSubtype(borg)

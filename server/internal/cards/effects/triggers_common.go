@@ -251,7 +251,7 @@ func OncePerBatchPerPlayer(t game.TriggeredAbility) game.TriggeredAbility {
 // battle counts as the same player and not a second one.
 func PerPlayer(ev game.Event, _ *game.Card, g *game.Game) string {
 	if ev.Kind == game.EventAttack {
-		return b17DefendingPlayer(g, ev).String()
+		return B17DefendingPlayer(g, ev).String()
 	}
 	return ev.Target.String()
 }
@@ -267,7 +267,7 @@ func PerPlayer(ev game.Event, _ *game.Card, g *game.Game) string {
 // post-layer. Nil counts every creature they control.
 func WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature CardPredicate, label string, effect Effect) game.TriggeredAbility {
 	return OncePerBatchPerPlayer(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		if !combatDamageToPlayerBy(ev, source.Controller, g) {
+		if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 			return false
 		}
 		if creature == nil {
@@ -326,12 +326,12 @@ func AnyPlayer(game.Event, *game.Card, game.Characteristic, *game.Game) bool { r
 // ThisDied — the source went from the battlefield to a graveyard
 // (CR 700.4). A bounce or an exile is not a death.
 func ThisDied(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-	return cardDied(ev, source)
+	return CardDied(ev, source)
 }
 
 // ThisAttacked — the source was declared as an attacker.
 func ThisAttacked(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-	return attackDeclared(ev, source)
+	return AttackDeclared(ev, source)
 }
 
 // ThisBecameTapped — "whenever this creature becomes tapped" (CR
@@ -463,7 +463,7 @@ func AnOpponentCast(spell CardPredicate) When {
 
 // LandEnteredUnderYourControl — landfall.
 func LandEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsLand()
 }
 
@@ -480,20 +480,20 @@ func AnotherCreatureEntered(ev game.Event, source *game.Card, _ game.Characteris
 // CreatureEnteredUnderYourControl — "whenever a creature you control
 // enters", the source itself included (Impact Tremors).
 func CreatureEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsCreature()
 }
 
 // AnotherCreatureEnteredUnderYourControl — the same with "another".
 func AnotherCreatureEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsCreature()
 }
 
 // ArtifactEnteredUnderYourControl — "whenever an artifact you control
 // enters", the source itself included (Quicksmith Genius).
 func ArtifactEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsArtifact()
 }
 
@@ -511,8 +511,8 @@ func CreatureActionByYou(ev game.Event, source *game.Card, _ game.Characteristic
 // ACreatureYouControlDied — a creature you controlled went to the
 // graveyard, the source included (Zulaport Cutthroat).
 func ACreatureYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller
 }
 
 // AnotherCreatureDied — any other creature, anyone's, died (Blood
@@ -522,14 +522,14 @@ func AnotherCreatureDied(ev game.Event, source *game.Card, _ game.Characteristic
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	_, ok := diedCreature(ev, g)
+	_, ok := DiedCreature(ev, g)
 	return ok
 }
 
 // ThisDealtCombatDamageToAPlayer — the source dealt combat damage to
 // a player.
 func ThisDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
+	return ev.Source == source.InstanceID && CombatDamageToPlayerBy(ev, source.Controller, g)
 }
 
 // YouGainedLife — your life total went up (an EventChangeLife with a
@@ -637,7 +637,7 @@ func WhenThisEntersOrAttacks(label string, effect Effect) game.TriggeredAbility 
 // conditions (Mogg War Marshal, Hunting Moa).
 func WhenThisEntersOrDies(label string, effect Effect) game.TriggeredAbility {
 	return OnAny([]game.EventKind{game.EventETB, game.EventLTB}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return b22SelfEnteredOrDied(ev, source)
+		return B22SelfEnteredOrDied(ev, source)
 	}, label, effect)
 }
 
@@ -798,7 +798,7 @@ func AnExhaustAbility(ev game.Event, _ *game.Card, _ game.Characteristic, _ *gam
 // activated an activated ability": the CR 602 announcement, and CR
 // 605's mana abilities, which never touch the stack and so have their
 // own kind. A card that says "an ability" means both.
-var theTwoActivationKinds = []game.EventKind{
+var TheTwoActivationKinds = []game.EventKind{
 	game.EventActivateAbility,
 	game.EventManaAbilityActivated,
 }
@@ -816,7 +816,7 @@ var theTwoActivationKinds = []game.EventKind{
 // from the graveyard. The trigger fires for the source's OWN exhaust
 // ability too: "an exhaust ability" does not say "another".
 func WheneverYouActivateAnExhaustAbility(label string, effect Effect) game.TriggeredAbility {
-	return OnAny(theTwoActivationKinds, AllOf(ByYou, AnExhaustAbility), label, effect)
+	return OnAny(TheTwoActivationKinds, AllOf(ByYou, AnExhaustAbility), label, effect)
 }
 
 // WheneverAnOpponentActivates — "Whenever an opponent activates an
@@ -862,7 +862,7 @@ func WheneverYouActivateAnExhaustAbility(label string, effect Effect) game.Trigg
 func WheneverAnOpponentActivates(label string, of CardPredicate, includeMana bool, build func(activator uuid.UUID) Effect) game.TriggeredAbility {
 	kinds := []game.EventKind{game.EventActivateAbility}
 	if includeMana {
-		kinds = theTwoActivationKinds
+		kinds = TheTwoActivationKinds
 	}
 	return game.TriggeredAbility{
 		Watches: kinds,
@@ -871,10 +871,10 @@ func WheneverAnOpponentActivates(label string, of CardPredicate, includeMana boo
 			if ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 				return false
 			}
-			return activationSourceMatches(g, ev, of)
+			return ActivationSourceMatches(g, ev, of)
 		},
 		Effect: func(g *game.Game, item *game.StackItem) error {
-			return build(triggeringActor(item))(g, item)
+			return build(TriggeringActor(item))(g, item)
 		},
 	}
 }
@@ -882,7 +882,7 @@ func WheneverAnOpponentActivates(label string, of CardPredicate, includeMana boo
 // triggeringActor is the Actor of the event that put a triggered item
 // on the stack — the player who activated, cast, drew or attacked — or
 // uuid.Nil for an item that carries no triggering event.
-func triggeringActor(item *game.StackItem) uuid.UUID {
+func TriggeringActor(item *game.StackItem) uuid.UUID {
 	if item == nil || item.Trigger == nil {
 		return uuid.Nil
 	}
@@ -901,7 +901,7 @@ func triggeringActor(item *game.StackItem) uuid.UUID {
 // A nil predicate skips the lookup entirely: "whenever an opponent
 // activates an ability" asks nothing about the source and must not
 // start caring whether it is still there.
-func activationSourceMatches(g *game.Game, ev game.Event, of CardPredicate) bool {
+func ActivationSourceMatches(g *game.Game, ev game.Event, of CardPredicate) bool {
 	if of == nil {
 		return true
 	}
@@ -1076,8 +1076,8 @@ func WheneverAnOpponentGainsControlOfAPermanentYouOwn(label string, effect Effec
 // the harvester runs with the source already on the battlefield and
 // its enters-tapped replacement applied, so the tapped flag is the
 // answer.
-func selfEnteredUntapped(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-	return b27SelfEnteredUntapped(ev, source)
+func SelfEnteredUntapped(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return B27SelfEnteredUntapped(ev, source)
 }
 
 // SelfTargetedByASpell — "when this creature becomes the target of a
@@ -1093,7 +1093,7 @@ func SelfTargetedByASpell(ev game.Event, source *game.Card, _ game.Characteristi
 	if ev.Kind != game.EventBecomesTarget || ev.CardID != source.InstanceID {
 		return false
 	}
-	return b40TargetedByASpell(ev, g)
+	return B40TargetedByASpell(ev, g)
 }
 
 // DealAmountFromParamsToFirstTarget is the Effect body for "…deals
@@ -1134,7 +1134,7 @@ func PutChosenTargetOnTopOfLibrary(g *game.Game, item *game.StackItem) error {
 // controller (CR 109.5), however the creature is controlled.
 func WheneverEnchantedCreatureAttacks(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return attachedCreatureAttacked(ev, source)
+		return AttachedCreatureAttacked(ev, source)
 	}, label, effect)
 }
 
@@ -1145,7 +1145,7 @@ func WheneverEnchantedCreatureAttacks(label string, effect Effect) game.Triggere
 // item.Trigger.Event.CardID, the creature that died.
 func WhenEnchantedCreatureDies(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return equippedCreatureDied(ev, source)
+		return EquippedCreatureDied(ev, source)
 	}, label, effect)
 }
 
@@ -1155,7 +1155,7 @@ func WhenEnchantedCreatureDies(label string, effect Effect) game.TriggeredAbilit
 // trigger it.
 func AnotherNontokenCreatureOfTypeEnteredUnderYourControl(subtype string) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		c, ok := enteredUnderYourControl(ev, source, g, true)
+		c, ok := EnteredUnderYourControl(ev, source, g, true)
 		// The type is a word of the source's text (CR 612.2, #3984).
 		return ok && c.IsCreature() && !c.IsToken() && c.HasSubtype(source.TextSubtype(subtype))
 	}
@@ -1170,40 +1170,40 @@ func AnotherNontokenCreatureOfTypeEnteredUnderYourControl(subtype string) When {
 // it died. A token counts; it is put into a graveyard before it
 // ceases to exist.
 func AnotherCreatureOrArtifactYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return ev.CardID != source.InstanceID && permanentYouControlWasPutIntoAGraveyard(ev, source, g, "creature", "artifact")
+	return ev.CardID != source.InstanceID && PermanentYouControlWasPutIntoAGraveyard(ev, source, g, "creature", "artifact")
 }
 
 // AnArtifactYouControlWasPutIntoAGraveyard — "whenever an artifact you
 // control is put into a graveyard from the battlefield" (Marionette
 // Master), the source itself included if it is one.
 func AnArtifactYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return permanentYouControlWasPutIntoAGraveyard(ev, source, g, "artifact")
+	return PermanentYouControlWasPutIntoAGraveyard(ev, source, g, "artifact")
 }
 
 // APermanentYouControlWasPutIntoAGraveyard — "whenever a permanent you
 // control is put into a graveyard" (Aetherworks Marvel): any permanent,
 // whatever its types, the source itself included.
 func APermanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return permanentYouControlWasPutIntoAGraveyard(ev, source, g)
+	return PermanentYouControlWasPutIntoAGraveyard(ev, source, g)
 }
 
 // permanentYouControlWasPutIntoAGraveyard is the shared test: a move
 // from the battlefield to a graveyard of a permanent that had any of
 // `cardTypes` (any permanent, with none given) and was under the
 // source's controller's control.
-func permanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, g *game.Game, cardTypes ...string) bool {
+func PermanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, g *game.Game, cardTypes ...string) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || leftUnderControlOf(ev, c) != source.Controller {
+	if !ok || LeftUnderControlOf(ev, c) != source.Controller {
 		return false
 	}
 	if len(cardTypes) == 0 {
 		return true
 	}
 	for _, t := range cardTypes {
-		if leftAsType(ev, c, t) {
+		if LeftAsType(ev, c, t) {
 			return true
 		}
 	}
@@ -1263,7 +1263,7 @@ func YouPlayedACard(ev game.Event, source *game.Card, _ game.Characteristic, g *
 	if ev.Actor != source.Controller {
 		return false
 	}
-	return ev.Kind == game.EventCast || b20LandPlayed(ev, g)
+	return ev.Kind == game.EventCast || B20LandPlayed(ev, g)
 }
 
 // WheneverYouPlayACard — "Whenever you play a card".
@@ -1326,12 +1326,12 @@ func WheneverOneOrMoreOpponentsEachLoseExactly(n int, label string, effect Effec
 // modifiedCreatureDealtCombatDamageToPlayer is the shared trigger test
 // for "whenever a modified creature you control deals combat damage to a
 // player".
-func modifiedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func ModifiedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)
-	return ok && b07IsModified(g, dealer)
+	return ok && B07IsModified(g, dealer)
 }
 
 // AnotherCreatureWithPower2OrLessEnteredUnderYourControl is "whenever
@@ -1340,7 +1340,7 @@ func modifiedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card,
 // power is the entering creature's as it enters, so a face-down 2/2
 // counts whatever its front face's power is (CR 708.2a).
 func AnotherCreatureWithPower2OrLessEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsCreature() && c.CurrentPower() <= 2
 }
 
@@ -1371,7 +1371,7 @@ func ASourceYouControlDealtNoncombatDamageToAnOpponent(ev game.Event, source *ga
 	if ev.Combat || ev.Amount <= 0 || ev.Target == source.Controller || g.PlayerByIDForEffect(ev.Target) == nil {
 		return false
 	}
-	controller, ok := b34DamageSourceController(ev, g)
+	controller, ok := B34DamageSourceController(ev, g)
 	return ok && controller == source.Controller
 }
 
@@ -1396,7 +1396,7 @@ func ADetectiveEnteredOrWasTurnedFaceUp(self bool) When {
 			if ev.CardID == source.InstanceID {
 				return self
 			}
-			c, ok = enteredUnderYourControl(ev, source, g, true)
+			c, ok = EnteredUnderYourControl(ev, source, g, true)
 		case game.EventTurnedFaceUp:
 			c, ok = g.LookupCardForEffect(ev.CardID)
 			ok = ok && c.Controller == source.Controller

@@ -60,7 +60,7 @@ func massacreGirlEnters(g *game.Game, item *game.StackItem) error {
 	return DelayedOnEvent{
 		Label:     "Massacre Girl — each creature other than Massacre Girl gets -1/-1 until end of turn",
 		On:        []game.EventKind{game.EventLTB},
-		Condition: aCreatureDiedCondition,
+		Condition: ACreatureDiedCondition,
 		Body:      massacreGirlSweepBody,
 		Repeats:   true,
 	}.Apply(NewContext(g, item))
@@ -69,13 +69,13 @@ func massacreGirlEnters(g *game.Game, item *game.StackItem) error {
 var (
 	// "Whenever a creature dies": an EventLTB into a graveyard of something
 	// that was a creature as it last existed (CR 603.10a), anyone's.
-	aCreatureDiedCondition = game.DelayedCondition("dies/a-creature", aCreatureDied)
+	ACreatureDiedCondition = game.DelayedCondition("dies/a-creature", aCreatureDied)
 
 	// Massacre Girl's repeated sweep.
 	massacreGirlSweepBody = game.SimpleDelayedBody("massacre-girl/sweep", massacreGirlSweep)
 )
 
 func aCreatureDied(ev game.Event, _ *game.DelayedTrigger, g *game.Game, _ game.EffectParams) bool {
-	_, ok := diedCreature(ev, g)
+	_, ok := DiedCreature(ev, g)
 	return ok
 }

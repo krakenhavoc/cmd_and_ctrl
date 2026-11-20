@@ -26,11 +26,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // next card that prints 2 needs no second body.
 //
 //nolint:unparam // see above
-func thisDealsDamageToEachCreatureMatchingAndEachPlayer(match CardPredicate, n int) func(g *game.Game, item *game.StackItem) error {
+func ThisDealsDamageToEachCreatureMatchingAndEachPlayer(match CardPredicate, n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		return ctx.Game.DamageInstanceForEffect(func() error {
-			if err := damageEachMatching(ctx, And(Creature(), match), n); err != nil {
+			if err := DamageEachMatching(ctx, And(Creature(), match), n); err != nil {
 				return err
 			}
 			for _, p := range g.Seats {

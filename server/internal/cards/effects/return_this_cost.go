@@ -12,19 +12,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // returnThisRegenerateRow is "Return this enchantment to its owner's
 // hand: Regenerate target creature." — Broken Fall and Molting Skin,
 // which print the same sentence.
-func returnThisRegenerateRow() ActivatedAbility {
+func ReturnThisRegenerateRow() ActivatedAbility {
 	return ActivatedAbility{
 		Label:   "Return this enchantment to its owner's hand: Regenerate target creature.",
 		Cost:    ReturnThis(),
 		Targets: TargetCreature("target creature"),
-		Effect:  regenerateTheTargetPermanent,
+		Effect:  RegenerateTheTargetPermanent,
 	}
 }
 
 // returnEachTargetCardToHand returns every still-legal graveyard card
 // target to its owner's hand. A target that has gone is skipped
 // (CR 608.2b).
-func returnEachTargetCardToHand(g *game.Game, item *game.StackItem) error {
+func ReturnEachTargetCardToHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -40,7 +40,7 @@ func returnEachTargetCardToHand(g *game.Game, item *game.StackItem) error {
 // shigekiDig is Shigeki, Jukai Visionary's first ability: "Reveal the
 // top four cards of your library. You may put a land card from among
 // them onto the battlefield tapped. Put the rest into your graveyard."
-func shigekiDig(g *game.Game, item *game.StackItem) error {
+func ShigekiDig(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	revealed := g.RevealTopOfLibraryForEffect(item.Controller, ctx.Source(), 4,
 		"Shigeki, Jukai Visionary — revealed from the top of the library")

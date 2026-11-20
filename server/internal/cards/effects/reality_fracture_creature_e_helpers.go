@@ -15,7 +15,7 @@ import (
 // cards" (CR 603.2c). The engine emits one EventDiscardCard per card, so
 // one player's two-card discard is one trigger and two players' discards
 // are two.
-func rfCreatureEOncePerDiscarder(t game.TriggeredAbility) game.TriggeredAbility {
+func RfCreatureEOncePerDiscarder(t game.TriggeredAbility) game.TriggeredAbility {
 	t.OncePerBatch = true
 	t.BatchKey = func(ev game.Event, _ *game.Card, _ *game.Game) string { return ev.Actor.String() }
 	return t
@@ -25,7 +25,7 @@ func rfCreatureEOncePerDiscarder(t game.TriggeredAbility) game.TriggeredAbility 
 // a creature an opponent of the source's controller controls whose
 // effective power or toughness is 1 or less, on the first pair of its
 // block declaration (CR 509.3a: one trigger per blocking creature).
-func rfCreatureEWeakOpposingBlocker(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RfCreatureEWeakOpposingBlocker(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventBlock || ev.Amount > 1 || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
@@ -38,7 +38,7 @@ func rfCreatureEWeakOpposingBlocker(ev game.Event, source *game.Card, _ game.Cha
 
 // rfCreatureETetsukoPing deals 1 damage from the source to the
 // controller of the creature that blocked.
-func rfCreatureETetsukoPing(g *game.Game, item *game.StackItem) error {
+func RfCreatureETetsukoPing(g *game.Game, item *game.StackItem) error {
 	victim := item.Trigger.Event.Actor
 	if victim == uuid.Nil {
 		return nil

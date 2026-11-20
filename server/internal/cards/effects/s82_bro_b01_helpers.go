@@ -5,7 +5,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // bro01AmbushParatrooperPump is Ambush Paratrooper's "{5}: Creatures you
 // control get +1/+1 until end of turn." (CR 611.2c: the set of creatures
 // is fixed when the ability resolves.)
-func bro01AmbushParatrooperPump() ActivatedAbility {
+func Bro01AmbushParatrooperPump() ActivatedAbility {
 	return ActivatedAbility{
 		Label: "{5}: Creatures you control get +1/+1 until end of turn.",
 		Purpose: game.Purpose{

@@ -28,7 +28,7 @@ func init() {
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return edictGainToughness(ctx, "Consuming Vapors")
+			return EdictGainToughness(ctx, "Consuming Vapors")
 		},
 	})
 }
@@ -38,7 +38,7 @@ func init() {
 // or as it last existed this turn (CR 608.2h), clamped at zero.
 //
 // Caller holds g.mu in write mode.
-func departedCreatureToughness(g *game.Game, cardID uuid.UUID) int {
+func DepartedCreatureToughness(g *game.Game, cardID uuid.UUID) int {
 	ref, ok := g.PermanentRefForEffect(cardID)
 	if !ok {
 		return 0
@@ -53,7 +53,7 @@ func departedCreatureToughness(g *game.Game, cardID uuid.UUID) int {
 // consumingVaporsGain is "you gain life equal to that creature's
 // toughness", once the victim's creature has left the battlefield. The
 // carry is the caster, then the victim.
-var consumingVaporsGain = game.RegisterPromptRunThen("prompt-run/consuming-vapors-gain", func(g *game.Game, r game.RunDone) error {
+var ConsumingVaporsGain = game.RegisterPromptRunThen("prompt-run/consuming-vapors-gain", func(g *game.Game, r game.RunDone) error {
 	if len(r.Carry) < 2 {
 		return nil
 	}
@@ -62,9 +62,9 @@ var consumingVaporsGain = game.RegisterPromptRunThen("prompt-run/consuming-vapor
 	if len(ids) == 0 {
 		return nil
 	}
-	toughness := departedCreatureToughness(g, ids[0])
+	toughness := DepartedCreatureToughness(g, ids[0])
 	if toughness <= 0 {
 		return nil
 	}
-	return GainLife{Player: me, Amount: toughness}.Apply(keyedContext(g, me, r.Source))
+	return GainLife{Player: me, Amount: toughness}.Apply(KeyedContext(g, me, r.Source))
 })

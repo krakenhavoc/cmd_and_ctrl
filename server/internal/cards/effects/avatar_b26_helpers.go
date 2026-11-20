@@ -15,7 +15,7 @@ import (
 // battlefield" (Swampbenders): every land with the subtype under any
 // controller, read through the layered type line. The caller reads the
 // subtype through its own text (source.TextSubtype).
-func avB27SwampsOnTheBattlefield(g *game.Game, swamp string) int {
+func AvB27SwampsOnTheBattlefield(g *game.Game, swamp string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsLand() && c.HasSubtype(swamp) {
@@ -28,7 +28,7 @@ func avB27SwampsOnTheBattlefield(g *game.Game, swamp string) int {
 // avB27LandsYouControlAreAlso is "Lands you control are <subtype>s in
 // addition to their other types" (Swampbenders): EachLandIsAlso narrowed
 // to the source's controller's lands. Layer 4, an idempotent append.
-func avB27LandsYouControlAreAlso(subtype string) game.StaticAbility {
+func AvB27LandsYouControlAreAlso(subtype string) game.StaticAbility {
 	ab := EachLandIsAlso(subtype)
 	ab.Label = "Lands you control are " + subtype + "s in addition to their other types."
 	ab.AppliesTo = func(target *game.Card, _ *game.Game, source *game.Card) bool {
@@ -41,10 +41,10 @@ func avB27LandsYouControlAreAlso(subtype string) game.StaticAbility {
 // you control have <keyword>" (Sokka's Charge): a layer-6 grant over the
 // Ally creatures the source's controller controls while that player is
 // the active player.
-func avB27AlliesYouControlHaveDuringYourTurn(keyword string) game.StaticAbility {
+func AvB27AlliesYouControlHaveDuringYourTurn(keyword string) game.StaticAbility {
 	ab := KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {
 		return target.Controller == source.Controller && target.IsCreature() &&
-			target.HasSubtype(source.TextSubtype("Ally")) && isActivePlayer(g, source.Controller)
+			target.HasSubtype(source.TextSubtype("Ally")) && IsActivePlayer(g, source.Controller)
 	}, keyword)
 	ab.Label = "During your turn, Allies you control have " + keyword + "."
 	return ab
@@ -53,7 +53,7 @@ func avB27AlliesYouControlHaveDuringYourTurn(keyword string) game.StaticAbility 
 // avB27TappedArtifactOrCreature is "tapped artifacts and/or creatures"
 // (Aang and Katara): a tapped permanent that is an artifact, a creature
 // or both, counted once.
-func avB27TappedArtifactOrCreature(c game.Card) bool {
+func AvB27TappedArtifactOrCreature(c game.Card) bool {
 	return c.Tapped && (c.IsArtifact() || c.IsCreature())
 }
 
@@ -62,21 +62,21 @@ func avB27TappedArtifactOrCreature(c game.Card) bool {
 // as the item resolves (CR 603.4). It declares FootprintCondAttacked:
 // the attack record only changes by declaring attackers, which no item
 // on the stack does.
-type avB27CondThisDidntAttack struct{}
+type AvB27CondThisDidntAttack struct{}
 
-func (avB27CondThisDidntAttack) Holds(ctx *Context) bool {
+func (AvB27CondThisDidntAttack) Holds(ctx *Context) bool {
 	return !ctx.Game.AttackedThisTurn(ctx.Source())
 }
 
-func (avB27CondThisDidntAttack) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondAttacked, 0), true
+func (AvB27CondThisDidntAttack) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondAttacked, 0), true
 }
 
 // avB27LandCreaturesYouControlHave is "Land creatures you control have
 // <keyword>" (Toph, Greatest Earthbender): a layer-6 grant over each
 // permanent the source's controller controls that is both a land and a
 // creature, re-read every layer pass.
-func avB27LandCreaturesYouControlHave(keyword string) game.StaticAbility {
+func AvB27LandCreaturesYouControlHave(keyword string) game.StaticAbility {
 	ab := KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.Controller == source.Controller && target.IsLand() && target.IsCreature()
 	}, keyword)
@@ -91,7 +91,7 @@ func avB27LandCreaturesYouControlHave(keyword string) game.StaticAbility {
 // under your control this turn" (Tale of Momo, That's Rough Buddy): the
 // per-player CreaturesLeft tally, so a creature that left by any route,
 // to any zone, earlier in the turn counts, tokens included.
-func avB28CreatureLeftUnderYourControl(g *game.Game, you uuid.UUID) bool {
+func AvB28CreatureLeftUnderYourControl(g *game.Game, you uuid.UUID) bool {
 	return g != nil && g.CreatureLeftThisTurn(you)
 }
 
@@ -99,8 +99,8 @@ func avB28CreatureLeftUnderYourControl(g *game.Game, you uuid.UUID) bool {
 // discard a card unless there are three or more Lesson cards in your
 // graveyard": the graveyard is counted after the draw, as the discard
 // would be made. The key is an on-disk identity.
-var avB28DrawThenDiscardUnlessThreeLessons = game.RegisterDrawThen("discard-unless-three-lessons", func(g *game.Game, d game.DrawThen) error {
-	if avB4LessonsInGraveyard(g, d.Player) >= 3 {
+var AvB28DrawThenDiscardUnlessThreeLessons = game.RegisterDrawThen("discard-unless-three-lessons", func(g *game.Game, d game.DrawThen) error {
+	if AvB4LessonsInGraveyard(g, d.Player) >= 3 {
 		return nil
 	}
 	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: d.Player, Source: d.Source, N: d.N})
@@ -149,8 +149,8 @@ func avB29ACardWasPutIntoALibrary(ev game.Event, _ *game.Card, _ game.Characteri
 // card the same event batch put into libraries (CR 603.2c), however many
 // cards and libraries — the batch-settled shape of "whenever one or more
 // nonland cards are milled" (nonland_cards_milled.go).
-func avB29WheneverCardsArePutIntoALibrary(label string, effect Effect) game.TriggeredAbility {
-	return withAtBatchEnd(OnAny(avB29PutIntoALibraryEvents, avB29ACardWasPutIntoALibrary, label, effect), ThatManyEvents())
+func AvB29WheneverCardsArePutIntoALibrary(label string, effect Effect) game.TriggeredAbility {
+	return WithAtBatchEnd(OnAny(avB29PutIntoALibraryEvents, avB29ACardWasPutIntoALibrary, label, effect), ThatManyEvents())
 }
 
 // avB29NightmaresMillBody is Nightmares and Daydreams' delayed trigger:
@@ -159,8 +159,8 @@ func avB29WheneverCardsArePutIntoALibrary(label string, effect Effect) game.Trig
 // trigger resolves, with its announced X while it is still on the stack
 // (triggeringSpellManaValue's reading). An on-disk key.
 var avB29NightmaresMillBody = game.TargetedDelayedBody("nightmares-and-daydreams/target-player-mills",
-	simpleBody(avB29NightmaresMill),
-	constTargets(func() *game.TargetSpec { return TargetPlayer("target player") }))
+	SimpleBody(avB29NightmaresMill),
+	ConstTargets(func() *game.TargetSpec { return TargetPlayer("target player") }))
 
 func avB29NightmaresMill(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
@@ -171,7 +171,7 @@ func avB29NightmaresMill(g *game.Game, item *game.StackItem) error {
 			break
 		}
 	}
-	spell := firstPayloadCard(ctx)
+	spell := FirstPayloadCard(ctx)
 	if victim == uuid.Nil || spell == uuid.Nil {
 		return nil
 	}
@@ -190,7 +190,7 @@ func avB29NightmaresMill(g *game.Game, item *game.StackItem) error {
 // controller's next turn begins, held by the chapter's controller
 // (CR 603.7d). It is data — a registered condition and body — so a table
 // with it waiting is still a restore point.
-func avB29NightmaresChapter(g *game.Game, item *game.StackItem) error {
+func AvB29NightmaresChapter(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	controller := ctx.Controller()
 	until := DurationUntilYourNextTurn(ctx, controller)
@@ -199,7 +199,7 @@ func avB29NightmaresChapter(g *game.Game, item *game.StackItem) error {
 		SourceCardID: ctx.Source(),
 		Label:        "Nightmares and Daydreams — target player mills cards equal to that spell's mana value",
 		On:           []game.EventKind{game.EventCast},
-		Condition:    youNextCastCondition,
+		Condition:    YouNextCastCondition,
 		CondParams:   game.EffectParams{Filter: game.CastFilter{Types: []string{"Instant", "Sorcery"}}},
 		Body:         avB29NightmaresMillBody,
 		Repeats:      true,
@@ -210,7 +210,7 @@ func avB29NightmaresChapter(g *game.Game, item *game.StackItem) error {
 
 // avB29AGraveyardHasTwenty is "a graveyard has twenty or more cards in
 // it": any player's.
-func avB29AGraveyardHasTwenty(g *game.Game) bool {
+func AvB29AGraveyardHasTwenty(g *game.Game) bool {
 	for _, p := range g.Seats {
 		if p != nil && p.Graveyard != nil && p.Graveyard.Size() >= 20 {
 			return true

@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (MayPay), and `paid` is the card's own keyed paid branch, which untaps
 // the permanent only while it is still on the battlefield
 // (untapThisIfStillOnBattlefield).
-func upkeepMayPayToUntapThis(name, cost string, paid game.PayUnlessElse) game.TriggeredAbility {
+func UpkeepMayPayToUntapThis(name, cost string, paid game.PayUnlessElse) game.TriggeredAbility {
 	return AtYourUpkeep(name+" — you may pay "+cost+" to untap it",
 		func(g *game.Game, item *game.StackItem) error {
 			return MayPay{
@@ -28,8 +28,8 @@ func upkeepMayPayToUntapThis(name, cost string, paid game.PayUnlessElse) game.Tr
 // untapThisIfStillOnBattlefield is the paid branch of
 // upkeepMayPayToUntapThis: the item's source is untapped if it is still
 // on the battlefield, and nothing happens once it has left.
-func untapThisIfStillOnBattlefield(ctx *Context, _ game.PayUnlessAnswer) error {
-	if !onBattlefield(ctx.Game, ctx.Item.SourceCardID) {
+func UntapThisIfStillOnBattlefield(ctx *Context, _ game.PayUnlessAnswer) error {
+	if !OnBattlefield(ctx.Game, ctx.Item.SourceCardID) {
 		return nil
 	}
 	return UntapTarget{Target: ctx.Item.SourceCardID}.Apply(ctx)

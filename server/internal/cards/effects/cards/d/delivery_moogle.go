@@ -1,0 +1,43 @@
+package cardsd
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Delivery Moogle — Creature — Moogle {3}{W}, 3/2:
+//
+//	"Flying
+//	 When this creature enters, search your library and/or graveyard for
+//	 an artifact card with mana value 2 or less, reveal it, and put it
+//	 into your hand. If you search your library this way, shuffle."
+//
+// Not a "may", but it is a search for a stated quality, so it may find
+// nothing (CR 701.23b), and "and/or" lets the player choose their zones
+// (#3217). The zones are asked first (#4519) and the shuffle follows them
+// (#4516): the library is shown, and shuffled, only if the player chose to
+// search it.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "60043b87-6008-4cfa-9d8f-6ee6e3f70766",
+		Name:            "Delivery Moogle",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventETB, effects.B06SelfETB, "Delivery Moogle — search for an artifact card with mana value 2 or less",
+				func(g *game.Game, item *game.StackItem) error {
+					return effects.SearchLibrary{
+						Player:        item.Controller,
+						Predicate:     func(c game.Card) bool { return c.IsArtifact() && c.ManaValue() <= 2 },
+						Dest:          game.ZoneHand,
+						Limit:         1,
+						Reveal:        true,
+						Shuffle:       true,
+						AlsoGraveyard: true,
+						Reason:        "Delivery Moogle — an artifact card with mana value 2 or less",
+					}.Apply(effects.NewContext(g, item))
+				}),
+		},
+	})
+}

@@ -37,7 +37,7 @@ func init() {
 			Label:   "{T}: Target creature with a +1/+1 counter on it gains flying until end of turn.",
 			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "flying")),
 			Cost:    TapCost(),
-			Targets: TargetCreature("target creature with a +1/+1 counter on it", tomikHasPlusCounter),
+			Targets: TargetCreature("target creature with a +1/+1 counter on it", TomikHasPlusCounter),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {
@@ -61,6 +61,6 @@ func init() {
 const tomikAttackLimitGrant = "tomik-orzhov-lawmage/one-attacker"
 
 // tomikHasPlusCounter is "with a +1/+1 counter on it".
-func tomikHasPlusCounter(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func TomikHasPlusCounter(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 	return c.Counters[game.CounterPlusOne] > 0
 }

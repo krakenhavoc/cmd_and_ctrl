@@ -14,7 +14,7 @@ import (
 // the graveyard (Beacon of Unrest's tail). A Beacon that is countered,
 // or that has no legal target left, never gets here and goes to the
 // graveyard as usual (CR 608.2b).
-func shuffleThisSpellIntoItsOwnersLibrary(ctx *Context) error {
+func ShuffleThisSpellIntoItsOwnersLibrary(ctx *Context) error {
 	return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{ctx.Source()}, game.TuckOptions{},
-		game.KeyedTail{Ref: thenShuffle, Player: ctx.Item.Owner})
+		game.KeyedTail{Ref: ThenShuffle, Player: ctx.Item.Owner})
 }

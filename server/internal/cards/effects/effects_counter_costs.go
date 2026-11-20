@@ -17,12 +17,12 @@ import (
 // the ability's source, read off the item rather than captured. The set
 // is snapshotted before the first counter lands, so a creature that a
 // counter payoff makes mid-loop gets nothing.
-func putCounterOnEachOtherCreatureYouControl(g *game.Game, item *game.StackItem) error {
+func PutCounterOnEachOtherCreatureYouControl(g *game.Game, item *game.StackItem) error {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == item.Controller && c.IsCreature() && c.InstanceID != item.SourceCardID {
 			ids = append(ids, c.InstanceID)
 		}
 	}
-	return b13PutCounterOnEach(NewContext(g, item), ids)
+	return B13PutCounterOnEach(NewContext(g, item), ids)
 }

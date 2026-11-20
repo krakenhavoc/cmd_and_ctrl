@@ -43,21 +43,21 @@ func init() {
 			Key: agentOfTheIronThroneGrant,
 			Triggered: []game.TriggeredAbility{
 				On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					_, ok := b21ArtifactOrCreatureYouControlDied(ev, source, g)
+					_, ok := B21ArtifactOrCreatureYouControlDied(ev, source, g)
 					return ok
 				}, "Agent of the Iron Throne — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
-					return eachOpponentLosesLife(g, item, 1)
+					return EachOpponentLosesLifeNow(g, item, 1)
 				}),
 			},
 			Text: "Whenever an artifact or creature you control is put into a graveyard from the battlefield, each opponent loses 1 life.",
 		}},
-		Static: []game.StaticAbility{GrantAbilities(commanderCreatureYouOwn, agentOfTheIronThroneGrant)},
+		Static: []game.StaticAbility{GrantAbilities(CommanderCreatureYouOwn, agentOfTheIronThroneGrant)},
 	})
 }
 
 // commanderCreatureYouOwn is the "commander creatures you own" AppliesTo
 // a Background's grant hangs on: OWNED by the Background's controller,
 // whoever controls it now.
-func commanderCreatureYouOwn(target *game.Card, _ *game.Game, source *game.Card) bool {
+func CommanderCreatureYouOwn(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCommander && target.IsCreature() && target.Owner == source.Controller
 }

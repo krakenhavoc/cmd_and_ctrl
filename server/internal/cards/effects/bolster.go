@@ -93,7 +93,7 @@ var bolsterPick = game.RegisterChooseCardsThen("choose-cards/bolster", func(g *g
 	if len(r.Picked) != 1 || len(r.Nums) == 0 {
 		return nil
 	}
-	ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+	ctx, _ := AskedContext(g, r.Asked, r.Chooser, r.Source, nil)
 	return Bolster{N: r.Nums[0], ThenTail: r.Tail}.finish(ctx, r.Picked[0])
 })
 
@@ -103,7 +103,7 @@ var bolsterPick = game.RegisterChooseCardsThen("choose-cards/bolster", func(g *g
 // left" guards would misread a bolster that picked it.
 func (b Bolster) finish(ctx *Context, chosen uuid.UUID) error {
 	if b.N > 0 {
-		if err := nothingIfGone(ctx.Game.AddCounterForEffect(chosen, game.CounterPlusOne, b.N)); err != nil {
+		if err := NothingIfGone(ctx.Game.AddCounterForEffect(chosen, game.CounterPlusOne, b.N)); err != nil {
 			return err
 		}
 	}

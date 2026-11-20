@@ -34,7 +34,7 @@ func handSizeStatics(spec Spec) []game.HandSizeStatic {
 // a printed number) and a modification by zero, which does nothing and
 // is a typo for a missing N. An entry whose number is read at the time
 // (Dynamic) declares no N, so only its kind is checked.
-func checkHandSize(spec Spec) {
+func CheckHandSize(spec Spec) {
 	for i, h := range spec.HandSize {
 		if h.Dynamic != nil {
 			if h.Kind != game.HandSizeSet && h.Kind != game.HandSizeModify && h.Kind != game.HandSizeNoMaximum {
@@ -76,7 +76,7 @@ func YourMaxHandSizeIs(n int) game.HandSizeStatic {
 // playACardHandOfTwo is the whole of Null Profusion and Recycle, which
 // print the same three lines: "Skip your draw step. Whenever you play a
 // card, draw a card. Your maximum hand size is two."
-func playACardHandOfTwo(oracleID, name string) Spec {
+func PlayACardHandOfTwo(oracleID, name string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -110,9 +110,9 @@ func YourMaxHandSizeChangedBy(n int) game.HandSizeStatic {
 func AtYourEndStepDrawUpTo(name string, n int) game.TriggeredAbility {
 	label := fmt.Sprintf("%s — draw up to %d cards in hand", name, n)
 	return On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return ev.Actor == source.Controller && b14HandSize(g, source.Controller) < n
+		return ev.Actor == source.Controller && B14HandSize(g, source.Controller) < n
 	}, label, func(g *game.Game, item *game.StackItem) error {
-		short := n - b14HandSize(g, item.Controller)
+		short := n - B14HandSize(g, item.Controller)
 		if short <= 0 {
 			return nil
 		}

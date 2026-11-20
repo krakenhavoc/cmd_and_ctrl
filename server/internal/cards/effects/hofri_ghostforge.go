@@ -56,7 +56,7 @@ func init() {
 			Text: "When this token leaves the battlefield, return the exiled card to its owner's graveyard.",
 		}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, hofriGhostforgeAnotherNontokenCreatureDied, hofriGhostforgeLabel, hofriGhostforgeExile),
+			On(game.EventLTB, HofriGhostforgeAnotherNontokenCreatureDied, hofriGhostforgeLabel, hofriGhostforgeExile),
 		},
 	})
 }
@@ -69,7 +69,7 @@ const (
 // hofriGhostforgeCopyTail is "if you do, create a token that's a copy of
 // that creature, except …", run once the exile has settled.
 var hofriGhostforgeCopyTail = CardTail("hofri-ghostforge/copy", func(ctx *Context, o game.TailOutcome) error {
-	if !oneWentThisWay(o) {
+	if !OneWentThisWay(o) {
 		return nil
 	}
 	obj := ctx.Trigger().Object
@@ -81,7 +81,7 @@ var hofriGhostforgeCopyTail = CardTail("hofri-ghostforge/copy", func(ctx *Contex
 		return nil
 	}
 	hofriGhostforgeException(&tmpl)
-	return createTokenCopies(ctx, ctx.Controller(), tmpl, 1)
+	return CreateTokenCopies(ctx, ctx.Controller(), tmpl, 1)
 })
 
 // hofriGhostforgeException is "except it's a Spirit in addition to its
@@ -96,7 +96,7 @@ func hofriGhostforgeException(t *game.Card) {
 
 // hofriGhostforgeAnotherNontokenCreatureDied is "another nontoken
 // creature you control dies", read as the creature last existed.
-func hofriGhostforgeAnotherNontokenCreatureDied(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func HofriGhostforgeAnotherNontokenCreatureDied(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	if ev.CardID == source.InstanceID || !ACreatureYouControlDied(ev, source, lki, g) {
 		return false
 	}
@@ -109,7 +109,7 @@ func hofriGhostforgeAnotherNontokenCreatureDied(ev game.Event, source *game.Card
 func hofriGhostforgeExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	dead := item.Trigger.Event.CardID
-	if !diedCardStillInGraveyard(ctx, dead) {
+	if !DiedCardStillInGraveyard(ctx, dead) {
 		return nil
 	}
 	return ExileTarget{Target: dead, ThenTail: ctx.ItemTail(hofriGhostforgeCopyTail)}.Apply(ctx)

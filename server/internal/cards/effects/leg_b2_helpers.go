@@ -16,12 +16,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // boosts end in the cleanup step (CR 514.2). `subject` is the printed
 // name of the creature in the label: "This creature" or the card's own
 // name. `name` labels the boost.
-func legSelfPump(cost string, toughness int, subject, name string) ActivatedAbility {
+func LegSelfPump(cost string, toughness int, subject, name string) ActivatedAbility {
 	const power = 1
 	return ActivatedAbility{
-		Label:   cost + ": " + subject + " gets " + signedPT(power, toughness) + " until end of turn.",
+		Label:   cost + ": " + subject + " gets " + SignedPT(power, toughness) + " until end of turn.",
 		Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: power, Toughness: toughness}},
 		Cost:    ManaCost(cost),
-		Effect:  thisGetsUntilEndOfTurn(power, toughness, name+" — "+signedPT(power, toughness)+" until end of turn"),
+		Effect:  ThisGetsUntilEndOfTurn(power, toughness, name+" — "+SignedPT(power, toughness)+" until end of turn"),
 	}
 }

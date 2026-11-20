@@ -33,7 +33,7 @@ func init() {
 // endlessRanksOfHydraReturn is the graveyard half of Endless Ranks of
 // HYDRA.
 func endlessRanksOfHydraReturn() game.TriggeredAbility {
-	t := OnAny([]game.EventKind{game.EventETB, game.EventAttack}, msc10YourCommanderEntersOrAttacks,
+	t := OnAny([]game.EventKind{game.EventETB, game.EventAttack}, Msc10YourCommanderEntersOrAttacks,
 		"Endless Ranks of HYDRA — you may pay {1}{B} to return this card to your hand",
 		func(g *game.Game, item *game.StackItem) error {
 			return MayPay{
@@ -49,13 +49,13 @@ func endlessRanksOfHydraReturn() game.TriggeredAbility {
 
 var endlessRanksOfHydraPaid = PayUnlessBranches("pay-unless/endless-ranks-of-hydra-return",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
-		return returnThisCardFromYourGraveyardToYourHand(ctx.Game, ctx.Item)
+		return ReturnThisCardFromYourGraveyardToYourHand(ctx.Game, ctx.Item)
 	}, nil)
 
 // msc10YourCommanderEntersOrAttacks is "whenever your commander enters
 // or attacks": the creature of the event is a commander the source's
 // owner owns.
-func msc10YourCommanderEntersOrAttacks(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Msc10YourCommanderEntersOrAttacks(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventETB && ev.Kind != game.EventAttack {
 		return false
 	}

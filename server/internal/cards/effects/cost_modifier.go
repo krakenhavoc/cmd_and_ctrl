@@ -199,7 +199,7 @@ func OfASourceWithTheChosenNonlandName() CostPredicate {
 		if named == "" || q.Ability == nil {
 			return false
 		}
-		return nonlandFaceNamed(q.Card, named)
+		return NonlandFaceNamed(q.Card, named)
 	}
 }
 

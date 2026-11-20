@@ -14,16 +14,16 @@ import (
 // controls that have flying right now, after the layers: Aerial Assault's
 // and Aven Gagglemaster's "for each creature you control with flying",
 // read as the spell or ability resolves.
-func jmpB7CreaturesYouControlWithFlying(g *game.Game, player uuid.UUID) int {
-	return len(permanentsControlledByMatching(g, player, And(Creature(), HasKeyword("flying"))))
+func JmpB7CreaturesYouControlWithFlying(g *game.Game, player uuid.UUID) int {
+	return len(PermanentsControlledByMatching(g, player, And(Creature(), HasKeyword("flying"))))
 }
 
 // jmpB7AttackingFlyersYouControl counts the attacking creatures with
 // flying that `player` controls: Inniaz's "three or more creatures you
 // control with flying attack".
-func jmpB7AttackingFlyersYouControl(g *game.Game, player uuid.UUID) int {
+func JmpB7AttackingFlyersYouControl(g *game.Game, player uuid.UUID) int {
 	n := 0
-	for _, id := range b13AttackingCreaturesYouControl(g, player) {
+	for _, id := range B13AttackingCreaturesYouControl(g, player) {
 		if c, ok := g.LookupCardForEffect(id); ok && game.HasKeyword(&c, "flying") {
 			n++
 		}
@@ -35,7 +35,7 @@ func jmpB7AttackingFlyersYouControl(g *game.Game, player uuid.UUID) int {
 // permanent of your choice controlled by the player to their right" -----
 
 // jmpB7InniazLabel names the control effects in the log.
-const jmpB7InniazLabel = "Inniaz, the Gale Force — each player gains control of a nonland permanent controlled by the player to their right"
+const JmpB7InniazLabel = "Inniaz, the Gale Force — each player gains control of a nonland permanent controlled by the player to their right"
 
 // jmpB7InniazOrder is the players the effect walks, in turn order from
 // the ability's controller (CR 101.4's APNAP order), with each one's
@@ -79,7 +79,7 @@ func jmpB7InniazOrder(g *game.Game, controller uuid.UUID) (players, rights []uui
 // Not a target: the choices are made as the ability resolves (CR 608.2),
 // so hexproof and shroud do not stop them, and nothing re-checks them
 // against a later board, because nothing can happen in between.
-func jmpB7InniazAsk(g *game.Game, source, controller uuid.UUID, from int, picked []uuid.UUID) error {
+func JmpB7InniazAsk(g *game.Game, source, controller uuid.UUID, from int, picked []uuid.UUID) error {
 	players, rights := jmpB7InniazOrder(g, controller)
 	for i := from; i < len(players); i++ {
 		pool := NonlandPermanentsControlledBy(g, rights[i])
@@ -89,7 +89,7 @@ func jmpB7InniazAsk(g *game.Game, source, controller uuid.UUID, from int, picked
 		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 			Chooser:   controller,
 			Source:    source,
-			Question:  "Inniaz, the Gale Force — choose a nonland permanent " + attackTargetName(g, rights[i]) + " controls; " + attackTargetName(g, players[i]) + " gains control of it",
+			Question:  "Inniaz, the Gale Force — choose a nonland permanent " + AttackTargetName(g, rights[i]) + " controls; " + AttackTargetName(g, players[i]) + " gains control of it",
 			Cards:     pool,
 			Min:       1,
 			Max:       1,
@@ -127,12 +127,12 @@ func jmpB7InniazPickedBody(g *game.Game, r game.CardsChosen) error {
 	}
 	picked := append([]uuid.UUID(nil), r.Carry...)
 	if len(r.Picked) == 1 {
-		if c, ok := g.LookupCardForEffect(r.Picked[0]); ok && onBattlefield(g, c.InstanceID) &&
+		if c, ok := g.LookupCardForEffect(r.Picked[0]); ok && OnBattlefield(g, c.InstanceID) &&
 			c.Controller == rights[i] && !c.IsLand() {
 			picked = append(picked, players[i], c.InstanceID)
 		}
 	}
-	return jmpB7InniazAsk(g, r.Source, r.Chooser, i+1, picked)
+	return JmpB7InniazAsk(g, r.Source, r.Chooser, i+1, picked)
 }
 
 // jmpB7InniazApply registers every gain of control the choices named, in
@@ -142,17 +142,17 @@ func jmpB7InniazPickedBody(g *game.Game, r game.CardsChosen) error {
 // stated) and pinned to the permanent as it is now.
 func jmpB7InniazApply(g *game.Game, source uuid.UUID, picked []uuid.UUID) {
 	for k := 0; k+1 < len(picked); k += 2 {
-		g.GainControlForEffect(source, picked[k+1], picked[k], game.IndefiniteDuration(), jmpB7InniazLabel)
+		g.GainControlForEffect(source, picked[k+1], picked[k], game.IndefiniteDuration(), JmpB7InniazLabel)
 	}
 }
 
 // jmpB7FirstLegalTargetGains is "<target> gains <keyword> until end of
 // turn" for the first target still legal as the ability resolves (CR
 // 608.2b): Alabaster Mage's lifelink, Duelist's Heritage's double strike.
-func jmpB7FirstLegalTargetGains(label string, keywords ...string) Effect {
+func JmpB7FirstLegalTargetGains(label string, keywords ...string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}

@@ -37,7 +37,7 @@ import (
 //
 // No simplification.
 func init() {
-	runeswordSacrificeBody = game.SimpleDelayedBody("ltb/sacrifice-the-source", sacrificeDelayedTriggerSource)
+	runeswordSacrificeBody = game.SimpleDelayedBody("ltb/sacrifice-the-source", SacrificeDelayedTriggerSource)
 	Register(Spec{
 		OracleID:     "964c2003-cef0-4ac7-9f66-4e20893c8e50",
 		Name:         "Runesword",
@@ -61,7 +61,7 @@ var runeswordSacrificeBody game.BodyRef
 
 func runeswordResolve(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

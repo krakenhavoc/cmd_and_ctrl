@@ -1,0 +1,55 @@
+package cardsth
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// The Needs of the Many — Instant {1}{W} (Star Trek, #4973):
+//
+//	"As an additional cost to cast this spell, sacrifice a creature.
+//	 Creatures you control gain hexproof and indestructible until end of
+//	 turn. You gain hexproof until end of turn. Prevent all damage that
+//	 would be dealt to you this turn. Exile The Needs of the Many."
+//
+// The sacrifice is the additional cost (SacrificeCost, Bone Splinters'),
+// paid as the spell is cast (CR 601.2h), so a spell with no creature to
+// sacrifice can't be cast. The resolution is four instructions in printed
+// order: Spectacular Spider-Man's mass grant over the creatures you
+// control as it resolves (CR 611.2c), Lazotep Plating's player hexproof,
+// Riot Control's not-one-use shield on you from every source for the
+// rest of the turn, and Temporal Mastery's self-exile in place of the
+// graveyard. None of them prompts, so they run in one pass.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:       "984e0426-10ba-4c17-b26e-ce21100ec398",
+		Name:           "The Needs of the Many",
+		Completeness:   effects.CompletenessFull,
+		AdditionalCost: effects.SacrificeCost("a creature", effects.Creature()),
+		Purpose:        game.Purpose{Answers: game.AnswerProtect | game.AnswerSurvive},
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if err := (effects.GrantKeywordUntilEOT{
+				Match:    effects.And(effects.Creature(), effects.YouControl()),
+				Keywords: []string{"hexproof", "indestructible"},
+				Label:    "The Needs of the Many — creatures you control gain hexproof and indestructible",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+			if err := (effects.GainPlayerKeyword{
+				Player:   ctx.Controller(),
+				Keyword:  effects.KeywordHexproof,
+				Label:    "The Needs of the Many — you gain hexproof",
+				Duration: effects.DurationUntilEndOfTurn(ctx),
+			}).Apply(ctx); err != nil {
+				return err
+			}
+			if err := (effects.PreventDamageFromSource{Protect: effects.ShieldYou}).Apply(ctx); err != nil {
+				return err
+			}
+			return ctx.Game.ExileCardForEffect(item.SourceCardID)
+		},
+	})
+}

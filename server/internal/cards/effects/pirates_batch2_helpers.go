@@ -17,13 +17,13 @@ import (
 // into the computation being performed. Cost: a creature *turned
 // into* a Pirate isn't a legal target.
 func IsPirateCard() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return isPirate(c) }
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return IsPirate(c) }
 }
 
 // enteredUnderYourControl reports whether ev is an ETB for a card
 // controlled by source's controller, and returns it. The `another`
 // flag excludes the source itself.
-func enteredUnderYourControl(ev game.Event, source *game.Card, g *game.Game, another bool) (game.Card, bool) {
+func EnteredUnderYourControl(ev game.Event, source *game.Card, g *game.Game, another bool) (game.Card, bool) {
 	if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
 		return game.Card{}, false
 	}
@@ -41,7 +41,7 @@ func enteredUnderYourControl(ev game.Event, source *game.Card, g *game.Game, ano
 // returns how many left. Used by the "discard your hand" spells,
 // where the choice of what to pitch doesn't exist — it's all of it,
 // so the random-order discard primitive is exactly right.
-func discardWholeHand(g *game.Game, playerID uuid.UUID) (int, error) {
+func DiscardWholeHand(g *game.Game, playerID uuid.UUID) (int, error) {
 	p := g.PlayerByIDForEffect(playerID)
 	if p == nil {
 		return 0, nil
@@ -56,7 +56,7 @@ func discardWholeHand(g *game.Game, playerID uuid.UUID) (int, error) {
 // tablePlayers returns the controller of `item` followed by their
 // opponents — every seated player, in a stable order, for the
 // "each player" spells.
-func tablePlayers(ctx *Context) []uuid.UUID {
+func TablePlayers(ctx *Context) []uuid.UUID {
 	out := []uuid.UUID{ctx.Controller()}
 	return append(out, ctx.Opponents()...)
 }

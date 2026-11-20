@@ -14,7 +14,7 @@ import (
 // cmdrB23WithCardTypesInAddition is a type line with the card types added
 // "in addition to its other types" (CR 707.9b), keeping its supertypes and
 // subtypes; a type it already has is not repeated.
-func cmdrB23WithCardTypesInAddition(printed string, add ...string) string {
+func CmdrB23WithCardTypesInAddition(printed string, add ...string) string {
 	super, types, subs := game.ParseTypeLine(printed)
 	for _, a := range add {
 		have := false
@@ -39,7 +39,7 @@ func cmdrB23WithCardTypesInAddition(printed string, add ...string) string {
 
 // cmdrB23ZombiesYouControl counts the Zombies controller controls, read
 // through the layered view.
-func cmdrB23ZombiesYouControl(g *game.Game, source *game.Card, controller uuid.UUID) int {
+func CmdrB23ZombiesYouControl(g *game.Game, source *game.Card, controller uuid.UUID) int {
 	n := 0
 	zombie := source.TextSubtype("Zombie")
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -55,8 +55,8 @@ func cmdrB23ZombiesYouControl(g *game.Game, source *game.Card, controller uuid.U
 // toughness are the X the creating ability gives (the template's 1/1 is
 // replaced at creation, see CmdrB23NalaarAetherjetToken). Its slug is an
 // on-disk identity and is never renamed.
-func printedCmdrB23NalaarAetherjetToken() tokenTemplate {
-	return tokenTemplate{
+func printedCmdrB23NalaarAetherjetToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "nalaar-aetherjet",
 		Card: game.Card{
 			Name:      "Nalaar Aetherjet",
@@ -72,7 +72,7 @@ func printedCmdrB23NalaarAetherjetToken() tokenTemplate {
 
 // CmdrB23NalaarAetherjetToken is the Aetherjet at x/x.
 func CmdrB23NalaarAetherjetToken(x int) game.Card {
-	c := tokenFromCatalog(printedCmdrB23NalaarAetherjetToken)
+	c := TokenFromCatalog(printedCmdrB23NalaarAetherjetToken)
 	c.Power, c.Toughness = x, x
 	return c
 }

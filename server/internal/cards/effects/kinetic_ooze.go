@@ -56,13 +56,13 @@ func init() {
 // later sentence waits for any prompt the destruction's replacement
 // window asks (CR 608.2c); none of them depends on the destruction.
 var kineticOozeResolve = Do(
-	Instruction(kineticOozeDestroy),
+	Instruction(KineticOozeDestroy),
 	Instruction(kineticOozeDraw),
 	Instruction(kineticOozeDouble),
 )
 
 // kineticOozeDestroy destroys the first clause's pick, if it is still legal.
-func kineticOozeDestroy(ctx *Context) error {
+func KineticOozeDestroy(ctx *Context) error {
 	t, ok := ctx.ClauseTarget(0)
 	if !ok || t.Kind != game.TargetCard {
 		return nil
@@ -93,7 +93,7 @@ func kineticOozeDouble(ctx *Context) error {
 			continue
 		}
 		if n := c.Counters[game.CounterPlusOne]; n > 0 {
-			if err := nothingIfGone(AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: n}.Apply(ctx)); err != nil {
+			if err := NothingIfGone(AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: n}.Apply(ctx)); err != nil {
 				return err
 			}
 		}

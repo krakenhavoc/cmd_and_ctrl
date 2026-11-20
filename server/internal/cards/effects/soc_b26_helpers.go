@@ -10,7 +10,7 @@ import (
 // n life." as a spell's whole body (Terminal Criticism, Grapple with Death):
 // the target is re-checked as the spell resolves (CR 608.2b), and the life is
 // its own sentence, so it is gained whether or not the destroy did anything.
-func socB26DestroyTheTargetAndGainLife(n int) func(*game.StackItem, *Context) error {
+func SocB26DestroyTheTargetAndGainLife(n int) func(*game.StackItem, *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) || item.Targets[0].Kind != game.TargetCard {
 			return nil
@@ -27,13 +27,13 @@ func socB26DestroyTheTargetAndGainLife(n int) func(*game.StackItem, *Context) er
 // controller is read BEFORE the destroy, so the token goes to whoever held
 // the creature when the spell resolved, and it is made whether or not the
 // destroy did anything (the creature was indestructible, say).
-func socB26DestroyThenItsControllerCreates(token string) func(*game.StackItem, *Context) error {
+func SocB26DestroyThenItsControllerCreates(token string) func(*game.StackItem, *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) || item.Targets[0].Kind != game.TargetCard {
 			return nil
 		}
 		target := item.Targets[0].ID
-		controller, ok := controllerOfTarget(ctx, target)
+		controller, ok := ControllerOfTarget(ctx, target)
 		if !ok {
 			return nil
 		}
@@ -46,8 +46,8 @@ func socB26DestroyThenItsControllerCreates(token string) func(*game.StackItem, *
 
 // socB26HeatedArgumentDamage is Heated Argument's first sentence: 6 damage to
 // the announced creature, if it is still a legal target.
-func socB26HeatedArgumentDamage(ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func SocB26HeatedArgumentDamage(ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -58,12 +58,12 @@ func socB26HeatedArgumentDamage(ctx *Context) error {
 // pick of up to one card from the caster's graveyard, carrying the creature's
 // controller (read here, while the creature is still the one that was dealt
 // damage) for the "if you do" half. With an empty graveyard nothing is asked.
-func socB26HeatedArgumentOffer(ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func SocB26HeatedArgumentOffer(ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
-	controller, ok := controllerOfTarget(ctx, id)
+	controller, ok := ControllerOfTarget(ctx, id)
 	if !ok {
 		return nil
 	}
@@ -93,7 +93,7 @@ func socB26HeatedArgumentOffer(ctx *Context) error {
 
 // heatedArgumentExile is the exile and, if a card was exiled, the 2 damage to
 // the creature's controller. An on-disk key: never renamed, never reused.
-var heatedArgumentExile = askedPick("choose-cards/heated-argument-exile",
+var heatedArgumentExile = AskedPick("choose-cards/heated-argument-exile",
 	func(ctx *Context, r game.CardsChosen) error {
 		if len(r.Picked) != 1 || len(r.Carry) != 1 {
 			return nil
@@ -113,8 +113,8 @@ var heatedArgumentExile = askedPick("choose-cards/heated-argument-exile",
 // from it (leftGraveyardEvents, whenCardsLeaveYourGraveyard). Cards that
 // leave as one event trigger it once; separate events trigger it separately.
 // Garrison Excavator and Hardened Academic.
-func socB26CardsLeaveYourGraveyard(label string, effect Effect) game.TriggeredAbility {
-	return OncePerBatch(OnAny(leftGraveyardEvents, whenCardsLeaveYourGraveyard, label, effect))
+func SocB26CardsLeaveYourGraveyard(label string, effect Effect) game.TriggeredAbility {
+	return OncePerBatch(OnAny(LeftGraveyardEvents, WhenCardsLeaveYourGraveyard, label, effect))
 }
 
 // socB26YouCastASpellWithXInItsManaCost is "whenever you cast a spell with
@@ -122,6 +122,6 @@ func socB26CardsLeaveYourGraveyard(label string, effect Effect) game.TriggeredAb
 // printed mana cost has an {X}. An {X} in an additional or alternative cost
 // does not count (the rulings on Unbound Flourishing and Nev read it the
 // same way).
-func socB26YouCastASpellWithXInItsManaCost(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SocB26YouCastASpellWithXInItsManaCost(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.Kind == game.EventCast && ev.Actor == source.Controller && socB9HasXInManaCost(g, ev.CardID)
 }

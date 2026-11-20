@@ -17,12 +17,12 @@ import (
 // each player's choice is sacrificed together. A player with fewer than N
 // creatures sacrifices what they have; one with none is not asked. The
 // choice is not a target, so hexproof is irrelevant.
-func jmpB1EachPlayerSacrificesN(n int, question string) Effect {
+func JmpB1EachPlayerSacrificesN(n int, question string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		var legs []game.ChooseCardsPrompt
 		source := item.SourceCardID
-		spec := sacrificeSpec("a creature", Creature())
-		for _, seat := range apnapLivingSeats(g) {
+		spec := SacrificeSpec("a creature", Creature())
+		for _, seat := range ApnapLivingSeats(g) {
 			if !g.CanEffectCauseSacrificeForEffect(seat) {
 				continue
 			}
@@ -48,7 +48,7 @@ func jmpB1EachPlayerSacrificesN(n int, question string) Effect {
 // still on the battlefield, so its type is read as it last stood, and a
 // source that sacrifices itself sees its own sacrifice (a leaves-the-
 // battlefield trigger looks back in time).
-func jmpB1YouSacrificedACreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func JmpB1YouSacrificedACreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller || ev.CardID == uuid.Nil {
 		return false
 	}
@@ -58,7 +58,7 @@ func jmpB1YouSacrificedACreature(ev game.Event, source *game.Card, _ game.Charac
 
 // jmpB1YouControlACreatureNamed reports whether `controller` controls a
 // creature named `name` right now.
-func jmpB1YouControlACreatureNamed(g *game.Game, controller uuid.UUID, name string) bool {
+func JmpB1YouControlACreatureNamed(g *game.Game, controller uuid.UUID, name string) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && game.HasName(c, name) {
 			return true
@@ -68,6 +68,6 @@ func jmpB1YouControlACreatureNamed(g *game.Game, controller uuid.UUID, name stri
 }
 
 // jmpB1NamedFesteringNewt is "named Festering Newt" as a card predicate.
-func jmpB1NamedFesteringNewt(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func JmpB1NamedFesteringNewt(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 	return game.HasName(c, "Festering Newt")
 }

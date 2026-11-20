@@ -30,20 +30,20 @@ import (
 // --- tokens ------------------------------------------------------
 
 // b28WhiteSpiritFlyingToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
-func b28WhiteSpiritFlyingToken() game.Card { return TokenCard("1/1 white Spirit with flying") }
+func B28WhiteSpiritFlyingToken() game.Card { return TokenCard("1/1 white Spirit with flying") }
 
 // b28EldraziScionToken is Spawnbed Protector's 1/1 colorless Eldrazi
 // Scion with "Sacrifice this token: Add {C}" — the Spawn's mana
 // ability on a 1/1 body.
-func b28EldraziScionToken() game.Card { return tokenFromCatalog(printedB28EldraziScionToken) }
+func B28EldraziScionToken() game.Card { return TokenFromCatalog(printedB28EldraziScionToken) }
 
 // printedB28EldraziScionToken is the Eldrazi Scion as PRINTED —
 // the ability included. It is the catalog's entry for this token
 // (token_catalog.go, #521): the ability is registered from here at
 // boot, and the template that reaches the battlefield carries the
 // key that finds it rather than the closure itself.
-func printedB28EldraziScionToken() tokenTemplate {
-	return tokenTemplate{
+func printedB28EldraziScionToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "eldrazi-scion",
 		Card: game.Card{
 			Name:      "Eldrazi Scion",
@@ -70,13 +70,13 @@ func printedB28EldraziScionToken() tokenTemplate {
 // not use up the turn. A label of its own, never the stack label: every
 // resolution is tallied under that, declined or not. Per object, like
 // the tally.
-func b28DoneThisTurn(g *game.Game, source uuid.UUID, doneLabel string) bool {
+func B28DoneThisTurn(g *game.Game, source uuid.UUID, doneLabel string) bool {
 	return g.ResolvedThisTurn(source, doneLabel) > 0
 }
 
 // b28NoteDoneThisTurn records that `source` has carried out its
 // once-each-turn instruction (b28DoneThisTurn).
-func b28NoteDoneThisTurn(g *game.Game, source uuid.UUID, doneLabel string) {
+func B28NoteDoneThisTurn(g *game.Game, source uuid.UUID, doneLabel string) {
 	g.NoteDoneThisTurn(source, doneLabel)
 }
 
@@ -85,7 +85,7 @@ func b28NoteDoneThisTurn(g *game.Game, source uuid.UUID, doneLabel string) {
 // still there when the event fires (state-based actions run after),
 // so its controller is read live and handed back for the trigger to
 // aim at.
-func b28CreatureWasDealtDamage(ev game.Event, g *game.Game) (game.Card, bool) {
+func B28CreatureWasDealtDamage(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target == uuid.Nil {
 		return game.Card{}, false
 	}
@@ -107,14 +107,14 @@ func b28CreatureWasDealtDamage(ev game.Event, g *game.Game) (game.Card, bool) {
 // in CardID (uuid.Nil for a player target, which is what keeps a
 // player-targeting spell from matching). The Regent is a Dragon and
 // counts for its own trigger.
-func b28DragonYouControlTargetedByOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
+func B28DragonYouControlTargetedByOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventBecomesTarget || ev.CardID == uuid.Nil {
 		return false
 	}
 	if ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
-	if !onBattlefield(g, ev.CardID) {
+	if !OnBattlefield(g, ev.CardID) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -125,7 +125,7 @@ func b28DragonYouControlTargetedByOpponent(ev game.Event, source *game.Card, g *
 // — b12YouSacrificedAnArtifact widened to "an artifact or creature".
 // The sacrifice event fires before the zone move, so the permanent is
 // still on the battlefield to be read.
-func b28YouSacrificedArtifactOrCreature(ev game.Event, source *game.Card, g *game.Game) bool {
+func B28YouSacrificedArtifactOrCreature(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller {
 		return false
 	}
@@ -138,7 +138,7 @@ func b28YouSacrificedArtifactOrCreature(ev game.Event, source *game.Card, g *gam
 // the attacker in Target, and is emitted once per pair of the FINAL
 // block declaration (#830): a blocker re-pointed before the lock-in
 // blocks once, against the attacker it ends on.
-func b28SelfBlocked(ev game.Event, source *game.Card) bool {
+func B28SelfBlocked(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventBlock && ev.CardID == source.InstanceID && ev.Target != uuid.Nil
 }
 
@@ -148,15 +148,15 @@ func b28SelfBlocked(ev game.Event, source *game.Card) bool {
 // EventBlock per attacker and numbers them in Amount, so only the
 // first (Amount 1; 0 on a hand-built event) counts. "Whenever this
 // blocks A creature" (CR 509.3b, Brimaz) is b28SelfBlocked, per pair.
-func selfBlocksOnce(ev game.Event, source *game.Card) bool {
-	return b28SelfBlocked(ev, source) && ev.Amount <= 1
+func SelfBlocksOnce(ev game.Event, source *game.Card) bool {
+	return B28SelfBlocked(ev, source) && ev.Amount <= 1
 }
 
 // b28GraveyardHasCreatureCardOfSubtype reports whether `player`'s
 // graveyard holds a creature card with the given subtype — the
 // question Spawnbed Protector's targeted declaration asks before it
 // fires (the Hazel's Brewmaster split).
-func b28GraveyardHasCreatureCardOfSubtype(g *game.Game, player uuid.UUID, subtype string) bool {
+func B28GraveyardHasCreatureCardOfSubtype(g *game.Game, player uuid.UUID, subtype string) bool {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return false
@@ -179,7 +179,7 @@ func b28GraveyardHasCreatureCardOfSubtype(g *game.Game, player uuid.UUID, subtyp
 // with the "what enters" test as a parameter; `match` receives the
 // entering card, still in its old zone, lent the source's text so a
 // word it names follows a text change (HasSubtypeWord, CR 612.2, #3984).
-func b28PermanentsYouControlEnterWithACounter(label string, match func(game.Card) bool) game.ReplacementEffect {
+func B28PermanentsYouControlEnterWithACounter(label string, match func(game.Card) bool) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -204,7 +204,7 @@ func b28PermanentsYouControlEnterWithACounter(label string, match func(game.Card
 // "if one or more +1/+1 counters would be put on another creature
 // you control, that many plus one are put on it instead" — Conclave
 // Mentor's replacement with the Hydra itself excluded.
-func b28OtherCreaturesYouControlGetAnExtraCounter(label string) game.ReplacementEffect {
+func B28OtherCreaturesYouControlGetAnExtraCounter(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventCounterPlaced},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -249,7 +249,7 @@ func b28DamageSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, contro
 	if !ok {
 		return game.Card{}, false
 	}
-	ch, chOk := damageSourceCharacteristics(ev, g)
+	ch, chOk := DamageSourceCharacteristics(ev, g)
 	if !chOk || ch.Controller != controller {
 		return game.Card{}, false
 	}
@@ -267,7 +267,7 @@ func b28DamageTargetIsOpponentOrTheirPermanent(ev *game.ReplacementEvent, g *gam
 	if p := g.PlayerByIDForEffect(ev.DamageTarget); p != nil {
 		return p.ID != controller
 	}
-	if !onBattlefield(g, ev.DamageTarget) {
+	if !OnBattlefield(g, ev.DamageTarget) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.DamageTarget)
@@ -279,7 +279,7 @@ func b28DamageTargetIsOpponentOrTheirPermanent(ev *game.ReplacementEvent, g *gam
 // controls that has a +1/+1 counter on it is doubled, whatever it is
 // dealt to — combat and noncombat alike (Gratuitous Violence's
 // shape, gated on the counter).
-func b28DoubleDamageFromCounteredCreaturesYouControl(label string) game.ReplacementEffect {
+func B28DoubleDamageFromCounteredCreaturesYouControl(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventDealDamage},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -287,7 +287,7 @@ func b28DoubleDamageFromCounteredCreaturesYouControl(label string) game.Replacem
 				return false
 			}
 			c, ok := b28DamageSourceControlledBy(ev, g, src.Controller)
-			return ok && c.IsCreature() && onBattlefield(g, c.InstanceID) && c.Counters["+1/+1"] > 0
+			return ok && c.IsCreature() && OnBattlefield(g, c.InstanceID) && c.Counters["+1/+1"] > 0
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.DamageAmount *= 2
@@ -305,7 +305,7 @@ func b28DoubleDamageFromCounteredCreaturesYouControl(label string) game.Replacem
 // or to a permanent an opponent controls is increased by the number
 // of `kind` counters on the source enchantment, read as the damage
 // is dealt.
-func b28AddCountersToDamageAtOpponents(label, kind string) game.ReplacementEffect {
+func B28AddCountersToDamageAtOpponents(label, kind string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventDealDamage},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -334,10 +334,10 @@ func b28AddCountersToDamageAtOpponents(label, kind string) game.ReplacementEffec
 // devotion to <color>" — Karametra's Acolyte. Devotion is read at
 // activation (devotionTo, CR 700.5: hybrid symbols count for every
 // colour they offer); zero devotion adds nothing and still taps.
-func b28ProducedDevotion(color string) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
+func B28ProducedDevotion(color string) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
 	opts := []string{strings.ToUpper(color)}
 	return func(g *game.Game, controller, _ uuid.UUID) game.ManaAmount {
-		return game.ManaAmount{Options: opts, N: devotionTo(g, controller, color)}
+		return game.ManaAmount{Options: opts, N: DevotionTo(g, controller, color)}
 	}
 }
 
@@ -347,7 +347,7 @@ func b28ProducedDevotion(color string) func(*game.Game, uuid.UUID, uuid.UUID) ga
 // target that is still legal, X tokens that are copies of it. Every
 // target is snapshotted before any token lands, so a copy of one
 // target is never itself copied.
-func b28CopyEachLegalTargetXTimes(ctx *Context) error {
+func B28CopyEachLegalTargetXTimes(ctx *Context) error {
 	x := ctx.X()
 	if x <= 0 {
 		return nil
@@ -367,7 +367,7 @@ func b28CopyEachLegalTargetXTimes(ctx *Context) error {
 // "that many +1/+1 counters on each creature you control". The set
 // is snapshotted first so a counter payoff that makes a creature
 // mid-loop is not counted.
-func b28PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, n int) error {
+func B28PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, n int) error {
 	if n <= 0 {
 		return nil
 	}
@@ -379,7 +379,7 @@ func b28PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, 
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -389,8 +389,8 @@ func b28PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, 
 // b28ReturnSelfToOwnersHand bounces the item's source if it is still
 // on the battlefield — Arcanis the Omnipotent's "{2}{U}{U}: Return
 // Arcanis to its owner's hand".
-func b28ReturnSelfToOwnersHand(g *game.Game, item *game.StackItem) error {
-	if !b09SourceStillOnBattlefield(g, item) {
+func B28ReturnSelfToOwnersHand(g *game.Game, item *game.StackItem) error {
+	if !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
@@ -401,7 +401,7 @@ func b28ReturnSelfToOwnersHand(g *game.Game, item *game.StackItem) error {
 // shuffle. Effective subtypes are not readable in a library, so the
 // printed type line is what "Dragon card" means here, as it does for
 // every other library search.
-func b28SearchDragonsNotNamed(g *game.Game, item *game.StackItem, except string, reason string) error {
+func B28SearchDragonsNotNamed(g *game.Game, item *game.StackItem, except string, reason string) error {
 	return SearchLibrary{
 		Player: item.Controller,
 		Predicate: func(c game.Card) bool {
@@ -412,7 +412,7 @@ func b28SearchDragonsNotNamed(g *game.Game, item *game.StackItem, except string,
 		Limit:   5,
 		Reveal:  true,
 		Shuffle: true,
-		Rule:    searchRuleDifferentNames,
+		Rule:    SearchRuleDifferentNames,
 		Reason:  reason,
 	}.Apply(NewContext(g, item))
 }
@@ -437,7 +437,7 @@ func b28GainLifeAndDraw(g *game.Game, item *game.StackItem, n int) error {
 // stamped from the same live card in the same beat
 // (battlefieldExitLocked), clamped at zero since a negative power
 // pays out nothing.
-func b28LifebloodHydraPayout(g *game.Game, item *game.StackItem) error {
+func B28LifebloodHydraPayout(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	info, _ := ctx.TriggeringPermanent()
 	power := info.Power
@@ -451,7 +451,7 @@ func b28LifebloodHydraPayout(g *game.Game, item *game.StackItem) error {
 // Protector's end-step body: the chosen graveyard card, if one was
 // chosen and it is still there, goes to hand, then two Eldrazi
 // Scions either way.
-func b28ReturnChosenGraveyardCardToHandThenScions(g *game.Game, item *game.StackItem) error {
+func B28ReturnChosenGraveyardCardToHandThenScions(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -464,5 +464,5 @@ func b28ReturnChosenGraveyardCardToHandThenScions(g *game.Game, item *game.Stack
 			return err
 		}
 	}
-	return CreateToken{Controller: item.Controller, Template: b28EldraziScionToken(), N: 2}.Apply(ctx)
+	return CreateToken{Controller: item.Controller, Template: B28EldraziScionToken(), N: 2}.Apply(ctx)
 }

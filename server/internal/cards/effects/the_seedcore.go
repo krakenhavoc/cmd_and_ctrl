@@ -53,10 +53,10 @@ func init() {
 			Targets: TargetCreature("target 1/1 creature", func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 				return c.CurrentPower() == 1 && c.CurrentToughness() == 1
 			}),
-			Condition: seedcoreCorrupted,
+			Condition: SeedcoreCorrupted,
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
+				id, ok := B16FirstLegalTargetCard(ctx)
 				if !ok {
 					return nil
 				}
@@ -68,8 +68,8 @@ func init() {
 
 // seedcoreCorrupted is corrupted: an opponent has three or more poison
 // counters.
-func seedcoreCorrupted(g *game.Game, controller, _ uuid.UUID) bool {
-	return eachOpponent(g, controller, func(opp uuid.UUID) bool {
+func SeedcoreCorrupted(g *game.Game, controller, _ uuid.UUID) bool {
+	return EachOpponent(g, controller, func(opp uuid.UUID) bool {
 		p := g.PlayerByIDForEffect(opp)
 		return p != nil && p.Poison >= 3
 	})

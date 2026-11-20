@@ -11,7 +11,7 @@ import (
 // chkB1SpiritOrArcane is the spell half of "Whenever you cast a Spirit or
 // Arcane spell" and of "target Spirit or Arcane spell": a creature type
 // or a spell type on the spell's type line (the ki flip cards' predicate).
-func chkB1SpiritOrArcane() CardPredicate {
+func ChkB1SpiritOrArcane() CardPredicate {
 	return Or(Subtype("Spirit"), Subtype("Arcane"))
 }
 
@@ -22,12 +22,12 @@ func chkB1SpiritOrArcane() CardPredicate {
 // Battlefield Medic's "Cleric" does.
 func chkB1ShrinesYouControl(g *game.Game, item *game.StackItem) int {
 	shrine := g.TextReaderForEffect(item).TextSubtype("Shrine")
-	return countControlled(g, item.Controller, func(c game.Card) bool { return c.HasSubtypeWord(shrine) })
+	return CountControlled(g, item.Controller, func(c game.Card) bool { return c.HasSubtypeWord(shrine) })
 }
 
 // chkB1Honden is a Honden: "At the beginning of your upkeep, <effect> for
 // each Shrine you control." `effect` is handed the count.
-func chkB1Honden(label string, effect func(g *game.Game, item *game.StackItem, shrines int) error) game.TriggeredAbility {
+func ChkB1Honden(label string, effect func(g *game.Game, item *game.StackItem, shrines int) error) game.TriggeredAbility {
 	return AtYourUpkeep(label, func(g *game.Game, item *game.StackItem) error {
 		n := chkB1ShrinesYouControl(g, item)
 		if n <= 0 {
@@ -39,7 +39,7 @@ func chkB1Honden(label string, effect func(g *game.Game, item *game.StackItem, s
 
 // chkB1Soulshifter registers a creature whose only rules text is its
 // printed keywords and Soulshift n (CR 702.46a): the five plain kami.
-func chkB1Soulshifter(oracleID, name string, n int, keywords ...string) {
+func ChkB1Soulshifter(oracleID, name string, n int, keywords ...string) {
 	Register(Spec{
 		OracleID:        oracleID,
 		Name:            name,
@@ -51,7 +51,7 @@ func chkB1Soulshifter(oracleID, name string, n int, keywords ...string) {
 
 // chkB1Bushido registers a creature whose only rules text is its printed
 // keywords and Bushido n (CR 702.45a).
-func chkB1Bushido(oracleID, name string, n int, keywords ...string) {
+func ChkB1Bushido(oracleID, name string, n int, keywords ...string) {
 	Register(Spec{
 		OracleID:        oracleID,
 		Name:            name,
@@ -64,8 +64,8 @@ func chkB1Bushido(oracleID, name string, n int, keywords ...string) {
 // chkB1SnakeDealtCombatDamageToAPlayer is Seshiro's "Whenever a Snake you
 // control deals combat damage to a player": one trigger per Snake that
 // deals it. "Snake" is a word of the source's text (CR 612.2).
-func chkB1SnakeDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func ChkB1SnakeDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	src, ok := g.LookupCardForEffect(ev.Source)

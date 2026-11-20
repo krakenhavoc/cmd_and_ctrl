@@ -36,16 +36,16 @@ import (
 var (
 	// Dire Blunderbuss (#2709): the equipped creature deals damage
 	// equal to its power to target creature.
-	direBlunderbussDamageBody = game.ReflexiveBody("dire-blunderbuss/damage", simpleBody(direBlunderbussDamage),
-		constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+	direBlunderbussDamageBody = game.ReflexiveBody("dire-blunderbuss/damage", SimpleBody(direBlunderbussDamage),
+		ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
 
 	// Generous Plunderer: target opponent creates a tapped Treasure.
-	generousPlundererGiftBody = game.ReflexiveBody("generous-plunderer/gift", simpleBody(generousPlundererGift),
-		constTargets(func() *game.TargetSpec { return TargetPlayer("target opponent", Opponent()) }))
+	generousPlundererGiftBody = game.ReflexiveBody("generous-plunderer/gift", SimpleBody(generousPlundererGift),
+		ConstTargets(func() *game.TargetSpec { return TargetPlayer("target opponent", Opponent()) }))
 
 	// Ziatora, the Incinerator: damage equal to the sacrificed
 	// creature's power to any target, plus three Treasures.
-	ziatoraFlingBody = game.ReflexiveBody("ziatora/fling", simpleBody(b29ZiatoraFling), constTargets(TargetAny))
+	ziatoraFlingBody = game.ReflexiveBody("ziatora/fling", SimpleBody(b29ZiatoraFling), ConstTargets(TargetAny))
 
 	// Breeches, the Blastmaker: "when you win the flip, copy that
 	// spell" — untargeted, the spell rides the payload.
@@ -55,16 +55,16 @@ var (
 	// target", the amount the {R} paid, carried as Params.Amount. The body is
 	// Breeches' "deal Params.Amount damage to the chosen target" (the effect
 	// itself is card-agnostic).
-	leylineTyrantDamageBody = game.ReflexiveBody("leyline-tyrant/damage", breechesBlastEffect, constTargets(TargetAny))
+	LeylineTyrantDamageBody = game.ReflexiveBody("leyline-tyrant/damage", BreechesBlastEffect, ConstTargets(TargetAny))
 
 	// Elektra, Femme Fatale (#4455): "she deals 4 damage to target
 	// creature", the amount carried as Params.Amount.
-	elektraDamageBody = game.ReflexiveBody("elektra-femme-fatale/damage", breechesBlastEffect,
-		constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+	ElektraDamageBody = game.ReflexiveBody("elektra-femme-fatale/damage", BreechesBlastEffect,
+		ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
 
 	// Bullseye, Death Dealer (#4566): "When you do, Bullseye deals 2
 	// damage to any target" — the amount rides Params.Amount.
-	bullseyeDamageBody = game.ReflexiveBody("bullseye-death-dealer/damage", breechesBlastEffect, constTargets(TargetAny))
+	BullseyeDamageBody = game.ReflexiveBody("bullseye-death-dealer/damage", BreechesBlastEffect, ConstTargets(TargetAny))
 
 	// Gilgamesh, Master-at-Arms: "you may attach one of them to a
 	// Samurai you control" — untargeted, the Equipment ride the payload.
@@ -79,19 +79,19 @@ var (
 	// creature you control gets +X/+0 until end of turn", X the exiled
 	// card's mana value, carried as Params.Amount.
 	caitSithBoostBody = game.ReflexiveBody("cait-sith/boost", caitSithBoost,
-		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+		ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
 
 	// Breeches, the Blastmaker: "when you lose the flip, deal damage
 	// equal to that spell's mana value to any target" — the amount is
 	// fixed when the flip was lost, so it rides Params.Amount rather
 	// than a captured closure.
-	breechesBlastBody = game.ReflexiveBody("breeches/blast", breechesBlastEffect, constTargets(TargetAny))
+	breechesBlastBody = game.ReflexiveBody("breeches/blast", BreechesBlastEffect, ConstTargets(TargetAny))
 
 	// Eden, Seat of the Sanctum: "return another target permanent card
 	// from your graveyard to your hand". "Another" excludes Eden
 	// itself, read off the trigger's own source ID rather than a
 	// captured one.
-	edenReturnBody = game.ReflexiveBody("eden/return-from-graveyard", simpleBody(edenReturnChosenFromGraveyard),
+	edenReturnBody = game.ReflexiveBody("eden/return-from-graveyard", SimpleBody(edenReturnChosenFromGraveyard),
 		func(sourceID uuid.UUID, _ game.EffectParams) *game.TargetSpec {
 			return TargetCardInGraveyard("another target permanent card from your graveyard",
 				YouOwn(), Permanent(), OtherThan(sourceID))
@@ -99,23 +99,23 @@ var (
 
 	// Invasion of Tarkir: "this Siege deals X plus 2 damage to any
 	// other target", X the number of Dragon cards revealed.
-	tarkirDamageBody = game.ReflexiveBody("tarkir/damage", simpleBody(invasionOfTarkirDamage), constTargets(tarkirAnyOtherTarget))
+	tarkirDamageBody = game.ReflexiveBody("tarkir/damage", SimpleBody(invasionOfTarkirDamage), ConstTargets(TarkirAnyOtherTarget))
 
 	// Teferi Akosa of Zhalfir: "shuffle a nonland permanent an opponent
 	// controls with mana value X or less into its owner's library", X
 	// the number of creatures tapped this way. The body itself needs
 	// nothing back — it reads item.Targets — but the clause needs X to
 	// build, so it rides Params.Amount.
-	teferiAkosaShuffleBody = game.ReflexiveBody("teferi-akosa/shuffle-into-library", simpleBody(teferiAkosaShuffleIntoLibrary),
+	teferiAkosaShuffleBody = game.ReflexiveBody("teferi-akosa/shuffle-into-library", SimpleBody(teferiAkosaShuffleIntoLibrary),
 		func(_ uuid.UUID, p game.EffectParams) *game.TargetSpec { return teferiAkosaShuffleTarget(p.Amount) })
 
 	// Rodolf Duskbringer: "return target creature card with mana value
 	// X or less from your graveyard to the battlefield", X the life
 	// gained this turn — read live off the game, not off a captured
 	// value, so the clause is a constant registration.
-	rodolfReturnBody = game.ReflexiveBody("rodolf-duskbringer/return-from-graveyard",
-		simpleBody(returnFirstLegalGraveyardTargetToBattlefield),
-		constTargets(func() *game.TargetSpec {
+	RodolfReturnBody = game.ReflexiveBody("rodolf-duskbringer/return-from-graveyard",
+		SimpleBody(ReturnFirstLegalGraveyardTargetToBattlefield),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetCardInGraveyard(
 				"target creature card in your graveyard with mana value at most the life you gained this turn",
 				YouOwn(), Creature(), ManaValueAtMostLifeGainedThisTurn())
@@ -124,8 +124,8 @@ var (
 	// Undead Butler: "return target creature card from your graveyard
 	// to your hand". The Butler is already in exile by the time this
 	// picks, so no "another" clause is needed.
-	undeadButlerReturnBody = game.ReflexiveBody("undead-butler/return-to-hand", simpleBody(returnFirstLegalGraveyardTargetToHand),
-		constTargets(func() *game.TargetSpec {
+	UndeadButlerReturnBody = game.ReflexiveBody("undead-butler/return-to-hand", SimpleBody(ReturnFirstLegalGraveyardTargetToHand),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature())
 		}))
 
@@ -133,39 +133,39 @@ var (
 	// creature an opponent controls, where X is the amassed Army's
 	// power". The Army rides the payload and its power is read as the
 	// trigger resolves.
-	forayOfOrcsDamageBody = game.ReflexiveBody("foray-of-orcs/damage", simpleBody(forayOfOrcsDamage),
-		constTargets(func() *game.TargetSpec {
+	forayOfOrcsDamageBody = game.ReflexiveBody("foray-of-orcs/damage", SimpleBody(forayOfOrcsDamage),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetCreature("target creature an opponent controls", OpponentControls())
 		}))
 
 	// Riddle Gate Gargoyle (ADR 0129 §3): "when you do, target creature
 	// you control gains lifelink until end of turn".
-	riddleGateLifelinkBody = game.ReflexiveBody("riddle-gate-gargoyle/lifelink",
-		simpleBody(firstTargetGainsUntilEndOfTurn(0, "Riddle Gate Gargoyle — lifelink until end of turn", "lifelink")),
-		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+	RiddleGateLifelinkBody = game.ReflexiveBody("riddle-gate-gargoyle/lifelink",
+		SimpleBody(FirstTargetGainsUntilEndOfTurn(0, "Riddle Gate Gargoyle — lifelink until end of turn", "lifelink")),
+		ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
 
 	// Spellbook Vendor (#1945): "when you do, create a Sorcerer Role
 	// token attached to target creature you control".
-	spellbookVendorSorcererBody = game.ReflexiveBody("spellbook-vendor/sorcerer-role",
-		simpleBody(createRoleOnFirstTarget(RoleSorcerer)),
-		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+	SpellbookVendorSorcererBody = game.ReflexiveBody("spellbook-vendor/sorcerer-role",
+		SimpleBody(CreateRoleOnFirstTarget(RoleSorcerer)),
+		ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
 
 	// Merry Bards (#1945): "when you do, create a Young Hero Role token
 	// attached to target creature you control".
-	merryBardsYoungHeroBody = game.ReflexiveBody("merry-bards/young-hero-role",
-		simpleBody(createRoleOnFirstTarget(RoleYoungHero)),
-		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+	MerryBardsYoungHeroBody = game.ReflexiveBody("merry-bards/young-hero-role",
+		SimpleBody(CreateRoleOnFirstTarget(RoleYoungHero)),
+		ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
 
 	// Cyclops Superconductor (ADR 0129 §3): "when you do, this creature
 	// deals damage equal to its power to any target". The power is its
 	// last-known power as it died, fixed when the energy was paid, and
 	// rides Params.Amount; the creature is the damage's source.
-	cyclopsSuperconductorDamageBody = game.ReflexiveBody("cyclops-superconductor/damage", breechesBlastEffect, constTargets(TargetAny))
+	CyclopsSuperconductorDamageBody = game.ReflexiveBody("cyclops-superconductor/damage", BreechesBlastEffect, ConstTargets(TargetAny))
 
 	// Behemoth of Vault 0 (ADR 0129 §3): "when you do, destroy that
 	// permanent" — the dies trigger's own target, carried in the
 	// payload. Untargeted: nothing new is chosen.
-	behemothDestroyBody = game.SimpleDelayedBody("behemoth-of-vault-0/destroy", destroyPayloadPermanents)
+	BehemothDestroyBody = game.SimpleDelayedBody("behemoth-of-vault-0/destroy", destroyPayloadPermanents)
 
 	// Territorial Aetherkite (ADR 0129 §3): "when you do, this creature
 	// deals that much damage to each other creature". The amount paid
@@ -173,25 +173,25 @@ var (
 	// Guide of Souls (ADR 0129 §3): "when you do, put two +1/+1 counters
 	// and a flying counter on target attacking creature. It becomes an
 	// Angel in addition to its other types."
-	guideOfSoulsAngelBody = game.ReflexiveBody("guide-of-souls/angel", simpleBody(guideOfSoulsAngel),
-		constTargets(func() *game.TargetSpec { return TargetCreature("target attacking creature", AttackingCreature()) }))
+	guideOfSoulsAngelBody = game.ReflexiveBody("guide-of-souls/angel", SimpleBody(guideOfSoulsAngel),
+		ConstTargets(func() *game.TargetSpec { return TargetCreature("target attacking creature", AttackingCreature()) }))
 
-	territorialAetherkiteDamageBody = game.DelayedBody("territorial-aetherkite/damage-each-other",
+	TerritorialAetherkiteDamageBody = game.DelayedBody("territorial-aetherkite/damage-each-other",
 		func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
-			return damageEachMatching(NewContext(g, item), And(Creature(), NotSelf(item.SourceCardID)), p.Amount)
+			return DamageEachMatching(NewContext(g, item), And(Creature(), NotSelf(item.SourceCardID)), p.Amount)
 		})
 
 	// Blaster Hulk (ADR 0129 §6): "when you do, this creature deals 8
 	// damage divided as you choose among up to eight targets". The
 	// division is announced with the targets (CR 601.2d).
-	blasterHulkDamageBody = game.ReflexiveBody("blaster-hulk/divided-damage", simpleBody(blasterHulkDamage),
-		constTargets(func() *game.TargetSpec { return TargetAny().WithCount(0, 8).Dividing(Divide(8)) }))
+	blasterHulkDamageBody = game.ReflexiveBody("blaster-hulk/divided-damage", SimpleBody(BlasterHulkDamage),
+		ConstTargets(func() *game.TargetSpec { return TargetAny().WithCount(0, 8).Dividing(Divide(8)) }))
 
 	// Terra, Herald of Hope (#3655): "when you do, return target creature
 	// card with power 3 or less from your graveyard to the battlefield
 	// tapped".
-	terraReturnBody = game.ReflexiveBody("terra-herald-of-hope/return", simpleBody(returnFirstLegalGraveyardTargetToBattlefieldTapped),
-		constTargets(func() *game.TargetSpec {
+	TerraReturnBody = game.ReflexiveBody("terra-herald-of-hope/return", SimpleBody(ReturnFirstLegalGraveyardTargetToBattlefieldTapped),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetCardInGraveyard("target creature card with power 3 or less in your graveyard",
 				YouOwn(), Creature(), PowerLE(3))
 		}))
@@ -201,34 +201,34 @@ var (
 	// copy of it". The target is chosen as the trigger goes on the stack
 	// (CR 603.12, CR 115.1) from the exiled creature cards the spell
 	// handed over as the payload.
-	espersCopyBody = game.ReflexiveBody("espers-to-magicite/copy", simpleBody(espersCopy),
-		constTargets(func() *game.TargetSpec {
+	espersCopyBody = game.ReflexiveBody("espers-to-magicite/copy", SimpleBody(espersCopy),
+		ConstTargets(func() *game.TargetSpec {
 			return AmongTheCardsNamed(TargetCardInExile("up to one target creature card exiled this way",
 				Creature()).WithCount(0, 1))
 		}))
 
 	// The Falcon, Airship Restored (#3655): "when you do, return target
 	// creature card from your graveyard to the battlefield".
-	falconReturnBody = game.ReflexiveBody("the-falcon-airship-restored/return",
-		simpleBody(returnFirstLegalGraveyardTargetToBattlefield),
-		constTargets(func() *game.TargetSpec {
+	FalconReturnBody = game.ReflexiveBody("the-falcon-airship-restored/return",
+		SimpleBody(ReturnFirstLegalGraveyardTargetToBattlefield),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature())
 		}))
 
 	// Agatha's Soul Cauldron (#3201): "When a creature card is exiled this
 	// way, put a +1/+1 counter on target creature you control."
-	agathasSoulCauldronCounterBody = game.ReflexiveBody("agathas-soul-cauldron/counter", simpleBody(PlusOneCounterOnChosenTarget),
-		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+	AgathasSoulCauldronCounterBody = game.ReflexiveBody("agathas-soul-cauldron/counter", SimpleBody(PlusOneCounterOnChosenTarget),
+		ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
 
 	// Sorin, Imperious Bloodlord (#4077): "When you do, Sorin deals 3
 	// damage to any target and you gain 3 life."
-	sorinImperiousStrikeBody = game.ReflexiveBody("sorin-imperious-bloodlord/strike", simpleBody(sorinImperiousStrike), constTargets(TargetAny))
+	sorinImperiousStrikeBody = game.ReflexiveBody("sorin-imperious-bloodlord/strike", SimpleBody(sorinImperiousStrike), ConstTargets(TargetAny))
 
 	// Overcharged Amalgam (#4092): "When this creature exploits a
 	// creature, counter target spell, activated ability, or triggered
 	// ability."
-	overchargedAmalgamCounterBody = game.ReflexiveBody("overcharged-amalgam/counter", simpleBody(overchargedAmalgamCounter),
-		constTargets(func() *game.TargetSpec {
+	overchargedAmalgamCounterBody = game.ReflexiveBody("overcharged-amalgam/counter", SimpleBody(overchargedAmalgamCounter),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetSpellOrAbility("target spell, activated ability, or triggered ability")
 		}))
 )
@@ -237,7 +237,7 @@ var (
 // except Breeches' blast — to game.BodyFunc's three-argument shape, so
 // game.ReflexiveBody (which always carries Params, for the bodies that
 // need it) has one signature rather than two.
-func simpleBody(fn func(g *game.Game, item *game.StackItem) error) game.BodyFunc {
+func SimpleBody(fn func(g *game.Game, item *game.StackItem) error) game.BodyFunc {
 	return func(g *game.Game, item *game.StackItem, _ game.EffectParams) error { return fn(g, item) }
 }
 
@@ -245,14 +245,14 @@ func simpleBody(fn func(g *game.Game, item *game.StackItem) error) game.BodyFunc
 // every reflexive body here except Eden's and Teferi Akosa's — to
 // game.ReflexiveBody's targetsFrom shape, which always offers the
 // source ID and Params in case a clause needs them.
-func constTargets(spec func() *game.TargetSpec) func(uuid.UUID, game.EffectParams) *game.TargetSpec {
+func ConstTargets(spec func() *game.TargetSpec) func(uuid.UUID, game.EffectParams) *game.TargetSpec {
 	return func(uuid.UUID, game.EffectParams) *game.TargetSpec { return spec() }
 }
 
 // breechesBlastEffect is "when you lose the flip, Breeches deals
 // damage equal to that spell's mana value to any target". The amount
 // is Params.Amount, fixed when the flip was lost.
-func breechesBlastEffect(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+func BreechesBlastEffect(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	if len(item.Targets) == 0 {
 		return nil
 	}

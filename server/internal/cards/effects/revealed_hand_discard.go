@@ -83,7 +83,7 @@ type ChooseFromRevealedHand struct {
 // chooseNonlandFromTargetedHand is "target player reveals their hand. You
 // choose a nonland card from it": the choice, for the cards (Thoughtseize,
 // The Torment of Gollum) whose later sentences wait for its question.
-func chooseNonlandFromTargetedHand(ctx *Context) error {
+func ChooseNonlandFromTargetedHand(ctx *Context) error {
 	return ChooseFromRevealedHand{
 		Player: TargetedPlayer(ctx),
 		Filter: Nonland(),

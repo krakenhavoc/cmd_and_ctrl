@@ -13,8 +13,8 @@ import (
 // only creature declared (CR 506.5, game.AttackedAlone, read when the
 // attack trigger is harvested, after the whole declaration). Both
 // subtype words are read through the source's text (CR 612.2).
-func neoB09SamuraiOrWarriorAttacksAlone(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) || !game.AttackedAlone(g) {
+func NeoB09SamuraiOrWarriorAttacksAlone(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) || !game.AttackedAlone(g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -26,15 +26,15 @@ func neoB09SamuraiOrWarriorAttacksAlone(ev game.Event, source *game.Card, _ game
 
 // neoB09SamuraiOrWarrior matches a Samurai or a Warrior, the words read
 // through the resolving ability's source text.
-func neoB09SamuraiOrWarrior(ctx *Context) CardPredicate {
+func NeoB09SamuraiOrWarrior(ctx *Context) CardPredicate {
 	return Or(HasSubtype(ctx.TextSubtype("Samurai")), HasSubtype(ctx.TextSubtype("Warrior")))
 }
 
 // neoB09LoneAttacker is the creature the trigger's event names, when it is
 // still on the battlefield as the same object it was.
-func neoB09LoneAttacker(g *game.Game, item *game.StackItem) (game.Card, bool) {
+func NeoB09LoneAttacker(g *game.Game, item *game.StackItem) (game.Card, bool) {
 	id := item.Trigger.Event.CardID
-	if !onBattlefield(g, id) {
+	if !OnBattlefield(g, id) {
 		return game.Card{}, false
 	}
 	return g.LookupCardForEffect(id)
@@ -43,7 +43,7 @@ func neoB09LoneAttacker(g *game.Game, item *game.StackItem) (game.Card, bool) {
 // neoB09MayCastFromGraveyardThisTurn is the resolution of "you may cast
 // target <card> from your graveyard this turn" (Zul Ashur's permission):
 // a cast-only grant on the one card, for this turn, under the controller.
-func neoB09MayCastFromGraveyardThisTurn(name string) Effect {
+func NeoB09MayCastFromGraveyardThisTurn(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {

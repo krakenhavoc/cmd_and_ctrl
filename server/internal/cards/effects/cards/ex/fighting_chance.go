@@ -1,0 +1,65 @@
+package cardsex
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Fighting Chance — Instant {R}:
+//
+//	"For each blocking creature, flip a coin. If you win the flip, prevent all combat damage that would be dealt by that creature this turn."
+//
+// ADR 0108 §7 (#1904, Delivery PR 7b) and ADR 0054's coin flips: the
+// blocking creatures are read as the spell resolves, one coin is flipped
+// for each, in battlefield order, and each won flip gives that blocker a
+// combat-damage shield with itself as the source, pinned now (CR 400.7).
+// The caster calls once for the batch; every coin is still its own fair
+// flip, won or lost on its own. No blocker, no flip.
+//
+// No simplifications.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "fece632b-d8d5-4d3d-a4a7-643293b67538",
+		Name:         "Fighting Chance",
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			blockers := effects.BlockingCreatures(ctx.Game)
+			if len(blockers) == 0 {
+				return nil
+			}
+			ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
+				Flipper:  ctx.Controller(),
+				Source:   ctx.Source(),
+				Question: "Fighting Chance — call the coin flips (one per blocking creature)",
+				Coins:    len(blockers),
+				// Keyed (#4253 slice 10b): the blockers ride the call, one
+				// per coin, in battlefield order.
+				ThenKey: fightingChanceFlipped,
+				Carry:   blockers,
+				Asked:   game.NewAskedItem(item),
+			})
+			return nil
+		},
+	})
+}
+
+// fightingChanceFlipped is the settled call: each blocker whose flip was won
+// is shielded. An on-disk key: never renamed, never reused.
+var fightingChanceFlipped = effects.CoinFlipThen("coin-flip/fighting-chance-shields", func(ctx *effects.Context, r game.CoinFlipped) error {
+	return fightingChanceShields(ctx, r.Carry, r.Result)
+})
+
+// fightingChanceShields shields each blocker whose flip was won.
+func fightingChanceShields(ctx *effects.Context, blockers []uuid.UUID, result game.CoinFlipResult) error {
+	for i, won := range result.Won {
+		if !won || i >= len(blockers) {
+			continue
+		}
+		if err := (effects.PreventDamageFromSource{From: blockers[i], CombatOnly: true, Protect: effects.ShieldAnything}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}

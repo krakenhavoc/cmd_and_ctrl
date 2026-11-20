@@ -34,7 +34,7 @@ func SuppressesEntering(filter CardPredicate) game.TriggerSuppressor {
 		Label:    "entering",
 		RowLabel: "Some permanents entering don't cause abilities to trigger.",
 		Suppresses: func(g *game.Game, q game.TriggerSuppressionQuery) bool {
-			if !q.HasSubject || !isEntering(q.Event) {
+			if !q.HasSubject || !IsEntering(q.Event) {
 				return false
 			}
 			return filter == nil || filter(g, q.SuppressorLKI.Controller, suppressionSubject(g, q))
@@ -53,7 +53,7 @@ func SuppressesDying(filter CardPredicate) game.TriggerSuppressor {
 		Label:    "dying",
 		RowLabel: "Some creatures dying don't cause abilities to trigger.",
 		Suppresses: func(g *game.Game, q game.TriggerSuppressionQuery) bool {
-			if !q.HasSubject || !isDying(q.Event) {
+			if !q.HasSubject || !IsDying(q.Event) {
 				return false
 			}
 			return filter == nil || filter(g, q.SuppressorLKI.Controller, suppressionSubject(g, q))

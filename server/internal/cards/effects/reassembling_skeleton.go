@@ -35,7 +35,7 @@ func init() {
 			Cost:    ManaCost("{1}{B}"),
 			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return returnThisFromGraveyardTapped(g, item)
+				return ReturnThisFromGraveyardTapped(g, item)
 			},
 		}},
 	})
@@ -51,7 +51,7 @@ func init() {
 // the reason every delayed trigger body and unearthReturn already
 // are: nothing may be captured, because undo resolves an ability's
 // Effect against a cloned game.
-func returnThisFromGraveyardTapped(g *game.Game, item *game.StackItem) error {
+func ReturnThisFromGraveyardTapped(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	// CR 602.5 / 608.2a: the card may have left the graveyard between
 	// activation and resolution (a second player's graveyard hate, a

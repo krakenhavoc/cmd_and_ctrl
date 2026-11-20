@@ -10,12 +10,12 @@ import (
 
 // trekB16NewPlanetToken is Genesis Effect's "tapped Planet land token named
 // New Planet with "{T}: Add one mana of any color."" (ttrk 27).
-func trekB16NewPlanetToken() game.Card { return tokenFromCatalog(printedTrekB16NewPlanetToken) }
+func TrekB16NewPlanetToken() game.Card { return TokenFromCatalog(printedTrekB16NewPlanetToken) }
 
 // printedTrekB16NewPlanetToken is the New Planet as PRINTED, its mana
 // ability included: a colourless land, Planet its only subtype.
-func printedTrekB16NewPlanetToken() tokenTemplate {
-	return tokenTemplate{
+func printedTrekB16NewPlanetToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "new-planet",
 		Card: game.Card{
 			Name:     "New Planet",
@@ -35,20 +35,20 @@ func printedTrekB16NewPlanetToken() tokenTemplate {
 // every opponent, then every creature an opponent controls, the
 // set fixed before the first point lands (damageEachMatching). Tectonic
 // Hazard's spell and Khan, Despot by Design's enters trigger.
-func damageEachOpponentAndEachCreatureTheyControl(ctx *Context, n int) error {
+func DamageEachOpponentAndEachCreatureTheyControl(ctx *Context, n int) error {
 	return ctx.Game.DamageInstanceForEffect(func() error {
 		for _, opp := range ctx.Opponents() {
 			if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: n}).Apply(ctx); err != nil {
 				return err
 			}
 		}
-		return damageEachMatching(ctx, And(Creature(), OpponentControls()), n)
+		return DamageEachMatching(ctx, And(Creature(), OpponentControls()), n)
 	})
 }
 
 // twiceXAmount is a damage amount of twice X (Khaaaaaaaaaaaannn!). A call,
 // not a value, so the XMatters guard sees the card read X.
-func twiceXAmount() func(*game.StackItem, *Context) int {
+func TwiceXAmount() func(*game.StackItem, *Context) int {
 	return func(_ *game.StackItem, ctx *Context) int { return 2 * ctx.X() }
 }
 
@@ -66,7 +66,7 @@ func trekB16CreatureTypesAmongNonBorg(ctx *Context) int {
 // settled: the card that REALLY reached exile is copied X times, each copy
 // offered for a free cast (CopyAndCast, CR 707.12), then the spell exiles
 // itself. A card a replacement sent elsewhere is not copied.
-var trekB16InfiniteDiversityTail = CardTail("trek-b16/infinite-diversity/copy-x-times-then-exile-self", func(ctx *Context, o game.TailOutcome) error {
+var TrekB16InfiniteDiversityTail = CardTail("trek-b16/infinite-diversity/copy-x-times-then-exile-self", func(ctx *Context, o game.TailOutcome) error {
 	item := ctx.Item
 	ctx = NewContext(ctx.Game, item)
 	if len(o.IDs) > 0 {
@@ -89,12 +89,12 @@ var trekB16InfiniteDiversityTail = CardTail("trek-b16/infinite-diversity/copy-x-
 // lwaxanaTroiDoublerGrant is the bundle Lwaxana Troi's ability gives the
 // chosen creature for as long as she remains tapped: its own triggered
 // abilities trigger an additional time (CR 603.2d).
-const lwaxanaTroiDoublerGrant = "lwaxana-troi/that-creature-triggers-again"
+const LwaxanaTroiDoublerGrant = "lwaxana-troi/that-creature-triggers-again"
 
 // lwaxanaTroiDoubler doubles a triggered ability whose source is the
 // creature carrying the grant, whatever caused it. A spell's triggers and
 // any other permanent's are not doubled.
-func lwaxanaTroiDoubler() game.TriggerDoubler {
+func LwaxanaTroiDoubler() game.TriggerDoubler {
 	return game.TriggerDoubler{
 		Label:    "Lwaxana Troi — that creature's triggered ability triggers an additional time",
 		RowLabel: "If a triggered ability of this creature triggers, that ability triggers an additional time.",

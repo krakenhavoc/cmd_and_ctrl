@@ -28,7 +28,7 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Mirelurk Queen — target player gets two rad counters",
-				targetPlayerGetsTwoRadCounters), TargetPlayer("target player")),
+				TargetPlayerGetsTwoRadCounters), TargetPlayer("target player")),
 			TriggersOnlyOnceEachTurn(WheneverOneOrMoreNonlandCardsAreMilled(
 				"Mirelurk Queen — draw a card, then put a +1/+1 counter on this creature",
 				Do(DrawCards{N: 1}, CounterOnThis{Kind: game.CounterPlusOne, N: 1}))),
@@ -40,6 +40,6 @@ func init() {
 // counters" (Mirelurk Queen, The Master, Transcendent): the targeted
 // player, if still a legal target as it resolves (CR 608.2b), gets
 // them from the item's controller.
-func targetPlayerGetsTwoRadCounters(g *game.Game, item *game.StackItem) error {
-	return playerGetsRadCounters(g, item.Controller, targetedPlayerOf(NewContext(g, item)), 2)
+func TargetPlayerGetsTwoRadCounters(g *game.Game, item *game.StackItem) error {
+	return PlayerGetsRadCounters(g, item.Controller, TargetedPlayerOf(NewContext(g, item)), 2)
 }

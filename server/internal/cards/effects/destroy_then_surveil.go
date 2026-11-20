@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (an indestructible target survives and the surveil still happens).
 //
 //nolint:unparam // the printed surveil count, kept at the call site
-func destroyTargetThenSurveil(n int) func(*game.StackItem, *Context) error {
+func DestroyTargetThenSurveil(n int) func(*game.StackItem, *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetCard && ctx.IsTargetLegal(item.Targets[0]) {
 			if err := (DestroyTarget{Target: item.Targets[0].ID}).Apply(ctx); err != nil {

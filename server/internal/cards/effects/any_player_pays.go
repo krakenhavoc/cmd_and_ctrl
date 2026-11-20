@@ -83,7 +83,7 @@ func AnyPlayerConsequences(key string,
 			if r.Item != nil {
 				return body(NewContext(g, r.Item), r)
 			}
-			return body(keyedContext(g, r.Controller, r.Source), r)
+			return body(KeyedContext(g, r.Controller, r.Source), r)
 		}
 	}
 	return game.RegisterAnyPlayerPays(key, wrap(onPaid), wrap(onNobody), perPayer)
@@ -116,7 +116,7 @@ func NoPayment() UpkeepPayment {
 func ExileFromGraveyardPayment(n int) UpkeepPayment {
 	words := "Exile a card from your graveyard"
 	if n != 1 {
-		words = "Exile " + numberWord(n) + " cards from your graveyard"
+		words = "Exile " + NumberWord(n) + " cards from your graveyard"
 	}
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionExileFromGraveyard, Count: n}, Words: words}
 }
@@ -237,7 +237,7 @@ func counterThisSpell(ctx *Context) error {
 //
 // The consequence is a registered key (#4264), so a table waiting on any
 // player's answer is a restore point.
-func anyPlayerMayCounterThisSpell(name, what string, pay UpkeepPayment, then game.AnyPlayerThen) game.TriggeredAbility {
+func AnyPlayerMayCounterThisSpell(name, what string, pay UpkeepPayment, then game.AnyPlayerThen) game.TriggeredAbility {
 	return WhenYouCastThisSpell(name+" — any player may "+what+" to counter it",
 		func(g *game.Game, item *game.StackItem) error {
 			return AnyPlayerPays{
@@ -251,13 +251,13 @@ func anyPlayerMayCounterThisSpell(name, what string, pay UpkeepPayment, then gam
 
 // anyPlayerCounterThisSpell is "If a player does, counter <this spell>",
 // keyed (#4264): the spell is the offer's source.
-var anyPlayerCounterThisSpell = AnyPlayerConsequences("any-player/counter-this-spell",
+var AnyPlayerCounterThisSpell = AnyPlayerConsequences("any-player/counter-this-spell",
 	func(ctx *Context, _ game.AnyPlayerAnswer) error { return counterThisSpell(ctx) }, nil, nil)
 
 // anyPlayerCounterThisSpellHalfLife is the same with Temporal Extortion's
 // payment, half the asked player's life rounded up, worked out per
 // player.
-var anyPlayerCounterThisSpellHalfLife = AnyPlayerConsequences("any-player/counter-this-spell-half-life",
+var AnyPlayerCounterThisSpellHalfLife = AnyPlayerConsequences("any-player/counter-this-spell-half-life",
 	func(ctx *Context, _ game.AnyPlayerAnswer) error { return counterThisSpell(ctx) }, nil,
 	func(g *game.Game, payer uuid.UUID, _ []uuid.UUID) (game.PayAction, string) {
 		return HalfTheirLifeRoundedUp(g, payer)
@@ -270,7 +270,7 @@ var anyPlayerCounterThisSpellHalfLife = AnyPlayerConsequences("any-player/counte
 // replacement apply, and taking it is always a payment. `nobody` is "if
 // no one does" as a registered consequence (AnyPlayerConsequences, #4264),
 // so a table waiting on any player's answer is a restore point.
-func anyPlayerMayTakeDamageFromThis(name string, n int, what string, nobody game.AnyPlayerThen) func(*game.StackItem, *Context) error {
+func AnyPlayerMayTakeDamageFromThis(name string, n int, what string, nobody game.AnyPlayerThen) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return AnyPlayerPays{
 			Pay:          DamagePayment(n),
@@ -287,13 +287,13 @@ func anyPlayerMayTakeDamageFromThis(name string, n int, what string, nobody game
 // put this creature on top of its owner's library." (Argothian Wurm,
 // Shivan Wumpus.) A Wurm that has already left, or come back as a new
 // object, is not moved (CR 400.7).
-func anyPlayerMaySacrificeALandToTuckThis(name string) game.TriggeredAbility {
+func AnyPlayerMaySacrificeALandToTuckThis(name string) game.TriggeredAbility {
 	return WhenThisEnters(name+" — any player may sacrifice a land to put it on top of its owner's library",
 		func(g *game.Game, item *game.StackItem) error {
 			return AnyPlayerPays{
 				Pay:      SacrificePayment(1, "land", "lands", QueryType("land")),
 				Question: name + " — sacrifice a land to put it on top of its owner's library?",
-				Then:     anyPlayerTucksThis,
+				Then:     AnyPlayerTucksThis,
 			}.Apply(NewContext(g, item))
 		})
 }
@@ -340,7 +340,7 @@ func AnyPlayerEachConsequence(key string, onUnsaved func(ctx *Context, r game.An
 		if r.Item != nil {
 			return onUnsaved(NewContext(g, r.Item), r)
 		}
-		return onUnsaved(keyedContext(g, r.Controller, r.Source), r)
+		return onUnsaved(KeyedContext(g, r.Controller, r.Source), r)
 	})
 }
 
@@ -370,9 +370,9 @@ func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
 // owner's library", keyed (#4264): a creature that left and came back is a
 // new object and is not moved (CR 400.7), which the asking item's object
 // answers.
-var anyPlayerTucksThis = AnyPlayerConsequences("any-player/tuck-this-on-top-of-library",
+var AnyPlayerTucksThis = AnyPlayerConsequences("any-player/tuck-this-on-top-of-library",
 	func(ctx *Context, _ game.AnyPlayerAnswer) error {
-		if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+		if !SourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 			return nil
 		}
 		return ctx.Game.TuckToLibraryForEffect(ctx.Item.SourceCardID, false)

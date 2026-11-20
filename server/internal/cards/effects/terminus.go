@@ -44,7 +44,7 @@ func tuckAllCreaturesToBottomByOwner(ctx *Context, item *game.StackItem, label s
 	for _, c := range swept {
 		ids = append(ids, c.InstanceID)
 	}
-	return tuckCardsToBottomByOwner(ctx, item, ids, label)
+	return TuckCardsToBottomByOwner(ctx, item, ids, label)
 }
 
 // tuckCardsToBottomByOwner puts every card in ids on the bottom of its
@@ -52,9 +52,9 @@ func tuckAllCreaturesToBottomByOwner(ctx *Context, item *game.StackItem, label s
 // each owner with more than one of them to order their own (CR 401.4).
 // The body Terminus and Trial of a Time Lord share ("the owner of each
 // card puts that card on the bottom of their library").
-func tuckCardsToBottomByOwner(ctx *Context, item *game.StackItem, ids []uuid.UUID, label string) error {
+func TuckCardsToBottomByOwner(ctx *Context, item *game.StackItem, ids []uuid.UUID, label string) error {
 	// Keyed (#4253 slice 10a): the ordering prompts are the tuck's tail,
 	// run against the asking item.
-	tail := withWord(withN(NewContext(ctx.Game, item).ItemTail(tuckEachOwnerOrders), tuckOrderBottom), label)
+	tail := WithWord(WithN(NewContext(ctx.Game, item).ItemTail(tuckEachOwnerOrders), tuckOrderBottom), label)
 	return ctx.Game.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{ToBottom: true}, tail)
 }

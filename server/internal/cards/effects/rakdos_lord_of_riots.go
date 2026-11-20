@@ -37,13 +37,13 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "trample"},
 		CastCondition: func(g *game.Game, controller uuid.UUID, _ game.Card) bool {
-			return opponentLifeLostThisTurn(g, controller) > 0
+			return OpponentLifeLostThisTurn(g, controller) > 0
 		},
 		CastConditionLabel: "You can't cast this spell unless an opponent lost life this turn.",
 		CostModifiers: []game.CostModifier{
 			CostsLessEach(
 				func(q game.CostQuery) int {
-					return opponentLifeLostThisTurn(q.Game, q.Controller)
+					return OpponentLifeLostThisTurn(q.Game, q.Controller)
 				},
 				"Creature spells you cast cost {1} less to cast for each 1 life your opponents have lost this turn.",
 				YourSpell(), CreatureSpell()),
@@ -61,7 +61,7 @@ func init() {
 // Eliminated seats are still counted while they are seated: the life
 // was lost this turn, and CR 800.4 removing a player later does not
 // unhappen it.
-func opponentLifeLostThisTurn(g *game.Game, player uuid.UUID) int {
+func OpponentLifeLostThisTurn(g *game.Game, player uuid.UUID) int {
 	total := 0
 	for _, seat := range g.Seats {
 		if seat.ID == player {

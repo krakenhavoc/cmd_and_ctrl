@@ -1,0 +1,52 @@
+package cardsbl
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Boros Fury-Shield — Instant {2}{W}:
+//
+//	"Prevent all combat damage that would be dealt by target attacking or blocking creature this turn. If {R} was spent to cast this spell, Boros Fury-Shield deals damage to that creature's controller equal to the creature's power."
+//
+// ADR 0108 §7 (#1904, Delivery PR 7b): the shield's source is the
+// targeted creature, pinned as the spell resolves (CR 400.7). The {R}
+// rider reads the spell's own payment (StackItem.Paid, Ribbons of Night's
+// read), and the damage is dealt by the spell, not the creature (its
+// ruling), equal to the creature's power as the spell resolves.
+//
+// WantsColors names the {R} (#3853): auto-pay spends a red source on the
+// generic half when it has a free choice, so the rider is the default
+// for a player who has red mana, not a thing they must tap by hand to
+// get. An ordering only; a board with no red source casts it as printed.
+//
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:       "20eff2ce-f26d-48a2-8a1f-435a7e2968c8",
+		Name:           "Boros Fury-Shield",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   effects.CompletenessFull,
+		WantsColors:    []string{"R"},
+		Targets:        effects.TargetCreature("target attacking or blocking creature", effects.AttackingOrBlocking()),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			return effects.ShieldAgainstTheTargetThen(ctx, true, func(ctx *effects.Context, target uuid.UUID) error {
+				if ctx.ManaSpent().Count("R") == 0 {
+					return nil
+				}
+				ctx.Game.RecomputeLayersIfStaleLocked()
+				c, ok := ctx.Game.LookupCardForEffect(target)
+				if !ok || c.CurrentPower() <= 0 || ctx.Game.PlayerByIDForEffect(c.Controller) == nil {
+					return nil
+				}
+				return effects.DealDamage{Source: item.SourceCardID, Target: c.Controller, Amount: c.CurrentPower()}.Apply(ctx)
+			})
+		},
+	})
+}

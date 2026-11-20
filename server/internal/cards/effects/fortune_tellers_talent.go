@@ -76,9 +76,9 @@ func init() {
 			},
 		},
 		CostModifiers: []game.CostModifier{
-			gatedCostModifier(Level(3), CostsLess(2,
+			GatedCostModifier(Level(3), CostsLess(2,
 				"Fortune Teller's Talent — spells you cast from anywhere other than your hand cost {2} less",
-				YourSpell(), castFromOutsideYourHand())),
+				YourSpell(), CastFromOutsideYourHand())),
 		},
 	})
 }
@@ -94,7 +94,7 @@ func hasCastASpellThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
 // The zone the spell is being cast from is on the query already —
 // CR 601.2 makes it part of the announcement — so this is a read
 // rather than provenance the permanent has to remember.
-func castFromOutsideYourHand() CostPredicate {
+func CastFromOutsideYourHand() CostPredicate {
 	return func(q game.CostQuery) bool { return q.FromZone != game.ZoneHand }
 }
 
@@ -102,7 +102,7 @@ func castFromOutsideYourHand() CostPredicate {
 // with the ordinary CostsLess / CostsMore constructors, so a gated
 // line reads as one thing (ADR 0071). The mirror of AtLevel /
 // WhenSolved for the cost-modifier slot.
-func gatedCostModifier(gate game.Designation, m game.CostModifier) game.CostModifier {
+func GatedCostModifier(gate game.Designation, m game.CostModifier) game.CostModifier {
 	m.ActiveWhen = gate
 	return m
 }

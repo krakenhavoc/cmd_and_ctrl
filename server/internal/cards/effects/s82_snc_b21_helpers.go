@@ -13,7 +13,7 @@ import (
 
 // s82SncEquipmentAttachedTo counts the Equipment attached to the permanent
 // `host`, read through the layered view of each attachment.
-func s82SncEquipmentAttachedTo(g *game.Game, host uuid.UUID) int {
+func S82SncEquipmentAttachedTo(g *game.Game, host uuid.UUID) int {
 	n := 0
 	for _, a := range g.BattlefieldCardsForEffect() {
 		if a.IsAttachedTo(host) && a.HasSubtype("Equipment") {
@@ -27,7 +27,7 @@ func s82SncEquipmentAttachedTo(g *game.Game, host uuid.UUID) int {
 // permanents you control": the distinct counter names with at least one
 // counter on a permanent `player` controls, sorted so a log reads the same
 // way every time.
-func s82SncCounterKindsAmongYourPermanents(g *game.Game, player uuid.UUID) []string {
+func S82SncCounterKindsAmongYourPermanents(g *game.Game, player uuid.UUID) []string {
 	seen := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != player {
@@ -54,7 +54,7 @@ func s82SncCounterKindsAmongYourPermanents(g *game.Game, player uuid.UUID) []str
 // any spell the grant reaches: `reaches` is the grant's own predicate, read
 // against the spell as it was cast, and only the permanent the engine filed
 // the grant from copies it (trekB39HughIsTheGrantor).
-func s82SncReplicateTrigger(label string, reaches func(g *game.Game, caster uuid.UUID, spell game.Card) bool) game.TriggeredAbility {
+func S82SncReplicateTrigger(label string, reaches func(g *game.Game, caster uuid.UUID, spell game.Card) bool) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Keyword: KeywordReplicate,
 		Key:     label,
@@ -89,19 +89,19 @@ func s82SncReplicateTrigger(label string, reaches func(g *game.Game, caster uuid
 // you cast each turn", read as the spell is announced, before the cast is
 // tallied (CR 601.2b): the card is an instant or sorcery and the caster has
 // cast none yet this turn.
-func s82SncFirstInstantOrSorceryThisTurn(g *game.Game, caster uuid.UUID, spell game.Card) bool {
+func S82SncFirstInstantOrSorceryThisTurn(g *game.Game, caster uuid.UUID, spell game.Card) bool {
 	return (spell.IsInstant() || spell.IsSorcery()) && g.CastTallyFor(caster).InstantSorcery == 0
 }
 
 // s82SncExactlyThreeColors is "a spell that's exactly three colors".
-func s82SncExactlyThreeColors(_ *game.Game, _ uuid.UUID, spell game.Card) bool {
+func S82SncExactlyThreeColors(_ *game.Game, _ uuid.UUID, spell game.Card) bool {
 	return ColorsOf(spell) == 3
 }
 
 // s82SncSpellWasNotCast is "a spell that wasn't cast": a copy created on the
 // stack (CR 707.10), which is never cast. A prepared spell's copy is the one
 // copy that is cast (CR 722.3c), so it is not one.
-func s82SncSpellWasNotCast(g *game.Game, _ uuid.UUID, spell game.Card) bool {
+func S82SncSpellWasNotCast(g *game.Game, _ uuid.UUID, spell game.Card) bool {
 	if spell.PrepareCopy {
 		return false
 	}

@@ -19,7 +19,7 @@ import (
 // question asked; with a tie the ability's controller picks one of the
 // tied creatures. Destruction ignores regeneration (CR 701.19c). No
 // creature on the battlefield: nothing happens.
-func destroyCreatureWithLeastPower(g *game.Game, item *game.StackItem) error {
+func DestroyCreatureWithLeastPower(g *game.Game, item *game.StackItem) error {
 	tied := creaturesWithLeastPower(g)
 	switch len(tied) {
 	case 0:
@@ -42,8 +42,8 @@ func destroyCreatureWithLeastPower(g *game.Game, item *game.StackItem) error {
 
 // leastPowerDestroyPick is the chosen tied creature destroyed, keyed
 // (#4253): the asking item rides the prompt as data.
-var leastPowerDestroyPick = askedPick("choose-cards/least-power-destroy", func(ctx *Context, r game.CardsChosen) error {
-	if len(r.Picked) == 0 || !onBattlefield(ctx.Game, r.Picked[0]) {
+var leastPowerDestroyPick = AskedPick("choose-cards/least-power-destroy", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || !OnBattlefield(ctx.Game, r.Picked[0]) {
 		return nil
 	}
 	return DestroyTarget{Target: r.Picked[0], CantBeRegenerated: true}.Apply(ctx)

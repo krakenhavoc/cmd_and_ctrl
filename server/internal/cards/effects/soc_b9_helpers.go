@@ -18,7 +18,7 @@ import (
 // still there, and the affected set is the creatures you control right
 // then (CR 611.2c); neither changes later in the turn. A count of zero
 // does nothing.
-func socB9TeamKeywordAndPump(name, keyword string) Effect {
+func SocB9TeamKeywordAndPump(name, keyword string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		x := 0
@@ -67,7 +67,7 @@ func socB9HasXInManaCost(g *game.Game, cardID uuid.UUID) bool {
 // covers the whole turn, before the source was on the battlefield too,
 // so a second X spell after the permanent arrives does not trigger it
 // (the rulings).
-func socB9FirstXSpellThisTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SocB9FirstXSpellThisTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || ev.Actor != source.Controller || !socB9HasXInManaCost(g, ev.CardID) {
 		return false
 	}
@@ -85,7 +85,7 @@ func socB9FirstXSpellThisTurn(ev game.Event, source *game.Card, _ game.Character
 // socB9CountersOn is the number of counters of every kind on c — "the
 // number of counters on that creature" (Nils, Discipline Enforcer's
 // ruling: all counters, not only +1/+1).
-func socB9CountersOn(c game.Card) int {
+func SocB9CountersOn(c game.Card) int {
 	n := 0
 	for _, k := range c.Counters {
 		if k > 0 {
@@ -97,14 +97,14 @@ func socB9CountersOn(c game.Card) int {
 
 // socB9CreatureYouControlWithACounter is "creatures you control with
 // counters on them": any counter of any kind, read off the permanent.
-func socB9CreatureYouControlWithACounter(target *game.Card, _ *game.Game, source *game.Card) bool {
-	return source != nil && target.IsCreature() && target.Controller == source.Controller && socB9CountersOn(*target) > 0
+func SocB9CreatureYouControlWithACounter(target *game.Card, _ *game.Game, source *game.Card) bool {
+	return source != nil && target.IsCreature() && target.Controller == source.Controller && SocB9CountersOn(*target) > 0
 }
 
 // socB9CounterKinds is c's counter kinds with at least one counter, in
 // sorted order, so the events a move or a removal emits are
 // deterministic.
-func socB9CounterKinds(c game.Card) []string {
+func SocB9CounterKinds(c game.Card) []string {
 	kinds := make([]string, 0, len(c.Counters))
 	for kind, n := range c.Counters {
 		if n > 0 {
@@ -160,7 +160,7 @@ func Gravestorm() game.TriggeredAbility {
 
 // socB9PermanentsPutIntoGraveyardsThisTurn is gravestorm's count: the
 // permanents put into a graveyard from the battlefield this turn.
-func socB9PermanentsPutIntoGraveyardsThisTurn(g *game.Game) int {
+func SocB9PermanentsPutIntoGraveyardsThisTurn(g *game.Game) int {
 	n := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind == game.EventLTB && ev.CardID != uuid.Nil && ev.NewZone == game.ZoneGraveyard {
@@ -171,7 +171,7 @@ func socB9PermanentsPutIntoGraveyardsThisTurn(g *game.Game) int {
 }
 
 func gravestormEffect(g *game.Game, item *game.StackItem) error {
-	n := socB9PermanentsPutIntoGraveyardsThisTurn(g)
+	n := SocB9PermanentsPutIntoGraveyardsThisTurn(g)
 	if n <= 0 {
 		return nil
 	}
@@ -187,7 +187,7 @@ func gravestormEffect(g *game.Game, item *game.StackItem) error {
 // socB9PlusOneCountersOnSource is "for each +1/+1 counter on this
 // creature": the source as it is now, or as it last existed on the
 // battlefield (CR 608.2h).
-func socB9PlusOneCountersOnSource(ctx *Context) int {
+func SocB9PlusOneCountersOnSource(ctx *Context) int {
 	self, ok := ctx.SourcePermanent()
 	if !ok {
 		return 0
@@ -197,7 +197,7 @@ func socB9PlusOneCountersOnSource(ctx *Context) int {
 
 // socB9APlayerHasAtMostOneCardInHand is "if a player has one or fewer
 // cards in hand" (Naktamun Lorespinner): any player still in the game.
-func socB9APlayerHasAtMostOneCardInHand(g *game.Game) bool {
+func SocB9APlayerHasAtMostOneCardInHand(g *game.Game) bool {
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.Hand == nil {
 			continue
@@ -212,7 +212,7 @@ func socB9APlayerHasAtMostOneCardInHand(g *game.Game) bool {
 // socB9RemoveCounters removes n counters of kind from the permanent and
 // reports how many really came off (a counter that can't be removed
 // stays, #1824), read back off the board.
-func socB9RemoveCounters(ctx *Context, id uuid.UUID, kind string, n int) (int, error) {
+func SocB9RemoveCounters(ctx *Context, id uuid.UUID, kind string, n int) (int, error) {
 	// The count is read into a local first: the card's Counters map is
 	// shared with the board, so a later read of `before` sees the removal.
 	before, ok := ctx.Game.LookupCardForEffect(id)
@@ -235,7 +235,7 @@ func socB9RemoveCounters(ctx *Context, id uuid.UUID, kind string, n int) (int, e
 
 // socB9CounterCounts is a private copy of c's counters, so a read after a
 // removal still sees what was there before it.
-func socB9CounterCounts(c game.Card) map[string]int {
+func SocB9CounterCounts(c game.Card) map[string]int {
 	out := make(map[string]int, len(c.Counters))
 	for kind, n := range c.Counters {
 		out[kind] = n

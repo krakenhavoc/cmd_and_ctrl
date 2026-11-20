@@ -76,24 +76,24 @@ func init() {
 // commodoreGuffDrawAndBurn is the −3: X is the planeswalkers the
 // activator controls now; draw X, then X damage to each opponent.
 func commodoreGuffDrawAndBurn(g *game.Game, item *game.StackItem) error {
-	x := countControlled(g, item.Controller, func(c game.Card) bool { return c.IsPlaneswalker() })
+	x := CountControlled(g, item.Controller, func(c game.Card) bool { return c.IsPlaneswalker() })
 	if x <= 0 {
 		return nil
 	}
 	if err := (DrawCards{N: x}).Apply(NewContext(g, item)); err != nil {
 		return err
 	}
-	return damageToEachOpponent(g, item, x)
+	return DamageToEachOpponent(g, item, x)
 }
 
 // GuffWizardToken is Commodore Guff's 1/1 red Wizard with "{T}: Add {R}.
 // Spend this mana only to cast a planeswalker spell."
-func GuffWizardToken() game.Card { return tokenFromCatalog(printedGuffWizardToken) }
+func GuffWizardToken() game.Card { return TokenFromCatalog(printedGuffWizardToken) }
 
 // printedGuffWizardToken is that Wizard as PRINTED. Its slug is an
 // on-disk identity; "wizard" alone is the noncreature-cast pinger.
-func printedGuffWizardToken() tokenTemplate {
-	return tokenTemplate{
+func printedGuffWizardToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "wizard-planeswalker-mana",
 		Card: game.Card{
 			Name:      "Wizard",
