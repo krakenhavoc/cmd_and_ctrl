@@ -19,25 +19,30 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      TargetCreature("target nonblack creature", NonBlack()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				c, ok := ctx.Game.LookupCardForEffect(t.ID)
-				if !ok {
-					return nil
-				}
-				toughness := c.CurrentToughness()
-				if err := (DestroyTarget{Target: t.ID, CantBeRegenerated: true}).Apply(ctx); err != nil {
-					return err
-				}
-				if toughness <= 0 {
-					return nil
-				}
-				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -toughness)
-			}
-			return nil
-		},
+		OnResolve:    vendettaResolve,
 	})
+}
+
+// vendettaResolve is "Destroy target … creature. It can't be regenerated.
+// You lose life equal to that creature's toughness.", shared with Devour in
+// Shadow, which prints it for any creature.
+func vendettaResolve(_ *game.StackItem, ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		c, ok := ctx.Game.LookupCardForEffect(t.ID)
+		if !ok {
+			return nil
+		}
+		toughness := c.CurrentToughness()
+		if err := (DestroyTarget{Target: t.ID, CantBeRegenerated: true}).Apply(ctx); err != nil {
+			return err
+		}
+		if toughness <= 0 {
+			return nil
+		}
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -toughness)
+	}
+	return nil
 }

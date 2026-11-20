@@ -34,23 +34,29 @@ func init() {
 			GrantToAttached("infect"),
 		},
 		Triggered: []game.TriggeredAbility{
-			OnAny([]game.EventKind{game.EventUnattach, game.EventLTB}, Self,
-				"Grafted Exoskeleton — sacrifice the permanent it became unattached from",
-				Do(Instruction(func(ctx *Context) error {
-					host := graftedExoskeletonHost(ctx)
-					if host == uuid.Nil {
-						return nil
-					}
-					if z := ctx.Game.FindCardZoneForEffect(host); z == nil || z.Kind != game.ZoneBattlefield {
-						return nil
-					}
-					return SacrificePermanent{Target: host}.Apply(ctx)
-				}))),
+			graftedSacrificeOnUnattach("Grafted Exoskeleton — sacrifice the permanent it became unattached from"),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),
 		},
 	})
+}
+
+// graftedSacrificeOnUnattach is "Whenever this Equipment becomes unattached
+// from a permanent, sacrifice that permanent.", shared with Grafted Wargear,
+// which prints the same clause. The label is the row's Key.
+func graftedSacrificeOnUnattach(label string) game.TriggeredAbility {
+	return OnAny([]game.EventKind{game.EventUnattach, game.EventLTB}, Self, label,
+		Do(Instruction(func(ctx *Context) error {
+			host := graftedExoskeletonHost(ctx)
+			if host == uuid.Nil {
+				return nil
+			}
+			if z := ctx.Game.FindCardZoneForEffect(host); z == nil || z.Kind != game.ZoneBattlefield {
+				return nil
+			}
+			return SacrificePermanent{Target: host}.Apply(ctx)
+		})))
 }
 
 // graftedExoskeletonHost is the permanent the Equipment became unattached
