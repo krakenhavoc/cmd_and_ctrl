@@ -2077,6 +2077,7 @@ option option-pick/threats-undetected-opponent
 option option-pick/thrull-wizard-pay
 option option-pick/time-travel
 option option-pick/tireless-provisioner-token
+option option-pick/toils-of-night-and-day-tap-or-untap
 option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher

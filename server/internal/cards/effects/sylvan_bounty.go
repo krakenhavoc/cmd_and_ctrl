@@ -21,12 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      ForTargets(game.TargetPurpose{Slot: 0, LifeGain: 8}),
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if p, ok := firstLegalPlayerTarget(ctx); ok {
-				return GainLife{Player: p, Amount: 8}.Apply(ctx)
-			}
-			return nil
-		},
-		Activated: []ActivatedAbility{BasicLandcycling("{1}{G}")},
+		OnResolve:    targetPlayerGainsLife(8),
+		Activated:    []ActivatedAbility{BasicLandcycling("{1}{G}")},
 	})
 }
