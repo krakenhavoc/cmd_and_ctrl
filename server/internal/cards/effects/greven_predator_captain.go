@@ -39,6 +39,8 @@ func init() {
 			SubLayer:  game.SubLayer7C_Modify,
 			Label:     "Greven gets +X/+0, where X is the amount of life you've lost this turn.",
 			AppliesTo: selfOnly,
+			// A life loss moves X with nothing on the battlefield changing.
+			DependsOnLifeTotal: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				c.Power += b18LifeLostThisTurn(g, source.Controller)
 			},
