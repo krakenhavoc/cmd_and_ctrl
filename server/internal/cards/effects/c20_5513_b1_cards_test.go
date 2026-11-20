@@ -627,6 +627,14 @@ func TestC205513NetherbornAltarReturnsYourCommanderForLife(t *testing.T) {
 	altar := pushCatalogPermanent(g, me.ID, "Netherborn Altar", "Artifact", c20AltarOracle, false)
 	life := me.Life
 	apaActivate(t, g, me, altar, 0, game.ActivateAbilityParams{})
+	// A commander headed for a hand gets the CR 903.9b offer; decline it,
+	// as Command Beacon's test does.
+	if offer := latestChoiceOfKind(g, game.PendingChoiceOptionalReplacement); offer != nil {
+		if err := g.ResolveOptionalReplacement(offer.ID, me.ID, false); err != nil {
+			t.Fatalf("ResolveOptionalReplacement: %v", err)
+		}
+	}
+	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(cmdr) || me.Command.Contains(cmdr) {
 		t.Error("the commander did not move to your hand")
 	}
