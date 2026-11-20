@@ -1563,7 +1563,24 @@ Slice 7's guard and its six protective rows are
 [ADR 0142's amendment of 2026-11-05](0142-declared-answers-on-catalog-abilities.md#amendment-2026-11-05--a-targeted-row-may-declare-4734-q2--accepted).
 Mother of Runes, untapped, now stops you for an opponent's item that
 threatens you or yours, and not at an empty opponent end step. The
-targeted pumps and prevents are still to declare.
+second batch, 165 targeted regenerate, shield, pump and prevent rows
+(Maze of Ith, Kor Haven, Selfless Savior, Timberwatch Elf, Kessig Wolf
+Run among them) is in that amendment's "Second batch" paragraph. The
+rest of the targeted rows declare nothing and stop as before: removal,
+tappers, steals and the like, which `remove` would leave without a verdict
+anyway.
+
+Slice 6's first batch declares 95 protective instants, the kinds the sweep
+takes first: fogs and damage shields (`prevent`), hexproof and protection
+(`protect`), indestructible, regeneration and phasing out (`survive`), each
+with the pump, combat keyword or tokens it also gives. Heroic Intervention,
+Blossoming Defense, Snakeskin Veil and Veil of Summer are among them. A
+modal, kicked or alternative-cost card waits for a later batch, and so does
+one that also deals damage, destroys or exiles, since its `remove` keeps
+today's windows. Fog stays undeclared, as the undeclared cast that
+`internal/legal`'s tests pin. The listing went from 423 declared and 2,085
+undeclared instant-speed cards to 518 and 1,990 (the
+2026-11-20 dump). The remaining batches are `tier:1-mechanical`.
 
 ### Back-out
 

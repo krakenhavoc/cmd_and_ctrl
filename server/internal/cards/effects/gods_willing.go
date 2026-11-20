@@ -18,7 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "48e603a2-b965-4fbc-ad57-4388bce5ac8b",
 		Name:         "Gods Willing",
-		Purpose:      game.Purpose{Scry: 1, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "protection"))},
+		Purpose:      game.Purpose{Answers: game.AnswerProtect, Scry: 1, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "protection"))},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Immaculate Magistrate — Creature — Elf Shaman {3}{G}, 2/2 (EDHREC
 // rank 3420):
 //
@@ -21,6 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Put a +1/+1 counter on target creature for each Elf you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature"),
 			Effect:  b32PutCountersPerElfOnChosenCreature,

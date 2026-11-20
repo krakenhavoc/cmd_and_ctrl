@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Okina, Temple to the Grandfathers — Legendary Land (Champions of
 // Kamigawa, #5603):
 //
@@ -23,7 +25,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{G}, {T}: Target legendary creature gets +1/+1 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1)), game.AnswerPump),
 			Cost:    Plus(ManaCost("{G}"), TapCost()),
 			Targets: TargetCreature("target legendary creature", Legendary()),
 			Effect:  boostTargetUntilEOT("Okina, Temple to the Grandfathers — +1/+1", 1, 1),

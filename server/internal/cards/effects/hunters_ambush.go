@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1f085891-0d99-46a6-8f09-b84f44d701f8",
 		Name:         "Hunter's Ambush",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: sourceShieldSpell(combatShieldAgainstCreatures(game.DamageSourceFilter{
 			Except: []game.PermanentQuery{QueryColors("G")},

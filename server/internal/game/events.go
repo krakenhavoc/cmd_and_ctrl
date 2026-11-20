@@ -2022,6 +2022,17 @@ type Event struct {
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
 
+	// BecameToken marks the EventZoneMove from no zone onto the
+	// battlefield that announces the token a copy of a permanent spell
+	// becomes as it resolves (CR 608.3f, CR 707.10f, #4994). That token
+	// is not "created" (CR 111.13), so its arrival is not an
+	// EventTokenCreated and nothing that watches creations sees it; the
+	// move is what every entry reader (the layer listener, Deep Gnome
+	// Terramancer, the trigger doublers) already reads. The flag is for
+	// the game log, which tells this move as the token's arrival where it
+	// skips a spawn's move from no zone. Additive within schema v9.
+	BecameToken bool `json:"became_token,omitempty"`
+
 	// ExiledWith and ExiledWithAbility are the CR 607.2a link a card
 	// PLAYED FROM EXILE had while it sat there (Card.ExiledWith and
 	// Card.ExiledWithAbility): set on the EventCast of a spell cast from

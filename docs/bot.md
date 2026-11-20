@@ -235,6 +235,15 @@ A prompt over anything else (the battlefield, a graveyard, an
 opponent's hand or library) carries nothing on the wire that says what
 naming a card costs, so the bot takes the first answer offered.
 
+**Banding ([ADR 0224](decisions/0224-banding.md) §6, #5723).** The bot
+never forms a band. It blocks a creature in a band (`attack_band` on the
+view) only when it is otherwise dead this combat, and then counts the
+damage the block stops from the whole band, since blocking one member
+blocks them all (`aiseat/heuristic/banding.go`). A damage division that
+banding hands it (`damage_assignment.banding`, CR 702.22j-k) is answered
+with the enumerator's first split, which for such a prompt is the one
+that loses it the least (`legal.CanonicalDamageSplit`).
+
 ### Automatic answers are for people (ADR 0127)
 
 A person can tell the server to answer a repeated prompt for them —
@@ -3448,6 +3457,14 @@ the policy for choosing the sets is what keeps that product finite
   it, and the next state-based check would kill the bot). The life a
   branch pays rides `MoveCost.Life`, and the move label names the branch
   ("Cast Lightning Axe (Pay {5})").
+- **An optional cost that pays life is offered only while the seat
+  survives it** ([ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md)'s
+  2026-11-20 amendment, #5782). Slaughter's "Buyback—Pay 4 life" and
+  Phyrexian Scuta's "Kicker—Pay 3 life" are announced like any other
+  optional cost, but the set is dropped when the seat can't pay the life
+  (CR 119.4, or a rule that stops it paying life) or would be left at 0,
+  the branch policy above. The life rides `MoveCost.Life`, so the policy
+  prices a bought-back Slaughter at 4 life.
 - **A variable sacrifice on a cast is a short ladder of counts**
   ([ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md)
   §6). "Sacrifice any number of creatures" (Vicious Betrayal, Torgaar)

@@ -13,6 +13,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f627e125-15af-4e53-b34e-82b60e4ec87b",
 		Name:         "Tangle",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (PreventAllCombatDamageThisTurn{Label: "Tangle: prevent combat damage"}).Apply(ctx); err != nil {

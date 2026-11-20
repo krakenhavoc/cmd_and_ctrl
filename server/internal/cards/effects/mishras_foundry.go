@@ -52,7 +52,7 @@ func init() {
 			},
 			{
 				Label:   "{1}, {T}: Target attacking Assembly-Worker gets +2/+2 until end of turn.",
-				Purpose: ForTargets(BenefitUntilEOT(0, 2, 2)),
+				Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 2, 2)), game.AnswerPump),
 				Cost:    game.AbilityCost{Mana: "{1}", Tap: true},
 				Targets: TargetCreature("target attacking Assembly-Worker", AttackingCreature(), Subtype("Assembly-Worker")),
 				Effect:  boostTargetUntilEOT("Mishra's Foundry — +2/+2", 2, 2),

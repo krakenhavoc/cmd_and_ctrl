@@ -244,6 +244,19 @@ type pickRow struct {
 // which a pack the drafter held last showed the card: the pack held at
 // pick k comes back at pick k+8, so a card still in it then was last
 // seen at k+8, and otherwise at k.
+//
+// That is 17Lands' own definition (its metrics page, read 2026-11-20,
+// #5726): ALSA is "the average pick number where this card was last
+// seen in packs. When a card comes back around on the wheel, only the
+// second time around counts", and "# Seen" counts a wheeled card once.
+// The page adds that where it knows only the card picked and not the
+// rest of the pack (P1P1, for most of Arena's history), it counts that
+// one card as seen. The public dataset showed no such rows: in the
+// first 2,841 drafts of FRA's PremierDraft file, every pick-1, pick-2
+// and pick-9 row lists the whole pack, the card taken included.
+// So the dataset's ALSA counts every P1P1 card where the live endpoint
+// counts only the pick, and a gap between the two is the data, not
+// this rule.
 func (s *Stats) ReadDrafts(r io.Reader) error {
 	cr := newReader(r)
 	h, err := readHeader(cr)
