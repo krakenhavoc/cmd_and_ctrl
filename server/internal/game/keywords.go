@@ -546,6 +546,11 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	if HasKeyword(c, "shroud") {
 		return false
 	}
+	// #5718: "permanents can't be the targets of spells or activated
+	// abilities" -- a table-wide record (targeting_bar_table.go).
+	if g.tableTargetingBarLocked(src) {
+		return false
+	}
 	// #3860: "can't be the target of spells or abilities your opponents
 	// control" -- a record, not a keyword, so no hexproof waiver touches
 	// it (targeting_bar.go).

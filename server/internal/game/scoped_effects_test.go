@@ -318,6 +318,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3860: read by targeting, like the waiver. Its cases are in
 		// targeting_bar_test.go.
 		ModCantBeTargetedByOpponents: true,
+		// #5718: Peace Talks' table-wide bar, read by targeting too. Its
+		// cases are in targeting_bar_table_test.go.
+		ModCantBeTargetedBySpellsOrActivated: true,
 		// #1593: becomeCopy is layer 1, materialised onto the printed
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.

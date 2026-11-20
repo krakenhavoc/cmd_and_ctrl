@@ -18,6 +18,7 @@ import (
 //	DurationUntilEndOfTurn(ctx)
 //	DurationUntilYourNextTurn(ctx, player)
 //	DurationUntilYourNextUpkeep(ctx, player)
+//	DurationThisTurnAndNextTurn(ctx)
 //	DurationWhileSourceRemains(ctx, source)
 //	DurationWhileYouControlSource(ctx, source, player)
 //	game.IndefiniteDuration()
@@ -58,6 +59,15 @@ func DurationUntilYourNextTurn(ctx *Context, player uuid.UUID) game.Duration {
 // the turn holding that upkeep would have begun (CR 800.4m).
 func DurationUntilYourNextUpkeep(ctx *Context, player uuid.UUID) game.Duration {
 	return ctx.Game.UntilYourNextUpkeepDuration(player)
+}
+
+// DurationThisTurnAndNextTurn is "this turn and next turn" (#5718):
+// Peace Talks. The effect lasts through the turn it is made in and the
+// turn after it, whoever takes that turn (an extra turn taken right after
+// this one included, CR 500.7), and ends in that next turn's cleanup step
+// (CR 514.2): two turns, never a round of them.
+func DurationThisTurnAndNextTurn(ctx *Context) game.Duration {
+	return ctx.Game.ThisTurnAndNextTurnDuration()
 }
 
 // DurationWhileSourceRemains is "for as long as ~ remains on the
