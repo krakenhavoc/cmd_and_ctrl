@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "58e9f5db-c369-42c6-a26d-fc31e25d5f83",
 		Name:         "Emergency Regeneration",
+		Purpose:      game.Purpose{Answers: game.AnswerProtect | game.AnswerSurvive}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return GrantKeywordUntilEOT{

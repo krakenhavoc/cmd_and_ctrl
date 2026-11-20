@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Chameleon Blur — Instant {3}{G}:
 //
 //	"Prevent all damage that creatures would deal to players this
@@ -16,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6ac8ac31-02ce-48e0-98b9-1c5858e1f593",
 		Name:         "Chameleon Blur",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromSource{Protect: ShieldPlayers, Queries: creatureSources()}),
 	})

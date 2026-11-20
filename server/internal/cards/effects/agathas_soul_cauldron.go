@@ -60,6 +60,7 @@ func init() {
 		Static: []game.StaticAbility{borrow},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Exile target card from a graveyard. When a creature card is exiled this way, put a +1/+1 counter on target creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerGraveyard},
 			Cost:    TapCost(),
 			Targets: TargetCardInGraveyard("target card from a graveyard"),
 			Effect:  agathasSoulCauldronExile,

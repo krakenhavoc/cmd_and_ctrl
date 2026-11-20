@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Selfless Savior — Creature — Dog {W}, 1/1:
 //
 //	"Sacrifice this creature: Another target creature you control gains
@@ -22,7 +24,7 @@ func init() {
 			Cost:    SacrificeThis(),
 			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect:  firstTargetGainsUntilEndOfTurn(0, label, "indestructible"),
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")), game.AnswerSurvive),
 		}},
 	})
 }

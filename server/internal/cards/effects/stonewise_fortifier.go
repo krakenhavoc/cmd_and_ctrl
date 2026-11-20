@@ -19,6 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{W}: Prevent all damage that would be dealt to this creature by target creature this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
 			Cost:    ManaCost("{4}{W}"),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

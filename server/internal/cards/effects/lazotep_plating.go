@@ -17,7 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ba0082fb-2d4c-489e-8140-93a6fa693fd0",
 		Name:         "Lazotep Plating",
-		Purpose:      game.Purpose{Amass: 1},
+		Purpose:      game.Purpose{Answers: game.AnswerProtect | game.AnswerPump | game.AnswerMakesBlocker, Amass: 1},
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The hexproof waits for a prompt the amass asks (CR 608.2c, #4155).

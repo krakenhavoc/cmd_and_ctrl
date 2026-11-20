@@ -21,7 +21,7 @@ func init() {
 		Name:         "Shore Up",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
-		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 1, "hexproof")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1, "hexproof")), game.AnswerProtect|game.AnswerPump),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			t, ok := ctx.ClauseTarget(0)
 			if !ok || t.Kind != game.TargetCard {

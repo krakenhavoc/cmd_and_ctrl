@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Elven Lyre — Artifact {2} (Fallen Empires, #5637):
 //
 //	"{1}, {T}, Sacrifice this artifact: Target creature gets +2/+2 until
@@ -17,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}, Sacrifice this artifact: Target creature gets +2/+2 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 2, 2)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 2, 2)), game.AnswerPump),
 			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
 			Targets: TargetCreature("target creature"),
 			Effect:  pumpAndGrantFirstTarget(2, 2, "Elven Lyre — +2/+2 until end of turn"),

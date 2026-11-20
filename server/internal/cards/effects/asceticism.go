@@ -38,6 +38,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{G}: Regenerate target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    ManaCost("{1}{G}"),
 			Targets: TargetCreature("target creature"),
 			Effect:  regenerateTheTargetPermanent,

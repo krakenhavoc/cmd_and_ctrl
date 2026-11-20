@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "32a8d49b-cdfb-4944-bfb5-afd704cc3658",
 		Name:         "Sacred Boon",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

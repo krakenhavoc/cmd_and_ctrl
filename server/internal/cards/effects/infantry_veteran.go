@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Infantry Veteran — Creature — Human Soldier {W}, 1/1 (Visions, #5631):
 //
 //	"{T}: Target attacking creature gets +1/+1 until end of turn."
@@ -17,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target attacking creature gets +1/+1 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1)), game.AnswerPump),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target attacking creature", AttackingCreature()),
 			Effect:  pumpAndGrantFirstTarget(1, 1, "Infantry Veteran — +1/+1 until end of turn"),
