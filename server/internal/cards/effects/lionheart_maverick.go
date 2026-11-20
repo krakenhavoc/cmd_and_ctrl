@@ -20,7 +20,7 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{W}: This creature gets +1/+2 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 1, Toughness: 2}},
 			Cost:    ManaCost("{4}{W}"),
 			Effect:  thisGetsUntilEndOfTurn(1, 2, "Lionheart Maverick — +1/+2 until end of turn"),
 		}},
