@@ -18,8 +18,8 @@ func init() {
 		Targets:      TargetAny(),
 		Purpose:      game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 3)), Answers: game.AnswerRemove, Scry: 1},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 3}).Apply(ctx); err != nil {
+			if legal := ctx.LegalTargets(); len(legal) > 0 {
+				if err := (DealDamage{Source: ctx.Source(), Target: legal[0].ID, Amount: 3}).Apply(ctx); err != nil {
 					return err
 				}
 			}
