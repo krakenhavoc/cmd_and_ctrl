@@ -368,6 +368,7 @@ body prishes-wanderings/counter
 body protean-hydra/two-counters
 body prowess/pump
 body pygmy-hippo/add-colorless
+body qarsi-sadist/drain
 body quantum-entanglement/blink
 body rad/mill
 body rampage/pump
@@ -429,6 +430,7 @@ body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
 body shrapnel-slinger/destroy
 body shriek-treblemaker/cant-block
+body silumgar-butcher/minus-three
 body skyfisher-spider/destroy
 body slumbering-walker/return-from-graveyard
 body snaremaster-sprite/tap-and-stun
@@ -505,6 +507,7 @@ body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
 body villainous-syndication/return
 body vronos/phase-out-the-objects
+body vulturous-aven/draw-and-lose
 body warp/exile
 body warren-torchmaster/haste
 body weapons-vendor/attach
@@ -2509,10 +2512,13 @@ run prompt-run/exploit-fell-stinger
 run prompt-run/exploit-graf-reaver
 run prompt-run/exploit-mindleech-ghoul
 run prompt-run/exploit-overcharged-amalgam
+run prompt-run/exploit-qarsi-sadist
 run prompt-run/exploit-repository-skaab
 run prompt-run/exploit-rot-tide-gargantua
+run prompt-run/exploit-silumgar-butcher
 run prompt-run/exploit-skull-skaab
 run prompt-run/exploit-stitched-assistant
+run prompt-run/exploit-vulturous-aven
 run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
@@ -3618,10 +3624,13 @@ tail sacrificed-one/prompt-run/exploit-fell-stinger
 tail sacrificed-one/prompt-run/exploit-graf-reaver
 tail sacrificed-one/prompt-run/exploit-mindleech-ghoul
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
+tail sacrificed-one/prompt-run/exploit-qarsi-sadist
 tail sacrificed-one/prompt-run/exploit-repository-skaab
 tail sacrificed-one/prompt-run/exploit-rot-tide-gargantua
+tail sacrificed-one/prompt-run/exploit-silumgar-butcher
 tail sacrificed-one/prompt-run/exploit-skull-skaab
 tail sacrificed-one/prompt-run/exploit-stitched-assistant
+tail sacrificed-one/prompt-run/exploit-vulturous-aven
 tail sacrificed-one/prompt-run/felothar-sacrifice
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
 tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
