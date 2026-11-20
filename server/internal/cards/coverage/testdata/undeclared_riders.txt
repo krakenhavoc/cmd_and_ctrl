@@ -17,6 +17,7 @@ Caparocti Sunborn | discover | the text makes it conditional or optional
 Celeborn the Wise | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Champions from Beyond | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Chimil, the Inner Sun | discover | on a triggered row that is not the card's enters effect, which nothing prices
+Chorus of the Tides | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Clockwork Droid | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Colleen Wing, Street Samurai | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Contact Other Plane | scry | the amount is a d20 results-table row (2 or 3), not a fixed number
