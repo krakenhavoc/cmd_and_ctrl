@@ -147,8 +147,10 @@ jobs:
             const monitoring = (n) => n.startsWith('deploy/monitoring/') || n.startsWith('deploy/alloy/') ||
               n === '.github/workflows/ci-cd.yml';
             // The token table and everything that builds a token template
-            // (#2158), plus the dump refresh script and this workflow.
-            const tokens = (n) => /^server\/internal\/cards\/effects\/token[^/]*\.go$/.test(n) ||
+            // (#2158), plus the dump refresh script and this workflow. A
+            // token file may sit in the core, a card shard or a test
+            // package of the effects tree (#5906, ADR 0225).
+            const tokens = (n) => /^server\/internal\/cards\/effects\/(?:[^/]+\/)*token[^/]*\.go$/.test(n) ||
               n === 'scripts/scryfall-refresh.sh' || n === '.github/workflows/ci-cd.yml';
             // The catalog and the curated decks (#3348): `cards` gates
             // purpose-audit, a PR-only job like token-dump-check.
@@ -548,7 +550,7 @@ jobs:
   # the PR that changes a token file, and nowhere else.
   #
   # Cost policy: the dump is ~600 MB, so the job runs ONLY when `changes`
-  # says a token file (server/internal/cards/effects/token*.go), the
+  # says a token file (server/internal/cards/effects/**/token*.go), the
   # refresh script or this workflow changed, and the dump comes from the
   # same day-keyed actions/cache entry the nightly saves
   # (scryfall-default-cards-<date>; a PR may read the base branch's

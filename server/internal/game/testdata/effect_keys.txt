@@ -120,6 +120,7 @@ body death-to-our-enemies/divided-damage
 body decayed/sacrifice
 body decayed/schedule
 body delayed/biolume-egg-return-transformed
+body delayed/daretti-scrap-savant-return
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
 body desperate-measures/draw-two
@@ -270,6 +271,7 @@ body kravens-last-hunt/damage
 body kroxa-and-kunoros/return
 body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
+body library-of-lat-nam/draw-three
 body lichs-relic/destroy
 body life/aphelia-half-their-life
 body lithobraking/damage-each-creature
@@ -1452,6 +1454,7 @@ choose resolution-cast/swindlers-scheme-free-cast
 choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
+coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/fighting-chance-shields
@@ -1571,6 +1574,7 @@ confirm confirm/braids-sacrifice
 confirm confirm/break-out-put
 confirm confirm/breathkeeper-seraph-return
 confirm confirm/breeches-sacrifice
+confirm confirm/brightling-pump
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
 confirm confirm/cacophony-scamp-sacrifice
@@ -1882,6 +1886,7 @@ number number/cmdr2-aetherborn-marauder-move
 number number/deal-that-much-damage-to-the-target
 number number/die-young-minus-one-for-each
 number number/expel-the-interlopers-destroy-power-at-least
+number number/fatal-lore-draw-up-to-three
 number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
@@ -2031,6 +2036,7 @@ option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
 option option-pick/olivia-crimson-bride-attack
+option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
@@ -2079,6 +2085,7 @@ option option-pick/slithermuse-opponent
 option option-pick/slumbering-walker-remove-a-counter
 option option-pick/sorcerous-spyglass-look
 option option-pick/sphinx-of-clear-skies-splitter
+option option-pick/stadium-vendors-player
 option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
 option option-pick/steel-seraph-keyword
@@ -2172,6 +2179,7 @@ payunless pay-unless/bloodthirsty-adversary-times
 payunless pay-unless/bns-b52-slinza-fight
 payunless pay-unless/bns-b52-taeko-unblockable
 payunless pay-unless/boneyard-scourge-return
+payunless pay-unless/bramble-sovereign-copy
 payunless pay-unless/brass-man-untap
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
@@ -2884,6 +2892,7 @@ tail batch21-helpers/after-mill
 tail batch21-helpers/after-mill-2
 tail batch35-helpers/after-exile
 tail batch35-helpers/after-mill
+tail bbd/arena-rector-exiled
 tail beamtown-bullies/haste-goad-exile
 tail beckett-mariner/promotion-check
 tail belanna-torres-scrapper/after-surveil

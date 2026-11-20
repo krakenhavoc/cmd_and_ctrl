@@ -989,6 +989,8 @@ var stackItemFields = plan(
 	"Distribution", carried, "",
 	// #2055: which opponent chose each "of an opponent's choice" clause.
 	"TargetChoosers", carried, "",
+	// #5771: the opponent who chose an "An opponent chooses one" mode.
+	"ModeChooser", carried, "",
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
@@ -1232,6 +1234,8 @@ var pendingChoiceFields = plan(
 	"ModeUsedIndex", carried, "",
 	"ModeUsedLabel", carried, "",
 	"ModeNotChosen", carried, "",
+	// #5771: the caster an opponent's mode_pick is for.
+	"ModePickFor", carried, "",
 	"SacrificeOptions", carried, "",
 	// ADR 0116: the revealed-hand pick's legal cards. Carried for the
 	// same reason SacrificeOptions is — a restored game that forgot

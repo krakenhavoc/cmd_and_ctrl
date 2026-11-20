@@ -278,6 +278,31 @@ type ModeSpec struct {
 	// on a bullet with no pawprint, and beside a raised or random
 	// count. Added by #4786, ADR 0065's 2026-11-02 amendment.
 	Pawprints int
+
+	// ChosenByOpponent is "An opponent chooses one —" (Fatal Lore,
+	// Library of Lat-Nam, Misfortune; #5771, ADR 0065's 2026-11-19
+	// amendment). CR 700.2e: "Some spells and abilities specify that a
+	// player other than their controller chooses a mode for it. In that
+	// case, the other player does so when the spell or ability's
+	// controller normally would do so. If there is more than one other
+	// player who could make such a choice, the spell or ability's
+	// controller decides which of those players will make the choice."
+	//
+	// So the choice is made AS THE SPELL IS CAST (CR 601.2b), not on
+	// resolution, and before its targets (CR 601.2c): Fatal Lore's
+	// ruling says the opponent chooses the mode and the caster then
+	// chooses the targets. The cast is parked before anything is paid
+	// (opponent_mode.go), the shape "target … of an opponent's choice"
+	// uses (opponent_target.go): the caster names which opponent when
+	// more than one could choose, that opponent answers an ordinary
+	// mode_pick, and the caster then picks the chosen bullet's targets.
+	// The opponent is recorded on the item (StackItem.ModeChooser), the
+	// "that player" of the bullets.
+	//
+	// A spell's Modes only, a plain one-of with no cost, count or
+	// memory: effects.Register refuses the rest, because no printed card
+	// has them. Build it with effects.OpponentChoosesOne.
+	ChosenByOpponent bool
 }
 
 // PawprintsOf is the number of pawprint symbols a selection spends

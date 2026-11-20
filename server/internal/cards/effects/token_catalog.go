@@ -512,6 +512,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedGapB06FerozsBanToken,
 	printedGapB06GiantBadgerToken,
 	printedGapB06LoyaltyCatToken,
+	// S82 C14 batch 1 (#5553): Freyalise, Llanowar's Fury's Elf Druid.
+	printedC14ElfDruidToken,
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
 	// size is its controller's experience counters.
 	printedC15DaxosSpiritToken,

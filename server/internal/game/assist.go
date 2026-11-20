@@ -120,6 +120,17 @@ type AssistAnnounce struct {
 	Opponent []AssistOpponentPick `json:"opponent,omitempty"`
 	// Spliced is CastSpellParams.splicedRefs.
 	Spliced []TargetRef `json:"spliced,omitempty"`
+	// OpponentMode is CastSpellParams.opponentMode (#5771): the opponent
+	// named to choose an "An opponent chooses one" spell's mode, and
+	// their answer once given. Additive: absent on every other cast.
+	OpponentMode *AssistOpponentMode `json:"opponentMode,omitempty"`
+}
+
+// AssistOpponentMode is an opponentModeAnswer as data.
+type AssistOpponentMode struct {
+	Chooser  uuid.UUID `json:"chooser"`
+	Answered bool      `json:"answered,omitempty"`
+	Modes    []int     `json:"modes,omitempty"`
 }
 
 // AssistOpponentPick is an opponentPick as data.
@@ -135,6 +146,10 @@ type AssistOpponentPick struct {
 func newAssistAnnounce(p CastSpellParams) *AssistAnnounce {
 	out := &AssistAnnounce{Params: p, Spliced: append([]TargetRef(nil), p.splicedRefs...)}
 	out.Params.splicedRefs, out.Params.commanderAnswers, out.Params.opponentPicks = nil, nil, nil
+	out.Params.opponentMode = nil
+	if m := p.opponentMode; m != nil {
+		out.OpponentMode = &AssistOpponentMode{Chooser: m.chooser, Answered: m.answered, Modes: copyInts(m.modes)}
+	}
 	if len(p.commanderAnswers) > 0 {
 		out.Commander = make(map[uuid.UUID]bool, len(p.commanderAnswers))
 		for k, v := range p.commanderAnswers {
@@ -166,6 +181,9 @@ func (a *AssistAnnounce) params() CastSpellParams {
 			mode: o.Mode, slot: o.Slot, chooser: o.Chooser, answered: o.Answered, refs: o.Refs,
 		})
 	}
+	if m := c.OpponentMode; m != nil {
+		p.opponentMode = &opponentModeAnswer{chooser: m.Chooser, answered: m.Answered, modes: copyInts(m.Modes)}
+	}
 	return p
 }
 
@@ -176,6 +194,10 @@ func (a *AssistAnnounce) clone() *AssistAnnounce {
 	}
 	out := *a
 	out.Params.splicedRefs, out.Params.commanderAnswers, out.Params.opponentPicks = nil, nil, nil
+	out.Params.opponentMode = nil
+	if m := a.OpponentMode; m != nil {
+		out.OpponentMode = &AssistOpponentMode{Chooser: m.Chooser, Answered: m.Answered, Modes: copyInts(m.Modes)}
+	}
 	if len(a.Commander) > 0 {
 		out.Commander = make(map[uuid.UUID]bool, len(a.Commander))
 		for k, v := range a.Commander {
