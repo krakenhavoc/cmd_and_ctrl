@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Zelyon Sword — you may choose not to untap this artifact")},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, {T}: Target creature gets +2/+0 for as long as this artifact remains tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect:  TargetGetsWhileThisRemainsTapped("Zelyon Sword — +2/+0 while tapped", game.ModifyPTMod(2, 0)),

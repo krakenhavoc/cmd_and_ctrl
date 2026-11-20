@@ -19,7 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a8a27a87-fc4c-44b5-9ba8-505bbf42164e",
 		Name:         "Lithomancer's Focus",
-		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 2)),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 2, 2)), game.AnswerPump|game.AnswerPrevent),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

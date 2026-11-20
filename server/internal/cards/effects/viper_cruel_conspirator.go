@@ -30,7 +30,7 @@ func init() {
 			{
 				Label:   "{B}: Target creature that's attacking alone gets +1/+1 until end of turn.",
 				Cost:    ManaCost("{B}"),
-				Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
+				Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1)), game.AnswerPump),
 				Targets: TargetCreature("target creature that's attacking alone", AttackingAlone()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)

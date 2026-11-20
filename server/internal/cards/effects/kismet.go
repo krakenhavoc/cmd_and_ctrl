@@ -32,34 +32,40 @@ func init() {
 		OracleID:     "81fdd1c4-d43b-4f8b-8712-7c2bf45a3e0b",
 		Name:         "Kismet",
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{
-			{
-				Watches: []game.EventKind{game.EventZoneMove},
-				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-					if ev.Kind != game.RepEventMove {
-						return false
-					}
-					if ev.NewZone != game.ZoneBattlefield {
-						return false
-					}
-					entering, ok := g.LookupCardForEffect(ev.CardID)
-					if !ok {
-						return false
-					}
-					if entering.Controller == src.Controller {
-						return false
-					}
-					return entering.IsCreature() || entering.IsArtifact() || entering.IsLand()
-				},
-				Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
-					ev.EntersTapped = true
-					return nil
-				},
-				Controller: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) uuid.UUID {
-					return src.Controller
-				},
-				Label: "Kismet: enter tapped",
-			},
-		},
+		Replacements: []game.ReplacementEffect{opponentsArtifactsCreaturesAndLandsEnterTapped("Kismet")},
 	})
+}
+
+// opponentsArtifactsCreaturesAndLandsEnterTapped is Kismet's replacement,
+// shared with Loxodon Gatekeeper (#5600), which prints the same line:
+// "Artifacts, creatures, and lands your opponents control enter tapped."
+// The label is "<name>: enter tapped".
+func opponentsArtifactsCreaturesAndLandsEnterTapped(name string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventZoneMove},
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if ev.Kind != game.RepEventMove {
+				return false
+			}
+			if ev.NewZone != game.ZoneBattlefield {
+				return false
+			}
+			entering, ok := g.LookupCardForEffect(ev.CardID)
+			if !ok {
+				return false
+			}
+			if entering.Controller == src.Controller {
+				return false
+			}
+			return entering.IsCreature() || entering.IsArtifact() || entering.IsLand()
+		},
+		Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+			ev.EntersTapped = true
+			return nil
+		},
+		Controller: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label: name + ": enter tapped",
+	}
 }

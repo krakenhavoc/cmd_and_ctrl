@@ -206,16 +206,19 @@ func (g *Game) SpendsManaAsAnyColorForEffect(payer uuid.UUID, ctx ManaSpendConte
 // widenForAnyColorSpend is `cost` as a player under the grant may pay
 // it: every requirement a coloured mana could pay is marked AnyMana,
 // with its Options kept so the solvers still prefer the colour printed.
-// A {C} (or a snow {S}, which the engine pays as colourless) is left
-// alone: coloured mana cannot pay it (CR 106.1b), and widening it would
-// let a Mountain pay Thought-Knot Seer's {C}. So is a symbol a
+// A {C} is left alone: coloured mana cannot pay it (CR 106.1b), and
+// widening it would let a Mountain pay Thought-Knot Seer's {C}. So is a
+// snow {S}, even under an any-type grant: only mana from a snow source
+// pays it (CR 107.4h). So is a symbol a
 // spend-only fold left with no colour at all (spend_only.go): there is
 // no colour to spend mana as though it were. Generic and {X} need no
 // widening. Idempotent, and it returns `cost` itself when there is
 // nothing to widen.
 func widenForAnyColorSpend(cost ParsedCost, anyType bool) ParsedCost {
 	colourless := func(r ColorRequirement) bool { return !anyType && requiresColorless(r) }
-	widens := func(r ColorRequirement) bool { return !colourless(r) && !unpayableByAnyMana(r) }
+	// #5986: never a snow {S}, whose payer is a snow source and not a
+	// colour or type (CR 107.4h).
+	widens := func(r ColorRequirement) bool { return !r.Snow && !colourless(r) && !unpayableByAnyMana(r) }
 	need := cost.folded.n > 0 && !cost.folded.req.AnyMana && widens(cost.folded.req)
 	for _, r := range cost.Required {
 		if !r.AnyMana && widens(r) {

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Riot Control — Instant {2}{W}:
 //
 //	"You gain 1 life for each creature your opponents control. Prevent
@@ -14,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a189e20f-1072-4608-9e50-da2a9d7a7ee3",
 		Name:         "Riot Control",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The shield waits for a prompt the life gain asks (CR 608.2c, #4155).

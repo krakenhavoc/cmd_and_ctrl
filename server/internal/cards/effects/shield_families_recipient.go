@@ -91,6 +91,7 @@ func untapAttackerToAndByRow(label string, cost game.AbilityCost, targets *game.
 		Label:   label,
 		Cost:    cost,
 		Targets: targets,
+		Purpose: preventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return untapThenToAndBy(NewContext(g, item))
 		},
@@ -120,7 +121,7 @@ func toAndByThisRow(label string, cost game.AbilityCost) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
-		Purpose: preventsDamageUnlessTargeted(nil),
+		Purpose: preventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return shieldThis(g, item, toAndByShield(ShieldTarget{}, true))
 		},
@@ -131,10 +132,15 @@ func toAndByThisRow(label string, cost game.AbilityCost) ActivatedAbility {
 // all damage that would be dealt to and dealt by target permanent an
 // opponent controls" (Dovin, Hand of Control; Kiora, the Crashing Wave):
 // one to-and-by record, all damage, until your next turn (CR 611.2b).
+// Both are loyalty rows, activated only in your main phase with the
+// stack empty (CR 606.3), so the row declares no answers: the guard
+// refuses them there.
 func untilYourNextTurnToAndByRow(label string, cost game.AbilityCost) ActivatedAbility {
 	shield := toAndByShield(ShieldTheTarget, false)
 	shield.UntilYourNextTurn = true
-	return sourceShieldRow(label, cost, TargetPermanent("target permanent an opponent controls", OpponentControls()), shield)
+	row := sourceShieldRow(label, cost, TargetPermanent("target permanent an opponent controls", OpponentControls()), shield)
+	row.Purpose = game.Purpose{}
+	return row
 }
 
 // shieldThis is `shield` pinned to the ability's own source, "this

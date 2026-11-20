@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Endure — Instant {3}{W}{W}:
 //
 //	"Prevent all damage that would be dealt to you and permanents you
@@ -17,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f4cd32f0-d6aa-4497-b8db-a0bf4c3c31de",
 		Name:         "Endure",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromSource{Protect: ShieldYouAndPermanentsYouControl}),
 	})

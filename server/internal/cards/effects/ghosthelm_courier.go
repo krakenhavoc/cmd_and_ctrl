@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Ghosthelm Courier — you may choose not to untap this creature")},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{U}, {T}: Target Wizard creature gets +2/+2 and has shroud for as long as this creature remains tapped. (It can't be the target of spells or abilities.)",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerProtect},
 			Cost:    Plus(ManaCost("{2}{U}"), TapCost()),
 			Targets: TargetCreature("target Wizard creature", OfCreatureType("Wizard")),
 			Effect:  TargetGetsWhileThisRemainsTapped("Ghosthelm Courier — +2/+2 and shroud while tapped", game.ModifyPTMod(2, 2), game.AddKeywordsMod("shroud")),

@@ -242,13 +242,66 @@ func TestARoleTokenIsARestorePointAtTheTokenOrderPrompt(t *testing.T) {
 	}
 }
 
-// Double Major copies a creature spell under the order prompt: the copy's
-// token creation is a restore point, and the restored answer makes four
-// token copies beside the original (engine/spell-copy-token).
+// tokenEntryOrderProbeOracles are two test cards, each "if a token would
+// enter the battlefield, it enters instead": two different declared entry
+// replacements, so a token's ENTRY asks for their order (CR 616.1). They
+// are catalog rows, so a restored table gathers them again. #4994: the
+// token a copy of a permanent spell becomes is not created (CR 111.13), so
+// its CR 616 pause can no longer come from a Doubling Season beside a
+// Parallel Lives; it comes from its entry, which these give it.
+var tokenEntryOrderProbeOracles = []string{"test-4994-token-entry-order-a", "test-4994-token-entry-order-b"}
+
+func init() {
+	for i, oracle := range tokenEntryOrderProbeOracles {
+		Register(Spec{
+			OracleID: oracle,
+			Name:     "Token Entry Order Probe " + string(rune('A'+i)),
+			Replacements: []game.ReplacementEffect{{
+				Watches: []game.EventKind{game.EventZoneMove},
+				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) bool {
+					if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
+						return false
+					}
+					c, ok := g.LookupCardForEffect(ev.CardID)
+					return ok && c.IsToken()
+				},
+				Replace: func(*game.ReplacementEvent, *game.Game, *game.Card) error { return nil },
+				Label:   "Token Entry Order Probe " + string(rune('A'+i)),
+			}},
+		})
+	}
+}
+
+// seedTokenEntryOrderProbes puts both probes on the battlefield under
+// `who` and returns them in order.
+func seedTokenEntryOrderProbes(g *game.Game, who uuid.UUID) (a, b uuid.UUID) {
+	a = seedReplacementPermanent(g, tokenEntryOrderProbeOracles[0], "Token Entry Order Probe A", who)
+	b = seedReplacementPermanent(g, tokenEntryOrderProbeOracles[1], "Token Entry Order Probe B", who)
+	return a, b
+}
+
+// tokenCreatedEventsFor counts the EventTokenCreated events naming id.
+func tokenCreatedEventsFor(g *game.Game, id uuid.UUID) int {
+	n := 0
+	for _, ev := range g.Events {
+		if ev.Kind == game.EventTokenCreated && ev.CardID == id {
+			n++
+		}
+	}
+	return n
+}
+
+// Double Major copies a creature spell under the token's entry order
+// prompt: the copy's token entry is a restore point, and the restored
+// answer puts exactly one token copy beside the original
+// (engine/spell-copy-token). Doubling Season and Parallel Lives are on the
+// board and do nothing to it, and it is still not "created" once restored
+// (CR 111.13, #4994): the run's NotCreated rode the disk.
 func TestACopiedPermanentSpellIsARestorePointAtTheTokenOrderPrompt(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	ds, pl := tokenOrderBoard(g, me.ID)
+	tokenOrderBoard(g, me.ID)
+	pa, pb := seedTokenEntryOrderProbes(g, me.ID)
 	spell := castCreatureSpellForCopy(t, g, "Grizzly Bears", "Creature — Bear", "oracle-bears", 2, 2)
 	castCatalogSpell(t, g, "Double Major", "Instant", oracleDoubleMajor,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
@@ -257,11 +310,17 @@ func TestACopiedPermanentSpellIsARestorePointAtTheTokenOrderPrompt(t *testing.T)
 		t.Fatalf("no order prompt is open: %+v", g.PendingChoices)
 	}
 
-	g = strictRestoreWithFrame(t, g, game.ReplacementResumeCreateTokens)
-	answerOrderBySource(t, g, ds, pl)
+	g = strictRestoreWithFrame(t, g, game.ReplacementResumeMoveTail)
+	if tokens, _ := copiesOnBattlefield(g, "Grizzly Bears"); len(tokens) != 0 {
+		t.Fatalf("the restored table landed %d tokens before the order", len(tokens))
+	}
+	answerOrderBySource(t, g, pa, pb)
 	passPriorityAroundTable(t, g)
 	tokens, cards := copiesOnBattlefield(g, "Grizzly Bears")
-	if len(tokens) != 4 || len(cards) != 1 {
-		t.Errorf("%d token copies and %d cards after the restored answer, want four and the original", len(tokens), len(cards))
+	if len(tokens) != 1 || len(cards) != 1 {
+		t.Fatalf("%d token copies and %d cards after the restored answer, want one of each: the copy's token is not created, so nothing doubles it (CR 111.13)", len(tokens), len(cards))
+	}
+	if n := tokenCreatedEventsFor(g, tokens[0].InstanceID); n != 0 {
+		t.Errorf("the restored token was announced as created %d times, want none (CR 111.13)", n)
 	}
 }
