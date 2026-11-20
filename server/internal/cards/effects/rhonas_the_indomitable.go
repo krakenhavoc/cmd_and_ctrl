@@ -37,7 +37,7 @@ func init() {
 			Label:   "{2}{G}: Another target creature gets +2/+0 and gains trample until end of turn.",
 			Cost:    ManaCost("{2}{G}"),
 			Targets: Another(TargetCreature("another target creature")),
-			Purpose: ForTargets(BenefitUntilEOT(0, 2, 0, "trample")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 2, 0, "trample")), game.AnswerPump|game.AnswerCombatGrant),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {

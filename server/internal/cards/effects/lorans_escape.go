@@ -19,7 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1a9048d6-f3fa-4f3b-9baa-35318177bc6e",
 		Name:         "Loran's Escape",
-		Purpose:      WithRiders(ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible")), game.Purpose{Scry: 1}),
+		Purpose:      withAnswers(WithRiders(ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible")), game.Purpose{Scry: 1}), game.AnswerProtect|game.AnswerSurvive),
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target artifact or creature", Or(Artifact(), Creature())),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

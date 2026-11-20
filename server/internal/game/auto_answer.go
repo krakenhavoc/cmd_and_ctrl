@@ -177,8 +177,17 @@ func (g *Game) runPromptBranchLocked(origin string, fn func()) {
 
 // payUnlessCovered reports whether a pay_unless can take a standing
 // answer (ADR 0127 §1): a plain mana payment with no X and no Phyrexian
-// symbol, guarding no spell, owed in no step, and paid with nothing
-// but mana.
+// symbol, guarding no spell, owed in no step by its own card's words,
+// and paid with nothing but mana.
+//
+// "By its own card's words": it is read as the prompt is queued, before
+// QueueChoiceForEffect stamps the step anchor every pay_unless asked
+// mid-resolution takes (#5793, resolution_pay_unless.go). That anchor
+// says the table waits for the answer, not that the answer depends on
+// the board, so Rhystic Study's tax keeps its "Always / Never pay"
+// (ADR 0127's 2026-11-20 amendment). An anchor the card sets itself
+// (Stasis, cumulative upkeep, echo, Hellkite Charger's InThisStep) is on
+// the prompt by then, and still leaves it uncovered.
 func payUnlessCovered(c *PendingChoice) bool {
 	if c.GuardsStackItem != uuid.Nil || c.OwedInStep != (TurnStep{}) || c.LifeCost != 0 {
 		return false

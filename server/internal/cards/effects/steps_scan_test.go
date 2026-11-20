@@ -761,7 +761,6 @@ var stepsConverted = setOf(
 // TestSkippedBodiesAreStillFlagged fails if an entry is stale.
 var stepsSkipped = map[string]string{
 	"Herald's Horn":              "no prompt: a reveal, then the bounce, inside a MayChoice's OnYes",
-	"Geier Reach Sanitarium":     "each player draws and then discards in turn: one loop over the players",
 	"Chandra's Ignition":         "one batch: the damage to each creature and opponent is one instance",
 	"Tibalt's Trickery":          "no prompt: the number is picked at random",
 	"Tribute to the World Tree":  "exclusive arms: a draw, or the counters",

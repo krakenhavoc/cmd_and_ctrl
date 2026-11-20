@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Icatian Priest — Creature — Human Cleric {W}, 1/1 (Fallen Empires,
 // #5637):
 //
@@ -17,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}{W}: Target creature gets +1/+1 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1)), game.AnswerPump),
 			Cost:    ManaCost("{1}{W}{W}"),
 			Targets: TargetCreature("target creature"),
 			Effect:  pumpAndGrantFirstTarget(1, 1, "Icatian Priest — +1/+1 until end of turn"),

@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "959bcf99-3c9a-4f99-98b2-13514d3dac16",
 		Name:         "Energy Arc",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("any number of target creatures").WithCount(0, 0),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Centaur Garden — Land (Odyssey, #5613):
 //
 //	"{T}: Add {G}. This land deals 1 damage to you.
@@ -16,7 +18,7 @@ func init() {
 	Register(odyThresholdLand("5cf92fd4-7c0b-4d8e-92f1-53dc2e0476fc", "Centaur Garden", "{G}",
 		"Target creature gets +3/+3 until end of turn.", ActivatedAbility{
 			Targets: TargetCreature("target creature"),
-			Purpose: ForTargets(BenefitUntilEOT(0, 3, 3)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 3, 3)), game.AnswerPump),
 			Effect:  pumpAndGrantFirstTarget(3, 3, "Centaur Garden — +3/+3 until end of turn"),
 		}))
 }

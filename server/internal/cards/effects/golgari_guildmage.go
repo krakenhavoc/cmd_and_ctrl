@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Golgari Guildmage — Creature — Elf Shaman {B/G}{B/G}, 2/2 (Ravnica:
 // Clue Edition, #5929):
 //
@@ -28,6 +30,7 @@ func init() {
 			},
 			{
 				Label:   "{4}{G}: Put a +1/+1 counter on target creature.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
 				Cost:    ManaCost("{4}{G}"),
 				Targets: TargetCreature("target creature"),
 				Effect:  putPlusOneCounterOnEachLegalTarget,

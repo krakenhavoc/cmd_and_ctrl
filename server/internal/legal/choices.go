@@ -2389,11 +2389,23 @@ func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
 	}
 	pl.covers = n > 0 && need <= f.AttackerPower
 	pl.trample = f.AllowTrample && !f.BlockerDivides
+	// ADR 0224: a banding division is the receiving side's own choice
+	// (CR 702.22j-k), and which of its own creatures dies is never
+	// decided for it: no "covers lethal", so the client never sends the
+	// suggestion unasked.
+	if f.Banding {
+		pl.covers = false
+	}
 	return pl, true
 }
 
-// canonical is the split that kills the most the power can buy.
+// canonical is the split that kills the most the power can buy, or,
+// for a banding division (ADR 0224), the one that loses the chooser the
+// least (protective).
 func (pl splitPlan) canonical() (DamageSplit, bool) {
+	if pl.f.Banding {
+		return pl.protective()
+	}
 	n := len(pl.f.BlockerIDs)
 	if n == 0 && pl.f.AsThoughUnblocked && pl.f.AttackerPower > 0 {
 		// Every blocker has left combat: nothing to divide among, so the
@@ -2418,6 +2430,59 @@ func (pl splitPlan) canonical() (DamageSplit, bool) {
 		sink = n - 1
 	}
 	return pl.build(kill, sink)
+}
+
+// protective is the banding chooser's split (CR 702.22j-k, ADR 0224):
+// the damage lands on the chooser's own creatures, so the split that
+// loses the least. One creature the damage cannot destroy (worth 0 to
+// the source: indestructible, or protected from it) takes all of it.
+// Otherwise, when every creature can take a share short of lethal, the
+// damage is spread so none dies; and when it can't, all of it goes on
+// the one creature worth least, which is the only one lost. Killing one
+// creature absorbs any amount, so no answer loses fewer.
+func (pl splitPlan) protective() (DamageSplit, bool) {
+	f := pl.f
+	n := len(f.BlockerIDs)
+	if n == 0 {
+		return DamageSplit{}, false
+	}
+	amount := make([]int, n)
+	sink := -1
+	for i := 0; i < n; i++ {
+		if pl.value[i] == 0 {
+			sink = i
+			break
+		}
+	}
+	if sink < 0 {
+		spare := 0
+		for i := 0; i < n; i++ {
+			spare += pl.cost[i] - 1
+		}
+		if f.AttackerPower <= spare {
+			left := f.AttackerPower
+			for i := 0; i < n && left > 0; i++ {
+				take := min(pl.cost[i]-1, left)
+				amount[i] = take
+				left -= take
+			}
+		} else {
+			for i := 0; i < n; i++ {
+				if sink < 0 || pl.value[i] < pl.value[sink] {
+					sink = i
+				}
+			}
+		}
+	}
+	if sink >= 0 {
+		amount[sink] = f.AttackerPower
+	}
+	out := DamageSplit{Lethal: pl.cost, CoversLethal: false}
+	out.Assignments = make([]DamageShare, 0, n)
+	for i, id := range f.BlockerIDs {
+		out.Assignments = append(out.Assignments, DamageShare{BlockerID: id, Amount: amount[i]})
+	}
+	return out, true
 }
 
 // unblocked is the split that assigns the whole power as though the

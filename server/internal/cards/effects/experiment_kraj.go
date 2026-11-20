@@ -25,6 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Put a +1/+1 counter on target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature"),
 			Effect:  b36CounterOnChosenAnimal,

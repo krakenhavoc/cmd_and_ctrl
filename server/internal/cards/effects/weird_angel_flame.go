@@ -27,12 +27,7 @@ func init() {
 				Key: weirdAngelFlameHeroic,
 				Triggered: []game.TriggeredAbility{
 					heroic("Weird Angel Flame sticker — put two +1/+1 counters on this permanent (heroic)",
-						func(g *game.Game, item *game.StackItem) error {
-							if sourceIsNewObject(g, item) || !onBattlefield(g, item.SourceCardID) {
-								return nil
-							}
-							return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 2}.Apply(NewContext(g, item))
-						}),
+						thisGetsTwoPlusOneCounters),
 				},
 				Text: "Heroic — Whenever you cast a spell that targets this permanent, put two +1/+1 counters on it.",
 			},

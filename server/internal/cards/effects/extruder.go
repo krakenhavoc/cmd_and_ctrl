@@ -15,6 +15,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice an artifact: Put a +1/+1 counter on target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet},
 			Cost:    game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact", Artifact())},
 			Targets: TargetCreature("target creature"),
 			Effect:  putPlusOneCounterOnEachLegalTarget,

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Animal Sanctuary — Land (EDHREC rank 3770):
 //
 //	"{T}: Add {C}.
@@ -26,6 +28,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}: Put a +1/+1 counter on target Bird, Cat, Dog, Goat, Ox, or Snake.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: TargetPermanent("target Bird, Cat, Dog, Goat, Ox, or Snake", AnySubtype("Bird", "Cat", "Dog", "Goat", "Ox", "Snake")),
 			Effect:  b36CounterOnChosenAnimal,

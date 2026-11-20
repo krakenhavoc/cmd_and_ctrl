@@ -133,6 +133,10 @@ var textWordLiteralAllowed = map[string]string{
 	// Geistlight Snare and Supernatural Rescue (S82 VOW b13): the Spirit flash
 	// condition is judged as the spell is cast, Bard's Company's shape.
 	"s82_vow_b13_helpers.go": "flash condition, judged as cast",
+
+	// Crashing Tide (S82 RIX b1, #5531): the Merfolk flash condition is
+	// judged as the spell is cast, Bard's Company's shape.
+	"crashing_tide.go": "flash condition, judged as cast",
 }
 
 // textWordHelperArgs are effects-package helpers that take a colour or

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Amok — Enchantment {1}{R}:
 //
 //	"{1}, Discard a card at random: Put a +1/+1 counter on target creature."
@@ -17,6 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, Discard a card at random: Put a +1/+1 counter on target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{1}"), DiscardAtRandom(1, "a card at random")),
 			Targets: TargetCreature("target creature"),
 			Effect:  putPlusOneCounterOnEachLegalTarget,

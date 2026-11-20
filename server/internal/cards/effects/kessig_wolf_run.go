@@ -25,7 +25,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{X}{R}{G}, {T}: Target creature gets +X/+0 and gains trample until end of turn",
-			Purpose: ForTargets(PowerXUntilEOT(0, "trample")),
+			Purpose: withAnswers(ForTargets(PowerXUntilEOT(0, "trample")), game.AnswerPump|game.AnswerCombatGrant),
 			Cost:    Plus(ManaCost("{X}{R}{G}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
