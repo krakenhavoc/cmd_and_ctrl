@@ -1875,6 +1875,14 @@ type OptionalCostView struct {
 	// the stepper stops where the engine stops accepting the cast.
 	Energy      int  `json:"energy,omitempty"`
 	EnergyShort bool `json:"energy_short,omitempty"`
+	// PayLife is the fixed "pay N life" this cost charges (ADR 0100's
+	// 2026-11-20 amendment, #5782): Slaughter's "Buyback—Pay 4 life" is
+	// 4, a Defiler's granted "you may pay 2 life" is 2. LifeShort is set
+	// when the viewer can't pay it now — a life total below N (CR 119.4)
+	// or a rule that stops them paying life — so the client greys the
+	// offer the server would refuse.
+	PayLife   int  `json:"pay_life,omitempty"`
+	LifeShort bool `json:"life_short,omitempty"`
 	// DiscardCards and SacrificeOptions are the card-shaped halves,
 	// in the same shape and with the same meaning AdditionalCostView
 	// gives them — present-and-empty SacrificeOptions means this
@@ -9069,6 +9077,12 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 				v.MaxTimes = max(affordable, 1)
 			}
 			v.EnergyShort = affordable == 0
+		}
+		// #5782: a fixed life payment, offered only while the viewer can
+		// pay it (CR 119.4) — the reader CastSpell's validator asks.
+		if oc.PayLife > 0 {
+			v.PayLife = oc.PayLife
+			v.LifeShort = !g.CanPayLifeToCastOrActivateLocked(g.PlayerByIDForEffect(caster), oc.PayLife)
 		}
 		if oc.Sacrifice != nil {
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, oc.Sacrifice, uuid.Nil, false)

@@ -578,9 +578,22 @@ func TestRegisterEitherCostShapesPanic(t *testing.T) {
 	mustPanic(t, "mandatory additional MANA cost", func() {
 		Register(Spec{OracleID: "either-register-test-mana", Name: "Bad Mana", AdditionalCost: ManaAdditionalCost("{2}")})
 	})
-	mustPanic(t, "pays fixed life", func() {
-		pl := PayLifeCost(2)
-		pl.Optional, pl.Key = true, "life"
-		Register(Spec{OracleID: "either-register-test-life", Name: "Bad Life", OptionalCosts: []game.AdditionalCost{*pl}})
+	// ADR 0100's 2026-11-20 amendment (#5782): an optional cost may pay a
+	// fixed amount of life (BuybackPayLife), but never a negative one, and
+	// never more than once per cast.
+	mustPanic(t, "negative amount of life", func() {
+		pl := BuybackPayLife(4)
+		pl.PayLife = -4
+		Register(Spec{OracleID: "either-register-test-life", Name: "Bad Life", OptionalCosts: []game.AdditionalCost{pl}})
+	})
+	mustPanic(t, "only a mana-only cost may repeat", func() {
+		pl := KickerPayLife(2)
+		pl.Repeat = 3
+		Register(Spec{OracleID: "either-register-test-life-repeat", Name: "Bad Repeated Life", OptionalCosts: []game.AdditionalCost{pl}})
+	})
+	mustPanic(t, "has branches", func() {
+		oc := game.AdditionalCost{Optional: true, Key: game.BuybackKey, Label: "Buyback—Discard a card or pay 2 life",
+			Either: []game.AdditionalCost{*DiscardCost(1).Keyed("discard"), *PayLifeCost(2).Keyed("life")}}
+		Register(Spec{OracleID: "either-register-test-optional-branches", Name: "Bad Branches", OptionalCosts: []game.AdditionalCost{oc}})
 	})
 }
