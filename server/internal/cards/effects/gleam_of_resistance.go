@@ -37,7 +37,7 @@ func init() {
 				return err
 			}
 			for _, id := range those {
-				if err := (UntapTarget{Target: id}).Apply(ctx); err != nil {
+				if err := (UntapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
 					return err
 				}
 			}

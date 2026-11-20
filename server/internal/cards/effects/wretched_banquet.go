@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"slices"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Wretched Banquet — Sorcery {B} (Conflux, #5587):
 //
@@ -24,12 +28,10 @@ func init() {
 			if !ok {
 				return nil
 			}
-			for _, least := range creaturesWithLeastPower(ctx.Game) {
-				if least == id {
-					return DestroyTarget{Target: id}.Apply(ctx)
-				}
+			if !slices.Contains(creaturesWithLeastPower(ctx.Game), id) {
+				return nil
 			}
-			return nil
+			return DestroyTarget{Target: id}.Apply(ctx)
 		},
 	})
 }
