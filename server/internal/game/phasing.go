@@ -394,6 +394,8 @@ func (g *Game) forgetCombatRecordLocked(cardID uuid.UUID) {
 		g.announcedAttacks = nil
 	}
 	g.forgetAttackDefenderLocked(cardID)
+	// CR 702.22f: and its band.
+	g.leaveBandLocked(cardID)
 	delete(g.announcedBlocks, cardID)
 	if len(g.announcedBlocks) == 0 {
 		g.announcedBlocks = nil

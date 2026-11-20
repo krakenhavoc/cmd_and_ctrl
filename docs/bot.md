@@ -235,6 +235,15 @@ A prompt over anything else (the battlefield, a graveyard, an
 opponent's hand or library) carries nothing on the wire that says what
 naming a card costs, so the bot takes the first answer offered.
 
+**Banding ([ADR 0224](decisions/0224-banding.md) §6, #5723).** The bot
+never forms a band. It blocks a creature in a band (`attack_band` on the
+view) only when it is otherwise dead this combat, and then counts the
+damage the block stops from the whole band, since blocking one member
+blocks them all (`aiseat/heuristic/banding.go`). A damage division that
+banding hands it (`damage_assignment.banding`, CR 702.22j-k) is answered
+with the enumerator's first split, which for such a prompt is the one
+that loses it the least (`legal.CanonicalDamageSplit`).
+
 ### Automatic answers are for people (ADR 0127)
 
 A person can tell the server to answer a repeated prompt for them —

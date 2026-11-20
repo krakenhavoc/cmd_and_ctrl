@@ -2454,6 +2454,14 @@ type DamageAssignmentView struct {
 	// controller divides its damage among them as they choose — no
 	// order to keep and no trample.
 	BlockerDivides bool `json:"blocker_divides,omitempty"`
+	// Banding marks a division handed to the OTHER player by banding
+	// (ADR 0224): the defending player divides an attacker's damage among
+	// their blockers when one of them has banding (CR 702.22j), and the
+	// active player divides a blocker's damage among their attackers when
+	// it blocks one with banding (CR 702.22k). The chooser is not the
+	// controller of attacker_card_id. No trample, and covers_lethal is
+	// never set, so the prompt is never sent unasked.
+	Banding bool `json:"banding,omitempty"`
 	// #2956 (ADR 0147): the canonical split, legal.CanonicalDamageSplit,
 	// which the bots answer with. The client pre-fills the prompt with
 	// it, and sends it unasked when covers_lethal is set and the
@@ -3653,6 +3661,13 @@ type CardView struct {
 	// what AttackingTarget names. Omitted when nothing is declared.
 	// Added in S27.
 	AttackingTargetKind string `json:"attacking_target_kind,omitempty"`
+	// AttackBand is the band this attacker is in (CR 702.22c, ADR 0224):
+	// attackers with the same number attack as one band, so blocking
+	// one blocks them all (CR 702.22h). Numbered 1, 2, ... in battlefield
+	// order of each band's first member, and omitted for an attacker in
+	// no band or the only member of its band still in combat. Public:
+	// the band is announced to the table (CR 508.1e).
+	AttackBand int `json:"attack_band,omitempty"`
 	// DefendingPlayer is the seat defending against this attack — the
 	// only seat whose creatures may block it (CR 802.4a, #1339): the
 	// player attacked, the controller of the planeswalker attacked, or
@@ -10043,6 +10058,7 @@ func stampManaCounterCosts(g *game.Game, card *game.Card, controller uuid.UUID, 
 //
 // Caller must hold g's read lock (ReadSnapshot already does).
 func stampCombatTargets(g *game.Game, view *GameView) {
+	bands := g.AttackBandNumbersLocked()
 	for i := range view.Battlefield.Cards {
 		c := &view.Battlefield.Cards[i]
 		if c.AttackingTarget == "" {
@@ -10054,6 +10070,10 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 		}
 		if kind := g.ClassifyAttackTargetForEffect(id); kind != "" {
 			c.AttackingTargetKind = string(kind)
+		}
+		// ADR 0224: the band it attacks in.
+		if atk, err := uuid.Parse(c.InstanceID); err == nil && bands != nil {
+			c.AttackBand = bands[atk]
 		}
 		// #1364: the attacker-based read, so an attacker whose
 		// planeswalker or battle has left still names the player who
@@ -11187,6 +11207,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				AsThoughUnblocked: frame.AsThoughUnblocked,
 				HasDeathtouch:     frame.HasDeathtouch,
 				BlockerDivides:    frame.BlockerDivides,
+				Banding:           frame.Banding,
 			}
 			if split, ok := legal.CanonicalDamageSplit(g, c); ok {
 				shares := make([]DamageShareView, len(split.Assignments))
