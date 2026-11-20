@@ -518,13 +518,20 @@ func TestJouB1WhitewaterNaiadsMakesATargetUnblockable(t *testing.T) {
 	seat := g.Turn.ActiveSeat
 	me, opp := g.Seats[seat], g.Seats[(seat+1)%len(g.Seats)]
 	bear := reqCreature(g, me.ID, "Bear", "", 2, 2, "haste")
+	// A second, blockable attacker gives the defender a legal block, so the
+	// step parks for the declaration (an attack of only unblockable
+	// creatures has none to make).
+	goat := reqCreature(g, me.ID, "Goat", "", 1, 1, "haste")
 	wall := reqCreature(g, opp.ID, "Wall", "", 0, 4)
 	jouB1Enters(g, me.ID, "Whitewater Naiads", jouB1EnchantmentCreatureTypeLine, jouB1WhitewaterNaiadsOracle)
 	answerPickTargetIfOpen(t, g, bear)
 	passPriorityAroundTable(t, g)
-	reqToBlockers(t, g, bear)
+	reqToBlockers(t, g, bear, goat)
 	if err := reqBlock(t, g, bear, wall); err == nil {
 		t.Error("a creature that can't be blocked was blocked")
+	}
+	if err := reqBlock(t, g, goat, wall); err != nil {
+		t.Errorf("the untargeted attacker could not be blocked: %v", err)
 	}
 }
 
