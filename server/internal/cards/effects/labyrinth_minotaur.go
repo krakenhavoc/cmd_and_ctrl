@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Labyrinth Minotaur — Creature — Minotaur {3}{U}, 1/4 (Homelands, #5753):
 //
@@ -32,25 +28,11 @@ import (
 //
 // No simplification.
 func init() {
-	const label = "Labyrinth Minotaur — the creature it blocks doesn't untap during its controller's next untap step"
-	t := On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return b28SelfBlocked(ev, source)
-	}, label, func(g *game.Game, item *game.StackItem) error {
-		attacker := item.Params.Object
-		if attacker.ID == uuid.Nil || !onBattlefield(g, attacker.ID) || g.ObjectEpochForEffect(attacker.ID) != attacker.Epoch {
-			return nil
-		}
-		return DoesntUntapNextUntapStep{Targets: []uuid.UUID{attacker.ID}, Label: label}.Apply(NewContext(g, item))
-	})
-	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-		item := game.NewTriggeredItem(source, label)
-		item.Params.Object = game.ObjectRef{ID: ev.Target, Epoch: g.ObjectEpochForEffect(ev.Target)}
-		return item
-	}
 	Register(Spec{
 		OracleID:     "1e7b075b-1c0f-4c44-a597-5c167a786cb1",
 		Name:         "Labyrinth Minotaur",
 		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{t},
+		Triggered: []game.TriggeredAbility{WheneverThisBlocksItDoesntUntap(
+			"Labyrinth Minotaur — the creature it blocks doesn't untap during its controller's next untap step")},
 	})
 }
