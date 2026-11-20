@@ -236,9 +236,9 @@ func TestHou5534EternalizeMakesAFourFourBlackZombieCopy(t *testing.T) {
 		power, toughness             int
 		keyword                      string
 	}{
-		{"Adorned Pouncer", "Creature — Cat", houAdornedPouncerOracle, "{3}{W}{W}", 1, 1, "double strike"},
-		{"Steadfast Sentinel", "Creature — Human Cleric", houSteadfastSentinelOracle, "{4}{W}{W}", 2, 3, "vigilance"},
-		{"Proven Combatant", "Creature — Human Warrior", houProvenCombatantOracle, "{4}{U}{U}", 1, 1, ""},
+		{"Adorned Pouncer", "Creature — Cat", houAdornedPouncerOracle, "{C}{C}{C}{W}{W}", 1, 1, "double strike"},
+		{"Steadfast Sentinel", "Creature — Human Cleric", houSteadfastSentinelOracle, "{C}{C}{C}{C}{W}{W}", 2, 3, "vigilance"},
+		{"Proven Combatant", "Creature — Human Warrior", houProvenCombatantOracle, "{C}{C}{C}{C}{U}{U}", 1, 1, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -324,7 +324,7 @@ func TestHou5534FrontlineDevastatorPumpsPower(t *testing.T) {
 	advanceToMain(t, g)
 	me := top100ActiveSeat(g)
 	id := b12Push(g, me.ID, "Frontline Devastator", "Creature — Zombie Minotaur Warrior", houFrontlineDevastatorOracle, 3, 3)
-	dcMana(t, g, me.ID, "{1}{R}")
+	dcMana(t, g, me.ID, "{C}{R}")
 	apaActivate(t, g, me, id, 0, game.ActivateAbilityParams{})
 	if p, tough := ptOf(t, g, id); p != 4 || tough != 3 {
 		t.Errorf("it is %d/%d, want 4/3", p, tough)
@@ -337,8 +337,8 @@ func TestHou5534DiscardPumps(t *testing.T) {
 		power, toughness             int
 		wantP, wantT                 int
 	}{
-		{"Merciless Eternal", "Creature — Zombie Cleric", houMercilessEternalOracle, "{2}{B}", 2, 2, 4, 4},
-		{"Burning-Fist Minotaur", "Creature — Minotaur Wizard", houBurningFistMinotaurOracle, "{1}{R}", 2, 1, 4, 1},
+		{"Merciless Eternal", "Creature — Zombie Cleric", houMercilessEternalOracle, "{C}{C}{B}", 2, 2, 4, 4},
+		{"Burning-Fist Minotaur", "Creature — Minotaur Wizard", houBurningFistMinotaurOracle, "{C}{R}", 2, 1, 4, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -368,12 +368,12 @@ func TestHou5534FrilledSandwallaPumpsOnceATurn(t *testing.T) {
 	advanceToMain(t, g)
 	me := top100ActiveSeat(g)
 	id := b12Push(g, me.ID, "Frilled Sandwalla", "Creature — Lizard", houFrilledSandwallaOracle, 1, 1)
-	dcMana(t, g, me.ID, "{1}{G}")
+	dcMana(t, g, me.ID, "{C}{G}")
 	apaActivate(t, g, me, id, 0, game.ActivateAbilityParams{})
 	if p, tough := ptOf(t, g, id); p != 3 || tough != 3 {
 		t.Fatalf("it is %d/%d, want 3/3", p, tough)
 	}
-	dcMana(t, g, me.ID, "{1}{G}")
+	dcMana(t, g, me.ID, "{C}{G}")
 	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Error("the pump was activated a second time this turn")
 	}
@@ -385,7 +385,7 @@ func TestHou5534DevoteeOfStrengthPumpsTarget(t *testing.T) {
 	me := top100ActiveSeat(g)
 	devotee := b12Push(g, me.ID, "Devotee of Strength", "Creature — Snake Wizard", houDevoteeOfStrengthOracle, 3, 2)
 	bear := b12Creature(g, me.ID, "Bear", houBearType, 2, 2)
-	dcMana(t, g, me.ID, "{4}{G}")
+	dcMana(t, g, me.ID, "{C}{C}{C}{C}{G}")
 	apaActivate(t, g, me, devotee, 0, game.ActivateAbilityParams{Targets: cardTarget(bear)})
 	if p, tough := ptOf(t, g, bear); p != 4 || tough != 4 {
 		t.Errorf("the Bear is %d/%d, want 4/4", p, tough)
@@ -399,7 +399,7 @@ func TestHou5534RiverHoopoeGainsAndDraws(t *testing.T) {
 	seedLibrary(me, "A", "B")
 	hoopoe := b12Push(g, me.ID, "River Hoopoe", "Creature — Bird", houRiverHoopoeOracle, 1, 3)
 	life, hand := me.Life, me.Hand.Size()
-	dcMana(t, g, me.ID, "{3}{G}{U}")
+	dcMana(t, g, me.ID, "{C}{C}{C}{G}{U}")
 	apaActivate(t, g, me, hoopoe, 0, game.ActivateAbilityParams{})
 	if me.Life != life+2 {
 		t.Errorf("life %d, want %d", me.Life, life+2)
