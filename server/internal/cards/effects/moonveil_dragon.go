@@ -8,7 +8,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {R}: Each creature you control gets +1/+0 until end of turn."
 //
 // Dawnwing Marshal's team pump at +1/+0: the creatures you control as the
-// ability resolves get it (CR 611.2c), the Dragon included.
+// ability resolves get it (CR 611.2c), the Dragon included. It declares
+// no TeamPump: TestTeamPumpRowsDeclareTheirPump reads only "Creatures you
+// control get" texts.
 //
 // No simplification.
 func init() {
@@ -20,7 +22,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{R}: Each creature you control gets +1/+0 until end of turn.",
 			Cost:    ManaCost("{R}"),
-			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1}, Answers: game.AnswerPump},
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Effect: Do(BoostUntilEOT{
 				Match: And(Creature(), YouControl()), Power: 1,
 				Label: "Moonveil Dragon — each creature you control gets +1/+0",

@@ -24,8 +24,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}, Sacrifice this land: Return a creature card at random from your graveyard to your hand.",
-			Cost:  Plus(ManaCost("{3}"), TapCost(), SacrificeThis()),
+			Label:   "{3}, {T}, Sacrifice this land: Return a creature card at random from your graveyard to your hand.",
+			Cost:    Plus(ManaCost("{3}"), TapCost(), SacrificeThis()),
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ids := graveyardIDs(g, item.Controller, game.Card.IsCreature)
 				pick := g.ChooseAtRandomForEffect(randomDraw(NewContext(g, item)), ids, 1)
