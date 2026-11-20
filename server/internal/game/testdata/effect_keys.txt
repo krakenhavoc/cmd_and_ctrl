@@ -255,6 +255,7 @@ body jace-architect-of-thought/attacker-gets-minus-one-zero
 body jace-reality-sculptor/attacker-gets-minus-five
 body jailbreak/return-equal-or-lesser
 body jaya-fiery-negotiator/damage
+body kelsien-the-plague/experience-counter
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
 body kishla-trawlers/return-to-hand
