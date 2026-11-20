@@ -885,6 +885,10 @@ func TestRavB4GraveShellScarabSacrificesToDraw(t *testing.T) {
 	hand := me.Hand.Size()
 	apaMana(me, "C")
 	apaActivate(t, g, me, scarab, 0, game.ActivateAbilityParams{})
+	// The Scarab is in the graveyard as the draw happens, so its own
+	// dredge is offered (CR 702.52a); declined, the draw goes through.
+	answerOptional(t, g, me, false)
+	passPriorityAroundTable(t, g)
 	if !me.Graveyard.Contains(scarab) {
 		t.Error("the Scarab was not sacrificed")
 	}
