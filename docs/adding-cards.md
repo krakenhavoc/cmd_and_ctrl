@@ -3495,9 +3495,14 @@ copy is created, so the copy's characteristics are already edited when
 protection and the CR 707.10c re-target prompt read them.
 
 **A copy of a PERMANENT spell becomes a token as it resolves**
-(CR 608.3f, CR 111.13), through #923's one token-creation path, so a
-doubler doubles it, the creature's own enters abilities fire, and a
-bounce cannot turn it into a card. Nothing on the card declares that —
+(CR 608.3f, CR 111.13). The token is not "created" (#4994, ADR 0043's
+2026-11-20 amendment): no doubler doubles it, and a "whenever you create a
+token" trigger does not see it, because its arrival is an `EventZoneMove`
+from no zone with `Event.BecameToken` set, not an `EventTokenCreated`. A
+trigger that means "a token entered" must watch `EventETB` or a move onto
+the battlefield, not `EventTokenCreated`. Entry replacements still apply to
+it, the creature's own enters abilities fire, and a bounce cannot turn it
+into a card. Nothing on the card declares that —
 a card that copies a creature spell needs no more than the target
 clause. What is NOT copiable, and must stay off `PrintedValues`: the
 costs paid (`PaidCost.OptionalCosts` — kicker rides the STACK ITEM
