@@ -294,6 +294,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 white and blue Knight with vigilance":                         {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W", "U"}, Keywords: []string{"vigilance"}},
 	"2/2 white and blue Detective":                                     {Name: "Detective", TypeLine: "Token Creature — Detective", Power: 2, Toughness: 2, Colors: []string{"W", "U"}},
 	"3/1 red Dinosaur":                                                 {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 3, Toughness: 1, Colors: []string{"R"}},
+	"1/1 red Dinosaur with haste":                                      {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}}, // #5512: Forbidden Friendship
 	"1/1 white Kithkin Soldier":                                        {Name: "Kithkin Soldier", TypeLine: "Token Creature — Kithkin Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 black and green Worm":                                         {Name: "Worm", TypeLine: "Token Creature — Worm", Power: 1, Toughness: 1, Colors: []string{"B", "G"}},
 	"1/1 black and red Goblin":                                         {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 1, Toughness: 1, Colors: []string{"B", "R"}},
