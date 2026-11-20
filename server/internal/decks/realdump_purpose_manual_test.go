@@ -221,6 +221,8 @@ var reviewedNotAWipe = map[string]string{
 	// S82 BOK batch 1 (#5602).
 	"Yukora, the Prisoner": "its leaves trigger sacrifices only its controller's own non-Ogre creatures: a drawback, not a board",
 
+	// #5521: RNA batch 1.
+	"Azorius Skyguard": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 	// S82 MBS batch 1 (#5576).
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
 }
