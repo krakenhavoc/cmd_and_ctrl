@@ -33,18 +33,3 @@ func eveB1RemoveCounterOnCast(name, colour string) game.TriggeredAbility {
 		name+" — "+game.ColorName(colour)+" spell: remove a -1/-1 counter from this creature",
 		Do(Instruction(stdB64RemoveAMinusCounterFromThis)))
 }
-
-// eveB1CantBlockThis is "Target creature can't block this creature this
-// turn" as an activated ability's body (Shrewd Hatchling): the record bars
-// only blocks of the ability's source, and a target gone by resolution
-// gets nothing (CR 608.2b).
-func eveB1CantBlockThis(label string) Effect {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
-		if !ok {
-			return nil
-		}
-		return CantBlockThisCreatureThisTurn{Blocker: id, Attacker: item.SourceCardID, Label: label}.Apply(ctx)
-	}
-}
