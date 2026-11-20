@@ -49,6 +49,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fde7645a-5f02-4d5f-b38c-8390f325899e",
 		Name:         "Druid's Deliverance",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent | game.AnswerMakesBlocker}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (PreventAllCombatDamageThisTurn{

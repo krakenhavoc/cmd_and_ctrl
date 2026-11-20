@@ -50,10 +50,12 @@ import (
 // about a step the game is no longer in.
 //
 // SCOPE. This is "pay or else, asked of the payer, about the step
-// they are standing in". A pay-unless whose consequence is a draw
-// (Rhystic Study), a Treasure (Smothering Tithe) or a token (Kazuul)
-// is asked of somebody else about nothing the cursor cares about,
-// keeps ADR 0018 §6's latitude, and plays exactly as it did.
+// they are standing in", and the door sets the anchor itself. Since
+// #5793 every other pay-unless a resolution asks takes the same anchor
+// from the engine (resolution_pay_unless.go), because CR 118.12 makes
+// the payment part of the resolution; ADR 0018 §6's latitude is retired.
+// What still differs is ADR 0127: an anchor this door sets keeps the
+// prompt from a standing answer, the derived one does not.
 
 // UpkeepPayUnlessPrompt is the whole of "at the beginning of your
 // upkeep, pay <Cost> unless <consequence>".

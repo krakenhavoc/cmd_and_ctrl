@@ -47,7 +47,7 @@ func init() {
 			},
 			{
 				Label:   "{T}: Target Assembly-Worker creature gets +1/+1 until end of turn.",
-				Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
+				Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1)), game.AnswerPump),
 				Cost:    game.AbilityCost{Tap: true},
 				Targets: TargetCreature("target Assembly-Worker creature", Subtype("Assembly-Worker")),
 				Effect:  boostTargetUntilEOT("Mishra's Factory — +1/+1", 1, 1),

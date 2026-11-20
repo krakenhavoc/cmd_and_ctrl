@@ -183,6 +183,17 @@ func (p ManaPool) shortfallFor(cost ParsedCost, xValue int, ctx ManaSpendContext
 	return paperShortfall{reqs: unpaid, generic: need, favor: ctx.favoredOnX()}
 }
 
+// hasSnow reports whether any requirement the shortfall left unpaid is
+// a snow {S}.
+func (s paperShortfall) hasSnow() bool {
+	for _, r := range s.reqs {
+		if r.req.Snow {
+			return true
+		}
+	}
+	return false
+}
+
 func (s paperShortfall) amount() int { return satAddMana(reqRunsTotal(s.reqs), s.generic) }
 
 // slots is the shortfall one mana at a time, for the picker, except
@@ -193,7 +204,8 @@ func (s paperShortfall) slots() []PaperSlot {
 	out := make([]PaperSlot, 0, min(s.amount(), maxPreallocSlots))
 	for _, r := range s.reqs {
 		opts := append([]string(nil), r.req.Options...)
-		if len(opts) == 0 {
+		// #5986: an {S} is paid by mana of any type (CR 107.4h).
+		if len(opts) == 0 || r.req.Snow {
 			opts = append([]string(nil), paperSymbols...)
 		}
 		out = appendPaperSlots(out, PaperSlot{Symbol: "{" + formatRequirement(r.req) + "}", Options: opts, X: r.x}, r.n)
@@ -277,6 +289,16 @@ func (s paperShortfall) tokensFor(d PaperPayment) ([]ManaToken, error) {
 	}
 	if total != amount {
 		return nil, ErrInvalidPaperPayment
+	}
+	// #5986: a shortfall with an {S} in it is declared paid by snow
+	// mana. Paper mana has no source the engine can look at, so the
+	// declaration is the caster's word for where it came from, as it is
+	// for its colours; without this no declaration could ever pay an
+	// {S} (CR 107.4h).
+	if s.hasSnow() {
+		for i := range pool {
+			pool[i].SourceKinds |= ManaSourceSnow
+		}
 	}
 	if marked > 0 {
 		return s.markedTokens(d, pool)

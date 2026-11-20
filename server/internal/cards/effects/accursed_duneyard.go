@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Accursed Duneyard — Land:
 //
 //	"{T}: Add {C}.
@@ -22,8 +24,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: Regenerate target Shade, Skeleton, Specter, Spirit, Vampire, Wraith, or Zombie.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: Regenerate target Shade, Skeleton, Specter, Spirit, Vampire, Wraith, or Zombie.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: TargetCreature("target Shade, Skeleton, Specter, Spirit, Vampire, Wraith, or Zombie",
 				Or(HasSubtype("Shade"), HasSubtype("Skeleton"), HasSubtype("Specter"), HasSubtype("Spirit"),
 					HasSubtype("Vampire"), HasSubtype("Wraith"), HasSubtype("Zombie"))),

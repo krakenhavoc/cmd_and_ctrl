@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Spearbreaker Behemoth — Creature — Beast {5}{G}{G}, 5/5 (Reprint, #5908):
 //
 //	"Indestructible
@@ -23,7 +25,7 @@ func init() {
 			Label:   "{1}: Target creature with power 5 or greater gains indestructible until end of turn.",
 			Cost:    ManaCost("{1}"),
 			Targets: TargetCreature("target creature with power 5 or greater", PowerGE(5)),
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")), game.AnswerSurvive),
 			Effect:  ebTargetCreatureGainsUntilEOT("indestructible", "Spearbreaker Behemoth — indestructible"),
 		}},
 	})

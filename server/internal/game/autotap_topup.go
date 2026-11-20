@@ -79,59 +79,102 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 	if pool.CanPayFor(cost, xValue, ctx) {
 		return nil
 	}
-	counts := map[string]int{}
 	// #2170: mana that can't pay generic costs is credited to a
 	// coloured symbol before anything else (it can pay nothing else),
 	// is never counted toward the generic demand in `total`, and is
-	// counted apart in ngCounts / ngTotal so the credit can say which
-	// kind it spent.
-	ngCounts := map[string]int{}
+	// counted apart in ngTotal so the credit can say which kind it
+	// spent.
+	//
+	// #5986: and snow mana is counted apart too, because only it pays an
+	// {S} (CR 107.4h). A coloured symbol takes nonsnow mana of its
+	// colour before snow mana, so the snow mana is left for the {S}.
+	type creditKey struct {
+		color    string
+		ng, snow bool
+	}
+	buckets := map[creditKey]int{}
 	total, ngTotal := 0, 0
 	for _, tok := range pool {
 		if ctx.allowsToken(tok) {
 			n := tok.N()
-			counts[tok.Color] += n
-			if tok.noGeneric() {
-				ngCounts[tok.Color] += n
+			k := creditKey{color: tok.Color, ng: tok.noGeneric(), snow: tok.SourceKinds.Has(ManaSourceSnow)}
+			buckets[k] += n
+			if k.ng {
 				ngTotal += n
 			} else {
 				total += n
 			}
 		}
 	}
-	// takeCredit / giveCredit move one token of colour c in and out of
-	// the books, no-generic first.
-	takeCredit := func(c string) (ng bool) {
-		counts[c]--
-		if ngCounts[c] > 0 {
-			ngCounts[c]--
-			ngTotal--
-			return true
+	// creditOrder is the order the buckets of one colour are spent in:
+	// no-generic first, then nonsnow before snow. A snow slot takes only
+	// snow mana.
+	creditOrder := func(c string, snowOnly bool) []creditKey {
+		if snowOnly {
+			return []creditKey{{c, true, true}, {c, false, true}}
 		}
-		total--
+		return []creditKey{{c, true, false}, {c, true, true}, {c, false, false}, {c, false, true}}
+	}
+	has := func(c string, snowOnly bool) bool {
+		for _, k := range creditOrder(c, snowOnly) {
+			if buckets[k] > 0 {
+				return true
+			}
+		}
 		return false
 	}
-	giveCredit := func(c string, ng bool) {
-		counts[c]++
-		if ng {
-			ngCounts[c]++
+	// takeCredit / giveCredit move one token of colour c in and out of
+	// the books, in creditOrder.
+	takeCredit := func(c string, snowOnly bool) creditKey {
+		for _, k := range creditOrder(c, snowOnly) {
+			if buckets[k] > 0 {
+				buckets[k]--
+				if k.ng {
+					ngTotal--
+				} else {
+					total--
+				}
+				return k
+			}
+		}
+		return creditKey{}
+	}
+	giveCredit := func(k creditKey) {
+		buckets[k]++
+		if k.ng {
 			ngTotal++
 		} else {
 			total++
 		}
 	}
 	unpaid := make([]bool, len(cost.Required))
-	var flexible []int
+	var flexible, snow []int
 	for i, req := range cost.Required {
+		if req.Snow {
+			snow = append(snow, i)
+			continue
+		}
 		if req.AnyMana || len(req.Options) != 1 {
 			flexible = append(flexible, i)
 			continue
 		}
-		if c := req.Options[0]; counts[c] > 0 {
-			takeCredit(c)
+		if c := req.Options[0]; has(c, false) {
+			takeCredit(c, false)
 			continue
 		}
 		unpaid[i] = true
+	}
+	// #5986: an {S} takes any snow mana the single-colour symbols left,
+	// colourless first, the mana least use to anything else.
+	for _, i := range snow {
+		unpaid[i] = true
+		for _, c := range genericColorOrder {
+			if has(c, true) {
+				takeCredit(c, true)
+				unpaid[i] = false
+				break
+			}
+		}
 	}
 	need := cost.GenericWithX(xValue)
 
@@ -147,12 +190,12 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 		}
 		i := flexible[k]
 		for _, c := range poolCreditColors(cost.Required[i]) {
-			if counts[c] == 0 {
+			if !has(c, false) {
 				continue
 			}
-			ng := takeCredit(c)
+			key := takeCredit(c, false)
 			credit(k + 1)
-			giveCredit(c, ng)
+			giveCredit(key)
 		}
 		unpaid[i] = true
 		credit(k + 1)

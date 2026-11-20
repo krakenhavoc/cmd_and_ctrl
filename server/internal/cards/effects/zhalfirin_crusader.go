@@ -24,8 +24,8 @@ func init() {
 		PrintedKeywords: []string{game.KeywordFlanking},
 		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Zhalfirin Crusader")},
 		Activated: []ActivatedAbility{
-			redirectRow("{1}{W}: The next 1 damage that would be dealt to this creature this turn is dealt to any target instead.",
-				ManaCost("{1}{W}"), TargetAny(), RedirectDamage{Protect: ShieldThis, Amount: 1, To: RedirectToClause(0)}),
+			alsoAnswers(game.AnswerRemove, redirectRow("{1}{W}: The next 1 damage that would be dealt to this creature this turn is dealt to any target instead.",
+				ManaCost("{1}{W}"), TargetAny(), RedirectDamage{Protect: ShieldThis, Amount: 1, To: RedirectToClause(0)})),
 		},
 	})
 }

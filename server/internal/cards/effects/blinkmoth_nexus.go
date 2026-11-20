@@ -48,7 +48,7 @@ func init() {
 			},
 			{
 				Label:   "{1}, {T}: Target Blinkmoth creature gets +1/+1 until end of turn.",
-				Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
+				Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1)), game.AnswerPump),
 				Cost:    Plus(ManaCost("{1}"), TapCost()),
 				Targets: TargetCreature("target Blinkmoth creature", Subtype("Blinkmoth")),
 				Effect: func(g *game.Game, item *game.StackItem) error {

@@ -1155,7 +1155,9 @@ func targetsStackObject(g *game.Game, refs []game.TargetRef) bool {
 // anything. A bot seat therefore idled until a human answered the tax,
 // which is the opposite of what the ADR decided and of what a human at
 // the same table may do. Both sides now read game.ChoiceBlocksTable, so
-// they cannot disagree again.
+// they cannot disagree again. (#5793 since made a pay_unless asked
+// mid-resolution block, through the same predicate: a Rhystic tax now
+// holds the table while it is asked, for bots and humans alike.)
 func anyBlockingChoiceOpen(g *game.Game) bool {
 	for _, c := range g.PendingChoices {
 		if c != nil && g.ChoicePromptBlocksTable(c) {

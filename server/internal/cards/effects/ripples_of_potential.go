@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "45bcebd0-5e93-4433-b92f-b4c161d04bd6",
 		Name:         "Ripples of Potential",
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive | game.AnswerPump}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return ctx.Game.ProliferateChoosingThenKeyedForEffect(ctx.Controller(), ctx.Source(), ctx.Tail(ripplesProliferated))

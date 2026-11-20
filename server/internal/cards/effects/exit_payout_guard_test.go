@@ -160,6 +160,11 @@ var exitPayoutAllowlist = map[string]string{
 		"life on the target's mana value, not on the destroy happening, so an indestructible target " +
 		"still pays the life. The value is read before the destroy because that is the last moment " +
 		"the permanent is guaranteed findable (CR 608.2h).",
+	"vendetta.go:35": "Vendetta's `toughness` is Death Mutation's read (#5581): \"You lose life equal to " +
+		"that creature's toughness\" is an unconditional clause about a PLAYER, not gated on the destroy " +
+		"happening, so an indestructible target still costs the life, and `if toughness <= 0` only skips " +
+		"a life change of nothing. The value is read before the destroy because that is the last moment " +
+		"the permanent is guaranteed findable (CR 608.2h).",
 }
 
 // exitVerb names one pausable exit and the continuation form a card

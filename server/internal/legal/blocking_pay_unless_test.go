@@ -27,7 +27,7 @@ func TestPayUnlessBlocksTheTableOnlyWhenTheContractSaysSo(t *testing.T) {
 		blocking bool
 	}{
 		{"an upkeep pay-or-else blocks", true},
-		{"a Rhystic tax does not", false},
+		{"a pay-unless queued outside a resolution does not", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newTable(t)
@@ -69,7 +69,7 @@ func TestPayUnlessBlocksTheTableOnlyWhenTheContractSaysSo(t *testing.T) {
 				t.Errorf("the active seat was offered %v while a blocking pay_unless is open", labels(moves))
 			}
 			if !tc.blocking && len(moves) == 0 {
-				t.Error("an ordinary pay_unless stopped the active seat — ADR 0018 §6 says it must not")
+				t.Error("a pay_unless queued outside a resolution stopped the active seat — only one a resolution asks holds the table (#5793)")
 			}
 		})
 	}

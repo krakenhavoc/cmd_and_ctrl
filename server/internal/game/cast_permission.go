@@ -3483,8 +3483,12 @@ func asAnyColorCost(cost ParsedCost) ParsedCost {
 // of any TYPE can be spent" (Hostage Taker). Every requirement,
 // colorless included, is widened to any mana. A hybrid or
 // two-for-one hybrid slot is one slot, paid by one mana of any type.
+//
+// A snow {S} is kept in both folds (#5986): snow is neither a colour
+// nor a type of mana (CR 107.4h), so spending mana as though it were
+// any type does not make it snow mana.
 func asAnyTypeCost(cost ParsedCost) ParsedCost {
-	return widenSlots(cost, func(ColorRequirement) bool { return false })
+	return widenSlots(cost, func(r ColorRequirement) bool { return r.Snow })
 }
 
 // widenSlots marks every requirement `keep` does not name AnyMana and

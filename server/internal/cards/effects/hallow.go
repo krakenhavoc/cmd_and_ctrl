@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "60b6a31f-043e-4de3-ad37-67eec02114f8",
 		Name:         "Hallow",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

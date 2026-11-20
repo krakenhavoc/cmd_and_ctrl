@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8d13fabc-1e0f-41f2-8873-9f44b68f7e43",
 		Name:         "Hindervines",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(combatShieldAgainstCreatures(game.DamageSourceFilter{NoCounters: []string{game.CounterPlusOne}})),
 	})

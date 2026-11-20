@@ -22,6 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Put a card from your hand on top of your library: Prevent all damage that would be dealt by target instant or sorcery spell this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
 			Cost:    PutACardFromHandOnTop(),
 			Targets: instantOrSorcerySpell("target instant or sorcery spell"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

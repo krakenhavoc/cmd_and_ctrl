@@ -110,6 +110,7 @@ var reviewedNotAWipe = map[string]string{
 	"Ill-Timed Explosion":   "damages each creature only if its controller discards two cards, for the greatest mana value among them: no fixed amount a sweep can declare, and none at all when declined",
 	"Abyssal Harvester":     "exiles only the Nightmare tokens its controller controls, not a board",
 	"Hex Magic":             "exiles the cards in its caster's own hand, not a board",
+	"Retract":               "returns only its caster's own artifacts to hand, not a board",
 	"Armageddon":            "destroys lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
 	// it created itself, every player's, never another permanent. #5802:
@@ -127,6 +128,7 @@ var reviewedNotAWipe = map[string]string{
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
 	"The Apprentice's Folly":                   "sacrifices only its controller's own Reflection tokens, not a board",
 	"Bewildering Blizzard":                     "-3/-0 kills nothing",
+	"Hampering Snare":                          "-2/-0 kills nothing",
 	"Marsh Gas":                                "-1/-0 kills nothing",
 	"Mouth of the Storm":                       "-3/-0 until your next turn kills nothing",
 	"Call Forth the Tempest":                   "damage equal to spells cast this turn: no fixed amount or X for a sweep to declare",
@@ -207,11 +209,20 @@ var reviewedNotAWipe = map[string]string{
 	// S82 BNS batch 41.
 	"Waker of Waves": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 
+	// S82 DGM batch 1.
+	"Haunter of Nightveil": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
+
 	// S82 BNS batch 49.
 	"Uncomfortable Chill": "-2/-0 until end of turn to opposing creatures kills nothing, then draws a card",
 
 	// S82 GAP batch 34.
 	"Ruination": "destroys the nonbasic lands, which no sweep class holds alone",
+
+	// S82 BOK batch 1 (#5602).
+	"Yukora, the Prisoner": "its leaves trigger sacrifices only its controller's own non-Ogre creatures: a drawback, not a board",
+
+	// S82 MBS batch 1 (#5576).
+	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

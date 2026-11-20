@@ -26,6 +26,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Hisoka's Guard — you may choose not to untap this creature")},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, {T}: Target creature you control other than this creature has shroud for as long as this creature remains tapped. (It can't be the target of spells or abilities.)",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
 			Cost:    Plus(ManaCost("{1}{U}"), TapCost()),
 			Targets: Another(TargetCreature("target creature you control other than this creature", YouControl())),
 			Effect:  TargetGetsWhileThisRemainsTapped("Hisoka's Guard — shroud while tapped", game.AddKeywordsMod("shroud")),
