@@ -224,9 +224,24 @@ func TestBanonDoesNotOpenOnAnOpponentsTurn(t *testing.T) {
 
 func banonAttack(t *testing.T, g *game.Game, me *game.Player) {
 	t.Helper()
+	banonAttackWith(t, g, me, pushVanillaCreature(g, me.ID, "Grizzly", 2, 2))
+}
+
+// banonAttackWith declares the attackers at the next seat and locks the
+// declaration in, leaving the table in the declare attackers step. The
+// loot's "you may pay {1}" is asked as the trigger resolves and holds the
+// table until it is answered (#5793, CR 118.12), so the caller passes
+// priority to it rather than walking on to combat damage.
+func banonAttackWith(t *testing.T, g *game.Game, me *game.Player, attackers ...uuid.UUID) {
+	t.Helper()
 	opp := g.Seats[(banonSeat(g, me)+1)%len(g.Seats)]
-	attacker := pushVanillaCreature(g, me.ID, "Grizzly", 2, 2)
-	attackWith(t, g, opp.ID, attacker)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range attackers {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatalf("DeclareAttacker %s: %v", id, err)
+		}
+	}
+	lockInAttacks(t, g)
 }
 
 func TestBanonLootsOnceWhenYouAttack(t *testing.T) {
@@ -297,10 +312,9 @@ func TestBanonOffersNothingWithAnEmptyHand(t *testing.T) {
 func TestBanonLootsOncePerAttackNotPerAttacker(t *testing.T) {
 	g, me, _ := banonTable(t)
 	banonHandCard(me, "Fodder", "Sorcery")
-	opp := g.Seats[(banonSeat(g, me)+1)%len(g.Seats)]
 	a := pushVanillaCreature(g, me.ID, "Bear One", 2, 2)
 	b := pushVanillaCreature(g, me.ID, "Bear Two", 2, 2)
-	attackWith(t, g, opp.ID, a, b)
+	banonAttackWith(t, g, me, a, b)
 	passPriorityAroundTable(t, g)
 	prompts := 0
 	for _, c := range g.PendingChoices {

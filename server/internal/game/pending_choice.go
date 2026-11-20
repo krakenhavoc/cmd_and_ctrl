@@ -1119,8 +1119,11 @@ type PendingChoice struct {
 	// (Game.ChoicePromptBlocksTable, choice_gate.go): CR 117.3 does
 	// not let priority pass on with a required action outstanding and
 	// CR 500.2 does not let the step end until it has been taken. Set
-	// only by QueueUpkeepPayUnlessForEffect (upkeep_pay_unless.go),
-	// which is the one door into this shape.
+	// by a door whose card anchors the prompt to its step
+	// (QueueUpkeepPayUnlessForEffect, upkeep_pay_unless.go; a keyed
+	// pay-unless's InThisStep), and since #5793 derived by
+	// QueueChoiceForEffect for every pay_unless a resolution asks
+	// (resolution_pay_unless.go, CR 118.12).
 	//
 	// It replaced a per-card "please block" boolean in #997, for the
 	// reason #951 gives for deriving the other narrowing: the boolean
@@ -1755,6 +1758,10 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 	// ADR 0127 §2: a covered pay_unless or confirm is filed under the
 	// key of the resolution or branch that asks it.
 	g.keyResolutionPromptLocked(&choice)
+	// #5793: a pay_unless a resolution asks is owed in the step it is
+	// asked in. After the key, on purpose: ADR 0127's coverage reads the
+	// card's own step anchor, not this derived one (auto_answer.go).
+	g.oweResolutionPayUnlessInStepLocked(&choice)
 	g.PendingChoices = append(g.PendingChoices, &choice)
 	return choice.ID
 }
