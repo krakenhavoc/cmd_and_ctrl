@@ -44,6 +44,7 @@ Gadwick's First Duel | scry | on a triggered row that is not the card's enters e
 Galadriel of Lothlórien | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Galadriel, Elven-Queen | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Galadriel, Light of Valinor | scry | a modal trigger whose other bullets declare nothing, so the declared one would always be chosen
+Geist of the Archives | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Geological Appraiser | discover | the text makes it conditional or optional
 Glorious Gale | ring | the text makes it conditional or optional
 Gollum, Patient Plotter | ring | on a triggered row that is not the card's enters effect, which nothing prices
