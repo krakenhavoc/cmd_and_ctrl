@@ -487,6 +487,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedBnsHumanRogueToken,
 	// S82 BNS batch 51: Ozox, the Clattering King's Jumblebones.
 	printedBnsB51JumblebonesToken,
+	// S82 GAP batch 56: Ral and the Implicit Maze's Spellgorger Weird.
+	printedGapB56SpellgorgerWeirdToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
