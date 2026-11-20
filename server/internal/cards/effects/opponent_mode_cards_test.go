@@ -90,7 +90,6 @@ func omStartFatalLore(t *testing.T) (g *game.Game, spell uuid.UUID, mine, theirs
 // the prompt, and nobody else does; it names the spell and its caster.
 func TestFatalLoreTheOpponentChoosesTheMode(t *testing.T) {
 	g := newCatalogGame(t)
-	me := g.Seats[0]
 	if _, err := omCast(t, g, "Fatal Lore", omFatalLore, game.CastSpellParams{Modes: []int{0}}); !errors.Is(err, game.ErrInvalidParam) {
 		t.Fatalf("a caster naming the mode: %v, want ErrInvalidParam", err)
 	}
