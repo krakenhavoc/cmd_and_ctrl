@@ -498,6 +498,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
 	printedGapB05BlackLotusToken,
 	printedGapB05LordOfThePitToken,
+	// S82 C14 batch 1 (#5553): Freyalise, Llanowar's Fury's Elf Druid.
+	printedC14ElfDruidToken,
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
 	// size is its controller's experience counters.
 	printedC15DaxosSpiritToken,

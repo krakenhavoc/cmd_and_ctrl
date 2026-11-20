@@ -116,6 +116,7 @@ body death-to-our-enemies/divided-damage
 body decayed/sacrifice
 body decayed/schedule
 body delayed/biolume-egg-return-transformed
+body delayed/daretti-scrap-savant-return
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
 body desperate-measures/draw-two
