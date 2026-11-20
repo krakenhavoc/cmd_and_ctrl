@@ -20,7 +20,7 @@ func init() {
 		Purpose:        game.Purpose{Draws: 3},
 		OnResolve: ResolveSteps(
 			DrawCards{N: 3},
-			eldB1IfAdamant("U", Scry{N: 3}),
+			eldB1IfAdamantSpent("U", Scry{N: 3}),
 		),
 	})
 }

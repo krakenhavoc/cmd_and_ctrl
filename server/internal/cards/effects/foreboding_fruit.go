@@ -23,7 +23,7 @@ func init() {
 		Purpose:        ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2}),
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error { return b32TargetPlayerDrawsAndLosesLife(ctx.Item, ctx, 2, 2) }),
-			eldB1AdamantFood("B"),
+			eldB1AdamantSpentFood("B"),
 		),
 	})
 }

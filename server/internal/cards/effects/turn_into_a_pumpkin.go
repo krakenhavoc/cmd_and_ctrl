@@ -23,7 +23,7 @@ func init() {
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error { return bounceTheTarget(ctx.Item, ctx) }),
 			DrawCards{N: 1},
-			eldB1AdamantFood("U"),
+			eldB1AdamantSpentFood("U"),
 		),
 	})
 }
