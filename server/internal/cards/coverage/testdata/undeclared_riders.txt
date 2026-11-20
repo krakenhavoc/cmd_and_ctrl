@@ -94,6 +94,7 @@ Sauron, the Dark Lord | amass | on a triggered row that is not the card's enters
 Sauron, the Dark Lord | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Scroll of Isildur | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Season of Growth | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Sigiled Skink | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Sméagol, Helpful Guide | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Swashbuckler's Whip | discover | on an ability the card grants, which no catalog row declares
 Sylvan Anthem | scry | on a triggered row that is not the card's enters effect, which nothing prices

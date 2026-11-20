@@ -18,15 +18,19 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisDies("Koma's Faithful — each player mills three cards", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, p := range apnapPlayers(g) {
-					if err := (MillCards{Player: p, N: 3}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
+			WhenThisDies("Koma's Faithful — each player mills three cards", eachPlayerMillsThree),
 		},
 	})
+}
+
+// eachPlayerMillsThree is "each player mills three cards", every player in
+// APNAP order (Koma's Faithful, Returned Reveler).
+func eachPlayerMillsThree(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, p := range apnapPlayers(g) {
+		if err := (MillCards{Player: p, N: 3}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
