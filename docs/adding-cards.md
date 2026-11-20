@@ -1217,6 +1217,7 @@ func init() {
 | "until end of turn" | `DurationUntilEndOfTurn(ctx)` | that turn's cleanup step (CR 514.2) |
 | "until your next turn" | `DurationUntilYourNextTurn(ctx, player)` | as that player's next turn begins, before untap — and when a departed player's turn *would have* begun (CR 800.4m) |
 | "until your next upkeep" | `DurationUntilYourNextUpkeep(ctx, player)` | as that player's next upkeep step begins, after untap and before the upkeep's triggers go on the stack (CR 503.1a); a second upkeep in one turn ends it, a skipped one doesn't, and a departed player's ends as their turn *would have* begun (CR 800.4m) (#5737) |
+| "this turn and next turn" | `DurationThisTurnAndNextTurn(ctx)` | at the cleanup step of the turn after this one, whoever takes it: two turns, never a round, and an extra turn taken right after this one is the next turn (CR 500.7, 514.2) (#5718) |
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
 | "this combat" / "until end of combat" | `DurationUntilEndOfCombat(ctx)` (second return false outside a combat phase: register nothing) | as the end of combat step ends, or an effect ends the phase (CR 511.3, 724.2d); an additional combat phase is a different combat (#2027) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
@@ -4390,6 +4391,18 @@ creature's CONTROLLER's opponents, this protects against the CASTER's,
 and they differ the moment the target is somebody else's creature. It is
 a data record the targeting gate reads live, so a hexproof waiver can't
 lift it.
+
+**"Players and permanents can't be the targets of spells or activated
+abilities"** for a duration (Peace Talks, #5718) is
+`Game.PlayersAndPermanentsCantBeTargetedForEffect(source, controller,
+duration, label)`: one table-wide record over every player and every
+permanent, read live. It refuses a spell (an Aura spell too, CR 303.4a)
+and an activated ability, and lets a triggered ability (or a copy of one)
+through. The walk knows which it is asking for through
+`TargetSource.IsSpell` and `TargetSource.IsTriggered`: a trigger's walk is
+built with `WithTrigger`, which marks it, and anything else is a spell's
+or an activation's. Spells on the stack and cards in other zones are not
+covered.
 
 **A clause relative to the event that fired the trigger** — "Destroy
 target artifact that opponent controls", where "that opponent" is the
