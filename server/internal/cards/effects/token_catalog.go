@@ -490,6 +490,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
 	printedGapB05BlackLotusToken,
 	printedGapB05LordOfThePitToken,
+
+	// Moira Brown, Guide Author's Wasteland Survival Guide (Fallout, #5948).
+	printedGapB64SurvivalGuideToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
