@@ -32,6 +32,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
+  - [Paying {S}: snow mana (#5986, CR 107.4h)](#paying-s-snow-mana-5986-cr-1074h)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
@@ -2233,6 +2234,44 @@ touch it:
 A caveat that says "pays 2 life instead of {B}" goes stale the day a card
 declares `LifeForMana`; the `paying 2 life instead of black mana`
 coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
+
+### Paying {S}: snow mana (#5986, CR 107.4h)
+
+An `{S}` in a cost is written as printed, in the cost string, and needs
+nothing else on the card:
+
+```go
+Activated: []ActivatedAbility{selfPumpRow("Hailstorm Valkyrie", "{S}{S}", 2, 2)}, // {S}{S}: +2/+2
+Cost:      ManaCost("{1}{S}"),                                                  // Grim Draugr
+```
+
+A mana cost with `{S}` (`Card.ManaCost` from Scryfall) is read the same
+way. `ParseCost` makes each `{S}` one `ColorRequirement` with `Snow` set
+(its `Options` read `{"C"}`, kept for old restore points; never read them
+for a snow slot). What the engine does with it:
+
+- **Only mana a snow source made pays it, of any colour or colourless**
+  (CR 107.4h). The bit is `ManaSourceSnow` on the token, snapshotted from
+  the producing permanent's snow supertype (CR 205.4g) when the mana is
+  made. Every solver asks `ColorRequirement.PaidBy(color, snow)`: the pool
+  payment, the auto-tapper (`tapSource.Snow`), the pool top-up and so the
+  legal-move list and the greyed actions. A Sol Ring's `{C}` does not pay
+  it; a Snow-Covered Forest's `{G}` does.
+- **No reduction removes it.** A generic reduction never reaches it
+  (CR 107.4h), and a reduction by `{C}` reduces generic instead
+  (CR 118.7b). A reduction BY `{S}` is generic (CR 118.7g).
+- **No spend grant widens it.** "Spend mana as though it were mana of any
+  color / type" leaves it alone: snow is neither a colour nor a type.
+- **Convoke, improvise and the like can't pay it:** a tapped creature is
+  not mana.
+- A mana ability that owes `{S}` itself is not auto-tapped (the costed
+  planner refuses it); it is still activatable by hand.
+
+"Spent to cast this spell" readings of `{S}` (Blessing of Frost's "the
+amount of {S} spent", Berg Strider's "if {S} was spent") are a separate
+question, read off the payment the way "if mana from a Treasure was spent"
+is: `ManaSpent.CountFrom(game.ManaSourceSnow)`. No catalog card reads it
+yet. A card whose only snow text is an `{S}` in a cost needs no caveat.
 
 ### "Players can't pay life to cast spells or to activate abilities" (#5660)
 
