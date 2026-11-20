@@ -134,6 +134,18 @@ type TargetSource struct {
 	// 8472, #4973), where CR 702.16b's protection reads both.
 	spell bool
 
+	// triggered says the walk's source is a TRIGGERED ability (CR
+	// 113.3c), and not a spell or an activated ability (#5718). Set by
+	// WithTrigger, which every trigger's target walk builds its source
+	// through (the harvest's fillable check, the mode prompt, each pick
+	// step and its answer), by stackItemSourceLocked for a triggered item
+	// (the resolution re-check, CR 608.2b) and by copyTargetSourceLocked
+	// for a copy of one (CR 707.10). Read through IsTriggered by a bar on
+	// "spells or activated abilities" (Peace Talks), which a triggered
+	// ability passes. A source with neither flag is a spell's walk, an
+	// activation's, or no source at all.
+	triggered bool
+
 	// castValues is the walked item's StackItem.CastValues, for a clause
 	// whose answer was fixed as the spell was cast
 	// (TargetSpec.AsCastOpponentSlot, #5860). Nil while the spell is
@@ -153,10 +165,16 @@ type TargetSource struct {
 // spell on the stack or a copy of one) rather than an ability.
 func (s TargetSource) IsSpell() bool { return s.spell }
 
+// IsTriggered reports whether the source is a triggered ability (or a
+// copy of one) rather than a spell or an activated ability (#5718).
+func (s TargetSource) IsTriggered() bool { return s.triggered }
+
 // WithTrigger is this source judging a clause for the triggered ability
-// the event `tc` fired. A zero context (one that did not Fire) leaves
-// the source as it was.
+// the event `tc` fired. The source is a triggered ability's either way
+// (IsTriggered); a zero context (one that did not Fire, a CR 603.12
+// reflexive trigger's) attaches no event.
 func (s TargetSource) WithTrigger(tc TriggerContext) TargetSource {
+	s.triggered = true
 	if !tc.Fired() {
 		return s
 	}
@@ -370,6 +388,9 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 	src.castValues = item.CastValues
 	// #5771: "that player controls" reads the opponent who chose the mode.
 	src.modeChooser = item.ModeChooser
+	// #5718: a triggered item is judged as a triggered ability's walk,
+	// whatever its source object is now.
+	src.triggered = item.Kind == StackItemTriggered
 	if item.Trigger != nil {
 		// #3860: a triggered item re-checks a clause that is relative to
 		// its event ("that opponent controls") against the event it

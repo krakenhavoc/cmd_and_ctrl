@@ -596,6 +596,13 @@ const (
 	// belongs to one of them. The targeting choke point reads it
 	// (targeting_bar.go).
 	ModCantBeTargetedByOpponents ModKind = "cantBeTargetedByOpponents"
+	// ModCantBeTargetedBySpellsOrActivated is "players and permanents
+	// can't be the targets of spells or activated abilities" for a
+	// duration (Peace Talks, #5718). Scope ScopeGame: every player and
+	// every permanent, read live (CR 611.2c). Reads nothing. A triggered
+	// ability still targets, and nothing about the objects changes. The
+	// targeting choke point reads it (targeting_bar_table.go).
+	ModCantBeTargetedBySpellsOrActivated ModKind = "cantBeTargetedBySpellsOrActivated"
 )
 
 // ModBecomeCopy is "<affected> becomes a copy of <object> [until end of
@@ -1276,6 +1283,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #3860: Vines of Vastwood's "can't be the target of spells or
 	// abilities your opponents control this turn".
 	ModCantBeTargetedByOpponents: {reader: readerTargeting},
+	// #5718: Peace Talks' table-wide bar on spells and activated
+	// abilities.
+	ModCantBeTargetedBySpellsOrActivated: {reader: readerTargeting},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named

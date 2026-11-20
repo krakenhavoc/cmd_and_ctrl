@@ -263,6 +263,30 @@ const (
 	// and no longer.
 	UntilYourNextUpkeep
 
+	// ThisTurnAndNextTurn is "this turn and next turn" (#5718, Peace
+	// Talks): the effect lasts through the turn it was made in and the
+	// turn after it, WHOEVER takes that turn, and ends at that next
+	// turn's cleanup step (CR 514.2). It is not "until the end of your
+	// next turn" (UntilEndOfYourNextTurnDuration), which in a four-seat
+	// game is three turns later: the card's ruling (2004-10-04) says it
+	// "affects exactly two turns, not a full round of turns", and "could
+	// affect the same player twice if they have two turns in a row", so
+	// an extra turn taken right after this one (CR 500.7) is the next
+	// turn.
+	//
+	// The fourteenth kind, appended after UntilYourNextUpkeep so every
+	// persisted int keeps its meaning; a binary from before it refuses a
+	// file carrying it through Known.
+	//
+	// The stamp is AfterTurn, the Turn.Seq it was made in, which every
+	// turn that begins raises by one, extra turns included. The cleanup
+	// step of a turn whose Seq is past the stamp ends it, which is the
+	// next turn's (the turn it was made in never counts); and the
+	// beginning of any turn more than one past the stamp ends it too, the
+	// backstop for a next turn that ended early without a cleanup step
+	// (CR 800.4m, ADR 0059 Decision 6), the way UntilEndOfTurn has one.
+	ThisTurnAndNextTurn
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -446,8 +470,11 @@ func (d Duration) Problem() string {
 			return fmt.Sprintf("duration condition %d joined by Also", c)
 		}
 	}
-	if d.Kind != UntilEndOfItsControllersNextTurn && d.AfterTurn != 0 {
+	if d.Kind != UntilEndOfItsControllersNextTurn && d.Kind != ThisTurnAndNextTurn && d.AfterTurn != 0 {
 		return fmt.Sprintf("a next-turn stamp on a %s duration", d.Kind)
+	}
+	if d.Kind == ThisTurnAndNextTurn && d.AfterTurn < 0 {
+		return "a this-turn-and-next-turn duration names no turn"
 	}
 	if d.Kind == UntilEndOfItsControllersNextTurn && (d.Pinned == uuid.Nil || d.AfterTurn < 0) {
 		return "an until-its-controller's-next-turn duration names no creature"
@@ -655,8 +682,9 @@ type Duration struct {
 
 	// AfterTurn is the Turn.Seq an UntilEndOfItsControllersNextTurn
 	// duration was made in (#2567): only a later turn's cleanup can end
-	// it. Zero, and omitted, for every other kind; Problem refuses it
-	// there.
+	// it. A ThisTurnAndNextTurn duration (#5718) carries the same stamp:
+	// the cleanup of the turn after it ends it. Zero, and omitted, for
+	// every other kind; Problem refuses it there.
 	AfterTurn int `json:"AfterTurn,omitempty"`
 
 	// Also is the rest of a conjunction (ADR 0109 §3, CR 611.2b): a
@@ -798,6 +826,13 @@ func (g *Game) UntilYourNextUpkeepDuration(player uuid.UUID) Duration {
 		ExpiresAtTurnsBegun:    turns,
 		ExpiresAfterTurnsBegun: upkeeps,
 	}
+}
+
+// ThisTurnAndNextTurnDuration is "this turn and next turn" (#5718),
+// stamped with the turn in progress: see the ThisTurnAndNextTurn kind.
+// Caller must hold g.mu.
+func (g *Game) ThisTurnAndNextTurnDuration() Duration {
+	return Duration{Kind: ThisTurnAndNextTurn, AfterTurn: g.Turn.Seq}
 }
 
 // UntilNextEndStepDuration is "until the next end step" (any player's),
@@ -1313,6 +1348,11 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		}
 		c, ok := g.battlefieldCardLocked(d.Pinned)
 		return ok && c.Controller == g.activePlayerIDLocked()
+	case ThisTurnAndNextTurn:
+		// The next turn's cleanup step (CR 514.2), whoever's turn it is
+		// (#5718), or any turn after that one as it begins: the backstop
+		// for a next turn that ended without a cleanup step.
+		return (endOfTurn && g.Turn.Seq > d.AfterTurn) || g.Turn.Seq > d.AfterTurn+1
 	case Indefinite, WhileInZone:
 		// Neither ends on a turn boundary. WhileInZone ends on a ZONE
 		// change, which CR 400.7 answers on the permission itself —
@@ -1537,6 +1577,8 @@ func (k DurationKind) String() string {
 		return "until the next end step"
 	case UntilYourNextUpkeep:
 		return "until your next upkeep"
+	case ThisTurnAndNextTurn:
+		return "this turn and next turn"
 	}
 	return "unknown duration"
 }

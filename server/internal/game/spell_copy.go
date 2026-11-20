@@ -489,11 +489,15 @@ func (g *Game) queueCopyTargetStepLocked(f *copyFrame) bool {
 func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
 	if cf.item.Kind != StackItemSpell && cf.item.SourceCardID != uuid.Nil {
 		if rec, ok := g.departedAbilitySourceLocked(&cf.item); ok {
-			return SourceSnapshot(cf.controller, lastKnownSourceCharacteristics(rec))
+			src := SourceSnapshot(cf.controller, lastKnownSourceCharacteristics(rec))
+			// #5718: a copy of a triggered ability is one (CR 707.10).
+			src.triggered = cf.item.Kind == StackItemTriggered
+			return src
 		}
 	}
 	src := SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
 	src.spell = cf.item.Kind == StackItemSpell
+	src.triggered = cf.item.Kind == StackItemTriggered
 	// #5860, CR 707.10: a copy keeps what its original fixed as it was cast.
 	src.castValues = cf.item.CastValues
 	// #5771, CR 707.10: and the opponent who chose its mode.

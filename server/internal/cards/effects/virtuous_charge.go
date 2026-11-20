@@ -1,0 +1,19 @@
+package effects
+
+// Virtuous Charge — Sorcery {2}{W} (Portal Three Kingdoms, #5622):
+//
+//	"Creatures you control get +1/+1 until end of turn."
+//
+// Warrior's Charge's body (creaturesYouControlGetUntilEOT): the creatures
+// you control as it resolves (CR 611.2c), pumped until cleanup
+// (CR 514.2).
+//
+// No simplification.
+func init() {
+	Register(Spec{
+		OracleID:     "5315ed83-cb93-4522-b439-3784e7f31e37",
+		Name:         "Virtuous Charge",
+		Completeness: CompletenessFull,
+		OnResolve:    creaturesYouControlGetUntilEOT(1, 1, "Virtuous Charge — creatures you control get +1/+1"),
+	})
+}
