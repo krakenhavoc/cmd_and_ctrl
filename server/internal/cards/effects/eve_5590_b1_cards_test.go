@@ -235,6 +235,13 @@ func TestEve5590B1HatchlingsLoseACounterPerSpellOfTheirColours(t *testing.T) {
 			}
 			eveCastColoured(t, g, me, "{"+tc.first+"}{"+tc.second+"}")
 			passPriorityAroundTable(t, g)
+			// The two triggers go on the stack together, and their
+			// controller is asked to order them (CR 603.3b).
+			if triggerOrderPrompt(g) == nil {
+				t.Fatalf("a two-colour spell put no trigger-order prompt up: one trigger, not two")
+			}
+			answerTriggerOrderInOfferedOrder(t, g)
+			passPriorityAroundTable(t, g)
 			if got := minusCounters(g, id); got != 1 {
 				t.Errorf("after a two-colour spell: %d counters, want 1", got)
 			}
