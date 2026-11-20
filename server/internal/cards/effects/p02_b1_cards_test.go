@@ -310,13 +310,13 @@ func TestP02B1CantBlockAndCantBeBlocked(t *testing.T) {
 
 func TestP02B1GoblinGliderFliesButCantBlock(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	me := g.Seats[0]
 	glider := b12Push(g, me.ID, "Goblin Glider", "Creature — Goblin", p02B1GoblinGliderOracle, 1, 1)
 	if !hasEffectiveKeyword(t, g, glider, "flying") {
 		t.Error("Goblin Glider has no flying")
 	}
 	g = newCatalogGame(t)
-	me, opp = g.Seats[0], g.Seats[1]
+	me, opp := g.Seats[0], g.Seats[1]
 	attacker := porFlyer(g, me.ID, "Bird")
 	glider = b12Push(g, opp.ID, "Goblin Glider", "Creature — Goblin", p02B1GoblinGliderOracle, 1, 1)
 	if err := porBlock(t, g, attacker, opp.ID, glider); err == nil {
