@@ -3828,6 +3828,7 @@ tail then/arcum-dagsson-search
 tail then/audacious-swap-exiled
 tail then/audacious-swap-shuffle-exile
 tail then/aven-interrupter-plot
+tail then/awaken-the-sky-tyrant-dragon
 tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen

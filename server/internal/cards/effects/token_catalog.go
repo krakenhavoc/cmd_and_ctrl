@@ -490,6 +490,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
 	printedGapB05BlackLotusToken,
 	printedGapB05LordOfThePitToken,
+	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
+	// size is its controller's experience counters.
+	printedC15DaxosSpiritToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
