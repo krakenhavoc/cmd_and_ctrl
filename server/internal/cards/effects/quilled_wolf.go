@@ -16,7 +16,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{5}{G}: This creature gets +4/+4 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 4, Toughness: 4}},
 			Cost:    ManaCost("{5}{G}"),
 			Effect:  thisGetsUntilEndOfTurn(4, 4, "Quilled Wolf — +4/+4 until end of turn"),
 		}},

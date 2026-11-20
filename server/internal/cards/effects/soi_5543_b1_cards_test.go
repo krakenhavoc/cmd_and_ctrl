@@ -285,7 +285,7 @@ func TestSoiB1GisasBiddingIsCastForItsMadnessCost(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	bidding := torB1LootIntoExile(t, g, "Gisa's Bidding", "Sorcery", soiB1GisasBiddingOracle)
-	dcMana(t, g, me.ID, "{2}{B}")
+	dcMana(t, g, me.ID, "{C}{C}{B}")
 	if err := g.CastSpell(me.ID, bidding, game.CastSpellParams{
 		Strict: true, FromZone: "exile", AlternativeCost: game.AltCostKeyMadness,
 	}); err != nil {
@@ -302,7 +302,7 @@ func TestSoiB1TwinsOfMaurerEstateIsCastForItsMadnessCost(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	twins := torB1LootIntoExile(t, g, "Twins of Maurer Estate", "Creature — Vampire", soiB1TwinsOracle)
-	dcMana(t, g, me.ID, "{2}{B}")
+	dcMana(t, g, me.ID, "{C}{C}{B}")
 	if err := g.CastSpell(me.ID, twins, game.CastSpellParams{
 		Strict: true, FromZone: "exile", AlternativeCost: game.AltCostKeyMadness,
 	}); err != nil {
