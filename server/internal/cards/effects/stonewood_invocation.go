@@ -21,7 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordSplitSecond},
 		Targets:         TargetCreature("target creature"),
-		Purpose:         ForTargets(BenefitUntilEOT(0, 5, 5, "shroud")),
+		Purpose:         withAnswers(ForTargets(BenefitUntilEOT(0, 5, 5, "shroud")), game.AnswerProtect|game.AnswerPump),
 		OnResolve:       tspB1PumpAndGrantUntilEOT(5, 5, "shroud", "Stonewood Invocation"),
 	})
 }

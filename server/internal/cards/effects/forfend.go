@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Forfend — Instant {1}{W}:
 //
 //	"Prevent all damage that would be dealt to creatures this turn."
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "59f8f2c4-d30d-411c-9fac-a5a3219bb124",
 		Name:         "Forfend",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromSource{Protect: ShieldCreatures}),
 	})

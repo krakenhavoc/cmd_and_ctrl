@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "35ba0e70-da7c-4ed9-b8ec-7dd5c5ce110e",
 		Name:         "Eerie Interference",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromSource{Protect: ShieldYouAndYourCreatures, Queries: []game.PermanentQuery{QueryTypes("creature")}}),
 	})

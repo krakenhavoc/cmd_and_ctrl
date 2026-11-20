@@ -48,7 +48,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Corrupted — {T}: Target 1/1 creature gets +2/+1 until end of turn. Activate only if an opponent has three or more poison counters.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 2, 1)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 2, 1)), game.AnswerPump),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target 1/1 creature", func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 				return c.CurrentPower() == 1 && c.CurrentToughness() == 1

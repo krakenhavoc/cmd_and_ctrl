@@ -311,7 +311,11 @@ type AdditionalCost struct {
 	// "discard a card or pay 3 life". Paid on the cost path through
 	// PayLifeForEffect, as PayLifeX is, and refused at announce when
 	// the caster's life total is below it. Zero means no such
-	// component. Added by ADR 0100 §2 for the either/or branches.
+	// component. Added by ADR 0100 §2 for the either/or branches; its
+	// 2026-11-20 amendment (#5782) lets an optional cost carry it too
+	// (Slaughter's "Buyback—Pay 4 life", effects.BuybackPayLife), summed
+	// into the same plan total (planLife) and refused at announce by the
+	// same CR 119.4 check.
 	PayLife int
 
 	// Energy is "pay N {E}" as part of this cost, once per payment (CR

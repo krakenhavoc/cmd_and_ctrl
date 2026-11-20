@@ -32,15 +32,19 @@ func passUntilCopyOnStack(t *testing.T, g *game.Game) uuid.UUID {
 
 // S12 (owner decision D6, ADR 0104): Double Major copies a Grizzly Bears
 // spell, and Aethersnatch steals the copy on the stack. The copy becomes a
-// token as it resolves (CR 608.3f), and the thief's Doubling Season and
-// Parallel Lives ask for the CR 616 order of its creation. The copy's
-// control records ride the creation's tail as data, so the order prompt is
-// a restore point, and the restored answer makes four tokens that are the
-// thief's with the copy's controller as their default (CR 110.2b).
+// token as it resolves (CR 608.3f), and two entry replacements ask the
+// thief, its controller, for the CR 616 order of its entry. The copy's
+// control records ride the entry's tail as data, so the order prompt is a
+// restore point, and the restored answer puts one token onto the
+// battlefield that is the thief's with the copy's controller as its
+// default (CR 110.2b). #4994: the token is not created (CR 111.13), so the
+// thief's Doubling Season and Parallel Lives neither double it nor give
+// the prompt; they stay on the board to show it.
 func TestCensusS12AStolenPermanentSpellCopysTokenIsARestorePoint(t *testing.T) {
 	g := newCatalogGame(t)
 	caster, thief := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
-	ds, pl := tokenOrderBoard(g, thief.ID)
+	tokenOrderBoard(g, thief.ID)
+	pa, pb := seedTokenEntryOrderProbes(g, thief.ID)
 	spell := castCreatureSpellForCopy(t, g, "Grizzly Bears", "Creature — Bear", "oracle-bears", 2, 2)
 	castCatalogSpell(t, g, "Double Major", "Instant", oracleDoubleMajor,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
@@ -55,15 +59,15 @@ func TestCensusS12AStolenPermanentSpellCopysTokenIsARestorePoint(t *testing.T) {
 		t.Fatalf("the order prompt went to %s, want the thief %s", g.PendingChoices[0].Chooser, thief.ID)
 	}
 
-	g = strictRestoreWithFrame(t, g, game.ReplacementResumeCreateTokens)
+	g = strictRestoreWithFrame(t, g, game.ReplacementResumeMoveTail)
 	if tokens, _ := copiesOnBattlefield(g, "Grizzly Bears"); len(tokens) != 0 {
 		t.Fatalf("the restored table made %d tokens before the order", len(tokens))
 	}
-	answerOrderBySource(t, g, ds, pl)
+	answerOrderBySource(t, g, pa, pb)
 	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
 	tokens, _ := copiesOnBattlefield(g, "Grizzly Bears")
-	if len(tokens) != 4 {
-		t.Fatalf("%d token copies, want one doubled twice", len(tokens))
+	if len(tokens) != 1 {
+		t.Fatalf("%d token copies, want one: the copy's token is not created, so nothing doubles it (CR 111.13)", len(tokens))
 	}
 	for _, tok := range tokens {
 		if tok.Controller != thief.ID {

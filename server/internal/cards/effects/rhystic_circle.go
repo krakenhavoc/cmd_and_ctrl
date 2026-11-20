@@ -30,7 +30,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{1}: Any player may pay {1}. If no one does, the next time a source of your choice would deal damage to you this turn, prevent that damage.",
 			Cost:    ManaCost("{1}"),
-			Purpose: preventsDamageUnlessTargeted(nil),
+			Purpose: preventsDamage(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return AnyPlayerPays{
 					Cost:     "{1}",

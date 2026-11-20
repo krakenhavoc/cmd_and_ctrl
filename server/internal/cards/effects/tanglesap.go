@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a533df83-782f-4f77-a0be-312ae56f6447",
 		Name:         "Tanglesap",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: sourceShieldSpell(combatShieldAgainstCreatures(game.DamageSourceFilter{
 			Except: []game.PermanentQuery{{Keyword: "trample"}},

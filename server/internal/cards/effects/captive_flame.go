@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Captive Flame — Enchantment {2}{R} (Saviors of Kamigawa, #5601):
 //
 //	"{R}: Target creature gets +1/+0 until end of turn."
@@ -15,7 +17,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{R}: Target creature gets +1/+0 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 1, 0)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 0)), game.AnswerPump),
 			Cost:    ManaCost("{R}"),
 			Targets: TargetCreature("target creature"),
 			Effect:  neoB07TargetGetsUntilEOT("Captive Flame — +1/+0 until end of turn", 1, 0),

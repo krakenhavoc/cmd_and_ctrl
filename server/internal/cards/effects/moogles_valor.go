@@ -43,6 +43,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "9627ed9a-5ade-412d-bf8d-f0705b1c9405",
 		Name:         "Moogles' Valor",
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive | game.AnswerMakesBlocker}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The keyword waits for a prompt the Moogles' creation asks (CR 608.2c, #4155).

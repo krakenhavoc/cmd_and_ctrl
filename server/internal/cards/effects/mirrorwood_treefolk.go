@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Mirrorwood Treefolk — Creature — Treefolk {3}{G}, 2/4:
 //
 //	"{2}{R}{W}: The next time damage would be dealt to this creature this
@@ -18,9 +20,9 @@ func init() {
 		Name:         "Mirrorwood Treefolk",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			redirectRow("{2}{R}{W}: The next time damage would be dealt to this creature this turn, that damage is dealt to any target instead.",
+			alsoAnswers(game.AnswerRemove, redirectRow("{2}{R}{W}: The next time damage would be dealt to this creature this turn, that damage is dealt to any target instead.",
 				ManaCost("{2}{R}{W}"), TargetAny(),
-				RedirectDamage{Protect: ShieldThis, Next: true, To: RedirectToClause(0)}),
+				RedirectDamage{Protect: ShieldThis, Next: true, To: RedirectToClause(0)})),
 		},
 	})
 }

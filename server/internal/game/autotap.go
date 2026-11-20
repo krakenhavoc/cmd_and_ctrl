@@ -920,6 +920,17 @@ type tapSource struct {
 	// plan has to name when that mana funds a Signet (fundToken).
 	TriggerFrom []uuid.UUID
 
+	// Snow is whether the source's OWN slots make snow mana: the
+	// permanent has the snow supertype (CR 205.4g) when it is gathered,
+	// read off the same snapshot the minted tokens carry
+	// (manaSourceKindsOf). Only snow mana pays an {S} (CR 107.4h,
+	// #5986), so slotPays reads it. A trigger slot's mana comes from
+	// the trigger's permanent, not this one, and is planned as nonsnow:
+	// the weaker answer, and the clone check (planFundsLocked) is still
+	// the payment's own solver. False for a card in a hand or graveyard,
+	// which is not a permanent (manaSourceKindsLocked).
+	Snow bool
+
 	// PinnedSlots fixes the colour of each of the source's own slots
 	// for a candidate the planner expanded per pick (ADR 0074 amendment,
 	// item 4): a source with two or more picks whose trigger mana
@@ -1140,9 +1151,12 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			// this source is. The AMOUNT it produces is priced above and
 			// the KINDS it produces are unaffected by that — CR 106.12b
 			// replaces how much mana is produced, not what produced it.
-			wanted := wish.kindSet() != 0 && manaSourceKindsOf(c).HasAny(wish.kindSet())
+			kinds := manaSourceKindsOf(c)
+			wanted := wish.kindSet() != 0 && kinds.HasAny(wish.kindSet())
 			proto := tapSource{
 				CardID: c.InstanceID,
+				// #5986: what pays an {S} (CR 107.4h).
+				Snow: kinds.Has(ManaSourceSnow),
 				// #3853: what this ability's spend riders would do for
 				// the spell being cast.
 				RiderRank: wish.riderRank(picked.SpendRiders),
@@ -2360,10 +2374,11 @@ func solveColored(
 }
 
 // matchingFreeSlots returns the indices of the slots of `s` that no
-// requirement has booked yet (consumed[k] false) and that can make a
-// colour the requirement PRINTS (matchColor over its Options), in slot
-// order, with a slot whose Options repeat an earlier listed slot's
-// left out: two identical free slots are the same choice.
+// requirement has booked yet (consumed[k] false) and that can make
+// mana the requirement PRINTS (slotPays: a colour in its Options, or
+// for an {S} any mana of a snow source, #5986), in slot order, with a
+// slot whose Options and snow bit repeat an earlier listed slot's left
+// out: two identical free slots are the same choice.
 //
 // A widened requirement (AnyMana, #1589 / #1600) is asked the same
 // question: what it admits beyond its printed colours is paid as
@@ -2378,12 +2393,12 @@ func solveColored(
 func matchingFreeSlots(s tapSource, consumed []bool, req ColorRequirement) []int {
 	var out []int
 	for k, slot := range s.Slots {
-		if consumed[k] || !slotPays(slot, req) {
+		if consumed[k] || !slotPays(slot, s.slotSnow(k), req) {
 			continue
 		}
 		dup := false
 		for _, prev := range out {
-			if sameOptions(s.Slots[prev].Options, slot.Options) {
+			if sameOptions(s.Slots[prev].Options, slot.Options) && s.slotSnow(prev) == s.slotSnow(k) {
 				dup = true
 				break
 			}
@@ -2395,15 +2410,24 @@ func matchingFreeSlots(s tapSource, consumed []bool, req ColorRequirement) []int
 	return out
 }
 
-// slotPays reports whether one produced slot can make a colour the
-// requirement prints.
-func slotPays(slot ProducedManaEntry, req ColorRequirement) bool {
+// slotPays reports whether one produced slot can make mana the
+// requirement prints (ColorRequirement.PaidBy): a colour in its
+// Options, or for an {S} any mana at all when the slot's mana comes
+// from a snow source (`snow`, CR 107.4h, #5986).
+func slotPays(slot ProducedManaEntry, snow bool, req ColorRequirement) bool {
 	for _, opt := range slot.Options {
-		if matchColor(opt, req.Options) {
+		if req.PaidBy(opt, snow) {
 			return true
 		}
 	}
 	return false
+}
+
+// slotSnow is whether slot k of the candidate makes snow mana: its own
+// slots when the source is snow, and never a trigger slot (see
+// tapSource.Snow).
+func (s tapSource) slotSnow(k int) bool {
+	return s.Snow && k < s.ownSlots()
 }
 
 // sameOptions reports whether two slots offer the same colours in the

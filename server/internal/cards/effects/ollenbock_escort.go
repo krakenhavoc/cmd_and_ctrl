@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Ollenbock Escort — Creature — Human Cleric {W}, 1/1 (Crimson Vow):
 //
 //	"Vigilance
@@ -21,7 +23,7 @@ func init() {
 			Label:   "Sacrifice this creature: Target creature you control with a +1/+1 counter on it gains lifelink and indestructible until end of turn.",
 			Cost:    SacrificeThis(),
 			Targets: TargetCreature("target creature you control with a +1/+1 counter on it", YouControl(), vowB09HasPlusOneCounter()),
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink", "indestructible")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink", "indestructible")), game.AnswerSurvive|game.AnswerCombatGrant),
 			Effect:  vowB09GrantUntilEOTOnTarget("Ollenbock Escort — lifelink and indestructible until end of turn", "lifelink", "indestructible"),
 		}},
 	})

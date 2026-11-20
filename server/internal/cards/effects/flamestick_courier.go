@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Flamestick Courier — you may choose not to untap this creature")},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{R}, {T}: Target Goblin creature gets +2/+2 and has haste for as long as this creature remains tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Cost:    Plus(ManaCost("{2}{R}"), TapCost()),
 			Targets: TargetCreature("target Goblin creature", OfCreatureType("Goblin")),
 			Effect:  TargetGetsWhileThisRemainsTapped("Flamestick Courier — +2/+2 and haste while tapped", game.ModifyPTMod(2, 2), game.AddKeywordsMod("haste")),

@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fece632b-d8d5-4d3d-a4a7-643293b67538",
 		Name:         "Fighting Chance",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			blockers := blockingCreatures(ctx.Game)
