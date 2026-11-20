@@ -25,17 +25,19 @@ func init() {
 		Targets:          TargetSpell("target spell"),
 		AlternativeCosts: []game.AlternativeCost{bokB1ShoalPitch("blue", "U")},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				c, ok := ctx.Game.LookupCardForEffect(t.ID)
-				if !ok {
-					return nil
-				}
-				if mv, ok := ctx.Game.ManaValueForEffect(c); !ok || mv != ctx.X() {
-					return nil
-				}
-				return CounterTarget{StackID: t.ID}.Apply(ctx)
+			targets := ctx.LegalTargets()
+			if len(targets) == 0 {
+				return nil
 			}
-			return nil
+			t := targets[0]
+			c, ok := ctx.Game.LookupCardForEffect(t.ID)
+			if !ok {
+				return nil
+			}
+			if mv, ok := ctx.Game.ManaValueForEffect(c); !ok || mv != ctx.X() {
+				return nil
+			}
+			return CounterTarget{StackID: t.ID}.Apply(ctx)
 		},
 	})
 }

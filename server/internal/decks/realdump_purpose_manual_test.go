@@ -212,6 +212,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 34.
 	"Ruination": "destroys the nonbasic lands, which no sweep class holds alone",
+
+	// S82 BOK batch 1 (#5602).
+	"Yukora, the Prisoner": "its leaves trigger sacrifices only its controller's own non-Ogre creatures: a drawback, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
