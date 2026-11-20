@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Sword of the Chosen — Legendary Artifact {2} (Stronghold, #5627):
 //
 //	"{T}: Target legendary creature gets +2/+2 until end of turn."
@@ -19,7 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target legendary creature gets +2/+2 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 2, 2)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 2, 2)), game.AnswerPump),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target legendary creature", Legendary()),
 			Effect:  boostTargetUntilEOT("Sword of the Chosen — +2/+2", 2, 2),

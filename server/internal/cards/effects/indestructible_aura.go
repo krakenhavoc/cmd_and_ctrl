@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Indestructible Aura — Instant {W}:
 //
 //	"Prevent all damage that would be dealt to target creature this turn."
@@ -15,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e10e8d56-bba6-412d-970e-c24969f32b5b",
 		Name:         "Indestructible Aura",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve:    shieldTargetSpell(),

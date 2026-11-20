@@ -6,6 +6,7 @@ import {
   castIsForbidden,
   castSacrificeClause,
   castSacrificeLabel,
+  optionalCostLifeShort,
   optionalCostMaxTimes,
   optionalCostPayOptions,
   optionalCostSelection,
@@ -35,6 +36,16 @@ describe("optional additional costs", () => {
       optional_costs: [{ index: 0, key: "kicker", label: "Kicker {4}", mana_cost: "{4}" }],
     });
     expect(optionalCostsOf(kickable)).toHaveLength(1);
+  });
+
+  // #5782: "Buyback—Pay 4 life" is greyed, with a reason, only when the
+  // server says the viewer can't pay the life (CR 119.4).
+  it("says why a life payment can't be taken, and only when it can't", () => {
+    expect(optionalCostLifeShort({ index: 0, key: "kicker", mana_cost: "{4}" })).toBeUndefined();
+    expect(optionalCostLifeShort({ index: 0, key: "buyback", pay_life: 4 })).toBeUndefined();
+    expect(optionalCostLifeShort({ index: 0, key: "buyback", pay_life: 4, life_short: true })).toBe(
+      "You can't pay 4 life right now",
+    );
   });
 
   it("defaults max_times to one, and keeps a multikicker's cap", () => {

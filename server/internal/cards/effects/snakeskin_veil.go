@@ -32,6 +32,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1e6a24be-8281-41c1-a5ba-b68f0ef1d7b8",
 		Name:         "Snakeskin Veil",
+		Purpose:      game.Purpose{Answers: game.AnswerProtect | game.AnswerPump}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: ResolveSteps(

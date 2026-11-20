@@ -269,11 +269,13 @@ func TestStateChecksInsideAResolutionWait(t *testing.T) {
 	}
 }
 
-// TestANonBlockingPromptDoesNotHoldTheSweep:a pay_unless asked of
-// another player after the ability has left the stack does not block
-// the table (ADR 0018 §6), so it must not hold the boundary either. If
-// it did, play would go on with state-based actions switched off.
-func TestANonBlockingPromptDoesNotHoldTheSweep(t *testing.T) {
+// TestAPayUnlessTheResolutionAsksHoldsTheSweep: a pay_unless asked of
+// another player while the ability resolves is part of the resolution
+// since #5793 (CR 118.12: a cost paid as it resolves), so it blocks the
+// table and holds the boundary like any other stamped prompt. Before
+// #5793 it did neither (ADR 0018 §6), and the sweep ran under it. Once it
+// is answered, the boundary runs and the table moves again.
+func TestAPayUnlessTheResolutionAsksHoldsTheSweep(t *testing.T) {
 	g := newActiveGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	bear := bearForPause(g, me.ID)
@@ -283,14 +285,53 @@ func TestANonBlockingPromptDoesNotHoldTheSweep(t *testing.T) {
 	})
 	resolveUntilPrompt(t, g)
 
+	if findCard(g, bear) == nil {
+		t.Error("the sweep ran inside the resolution, with its pay-unless still open")
+	}
+	if !g.ResolutionPaused() {
+		t.Error("ResolutionPaused() = false with the resolution's own pay-unless open")
+	}
+	if err := g.PassPriority(); !errors.Is(err, ErrChoicePending) {
+		t.Errorf("PassPriority with the resolution's pay-unless open = %v, want ErrChoicePending", err)
+	}
+
+	tax := g.PendingChoices[0]
+	if err := g.ResolvePayUnless(tax.ID, them.ID, false); err != nil {
+		t.Fatalf("ResolvePayUnless: %v", err)
+	}
 	if findCard(g, bear) != nil {
-		t.Error("the sweep was held behind a prompt that does not block the table")
+		t.Error("the sweep never ran after the pay-unless was answered")
 	}
 	if g.ResolutionPaused() {
-		t.Error("ResolutionPaused() = true behind a non-blocking prompt")
+		t.Error("the resolution is still paused after its pay-unless was answered")
 	}
 	if err := g.PassPriority(); err != nil {
-		t.Errorf("PassPriority behind a non-blocking prompt: %v", err)
+		t.Errorf("the table cannot move after the answer: %v", err)
+	}
+}
+
+// TestAPayUnlessQueuedOutsideAResolutionDoesNotHoldTheTable: the kind is
+// still ADR 0018 §6's non-blocking one. A pay_unless queued with no
+// resolution open is not part of one, is not anchored to a step, and
+// does not stop the table (#5793 derives the halt from the resolution,
+// not from the kind).
+func TestAPayUnlessQueuedOutsideAResolutionDoesNotHoldTheTable(t *testing.T) {
+	g := newActiveGame(t)
+	them := g.Seats[1]
+	g.WithWriteLock(func() {
+		if err := g.QueuePayUnlessForEffect(them.ID, uuid.Nil, "{1}", "Pay {1}?"); err != nil {
+			t.Fatal(err)
+		}
+	})
+	c := g.PendingChoices[0]
+	if c.midResolution || c.OwedInStep.NamesAStep() {
+		t.Errorf("a pay-unless queued outside a resolution: midResolution=%v owed=%v, want neither", c.midResolution, c.OwedInStep)
+	}
+	if g.ChoicePromptBlocksTable(c) {
+		t.Error("a pay-unless queued outside a resolution blocks the table")
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Errorf("PassPriority behind a pay-unless queued outside a resolution: %v", err)
 	}
 }
 

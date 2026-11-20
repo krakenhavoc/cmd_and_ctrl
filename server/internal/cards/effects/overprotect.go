@@ -19,7 +19,7 @@ func init() {
 		Name:         "Overprotect",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
-		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 3, "trample", "hexproof", "indestructible")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 3, 3, "trample", "hexproof", "indestructible")), game.AnswerProtect|game.AnswerSurvive|game.AnswerPump|game.AnswerCombatGrant),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return pumpAndGrantFirstTarget(3, 3, "Overprotect — +3/+3, trample, hexproof, and indestructible",
 				"trample", "hexproof", "indestructible")(ctx.Game, item)

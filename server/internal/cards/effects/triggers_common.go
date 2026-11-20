@@ -152,6 +152,22 @@ func DamageToFirstTarget(n int) Effect {
 	}
 }
 
+// BuildPinnedToEventSource is a Build for a trigger whose effect acts on
+// the object its event's Source names ("that creature", "that
+// artifact"): the item carries that object's ObjectRef, epoch included,
+// read as the trigger is put on the stack, so the effect can refuse a
+// permanent that became a new object in response (CR 400.7). Gossip's
+// Talent and Treasure Nabber.
+func BuildPinnedToEventSource(label string) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+		item := game.NewTriggeredItem(source, label)
+		if c, ok := g.LookupCardForEffect(ev.Source); ok {
+			item.Params.Object = game.ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch}
+		}
+		return item
+	}
+}
+
 // Optional makes a trigger a CR 603.5 "you may": the ability goes on
 // the stack like any other and `question` is asked as it resolves; a
 // "No" resolves it doing nothing (#2494).

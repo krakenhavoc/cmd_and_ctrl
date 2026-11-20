@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Pang Tong, "Young Phoenix" — Legendary Creature — Human Advisor {1}{W}{W}, 1/2 (#4062):
 //
 //	"{T}: Target creature gets +0/+2 until end of turn.
@@ -24,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Target creature gets +0/+2 until end of turn. Activate only during your turn, before attackers are declared.",
-			Purpose:   ForTargets(BenefitUntilEOT(0, 0, 2)),
+			Purpose:   withAnswers(ForTargets(BenefitUntilEOT(0, 0, 2)), game.AnswerPump),
 			Cost:      TapCost(),
 			Targets:   TargetCreature("target creature"),
 			Condition: DuringYourTurnBeforeAttackersAreDeclared(),

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Zealous Inquisitor — Creature — Human Cleric {2}{W}, 2/2:
 //
 //	"{1}{W}: The next 1 damage that would be dealt to this creature this
@@ -15,9 +17,9 @@ func init() {
 		Name:         "Zealous Inquisitor",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			redirectRow("{1}{W}: The next 1 damage that would be dealt to this creature this turn is dealt to target creature instead.",
+			alsoAnswers(game.AnswerRemove, redirectRow("{1}{W}: The next 1 damage that would be dealt to this creature this turn is dealt to target creature instead.",
 				ManaCost("{1}{W}"), TargetCreature("target creature"),
-				RedirectDamage{Protect: ShieldThis, Amount: 1, To: RedirectToClause(0)}),
+				RedirectDamage{Protect: ShieldThis, Amount: 1, To: RedirectToClause(0)})),
 		},
 	})
 }

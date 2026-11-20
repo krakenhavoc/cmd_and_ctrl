@@ -656,7 +656,22 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 // Caller must hold g.mu.
 func (g *Game) announceEntryLocked(l entryLanding) {
 	ev := l.ev
-	if l.srcKind == "" {
+	if l.srcKind == "" && ev.entryTokenNotCreated() {
+		// #4994: the token a copy of a permanent spell becomes is not
+		// "created" (CR 111.13, CR 608.3f), so its arrival is a move
+		// from no zone, the shape a spawn's arrival has: every entry
+		// reader sees it, and no creation watcher or tally does. It is
+		// a new object all the same, so it gets its source ordinal as an
+		// EventTokenCreated would give it (EmitEvent).
+		g.noteCreatedSourceLocked(l.entered)
+		g.EmitEvent(Event{
+			Kind:        EventZoneMove,
+			Actor:       ev.Actor,
+			CardID:      l.entered,
+			NewZone:     ZoneBattlefield,
+			BecameToken: true,
+		})
+	} else if l.srcKind == "" {
 		// #762: a created token arrived from no zone, so the
 		// announcement is the creation itself (CR 111.1). One event,
 		// never two — a token that also emitted a zone move would be

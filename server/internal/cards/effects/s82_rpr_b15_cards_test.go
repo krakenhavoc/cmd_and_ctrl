@@ -127,15 +127,16 @@ func TestRprB15NihilSpellbombExilesAGraveyardAndDrawsOnlyIfYouPayB(t *testing.T)
 	if !me.Graveyard.Contains(bomb) {
 		t.Fatal("the sacrifice is a cost")
 	}
-	passPriorityAroundTable(t, g)
-	if opp.Graveyard.Size() != 0 {
-		t.Errorf("opponent graveyard %d, want 0", opp.Graveyard.Size())
-	}
-	// The dies trigger asks for {B}: pay.
+	// The dies trigger (the sacrifice is a cost) sits above the ability,
+	// resolves first and asks for {B}; the question holds the table until
+	// it is answered (#5793). Pay, then let the exile resolve.
 	b06AddMana(me, "B")
 	passPriorityAroundTable(t, g)
 	answerPayUnless(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
+	if opp.Graveyard.Size() != 0 {
+		t.Errorf("opponent graveyard %d, want 0", opp.Graveyard.Size())
+	}
 	if got := me.Hand.Size(); got != hand+1 {
 		t.Errorf("paid {B}: hand %d, want %d", got, hand+1)
 	}

@@ -28,12 +28,14 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{1}{W}: Prevent all damage that would be dealt to another target creature this turn by sources of the color of your choice.",
+				Purpose: game.Purpose{Answers: game.AnswerPrevent},
 				Cost:    ManaCost("{1}{W}"),
 				Targets: Another(TargetCreature("another target creature")),
 				Effect:  shieldTargetFromChosenColor,
 			},
 			{
 				Label:   "{5}{W}{W}: Prevent all damage that would be dealt to target player or planeswalker this turn by sources of the color of your choice.",
+				Purpose: game.Purpose{Answers: game.AnswerPrevent},
 				Cost:    ManaCost("{5}{W}{W}"),
 				Targets: targetPlayerOrPlaneswalker(),
 				Effect:  shieldTargetFromChosenColor,

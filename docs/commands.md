@@ -53,3 +53,4 @@ The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `s
 - `npm run lint` — ESLint + Prettier check
 - `npm test` — Vitest unit and render tests
 - `npm run format` — auto-format
+- `npm run fx-preview` — the fx preview harness on :5174: every table-effect cue (ADR 0209) played on a fake table through the real layers, with no Go server. A dev tool under `client/tools/fx-preview/`, never in the build; how to add a scenario is in its [README](../client/tools/fx-preview/README.md) (#4868)

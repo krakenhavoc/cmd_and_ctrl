@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Tawnos's Weaponry — you may choose not to untap this artifact")},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}: Target creature gets +1/+1 for as long as this artifact remains tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect:  TargetGetsWhileThisRemainsTapped("Tawnos's Weaponry — +1/+1 while tapped", game.ModifyPTMod(1, 1)),

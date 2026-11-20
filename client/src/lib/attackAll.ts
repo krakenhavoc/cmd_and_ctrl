@@ -40,6 +40,7 @@
 
 import { L } from "./labels";
 import { isCreature } from "./cardTypes";
+import { withBand } from "./banding";
 import { NO_LEGAL_ACTIONS, type LegalActions } from "./legalActions";
 import { ErrorCode } from "./protocol";
 import type { CardView, GameView, PlayerView } from "./protocol";
@@ -228,7 +229,9 @@ export type AttackAllParams = {
   // `exert`: ADR 0130 §5, the choice to exert that attacker as it
   // attacks. Sent only as true; absent means no.
   // `enlist`: #5658, the creature that attacker enlists. Absent for none.
-  attackers: { attacker: string; target: string; exert?: true; enlist?: string }[];
+  // `band`: ADR 0224, the band that attacker is in (CR 702.22c); the
+  // entries sharing a number are one band. Absent for none.
+  attackers: { attacker: string; target: string; exert?: true; enlist?: string; band?: number }[];
   // ADR 0080 (#1063): let the server tap lands for the CR 508.1h
   // attack tax when the mana pool alone cannot cover it. Always sent,
   // for the reason the cast chain sends it after its preview — a
@@ -252,6 +255,10 @@ export type AttackAllParams = {
 // omitting `only` keeps every eligible creature, and omitting
 // `lockedSources` keeps the auto-tapper unrestricted.
 export interface AttackAllOptions {
+  // ADR 0224: the attackers the player put in one band (the picker's
+  // Band toggles). Fewer than two is no band; the server judges the
+  // band (CR 702.22c) and refuses the declaration whole if it is not.
+  band?: readonly string[];
   // #1162: restrict the declaration to exactly these instance IDs
   // rather than every eligible creature — the attack-tax picker's
   // chosen subset, offered when "attack with all" is refused for want
@@ -314,6 +321,10 @@ export function attackAllParams(
     }),
     auto_tap: true,
   };
+  // ADR 0224: the picker's Band toggles, one band at this defender.
+  if (opts.band && opts.band.length > 0) {
+    params.attackers = withBand(params.attackers, opts.band);
+  }
   if (opts.lockedSources && opts.lockedSources.length > 0) {
     params.locked_sources = [...opts.lockedSources];
   }

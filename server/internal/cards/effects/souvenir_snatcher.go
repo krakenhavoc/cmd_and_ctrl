@@ -1,0 +1,48 @@
+package effects
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Souvenir Snatcher — Creature — Bird {4}{U}, 4/4 (Commander 2020, #5513):
+//
+//	"Mutate {5}{U} (If you cast this spell for its mutate cost, put it over or
+//	 under target non-Human creature you own. They mutate into the creature
+//	 on top plus all abilities from under it.)
+//	 Flying
+//	 Whenever this creature mutates, gain control of target noncreature
+//	 artifact."
+//
+// Mutate is the ADR 0223 seam (mutate.go), and the trigger is Everquill
+// Phoenix's, firing whether the Snatcher went over or under. The theft is
+// Thieving Skydiver's: no duration is printed, so it lasts indefinitely (CR
+// 611.2a), and it is the trigger's controller who gains control.
+//
+// No simplification.
+func init() {
+	Register(Spec{
+		OracleID:         "ee8fb1d0-db86-489f-8d23-4238b2e8eba4",
+		Name:             "Souvenir Snatcher",
+		Completeness:     CompletenessFull,
+		PrintedKeywords:  []string{"flying"},
+		AlternativeCosts: []game.AlternativeCost{Mutate("{5}{U}")},
+		Triggered: []game.TriggeredAbility{
+			Targeting(On(game.EventMutate, ThisCreatureMutates,
+				"Souvenir Snatcher — gain control of target noncreature artifact",
+				Do(OnTheTargetCard(souvenirSnatcherSteal))),
+				TargetPermanent("target noncreature artifact", Artifact(), Noncreature())),
+		},
+	})
+}
+
+// souvenirSnatcherSteal takes the artifact for good.
+func souvenirSnatcherSteal(ctx *Context, id uuid.UUID) error {
+	return GainControl{
+		Target:     id,
+		Controller: ctx.Controller(),
+		Duration:   game.IndefiniteDuration(),
+		Label:      "Souvenir Snatcher — gain control (no stated duration)",
+	}.Apply(ctx)
+}

@@ -168,6 +168,13 @@ const AttackRefusalLimit = "attack_limit"
 // carrying the requirement; the message names the requirement.
 const AttackRefusalRequirement = "attack_requirement"
 
+// AttackRefusalBand is the ErrorPayload.Reason of an `illegal_attack`
+// frame refused because a band in the declaration breaks CR 702.22c-d
+// (ADR 0224): two creatures without banding in one band, or a band
+// whose creatures attack different things. CardID is a creature in the
+// band; the message names the problem.
+const AttackRefusalBand = "band"
+
 // Frame is the envelope around every message. Payload is left as raw JSON
 // and decoded by whichever handler owns the Kind.
 type Frame struct {

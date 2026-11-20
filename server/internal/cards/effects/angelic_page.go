@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Angelic Page — Creature — Angel Spirit {1}{W}, 1/1 (Urza's Saga, #5624):
 //
 //	"Flying
@@ -21,7 +23,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target attacking or blocking creature gets +1/+1 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1)), game.AnswerPump),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
 			Effect:  boostTargetUntilEOT("Angelic Page — +1/+1", 1, 1),
