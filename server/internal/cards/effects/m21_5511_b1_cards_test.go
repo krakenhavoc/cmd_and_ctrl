@@ -823,7 +823,7 @@ func TestM21B1MiscastCountersAnInstantOrSorceryUnlessPaid(t *testing.T) {
 
 func TestM21B1ReadTheTidesEachMode(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	me := g.Seats[0]
 	hand := me.Hand.Size()
 	castModal(t, g, "Read the Tides", "Sorcery", m21B1ReadTheTidesOracle, []int{0}, nil)
 	passPriorityAroundTable(t, g)
@@ -832,7 +832,7 @@ func TestM21B1ReadTheTidesEachMode(t *testing.T) {
 	}
 
 	g2 := newCatalogGame(t)
-	opp = g2.Seats[1]
+	opp := g2.Seats[1]
 	a := b12Creature(g2, opp.ID, "Bear A", m21B1Bear, 2, 2)
 	b := b12Creature(g2, opp.ID, "Bear B", m21B1Bear, 2, 2)
 	keep := b12Creature(g2, opp.ID, "Bear C", m21B1Bear, 2, 2)
