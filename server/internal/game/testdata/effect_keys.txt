@@ -2532,6 +2532,7 @@ run prompt-run/glorifier-of-suffering-sacrifice
 run prompt-run/god-eternal-bontu-sacrifice
 run prompt-run/god-pharaohs-gift-exile
 run prompt-run/grab-the-reins-damage
+run prompt-run/greven-predator-captain-sacrifice
 run prompt-run/grist-the-hunger-tide-sacrifice
 run prompt-run/guard-dogs-compare
 run prompt-run/hei-bai-two-counters
@@ -2719,6 +2720,7 @@ steps then-steps/glimmer-of-genius-rest
 steps then-steps/glint-sleeve-siphoner-draw-and-lose
 steps then-steps/gluntch-the-bestower-counters
 steps then-steps/gluntch-the-bestower-draw
+steps then-steps/greven-predator-captain-draw-then-lose
 steps then-steps/hunted-by-the-family-copy
 steps then-steps/imposing-grandeur-wheel
 steps then-steps/kor-cause-of-vengeance-draw-then-pump
@@ -3237,6 +3239,7 @@ tail gandalf-shadows-foe/return-lands-tapped
 tail gardens-of-tranquil-repose/its-controller-scries
 tail gemstone-mine/sacrifice-if-empty
 tail georgiou-terran-emperor/draw-then-officers
+tail gerrard-weatherlight-hero/after-exile
 tail ghostly-flicker/return-under-your-control
 tail ghouls-night-out/black-zombies
 tail gifts-ungiven/choose
@@ -3616,6 +3619,7 @@ tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
 tail sacrificed-one/prompt-run/gearbane-orangutan-sacrifice
 tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
+tail sacrificed-one/prompt-run/greven-predator-captain-sacrifice
 tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans

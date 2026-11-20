@@ -354,6 +354,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedBirdBlocksOnlyFliersToken,
 	printedSeizeTheStormElementalToken,
 
+	// Commander 2019 batch 1 (#5517): Doomed Artisan's Sculpture, a */*
+	// that counts the Sculptures its controller controls.
+	printedDoomedArtisanSculptureToken,
+
 	// The Coming of Galactus's Galactus: flying, trample, destroys a land
 	// when he attacks.
 	printedGalactusToken,
