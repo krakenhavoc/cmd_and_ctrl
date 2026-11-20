@@ -1438,6 +1438,7 @@ choose resolution-cast/swindlers-scheme-free-cast
 choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
+coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-psychopath
@@ -1556,6 +1557,7 @@ confirm confirm/braids-sacrifice
 confirm confirm/break-out-put
 confirm confirm/breathkeeper-seraph-return
 confirm confirm/breeches-sacrifice
+confirm confirm/brightling-pump
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
 confirm confirm/cacophony-scamp-sacrifice
@@ -2057,6 +2059,7 @@ option option-pick/slithermuse-opponent
 option option-pick/slumbering-walker-remove-a-counter
 option option-pick/sorcerous-spyglass-look
 option option-pick/sphinx-of-clear-skies-splitter
+option option-pick/stadium-vendors-player
 option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
 option option-pick/steel-seraph-keyword
@@ -2145,6 +2148,7 @@ payunless pay-unless/bloodfeather-phoenix-return
 payunless pay-unless/bloodthirsty-adversary-times
 payunless pay-unless/bns-b52-slinza-fight
 payunless pay-unless/bns-b52-taeko-unblockable
+payunless pay-unless/bramble-sovereign-copy
 payunless pay-unless/brass-man-untap
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
@@ -2842,6 +2846,7 @@ tail batch21-helpers/after-mill
 tail batch21-helpers/after-mill-2
 tail batch35-helpers/after-exile
 tail batch35-helpers/after-mill
+tail bbd/arena-rector-exiled
 tail beamtown-bullies/haste-goad-exile
 tail beckett-mariner/promotion-check
 tail belanna-torres-scrapper/after-surveil
