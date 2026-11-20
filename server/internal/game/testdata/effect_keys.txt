@@ -1773,6 +1773,7 @@ confirm s82-rpr-b04/aid-from-the-cowl-bottom
 confirm s82-rpr-b04/aid-from-the-cowl-put
 confirm std-b9/traveling-botanist-take-land
 drawinstead asmodeus-the-archfiend
+drawinstead dredge-1
 drawinstead dredge-2
 drawinstead dredge-3
 drawinstead dredge-4

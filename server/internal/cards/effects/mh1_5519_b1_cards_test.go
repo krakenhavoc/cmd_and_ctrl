@@ -230,15 +230,22 @@ func TestMh1B1GluttonousSlugEvolves(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	slug := b12Push(g, me.ID, "Gluttonous Slug", "Creature — Slug Horror", mh1SlugOracle, 0, 3)
-	enterCreature(t, g, me.ID, "Grizzly", 1, 1)
+	enterCreature(t, g, me.ID, "Wall", 0, 2)
 	settleProwess(t, g)
 	if n := plusOneCounters(g, slug); n != 0 {
-		t.Fatalf("a 1/1 grew the 0/3 Slug: %d counters", n)
+		t.Fatalf("a 0/2 grew the 0/3 Slug: %d counters", n)
 	}
-	enterCreature(t, g, me.ID, "Big Grizzly", 2, 2)
+	// A 1/1 has greater power than the 0/3: the Slug evolves to 1/4.
+	enterCreature(t, g, me.ID, "Grizzly", 1, 1)
 	settleProwess(t, g)
 	if n := plusOneCounters(g, slug); n != 1 {
-		t.Errorf("the Slug has %d +1/+1 counters after a 2/2 entered, want 1", n)
+		t.Fatalf("the Slug has %d +1/+1 counters after a 1/1 entered, want 1", n)
+	}
+	// Another 1/1 is greater in neither against the 1/4.
+	enterCreature(t, g, me.ID, "Other Grizzly", 1, 1)
+	settleProwess(t, g)
+	if n := plusOneCounters(g, slug); n != 1 {
+		t.Errorf("the Slug has %d +1/+1 counters after a second 1/1 entered, want 1", n)
 	}
 }
 
@@ -246,9 +253,9 @@ func TestMh1B1GluttonousSlugEvolves(t *testing.T) {
 
 func TestMh1B1NinjasArriveWithNinjutsu(t *testing.T) {
 	for _, tc := range []struct{ name, oracle, mana string }{
-		{"Ninja of the New Moon", mh1NewMoonOracle, "{3}{B}"},
-		{"Mist-Syndicate Naga", mh1NagaOracle, "{2}{U}"},
-		{"Azra Smokeshaper", mh1AzraOracle, "{1}{B}"},
+		{"Ninja of the New Moon", mh1NewMoonOracle, "{B}{B}{B}{B}"},
+		{"Mist-Syndicate Naga", mh1NagaOracle, "{U}{U}{U}"},
+		{"Azra Smokeshaper", mh1AzraOracle, "{B}{B}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
@@ -903,7 +910,7 @@ func TestMh1B1MotherBearMakesTwoBearsFromTheGraveyard(t *testing.T) {
 	advanceToMain(t, g)
 	me := top100ActiveSeat(g)
 	id := seedGraveyardCard(t, g, "Mother Bear", mh1BearType, mh1MotherBearOracle)
-	floatMana(t, g, me, "{3}{G}{G}")
+	floatMana(t, g, me, "{G}{G}{G}{G}{G}")
 	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
