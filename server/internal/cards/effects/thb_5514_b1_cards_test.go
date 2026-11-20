@@ -424,7 +424,13 @@ func TestThb5514B1DemonOfLoathingMakesTheDamagedPlayerSacrifice(t *testing.T) {
 	demon := b12Push(g, me.ID, "Demon of Loathing", "Creature — Demon", thbB1DemonOfLoathingOracle, 7, 7)
 	theirs := b12Creature(g, opp.ID, "Their Bear", thbB1BearType, 2, 2)
 	bystander := b12Creature(g, other.ID, "Bystander", thbB1BearType, 2, 2)
-	dealCombatDamage(g, me.ID, demon, opp.ID)
+	advanceToMain(t, g)
+	dealCombatDamageToPlayer(g, demon, opp.ID, 7)
+	passPriorityAroundTable(t, g)
+	if sacrificeChoiceFor(g, opp.ID) == nil {
+		t.Fatal("the damaged player was not asked to sacrifice")
+	}
+	answerSacrifice(t, g, opp.ID, theirs)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(theirs) {
 		t.Error("the damaged player kept their only creature")
