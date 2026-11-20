@@ -18,12 +18,7 @@ func init() {
 		Name:         "Inspired Fire",
 		Completeness: CompletenessFull,
 		SelfCostModifiers: []game.CostModifier{
-			CostsLessEach(func(q game.CostQuery) int {
-				if q.Game == nil {
-					return 0
-				}
-				return q.Game.TurnTallyFor(q.Controller).CardsDrawn
-			}, "This spell costs {1} less to cast for each card you've drawn this turn."),
+			costsLessPerCardDrawnThisTurn(),
 		},
 		Targets:   TargetCreature("target creature"),
 		Purpose:   ForTargets(DamageToTarget(0, 4)),
