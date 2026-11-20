@@ -41,7 +41,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, Exile two cards from your graveyard: Create a tapped 2/2 black Zombie creature token.",
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Tokens: 1, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{2}"), ExileFromGraveyard(2, "two cards", nil)),
 			Effect:  Do(CreateTokenAdvanced{Spec: Token(BlackZombieToken()).EntersTapped(), N: 1}),
 		}},
