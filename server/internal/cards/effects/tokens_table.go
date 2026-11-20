@@ -101,6 +101,7 @@ var tokenTable = map[string]game.Card{
 	"0/4 white Wall with defender and flying":                       {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"defender", "flying"}},
 	"0/4 white Wall with defender":                                  {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"defender"}},
 	"1/3 white Wall with defender":                                  {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 1, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"defender"}},
+	"0/3 white Wall with defender":                                  {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"defender"}},
 	"1/1 black Bat with flying":                                     {Name: "Bat", TypeLine: "Token Creature — Bat", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"1/1 black Horror":                                              {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}},
