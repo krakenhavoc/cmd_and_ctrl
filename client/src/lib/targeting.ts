@@ -1175,8 +1175,10 @@ export function modeSteps(card: CardView, modes: number[], choices?: CastChoices
 }
 
 // isModal reports whether a card needs the mode picker before it
-// can be cast.
+// can be cast. #5771: not when an opponent chooses the mode (CR
+// 700.2e) — the card is cast with no mode, and the server asks.
 export function isModal(card: CardView): boolean {
+  if (card.modes?.chosen_by_opponent) return false;
   return (card.modes?.options?.length ?? 0) > 0;
 }
 

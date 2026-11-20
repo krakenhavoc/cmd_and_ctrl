@@ -1807,6 +1807,12 @@ type stackItemSnapshot struct {
 	AltCost        string          `json:"altCost,omitempty"`
 	Foretold       bool            `json:"foretold,omitempty"`
 
+	// ModeChooser is StackItem.ModeChooser (#5771): the opponent who
+	// chose an "An opponent chooses one" spell's mode. Additive within
+	// the schema version and omitted when unset, which is every other
+	// item.
+	ModeChooser *uuid.UUID `json:"modeChooser,omitempty"`
+
 	// MutateUnder is StackItem.MutateUnder (ADR 0223).
 	MutateUnder bool `json:"mutateUnder,omitempty"`
 
@@ -2069,6 +2075,7 @@ type pendingChoiceSnapshot struct {
 	ModeUsedIndex    []int          `json:"modeUsedIndex,omitempty"`
 	ModeUsedLabel    []string       `json:"modeUsedLabel,omitempty"`
 	ModeNotChosen    ModeMemory     `json:"modeNotChosen,omitempty"`
+	ModePickFor      *uuid.UUID     `json:"modePickFor,omitempty"` // #5771: PendingChoice.ModePickFor, the caster an opponent's mode_pick is for; absent on every other prompt
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
 	// ADR 0116: the revealed-hand pick's legal cards and their label.
 	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
@@ -3425,6 +3432,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
 		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
+		ModeChooser:      uuidPtrOrNil(s.ModeChooser),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
@@ -3668,6 +3676,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		ModeUsedIndex:         copyInts(c.ModeUsedIndex),
 		ModeUsedLabel:         copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:         c.ModeNotChosen,
+		ModePickFor:           uuidPtrOrNil(c.ModePickFor),
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
 		CastPile:              copyUUIDs(c.CastPile),
@@ -4641,6 +4650,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
 		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
+		ModeChooser:      uuidOrNil(s.ModeChooser),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
@@ -4813,6 +4823,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeUsedIndex:         copyInts(c.ModeUsedIndex),
 		ModeUsedLabel:         copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:         c.ModeNotChosen,
+		ModePickFor:           uuidOrNil(c.ModePickFor),
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
 		CastPile:              copyUUIDs(c.CastPile),

@@ -1029,7 +1029,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// selection rather than once for the card.
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
-	if modeSpec != nil {
+	// #5771, CR 700.2e: "An opponent chooses one" — the caster names no
+	// mode and no target; the engine parks the cast and asks. The one
+	// move is the cast with none, offered while some opponent could
+	// choose a bullet (the same gate the park asks).
+	if modeSpec != nil && modeSpec.ChosenByOpponent {
+		if !e.g.OpponentCouldChooseModeForEffect(castSrc, modeSpec) {
+			return
+		}
+	} else if modeSpec != nil {
 		// #1655: under THIS announcement's optional costs — a kicked
 		// Inscription of Ruin may take every bullet, an unkicked one
 		// exactly one, and each is its own move.
