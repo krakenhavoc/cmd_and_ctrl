@@ -1625,6 +1625,7 @@ confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/innocuous-researcher-untap
 confirm confirm/invocation-of-the-founders-copy
 confirm confirm/iroh-tea-master-give
+confirm confirm/isolated-watchtower-reveal
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
 confirm confirm/kaya-intangible-slayer-scry
@@ -2613,6 +2614,7 @@ run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
 run prompt-run/shrapnel-slinger-sacrifice
 run prompt-run/sidequest-play-blitzball-attach
+run prompt-run/skull-storm-half-life
 run prompt-run/skyfisher-spider-sacrifice
 run prompt-run/slaughter-the-strong-keep
 run prompt-run/smallpox-sacrifice-creatures
@@ -2809,6 +2811,7 @@ tail attacking-tokens/fire-navy-trebuchet-sacrifice-the-boulder
 tail attacking-tokens/flamerush-rider-exile-at-end-of-combat
 tail attacking-tokens/furnace-blessed-conqueror-counters-and-sacrifice
 tail attacking-tokens/geist-of-saint-traft-exile-angel
+tail attacking-tokens/gyrus-waker-of-corpses-exile-at-end-of-combat
 tail attacking-tokens/kari-zev-exile-ragavan
 tail attacking-tokens/kavaron-harrier-sacrifice-the-robot
 tail attacking-tokens/living-laser-exile-the-tokens
@@ -3321,6 +3324,7 @@ tail invasion-of-kaldheim/draw-and-play
 tail invasion-of-pyrulea/reveal-then-draw
 tail invent/sorcery-search
 tail isareth/exile-instead
+tail isolated-watchtower/after-scry
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land
 tail jaya-fiery-negotiator/choose-exiled
@@ -3924,6 +3928,7 @@ tail then/grave-endeavor-drain
 tail then/grist-the-hunger-tide-mill
 tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
+tail then/gyrus-waker-of-corpses-copy
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
 tail then/haunting-voyage-type-chosen

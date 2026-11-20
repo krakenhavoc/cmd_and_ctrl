@@ -74,7 +74,7 @@ func init() {
 							Target:   c.InstanceID,
 							Duration: game.IndefiniteDuration(),
 							Label:    "Varchild, Betrayer of Kjeldor — gain control of all Survivors",
-						}).Apply(ctx); err != nil {
+						}).Apply(ctx.asGroupMember()); err != nil {
 							return err
 						}
 					}
