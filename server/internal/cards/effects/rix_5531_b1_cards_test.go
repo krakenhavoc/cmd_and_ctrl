@@ -754,6 +754,7 @@ func TestRix5531B1ReaverAmbushExilesOnlyPowerThreeOrLess(t *testing.T) {
 func TestRix5531B1HornswoggleCountersACreatureSpellAndMakesATreasure(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
+	advanceToPrecombatMainOf(t, g, 1) // a creature spell waits for its caster's main phase
 	bear := b13OpponentCasts(t, g, opp, "Their Bear", rixB1Bear, "", "{1}{G}", nil)
 	id := b13HandCard(me, "Hornswoggle", "Instant", rixB1Hornswoggle)
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Targets: b16TargetCard(bear)}); err != nil {

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Tomb Robber — Creature — Human Pirate {2}{B}, 1/1 (Rivals of Ixalan,
 // #5531):
 //
@@ -21,9 +23,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}, Discard a card: This creature explores.",
-			Cost:   Plus(ManaCost("{1}"), DiscardACard()),
-			Effect: thisCreatureExplores,
+			Label:   "{1}, Discard a card: This creature explores.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{1}"), DiscardACard()),
+			Effect:  thisCreatureExplores,
 		}},
 	})
 }
