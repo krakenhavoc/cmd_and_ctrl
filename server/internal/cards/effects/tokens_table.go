@@ -580,9 +580,15 @@ var tokenTable = map[string]game.Card{
 	// S82 GAP batch 05: Nivea, Beloved Battlemage's Akroma.
 	"6/6 white Legendary Angel named Akroma, Angel of Wrath with flying, first strike, vigilance, trample, haste and protection from black and from red": {Name: "Akroma, Angel of Wrath", TypeLine: "Token Legendary Creature — Angel", Power: 6, Toughness: 6, Colors: []string{"W"}, Keywords: []string{"flying", "first strike", "vigilance", "trample", "haste", "protection from black", "protection from red"}},
 
-	// #5559: Born of the Gods' enchantment creature tokens (Fated
-	// Intervention, Pheres-Band Raiders, God-Favored General, Satyr Nyx-Smith).
-	"3/3 green Centaur enchantment":            {Name: "Centaur", TypeLine: "Token Enchantment Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"1/1 black Goblin Rogue":                   {Name: "Goblin Rogue", TypeLine: "Token Creature — Goblin Rogue", Power: 1, Toughness: 1, Colors: []string{"B"}},
+	"1/1 blue Merfolk Wizard":                  {Name: "Merfolk Wizard", TypeLine: "Token Creature — Merfolk Wizard", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 white Soldier enchantment":            {Name: "Soldier", TypeLine: "Token Enchantment Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"3/1 red Elemental enchantment with haste": {Name: "Elemental", TypeLine: "Token Enchantment Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+	"3/3 green Centaur enchantment":            {Name: "Centaur", TypeLine: "Token Enchantment Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"4/4 green Elemental":                      {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"G"}},
+	"5/5 white Giant Warrior":                  {Name: "Giant Warrior", TypeLine: "Token Creature — Giant Warrior", Power: 5, Toughness: 5, Colors: []string{"W"}},
+	// #5559: Born of the Gods' enchantment creature tokens (Fated
+	// Intervention, Pheres-Band Raiders, God-Favored General, Satyr Nyx-Smith).
+	// S82 MOR batch 1 (#5592): Walker of the Grove, Feudkiller's Verdict,
+	// Weirding Shaman and Stonybrook Schoolmaster.
 }
