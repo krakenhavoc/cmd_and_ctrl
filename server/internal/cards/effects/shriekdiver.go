@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Shriekdiver — Creature — Zombie Bird Warrior {2}{B}, 2/1 (War of the Spark, #5520):
 //
 //	"Flying
@@ -16,9 +18,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}: This creature gains haste until end of turn.",
-			Cost:   ManaCost("{1}"),
-			Effect: thisGainsKeywordUntilEndOfTurn("haste", "Shriekdiver — haste until end of turn"),
+			Label:   "{1}: This creature gains haste until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    ManaCost("{1}"),
+			Effect:  thisGainsKeywordUntilEndOfTurn("haste", "Shriekdiver — haste until end of turn"),
 		}},
 	})
 }
