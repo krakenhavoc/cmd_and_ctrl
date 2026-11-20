@@ -22,6 +22,7 @@ func init() {
 	counter := func() ActivatedAbility {
 		return ActivatedAbility{
 			Label:   "{3}{G}: Put a +1/+1 counter on target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{3}{G}"),
 			Targets: TargetCreature("target creature"),
 			Effect:  putPlusOneCounterOnEachLegalTarget,

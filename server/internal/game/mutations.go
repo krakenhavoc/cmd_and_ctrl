@@ -3201,7 +3201,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 	defer g.pushCounterPlacerLocked(p.ID)()
 	// Colour-picked one requirement at a time, a folded run written out
 	// (#3909).
-	pending := append([]ColorRequirement(nil), cost.unfolded().Required...)
+	pending := colourLedger(cost.unfolded().Required)
 	identity := commanderIdentityFor(g, p)
 	for _, planned := range plan {
 		cardID := planned.CardID
@@ -3865,6 +3865,22 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 		return bestOpt
 	}
 	return options[0]
+}
+
+// colourLedger is the executor's colour ledger for a cost's coloured
+// requirements: a copy of them, less every snow slot (#5986). An {S} is
+// paid by any mana a snow source makes (CR 107.4h), so it never asks a
+// source for a colour, and the plan already booked a snow source for
+// it (slotPays). Left on the ledger it would read as a {C} (its
+// Options), and a Sol Ring's {C} would tick it off.
+func colourLedger(reqs []ColorRequirement) []ColorRequirement {
+	out := make([]ColorRequirement, 0, len(reqs))
+	for _, r := range reqs {
+		if !r.Snow {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // bookColorRequirement ticks off one still-unsatisfied requirement
@@ -10490,6 +10506,12 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			// EventAttack the creature is owed has to name the
 			// defender it ENDS on. Both halves are the lock-in's job
 			// — see commitAttackDeclarationLocked.
+			// ADR 0224, CR 702.22d: every creature in a band attacks the
+			// same thing, so a banded attacker re-pointed elsewhere leaves
+			// its band. The rest of the band stays one.
+			if card.AttackingTarget != targetPlayerID {
+				g.leaveBandLocked(card.InstanceID)
+			}
 			// #1364: setAttackTargetLocked also records the defending
 			// player, for CR 506.4c's "it may be blocked" after the
 			// planeswalker or battle it attacks has left.
@@ -10530,6 +10552,13 @@ type AttackDeclaration struct {
 	// creature the attacker can't enlist refuses the whole declaration
 	// with ErrCantEnlist.
 	Enlist uuid.UUID
+	// Band puts the attacker in a band (CR 508.1e, 702.22c; ADR 0224,
+	// banding.go): the entries of one declare_attackers that share a
+	// positive Band number are one band. Zero is no band. A band of one
+	// entry is no band at all, and a band that breaks CR 702.22c-d
+	// refuses the whole declaration with a *BandRefusedError. Only the
+	// bulk verb announces bands; DeclareAttackerDeclWith ignores it.
+	Band int
 }
 
 // DeclareAttackers declares an entire attacking set in ONE mutation.
@@ -10620,6 +10649,13 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// nothing more attacks. A declarer who left chooses nothing more.
 	g.settleOrphanedHandoffLocked()
 	if g.attackTargetsPhaseLocked() {
+		// ADR 0224: bands are the declarer's announcement (CR 508.1e),
+		// not part of confirming the targets.
+		for _, d := range decls {
+			if d.Band > 0 {
+				return nil, &BandRefusedError{Reason: BandRefusalNotHere, Attacker: d.Attacker}
+			}
+		}
 		return g.confirmAttackTargetsLocked(decls, params)
 	}
 	if g.attackChosenLocked() {
@@ -10723,6 +10759,13 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if err := g.validateEnlistChoicesLocked(eligible); err != nil {
 		return nil, err
 	}
+	// ADR 0224: the declaration's bands (CR 508.1e, 702.22c-d), all or
+	// nothing like the limit: which creatures to band is the attacking
+	// player's choice, made by sending a legal band. Judged on the
+	// eligible entries, so a skipped creature is no member.
+	if err := g.bandRefusalLocked(eligible); err != nil {
+		return nil, err
+	}
 	// CR 508.1h, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.
 	//
@@ -10779,6 +10822,8 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if len(declared) == 0 {
 		return nil, ErrNoLegalAttackers
 	}
+	// ADR 0224: the bands are announced with the attacks (CR 508.1e).
+	g.stageBandsLocked(eligible)
 	// One lock-in and one drain for the whole declaration — see the
 	// CR 508.2 note in the doc comment. runStateChecksLocked's first
 	// act is commitAttackDeclarationLocked, which announces every
@@ -11192,7 +11237,23 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// the first-strike step), skip the whole attacker-side
 		// branch but fall through to blocker damage below.
 		if atkParticipates {
-			if len(liveBlockers) == 0 {
+			if len(liveBlockers) > 0 && g.anyHasBandingLocked(liveBlockers) {
+				// ADR 0224, CR 702.22j: blocked by a creature with banding,
+				// the attacker's damage is divided by the DEFENDING player
+				// among the creatures blocking it — among them only, so
+				// trample puts nothing on the player and "as though it
+				// weren't blocked" is not offered. With one blocker there
+				// is nothing to divide.
+				if atkPower > 0 && len(liveBlockers) == 1 {
+					mark(liveBlockers[0], atkID, atkPower)
+				} else if atkPower > 0 {
+					atk, blockers, p := atk, liveBlockers, atkPower
+					chooser := g.bandingDefenderLocked(atk, blockers)
+					prompts = append(prompts, func() {
+						g.queueBandingAssignmentPromptLocked(atk, blockers, p, step, chooser)
+					})
+				}
+			} else if len(liveBlockers) == 0 {
 				// Nothing is blocking it now — but that is not the
 				// same question as whether it is BLOCKED (CR 509.1h).
 				// A blocked attacker with no blockers left assigns no
@@ -11346,6 +11407,42 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 //
 // Caller must hold g.mu.
 func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string) {
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:             PendingChoiceDamageAssignment,
+		Chooser:          atk.Controller,
+		Count:            len(blockerIDs),
+		Source:           atk.InstanceID,
+		Reason:           "Assign combat damage",
+		DamageAssignment: attackerDamageFrame(atk, blockerIDs, atkPower, step),
+	})
+}
+
+// queueBandingAssignmentPromptLocked is CR 702.22j's prompt: an attacker
+// blocked by a creature with banding has its combat damage divided by
+// the defending player (`chooser`) among the creatures blocking it,
+// as they choose (ADR 0224). The attacker's own frame with trample and
+// "as though it weren't blocked" switched off, since the division is
+// among the blockers only, and Banding set to say whose choice it is.
+//
+// Caller must hold g.mu.
+func (g *Game) queueBandingAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string, chooser uuid.UUID) {
+	frame := attackerDamageFrame(atk, blockerIDs, atkPower, step)
+	frame.AllowTrample = false
+	frame.AsThoughUnblocked = false
+	frame.Banding = true
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:             PendingChoiceDamageAssignment,
+		Chooser:          chooser,
+		Count:            len(blockerIDs),
+		Source:           atk.InstanceID,
+		Reason:           "Divide the attacking creature's combat damage among your blockers (banding)",
+		DamageAssignment: frame,
+	})
+}
+
+// attackerDamageFrame is the CR 510.1c frame for an attacker's damage:
+// every source keyword snapshotted as the prompt is queued.
+func attackerDamageFrame(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string) *DamageAssignmentFrame {
 	frame := &DamageAssignmentFrame{
 		AttackerID:        atk.InstanceID,
 		BlockerIDs:        append([]uuid.UUID(nil), blockerIDs...),
@@ -11366,14 +11463,7 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 	// by the same reader the direct combat paths use.
 	res := SourceDamageResultTraits(atk)
 	frame.SourceInfect, frame.SourceWither, frame.SourceToxic = res.Infect, res.Wither, res.ToxicTotal
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:             PendingChoiceDamageAssignment,
-		Chooser:          atk.Controller,
-		Count:            len(blockerIDs),
-		Source:           atk.InstanceID,
-		Reason:           "Assign combat damage",
-		DamageAssignment: frame,
-	})
+	return frame
 }
 
 // markCombatDamageOnCardLocked adds damage to a battlefield card and

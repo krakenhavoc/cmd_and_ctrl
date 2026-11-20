@@ -34,6 +34,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a612f30d-cd55-438b-a7de-8c80509183aa",
 		Name:         "Mending Hands",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

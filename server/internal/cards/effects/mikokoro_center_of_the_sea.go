@@ -29,15 +29,7 @@ func init() {
 			Label:   "{2}, {T}: Each player draws a card.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, id := range tablePlayers(ctx) {
-					if err := (DrawCards{Player: id, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
+			Effect:  eachPlayerDrawsACard,
 		}},
 	})
 }

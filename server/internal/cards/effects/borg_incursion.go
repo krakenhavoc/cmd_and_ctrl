@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f00dfc16-c253-4483-94fb-3c2beabd5820",
 		Name:         "Borg Incursion",
+		Purpose:      game.Purpose{Answers: game.AnswerProtect | game.AnswerMakesBlocker}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (CreateToken{Template: TokenCard("1/1 colorless Borg artifact"), N: 2}).Apply(ctx); err != nil {

@@ -23,6 +23,11 @@ var knownManaAbilityDisagreements = map[string]string{
 	// line, which the fixture does not carry, and its reminder text is
 	// not the bare "({T}: Add {G}.)" intrinsicTypeLine recognises.
 	"Dryad Arbor": "a basic land type's intrinsic ability; the fixture has no type line",
+	// Joraga Treespeaker's LEVEL 1-4 "{T}: Add {G}{G}." is a bundle it
+	// grants itself behind the band's level check (leveler.go, CR 711.2a),
+	// and its LEVEL 5+ grants the same bundle to every Elf you control, so
+	// the mana ability is a Grants row and not a ManaAbilities row (#5581).
+	"Joraga Treespeaker": "a level band's mana ability, granted to itself behind the band's level check",
 }
 
 // intrinsicReminderRE is the reminder text Scryfall prints on a land

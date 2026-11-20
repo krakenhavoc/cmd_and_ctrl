@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "0cdbd9e7-4941-46ac-99d8-ea227181bdf8",
 		Name:         "Ethereal Haze",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromSource{Protect: ShieldAnything, Queries: []game.PermanentQuery{QueryTypes("creature")}}),
 	})

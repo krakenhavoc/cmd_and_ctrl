@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "50555471-a03c-4735-a6ce-6ae96e27d7c0",
 		Name:         "Blinding Fog",
+		Purpose:      game.Purpose{Answers: game.AnswerProtect | game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (PreventDamageFromSource{Protect: ShieldCreatures}).Apply(ctx); err != nil {

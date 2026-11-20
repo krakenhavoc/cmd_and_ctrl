@@ -1771,6 +1771,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		if ev.NewZone == game.ZoneStack {
 			return LogEvent{}, false
 		}
+		// #4994: the token a copy of a permanent spell becomes also
+		// arrives from no zone, because it is not "created" (CR 111.13),
+		// and nothing else announces it. The table reads it as a token
+		// arriving, which is what the `token` line says.
+		if ev.BecameToken && ev.NewZone == game.ZoneBattlefield {
+			base.Kind = LogToken
+			base.CardID = uuidStringOrEmpty(ev.CardID)
+			return base, true
+		}
 		// A permanent spawned onto the battlefield comes from no zone
 		// (#4763), and EventSpawned already announced it.
 		if ev.OldZone == "" && ev.NewZone == game.ZoneBattlefield {

@@ -275,6 +275,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Smoke Spirits' Aid's Smoke Blessing (S82 NEO batch 15, #5493).
 	printedSmokeBlessingToken,
 
+	// Goblin Spymaster's Goblin, whose controller's creatures attack
+	// each combat (Commander 2016, #5537).
+	printedSpymasterGoblinToken,
+
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
 	printedCursedRoleToken,
@@ -359,6 +363,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Storm's Elemental.
 	printedBirdBlocksOnlyFliersToken,
 	printedSeizeTheStormElementalToken,
+
+	// Commander 2019 batch 1 (#5517): Doomed Artisan's Sculpture, a */*
+	// that counts the Sculptures its controller controls.
+	printedDoomedArtisanSculptureToken,
 
 	// The Coming of Galactus's Galactus: flying, trample, destroys a land
 	// when he attacks.
@@ -504,6 +512,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedGapB06FerozsBanToken,
 	printedGapB06GiantBadgerToken,
 	printedGapB06LoyaltyCatToken,
+	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
+	// size is its controller's experience counters.
+	printedC15DaxosSpiritToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

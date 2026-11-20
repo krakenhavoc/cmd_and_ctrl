@@ -15,21 +15,32 @@ func nextDamageShieldRow(label string, cost game.AbilityCost, targets *game.Targ
 		Label:   label,
 		Cost:    cost,
 		Targets: targets,
-		Purpose: preventsDamageUnlessTargeted(targets),
+		Purpose: preventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return shield.Apply(NewContext(g, item))
 		},
 	}
 }
 
-// preventsDamageUnlessTargeted is the shield rows' declaration (ADR 0142):
-// they prevent or redirect damage. A row with a target clause declares
-// nothing, because its move already stops smart autopass.
-func preventsDamageUnlessTargeted(targets *game.TargetSpec) game.Purpose {
-	if targets != nil {
-		return game.Purpose{}
-	}
+// preventsDamage is the shield rows' declaration (ADR 0142): they
+// prevent or redirect damage. A row with a target clause declares it
+// too (#4734 slice 7, ADR 0142's amendment of 2026-11-05), so smart
+// autopass matches its move by kind instead of stopping at every window
+// through has_targets.
+func preventsDamage() game.Purpose {
 	return game.Purpose{Answers: game.AnswerPrevent}
+}
+
+// alsoAnswers is a shared row with more answers declared beside its
+// helper's: a shield whose cost sacrifices a creature is a sacrifice
+// outlet too (Circle of Despair, Martyr's Cause), which the guard's cost
+// coupling requires, and a redirection that can send the damage to an
+// opponent's creature or to any target is removal too (Soltari
+// Guerrillas, Zhalfirin Crusader), whose `remove` keeps the move's old
+// stops.
+func alsoAnswers(a game.Answers, ab ActivatedAbility) ActivatedAbility {
+	ab.Purpose.Answers |= a
+	return ab
 }
 
 // nextDamageShieldSpell is an instant's OnResolve whose whole effect is
@@ -72,7 +83,7 @@ func chosenColorShieldRow(label string, cost game.AbilityCost) ActivatedAbility 
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
-		Purpose: preventsDamageUnlessTargeted(nil),
+		Purpose: preventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			info, ok := ctx.SourcePermanent()
@@ -93,7 +104,7 @@ func chosenTypeShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
-		Purpose: preventsDamageUnlessTargeted(nil),
+		Purpose: preventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			info, ok := ctx.SourcePermanent()

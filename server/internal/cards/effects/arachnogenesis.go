@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Arachnogenesis — Instant {2}{G}:
 //
 //	"Create X 1/2 green Spider creature tokens with reach, where X is the
@@ -17,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b655bee5-52d3-467e-b16c-cfc2edf2b1a1",
 		Name:         "Arachnogenesis",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent | game.AnswerMakesBlocker}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The shield waits for a prompt the Spiders' creation asks (CR 608.2c, #4155).

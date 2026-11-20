@@ -29,6 +29,16 @@ var knownOracleMismatches = map[string]string{
 	"Anavolver | cost not printed | pay 3 life":  "granted ability printed inside quotes in an enters-with clause",
 	"Degavolver | cost not printed | pay 3 life": "granted ability printed inside quotes in an enters-with clause",
 
+	// A Rise of the Eldrazi leveler's band prints an activated ability
+	// beside its power/toughness box. It is a bundle the leveler grants
+	// itself behind the band's level check (leveler.go, CR 711.2a/b), so
+	// it is a Grants row and not one of the Spec's own Activated rows,
+	// which are all this check reads (#5581).
+	"Brimstone Mage | printed ability not registered | {t}":          "a level band's ability, granted to itself behind the band's level check",
+	"Enclave Cryptologist | printed ability not registered | {t}":    "a level band's ability, granted to itself behind the band's level check",
+	"Guul Draz Assassin | printed ability not registered | {b}, {t}": "a level band's ability, granted to itself behind the band's level check",
+	"Kazandu Tuskcaller | printed ability not registered | {t}":      "a level band's ability, granted to itself behind the band's level check",
+
 	// Heart of Kiran prints the alternative crew as prose — "You may
 	// remove a loyalty counter from a planeswalker you control rather
 	// than pay this Vehicle's crew cost" — not as a cost line, so

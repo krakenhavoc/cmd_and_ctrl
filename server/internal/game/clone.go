@@ -460,6 +460,8 @@ func (g *Game) cloneLocked() *Game {
 	// #1364: the last-known defending players rewind with the attack
 	// declarations they describe.
 	out.attackDefenders = copyUUIDPairMap(g.attackDefenders)
+	// ADR 0224: and the bands those attacks were declared in.
+	out.attackBands = copyUUIDPairMap(g.attackBands)
 	// #1279: which defenders have completed their block declaration
 	// rewinds with the declaration — an undo back past a defender's
 	// finish_blocks reopens it, so the attacker they had not blocked
@@ -1422,6 +1424,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.blockedAttackers = src.blockedAttackers
 	g.announcedAttacks = src.announcedAttacks
 	g.attackDefenders = src.attackDefenders
+	g.attackBands = src.attackBands
 	g.blocksDeclared = src.blocksDeclared
 	g.blockDeclarationClosed = src.blockDeclarationClosed
 	g.attacksDeclared = src.attacksDeclared

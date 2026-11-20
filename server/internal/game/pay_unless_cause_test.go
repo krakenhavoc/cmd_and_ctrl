@@ -1,15 +1,19 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
 )
 
-// pay_unless_cause_test.go — #4279. A pay-unless does not stop the
-// table, so a keyed one can be answered after the resolution that asked
-// has closed and Game.resolving has moved on. Its decline must stamp
-// the cause the prompt carries, not whatever the slot holds then.
+// pay_unless_cause_test.go — #4279. A keyed pay-unless is answered in a
+// later action than the one that asked it, after Game.resolving has moved
+// on (the slot lives for one event batch). Its decline must stamp the
+// cause the prompt carries, not whatever the slot holds then. (#4279 was
+// written when the prompt did not stop the table and the step could
+// advance under it; since #5793 it holds the table, and the batch
+// boundary is what the cause survives.)
 
 // payUnlessDiscardCause is a test card's "target player discards a card
 // unless they pay {2}": the decline discards the card the prompt carries.
@@ -19,8 +23,7 @@ var payUnlessDiscardCause = RegisterPayUnlessElse("test/payunless-discard-cause"
 })
 
 // openPayUnlessDiscard has seat 1's spell resolve and ask seat 0 to pay
-// {2} or discard, then closes the resolution and walks one step on, so
-// the slot is gone. Returns the table, the stack item and the card
+// {2} or discard, then moves past the event batch, so the slot is gone. Returns the table, the stack item and the card
 // seat 0 would discard.
 func openPayUnlessDiscard(t *testing.T) (g *Game, item *StackItem, hand uuid.UUID, promptID uuid.UUID) {
 	t.Helper()
@@ -46,15 +49,28 @@ func openPayUnlessDiscard(t *testing.T) (g *Game, item *StackItem, hand uuid.UUI
 	if promptID == uuid.Nil {
 		t.Fatal("no pay-unless prompt queued")
 	}
-	if _, err := g.AdvanceStep(); err != nil {
-		t.Fatalf("AdvanceStep: %v", err)
+	moveTheSlotOnPastAnOpenPayUnless(t, g)
+	return g, item, h.InstanceID, promptID
+}
+
+// moveTheSlotOnPastAnOpenPayUnless leaves the asking item's resolving
+// slot behind with the pay-unless still open. Since #5793 the prompt
+// holds the table (it is owed in its step, CR 118.12), so the step can no
+// longer advance under it. The slot (Game.resolving) still lives for one
+// event batch only, and the answer comes in a later action's batch, so it
+// is that batch boundary, not a step advance, that the cause has to
+// survive.
+func moveTheSlotOnPastAnOpenPayUnless(t *testing.T, g *Game) {
+	t.Helper()
+	if _, err := g.AdvanceStep(); !errors.Is(err, ErrChoicePending) {
+		t.Fatalf("AdvanceStep with the pay-unless open = %v, want ErrChoicePending (#5793)", err)
 	}
 	g.WithWriteLock(func() {
-		if g.resolutionOpen || g.resolving != nil {
-			t.Fatalf("the resolution is still open after the step advance (open=%v)", g.resolutionOpen)
+		g.beginEventBatchLocked()
+		if g.resolving != nil {
+			t.Fatal("the resolving slot outlived its event batch")
 		}
 	})
-	return g, item, h.InstanceID, promptID
 }
 
 func discardEventOf(g *Game, player uuid.UUID) *Event {
@@ -66,7 +82,7 @@ func discardEventOf(g *Game, player uuid.UUID) *Event {
 	return nil
 }
 
-func TestKeyedPayUnlessDeclineKeepsItsCauseAfterTheStepAdvanced(t *testing.T) {
+func TestKeyedPayUnlessDeclineKeepsItsCauseAfterTheSlotMovedOn(t *testing.T) {
 	g, item, hand, id := openPayUnlessDiscard(t)
 	payer := g.Seats[0]
 	// A different item is parked in the slot by the time the answer

@@ -22,6 +22,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{T}: Prevent the next 1 damage that would be dealt to any target this turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPrevent},
 				Cost:    TapCost(),
 				Targets: TargetAny(),
 				Effect: func(g *game.Game, item *game.StackItem) error {

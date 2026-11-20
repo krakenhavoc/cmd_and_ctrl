@@ -2,15 +2,13 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Battleground Geist — Creature — Spirit {4}{U}, 3/3 (Innistrad Remastered,
-// S82 GAP, #5948):
+// Battleground Geist — Creature — Spirit {4}{U}, 3/3 (Innistrad, #5572):
 //
 //	"Flying
 //	 Other Spirit creatures you control get +1/+0."
 //
-// Drogskol Captain's lord scoped to the OTHER Spirits its controller
-// controls (the shared tribal anthem, layer 7c), so a Spirit token made
-// later gets the bonus the moment it exists and the Geist itself doesn't.
+// Drogskol Captain's tribal anthem (TribalAnthem over the other Spirits
+// you control) at +1/+0, with printed flying.
 //
 // No simplification.
 func init() {

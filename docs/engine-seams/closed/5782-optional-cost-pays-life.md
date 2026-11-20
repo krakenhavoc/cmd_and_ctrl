@@ -1,0 +1,6 @@
+---
+title: "An optional additional cost that pays life"
+date: 2026-11-20
+issues: [5782]
+---
+**An optional additional cost that pays life** (#5782, CR 118.3, CR 118.8a, CR 119.4, CR 601.2h, CR 702.27a, CR 702.33a, [ADR 0100](decisions/0100-delve-either-or-and-variable-sacrifice-costs.md) amended 2026-11-20) — `effects.Register` refused a fixed `PayLife` on any optional cost, so "Buyback—Pay 4 life" could not be declared. The owner lifted it: a kicker or buyback may pay a fixed amount of life, offered only while the caster's life total is at least that amount. The engine needed nothing new, since the cast plan already sums every entry's fixed life (`planLife`) for the CR 119.4 check and the payer. Card side: `effects.BuybackPayLife(n)` and `effects.KickerPayLife(n)`; `Register` still refuses a negative amount, a repeated life payment and an optional cost with branches. Wire: `optional_costs[].pay_life` and `life_short` (additive), and the client greys an offer the viewer can't pay. The bot enumerator offers it only while the seat would survive the payment, and names the life on `MoveCost.Life`. No snapshot change. **Cards** (2, both Full): Slaughter and Phyrexian Scuta. Flowstone Flood still waits on a random discard as a cost.

@@ -23,6 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{W}, {T}: Put a +1/+1 counter on target Soldier creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{W}"), TapCost()),
 			Targets: TargetCreature("target Soldier creature", HasSubtype("Soldier")),
 			Effect:  cennsTacticianPutCounter,
