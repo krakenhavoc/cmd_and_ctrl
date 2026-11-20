@@ -29,7 +29,7 @@ func init() {
 			Purpose: ForTargets(CantBlockUntilEOT(0, 0, 0)),
 			Cost:    ManaCost("{U/R}"),
 			Targets: TargetCreature("target creature"),
-			Effect:  eveB1CantBlockThis("Shrewd Hatchling — can't block it"),
+			Effect:  targetCantBlockThisCreature("Shrewd Hatchling — can't block it"),
 		}},
 		Triggered: []game.TriggeredAbility{
 			eveB1RemoveCounterOnCast("Shrewd Hatchling", "U"),

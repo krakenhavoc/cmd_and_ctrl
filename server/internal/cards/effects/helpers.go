@@ -2021,3 +2021,18 @@ func shieldCounterOnFirstTarget(ctx *Context) error {
 	}
 	return AddCounter{Target: t.ID, Kind: game.CounterShield, N: 1}.Apply(ctx)
 }
+
+// targetCantBlockThisCreature is "Target creature can't block this creature
+// this turn." as an activated ability's body (Shrewd Hatchling, Screeching
+// Griffin): the record bars only blocks of the ability's source, and a
+// target gone by resolution gets nothing (CR 608.2b).
+func targetCantBlockThisCreature(label string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		id, ok := b16FirstLegalTargetCard(ctx)
+		if !ok {
+			return nil
+		}
+		return CantBlockThisCreatureThisTurn{Blocker: id, Attacker: item.SourceCardID, Label: label}.Apply(ctx)
+	}
+}
