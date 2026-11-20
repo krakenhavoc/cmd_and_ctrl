@@ -3497,6 +3497,12 @@ export interface OptionalCostView {
   // pays for, and `energy_short` says it pays for none.
   energy?: number;
   energy_short?: boolean;
+  // #5782 (ADR 0100's 2026-11-20 amendment): the fixed life this cost
+  // pays (Slaughter's "Buyback—Pay 4 life" is 4), and `life_short` when
+  // the viewer can't pay it now (a life total below it, CR 119.4, or a
+  // rule that stops them paying life), so the offer cannot be taken.
+  pay_life?: number;
+  life_short?: boolean;
   // The card-shaped halves, in the same shape and with the same
   // meaning AdditionalCostView gives them: a present-and-empty
   // sacrifice_options means the offer cannot be taken right now.

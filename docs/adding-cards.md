@@ -6616,8 +6616,22 @@ OptionalCosts: []game.AdditionalCost{Multikicker("{G}", 20)},                   
 OptionalCosts: []game.AdditionalCost{Buyback("{3}")},                           // Capsize
 OptionalCosts: []game.AdditionalCost{BuybackSacrifice("a land", Land())},       // Constant Mists
 OptionalCosts: []game.AdditionalCost{KickerSacrifice("a creature", Creature())},
+OptionalCosts: []game.AdditionalCost{BuybackPayLife(4)},                        // Slaughter
+OptionalCosts: []game.AdditionalCost{KickerPayLife(3)},                         // Phyrexian Scuta
 OptionalCosts: Kickers("{R}", "{W}"),                                            // Thornscape Battlemage
 ```
+
+**"Buyback—Pay N life" / "Kicker—Pay N life"** (#5782, ADR 0100's
+2026-11-20 amendment) is `BuybackPayLife(n)` / `KickerPayLife(n)`: the
+fixed `PayLife` component the either/or branches use, on an optional
+cost. Nothing else is needed in the card file. The engine pays the life
+with the rest of the total cost (CR 601.2h) and refuses the announcement
+when the caster's life total is below it, or when they can't pay life
+at all (CR 119.4). The view marks the offer `life_short` so the client
+greys it, and the bot is offered it only while it would survive the
+payment. A cost that pays life AND something else ("Buyback—Pay 3 life,
+Discard a card at random", Flowstone Flood) needs every component to
+exist; a random discard as a cost does not yet, so that card stays out.
 
 **"Kicker {R} and/or {W}"** (CR 702.33b) is `Kickers(first, second)`: two
 `Kicker` entries in printed order, both keyed kicker, each its own once-only
@@ -6654,9 +6668,9 @@ hand-rolled one compiles and then never returns a bought-back card to
 hand. `Register` refuses the mistakes that would otherwise ship
 quietly: an `Optional` cost in the mandatory slot, a missing or
 duplicated `Key` (kicker's pair aside), a repeatable cost that also demands cards or
-permanents (every printed multikicker is mana), and an optional
-`PayLifeX` (it would fight the mandatory cost for the shared `XValue`
-slot).
+permanents (every printed multikicker is mana, so a repeated life
+payment is refused too), an optional `PayLifeX` (it would fight the
+mandatory cost for the shared `XValue` slot), and a negative `PayLife`.
 
 Read the choice back at RESOLUTION with `ctx.WasKicked()` /
 `ctx.KickedTimes()`, the same shape `ctx.PaidAltCost("overload")`
