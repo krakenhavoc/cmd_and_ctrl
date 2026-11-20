@@ -38,7 +38,7 @@ cmd_and_ctrl/
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── adminview/   # the admin views' read side: every SQL statement behind /admin/users* and /admin/games* (SELECT only, guarded by a test), their response types, and pure merges with the lobby's live tables; imports no lobby or ws (ADR 0124)
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes; card roles (roles.go, roles_overrides.go, ADR 0217 §7)
-│   │   │   ├── effects/  # the card catalog (package effects): Spec, Register, Lookup, every seam and shared helper. Split by #5906 (ADR 0224) when its second PR lands; until then every card and test is in this one directory:
+│   │   │   ├── effects/  # the card catalog (package effects): Spec, Register, Lookup, every seam and shared helper. Split by #5906 (ADR 0225) when its second PR lands; until then every card and test is in this one directory:
 │   │   │   │   ├── shards.txt      # the frozen range table: which card shard and test package a file name belongs to
 │   │   │   │   ├── core_cards.txt  # the card files that stay in the core because other files use their helpers (written by the split)
 │   │   │   │   ├── cards/          # package cards, the aggregator: links every shard; import it for its side effect wherever the whole catalog is read
@@ -96,6 +96,7 @@ cmd_and_ctrl/
 │   │   ├── routes/      # one Svelte page per route: FrontPage, Lobby, Join, Game, Decks, Catalog, Roadmap, Stats, Pods, Friends, Draft, DraftSets, MyDrafts, MyCubes, Admin, Privacy, …
 │   │   └── sw/          # the service worker (ADR 0031)
 │   ├── public/          # static files: card backs, fonts, icons, the web manifest, sounds and voices
+│   ├── tools/           # dev tools that never ship: the fx preview harness (fx-preview/, `npm run fx-preview`, #4868) and the icon and card-back generators
 │   ├── index.html
 │   ├── vite.config.ts
 │   ├── svelte.config.js

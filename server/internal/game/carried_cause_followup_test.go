@@ -54,7 +54,7 @@ var (
 )
 
 // openFollowupChain has seat 1's spell resolve and ask seat 0 to pay {2}
-// or run `via`, closes the resolution and walks a step on. Seat 0 holds
+// or run `via`, and moves past the event batch (the slot is gone). Seat 0 holds
 // two cards. Returns the table, the asking item, the prompt and the hand.
 func openFollowupChain(t *testing.T, via PayUnlessElse) (g *Game, item *StackItem, promptID uuid.UUID, hand []uuid.UUID) {
 	t.Helper()
@@ -83,14 +83,7 @@ func openFollowupChain(t *testing.T, via PayUnlessElse) (g *Game, item *StackIte
 	if promptID == uuid.Nil {
 		t.Fatal("no pay-unless prompt queued")
 	}
-	if _, err := g.AdvanceStep(); err != nil {
-		t.Fatalf("AdvanceStep: %v", err)
-	}
-	g.WithWriteLock(func() {
-		if g.resolutionOpen || g.resolving != nil {
-			t.Fatalf("the resolution is still open after the step advance (open=%v)", g.resolutionOpen)
-		}
-	})
+	moveTheSlotOnPastAnOpenPayUnless(t, g)
 	return g, item, promptID, hand
 }
 

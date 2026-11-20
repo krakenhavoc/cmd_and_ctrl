@@ -40,6 +40,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(TapCost(), RemoveCountersFromThis(game.CounterPlusOne, 1)),
 			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect:  b36CounterOnChosenAnimal,

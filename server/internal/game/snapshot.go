@@ -709,6 +709,13 @@ type GameSnapshot struct {
 	// an attacker cannot be blocked until combat ends. No schema bump.
 	AttackDefenders map[uuid.UUID]uuid.UUID `json:"attackDefenders,omitempty"`
 
+	// AttackBands is Game.attackBands (ADR 0224, CR 702.22): each banded
+	// attacker's band key. Empty outside combat and in every combat with
+	// no band. A file written before it restores as empty, which is a
+	// combat whose attackers were declared without bands, the only kind
+	// there was. Additive, no schema bump.
+	AttackBands map[uuid.UUID]uuid.UUID `json:"attackBands,omitempty"`
+
 	// FirstStrikeStepParticipants is the CR 510.4 / 702.7c
 	// participation record for the combat damage steps (#716): the
 	// combatants that had first strike or double strike as the first
@@ -1010,6 +1017,10 @@ type playerSnapshot struct {
 	// amendment, #3016). Additive: a file written before it restores
 	// with none, so every batch is asked by hand again.
 	TriggerOrderMemory map[string]RememberedTriggerOrder `json:"triggerOrderMemory,omitempty"`
+
+	// StartingDeckSize is Player.StartingDeckSize (Whtz, the Bibliophile).
+	// Additive within version 9 (#522): absent in older saves, read as 0.
+	StartingDeckSize int `json:"startingDeckSize,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -2656,6 +2667,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
+	s.AttackBands = copyUUIDPairMap(g.attackBands)
 	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
 	s.BlockDeclarationClosed = g.blockDeclarationClosed
 	s.AttacksDeclared = g.attacksDeclared
@@ -3298,6 +3310,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		ID:                         p.ID,
 		Name:                       p.Name,
 		Seat:                       p.Seat,
+		StartingDeckSize:           p.StartingDeckSize,
 		Life:                       p.Life,
 		Poison:                     p.Poison,
 		Energy:                     p.Energy,
@@ -3952,6 +3965,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
+	g.attackBands = copyUUIDPairMap(s.AttackBands)
 	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
 	g.blockDeclarationClosed = s.BlockDeclarationClosed
 	g.attacksDeclared = s.AttacksDeclared
@@ -4498,6 +4512,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		ID:                         p.ID,
 		Name:                       p.Name,
 		Seat:                       p.Seat,
+		StartingDeckSize:           p.StartingDeckSize,
 		Life:                       p.Life,
 		Poison:                     p.Poison,
 		Energy:                     p.Energy,

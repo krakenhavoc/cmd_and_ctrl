@@ -9,7 +9,7 @@ import (
 // splitEffectsDir is the tool that splits internal/cards/effects (#5906).
 const splitEffectsDir = "../../../scripts/split-effects"
 
-// TestEffectsTreeLayout is the fix-it check of #5906 (ADR 0224). The effects
+// TestEffectsTreeLayout is the fix-it check of #5906 (ADR 0225). The effects
 // package is split into a core, card shards (cards/<shard>/) and test
 // packages (tests/<id>/), and the frozen range table
 // internal/cards/effects/shards.txt says which shard or test package each

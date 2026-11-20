@@ -1,5 +1,5 @@
 // Command split-effects splits server/internal/cards/effects into a core,
-// card shards and test packages (#5906, ADR 0224), and keeps the tree that
+// card shards and test packages (#5906, ADR 0225), and keeps the tree that
 // way afterwards. Run it through scripts/split-effects.sh, from anywhere in
 // the repository:
 //

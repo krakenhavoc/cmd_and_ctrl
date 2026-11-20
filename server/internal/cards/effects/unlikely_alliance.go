@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Unlikely Alliance — Enchantment {1}{W} (Alliances, #5634):
 //
 //	"{1}{W}: Target nonattacking, nonblocking creature gets +0/+2 until
@@ -18,7 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}: Target nonattacking, nonblocking creature gets +0/+2 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 2)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 0, 2)), game.AnswerPump),
 			Cost:    ManaCost("{1}{W}"),
 			Targets: TargetCreature("target nonattacking, nonblocking creature", Not(AttackingOrBlocking())),
 			Effect:  boostTargetUntilEOT("Unlikely Alliance — +0/+2 until end of turn", 0, 2),

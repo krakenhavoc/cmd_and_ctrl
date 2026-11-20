@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Pay No Heed — Instant {W}:
 //
 //	"Prevent all damage a source of your choice would deal this turn."
@@ -14,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "71da5acb-78bc-453a-ae28-d22faa5a4e43",
 		Name:         "Pay No Heed",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromChosenSource(ShieldAnything)),
 	})

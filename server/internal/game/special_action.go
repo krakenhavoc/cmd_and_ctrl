@@ -582,7 +582,9 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// is neither a cast nor an activation, so mana restricted to
 	// either ("spend this mana only to cast creature spells") cannot
 	// pay for it. Conservative in the direction #259 requires.
-	if sa.Cost != "" {
+	// #5844: asked, not read off sa.Cost, so a cost increase on a cost
+	// that prints no mana (Exiled Doomsayer's on a morph {0}) is paid.
+	if g.SpecialActionChargesManaForEffect(playerID, card, kind, *sa) {
 		// #1319: a special action IS priced through the CR 601.2f pass
 		// now — Ranar the Ever-Watchful's "The first card you foretell
 		// each turn costs {0} to foretell" is a cost modifier on the

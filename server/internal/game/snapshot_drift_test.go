@@ -278,6 +278,10 @@ var gameFields = plan(
 	// with announcedAttacks: a restore that dropped it would leave an
 	// attacker whose planeswalker has left unblockable (CR 506.4c).
 	"attackDefenders", carried, "",
+	// ADR 0224: the bands the attacks were declared in. Carried with
+	// attackDefenders: a restore that dropped it would split a band, so
+	// blocking one member would no longer block the rest (CR 702.22h).
+	"attackBands", carried, "",
 	// #1279: which defenders have completed their block declaration.
 	// Carried with the block maps above: a restore that dropped it
 	// would re-ask a defender who had already declared, and one that
@@ -768,6 +772,7 @@ var playerFields = plan(
 	"ID", carried, "",
 	"Name", carried, "",
 	"Seat", carried, "",
+	"StartingDeckSize", carried, "",
 	"Life", carried, "",
 	"Poison", carried, "",
 	"Energy", carried, "",

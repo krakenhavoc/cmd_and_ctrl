@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# split-effects.sh — run scripts/split-effects (#5906, ADR 0224), the tool that
+# split-effects.sh — run scripts/split-effects (#5906, ADR 0225), the tool that
 # splits server/internal/cards/effects and keeps it split.
 #
 #   scripts/split-effects.sh --place FILE...   move card/test files written for the old

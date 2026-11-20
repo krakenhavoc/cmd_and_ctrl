@@ -88,6 +88,13 @@ type Player struct {
 	Name string
 	Seat int // 0..MaxPlayers-1, assigned at AddPlayer time
 
+	// StartingDeckSize is how many cards the player's deck held when it was
+	// seated: the library plus the commanders, never a companion or a
+	// sideboard card (CR 100.2a, 903.5a). "If you had 200 or more cards in
+	// your starting deck" (Whtz, the Bibliophile) reads it. Set by AddPlayer
+	// and ReplaceDeck; it never changes once the game starts.
+	StartingDeckSize int
+
 	// Life, starting at StartingLife. Can go negative — death-by-life
 	// is a state-based action evaluated in S13+ rules work.
 	Life int

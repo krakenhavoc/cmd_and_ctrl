@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b9b58c3a-5a76-4b6a-884b-74f54f0ca53c",
 		Name:         "Azorius Ploy",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets: Clauses(
 			TargetCreature("target creature (its combat damage is prevented)"),

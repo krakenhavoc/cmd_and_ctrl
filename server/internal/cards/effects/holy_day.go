@@ -13,6 +13,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "98423a34-f044-4811-b288-56981d604b6e",
 		Name:         "Holy Day",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return PreventAllCombatDamageThisTurn{

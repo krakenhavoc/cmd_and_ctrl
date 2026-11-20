@@ -31,6 +31,7 @@ func init() {
 		)},
 		Activated: []ActivatedAbility{{
 			Label:   "{6}: Put a +1/+1 counter on target nonlegendary creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{6}"),
 			Targets: TargetCreature("target nonlegendary creature", Not(Legendary())),
 			Effect:  rfCreatureFCounterOnTargetCreature,

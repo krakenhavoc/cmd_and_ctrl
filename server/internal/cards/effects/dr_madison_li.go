@@ -30,7 +30,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{T}, Pay {E}: Target creature gets +1/+0 and gains trample and haste until end of turn.",
-				Purpose: ForTargets(BenefitUntilEOT(0, 1, 0, "trample", "haste")),
+				Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 0, "trample", "haste")), game.AnswerPump|game.AnswerCombatGrant),
 				Cost:    Plus(TapCost(), PayEnergy(1)),
 				Targets: TargetCreature("target creature"),
 				Effect:  pumpAndGrantFirstTarget(1, 0, "Dr. Madison Li — +1/+0, trample and haste", "trample", "haste"),

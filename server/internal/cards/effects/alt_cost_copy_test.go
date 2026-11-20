@@ -293,18 +293,19 @@ func TestACopyOfAnEscapedCreatureSpellDidNotEscape(t *testing.T) {
 	}
 }
 
-// Through a real copier: Double Major on a dashed creature spell under
-// Doubling Season and Parallel Lives, so the token creation stops on the
-// CR 616 order prompt. The game is restored there, and each token the
-// restored answer makes still has the dash riders (the chained
-// engine/spell-copy-token-alt-cost tail). Then a second round trip with
-// the return pending: the tokens and the original still go at the end
+// Through a real copier: Double Major on a dashed creature spell under two
+// entry replacements, so the token's entry stops on the CR 616 order
+// prompt (#4994: the token is not created, CR 111.13, so its creation has
+// no window to stop in). The game is restored there, and the token the
+// restored answer puts onto the battlefield still has the dash riders (the
+// chained engine/spell-copy-token-alt-cost tail). Then a second round trip
+// with the return pending: the token and the original still go at the end
 // step.
 func TestADashedSpellCopyKeepsItsRidersAcrossTheOrderPromptAndRestore(t *testing.T) {
 	registerAltCopyCreature(t, altCopyDashOracle, Dash("{R}"))
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	ds, pl := tokenOrderBoard(g, me.ID)
+	pa, pb := seedTokenEntryOrderProbes(g, me.ID)
 	spell := castAltCopyCreature(t, g, me, altCopyDashOracle, "dash")
 	castCatalogSpell(t, g, "Double Major", "Instant", oracleDoubleMajor,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
@@ -313,14 +314,14 @@ func TestADashedSpellCopyKeepsItsRidersAcrossTheOrderPromptAndRestore(t *testing
 		t.Fatalf("no order prompt is open: %+v", g.PendingChoices)
 	}
 
-	g = strictRestoreWithFrame(t, g, game.ReplacementResumeCreateTokens)
+	g = strictRestoreWithFrame(t, g, game.ReplacementResumeMoveTail)
 	me = g.Seats[g.Turn.ActiveSeat]
-	answerOrderBySource(t, g, ds, pl)
+	answerOrderBySource(t, g, pa, pb)
 	assistCardSettle(t, g, me.ID, nil, true)
 
 	toks := altCopyTokens(g)
-	if len(toks) == 0 {
-		t.Fatal("no copy tokens after the restored answer")
+	if len(toks) != 1 {
+		t.Fatalf("%d copy tokens after the restored answer, want 1", len(toks))
 	}
 	for _, tok := range toks {
 		if !hasEffectiveKeyword(t, g, tok.InstanceID, "haste") {

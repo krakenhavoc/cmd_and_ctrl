@@ -643,6 +643,12 @@ func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 	if p == nil {
 		return true
 	}
+	// #5718: "players can't be the targets of spells or activated
+	// abilities" (Peace Talks) -- a table-wide record, asked before the
+	// player's own abilities (targeting_bar_table.go).
+	if g.tableTargetingBarLocked(src) {
+		return false
+	}
 	var (
 		chars     *Characteristic
 		charsRead bool

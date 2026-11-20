@@ -25,7 +25,7 @@ func init() {
 		Triggered:       []game.TriggeredAbility{RetiredFlankingRow("Zhalfirin Commander")},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}{W}: Target Knight creature gets +1/+1 until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 1, 1)), game.AnswerPump),
 			Cost:    ManaCost("{1}{W}{W}"),
 			Targets: TargetCreature("target Knight creature", HasSubtype("Knight")),
 			Effect:  pumpAndGrantFirstTarget(1, 1, "Zhalfirin Commander — +1/+1 until end of turn"),

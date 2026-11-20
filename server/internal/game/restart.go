@@ -375,6 +375,8 @@ func (g *Game) newGameAtThisTableLocked(rngKey [32]byte) *Game {
 func restartedPlayer(p *Player) *Player {
 	np := newPlayerWithID(p.ID, p.Name, p.Seat)
 	np.DeckImported = p.DeckImported
+	// The restart reuses the deck, so its starting size is the same (CR 727.2).
+	np.StartingDeckSize = p.StartingDeckSize
 	np.DiscordID = p.DiscordID
 	np.DiscordAvatarHash = p.DiscordAvatarHash
 	np.DisplayName = p.DisplayName

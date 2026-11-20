@@ -368,7 +368,7 @@ func check(root string) ([]misplaced, error) {
 // fixItMessage is what --check prints, and what the docsguard test shows.
 func fixItMessage(ms []misplaced) string {
 	var b strings.Builder
-	b.WriteString("server/internal/cards/effects is split into a core, card shards and test packages (#5906, ADR 0224),\n")
+	b.WriteString("server/internal/cards/effects is split into a core, card shards and test packages (#5906, ADR 0225),\n")
 	b.WriteString("and these files are not where that layout puts them:\n\n")
 	var files []string
 	regen := false

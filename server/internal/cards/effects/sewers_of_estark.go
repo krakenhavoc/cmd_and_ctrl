@@ -26,6 +26,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "2482f98a-eadf-450d-9e73-fc441b572862",
 		Name:         "Sewers of Estark",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent | game.AnswerCombatGrant}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

@@ -30,7 +30,7 @@ func init() {
 			Cost:      ManaCost("{5}{G}"),
 			Condition: trekB48Coven,
 			Targets:   TargetCreature("target creature you control", YouControl()),
-			Purpose:   ForTargets(BenefitUntilEOT(0, 3, 3, "trample")),
+			Purpose:   withAnswers(ForTargets(BenefitUntilEOT(0, 3, 3, "trample")), game.AnswerPump|game.AnswerCombatGrant),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				ts := ctx.LegalTargets()

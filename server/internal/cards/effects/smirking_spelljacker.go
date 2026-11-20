@@ -27,19 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	exile := Targeting(
 		WhenThisEnters("Smirking Spelljacker — exile target spell an opponent controls",
-			func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				ref, ok := ctx.SourceRef()
-				if !ok {
-					return nil
-				}
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return g.ExileSpellLinkedKeyedForEffect(ref, t.ID, game.KeyedTail{})
-					}
-				}
-				return nil
-			}),
+			gapExileTargetSpellLinked),
 		TargetSpell("target spell an opponent controls", OpponentControls()))
 	attack := InterveningIf(cmdr2S36CondCardExiledWithThis{},
 		On(game.EventAttack, cmdr2S36ThisAttackedWithAnExiledCard,

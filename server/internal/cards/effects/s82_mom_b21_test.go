@@ -619,7 +619,19 @@ func TestMomB21ElendaTriggersOnAnOpponentsEndStepToo(t *testing.T) {
 	oppSeat := 1
 	toMain(t, g)
 	b12Push(g, me.ID, "Elenda and Azor", "Legendary Creature — Vampire Knight Sphinx", momB21ElendaOracle, 6, 6)
-	advanceToEndStepOf(t, g, oppSeat)
+	// #5793: Elenda's offer at our own end step holds the table until it
+	// is answered, so the walk to the opponent's end step declines it.
+	for i := 0; i < 300 && (g.Turn.Step != game.StepEnd || g.Turn.ActiveSeat != oppSeat); i++ {
+		if hasPayUnlessFor(g, me.ID) {
+			answerPayUnless(t, g, me.ID, false)
+		}
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep toward end step of seat %d: %v", oppSeat, err)
+		}
+	}
+	if g.Turn.Step != game.StepEnd || g.Turn.ActiveSeat != oppSeat {
+		t.Fatalf("never reached the end step of seat %d", oppSeat)
+	}
 	for i := 0; i < 2; i++ {
 		_ = g.DrawCard(me.ID)
 	}

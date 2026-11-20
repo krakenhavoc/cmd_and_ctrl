@@ -449,6 +449,12 @@ func TestBro17UrzasSylexDestroysAllButSixLandsEach(t *testing.T) {
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	// #5793: the exile cost's trigger resolves first, and its "you may pay
+	// {2}" holds the table until it is answered. Decline it.
+	if hasPayUnlessFor(g, me.ID) {
+		answerPayUnless(t, g, me.ID, false)
+		passPriorityAroundTable(t, g)
+	}
 	pr := latestChooseCardsFor(g, opp.ID)
 	if pr == nil {
 		t.Fatal("the opponent with eight lands was not asked for six")

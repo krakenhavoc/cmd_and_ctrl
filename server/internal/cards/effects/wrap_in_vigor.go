@@ -27,6 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "39da2aa8-f4d9-44f6-a446-488beaec821f",
 		Name:         "Wrap in Vigor",
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			me := ctx.Controller()

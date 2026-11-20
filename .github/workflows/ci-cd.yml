@@ -149,7 +149,7 @@ jobs:
             // The token table and everything that builds a token template
             // (#2158), plus the dump refresh script and this workflow. A
             // token file may sit in the core, a card shard or a test
-            // package of the effects tree (#5906, ADR 0224).
+            // package of the effects tree (#5906, ADR 0225).
             const tokens = (n) => /^server\/internal\/cards\/effects\/(?:[^/]+\/)*token[^/]*\.go$/.test(n) ||
               n === 'scripts/scryfall-refresh.sh' || n === '.github/workflows/ci-cd.yml';
             // The catalog and the curated decks (#3348): `cards` gates

@@ -43,7 +43,7 @@ func init() {
 			Label:   "{1}{W}: Target attacking creature token gains indestructible until end of turn.",
 			Cost:    ManaCost("{1}{W}"),
 			Targets: TargetCreature("target attacking creature token", AttackingCreature(), IsTokenPredicate()),
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")), game.AnswerSurvive),
 			Effect:  ebTargetCreatureGainsUntilEOT("indestructible", "Old Hob — indestructible"),
 		}},
 	})

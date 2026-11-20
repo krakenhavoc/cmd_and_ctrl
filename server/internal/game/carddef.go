@@ -78,6 +78,16 @@ type CardDef struct {
 	// ReturnedAuraSpecFor, and only for a permanent whose Card.ReturnedAura
 	// is set. Nil for every card but the ones that return as an Aura.
 	ReturnedAura *TargetSpec
+	// AttachOnlyTo is an Equipment's static "<this> can be attached only
+	// to <a quality>" (Konda's Banner's "a legendary creature", #5846): the
+	// one clause the objects it equips must also meet, beyond CR 301.5c's.
+	// Read through equipmentAttachOnlyAdmitsLocked, by AttachForEffect and
+	// attachmentLegalLocked, so an equip or an effect that would attach it
+	// elsewhere does not move it (CR 301.5b, CR 701.3b) and it becomes
+	// unattached from a host that stops meeting it (CR 301.5c, CR 704.5n).
+	// Not Targets: the equip ability's target is still "target creature
+	// you control". Nil for every other card.
+	AttachOnlyTo *TargetSpec
 	Modes        *ModeSpec
 
 	// Purpose is what the card does, declared on its Spec (ADR 0126
@@ -139,6 +149,10 @@ type CardDef struct {
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
 	// the battlefield through DelveForLocked.
 	SpellsYouCastHaveDelve bool
+	// FirstSpellHasAssist is a permanent's "The first spell you cast during
+	// each of your turns has assist" (Yume, Chronicler of Valor). Read from
+	// the battlefield through SpellHasAssistLocked.
+	FirstSpellHasAssist bool
 
 	// AsYouCascadePutALand is "As you cascade, you may put a land card from
 	// among the exiled cards onto the battlefield tapped" (Averna, the Chaos
@@ -904,6 +918,12 @@ func init() {
 	CatalogSpellsHaveDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.SpellsYouCastHaveDelve
+		}
+		return false
+	}
+	CatalogFirstSpellHasAssist = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.FirstSpellHasAssist
 		}
 		return false
 	}

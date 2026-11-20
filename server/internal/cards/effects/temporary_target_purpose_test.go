@@ -190,6 +190,11 @@ func checkDeclaredChange(t *testing.T, where, text string, harm bool, e *game.Ta
 // untilEndOfTurnSpellExempt are the spells the pattern finds that declare
 // no direction, each for a reason a direction cannot carry (#4312).
 var untilEndOfTurnSpellExempt = map[string]string{
+	// "Untap target permanent and gain control of it until end of turn":
+	// the pattern reads "gain control" as a grant, but taking a permanent
+	// is a change of control, which a direction cannot carry; Act of
+	// Treason, whose words the pattern does not catch, declares none.
+	"Word of Seizing": "a change of control, not a change to the target",
 	// "At the beginning of the next end step, destroy that creature if it
 	// attacked this turn": the trample and power are a benefit, the
 	// destruction a harm that lasts.
@@ -211,6 +216,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// Inversion's change without the type loss: the power is a benefit, the
 	// toughness a harm, and it is cast as often to kill an X/3 as to pump.
 	"Eldrazi Confluence": "partly a benefit and partly a harm",
+	// "Target creature gets +2/-2 until end of turn" (#5502): the power is
+	// a benefit, the toughness a harm, and it is cast as often to kill an
+	// X/2 as to pump an attacker.
+	"Lash of Malice": "partly a benefit and partly a harm",
 }
 
 // spellText is a catalog card's printed text, from the coverage package's

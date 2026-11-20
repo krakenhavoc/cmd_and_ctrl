@@ -1,4 +1,4 @@
-# shards.txt — the frozen range table of the split effects tree (#5906, ADR 0224).
+# shards.txt — the frozen range table of the split effects tree (#5906, ADR 0225).
 #
 #   card <shard> <from>   a card file goes to internal/cards/effects/cards/<shard>/ (package cards<shard>)
 #   test <id>    <from>   a _test.go file goes to internal/cards/effects/tests/<id>/ (package tests<id>)

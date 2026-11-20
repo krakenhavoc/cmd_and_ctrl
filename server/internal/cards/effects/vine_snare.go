@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f3303d45-b3ee-4389-8172-d9ffa8bf251b",
 		Name:         "Vine Snare",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(combatShieldAgainstCreatures(game.DamageSourceFilter{PowerBounded: true, PowerAtMost: 4})),
 	})

@@ -24,7 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3d036f68-5f3a-4182-88f0-cdd685817dd0",
 		Name:         "Angelic Intervention",
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "protection")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "protection")), game.AnswerProtect|game.AnswerPump),
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target creature or planeswalker you control", Or(Creature(), Planeswalker()), YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

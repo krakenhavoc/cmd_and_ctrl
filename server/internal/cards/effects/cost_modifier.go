@@ -429,6 +429,35 @@ func SpecialActionCostsLess(n int, label string, when ...CostPredicate) game.Cos
 	return m
 }
 
+// SpecialActionCostsMore is "<matching> [special action] costs {n}
+// more" — Exiled Doomsayer's "All morph costs cost {2} more" (#5844).
+// The increase twin of SpecialActionCostsLess, on the same partition:
+// a special-action-scoped CostIncrease, added before any reduction
+// comes off (CR 601.2f), so a SpecialActionCostsLess on the same action
+// spends against the raised generic. Unlike a reduction it reaches a cost that prints
+// no mana, which then owes the {n} (game.SpecialActionChargesManaForEffect).
+// Several stack, each adding its own {n}.
+func SpecialActionCostsMore(n int, label string, when ...CostPredicate) game.CostModifier {
+	m := CostsMore(n, label, when...)
+	m.SpecialActions = true
+	return m
+}
+
+// AMorphCost passes when the special action being priced pays a MORPH
+// COST: turning a permanent face up by its morph route (CR 702.37e, and
+// CR 701.40c for a manifested card with morph). A megamorph cost is a
+// morph cost (CR 702.37b), so it passes too. A disguise cost, and a
+// manifested or cloaked card's mana cost, are the same kind of special
+// action by another route and do not; nor does the {3} of casting a card
+// face down, which is a spell's cost and never reaches a special-action
+// modifier at all.
+func AMorphCost() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.SpecialAction != nil && q.SpecialAction.Kind == game.SpecialActionTurnFaceUp &&
+			q.SpecialAction.Route == game.TurnFaceUpByMorph
+	}
+}
+
 // ASpecialActionOfKind passes when the special action being priced is
 // exactly `kind` — "the first card you foretell" names foretell and
 // not suspend or turn_face_up, even from the same permanent.

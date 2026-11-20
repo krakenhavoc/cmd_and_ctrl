@@ -743,6 +743,20 @@ type Game struct {
 	// persisted snapshot for the same reasons.
 	attackDefenders map[uuid.UUID]uuid.UUID
 
+	// attackBands is each banded attacker's BAND (CR 702.22c, ADR 0224,
+	// banding.go): attacker instance ID -> the band's key, the instance
+	// ID of the band's first member in the declaration. Two attackers
+	// are in the same band when their keys are equal. Written once, by
+	// the declaration that announces the band (CR 508.1e); a band lasts
+	// for the rest of combat (CR 702.22e) and loses a member that leaves
+	// combat (CR 702.22f), which every reader enforces by asking only
+	// about members still attacking (bandMatesLocked), and which
+	// removeFromCombatLocked makes explicit.
+	//
+	// Cleared with the rest of combat, and carried by Clone /
+	// RestoreFrom and the persisted snapshot (GameSnapshot.AttackBands).
+	attackBands map[uuid.UUID]uuid.UUID
+
 	// blocksDeclared is the set of DEFENDING PLAYERS whose CR 509.1
 	// block declaration is complete this combat (#1279, ADR 0045
 	// Decision 38, block_completion.go). Written only by
@@ -1494,6 +1508,7 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 		g.setDeckSourceOrdinalLocked(c.InstanceID, seat, i)
 		seatDeckCard(p, c)
 	}
+	p.StartingDeckSize = p.Library.Size() + p.Command.Size()
 
 	g.Seats = append(g.Seats, p)
 	return p, nil
@@ -1553,6 +1568,7 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 		g.setDeckSourceOrdinalLocked(c.InstanceID, p.Seat, i)
 		seatDeckCard(p, c)
 	}
+	p.StartingDeckSize = p.Library.Size() + p.Command.Size()
 	p.DeckImported = true
 	return nil
 }

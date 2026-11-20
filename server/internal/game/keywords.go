@@ -387,6 +387,15 @@ var canonicalKeywords = map[string]bool{
 	// printed, imported or granted flanking triggers and a creature
 	// that loses it does not. CUMULATIVE (CR 702.25b).
 	KeywordFlanking: true,
+	// banding (CR 702.22) joins with #5723 (ADR 0224), in the same change
+	// that teaches the engine to honour it (banding.go): the attack
+	// declaration's bands (CR 702.22c-e), a blocker of one member
+	// blocking the band (CR 702.22h-i), and the damage division handed
+	// to the other player (CR 702.22j-k). Every consumer reads the token
+	// off the layered ability list, so printed, imported and granted
+	// banding (Helm of Chatzuk) are the same. Not cumulative
+	// (CR 702.22m). "Bands with other" is not this token and stays out.
+	KeywordBanding: true,
 	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
 	// 0113 §4). Dies triggers: harvestLTB derives one per instance on
 	// the LAST-KNOWN ability list (undying_persist.go), so a printed,
@@ -544,6 +553,11 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 		return true
 	}
 	if HasKeyword(c, "shroud") {
+		return false
+	}
+	// #5718: "permanents can't be the targets of spells or activated
+	// abilities" -- a table-wide record (targeting_bar_table.go).
+	if g.tableTargetingBarLocked(src) {
 		return false
 	}
 	// #3860: "can't be the target of spells or abilities your opponents

@@ -2,7 +2,7 @@ package effects
 
 import "sync/atomic"
 
-// The catalog completeness guard (#5906, ADR 0224).
+// The catalog completeness guard (#5906, ADR 0225).
 //
 // After the split, card files register from the shards under cards/, and only
 // the aggregator package internal/cards/effects/cards imports them all. A
@@ -30,6 +30,6 @@ func requireCompleteCatalog(op string) {
 	if catalogSharded && !catalogComplete.Load() {
 		panic("effects." + op + ": the card catalog was read before its shards registered. " +
 			`Link them all with import _ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/cards" ` +
-			"in the main package, or in an _test.go file of the package under test (ADR 0224, #5906)")
+			"in the main package, or in an _test.go file of the package under test (ADR 0225, #5906)")
 	}
 }

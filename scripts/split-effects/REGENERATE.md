@@ -1,4 +1,4 @@
-# Regenerating the split of `internal/cards/effects` (#5906, ADR 0224)
+# Regenerating the split of `internal/cards/effects` (#5906, ADR 0225)
 
 The split PR (PR 2 of #5906) is generated, not written. It is regenerated on
 the newest `develop` right before it merges, so no card that landed in the
