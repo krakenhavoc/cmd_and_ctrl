@@ -128,7 +128,7 @@ take the first number none of them uses, and name the branches you checked in th
 PR body. Numbers are never reused. `TestADRNumbersAreUniqueAndMatchTheirHeading`
 (`server/internal/docsguard`) fails CI on a duplicate or on an H1 that disagrees
 with its filename. If yours collides, renumber your file, not the other branch's.
-Current range: **0001–0224**.
+Current range: **0001–0225**.
 
 ### Commit message format
 
@@ -251,9 +251,9 @@ long on purpose; open the subsection you need, not the whole file.
 
 Rules that must not be missed:
 
-- **One file per card**, `server/internal/cards/effects/<snake_name>.go`, one
-  `init()` each. The catalog is opt-in per Scryfall `oracle_id` (never
-  `scryfall_id`).
+- **One file per card**, one `init()` each, placed per
+  [Where a card goes](docs/adding-cards.md#where-a-card-goes). Opt-in
+  per Scryfall `oracle_id` (never `scryfall_id`).
 - **Declare `Completeness` truthfully.** The zero value is `Unreviewed` and is a
   legal thing to ship; never stamp `Full` to tidy it. `Caveats` are written for
   a player, one sentence, no engine vocabulary.

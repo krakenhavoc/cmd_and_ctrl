@@ -32,7 +32,10 @@
 # To rebalance: move a package between the PINNED lines, move a split's
 # letter range, or add a line (and its name to the matrix in ci-cd.yml).
 # A pinned package that no longer exists fails this script, so a rename
-# cannot drop a package silently.
+# cannot drop a package silently. A PINNED entry ending in /... pins every
+# package of that tree (#5906: internal/cards/effects/... is the core, the
+# card shards, effectstest and the test packages); it fails if the tree has
+# no package. A SPLITS line names one package, never a pattern.
 set -euo pipefail
 
 MODULE=github.com/krakenhavoc/cmd_and_ctrl/server
@@ -85,11 +88,25 @@ all="$(cd "$server_dir" && go list ./...)" || die "go list ./... failed"
 declare -A taken=() # package -> shard(s) that run it
 declare -A names=()
 
-claim() { # claim <package-relative> <owner>
-  local pkg="$MODULE/$1"
-  [ -z "${taken[$pkg]:-}" ] || die "$1 is in both ${taken[$pkg]} and $2"
-  grep -qxF "$pkg" <<<"$all" || die "$1 is pinned to $2 but go list ./... has no such package"
-  taken[$pkg]="$2"
+claim() { # claim <package-relative> <owner>; a trailing /... claims the tree
+  if [[ "$1" == */... ]]; then
+    local base="$MODULE/${1%/...}" pkg found=
+    while IFS= read -r pkg; do
+      if [ "$pkg" = "$base" ] || [[ "$pkg" == "$base"/* ]]; then
+        claim_one "$pkg" "${pkg#"$MODULE"/}" "$2"
+        found=1
+      fi
+    done <<<"$all"
+    [ -n "$found" ] || die "$1 is pinned to $2 but go list ./... has no package under it"
+    return
+  fi
+  grep -qxF "$MODULE/$1" <<<"$all" || die "$1 is pinned to $2 but go list ./... has no such package"
+  claim_one "$MODULE/$1" "$1" "$2"
+}
+
+claim_one() { # claim_one <import path> <package-relative> <owner>
+  [ -z "${taken[$1]:-}" ] || die "$2 is in both ${taken[$1]} and $3"
+  taken[$1]="$3"
 }
 
 name_ok() {
