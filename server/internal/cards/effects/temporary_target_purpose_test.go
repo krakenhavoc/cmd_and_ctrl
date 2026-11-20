@@ -216,6 +216,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// Inversion's change without the type loss: the power is a benefit, the
 	// toughness a harm, and it is cast as often to kill an X/3 as to pump.
 	"Eldrazi Confluence": "partly a benefit and partly a harm",
+	// "Target creature gets +2/-2 until end of turn" (#5502): the power is
+	// a benefit, the toughness a harm, and it is cast as often to kill an
+	// X/2 as to pump an attacker.
+	"Lash of Malice": "partly a benefit and partly a harm",
 }
 
 // spellText is a catalog card's printed text, from the coverage package's
