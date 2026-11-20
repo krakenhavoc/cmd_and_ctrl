@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Rebuff the Wicked — Instant {W} (EDHREC rank 1547):
 //
 //	"Counter target spell that targets a permanent you control."
@@ -21,13 +19,6 @@ func init() {
 		Name:         "Rebuff the Wicked",
 		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell that targets a permanent you control", b14SpellTargetsAPermanentYouControl()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if err := (CounterTarget{StackID: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		OnResolve:    somB1CounterTheTargetSpells,
 	})
 }
