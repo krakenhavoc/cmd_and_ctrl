@@ -21,7 +21,7 @@ func init() {
 			Purpose: ForTargets(CantBlockUntilEOT(0, 0, 0)),
 			Cost:    ManaCost("{R}"),
 			Targets: TargetCreature("target creature"),
-			Effect:  ravB4TargetCantBlockThisCreature("Screeching Griffin — can't block it"),
+			Effect:  targetCantBlockThisCreature("Screeching Griffin — can't block it"),
 		}},
 	})
 }
