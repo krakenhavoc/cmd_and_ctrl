@@ -1142,6 +1142,7 @@ choose choose-cards/ovinomancer-return-three-basic-lands
 choose choose-cards/pack-guardian-discard-land
 choose choose-cards/path-of-the-schemer-reanimate
 choose choose-cards/patient-naturalist-land
+choose choose-cards/perception-bobblehead-cast
 choose choose-cards/perforating-artist-punisher-discarded
 choose choose-cards/pia-aether-ascetic-search
 choose choose-cards/pile-split
@@ -3038,6 +3039,7 @@ tail dice/herald-of-hadar-table
 tail dice/hoarding-ogre-treasures
 tail dice/lightfoot-rogue-table
 tail dice/loathsome-troll-rolled
+tail dice/luck-bobblehead-results
 tail dice/maddening-hex-burn-and-move
 tail dice/netherese-puzzle-ward-scry
 tail dice/power-of-persuasion-rolled
@@ -4186,6 +4188,7 @@ vote vote/councils-judgment
 vote vote/custodi-squire
 vote vote/elrond-of-the-white-council
 vote vote/emissary-green
+vote vote/expert-level-safe
 vote vote/expropriate
 vote vote/fateful-tempest
 vote vote/galadriel-elven-queen

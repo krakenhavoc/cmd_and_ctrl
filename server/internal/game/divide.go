@@ -215,7 +215,28 @@ func (g *Game) bindDivideAmountsLocked(steps []AnnouncedClause, a DivideAmountAr
 		if d := steps[i].Clause.Divide; d != nil && !d.AmountKey.IsZero() {
 			steps[i].Clause.Divide = g.divideAmountLocked(d, a)
 		}
+		if !steps[i].Clause.MaxFrom.IsZero() {
+			g.bindMaxFromLocked(&steps[i].Clause, a)
+		}
 	}
+}
+
+// bindMaxFromLocked fixes "up to X targets" for one announced clause: the
+// rule named by MaxFrom is read now and becomes the clause's Max, with a
+// Min of 0. A rule that answers below 1 is held to 1 (Max 0 reads as
+// unbounded everywhere else in a clause); the registered rules count the
+// activating permanent itself, so they never answer 0. An unregistered
+// key sizes the clause at 1, the smallest bound a clause can state.
+//
+// Caller must hold g.mu.
+func (g *Game) bindMaxFromLocked(c *TargetSpec, a DivideAmountArgs) {
+	d := g.divideAmountLocked(&DivideSpec{AmountKey: c.MaxFrom}, a)
+	n := 1
+	if d != nil && d.Total > n {
+		n = d.Total
+	}
+	c.Min, c.Max = 0, n
+	c.MaxFrom = DivideAmount{}
 }
 
 // BindDivideAmountsForEffect is bindDivideAmountsLocked for the bot's
