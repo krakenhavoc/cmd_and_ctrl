@@ -926,6 +926,17 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 		if atk == nil || len(adding) == 0 {
 			continue
 		}
+		// ADR 0224: a creature in a band is blocked only to survive
+		// (banding.go). The first block on it stops every member.
+		bandSaved := 0
+		if atk.AttackBand != 0 {
+			if !desperate {
+				continue
+			}
+			if len(blockersOn(st, atk.InstanceID)) == 0 {
+				bandSaved = bandDamageSaved(st, atk)
+			}
+		}
 		// #1548: the move adds to whatever already blocks the
 		// attacker, and is scored as the whole group against it, less
 		// what the group without it already did. A second Ogre on a
@@ -943,7 +954,7 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 			// fewer losses, or less trample damage over the top.
 			reason = "gang block"
 		}
-		if saved := connects(atk, have) - connects(atk, gang); saved > 0 {
+		if saved := connects(atk, have) - connects(atk, gang) + bandSaved; saved > 0 {
 			if desperate {
 				v += float64(saved) * p.cfg.DesperateDamage
 				if len(have) == 0 {

@@ -27,6 +27,7 @@ func init() {
 		Triggered:    []game.TriggeredAbility{FadingUpkeep()},
 		Activated: []ActivatedAbility{{
 			Label:   "Remove a fade counter from this creature: Prevent the next 2 damage that would be dealt to any target this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
 			Cost:    RemoveAFadeCounterFromThis(),
 			Targets: TargetAny(),
 			Effect: func(g *game.Game, item *game.StackItem) error {

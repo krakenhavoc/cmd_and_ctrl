@@ -17,6 +17,7 @@ Caparocti Sunborn | discover | the text makes it conditional or optional
 Celeborn the Wise | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Champions from Beyond | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Chimil, the Inner Sun | discover | on a triggered row that is not the card's enters effect, which nothing prices
+Chorus of the Tides | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Clockwork Droid | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Colleen Wing, Street Samurai | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Contact Other Plane | scry | the amount is a d20 results-table row (2 or 3), not a fixed number
@@ -44,6 +45,7 @@ Gadwick's First Duel | scry | on a triggered row that is not the card's enters e
 Galadriel of Lothlórien | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Galadriel, Elven-Queen | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Galadriel, Light of Valinor | scry | a modal trigger whose other bullets declare nothing, so the declared one would always be chosen
+Geist of the Archives | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Geological Appraiser | discover | the text makes it conditional or optional
 Glorious Gale | ring | the text makes it conditional or optional
 Gollum, Patient Plotter | ring | on a triggered row that is not the card's enters effect, which nothing prices
@@ -93,6 +95,7 @@ Sauron, the Dark Lord | amass | on a triggered row that is not the card's enters
 Sauron, the Dark Lord | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Scroll of Isildur | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Season of Growth | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Sigiled Skink | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Sméagol, Helpful Guide | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Swashbuckler's Whip | discover | on an ability the card grants, which no catalog row declares
 Sylvan Anthem | scry | on a triggered row that is not the card's enters effect, which nothing prices
@@ -115,6 +118,7 @@ Tidings of War | amass | the text makes it conditional or optional
 Took Reaper | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Torch the Tower | scry | the text makes it conditional or optional
 Trained Arynx | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Unexplained Vision | scry | the text makes it conditional or optional
 Urza Assembles the Titans | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Valley Questcaller | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Viscera Seer | scry | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)

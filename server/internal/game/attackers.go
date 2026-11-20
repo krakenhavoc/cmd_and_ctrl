@@ -210,6 +210,8 @@ func (g *Game) clearAttackAnnouncementsLocked() {
 	// #1364: the last-known defending players describe this combat's
 	// attacks too.
 	g.attackDefenders = nil
+	// ADR 0224: and the bands this combat's attacks were declared in.
+	g.attackBands = nil
 	// #4154: and a chosen declaration's handoff (declaration_control.go).
 	g.AttackHandoff = nil
 }

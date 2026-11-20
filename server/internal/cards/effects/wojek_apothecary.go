@@ -26,6 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Prevent the next 1 damage that would be dealt to target creature and each other creature that shares a color with it this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

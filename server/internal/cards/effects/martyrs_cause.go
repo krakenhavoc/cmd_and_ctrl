@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Martyr's Cause — Enchantment {2}{W}:
 //
 //	"Sacrifice a creature: The next time a source of your choice would deal damage to any target this turn, prevent that damage."
@@ -17,8 +19,8 @@ func init() {
 		OracleID:     "72d1c789-e79f-4f15-80d0-981d4120b085",
 		Name:         "Martyr's Cause",
 		Completeness: CompletenessFull,
-		Activated: []ActivatedAbility{nextDamageShieldRow(
+		Activated: []ActivatedAbility{alsoAnswers(game.AnswerSacOutlet, nextDamageShieldRow(
 			"Sacrifice a creature: The next time a source of your choice would deal damage to any target this turn, prevent that damage.",
-			SacrificeACreature(), TargetAny(), PreventNextDamageFromChosenSource(ShieldTheTarget))},
+			SacrificeACreature(), TargetAny(), PreventNextDamageFromChosenSource(ShieldTheTarget)))},
 	})
 }

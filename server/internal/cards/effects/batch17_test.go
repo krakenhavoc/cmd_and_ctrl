@@ -933,6 +933,9 @@ func TestB17KazuulMakesAnOgreUnlessTheAttackerPays(t *testing.T) {
 			answerPayUnless(t, g, opp.ID, false)
 			declined++
 		}
+		// #5793: each trigger's question holds the table, so the next
+		// trigger resolves (and asks) only after this one is answered.
+		passPriorityAroundTable(t, g)
 	}
 	if paid != 1 || declined != 1 {
 		t.Fatalf("two prompts (one per attacker at you), got %d answered", paid+declined)

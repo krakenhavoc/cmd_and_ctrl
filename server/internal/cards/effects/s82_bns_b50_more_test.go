@@ -131,6 +131,12 @@ func TestBnsB50ApheliaActivationHalvesTheLifeOfAPlayerAGorgonOrSnakeHits(t *test
 		}
 	}
 	lockInAttacks(t, g)
+	// #5793: Aphelia's attack trigger asks for {1}{B/G} as it resolves and
+	// holds the table until it is answered. Decline it: no second Snake.
+	passPriorityAroundTable(t, g)
+	if hasPayUnlessFor(g, me.ID) {
+		answerPayUnless(t, g, me.ID, false)
+	}
 	advanceTo(t, g, game.StepCombatDamage)
 	passPriorityAroundTable(t, g)
 	// 1 + 1 + 2 damage leaves 36; the Gorgon and the Snake together are one

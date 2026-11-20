@@ -44,7 +44,7 @@ func init() {
 			Label:   "Bloodrush — {1}{R}, Discard this card: Target attacking creature gets +3/+1 until end of turn.",
 			Cost:    game.AbilityCost{Mana: "{1}{R}", DiscardSelf: true},
 			Zones:   []game.ZoneKind{game.ZoneHand},
-			Purpose: ForTargets(BenefitUntilEOT(0, 3, 1)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 3, 1)), game.AnswerPump),
 			Targets: TargetCreature("target attacking creature", AttackingCreature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

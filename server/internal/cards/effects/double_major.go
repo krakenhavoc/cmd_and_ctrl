@@ -16,9 +16,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Both halves of the printed sentence are engine primitives rather
 // than anything this file does. The token is
-// resolvePermanentSpellCopyLocked (game/spell_copy.go), through the
-// one token-creation path, so Doubling Season doubles it and the
-// creature's own enters-the-battlefield abilities fire. The except
+// resolvePermanentSpellCopyLocked (game/spell_copy.go). It is not a
+// CREATED token (CR 111.13, #4994), so Doubling Season does not double
+// it and "whenever you create a token" does not see it, but it enters
+// the ordinary way, so the creature's own enters-the-battlefield
+// abilities fire. The except
 // clause is CopySpell.Except, which edits the copiable values the
 // copy is created with — and "if the spell is legendary" needs no
 // condition, because RemoveSupertype does nothing when the supertype

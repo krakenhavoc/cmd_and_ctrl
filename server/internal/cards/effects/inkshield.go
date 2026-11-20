@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "da93264e-4e04-401a-9809-e4e1056cf604",
 		Name:         "Inkshield",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent | game.AnswerMakesBlocker}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return PreventAllCombatDamageThisTurn{

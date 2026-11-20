@@ -42,6 +42,7 @@ func init() {
 			},
 			{
 				Label:   "{2}, Remove a cube counter from this artifact: Regenerate target creature.",
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    Plus(ManaCost("{2}"), RemoveCountersFromThis(delifsCubeCounter, 1)),
 				Targets: TargetCreature("target creature"),
 				Effect:  regenerateTheTargetPermanent,

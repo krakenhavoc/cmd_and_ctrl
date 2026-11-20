@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b9a62c6b-5848-44b1-932b-8d5de2560976",
 		Name:         "Surge of Salvation",
+		Purpose:      game.Purpose{Answers: game.AnswerProtect | game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (GainPlayerKeyword{

@@ -89,6 +89,7 @@
     castsFaceName,
     costBranchesOf,
     firstPayableBranch,
+    optionalCostLifeShort,
     optionalCostMaxTimes,
     optionalCostOpponentOptions,
     optionalCostPayOptions,
@@ -221,6 +222,8 @@
     if (!offer) return true;
     // ADR 0129 §5: an energy cost the viewer cannot pay even once.
     if (offer.energy_short === true) return true;
+    // #5782: a fixed life payment the viewer can't make (CR 119.4).
+    if (optionalCostLifeShort(offer) !== undefined) return true;
     const options = optionalCostPayOptions(offer);
     if (options !== undefined && options.length === 0) return true;
     // #1267: a gift with nobody left to promise it to.
@@ -503,6 +506,7 @@
                 class:on={timesPaid(offer.index) > 0}
                 aria-pressed={timesPaid(offer.index) > 0}
                 disabled={unpayable(offer.index)}
+                title={optionalCostLifeShort(offer)}
                 onclick={() => toggle(offer.index)}
               >
                 <span class="prompt-radio" aria-hidden="true"></span>

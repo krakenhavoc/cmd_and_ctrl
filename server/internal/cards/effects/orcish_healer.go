@@ -31,12 +31,14 @@ func init() {
 			},
 			{
 				Label:   "{B}{B}{R}, {T}: Regenerate target black or green creature.",
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    Plus(ManaCost("{B}{B}{R}"), TapCost()),
 				Targets: blackOrGreen(),
 				Effect:  regenerateTheTargetPermanent,
 			},
 			{
 				Label:   "{R}{G}{G}, {T}: Regenerate target black or green creature.",
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    Plus(ManaCost("{R}{G}{G}"), TapCost()),
 				Targets: blackOrGreen(),
 				Effect:  regenerateTheTargetPermanent,

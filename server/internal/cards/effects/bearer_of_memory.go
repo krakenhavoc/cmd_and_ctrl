@@ -24,6 +24,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{5}{G}: Put a +1/+1 counter on target enchantment creature. It gains trample until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Cost:    ManaCost("{5}{G}"),
 			Targets: TargetCreature("target enchantment creature", Enchantment()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
