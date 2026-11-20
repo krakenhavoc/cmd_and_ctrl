@@ -18,8 +18,9 @@ func init() {
 		Name:         "Skirsdag Supplicant",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{B}, {T}, Discard a card: Each player loses 2 life.",
-			Cost:  Plus(ManaCost("{B}"), TapCost(), DiscardACard()),
+			Label:   "{B}, {T}, Discard a card: Each player loses 2 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue}, // a life loss answers nothing (Orzhov Guildmage)
+			Cost:    Plus(ManaCost("{B}"), TapCost(), DiscardACard()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return eachPlayerLosesTwoLife(NewContext(g, item))
 			},
