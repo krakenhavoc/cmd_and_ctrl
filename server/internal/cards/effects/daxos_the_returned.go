@@ -28,7 +28,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}{B}: Create a white and black Spirit enchantment creature token. It has \"This creature's power and toughness are each equal to the number of experience counters you have.\"",
-			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1},
+			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1, Answers: game.AnswerMakesBlocker},
 			Cost:    ManaCost("{1}{W}{B}"),
 			Effect:  Do(CreateToken{Template: C15DaxosSpiritToken(), N: 1}),
 		}},
