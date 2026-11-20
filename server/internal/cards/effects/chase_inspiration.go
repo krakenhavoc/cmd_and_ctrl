@@ -18,7 +18,7 @@ func init() {
 		OracleID:     "9c055ef0-1164-4a9f-80de-23405423aed5",
 		Name:         "Chase Inspiration",
 		Completeness: CompletenessFull,
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 3, "hexproof")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 0, 3, "hexproof")), game.AnswerProtect|game.AnswerPump),
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			t, ok := ctx.ClauseTarget(0)

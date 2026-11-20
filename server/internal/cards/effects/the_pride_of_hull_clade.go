@@ -51,6 +51,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{U}{U}: Until end of turn, target creature you control gets +1/+0, gains \"Whenever this creature deals combat damage to a player, draw cards equal to its toughness,\" and can attack as though it didn't have defender.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Cost:    ManaCost("{2}{U}{U}"),
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

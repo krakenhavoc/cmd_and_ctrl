@@ -20,7 +20,7 @@ func init() {
 		OracleID:     "4e552be1-0702-4e18-822f-98611f8a8e70",
 		Name:         "Enter the Avatar State",
 		Completeness: CompletenessFull,
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "flying", "first strike", "lifelink", "hexproof")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "flying", "first strike", "lifelink", "hexproof")), game.AnswerProtect|game.AnswerCombatGrant),
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			targets := legalTargetCards(item, ctx.Game)

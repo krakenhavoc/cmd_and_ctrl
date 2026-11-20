@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "bfcc3a16-1ca8-4112-a10e-d4e52d3daa8d",
 		Name:         "Harmless Assault",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(combatShieldAgainstCreatures(game.DamageSourceFilter{Combat: game.SourceCombatAttacking})),
 	})

@@ -31,7 +31,7 @@ func init() {
 			Cost:    SacrificeThis(),
 			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect:  firstTargetGainsUntilEndOfTurn(0, name+" — indestructible until end of turn", "indestructible"),
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")), game.AnswerSurvive),
 		}},
 	})
 }

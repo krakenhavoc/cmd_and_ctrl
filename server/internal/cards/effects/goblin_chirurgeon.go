@@ -29,6 +29,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice a Goblin: Regenerate target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive | game.AnswerSacOutlet},
 			Cost:    game.AbilityCost{SacrificeOther: sacrificeSpec("a Goblin", Subtype("Goblin"))},
 			Targets: TargetCreature("target creature"),
 			Effect:  regenerateTheTargetPermanent,

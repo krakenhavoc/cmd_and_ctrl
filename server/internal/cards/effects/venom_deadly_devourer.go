@@ -24,6 +24,7 @@ func init() {
 		PrintedKeywords: []string{"vigilance", "menace"},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}: Exile target creature card from a graveyard. When you do, put X +1/+1 counters on target Symbiote, where X is the exiled card's toughness.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerGraveyard},
 			Cost:    ManaCost("{3}"),
 			Targets: TargetCardInGraveyard("target creature card from a graveyard", Creature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

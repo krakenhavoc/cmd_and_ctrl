@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Circle of Despair — Enchantment {1}{W}{B}:
 //
 //	"{1}, Sacrifice a creature: The next time a source of your choice would deal damage to any target this turn, prevent that damage."
@@ -16,8 +18,8 @@ func init() {
 		OracleID:     "4ad57fbf-69f3-4367-b061-ed8e0b83b9af",
 		Name:         "Circle of Despair",
 		Completeness: CompletenessFull,
-		Activated: []ActivatedAbility{nextDamageShieldRow(
+		Activated: []ActivatedAbility{alsoAnswers(game.AnswerSacOutlet, nextDamageShieldRow(
 			"{1}, Sacrifice a creature: The next time a source of your choice would deal damage to any target this turn, prevent that damage.",
-			Plus(ManaCost("{1}"), SacrificeACreature()), TargetAny(), PreventNextDamageFromChosenSource(ShieldTheTarget))},
+			Plus(ManaCost("{1}"), SacrificeACreature()), TargetAny(), PreventNextDamageFromChosenSource(ShieldTheTarget)))},
 	})
 }

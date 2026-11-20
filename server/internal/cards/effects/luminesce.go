@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "7b0f482d-35a3-47f1-8283-0fd47e30cc31",
 		Name:         "Luminesce",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve:    sourceShieldSpell(PreventDamageFromSource{Protect: ShieldAnything, Queries: []game.PermanentQuery{QueryColors("B", "R")}}),
 	})
