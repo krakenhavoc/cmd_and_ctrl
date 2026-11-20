@@ -490,6 +490,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
 	printedGapB05BlackLotusToken,
 	printedGapB05LordOfThePitToken,
+	// S82 C14 batch 1 (#5553): Freyalise, Llanowar's Fury's Elf Druid.
+	printedC14ElfDruidToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
