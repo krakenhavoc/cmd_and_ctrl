@@ -22,7 +22,7 @@ func init() {
 			CostsLess(1, "This spell costs {1} less to cast if you control a Turtle.", YouControlA(HasSubtype("Turtle"))),
 		},
 		Targets:   TargetCreature("target creature you control", YouControl()),
-		Purpose:   ForTargets(BenefitUntilEOT(0, 0, 0, "trample", "hexproof", "indestructible")),
+		Purpose:   withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "trample", "hexproof", "indestructible")), game.AnswerProtect|game.AnswerSurvive|game.AnswerPump|game.AnswerCombatGrant),
 		OnResolve: tmtB6CounterThenGrant("Saved by the Shell — trample, hexproof, and indestructible", "trample", "hexproof", "indestructible"),
 	})
 }

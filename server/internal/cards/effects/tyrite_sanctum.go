@@ -53,6 +53,7 @@ func init() {
 			},
 			{
 				Label:   "{4}, {T}, Sacrifice this land: Put an indestructible counter on target God.",
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    Plus(ManaCost("{4}"), TapCost(), SacrificeThis()),
 				Targets: TargetPermanent("target God", HasSubtype("God")),
 				Effect: Do(OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {

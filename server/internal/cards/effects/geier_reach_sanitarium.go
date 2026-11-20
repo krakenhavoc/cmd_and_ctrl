@@ -33,20 +33,25 @@ func init() {
 			// ADR 0126 §6: every other player loots too, which no field says.
 			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1, Discards: 1},
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, p := range tablePlayers(ctx) {
-					if err := (DrawCards{Player: p, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-						Player: p,
-						Source: item.SourceCardID,
-						N:      1,
-					})
-				}
-				return nil
-			},
+			Effect:  eachPlayerDrawsThenDiscardsACard,
 		}},
 	})
+}
+
+// eachPlayerDrawsThenDiscardsACard is "Each player draws a card, then
+// discards a card." (Geier Reach Sanitarium, Lore Broker #5600): the
+// table, controller first; each seat draws, then chooses its own discard.
+func eachPlayerDrawsThenDiscardsACard(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, p := range tablePlayers(ctx) {
+		if err := (DrawCards{Player: p, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player: p,
+			Source: item.SourceCardID,
+			N:      1,
+		})
+	}
+	return nil
 }

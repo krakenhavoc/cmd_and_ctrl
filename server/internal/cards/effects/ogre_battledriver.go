@@ -20,18 +20,27 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverAnotherCreatureEntersUnderYourControl("Ogre Battledriver — that creature gets +2/+0 and gains haste until end of turn",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					info, ok := ctx.TriggeringPermanent()
-					if !ok || info.Left {
-						return nil
-					}
-					id := ctx.Trigger().Object.Ref().ID
-					if err := (BoostUntilEOT{Target: id, Power: 2, Label: "Ogre Battledriver — +2/+0"}).Apply(ctx); err != nil {
-						return err
-					}
-					return GrantKeywordUntilEOT{Target: id, Keywords: []string{"haste"}, Label: "Ogre Battledriver — haste"}.Apply(ctx)
-				}),
+				enteredCreatureGetsTwoAndHaste("Ogre Battledriver")),
 		},
 	})
+}
+
+// enteredCreatureGetsTwoAndHaste is "that creature gets +2/+0 and gains
+// haste until end of turn" for the creature whose entry triggered the
+// ability (the trigger's object), applied only while it is still on the
+// battlefield. Ogre Battledriver and In the Web of War share it; `name`
+// labels the two effects.
+func enteredCreatureGetsTwoAndHaste(name string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		info, ok := ctx.TriggeringPermanent()
+		if !ok || info.Left {
+			return nil
+		}
+		id := ctx.Trigger().Object.Ref().ID
+		if err := (BoostUntilEOT{Target: id, Power: 2, Label: name + " — +2/+0"}).Apply(ctx); err != nil {
+			return err
+		}
+		return GrantKeywordUntilEOT{Target: id, Keywords: []string{"haste"}, Label: name + " — haste"}.Apply(ctx)
+	}
 }

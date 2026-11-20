@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Frightshroud Courier — you may choose not to untap this creature")},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{B}, {T}: Target Zombie creature gets +2/+2 and has fear for as long as this creature remains tapped. (It can't be blocked except by artifact creatures and/or black creatures.)",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Cost:    Plus(ManaCost("{2}{B}"), TapCost()),
 			Targets: TargetCreature("target Zombie creature", OfCreatureType("Zombie")),
 			Effect:  TargetGetsWhileThisRemainsTapped("Frightshroud Courier — +2/+2 and fear while tapped", game.ModifyPTMod(2, 2), game.AddKeywordsMod("fear")),

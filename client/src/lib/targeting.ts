@@ -1493,6 +1493,17 @@ export function modesUnderChoices(card: CardView, choices: CastChoices | undefin
   return { ...card, modes: { ...modes, min: paid.min, max: paid.max } };
 }
 
+// optionalCostLifeShort is why an offer that pays a fixed amount of
+// life can't be taken now (#5782, ADR 0100's 2026-11-20 amendment):
+// the server marks it `life_short` when the viewer's life total is
+// below `pay_life` (CR 119.4) or they can't pay life at all. Undefined
+// when the offer pays no life or the viewer can pay it.
+export function optionalCostLifeShort(offer: OptionalCostView): string | undefined {
+  if (offer.life_short !== true) return undefined;
+  const n = offer.pay_life ?? 0;
+  return n > 0 ? `You can't pay ${n} life right now` : "You can't pay life right now";
+}
+
 // optionalCostPayOptions returns the permanents that can pay an
 // offer's sacrifice half, or undefined when it charges none — which
 // is every mana kicker. An empty array means the offer cannot be

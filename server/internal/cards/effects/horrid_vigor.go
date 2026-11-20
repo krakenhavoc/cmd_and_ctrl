@@ -17,7 +17,7 @@ func init() {
 		Name:         "Horrid Vigor",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "deathtouch", "indestructible")),
+		Purpose:      withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "deathtouch", "indestructible")), game.AnswerSurvive|game.AnswerCombatGrant),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return pumpAndGrantFirstTarget(0, 0, "Horrid Vigor — deathtouch and indestructible", "deathtouch", "indestructible")(ctx.Game, item)
 		},

@@ -64,6 +64,9 @@ func (g *Game) BecomeBlockedForEffect(attackers []uuid.UUID) int {
 		return 0
 	}
 	marked := 0
+	// ADR 0224, CR 702.22i: an effect that blocks one member of a band
+	// blocks the entire band.
+	attackers = g.withBandMatesLocked(attackers)
 	for _, id := range attackers {
 		if id == uuid.Nil || g.attackerBlockedLocked(id) {
 			continue

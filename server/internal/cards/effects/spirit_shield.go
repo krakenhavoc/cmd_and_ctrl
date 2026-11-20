@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Spirit Shield — you may choose not to untap this artifact")},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}: Target creature gets +0/+2 for as long as this artifact remains tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect:  TargetGetsWhileThisRemainsTapped("Spirit Shield — +0/+2 while tapped", game.ModifyPTMod(0, 2)),

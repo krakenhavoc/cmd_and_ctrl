@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ca8f6e19-6ef3-4d77-8312-867767ffeda6",
 		Name:         "Terrifying Presence",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve:    sourceShieldSpell(combatShieldAgainstCreatures(game.DamageSourceFilter{}).OtherThanTarget(0)),

@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Pearlspear Courier — you may choose not to untap this creature")},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{W}, {T}: Target Soldier creature gets +2/+2 and has vigilance for as long as this creature remains tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Cost:    Plus(ManaCost("{2}{W}"), TapCost()),
 			Targets: TargetCreature("target Soldier creature", OfCreatureType("Soldier")),
 			Effect:  TargetGetsWhileThisRemainsTapped("Pearlspear Courier — +2/+2 and vigilance while tapped", game.ModifyPTMod(2, 2), game.AddKeywordsMod("vigilance")),

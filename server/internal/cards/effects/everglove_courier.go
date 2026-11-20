@@ -23,6 +23,7 @@ func init() {
 		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf("Everglove Courier — you may choose not to untap this creature")},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{G}, {T}: Target Elf creature gets +2/+2 and has trample for as long as this creature remains tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Cost:    Plus(ManaCost("{2}{G}"), TapCost()),
 			Targets: TargetCreature("target Elf creature", OfCreatureType("Elf")),
 			Effect:  TargetGetsWhileThisRemainsTapped("Everglove Courier — +2/+2 and trample while tapped", game.ModifyPTMod(2, 2), game.AddKeywordsMod("trample")),

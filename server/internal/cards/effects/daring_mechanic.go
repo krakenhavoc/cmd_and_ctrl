@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Daring Mechanic — Creature — Human Artificer {2}{W}, 3/3 (Aetherdrift,
 // #4464):
 //
@@ -19,6 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{W}: Put a +1/+1 counter on target Mount or Vehicle.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{3}{W}"),
 			Targets: TargetPermanent("target Mount or Vehicle", Or(HasSubtype("Mount"), HasSubtype("Vehicle"))),
 			Effect:  PlusOneCounterOnTheTarget,

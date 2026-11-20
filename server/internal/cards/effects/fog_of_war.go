@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "103ca069-0bfe-4976-bee1-75406273875d",
 		Name:         "Fog of War",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		// The prevention waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
 		OnResolve: ResolveSteps(

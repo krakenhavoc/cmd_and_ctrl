@@ -920,7 +920,12 @@ func TestStdB23MeathookMassacreIITokensNeverReturn(t *testing.T) {
 		InstanceID: uuid.New(), Name: "Spirit", TypeLine: "Token Creature — Spirit",
 		Power: 1, Toughness: 1, Owner: opps[0].ID, Controller: opps[0].ID,
 	})
-	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(token) })
+	// The token dies to a resolving spell, so the CR 704.5d sweep runs at
+	// the boundary after it, before the dies trigger resolves. (A bare
+	// destroy outside any resolution reaches no such boundary; since
+	// #5793 the trigger's question holds the table, so nothing else would
+	// run the sweep before the decline.)
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, cardRefs(token))
 	passPriorityAroundTable(t, g)
 	if hasPayUnlessFor(g, opps[0].ID) {
 		answerPayUnless(t, g, opps[0].ID, false)

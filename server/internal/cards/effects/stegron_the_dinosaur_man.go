@@ -27,7 +27,7 @@ func init() {
 			Label:   "Dinosaur Formula — {1}{R}, Discard this card: Until end of turn, target creature you control gets +3/+1 and becomes a Dinosaur in addition to its other types.",
 			Cost:    game.AbilityCost{Mana: "{1}{R}", DiscardSelf: true},
 			Zones:   []game.ZoneKind{game.ZoneHand},
-			Purpose: ForTargets(BenefitUntilEOT(0, 3, 1)),
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 3, 1)), game.AnswerPump),
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

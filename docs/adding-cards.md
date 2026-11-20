@@ -32,6 +32,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
+  - [Paying {S}: snow mana (#5986, CR 107.4h)](#paying-s-snow-mana-5986-cr-1074h)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
@@ -131,6 +132,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Plane cards (ADR 0216 slice 4, #4870)](#plane-cards-adr-0216-slice-4-4870)
 
   - [Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)](#aetherdrift-leftovers-no-abilities-exile-x-and-an-event-amount-4464)
+  - [Ante cards: built, with their ante text inert (#5724, CR 407)](#ante-cards-built-with-their-ante-text-inert-5724-cr-407)
   - [When in doubt](#when-in-doubt)
 
 ### Recipe
@@ -2246,6 +2248,44 @@ A caveat that says "pays 2 life instead of {B}" goes stale the day a card
 declares `LifeForMana`; the `paying 2 life instead of black mana`
 coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
 
+### Paying {S}: snow mana (#5986, CR 107.4h)
+
+An `{S}` in a cost is written as printed, in the cost string, and needs
+nothing else on the card:
+
+```go
+Activated: []ActivatedAbility{selfPumpRow("Hailstorm Valkyrie", "{S}{S}", 2, 2)}, // {S}{S}: +2/+2
+Cost:      ManaCost("{1}{S}"),                                                  // Grim Draugr
+```
+
+A mana cost with `{S}` (`Card.ManaCost` from Scryfall) is read the same
+way. `ParseCost` makes each `{S}` one `ColorRequirement` with `Snow` set
+(its `Options` read `{"C"}`, kept for old restore points; never read them
+for a snow slot). What the engine does with it:
+
+- **Only mana a snow source made pays it, of any colour or colourless**
+  (CR 107.4h). The bit is `ManaSourceSnow` on the token, snapshotted from
+  the producing permanent's snow supertype (CR 205.4g) when the mana is
+  made. Every solver asks `ColorRequirement.PaidBy(color, snow)`: the pool
+  payment, the auto-tapper (`tapSource.Snow`), the pool top-up and so the
+  legal-move list and the greyed actions. A Sol Ring's `{C}` does not pay
+  it; a Snow-Covered Forest's `{G}` does.
+- **No reduction removes it.** A generic reduction never reaches it
+  (CR 107.4h), and a reduction by `{C}` reduces generic instead
+  (CR 118.7b). A reduction BY `{S}` is generic (CR 118.7g).
+- **No spend grant widens it.** "Spend mana as though it were mana of any
+  color / type" leaves it alone: snow is neither a colour nor a type.
+- **Convoke, improvise and the like can't pay it:** a tapped creature is
+  not mana.
+- A mana ability that owes `{S}` itself is not auto-tapped (the costed
+  planner refuses it); it is still activatable by hand.
+
+"Spent to cast this spell" readings of `{S}` (Blessing of Frost's "the
+amount of {S} spent", Berg Strider's "if {S} was spent") are a separate
+question, read off the payment the way "if mana from a Treasure was spent"
+is: `ManaSpent.CountFrom(game.ManaSourceSnow)`. No catalog card reads it
+yet. A card whose only snow text is an `{S}` in a cost needs no caveat.
+
 ### "Players can't pay life to cast spells or to activate abilities" (#5660)
 
 "Players can't pay life to cast spells or to activate abilities that
@@ -3508,9 +3548,14 @@ copy is created, so the copy's characteristics are already edited when
 protection and the CR 707.10c re-target prompt read them.
 
 **A copy of a PERMANENT spell becomes a token as it resolves**
-(CR 608.3f, CR 111.13), through #923's one token-creation path, so a
-doubler doubles it, the creature's own enters abilities fire, and a
-bounce cannot turn it into a card. Nothing on the card declares that —
+(CR 608.3f, CR 111.13). The token is not "created" (#4994, ADR 0043's
+2026-11-20 amendment): no doubler doubles it, and a "whenever you create a
+token" trigger does not see it, because its arrival is an `EventZoneMove`
+from no zone with `Event.BecameToken` set, not an `EventTokenCreated`. A
+trigger that means "a token entered" must watch `EventETB` or a move onto
+the battlefield, not `EventTokenCreated`. Entry replacements still apply to
+it, the creature's own enters abilities fire, and a bounce cannot turn it
+into a card. Nothing on the card declares that —
 a card that copies a creature spell needs no more than the target
 clause. What is NOT copiable, and must stay off `PrintedValues`: the
 costs paid (`PaidCost.OptionalCosts` — kicker rides the STACK ITEM
@@ -3648,6 +3693,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"soulbond"` | Soulbond (CR 702.95) — #5675. The token is the badge and the gate: the keyword's two triggered abilities are the catalog rows `Soulbond(name)` returns, and they read this token off the layered ability list, so a creature that has lost it (a copy that "loses soulbond") never asks to pair. Declare both; see "Soulbond" below. |
+| `"banding"` | Banding (CR 702.22) — #5723, [ADR 0224](decisions/0224-banding.md). The engine runs all of it (`game/banding.go`): bands announced on `declare_attackers` (`AttackDeclaration.Band`, CR 702.22c-e), a blocker of one member blocking the band at the block lock-in (CR 702.22h-i), and the damage division handed to the other player when a creature with banding is blocking or blocked (CR 702.22j-k). Every consumer reads the token off the layered ability list, so grant it with `GrantKeywordUntilEOT` / `KeywordGrant` like any keyword (Helm of Chatzuk). Not cumulative (CR 702.22m). A creature whose only text is banding needs no card file. "Bands with other" is NOT this token and is not supported: leave such a card out |
 | `"flanking"` | Flanking (CR 702.25) — #5757, #5784, a TRIGGERED keyword built like exalted: one trigger per instance (`game/flanking.go`, CR 702.25b), one per creature that blocks it (CR 509.3d), and the blocker gets -1/-1 until end of turn unless it has flanking itself, printed, imported or granted (CR 702.25a). Cumulative, so grant it through `GrantToAttached` / `KeywordGrant` / `game.AppendKeywordAbility` (Agility); "loses flanking" (`game.RemoveKeywordsMod`, Barbed Foliage) takes the trigger with it. Declare it in `PrintedKeywords`; never write a flanking trigger by hand. `RetiredFlankingRow(name)` is the pre-#5784 row, kept on the cards that shipped with it so an old restore point resolves; it never triggers, and no new card uses it. A creature whose only text is flanking needs no card file |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"melee"` | Melee (CR 702.121) — #4722, a TRIGGERED keyword: one attack trigger per instance (`game/melee.go`) gives the creature +1/+1 until end of turn for each opponent you attacked with a creature this combat, counted as the trigger resolves (`Game.OpponentsAttackedThisCombat`: attacks on a planeswalker or battle count no player). Cumulative (CR 702.121b), so grant it through `KeywordGrant` / `TribalKeywordGrant` / `game.AppendKeywordAbility` (Titania, Proud Pummeler). A creature whose only text is melee needs no card file. Never write the pump by hand |
@@ -6627,8 +6673,22 @@ OptionalCosts: []game.AdditionalCost{Multikicker("{G}", 20)},                   
 OptionalCosts: []game.AdditionalCost{Buyback("{3}")},                           // Capsize
 OptionalCosts: []game.AdditionalCost{BuybackSacrifice("a land", Land())},       // Constant Mists
 OptionalCosts: []game.AdditionalCost{KickerSacrifice("a creature", Creature())},
+OptionalCosts: []game.AdditionalCost{BuybackPayLife(4)},                        // Slaughter
+OptionalCosts: []game.AdditionalCost{KickerPayLife(3)},                         // Phyrexian Scuta
 OptionalCosts: Kickers("{R}", "{W}"),                                            // Thornscape Battlemage
 ```
+
+**"Buyback—Pay N life" / "Kicker—Pay N life"** (#5782, ADR 0100's
+2026-11-20 amendment) is `BuybackPayLife(n)` / `KickerPayLife(n)`: the
+fixed `PayLife` component the either/or branches use, on an optional
+cost. Nothing else is needed in the card file. The engine pays the life
+with the rest of the total cost (CR 601.2h) and refuses the announcement
+when the caster's life total is below it, or when they can't pay life
+at all (CR 119.4). The view marks the offer `life_short` so the client
+greys it, and the bot is offered it only while it would survive the
+payment. A cost that pays life AND something else ("Buyback—Pay 3 life,
+Discard a card at random", Flowstone Flood) needs every component to
+exist; a random discard as a cost does not yet, so that card stays out.
 
 **"Kicker {R} and/or {W}"** (CR 702.33b) is `Kickers(first, second)`: two
 `Kicker` entries in printed order, both keyed kicker, each its own once-only
@@ -6665,9 +6725,9 @@ hand-rolled one compiles and then never returns a bought-back card to
 hand. `Register` refuses the mistakes that would otherwise ship
 quietly: an `Optional` cost in the mandatory slot, a missing or
 duplicated `Key` (kicker's pair aside), a repeatable cost that also demands cards or
-permanents (every printed multikicker is mana), and an optional
-`PayLifeX` (it would fight the mandatory cost for the shared `XValue`
-slot).
+permanents (every printed multikicker is mana, so a repeated life
+payment is refused too), an optional `PayLifeX` (it would fight the
+mandatory cost for the shared `XValue` slot), and a negative `PayLife`.
 
 Read the choice back at RESOLUTION with `ctx.WasKicked()` /
 `ctx.KickedTimes()`, the same shape `ctx.PaidAltCost("overload")`
@@ -9309,7 +9369,13 @@ Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
 applies: it queues a `pay_unless` prompt for the taxed player and
 returns; the "unless" consequence runs later as its registered `Else` when
 they answer "Don't pay" — or "Pay" without the mana in pool +
-untapped sources. Read the payer's ID off the triggering event at
+untapped sources. The table waits for that answer (#5793): the engine
+anchors every pay-unless a resolution asks to the step it is asked in, so
+nothing passes, the step does not end, and a spell's later instructions and
+its exit wait until the payer has answered (CR 118.12, 608.2g, 117.3b). This
+holds for a spell or activated ability too ("return target creature unless
+its controller pays {1}. Draw a card."): plain `PayUnless{Else}` inside
+`ResolveSteps` is the whole recipe, with no flag on the card. Read the payer's ID off the triggering event at
 resolution (`item.Trigger.Event.Actor` for cast / draw events — not
 captured in a `Build`, which would put the row on the legacy list) and
 read the controller off the `Context` inside `Else`. See
@@ -10347,14 +10413,17 @@ that question — the gated verbs ask it and so does `internal/legal`,
 which is what keeps the bots and the engine from disagreeing the way
 they did for the whole life of the allowlist (#794). Deny by default:
 an unclassified kind blocks, and `pay_unless` is still the one kind
-that does not (ADR 0018 §6). That row answers for the KIND; a live
+that does not (ADR 0018 §6) — but only for a prompt queued outside a
+resolution: since #5793 every pay-unless a resolution asks is owed in
+its step, below. That row answers for the KIND; a live
 PROMPT is asked through `(*game.Game).ChoicePromptBlocksTable`, which
 adds two one-way narrowings on top of it, both DERIVED from the board
 rather than declared by a card — `PendingChoice.GuardsStackItem`, a
 prompt whose decline counters an object still on the stack (#951,
 `counter_unless_paid.go`), and `PendingChoice.OwedInStep`, a prompt the
 payer owes before the step it was asked in can end (#997,
-`upkeep_pay_unless.go`). Both can only make a prompt block, never let
+`upkeep_pay_unless.go`; derived since #5793 for every pay-unless a
+resolution asks, `resolution_pay_unless.go`). Both can only make a prompt block, never let
 one through, and both lift by themselves when the thing they are about
 has gone — which is what stops either being a wedge. There is no
 card-level "please block" switch: #567 shipped one and the next two
@@ -10407,19 +10476,19 @@ string.
 
 Two things that are not obvious:
 
-- **The prompt blocks the table**, which no other `pay_unless` does.
-  Use `effects.UpkeepPayUnless` (never `PayUnless`) for "at the
-  beginning of your upkeep, pay or else": it goes through
+- **The prompt blocks the table**, as every `pay_unless` a resolution
+  asks does since #5793. Still use `effects.UpkeepPayUnless` (never
+  `PayUnless`) for "at the beginning of your upkeep, pay or else": its
+  anchor is the card's own, so ADR 0127 never offers a standing
+  "Always / Never pay" for it (the derived anchor keeps one). It goes through
   `Game.QueueUpkeepPayUnlessForEffect`, which anchors the prompt to the
   step it was raised in (`PendingChoice.OwedInStep`), and
   `game.ChoicePromptBlocksTable` holds the table there until it is
   answered — read by the engine gate and by `internal/legal` alike.
-  ADR 0018 §6's latitude is Rhystic Study's: a question to a *different*
-  player after the ability left the stack. This one asks the active
-  player during their own upkeep, and the answer decides whether a
-  permanent is still on the battlefield. The narrowing is one-way and
-  per prompt — the `pay_unless` **kind** is unchanged, so Rhystic Study
-  still plays as it did. Stasis and Pact of Negation are the same door
+  This one asks the active player during their own upkeep, and the
+  answer decides whether a permanent is still on the battlefield. The
+  narrowing is one-way and per prompt — the `pay_unless` **kind** is
+  unchanged. Stasis and Pact of Negation are the same door
   (#997); nothing declares a halt on the card. So is a beginning-of-end-step
   "sacrifice it unless you pay", such as Ashling, the Limitless's delayed
   trigger for its token (#5803).
@@ -15308,6 +15377,41 @@ Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 - **"<This>'s power and toughness are each equal to your life total"** is `powerAndToughnessEqualToYourLifeTotal()`
   (Serra Avatar, Angelic Enforcer). It declares `DependsOnLifeTotal`; a life-keyed static without it keeps a stale
   size until something unrelated drops the layer cache.
+
+### Ante cards: built, with their ante text inert (#5724, CR 407)
+
+**Owner decision, 2026-11-16: ante cards go in the catalog.** C2 never plays for
+ante, so their ante text does nothing in any game here, and the rest of each card
+is built as printed. A set-coverage batch builds them like any other card; it
+neither asks again nor lists them as excluded. The ante cards are Contract from
+Below, Darkpact and Demonic Attorney (Alpha), Jeweled Bird (Arabian Nights),
+Bronze Tablet (Antiquities), Rebirth and Tempest Efreet (Legends), Timmerian
+Fiends (Homelands) and Amulet of Quoz (Ice Age).
+
+C2 has no ante zone. The rules still let a card ante something even in a game
+not played for ante (CR 407.3 only keeps these cards out of decks; CR 407.4 says
+what anteing is), so treating anteing as impossible is the owner's call, not a
+rule. With it, each piece of ante text reads like this:
+
+- **"Remove this card from your deck before playing if you're not playing for
+  ante."** Not an ability. Declare nothing for it. Whether such a card may be in a
+  deck is deck legality (CR 407.3, and these cards are banned in Commander), not
+  the catalog's business.
+- **"Ante the top card of your library", "each player antes …".** The instruction
+  is impossible, so it does nothing and the rest of the effect still happens
+  (CR 609.3). Contract from Below is "discard your hand, then draw seven cards".
+- **"If you do" / "if a player does" after an ante.** Nothing was anted, so the
+  contingent part never happens. Build only what can happen: Jeweled Bird is a
+  tap ability that does nothing.
+- **"Target card in the ante".** Nothing is ever in the ante, so the spell has no
+  legal target and can't be cast (CR 601.2c, 601.2e). Build Darkpact only if a
+  target constructor can say "a card in the ante" honestly, so the engine refuses
+  the cast; otherwise leave it out and note that on its set's issue.
+
+Inert ante text is how the card plays here, not a simplification, so a card whose
+other text is exact is `CompletenessFull` with no `Caveats`. Say in its header
+comment that the ante clause is inert and link this section. If the non-ante text
+needs a seam the engine lacks, the usual rule applies: leave the card out.
 
 ### When in doubt
 

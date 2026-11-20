@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3397aa3d-bf73-4ca3-a806-059361603079",
 		Name:         "Test of Faith",
+		Purpose:      game.Purpose{Answers: game.AnswerPump | game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

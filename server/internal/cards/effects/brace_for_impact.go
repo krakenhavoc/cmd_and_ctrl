@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Brace for Impact — Instant {4}{W}:
 //
 //	"Prevent all damage that would be dealt to target multicolored
@@ -18,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f250fb94-e519-4bfa-921e-eddeeafcf76c",
 		Name:         "Brace for Impact",
+		Purpose:      game.Purpose{Answers: game.AnswerPump | game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target multicolored creature", Multicolored()),
 		OnResolve: sourceShieldSpell(PreventDamageFromSource{

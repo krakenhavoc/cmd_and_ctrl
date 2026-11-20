@@ -254,7 +254,9 @@ creations; a creation with no source card (a test fixture, an admin verb) leaves
   ([#666](https://github.com/krakenhavoc/cmd_and_ctrl/issues/666)) is not
   "created" and must not reach `RepEventCreateTokens`. Nothing routes it there
   today, because that path does not exist yet; the note is here so the one who
-  writes it does not reach for `CreateTokensThenForEffect`.
+  writes it does not reach for `CreateTokensThenForEffect`. *(2026-11-20,
+  #4994: #666 did route it there, and the owner's decision of 2026-11-19 took
+  it back out. See [ADR 0043](0043-copy-effects.md)'s amendment of that date.)*
 - **No new prompt kind.** Both events reuse the CR 616 ordering prompt and the
   optional prompt, so the bots and the client need nothing new.
 

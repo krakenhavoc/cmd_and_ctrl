@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "d7b476ed-fc50-4804-8375-488a9e2ab184",
 		Name:         "Chain of Silence",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Unbreakable Formation — Instant {2}{W} (EDHREC top 1,000, #3654):
 //
 //	"Creatures you control gain indestructible until end of turn.
@@ -18,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "97435e03-2fff-4fe0-8fa9-69ab0a046a33",
 		Name:         "Unbreakable Formation",
+		Purpose:      game.Purpose{Answers: game.AnswerSurvive | game.AnswerPump | game.AnswerCombatGrant}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The vigilance waits for a prompt the counters ask (CR 608.2c, #4155).

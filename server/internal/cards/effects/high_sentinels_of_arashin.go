@@ -36,6 +36,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{W}: Put a +1/+1 counter on target creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{3}{W}"),
 			Targets: TargetCreature("target creature"),
 			Effect:  PlusOneCounterOnTheTarget,

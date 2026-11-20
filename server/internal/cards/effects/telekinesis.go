@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "1b9dd2b6-d14d-4c1e-9885-00ab2c0bf8da",
 		Name:         "Telekinesis",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

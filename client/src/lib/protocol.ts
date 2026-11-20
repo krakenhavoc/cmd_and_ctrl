@@ -212,6 +212,10 @@ export const ATTACK_REFUSAL_REASONS = [
   // unobeyable, or the active player's pass in declare_attackers would
   // leave one unmet. `card_id` is the creature that carries it.
   "attack_requirement",
+  // ADR 0224 (#5723): a band in the declaration breaks CR 702.22c-d —
+  // two creatures without banding in it, or members attacking
+  // different things. `card_id` is a creature of the band.
+  "band",
 ] as const;
 export type AttackRefusalReason = (typeof ATTACK_REFUSAL_REASONS)[number];
 
@@ -2601,6 +2605,12 @@ export interface DamageAssignmentView {
   // blocks every creature in blocker_card_ids, and its controller
   // divides its damage among them freely — no order, no trample.
   blocker_divides?: boolean;
+  // ADR 0224, CR 702.22j-k: banding handed this division to the other
+  // side. The chooser divides damage dealt TO their own creatures: the
+  // defending player an attacker's among their blockers, or the active
+  // player a blocker's among their attackers. No trample, and
+  // covers_lethal is never set, so the split is never sent unasked.
+  banding?: boolean;
   // #2956 (ADR 0147): the server's canonical split
   // (legal.CanonicalDamageSplit), the one the bots answer with. The
   // prompt pre-fills it, and with "Auto-assign combat damage" on the
@@ -3501,6 +3511,12 @@ export interface OptionalCostView {
   // pays for, and `energy_short` says it pays for none.
   energy?: number;
   energy_short?: boolean;
+  // #5782 (ADR 0100's 2026-11-20 amendment): the fixed life this cost
+  // pays (Slaughter's "Buyback—Pay 4 life" is 4), and `life_short` when
+  // the viewer can't pay it now (a life total below it, CR 119.4, or a
+  // rule that stops them paying life), so the offer cannot be taken.
+  pay_life?: number;
+  life_short?: boolean;
   // The card-shaped halves, in the same shape and with the same
   // meaning AdditionalCostView gives them: a present-and-empty
   // sacrifice_options means the offer cannot be taken right now.
@@ -5366,6 +5382,10 @@ export interface CardView extends CastSurfaceView {
   // id is a seat id or an instance id and this says which. Absent
   // when nothing is declared.
   attacking_target_kind?: "player" | "planeswalker" | "battle";
+  // ADR 0224, CR 702.22c: the band this attacker is in. Attackers with
+  // the same number attack as one band, and blocking one blocks them all
+  // (CR 702.22h). Absent for an attacker in no band.
+  attack_band?: number;
   // #1339: the seat defending against this attack — the only seat
   // whose creatures may block it (CR 802.4a): the player attacked, the
   // planeswalker's controller, or the battle's PROTECTOR. Absent when

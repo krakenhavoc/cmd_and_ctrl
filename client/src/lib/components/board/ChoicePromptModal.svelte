@@ -2945,7 +2945,23 @@
         {/if}
       {/if}
     {:else if isDamageAssignment && damageFrame}
-      {#if damageFrame.blocker_divides}
+      {#if damageFrame.banding}
+        <!-- ADR 0224, CR 702.22j-k: banding hands the division to the
+               other side, so the creatures taking the damage are yours. -->
+        <p class="prompt-hint">
+          <span class="band-tag">banding</span>
+          {#if damageFrame.blocker_divides}
+            <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+            is blocking {damageFrame.blocker_card_ids.length} of your creatures, and one of them has banding,
+            so you divide its {damageFrame.attacker_power} damage among them however you like.
+          {:else}
+            <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+            is blocked by {damageFrame.blocker_card_ids.length} of your creatures, and one of them has
+            banding, so you divide its {damageFrame.attacker_power} damage among them however you like.
+            None of it tramples over.
+          {/if}
+        </p>
+      {:else if damageFrame.blocker_divides}
         <!-- #1706, CR 510.1d: a blocker dividing its damage among the
                attackers it blocks — any split that adds up. -->
         <p class="prompt-hint">
@@ -3522,6 +3538,17 @@
 <svelte:window onkeydown={handleKey} />
 
 <style>
+  /* ADR 0224: the banding prompt's tag, the attack picker's limit-tag
+     shape. */
+  .band-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 4px;
+  }
   /* ADR 0111 PR 5: the mana symbols in the dock's prompt area. Five
      colours fit one row of the 300-380px dock; a sixth wraps. */
   .dock-commander {

@@ -11,9 +11,10 @@ import (
 
 // double_major_test.go — CR 608.3f / CR 111.13, end to end. The copy
 // of a permanent spell must become a TOKEN, not a second card, and
-// it must be a token in every sense the rules use the word: a
-// doubler doubles it, its enters-the-battlefield abilities fire, and
-// it cannot come back as a card.
+// it must be a token in every sense the rules use the word: its
+// enters-the-battlefield abilities fire, and it cannot come back as a
+// card. It is NOT a created token (CR 111.13, #4994): no doubler
+// doubles it and no "whenever you create a token" sees it.
 
 const (
 	oracleDoubleMajor    = "ece44a82-dcf0-4439-bdd9-a09c99a6f159"
@@ -151,26 +152,84 @@ func TestDoubleMajorsTokenRunsTheCreaturesEntersAbility(t *testing.T) {
 	}
 }
 
-// TestDoubleMajorsTokenIsDoubledByDoublingSeason is the case that
-// separates "a token" from "a permanent we called a token": CR
-// 701.7b's creation window has to open on it, which only happens
-// because the copy goes through the one token-creation path.
-func TestDoubleMajorsTokenIsDoubledByDoublingSeason(t *testing.T) {
+// TestDoubleMajorsTokenIsNotDoubledByDoublingSeason is #4994, the
+// owner's 2026-11-19 decision: CR 111.13, "The token is not 'created'
+// for the purposes of any replacement effects or triggered abilities
+// that refer to creating a token." Doubling Season and Parallel Lives
+// both replace a creation, so neither touches the token a copy of a
+// permanent spell becomes: one token, not four.
+func TestDoubleMajorsTokenIsNotDoubledByDoublingSeason(t *testing.T) {
 	g := newCatalogGame(t)
 	active := g.Seats[g.Turn.ActiveSeat]
 	pushCatalogPermanent(g, active.ID, "Doubling Season", "Enchantment", oracleDoublingSeason, false)
+	pushCatalogPermanent(g, active.ID, "Parallel Lives", "Enchantment", parallelLivesOracle, false)
 
 	spell := castCreatureSpellForCopy(t, g, "Grizzly Bears", "Creature — Bear", "oracle-bears", 2, 2)
 	castCatalogSpell(t, g, "Double Major", "Instant", oracleDoubleMajor,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
 	passPriorityAroundTable(t, g)
 
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("a prompt is open: %+v — the two doublers must not even be asked about the copy's token", g.PendingChoices)
+	}
 	tokens, cards := copiesOnBattlefield(g, "Grizzly Bears")
-	if len(tokens) != 2 {
-		t.Fatalf("token copies = %d, want 2 under Doubling Season", len(tokens))
+	if len(tokens) != 1 {
+		t.Fatalf("token copies = %d, want 1: the copy's token is not created, so no doubler applies (CR 111.13)", len(tokens))
 	}
 	if len(cards) != 1 {
 		t.Errorf("real permanents = %d — the ORIGINAL creature spell is a card and is not doubled", len(cards))
+	}
+	if n := tokenCreatedEventsFor(g, tokens[0].InstanceID); n != 0 {
+		t.Errorf("the token was announced as created %d times, want none (CR 111.13)", n)
+	}
+}
+
+// TestDoubleMajorsTokenDoesNotTriggerAWheneverYouCreateAToken is the
+// other half of CR 111.13: a triggered ability that refers to creating a
+// token does not see the copy's token (Mirkwood Bats' "whenever you
+// create … a token"), while one that refers to entering does, so the
+// token's own enters ability still fires (the Thraben Inspector case
+// above). The tokens-created tally does not count it either (CR 608.3f:
+// "any rules or effects that refer to creating a token").
+func TestDoubleMajorsTokenDoesNotTriggerAWheneverYouCreateAToken(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	pushCatalogPermanent(g, active.ID, "Mirkwood Bats", "Creature — Bat", mirkwoodBatsOracle, false)
+	lifeBefore := map[uuid.UUID]int{}
+	for _, p := range g.Seats {
+		lifeBefore[p.ID] = p.Life
+	}
+
+	spell := castCreatureSpellForCopy(t, g, "Grizzly Bears", "Creature — Bear", "oracle-bears", 2, 2)
+	castCatalogSpell(t, g, "Double Major", "Instant", oracleDoubleMajor,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
+	passPriorityAroundTable(t, g)
+
+	tokens, _ := copiesOnBattlefield(g, "Grizzly Bears")
+	if len(tokens) != 1 {
+		t.Fatalf("token copies = %d, want 1", len(tokens))
+	}
+	for _, p := range g.Seats {
+		if p.Life != lifeBefore[p.ID] {
+			t.Errorf("seat %s life %d -> %d: Mirkwood Bats triggered on a token that was not created (CR 111.13)", p.ID, lifeBefore[p.ID], p.Life)
+		}
+	}
+	var created int
+	g.ReadSnapshot(func() { created = g.TurnTally.Players[active.ID].TokensCreated })
+	if created != 0 {
+		t.Errorf("tokens created this turn = %d, want 0: the copy's token is not created (CR 608.3f)", created)
+	}
+
+	// The control: a token that IS created does drain.
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(active.ID, TreasureToken(), 1) })
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats {
+		if p.ID == active.ID {
+			continue
+		}
+		if p.Life != lifeBefore[p.ID]-1 {
+			t.Errorf("opponent %s life %d -> %d after a created Treasure, want -1", p.ID, lifeBefore[p.ID], p.Life)
+		}
 	}
 }
 
@@ -405,7 +464,8 @@ func TestDoubleMajorsTokenOfAnXCreatureKeepsTheX(t *testing.T) {
 // TestDoubleMajorsTokenOfAnXCreatureDoublesItsCounters: the copy's X
 // counters are an ordinary "enters with" replacement, so Doubling
 // Season doubles them on the token as it does on the card. The token
-// itself is doubled too: two tokens, six counters each.
+// itself is not doubled (CR 111.13, #4994: it is not created): one
+// token, six counters.
 func TestDoubleMajorsTokenOfAnXCreatureDoublesItsCounters(t *testing.T) {
 	g := newCatalogGame(t)
 	active := g.Seats[g.Turn.ActiveSeat]
@@ -417,8 +477,8 @@ func TestDoubleMajorsTokenOfAnXCreatureDoublesItsCounters(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	tokens, _ := copiesOnBattlefield(g, "Big Bertha")
-	if len(tokens) != 2 {
-		t.Fatalf("token copies = %d, want 2 under Doubling Season", len(tokens))
+	if len(tokens) != 1 {
+		t.Fatalf("token copies = %d, want 1: Doubling Season doubles the counters, not the token (CR 111.13)", len(tokens))
 	}
 	for _, tok := range tokens {
 		if n := countersOn(g, tok.InstanceID, game.CounterPlusOne); n != 6 {
