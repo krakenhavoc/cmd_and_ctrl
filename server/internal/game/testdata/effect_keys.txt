@@ -107,6 +107,7 @@ body copy/token-copy-of-the-payload
 body cornered-crook/damage
 body counter/plus-one-and-haste-for-the-payload
 body counter/plus-one-on-the-payload-creature
+body craig-boone/damage
 body curious-forager/return-from-graveyard
 body curse-of-the-werefox/fight
 body cyclops-superconductor/damage
@@ -498,6 +499,7 @@ body the-thing/double-counters
 body the-wrath-of-khan/gain-control-of-that-creature
 body thorin-mountain-king/damage
 body thousand-moons-crackshot/tap
+body three-dog/copy-the-aura
 body thunder-of-unity/drain
 body tiger-tribe-hunter/damage
 body time-to-feed/gain-three-life
@@ -629,6 +631,8 @@ choose choose-cards/capricious-hellraiser-copy
 choose choose-cards/captain-james-t-kirk-draw
 choose choose-cards/cascade-put-a-land
 choose choose-cards/case-of-the-burning-masks-play
+choose choose-cards/cass-hand-of-vengeance-auras
+choose choose-cards/cass-hand-of-vengeance-equipment
 choose choose-cards/cataclysmic-gearhulk-keep-artifact
 choose choose-cards/cataclysmic-gearhulk-keep-artifact-creature
 choose choose-cards/cataclysmic-gearhulk-keep-artifact-creature-enchantment
@@ -1167,6 +1171,7 @@ choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/otc-gonti-lord-of-luxury-exile
 choose choose-cards/ovinomancer-return-three-basic-lands
 choose choose-cards/pack-guardian-discard-land
+choose choose-cards/paladin-elizabeth-taggerdy-put
 choose choose-cards/path-of-the-schemer-reanimate
 choose choose-cards/patient-naturalist-land
 choose choose-cards/perception-bobblehead-cast
@@ -1976,6 +1981,7 @@ option option-pick/contractual-safeguard-kind
 option option-pick/contractual-safeguard-shield
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
+option option-pick/craig-boone-damage
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
 option option-pick/dathon-his-heart-open-counter-kind
@@ -2063,6 +2069,7 @@ option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
 option option-pick/osseous-sticktwister-answer
+option option-pick/paladin-elizabeth-taggerdy-attacks
 option option-pick/pavel-chekov-first-posting-kind
 option option-pick/perforating-artist-punisher
 option option-pick/phoenix-chick-attack
@@ -2405,6 +2412,7 @@ payunless pay-unless/tester-of-the-tangential-move
 payunless pay-unless/the-motherlode-paid
 payunless pay-unless/the-thing-double-counters
 payunless pay-unless/thousand-moons-crackshot-tap
+payunless pay-unless/three-dog-sacrifice-an-aura
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
 payunless pay-unless/trail-of-crumbs-look-at-top-two
@@ -2725,6 +2733,7 @@ run prompt-run/the-legend-of-yangchen-exile
 run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
 run prompt-run/thomil-the-destroyer-add-bbb
+run prompt-run/three-dog-sacrificed-aura
 run prompt-run/throne-of-the-grim-captain-put
 run prompt-run/tiger-tribe-hunter-sacrifice
 run prompt-run/time-wipe-return-and-destroy
@@ -3592,6 +3601,7 @@ tail oversimplify/counters-put
 tail oversimplify/fractal-made
 tail ovika-enigma-goliath/goblins-haste
 tail oviya-automech-artisan/two-counters-on-an-artifact
+tail paladin-elizabeth-taggerdy/entered
 tail palantir-of-orthanc/ask-opponent
 tail palantir-of-orthanc/opponent-loses-total-mana-value
 tail path-to-exile/after-exile
@@ -3765,6 +3775,7 @@ tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
 tail sacrificed-one/prompt-run/thomil-the-destroyer-add-bbb
+tail sacrificed-one/prompt-run/three-dog-sacrificed-aura
 tail sacrificed-one/prompt-run/tiger-tribe-hunter-sacrifice
 tail sacrificed-one/prompt-run/tip-the-scales-sacrifice
 tail sacrificed-one/prompt-run/undercity-eliminator-sacrificed

@@ -520,6 +520,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Preston Garvey, Minuteman's Settlement (Fallout, #5948): a green Aura
 	// token with enchant land that gives the land a mana ability.
 	printedGapB63SettlementToken,
+
+	// Moira Brown, Guide Author's Wasteland Survival Guide (Fallout, #5948).
+	printedGapB64SurvivalGuideToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
