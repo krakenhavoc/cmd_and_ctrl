@@ -211,6 +211,7 @@ body forgehammer-centurion/cant-block
 body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
+body gap-b186/return-to-battlefield
 body gap-b55-voltstorm-angel/modes
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
 body gastal-blockbuster/destroy
@@ -3461,6 +3462,7 @@ tail incubate/next-round
 tail incubate/transform-all-incubators
 tail indoctrination-attendant/mite
 tail infernal-vessel/demon
+tail inquisitorial-rosette/menace
 tail insidious-roots/counter-on-each-plant
 tail instrument-of-the-bards/treasure-if-legendary
 tail intuition/choose
@@ -3609,6 +3611,7 @@ tail nantuko-cultivator/discarded
 tail narset-enlightened-exile/copy-exiled
 tail nashi-moons-legacy/copy-exiled
 tail necromantic-selection/black-zombie-then-exile
+tail necron-monolith/after-mill
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
 tail neo-b15/discover-the-impossible-cast
