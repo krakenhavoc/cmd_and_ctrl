@@ -1,6 +1,10 @@
-package effects
+package cardss
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Sarkhan's Whelp — Creature — Dragon {2}{R}, 2/2 (Jumpstart 2022, #5948):
 //
@@ -15,16 +19,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:        "482f5fc8-ca3b-4280-8cf7-a1c55f8b9f12",
 		Name:            "Sarkhan's Whelp",
-		Completeness:    CompletenessFull,
+		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(Targeting(
-				On(game.EventActivateAbility, gapB158YouActivatedASarkhanAbility,
-					"Sarkhan's Whelp — 1 damage to any target", sourceDealsDamageToEachLegalTarget(1)),
-				TargetAny()), ForTargets(DamageToTarget(0, 1))),
+			effects.TriggerWithPurpose(effects.Targeting(
+				effects.On(game.EventActivateAbility, gapB158YouActivatedASarkhanAbility,
+					"Sarkhan's Whelp — 1 damage to any target", effects.SourceDealsDamageToEachLegalTarget(1)),
+				effects.TargetAny()), effects.ForTargets(effects.DamageToTarget(0, 1))),
 		},
 	})
 }

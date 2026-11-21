@@ -1,6 +1,10 @@
-package effects
+package cardspr
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Prickly Marmoset — Creature — Monkey {2}{R}, 2/2 (Jumpstart 2022, #5948):
 //
@@ -13,14 +17,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	const label = "Prickly Marmoset — it gets +2/+0 until end of turn"
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:        "a1ef3b31-b996-48ea-967a-2b56fb2fb22b",
 		Name:            "Prickly Marmoset",
-		Completeness:    CompletenessFull,
+		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"first strike"},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCycle(label, func(g *game.Game, item *game.StackItem) error {
-				return BoostUntilEOT{Target: item.SourceCardID, Power: 2, Label: label}.Apply(NewContext(g, item))
+			effects.WheneverYouCycle(label, func(g *game.Game, item *game.StackItem) error {
+				return effects.BoostUntilEOT{Target: item.SourceCardID, Power: 2, Label: label}.Apply(effects.NewContext(g, item))
 			}),
 		},
 	})

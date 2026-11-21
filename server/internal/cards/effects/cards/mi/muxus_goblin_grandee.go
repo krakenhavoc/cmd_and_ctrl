@@ -1,6 +1,10 @@
-package effects
+package cardsmi
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Muxus, Goblin Grandee — Legendary Creature — Goblin Noble {4}{R}{R}, 6/6
 // (Jumpstart 2022, #5948):
@@ -18,35 +22,35 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "07c82cde-f00d-4454-9df4-9286e344c9bb",
 		Name:         "Muxus, Goblin Grandee",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerValue},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Muxus, Goblin Grandee — reveal the top six cards; put all Goblin creature cards with mana value 5 or less onto the battlefield and the rest on the bottom in a random order",
+			effects.WhenThisEnters("Muxus, Goblin Grandee — reveal the top six cards; put all Goblin creature cards with mana value 5 or less onto the battlefield and the rest on the bottom in a random order",
 				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
+					ctx := effects.NewContext(g, item)
 					player := ctx.Controller()
-					return PutFromLibraryOntoBattlefield{
+					return effects.PutFromLibraryOntoBattlefield{
 						Player:   player,
 						Cards:    g.RevealTopOfLibraryForEffect(player, ctx.Source(), 6, "Muxus, Goblin Grandee — reveal the top six cards"),
-						Match:    And(Creature(), HasSubtype("Goblin"), ManaValueLE(5)),
+						Match:    effects.And(effects.Creature(), effects.HasSubtype("Goblin"), effects.ManaValueLE(5)),
 						All:      true,
 						Label:    "Muxus, Goblin Grandee — put all Goblin creature cards with mana value 5 or less onto the battlefield",
-						ThenTail: PutRestOnBottomInRandomOrderTail,
+						ThenTail: effects.PutRestOnBottomInRandomOrderTail,
 					}.Apply(ctx)
 				}),
-			WheneverThisAttacks("Muxus, Goblin Grandee — it gets +1/+1 until end of turn for each other Goblin you control",
+			effects.WheneverThisAttacks("Muxus, Goblin Grandee — it gets +1/+1 until end of turn for each other Goblin you control",
 				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
+					ctx := effects.NewContext(g, item)
 					n := 0
-					for _, c := range MatchingBattlefield(ctx, And(YouControl(), HasSubtype("Goblin"))) {
+					for _, c := range effects.MatchingBattlefield(ctx, effects.And(effects.YouControl(), effects.HasSubtype("Goblin"))) {
 						if c.InstanceID != item.SourceCardID {
 							n++
 						}
 					}
-					return BoostUntilEOT{Target: item.SourceCardID, Power: n, Toughness: n, Label: "Muxus, Goblin Grandee — +1/+1 for each other Goblin"}.Apply(ctx)
+					return effects.BoostUntilEOT{Target: item.SourceCardID, Power: n, Toughness: n, Label: "Muxus, Goblin Grandee — +1/+1 for each other Goblin"}.Apply(ctx)
 				}),
 		},
 	})

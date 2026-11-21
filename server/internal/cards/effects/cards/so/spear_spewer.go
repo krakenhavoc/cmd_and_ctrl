@@ -1,6 +1,10 @@
-package effects
+package cardsso
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Spear Spewer — Creature — Goblin Warrior {R}, 1/1 (Jumpstart 2022, #5948):
 //
@@ -12,17 +16,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:        "1a668cef-bdc5-410b-b9e3-044e4203a0aa",
 		Name:            "Spear Spewer",
-		Completeness:    CompletenessFull,
+		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"defender"},
-		Activated: []ActivatedAbility{{
+		Activated: []effects.ActivatedAbility{{
 			Label:   "{T}: This creature deals 1 damage to each player.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
-			Cost:    TapCost(),
+			Cost:    effects.TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return b38DamageEachPlayer(NewContext(g, item), 1)
+				return effects.B38DamageEachPlayer(effects.NewContext(g, item), 1)
 			},
 		}},
 	})

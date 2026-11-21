@@ -13,7 +13,7 @@ import (
 // gapB158HasCyclingAbility is "a card with a cycling ability" (CR 702.29): the
 // card's own activated rows, as the engine reads them, include a cycling one.
 // Typecycling counts (CR 702.29e).
-func gapB158HasCyclingAbility(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func GapB158HasCyclingAbility(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 	for _, ab := range game.ActivatedAbilitiesForCard(c) {
 		if ab.Cycling {
 			return true
@@ -26,10 +26,10 @@ func gapB158HasCyclingAbility(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 // graveyard. Until the end of your next turn, you may play that card": the
 // target is re-checked as the ability resolves (CR 608.2b) and, once it is in
 // exile, its controller gets the window.
-func gapB158ExileTargetPlayUntilEndOfYourNextTurn(name string) Effect {
+func GapB158ExileTargetPlayUntilEndOfYourNextTurn(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -52,6 +52,6 @@ func gapB158ExileTargetPlayUntilEndOfYourNextTurn(name string) Effect {
 // gapB158ThisOnYourTurn is "during your turn, this creature has <keyword>":
 // the grant applies to the permanent itself while its controller is the
 // active player.
-func gapB158ThisOnYourTurn(target *game.Card, g *game.Game, source *game.Card) bool {
-	return target.InstanceID == source.InstanceID && isActivePlayer(g, source.Controller)
+func GapB158ThisOnYourTurn(target *game.Card, g *game.Game, source *game.Card) bool {
+	return target.InstanceID == source.InstanceID && IsActivePlayer(g, source.Controller)
 }

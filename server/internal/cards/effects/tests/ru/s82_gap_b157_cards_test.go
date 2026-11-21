@@ -1,10 +1,12 @@
-package effects
+package testsru
 
 import (
 	"testing"
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -32,57 +34,57 @@ func TestGapB157EveryCardIsRegisteredFull(t *testing.T) {
 		gapB157MarmosetOracle:   "Prickly Marmoset",
 		gapB157CyclopsOracle:    "Quakefoot Cyclops",
 	} {
-		spec, ok := Lookup(oracle)
-		if !ok || spec.Name != name || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		spec, ok := effects.Lookup(oracle)
+		if !ok || spec.Name != name || spec.Completeness != effects.CompletenessFull || len(spec.Caveats) != 0 {
 			t.Errorf("%s: %+v registered=%v, want Full with no caveats", name, spec, ok)
 		}
 	}
 }
 
 func TestGapB157MarduHeartPiercerDealsTwoOnlyAfterAnAttack(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	victim := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
-	avB16CastCreature(t, g, "Mardu Heart-Piercer", "Creature — Human Archer", gapB157HeartPiercerOrcl, 2, 3)
-	if latestPickTarget(g, me.ID) != nil {
+	victim := effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	effectstest.AvB16CastCreature(t, g, "Mardu Heart-Piercer", "Creature — Human Archer", gapB157HeartPiercerOrcl, 2, 3)
+	if effectstest.LatestPickTarget(g, me.ID) != nil {
 		t.Fatal("the raid trigger fired without an attack this turn")
 	}
-	attacker := b12Creature(g, me.ID, "Attacker", "Creature — Bear", 2, 2)
-	declareAttack(t, g, opp.ID, attacker)
-	passPriorityAroundTable(t, g)
-	advanceTo(t, g, game.StepPostcombatMain)
-	avB16CastCreature(t, g, "Mardu Heart-Piercer", "Creature — Human Archer", gapB157HeartPiercerOrcl, 2, 3)
-	b04WaitForPick(t, g, me.ID)
-	pickTriggerTarget(t, g, me.ID, victim)
-	passPriorityAroundTable(t, g)
+	attacker := effectstest.B12Creature(g, me.ID, "Attacker", "Creature — Bear", 2, 2)
+	effectstest.DeclareAttack(t, g, opp.ID, attacker)
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AdvanceTo(t, g, game.StepPostcombatMain)
+	effectstest.AvB16CastCreature(t, g, "Mardu Heart-Piercer", "Creature — Human Archer", gapB157HeartPiercerOrcl, 2, 3)
+	effectstest.B04WaitForPick(t, g, me.ID)
+	effectstest.PickTriggerTarget(t, g, me.ID, victim)
+	effectstest.PassPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(victim) {
 		t.Error("the 2/2 survived 2 damage")
 	}
 }
 
 func TestGapB157MudbuttonTorchrunnerDealsThreeWhenItDies(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	runner := b12Push(g, me.ID, "Mudbutton Torchrunner", "Creature — Goblin Warrior", gapB157TorchrunnerOracl, 1, 1)
+	runner := effectstest.B12Push(g, me.ID, "Mudbutton Torchrunner", "Creature — Goblin Warrior", gapB157TorchrunnerOracl, 1, 1)
 	life := opp.Life
-	b25Destroy(g, runner)
-	vow1Pick(t, g, me, []game.TargetRef{playerTarget(opp.ID)})
+	effectstest.B25Destroy(g, runner)
+	effectstest.Vow1Pick(t, g, me, []game.TargetRef{effectstest.PlayerTarget(opp.ID)})
 	if opp.Life != life-3 {
 		t.Errorf("life %d -> %d, want -3", life, opp.Life)
 	}
 }
 
 func TestGapB157PlunderingPredatorFliesAndLoots(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
-	id := castHoldCreature(t, g, "Plundering Predator", "Creature — Dragon", gapB157PredatorOracle, 4, 4)
-	if !hasEffectiveKeyword(t, g, id, "flying") {
+	id := effectstest.CastHoldCreature(t, g, "Plundering Predator", "Creature — Dragon", gapB157PredatorOracle, 4, 4)
+	if !effectstest.HasEffectiveKeyword(t, g, id, "flying") {
 		t.Error("the Dragon has no flying")
 	}
 	hand, graves := me.Hand.Size(), me.Graveyard.Size()
 	pitch := me.Hand.Cards[0].InstanceID
-	answerDiscard(t, g, me.ID, pitch)
-	passPriorityAroundTable(t, g)
+	effectstest.AnswerDiscard(t, g, me.ID, pitch)
+	effectstest.PassPriorityAroundTable(t, g)
 	if got := me.Hand.Size(); got != hand {
 		t.Errorf("hand %d, want %d (discard one, draw one)", got, hand)
 	}
@@ -92,28 +94,28 @@ func TestGapB157PlunderingPredatorFliesAndLoots(t *testing.T) {
 }
 
 func TestGapB157PricklyMarmosetGetsTwoPowerPerCycle(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
-	mar := b12Push(g, me.ID, "Prickly Marmoset", "Creature — Monkey", gapB157MarmosetOracle, 2, 2)
-	if !hasEffectiveKeyword(t, g, mar, "first strike") {
+	mar := effectstest.B12Push(g, me.ID, "Prickly Marmoset", "Creature — Monkey", gapB157MarmosetOracle, 2, 2)
+	if !effectstest.HasEffectiveKeyword(t, g, mar, "first strike") {
 		t.Error("the Marmoset has no first strike")
 	}
-	cycleFromHand(t, g, "Scrounging Skyray", "Creature — Bird", scroungingSkyrayOracle, "{C}{C}")
-	passPriorityAroundTable(t, g)
-	if got := effectivePower(t, g, mar); got != 4 {
+	effectstest.CycleFromHand(t, g, "Scrounging Skyray", "Creature — Bird", effectstest.ScroungingSkyrayOracle, "{C}{C}")
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.EffectivePower(t, g, mar); got != 4 {
 		t.Errorf("power %d after one cycle, want 4", got)
 	}
 }
 
 func TestGapB157QuakefootCyclopsEntersAndCyclesForCantBlock(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	a := b12Creature(g, opp.ID, "Bear A", "Creature — Bear", 2, 2)
-	b := b12Creature(g, opp.ID, "Bear B", "Creature — Bear", 2, 2)
-	c := b12Creature(g, opp.ID, "Bear C", "Creature — Bear", 2, 2)
-	castHoldCreature(t, g, "Quakefoot Cyclops", "Creature — Cyclops", gapB157CyclopsOracle, 5, 4)
-	vow1Pick(t, g, me, []game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}})
-	passPriorityAroundTable(t, g)
+	a := effectstest.B12Creature(g, opp.ID, "Bear A", "Creature — Bear", 2, 2)
+	b := effectstest.B12Creature(g, opp.ID, "Bear B", "Creature — Bear", 2, 2)
+	c := effectstest.B12Creature(g, opp.ID, "Bear C", "Creature — Bear", 2, 2)
+	effectstest.CastHoldCreature(t, g, "Quakefoot Cyclops", "Creature — Cyclops", gapB157CyclopsOracle, 5, 4)
+	effectstest.Vow1Pick(t, g, me, []game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}})
+	effectstest.PassPriorityAroundTable(t, g)
 	cantBlock := func(id uuid.UUID) bool {
 		card, _ := g.LookupCardForEffect(id)
 		return card.Effective().Restrictions&game.CantBlock != 0
@@ -124,15 +126,15 @@ func TestGapB157QuakefootCyclopsEntersAndCyclesForCantBlock(t *testing.T) {
 }
 
 func TestGapB157QuakefootCyclopsCyclingTargetsOneCreature(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	opp := g.Seats[1]
-	bear := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
-	id, me := cycleFromHand(t, g, "Quakefoot Cyclops", "Creature — Cyclops", gapB157CyclopsOracle, "{C}{R}")
+	bear := effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	id, me := effectstest.CycleFromHand(t, g, "Quakefoot Cyclops", "Creature — Cyclops", gapB157CyclopsOracle, "{C}{R}")
 	if !me.Graveyard.Contains(id) {
 		t.Fatal("the cycled Cyclops is not in the graveyard")
 	}
-	answerAnyPendingTargetPrompts(t, g)
-	passPriorityAroundTable(t, g)
+	effectstest.AnswerAnyPendingTargetPrompts(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	card, _ := g.LookupCardForEffect(bear)
 	if card.Effective().Restrictions&game.CantBlock == 0 {
 		t.Error("the cycle trigger did not stop the creature blocking")
@@ -140,10 +142,10 @@ func TestGapB157QuakefootCyclopsCyclingTargetsOneCreature(t *testing.T) {
 }
 
 func TestGapB157QuakefootCyclopsCyclingIsRefusedWithoutMana(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	advanceToMain(t, g)
-	id := pushCatalogHandCard(me, "Quakefoot Cyclops", "Creature — Cyclops", gapB157CyclopsOracle)
+	effectstest.AdvanceToMain(t, g)
+	id := effectstest.PushCatalogHandCard(me, "Quakefoot Cyclops", "Creature — Cyclops", gapB157CyclopsOracle)
 	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Fatal("{1}{R} must be paid to cycle")
 	}
@@ -160,7 +162,7 @@ func gapB157Library(p *game.Player, name, typeLine, cost string) uuid.UUID {
 }
 
 func TestGapB157MuxusPutsSmallGoblinsOntoTheBattlefield(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
 	seventh := gapB157Library(me, "Seventh Card", "Instant", "{R}")
 	sixth := gapB157Library(me, "Sixth Card", "Instant", "{R}")
@@ -169,8 +171,8 @@ func TestGapB157MuxusPutsSmallGoblinsOntoTheBattlefield(t *testing.T) {
 	small := gapB157Library(me, "Small Goblin", "Creature — Goblin", "{1}{R}")
 	five := gapB157Library(me, "Five Goblin", "Creature — Goblin", "{3}{R}{R}")
 	spell := gapB157Library(me, "Goblin Spell", "Sorcery — Goblin", "{R}")
-	castHoldCreature(t, g, "Muxus, Goblin Grandee", "Legendary Creature — Goblin Noble", gapB157MuxusOracle, 6, 6)
-	passPriorityAroundTable(t, g)
+	effectstest.CastHoldCreature(t, g, "Muxus, Goblin Grandee", "Legendary Creature — Goblin Noble", gapB157MuxusOracle, 6, 6)
+	effectstest.PassPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(small) || !g.Battlefield.Contains(five) {
 		t.Error("a Goblin creature card with mana value 5 or less stayed in the library")
 	}
@@ -192,33 +194,33 @@ func TestGapB157MuxusPutsSmallGoblinsOntoTheBattlefield(t *testing.T) {
 }
 
 func TestGapB157MuxusGetsPlusOnePlusOnePerOtherGoblinWhenAttacking(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	muxus := b12Push(g, me.ID, "Muxus, Goblin Grandee", "Legendary Creature — Goblin Noble", gapB157MuxusOracle, 6, 6)
-	b12Creature(g, me.ID, "Goblin One", "Creature — Goblin", 1, 1)
-	b12Creature(g, me.ID, "Goblin Two", "Creature — Goblin Warrior", 1, 1)
-	b12Creature(g, me.ID, "Not A Goblin", "Creature — Bear", 2, 2)
-	b12Creature(g, opp.ID, "Their Goblin", "Creature — Goblin", 1, 1)
-	declareAttack(t, g, opp.ID, muxus)
-	passPriorityAroundTable(t, g)
-	if got := effectivePower(t, g, muxus); got != 8 {
+	muxus := effectstest.B12Push(g, me.ID, "Muxus, Goblin Grandee", "Legendary Creature — Goblin Noble", gapB157MuxusOracle, 6, 6)
+	effectstest.B12Creature(g, me.ID, "Goblin One", "Creature — Goblin", 1, 1)
+	effectstest.B12Creature(g, me.ID, "Goblin Two", "Creature — Goblin Warrior", 1, 1)
+	effectstest.B12Creature(g, me.ID, "Not A Goblin", "Creature — Bear", 2, 2)
+	effectstest.B12Creature(g, opp.ID, "Their Goblin", "Creature — Goblin", 1, 1)
+	effectstest.DeclareAttack(t, g, opp.ID, muxus)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.EffectivePower(t, g, muxus); got != 8 {
 		t.Errorf("power %d, want 8 (6 + two other Goblins)", got)
 	}
 }
 
 func TestGapB157MagmaticChannelerNeedsFourInstantsOrSorceries(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
-	ch := b12Push(g, me.ID, "Magmatic Channeler", "Creature — Human Wizard", gapB157ChannelerOracle, 2, 2)
+	ch := effectstest.B12Push(g, me.ID, "Magmatic Channeler", "Creature — Human Wizard", gapB157ChannelerOracle, 2, 2)
 	for i := 0; i < 3; i++ {
 		gapB157CastBlank(t, g, me, "Instant")
 	}
-	killCreature(t, g, me.ID, b12Creature(g, me.ID, "Dead Bear", "Creature — Bear", 2, 2))
-	if got := effectivePower(t, g, ch); got != 2 {
+	effectstest.KillCreature(t, g, me.ID, effectstest.B12Creature(g, me.ID, "Dead Bear", "Creature — Bear", 2, 2))
+	if got := effectstest.EffectivePower(t, g, ch); got != 2 {
 		t.Fatalf("power %d with three instants and a creature, want 2", got)
 	}
 	gapB157CastBlank(t, g, me, "Sorcery")
-	if got, tough := effectivePower(t, g, ch), effectiveToughness(t, g, ch); got != 5 || tough != 3 {
+	if got, tough := effectstest.EffectivePower(t, g, ch), effectstest.EffectiveToughness(t, g, ch); got != 5 || tough != 3 {
 		t.Errorf("%d/%d with four instants and sorceries, want 5/3", got, tough)
 	}
 }
@@ -227,22 +229,22 @@ func TestGapB157MagmaticChannelerNeedsFourInstantsOrSorceries(t *testing.T) {
 // type line, which leaves it in its owner's graveyard.
 func gapB157CastBlank(t *testing.T, g *game.Game, p *game.Player, typeLine string) {
 	t.Helper()
-	toMainForCost(t, g)
-	id := handCardFull(p, "Blank "+typeLine, typeLine, "", "", nil)
+	effectstest.ToMainForCost(t, g)
+	id := effectstest.HandCardFull(p, "Blank "+typeLine, typeLine, "", "", nil)
 	if err := g.CastSpell(p.ID, id, game.CastSpellParams{}); err != nil {
 		t.Fatalf("cast %s: %v", typeLine, err)
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if !p.Graveyard.Contains(id) {
 		t.Fatalf("the %s is not in the graveyard", typeLine)
 	}
 }
 
 func TestGapB157MagmaticChannelerExilesTwoAndPlaysTheChosenOne(t *testing.T) {
-	g := newCatalogGame(t)
+	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
-	advanceToMain(t, g)
-	ch := b12Push(g, me.ID, "Magmatic Channeler", "Creature — Human Wizard", gapB157ChannelerOracle, 2, 2)
+	effectstest.AdvanceToMain(t, g)
+	ch := effectstest.B12Push(g, me.ID, "Magmatic Channeler", "Creature — Human Wizard", gapB157ChannelerOracle, 2, 2)
 	third := gapB157Library(me, "Third", "Basic Land — Swamp", "")
 	second := gapB157Library(me, "Second", "Basic Land — Swamp", "")
 	first := gapB157Library(me, "First", "Basic Land — Swamp", "")
@@ -253,12 +255,12 @@ func TestGapB157MagmaticChannelerExilesTwoAndPlaysTheChosenOne(t *testing.T) {
 	if !me.Graveyard.Contains(pitch) {
 		t.Error("the discard was not paid as a cost")
 	}
-	passPriorityAroundTable(t, g)
-	pick := latestChooseCardsFor(g, me.ID)
+	effectstest.PassPriorityAroundTable(t, g)
+	pick := effectstest.LatestChooseCardsFor(g, me.ID)
 	if pick == nil || len(pick.ChooseCards) != 2 {
 		t.Fatalf("pick %+v, want a choice between the two exiled cards", pick)
 	}
-	if z := zoneOfCard(g, third); z != game.ZoneLibrary {
+	if z := effectstest.ZoneOfCard(g, third); z != game.ZoneLibrary {
 		t.Errorf("a third card left the library (%v)", z)
 	}
 	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{second}); err != nil {

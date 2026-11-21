@@ -1,6 +1,10 @@
-package effects
+package cardslu
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Mardu Heart-Piercer — Creature — Human Archer {3}{R}, 2/3 (Jumpstart 2022,
 // #5948):
@@ -13,10 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "e4b15cba-9cd7-422d-9ca6-39243bf67dca",
 		Name:         "Mardu Heart-Piercer",
-		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{gapB157RaidDamage("Mardu Heart-Piercer", 2)},
+		Completeness: effects.CompletenessFull,
+		Triggered:    []game.TriggeredAbility{effects.GapB157RaidDamage("Mardu Heart-Piercer", 2)},
 	})
 }
