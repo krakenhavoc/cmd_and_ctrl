@@ -2374,6 +2374,7 @@ payunless pay-unless/lazotep-chancellor-amass
 payunless pay-unless/leyline-of-lightning-ping
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
+payunless pay-unless/lightning-rift-damage
 payunless pay-unless/lightning-runner-untap-and-extra-combat
 payunless pay-unless/lilianas-devotee-zombie
 payunless pay-unless/lorthos-tap-and-freeze
