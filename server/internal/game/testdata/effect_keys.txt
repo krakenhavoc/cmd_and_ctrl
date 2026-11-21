@@ -1966,6 +1966,7 @@ option option-pick/endure-counters-or-spirit
 option option-pick/energy-chosen-counter
 option option-pick/engine-clash
 option option-pick/engine-clash-opponent
+option option-pick/eowyn-lady-of-rohan-keyword
 option option-pick/eumidian-wastewaker-choice
 option option-pick/eventides-shadow-remove
 option option-pick/exotic-pets-fish
@@ -2012,6 +2013,7 @@ option option-pick/memories-returning-opponent
 option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
+option option-pick/morgul-knife-wound-pay-or-exile
 option option-pick/multiform-wonder-keyword
 option option-pick/mutinous-massacre-parity
 option option-pick/narset-of-the-ancient-way-mana
