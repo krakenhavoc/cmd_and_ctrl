@@ -2939,6 +2939,7 @@ tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
 tail carrion-locust/lose-life
+tail cartographers-hawk/search-for-a-plains
 tail cease/gain-and-draw
 tail cemetery-desecrator/exiled
 tail cemetery-tampering/offer-the-exiled-card
