@@ -186,6 +186,7 @@ body extra-turn/lose-the-game
 body ezio-auditore/lose-the-game
 body facedown/ward
 body faebloom-trick/tap
+body faramir-prince-of-ithilien/end-step
 body fatal-fissure/earthbend-4
 body fell-stinger/draw-and-lose
 body felonious-rage/detective
@@ -1943,6 +1944,7 @@ number number/expel-the-interlopers-destroy-power-at-least
 number number/fatal-lore-draw-up-to-three
 number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
+number number/goldberry-river-daughter-move-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
@@ -2048,6 +2050,7 @@ option option-pick/face-down-piles-curator-of-destinies
 option option-pick/face-down-piles-riddles-in-the-dark
 option option-pick/fact-or-fiction-splitter
 option option-pick/fandaniel-telophoroi-ascian-sacrifice-or-lose-life
+option option-pick/faramir-prince-of-ithilien-opponent
 option option-pick/fateful-handoff-opponent
 option option-pick/flicker-return-under-an-opponent
 option option-pick/ghostly-dancers-return-or-unlock
@@ -2104,6 +2107,7 @@ option option-pick/pavel-chekov-first-posting-kind
 option option-pick/perforating-artist-punisher
 option option-pick/phoenix-chick-attack
 option option-pick/pile-split-take
+option option-pick/pippin-guard-of-the-citadel-card-type
 option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
 option option-pick/polygraph-orb-punisher
@@ -3304,6 +3308,7 @@ tail enlightened-confidant/return-top-card
 tail ensign-pavel-chekov/after-exile
 tail ensnared-by-the-mara/after-mill
 tail ensnared-by-the-mara/after-mill-2
+tail eowyn-fearless-knight/protect
 tail erica-ortegas/return-a-land-at-end
 tail eruth-tormented-prophet/then-draw
 tail esper-origins/after-surveil
