@@ -1200,6 +1200,7 @@ choose choose-cards/neo-invoke-calamity-exile
 choose choose-cards/neo-invoke-calamity-picked
 choose choose-cards/next-of-kin-creature
 choose choose-cards/nexus-of-becoming-exile
+choose choose-cards/neyam-shai-murad-pick
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
 choose choose-cards/nicol-bolas-dragon-god-exile
