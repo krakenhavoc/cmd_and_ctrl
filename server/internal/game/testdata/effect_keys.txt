@@ -1266,6 +1266,7 @@ choose choose-cards/show-and-tell-pick
 choose choose-cards/sigardas-vanguard-double-strike
 choose choose-cards/sigardian-zealot-pump
 choose choose-cards/silvan-reveler-discarded
+choose choose-cards/simic-guildmage-attach
 choose choose-cards/skywarp-skaab-exile
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/sludge-titan-creature
@@ -3732,6 +3733,7 @@ tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
+tail simic-guildmage/take-one
 tail sin-spiras-punishment/copy-exiled
 tail sin-spiras-punishment/repeat-for-a-land
 tail sinister-concierge/exiled
