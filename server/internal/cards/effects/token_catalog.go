@@ -411,6 +411,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedRavenManBirdToken,
 	// Cybernetica Datasmith's 4/4 Robot: can't block (Warhammer 40,000, #5948).
 	printedGapB190RobotToken,
+	// Kibo, Uktabi Prince's Banana (Jumpstart 2022, #5948).
+	printedGapB154BananaToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.
