@@ -1288,6 +1288,7 @@ choose choose-cards/s82-gap-b142-crosiss-catacombs-return
 choose choose-cards/s82-gap-b142-darigaazs-caldera-return
 choose choose-cards/s82-gap-b142-dromars-cavern-return
 choose choose-cards/s82-gap-b142-riths-grove-return
+choose choose-cards/s82-gap-b143-trevas-ruins-return
 choose choose-cards/s82-mid-b03-take-reveal-rest-graveyard
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
@@ -4372,6 +4373,7 @@ tail vis/s82-gap-b142-crosiss-catacombs-after-return
 tail vis/s82-gap-b142-darigaazs-caldera-after-return
 tail vis/s82-gap-b142-dromars-cavern-after-return
 tail vis/s82-gap-b142-riths-grove-after-return
+tail vis/s82-gap-b143-trevas-ruins-after-return
 tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
