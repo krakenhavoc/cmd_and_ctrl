@@ -51,15 +51,15 @@ func init() {
 
 // NeurofluxHeirloomEquipmentToken is the Neuroflux Heirloom as PRINTED.
 func NeurofluxHeirloomEquipmentToken() game.Card {
-	return tokenFromCatalog(printedNeurofluxHeirloomToken)
+	return TokenFromCatalog(printedNeurofluxHeirloomToken)
 }
 
 // printedNeurofluxHeirloomToken is the catalog's entry for the Neuroflux
 // Heirloom: a colorless Equipment artifact token, "Equipped creature
 // gets +1/+1" and equip {2}. Its slug is an on-disk identity and is
 // never renamed.
-func printedNeurofluxHeirloomToken() tokenTemplate {
-	return tokenTemplate{
+func printedNeurofluxHeirloomToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "neuroflux-heirloom-equipment",
 		Card: game.Card{
 			Name:     "Neuroflux Heirloom",

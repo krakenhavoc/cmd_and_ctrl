@@ -34,7 +34,7 @@ func init() {
 			},
 			{
 				Cost:           ManaAbilityCost{Tap: true},
-				ProducedAmount: ProducedOneColor(arborAdherentX),
+				ProducedAmount: ProducedOneColor(ArborAdherentX),
 				Label:          "Add X mana of any one color, where X is the greatest toughness among other creatures you control",
 			},
 		},
@@ -43,7 +43,7 @@ func init() {
 
 // arborAdherentX is the greatest toughness among the other creatures the
 // ability's controller controls.
-func arborAdherentX(g *game.Game, controller, source uuid.UUID) int {
+func ArborAdherentX(g *game.Game, controller, source uuid.UUID) int {
 	g.RecomputeLayersIfStaleLocked()
 	best := 0
 	for _, c := range g.BattlefieldCardsForEffect() {

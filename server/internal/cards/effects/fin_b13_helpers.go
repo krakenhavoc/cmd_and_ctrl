@@ -13,7 +13,7 @@ import (
 // <abilities>": the activated ability being priced belongs to the very
 // permanent the modifier sits on. An activation's q.Card is its source
 // permanent, and q.Source is the object that contributes the modifier.
-func thisPermanentsAbility() CostPredicate {
+func ThisPermanentsAbility() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.Card.InstanceID == q.Source.InstanceID
 	}
@@ -42,7 +42,7 @@ func WheneverYouTapANonlandPermanentForMana(
 // the spell being priced is a legendary creature spell and the caster has
 // cast no legendary creature spell yet this turn (the tally is bumped after
 // a spell is priced, so none so far means this one is the first).
-func firstLegendaryCreatureSpellYouCastThisTurn() CostPredicate {
+func FirstLegendaryCreatureSpellYouCastThisTurn() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.Card.IsCreature() && q.Card.IsLegendary() &&
 			(q.Game == nil || q.Game.CastTallyFor(q.Controller).LegendaryCreature == 0)
@@ -53,12 +53,12 @@ func firstLegendaryCreatureSpellYouCastThisTurn() CostPredicate {
 // their choice": one pick of exactly min(N, creatures) per opponent, in
 // turn order, all made before any of them is sacrificed (the shape of
 // Barter in Blood, over opponents only).
-func finB13EachOpponentSacrificesN(n int, question string) Effect {
+func FinB13EachOpponentSacrificesN(n int, question string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		var legs []game.ChooseCardsPrompt
 		source := item.SourceCardID
-		spec := sacrificeSpec("a creature", Creature())
-		for _, seat := range apnapLivingSeats(g) {
+		spec := SacrificeSpec("a creature", Creature())
+		for _, seat := range ApnapLivingSeats(g) {
 			if seat == item.Controller || !g.CanEffectCauseSacrificeForEffect(seat) {
 				continue
 			}
@@ -80,7 +80,7 @@ func finB13EachOpponentSacrificesN(n int, question string) Effect {
 
 // controlsAtLeastOtherLegendaryCreatures is "you control N or more other
 // legendary creatures", read through the layered view.
-func controlsAtLeastOtherLegendaryCreatures(g *game.Game, controller, except uuid.UUID, n int) bool {
+func ControlsAtLeastOtherLegendaryCreatures(g *game.Game, controller, except uuid.UUID, n int) bool {
 	count := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID != except && c.Controller == controller && c.IsCreature() && c.IsLegendary() {

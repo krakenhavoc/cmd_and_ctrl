@@ -11,7 +11,7 @@ import (
 // resolves (Tinder Wall sacrifices itself to pay): the damage is dealt by the
 // source as it last existed (CR 608.2h), and only to a target still legal
 // (CR 608.2b).
-func s82GapB21DamageToBlocked(n int) Effect {
+func S82GapB21DamageToBlocked(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		ref, ok := ctx.SourceRef()
@@ -32,7 +32,7 @@ func s82GapB21DamageToBlocked(n int) Effect {
 // one player: "may put a land card from their hand onto the battlefield" (a
 // put, not a play; that player puts it, CR 110.2a), then their answer
 // decides the rest in s82GapB21AnaxTail.
-func s82GapB21AnaxAsk(ctx *Context, player uuid.UUID) error {
+func S82GapB21AnaxAsk(ctx *Context, player uuid.UUID) error {
 	put := MayPutALandFromHand("Anax and Cymede & Kynaios and Tiro")
 	put.Player = player
 	put.ThenTail = s82GapB21AnaxTail
@@ -55,10 +55,10 @@ func init() {
 				return err
 			}
 		}
-		order := append([]uuid.UUID{controller}, opponentsInTurnOrder(ctx.Game, controller)...)
+		order := append([]uuid.UUID{controller}, OpponentsInTurnOrder(ctx.Game, controller)...)
 		for i, p := range order {
 			if p == r.Player && i+1 < len(order) {
-				return s82GapB21AnaxAsk(ctx, order[i+1])
+				return S82GapB21AnaxAsk(ctx, order[i+1])
 			}
 		}
 		return nil

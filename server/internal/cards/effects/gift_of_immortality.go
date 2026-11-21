@@ -64,13 +64,13 @@ func giftOfImmortalityReturnCreature(g *game.Game, item *game.StackItem) error {
 		back = dead
 	}
 	c, ok := g.LookupCardForEffect(back)
-	if !ok || !onBattlefield(g, back) {
+	if !ok || !OnBattlefield(g, back) {
 		return nil
 	}
 	return ScheduleDelayedTrigger{
 		Label:  "Gift of Immortality — return this card to the battlefield attached to that creature",
 		Cards:  []uuid.UUID{item.SourceCardID},
-		Body:   giftOfImmortalityReturnAuraBody,
+		Body:   GiftOfImmortalityReturnAuraBody,
 		Params: game.EffectParams{Object: game.ObjectRef{ID: back, Epoch: c.ObjectEpoch}},
 	}.Apply(NewContext(g, item))
 }
@@ -84,7 +84,7 @@ func giftOfImmortalityReturnAura(g *game.Game, item *game.StackItem, p game.Effe
 		return nil
 	}
 	host, ok := g.LookupCardForEffect(p.Object.ID)
-	if !ok || host.ObjectEpoch != p.Object.Epoch || !onBattlefield(g, p.Object.ID) {
+	if !ok || host.ObjectEpoch != p.Object.Epoch || !OnBattlefield(g, p.Object.ID) {
 		return nil
 	}
 	aura := item.Targets[0].ID

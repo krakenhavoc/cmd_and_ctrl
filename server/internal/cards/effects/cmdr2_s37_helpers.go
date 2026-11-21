@@ -8,12 +8,12 @@ import (
 
 // cmdr2_s37_helpers.go — batch 37 (Manifest and face-up payoffs).
 
-const cmdr2S37WhisperwoodDiesManifest = "whisperwood-elemental/dies-manifest"
+const Cmdr2S37WhisperwoodDiesManifest = "whisperwood-elemental/dies-manifest"
 
 // cmdr2S37WhisperwoodGrant is Whisperwood Elemental's sacrifice ability:
 // every face-up nontoken creature its controller controls, as it resolves,
 // gains the dies-manifest trigger until end of turn.
-func cmdr2S37WhisperwoodGrant(g *game.Game, item *game.StackItem) error {
+func Cmdr2S37WhisperwoodGrant(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != item.Controller || !c.IsCreature() || c.IsToken() || c.FaceDown {
@@ -21,9 +21,9 @@ func cmdr2S37WhisperwoodGrant(g *game.Game, item *game.StackItem) error {
 		}
 		if err := (GrantAbilitiesFor{
 			Target: c.InstanceID,
-			Keys:   []string{cmdr2S37WhisperwoodDiesManifest},
+			Keys:   []string{Cmdr2S37WhisperwoodDiesManifest},
 			Label:  "Whisperwood Elemental — it manifests the top card of your library when it dies",
-		}).Apply(ctx.asGroupMember()); err != nil {
+		}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -35,32 +35,32 @@ func cmdr2S37WhisperwoodGrant(g *game.Game, item *game.StackItem) error {
 // face up (the trigger's event card) fights the announced target, when it
 // is still a creature on the battlefield (CR 603.4's recheck) and the
 // target is still legal (CR 701.14b).
-func cmdr2S37TurnedUpCreatureFights(g *game.Game, item *game.StackItem) error {
+func Cmdr2S37TurnedUpCreatureFights(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
 	ctx := NewContext(g, item)
-	it, ok := battlefieldCardForEffect(g, item.Trigger.Event.CardID)
+	it, ok := BattlefieldCardForEffect(g, item.Trigger.Event.CardID)
 	if !ok || !it.IsCreature() {
 		return nil
 	}
-	target, ok := b16FirstLegalTargetCard(ctx)
+	target, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
-	return b10Fight(ctx, it.InstanceID, target)
+	return B10Fight(ctx, it.InstanceID, target)
 }
 
 // cmdr2S37GainLifePerCreature is Mastery of the Unseen's "you gain 1 life
 // for each creature you control", counted as the ability resolves.
-func cmdr2S37GainLifePerCreature(g *game.Game, item *game.StackItem) error {
-	return GainLife{Amount: b14CreaturesControlled(g, item.Controller)}.Apply(NewContext(g, item))
+func Cmdr2S37GainLifePerCreature(g *game.Game, item *game.StackItem) error {
+	return GainLife{Amount: B14CreaturesControlled(g, item.Controller)}.Apply(NewContext(g, item))
 }
 
 // cmdr2S37ColorlessCreatureSpellCastByYou is Ugin's Mastery's "whenever you
 // cast a colorless creature spell": your cast, of a spell that is a
 // colorless creature as it sits on the stack.
-func cmdr2S37ColorlessCreatureSpellCastByYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Cmdr2S37ColorlessCreatureSpellCastByYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -72,10 +72,10 @@ func cmdr2S37ColorlessCreatureSpellCastByYou(ev game.Event, source *game.Card, _
 // total power N or greater": the creatures the controller declared as
 // attackers in this declaration (the event's batch), each at its current
 // power (CR 208.3).
-func cmdr2S37AttackedWithTotalPower(n int) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Cmdr2S37AttackedWithTotalPower(n int) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return attackDeclaredByYou(ev, source.Controller) &&
-			packTacticsTotalPower(g, source.Controller, ev.Batch) >= n
+		return AttackDeclaredByYou(ev, source.Controller) &&
+			PackTacticsTotalPower(g, source.Controller, ev.Batch) >= n
 	}
 }
 
@@ -94,7 +94,7 @@ func cmdr2S37FaceDownCreaturesYouControl(g *game.Game, player uuid.UUID) []uuid.
 // cmdr2S37OfferTurnFaceUp is Ugin's Mastery's "you may turn a face-down
 // creature you control face up": the controller picks none or one of their
 // face-down creatures as the ability resolves (nothing is targeted).
-func cmdr2S37OfferTurnFaceUp(g *game.Game, item *game.StackItem) error {
+func Cmdr2S37OfferTurnFaceUp(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ids := cmdr2S37FaceDownCreaturesYouControl(g, ctx.Controller())
 	if len(ids) == 0 {
@@ -115,7 +115,7 @@ func cmdr2S37OfferTurnFaceUp(g *game.Game, item *game.StackItem) error {
 }
 
 // cmdr2S37TurnFaceUpPick turns the picked creature face up. An on-disk key.
-var cmdr2S37TurnFaceUpPick = askedPick("choose-cards/cmdr2-s37-ugins-mastery-turn-face-up", func(ctx *Context, r game.CardsChosen) error {
+var cmdr2S37TurnFaceUpPick = AskedPick("choose-cards/cmdr2-s37-ugins-mastery-turn-face-up", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
 		return nil
 	}
@@ -125,7 +125,7 @@ var cmdr2S37TurnFaceUpPick = askedPick("choose-cards/cmdr2-s37-ugins-mastery-tur
 // cmdr2S37ExileFaceDownPermanentYouControl is "Exile a face-down permanent
 // you control face up" as an activation cost (Primordial Mist): any
 // face-down permanent of the activator's, not only a creature.
-func cmdr2S37ExileFaceDownPermanentYouControl() game.AbilityCost {
+func Cmdr2S37ExileFaceDownPermanentYouControl() game.AbilityCost {
 	return game.AbilityCost{ExilePermanents: &game.ExilePermanentsCost{
 		Count:    1,
 		FaceDown: true,
@@ -136,7 +136,7 @@ func cmdr2S37ExileFaceDownPermanentYouControl() game.AbilityCost {
 // cmdr2S37PlayExiledThisTurn is Primordial Mist's "You may play that card
 // this turn": the card the cost exiled is, face up in exile, playable by the
 // controller until end of turn (timing rules and costs still apply).
-func cmdr2S37PlayExiledThisTurn(g *game.Game, item *game.StackItem) error {
+func Cmdr2S37PlayExiledThisTurn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, id := range ctx.Exiled() {
 		if err := g.ExileCardWithPermissionForEffect(id, game.CastPermission{
@@ -151,19 +151,19 @@ func cmdr2S37PlayExiledThisTurn(g *game.Game, item *game.StackItem) error {
 
 // cmdr2S37FaceDownCreatureEntered is Trail of Mystery's "whenever a
 // face-down creature you control enters".
-func cmdr2S37FaceDownCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func Cmdr2S37FaceDownCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.FaceDown && c.IsCreature()
 }
 
 // cmdr2S37PlusTwoIfCreature is Trail of Mystery's turned-up rider: the
 // permanent that was turned face up, if it is a creature, gets +2/+2 until
 // end of turn (CR 603.4's recheck as it resolves).
-func cmdr2S37PlusTwoIfCreature(g *game.Game, item *game.StackItem) error {
+func Cmdr2S37PlusTwoIfCreature(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	c, ok := battlefieldCardForEffect(g, item.Trigger.Event.CardID)
+	c, ok := BattlefieldCardForEffect(g, item.Trigger.Event.CardID)
 	if !ok || !c.IsCreature() {
 		return nil
 	}
@@ -173,7 +173,7 @@ func cmdr2S37PlusTwoIfCreature(g *game.Game, item *game.StackItem) error {
 // cmdr2S37PanopticDoubler is Panoptic Projektor's "If turning a face-down
 // permanent face up causes a triggered ability of a permanent you control to
 // trigger, that ability triggers an additional time" (CR 603.2d).
-func cmdr2S37PanopticDoubler() game.TriggerDoubler {
+func Cmdr2S37PanopticDoubler() game.TriggerDoubler {
 	return game.TriggerDoubler{
 		Label:    "Panoptic Projektor",
 		RowLabel: "Abilities that trigger when a face-down permanent is turned face up trigger an additional time.",

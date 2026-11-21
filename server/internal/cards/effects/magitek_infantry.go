@@ -24,8 +24,8 @@ func init() {
 			Label:     "This creature gets +1/+0 as long as you control another artifact.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
-			AppliesTo: magitekInfantryWhileAnotherArtifact,
-			Apply:     pumpBy(1, 0),
+			AppliesTo: MagitekInfantryWhileAnotherArtifact,
+			Apply:     PumpBy(1, 0),
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{W}: Search your library for a card named Magitek Infantry, put it onto the battlefield tapped, then shuffle.",
@@ -52,8 +52,8 @@ func init() {
 // controls an artifact other than it. It runs inside a layer recompute,
 // so it walks the live battlefield (as artifactsControlledBy does), whose
 // cards carry what the earlier layers wrote this pass.
-func magitekInfantryWhileAnotherArtifact(target *game.Card, g *game.Game, source *game.Card) bool {
-	if !selfCreature(target, g, source) {
+func MagitekInfantryWhileAnotherArtifact(target *game.Card, g *game.Game, source *game.Card) bool {
+	if !SelfCreature(target, g, source) {
 		return false
 	}
 	for i := range g.Battlefield.Cards {

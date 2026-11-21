@@ -51,7 +51,7 @@ func init() {
 		CastConditionLabel: "Cast this spell only before the combat damage step.",
 		Targets:            TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
+			id, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}
@@ -60,7 +60,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			if err := untilEndOfTurn(ctx, id, nil, "Berserk — trample and +X/+0",
+			if err := UntilEndOfTurn(ctx, id, nil, "Berserk — trample and +X/+0",
 				game.ModifyPTMod(c.PowerForComparison(), 0), game.AddKeywordsMod("trample")); err != nil {
 				return err
 			}
@@ -102,7 +102,7 @@ func berserkBeforeCombatDamage(g *game.Game) bool {
 func berserkDestroyIfAttacked(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	id := p.Object.ID
 	c, ok := g.LookupCardForEffect(id)
-	if !ok || c.ObjectEpoch != p.Object.Epoch || !onBattlefield(g, id) {
+	if !ok || c.ObjectEpoch != p.Object.Epoch || !OnBattlefield(g, id) {
 		return nil
 	}
 	if g.TimesAttackedThisTurn(id) == 0 {

@@ -1,0 +1,78 @@
+package cardshu
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Hunter's Axe — Artifact — Equipment {G} (Reality Fracture):
+//
+//	"Equipped creature gets +2/+0 and has "Whenever this creature
+//	 attacks, it gains your choice of trample or deathtouch until end
+//	 of turn."
+//	 Equip {2}"
+//
+// The granted trigger is the equipped creature's: it asks the creature's
+// controller for the keyword as the trigger resolves, and grants it to
+// the creature until end of turn. If the creature has left the
+// battlefield by then, nothing happens (CR 608.2b).
+//
+// No simplification.
+const huntersAxeGrant = "hunters-axe/trample-or-deathtouch"
+
+var huntersAxeKeywords = []string{"trample", "deathtouch"}
+
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "d7d59fef-1401-464b-b1bb-ee5da92cde51",
+		Name:         "Hunter's Axe",
+		Completeness: effects.CompletenessFull,
+		Grants: []effects.AbilityGrant{{
+			Key: huntersAxeGrant,
+			Triggered: []game.TriggeredAbility{
+				effects.On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+					return effects.AttackDeclared(ev, source)
+				}, "Hunter's Axe — it gains your choice of trample or deathtouch until end of turn", huntersAxeChoose),
+			},
+			Text: "Whenever this creature attacks, it gains your choice of trample or deathtouch until end of turn.",
+		}},
+		Static: []game.StaticAbility{
+			effects.PumpAttached(2, 0),
+			effects.GrantAbilitiesToAttached(huntersAxeGrant),
+		},
+		Activated: []effects.ActivatedAbility{effects.EquipAbility("{2}")},
+	})
+}
+
+func huntersAxeChoose(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	creature := item.SourceCardID
+	if !effects.OnBattlefield(g, creature) {
+		return nil
+	}
+	options := make([]game.ChoiceOption, len(huntersAxeKeywords))
+	for i, kw := range huntersAxeKeywords {
+		options[i] = game.ChoiceOption{Label: "Gains " + kw + " until end of turn"}
+	}
+	return effects.PickOption{
+		Question: "Hunter's Axe — the creature gains your choice of trample or deathtouch until end of turn",
+		Options:  options,
+		ThenKey:  huntersAxeAnswer,
+		Carry:    []uuid.UUID{creature},
+	}.Apply(ctx)
+}
+
+// huntersAxeAnswer is the keyword chosen, granted to the equipped creature
+// (the one carried ID) until end of turn. Keyed (#4253).
+var huntersAxeAnswer = effects.OptionPickThen("option-pick/hunters-axe-keyword", func(ctx *effects.Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(huntersAxeKeywords) || len(r.Carry) == 0 {
+		return nil
+	}
+	return effects.GrantKeywordUntilEOT{
+		Target:   r.Carry[0],
+		Keywords: []string{huntersAxeKeywords[r.Index]},
+		Label:    "Hunter's Axe — gains " + huntersAxeKeywords[r.Index] + " until end of turn",
+	}.Apply(ctx)
+})

@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trekB17NoncreatureNonlandCardsInYourGraveyard is Ravenous Cosmozoan's
 // discount count: "for each noncreature, nonland card in your graveyard".
 // The spell being cast is on the stack (CR 601.2a) and is never counted.
-func trekB17NoncreatureNonlandCardsInYourGraveyard(q game.CostQuery) int {
+func TrekB17NoncreatureNonlandCardsInYourGraveyard(q game.CostQuery) int {
 	if q.Game == nil {
 		return 0
 	}
@@ -27,6 +27,6 @@ func trekB17NoncreatureNonlandCardsInYourGraveyard(q game.CostQuery) int {
 // trekB17TreasureTokensYouControl is "Treasure tokens" as Quark, Humble
 // Proprietor's controller can sacrifice them: Treasure tokens that player
 // controls (CR 701.21a). The subtype is read through the layered view.
-func trekB17TreasureTokensYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func TrekB17TreasureTokensYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.IsToken() && target.HasSubtype("Treasure")
 }

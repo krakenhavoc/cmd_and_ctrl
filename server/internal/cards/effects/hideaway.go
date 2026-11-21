@@ -118,7 +118,7 @@ func hideawayFinish(g *game.Game, controller uuid.UUID, source game.PermissionCa
 		_, hidErr = g.ExileHiddenForEffect(source, controller, picked[0])
 	}
 	rest := make([]uuid.UUID, 0, len(looked))
-	for _, id := range cardsStillInALibrary(g, looked) {
+	for _, id := range CardsStillInALibrary(g, looked) {
 		if len(picked) == 0 || id != picked[0] {
 			rest = append(rest, id)
 		}
@@ -182,14 +182,14 @@ func (p PlayHiddenCard) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	grantHiddenPlay(ctx.Game, player, p.Source, p.Label)
+	GrantHiddenPlay(ctx.Game, player, p.Source, p.Label)
 	return nil
 }
 
 // grantHiddenPlay is PlayHiddenCard's body with nothing but scalars in
 // reach, for a continuation that must not hold a stack item across a
 // pause (an undo replays it against the restored game).
-func grantHiddenPlay(g *game.Game, player uuid.UUID, source game.PermissionCardRef, label string) {
+func GrantHiddenPlay(g *game.Game, player uuid.UUID, source game.PermissionCardRef, label string) {
 	hidden := g.HiddenCardsForEffect(source)
 	if len(hidden) == 0 {
 		return

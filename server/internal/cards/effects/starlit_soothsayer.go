@@ -30,7 +30,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBeginEndStep, yourEndStepAndYouGainedOrLostLifeThisTurn,
+			On(game.EventBeginEndStep, YourEndStepAndYouGainedOrLostLifeThisTurn,
 				"Starlit Soothsayer — surveil 1 (you gained or lost life this turn)",
 				Do(Surveil{N: 1})),
 		},
@@ -40,13 +40,13 @@ func init() {
 // yourEndStepAndYouGainedOrLostLifeThisTurn is "at the beginning of your
 // end step, if you gained or lost life this turn", the condition's first
 // check (CR 603.4).
-func yourEndStepAndYouGainedOrLostLifeThisTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func YourEndStepAndYouGainedOrLostLifeThisTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.Kind == game.EventBeginEndStep && ev.Actor == source.Controller &&
-		youGainedOrLostLifeThisTurn(g, source.Controller)
+		YouGainedOrLostLifeThisTurn(g, source.Controller)
 }
 
 // youGainedOrLostLifeThisTurn reads the player's life gained and life
 // lost this turn.
-func youGainedOrLostLifeThisTurn(g *game.Game, player uuid.UUID) bool {
-	return b15LifeGainedThisTurn(g, player) > 0 || b18LifeLostThisTurn(g, player) > 0
+func YouGainedOrLostLifeThisTurn(g *game.Game, player uuid.UUID) bool {
+	return B15LifeGainedThisTurn(g, player) > 0 || B18LifeLostThisTurn(g, player) > 0
 }

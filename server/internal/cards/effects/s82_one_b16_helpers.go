@@ -13,7 +13,7 @@ import (
 // or more poison counters": opponents
 // of `controller` still in the game with at least three. A player who has
 // left the game is not an opponent.
-func s82OneB16CorruptedOpponents(g *game.Game, controller uuid.UUID) int {
+func S82OneB16CorruptedOpponents(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.ID == controller {

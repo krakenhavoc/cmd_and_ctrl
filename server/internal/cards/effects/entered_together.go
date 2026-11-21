@@ -41,7 +41,7 @@ type enteredPermanent struct {
 // of yours that entered, and one you took after it entered is not.
 //
 // Caller must hold g.mu.
-func enteredInTriggeringBatch(ctx *Context) []enteredPermanent {
+func EnteredInTriggeringBatch(ctx *Context) []enteredPermanent {
 	tc := ctx.Trigger()
 	if tc.Event.Kind != game.EventETB || tc.Event.Batch == 0 {
 		return nil

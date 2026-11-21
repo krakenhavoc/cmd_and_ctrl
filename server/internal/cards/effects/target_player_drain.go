@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // instruction about that player (CR 608.2b).
 //
 //nolint:unparam // the printed life amount, kept at the call site
-func targetPlayerLosesLifeYouGain(n int) func(item *game.StackItem, ctx *Context) error {
+func TargetPlayerLosesLifeYouGain(n int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 			return nil

@@ -19,7 +19,7 @@ func init() {
 		Name:         "Phyrexian Rager",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Phyrexian Rager — draw a card, lose 1 life", drawACardAndLoseALife),
+			WhenThisEnters("Phyrexian Rager — draw a card, lose 1 life", DrawACardAndLoseALife),
 		},
 	})
 }
@@ -27,7 +27,7 @@ func init() {
 // drawACardAndLoseALife is "you draw a card and you lose 1 life" as an
 // enters-trigger body: the draw, then the loss, for the ability's
 // controller. Shared by Phyrexian Rager and Dusk Legion Zealot.
-func drawACardAndLoseALife(g *game.Game, item *game.StackItem) error {
+func DrawACardAndLoseALife(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
 		return err

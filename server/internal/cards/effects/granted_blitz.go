@@ -77,7 +77,7 @@ func ForItsBlitzCost() CostPredicate {
 // yet counted for itself.
 func BlitzCostsYouPayCostLessForEachCommanderCast() game.CostModifier {
 	return CostsLessEach(func(q game.CostQuery) int {
-		return socB3CommanderCastsFromCommandZone(q.Game, q.Source.Controller)
+		return SocB3CommanderCastsFromCommandZone(q.Game, q.Source.Controller)
 	}, "Blitz costs you pay cost {1} less for each time you've cast your commander from the command zone this game.",
 		YourSpell(), ForItsBlitzCost())
 }

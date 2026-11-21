@@ -10,7 +10,7 @@ import (
 // top four cards of the target opponent's library, exile one face down, put
 // the rest on the bottom in a random order. The looker alone may play the
 // exiled card for as long as it stays exiled, spending mana of any type.
-func cmdr2S44GontiLook(g *game.Game, item *game.StackItem) error {
+func Cmdr2S44GontiLook(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var opp uuid.UUID
 	for _, t := range ctx.LegalTargets() {
@@ -69,7 +69,7 @@ func cmdr2S44GontiFinish(g *game.Game, controller, source uuid.UUID, looked, pic
 		took[id] = true
 	}
 	var rest []uuid.UUID
-	for _, id := range cardsStillInALibrary(g, looked) {
+	for _, id := range CardsStillInALibrary(g, looked) {
 		if !took[id] {
 			rest = append(rest, id)
 		}

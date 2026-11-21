@@ -8,12 +8,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // combat, <effect>". The intervening "if" (CR 603.4) is read as the attack is
 // declared and again as the trigger resolves, Werewolf Pack Leader's reading
 // (packTacticsAttackingPower, packTacticsTotalPower).
-func s82AfrB09PackTactics(label string, effect Effect) game.TriggeredAbility {
+func S82AfrB09PackTactics(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return ev.CardID == source.InstanceID && ev.Actor == source.Controller &&
-			packTacticsAttackingPower(g, source.Controller) >= 6
+			PackTacticsAttackingPower(g, source.Controller) >= 6
 	}, label, func(g *game.Game, item *game.StackItem) error {
-		if packTacticsTotalPower(g, item.Controller, NewContext(g, item).Trigger().Event.Batch) < 6 {
+		if PackTacticsTotalPower(g, item.Controller, NewContext(g, item).Trigger().Event.Batch) < 6 {
 			return nil
 		}
 		return effect(g, item)

@@ -1,0 +1,40 @@
+package cardsbl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Boom Box — Artifact {2} (Outlaws of Thunder Junction, #4468):
+//
+//	"{6}, {T}, Sacrifice this artifact: Destroy up to one target
+//	 artifact, up to one target creature, and up to one target land."
+//
+// Giant's Boulder's cost, with Teferi, Who Slows the Sunset's three "up to
+// one" clauses (Clauses + WithCount(0, 1)) and Urgent Necropsy's
+// resolution: the targets still legal are destroyed in one simultaneous
+// event (destroyEachLegalTarget), so an artifact creature chosen for two
+// of the words is destroyed once.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "b0fdf2e0-3025-4919-a9dc-d33100e487fd",
+		Name:         "Boom Box",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{6}, {T}, Sacrifice this artifact: Destroy up to one target artifact, up to one target creature, and up to one target land.",
+			Purpose: game.Purpose{Answers: game.AnswerRemove},
+			Cost:    game.AbilityCost{Tap: true, SacrificeSelf: true, Mana: "{6}"},
+			Targets: effects.Clauses(
+				effects.TargetPermanent("up to one target artifact", effects.Artifact()).WithCount(0, 1),
+				effects.TargetCreature("up to one target creature").WithCount(0, 1),
+				effects.TargetPermanent("up to one target land", effects.Land()).WithCount(0, 1),
+			),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.DestroyEachLegalTarget(item, effects.NewContext(g, item))
+			},
+		}},
+	})
+}

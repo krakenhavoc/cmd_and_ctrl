@@ -46,7 +46,7 @@ func init() {
 				Label:   "−1: Any number of target players each discard a card.",
 				Cost:    LoyaltyCost(-1),
 				Targets: TargetPlayer("any number of target players").WithCount(0, 0),
-				Effect:  ralZarekDiscard,
+				Effect:  RalZarekDiscard,
 			},
 			{
 				Label:   "−2: Return target creature card with mana value 3 or less from your graveyard to the battlefield.",
@@ -66,7 +66,7 @@ func init() {
 
 // ralZarekDiscard queues one discard prompt per still-legal chosen
 // player.
-func ralZarekDiscard(g *game.Game, item *game.StackItem) error {
+func RalZarekDiscard(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
@@ -81,7 +81,7 @@ func ralZarekDiscard(g *game.Game, item *game.StackItem) error {
 // under its owner's control (it is in your graveyard, so that is you).
 func ralZarekReanimate(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	ids := legalTargetCardIDs(ctx)
+	ids := LegalTargetCardIDs(ctx)
 	if len(ids) == 0 {
 		return nil
 	}

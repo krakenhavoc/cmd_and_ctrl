@@ -47,7 +47,7 @@ import (
 
 // livingWeaponGermToken is the token every living-weapon card makes.
 // The key is spelled the way the cards print it.
-const livingWeaponGermToken = "0/0 black Phyrexian Germ"
+const LivingWeaponGermToken = "0/0 black Phyrexian Germ"
 
 // LivingWeapon is the living weapon keyword ability for `cardName`.
 // The label names the card, so a stack with two of them on it says
@@ -62,7 +62,7 @@ func LivingWeapon(cardName string) game.TriggeredAbility {
 // everything off the item it is handed, and is therefore safe across
 // the Clone an undo restores.
 func livingWeaponCreateGermAndAttach(g *game.Game, item *game.StackItem) error {
-	return createTokenAndAttachSource(g, item, livingWeaponGermToken, false)
+	return CreateTokenAndAttachSource(g, item, LivingWeaponGermToken, false)
 }
 
 // createTokenAndAttachSource is "create <this token>, then attach this
@@ -74,8 +74,8 @@ func livingWeaponCreateGermAndAttach(g *game.Game, item *game.StackItem) error {
 // card's text; a card that prints its own ("create a 4/4 blue Giant
 // Wizard creature token, then attach this Equipment to it") is
 // `described`, and its token is read through its text (#4005).
-func createTokenAndAttachSource(g *game.Game, item *game.StackItem, template string, described bool) error {
-	tmpl := ruleDefinedToken(TokenCard(template))
+func CreateTokenAndAttachSource(g *game.Game, item *game.StackItem, template string, described bool) error {
+	tmpl := RuleDefinedToken(TokenCard(template))
 	if described {
 		tmpl = NewContext(g, item).TextToken(TokenCard(template))
 	}

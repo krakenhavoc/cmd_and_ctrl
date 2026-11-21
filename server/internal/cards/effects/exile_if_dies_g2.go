@@ -20,7 +20,7 @@ import (
 // cards. Counted as the spell resolves (CR 608.2h), when the spell itself
 // is on the stack and so never counts itself. A card in a graveyard has
 // no layered characteristics, so `match` reads its printed ones.
-func g2CardsInYourGraveyard(match func(game.Card) bool) func(*game.StackItem, *Context) int {
+func G2CardsInYourGraveyard(match func(game.Card) bool) func(*game.StackItem, *Context) int {
 	return func(_ *game.StackItem, ctx *Context) int {
 		p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
 		if p == nil || p.Graveyard == nil {
@@ -38,14 +38,14 @@ func g2CardsInYourGraveyard(match func(game.Card) bool) func(*game.StackItem, *C
 
 // g2IsLessonCard is "a Lesson card": Lesson is a spell subtype, so the
 // printed type line carries it ("Instant — Lesson").
-func g2IsLessonCard(c game.Card) bool { return c.HasSubtype("Lesson") }
+func G2IsLessonCard(c game.Card) bool { return c.HasSubtype("Lesson") }
 
 // g2GreatestPowerAmongYourCreatures is "X is the greatest power among
 // creatures you control" (Bouncer's Beatdown), read as the spell
 // resolves: layered power, and 0 with no creature.
-func g2GreatestPowerAmongYourCreatures() func(*game.StackItem, *Context) int {
+func G2GreatestPowerAmongYourCreatures() func(*game.StackItem, *Context) int {
 	return func(_ *game.StackItem, ctx *Context) int {
-		return b42GreatestPowerControlledBy(ctx.Game, ctx.Controller())
+		return B42GreatestPowerControlledBy(ctx.Game, ctx.Controller())
 	}
 }
 
@@ -56,11 +56,11 @@ func g2GreatestPowerAmongYourCreatures() func(*game.StackItem, *Context) int {
 // creature destroys it at the next state-based check once it has lost
 // the keyword (CR 702.12b, 704.5g). A permanent no longer on the
 // battlefield gets nothing.
-func g2LosesIndestructibleUntilEOT(ctx *Context, id uuid.UUID) error {
-	if !onBattlefield(ctx.Game, id) {
+func G2LosesIndestructibleUntilEOT(ctx *Context, id uuid.UUID) error {
+	if !OnBattlefield(ctx.Game, id) {
 		return nil
 	}
-	return untilEndOfTurn(ctx, id, nil, "Loses indestructible until end of turn",
+	return UntilEndOfTurn(ctx, id, nil, "Loses indestructible until end of turn",
 		game.RemoveKeywordsMod("indestructible"))
 }
 
@@ -68,17 +68,17 @@ func g2LosesIndestructibleUntilEOT(ctx *Context, id uuid.UUID) error {
 // this way, it loses indestructible until end of turn" (Burn from
 // Within) as a damage continuation: only a creature that was dealt more
 // than 0 damage.
-func g2LosesIndestructibleIfDealtDamage(item *game.StackItem) RecipientThen {
-	return itemRecipient(item, g2LosesIndestructibleIfDealt)
+func G2LosesIndestructibleIfDealtDamage(item *game.StackItem) RecipientThen {
+	return ItemRecipient(item, g2LosesIndestructibleIfDealt)
 }
 
 // g2LosesIndestructibleIfDealt is g2LosesIndestructibleIfDealtDamage's
 // body. An on-disk key.
-var g2LosesIndestructibleIfDealt = recipientTail("recipient/loses-indestructible-if-dealt-damage", func(ctx *Context, target uuid.UUID, dealt int, _ game.TailOutcome) error {
+var g2LosesIndestructibleIfDealt = RecipientTail("recipient/loses-indestructible-if-dealt-damage", func(ctx *Context, target uuid.UUID, dealt int, _ game.TailOutcome) error {
 	if !dealtDamagePermanent(ctx.Game, target, dealt, false) {
 		return nil
 	}
-	return g2LosesIndestructibleUntilEOT(ctx, target)
+	return G2LosesIndestructibleUntilEOT(ctx, target)
 })
 
 // g2CardLeftYourGraveyardThisTurn passes when one or more cards left the
@@ -93,7 +93,7 @@ var g2LosesIndestructibleIfDealt = recipientTail("recipient/loses-indestructible
 // graveyard: CR 601.2a moves it to the stack before CR 601.2f totals the
 // cost, so by then it has left the graveyard. The cast's own event is
 // emitted after the cost is paid, so that case is read off q.FromZone.
-func g2CardLeftYourGraveyardThisTurn() CostPredicate {
+func G2CardLeftYourGraveyardThisTurn() CostPredicate {
 	return func(q game.CostQuery) bool {
 		if q.Game == nil {
 			return false
@@ -102,7 +102,7 @@ func g2CardLeftYourGraveyardThisTurn() CostPredicate {
 			return true
 		}
 		for _, ev := range q.Game.EventsThisTurn() {
-			if c, ok := cardThatLeftAGraveyard(ev, q.Game); ok && c.Owner == q.Controller {
+			if c, ok := CardThatLeftAGraveyard(ev, q.Game); ok && c.Owner == q.Controller {
 				return true
 			}
 		}
@@ -121,17 +121,17 @@ const g2BargainKey = "bargain"
 // KickerSacrifice and BuybackSacrifice already have. A spell whose
 // bargain cost was paid has been "bargained"; read it with
 // g2WasBargained.
-func g2Bargain() game.AdditionalCost {
+func G2Bargain() game.AdditionalCost {
 	return game.AdditionalCost{
 		Optional:  true,
 		Key:       g2BargainKey,
-		Sacrifice: sacrificeSpec("an artifact, enchantment, or token", Or(Artifact(), Enchantment(), IsTokenPredicate())),
+		Sacrifice: SacrificeSpec("an artifact, enchantment, or token", Or(Artifact(), Enchantment(), IsTokenPredicate())),
 		Label:     "Bargain—Sacrifice an artifact, enchantment, or token",
 	}
 }
 
 // g2WasBargained is "if this spell was bargained".
-func g2WasBargained(ctx *Context) bool { return ctx.OptionalCostTimes(g2BargainKey) > 0 }
+func G2WasBargained(ctx *Context) bool { return ctx.OptionalCostTimes(g2BargainKey) > 0 }
 
 // CostsLessIfBargained is "This spell costs {n} less to cast if it's
 // bargained" (Ice Out, Johann's Stopgap), a SelfCostModifiers entry

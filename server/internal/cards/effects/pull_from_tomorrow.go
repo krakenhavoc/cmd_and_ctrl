@@ -23,14 +23,14 @@ func init() {
 			Instruction(func(ctx *Context) error {
 				return DrawCards{Player: ctx.Controller(), N: ctx.X()}.Apply(ctx)
 			}),
-			Instruction(controllerDiscardsACard),
+			Instruction(ControllerDiscardsACard),
 		),
 	})
 }
 
 // controllerDiscardsACard is "discard a card": the resolving ability's
 // controller is asked for one card from their hand.
-func controllerDiscardsACard(ctx *Context) error {
+func ControllerDiscardsACard(ctx *Context) error {
 	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
 		Player: ctx.Controller(),
 		Source: ctx.Source(),

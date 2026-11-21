@@ -43,7 +43,7 @@ func b35Battle() CardPredicate {
 // built once per card and cannot name the instance it hangs off),
 // so a Nemesis chosen as its own target is skipped rather than
 // damaged.
-func b35TargetAnyOther() *game.TargetSpec {
+func B35TargetAnyOther() *game.TargetSpec {
 	spec := TargetAny()
 	spec.Label = "any other target"
 	return spec
@@ -54,7 +54,7 @@ func b35TargetAnyOther() *game.TargetSpec {
 // b35CardsInAllGraveyards counts the cards in every seat's graveyard
 // — Lord of Extinction's size. Eliminated players' graveyards are
 // still graveyards, so they count.
-func b35CardsInAllGraveyards(g *game.Game) int {
+func B35CardsInAllGraveyards(g *game.Game) int {
 	n := 0
 	for _, p := range g.Seats {
 		if p != nil && p.Graveyard != nil {
@@ -111,29 +111,29 @@ func b35TwoNonlandCardsShareAColor(g *game.Game, milled []uuid.UUID) bool {
 // died. Whether it was a Zombie is its last-known subtypes
 // (leftAsSubtype, #1679): a changeling counts, and so does a creature
 // that was a Zombie only through a grant (Undead Augur's read).
-func anotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func AnotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Zombie"))
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Zombie"))
 }
 
 // anotherCreatureYouControlDied is Garna's condition: a creature
 // the source's controller controlled, other than the source, died.
-func anotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func AnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b35SelfWasDealtDamage is Screaming Nemesis's condition: the source
 // itself was dealt damage — combat or not, by anyone's source.
 // Damage is marked before the state-based sweep runs, so a Nemesis
 // that took lethal is still on the battlefield when its event fires.
-func b35SelfWasDealtDamage(ev game.Event, source *game.Card) bool {
+func B35SelfWasDealtDamage(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventDealDamage && ev.Amount > 0 && ev.Target == source.InstanceID
 }
 
@@ -143,12 +143,12 @@ func b35SelfWasDealtDamage(ev game.Event, source *game.Card) bool {
 // controls that is not the source and not a Hydra. The engine emits
 // one EventCounterPlaced per permanent per placement, so "one or
 // more" is the event itself.
-func b35PlusCountersPutOnAnotherNonHydraCreatureYouControl(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Target == source.InstanceID || b33CountersPlacedDelta(ev, game.CounterPlusOne, g) <= 0 {
+func B35PlusCountersPutOnAnotherNonHydraCreatureYouControl(ev game.Event, source *game.Card, g *game.Game) bool {
+	if ev.Target == source.InstanceID || B33CountersPlacedDelta(ev, game.CounterPlusOne, g) <= 0 {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Target)
-	if !ok || !onBattlefield(g, ev.Target) {
+	if !ok || !OnBattlefield(g, ev.Target) {
 		return false
 	}
 	return c.IsCreature() && c.Controller == source.Controller && !c.HasSubtype(source.TextSubtype("Hydra"))
@@ -156,13 +156,13 @@ func b35PlusCountersPutOnAnotherNonHydraCreatureYouControl(ev game.Event, source
 
 // b35DrawStepBegan is Nekusar's first condition: any player's draw
 // step began. The drawer is the event's Actor.
-func b35DrawStepBegan(ev game.Event) bool {
+func B35DrawStepBegan(ev game.Event) bool {
 	return ev.Kind == game.EventBeginDrawStep && ev.Actor != uuid.Nil
 }
 
 // b35OpponentDrewACard is Nekusar's second condition: a player other
 // than the source's controller drew a card. Fires once per card.
-func b35OpponentDrewACard(ev game.Event, source *game.Card) bool {
+func B35OpponentDrewACard(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventDrawCard && ev.Actor != uuid.Nil && ev.Actor != source.Controller
 }
 
@@ -170,7 +170,7 @@ func b35OpponentDrewACard(ev game.Event, source *game.Card) bool {
 // announce: the source's controller's end step began and their
 // artifacts and creatures carry thirty or more counters between
 // them. Re-run at resolution by the body, as CR 603.4 asks.
-func b35EndStepAndThirtyCounters(ev game.Event, source *game.Card, g *game.Game) bool {
+func B35EndStepAndThirtyCounters(ev game.Event, source *game.Card, g *game.Game) bool {
 	return ev.Kind == game.EventBeginEndStep && ev.Actor == source.Controller &&
 		b35CountersOnArtifactsAndCreaturesYouControl(g, source.Controller) >= 30
 }
@@ -181,11 +181,11 @@ func b35EndStepAndThirtyCounters(ev game.Event, source *game.Card, g *game.Game)
 // controller draws two, then every live player — the controller
 // first, then the opponents in seat order — loses 2 life. A loss,
 // not damage, so no prevention shield sees it.
-func b35DrawTwoThenEachPlayerLosesTwo(item *game.StackItem, ctx *Context) error {
+func B35DrawTwoThenEachPlayerLosesTwo(item *game.StackItem, ctx *Context) error {
 	if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
 		return err
 	}
-	for _, id := range tablePlayers(ctx) {
+	for _, id := range TablePlayers(ctx) {
 		if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), id, -2); err != nil {
 			return err
 		}
@@ -198,7 +198,7 @@ func b35DrawTwoThenEachPlayerLosesTwo(item *game.StackItem, ctx *Context) error 
 // gains `n` life whether or not the counter took (a spell that can't
 // be countered still pays out the life, as printed). With no legal
 // target the spell has already fizzled and nothing here runs.
-func b35CounterChosenSpellThenGainLife(item *game.StackItem, ctx *Context, n int) error {
+func B35CounterChosenSpellThenGainLife(item *game.StackItem, ctx *Context, n int) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -215,10 +215,10 @@ func b35CounterChosenSpellThenGainLife(item *game.StackItem, ctx *Context, n int
 // nonland permanent that is still legal returns to its owner's hand,
 // all at once through the simultaneous bounce path so an Aura on a
 // bounced creature is handled as one event.
-func b35BounceChosenPermanents(ctx *Context) error {
+func B35BounceChosenPermanents(ctx *Context) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard && onBattlefield(ctx.Game, t.ID) {
+		if t.Kind == game.TargetCard && OnBattlefield(ctx.Game, t.ID) {
 			ids = append(ids, t.ID)
 		}
 	}
@@ -231,11 +231,11 @@ func b35BounceChosenPermanents(ctx *Context) error {
 
 // b35PutMinusCountersOnChosen is Plague Belcher's entry body: two
 // -1/-1 counters on the announced creature, if it is still legal.
-func b35PutMinusCountersOnChosen(n int) func(g *game.Game, item *game.StackItem) error {
+func B35PutMinusCountersOnChosen(n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
-		if !ok || !onBattlefield(g, id) {
+		id, ok := B16FirstLegalTargetCard(ctx)
+		if !ok || !OnBattlefield(g, id) {
 			return nil
 		}
 		return AddCounter{Target: id, Kind: game.CounterMinusOne, N: n}.Apply(ctx)
@@ -244,7 +244,7 @@ func b35PutMinusCountersOnChosen(n int) func(g *game.Game, item *game.StackItem)
 
 // b35TutelageLabel is the stack label of Sphinx's Tutelage's draw
 // trigger.
-const b35TutelageLabel = "Sphinx's Tutelage — target opponent mills two cards, repeating while two nonland cards share a color"
+const B35TutelageLabel = "Sphinx's Tutelage — target opponent mills two cards, repeating while two nonland cards share a color"
 
 // b35TutelageMill is Sphinx's Tutelage's body: the announced
 // opponent, if still legal, mills two; if both milled cards are
@@ -253,7 +253,7 @@ const b35TutelageLabel = "Sphinx's Tutelage — target opponent mills two cards,
 // separate batches — as printed, since each repeat is its own
 // instruction. The loop ends when a pass mills fewer than two, when
 // the pair fails the test, or when the library is empty.
-func b35TutelageMill(g *game.Game, item *game.StackItem) error {
+func B35TutelageMill(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
@@ -282,14 +282,14 @@ func b35TutelageMillPass(ctx *Context, victim uuid.UUID, guard int) error {
 	return MillToZone{
 		Player:   victim,
 		N:        2,
-		ThenTail: withN(withCarry(ctx.ItemTail(batch35HelpersMilled), victim), guard),
+		ThenTail: WithN(WithCarry(ctx.ItemTail(batch35HelpersMilled), victim), guard),
 	}.Apply(ctx)
 }
 
 // b35LootOne is "draw a card, then discard a card" as an activated
 // body (Sphinx's Tutelage's {5}{U}).
-func b35LootOne(g *game.Game, item *game.StackItem) error {
-	return lootOne(g, item, 1)
+func B35LootOne(g *game.Game, item *game.StackItem) error {
+	return LootOne(g, item, 1)
 }
 
 // b35ReturnChosenToBattlefieldWithCounter is Smile at Death's body:
@@ -300,9 +300,9 @@ func b35LootOne(g *game.Game, item *game.StackItem) error {
 // that arrived then gets a +1/+1 counter. "Put a +1/+1 counter on each
 // of them" is the sentence after the return, not an "enters with", so
 // the counters go on once the entry has finished.
-func b35ReturnChosenToBattlefieldWithCounter(g *game.Game, item *game.StackItem) error {
+func B35ReturnChosenToBattlefieldWithCounter(g *game.Game, item *game.StackItem) error {
 	return ReturnFromGraveyardTogether{
-		Targets:  legalTargetCardIDs(NewContext(g, item)),
+		Targets:  LegalTargetCardIDs(NewContext(g, item)),
 		ThenTail: smileAtDeathCounters,
 	}.Apply(NewContext(g, item))
 }
@@ -312,7 +312,7 @@ func b35ReturnChosenToBattlefieldWithCounter(g *game.Game, item *game.StackItem)
 var smileAtDeathCounters = TogetherTail("smile-at-death/plus-one-counters",
 	func(ctx *Context, entered []uuid.UUID, _ int) error {
 		for _, id := range entered {
-			if !onBattlefield(ctx.Game, id) {
+			if !OnBattlefield(ctx.Game, id) {
 				continue
 			}
 			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
@@ -326,10 +326,10 @@ var smileAtDeathCounters = TogetherTail("smile-at-death/plus-one-counters",
 // green Plant, or a 2/2 black Zombie instead when the controller
 // controls seven or more lands with different names — read at
 // resolution, so the land that entered is among them.
-func b35NecrobloomLandfall(g *game.Game, item *game.StackItem) error {
+func B35NecrobloomLandfall(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	template := TokenCard("0/1 green Plant")
-	if b04LandNamesControlled(g, item.Controller) >= 7 {
+	if B04LandNamesControlled(g, item.Controller) >= 7 {
 		template = BlackZombieToken()
 	}
 	return CreateToken{Controller: item.Controller, Template: template, N: 1}.Apply(ctx)
@@ -338,12 +338,12 @@ func b35NecrobloomLandfall(g *game.Game, item *game.StackItem) error {
 // b35DrawIfAttackingElsePingOpponents is Garna's body: a card if the
 // dead creature was attacking (read in Build off the log, at the
 // event), otherwise 1 damage from Garna to each opponent.
-func b35DrawIfAttackingElsePingOpponents(attacking bool) func(g *game.Game, item *game.StackItem) error {
+func B35DrawIfAttackingElsePingOpponents(attacking bool) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		if attacking {
 			return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 		}
-		return damageToEachOpponent(g, item, 1)
+		return DamageToEachOpponent(g, item, 1)
 	}
 }
 
@@ -361,14 +361,14 @@ func b35DrawIfAttackingElsePingOpponents(attacking bool) func(g *game.Game, item
 // value on its keyed chain (#4253), which is what makes an undo across a CR
 // 616.1 prompt replay identically rather than counting the first run's
 // creatures twice, and a restore at that prompt finish with the same count.
-func b35EachPlayerMillsXThenZombiesPerCreature(_ *game.StackItem, ctx *Context) error {
+func B35EachPlayerMillsXThenZombiesPerCreature(_ *game.StackItem, ctx *Context) error {
 	var seats []uuid.UUID
 	for _, p := range ctx.Game.Seats {
 		if p != nil {
 			seats = append(seats, p.ID)
 		}
 	}
-	return millEachPlayerInTurn(ctx, seats, constantMill(ctx.X()), ctx.ItemTail(dreadSummonsZombies))
+	return MillEachPlayerInTurn(ctx, seats, ConstantMill(ctx.X()), ctx.ItemTail(dreadSummonsZombies))
 }
 
 // dreadSummonsZombies is Dread Summons's tail, told every card the mills
@@ -397,7 +397,7 @@ var dreadSummonsZombies = CardTail("dread-summons/zombie-per-creature-milled", f
 // not the Nemesis itself. The SOURCE is the Nemesis, as printed, and
 // a Nemesis that died to the damage still deals it — the damage path
 // does not need the source on the battlefield.
-func b35RedirectDamageToChosen(g *game.Game, item *game.StackItem) error {
+func B35RedirectDamageToChosen(g *game.Game, item *game.StackItem) error {
 	amount := item.Params.Amount
 	if amount <= 0 {
 		return nil
@@ -415,7 +415,7 @@ func b35RedirectDamageToChosen(g *game.Game, item *game.StackItem) error {
 	// The continuation is a keyed tail (#4253), the player its Carry, so
 	// a prompt the damage pauses on is a restore point.
 	if ts[0].Kind == game.TargetPlayer {
-		t := ctx.Tail(b35NemesisCantGainLife)
+		t := ctx.Tail(B35NemesisCantGainLife)
 		t.Carry = []uuid.UUID{ts[0].ID}
 		return g.DealDamageToPlayerKeyedForEffect(item.SourceCardID, ts[0].ID, amount, t)
 	}
@@ -425,7 +425,7 @@ func b35RedirectDamageToChosen(g *game.Game, item *game.StackItem) error {
 // b35NemesisCantGainLife is "if a player is dealt damage this way, they
 // can't gain life for the rest of the game", told the damage dealt; the
 // player is the tail's Carry. An on-disk key.
-var b35NemesisCantGainLife = game.RegisterTail("then/screaming-nemesis-cant-gain-life", func(g *game.Game, o game.TailOutcome) error {
+var B35NemesisCantGainLife = game.RegisterTail("then/screaming-nemesis-cant-gain-life", func(g *game.Game, o game.TailOutcome) error {
 	if o.Amount <= 0 || len(o.Tail.Carry) == 0 {
 		return nil
 	}
@@ -436,8 +436,8 @@ var b35NemesisCantGainLife = game.RegisterTail("then/screaming-nemesis-cant-gain
 
 // b35PutCounterOnSelf is Wildwood Scourge's body: one +1/+1 counter
 // on the Scourge, if it is still on the battlefield.
-func b35PutCounterOnSelf(g *game.Game, item *game.StackItem) error {
-	if !b09SourceStillOnBattlefield(g, item) {
+func B35PutCounterOnSelf(g *game.Game, item *game.StackItem) error {
+	if !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
@@ -479,7 +479,7 @@ func b35EachOpponentLosesAllCounters(ctx *Context) error {
 // destroy all battles, exile all graveyards, each opponent loses all
 // counters. The three sweeps go through the mass destroy, so an
 // indestructible permanent survives its mode.
-func b35FinalAct(item *game.StackItem, ctx *Context) error {
+func B35FinalAct(item *game.StackItem, ctx *Context) error {
 	sweeps := []CardPredicate{Creature(), Planeswalker(), b35Battle()}
 	for i, match := range sweeps {
 		if !ctx.HasMode(i) {
@@ -490,7 +490,7 @@ func b35FinalAct(item *game.StackItem, ctx *Context) error {
 		}
 	}
 	if ctx.HasMode(3) {
-		if err := b02ExileAllGraveyards(ctx.Game, item); err != nil {
+		if err := B02ExileAllGraveyards(ctx.Game, item); err != nil {
 			return err
 		}
 	}
@@ -503,8 +503,8 @@ func b35FinalAct(item *game.StackItem, ctx *Context) error {
 // b35ReturnChosenGraveyardCardToHand is Greenwarden of Murasa's entry
 // body: the announced card, if it is still in the controller's
 // graveyard, returns to their hand.
-func b35ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) error {
-	return b34ReturnChosenGraveyardCardToHand(NewContext(g, item))
+func B35ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) error {
+	return B34ReturnChosenGraveyardCardToHand(NewContext(g, item))
 }
 
 // b35ExileSelfFromGraveyardThenReturnChosen is Greenwarden's dies
@@ -527,7 +527,7 @@ func b35ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) erro
 // already skipped. Since ADR 0115 the exile does not pause (CR 903.9a
 // offers the command zone afterwards); the continuation is kept
 // because the exile is still its own event.
-func b35ExileSelfFromGraveyardThenReturnChosen(g *game.Game, item *game.StackItem) error {
+func B35ExileSelfFromGraveyardThenReturnChosen(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	z := g.FindCardZoneForEffect(item.SourceCardID)
 	if z == nil || z.Kind != game.ZoneGraveyard {
@@ -542,7 +542,7 @@ func b35ExileSelfFromGraveyardThenReturnChosen(g *game.Game, item *game.StackIte
 // b35TenDamageToEachOpponentIfThirtyCounters is Lux Artillery's body:
 // the intervening if re-checked at resolution (CR 603.4), then 10
 // damage from the Artillery to each opponent.
-var b35TenDamageToEachOpponentIfThirtyCounters = Do(If{
+var B35TenDamageToEachOpponentIfThirtyCounters = Do(If{
 	Cond: CondBoard{Name: "thirty or more counters among artifacts and creatures you control", Test: func(ctx *Context) bool {
 		return b35CountersOnArtifactsAndCreaturesYouControl(ctx.Game, ctx.Controller()) >= 30
 	}},
@@ -554,7 +554,7 @@ var batch35HelpersMilled game.TailRef
 
 func init() {
 	batch35HelpersMilled = CardTail("batch35-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
-		victim, guard := tailCarry0(o), o.Tail.N
+		victim, guard := TailCarry0(o), o.Tail.N
 		milled := o.IDs
 
 		if !b35TwoNonlandCardsShareAColor(ctx.Game, milled) {
@@ -571,5 +571,5 @@ var batch35HelpersExiled = CardTail("batch35-helpers/after-exile", func(ctx *Con
 	if !exiled {
 		return nil
 	}
-	return b34ReturnChosenGraveyardCardToHand(ctx)
+	return B34ReturnChosenGraveyardCardToHand(ctx)
 })

@@ -38,7 +38,7 @@ func init() {
 		Name:         "Valakut Awakening",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return valakutAwakeningPutThenDraw(ctx, item.Controller)
+			return ValakutAwakeningPutThenDraw(ctx, item.Controller)
 		},
 	})
 }
@@ -46,8 +46,8 @@ func init() {
 // valakutAwakeningPutThenDraw is "Put any number of cards from your
 // hand on the bottom of your library, then draw that many cards plus
 // one."
-func valakutAwakeningPutThenDraw(ctx *Context, player uuid.UUID) error {
-	hand := allHandCardIDs(ctx.Game, player)
+func ValakutAwakeningPutThenDraw(ctx *Context, player uuid.UUID) error {
+	hand := AllHandCardIDs(ctx.Game, player)
 	if len(hand) == 0 {
 		return ctx.Game.DrawNForEffect(player, 1)
 	}
@@ -81,6 +81,6 @@ var valakutAwakeningPicked = game.RegisterChooseCardsThen("choose-cards/valakut-
 			From:      game.ZoneHand,
 			Placement: game.LibraryPlaceBottom,
 			Reason:    "Valakut Awakening — order the cards on the bottom of your library",
-			ThenTail:  game.KeyedTail{Ref: thenDrawCards, Player: player, N: len(picked) + 1},
+			ThenTail:  game.KeyedTail{Ref: ThenDrawCards, Player: player, N: len(picked) + 1},
 		})
 	})

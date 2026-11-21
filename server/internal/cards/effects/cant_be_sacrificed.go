@@ -25,7 +25,7 @@ func CantBeSacrificed() game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "Can't be sacrificed.",
 		Layer:     game.Layer6Ability,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.CantBeSacrificed = true
 		},
@@ -42,7 +42,7 @@ type CantBeSacrificedThisTurn struct {
 }
 
 func (c CantBeSacrificedThisTurn) Apply(ctx *Context) error {
-	if c.Target == uuid.Nil || ctx.isNewSourceObject(c.Target) { // #1432
+	if c.Target == uuid.Nil || ctx.IsNewSourceObject(c.Target) { // #1432
 		return nil
 	}
 	label := c.Label

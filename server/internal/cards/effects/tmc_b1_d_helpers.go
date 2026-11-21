@@ -13,7 +13,7 @@ import (
 // opponent still in the game as the ability resolves, whether or not
 // that player was attacked. The tokens were never declared as attackers,
 // so nothing that triggers on a creature attacking sees them (CR 508.4).
-func tokenTappedAndAttackingEachOpponent(ctx *Context, tmpl func() game.Card) error {
+func TokenTappedAndAttackingEachOpponent(ctx *Context, tmpl func() game.Card) error {
 	for _, opp := range ctx.Opponents() {
 		t := tmpl()
 		t.Tapped = true

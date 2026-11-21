@@ -128,7 +128,7 @@ func WhenYouNextCast(label string, spell game.CastFilter, body game.BodyRef) Del
 	return DelayedOnEvent{
 		Label:      label,
 		On:         []game.EventKind{game.EventCast},
-		Condition:  youNextCastCondition,
+		Condition:  YouNextCastCondition,
 		CondParams: game.EffectParams{Filter: spell},
 		Body:       body,
 	}
@@ -141,7 +141,7 @@ func WhenYouNextCast(label string, spell game.CastFilter, body game.BodyRef) Del
 // "You" is the delayed trigger's controller (CR 603.7d), read off the
 // trigger rather than off a source card — the card that created it is
 // in a graveyard by now, and may have changed hands or been exiled.
-func youNextCast(ev game.Event, dt *game.DelayedTrigger, g *game.Game, p game.EffectParams) bool {
+func YouNextCast(ev game.Event, dt *game.DelayedTrigger, g *game.Game, p game.EffectParams) bool {
 	if ev.Kind != game.EventCast || ev.Actor != dt.Controller {
 		return false
 	}
@@ -162,8 +162,8 @@ func WhenYouNextCastFromHand(label string, spell game.CastFilter, body game.Body
 
 // youNextCastFromHand is youNextCast whose EventCast left the caster's
 // hand (CR 601.2a: the event's OldZone is where the spell was cast from).
-func youNextCastFromHand(ev game.Event, dt *game.DelayedTrigger, g *game.Game, p game.EffectParams) bool {
-	return ev.OldZone == game.ZoneHand && youNextCast(ev, dt, g, p)
+func YouNextCastFromHand(ev game.Event, dt *game.DelayedTrigger, g *game.Game, p game.EffectParams) bool {
+	return ev.OldZone == game.ZoneHand && YouNextCast(ev, dt, g, p)
 }
 
 // reboundTheSpellYouJustCast gives the spell the triggering event named
@@ -197,7 +197,7 @@ func reboundTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
 // resolves — countered in response — is still copied, from last-known
 // information: "copy that spell" names the spell and does not target
 // it, so CR 608.2h governs rather than CR 608.2b (#1255).
-func copyTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
+func CopyTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	cast := ctx.PayloadCards()
 	if len(cast) == 0 {

@@ -28,7 +28,7 @@ func init() {
 				Player: item.Controller,
 				Source: item.SourceCardID,
 				N:      1,
-			}, charmingScoundrelDraw, nil)
+			}, CharmingScoundrelDraw, nil)
 		}),
 		ModeDoing("Create a Treasure token.", nil, func(item *game.StackItem, ctx *Context, _ int) error {
 			return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(ctx)
@@ -54,6 +54,6 @@ func init() {
 
 // charmingScoundrelDraw is the rummage's "then draw a card", keyed
 // (#4256): a table waiting on the discard is a restore point.
-var charmingScoundrelDraw = game.RegisterDiscardThen("choose-cards/charming-scoundrel-draw", func(g *game.Game, r game.DiscardsDone) error {
+var CharmingScoundrelDraw = game.RegisterDiscardThen("choose-cards/charming-scoundrel-draw", func(g *game.Game, r game.DiscardsDone) error {
 	return g.DrawNForEffect(r.Player, 1)
 })

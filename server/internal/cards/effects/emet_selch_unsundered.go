@@ -29,19 +29,19 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:        emetSelchUnsunderedOracleID,
+		OracleID:        EmetSelchUnsunderedOracleID,
 		Name:            "Emet-Selch, Unsundered",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersOrAttacks("Emet-Selch, Unsundered — draw a card, then discard a card",
-				func(g *game.Game, item *game.StackItem) error { return lootOne(g, item, 1) }),
+				func(g *game.Game, item *game.StackItem) error { return LootOne(g, item, 1) }),
 			InterveningIf(CondBoard{Name: "there are fourteen or more cards in your graveyard", Test: func(ctx *Context) bool {
 				p := ctx.PlayerByID(ctx.Controller())
 				return p != nil && p.Graveyard != nil && p.Graveyard.Size() >= 14
 			}}, AtYourUpkeep("Emet-Selch, Unsundered — you may transform Emet-Selch",
 				func(g *game.Game, item *game.StackItem) error {
-					if !sourceIsStillThisPermanent(g, item) || !g.CanTransformForEffect(item.SourceCardID) {
+					if !SourceIsStillThisPermanent(g, item) || !g.CanTransformForEffect(item.SourceCardID) {
 						return nil
 					}
 					return MayChoice{
@@ -56,10 +56,10 @@ func init() {
 
 // emetSelchUnsunderedOracleID is shared with the back face, which registers
 // under it plus "#1" (game.CatalogKey).
-const emetSelchUnsunderedOracleID = "3b102ccc-7629-457c-aba6-e9b00fd50c85"
+const EmetSelchUnsunderedOracleID = "3b102ccc-7629-457c-aba6-e9b00fd50c85"
 
 // emetSelchUnsunderedTransform is the "yes": transform Emet-Selch (the
 // carried ID). Keyed (#4291).
 var emetSelchUnsunderedTransform = MayYes("confirm/emet-selch-unsundered-transform", func(ctx *Context, r game.ConfirmAnswer) error {
-	return Transform{Target: carryAt(r, 0)}.Apply(ctx)
+	return Transform{Target: CarryAt(r, 0)}.Apply(ctx)
 })

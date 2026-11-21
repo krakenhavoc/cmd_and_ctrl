@@ -39,7 +39,7 @@ func TheModesTargetPlayerDrawsTwo(_ *game.StackItem, ctx *Context, occ int) erro
 }
 
 // mutavaultOracleID is the card Mutavault's oracle ID (mutavault.go).
-const mutavaultOracleID = "6b3cc59a-7ea5-4eb5-9bf9-5a9c07f80e2b"
+const MutavaultOracleID = "6b3cc59a-7ea5-4eb5-9bf9-5a9c07f80e2b"
 
 // MutavaultToken is "a Mutavault token": a token created by name, with
 // no other characteristics given, takes the characteristics of the card
@@ -51,7 +51,7 @@ const mutavaultOracleID = "6b3cc59a-7ea5-4eb5-9bf9-5a9c07f80e2b"
 func MutavaultToken() game.Card {
 	return game.Card{
 		Name:         "Mutavault",
-		OracleID:     mutavaultOracleID,
+		OracleID:     MutavaultOracleID,
 		TypeLine:     "Token Land",
 		ProducedMana: []string{"C"},
 	}

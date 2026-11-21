@@ -32,11 +32,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // invasionOfInnistradOracleID is shared with the back face's spec,
 // which registers under this ID plus "#1" — the one place the two
 // halves of a double-faced card have to agree on a string.
-const invasionOfInnistradOracleID = "a3c1af66-63c8-41ec-a401-a3da1131dc67"
+const InvasionOfInnistradOracleID = "a3c1af66-63c8-41ec-a401-a3da1131dc67"
 
 func init() {
 	Register(Spec{
-		OracleID:        invasionOfInnistradOracleID,
+		OracleID:        InvasionOfInnistradOracleID,
 		Name:            "Invasion of Innistrad",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},

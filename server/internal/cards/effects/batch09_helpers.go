@@ -22,7 +22,7 @@ import (
 // b09OpponentCastInstantOrSorcery is Arasta of the Endless Web's
 // condition: an OPPONENT of the source's controller cast an instant
 // or sorcery. instantOrSorceryCastByYou with the actor test flipped.
-func b09OpponentCastInstantOrSorcery(ev game.Event, source *game.Card, g *game.Game) bool {
+func B09OpponentCastInstantOrSorcery(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
@@ -34,7 +34,7 @@ func b09OpponentCastInstantOrSorcery(ev game.Event, source *game.Card, g *game.G
 // or a Saga — Jhoira, Weatherlight Captain's word. Reads the
 // effective characteristic, which for a spell on the stack is the
 // printed type line.
-func b09IsHistoric(c game.Card) bool {
+func B09IsHistoric(c game.Card) bool {
 	if c.IsArtifact() || c.HasSubtype("Saga") {
 		return true
 	}
@@ -50,7 +50,7 @@ func b09IsHistoric(c game.Card) bool {
 // source's controller casting a spell whose mana value on the stack
 // (X included, CR 202.3e) is at least n — Up the Beanstalk's "spell
 // with mana value 5 or greater".
-func b09SpellCastByYouWithManaValueAtLeast(ev game.Event, source *game.Card, g *game.Game, n int) bool {
+func B09SpellCastByYouWithManaValueAtLeast(ev game.Event, source *game.Card, g *game.Game, n int) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -66,12 +66,12 @@ func b09SpellCastByYouWithManaValueAtLeast(ev game.Event, source *game.Card, g *
 // card" — Steelshaper's Gift, Stoneforge Mystic. Subtype, not name:
 // a card in a library has no layer cache, so this is the printed
 // type line.
-func b09IsEquipmentCard(c game.Card) bool { return c.HasSubtype("Equipment") }
+func B09IsEquipmentCard(c game.Card) bool { return c.HasSubtype("Equipment") }
 
 // b09IsCheapInstantOrSorceryCard is Spellseeker's "an instant or
 // sorcery card with mana value 2 or less". Off the stack, so X is
 // zero (CR 202.3e) and a Fireball is a legal find.
-func b09IsCheapInstantOrSorceryCard(c game.Card) bool {
+func B09IsCheapInstantOrSorceryCard(c game.Card) bool {
 	return (c.IsInstant() || c.IsSorcery()) && c.ManaValue() <= 2
 }
 
@@ -89,7 +89,7 @@ func b09IsCheapInstantOrSorceryCard(c game.Card) bool {
 // table — UntapUpToLands (untap_lands.go) is the real chooser: a
 // choose_cards prompt over every TAPPED land, any controller's.
 // `question` is the per-card prompt header.
-func b09CounterThenUntapLands(n int, question string) func(item *game.StackItem, ctx *Context) error {
+func B09CounterThenUntapLands(n int, question string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetCard {
 			if err := (CounterTarget{StackID: item.Targets[0].ID}).Apply(ctx); err != nil {
@@ -136,7 +136,7 @@ func b09CounterThenUntapLands(n int, question string) func(item *game.StackItem,
 // *Game would be the wrong one.
 //
 // Package-level so the triggered item captures nothing.
-func b09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
+func B09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}
@@ -146,7 +146,7 @@ func b09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
 	}
 	// Keyed (#4290): the victim and the controller ride the run as its carry.
 	return g.PlayerSacrificesThenKeyedForEffect(item.SourceCardID, victim,
-		sacrificeSpec("a creature or planeswalker", Or(Creature(), Planeswalker())),
+		SacrificeSpec("a creature or planeswalker", Or(Creature(), Planeswalker())),
 		"Archon of Cruelty — sacrifice a creature or planeswalker", 1,
 		b09ArchonOfCrueltySacrificed, []uuid.UUID{victim, item.Controller})
 }
@@ -180,7 +180,7 @@ var b09ArchonOfCrueltyPaid = game.RegisterDiscardThen("choose-cards/archon-of-cr
 //
 // Caller holds g.mu.
 func b09ArchonOfCrueltyPayout(g *game.Game, controller, source, victim uuid.UUID) error {
-	ctx := keyedContext(g, controller, source)
+	ctx := KeyedContext(g, controller, source)
 	if err := g.ChangePlayerLifeForEffect(source, victim, -3); err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func b09ArchonOfCrueltyPayout(g *game.Game, controller, source, victim uuid.UUID
 // permanent, and the clauses behind this guard — the counter, the
 // untap, the fight, the mana for the counters it removed — are about
 // the one that triggered.
-func b09SourceStillOnBattlefield(g *game.Game, item *game.StackItem) bool {
+func B09SourceStillOnBattlefield(g *game.Game, item *game.StackItem) bool {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
-	return z != nil && z.Kind == game.ZoneBattlefield && !sourceIsNewObject(g, item)
+	return z != nil && z.Kind == game.ZoneBattlefield && !SourceIsNewObject(g, item)
 }

@@ -20,9 +20,9 @@ import (
 // (CR 400.7). That is read as the trigger resolves and carried on the
 // vote, since nothing can move the creature while the players vote —
 // the shape Magister of Worth and Coercive Portal use.
-func voteForThisCreature(v Vote) Effect {
+func VoteForThisCreature(v Vote) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if onBattlefield(g, item.SourceCardID) && !sourceIsNewObject(g, item) {
+		if OnBattlefield(g, item.SourceCardID) && !SourceIsNewObject(g, item) {
 			v.Carry = []uuid.UUID{item.SourceCardID}
 		}
 		return v.Apply(NewContext(g, item))
@@ -31,7 +31,7 @@ func voteForThisCreature(v Vote) Effect {
 
 // votedCreature is the creature a voteForThisCreature vote was started
 // for, or uuid.Nil when it had already left.
-func votedCreature(r game.VoteResult) uuid.UUID {
+func VotedCreature(r game.VoteResult) uuid.UUID {
 	if len(r.Carry) == 0 {
 		return uuid.Nil
 	}
@@ -40,13 +40,13 @@ func votedCreature(r game.VoteResult) uuid.UUID {
 
 // recordVotedCreature files the voted creature and both tallies of a
 // two-word vote under key, for the steps that follow it (#4155).
-func recordVotedCreature(ctx *Context, key string, r game.VoteResult) {
-	ctx.RecordStep(key, []uuid.UUID{votedCreature(r)}, r.Votes(0), r.Votes(1))
+func RecordVotedCreature(ctx *Context, key string, r game.VoteResult) {
+	ctx.RecordStep(key, []uuid.UUID{VotedCreature(r)}, r.Votes(0), r.Votes(1))
 }
 
 // recordedTally is the tally at index i of a record recordVotedCreature
 // filed, 0 when there is none.
-func recordedTally(ctx *Context, key string, i int) int {
+func RecordedTally(ctx *Context, key string, i int) int {
 	r := ctx.StepRecord(key)
 	if i < 0 || i >= len(r.Ns) {
 		return 0
@@ -56,7 +56,7 @@ func recordedTally(ctx *Context, key string, i int) int {
 
 // countersOnRecordedCreature is "put N +1/+1 counters on this creature" as a vote's result, for the tally at
 // index i of a record recordVotedCreature filed.
-func countersOnRecordedCreature(ctx *Context, key string, i int) error {
+func CountersOnRecordedCreature(ctx *Context, key string, i int) error {
 	r := ctx.StepRecord(key)
 	if len(r.IDs) == 0 || i >= len(r.Ns) {
 		return nil
@@ -70,7 +70,7 @@ func countersOnRecordedCreature(ctx *Context, key string, i int) error {
 
 // eachOpponentDiscards is "each opponent discards N cards", each
 // choosing their own. Nothing hangs off it.
-func eachOpponentDiscards(ctx *Context, n int) {
+func EachOpponentDiscards(ctx *Context, n int) {
 	if n <= 0 {
 		return
 	}

@@ -32,10 +32,10 @@ func init() {
 		// Tolsimir, Midnight's Light.
 		"5/5 green and white Legendary Wolf named Voja Fenstalker": {Name: "Voja Fenstalker", TypeLine: "Token Legendary Creature — Wolf", Power: 5, Toughness: 5, Colors: []string{"G", "W"}, Keywords: []string{"trample"}},
 	} {
-		if _, dup := tokenTable[key]; dup {
+		if _, dup := TokenTable[key]; dup {
 			panic("std_b43_helpers: token key already in the table: " + key)
 		}
-		tokenTable[key] = card
+		TokenTable[key] = card
 	}
 }
 
@@ -44,7 +44,7 @@ func init() {
 // Guildpact): the distinct two-color sets, read through the layered view, out
 // of the ten there are (the ruling). A colorless, monocolored or three-color
 // permanent has no pair.
-func differentColorPairsAmong(g *game.Game, controller uuid.UUID) int {
+func DifferentColorPairsAmong(g *game.Game, controller uuid.UUID) int {
 	pairs := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller {
@@ -77,7 +77,7 @@ func FaceUpCostLess(ac game.AlternativeCost, count func(g *game.Game, controller
 
 // instantAndSorceryCardsInGraveyard is how many instant and sorcery cards
 // `player`'s graveyard holds.
-func instantAndSorceryCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+func InstantAndSorceryCardsInGraveyard(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0

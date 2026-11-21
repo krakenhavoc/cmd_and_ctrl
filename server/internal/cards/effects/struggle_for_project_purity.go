@@ -45,7 +45,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenChosen("Brotherhood", AtYourUpkeep(brotherhood, Do(
 				Instruction(func(ctx *Context) error {
-					for _, opp := range opponentsInTurnOrder(ctx.Game, ctx.Controller()) {
+					for _, opp := range OpponentsInTurnOrder(ctx.Game, ctx.Controller()) {
 						if err := (DrawCards{Player: opp, N: 1}).Apply(ctx); err != nil {
 							return err
 						}
@@ -53,15 +53,15 @@ func init() {
 					return nil
 				}),
 				Instruction(func(ctx *Context) error {
-					return DrawCards{N: opponentsDrawsThisResolution(ctx)}.Apply(ctx)
+					return DrawCards{N: OpponentsDrawsThisResolution(ctx)}.Apply(ctx)
 				}),
 			))),
-			WhenChosen("Enclave", withAtBatchEnd(On(game.EventAttack, aCreatureAttackedYouDirectly, enclave,
+			WhenChosen("Enclave", WithAtBatchEnd(On(game.EventAttack, aCreatureAttackedYouDirectly, enclave,
 				func(g *game.Game, item *game.StackItem) error {
 					if item.Trigger == nil {
 						return nil
 					}
-					return playerGetsRadCounters(g, item.Controller, item.Trigger.Event.Actor, 2*settledEventAmount(item))
+					return PlayerGetsRadCounters(g, item.Controller, item.Trigger.Event.Actor, 2*SettledEventAmount(item))
 				}), ThatManyEvents())),
 		},
 	})
@@ -78,7 +78,7 @@ func aCreatureAttackedYouDirectly(ev game.Event, source *game.Card, _ game.Chara
 // opponentsDrawsThisResolution counts the cards the controller's
 // opponents drew in the resolving item's event batch: "for each card
 // drawn this way" (Struggle for Project Purity's Brotherhood).
-func opponentsDrawsThisResolution(ctx *Context) int {
+func OpponentsDrawsThisResolution(ctx *Context) int {
 	g, you := ctx.Game, ctx.Controller()
 	batch := g.CurrentEventBatchForEffect()
 	n := 0

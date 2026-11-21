@@ -35,8 +35,8 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			// The shuffle follows the damage as data (#4253): the tail's
 			// Player is the owner, its Source the Zenith.
-			shuffle := game.KeyedTail{Ref: redSunsZenithShuffle, Player: item.Owner, Source: ctx.Source()}
-			t, ok := firstLegalTarget(ctx)
+			shuffle := game.KeyedTail{Ref: RedSunsZenithShuffle, Player: item.Owner, Source: ctx.Source()}
+			t, ok := FirstLegalTarget(ctx)
 			if !ok {
 				return nil
 			}
@@ -52,6 +52,6 @@ func init() {
 // redSunsZenithShuffle is "Shuffle Red Sun's Zenith into its owner's
 // library", run with the damage's total: the Source is tucked and its
 // owner (the Player) shuffles. An on-disk key.
-var redSunsZenithShuffle = game.RegisterTail("red-suns-zenith/shuffle-into-library", func(g *game.Game, o game.TailOutcome) error {
-	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{o.Tail.Source}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: o.Tail.Player})
+var RedSunsZenithShuffle = game.RegisterTail("red-suns-zenith/shuffle-into-library", func(g *game.Game, o game.TailOutcome) error {
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{o.Tail.Source}, game.TuckOptions{}, game.KeyedTail{Ref: ThenShuffle, Player: o.Tail.Player})
 })

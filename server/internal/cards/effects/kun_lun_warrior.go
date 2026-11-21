@@ -20,8 +20,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("K'un-Lun Warrior — you may sacrifice an artifact or discard a card; if you do, draw a card",
 				func(g *game.Game, item *game.StackItem) error {
-					return mayPayArtifactOrCard(NewContext(g, item),
-						"K'un-Lun Warrior — sacrifice an artifact or discard a card to draw a card?", mayPayDrawACard)
+					return MayPayArtifactOrCard(NewContext(g, item),
+						"K'un-Lun Warrior — sacrifice an artifact or discard a card to draw a card?", MayPayDrawACard)
 				}),
 		},
 	})
@@ -30,7 +30,7 @@ func init() {
 // mayPayArtifactOrCard is "you may sacrifice an artifact or discard a
 // card. If you do, <then>" (#4566): K'un-Lun Warrior, Contract Hero and
 // Vision of Love.
-func mayPayArtifactOrCard(ctx *Context, question string, then game.PayUnlessElse, objects ...game.ObjectRef) error {
+func MayPayArtifactOrCard(ctx *Context, question string, then game.PayUnlessElse, objects ...game.ObjectRef) error {
 	return MayPay{
 		Chooser:      ctx.Controller(),
 		Pay:          SacrificeAnArtifactOrDiscard(false),

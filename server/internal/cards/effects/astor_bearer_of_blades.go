@@ -39,8 +39,8 @@ func init() {
 			}}, Text: "Crew 1"},
 		},
 		Static: []game.StaticAbility{
-			GrantAbilities(equipmentYouControl, astorEquipGrant),
-			GrantAbilities(astorVehicleYouControl, astorCrewGrant),
+			GrantAbilities(EquipmentYouControl, astorEquipGrant),
+			GrantAbilities(AstorVehicleYouControl, astorCrewGrant),
 		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Astor, Bearer of Blades — look at the top seven cards; you may reveal an Equipment or Vehicle card and put it into your hand",
@@ -54,7 +54,7 @@ func init() {
 						Max:      1,
 						Optional: true,
 						Label:    "Astor, Bearer of Blades — you may reveal an Equipment or Vehicle card and put it into your hand",
-						Key:      astorTake,
+						Key:      AstorTake,
 					}.Apply(ctx)
 				}),
 		},
@@ -63,11 +63,11 @@ func init() {
 
 // astorTake is the take: the rest on the bottom in a random order. An
 // on-disk key.
-var astorTake = RegisterTake("choose-cards/astor-bearer-of-blades-take",
+var AstorTake = RegisterTake("choose-cards/astor-bearer-of-blades-take",
 	TakeDef{Reveal: true, Then: TakeRestOnBottomInRandomOrder})
 
 // astorVehicleYouControl is "Vehicles you control": the source's
 // controller's permanents with the Vehicle subtype, read post-layer.
-func astorVehicleYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func AstorVehicleYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.HasSubtype("Vehicle")
 }

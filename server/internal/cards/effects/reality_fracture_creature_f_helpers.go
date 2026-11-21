@@ -12,14 +12,14 @@ import (
 // SculptureTreasureToken is Vraska, Soul of Stone's token: a 1/1
 // colourless Sculpture Treasure artifact creature with "{T}, Sacrifice
 // this token: Add one mana of any color."
-func SculptureTreasureToken() game.Card { return tokenFromCatalog(printedSculptureTreasureToken) }
+func SculptureTreasureToken() game.Card { return TokenFromCatalog(printedSculptureTreasureToken) }
 
 // printedSculptureTreasureToken is that token as PRINTED, mana ability
 // included. It is a creature, so (unlike a plain Treasure) its tap cost
 // waits out summoning sickness (CR 302.6) and it is an artifact creature
 // for every effect that counts either.
-func printedSculptureTreasureToken() tokenTemplate {
-	return tokenTemplate{
+func printedSculptureTreasureToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "sculpture-treasure",
 		Card: game.Card{
 			Name:      "Sculpture Treasure",
@@ -40,7 +40,7 @@ func printedSculptureTreasureToken() tokenTemplate {
 // rfCreatureFCastNoncreatureSpellThisTurn is "if you've cast a
 // noncreature spell this turn" as a cost predicate. The tally is bumped
 // after a cast succeeds, so the spell being priced is not in it.
-func rfCreatureFCastNoncreatureSpellThisTurn() CostPredicate {
+func RfCreatureFCastNoncreatureSpellThisTurn() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.Game != nil && q.Game.CastTallyFor(q.Controller).Noncreature > 0
 	}
@@ -48,14 +48,14 @@ func rfCreatureFCastNoncreatureSpellThisTurn() CostPredicate {
 
 // rfCreatureFArtifactOrCreature matches the spells Traxos, Scourge
 // Eternal untaps for.
-func rfCreatureFArtifactOrCreature() CardPredicate {
+func RfCreatureFArtifactOrCreature() CardPredicate {
 	return Or(Artifact(), Creature())
 }
 
 // rfCreatureFCountersOnTarget is "put N +1/+1 counters on target
 // creature" as a targeted trigger's effect: the pick is re-read as legal
 // at resolution (CR 608.2b).
-func rfCreatureFCountersOnTarget(n int) Effect {
+func RfCreatureFCountersOnTarget(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -71,19 +71,19 @@ func rfCreatureFCountersOnTarget(n int) Effect {
 // rfCreatureFControlsSixLands is Vraska, the Cutting Glare's
 // "if you control six or more lands".
 func rfCreatureFControlsSixLands(g *game.Game, controller uuid.UUID) bool {
-	return b02CountLandsControlledBy(g, controller) >= 6
+	return B02CountLandsControlledBy(g, controller) >= 6
 }
 
 // rfCreatureFEntersWithSixLands is the trigger half of that
 // intervening if (CR 603.4): it only triggers when the condition holds.
-func rfCreatureFEntersWithSixLands(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RfCreatureFEntersWithSixLands(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.CardID == source.InstanceID && rfCreatureFControlsSixLands(g, source.Controller)
 }
 
 // rfCreatureFDestroyThenTreasure is Vraska's body: re-check the
 // condition (CR 603.4), destroy the target, and its controller — read
 // before the destruction — creates a Treasure whether or not it died.
-func rfCreatureFDestroyThenTreasure(g *game.Game, item *game.StackItem) error {
+func RfCreatureFDestroyThenTreasure(g *game.Game, item *game.StackItem) error {
 	if !rfCreatureFControlsSixLands(g, item.Controller) {
 		return nil
 	}
@@ -94,7 +94,7 @@ func rfCreatureFDestroyThenTreasure(g *game.Game, item *game.StackItem) error {
 		}
 		// A legal target is on the battlefield, so its controller is
 		// always found; the Treasure is theirs whether or not it died.
-		victim, _ := controllerOfTarget(ctx, t.ID)
+		victim, _ := ControllerOfTarget(ctx, t.ID)
 		if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func rfCreatureFDestroyThenTreasure(g *game.Game, item *game.StackItem) error {
 }
 
 // rfCreatureFCombat is true in any of the five combat steps.
-func rfCreatureFCombat(g *game.Game) bool {
+func RfCreatureFCombat(g *game.Game) bool {
 	return g != nil && game.PhaseOf(g.Turn.Step) == game.PhaseCombat
 }
 
@@ -112,7 +112,7 @@ func rfCreatureFCombat(g *game.Game) bool {
 // creature its controller controls was declared as an attacker, it is
 // the only attacking creature (CR 506.5), and what it attacks is a
 // player rather than a planeswalker or battle.
-func rfCreatureFAttackedAPlayerAlone(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RfCreatureFAttackedAPlayerAlone(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventAttack || ev.Actor != source.Controller {
 		return false
 	}
@@ -129,7 +129,7 @@ func rfCreatureFAttackedAPlayerAlone(ev game.Event, source *game.Card, _ game.Ch
 }
 
 // rfCreatureFCopyTargetSpellTwice is Venser's first mode.
-func rfCreatureFCopyTargetSpellTwice(item *game.StackItem, ctx *Context, occ int) error {
+func RfCreatureFCopyTargetSpellTwice(item *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok {
 		return nil
@@ -145,12 +145,12 @@ func rfCreatureFCopyTargetSpellTwice(item *game.StackItem, ctx *Context, occ int
 // rfCreatureFTwoHastyCopiesSacrificedAtEnd is Venser's second mode: two
 // token copies with haste, sacrificed at the beginning of the next end
 // step (CR 603.7).
-func rfCreatureFTwoHastyCopiesSacrificedAtEnd(item *game.StackItem, ctx *Context, occ int) error {
+func RfCreatureFTwoHastyCopiesSacrificedAtEnd(item *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok {
 		return nil
 	}
-	cursor := b25LastEventSeq(ctx.Game)
+	cursor := B25LastEventSeq(ctx.Game)
 	if err := (CreateTokenCopy{
 		Controller: item.Controller,
 		Copy:       t.ID,
@@ -159,19 +159,19 @@ func rfCreatureFTwoHastyCopiesSacrificedAtEnd(item *game.StackItem, ctx *Context
 	}).Apply(ctx); err != nil {
 		return err
 	}
-	tokens := b27TokensCreatedByAfter(ctx.Game, item.Controller, cursor)
+	tokens := B27TokensCreatedByAfter(ctx.Game, item.Controller, cursor)
 	if len(tokens) == 0 {
 		return nil
 	}
 	return ScheduleDelayedTrigger{
 		Label: "Venser — sacrifice the tokens",
 		Cards: tokens,
-		Body:  sacrificeListedCardsBody,
+		Body:  SacrificeListedCardsBody,
 	}.Apply(ctx)
 }
 
 // rfCreatureFCounterOnTargetCreature is the {6} counter-giving
 // activations of the two Yoshimarus.
-func rfCreatureFCounterOnTargetCreature(g *game.Game, item *game.StackItem) error {
-	return rfCreatureFCountersOnTarget(1)(g, item)
+func RfCreatureFCounterOnTargetCreature(g *game.Game, item *game.StackItem) error {
+	return RfCreatureFCountersOnTarget(1)(g, item)
 }

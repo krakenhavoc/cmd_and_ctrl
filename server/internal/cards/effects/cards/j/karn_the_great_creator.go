@@ -1,0 +1,73 @@
+package cardsj
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Karn, the Great Creator — Legendary Planeswalker — Karn {4}, loyalty 5:
+//
+//	"Activated abilities of artifacts your opponents control can't be
+//	 activated.
+//	 +1: Until your next turn, up to one target noncreature artifact
+//	 becomes an artifact creature with power and toughness each equal to
+//	 its mana value.
+//	 −2: You may reveal an artifact card you own from outside the game or
+//	 choose a face-up artifact card you own in exile. Put that card into
+//	 your hand."
+//
+// The static is OpponentsSourcesCantActivate over artifacts with no mana
+// exemption, so an opponent's Sol Ring stops tapping for mana too, as
+// printed. The +1 is a scoped effect on the target: a creature type added
+// in layer 4 and a base power and toughness set in layer 7b, fixed at the
+// artifact's mana value as the ability resolves, until Karn's controller's
+// next turn. The −2 is Coax from the Blind Eternities' shape for artifacts
+// (TakeFromExileOrOutside, ADR 0198).
+//
+// No simplifications.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "a20dd48d-d344-4db1-b0e9-a2b71c3cc9d1",
+		Name:         "Karn, the Great Creator",
+		Completeness: effects.CompletenessFull,
+		ActivationRestrictions: []game.ActivationRestriction{
+			effects.OpponentsSourcesCantActivate(
+				"Karn, the Great Creator — activated abilities of artifacts your opponents control can't be activated.",
+				effects.Artifact(), false),
+		},
+		Activated: []effects.ActivatedAbility{
+			{
+				Label:   "+1: Until your next turn, up to one target noncreature artifact becomes an artifact creature with power and toughness each equal to its mana value.",
+				Cost:    effects.LoyaltyCost(1),
+				Targets: effects.TargetPermanent("up to one target noncreature artifact", effects.And(effects.Artifact(), effects.Noncreature())).WithCount(0, 1),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := effects.NewContext(g, item)
+					return effects.ArtifactBecomesCreatureOfItsManaValue(ctx, effects.DurationUntilYourNextTurn(ctx, item.Controller),
+						"Karn, the Great Creator — an artifact creature")
+				},
+			},
+			{
+				Label: "−2: You may reveal an artifact card you own from outside the game or choose a face-up artifact card you own in exile. Put that card into your hand.",
+				Cost:  effects.LoyaltyCost(-2),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return effects.TakeFromExileOrOutside{
+						Pick:          karnTheGreatCreatorTake,
+						Exile:         KarnTheGreatCreatorExile,
+						ExileQuestion: "Karn, the Great Creator — choose a face-up artifact card you own in exile, or none to reveal one from outside the game",
+					}.Apply(effects.NewContext(g, item))
+				},
+			},
+		},
+	})
+}
+
+// karnTheGreatCreatorTake is the −2's pick from outside the game, keyed
+// (#4256), and the artifact filter its exile pick shares.
+var karnTheGreatCreatorTake = effects.RegisterOutsideTake("choose-cards/karn-the-great-creator-take",
+	func(c game.Card) bool { return c.IsArtifact() }, true)
+
+// karnTheGreatCreatorExile is the −2's pick from exile, keyed (#4264): a
+// table waiting on it is a restore point. "None" asks the outside pick.
+var KarnTheGreatCreatorExile = effects.RegisterExileOrOutside("choose-cards/karn-the-great-creator-exile",
+	karnTheGreatCreatorTake, "Karn, the Great Creator — reveal an artifact card you own from outside the game, or none")

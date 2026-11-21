@@ -28,7 +28,7 @@ func PayToTransformAtYourFirstMain(face, name, cost string) game.TriggeredAbilit
 			Chooser:  item.Controller,
 			Cost:     cost,
 			Question: face + " — pay " + cost + " to transform " + name + "?",
-			Then:     ashlingTransformPaid,
+			Then:     AshlingTransformPaid,
 		}.Apply(NewContext(g, item))
 	})
 }

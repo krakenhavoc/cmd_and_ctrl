@@ -31,15 +31,15 @@ func init() {
 			Label:   "Sacrifice a creature: Regenerate enchanted creature.",
 			Purpose: game.Purpose{Answers: game.AnswerSurvive | game.AnswerSacOutlet},
 			Cost:    SacrificeACreature(),
-			Effect:  regenerateAttachedHost,
+			Effect:  RegenerateAttachedHost,
 		}},
 	})
 }
 
 // regenerateAttachedHost is "Regenerate enchanted creature": a shield on
 // the Aura's host as the ability resolves.
-func regenerateAttachedHost(g *game.Game, item *game.StackItem) error {
-	host := attachedHostFor(g, item.SourceCardID)
+func RegenerateAttachedHost(g *game.Game, item *game.StackItem) error {
+	host := AttachedHostFor(g, item.SourceCardID)
 	if host == nil {
 		return nil
 	}

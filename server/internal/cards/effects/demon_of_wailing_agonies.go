@@ -26,7 +26,7 @@ func init() {
 			if g.PlayerByIDForEffect(victim) == nil {
 				return nil
 			}
-			g.PlayerSacrificesForEffect(item.SourceCardID, victim, sacrificeSpec("a creature", Creature()),
+			g.PlayerSacrificesForEffect(item.SourceCardID, victim, SacrificeSpec("a creature", Creature()),
 				"Demon of Wailing Agonies — sacrifice a creature")
 			return nil
 		}))
@@ -35,21 +35,21 @@ func init() {
 		Name:            "Demon of Wailing Agonies",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Static:          []game.StaticAbility{c14LieutenantPump()},
-		Triggered:       []game.TriggeredAbility{c14WhileLieutenant(edict)},
+		Static:          []game.StaticAbility{C14LieutenantPump()},
+		Triggered:       []game.TriggeredAbility{C14WhileLieutenant(edict)},
 	})
 }
 
 // c14LieutenantPump is the "+2/+2 as long as you control your commander"
 // half of Commander 2014's lieutenant creatures: a layer 7c pump of the
 // source alone, on while its controller controls a commander they own.
-func c14LieutenantPump() game.StaticAbility {
+func C14LieutenantPump() game.StaticAbility {
 	return game.StaticAbility{
 		Label:    "Lieutenant — As long as you control your commander, this creature gets +2/+2.",
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.InstanceID == source.InstanceID && b18ControlsYourCommander(g, source.Controller)
+			return target.InstanceID == source.InstanceID && B18ControlsYourCommander(g, source.Controller)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Power += 2
@@ -61,10 +61,10 @@ func c14LieutenantPump() game.StaticAbility {
 // c14WhileLieutenant gates a trigger the lieutenant grants: the creature
 // has it only while its controller controls their commander, so it
 // triggers only then.
-func c14WhileLieutenant(t game.TriggeredAbility) game.TriggeredAbility {
+func C14WhileLieutenant(t game.TriggeredAbility) game.TriggeredAbility {
 	when := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-		return when(ev, source, lki, g) && b18ControlsYourCommander(g, source.Controller)
+		return when(ev, source, lki, g) && B18ControlsYourCommander(g, source.Controller)
 	}
 	return t
 }

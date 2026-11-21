@@ -22,13 +22,13 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordCipher},
 		Targets:         TargetPlayer("target opponent", Opponent()),
-		OnResolve:       shadowSliceLoseLife,
+		OnResolve:       ShadowSliceLoseLife,
 	})
 }
 
 // shadowSliceLoseLife is "Target opponent loses 3 life": the target if
 // it is still legal (CR 608.2b).
-func shadowSliceLoseLife(_ *game.StackItem, ctx *Context) error {
+func ShadowSliceLoseLife(_ *game.StackItem, ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
 			return GainLife{Player: t.ID, Amount: -3}.Apply(ctx)

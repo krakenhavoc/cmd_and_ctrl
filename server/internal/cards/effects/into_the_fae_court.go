@@ -30,8 +30,8 @@ func init() {
 // printedFlyingBlockerFaerieToken is Into the Fae Court's 1/1 blue Faerie
 // with flying and "This token can block only creatures with flying." Its
 // slug is an on-disk identity: never renamed, never reused.
-func printedFlyingBlockerFaerieToken() tokenTemplate {
-	return tokenTemplate{
+func printedFlyingBlockerFaerieToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "faerie-blocks-only-fliers",
 		Card: game.Card{
 			Name:      "Faerie",
@@ -49,4 +49,4 @@ func printedFlyingBlockerFaerieToken() tokenTemplate {
 }
 
 // FlyingBlockerFaerieToken is the Faerie's card value for CreateToken.
-func FlyingBlockerFaerieToken() game.Card { return tokenFromCatalog(printedFlyingBlockerFaerieToken) }
+func FlyingBlockerFaerieToken() game.Card { return TokenFromCatalog(printedFlyingBlockerFaerieToken) }

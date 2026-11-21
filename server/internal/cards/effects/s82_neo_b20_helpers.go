@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // neoB20BounceTargetedPermanents is "return <the targets> to their owners'
 // hands": every card target still legal as the ability resolves goes back, in
 // the order they were announced (Kairi, the Swirling Sky's first bullet).
-func neoB20BounceTargetedPermanents(ctx *Context) error {
+func NeoB20BounceTargetedPermanents(ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue

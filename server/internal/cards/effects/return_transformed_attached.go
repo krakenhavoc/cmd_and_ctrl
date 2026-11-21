@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolution removes the whole ability (CR 608.2b) before this runs.
 func ReturnThisCardTransformedAttachedToTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if len(item.Targets) == 0 || !sourceCardInGraveyardAfterLeaving(ctx) {
+	if len(item.Targets) == 0 || !SourceCardInGraveyardAfterLeaving(ctx) {
 		return nil
 	}
 	return ReturnFromGraveyard{

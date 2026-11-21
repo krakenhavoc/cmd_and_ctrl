@@ -1,0 +1,66 @@
+package cardssh
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Smokestack — Artifact {4} (Mystery Booster 2):
+//
+//	"At the beginning of your upkeep, you may put a soot counter on this
+//	 artifact.
+//	 At the beginning of each player's upkeep, that player sacrifices a
+//	 permanent of their choice for each soot counter on this artifact."
+//
+// Two printed abilities, two triggers. The sacrifice is the upkeep
+// player's own choice, owed once per soot counter counted as the trigger
+// resolves (CR 608.2h); a player with fewer permanents sacrifices what they
+// have (CR 701.21a).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "fda61506-ed79-47fd-badd-639185297913",
+		Name:         "Smokestack",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.AtYourUpkeep("Smokestack — you may put a soot counter on this artifact", smokestackMayAddSoot),
+			effects.AtEachUpkeep("Smokestack — that player sacrifices a permanent for each soot counter", smokestackSacrifice),
+		},
+	})
+}
+
+const smokestackSoot = "soot"
+
+func smokestackMayAddSoot(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	return effects.MayChoice{
+		Question: "Smokestack — put a soot counter on it?",
+		Then:     smokestackAddSoot,
+		Carry:    []uuid.UUID{item.SourceCardID},
+	}.Apply(ctx)
+}
+
+var smokestackAddSoot = effects.MayYes("confirm/smokestack-add-soot", func(ctx *effects.Context, r game.ConfirmAnswer) error {
+	return effects.AddCounter{Target: effects.CarryAt(r, 0), Kind: smokestackSoot, N: 1}.Apply(ctx)
+})
+
+func smokestackSacrifice(g *game.Game, item *game.StackItem) error {
+	player := effects.TriggeringActor(item)
+	src, ok := g.LookupCardForEffect(item.SourceCardID)
+	if player == uuid.Nil || !ok || g.PlayerByIDForEffect(player) == nil {
+		return nil
+	}
+	n := src.Counters[smokestackSoot]
+	if n <= 0 {
+		return nil
+	}
+	players := make([]uuid.UUID, n)
+	for i := range players {
+		players[i] = player
+	}
+	g.PlayersSacrificeForEffect(item.SourceCardID, players, nil, "Sacrifice a permanent")
+	return nil
+}

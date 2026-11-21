@@ -26,7 +26,7 @@ import (
 var dorotheaSacrificeBody game.BodyRef
 
 func init() {
-	dorotheaSacrificeBody = game.SimpleDelayedBody("dorothea/sacrifice-at-end-of-combat", sacrificeDelayedTriggerSource)
+	dorotheaSacrificeBody = game.SimpleDelayedBody("dorothea/sacrifice-at-end-of-combat", SacrificeDelayedTriggerSource)
 }
 
 // sacrificeDelayedTriggerSource sacrifices the delayed trigger's source
@@ -35,7 +35,7 @@ func init() {
 // new object meanwhile (CR 400.7), or if its controller is no longer
 // the trigger's controller — a player can sacrifice only a permanent
 // they control (CR 701.21a).
-func sacrificeDelayedTriggerSource(g *game.Game, item *game.StackItem) error {
+func SacrificeDelayedTriggerSource(g *game.Game, item *game.StackItem) error {
 	if g.AbilitySourceGoneForEffect(item) {
 		return nil
 	}
@@ -49,7 +49,7 @@ func sacrificeDelayedTriggerSource(g *game.Game, item *game.StackItem) error {
 // sacrificeThisAtEndOfCombat is the trigger body of "sacrifice it at
 // end of combat": the beginning of this combat's end of combat step
 // (CR 511.2), through a delayed trigger whose source is this object.
-func sacrificeThisAtEndOfCombat(label string) Effect {
+func SacrificeThisAtEndOfCombat(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return ScheduleDelayedTrigger{
 			At:    game.StepEndCombat,
@@ -63,12 +63,12 @@ func sacrificeThisAtEndOfCombat(label string) Effect {
 // grants: a 4/4 white Spirit with flying, tapped and attacking the
 // player the enchanted creature was declared against (carried on
 // item.Params.Player), sacrificed at end of combat.
-func dorotheasRetributionSpirit(g *game.Game, item *game.StackItem) error {
+func DorotheasRetributionSpirit(g *game.Game, item *game.StackItem) error {
 	return CreateTokensAttackingYourChoice{
 		Template: TokenCard("4/4 white Spirit with flying"),
 		N:        1,
 		Tapped:   true,
-		Prefer:   triggerAttackTarget(item),
+		Prefer:   TriggerAttackTarget(item),
 		Label:    "Dorothea's Retribution",
 		Tail:     game.KeyedTail{Ref: dorotheasRetributionSacrifice},
 	}.Apply(NewContext(g, item))
@@ -78,14 +78,14 @@ func dorotheasRetributionSpirit(g *game.Game, item *game.StackItem) error {
 // end of combat trigger that sacrifices it.
 var dorotheasRetributionSacrifice = AttackingTokensThen("attacking-tokens/dorotheas-retribution-sacrifice-the-spirit",
 	func(ctx *Context, created []uuid.UUID, _ game.KeyedTail) error {
-		return sacrificeAtEndOfCombat(ctx, created, "Dorothea's Retribution — sacrifice the Spirit")
+		return SacrificeAtEndOfCombat(ctx, created, "Dorothea's Retribution — sacrifice the Spirit")
 	})
 
 // sacrificeAtEndOfCombat is "sacrifice that token at end of combat" for
 // tokens put onto the battlefield attacking: a delayed trigger at the
 // beginning of this combat's end of combat step (CR 511.2) naming exactly
 // the tokens that landed. Dorothea's Retribution and Kavaron Harrier.
-func sacrificeAtEndOfCombat(ctx *Context, created []uuid.UUID, label string) error {
+func SacrificeAtEndOfCombat(ctx *Context, created []uuid.UUID, label string) error {
 	if len(created) == 0 {
 		return nil
 	}
@@ -93,7 +93,7 @@ func sacrificeAtEndOfCombat(ctx *Context, created []uuid.UUID, label string) err
 		At:    game.StepEndCombat,
 		Label: label,
 		Cards: created,
-		Body:  sacrificeListedCardsBody,
+		Body:  SacrificeListedCardsBody,
 	}.Apply(ctx)
 }
 
@@ -101,7 +101,7 @@ func sacrificeAtEndOfCombat(ctx *Context, created []uuid.UUID, label string) err
 // other types" on a type line (CR 707.9a): the subtype is added, and
 // every type, supertype and subtype the line had stays. A line that
 // already has it comes back unchanged.
-func withSubtypeInAddition(printed, subtype string) string {
+func WithSubtypeInAddition(printed, subtype string) string {
 	super, types, subs := game.ParseTypeLine(printed)
 	for _, s := range subs {
 		if strings.EqualFold(s, subtype) {
@@ -118,9 +118,9 @@ func withSubtypeInAddition(printed, subtype string) string {
 // are Spirits and/or enchantments" — Katilda's X. A permanent that is
 // both counts once. "Spirits" is a word of the source's text (CR 612.2,
 // #3984).
-func spiritsAndEnchantmentsYouControl(g *game.Game, source *game.Card) int {
+func SpiritsAndEnchantmentsYouControl(g *game.Game, source *game.Card) int {
 	spirit := source.TextSubtype("Spirit")
-	return permanentsYouControl(g, source, func(c *game.Card) bool {
+	return CountPermanentsYouControl(g, source, func(c *game.Card) bool {
 		return c.HasSubtype(spirit) || c.IsEnchantment()
 	})
 }
@@ -129,11 +129,11 @@ func spiritsAndEnchantmentsYouControl(g *game.Game, source *game.Card) int {
 // the target of an Aura SPELL — not an ability, and not a spell of any
 // other kind (Brine Comber). The spell is read off the stack, where it
 // still is: the event fires as targets are chosen (CR 601.2c).
-func targetedByAnAuraSpell(ev game.Event, g *game.Game, target uuid.UUID) bool {
+func TargetedByAnAuraSpell(ev game.Event, g *game.Game, target uuid.UUID) bool {
 	if ev.Kind != game.EventBecomesTarget || target == uuid.Nil || ev.CardID != target {
 		return false
 	}
-	if !b40TargetedByASpell(ev, g) {
+	if !B40TargetedByASpell(ev, g) {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.Source)

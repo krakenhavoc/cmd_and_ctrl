@@ -1,0 +1,70 @@
+package cardsu
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Under the Skin — Sorcery {2}{G}:
+//
+//	"Manifest dread. (Look at the top two cards of your library. Put
+//	 one onto the battlefield face down as a 2/2 creature and the other
+//	 into your graveyard. Turn it face up any time for its mana cost if
+//	 it's a creature card.)
+//	 You may return a permanent card from your graveyard to your hand."
+//
+// The second sentence is not a target, so it is asked as a pick when
+// the manifest has finished: the card manifest dread just put into the
+// graveyard is a candidate, which is the point of the card. "You may"
+// is a pick with a floor of zero; with no permanent card there to take,
+// nobody is asked.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "8e121178-e9e3-43a5-a174-ecbe47d759f9",
+		Name:         "Under the Skin",
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.ManifestDread{ThenTail: ctx.Tail(underTheSkinThen)}.Apply(ctx)
+		},
+	})
+}
+
+// underTheSkinThen is the offer after the manifest dread (#4253 slice 9).
+var underTheSkinThen = effects.ManifestDreadTail("under-the-skin/offer-return", func(ctx *effects.Context, _ game.ManifestDreadResult, o game.TailOutcome) error {
+	return underTheSkinOffer(ctx.Game, o.Tail.Player, o.Tail.Source)
+})
+
+// underTheSkinOffer asks `me` which permanent card in their graveyard
+// to take, if any, and returns it to their hand.
+func underTheSkinOffer(g *game.Game, me, source uuid.UUID) error {
+	candidates := effects.GraveyardCardIDs(effects.NewContext(g, nil), me, game.Card.IsPermanent)
+	if len(candidates) == 0 {
+		return nil
+	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  me,
+		Source:   source,
+		Question: "Under the Skin — you may return a permanent card from your graveyard to your hand",
+		Cards:    candidates,
+		Min:      0,
+		Max:      1,
+		ThenKey:  underTheSkinReturned,
+		LiveZone: game.ZoneGraveyard,
+	})
+	return nil
+}
+
+// underTheSkinReturned is the optional return to hand, keyed (#4253).
+var underTheSkinReturned = game.RegisterChooseCardsThen("choose-cards/under-the-skin-return",
+	func(g *game.Game, r game.CardsChosen) error {
+		for _, id := range r.Picked {
+			if err := g.ReturnFromGraveyardUnderControlForEffect(id, game.ZoneHand, uuid.Nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

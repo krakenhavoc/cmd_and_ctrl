@@ -13,7 +13,7 @@ import (
 // read as object identity (CR 400.7): every creature but the source
 // OBJECT the ability came from. A source that left and came back is a
 // new object, and that one is affected like any other creature.
-func trekB11OtherThanSourceObject(item *game.StackItem) CardPredicate {
+func TrekB11OtherThanSourceObject(item *game.StackItem) CardPredicate {
 	src := item.SourceObject
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.InstanceID != src.ID || c.ObjectEpoch != src.Epoch
@@ -23,7 +23,7 @@ func trekB11OtherThanSourceObject(item *game.StackItem) CardPredicate {
 // trekB11PutCounterOnEachOfTypeYouControl is "Put a +1/+1 counter on each
 // <subtype> you control": post-layer subtypes, so a changeling counts, and
 // the word read through the source's text (CR 612.2).
-func trekB11PutCounterOnEachOfTypeYouControl(subtype string) Effect {
+func TrekB11PutCounterOnEachOfTypeYouControl(subtype string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		want := g.TextReaderForEffect(item).TextSubtype(subtype)
 		var ids []uuid.UUID
@@ -32,13 +32,13 @@ func trekB11PutCounterOnEachOfTypeYouControl(subtype string) Effect {
 				ids = append(ids, c.InstanceID)
 			}
 		}
-		return b13PutCounterOnEach(NewContext(g, item), ids)
+		return B13PutCounterOnEach(NewContext(g, item), ids)
 	}
 }
 
 // trekB11Assimilate is the Star Trek keyword action assimilate on one
 // card in a graveyard (Death Is Irrelevant); the body is
 // trekAssimilateFrom (trek_assimilate.go).
-func trekB11Assimilate(ctx *Context, card uuid.UUID, label string) error {
+func TrekB11Assimilate(ctx *Context, card uuid.UUID, label string) error {
 	return trekAssimilateFrom(ctx, game.ZoneGraveyard, card, label, game.TailRef{})
 }

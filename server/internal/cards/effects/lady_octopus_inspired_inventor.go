@@ -40,7 +40,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDrawCard, ladyOctopusYourFirstOrSecondDraw,
 				"Lady Octopus, Inspired Inventor — put an ingenuity counter on Lady Octopus",
-				Do(CounterOnThis{Kind: ladyOctopusCounter, N: 1})),
+				Do(CounterOnThis{Kind: LadyOctopusCounter, N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label: label,
@@ -55,7 +55,7 @@ func init() {
 	})
 }
 
-const ladyOctopusCounter = "ingenuity"
+const LadyOctopusCounter = "ingenuity"
 
 // ladyOctopusYourFirstOrSecondDraw is the trigger condition: the card the
 // event drew is the controller's first or second this turn.
@@ -75,23 +75,23 @@ func ladyOctopusYourFirstOrSecondDraw(ev game.Event, source *game.Card, _ game.C
 
 // ladyOctopusOffer is the activated ability's resolution.
 func ladyOctopusOffer(ctx *Context) error {
-	n := ladyOctopusCounters(ctx.Game, ctx.Source())
-	offerFreeHandCast(ctx, ctx.Controller(), ladyOctopusCastOffer, "an artifact spell with mana value "+strconv.Itoa(n)+" or less",
-		freeCastSpell{filter: game.PermissionFilter{CardType: "Artifact"}}.withManaValueAtMost(n))
+	n := LadyOctopusCounters(ctx.Game, ctx.Source())
+	OfferFreeHandCast(ctx, ctx.Controller(), ladyOctopusCastOffer, "an artifact spell with mana value "+strconv.Itoa(n)+" or less",
+		FreeCastSpell{Filter: game.PermissionFilter{CardType: "Artifact"}}.WithManaValueAtMost(n))
 	return nil
 }
 
 // ladyOctopusCounters is the number of ingenuity counters on Lady Octopus:
 // as she is on the battlefield, else as she last was (CR 608.2h).
-func ladyOctopusCounters(g *game.Game, id uuid.UUID) int {
-	if onBattlefield(g, id) {
+func LadyOctopusCounters(g *game.Game, id uuid.UUID) int {
+	if OnBattlefield(g, id) {
 		if c, ok := g.LookupCardForEffect(id); ok {
-			return c.Counters[ladyOctopusCounter]
+			return c.Counters[LadyOctopusCounter]
 		}
 	}
-	return g.LastKnownCountersForEffect(id)[ladyOctopusCounter]
+	return g.LastKnownCountersForEffect(id)[LadyOctopusCounter]
 }
 
 // ladyOctopusCastOffer is the offer's keyed continuation (#4246), so a table
 // waiting on it is a restore point.
-var ladyOctopusCastOffer = registerFreeHandCastOffer("choose-cards/lady-octopus-cast", "Lady Octopus, Inspired Inventor")
+var ladyOctopusCastOffer = RegisterFreeHandCastOffer("choose-cards/lady-octopus-cast", "Lady Octopus, Inspired Inventor")

@@ -25,14 +25,14 @@ import (
 
 // targetCreatureInYourGraveyard is "target creature card in your
 // graveyard".
-func targetCreatureInYourGraveyard() *game.TargetSpec {
+func TargetCreatureInYourGraveyard() *game.TargetSpec {
 	return TargetCardInGraveyard("target creature card in your graveyard", Creature(), YouOwn())
 }
 
 // targetCreatureInAnyGraveyard is "target creature card in a
 // graveyard" — every pile at the table, which is the whole point of
 // the cards that print it.
-func targetCreatureInAnyGraveyard() *game.TargetSpec {
+func TargetCreatureInAnyGraveyard() *game.TargetSpec {
 	return TargetCardInGraveyard("target creature card in a graveyard", Creature())
 }
 
@@ -51,7 +51,7 @@ func targetCreatureInAnyGraveyard() *game.TargetSpec {
 // re-checks targets at resolution (CR 608.2b) and drops illegal
 // ones, so an empty slot here means the spell fizzled its clause,
 // not that something went wrong.
-func reanimateSingleTarget(ctx *Context, controller uuid.UUID) (game.Card, bool) {
+func ReanimateSingleTarget(ctx *Context, controller uuid.UUID) (game.Card, bool) {
 	targets := ctx.Targets()
 	if len(targets) == 0 || targets[0].Kind != game.TargetCard {
 		return game.Card{}, false

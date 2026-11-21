@@ -49,19 +49,19 @@ func init() {
 		PrintedKeywords: []string{"hexproof"},
 		GameEndGates:    []game.GameEndGate{{Scope: game.GateYou, CantLose: true}},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouGainLife("Lich's Mastery — draw that many cards", lichsMasteryDraw),
+			WheneverYouGainLife("Lich's Mastery — draw that many cards", LichsMasteryDraw),
 			{
 				Watches: []game.EventKind{game.EventChangeLife, game.EventDealDamage},
 				Key:     lichsMasteryExileLabel,
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					_, ok := s22PlayerLostLife(ev, source.Controller, g)
+					_, ok := S22PlayerLostLife(ev, source.Controller, g)
 					return ok
 				},
 				// A fill-in Build (ADR 0041 P9): the life lost is a fact
 				// of the moment the ability triggered.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 					item := game.NewTriggeredItem(source, lichsMasteryExileLabel)
-					item.Params.Amount, _ = s22PlayerLostLife(ev, source.Controller, g)
+					item.Params.Amount, _ = S22PlayerLostLife(ev, source.Controller, g)
 					return item
 				},
 				Effect: lichsMasteryExile,
@@ -75,7 +75,7 @@ const lichsMasteryExileLabel = "Lich's Mastery — for each 1 life you lost, exi
 
 // lichsMasteryDraw is "draw that many cards": the life gained by the
 // event the trigger saw.
-func lichsMasteryDraw(g *game.Game, item *game.StackItem) error {
+func LichsMasteryDraw(g *game.Game, item *game.StackItem) error {
 	return DrawCards{Player: item.Controller, N: item.Trigger.Event.Amount}.Apply(NewContext(g, item))
 }
 

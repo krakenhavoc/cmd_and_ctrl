@@ -29,14 +29,14 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "vigilance"},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventCast, socB9FirstXSpellThisTurn, "Owlin Spiralmancer — you may copy your first X spell this turn", owlinSpiralmancerCopy),
+			Optional(On(game.EventCast, SocB9FirstXSpellThisTurn, "Owlin Spiralmancer — you may copy your first X spell this turn", OwlinSpiralmancerCopy),
 				"Owlin Spiralmancer — copy that spell? You may choose new targets for the copy."),
 		},
 	})
 }
 
 // owlinSpiralmancerCopy copies the spell that triggered it.
-func owlinSpiralmancerCopy(g *game.Game, item *game.StackItem) error {
+func OwlinSpiralmancerCopy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	return CopySpell{StackID: ctx.Trigger().Event.CardID, ChooseNewTargets: true, FromLastKnown: true}.Apply(ctx)
 }

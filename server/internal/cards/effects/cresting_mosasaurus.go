@@ -29,7 +29,7 @@ func init() {
 		// Dinosaurs.
 		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, AllOf(Self, crestingMosasaurusYouCastIt),
+			On(game.EventETB, AllOf(Self, CrestingMosasaurusYouCastIt),
 				"Cresting Mosasaurus — return each non-Dinosaur creature to its owner's hand",
 				Do(BounceAllMatching{Match: And(Creature(), Not(HasSubtype("Dinosaur")))})),
 		},
@@ -38,6 +38,6 @@ func init() {
 
 // crestingMosasaurusYouCastIt is the enter trigger's "if you cast it",
 // the catalog's one reading of it (b16EnteredFromStack).
-func crestingMosasaurusYouCastIt(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return source != nil && b16EnteredFromStack(g, source.InstanceID)
+func CrestingMosasaurusYouCastIt(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return source != nil && B16EnteredFromStack(g, source.InstanceID)
 }

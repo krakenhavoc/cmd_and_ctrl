@@ -67,7 +67,7 @@ func DuringYourMainPhase(t game.TriggeredAbility) game.TriggeredAbility {
 		if source == nil || (inner != nil && !inner(ev, source, lki, g)) {
 			return false
 		}
-		return b14InYourMainPhase(g, source.Controller)
+		return B14InYourMainPhase(g, source.Controller)
 	}
 	return t
 }
@@ -81,7 +81,7 @@ func CrewedOrSaddledObject(g *game.Game, item *game.StackItem) (uuid.UUID, bool)
 		return uuid.Nil, false
 	}
 	c, ok := g.LookupCardForEffect(ref.ID)
-	if !ok || c.ObjectEpoch != ref.Epoch || !onBattlefield(g, ref.ID) {
+	if !ok || c.ObjectEpoch != ref.Epoch || !OnBattlefield(g, ref.ID) {
 		return uuid.Nil, false
 	}
 	return ref.ID, true

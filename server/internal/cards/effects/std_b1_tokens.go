@@ -9,8 +9,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Drone artifact creature with flying and "This token can block only
 // creatures with flying." (Desculpting Blast). Its slug is an on-disk
 // identity: never renamed, never reused.
-func printedDroneToken() tokenTemplate {
-	return tokenTemplate{
+func printedDroneToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "drone-blocks-only-fliers",
 		Card: game.Card{
 			Name:      "Drone",
@@ -27,4 +27,4 @@ func printedDroneToken() tokenTemplate {
 }
 
 // DroneToken is the Drone's card value for CreateToken.
-func DroneToken() game.Card { return tokenFromCatalog(printedDroneToken) }
+func DroneToken() game.Card { return TokenFromCatalog(printedDroneToken) }

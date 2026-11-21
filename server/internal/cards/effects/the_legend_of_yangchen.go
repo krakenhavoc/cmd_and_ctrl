@@ -38,7 +38,7 @@ import (
 // why Gearhulk passes Player explicitly and this chapter does not.
 func init() {
 	Register(Spec{
-		OracleID:     theLegendOfYangchenOracleID,
+		OracleID:     TheLegendOfYangchenOracleID,
 		Name:         "The Legend of Yangchen",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -55,7 +55,7 @@ func init() {
 
 // theLegendOfYangchenOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const theLegendOfYangchenOracleID = "521a63cf-5e83-4649-9800-c62b2fc474d6"
+const TheLegendOfYangchenOracleID = "521a63cf-5e83-4649-9800-c62b2fc474d6"
 
 // yangchenChapterTwoMayDraw is "You may have target opponent draw
 // three cards. If you do, draw three cards." — the "you may" belongs
@@ -100,7 +100,7 @@ func yangchenChapterTwoMayDraw(g *game.Game, item *game.StackItem) error {
 // yangchenChapterOne starts the chain at the Saga's controller.
 func yangchenChapterOne(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	return yangchenChoose(ctx, seatsStartingWith(g, ctx.Controller()), 0, nil)
+	return yangchenChoose(ctx, SeatsStartingWith(g, ctx.Controller()), 0, nil)
 }
 
 // yangchenChoose asks players[i] for their pick from what is left of the
@@ -134,7 +134,7 @@ func yangchenChoose(ctx *Context, players []uuid.UUID, i int, chosen []uuid.UUID
 			return pool, 0, 1
 		},
 		Keyed: yangchenChosen,
-		Carry: packIDLists(players, taken),
+		Carry: PackIDLists(players, taken),
 		Nums:  []int{i},
 	}.Apply(ctx)
 }
@@ -148,7 +148,7 @@ var yangchenChosen PermanentsThen
 func init() {
 	yangchenChosen = RegisterPermanentsPick("prompt-run/the-legend-of-yangchen-exile", PermanentsDef{
 		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
-			players, taken := unpackIDPair(r.Carry)
+			players, taken := UnpackIDPair(r.Carry)
 			i := 0
 			if len(r.Nums) > 0 {
 				i = r.Nums[0]
@@ -160,7 +160,7 @@ func init() {
 
 // seatsStartingWith lists the seats still in the game in turn order,
 // beginning with `first`.
-func seatsStartingWith(g *game.Game, first uuid.UUID) []uuid.UUID {
+func SeatsStartingWith(g *game.Game, first uuid.UUID) []uuid.UUID {
 	n := len(g.Seats)
 	start := 0
 	for i, p := range g.Seats {
@@ -180,6 +180,6 @@ func seatsStartingWith(g *game.Game, first uuid.UUID) []uuid.UUID {
 // yangchenAnswer is the "yes": the target opponent (the carried ID) draws
 // three. Keyed (#4291).
 var yangchenAnswer = MayYes("confirm/the-legend-of-yangchen-draw", func(ctx *Context, r game.ConfirmAnswer) error {
-	ctx.RecordStep(yangchenRecord, []uuid.UUID{carryAt(r, 0)})
+	ctx.RecordStep(yangchenRecord, []uuid.UUID{CarryAt(r, 0)})
 	return yangchenDraws.Run(ctx)
 })

@@ -14,16 +14,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a member printed in a later set (the Star Trek Planets, which add only
 // the Planet subtype the type line already carries) can sit in its own
 // file without a second copy of the same Spec.
-func registerGainLand(oracleID, name, a, b string) {
+func RegisterGainLand(oracleID, name, a, b string) {
 	Register(Spec{
 		OracleID:      oracleID,
 		Name:          name,
 		Completeness:  CompletenessFull,
 		Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
-		ManaAbilities: []ManaAbility{dualManaAbility(a, b)},
+		ManaAbilities: []ManaAbility{DualManaAbility(a, b)},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
+			AppliesTo: B06SelfETB,
 			Key:       name + " — you gain 1 life",
 			Effect:    Do(GainLife{Amount: 1}),
 		}},
@@ -37,8 +37,8 @@ func registerGainLand(oracleID, name, a, b string) {
 // back is a new object (CR 400.7), so a placement on its previous
 // existence does not count; the walk forgets everything before the
 // source's last departure, the boundary counterCountBeforeLocked uses.
-func trekB28FirstChargeCountersOnThisThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Target != source.InstanceID || b33CountersPlacedDelta(ev, game.CounterCharge, g) <= 0 {
+func TrekB28FirstChargeCountersOnThisThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+	if ev.Target != source.InstanceID || B33CountersPlacedDelta(ev, game.CounterCharge, g) <= 0 {
 		return false
 	}
 	placedBefore := false
@@ -47,7 +47,7 @@ func trekB28FirstChargeCountersOnThisThisTurn(ev game.Event, source *game.Card, 
 			break
 		}
 		if prev.Kind == game.EventCounterPlaced && prev.Target == source.InstanceID &&
-			b33CountersPlacedDelta(prev, game.CounterCharge, g) > 0 {
+			B33CountersPlacedDelta(prev, game.CounterCharge, g) > 0 {
 			placedBefore = true
 			continue
 		}
@@ -68,7 +68,7 @@ func trekB28FirstChargeCountersOnThisThisTurn(ev game.Event, source *game.Card, 
 
 // trekB28TwoChargeCountersOnTheTarget is Warp Core's activation: two
 // charge counters on the targeted Spacecraft, if it is still legal.
-func trekB28TwoChargeCountersOnTheTarget(g *game.Game, item *game.StackItem) error {
+func TrekB28TwoChargeCountersOnTheTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -81,6 +81,6 @@ func trekB28TwoChargeCountersOnTheTarget(g *game.Game, item *game.StackItem) err
 // trekB28TappedNewPlanet is the Anomalies' last sentence: "Create a
 // tapped Planet land token named New Planet with '{T}: Add one mana of
 // any color.'" — the printed New Planet (ttrk 27) Genesis Effect makes.
-func trekB28TappedNewPlanet() Applier {
-	return CreateTokenAdvanced{Spec: Token(trekB16NewPlanetToken()).EntersTapped(), N: 1}
+func TrekB28TappedNewPlanet() Applier {
+	return CreateTokenAdvanced{Spec: Token(TrekB16NewPlanetToken()).EntersTapped(), N: 1}
 }

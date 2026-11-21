@@ -11,13 +11,13 @@ import (
 // Pest creature token with "Whenever this token attacks, you gain 1 life."
 // (Essenceknit Scholar). It is not the Strixhaven Pest of PestToken, whose
 // life comes when it dies.
-func PestAttackToken() game.Card { return tokenFromCatalog(printedPestAttackToken) }
+func PestAttackToken() game.Card { return TokenFromCatalog(printedPestAttackToken) }
 
 // printedPestAttackToken is that Pest as PRINTED. "You" in a token's own
 // trigger is the token's controller (the item's Controller), so a Pest that
 // changes hands gains life for its new controller.
-func printedPestAttackToken() tokenTemplate {
-	return tokenTemplate{
+func printedPestAttackToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "pest-attack",
 		Card: game.Card{
 			Name:      "Pest",
@@ -39,7 +39,7 @@ func printedPestAttackToken() tokenTemplate {
 // is not a card (CR 111.7, it ceases to exist) and is not counted. The tally
 // only rises within a turn, so a trigger that held as the step began still
 // holds as it resolves (CR 603.4).
-func socB24CardsWerePutIntoExileThisTurn(g *game.Game) bool {
+func SocB24CardsWerePutIntoExileThisTurn(g *game.Game) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneExile {
 			continue

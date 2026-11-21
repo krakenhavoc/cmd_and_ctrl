@@ -17,9 +17,9 @@ import (
 // exiled card this turn." X is counted as the trigger resolves; with X of
 // zero, or an empty library, nothing is looked at. The exile is mandatory
 // (a floor of one), so the player picks which card of the look they keep.
-func cmdr2B09FlorianLook(g *game.Game, item *game.StackItem) error {
+func Cmdr2B09FlorianLook(g *game.Game, item *game.StackItem) error {
 	player := item.Controller
-	x := opponentLifeLostThisTurn(g, player)
+	x := OpponentLifeLostThisTurn(g, player)
 	if x <= 0 {
 		return nil
 	}
@@ -50,7 +50,7 @@ var cmdr2B09FlorianExile = game.RegisterChooseCardsThen("choose-cards/cmdr2-b09-
 	}
 	picked := r.Picked[0]
 	var rest []uuid.UUID
-	for _, id := range cardsStillInALibrary(g, r.Carry) {
+	for _, id := range CardsStillInALibrary(g, r.Carry) {
 		if id != picked {
 			rest = append(rest, id)
 		}
@@ -70,7 +70,7 @@ var cmdr2B09FlorianExile = game.RegisterChooseCardsThen("choose-cards/cmdr2-b09-
 // player, sacrifice it and return the exiled card to the battlefield
 // tapped.'" The dead Vampire must still be in a graveyard to be exiled, so
 // a card that has already left is not offered.
-func cmdr2B09TimotharOffer(g *game.Game, item *game.StackItem) error {
+func Cmdr2B09TimotharOffer(g *game.Game, item *game.StackItem) error {
 	dead := item.Trigger.Event.CardID
 	if z := g.FindCardZoneForEffect(dead); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
@@ -93,14 +93,14 @@ var cmdr2B09TimotharPaid = PayUnlessBranches("pay-unless/cmdr2-b09-timothar-exil
 			return nil
 		}
 		dead := r.Carry[0]
-		return ExileTarget{Target: dead, ThenTail: withCarry(ctx.ItemTail(cmdr2B09TimotharExiled), dead)}.Apply(ctx)
+		return ExileTarget{Target: dead, ThenTail: WithCarry(ctx.ItemTail(cmdr2B09TimotharExiled), dead)}.Apply(ctx)
 	}, nil)
 
 // cmdr2B09TimotharExiled makes the Bat for an exiled card; its own tail
 // links the card to the Bat and grants the Bat its trigger. An on-disk key:
 // never renamed, never reused.
 var cmdr2B09TimotharExiled = CardTail("cmdr2-b09-timothar/after-exile", func(ctx *Context, o game.TailOutcome) error {
-	dead := tailCarry0(o)
+	dead := TailCarry0(o)
 	if len(o.IDs) != 1 {
 		return nil
 	}
@@ -111,7 +111,7 @@ var cmdr2B09TimotharExiled = CardTail("cmdr2-b09-timothar/after-exile", func(ctx
 			Template: ctx.TextToken(TokenCard("1/1 black Bat with flying")),
 			Count:    1,
 		}},
-	}, withCarry(ctx.ItemTail(cmdr2B09TimotharBat), dead))
+	}, WithCarry(ctx.ItemTail(cmdr2B09TimotharBat), dead))
 })
 
 // cmdr2B09TimotharBat links the exiled card to the new Bat (CR 607.2a) and
@@ -119,7 +119,7 @@ var cmdr2B09TimotharExiled = CardTail("cmdr2-b09-timothar/after-exile", func(ctx
 // duration, so for as long as it is on the battlefield (CR 611.2a). An
 // on-disk key: never renamed, never reused.
 var cmdr2B09TimotharBat = CardTail("cmdr2-b09-timothar/bat", func(ctx *Context, o game.TailOutcome) error {
-	dead := tailCarry0(o)
+	dead := TailCarry0(o)
 	if len(o.IDs) != 1 || dead == uuid.Nil {
 		return nil
 	}
@@ -131,14 +131,14 @@ var cmdr2B09TimotharBat = CardTail("cmdr2-b09-timothar/bat", func(ctx *Context, 
 	ctx.Game.RelinkExiledWithForEffect(dead, game.PermissionCardRef(ref))
 	return GrantAbilitiesFor{
 		Target:   bat,
-		Keys:     []string{cmdr2B09TimotharBatKey},
+		Keys:     []string{Cmdr2B09TimotharBatKey},
 		Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), bat),
 		Label:    "Timothar, Baron of Bats — the Bat returns the exiled card",
 	}.Apply(ctx)
 })
 
 // cmdr2B09TimotharBatKey is the granted ability's bundle key.
-const cmdr2B09TimotharBatKey = "timothar-baron-of-bats/bat-returns"
+const Cmdr2B09TimotharBatKey = "timothar-baron-of-bats/bat-returns"
 
 // cmdr2B09BatReturnsTheCard is the Bat's granted effect: "sacrifice it and
 // return the exiled card to the battlefield tapped". The card is read off
@@ -146,7 +146,7 @@ const cmdr2B09TimotharBatKey = "timothar-baron-of-bats/bat-returns"
 // sacrificed, then the card returns tapped under the Bat controller's
 // control (CR 110.2a); with no linked card in exile only the sacrifice
 // happens.
-func cmdr2B09BatReturnsTheCard(g *game.Game, item *game.StackItem) error {
+func Cmdr2B09BatReturnsTheCard(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var cards []uuid.UUID
 	if ref, ok := g.SourceObjectForEffect(item); ok {
@@ -154,7 +154,7 @@ func cmdr2B09BatReturnsTheCard(g *game.Game, item *game.StackItem) error {
 			cards = append(cards, c.InstanceID)
 		}
 	}
-	if onBattlefield(g, item.SourceCardID) {
+	if OnBattlefield(g, item.SourceCardID) {
 		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
 			return err
 		}
@@ -173,7 +173,7 @@ func cmdr2B09BatReturnsTheCard(g *game.Game, item *game.StackItem) error {
 // battlefield returns as a new object (CR 400.7) under the trigger's
 // controller, and a card that has since left its zone is "nothing to
 // return".
-func cmdr2B09ReturnTheEventCardUnderYourControl(g *game.Game, item *game.StackItem) error {
+func Cmdr2B09ReturnTheEventCardUnderYourControl(g *game.Game, item *game.StackItem) error {
 	_, err := g.ReturnToBattlefieldForEffect(item.Trigger.Event.CardID, item.Controller, false)
 	if errors.Is(err, game.ErrCardNotFound) {
 		return nil
@@ -185,7 +185,7 @@ func cmdr2B09ReturnTheEventCardUnderYourControl(g *game.Game, item *game.StackIt
 // it" when the source has left the battlefield (Toothy, Imaginary Friend,
 // Bloodtracker): it counts the +1/+1 counters the permanent had as it left
 // (last-known information, CR 608.2h).
-func cmdr2B09DrawForEachCounterOnIt(g *game.Game, item *game.StackItem) error {
+func Cmdr2B09DrawForEachCounterOnIt(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	info, ok := ctx.SourcePermanent()
 	if !ok {

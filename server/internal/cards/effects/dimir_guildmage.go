@@ -29,7 +29,7 @@ func init() {
 				Cost:         ManaCost("{3}{U}"),
 				Targets:      TargetPlayer("target player"),
 				SorcerySpeed: true,
-				Effect: onTheTargetPlayer(func(ctx *Context, p uuid.UUID) error {
+				Effect: OnTheTargetPlayer(func(ctx *Context, p uuid.UUID) error {
 					return DrawCards{Player: p, N: 1}.Apply(ctx)
 				}),
 			},
@@ -39,8 +39,8 @@ func init() {
 				Cost:         ManaCost("{3}{B}"),
 				Targets:      TargetPlayer("target player"),
 				SorcerySpeed: true,
-				Effect: onTheTargetPlayer(func(ctx *Context, p uuid.UUID) error {
-					return discardOne(ctx.Game, ctx.Item, p)
+				Effect: OnTheTargetPlayer(func(ctx *Context, p uuid.UUID) error {
+					return DiscardOne(ctx.Game, ctx.Item, p)
 				}),
 			},
 		},
@@ -49,10 +49,10 @@ func init() {
 
 // onTheTargetPlayer runs `do` on the ability's target player while that
 // player is still a legal target (CR 608.2b).
-func onTheTargetPlayer(do func(ctx *Context, p uuid.UUID) error) Effect {
+func OnTheTargetPlayer(do func(ctx *Context, p uuid.UUID) error) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		p, ok := firstLegalPlayerTarget(ctx)
+		p, ok := FirstLegalPlayerTarget(ctx)
 		if !ok {
 			return nil
 		}

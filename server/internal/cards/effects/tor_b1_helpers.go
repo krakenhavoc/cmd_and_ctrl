@@ -15,7 +15,7 @@ import (
 // before anything is paid, so a caster with less life than that can't
 // claim the offer at all (CR 118.3), and the constructor keeps the
 // graveyard binding and the exile as the spell leaves the stack.
-func torB1FlashbackPayingLife(mana string, life int) game.AlternativeCost {
+func TorB1FlashbackPayingLife(mana string, life int) game.AlternativeCost {
 	fb := Flashback(mana)
 	fb.Label = "Flashback—" + mana + ", Pay " + strconv.Itoa(life) + " life"
 	fb.Life = life

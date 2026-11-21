@@ -28,7 +28,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			LandfallPaying("Thranduil, the Strategist — create a 1/1 green Elf", game.LandfallPayoff{Tokens: 1},
-				b34CreateTokens(thranduilElfToken, 1)),
+				B34CreateTokens(ThranduilElfToken, 1)),
 		},
 	})
 }
@@ -41,4 +41,4 @@ func thranduilOtherElvesYouControl(target *game.Card, _ *game.Game, source *game
 		target.Controller == source.Controller && target.HasSubtype(source.TextSubtype("Elf"))
 }
 
-func thranduilElfToken() game.Card { return TokenCard("1/1 green Elf") }
+func ThranduilElfToken() game.Card { return TokenCard("1/1 green Elf") }

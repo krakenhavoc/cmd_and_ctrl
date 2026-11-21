@@ -32,7 +32,7 @@ import (
 // checkDiscardClause is the per-clause half: the count form demands a
 // card, the hand form demands no count. `where` names the ability in
 // the panic ("ability 0", "mana ability 1").
-func checkDiscardClause(name, where string, dc *game.DiscardCost) {
+func CheckDiscardClause(name, where string, dc *game.DiscardCost) {
 	if dc == nil {
 		return
 	}
@@ -130,7 +130,7 @@ func checkDiscardXBesideOtherCosts(name, where string, cost game.AbilityCost) {
 
 // checkDiscardHandBesideHandCosts is the cross-component half, for an
 // activated ability's cost.
-func checkDiscardHandBesideHandCosts(name, where string, cost game.AbilityCost) {
+func CheckDiscardHandBesideHandCosts(name, where string, cost game.AbilityCost) {
 	if !cost.DiscardCards.DiscardsHand() {
 		return
 	}
@@ -144,7 +144,7 @@ func checkDiscardHandBesideHandCosts(name, where string, cost game.AbilityCost) 
 // checkManaDiscardHandBesideHandCosts is the same rule for a mana
 // ability's cost, whose hand-card components are the exile-a-card and
 // exile-this-card ones (a Spirit Guide's source is in the hand).
-func checkManaDiscardHandBesideHandCosts(name, where string, cost ManaAbilityCost) {
+func CheckManaDiscardHandBesideHandCosts(name, where string, cost ManaAbilityCost) {
 	if !cost.DiscardCards.DiscardsHand() {
 		return
 	}

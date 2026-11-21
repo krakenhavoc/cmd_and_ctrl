@@ -25,23 +25,23 @@ func init() {
 		Purpose:      game.Purpose{Scry: 1},
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Lembas — scry 1, then draw a card", lembasScryThenDraw),
+			WhenThisEnters("Lembas — scry 1, then draw a card", LembasScryThenDraw),
 			WhenThisDies("Lembas — its owner shuffles it into their library", lembasShuffleBack),
 		},
-		Activated: []ActivatedAbility{samiFoodLifeAbility()},
+		Activated: []ActivatedAbility{SamiFoodLifeAbility()},
 	})
 }
 
-func lembasScryThenDraw(g *game.Game, item *game.StackItem) error {
+func LembasScryThenDraw(g *game.Game, item *game.StackItem) error {
 	c := item.Controller
 	ctx := NewContext(g, item)
-	return Scry{Player: c, N: 1, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
+	return Scry{Player: c, N: 1, ThenTail: ctx.TailN(ThenDrawCards, 1)}.Apply(ctx)
 }
 
 func lembasShuffleBack(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	id := item.SourceCardID
-	if !diedCardStillInGraveyard(ctx, id) {
+	if !DiedCardStillInGraveyard(ctx, id) {
 		return nil
 	}
 	card, ok := g.LookupCardForEffect(id)

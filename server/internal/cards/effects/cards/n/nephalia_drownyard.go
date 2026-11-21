@@ -1,0 +1,40 @@
+package cardsn
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Nephalia Drownyard — Land (EDHREC rank 3318):
+//
+//	"{T}: Add {C}.
+//	 {1}{U}{B}, {T}: Target player mills three cards."
+//
+// The Innistrad mill land. The mana ability is a plain colorless
+// tap; the mill is a CR 602 activation with a mana and a tap
+// component, the player picked at announce and re-checked at
+// resolution. Either player is a legal target — milling yourself is
+// the graveyard deck's use of it.
+//
+// A library holding fewer than three mills what it has: a mill does
+// not lose the game (CR 701.17b), only a draw from an empty library
+// does (CR 704.5b).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "6429b4ed-1845-4643-9a3d-85f7c12f2bba",
+		Name:         "Nephalia Drownyard",
+		Completeness: effects.CompletenessFull,
+		ManaAbilities: []effects.ManaAbility{{
+			Cost:     effects.ManaAbilityCost{Tap: true},
+			Produced: "{C}",
+			Label:    "Add {C}",
+		}},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{1}{U}{B}, {T}: Target player mills three cards.",
+			Cost:    effects.Plus(effects.ManaCost("{1}{U}{B}"), effects.TapCost()),
+			Targets: effects.TargetPlayer("target player"),
+			Effect:  effects.B31MillChosenPlayer(3),
+		}},
+	})
+}

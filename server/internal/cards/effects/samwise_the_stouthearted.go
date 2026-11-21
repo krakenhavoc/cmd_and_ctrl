@@ -25,7 +25,7 @@ import (
 func init() {
 	enters := WhenThisEnters("Samwise the Stouthearted — return a permanent card that died this turn, then the Ring tempts you", samwiseReturn)
 	enters.Targets = TargetCardInGraveyard("up to one target permanent card in your graveyard that was put there from the battlefield this turn",
-		YouOwn(), Permanent(), putThereFromTheBattlefieldThisTurn).WithCount(0, 1)
+		YouOwn(), Permanent(), PutThereFromTheBattlefieldThisTurn).WithCount(0, 1)
 	Register(Spec{
 		OracleID:        "0e26b429-0469-474a-818a-2d4696c38a05",
 		Name:            "Samwise the Stouthearted",
@@ -37,14 +37,14 @@ func init() {
 }
 
 // putThereFromTheBattlefieldThisTurn is the clause's predicate.
-func putThereFromTheBattlefieldThisTurn(g *game.Game, _ uuid.UUID, c game.Card) bool {
-	return putIntoGraveyardFromBattlefieldThisTurn(g, c.InstanceID)
+func PutThereFromTheBattlefieldThisTurn(g *game.Game, _ uuid.UUID, c game.Card) bool {
+	return PutIntoGraveyardFromBattlefieldThisTurn(g, c.InstanceID)
 }
 
 // samwiseReturn is the enters ability's body.
 func samwiseReturn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if err := returnLegalGraveyardTargetsToHand(ctx); err != nil {
+	if err := ReturnLegalGraveyardTargetsToHand(ctx); err != nil {
 		return err
 	}
 	return TheRingTemptsYou{}.Apply(ctx)

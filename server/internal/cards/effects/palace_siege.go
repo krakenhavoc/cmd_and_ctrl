@@ -28,17 +28,17 @@ func init() {
 		AsEnters:     ChooseOptionAsEnters("Palace Siege", "Khans", "Dragons"),
 		Triggered: []game.TriggeredAbility{
 			WhenChosen("Khans", Targeting(
-				AtYourUpkeep("Palace Siege — return target creature card to your hand", palaceSiegeReturn),
+				AtYourUpkeep("Palace Siege — return target creature card to your hand", PalaceSiegeReturn),
 				TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature()))),
 			WhenChosen("Dragons", AtYourUpkeep("Palace Siege — each opponent loses 2 life and you gain 2 life",
-				palaceSiegeDrain)),
+				PalaceSiegeDrain)),
 		},
 	})
 }
 
 // palaceSiegeReturn is the Khans body: the chosen creature card, if it
 // is still a legal target, goes to its owner's hand.
-func palaceSiegeReturn(g *game.Game, item *game.StackItem) error {
+func PalaceSiegeReturn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
@@ -47,8 +47,8 @@ func palaceSiegeReturn(g *game.Game, item *game.StackItem) error {
 }
 
 // palaceSiegeDrain is the Dragons body.
-func palaceSiegeDrain(g *game.Game, item *game.StackItem) error {
-	if err := eachOpponentLosesLife(g, item, 2); err != nil {
+func PalaceSiegeDrain(g *game.Game, item *game.StackItem) error {
+	if err := EachOpponentLosesLifeNow(g, item, 2); err != nil {
 		return err
 	}
 	return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))

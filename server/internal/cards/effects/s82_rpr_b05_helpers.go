@@ -12,12 +12,12 @@ import (
 // creature on the battlefield that its controller controls and that is not
 // the source. The engine emits one EventCounterPlaced per permanent per
 // placement, so "one or more" is the event itself.
-func plusCountersOnAnotherCreatureYouControl(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Target == source.InstanceID || b33CountersPlacedDelta(ev, game.CounterPlusOne, g) <= 0 {
+func PlusCountersOnAnotherCreatureYouControl(ev game.Event, source *game.Card, g *game.Game) bool {
+	if ev.Target == source.InstanceID || B33CountersPlacedDelta(ev, game.CounterPlusOne, g) <= 0 {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Target)
-	if !ok || !onBattlefield(g, ev.Target) {
+	if !ok || !OnBattlefield(g, ev.Target) {
 		return false
 	}
 	return c.IsCreature() && c.Controller == source.Controller
@@ -26,9 +26,9 @@ func plusCountersOnAnotherCreatureYouControl(ev game.Event, source *game.Card, g
 // plusCountersOnThis is the condition of "Whenever one or more +1/+1
 // counters are put on this creature" (Constable of the Realm): the event
 // PUT counters on the source itself while it is on the battlefield.
-func plusCountersOnThis(ev game.Event, source *game.Card, g *game.Game) bool {
-	return ev.Target == source.InstanceID && onBattlefield(g, ev.Target) &&
-		b33CountersPlacedDelta(ev, game.CounterPlusOne, g) > 0
+func PlusCountersOnThis(ev game.Event, source *game.Card, g *game.Game) bool {
+	return ev.Target == source.InstanceID && OnBattlefield(g, ev.Target) &&
+		B33CountersPlacedDelta(ev, game.CounterPlusOne, g) > 0
 }
 
 // attackerWithPlusCounterYouControl is the condition of "Whenever a
@@ -36,19 +36,19 @@ func plusCountersOnThis(ev game.Event, source *game.Card, g *game.Game) bool {
 // Scaleguard): the declared attacker is a creature its controller controls
 // (the source's controller), and it has a +1/+1 counter on it as the
 // attack is declared. The attacker may be the source itself.
-func attackerWithPlusCounterYouControl(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
+func AttackerWithPlusCounterYouControl(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && onBattlefield(g, ev.CardID) && c.IsCreature() && c.Counters[game.CounterPlusOne] > 0
+	return ok && OnBattlefield(g, ev.CardID) && c.IsCreature() && c.Counters[game.CounterPlusOne] > 0
 }
 
 // targetCreatureTheAttackedPlayerControls is the target clause of "tap
 // target creature defending player controls" for an attacker that is not the
 // source: the defending player is the one the declared attacker (the
 // event's CardID) attacks, read off the event's attack target.
-func targetCreatureTheAttackedPlayerControls(tc game.TriggerContext, _ *game.Card, g *game.Game) *game.TargetSpec {
+func TargetCreatureTheAttackedPlayerControls(tc game.TriggerContext, _ *game.Card, g *game.Game) *game.TargetSpec {
 	defender := g.DefendingPlayerForAttackForEffect(tc.Event.Target)
 	if defender == uuid.Nil {
 		return nil
@@ -68,20 +68,20 @@ func targetCreatureTheAttackedPlayerControls(tc game.TriggerContext, _ *game.Car
 // source's controller through the layers as the event happens, for
 // composing with AllOf. condControlTwoOrMoreOfSubtype is the resolution
 // half (CR 603.4).
-func controlTwoOrMoreOfSubtype(subtype string) When {
+func ControlTwoOrMoreOfSubtype(subtype string) When {
 	return func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return countControlled(g, source.Controller, func(c game.Card) bool { return c.HasSubtype(subtype) }) >= 2
+		return CountControlled(g, source.Controller, func(c game.Card) bool { return c.HasSubtype(subtype) }) >= 2
 	}
 }
 
 // condControlTwoOrMoreOfSubtype is the resolution recheck of the same
 // condition: it counts the permanents the controller controls through the
 // layers, so a land that is a Mountain by an effect counts.
-func condControlTwoOrMoreOfSubtype(subtype string) CondBoard {
+func CondControlTwoOrMoreOfSubtype(subtype string) CondBoard {
 	return CondBoard{
 		Name: "you control two or more " + subtype + "s",
 		Test: func(ctx *Context) bool {
-			return countControlled(ctx.Game, ctx.Controller(), func(c game.Card) bool { return c.HasSubtype(subtype) }) >= 2
+			return CountControlled(ctx.Game, ctx.Controller(), func(c game.Card) bool { return c.HasSubtype(subtype) }) >= 2
 		},
 	}
 }

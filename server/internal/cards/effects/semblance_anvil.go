@@ -45,7 +45,7 @@ func init() {
 // record; it must match the label the trigger is built with.
 const semblanceAnvilImprintLabel = "Semblance Anvil — exile a nonland card from your hand"
 
-var semblanceCardTypes = []string{"artifact", "creature", "enchantment", "instant", "sorcery", "planeswalker", "battle", "kindred", "land"}
+var SemblanceCardTypes = []string{"artifact", "creature", "enchantment", "instant", "sorcery", "planeswalker", "battle", "kindred", "land"}
 
 func semblanceAnvilImprint(g *game.Game, item *game.StackItem) error {
 	var candidates []uuid.UUID
@@ -75,12 +75,12 @@ func semblanceAnvilImprint(g *game.Game, item *game.StackItem) error {
 // spellSharesTypeWithImprint passes when the spell shares a card type
 // with a card imprinted on the modifier's source.
 func spellSharesTypeWithImprint(q game.CostQuery) bool {
-	for _, id := range b27ExiledWith(q.Game, q.Source.InstanceID, semblanceAnvilImprintLabel) {
+	for _, id := range B27ExiledWith(q.Game, q.Source.InstanceID, semblanceAnvilImprintLabel) {
 		exiled, ok := q.Game.LookupCardForEffect(id)
 		if !ok {
 			continue
 		}
-		for _, t := range semblanceCardTypes {
+		for _, t := range SemblanceCardTypes {
 			if exiled.HasCardType(t) && q.Card.HasCardType(t) {
 				return true
 			}

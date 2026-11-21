@@ -33,13 +33,13 @@ import (
 
 // apnapOrder returns the members of `players` that are still in the game, in
 // APNAP order (CR 101.4). A player named twice is listed once.
-func apnapOrder(g *game.Game, players []uuid.UUID) []uuid.UUID {
+func ApnapOrder(g *game.Game, players []uuid.UUID) []uuid.UUID {
 	want := make(map[uuid.UUID]bool, len(players))
 	for _, id := range players {
 		want[id] = true
 	}
 	var out []uuid.UUID
-	for _, id := range apnapPlayers(g) {
+	for _, id := range ApnapPlayers(g) {
 		if want[id] {
 			out = append(out, id)
 		}
@@ -64,9 +64,9 @@ type eachPlayerStepFunc func(ctx *Context, player uuid.UUID, n int, step game.Ke
 // order, once the last player is done. Every other field (Player, Source,
 // N, Asked) is the card's, carried unchanged. Call it once, from a
 // package-level var.
-func registerEachPlayerStep(key string, act eachPlayerStepFunc) game.TailRef {
+func RegisterEachPlayerStep(key string, act eachPlayerStepFunc) game.TailRef {
 	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
-		remaining, landed := unpackIDPair(o.Tail.Carry)
+		remaining, landed := UnpackIDPair(o.Tail.Carry)
 		landed = append(append([]uuid.UUID(nil), landed...), o.IDs...)
 		return eachPlayerStepFrom(g, o.Tail, remaining, o.Tail.Nums, landed, act)
 	})
@@ -83,8 +83,8 @@ func registerEachPlayerStep(key string, act eachPlayerStepFunc) game.TailRef {
 // a variable the continuations share: an undo across a prompt replays the
 // tail, and a list built up in a captured slice would count the first
 // run's cards twice (the property Dread Summons, #893, needs).
-func eachPlayerInTurn(g *game.Game, step game.KeyedTail, players []uuid.UUID, nums func(uuid.UUID) int, done game.KeyedTail, act eachPlayerStepFunc) error {
-	order := apnapOrder(g, players)
+func EachPlayerInTurn(g *game.Game, step game.KeyedTail, players []uuid.UUID, nums func(uuid.UUID) int, done game.KeyedTail, act eachPlayerStepFunc) error {
+	order := ApnapOrder(g, players)
 	var ns []int
 	if nums != nil {
 		for _, id := range order {
@@ -115,9 +115,9 @@ func eachPlayerStepFrom(g *game.Game, step game.KeyedTail, remaining []uuid.UUID
 	if len(nums) > 0 {
 		n, rest = nums[0], append([]int(nil), nums[1:]...)
 	}
-	step.Carry = packIDLists(remaining[1:], landed)
+	step.Carry = PackIDLists(remaining[1:], landed)
 	step.Nums = rest
-	return act(tailContext(g, step), head, n, step)
+	return act(TailContext(g, step), head, n, step)
 }
 
 // millEachPlayerInTurn is "each of these players mills N cards": each library
@@ -128,12 +128,12 @@ func eachPlayerStepFrom(g *game.Game, step game.KeyedTail, remaining []uuid.UUID
 // read as the instruction begins, as the paper instruction does, and not
 // after an earlier player's mill. A player whose N is not positive mills
 // nothing. `done` may be zero.
-func millEachPlayerInTurn(ctx *Context, players []uuid.UUID, n func(player uuid.UUID) int, done game.KeyedTail) error {
-	return eachPlayerInTurn(ctx.Game, ctx.ItemTail(millEachStep), players, n, done, millEachAct)
+func MillEachPlayerInTurn(ctx *Context, players []uuid.UUID, n func(player uuid.UUID) int, done game.KeyedTail) error {
+	return EachPlayerInTurn(ctx.Game, ctx.ItemTail(millEachStep), players, n, done, millEachAct)
 }
 
 // millEachStep is one step of millEachPlayerInTurn's chain. An on-disk key.
-var millEachStep = registerEachPlayerStep("each-player/mill-step", millEachAct)
+var millEachStep = RegisterEachPlayerStep("each-player/mill-step", millEachAct)
 
 // millEachAct mills `n` cards from one player's library, the keyed mill
 // (#4253 slice 9), so a leg's CR 616 prompt is a restore point.
@@ -151,7 +151,7 @@ func millEachAct(ctx *Context, player uuid.UUID, n int, step game.KeyedTail) err
 // exile (Game.ExileTopWithPermissionKeyedForEffect), whose tail is the next
 // step, carrying the players still to go and the cards exiled so far. A CR
 // 616.1 prompt any library's exile pauses on is a restore point.
-func exileTopEachPlayerInTurn(ctx *Context, players []uuid.UUID, template ExileTopWithPermission, done game.KeyedTail) error {
+func ExileTopEachPlayerInTurn(ctx *Context, players []uuid.UUID, template ExileTopWithPermission, done game.KeyedTail) error {
 	if template.FaceDown || template.TotalManaValueAtMost != nil || template.EachManaValueAtMost != nil {
 		return fmt.Errorf("exileTopEachPlayerInTurn: the face-down and budgeted forms have no continuation")
 	}
@@ -159,8 +159,8 @@ func exileTopEachPlayerInTurn(ctx *Context, players []uuid.UUID, template ExileT
 	if n <= 0 {
 		n = 1
 	}
-	perm := template.permission()
-	step := game.KeyedTail{Ref: exileTopEachStep, Source: ctx.Source(), N: n, Permission: &perm}
+	perm := template.Permission()
+	step := game.KeyedTail{Ref: ExileTopEachStep, Source: ctx.Source(), N: n, Permission: &perm}
 	if !template.GrantToOwner {
 		// uuid.Nil is "each library's owner".
 		step.Player = template.GrantTo
@@ -169,7 +169,7 @@ func exileTopEachPlayerInTurn(ctx *Context, players []uuid.UUID, template ExileT
 		next := done
 		step.Next = &next
 	}
-	return exileTopEachFrom(ctx.Game, step, apnapOrder(ctx.Game, players), nil)
+	return ExileTopEachFrom(ctx.Game, step, ApnapOrder(ctx.Game, players), nil)
 }
 
 // exileTopEachStep is one step of exileTopEachPlayerInTurn's chain, told the
@@ -178,8 +178,8 @@ func exileTopEachPlayerInTurn(ctx *Context, players []uuid.UUID, template ExileT
 // Permission, N and Player the grant, its count and its holder (uuid.Nil
 // for each library's owner), and its Next the caller's tail, told every
 // card once the last library is done. An on-disk key.
-var exileTopEachStep = game.RegisterTail("each-player/exile-top-step", func(g *game.Game, o game.TailOutcome) error {
-	lists := unpackIDLists(o.Tail.Carry)
+var ExileTopEachStep = game.RegisterTail("each-player/exile-top-step", func(g *game.Game, o game.TailOutcome) error {
+	lists := UnpackIDLists(o.Tail.Carry)
 	var remaining, landed []uuid.UUID
 	if len(lists) > 0 {
 		remaining = lists[0]
@@ -188,13 +188,13 @@ var exileTopEachStep = game.RegisterTail("each-player/exile-top-step", func(g *g
 		landed = lists[1]
 	}
 	landed = append(append([]uuid.UUID(nil), landed...), o.IDs...)
-	return exileTopEachFrom(g, o.Tail, remaining, landed)
+	return ExileTopEachFrom(g, o.Tail, remaining, landed)
 })
 
 // exileTopEachFrom exiles from the head of `remaining`, the step's tail
 // carrying the rest, or hands `landed` to the caller's tail when no library
 // is left.
-func exileTopEachFrom(g *game.Game, step game.KeyedTail, remaining, landed []uuid.UUID) error {
+func ExileTopEachFrom(g *game.Game, step game.KeyedTail, remaining, landed []uuid.UUID) error {
 	if len(remaining) == 0 {
 		if step.Next == nil {
 			return nil
@@ -210,11 +210,11 @@ func exileTopEachFrom(g *game.Game, step game.KeyedTail, remaining, landed []uui
 	if step.Permission != nil {
 		perm = *step.Permission
 	}
-	step.Carry = packIDLists(remaining[1:], landed)
+	step.Carry = PackIDLists(remaining[1:], landed)
 	return g.ExileTopWithPermissionKeyedForEffect(head, grantee, step.N, perm, step)
 }
 
 // constantMill is the N of a mill that names one number for every player.
-func constantMill(n int) func(uuid.UUID) int {
+func ConstantMill(n int) func(uuid.UUID) int {
 	return func(uuid.UUID) int { return n }
 }

@@ -55,7 +55,7 @@ func ACreatureDealtDamageToEnchanted(ev game.Event, source *game.Card, _ game.Ch
 // enchanted planeswalker" (Teferi's Talent, Vivien's Talent). The
 // counter lands only while that planeswalker is still on the
 // battlefield.
-func putLoyaltyCounterOnEnchantedPlaneswalker(g *game.Game, item *game.StackItem) error {
+func PutLoyaltyCounterOnEnchantedPlaneswalker(g *game.Game, item *game.StackItem) error {
 	aura, ok := NewContext(g, item).SourcePermanent()
 	if !ok || aura.AttachedTo.Kind != game.TargetCard {
 		return nil

@@ -20,32 +20,32 @@ var (
 	// of the next end step" (Mangara's Blessing, Pure Intentions). The
 	// card is pinned as an OBJECT (CR 400.7): a card that has left the
 	// graveyard and come back is a new object and is left alone.
-	returnDiscardedToHandBody = game.DelayedBody("discard-by-opponent/return-to-hand",
+	ReturnDiscardedToHandBody = game.DelayedBody("discard-by-opponent/return-to-hand",
 		returnTheObjectFromGraveyardToHand)
 
 	// "Return this card from your graveyard to the battlefield with a
 	// +1/+1 counter on it at the beginning of the next end step" (Sand
 	// Golem). The counter is a CR 614.1c enters-with clause.
-	returnDiscardedWithCounterBody = game.DelayedBody("discard-by-opponent/return-with-counter",
+	ReturnDiscardedWithCounterBody = game.DelayedBody("discard-by-opponent/return-with-counter",
 		returnTheObjectFromGraveyardWithACounter)
 
 	// Pure Intentions' "return those cards from your graveyard to your
 	// hand": the card the discard event named rides on the item as its
 	// payload.
-	returnTheDiscardedCardBody = game.SimpleDelayedBody("discard-by-opponent/return-the-discarded-card",
+	ReturnTheDiscardedCardBody = game.SimpleDelayedBody("discard-by-opponent/return-the-discarded-card",
 		returnThePayloadCardFromGraveyardToHand)
 
 	// The condition of Pure Intentions' "whenever a spell or ability an
 	// opponent controls causes you to discard cards this turn": a discard
 	// by the delayed trigger's controller that a resolving spell or
 	// ability an opponent controls caused.
-	opponentCausedYourDiscardCondition = game.DelayedCondition("discard/opponent-caused-yours",
+	OpponentCausedYourDiscardCondition = game.DelayedCondition("discard/opponent-caused-yours",
 		opponentCausedYourDiscard)
 )
 
 // returnTheObjectFromGraveyardToHand is returnDiscardedToHandBody.
 func returnTheObjectFromGraveyardToHand(g *game.Game, item *game.StackItem, p game.EffectParams) error {
-	if !objectStillInAGraveyard(g, p.Object) {
+	if !ObjectStillInAGraveyard(g, p.Object) {
 		return nil
 	}
 	return ReturnFromGraveyard{Target: p.Object.ID, Dest: game.ZoneHand}.Apply(NewContext(g, item))
@@ -54,7 +54,7 @@ func returnTheObjectFromGraveyardToHand(g *game.Game, item *game.StackItem, p ga
 // returnTheObjectFromGraveyardWithACounter is returnDiscardedWithCounterBody:
 // the card returns under its owner's control with one +1/+1 counter.
 func returnTheObjectFromGraveyardWithACounter(g *game.Game, item *game.StackItem, p game.EffectParams) error {
-	if !objectStillInAGraveyard(g, p.Object) {
+	if !ObjectStillInAGraveyard(g, p.Object) {
 		return nil
 	}
 	_, err := g.ReturnFromGraveyardWithCountersForEffect(p.Object.ID, item.Controller, false,
@@ -81,7 +81,7 @@ func returnThePayloadCardFromGraveyardToHand(g *game.Game, item *game.StackItem)
 
 // objectStillInAGraveyard reports whether the card an ObjectRef names is
 // still that object, in a graveyard.
-func objectStillInAGraveyard(g *game.Game, o game.ObjectRef) bool {
+func ObjectStillInAGraveyard(g *game.Game, o game.ObjectRef) bool {
 	c, ok := g.LookupCardForEffect(o.ID)
 	if !ok || c.ObjectEpoch != o.Epoch {
 		return false
@@ -99,7 +99,7 @@ func opponentCausedYourDiscard(ev game.Event, dt *game.DelayedTrigger, _ *game.G
 // graveyard … at the beginning of the next end step" for the card a
 // discard trigger is about, if it is still in a graveyard as the trigger
 // resolves.
-func scheduleReturnOfThisCard(g *game.Game, item *game.StackItem, label string, body game.BodyRef) error {
+func ScheduleReturnOfThisCard(g *game.Game, item *game.StackItem, label string, body game.BodyRef) error {
 	id := item.SourceCardID
 	if g.AbilitySourceLeftBattlefieldForEffect(item) {
 		// The card is a different object than the one that was discarded
@@ -127,7 +127,7 @@ func scheduleReturnOfThisCard(g *game.Game, item *game.StackItem, label string, 
 // discarded card, as the object that was discarded (CR 400.7), comes back
 // from the graveyard, exile (madness, Rest in Peace), the top of a library
 // (Library of Leng) or the command zone, wherever the discard left it.
-func returnDiscardedCardToHand(g *game.Game, item *game.StackItem) error {
+func ReturnDiscardedCardToHand(g *game.Game, item *game.StackItem) error {
 	if g.AbilitySourceLeftBattlefieldForEffect(item) {
 		return nil
 	}

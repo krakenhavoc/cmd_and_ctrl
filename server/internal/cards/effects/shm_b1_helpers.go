@@ -12,13 +12,13 @@ import (
 // control another <colour> creature.": a layer 7c pump (CR 613.4c) on the
 // source alone, while shmB1WhileYouControlAnother holds. `letter` is the
 // colour as printed; `label` is the printed line.
-func shmB1Cohort(letter, label string) game.StaticAbility {
+func ShmB1Cohort(letter, label string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     label,
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: shmB1WhileYouControlAnother(letter),
-		Apply:     pumpBy(1, 1),
+		Apply:     PumpBy(1, 1),
 	}
 }
 
@@ -28,7 +28,7 @@ func shmB1Cohort(letter, label string) game.StaticAbility {
 // through its lens as g2OtherCreaturesYouControlOfColor reads it.
 func shmB1WhileYouControlAnother(letter string) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
-		if !selfCreature(target, g, source) {
+		if !SelfCreature(target, g, source) {
 			return false
 		}
 		color := source.TextColor(letter)

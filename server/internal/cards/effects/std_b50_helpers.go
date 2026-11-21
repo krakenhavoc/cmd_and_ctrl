@@ -12,14 +12,14 @@ import (
 // (CR 700.11): once for each permanent card of theirs put into their
 // graveyard from anywhere that was not already in a graveyard. descendedThisTurn's
 // walk, counted instead of stopped at the first. Caller holds g.mu.
-func timesDescendedThisTurn(g *game.Game, player uuid.UUID) int {
+func TimesDescendedThisTurn(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.NewZone != game.ZoneGraveyard || ev.OldZone == game.ZoneGraveyard || ev.CardID == uuid.Nil {
 			continue
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		if ok && c.Owner == player && isPermanentCard(c) {
+		if ok && c.Owner == player && IsPermanentCard(c) {
 			n++
 		}
 	}

@@ -28,15 +28,15 @@ func init() {
 		PrintedKeywords: []string{"reach"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return skewerSlingerFoe(ev, source.InstanceID) != uuid.Nil
-			}, "Skewer Slinger — 1 damage to that creature", skewerSlingerPokes),
+				return SkewerSlingerFoe(ev, source.InstanceID) != uuid.Nil
+			}, "Skewer Slinger — 1 damage to that creature", SkewerSlingerPokes),
 		},
 	})
 }
 
 // skewerSlingerFoe is the other creature of a block pair that names the
 // Slinger, or uuid.Nil when the pair does not name it.
-func skewerSlingerFoe(ev game.Event, self uuid.UUID) uuid.UUID {
+func SkewerSlingerFoe(ev game.Event, self uuid.UUID) uuid.UUID {
 	switch self {
 	case ev.CardID:
 		return ev.Target
@@ -46,13 +46,13 @@ func skewerSlingerFoe(ev game.Event, self uuid.UUID) uuid.UUID {
 	return uuid.Nil
 }
 
-func skewerSlingerPokes(g *game.Game, item *game.StackItem) error {
+func SkewerSlingerPokes(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
-	foe := skewerSlingerFoe(item.Trigger.Event, item.SourceCardID)
+	foe := SkewerSlingerFoe(item.Trigger.Event, item.SourceCardID)
 	if !ok || foe == uuid.Nil {
 		return nil
 	}

@@ -129,5 +129,5 @@ var facedownWardBody = game.SimpleDelayedBody("facedown/ward", func(g *game.Game
 	if item.Trigger == nil {
 		return nil
 	}
-	return wardPayOrCounter(g, item, item.Trigger.Event.StackItemID, item.Trigger.Event.Actor, WardMana(faceDownWardCost))
+	return WardPayOrCounter(g, item, item.Trigger.Event.StackItemID, item.Trigger.Event.Actor, WardMana(faceDownWardCost))
 })

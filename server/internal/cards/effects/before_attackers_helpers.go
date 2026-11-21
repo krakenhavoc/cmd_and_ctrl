@@ -14,10 +14,10 @@ import (
 // target that left is skipped, not an error).
 
 // boostTargetUntilEOT is "target creature gets +P/+T until end of turn".
-func boostTargetUntilEOT(label string, power, toughness int) Effect {
+func BoostTargetUntilEOT(label string, power, toughness int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -27,10 +27,10 @@ func boostTargetUntilEOT(label string, power, toughness int) Effect {
 
 // targetCantBeBlockedThisTurn is "target creature can't be blocked this
 // turn" (Zhuge Jin), Access Tunnel's body.
-func targetCantBeBlockedThisTurn(name string) Effect {
+func TargetCantBeBlockedThisTurn(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -43,19 +43,19 @@ func targetCantBeBlockedThisTurn(name string) Effect {
 }
 
 // gainOneLifeEffect is "you gain 1 life" (Temple Elder, Shu Farmer).
-func gainOneLifeEffect(g *game.Game, item *game.StackItem) error {
+func GainOneLifeEffect(g *game.Game, item *game.StackItem) error {
 	return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
 }
 
 // drawOneCardEffect is "draw a card" (Talas Researcher, Lu Su).
-func drawOneCardEffect(g *game.Game, item *game.StackItem) error {
+func DrawOneCardEffect(g *game.Game, item *game.StackItem) error {
 	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 }
 
 // targetOpponentDiscards is "target opponent discards N cards" (Cao
 // Cao's two, Cunning Advisor's one): the opponent picks, a hand smaller
 // than N gives up what it has (CR 701.9a).
-func targetOpponentDiscards(n int) Effect {
+func TargetOpponentDiscards(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -77,7 +77,7 @@ func targetOpponentDiscards(n int) Effect {
 // your graveyard to the battlefield" (Loyal Retainers): the announced
 // card, if it is still in the graveyard, comes back under the
 // ability's controller's control.
-func reanimateChosenUnderYourControl(_ string) Effect {
+func ReanimateChosenUnderYourControl(_ string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -92,7 +92,7 @@ func reanimateChosenUnderYourControl(_ string) Effect {
 
 // norwoodPriestessPutsOne is "you may put a green creature card from
 // your hand onto the battlefield".
-func norwoodPriestessPutsOne(g *game.Game, item *game.StackItem) error {
+func NorwoodPriestessPutsOne(g *game.Game, item *game.StackItem) error {
 	return PutFromHandOntoBattlefield{
 		Match:    And(Creature(), OfColor("G")),
 		Optional: true,
@@ -105,7 +105,7 @@ func norwoodPriestessPutsOne(g *game.Game, item *game.StackItem) error {
 // source is returned only while it is the same object that activated
 // the ability (BounceToHand's #1432 guard), and the target only if it
 // is still legal; each half stands alone when the other is gone.
-func bounceThisAndAnotherTarget(g *game.Game, item *game.StackItem) error {
+func BounceThisAndAnotherTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if err := (BounceToHand{Target: item.SourceCardID}).Apply(ctx); err != nil {
 		return err
@@ -124,7 +124,7 @@ func bounceThisAndAnotherTarget(g *game.Game, item *game.StackItem) error {
 // Beauty): the two clauses in printed order, each skipped when its
 // target is gone by resolution (CR 608.2b). The second may be the
 // creature the first just destroyed, which is then not there to destroy.
-func diaochanDestroysTwo(g *game.Game, item *game.StackItem) error {
+func DiaochanDestroysTwo(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for slot := 0; slot < 2; slot++ {
 		t, ok := ctx.ClauseTarget(slot)

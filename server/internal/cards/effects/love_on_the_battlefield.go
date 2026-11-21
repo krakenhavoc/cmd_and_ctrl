@@ -24,7 +24,7 @@ func init() {
 		Name:         "Love on the Battlefield",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventAttack, loveOnTheBattlefieldExactlyTwo,
+			OncePerBatch(On(game.EventAttack, LoveOnTheBattlefieldExactlyTwo,
 				"Love on the Battlefield — the two attackers gain first strike, draw a card, and grow when they hit a player",
 				loveOnTheBattlefieldResolve)),
 		},
@@ -32,13 +32,13 @@ func init() {
 }
 
 // loveOnTheBattlefieldExactlyTwo is "you attack with exactly two creatures".
-func loveOnTheBattlefieldExactlyTwo(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return attackDeclaredByYou(ev, source.Controller) && len(b13AttackingCreaturesYouControl(g, source.Controller)) == 2
+func LoveOnTheBattlefieldExactlyTwo(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return AttackDeclaredByYou(ev, source.Controller) && len(B13AttackingCreaturesYouControl(g, source.Controller)) == 2
 }
 
 func loveOnTheBattlefieldResolve(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item).asGroupMember()
-	pair := b13AttackingCreaturesYouControl(g, item.Controller)
+	ctx := NewContext(g, item).AsGroupMember()
+	pair := B13AttackingCreaturesYouControl(g, item.Controller)
 	for _, id := range pair {
 		if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{"first strike"}, Label: "Love on the Battlefield — first strike"}).Apply(ctx); err != nil {
 			return err
@@ -52,7 +52,7 @@ func loveOnTheBattlefieldResolve(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	for _, id := range pair {
-		if err := whenThatCreatureHitsAPlayer(ctx, id, "Love on the Battlefield — put a +1/+1 counter on it",
+		if err := WhenThatCreatureHitsAPlayer(ctx, id, "Love on the Battlefield — put a +1/+1 counter on it",
 			false, until, plusOneCounterOnThePayloadBody); err != nil {
 			return err
 		}

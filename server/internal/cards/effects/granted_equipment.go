@@ -29,7 +29,7 @@ func AreAlsoEquipment(label string, applies func(target *game.Card, g *game.Game
 		Layer:     game.Layer4Type,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			if !eotHasType(c.Types, "Artifact") || eotHasType(c.Subtypes, "Equipment") {
+			if !EotHasType(c.Types, "Artifact") || EotHasType(c.Subtypes, "Equipment") {
 				return
 			}
 			c.Subtypes = append(append([]string(nil), c.Subtypes...), "Equipment")
@@ -40,6 +40,6 @@ func AreAlsoEquipment(label string, applies func(target *game.Card, g *game.Game
 
 // equipmentYouControl is "Equipment you control": the source's
 // controller's permanents with the Equipment subtype, read post-layer.
-func equipmentYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func EquipmentYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.HasSubtype("Equipment")
 }

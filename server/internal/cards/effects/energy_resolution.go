@@ -20,7 +20,7 @@ import (
 // Cards whose paid half is the same sentence share one key (the Thriving
 // cycle's counter, the Aether Chasers' Servo), the way mayPayDrawACard
 // does. The key is an on-disk identity: never renamed, never reused.
-func energyPaid(key string, then Effect) game.PayUnlessElse {
+func EnergyPaid(key string, then Effect) game.PayUnlessElse {
 	return PayUnlessBranches(key, func(ctx *Context, _ game.PayUnlessAnswer) error {
 		return then(ctx.Game, ctx.Item)
 	}, nil)
@@ -28,7 +28,7 @@ func energyPaid(key string, then Effect) game.PayUnlessElse {
 
 // energyDeclined is energyPaid's mirror, for "<then> unless you pay N
 // {E}": `then` runs when the energy was not paid.
-func energyDeclined(key string, then Effect) game.PayUnlessElse {
+func EnergyDeclined(key string, then Effect) game.PayUnlessElse {
 	return PayUnlessBranches(key, nil, func(ctx *Context, _ game.PayUnlessAnswer) error {
 		return then(ctx.Game, ctx.Item)
 	})
@@ -38,10 +38,10 @@ func energyDeclined(key string, then Effect) game.PayUnlessElse {
 var (
 	// energyPlusOneCounterOnThis is the Thriving cycle's and Scrapper
 	// Champion's "put a +1/+1 counter on it".
-	energyPlusOneCounterOnThis = energyPaid("pay-unless/energy-plus-one-counter-on-this", thisStillHere(plusOneCountersOnThis(1)))
+	EnergyPlusOneCounterOnThis = EnergyPaid("pay-unless/energy-plus-one-counter-on-this", ThisStillHere(PlusOneCountersOnThis(1)))
 	// energyCreateServo is the Aether Chaser cycle's "create a 1/1
 	// colorless Servo artifact creature token".
-	energyCreateServo = energyPaid("pay-unless/energy-create-servo", createServo)
+	EnergyCreateServo = EnergyPaid("pay-unless/energy-create-servo", createServo)
 )
 
 // whenThisAttacksMayPayEnergy is "Whenever this creature attacks, you
@@ -50,13 +50,13 @@ var (
 // to <what>?". The prompt holds the declare attackers step, so what is
 // bought lands before blockers and damage. `then` is registered
 // (energyPaid), so the prompt is a restore point.
-func whenThisAttacksMayPayEnergy(name string, n int, what string, then game.PayUnlessElse) game.TriggeredAbility {
-	return WheneverThisAttacks(name+" — you may pay "+EnergySymbols(n), mayPayEnergyThen(name, n, what, then))
+func WhenThisAttacksMayPayEnergy(name string, n int, what string, then game.PayUnlessElse) game.TriggeredAbility {
+	return WheneverThisAttacks(name+" — you may pay "+EnergySymbols(n), MayPayEnergyThen(name, n, what, then))
 }
 
 // mayPayEnergyThen is the body of "you may pay N {E}. If you do, <then>"
 // as a trigger's effect, for any trigger condition.
-func mayPayEnergyThen(name string, n int, what string, then game.PayUnlessElse) Effect {
+func MayPayEnergyThen(name string, n int, what string, then game.PayUnlessElse) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return MayPayEnergy{
 			N:        n,
@@ -69,9 +69,9 @@ func mayPayEnergyThen(name string, n int, what string, then game.PayUnlessElse) 
 // thisStillHere runs `then` only while the source is the same permanent
 // that triggered (CR 400.7): "put a +1/+1 counter on it" means the
 // creature that attacked, not a new object with its name.
-func thisStillHere(then Effect) Effect {
+func ThisStillHere(then Effect) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !sourceIsStillThisPermanent(g, item) {
+		if !SourceIsStillThisPermanent(g, item) {
 			return nil
 		}
 		return then(g, item)
@@ -86,19 +86,19 @@ func createServo(g *game.Game, item *game.StackItem) error {
 // energySacrificeThis is the decline of "sacrifice this permanent unless
 // you pay N {E}", shared by Lathnu Hellion, Liberty Prime and Static Prison
 // (#4289): the permanent that triggered, not a new object (CR 400.7).
-var energySacrificeThis = PayUnlessBranches("pay-unless/energy-sacrifice-this", nil,
-	func(ctx *Context, _ game.PayUnlessAnswer) error { return sacrificeThisIfStillHere(ctx) })
+var EnergySacrificeThis = PayUnlessBranches("pay-unless/energy-sacrifice-this", nil,
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return SacrificeThisIfStillHere(ctx) })
 
 // sacrificeThisUnlessYouPayEnergy is "sacrifice this permanent unless
 // you pay N {E}" (CR 118.12a) as a trigger's effect. Declining, or being
 // short, sacrifices it — the permanent that triggered, not a new object
 // (CR 400.7).
-func sacrificeThisUnlessYouPayEnergy(name, permanent string, n int) Effect {
+func SacrificeThisUnlessYouPayEnergy(name, permanent string, n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return PayEnergyUnless{
 			N:        n,
 			Question: name + " — pay " + EnergySymbols(n) + ", or sacrifice " + permanent + "?",
-			Else:     energySacrificeThis,
+			Else:     EnergySacrificeThis,
 		}.Apply(NewContext(g, item))
 	}
 }
@@ -107,7 +107,7 @@ func sacrificeThisUnlessYouPayEnergy(name, permanent string, n int) Effect {
 // to that permanent": the damage that destroys the spell's first target —
 // a creature's toughness less the damage already marked on it, a
 // planeswalker's loyalty (CR 120.3c). Zero names no goal.
-func lethalDamageGoal(ctx *Context) int {
+func LethalDamageGoal(ctx *Context) int {
 	if ctx.Item == nil || len(ctx.Item.Targets) == 0 {
 		return 0
 	}
@@ -129,7 +129,7 @@ func lethalDamageGoal(ctx *Context) int {
 // Galvanic Discharge's sentence: "Choose target <permanent>. You get N
 // {E}, then you may pay any amount of {E}. <This> deals that much damage
 // to that <permanent>."
-func getEnergyThenPayAnyAmountToDamageTarget(name string, n int) func(item *game.StackItem, ctx *Context) error {
+func GetEnergyThenPayAnyAmountToDamageTarget(name string, n int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 {
 			return nil
@@ -140,8 +140,8 @@ func getEnergyThenPayAnyAmountToDamageTarget(name string, n int) func(item *game
 		return PayEnergyAmount{
 			Question: name + " — pay any amount of {E} for that much damage",
 			Unit:     game.PayAmountDamage,
-			Goal:     lethalDamageGoal,
-			Then:     dealThatMuchDamageToTheTarget,
+			Goal:     LethalDamageGoal,
+			Then:     DealThatMuchDamageToTheTarget,
 		}.Apply(ctx)
 	}
 }
@@ -149,7 +149,7 @@ func getEnergyThenPayAnyAmountToDamageTarget(name string, n int) func(item *game
 // dealThatMuchDamageToTheTarget is "<this> deals that much damage to that
 // <permanent>" (#4294): the amount paid, dealt to the first target of the
 // item that asked. One key for every card that says it.
-var dealThatMuchDamageToTheTarget = NumberThen("number/deal-that-much-damage-to-the-target",
+var DealThatMuchDamageToTheTarget = NumberThen("number/deal-that-much-damage-to-the-target",
 	func(ctx *Context, r game.NumberAnswer) error {
 		if r.Number <= 0 || ctx.Item == nil || len(ctx.Item.Targets) == 0 {
 			return nil
@@ -160,11 +160,11 @@ var dealThatMuchDamageToTheTarget = NumberThen("number/deal-that-much-damage-to-
 // voltaicBrawlerPump is Voltaic Brawler's "it gets +1/+1 and gains
 // trample until end of turn": two until-end-of-turn effects on the same
 // creature, each refusing a new object (CR 400.7).
-func voltaicBrawlerPump(g *game.Game, item *game.StackItem) error {
-	if err := thisGetsUntilEndOfTurn(1, 1, "Voltaic Brawler — +1/+1 until end of turn")(g, item); err != nil {
+func VoltaicBrawlerPump(g *game.Game, item *game.StackItem) error {
+	if err := ThisGetsUntilEndOfTurn(1, 1, "Voltaic Brawler — +1/+1 until end of turn")(g, item); err != nil {
 		return err
 	}
-	return thisGainsKeywordUntilEndOfTurn("trample", "Voltaic Brawler — trample until end of turn")(g, item)
+	return ThisGainsKeywordUntilEndOfTurn("trample", "Voltaic Brawler — trample until end of turn")(g, item)
 }
 
 // anotherAttackerMayPayEnergy is "Whenever this creature attacks, you
@@ -172,8 +172,8 @@ func voltaicBrawlerPump(g *game.Game, item *game.StackItem) error {
 // (Consul's Shieldguard, Eddytrail Hawk, Smelted Chargebug). The target
 // is chosen as the trigger goes on the stack (CR 603.3d); the payment is
 // made as it resolves.
-func anotherAttackerMayPayEnergy(name, what string, then game.PayUnlessElse) game.TriggeredAbility {
-	t := whenThisAttacksMayPayEnergy(name, 1, what, then)
+func AnotherAttackerMayPayEnergy(name, what string, then game.PayUnlessElse) game.TriggeredAbility {
+	t := WhenThisAttacksMayPayEnergy(name, 1, what, then)
 	t.Targets = Another(TargetCreature("another target attacking creature", AttackingCreature()))
 	return t
 }
@@ -181,7 +181,7 @@ func anotherAttackerMayPayEnergy(name, what string, then game.PayUnlessElse) gam
 // firstTargetGainsUntilEndOfTurn is "<the target> gets +p/+0 and gains
 // <keywords> until end of turn", pinned to the trigger's first target.
 // Either half may be empty.
-func firstTargetGainsUntilEndOfTurn(power int, label string, keywords ...string) Effect {
+func FirstTargetGainsUntilEndOfTurn(power int, label string, keywords ...string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 			return nil
@@ -198,7 +198,7 @@ func firstTargetGainsUntilEndOfTurn(power int, label string, keywords ...string)
 // firstTargetManaValue is the mana value of the resolving item's first
 // target, wherever it is, for "an amount of {E} equal to that
 // permanent's mana value". A target gone or unreadable is 0.
-func firstTargetManaValue(g *game.Game, item *game.StackItem) int {
+func FirstTargetManaValue(g *game.Game, item *game.StackItem) int {
 	if item == nil || len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return 0
 	}
@@ -216,7 +216,7 @@ func firstTargetManaValue(g *game.Game, item *game.StackItem) int {
 // powerThatSavesMostOfYours is Localized Destruction's Goal: the power,
 // 1 or more and within the controller's energy, shared by the most
 // creatures they control (the greater power on a tie). Zero when none.
-func powerThatSavesMostOfYours(ctx *Context) int {
+func PowerThatSavesMostOfYours(ctx *Context) int {
 	energy := game.PlayerEnergy(ctx.Game.PlayerByIDForEffect(ctx.Controller()))
 	counts := map[int]int{}
 	for _, c := range ctx.Game.Battlefield.Cards {
@@ -238,7 +238,7 @@ func powerThatSavesMostOfYours(ctx *Context) int {
 // largestOpposingManaValue is Wrath of the Skies' Goal: the largest mana
 // value among the artifacts, creatures and enchantments the controller's
 // opponents control, capped by the controller's energy. Zero when none.
-func largestOpposingManaValue(ctx *Context) int {
+func LargestOpposingManaValue(ctx *Context) int {
 	energy := game.PlayerEnergy(ctx.Game.PlayerByIDForEffect(ctx.Controller()))
 	best := 0
 	for _, c := range ctx.Game.Battlefield.Cards {
@@ -258,15 +258,15 @@ func largestOpposingManaValue(ctx *Context) int {
 // battlefield. The answer is a registered continuation (#4253), so the
 // pick is a restore point: the permanent and the placer ride the prompt
 // as its carry, and the kind is read off the option that was chosen.
-func putChosenCounterOn(ctx *Context, by, target uuid.UUID, question string, kinds []string) error {
+func PutChosenCounterOn(ctx *Context, by, target uuid.UUID, question string, kinds []string) error {
 	options := make([]game.ChoiceOption, len(kinds))
 	for i, kind := range kinds {
-		options[i] = game.ChoiceOption{Label: counterOptionLabel(kind)}
+		options[i] = game.ChoiceOption{Label: CounterOptionLabel(kind)}
 	}
 	return PickOption{
 		Question: question,
 		Options:  options,
-		ThenKey:  energyChosenCounter,
+		ThenKey:  EnergyChosenCounter,
 		Carry:    []uuid.UUID{target, by},
 	}.Apply(ctx)
 }
@@ -274,13 +274,13 @@ func putChosenCounterOn(ctx *Context, by, target uuid.UUID, question string, kin
 // energyChosenCounter is the chosen counter placed, shared by every card
 // that says "your choice of a <kind>, <kind> or <kind> counter" (#4253).
 // Carry is the permanent, then the player who places the counter.
-var energyChosenCounter = OptionPickThen("option-pick/energy-chosen-counter", func(ctx *Context, r game.OptionPicked) error {
+var EnergyChosenCounter = OptionPickThen("option-pick/energy-chosen-counter", func(ctx *Context, r game.OptionPicked) error {
 	if r.Option == nil || len(r.Carry) < 2 {
 		return nil
 	}
 	target, by := r.Carry[0], r.Carry[1]
-	kind := counterKindOfOptionLabel(r.Option.Label)
-	if kind == "" || !onBattlefield(ctx.Game, target) {
+	kind := CounterKindOfOptionLabel(r.Option.Label)
+	if kind == "" || !OnBattlefield(ctx.Game, target) {
 		return nil
 	}
 	return ctx.Game.AddCounterByForEffect(by, target, kind, 1)
@@ -288,9 +288,9 @@ var energyChosenCounter = OptionPickThen("option-pick/energy-chosen-counter", fu
 
 // counterOptionLabel is the option that offers a counter of `kind`;
 // counterKindOfOptionLabel reads the kind back off the chosen option.
-func counterOptionLabel(kind string) string { return "A " + kind + " counter" }
+func CounterOptionLabel(kind string) string { return "A " + kind + " counter" }
 
-func counterKindOfOptionLabel(label string) string {
+func CounterKindOfOptionLabel(label string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(label, "A "), " counter")
 }
 
@@ -300,7 +300,7 @@ func counterKindOfOptionLabel(label string) string {
 func destroyPayloadPermanents(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, id := range ctx.PayloadCards() {
-		if !onBattlefield(g, id) {
+		if !OnBattlefield(g, id) {
 			continue
 		}
 		if err := (DestroyTarget{Target: id}).Apply(ctx); err != nil {
@@ -312,7 +312,7 @@ func destroyPayloadPermanents(g *game.Game, item *game.StackItem) error {
 
 // upToOne turns a per-trigger target clause into its "up to one" form:
 // choosing no target is legal.
-func upToOne(clause func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec) func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec {
+func UpToOne(clause func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec) func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec {
 	return func(tc game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
 		spec := clause(tc, source, g)
 		if spec != nil {

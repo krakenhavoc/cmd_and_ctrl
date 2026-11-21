@@ -34,7 +34,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Meltstrider's Resolve — enchanted creature fights up to one target creature an opponent controls",
-					enchantedCreatureFightsTargetCreature),
+					EnchantedCreatureFightsTargetCreature),
 				TargetCreature("up to one target creature an opponent controls", OpponentControls()).WithCount(0, 1)),
 		},
 	})
@@ -42,15 +42,15 @@ func init() {
 
 // enchantedCreatureFightsTargetCreature is the enters trigger: the enchanted creature
 // fights the chosen creature, if both are still there.
-func enchantedCreatureFightsTargetCreature(g *game.Game, item *game.StackItem) error {
+func EnchantedCreatureFightsTargetCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	host, ok := enchantedCreatureAsItResolves(ctx)
+	host, ok := EnchantedCreatureAsItResolves(ctx)
 	if !ok {
 		return nil
 	}
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
-			return b10Fight(ctx, host, t.ID)
+			return B10Fight(ctx, host, t.ID)
 		}
 	}
 	return nil

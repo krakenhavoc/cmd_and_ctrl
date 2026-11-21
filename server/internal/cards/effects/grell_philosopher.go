@@ -30,7 +30,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				OnAny([]game.EventKind{game.EventETB, game.EventBeginUpkeep}, thisEntersOrYourUpkeep,
+				OnAny([]game.EventKind{game.EventETB, game.EventBeginUpkeep}, ThisEntersOrYourUpkeep,
 					"Grell Philosopher — Aberrant Tinkering: each Horror you control gains the activated abilities of target artifact an opponent controls",
 					grellPhilosopherBorrow),
 				TargetPermanent("target artifact an opponent controls", Artifact(), OpponentControls()),
@@ -41,7 +41,7 @@ func init() {
 
 // thisEntersOrYourUpkeep is "When this enters and at the beginning of your
 // upkeep": the source's own entry, or its controller's upkeep.
-func thisEntersOrYourUpkeep(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func ThisEntersOrYourUpkeep(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventETB:
 		return Self(ev, source, lki, g)

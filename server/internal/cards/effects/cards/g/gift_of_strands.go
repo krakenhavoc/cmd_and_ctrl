@@ -1,0 +1,36 @@
+package cardsg
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Gift of Strands — Enchantment — Aura {3}{G} (The Hobbit Eternal, HOC):
+//
+//	"Flash
+//	 Enchant creature
+//	 When this Aura enters, scry 2.
+//	 Enchanted creature gets +3/+3."
+//
+// Feather of Flight's shape: flash rides PrintedKeywords, the Aura
+// targets a creature as it is cast, the pump is PumpAttached, and the
+// scry is a trigger on the Aura's own entry (it uses the stack and can be
+// responded to). If the creature is gone as the Aura resolves, the Aura
+// is not put onto the battlefield and never scries (CR 303.4g, #4454).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "7a7789e5-f2ac-49b2-943e-7d49e4727fb6",
+		Name:            "Gift of Strands",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flash"},
+		Targets:         effects.EnchantCreature(),
+		Purpose:         game.Purpose{Aura: game.AuraBenefit, Scry: 2},
+		Static:          []game.StaticAbility{effects.PumpAttached(3, 3)},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Gift of Strands — scry 2", effects.Do(effects.Scry{N: 2})),
+		},
+	})
+}

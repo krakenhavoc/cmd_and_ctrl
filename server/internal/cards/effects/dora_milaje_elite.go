@@ -31,9 +31,9 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			InterveningIf(CondBoard{
 				Name: "an opponent controls more lands than you",
-				Test: func(ctx *Context) bool { return b05OpponentControlsMoreLands(ctx.Game, ctx.Controller()) },
+				Test: func(ctx *Context) bool { return B05OpponentControlsMoreLands(ctx.Game, ctx.Controller()) },
 			}, On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.CardID == source.InstanceID && b05OpponentControlsMoreLands(g, source.Controller)
+				return ev.CardID == source.InstanceID && B05OpponentControlsMoreLands(g, source.Controller)
 			}, "Dora Milaje Elite — create a tapped Vibranium token",
 				Do(CreateTokenAdvanced{Spec: Token(VibraniumToken()).EntersTapped(), N: 1}))),
 		},
@@ -53,13 +53,13 @@ func init() {
 }
 
 // VibraniumToken is the Vibranium token as PRINTED.
-func VibraniumToken() game.Card { return tokenFromCatalog(printedVibraniumToken) }
+func VibraniumToken() game.Card { return TokenFromCatalog(printedVibraniumToken) }
 
 // printedVibraniumToken is the catalog's entry for Vibranium: a colorless
 // artifact token with indestructible and a restricted colorless mana
 // ability. Its slug is an on-disk identity and is never renamed.
-func printedVibraniumToken() tokenTemplate {
-	return tokenTemplate{
+func printedVibraniumToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "vibranium",
 		Card: game.Card{
 			Name:     "Vibranium",
