@@ -9,20 +9,6 @@ import (
 // s82_gap_b228_helpers.go — shared shapes of the GAP batch 228 cards
 // (#5948), in a file of their own so concurrent batches never collide.
 
-// IfControllerConditionHolds narrows a trigger to an intervening "if" (CR 603.4) about
-// its controller: it triggers only while `test` holds for the controller and
-// does nothing if it has stopped holding as the ability resolves. `name`
-// words the condition for the footprint.
-func IfControllerConditionHolds(name string, test func(g *game.Game, you uuid.UUID) bool, t game.TriggeredAbility) game.TriggeredAbility {
-	when := t.AppliesTo
-	t.AppliesTo = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-		return source != nil && test(g, source.Controller) && (when == nil || when(ev, source, lki, g))
-	}
-	return InterveningIf(CondBoard{Name: name, Test: func(ctx *Context) bool {
-		return test(ctx.Game, ctx.Controller())
-	}}, t)
-}
-
 // YouOrAPlayerYoureAttackingHasTheInitiative is "you or a player you're
 // attacking has the initiative" (Undercellar Sweep): you hold it, or so does
 // the player (the controller of an attacked planeswalker, the protector of an

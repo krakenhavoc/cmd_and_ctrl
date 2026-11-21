@@ -32,7 +32,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			effects.WhenThisEntersYouTakeTheInitiative("Undercellar Sweep"),
-			effects.OncePerBatch(effects.IfControllerConditionHolds("you or a player you're attacking has the initiative",
+			effects.OncePerBatch(effects.InterveningIfYou("you or a player you're attacking has the initiative",
 				effects.YouOrAPlayerYoureAttackingHasTheInitiative,
 				effects.On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return effects.AttackDeclaredByYou(ev, source.Controller)
