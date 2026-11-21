@@ -591,4 +591,6 @@ var tokenTable = map[string]game.Card{
 	// S82 GAP batch 49: Wurmcoil Larva's two Phyrexian Wurms.
 	"1/2 black Phyrexian Wurm artifact with deathtouch": {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 1, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"2/1 black Phyrexian Wurm artifact with lifelink":   {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
+	// S82 GAP batch 58: Ajani, Nacatl Pariah's Cat Warrior.
+	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
 }

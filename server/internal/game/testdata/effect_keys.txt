@@ -42,6 +42,7 @@ anyplayer any-player/worms-of-the-earth-destroy
 body aang-at-the-crossroads/transform
 body activation-count/sacrifice-this-creature
 body agathas-soul-cauldron/counter
+body ajani-nacatl-avenger/damage
 body all-out-assault/untap-each-creature-you-control
 body ambulatory-edifice/shrink
 body ancestral-katana/attach
@@ -470,6 +471,7 @@ body systems-override/remove-ten-charge-counters
 body tainted-adversary/counters-and-zombies
 body talions-messenger/counter
 body tamiyo-meets-the-story-circle/attacker-gets-minus-two
+body tamiyo-seasoned-scholar/attacker-gets-minus-one
 body tarkir/damage
 body teferi-akosa/shuffle-into-library
 body teferi-hero/untap-two-lands
@@ -1474,6 +1476,7 @@ coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
 coinflip coin-flip/plasma-caster
+coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/tavern-swindler-gain
 coinflip coin-flip/the-gold-saucer-treasure
@@ -1709,6 +1712,7 @@ confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
 confirm confirm/pygmy-hippo-lose-mana
 confirm confirm/rakdos-patron-of-chaos-sacrifice
+confirm confirm/ral-monsoon-mage-transform
 confirm confirm/raphaels-technique-may-wheel
 confirm confirm/ratchet-field-medic-convert
 confirm confirm/reactor-raid-sacrifice
@@ -2265,6 +2269,7 @@ payunless pay-unless/goblin-war-wagon-untap
 payunless pay-unless/graveyard-return-this-card-to-battlefield
 payunless pay-unless/graveyard-return-this-card-to-hand
 payunless pay-unless/grim-reaper-lethal-legionnaire-return
+payunless pay-unless/grist-voracious-larva-transform
 payunless pay-unless/gryffwing-cavalry-flying
 payunless pay-unless/guide-of-souls-angel
 payunless pay-unless/halo-forager-x-cast
@@ -2842,6 +2847,7 @@ tail afflicted-deserter/damage-controller-if-destroyed
 tail agathas-soul-cauldron/after-exile
 tail ainok-wayfarer/after-mill
 tail airbend/grant-and-announce
+tail ajani-nacatl-avenger/token-made
 tail ajani-outland-chaperone/shuffle
 tail ajanis-chosen/offer-attach
 tail alien-invasion/grow
@@ -3283,6 +3289,7 @@ tail fishing-gear/after-exile
 tail fishing-gear/entered
 tail flameshadow-conjuring/haste-and-exile-copy
 tail flameskull/after-exile
+tail flare-of-cultivation/basic-land-to-hand
 tail flicker/return-exiled
 tail flicker/return-on-owners-end-step
 tail flicker/schedule-return-at-end-step
@@ -3339,6 +3346,8 @@ tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
 tail grime-gorger/counter-per-exiled-card
 tail grip-of-phyresis/attach
+tail grist-the-plague-swarm/deathtouch-counter
+tail grist-the-plague-swarm/mill-two
 tail grolnok/croak-counter
 tail grubs-command/after-mill
 tail gul-dukat/drain-each-opponent
