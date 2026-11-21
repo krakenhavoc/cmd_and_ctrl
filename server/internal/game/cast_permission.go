@@ -966,6 +966,14 @@ type CastPermission struct {
 	// as this one. ADR 0066's 2026-09-24 amendment (#1573).
 	AnyType bool `json:"anyType,omitempty"`
 
+	// AnyColorFrom narrows the "spend mana as though it were mana of any
+	// color" clause to one kind of mana: "you may spend colorless mana as
+	// though it were mana of any color to cast that spell" (Abstruse
+	// Appropriation, #5948) sets "C". Each colored symbol then also
+	// admits that mana (widenFromColors), and other mana pays as printed.
+	// Ignored when AnyColor or AnyType is set.
+	AnyColorFrom string `json:"anyColorFrom,omitempty"`
+
 	// --- the window ------------------------------------------------
 
 	// Duration is when the permission ENDS (CR 611.2), in the one
@@ -3523,6 +3531,8 @@ func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
 		return asAnyTypeCost(cost)
 	case grant.AnyColor:
 		return asAnyColorCost(cost)
+	case grant.AnyColorFrom != "":
+		return widenFromColors(cost, []string{grant.AnyColorFrom})
 	}
 	return cost
 }
