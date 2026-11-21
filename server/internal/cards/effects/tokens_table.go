@@ -637,4 +637,9 @@ var TokenTable = map[string]game.Card{
 	// S82 GAP batch 188: Warhammer 40,000 Commander's Necron Warrior and Mortarion's Astartes Warrior.
 	"2/2 black Necron Warrior artifact":      {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 black Astartes Warrior with menace": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"menace"}},
+
+	// #5948: Warhammer 40,000 Commander's Cherubael (Inquisitor Eisenhorn) and
+	// Astartes Warrior (Marneus Calgar).
+	"4/4 black Legendary Demon with flying named Cherubael": {Name: "Cherubael", TypeLine: "Token Legendary Creature — Demon", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"flying"}},
+	"2/2 white Astartes Warrior with vigilance":             {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 }
