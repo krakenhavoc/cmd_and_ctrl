@@ -2472,6 +2472,7 @@ payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/voracious-tome-skimmer-draw
 payunless pay-unless/vraska-the-silencer-return-as-treasure
 payunless pay-unless/wandering-archaic-may-copy
+payunless pay-unless/warcry-phoenix-return
 payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/weakstones-subjugation-tap
 payunless pay-unless/weapons-vendor-attach
