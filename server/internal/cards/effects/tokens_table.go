@@ -634,4 +634,7 @@ var TokenTable = map[string]game.Card{
 	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	// S82 GAP batch 187: Great Unclean One's Plaguebearer of Nurgle.
 	"1/3 black Demon named Plaguebearer of Nurgle": {Name: "Plaguebearer of Nurgle", TypeLine: "Token Creature — Demon", Power: 1, Toughness: 3, Colors: []string{"B"}},
+	// S82 GAP batch 188: Warhammer 40,000 Commander's Necron Warrior and Mortarion's Astartes Warrior.
+	"2/2 black Necron Warrior artifact":      {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	"2/2 black Astartes Warrior with menace": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"menace"}},
 }
