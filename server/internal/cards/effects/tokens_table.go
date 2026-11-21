@@ -629,26 +629,20 @@ var TokenTable = map[string]game.Card{
 	// S82 GAP batch 185: Soundwave, Superior Captain's Ravage and Laserbeak.
 	"3/3 black Legendary Robot artifact named Ravage with menace and deathtouch": {Name: "Ravage", TypeLine: "Token Legendary Artifact Creature — Robot", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"menace", "deathtouch"}},
 	"2/2 blue Legendary Robot artifact named Laserbeak with flying and hexproof": {Name: "Laserbeak", TypeLine: "Token Legendary Artifact Creature — Robot", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying", "hexproof"}},
-	// S82 GAP batch 186: Warhammer 40,000 Commander's Necron Warrior and Astartes Warrior.
-	"2/2 black Necron Warrior artifact":         {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	// S82 GAP batches 186, 188 and 196 (Warhammer 40,000 Commander): Necron Warrior,
+	// shared by batch 186's cards, batch 188's cards and Biotransference.
+	"2/2 black Necron Warrior artifact": {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	// S82 GAP batches 186, 190 and 195: white Astartes Warrior with vigilance,
+	// shared by batch 186's cards, Marneus Calgar and Belisarius Cawl.
 	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
-	// S82 GAP batch 187: Great Unclean One's Plaguebearer of Nurgle.
+	// S82 GAP batches 187 and 196: Great Unclean One's and Nurgle's Rot's Plaguebearer of Nurgle.
 	"1/3 black Demon named Plaguebearer of Nurgle": {Name: "Plaguebearer of Nurgle", TypeLine: "Token Creature — Demon", Power: 1, Toughness: 3, Colors: []string{"B"}},
-	// S82 GAP batch 188: Warhammer 40,000 Commander's Necron Warrior and Mortarion's Astartes Warrior.
-	"2/2 black Necron Warrior artifact":      {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	// S82 GAP batch 188: Mortarion's Astartes Warrior.
 	"2/2 black Astartes Warrior with menace": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"menace"}},
-
-	// #5948: Warhammer 40,000 Commander's Cherubael (Inquisitor Eisenhorn) and
-	// Astartes Warrior (Marneus Calgar).
+	// #5948: Warhammer 40,000 Commander's Cherubael (Inquisitor Eisenhorn).
 	"4/4 black Legendary Demon with flying named Cherubael": {Name: "Cherubael", TypeLine: "Token Legendary Creature — Demon", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"flying"}},
-	"2/2 white Astartes Warrior with vigilance":             {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	// S82 GAP batch 193: Tyranid Gargoyle (Gargoyle Flock, Tyranid Harridan).
 	"1/1 blue Tyranid Gargoyle with flying": {Name: "Tyranid Gargoyle", TypeLine: "Token Creature — Tyranid Gargoyle", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	// S82 GAP batch 194: Magnus the Red's Spawn.
 	"3/3 red Spawn": {Name: "Spawn", TypeLine: "Token Creature — Spawn", Power: 3, Toughness: 3, Colors: []string{"R"}},
-	// S82 GAP batch 195: Belisarius Cawl's Astartes Warrior.
-	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
-	// S82 GAP batch 196: Biotransference's Necron Warrior and Nurgle's Rot's Plaguebearer of Nurgle.
-	"2/2 black Necron Warrior artifact":            {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
-	"1/3 black Demon named Plaguebearer of Nurgle": {Name: "Plaguebearer of Nurgle", TypeLine: "Token Creature — Demon", Power: 1, Toughness: 3, Colors: []string{"B"}},
 }

@@ -3590,8 +3590,8 @@ tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
-tail ilharg-the-raze-boar/return-at-end-step
 tail if-it-went/aspiring-champion-ruinous-ascension
+tail ilharg-the-raze-boar/return-at-end-step
 tail illuna-apex-of-wishes/after-exile
 tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
@@ -3754,8 +3754,8 @@ tail nantuko-cultivator/discarded
 tail narset-enlightened-exile/copy-exiled
 tail nashi-moons-legacy/copy-exiled
 tail necromantic-selection/black-zombie-then-exile
-tail necron-monolith/after-mill
 tail necron-deathmark/after-mill
+tail necron-monolith/after-mill
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
 tail neo-b15/discover-the-impossible-cast
