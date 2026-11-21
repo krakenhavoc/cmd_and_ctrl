@@ -241,7 +241,13 @@ func (g *Game) anyHexproofBypassLocked(by uuid.UUID, waives func(b HexproofBypas
 //
 // Caller must hold g.mu (the trigger harvest does).
 func (g *Game) WardSuppressedForEffect(warded *Card) bool {
-	if g == nil || warded == nil || CatalogWardSuppressions == nil || g.Battlefield == nil {
+	if g == nil || warded == nil {
+		return false
+	}
+	if g.scopedWardSuppressedLocked(warded) {
+		return true
+	}
+	if CatalogWardSuppressions == nil || g.Battlefield == nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {

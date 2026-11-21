@@ -2086,6 +2086,7 @@ followUpParks[].then.paid.offer.objects[].id	custom(uuid.UUID)
 followUpParks[].then.paid.offer.opponents	bool
 followUpParks[].then.paid.offer.order	array
 followUpParks[].then.paid.offer.order[]	custom(uuid.UUID)
+followUpParks[].then.paid.offer.ownObjectsOnly	bool
 followUpParks[].then.paid.offer.picks	array
 followUpParks[].then.paid.offer.picks[]	object
 followUpParks[].then.paid.offer.picks[].cards	array
@@ -2157,6 +2158,7 @@ followUpParks[].then.permission.faces[]	number:int
 followUpParks[].then.permission.filter	object
 followUpParks[].then.permission.filter.artifactInstantOrSorceryOnly	bool
 followUpParks[].then.permission.filter.artifactOrColorlessOnly	bool
+followUpParks[].then.permission.filter.artifactOrSubtype	string
 followUpParks[].then.permission.filter.auraOrEquipmentOnly	bool
 followUpParks[].then.permission.filter.cardInZone	bool
 followUpParks[].then.permission.filter.cardType	string
@@ -2226,6 +2228,7 @@ followUpParks[].then.permission.manaValueBudget	number:int
 followUpParks[].then.permission.maxSpellManaValue	number:int
 followUpParks[].then.permission.maxSpellManaValueCountOf	array
 followUpParks[].then.permission.maxSpellManaValueCountOf[]	string
+followUpParks[].then.permission.maxSpellManaValueCountersOnSource	string
 followUpParks[].then.permission.minSpellManaValue	number:int
 followUpParks[].then.permission.notBeforeSeq	number:int
 followUpParks[].then.permission.notBeforeTurn	number:int
@@ -2771,6 +2774,7 @@ frozenEntries[].event.counterTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.paid.offer.opponents	bool
 frozenEntries[].event.counterTail.then.paid.offer.order	array
 frozenEntries[].event.counterTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.counterTail.then.paid.offer.picks	array
 frozenEntries[].event.counterTail.then.paid.offer.picks[]	object
 frozenEntries[].event.counterTail.then.paid.offer.picks[].cards	array
@@ -2842,6 +2846,7 @@ frozenEntries[].event.counterTail.then.permission.faces[]	number:int
 frozenEntries[].event.counterTail.then.permission.filter	object
 frozenEntries[].event.counterTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.counterTail.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.counterTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.counterTail.then.permission.filter.cardType	string
@@ -2911,6 +2916,7 @@ frozenEntries[].event.counterTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.counterTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.counterTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.counterTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.counterTail.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.counterTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.counterTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.counterTail.then.permission.notBeforeTurn	number:int
@@ -3434,6 +3440,7 @@ frozenEntries[].event.damageTail.each.each.paid.offer.objects[].id	custom(uuid.U
 frozenEntries[].event.damageTail.each.each.paid.offer.opponents	bool
 frozenEntries[].event.damageTail.each.each.paid.offer.order	array
 frozenEntries[].event.damageTail.each.each.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.damageTail.each.each.paid.offer.picks	array
 frozenEntries[].event.damageTail.each.each.paid.offer.picks[]	object
 frozenEntries[].event.damageTail.each.each.paid.offer.picks[].cards	array
@@ -3505,6 +3512,7 @@ frozenEntries[].event.damageTail.each.each.permission.faces[]	number:int
 frozenEntries[].event.damageTail.each.each.permission.filter	object
 frozenEntries[].event.damageTail.each.each.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.damageTail.each.each.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.cardType	string
@@ -3574,6 +3582,7 @@ frozenEntries[].event.damageTail.each.each.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.damageTail.each.each.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.each.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.each.each.permission.notBeforeTurn	number:int
@@ -4088,6 +4097,7 @@ frozenEntries[].event.damageTail.each.then.paid.offer.objects[].id	custom(uuid.U
 frozenEntries[].event.damageTail.each.then.paid.offer.opponents	bool
 frozenEntries[].event.damageTail.each.then.paid.offer.order	array
 frozenEntries[].event.damageTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.damageTail.each.then.paid.offer.picks	array
 frozenEntries[].event.damageTail.each.then.paid.offer.picks[]	object
 frozenEntries[].event.damageTail.each.then.paid.offer.picks[].cards	array
@@ -4159,6 +4169,7 @@ frozenEntries[].event.damageTail.each.then.permission.faces[]	number:int
 frozenEntries[].event.damageTail.each.then.permission.filter	object
 frozenEntries[].event.damageTail.each.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.damageTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.cardType	string
@@ -4228,6 +4239,7 @@ frozenEntries[].event.damageTail.each.then.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.damageTail.each.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.each.then.permission.notBeforeTurn	number:int
@@ -4928,6 +4940,7 @@ frozenEntries[].event.damageTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.paid.offer.opponents	bool
 frozenEntries[].event.damageTail.then.paid.offer.order	array
 frozenEntries[].event.damageTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.damageTail.then.paid.offer.picks	array
 frozenEntries[].event.damageTail.then.paid.offer.picks[]	object
 frozenEntries[].event.damageTail.then.paid.offer.picks[].cards	array
@@ -4999,6 +5012,7 @@ frozenEntries[].event.damageTail.then.permission.faces[]	number:int
 frozenEntries[].event.damageTail.then.permission.filter	object
 frozenEntries[].event.damageTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.damageTail.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.damageTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.then.permission.filter.cardType	string
@@ -5068,6 +5082,7 @@ frozenEntries[].event.damageTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.damageTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.damageTail.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.damageTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.then.permission.notBeforeTurn	number:int
@@ -5705,6 +5720,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.objects[].id	
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.order	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks[].cards	array
@@ -5776,6 +5792,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.faces[]	numbe
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardType	string
@@ -5845,6 +5862,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.manaValueBudg
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
@@ -6435,6 +6453,7 @@ frozenEntries[].event.entryTail.batch.then.paid.offer.objects[].id	custom(uuid.U
 frozenEntries[].event.entryTail.batch.then.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.batch.then.paid.offer.order	array
 frozenEntries[].event.entryTail.batch.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.batch.then.paid.offer.picks	array
 frozenEntries[].event.entryTail.batch.then.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.batch.then.paid.offer.picks[].cards	array
@@ -6506,6 +6525,7 @@ frozenEntries[].event.entryTail.batch.then.permission.faces[]	number:int
 frozenEntries[].event.entryTail.batch.then.permission.filter	object
 frozenEntries[].event.entryTail.batch.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.cardType	string
@@ -6575,6 +6595,7 @@ frozenEntries[].event.entryTail.batch.then.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.entryTail.batch.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.batch.then.permission.notBeforeTurn	number:int
@@ -7089,6 +7110,7 @@ frozenEntries[].event.entryTail.keyed.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.keyed.paid.offer.order	array
 frozenEntries[].event.entryTail.keyed.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.keyed.paid.offer.picks	array
 frozenEntries[].event.entryTail.keyed.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.keyed.paid.offer.picks[].cards	array
@@ -7160,6 +7182,7 @@ frozenEntries[].event.entryTail.keyed.permission.faces[]	number:int
 frozenEntries[].event.entryTail.keyed.permission.filter	object
 frozenEntries[].event.entryTail.keyed.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.entryTail.keyed.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.cardType	string
@@ -7229,6 +7252,7 @@ frozenEntries[].event.entryTail.keyed.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.entryTail.keyed.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.keyed.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.keyed.permission.notBeforeTurn	number:int
@@ -7776,6 +7800,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.objects[].id	cus
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.order	array
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks	array
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks[].cards	array
@@ -7847,6 +7872,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.faces[]	number:i
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter	object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardType	string
@@ -7916,6 +7942,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.manaValueBudget	
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
@@ -8451,6 +8478,7 @@ frozenEntries[].event.entryTail.tokens.then.paid.offer.objects[].id	custom(uuid.
 frozenEntries[].event.entryTail.tokens.then.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.tokens.then.paid.offer.order	array
 frozenEntries[].event.entryTail.tokens.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.tokens.then.paid.offer.picks	array
 frozenEntries[].event.entryTail.tokens.then.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.tokens.then.paid.offer.picks[].cards	array
@@ -8522,6 +8550,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.faces[]	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.filter	object
 frozenEntries[].event.entryTail.tokens.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.cardType	string
@@ -8591,6 +8620,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.manaValueBudget	number:in
 frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.entryTail.tokens.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.notBeforeTurn	number:int
@@ -9557,6 +9587,7 @@ frozenEntries[].event.keywordActionTail.then.paid.offer.objects[].id	custom(uuid
 frozenEntries[].event.keywordActionTail.then.paid.offer.opponents	bool
 frozenEntries[].event.keywordActionTail.then.paid.offer.order	array
 frozenEntries[].event.keywordActionTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.keywordActionTail.then.paid.offer.picks	array
 frozenEntries[].event.keywordActionTail.then.paid.offer.picks[]	object
 frozenEntries[].event.keywordActionTail.then.paid.offer.picks[].cards	array
@@ -9628,6 +9659,7 @@ frozenEntries[].event.keywordActionTail.then.permission.faces[]	number:int
 frozenEntries[].event.keywordActionTail.then.permission.filter	object
 frozenEntries[].event.keywordActionTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.cardType	string
@@ -9697,6 +9729,7 @@ frozenEntries[].event.keywordActionTail.then.permission.manaValueBudget	number:i
 frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.keywordActionTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.keywordActionTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.keywordActionTail.then.permission.notBeforeTurn	number:int
@@ -10235,6 +10268,7 @@ frozenEntries[].event.lifeTail.each.then.paid.offer.objects[].id	custom(uuid.UUI
 frozenEntries[].event.lifeTail.each.then.paid.offer.opponents	bool
 frozenEntries[].event.lifeTail.each.then.paid.offer.order	array
 frozenEntries[].event.lifeTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.lifeTail.each.then.paid.offer.picks	array
 frozenEntries[].event.lifeTail.each.then.paid.offer.picks[]	object
 frozenEntries[].event.lifeTail.each.then.paid.offer.picks[].cards	array
@@ -10306,6 +10340,7 @@ frozenEntries[].event.lifeTail.each.then.permission.faces[]	number:int
 frozenEntries[].event.lifeTail.each.then.permission.filter	object
 frozenEntries[].event.lifeTail.each.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.cardInZone	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.cardType	string
@@ -10375,6 +10410,7 @@ frozenEntries[].event.lifeTail.each.then.permission.manaValueBudget	number:int
 frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.lifeTail.each.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.lifeTail.each.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.lifeTail.each.then.permission.notBeforeTurn	number:int
@@ -10892,6 +10928,7 @@ frozenEntries[].event.lifeTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.paid.offer.opponents	bool
 frozenEntries[].event.lifeTail.then.paid.offer.order	array
 frozenEntries[].event.lifeTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.lifeTail.then.paid.offer.picks	array
 frozenEntries[].event.lifeTail.then.paid.offer.picks[]	object
 frozenEntries[].event.lifeTail.then.paid.offer.picks[].cards	array
@@ -10963,6 +11000,7 @@ frozenEntries[].event.lifeTail.then.permission.faces[]	number:int
 frozenEntries[].event.lifeTail.then.permission.filter	object
 frozenEntries[].event.lifeTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.lifeTail.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.lifeTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.lifeTail.then.permission.filter.cardType	string
@@ -11032,6 +11070,7 @@ frozenEntries[].event.lifeTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.lifeTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.lifeTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.lifeTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.lifeTail.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.lifeTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.lifeTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.lifeTail.then.permission.notBeforeTurn	number:int
@@ -12409,6 +12448,7 @@ frozenEntries[].event.millTail.run.then.paid.offer.objects[].id	custom(uuid.UUID
 frozenEntries[].event.millTail.run.then.paid.offer.opponents	bool
 frozenEntries[].event.millTail.run.then.paid.offer.order	array
 frozenEntries[].event.millTail.run.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.millTail.run.then.paid.offer.picks	array
 frozenEntries[].event.millTail.run.then.paid.offer.picks[]	object
 frozenEntries[].event.millTail.run.then.paid.offer.picks[].cards	array
@@ -12480,6 +12520,7 @@ frozenEntries[].event.millTail.run.then.permission.faces[]	number:int
 frozenEntries[].event.millTail.run.then.permission.filter	object
 frozenEntries[].event.millTail.run.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.millTail.run.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.millTail.run.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.cardInZone	bool
 frozenEntries[].event.millTail.run.then.permission.filter.cardType	string
@@ -12549,6 +12590,7 @@ frozenEntries[].event.millTail.run.then.permission.manaValueBudget	number:int
 frozenEntries[].event.millTail.run.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.millTail.run.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.millTail.run.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.millTail.run.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.millTail.run.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.millTail.run.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.millTail.run.then.permission.notBeforeTurn	number:int
@@ -13061,6 +13103,7 @@ frozenEntries[].event.millTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.paid.offer.opponents	bool
 frozenEntries[].event.millTail.then.paid.offer.order	array
 frozenEntries[].event.millTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.millTail.then.paid.offer.picks	array
 frozenEntries[].event.millTail.then.paid.offer.picks[]	object
 frozenEntries[].event.millTail.then.paid.offer.picks[].cards	array
@@ -13132,6 +13175,7 @@ frozenEntries[].event.millTail.then.permission.faces[]	number:int
 frozenEntries[].event.millTail.then.permission.filter	object
 frozenEntries[].event.millTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.millTail.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.millTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.millTail.then.permission.filter.cardType	string
@@ -13201,6 +13245,7 @@ frozenEntries[].event.millTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.millTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.millTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.millTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.millTail.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.millTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.millTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.millTail.then.permission.notBeforeTurn	number:int
@@ -14741,6 +14786,7 @@ frozenEntries[].event.tokenTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.paid.offer.opponents	bool
 frozenEntries[].event.tokenTail.then.paid.offer.order	array
 frozenEntries[].event.tokenTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.tokenTail.then.paid.offer.picks	array
 frozenEntries[].event.tokenTail.then.paid.offer.picks[]	object
 frozenEntries[].event.tokenTail.then.paid.offer.picks[].cards	array
@@ -14812,6 +14858,7 @@ frozenEntries[].event.tokenTail.then.permission.faces[]	number:int
 frozenEntries[].event.tokenTail.then.permission.filter	object
 frozenEntries[].event.tokenTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.tokenTail.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.tokenTail.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.tokenTail.then.permission.filter.cardType	string
@@ -14881,6 +14928,7 @@ frozenEntries[].event.tokenTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.tokenTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.tokenTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.tokenTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.tokenTail.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.tokenTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.tokenTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.tokenTail.then.permission.notBeforeTurn	number:int
@@ -16714,6 +16762,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.objects[].id	cust
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.order	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards	array
@@ -16785,6 +16834,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.faces[]	number:in
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardInZone	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
@@ -16854,6 +16904,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.manaValueBudget	n
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
@@ -17401,6 +17452,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.objects[].i
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.order	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].cards	array
@@ -17472,6 +17524,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.faces[]	num
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardInZone	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
@@ -17541,6 +17594,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.manaValueBu
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
@@ -18053,6 +18107,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.objects[].id	custom(uu
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.order	array
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks[].cards	array
@@ -18124,6 +18179,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.faces[]	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter	object
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardInZone	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardType	string
@@ -18193,6 +18249,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.manaValueBudget	number
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
@@ -18725,6 +18782,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.objects[].id	custom(
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.order	array
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks[].cards	array
@@ -18796,6 +18854,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.faces[]	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter	object
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardInZone	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardType	string
@@ -18865,6 +18924,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.manaValueBudget	numb
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
@@ -19466,6 +19526,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.objects[].id	custom
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.order	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks[].cards	array
@@ -19537,6 +19598,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.faces[]	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.artifactOrColorlessOnly	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.artifactOrSubtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.auraOrEquipmentOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardInZone	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardType	string
@@ -19606,6 +19668,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.manaValueBudget	num
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountersOnSource	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
@@ -23462,6 +23525,7 @@ movesAwaitingTokens[].counterTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].counterTail.then.paid.offer.order	array
 movesAwaitingTokens[].counterTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].counterTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].counterTail.then.paid.offer.picks	array
 movesAwaitingTokens[].counterTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].counterTail.then.paid.offer.picks[].cards	array
@@ -23533,6 +23597,7 @@ movesAwaitingTokens[].counterTail.then.permission.faces[]	number:int
 movesAwaitingTokens[].counterTail.then.permission.filter	object
 movesAwaitingTokens[].counterTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].counterTail.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.cardType	string
@@ -23602,6 +23667,7 @@ movesAwaitingTokens[].counterTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].counterTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].counterTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].counterTail.then.permission.notBeforeTurn	number:int
@@ -24125,6 +24191,7 @@ movesAwaitingTokens[].damageTail.each.each.paid.offer.objects[].id	custom(uuid.U
 movesAwaitingTokens[].damageTail.each.each.paid.offer.opponents	bool
 movesAwaitingTokens[].damageTail.each.each.paid.offer.order	array
 movesAwaitingTokens[].damageTail.each.each.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.each.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].damageTail.each.each.paid.offer.picks	array
 movesAwaitingTokens[].damageTail.each.each.paid.offer.picks[]	object
 movesAwaitingTokens[].damageTail.each.each.paid.offer.picks[].cards	array
@@ -24196,6 +24263,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.faces[]	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.filter	object
 movesAwaitingTokens[].damageTail.each.each.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.cardType	string
@@ -24265,6 +24333,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].damageTail.each.each.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.notBeforeTurn	number:int
@@ -24779,6 +24848,7 @@ movesAwaitingTokens[].damageTail.each.then.paid.offer.objects[].id	custom(uuid.U
 movesAwaitingTokens[].damageTail.each.then.paid.offer.opponents	bool
 movesAwaitingTokens[].damageTail.each.then.paid.offer.order	array
 movesAwaitingTokens[].damageTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].damageTail.each.then.paid.offer.picks	array
 movesAwaitingTokens[].damageTail.each.then.paid.offer.picks[]	object
 movesAwaitingTokens[].damageTail.each.then.paid.offer.picks[].cards	array
@@ -24850,6 +24920,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.faces[]	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.filter	object
 movesAwaitingTokens[].damageTail.each.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.cardType	string
@@ -24919,6 +24990,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].damageTail.each.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.notBeforeTurn	number:int
@@ -25619,6 +25691,7 @@ movesAwaitingTokens[].damageTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].damageTail.then.paid.offer.order	array
 movesAwaitingTokens[].damageTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].damageTail.then.paid.offer.picks	array
 movesAwaitingTokens[].damageTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].damageTail.then.paid.offer.picks[].cards	array
@@ -25690,6 +25763,7 @@ movesAwaitingTokens[].damageTail.then.permission.faces[]	number:int
 movesAwaitingTokens[].damageTail.then.permission.filter	object
 movesAwaitingTokens[].damageTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].damageTail.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.cardType	string
@@ -25759,6 +25833,7 @@ movesAwaitingTokens[].damageTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].damageTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.then.permission.notBeforeTurn	number:int
@@ -26396,6 +26471,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.objects[].id	
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.order	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks[].cards	array
@@ -26467,6 +26543,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.faces[]	numbe
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.cardType	string
@@ -26536,6 +26613,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.manaValueBudg
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
@@ -27126,6 +27204,7 @@ movesAwaitingTokens[].entryTail.batch.then.paid.offer.objects[].id	custom(uuid.U
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.order	array
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks[].cards	array
@@ -27197,6 +27276,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.faces[]	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.filter	object
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.cardType	string
@@ -27266,6 +27346,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].entryTail.batch.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.notBeforeTurn	number:int
@@ -27780,6 +27861,7 @@ movesAwaitingTokens[].entryTail.keyed.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.keyed.paid.offer.order	array
 movesAwaitingTokens[].entryTail.keyed.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.keyed.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.keyed.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.keyed.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.keyed.paid.offer.picks[].cards	array
@@ -27851,6 +27933,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.faces[]	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.filter	object
 movesAwaitingTokens[].entryTail.keyed.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.cardType	string
@@ -27920,6 +28003,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].entryTail.keyed.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.notBeforeTurn	number:int
@@ -28467,6 +28551,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.objects[].id	cus
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.order	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks[].cards	array
@@ -28538,6 +28623,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.faces[]	number:i
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.cardType	string
@@ -28607,6 +28693,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.manaValueBudget	
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
@@ -29142,6 +29229,7 @@ movesAwaitingTokens[].entryTail.tokens.then.paid.offer.objects[].id	custom(uuid.
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.order	array
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks[].cards	array
@@ -29213,6 +29301,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.faces[]	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter	object
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.cardType	string
@@ -29282,6 +29371,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.manaValueBudget	number:in
 movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.notBeforeTurn	number:int
@@ -30248,6 +30338,7 @@ movesAwaitingTokens[].keywordActionTail.then.paid.offer.objects[].id	custom(uuid
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.order	array
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks	array
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks[].cards	array
@@ -30319,6 +30410,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.faces[]	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.filter	object
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.cardType	string
@@ -30388,6 +30480,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.manaValueBudget	number:i
 movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].keywordActionTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.notBeforeTurn	number:int
@@ -30926,6 +31019,7 @@ movesAwaitingTokens[].lifeTail.each.then.paid.offer.objects[].id	custom(uuid.UUI
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.opponents	bool
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.order	array
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.each.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks	array
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks[]	object
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks[].cards	array
@@ -30997,6 +31091,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.faces[]	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.filter	object
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.cardType	string
@@ -31066,6 +31161,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].lifeTail.each.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.notBeforeTurn	number:int
@@ -31583,6 +31679,7 @@ movesAwaitingTokens[].lifeTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].lifeTail.then.paid.offer.order	array
 movesAwaitingTokens[].lifeTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].lifeTail.then.paid.offer.picks	array
 movesAwaitingTokens[].lifeTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].lifeTail.then.paid.offer.picks[].cards	array
@@ -31654,6 +31751,7 @@ movesAwaitingTokens[].lifeTail.then.permission.faces[]	number:int
 movesAwaitingTokens[].lifeTail.then.permission.filter	object
 movesAwaitingTokens[].lifeTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.cardType	string
@@ -31723,6 +31821,7 @@ movesAwaitingTokens[].lifeTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].lifeTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].lifeTail.then.permission.notBeforeTurn	number:int
@@ -33100,6 +33199,7 @@ movesAwaitingTokens[].millTail.run.then.paid.offer.objects[].id	custom(uuid.UUID
 movesAwaitingTokens[].millTail.run.then.paid.offer.opponents	bool
 movesAwaitingTokens[].millTail.run.then.paid.offer.order	array
 movesAwaitingTokens[].millTail.run.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].millTail.run.then.paid.offer.picks	array
 movesAwaitingTokens[].millTail.run.then.paid.offer.picks[]	object
 movesAwaitingTokens[].millTail.run.then.paid.offer.picks[].cards	array
@@ -33171,6 +33271,7 @@ movesAwaitingTokens[].millTail.run.then.permission.faces[]	number:int
 movesAwaitingTokens[].millTail.run.then.permission.filter	object
 movesAwaitingTokens[].millTail.run.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.cardType	string
@@ -33240,6 +33341,7 @@ movesAwaitingTokens[].millTail.run.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].millTail.run.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].millTail.run.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].millTail.run.then.permission.notBeforeTurn	number:int
@@ -33752,6 +33854,7 @@ movesAwaitingTokens[].millTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].millTail.then.paid.offer.order	array
 movesAwaitingTokens[].millTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].millTail.then.paid.offer.picks	array
 movesAwaitingTokens[].millTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].millTail.then.paid.offer.picks[].cards	array
@@ -33823,6 +33926,7 @@ movesAwaitingTokens[].millTail.then.permission.faces[]	number:int
 movesAwaitingTokens[].millTail.then.permission.filter	object
 movesAwaitingTokens[].millTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].millTail.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].millTail.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].millTail.then.permission.filter.cardType	string
@@ -33892,6 +33996,7 @@ movesAwaitingTokens[].millTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].millTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].millTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].millTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].millTail.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].millTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].millTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].millTail.then.permission.notBeforeTurn	number:int
@@ -35432,6 +35537,7 @@ movesAwaitingTokens[].tokenTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].tokenTail.then.paid.offer.order	array
 movesAwaitingTokens[].tokenTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].tokenTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].tokenTail.then.paid.offer.picks	array
 movesAwaitingTokens[].tokenTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].tokenTail.then.paid.offer.picks[].cards	array
@@ -35503,6 +35609,7 @@ movesAwaitingTokens[].tokenTail.then.permission.faces[]	number:int
 movesAwaitingTokens[].tokenTail.then.permission.filter	object
 movesAwaitingTokens[].tokenTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.cardType	string
@@ -35572,6 +35679,7 @@ movesAwaitingTokens[].tokenTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].tokenTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].tokenTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].tokenTail.then.permission.notBeforeTurn	number:int
@@ -37405,6 +37513,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.objects[].id	cust
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards	array
@@ -37476,6 +37585,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.faces[]	number:in
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
@@ -37545,6 +37655,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.manaValueBudget	n
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
@@ -38092,6 +38203,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.objects[].i
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].cards	array
@@ -38163,6 +38275,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.faces[]	num
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.cardInZone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
@@ -38232,6 +38345,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.manaValueBu
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
@@ -38744,6 +38858,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.objects[].id	custom(uu
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks[].cards	array
@@ -38815,6 +38930,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.faces[]	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.cardType	string
@@ -38884,6 +39000,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.manaValueBudget	number
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
@@ -39416,6 +39533,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.objects[].id	custom(
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks[].cards	array
@@ -39487,6 +39605,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.faces[]	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.cardType	string
@@ -39556,6 +39675,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.manaValueBudget	numb
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
@@ -40157,6 +40277,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.objects[].id	custom
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks[].cards	array
@@ -40228,6 +40349,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.faces[]	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.artifactOrColorlessOnly	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.artifactOrSubtype	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.auraOrEquipmentOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.cardType	string
@@ -40297,6 +40419,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.manaValueBudget	num
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountersOnSource	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
@@ -42180,6 +42303,7 @@ pendingChoices[].anyPlayerOffer.objects[].id	custom(uuid.UUID)
 pendingChoices[].anyPlayerOffer.opponents	bool
 pendingChoices[].anyPlayerOffer.order	array
 pendingChoices[].anyPlayerOffer.order[]	custom(uuid.UUID)
+pendingChoices[].anyPlayerOffer.ownObjectsOnly	bool
 pendingChoices[].anyPlayerOffer.picks	array
 pendingChoices[].anyPlayerOffer.picks[]	object
 pendingChoices[].anyPlayerOffer.picks[].cards	array
@@ -42520,6 +42644,7 @@ pendingChoices[].assist.spend.Controller	custom(uuid.UUID)
 pendingChoices[].assist.spend.CostHasX	bool
 pendingChoices[].assist.spend.Equip	bool
 pendingChoices[].assist.spend.FaceDownSpell	bool
+pendingChoices[].assist.spend.FreerunningSpell	bool
 pendingChoices[].assist.spend.HasDevoid	bool
 pendingChoices[].assist.spend.KickedSpell	bool
 pendingChoices[].assist.spend.ManaCostHasX	bool
@@ -43686,6 +43811,7 @@ pendingChoices[].attackSplit.tail.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.paid.offer.opponents	bool
 pendingChoices[].attackSplit.tail.paid.offer.order	array
 pendingChoices[].attackSplit.tail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].attackSplit.tail.paid.offer.picks	array
 pendingChoices[].attackSplit.tail.paid.offer.picks[]	object
 pendingChoices[].attackSplit.tail.paid.offer.picks[].cards	array
@@ -43757,6 +43883,7 @@ pendingChoices[].attackSplit.tail.permission.faces[]	number:int
 pendingChoices[].attackSplit.tail.permission.filter	object
 pendingChoices[].attackSplit.tail.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].attackSplit.tail.permission.filter.artifactOrSubtype	string
 pendingChoices[].attackSplit.tail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.cardInZone	bool
 pendingChoices[].attackSplit.tail.permission.filter.cardType	string
@@ -43826,6 +43953,7 @@ pendingChoices[].attackSplit.tail.permission.manaValueBudget	number:int
 pendingChoices[].attackSplit.tail.permission.maxSpellManaValue	number:int
 pendingChoices[].attackSplit.tail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].attackSplit.tail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].attackSplit.tail.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].attackSplit.tail.permission.minSpellManaValue	number:int
 pendingChoices[].attackSplit.tail.permission.notBeforeSeq	number:int
 pendingChoices[].attackSplit.tail.permission.notBeforeTurn	number:int
@@ -45867,6 +45995,7 @@ pendingChoices[].diceRoll.then.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.paid.offer.opponents	bool
 pendingChoices[].diceRoll.then.paid.offer.order	array
 pendingChoices[].diceRoll.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].diceRoll.then.paid.offer.picks	array
 pendingChoices[].diceRoll.then.paid.offer.picks[]	object
 pendingChoices[].diceRoll.then.paid.offer.picks[].cards	array
@@ -45938,6 +46067,7 @@ pendingChoices[].diceRoll.then.permission.faces[]	number:int
 pendingChoices[].diceRoll.then.permission.filter	object
 pendingChoices[].diceRoll.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].diceRoll.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].diceRoll.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.cardInZone	bool
 pendingChoices[].diceRoll.then.permission.filter.cardType	string
@@ -46007,6 +46137,7 @@ pendingChoices[].diceRoll.then.permission.manaValueBudget	number:int
 pendingChoices[].diceRoll.then.permission.maxSpellManaValue	number:int
 pendingChoices[].diceRoll.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].diceRoll.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].diceRoll.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].diceRoll.then.permission.minSpellManaValue	number:int
 pendingChoices[].diceRoll.then.permission.notBeforeSeq	number:int
 pendingChoices[].diceRoll.then.permission.notBeforeTurn	number:int
@@ -46928,6 +47059,7 @@ pendingChoices[].divideShield.walk.each.paid.offer.objects[].id	custom(uuid.UUID
 pendingChoices[].divideShield.walk.each.paid.offer.opponents	bool
 pendingChoices[].divideShield.walk.each.paid.offer.order	array
 pendingChoices[].divideShield.walk.each.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.paid.offer.ownObjectsOnly	bool
 pendingChoices[].divideShield.walk.each.paid.offer.picks	array
 pendingChoices[].divideShield.walk.each.paid.offer.picks[]	object
 pendingChoices[].divideShield.walk.each.paid.offer.picks[].cards	array
@@ -46999,6 +47131,7 @@ pendingChoices[].divideShield.walk.each.permission.faces[]	number:int
 pendingChoices[].divideShield.walk.each.permission.filter	object
 pendingChoices[].divideShield.walk.each.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].divideShield.walk.each.permission.filter.artifactOrSubtype	string
 pendingChoices[].divideShield.walk.each.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.cardInZone	bool
 pendingChoices[].divideShield.walk.each.permission.filter.cardType	string
@@ -47068,6 +47201,7 @@ pendingChoices[].divideShield.walk.each.permission.manaValueBudget	number:int
 pendingChoices[].divideShield.walk.each.permission.maxSpellManaValue	number:int
 pendingChoices[].divideShield.walk.each.permission.maxSpellManaValueCountOf	array
 pendingChoices[].divideShield.walk.each.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].divideShield.walk.each.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].divideShield.walk.each.permission.minSpellManaValue	number:int
 pendingChoices[].divideShield.walk.each.permission.notBeforeSeq	number:int
 pendingChoices[].divideShield.walk.each.permission.notBeforeTurn	number:int
@@ -47582,6 +47716,7 @@ pendingChoices[].divideShield.walk.then.paid.offer.objects[].id	custom(uuid.UUID
 pendingChoices[].divideShield.walk.then.paid.offer.opponents	bool
 pendingChoices[].divideShield.walk.then.paid.offer.order	array
 pendingChoices[].divideShield.walk.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].divideShield.walk.then.paid.offer.picks	array
 pendingChoices[].divideShield.walk.then.paid.offer.picks[]	object
 pendingChoices[].divideShield.walk.then.paid.offer.picks[].cards	array
@@ -47653,6 +47788,7 @@ pendingChoices[].divideShield.walk.then.permission.faces[]	number:int
 pendingChoices[].divideShield.walk.then.permission.filter	object
 pendingChoices[].divideShield.walk.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].divideShield.walk.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].divideShield.walk.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.cardInZone	bool
 pendingChoices[].divideShield.walk.then.permission.filter.cardType	string
@@ -47722,6 +47858,7 @@ pendingChoices[].divideShield.walk.then.permission.manaValueBudget	number:int
 pendingChoices[].divideShield.walk.then.permission.maxSpellManaValue	number:int
 pendingChoices[].divideShield.walk.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].divideShield.walk.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].divideShield.walk.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].divideShield.walk.then.permission.minSpellManaValue	number:int
 pendingChoices[].divideShield.walk.then.permission.notBeforeSeq	number:int
 pendingChoices[].divideShield.walk.then.permission.notBeforeTurn	number:int
@@ -48242,6 +48379,7 @@ pendingChoices[].libraryOrder.then.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.paid.offer.opponents	bool
 pendingChoices[].libraryOrder.then.paid.offer.order	array
 pendingChoices[].libraryOrder.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].libraryOrder.then.paid.offer.picks	array
 pendingChoices[].libraryOrder.then.paid.offer.picks[]	object
 pendingChoices[].libraryOrder.then.paid.offer.picks[].cards	array
@@ -48313,6 +48451,7 @@ pendingChoices[].libraryOrder.then.permission.faces[]	number:int
 pendingChoices[].libraryOrder.then.permission.filter	object
 pendingChoices[].libraryOrder.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].libraryOrder.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].libraryOrder.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.cardInZone	bool
 pendingChoices[].libraryOrder.then.permission.filter.cardType	string
@@ -48382,6 +48521,7 @@ pendingChoices[].libraryOrder.then.permission.manaValueBudget	number:int
 pendingChoices[].libraryOrder.then.permission.maxSpellManaValue	number:int
 pendingChoices[].libraryOrder.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].libraryOrder.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].libraryOrder.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].libraryOrder.then.permission.minSpellManaValue	number:int
 pendingChoices[].libraryOrder.then.permission.notBeforeSeq	number:int
 pendingChoices[].libraryOrder.then.permission.notBeforeTurn	number:int
@@ -48956,6 +49096,7 @@ pendingChoices[].nameThen.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].nameThen.paid.offer.opponents	bool
 pendingChoices[].nameThen.paid.offer.order	array
 pendingChoices[].nameThen.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].nameThen.paid.offer.ownObjectsOnly	bool
 pendingChoices[].nameThen.paid.offer.picks	array
 pendingChoices[].nameThen.paid.offer.picks[]	object
 pendingChoices[].nameThen.paid.offer.picks[].cards	array
@@ -49027,6 +49168,7 @@ pendingChoices[].nameThen.permission.faces[]	number:int
 pendingChoices[].nameThen.permission.filter	object
 pendingChoices[].nameThen.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].nameThen.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].nameThen.permission.filter.artifactOrSubtype	string
 pendingChoices[].nameThen.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].nameThen.permission.filter.cardInZone	bool
 pendingChoices[].nameThen.permission.filter.cardType	string
@@ -49096,6 +49238,7 @@ pendingChoices[].nameThen.permission.manaValueBudget	number:int
 pendingChoices[].nameThen.permission.maxSpellManaValue	number:int
 pendingChoices[].nameThen.permission.maxSpellManaValueCountOf	array
 pendingChoices[].nameThen.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].nameThen.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].nameThen.permission.minSpellManaValue	number:int
 pendingChoices[].nameThen.permission.notBeforeSeq	number:int
 pendingChoices[].nameThen.permission.notBeforeTurn	number:int
@@ -50114,6 +50257,7 @@ pendingChoices[].pickTail.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].pickTail.paid.offer.opponents	bool
 pendingChoices[].pickTail.paid.offer.order	array
 pendingChoices[].pickTail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].pickTail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].pickTail.paid.offer.picks	array
 pendingChoices[].pickTail.paid.offer.picks[]	object
 pendingChoices[].pickTail.paid.offer.picks[].cards	array
@@ -50185,6 +50329,7 @@ pendingChoices[].pickTail.permission.faces[]	number:int
 pendingChoices[].pickTail.permission.filter	object
 pendingChoices[].pickTail.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].pickTail.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].pickTail.permission.filter.artifactOrSubtype	string
 pendingChoices[].pickTail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].pickTail.permission.filter.cardInZone	bool
 pendingChoices[].pickTail.permission.filter.cardType	string
@@ -50254,6 +50399,7 @@ pendingChoices[].pickTail.permission.manaValueBudget	number:int
 pendingChoices[].pickTail.permission.maxSpellManaValue	number:int
 pendingChoices[].pickTail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].pickTail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].pickTail.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].pickTail.permission.minSpellManaValue	number:int
 pendingChoices[].pickTail.permission.notBeforeSeq	number:int
 pendingChoices[].pickTail.permission.notBeforeTurn	number:int
@@ -50813,6 +50959,7 @@ pendingChoices[].replacementResume.event.counterTail.then.paid.offer.objects[].i
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks[].cards	array
@@ -50884,6 +51031,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.faces[]	num
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter	object
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.cardType	string
@@ -50953,6 +51101,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.manaValueBu
 pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.notBeforeTurn	number:int
@@ -51476,6 +51625,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.objects
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.order	array
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks	array
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks[].cards	array
@@ -51547,6 +51697,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.faces[]
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter	object
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.cardType	string
@@ -51616,6 +51767,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.manaVal
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.notBeforeTurn	number:int
@@ -52130,6 +52282,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.objects
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks[].cards	array
@@ -52201,6 +52354,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.faces[]
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter	object
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.cardType	string
@@ -52270,6 +52424,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.manaVal
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.notBeforeTurn	number:int
@@ -52970,6 +53125,7 @@ pendingChoices[].replacementResume.event.damageTail.then.paid.offer.objects[].id
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks[].cards	array
@@ -53041,6 +53197,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.faces[]	numb
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter	object
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardType	string
@@ -53110,6 +53267,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.manaValueBud
 pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.notBeforeTurn	number:int
@@ -53747,6 +53905,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.picks[].cards	array
@@ -53818,6 +53977,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.cardType	string
@@ -53887,6 +54047,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
@@ -54477,6 +54638,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.objects
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks[].cards	array
@@ -54548,6 +54710,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.faces[]
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.cardType	string
@@ -54617,6 +54780,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.manaVal
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.notBeforeTurn	number:int
@@ -55131,6 +55295,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.objects[].id
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks[].cards	array
@@ -55202,6 +55367,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.faces[]	numb
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter	object
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardType	string
@@ -55271,6 +55437,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.manaValueBud
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.notBeforeTurn	number:int
@@ -55818,6 +55985,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.off
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.picks[].cards	array
@@ -55889,6 +56057,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.cardType	string
@@ -55958,6 +56127,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
@@ -56493,6 +56663,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks[].cards	array
@@ -56564,6 +56735,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.faces[
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.cardType	string
@@ -56633,6 +56805,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.manaVa
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.notBeforeTurn	number:int
@@ -57599,6 +57772,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.objec
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks[].cards	array
@@ -57670,6 +57844,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.faces
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.cardType	string
@@ -57739,6 +57914,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.manaV
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.notBeforeTurn	number:int
@@ -58277,6 +58453,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.objects[]
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks[].cards	array
@@ -58348,6 +58525,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.faces[]	n
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.cardType	string
@@ -58417,6 +58595,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.manaValue
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.notBeforeTurn	number:int
@@ -58934,6 +59113,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.objects[].id	c
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks[].cards	array
@@ -59005,6 +59185,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.faces[]	number
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter	object
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardType	string
@@ -59074,6 +59255,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.manaValueBudge
 pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.notBeforeTurn	number:int
@@ -60451,6 +60633,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.objects[].
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks[].cards	array
@@ -60522,6 +60705,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.faces[]	nu
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter	object
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.cardType	string
@@ -60591,6 +60775,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.manaValueB
 pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.notBeforeTurn	number:int
@@ -61103,6 +61288,7 @@ pendingChoices[].replacementResume.event.millTail.then.paid.offer.objects[].id	c
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks[].cards	array
@@ -61174,6 +61360,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.faces[]	number
 pendingChoices[].replacementResume.event.millTail.then.permission.filter	object
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardType	string
@@ -61243,6 +61430,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.manaValueBudge
 pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.millTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.notBeforeTurn	number:int
@@ -62783,6 +62971,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.objects[].id	
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks[].cards	array
@@ -62854,6 +63043,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.faces[]	numbe
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter	object
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardType	string
@@ -62923,6 +63113,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.manaValueBudg
 pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.notBeforeTurn	number:int
@@ -64756,6 +64947,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offe
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards	array
@@ -64827,6 +65019,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
@@ -64896,6 +65089,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
@@ -65443,6 +65637,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.pai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].cards	array
@@ -65514,6 +65709,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
@@ -65583,6 +65779,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
@@ -66095,6 +66292,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.obj
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.picks[].cards	array
@@ -66166,6 +66364,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fac
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.cardType	string
@@ -66235,6 +66434,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.man
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
@@ -66767,6 +66967,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.o
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.picks[].cards	array
@@ -66838,6 +67039,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.cardType	string
@@ -66907,6 +67109,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.m
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
@@ -67508,6 +67711,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.picks[].cards	array
@@ -67579,6 +67783,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.artifactOrSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.cardInZone	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.cardType	string
@@ -67648,6 +67853,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
@@ -68620,6 +68826,7 @@ pendingChoices[].scryThen.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].scryThen.paid.offer.opponents	bool
 pendingChoices[].scryThen.paid.offer.order	array
 pendingChoices[].scryThen.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].scryThen.paid.offer.ownObjectsOnly	bool
 pendingChoices[].scryThen.paid.offer.picks	array
 pendingChoices[].scryThen.paid.offer.picks[]	object
 pendingChoices[].scryThen.paid.offer.picks[].cards	array
@@ -68691,6 +68898,7 @@ pendingChoices[].scryThen.permission.faces[]	number:int
 pendingChoices[].scryThen.permission.filter	object
 pendingChoices[].scryThen.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].scryThen.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].scryThen.permission.filter.artifactOrSubtype	string
 pendingChoices[].scryThen.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].scryThen.permission.filter.cardInZone	bool
 pendingChoices[].scryThen.permission.filter.cardType	string
@@ -68760,6 +68968,7 @@ pendingChoices[].scryThen.permission.manaValueBudget	number:int
 pendingChoices[].scryThen.permission.maxSpellManaValue	number:int
 pendingChoices[].scryThen.permission.maxSpellManaValueCountOf	array
 pendingChoices[].scryThen.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].scryThen.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].scryThen.permission.minSpellManaValue	number:int
 pendingChoices[].scryThen.permission.notBeforeSeq	number:int
 pendingChoices[].scryThen.permission.notBeforeTurn	number:int
@@ -69320,6 +69529,7 @@ pendingChoices[].searchPrompt.spec.thenTail.paid.offer.objects[].id	custom(uuid.
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.opponents	bool
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.order	array
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks	array
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks[]	object
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks[].cards	array
@@ -69391,6 +69601,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.faces[]	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter	object
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.artifactInstantOrSorceryOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.artifactOrColorlessOnly	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.artifactOrSubtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.auraOrEquipmentOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardInZone	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardType	string
@@ -69460,6 +69671,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.manaValueBudget	number:in
 pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValueCountersOnSource	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.notBeforeTurn	number:int
@@ -75323,6 +75535,7 @@ seats[].castPermissions[].faces[]	number:int
 seats[].castPermissions[].filter	object
 seats[].castPermissions[].filter.artifactInstantOrSorceryOnly	bool
 seats[].castPermissions[].filter.artifactOrColorlessOnly	bool
+seats[].castPermissions[].filter.artifactOrSubtype	string
 seats[].castPermissions[].filter.auraOrEquipmentOnly	bool
 seats[].castPermissions[].filter.cardInZone	bool
 seats[].castPermissions[].filter.cardType	string
@@ -75392,6 +75605,7 @@ seats[].castPermissions[].manaValueBudget	number:int
 seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].maxSpellManaValueCountOf	array
 seats[].castPermissions[].maxSpellManaValueCountOf[]	string
+seats[].castPermissions[].maxSpellManaValueCountersOnSource	string
 seats[].castPermissions[].minSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
@@ -79085,6 +79299,7 @@ seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)
 seats[].statics[].cantBeCountered.filter	object
 seats[].statics[].cantBeCountered.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.artifactOrColorlessOnly	bool
+seats[].statics[].cantBeCountered.filter.artifactOrSubtype	string
 seats[].statics[].cantBeCountered.filter.auraOrEquipmentOnly	bool
 seats[].statics[].cantBeCountered.filter.cardInZone	bool
 seats[].statics[].cantBeCountered.filter.cardType	string
@@ -79138,6 +79353,7 @@ seats[].statics[].castBan.exceptFromZone	string
 seats[].statics[].castBan.filter	object
 seats[].statics[].castBan.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.artifactOrColorlessOnly	bool
+seats[].statics[].castBan.filter.artifactOrSubtype	string
 seats[].statics[].castBan.filter.auraOrEquipmentOnly	bool
 seats[].statics[].castBan.filter.cardInZone	bool
 seats[].statics[].castBan.filter.cardType	string
@@ -79247,6 +79463,7 @@ seats[].statics[].nextSpell.faceDownOnly	bool
 seats[].statics[].nextSpell.filter	object
 seats[].statics[].nextSpell.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.artifactOrColorlessOnly	bool
+seats[].statics[].nextSpell.filter.artifactOrSubtype	string
 seats[].statics[].nextSpell.filter.auraOrEquipmentOnly	bool
 seats[].statics[].nextSpell.filter.cardInZone	bool
 seats[].statics[].nextSpell.filter.cardType	string
@@ -79308,6 +79525,7 @@ seats[].statics[].timing.duringOpponentsEndStep	bool
 seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].timing.filter.artifactOrColorlessOnly	bool
+seats[].statics[].timing.filter.artifactOrSubtype	string
 seats[].statics[].timing.filter.auraOrEquipmentOnly	bool
 seats[].statics[].timing.filter.cardInZone	bool
 seats[].statics[].timing.filter.cardType	string

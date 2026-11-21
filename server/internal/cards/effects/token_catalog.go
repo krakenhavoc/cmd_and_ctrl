@@ -531,6 +531,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
 	// size is its controller's experience counters.
 	printedC15DaxosSpiritToken,
+	// S82 GAP batch 43: Disa the Restless' Tarmogoyf (Modern Horizons 3
+	// Commander), a */1+* Lhurgoyf with the card's characteristic-defining ability.
+	printedGapB43TarmogoyfToken,
 
 	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
 	// (Commander Masters, S82 GAP batch 104, #5948).

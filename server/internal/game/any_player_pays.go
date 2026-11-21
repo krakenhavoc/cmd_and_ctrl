@@ -75,6 +75,11 @@ type AnyPlayerOffer struct {
 	Objects []ObjectRef `json:"objects,omitempty"`
 	Picks   []OfferPick `json:"picks,omitempty"`
 	Noun    string      `json:"noun,omitempty"`
+	// OwnObjectsOnly narrows a per-object offer to "its controller pays":
+	// each seat is offered only the objects it controls, and pays only for
+	// those (Killing Wave, #5948). False is "any player may pay" (Cleansing).
+	// Additive within the version.
+	OwnObjectsOnly bool `json:"ownObjectsOnly,omitempty"`
 }
 
 // OfferPick is one seat's answer to a keyed per-object offer's leg: the

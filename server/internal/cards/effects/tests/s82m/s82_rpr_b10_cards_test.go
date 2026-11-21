@@ -334,7 +334,7 @@ func TestRprB10HumiliatorWithMetalcraftShrinksAndSilencesOpposingCreatures(t *te
 	g, me, opp, humiliator, theirs := rprHumiliatorBoard(t, 3)
 	mine := effectstest.B12Creature(g, me.ID, "Mine", "Creature — Bear", 2, 2)
 	effectstest.DeclareAttack(t, g, opp.ID, humiliator)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if p, tt := effectstest.EffectivePTOf(t, g, theirs); p != 1 || tt != 1 {
 		t.Errorf("their creature is %d/%d, want 1/1", p, tt)
 	}
@@ -360,7 +360,7 @@ func TestRprB10HumiliatorWithTwoArtifactsDoesNothing(t *testing.T) {
 	if effectstest.TriggersOnStackFrom(g, humiliator) != 0 {
 		t.Error("the metalcraft trigger went on the stack with two artifacts")
 	}
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if p, tt := effectstest.EffectivePTOf(t, g, theirs); p != 4 || tt != 4 {
 		t.Errorf("their creature is %d/%d, want untouched 4/4", p, tt)
 	}

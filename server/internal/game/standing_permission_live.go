@@ -35,6 +35,20 @@ func (g *Game) fillDerivedLiveLocked(perm *CastPermission, holder uuid.UUID) {
 	}
 }
 
+// fillDerivedSourceLiveLocked fills the part of a derived standing
+// permission that reads its granting permanent: "the number of quest
+// counters on Arcade Gannon" (MaxSpellManaValueCountersOnSource).
+func (g *Game) fillDerivedSourceLiveLocked(perm *CastPermission, source *Card) {
+	if perm.MaxSpellManaValueCountersOnSource == "" {
+		return
+	}
+	n := 0
+	if source != nil {
+		n = source.Counters[perm.MaxSpellManaValueCountersOnSource]
+	}
+	perm.MaxSpellManaValue = &n
+}
+
 // countPermanentsWithAnySubtypeLocked counts the permanents `controller`
 // controls that have at least one of `subtypes` (through the layered
 // view, so a changeling counts), each permanent once: "the number of
