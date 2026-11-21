@@ -821,6 +821,7 @@ choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
 choose choose-cards/invasion-of-arcavios-outside
 choose choose-cards/invasion-of-tarkir-reveal
+choose choose-cards/inventory-management-attach
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/irreverent-gremlin-discard-draw
 choose choose-cards/isochron-scepter-imprint
@@ -1375,6 +1376,8 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
+choose choose-cards/vault-101-attach
+choose choose-cards/vault-101-put
 choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/victor-valgavoths-seneschal-reanimate
@@ -2307,6 +2310,7 @@ payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nihil-spellbomb-draw
 payunless pay-unless/nothing
 payunless pay-unless/oreplate-pangolin-counter
+payunless pay-unless/overencumbered-no-attack
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/papercraft-decoy-draw
 payunless pay-unless/passenger-ferry-unblockable
@@ -4184,6 +4188,7 @@ tail valgavoths-onslaught/manifest-again
 tail valkyries-call/angel
 tail vanille-cheerful-lcie/after-mill
 tail vanish-into-memory/entered
+tail vault-101/entered
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
