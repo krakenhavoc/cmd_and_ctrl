@@ -487,6 +487,7 @@ body spined-tyrranax/counter
 body stensia-uprising/damage
 body stitched-assistant/scry-draw
 body stolen-uniform/unattach-the-equipment
+body storm-kings-thunder/copy-x-times
 body storm/the-spell-just-cast
 body strax-sontaran-nurse/fight
 body subira-tulzidi-caravanner/draw
@@ -3326,6 +3327,7 @@ tail dice/ebony-fly-rolled
 tail dice/entry-roll
 tail dice/faridehs-fireball-table
 tail dice/gap-b216-druid-emerald-grove-table
+tail dice/gales-redirection-rolled
 tail dice/goblin-morningstar-table
 tail dice/grave-endeavor-rolled
 tail dice/herald-of-hadar-table
@@ -4293,6 +4295,7 @@ tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
+tail then/gales-redirection-exiled
 tail then/gap-b06-greensleeves-take-permanents
 tail then/gap-b07-chalice-of-life-check
 tail then/gap-b07-soul-separator-tokens
