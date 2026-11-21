@@ -509,6 +509,14 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
 	printedGapB05BlackLotusToken,
 	printedGapB05LordOfThePitToken,
+	// S82 GAP batch 3: Selenia, the Cursed Heart's Selenia's Curse.
+	printedSeleniasCurseToken,
+	// S82 GAP batch 3: Zagorka, Mother of Sanctum's Sanctum.
+	printedSanctumToken,
+	// S82 GAP batch 06: Feroz's Ban, Greensleeves's Giant Badger and Worzel's Cat.
+	printedGapB06FerozsBanToken,
+	printedGapB06GiantBadgerToken,
+	printedGapB06LoyaltyCatToken,
 	// S82 C14 batch 1 (#5553): Freyalise, Llanowar's Fury's Elf Druid.
 	printedC14ElfDruidToken,
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose

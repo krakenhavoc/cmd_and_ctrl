@@ -220,6 +220,8 @@ var reviewedNotAWipe = map[string]string{
 	// S82 GAP batch 34.
 	"Ruination": "destroys the nonbasic lands, which no sweep class holds alone",
 
+	// S82 GAP batch 35.
+	"Yggdrasil, Rebirth Engine": "exiles only the creature cards in its controller's graveyard, which are no permanents",
 	// S82 BOK batch 1 (#5602).
 	"Yukora, the Prisoner": "its leaves trigger sacrifices only its controller's own non-Ogre creatures: a drawback, not a board",
 

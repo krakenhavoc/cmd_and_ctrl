@@ -63,6 +63,17 @@ import (
 // such static clears what an earlier pass stamped, once, and is
 // otherwise one battlefield walk.
 //
+// # Layer 7c (The Muckslinger Gang, #5948)
+//
+// A static may also be a layer 7c modifier ("creature cards you own in
+// any zone other than the battlefield or the stack get +3/+3"). The stamp
+// is a whole Characteristic that starts from the printed one, so a
+// modifier that adds to Power and Toughness there is what the P/T readers
+// find (effectiveOf), with the object's counters added on top as they are
+// on any object. Only 7c: nothing off the battlefield sets power or
+// toughness through this step, and the printed P/T of a card with a
+// characteristic-defining ability is not recomputed here.
+//
 // # Not covered
 //
 // Dependency ordering (CR 613.8) among these effects. The battlefield's

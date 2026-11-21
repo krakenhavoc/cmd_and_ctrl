@@ -2,10 +2,12 @@ package deck
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // rulebreaker.go — the "Rulebreaker" commanders of Mystery Booster Commander
@@ -20,6 +22,18 @@ import (
 //   - Tolabow, Loch Rascal: "the color identity of instant and sorcery cards in
 //     your deck can include one color of your choice not in your commander's
 //     color identity, and your deck can have any basic land cards."
+//   - Valko Indorian, The Everforger (GAP batch 1): "can have Phyrexian cards
+//     (artifact creature and Equipment cards) of any color identity and any
+//     basic land cards". Any "<types> cards of any color identity" clause is
+//     read the same way: a card whose type line holds every word of one of
+//     the "and"-joined type groups.
+//     The Unluckiest Planeswalker (GAP batch 6) is "Aura cards".
+//   - Grizzlegom, Hurloon Hero (GAP batch 3): "can have any land cards".
+//   - Maular, the Next Evolution (GAP batch 3): "can have creature cards with
+//     mana value 7 or greater of any color identity and any basic land cards."
+//
+// A sentence this file does not recognise grants nothing: the strict
+// direction.
 //
 // The player's "color of your choice" is not a field of a deck list: a deck
 // qualifies when one color outside the commander's identity covers every
@@ -32,12 +46,30 @@ const (
 	rulebreakerSpells = "the color identity of instant and sorcery cards in your deck can include one color of your choice not in your commander's color identity"
 )
 
+// rulebreakerTypes picks out "<types> cards of any color identity", and
+// rulebreakerAnyLand / rulebreakerBigCreatures / rulebreakerBasics the other
+// clauses.
+var rulebreakerTypes = regexp.MustCompile(`(?i)can have ([^.,]*?) cards? of any color identity`)
+
+const (
+	rulebreakerAnyLand      = "can have any land cards"
+	rulebreakerBigCreatures = "can have creature cards with mana value 7 or greater of any color identity"
+	rulebreakerBasics       = "any basic land cards"
+	// rulebreakerMinMV is the mana value Maular's creature clause starts at.
+	rulebreakerMinMV = 7
+)
+
 // rulebreaker is what a deck's commanders let it hold.
 type rulebreaker struct {
 	angelsAnyIdentity bool
 	basicsAnyIdentity bool
 	oneSpellColor     bool
 	noMaxDeckSize     bool
+	landsAnyIdentity  bool
+	bigCreatures      bool
+	// typeGroups are the "<types> cards of any color identity" groups, each
+	// a list of lower-case words a type line must all hold.
+	typeGroups [][]string
 }
 
 func commanderRulebreaker(commanders []cards.Card) rulebreaker {
@@ -60,9 +92,61 @@ func commanderRulebreaker(commanders []cards.Card) rulebreaker {
 			if strings.Contains(text, rulebreakerSpells) {
 				rb.oneSpellColor, rb.basicsAnyIdentity = true, true
 			}
+			if strings.Contains(text, rulebreakerBasics) {
+				rb.basicsAnyIdentity = true
+			}
+			if strings.Contains(text, rulebreakerAnyLand) {
+				rb.landsAnyIdentity = true
+			}
+			if strings.Contains(text, rulebreakerBigCreatures) {
+				rb.bigCreatures = true
+			}
+			for _, m := range rulebreakerTypes.FindAllStringSubmatch(text, -1) {
+				for _, grp := range strings.Split(strings.ToLower(m[1]), " and ") {
+					if words := strings.Fields(grp); len(words) > 0 {
+						rb.typeGroups = append(rb.typeGroups, words)
+					}
+				}
+			}
 		}
 	}
 	return rb
+}
+
+// typeExempt reports whether c's type line holds every word of one of the
+// commanders' "<types> cards of any color identity" groups.
+func (rb rulebreaker) typeExempt(c cards.Card) bool {
+	line := strings.ToLower(c.TypeLine)
+	for _, words := range rb.typeGroups {
+		all := true
+		for _, w := range words {
+			if !strings.Contains(line, w) {
+				all = false
+				break
+			}
+		}
+		if all {
+			return true
+		}
+	}
+	return false
+}
+
+// bigCreatureExempt reports whether c is a creature card of mana value 7
+// or greater (Maular).
+func (rb rulebreaker) bigCreatureExempt(c cards.Card) bool {
+	if !rb.bigCreatures || !strings.Contains(c.TypeLine, "Creature") {
+		return false
+	}
+	total := 0
+	for _, cost := range companionManaCosts(c) {
+		parsed, err := game.ParseCost(cost)
+		if err != nil {
+			return false
+		}
+		total += parsed.ManaValue()
+	}
+	return total >= rulebreakerMinMV
 }
 
 func isAngelCard(c cards.Card) bool { return strings.Contains(c.TypeLine, "Angel") }
@@ -100,6 +184,10 @@ func colorIdentityViolations(list *List, allowed map[string]struct{}) []Violatio
 		case rb.basicsAnyIdentity && isBasicLand(c):
 			continue
 		case rb.angelsAnyIdentity && isAngelCard(c):
+			continue
+		case rb.landsAnyIdentity && strings.Contains(c.TypeLine, "Land"):
+			continue
+		case rb.typeExempt(c), rb.bigCreatureExempt(c):
 			continue
 		case rb.oneSpellColor && isInstantOrSorcery(c) && len(off) == 1:
 			spellColor[off[0]] = append(spellColor[off[0]], c)
