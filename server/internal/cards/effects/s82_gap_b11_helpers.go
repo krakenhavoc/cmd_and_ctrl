@@ -43,20 +43,3 @@ func scheduleManaAtYourNextMainPhase(g *game.Game, item *game.StackItem, label s
 		Body:    body,
 	}.Apply(NewContext(g, item))
 }
-
-// pairedCreaturesHaveKeyword is "As long as this creature is paired with
-// another creature, both creatures have <keyword>" (Lightning Mauler): a
-// layer-6 keyword grant to the source and its soulbond partner, for as
-// long as the pair lasts.
-func pairedCreaturesHaveKeyword(label, keyword string) game.StaticAbility {
-	return game.StaticAbility{
-		Label:     label,
-		Layer:     game.Layer6Ability,
-		AppliesTo: pairedWithSource,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			if !eotHasAbility(c.Abilities, keyword) {
-				c.Abilities = append(c.Abilities, keyword)
-			}
-		},
-	}
-}
