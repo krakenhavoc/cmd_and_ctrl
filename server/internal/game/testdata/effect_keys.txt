@@ -223,10 +223,10 @@ body forgehammer-centurion/cant-block
 body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
-body gap-b220-swashbuckler-extraordinaire/double-strike
 body gap-b186/return-to-battlefield
 body gap-b187/return-died-tapped
 body gap-b215/ancient-bronze-dragon-counters
+body gap-b220-swashbuckler-extraordinaire/double-strike
 body gap-b55-voltstorm-angel/modes
 body gap-b82/land-damages-creature
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
@@ -1728,8 +1728,8 @@ confirm confirm/armor-wars-draw
 confirm confirm/ashcoat-mill-four
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/awaken-the-sleeper-destroy-equipment
-confirm confirm/barroom-brawl-copy
 confirm confirm/bane-lord-of-darkness-draw-or-put
+confirm confirm/barroom-brawl-copy
 confirm confirm/barrowgoyf-mill
 confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
 confirm confirm/bebop-skull-and-crossbones-draw-lose
@@ -2934,8 +2934,8 @@ run prompt-run/minsc-and-boo-sacrifice
 run prompt-run/mirkwood-trapper-pump
 run prompt-run/momentum-breaker-discard
 run prompt-run/mukotai-soulripper-grow
-run prompt-run/myrkuls-edict-done
 run prompt-run/multiple-choice-bounce
+run prompt-run/myrkuls-edict-done
 run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
@@ -3459,8 +3459,8 @@ tail dice/luck-bobblehead-results
 tail dice/maddening-hex-burn-and-move
 tail dice/myrkuls-edict-rolled
 tail dice/netherese-puzzle-ward-scry
-tail dice/overwhelming-encounter-rolled
 tail dice/nothic-table
+tail dice/overwhelming-encounter-rolled
 tail dice/power-of-persuasion-rolled
 tail dice/reckless-endeavor-rolled
 tail dice/recruitment-drive-table
@@ -4126,8 +4126,8 @@ tail sacrificed-one/prompt-run/exploit-vulturous-aven
 tail sacrificed-one/prompt-run/feed-the-pack-wolves
 tail sacrificed-one/prompt-run/felothar-sacrifice
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
-tail sacrificed-one/prompt-run/gap-b219-gut-true-soul-zealot-sacrifice
 tail sacrificed-one/prompt-run/fireblade-artist-sacrifice
+tail sacrificed-one/prompt-run/gap-b219-gut-true-soul-zealot-sacrifice
 tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
 tail sacrificed-one/prompt-run/gearbane-orangutan-sacrifice
 tail sacrificed-one/prompt-run/general-traag-sacrifice
