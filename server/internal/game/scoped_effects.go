@@ -698,6 +698,19 @@ const (
 	// it reaches a creature that arrives or stops being a land after the
 	// effect began (CR 611.2c: it changes no characteristic).
 	ScopeCreaturesThatArentLands AffectedScope = "creaturesThatArentLands"
+	// ScopeCreaturesOddManaValue and ScopeCreaturesEvenManaValue are
+	// "creatures with an odd (even) mana value", every player's, read
+	// live (S82, Twins of Discord's "choose odd or even. Creatures with
+	// mana value of that quality can't block this turn", zero is even,
+	// CR 202.3). "Can't block" changes no characteristic, so CR 611.2c
+	// does not lock the set and a creature that arrives later in the turn
+	// is covered. A creature's mana value is a copiable value (a layer-1
+	// result, and a face-down one is 0), so, like
+	// ScopeCreaturesWithoutFlying, a record with this scope carries only
+	// mods read after the layer pass is finished (scopeReadsLayerResult).
+	// A creature whose cost the engine cannot read is in neither set.
+	ScopeCreaturesOddManaValue  AffectedScope = "creaturesOddManaValue"
+	ScopeCreaturesEvenManaValue AffectedScope = "creaturesEvenManaValue"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
@@ -705,7 +718,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
-		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands:
+		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
+		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
 		return true
 	}
 	return false
@@ -717,7 +731,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 // (foldedAfterLayers). A layer mod would read the characteristic
 // half-way through the pass (#1650).
 func scopeReadsLayerResult(scope AffectedScope) bool {
-	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands
+	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands ||
+		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue
 }
 
 // panicOnLayerModUnderLayerScope refuses, at registration, a layer mod on
@@ -2242,6 +2257,15 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 	case ScopeCreaturesThatArentLands:
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && !target.IsLand()
+		}
+	case ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
+		wantOdd := scope == ScopeCreaturesOddManaValue
+		return func(target *Card, g *Game, _ *Card) bool {
+			if target == nil || g == nil || !target.IsCreature() {
+				return false
+			}
+			mv, ok := g.ManaValueForEffect(*target)
+			return ok && (mv%2 != 0) == wantOdd
 		}
 	}
 	// ScopeGame names no object, so it matches none.
