@@ -2110,8 +2110,8 @@ option option-pick/thanos-destroy-parity
 option option-pick/the-black-gate-most-life
 option option-pick/the-cloning-of-shredder-copy
 option option-pick/the-master-gallifreys-end-opponent
-option option-pick/the-third-doctor-token
 option option-pick/the-night-of-the-doctor-counter
+option option-pick/the-third-doctor-token
 option option-pick/thornplate-intimidator-punisher
 option option-pick/threats-undetected-opponent
 option option-pick/thrull-wizard-pay
