@@ -71,12 +71,12 @@ func youPlaneswalkedToThisOrYourUpkeep(ev game.Event, source *game.Card, lki gam
 // the trigger's source while it is still that object. The layer pass drops
 // the creature types with it (CR 205.1a), so it stays an artifact and stops
 // being an Alien Angel, and one in combat is removed from it (CR 506.4).
-func thisIsntACreatureUntilEndOfTurn(label string) Effect {
+func ThisIsntACreatureUntilEndOfTurn(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+		if !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 			return nil
 		}
-		return untilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label, game.RemoveTypesMod("Creature"))
+		return UntilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label, game.RemoveTypesMod("Creature"))
 	}
 }
 

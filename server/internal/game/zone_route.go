@@ -1004,6 +1004,9 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		r.Cause.stampCause(&out)
 		leave.stamp(&out)
 		g.EmitEvent(out)
+		if kind == EventMill {
+			g.markMilledLocked(dstZone, ev.CardID)
+		}
 	}
 	if fromBattlefield {
 		ltb := Event{

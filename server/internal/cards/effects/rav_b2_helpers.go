@@ -12,15 +12,15 @@ import (
 // preventNextOneDamageToTheTarget is "Prevent the next 1 damage that would
 // be dealt to any target this turn" as an activated ability's body
 // (Benevolent Ancestor, Caregiver): preventNextDamageToTheTarget at 1.
-func preventNextOneDamageToTheTarget(name string) Effect {
-	return preventNextDamageToTheTarget(name, 1)
+func PreventNextOneDamageToTheTarget(name string) Effect {
+	return PreventNextDamageToTheTarget(name, 1)
 }
 
 // preventNextDamageToTheTarget is "Prevent the next N damage that would be
 // dealt to any target this turn" (Aven Redeemer's 2): the charged shield
 // Kitsune Healer and Mending Hands use (PreventNextDamage, CR 615.7), on
 // the one target. A target gone by resolution gets no shield (CR 608.2b).
-func preventNextDamageToTheTarget(name string, n int) Effect {
+func PreventNextDamageToTheTarget(name string, n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		ts := ctx.LegalTargets()

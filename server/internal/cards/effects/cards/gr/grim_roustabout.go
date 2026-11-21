@@ -1,0 +1,34 @@
+package cardsgr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Grim Roustabout — Creature — Skeleton Warrior {1}{B}, 1/1:
+//
+//	"Unleash (You may have this creature enter with a +1/+1 counter on
+//	 it. It can't block as long as it has a +1/+1 counter on it.)
+//	 {1}{B}: Regenerate this creature."
+//
+// Unleash is the engine's keyword (ADR 0109 §10). Regeneration is
+// Regenerate on the ability's own source (CR 701.19).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "1adcc4a8-b2dd-4d9a-bded-188b81c84a10",
+		Name:            "Grim Roustabout",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{game.KeywordUnleash},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{1}{B}: Regenerate this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
+			Cost:    effects.ManaCost("{1}{B}"),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.Regenerate{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}

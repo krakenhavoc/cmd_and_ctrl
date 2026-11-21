@@ -20,7 +20,7 @@ import (
 // counters land, which gives the printed order's answer: counters never
 // make a permanent a creature, and putting them first would run the type
 // change while a CR 616 ordering prompt could still be open.
-func tmtB8RobotCountersOnFirstTarget(label string) func(g *game.Game, item *game.StackItem) error {
+func TmtB8RobotCountersOnFirstTarget(label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		id := FirstLegalBattlefieldTarget(ctx)
@@ -49,14 +49,14 @@ func tmtB8RobotCountersOnFirstTarget(label string) func(g *game.Game, item *game
 // or a creature the counterer controls. Rebuff the Wicked's predicate
 // (b14SpellTargetsAPermanentYouControl) narrowed to those two types,
 // read after the layers.
-func tmtB8SpellTargetsArtifactOrCreatureYouControl() CardPredicate {
+func TmtB8SpellTargetsArtifactOrCreatureYouControl() CardPredicate {
 	return func(g *game.Game, caster uuid.UUID, c game.Card) bool {
 		item := g.StackItemForEffect(c.InstanceID)
 		if item == nil {
 			return false
 		}
 		for _, t := range item.Targets {
-			if t.Kind != game.TargetCard || !onBattlefield(g, t.ID) {
+			if t.Kind != game.TargetCard || !OnBattlefield(g, t.ID) {
 				continue
 			}
 			tc, ok := g.LookupCardForEffect(t.ID)

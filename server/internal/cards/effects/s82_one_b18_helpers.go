@@ -16,7 +16,7 @@ import (
 // card is returned only if it is still in a graveyard (CR 603.7c), to the
 // battlefield under its owner's control (ReturnFromGraveyard's zero
 // Controller).
-var meliraReturnListedBody = game.SimpleDelayedBody("melira/return-listed-to-the-battlefield", meliraReturnListedToBattlefield)
+var MeliraReturnListedBody = game.SimpleDelayedBody("melira/return-listed-to-the-battlefield", meliraReturnListedToBattlefield)
 
 func meliraReturnListedToBattlefield(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
@@ -37,7 +37,7 @@ func meliraReturnListedToBattlefield(g *game.Game, item *game.StackItem) error {
 // s82OneB18AddArtifactType is "<it> is an artifact in addition to its other
 // types" (CR 205.1b): the layer 4 Apply of Encroaching Mycosynth, and
 // idempotent.
-func s82OneB18AddArtifactType(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+func S82OneB18AddArtifactType(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 	if !slices.Contains(c.Types, "Artifact") {
 		c.Types = append(c.Types, "Artifact")
 	}
@@ -47,7 +47,7 @@ func s82OneB18AddArtifactType(c *game.Characteristic, _ *game.Card, _ *game.Game
 // permanent card type (CR 110.4) and isn't a land: the "nonland permanent"
 // of "nonland permanent cards" and "permanent spells" (a land is never a
 // spell, CR 305.9).
-func s82OneB18NonlandPermanentType(c *game.Card) bool {
+func S82OneB18NonlandPermanentType(c *game.Card) bool {
 	if c.HasCardType("land") {
 		return false
 	}
@@ -61,7 +61,7 @@ func s82OneB18NonlandPermanentType(c *game.Card) bool {
 
 // s82OneB18IsBasicSphereOrLocusLand is "a basic, Sphere, or Locus land":
 // a land that is basic or has the land type Sphere or Locus (CR 205.3i).
-func s82OneB18IsBasicSphereOrLocusLand(c game.Card) bool {
+func S82OneB18IsBasicSphereOrLocusLand(c game.Card) bool {
 	if !c.IsLand() {
 		return false
 	}
@@ -71,10 +71,10 @@ func s82OneB18IsBasicSphereOrLocusLand(c game.Card) bool {
 // s82OneB18NineDifferentlyNamedLands is Monument to Perfection's gate:
 // nine or more lands with different names among the basic, Sphere, and
 // Locus lands `controller` controls, read as the ability is activated.
-func s82OneB18NineDifferentlyNamedLands(g *game.Game, controller, _ uuid.UUID) bool {
+func S82OneB18NineDifferentlyNamedLands(g *game.Game, controller, _ uuid.UUID) bool {
 	names := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && s82OneB18IsBasicSphereOrLocusLand(c) {
+		if c.Controller == controller && S82OneB18IsBasicSphereOrLocusLand(c) {
 			names[c.Name] = true
 		}
 	}
@@ -86,7 +86,7 @@ func s82OneB18NineDifferentlyNamedLands(g *game.Game, controller, _ uuid.UUID) b
 // artifact creature tokens with toxic 1 and 'This token can't block.'"
 // The prevented amount rides the body (CR 615.5), and the tokens are
 // created by the shield's controller. An on-disk key.
-var riaIvorMitesBody = game.DelayedBody("prevention/ria-ivor-create-mites", riaIvorMites)
+var RiaIvorMitesBody = game.DelayedBody("prevention/ria-ivor-create-mites", riaIvorMites)
 
 func riaIvorMites(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	if p.Amount <= 0 {

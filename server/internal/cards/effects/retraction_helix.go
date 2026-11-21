@@ -30,12 +30,12 @@ func init() {
 				Label:   "{T}: Return target nonland permanent to its owner's hand",
 				Cost:    TapCost(),
 				Targets: TargetPermanent("target nonland permanent", Not(Land())),
-				Effect:  retractionHelixBounceTarget,
+				Effect:  RetractionHelixBounceTarget,
 			}},
 			Text: "{T}: Return target nonland permanent to its owner's hand.",
 		}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			target, ok := b16FirstLegalTargetCard(ctx)
+			target, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}
@@ -50,9 +50,9 @@ func init() {
 
 // retractionHelixBounceTarget is the granted ability's effect: return
 // its target, if still legal, to its owner's hand.
-func retractionHelixBounceTarget(g *game.Game, item *game.StackItem) error {
+func RetractionHelixBounceTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	target, ok := b16FirstLegalTargetCard(ctx)
+	target, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

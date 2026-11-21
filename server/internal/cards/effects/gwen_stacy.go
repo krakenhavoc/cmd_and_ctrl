@@ -29,12 +29,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     gwenStacyOracle,
+		OracleID:     GwenStacyOracle,
 		Name:         "Gwen Stacy",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Gwen Stacy — exile the top card of your library; you may play it for as long as you control her",
-				exileTopPlayableWhileYouControlThis),
+				ExileTopPlayableWhileYouControlThis),
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{2}{U}{R}{W}: Transform Gwen Stacy. Activate only as a sorcery.",
@@ -46,4 +46,4 @@ func init() {
 }
 
 // gwenStacyOracle is shared with the back face (ghost_spider.go).
-const gwenStacyOracle = "5f143d87-35fb-40e3-94ae-f85cfff9adb5"
+const GwenStacyOracle = "5f143d87-35fb-40e3-94ae-f85cfff9adb5"

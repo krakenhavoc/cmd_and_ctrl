@@ -34,7 +34,7 @@ func init() {
 		Name:         "Janice Rand, Essential Aide",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OnAny([]game.EventKind{game.EventETB, game.EventAttack}, janiceRandCommanderYouControl,
+			OnAny([]game.EventKind{game.EventETB, game.EventAttack}, JaniceRandCommanderYouControl,
 				"Janice Rand, Essential Aide — put a +1/+1 counter on that commander, then reveal until a land card and put it onto the battlefield tapped",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
@@ -56,7 +56,7 @@ func init() {
 // janiceRandCommanderYouControl is "whenever a commander you control
 // enters or attacks": the permanent the event names is a commander and
 // the source's controller controls it.
-func janiceRandCommanderYouControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func JaniceRandCommanderYouControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventETB && ev.Kind != game.EventAttack {
 		return false
 	}

@@ -43,7 +43,7 @@ func init() {
 				return AttachedToSource(target, g, source) && target.IsCreature()
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := creaturesAndVehiclesControlledBy(g, source.Controller)
+				n := CreaturesAndVehiclesControlledBy(g, source.Controller)
 				c.Power += n
 				c.Toughness += n
 			},
@@ -65,7 +65,7 @@ func init() {
 // g.Battlefield.Cards directly because it runs inside a layer recompute
 // pass, where the caller may hold only the read lock (see
 // sharedCreatureTypeCount).
-func creaturesAndVehiclesControlledBy(g *game.Game, player uuid.UUID) int {
+func CreaturesAndVehiclesControlledBy(g *game.Game, player uuid.UUID) int {
 	if g == nil || g.Battlefield == nil {
 		return 0
 	}

@@ -1,0 +1,50 @@
+package cardspr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Purphoros, God of the Forge — Legendary Enchantment Creature — God
+// {3}{R}, 6/5:
+//
+//	"Indestructible
+//	 As long as your devotion to red is less than five, Purphoros isn't
+//	 a creature.
+//	 Whenever another creature you control enters, Purphoros deals 2
+//	 damage to each opponent.
+//	 {2}{R}: Creatures you control get +1/+0 until end of turn."
+//
+// The Theros God shape (Thassa, Erebos): indestructible rides
+// PrintedKeywords and the devotion gate is the shared godUnlessDevotion.
+// The enters trigger is the "pings the table" body every such card
+// shares, and the pump locks its set as it resolves (CR 611.2c).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "4fdbbec2-e921-4b63-958d-f9ba1e417197",
+		Name:            "Purphoros, God of the Forge",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"indestructible"},
+		Static:          []game.StaticAbility{effects.GodUnlessDevotion("R")},
+		Triggered: []game.TriggeredAbility{
+			effects.CreatureEnterPaying(effects.WheneverAnotherCreatureEntersUnderYourControl(
+				"Purphoros, God of the Forge — 2 damage to each opponent",
+				effects.Do(effects.DamageEachOpponent{N: 2})), game.CreatureEnterPayoff{DamageEachOpponent: 2}),
+		},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{2}{R}: Creatures you control get +1/+0 until end of turn.",
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1}, Answers: game.AnswerPump},
+			Cost:    effects.ManaCost("{2}{R}"),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.BoostUntilEOT{
+					Match: effects.And(effects.Creature(), effects.YouControl()),
+					Power: 1,
+					Label: "Purphoros, God of the Forge — creatures you control get +1/+0",
+				}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}

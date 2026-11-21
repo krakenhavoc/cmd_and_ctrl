@@ -32,17 +32,17 @@ func init() {
 		XMatters:     true,
 		XCeiling:     XCeilingPlayersInGame,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return openTheWayReveal(ctx, ctx.X())
+			return OpenTheWayReveal(ctx, ctx.X())
 		},
 	})
 }
 
-func openTheWayReveal(ctx *Context, x int) error {
+func OpenTheWayReveal(ctx *Context, x int) error {
 	if x <= 0 {
 		return nil
 	}
 	found := 0
-	run, _ := revealUntil(ctx, ctx.Controller(), func(c game.Card) bool {
+	run, _ := RevealUntil(ctx, ctx.Controller(), func(c game.Card) bool {
 		if !c.IsLand() {
 			return false
 		}

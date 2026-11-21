@@ -31,7 +31,7 @@ import (
 // than off the type line, because the spell is in no zone the layer
 // engine reaches and HasKeyword is the accessor that falls back to
 // the catalog's printed keywords for exactly that case.
-func b42CreatureSpellWithFlying() CostPredicate {
+func B42CreatureSpellWithFlying() CostPredicate {
 	return func(q game.CostQuery) bool {
 		c := q.Card
 		return c.IsCreature() && game.HasKeyword(&c, "flying")
@@ -47,7 +47,7 @@ func b42CreatureSpellWithFlying() CostPredicate {
 //
 // Effective subtypes, so a changeling and anything a layer-4 effect
 // has retyped are Elves here too.
-func b42CountCreaturesWithSubtype(g *game.Game, subtype string) int {
+func B42CountCreaturesWithSubtype(g *game.Game, subtype string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsCreature() && c.HasSubtype(subtype) {
@@ -66,7 +66,7 @@ func b42CountCreaturesWithSubtype(g *game.Game, subtype string) int {
 // Zero when the controller has no creatures, which cannot happen
 // while the trigger's own source is attacking but is the right answer
 // for any other caller.
-func b42GreatestPowerControlledBy(g *game.Game, controller uuid.UUID) int {
+func B42GreatestPowerControlledBy(g *game.Game, controller uuid.UUID) int {
 	best := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || !c.IsCreature() {
@@ -85,7 +85,7 @@ func b42GreatestPowerControlledBy(g *game.Game, controller uuid.UUID) int {
 // Liliana card shares the Liliana planeswalker type and a Liliana
 // that is not a planeswalker (a creature card named Liliana) does not
 // count.
-func b42ControlsPlaneswalkerNamed(g *game.Game, player uuid.UUID, subtype string) bool {
+func B42ControlsPlaneswalkerNamed(g *game.Game, player uuid.UUID, subtype string) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsPlaneswalker() && c.HasSubtype(subtype) {
 			return true
@@ -99,7 +99,7 @@ func b42ControlsPlaneswalkerNamed(g *game.Game, player uuid.UUID, subtype string
 // player's graveyard". Snapshot first, act second: the exile opens a
 // CR 614 window per card and the zone is not safe to walk while it
 // is being emptied.
-func b42CardsInGraveyardOf(g *game.Game, player uuid.UUID, match func(game.Card) bool) []uuid.UUID {
+func B42CardsInGraveyardOf(g *game.Game, player uuid.UUID, match func(game.Card) bool) []uuid.UUID {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil {
 		return nil
@@ -120,7 +120,7 @@ func b42CardsInGraveyardOf(g *game.Game, player uuid.UUID, match func(game.Card)
 // Counters are read off the live card rather than the layered
 // characteristic because a counter is not a continuous effect — it is
 // a physical marker the layer pass reads, not one it writes.
-func b42CreatureYouControlWithAPlusOneCounter(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B42CreatureYouControlWithAPlusOneCounter(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() &&
 		target.Controller == source.Controller &&
 		target.Counters[game.CounterPlusOne] > 0
@@ -130,10 +130,10 @@ func b42CreatureYouControlWithAPlusOneCounter(target *game.Card, _ *game.Game, s
 
 // b42BlueMerfolkHexproofToken is kept as a function because a card
 // passes it as a value; the data lives in tokens_table.go.
-func b42BlueMerfolkHexproofToken() game.Card {
+func B42BlueMerfolkHexproofToken() game.Card {
 	return TokenCard("1/1 blue Merfolk with hexproof")
 }
 
 // b42BlackBatFlyingToken is kept as a function because a card passes
 // it as a value; the data lives in tokens_table.go.
-func b42BlackBatFlyingToken() game.Card { return TokenCard("1/1 black Bat with flying") }
+func B42BlackBatFlyingToken() game.Card { return TokenCard("1/1 black Bat with flying") }

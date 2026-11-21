@@ -49,10 +49,10 @@ const wildfireAwakenerLabel = "Wildfire Awakener — create X 1/1 red Elemental 
 
 // wildfireElementalToken is Wildfire Awakener's 1/1 red Elemental with
 // "Whenever this token becomes tapped, it deals 1 damage to target player."
-func wildfireElementalToken() game.Card { return tokenFromCatalog(printedWildfireElementalToken) }
+func wildfireElementalToken() game.Card { return TokenFromCatalog(printedWildfireElementalToken) }
 
-func printedWildfireElementalToken() tokenTemplate {
-	return tokenTemplate{
+func printedWildfireElementalToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "elemental-tapped-ping",
 		Card: game.Card{
 			Name:      "Elemental",
@@ -63,7 +63,7 @@ func printedWildfireElementalToken() tokenTemplate {
 		},
 		Triggered: []game.TriggeredAbility{
 			Targeting(OnAny([]game.EventKind{game.EventTapCard, game.EventAttack}, ThisBecameTapped,
-				"Elemental — 1 damage to target player", sourceDealsOneToFirstTarget),
+				"Elemental — 1 damage to target player", SourceDealsOneToFirstTarget),
 				TargetPlayer("target player")),
 		},
 		Text: "Whenever this token becomes tapped, it deals 1 damage to target player.",

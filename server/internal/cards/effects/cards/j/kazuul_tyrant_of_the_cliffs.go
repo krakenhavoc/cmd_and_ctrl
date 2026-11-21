@@ -1,0 +1,57 @@
+package cardsj
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Kazuul, Tyrant of the Cliffs — Legendary Creature — Ogre Warrior
+// {3}{R}{R}, 5/4 (EDHREC rank 1870):
+//
+//	"Whenever a creature an opponent controls attacks, if you're the
+//	 defending player, create a 3/3 red Ogre creature token unless
+//	 that creature's controller pays {3}."
+//
+// The pillow-fort Ogre: every creature that swings at you costs its
+// controller {3} or hands you a 3/3. One trigger per attacking
+// creature, as printed — the engine emits EventAttack per creature,
+// which is exactly this card's wording — gated on the source's
+// controller being the defending player (S27: an attack at your
+// planeswalker or your battle is an attack you defend). The "unless"
+// is the CR 118.12 PayUnless prompt addressed to the ATTACKER, read at
+// resolution off the item's carried trigger context
+// (item.Trigger.Event.Actor, #1223), and the Ogre is made when they
+// decline or cannot pay.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "f8bf3d91-cb50-48ce-88c6-cdcb37b64b57",
+		Name:         "Kazuul, Tyrant of the Cliffs",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventAttack},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.B17OpponentsCreatureAttackedYou(ev, source, g)
+			},
+			Key: "Kazuul — a 3/3 Ogre unless the attacker pays {3}",
+			// What a decline gives Kazuul's controller (ADR 0126 §6).
+			Purpose: game.Purpose{Tokens: 1},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.PayUnless{
+					Chooser:  item.Trigger.Event.Actor,
+					Cost:     "{3}",
+					Question: "Kazuul, Tyrant of the Cliffs — pay {3} to stop the Ogre?",
+					Else:     kazuulDecline,
+				}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}
+
+// kazuulDecline is the Ogre once the tax is not paid, keyed (#4256): a
+// table waiting on the payer is a restore point.
+var kazuulDecline = effects.PayUnlessElse("pay-unless/kazuul-ogre", func(ctx *effects.Context, _ game.PayUnlessAnswer) error {
+	return effects.CreateToken{Controller: ctx.Controller(), Template: effects.TokenCard("3/3 red Ogre"), N: 1}.Apply(ctx)
+})

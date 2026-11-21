@@ -56,11 +56,11 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b14PermanentYouControlLeft(ev, source, g)
+				return B14PermanentYouControlLeft(ev, source, g)
 			},
 			Targets: TargetPermanent("target permanent you control", YouControl()),
 			Key:     "Resourceful Defense — put the counters it had on target permanent you control",
-			Effect:  resourcefulDefensePutThoseCounters,
+			Effect:  ResourcefulDefensePutThoseCounters,
 		}},
 		Activated: []ActivatedAbility{{
 			Label: "{4}{W}: Move any number of counters from target permanent you control onto a second target permanent you control.",
@@ -90,14 +90,14 @@ func init() {
 // last-known information (ctx.TriggeringPermanent, #1379, CR 608.2h)
 // rather than frozen into a closure as the ability triggered (ADR 0041
 // P9, #1497), onto each legal target.
-func resourcefulDefensePutThoseCounters(g *game.Game, item *game.StackItem) error {
+func ResourcefulDefensePutThoseCounters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	left, ok := ctx.TriggeringPermanent()
 	if !ok || len(left.Counters) == 0 {
 		return nil
 	}
 	for _, t := range ctx.LegalTargets() {
-		if err := b14PutCounters(ctx, t.ID, left.Counters); err != nil {
+		if err := B14PutCounters(ctx, t.ID, left.Counters); err != nil {
 			return err
 		}
 	}

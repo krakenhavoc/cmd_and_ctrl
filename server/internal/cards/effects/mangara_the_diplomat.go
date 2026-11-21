@@ -30,7 +30,7 @@ func init() {
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, mangaraOpponentAttackedYouWithTwo, mangaraAttackLabel, Do(DrawCards{N: 1}))),
-			On(game.EventCast, mangaraOpponentCastTheirSecond, mangaraCastLabel, Do(DrawCards{N: 1})),
+			On(game.EventCast, MangaraOpponentCastTheirSecond, mangaraCastLabel, Do(DrawCards{N: 1})),
 		},
 	})
 }
@@ -44,6 +44,6 @@ func mangaraOpponentAttackedYouWithTwo(ev game.Event, source *game.Card, _ game.
 	return opponentAttackedYouOrYourPlaneswalkersWithAtLeast(ev, source, g, 2, mangaraAttackLabel)
 }
 
-func mangaraOpponentCastTheirSecond(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return opponentCastTheirSecondSpellThisTurn(ev, source, g)
+func MangaraOpponentCastTheirSecond(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return OpponentCastTheirSecondSpellThisTurn(ev, source, g)
 }

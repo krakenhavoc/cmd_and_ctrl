@@ -30,7 +30,7 @@ func init() {
 			SubLayer: game.SubLayer7C_Modify,
 			Label:    "As long as you control an artifact, this creature gets +1/+0.",
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID && cloudsculptControlsAnArtifact(g, source.Controller)
+				return target.InstanceID == source.InstanceID && CloudsculptControlsAnArtifact(g, source.Controller)
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power++
@@ -40,7 +40,7 @@ func init() {
 }
 
 // cloudsculptControlsAnArtifact is "you control an artifact".
-func cloudsculptControlsAnArtifact(g *game.Game, controller uuid.UUID) bool {
+func CloudsculptControlsAnArtifact(g *game.Game, controller uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsArtifact() {
 			return true

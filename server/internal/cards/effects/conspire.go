@@ -27,7 +27,7 @@ const conspireTapLabel = "two untapped creatures you control that share a color 
 // 702.78a). Paid once per instance: the taps ride cast_spell's
 // conspire_ids.
 func Conspire() game.AdditionalCost {
-	tc := tapOthersPrice(2, conspireTapLabel, Creature())
+	tc := TapOthersPrice(2, conspireTapLabel, Creature())
 	tc.SharesColorWithSource = true
 	return game.AdditionalCost{
 		Optional:  true,

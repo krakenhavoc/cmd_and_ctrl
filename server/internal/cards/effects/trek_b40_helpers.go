@@ -19,9 +19,9 @@ import (
 // trekB40YouAttacked is "whenever you attack": one trigger per attack
 // declaration of the source's controller (OncePerBatch over the
 // per-creature attack events), with the effect it runs.
-func trekB40YouAttacked(label string, effect Effect) game.TriggeredAbility {
+func TrekB40YouAttacked(label string, effect Effect) game.TriggeredAbility {
 	return OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return attackDeclaredByYou(ev, source.Controller)
+		return AttackDeclaredByYou(ev, source.Controller)
 	}, label, effect))
 }
 
@@ -31,12 +31,12 @@ func trekB40YouAttacked(label string, effect Effect) game.TriggeredAbility {
 // subtype entered under its controller's control, token or not. The
 // subtype is a word of the source's text (CR 612.2) and is read through
 // the layered view, so a changeling counts.
-func trekB40SelfOrAnotherOfSubtypeYouControlEntered(subtype string) When {
+func TrekB40SelfOrAnotherOfSubtypeYouControlEntered(subtype string) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		if ev.Kind == game.EventETB && ev.CardID == source.InstanceID {
 			return true
 		}
-		c, ok := enteredUnderYourControl(ev, source, g, true)
+		c, ok := EnteredUnderYourControl(ev, source, g, true)
 		return ok && c.HasSubtype(source.TextSubtype(subtype))
 	}
 }
@@ -45,8 +45,8 @@ func trekB40SelfOrAnotherOfSubtypeYouControlEntered(subtype string) When {
 // isn't legendary, it's an Illusion artifact in addition to its other
 // types, and it has haste" (CR 707.9b): all three become part of the
 // token's copiable values, so a copy of the token keeps them.
-func trekB40IllusionArtifactExcept(t *game.Card) {
-	line := saheeliArtifactInAddition(removeLegendaryFromTypeLine(t.TypeLine))
+func TrekB40IllusionArtifactExcept(t *game.Card) {
+	line := SaheeliArtifactInAddition(RemoveLegendaryFromTypeLine(t.TypeLine))
 	super, types, sub := game.ParseTypeLine(line)
 	if !slices.Contains(sub, "Illusion") {
 		sub = append(sub, "Illusion")
@@ -61,13 +61,13 @@ func trekB40IllusionArtifactExcept(t *game.Card) {
 // exiles it at the beginning of the next end step (a delayed trigger on
 // that token alone, Saheeli Rai's shape). A creature that can no longer
 // be found is not copied.
-func trekB40CreateCopyExiledAtNextEndStep(ctx *Context, controller, copy uuid.UUID, except func(*game.Card), label string) error {
+func TrekB40CreateCopyExiledAtNextEndStep(ctx *Context, controller, copy uuid.UUID, except func(*game.Card), label string) error {
 	tmpl, ok := TokenCopyTemplate(ctx.Game, copy)
 	if !ok {
 		return nil
 	}
 	except(&tmpl)
-	made, err := ctx.Game.CreateTokensForEffect(controller, copiedToken(tmpl), 1, game.TokenEntryOptions{})
+	made, err := ctx.Game.CreateTokensForEffect(controller, CopiedToken(tmpl), 1, game.TokenEntryOptions{})
 	if err != nil || len(made) == 0 {
 		return err
 	}
@@ -76,6 +76,6 @@ func trekB40CreateCopyExiledAtNextEndStep(ctx *Context, controller, copy uuid.UU
 		Controller: controller,
 		Label:      label,
 		Cards:      made,
-		Body:       exileListedCardsBody,
+		Body:       ExileListedCardsBody,
 	}.Apply(ctx)
 }

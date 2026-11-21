@@ -104,7 +104,7 @@ func Impending(n int, cost string, spec Spec) Spec {
 			" time counters — impending N is at least one (CR 702.176a)")
 	}
 	spec.AlternativeCosts = append(spec.AlternativeCosts, impendingCost(n, cost))
-	spec.Static = append(spec.Static, impendingNotACreature())
+	spec.Static = append(spec.Static, ImpendingNotACreature())
 	spec.Triggered = append(spec.Triggered, impendingCountdown(spec.Name))
 	return spec
 }
@@ -136,7 +136,7 @@ func impendingCost(n int, cost string) game.AlternativeCost {
 // Vampire Hexmage or anything else that empties the pile early wakes
 // the permanent up the same way the end step does, and a card that
 // somehow gained time counters without impending is covered too.
-func impendingNotACreature() game.StaticAbility {
+func ImpendingNotACreature() game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Isn't a creature while it has a time counter on it.",
 		Layer: game.Layer4Type,
@@ -144,7 +144,7 @@ func impendingNotACreature() game.StaticAbility {
 			return target.InstanceID == source.InstanceID && target.Counters[game.CounterTime] > 0
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			notACreature(c)
+			NotACreature(c)
 		},
 	}
 }
@@ -176,7 +176,7 @@ func impendingStillTicking(ev game.Event, source *game.Card, _ game.Characterist
 // which is nothing.
 func impendingTick(g *game.Game, item *game.StackItem) error {
 	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || !onBattlefield(g, item.SourceCardID) || c.Counters[game.CounterTime] <= 0 {
+	if !ok || !OnBattlefield(g, item.SourceCardID) || c.Counters[game.CounterTime] <= 0 {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: game.CounterTime, N: -1}.Apply(NewContext(g, item))

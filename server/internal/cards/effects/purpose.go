@@ -76,30 +76,30 @@ import (
 //   - a negative rider, or one on a triggered row (checkRiders, #4978).
 
 // purposeSlot says where a Purpose was declared, for the guard's rules.
-type purposeSlot int
+type PurposeSlot int
 
 const (
-	purposeOnCard purposeSlot = iota
+	PurposeOnCard PurposeSlot = iota
 	// purposeOnMode is a bullet of an activated or triggered ability's
 	// mode clause.
-	purposeOnMode
+	PurposeOnMode
 	// purposeOnSpellMode is a bullet of a modal spell (Spec.Modes). It
 	// may declare Answers, which a cast choosing it reads (#2877); an
 	// ability's bullet may not, since its row declares for it.
-	purposeOnSpellMode
-	purposeOnAltCost
-	purposeOnActivated
-	purposeOnAnyPlayerActivated
-	purposeOnTriggered
+	PurposeOnSpellMode
+	PurposeOnAltCost
+	PurposeOnActivated
+	PurposeOnAnyPlayerActivated
+	PurposeOnTriggered
 	// purposeOnFaceUp is the inner purpose of Purpose.FaceUp (#3776): the
 	// card's own slot, plus the one-turn pump a turn-face-up trigger gives
 	// its source ("it gets +6/+6 and gains trample until end of turn").
-	purposeOnFaceUp
+	PurposeOnFaceUp
 )
 
 // checkPurpose panics when p is not a legal declaration for its slot.
 // `where` names the slot for the message ("mode 2", "ability 0").
-func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
+func CheckPurpose(name, where string, slot PurposeSlot, p game.Purpose) {
 	if p.IsZero() {
 		return
 	}
@@ -109,7 +109,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.LandEntry != "" {
 		fail("sets LandEntry by hand; the catalog replacement projection owns it (#4317)")
 	}
-	if p.ReturnsLandOnEntry && slot != purposeOnCard {
+	if p.ReturnsLandOnEntry && slot != PurposeOnCard {
 		fail("sets ReturnsLandOnEntry off the card (#4317)")
 	}
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
@@ -121,58 +121,58 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.LandsUntapped > p.Lands {
 		fail("says more lands enter untapped (LandsUntapped) than it puts onto the battlefield (Lands) (ADR 0136 §2)")
 	}
-	if p.Aura != "" && slot != purposeOnCard {
+	if p.Aura != "" && slot != PurposeOnCard {
 		fail("sets Aura off the card — whether an Aura helps or hurts its host is the card's own (#3309)")
 	}
 	if p.Aura != "" && p.Aura != game.AuraBenefit && p.Aura != game.AuraHarm {
 		fail("sets an Aura other than benefit or harm (#3309)")
 	}
-	if p.LandfallExtraTriggers != 0 && slot != purposeOnCard {
+	if p.LandfallExtraTriggers != 0 && slot != PurposeOnCard {
 		fail("sets LandfallExtraTriggers off the card — a landfall doubler is the card's own static (#3146)")
 	}
-	if p.ExtraLoyaltyActivations != 0 && slot != purposeOnCard && slot != purposeOnActivated {
+	if p.ExtraLoyaltyActivations != 0 && slot != PurposeOnCard && slot != PurposeOnActivated {
 		fail("sets ExtraLoyaltyActivations off the card or an activated row of its controller's own — it grants the planeswalkers of whoever resolves it (#4191)")
 	}
-	if p.SourceCounters != 0 && slot != purposeOnActivated {
+	if p.SourceCounters != 0 && slot != PurposeOnActivated {
 		fail("sets SourceCounters off an activated row of its controller's own — it is the +1/+1 counters a row puts on its own source, and an any-player row grows another player's permanent (#5083)")
 	}
-	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
+	if p.ExtraLandDrops != 0 && slot != PurposeOnCard {
 		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")
 	}
-	if p.ControllerLosesLife != 0 && slot != purposeOnAnyPlayerActivated {
+	if p.ControllerLosesLife != 0 && slot != PurposeOnAnyPlayerActivated {
 		fail("names ControllerLosesLife off an any-player activated row — the activator and the controller are one player there")
 	}
-	if (p.ExtraTurns != 0 || p.SkipsTurns != 0) && slot == purposeOnAnyPlayerActivated {
+	if (p.ExtraTurns != 0 || p.SkipsTurns != 0) && slot == PurposeOnAnyPlayerActivated {
 		fail("sets ExtraTurns or SkipsTurns on an any-player activated row — the activator is not the controller, so the caster's own turns would be the wrong player's, and a bot must never activate another player's copy (ADR 0106 decision 2, ADR 0188 Decision 10)")
 	}
-	if p.DeathPayoff && slot != purposeOnTriggered {
+	if p.DeathPayoff && slot != PurposeOnTriggered {
 		fail("sets DeathPayoff off a triggered row")
 	}
-	if p.DiscardPayoff != nil && slot != purposeOnTriggered {
+	if p.DiscardPayoff != nil && slot != PurposeOnTriggered {
 		fail("sets DiscardPayoff off a triggered row")
 	}
-	if p.OnOpponentDiscard != nil && slot != purposeOnTriggered {
+	if p.OnOpponentDiscard != nil && slot != PurposeOnTriggered {
 		fail("sets OnOpponentDiscard off a triggered row")
 	}
-	if p.LandfallPayoff != nil && slot != purposeOnTriggered {
+	if p.LandfallPayoff != nil && slot != PurposeOnTriggered {
 		fail("sets LandfallPayoff off a triggered row — a landfall payoff is a \"whenever a land you control enters\" trigger (#3072)")
 	}
-	if p.CreatureEnterPayoff != nil && slot != purposeOnTriggered {
+	if p.CreatureEnterPayoff != nil && slot != PurposeOnTriggered {
 		fail("sets CreatureEnterPayoff off a triggered row — it is a \"whenever a creature you control enters\" trigger (#3165)")
 	}
-	if p.LifeGainPayoff != nil && slot != purposeOnTriggered {
+	if p.LifeGainPayoff != nil && slot != PurposeOnTriggered {
 		fail("sets LifeGainPayoff off a triggered row — it is a \"whenever you gain life\" trigger (#4979)")
 	}
 	if p.CreatureTokens > p.Tokens {
 		fail("declares more CreatureTokens than Tokens (#3165)")
 	}
-	if p.TokensPerControlled != "" && !onActivated(slot) && slot != purposeOnTriggered {
+	if p.TokensPerControlled != "" && !onActivated(slot) && slot != PurposeOnTriggered {
 		fail("sets TokensPerControlled off a triggered or activated row — it counts at resolution (#3165)")
 	}
 	if t := p.TokensPerControlled; t != strings.ToLower(t) || strings.ContainsAny(t, " \t—") {
 		fail("names a TokensPerControlled subtype that is not one lowercase word (#3165)")
 	}
-	onSource := slot == purposeOnTriggered || slot == purposeOnFaceUp || slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
+	onSource := slot == PurposeOnTriggered || slot == PurposeOnFaceUp || slot == PurposeOnActivated || slot == PurposeOnAnyPlayerActivated
 	if p.Pump != nil && !onSource {
 		fail("sets Pump off a triggered or activated row — a pump is what an ability gives its own source")
 	}
@@ -182,12 +182,12 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.PreventCombatDamageToSelf && !onSource {
 		fail("sets PreventCombatDamageToSelf off a triggered or activated row")
 	}
-	if p.Answers != 0 && !answersSlot(slot) && !(slot == purposeOnTriggered && p.Answers == game.AnswerRemove) {
+	if p.Answers != 0 && !answersSlot(slot) && !(slot == PurposeOnTriggered && p.Answers == game.AnswerRemove) {
 		fail("declares Answers off an activated row, the card, a spell's mode or an alternative cost, other than AnswerRemove (an edict) on a triggered one — nothing reads it there (ADR 0142 §2 and its amendment of 2026-10-30, ADR 0009 #3882)")
 	}
 	checkAnswerBits(p.Answers, fail)
 	checkSaves(p, slot, fail)
-	if p.AwakenLand != 0 && slot != purposeOnAltCost {
+	if p.AwakenLand != 0 && slot != PurposeOnAltCost {
 		fail("sets AwakenLand off an alternative cost — it is what an awaken offer adds (ADR 0135 §3)")
 	}
 	checkPump(p.Pump, fail)
@@ -203,7 +203,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	checkSweep(p.Sweep, fail)
 	checkRiders(p, slot, fail)
 	checkResolutionMana(p.ResolutionMana, slot, fail)
-	if (p.Kicked != nil || p.FaceUp != nil) && slot != purposeOnCard {
+	if (p.Kicked != nil || p.FaceUp != nil) && slot != PurposeOnCard {
 		fail("sets Kicked or FaceUp off the card — what a kicker or a turn face up adds is the card's own (#3762)")
 	}
 }
@@ -215,11 +215,11 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 // that is not one or more fixed symbols ({W}{U}{B}{R}{G}{C}): a generic
 // number, an X, a hybrid or a Phyrexian symbol would let the reader
 // count mana the card does not add.
-func checkResolutionMana(rm *game.ResolutionMana, slot purposeSlot, fail func(string)) {
+func checkResolutionMana(rm *game.ResolutionMana, slot PurposeSlot, fail func(string)) {
 	if rm == nil {
 		return
 	}
-	if slot != purposeOnActivated {
+	if slot != PurposeOnActivated {
 		fail("sets ResolutionMana off an activated row of its controller's own — it is the mana a row adds on its nth resolution in a turn (#4980)")
 	}
 	if rm.Resolution < 1 {
@@ -243,27 +243,27 @@ func checkResolutionMana(rm *game.ResolutionMana, slot purposeSlot, fail func(st
 // triggered row, which nothing prices by them: a permanent's enters
 // trigger declares its rider on the card, as Mulldrifter's draws are,
 // and a modal trigger's bullet on that bullet.
-func checkRiders(p game.Purpose, slot purposeSlot, fail func(string)) {
+func checkRiders(p game.Purpose, slot PurposeSlot, fail func(string)) {
 	if p.Scry < 0 || p.Learn < 0 || p.Discover < 0 || p.Amass < 0 || p.RingTempts < 0 {
 		fail("has a negative rider (#4978)")
 	}
-	if slot == purposeOnTriggered && (p.Scry != 0 || p.Learn != 0 || p.Discover != 0 || p.Amass != 0 || p.RingTempts != 0) {
+	if slot == PurposeOnTriggered && (p.Scry != 0 || p.Learn != 0 || p.Discover != 0 || p.Amass != 0 || p.RingTempts != 0) {
 		fail("declares a rider (scry, learn, discover, amass, the Ring tempting) on a triggered row, which nothing reads — an enters trigger's rider is the card's own purpose (#4978)")
 	}
 }
 
 // onActivated reports whether a slot is an activated row.
-func onActivated(slot purposeSlot) bool {
-	return slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
+func onActivated(slot PurposeSlot) bool {
+	return slot == PurposeOnActivated || slot == PurposeOnAnyPlayerActivated
 }
 
 // answersSlot reports whether Answers may be declared in a slot: an
 // activated row (ADR 0142 §2), and since #2877 the card, a spell's mode
 // and an alternative cost, which a cast reads (ADR 0142's amendment of
 // 2026-10-30; internal/legal's castAnswersOf).
-func answersSlot(slot purposeSlot) bool {
+func answersSlot(slot PurposeSlot) bool {
 	switch slot {
-	case purposeOnCard, purposeOnSpellMode, purposeOnAltCost:
+	case PurposeOnCard, PurposeOnSpellMode, PurposeOnAltCost:
 		return true
 	}
 	return onActivated(slot)
@@ -272,7 +272,7 @@ func answersSlot(slot purposeSlot) bool {
 // checkSaves is checkPurpose's half for a declared Saves (#2939 gap 3):
 // on an activated row that declares survive or protect, naming one of
 // the sweep classes.
-func checkSaves(p game.Purpose, slot purposeSlot, fail func(string)) {
+func checkSaves(p game.Purpose, slot PurposeSlot, fail func(string)) {
 	s := p.Saves
 	if s == nil {
 		return
@@ -309,11 +309,11 @@ func checkPump(pm *game.Pump, fail func(string)) {
 // on an activated row of the controller's own, a pump that gives
 // something (checkPump) and takes nothing away. A row that shrinks the
 // team is not the benefit the bot prices it as.
-func checkTeamPump(pm *game.Pump, slot purposeSlot, fail func(string)) {
+func checkTeamPump(pm *game.Pump, slot PurposeSlot, fail func(string)) {
 	if pm == nil {
 		return
 	}
-	if slot != purposeOnActivated {
+	if slot != PurposeOnActivated {
 		fail("sets TeamPump off an activated row of its controller's own — it is what a row gives the creatures its controller controls, and an any-player row pumps another player's (#4320)")
 	}
 	if pm.Power < 0 || pm.Toughness < 0 {
@@ -401,21 +401,21 @@ func checkSweep(s game.Sweep, fail func(string)) {
 // checkModePurposes checks every bullet of a mode clause. A bullet is
 // a mode slot whatever owns it: a spell (purposeOnSpellMode), an
 // activated or a triggered ability (purposeOnMode).
-func checkModePurposes(name, where string, slot purposeSlot, m *game.ModeSpec) {
+func checkModePurposes(name, where string, slot PurposeSlot, m *game.ModeSpec) {
 	if m == nil {
 		return
 	}
 	for i, o := range m.Options {
 		mw := fmt.Sprintf("%s mode %d", where, i)
-		checkPurpose(name, mw, slot, o.Purpose)
+		CheckPurpose(name, mw, slot, o.Purpose)
 		checkTargetPurposes(name, mw, o.Purpose, o.Targets, true)
 	}
 }
 
 // checkSpecPurposes is Register's purpose guard over a whole Spec.
-func checkSpecPurposes(spec Spec) {
+func CheckSpecPurposes(spec Spec) {
 	name := spec.Name
-	checkPurpose(name, "card", purposeOnCard, spec.Purpose)
+	CheckPurpose(name, "card", PurposeOnCard, spec.Purpose)
 	if n := spec.Purpose.ExtraLandDrops; n != 0 && spec.AdditionalLandPlays != 0 && n != spec.AdditionalLandPlays {
 		panic(fmt.Sprintf("effects.Register: %q declares ExtraLandDrops %d but AdditionalLandPlays %d: the purpose says what the static does (#2678)",
 			name, n, spec.AdditionalLandPlays))
@@ -424,12 +424,12 @@ func checkSpecPurposes(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: %q declares LandfallExtraTriggers but has no TriggerDoubler: the purpose says what the static does (#3146)", name))
 	}
 	checkTargetPurposes(name, "card", spec.Purpose, spec.Targets, true)
-	checkConditionalPurposes(spec)
-	checkModePurposes(name, "spell", purposeOnSpellMode, spec.Modes)
-	checkSpellAnswers(spec)
+	CheckConditionalPurposes(spec)
+	checkModePurposes(name, "spell", PurposeOnSpellMode, spec.Modes)
+	CheckSpellAnswers(spec)
 	for _, a := range spec.AlternativeCosts {
 		where := fmt.Sprintf("alternative cost %q", a.Key)
-		checkPurpose(name, where, purposeOnAltCost, a.Purpose)
+		CheckPurpose(name, where, PurposeOnAltCost, a.Purpose)
 		// The statement a cast for this cost announces: its own clause
 		// list when it replaces the card's, none when it clears it
 		// (overload), else the card's.
@@ -442,7 +442,7 @@ func checkSpecPurposes(spec Spec) {
 		}
 		checkTargetPurposes(name, where, a.Purpose, stmt, true)
 	}
-	instantLoyalty := ownLoyaltyAtInstant(spec.ActivationTimings)
+	instantLoyalty := OwnLoyaltyAtInstant(spec.ActivationTimings)
 	for i, a := range spec.Activated {
 		checkActivatedPurpose(name, fmt.Sprintf("ability %d", i), a, instantLoyalty)
 	}
@@ -469,7 +469,7 @@ func checkSpecPurposes(spec Spec) {
 // the statement the cast announces), and nothing that is the card
 // slot's own static (Aura, ExtraLandDrops, LandfallExtraTriggers) or
 // the view's own stamp (FlashCleanupSacrifice).
-func checkConditionalPurposes(spec Spec) {
+func CheckConditionalPurposes(spec Spec) {
 	name := spec.Name
 	inner := func(which string, p *game.Purpose) {
 		if p == nil {
@@ -495,11 +495,11 @@ func checkConditionalPurposes(spec Spec) {
 			// special action, which nothing asks.
 			fail("declares Answers — declare what the card answers on the card, the union of its kicked and unkicked effect (ADR 0142's amendment of 2026-10-30)")
 		}
-		slot := purposeOnCard
+		slot := PurposeOnCard
 		if which == "face up" {
-			slot = purposeOnFaceUp
+			slot = PurposeOnFaceUp
 		}
-		checkPurpose(name, where, slot, *p)
+		CheckPurpose(name, where, slot, *p)
 	}
 	if spec.Purpose.Kicked != nil {
 		if len(spec.OptionalCosts) != 1 || spec.OptionalCosts[0].Key != game.KickerKey {
@@ -525,14 +525,14 @@ func checkConditionalPurposes(spec Spec) {
 // is declared exactly as a card's own is. instantLoyalty is
 // checkActivatedAnswers'.
 func checkActivatedPurpose(name, where string, a ActivatedAbility, instantLoyalty bool) {
-	slot := purposeOnActivated
+	slot := PurposeOnActivated
 	if a.AnyPlayer {
-		slot = purposeOnAnyPlayerActivated
+		slot = PurposeOnAnyPlayerActivated
 	}
-	checkPurpose(name, where, slot, a.Purpose)
-	checkActivatedAnswers(name, where, activatedShapeOf(a), instantLoyalty)
+	CheckPurpose(name, where, slot, a.Purpose)
+	CheckActivatedAnswers(name, where, ActivatedShapeOf(a), instantLoyalty)
 	checkTargetPurposes(name, where, a.Purpose, a.Targets, true)
-	checkModePurposes(name, where, purposeOnMode, a.Modes)
+	checkModePurposes(name, where, PurposeOnMode, a.Modes)
 }
 
 // checkTriggeredPurpose checks one triggered row's purpose and its
@@ -540,9 +540,9 @@ func checkActivatedPurpose(name, where string, a ActivatedAbility, instantLoyalt
 // is built at trigger time (TargetsFrom) has no statement to check a
 // target entry against, so it may not declare one.
 func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
-	checkPurpose(name, where, purposeOnTriggered, t.Purpose)
+	CheckPurpose(name, where, PurposeOnTriggered, t.Purpose)
 	checkTargetPurposes(name, where, t.Purpose, t.Targets, t.Targets != nil || t.TargetsFrom == nil)
-	checkModePurposes(name, where, purposeOnMode, t.Modes)
+	checkModePurposes(name, where, PurposeOnMode, t.Modes)
 }
 
 // checkTargetPurposes is the guard for Purpose.Targets (ADR 0126's

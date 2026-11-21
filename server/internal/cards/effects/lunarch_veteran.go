@@ -29,7 +29,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:         lunarchVeteranOracleID,
+		OracleID:         LunarchVeteranOracleID,
 		Name:             "Lunarch Veteran",
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
@@ -39,22 +39,22 @@ func init() {
 		},
 	})
 	Register(Spec{
-		OracleID:        lunarchVeteranOracleID + "#1",
+		OracleID:        LunarchVeteranOracleID + "#1",
 		Name:            "Luminous Phantom",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, anotherCreatureYouControlLeft, "Luminous Phantom — you gain 1 life", Do(GainLife{Amount: 1})),
+			On(game.EventLTB, AnotherCreatureYouControlLeft, "Luminous Phantom — you gain 1 life", Do(GainLife{Amount: 1})),
 		},
 		Replacements: []game.ReplacementEffect{DisturbedExile("Luminous Phantom")},
 	})
 }
 
-const lunarchVeteranOracleID = "0761a0e7-d443-4bab-bb15-307c83d4a6a1"
+const LunarchVeteranOracleID = "0761a0e7-d443-4bab-bb15-307c83d4a6a1"
 
 // anotherCreatureYouControlLeft is "whenever another creature you
 // control leaves the battlefield": aCreatureYouControlLeft without the
 // source itself.
-func anotherCreatureYouControlLeft(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-	return ev.CardID != source.InstanceID && aCreatureYouControlLeft(ev, source, lki, g)
+func AnotherCreatureYouControlLeft(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	return ev.CardID != source.InstanceID && ACreatureYouControlLeft(ev, source, lki, g)
 }

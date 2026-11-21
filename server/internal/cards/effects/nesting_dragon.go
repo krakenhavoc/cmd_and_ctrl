@@ -39,15 +39,15 @@ func init() {
 
 // dragonEggToken is the 0/2 red Dragon Egg with defender and "When
 // this token dies, create a 2/2 red Dragon …".
-func dragonEggToken() game.Card { return tokenFromCatalog(printedDragonEggToken) }
+func dragonEggToken() game.Card { return TokenFromCatalog(printedDragonEggToken) }
 
 // nestingDragonDragonToken is the 2/2 red Dragon with flying and
 // "{R}: This token gets +1/+0 until end of turn."
-func nestingDragonDragonToken() game.Card { return tokenFromCatalog(printedNestingDragonDragonToken) }
+func NestingDragonDragonToken() game.Card { return TokenFromCatalog(printedNestingDragonDragonToken) }
 
 // printedDragonEggToken is the Dragon Egg as PRINTED.
-func printedDragonEggToken() tokenTemplate {
-	return tokenTemplate{
+func printedDragonEggToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "dragon-egg",
 		Card: game.Card{
 			Name:      "Dragon Egg",
@@ -59,7 +59,7 @@ func printedDragonEggToken() tokenTemplate {
 		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Dragon Egg — create a 2/2 red Dragon",
-				Do(CreateToken{Template: nestingDragonDragonToken(), N: 1})),
+				Do(CreateToken{Template: NestingDragonDragonToken(), N: 1})),
 		},
 		Text: "Defender\nWhen this token dies, create a 2/2 red Dragon creature token with flying and " +
 			"\"{R}: This token gets +1/+0 until end of turn.\"",
@@ -72,8 +72,8 @@ func printedDragonEggToken() tokenTemplate {
 // permanent: "this token" on a token is the same self-reference "this
 // creature" is on a printed card, and item.SourceCardID is the
 // activating permanent for an activated ability (CR 113.7a).
-func printedNestingDragonDragonToken() tokenTemplate {
-	return tokenTemplate{
+func printedNestingDragonDragonToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "dragon-nesting",
 		Card: game.Card{
 			Name:      "Dragon",

@@ -11,17 +11,17 @@ import (
 
 // counterHatching is the hatching counter (The Dragon-Kami Reborn): put on a
 // card exiled face down, it marks the cards Dragon-Kami's Egg may cast.
-const counterHatching = "hatching"
+const CounterHatching = "hatching"
 
 // neoB19HatchingExileCards are the cards a player owns in exile with a
 // hatching counter on them.
-func neoB19HatchingExileCards(g *game.Game, owner uuid.UUID) []game.Card {
+func NeoB19HatchingExileCards(g *game.Game, owner uuid.UUID) []game.Card {
 	var out []game.Card
 	if g.Exile == nil {
 		return nil
 	}
 	for _, c := range g.Exile.Cards {
-		if c.Owner == owner && c.Counters[counterHatching] > 0 {
+		if c.Owner == owner && c.Counters[CounterHatching] > 0 {
 			out = append(out, c)
 		}
 	}
@@ -35,7 +35,7 @@ func neoB19HatchingExileCards(g *game.Game, owner uuid.UUID) []game.Card {
 // (ObjectDamageRecord.SourceController), so it reaches the creatures any of
 // the controller's sources damaged, and a source that has since left or
 // changed hands still counts (CR 400.7, CR 608.2h).
-func neoB19ExileIfDamagedByYourSourcesWouldDie(label string) game.ReplacementEffect {
+func NeoB19ExileIfDamagedByYourSourcesWouldDie(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -62,8 +62,8 @@ func neoB19ExileIfDamagedByYourSourcesWouldDie(label string) game.ReplacementEff
 // printedNeoHumanMonkToken is Jugan Defends the Temple's 1/1 green Human
 // Monk creature token with "{T}: Add {G}." The mana ability rides the
 // template (token_catalog.go); its slug is an on-disk identity.
-func printedNeoHumanMonkToken() tokenTemplate {
-	return tokenTemplate{
+func printedNeoHumanMonkToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "human-monk",
 		Card: game.Card{
 			Name:      "Human Monk",
@@ -82,10 +82,10 @@ func printedNeoHumanMonkToken() tokenTemplate {
 }
 
 // neoB19HumanMonkToken is the token Jugan Defends the Temple makes.
-func neoB19HumanMonkToken() game.Card { return tokenFromCatalog(printedNeoHumanMonkToken) }
+func NeoB19HumanMonkToken() game.Card { return TokenFromCatalog(printedNeoHumanMonkToken) }
 
 // neoB19FiveModifiedCreatures is "you control five or more modified
 // creatures" (CR 700.9), read live on every layer pass.
-func neoB19FiveModifiedCreatures(g *game.Game, you uuid.UUID) bool {
-	return countControlled(g, you, func(c game.Card) bool { return c.IsCreature() && b07IsModified(g, c) }) >= 5
+func NeoB19FiveModifiedCreatures(g *game.Game, you uuid.UUID) bool {
+	return CountControlled(g, you, func(c game.Card) bool { return c.IsCreature() && B07IsModified(g, c) }) >= 5
 }

@@ -55,8 +55,8 @@ func init() {
 			}},
 		}},
 		Static: []game.StaticAbility{
-			godUnlessDevotionToColors(7, "U", "B"),
-			Labelled(GrantAbilities(b16CreaturesYouControl, phenaxGrant),
+			GodUnlessDevotionToColors(7, "U", "B"),
+			Labelled(GrantAbilities(B16CreaturesYouControl, phenaxGrant),
 				"Creatures you control have \"{T}: Target player mills X cards, where X is this creature's toughness.\""),
 		},
 	})
@@ -67,22 +67,22 @@ func init() {
 // creature whose ability this is.
 func phenaxMillsItsToughness(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	victim, ok := firstLegalPlayerTarget(ctx)
+	victim, ok := FirstLegalPlayerTarget(ctx)
 	if !ok {
 		return nil
 	}
-	return MillCards{Player: victim, N: toughnessNowOrLastKnown(g, item.SourceCardID)}.Apply(ctx)
+	return MillCards{Player: victim, N: ToughnessNowOrLastKnown(g, item.SourceCardID)}.Apply(ctx)
 }
 
 // toughnessNowOrLastKnown is "this creature's toughness" read as an
 // ability resolves: its current toughness while it is on the battlefield,
 // else the toughness it last had there (CR 608.2h). A negative toughness
 // mills nothing (MillCards ignores N <= 0).
-func toughnessNowOrLastKnown(g *game.Game, cardID uuid.UUID) int {
+func ToughnessNowOrLastKnown(g *game.Game, cardID uuid.UUID) int {
 	if z := g.FindCardZoneForEffect(cardID); z != nil && z.Kind == game.ZoneBattlefield {
 		if c, ok := g.LookupCardForEffect(cardID); ok {
 			return c.CurrentToughness()
 		}
 	}
-	return b29LastKnownToughnessOffBattlefield(g, cardID)
+	return B29LastKnownToughnessOffBattlefield(g, cardID)
 }

@@ -61,7 +61,7 @@ func init() {
 			// after the trigger fires must not retarget it.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source, zaraLabel)
-				item.Params.Player = b17DefendingPlayer(g, ev)
+				item.Params.Player = B17DefendingPlayer(g, ev)
 				return item
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
@@ -185,7 +185,7 @@ var zaraReturnTail = EnteredTail("zara-renegade-recruiter/return-at-end-step", f
 	return ScheduleDelayedTrigger{
 		Label:  "Zara, Renegade Recruiter — return that creature to its owner's hand",
 		Cards:  []uuid.UUID{entered},
-		Body:   zaraReturnToHandBody,
+		Body:   ZaraReturnToHandBody,
 		Params: game.EffectParams{Object: game.ObjectRef{ID: entered, Epoch: c.ObjectEpoch}},
 	}.Apply(ctx)
 })

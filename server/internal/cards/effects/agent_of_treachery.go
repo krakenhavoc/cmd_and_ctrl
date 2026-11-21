@@ -62,14 +62,14 @@ func init() {
 			},
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Kind == game.EventBeginEndStep && ev.Actor == source.Controller &&
-					permanentsYouControlButDontOwn(g, source.Controller) >= 3
+					PermanentsYouControlButDontOwn(g, source.Controller) >= 3
 			}, "Agent of Treachery — draw three cards",
 				// CR 603.4: the condition is checked again on
 				// resolution, so an Agent whose stolen permanents
 				// went home in response draws nothing.
 				Do(If{
 					Cond: CondBoard{Name: "three or more permanents you control but don't own", Test: func(ctx *Context) bool {
-						return permanentsYouControlButDontOwn(ctx.Game, ctx.Controller()) >= 3
+						return PermanentsYouControlButDontOwn(ctx.Game, ctx.Controller()) >= 3
 					}},
 					Then: []Applier{DrawCards{N: 3}},
 				})),
@@ -83,7 +83,7 @@ func init() {
 // than any record of what an effect took, so a permanent gained any
 // other way (Mind Control, an exchange, a Homeward Path that has not
 // been activated) counts exactly as the card says.
-func permanentsYouControlButDontOwn(g *game.Game, player uuid.UUID) int {
+func PermanentsYouControlButDontOwn(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.Owner != player {

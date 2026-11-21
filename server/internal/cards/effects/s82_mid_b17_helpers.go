@@ -13,7 +13,7 @@ import (
 // the zone it is dealing it from. A permanent's ability, including one a
 // creature that has just died deals through, names a source that is not
 // in the stack zone, so it is never taken for a spell.
-func s82MidB17SourceIsSpell(g *game.Game, source uuid.UUID) bool {
+func S82MidB17SourceIsSpell(g *game.Game, source uuid.UUID) bool {
 	if source == uuid.Nil {
 		return false
 	}
@@ -24,7 +24,7 @@ func s82MidB17SourceIsSpell(g *game.Game, source uuid.UUID) bool {
 // s82MidB17DamageSourceSpell is the spell a damage event comes from: its
 // card as it is now, and whether the event's source is a spell at all.
 func s82MidB17DamageSourceSpell(g *game.Game, source uuid.UUID) (game.Card, bool) {
-	if !s82MidB17SourceIsSpell(g, source) {
+	if !S82MidB17SourceIsSpell(g, source) {
 		return game.Card{}, false
 	}
 	return g.LookupCardForEffect(source)
@@ -45,7 +45,7 @@ func s82MidB17SpellYouControlDealtDamage(ev game.Event, source *game.Card, _ gam
 // of Flame Channeler share. A spell that deals damage to several things
 // at once deals it in one occurrence (CR 120.4d), so the ability is
 // once per damage event of one spell: OncePerBatch keyed by the spell.
-func s82MidB17WheneverASpellYouControlDealsDamage(label string, effect Effect) game.TriggeredAbility {
+func S82MidB17WheneverASpellYouControlDealsDamage(label string, effect Effect) game.TriggeredAbility {
 	t := OncePerBatch(On(game.EventDealDamage, s82MidB17SpellYouControlDealtDamage, label, effect))
 	t.BatchKey = func(ev game.Event, _ *game.Card, _ *game.Game) string { return ev.Source.String() }
 	return t

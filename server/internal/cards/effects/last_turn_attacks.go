@@ -23,7 +23,7 @@ import (
 // the source itself (Goblin Rock Sled) or the creature it enchants (Tangle
 // Kelp). The controller is the permanent's controller now, which for the
 // untap step is the player whose step it is.
-func doesntUntapIfItAttackedDuringYourLastTurn(which func(*game.Card, *game.Game, *game.Card) bool) game.UntapStepRestriction {
+func DoesntUntapIfItAttackedDuringYourLastTurn(which func(*game.Card, *game.Game, *game.Card) bool) game.UntapStepRestriction {
 	return game.UntapStepRestriction{
 		Label: "doesn't untap if it attacked during its controller's last turn",
 		Restricts: func(target *game.Card, g *game.Game, source *game.Card) bool {
@@ -41,7 +41,7 @@ func CantAttackIfItAttackedDuringYourLastTurn() game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return selfOnly(target, g, source) && g.AttackedDuringControllersLastTurn(target)
+			return SelfOnly(target, g, source) && g.AttackedDuringControllersLastTurn(target)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= game.CantAttack

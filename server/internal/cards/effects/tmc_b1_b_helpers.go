@@ -23,7 +23,7 @@ import (
 // not one of the second trigger's creatures. The resolution is
 // vultureCountersAndDraw: a counter on each recorded creature still the
 // same object on the battlefield, then one card.
-func tmcB1bThoseCreaturesDealtCombatDamage(label string, hit When) game.TriggeredAbility {
+func TmcB1bThoseCreaturesDealtCombatDamage(label string, hit When) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches:    []game.EventKind{game.EventDealDamage},
 		AppliesTo:  hit,
@@ -68,7 +68,7 @@ func tmcB1bThoseCreaturesDealtCombatDamage(label string, hit When) game.Triggere
 // (SourceIsPermanent): a spell's, an emblem's, a card's in a hand or a
 // graveyard, and a delayed trigger (CR 603.2d) are not, and that
 // permanent's controller must be Krang's.
-func tmcB1bDoublesDrawing(name string) game.TriggerDoubler {
+func TmcB1bDoublesDrawing(name string) game.TriggerDoubler {
 	return game.TriggerDoubler{
 		Label:    name,
 		RowLabel: "Abilities of your permanents that trigger when a player draws a card trigger an additional time.",

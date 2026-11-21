@@ -33,7 +33,7 @@ func init() {
 			Label:   "{2}{W}: Exile enchanted creature.",
 			Cost:    ManaCost("{2}{W}"),
 			Purpose: game.Purpose{Answers: game.AnswerRemove},
-			Effect:  coopedUpExileEnchanted,
+			Effect:  CoopedUpExileEnchanted,
 		}},
 	})
 }
@@ -41,8 +41,8 @@ func init() {
 // coopedUpHost is the creature the Aura `auraID` enchants: the live
 // host, or, once the Aura has left, the creature it was attached to as it last
 // existed, if that creature is still on the battlefield. uuid.Nil for none.
-func coopedUpHost(g *game.Game, auraID uuid.UUID) uuid.UUID {
-	if host := attachedHostFor(g, auraID); host != nil && host.IsCreature() {
+func CoopedUpHost(g *game.Game, auraID uuid.UUID) uuid.UUID {
+	if host := AttachedHostFor(g, auraID); host != nil && host.IsCreature() {
 		return host.InstanceID
 	}
 	info, ok := g.LastKnownPermanentForEffect(auraID)

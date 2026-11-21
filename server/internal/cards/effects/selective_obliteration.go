@@ -37,7 +37,7 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepAllPermanents, How: game.SweepExile, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return selectiveObliterationAsk(ctx, apnapPlayers(ctx.Game), nil)
+			return selectiveObliterationAsk(ctx, ApnapPlayers(ctx.Game), nil)
 		},
 	})
 }
@@ -84,7 +84,7 @@ func init() {
 
 // apnapPlayers lists the players still in the game in APNAP order
 // (CR 101.4): the active player, then each other player in turn order.
-func apnapPlayers(g *game.Game) []uuid.UUID {
+func ApnapPlayers(g *game.Game) []uuid.UUID {
 	n := len(g.Seats)
 	out := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {

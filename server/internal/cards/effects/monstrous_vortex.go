@@ -21,7 +21,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(And(Creature(), PowerGE(5)), "Monstrous Vortex — discover X",
 				func(g *game.Game, item *game.StackItem) error {
-					return Discover{N: triggeringSpellManaValue(g, item)}.Apply(NewContext(g, item))
+					return Discover{N: TriggeringSpellManaValue(g, item)}.Apply(NewContext(g, item))
 				}),
 		},
 	})
@@ -30,7 +30,7 @@ func init() {
 // triggeringSpellManaValue is "that spell's mana value" for a trigger
 // on a cast event, read at resolution: the spell wherever it is now,
 // with its announced X while it is still on the stack.
-func triggeringSpellManaValue(g *game.Game, item *game.StackItem) int {
+func TriggeringSpellManaValue(g *game.Game, item *game.StackItem) int {
 	if item.Trigger == nil {
 		return 0
 	}

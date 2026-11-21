@@ -424,7 +424,7 @@ func YouControlMoreThanTheAttackingPlayer(queries ...game.PermanentQuery) func(*
 // public.
 func YouHaveCardsInHandAtLeast(n int) func(*game.Game, uuid.UUID) bool {
 	return func(g *game.Game, you uuid.UUID) bool {
-		return b14HandSize(g, you) >= n
+		return B14HandSize(g, you) >= n
 	}
 }
 

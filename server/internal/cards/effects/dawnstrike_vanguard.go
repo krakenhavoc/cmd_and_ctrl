@@ -32,19 +32,19 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			InterveningIf(CondBoard{
 				Name: "you control two or more tapped creatures",
-				Test: func(ctx *Context) bool { return b24TappedCreaturesControlled(ctx.Game, ctx.Controller()) >= 2 },
+				Test: func(ctx *Context) bool { return B24TappedCreaturesControlled(ctx.Game, ctx.Controller()) >= 2 },
 			}, On(game.EventBeginEndStep, AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b24TappedCreaturesControlled(g, source.Controller) >= 2
+				return B24TappedCreaturesControlled(g, source.Controller) >= 2
 			}), "Dawnstrike Vanguard — put a +1/+1 counter on each other creature you control",
-				dawnstrikeCounters)),
+				DawnstrikeCounters)),
 		},
 	})
 }
 
 // dawnstrikeCounters puts a +1/+1 counter on each creature the ability's
 // controller controls other than its source.
-func dawnstrikeCounters(g *game.Game, item *game.StackItem) error {
+func DawnstrikeCounters(g *game.Game, item *game.StackItem) error {
 	source := item.SourceCardID
-	return putPlusOneCountersOnEachYouControlThat(1,
+	return PutPlusOneCountersOnEachYouControlThat(1,
 		func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID != source })(g, item)
 }

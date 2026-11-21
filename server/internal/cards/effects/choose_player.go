@@ -65,7 +65,7 @@ func OpponentsOf(id uuid.UUID) PlayerPool {
 // seats resolves the pool against the live game. Eligibility (a seat
 // that has left) and ordering are the engine's, not this function's —
 // see game.QueueChoosePlayerForEffect.
-func (p PlayerPool) seats(ctx *Context, chooser uuid.UUID) []uuid.UUID {
+func (p PlayerPool) Seats(ctx *Context, chooser uuid.UUID) []uuid.UUID {
 	var all []uuid.UUID
 	for _, seat := range ctx.Game.Seats {
 		if seat == nil {
@@ -162,7 +162,7 @@ func (c ChoosePlayer) Apply(ctx *Context) error {
 	}
 	pool := c.Only
 	if pool == nil {
-		pool = c.Among.seats(ctx, chooser)
+		pool = c.Among.Seats(ctx, chooser)
 	}
 	carry := append([]uuid.UUID{ctx.Controller()}, c.Carry...)
 	asked := game.NewAskedItem(ctx.Item)
@@ -209,7 +209,7 @@ func ChoosePlayerAsEnters(label string, among PlayerPool) func(*game.Card, *Cont
 			card.Controller,
 			card.InstanceID,
 			label+" — choose a player",
-			among.seats(ctx, card.Controller),
+			among.Seats(ctx, card.Controller),
 		)
 		return nil
 	}
@@ -226,7 +226,7 @@ func ChoosePlayersAsEnters(label string, among PlayerPool) func(*game.Card, *Con
 			card.Controller,
 			card.InstanceID,
 			label+" — choose two players",
-			among.seats(ctx, card.Controller),
+			among.Seats(ctx, card.Controller),
 		)
 		return nil
 	}

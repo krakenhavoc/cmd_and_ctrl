@@ -22,8 +22,8 @@ const trekB33TribbleSlug = "tribble"
 // (ttrc 2) lists no colour; the oracle text of the card that makes it says
 // white, and the template follows the oracle text (CR 111.4), as The
 // Eagles Are Coming!'s Bird Soldier does.
-func printedTrekB33TribbleToken() tokenTemplate {
-	return tokenTemplate{
+func printedTrekB33TribbleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: trekB33TribbleSlug,
 		Card: game.Card{
 			Name:      "Tribble",
@@ -38,7 +38,7 @@ func printedTrekB33TribbleToken() tokenTemplate {
 }
 
 // TribbleToken is the Tribble's card value for CreateToken.
-func TribbleToken() game.Card { return tokenFromCatalog(printedTrekB33TribbleToken) }
+func TribbleToken() game.Card { return TokenFromCatalog(printedTrekB33TribbleToken) }
 
 // --- "create X <tokens>, where X is its power" --------------------------------
 
@@ -47,7 +47,7 @@ func TribbleToken() game.Card { return tokenFromCatalog(printedTrekB33TribbleTok
 // is the creature's as it last existed on the battlefield (CR 603.10a,
 // CR 608.2h), so counters and pumps it died with count. Zero or less
 // creates nothing.
-func trekB33TokensEqualToItsPower(token func() game.Card) Effect {
+func TrekB33TokensEqualToItsPower(token func() game.Card) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		info, ok := ctx.SourcePermanent()
@@ -64,11 +64,11 @@ func trekB33TokensEqualToItsPower(token func() game.Card) Effect {
 // legendary permanent you control enters": Spot himself, token or not, or
 // another permanent under his controller's control that is legendary and
 // not a token.
-func trekB33SpotOrAnotherNontokenLegendaryEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func TrekB33SpotOrAnotherNontokenLegendaryEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind == game.EventETB && ev.CardID == source.InstanceID {
 		return true
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && !IsToken(c) && c.IsLegendary()
 }
 
@@ -79,7 +79,7 @@ func trekB33SpotOrAnotherNontokenLegendaryEntered(ev game.Event, source *game.Ca
 // stack while the question is open (the resolution tail, #3613), so CR
 // 724.2b exiles it with everything else. Outside a combat phase it does
 // nothing (CR 724.2g). An on-disk key.
-var trekB33EndTheCombatPhase = MayYes("confirm/merciful-mandate-end-combat", func(ctx *Context, _ game.ConfirmAnswer) error {
+var TrekB33EndTheCombatPhase = MayYes("confirm/merciful-mandate-end-combat", func(ctx *Context, _ game.ConfirmAnswer) error {
 	ctx.Game.EndCombatPhaseForEffect()
 	return nil
 })
@@ -89,11 +89,11 @@ var trekB33EndTheCombatPhase = MayYes("confirm/merciful-mandate-end-combat", fun
 var (
 	// "Whenever a creature deals combat damage to you": one instance for
 	// each creature, carrying it (with its epoch) as the payload.
-	trekB33CreatureHitsYouCondition = game.DelayedEachCondition("damage/a-creature-combat-to-you", trekB33CreatureCombatDamageToYou)
+	TrekB33CreatureHitsYouCondition = game.DelayedEachCondition("damage/a-creature-combat-to-you", trekB33CreatureCombatDamageToYou)
 
 	// "Destroy that creature and create a 2/1 red Klingon Warrior creature
 	// token with haste."
-	trekB33DestroyItAndMakeAKlingonBody = game.SimpleDelayedBody("destroy/that-creature-and-klingon-warrior", trekB33DestroyItAndMakeAKlingon)
+	TrekB33DestroyItAndMakeAKlingonBody = game.SimpleDelayedBody("destroy/that-creature-and-klingon-warrior", trekB33DestroyItAndMakeAKlingon)
 )
 
 // trekB33CreatureCombatDamageToYou is the creature that dealt combat damage

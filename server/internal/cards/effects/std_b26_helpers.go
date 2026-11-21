@@ -20,7 +20,7 @@ import (
 // Zombies as they died (DiedWithSubtypeThisTurn reads the types the
 // creature had on the battlefield, a changeling included, CR 603.10a).
 // Tokens count: each died as a creature before it ceased to exist.
-func stdB26NonZombieCreatureDied(g *game.Game, _ uuid.UUID, card game.Card) bool {
+func StdB26NonZombieCreatureDied(g *game.Game, _ uuid.UUID, card game.Card) bool {
 	// The word is read through the card whose text it is (CR 612.2).
 	zombie := card.TextSubtype("Zombie")
 	zombies := 0
@@ -38,8 +38,8 @@ func stdB26NonZombieCreatureDied(g *game.Game, _ uuid.UUID, card game.Card) bool
 // turn. If you do, sacrifice it at the beginning of the next end step"
 // trigger's resolution, run once the player has said yes. A box that has
 // left, or come back as a new object, is not "it" any more (CR 400.7).
-func stdB26AttackInTheBox(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+func StdB26AttackInTheBox(g *game.Game, item *game.StackItem) error {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	ctx := NewContext(g, item)
@@ -50,7 +50,7 @@ func stdB26AttackInTheBox(g *game.Game, item *game.StackItem) error {
 		At:    game.StepEnd,
 		Label: "Attack-in-the-Box — sacrifice it",
 		Cards: []uuid.UUID{item.SourceCardID},
-		Body:  sacrificeListedCardsBody,
+		Body:  SacrificeListedCardsBody,
 	}.Apply(ctx)
 }
 
@@ -63,7 +63,7 @@ func stdB26AttackInTheBox(g *game.Game, item *game.StackItem) error {
 // a card, and a card that was sent elsewhere (a commander to the command
 // zone) is not "put into a graveyard this way". Nothing can happen between
 // the destruction and the return, so this runs inside the resolution.
-var stdB26ComeBackWrongDestroyed = CardTail("std-b26/come-back-wrong-return", func(ctx *Context, o game.TailOutcome) error {
+var StdB26ComeBackWrongDestroyed = CardTail("std-b26/come-back-wrong-return", func(ctx *Context, o game.TailOutcome) error {
 	for _, id := range o.IDs {
 		c, ok := ctx.Game.LookupCardForEffect(id)
 		if !ok || c.IsToken() || !c.IsCreature() {
@@ -75,7 +75,7 @@ var stdB26ComeBackWrongDestroyed = CardTail("std-b26/come-back-wrong-return", fu
 		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}).Apply(ctx); err != nil {
 			return err
 		}
-		if !onBattlefield(ctx.Game, id) {
+		if !OnBattlefield(ctx.Game, id) {
 			continue
 		}
 		if err := (ScheduleDelayedTrigger{
@@ -84,7 +84,7 @@ var stdB26ComeBackWrongDestroyed = CardTail("std-b26/come-back-wrong-return", fu
 			Controller:         ctx.Controller(),
 			ControllerTurnOnly: true,
 			Cards:              []uuid.UUID{id},
-			Body:               sacrificeListedCardsBody,
+			Body:               SacrificeListedCardsBody,
 		}).Apply(ctx); err != nil {
 			return err
 		}
@@ -95,22 +95,22 @@ var stdB26ComeBackWrongDestroyed = CardTail("std-b26/come-back-wrong-return", fu
 // --- Cursed Recording --------------------------------------------------
 
 // stdB26CursedRecordingCounter is the time counter the artifact collects.
-const stdB26CursedRecordingCounter = "time"
+const StdB26CursedRecordingCounter = "time"
 
 // stdB26CursedRecordingTick is the "Then if there are seven or more time
 // counters on it, remove those counters and it deals 20 damage to you"
 // half of the trigger. The count is read as the ability resolves, after
 // the counter has landed; an artifact that left is not "it".
-func stdB26CursedRecordingTick(ctx *Context) error {
-	if sourceIsNewObject(ctx.Game, ctx.Item) || !onBattlefield(ctx.Game, ctx.Source()) {
+func StdB26CursedRecordingTick(ctx *Context) error {
+	if SourceIsNewObject(ctx.Game, ctx.Item) || !OnBattlefield(ctx.Game, ctx.Source()) {
 		return nil
 	}
 	c, ok := ctx.Game.LookupCardForEffect(ctx.Source())
-	if !ok || c.Counters[stdB26CursedRecordingCounter] < 7 {
+	if !ok || c.Counters[StdB26CursedRecordingCounter] < 7 {
 		return nil
 	}
-	n := c.Counters[stdB26CursedRecordingCounter]
-	if err := (AddCounter{Target: ctx.Source(), Kind: stdB26CursedRecordingCounter, N: -n}).Apply(ctx); err != nil {
+	n := c.Counters[StdB26CursedRecordingCounter]
+	if err := (AddCounter{Target: ctx.Source(), Kind: StdB26CursedRecordingCounter, N: -n}).Apply(ctx); err != nil {
 		return err
 	}
 	return DealDamage{Source: ctx.Source(), Target: ctx.Controller(), Amount: 20}.Apply(ctx)
@@ -120,9 +120,9 @@ func stdB26CursedRecordingTick(ctx *Context) error {
 
 // stdB26GhostVacuumExile is "{T}: Exile target card from a graveyard", the
 // exile linked to this artifact (CR 607.2a).
-func stdB26GhostVacuumExile(g *game.Game, item *game.StackItem) error {
+func StdB26GhostVacuumExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id := firstLegalCardTarget(ctx)
+	id := FirstLegalCardTarget(ctx)
 	if id == uuid.Nil {
 		return nil
 	}
@@ -135,7 +135,7 @@ func stdB26GhostVacuumExile(g *game.Game, item *game.StackItem) error {
 // artifact was sacrificed to pay for it, so the link is read off the object
 // the ability came from, not the permanent (CR 607.2a, CR 608.2h). All of
 // them land as one entry.
-func stdB26GhostVacuumReanimate(g *game.Game, item *game.StackItem) error {
+func StdB26GhostVacuumReanimate(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
 	if !ok {
@@ -150,7 +150,7 @@ func stdB26GhostVacuumReanimate(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return putCardsFromZoneTogetherWith(ctx, game.ZoneExile, ids, game.ZoneEntryOptions{
+	return PutCardsFromZoneTogetherWith(ctx, game.ZoneExile, ids, game.ZoneEntryOptions{
 		Controller:         item.Controller,
 		EntersWithCounters: map[string]int{game.CounterFlying: 1},
 		EntersAs: &game.EntersAs{
@@ -168,9 +168,9 @@ func stdB26GhostVacuumReanimate(g *game.Game, item *game.StackItem) error {
 // and the rest, which waits for the exile, is the tail. The creature's
 // object epoch rides the tail, because the object is a different one once
 // it sits in exile and its copiable values are read by the object it was.
-func stdB26NikoExile(g *game.Game, item *game.StackItem) error {
+func StdB26NikoExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id := firstLegalCardTarget(ctx)
+	id := FirstLegalCardTarget(ctx)
 	if id == uuid.Nil {
 		return nil
 	}
@@ -180,7 +180,7 @@ func stdB26NikoExile(g *game.Game, item *game.StackItem) error {
 	}
 	return ExileTarget{
 		Target:   id,
-		ThenTail: withN(withCarry(ctx.ItemTail(stdB26NikoExiled), id), c.ObjectEpoch),
+		ThenTail: WithN(WithCarry(ctx.ItemTail(stdB26NikoExiled), id), c.ObjectEpoch),
 	}.Apply(ctx)
 }
 
@@ -191,7 +191,7 @@ func stdB26NikoExile(g *game.Game, item *game.StackItem) error {
 // creature, if it really reached exile, comes back at the next end step
 // under its owner's control (the blink delayed trigger).
 var stdB26NikoExiled = CardTail("std-b26/niko-after-exile", func(ctx *Context, o game.TailOutcome) error {
-	id := tailCarry0(o)
+	id := TailCarry0(o)
 	if id == uuid.Nil {
 		return nil
 	}
@@ -218,7 +218,7 @@ var stdB26NikoExiled = CardTail("std-b26/niko-after-exile", func(ctx *Context, o
 		At:    game.StepEnd,
 		Label: "Niko, Light of Hope — return the exiled creature",
 		Cards: []uuid.UUID{id},
-		Body:  returnExiledToOwnersBody,
+		Body:  ReturnExiledToOwnersBody,
 	}.Apply(ctx)
 })
 
@@ -232,8 +232,8 @@ var stdB26RoleModelKinds = []string{game.CounterFlying, game.CounterLifelink, ga
 // picks one of the three counters as it resolves. A creature that left, or
 // came back as a new object, gets nothing (CR 400.7); the "if it's tapped"
 // half is Survival's own.
-func stdB26RoleModelPick(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+func StdB26RoleModelPick(g *game.Game, item *game.StackItem) error {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	return PickOption{
@@ -249,7 +249,7 @@ func stdB26RoleModelPick(g *game.Game, item *game.StackItem) error {
 // stdB26RoleModelPicked puts the chosen counter on the Role Model, if it is
 // still the permanent the ability came from. An on-disk key.
 var stdB26RoleModelPicked = OptionPickThen("option-pick/std-b26-reluctant-role-model-counter", func(ctx *Context, r game.OptionPicked) error {
-	if r.Index < 0 || r.Index >= len(stdB26RoleModelKinds) || !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+	if r.Index < 0 || r.Index >= len(stdB26RoleModelKinds) || !SourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 		return nil
 	}
 	return ctx.Game.AddCounterByForEffect(ctx.Controller(), ctx.Source(), stdB26RoleModelKinds[r.Index], 1)
@@ -259,9 +259,9 @@ var stdB26RoleModelPicked = OptionPickThen("option-pick/std-b26-reluctant-role-m
 // creature or another creature you control dies, if it had counters on it":
 // a creature that died under your control (the source included, CR 603.10a)
 // whose last-known information holds a counter (the intervening if, CR 603.4).
-func stdB26RoleModelCreatureDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	if !ok || leftUnderControlOf(ev, dead) != source.Controller {
+func StdB26RoleModelCreatureDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	if !ok || LeftUnderControlOf(ev, dead) != source.Controller {
 		return false
 	}
 	for _, n := range g.LastKnownCountersForEffect(ev.CardID) {
@@ -277,9 +277,9 @@ func stdB26RoleModelCreatureDied(ev game.Event, source *game.Card, _ game.Charac
 // (its last-known counters), put on by the ability, so a replacement that
 // changes counters applies to it (the card's rulings). No target, or an
 // illegal one, does nothing.
-func stdB26RoleModelMoveCounters(g *game.Game, item *game.StackItem) error {
+func StdB26RoleModelMoveCounters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	target := firstLegalCardTarget(ctx)
+	target := FirstLegalCardTarget(ctx)
 	if target == uuid.Nil {
 		return nil
 	}
@@ -306,7 +306,7 @@ func stdB26RoleModelMoveCounters(g *game.Game, item *game.StackItem) error {
 
 // stdB26NashiMill is the trigger's resolution: mill that many cards. The
 // rest of the instruction is the tail, told the cards that landed.
-func stdB26NashiMill(g *game.Game, item *game.StackItem) error {
+func StdB26NashiMill(g *game.Game, item *game.StackItem) error {
 	n := item.Params.Amount
 	if n <= 0 {
 		return nil
@@ -350,7 +350,7 @@ var stdB26NashiMilled = CardTail("std-b26/nashi-after-mill", func(ctx *Context, 
 
 // stdB26NashiPicked moves the chosen cards to the hand and, when none of
 // them got there, puts the counter on. An on-disk key.
-var stdB26NashiPicked = askedPick("choose-cards/std-b26-nashi-to-hand", func(ctx *Context, r game.CardsChosen) error {
+var stdB26NashiPicked = AskedPick("choose-cards/std-b26-nashi-to-hand", func(ctx *Context, r game.CardsChosen) error {
 	taken := 0
 	for _, id := range r.Picked {
 		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
@@ -369,7 +369,7 @@ var stdB26NashiPicked = askedPick("choose-cards/std-b26-nashi-to-hand", func(ctx
 // stdB26NashiCounter is the +1/+1 counter on Nashi, if it is still the
 // permanent the ability came from.
 func stdB26NashiCounter(ctx *Context) error {
-	if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+	if !SourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 		return nil
 	}
 	return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)

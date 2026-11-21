@@ -16,7 +16,7 @@ func ManaAbilitiesOfThisPermanentCostLife(life int) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "Mana abilities of this permanent cost additional life to activate.",
 		Layer:     game.Layer6Ability,
-		AppliesTo: thisPermanent,
+		AppliesTo: ThisPermanent,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.ManaAbilityLifeTax += life
 		},

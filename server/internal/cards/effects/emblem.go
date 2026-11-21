@@ -245,7 +245,7 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 // checkEmblemSpec is the registration guard. Every failure here is a
 // card file that is wrong in a way no test of the card would catch,
 // so it fails at boot.
-func checkEmblemSpec(name string, e *EmblemSpec) {
+func CheckEmblemSpec(name string, e *EmblemSpec) {
 	if e == nil {
 		return
 	}

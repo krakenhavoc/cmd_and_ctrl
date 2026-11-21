@@ -12,7 +12,7 @@ import (
 // other creature this combat". It reads the turn's attack records, which
 // keep what was declared after a creature has left combat (CR 508.1) and
 // tell the combats of one turn apart by PhaseID.
-func s82VowB06OtherAttackersThisCombat(g *game.Game, controller, source uuid.UUID) []uuid.UUID {
+func S82VowB06OtherAttackersThisCombat(g *game.Game, controller, source uuid.UUID) []uuid.UUID {
 	phase, found := 0, false
 	for _, a := range g.TurnTally.Attacks {
 		if a.Attacker == source {
@@ -65,7 +65,7 @@ func s82VowB06WithPartner(partner string) func(target *game.Card, g *game.Game, 
 // +0/+2 and has <keyword> as long as an Equipment named <partner> is attached
 // to a creature you control." Three statics: the plain pump, then the
 // conditional toughness and keyword, which are read live.
-func s82VowB06EquipmentPair(partner, keyword string) []game.StaticAbility {
+func S82VowB06EquipmentPair(partner, keyword string) []game.StaticAbility {
 	extra := PumpAttached(0, 2)
 	extra.Label = "Equipped creature gets an additional +0/+2 while " + partner + " is attached to a creature you control."
 	extra.AppliesTo = s82VowB06WithPartner(partner)

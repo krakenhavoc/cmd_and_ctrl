@@ -109,7 +109,7 @@ func MatchingBattlefield(ctx *Context, match CardPredicate) []game.Card {
 		return nil
 	}
 	caster := ctx.Controller()
-	reader := ctx.textReader()
+	reader := ctx.TextReader()
 	var out []game.Card
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if match(ctx.Game, caster, game.ThroughTextOf(reader, c)) {
@@ -308,7 +308,7 @@ func (r ReturnAllToHand) Apply(ctx *Context) error {
 // this effect's, which is why an indestructible creature (S25) or a
 // damage prevention shield (S30) changes the outcome here and a
 // DestroyAllMatching would not have let it.
-func damageEachMatching(ctx *Context, match CardPredicate, amount int) error {
+func DamageEachMatching(ctx *Context, match CardPredicate, amount int) error {
 	if amount <= 0 {
 		return nil
 	}
@@ -331,7 +331,7 @@ func damageEachMatching(ctx *Context, match CardPredicate, amount int) error {
 // they controlled that were destroyed this way" family (Deadly
 // Tempest). Reads the PRE-MOVE copies, which is the only place that
 // information still exists once the sweep has run.
-func controllersOf(cards []game.Card) map[uuid.UUID]int {
+func ControllersOf(cards []game.Card) map[uuid.UUID]int {
 	out := make(map[uuid.UUID]int, len(cards))
 	for _, c := range cards {
 		out[c.Controller]++

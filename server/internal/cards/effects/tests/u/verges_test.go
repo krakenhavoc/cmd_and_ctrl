@@ -1,0 +1,126 @@
+package testsu
+
+import (
+	"errors"
+	"reflect"
+	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+const (
+	bleachboneVergeOracle = "2b8144a0-08d2-4c28-9fd7-5d90f90105e4"
+	floodfarmVergeOracle  = "f1e9abfb-c3c8-483e-b446-5c2afc9f6394"
+	gloomlakeVergeOracle  = "d71bda4c-3dee-4398-8fd0-f77d8743b887"
+	blazemireVergeOracle  = "977c2f33-b622-4172-9efb-7f523becd32b"
+	riverpyreVergeOracle  = "510a6ac5-f098-4145-ac07-771b1b6f7cdf"
+)
+
+// The gated half is refused — tapping nothing — until a Swamp or a
+// Mountain is beside it, the same shape TestFloodfarmVergeSecondColourNeedsAPlainsOrAnIsland
+// pins for the first three verges.
+func TestBlazemireVergeSecondColourNeedsASwampOrAMountain(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	verge := effectstest.SeedPermanentWithOracle(g, me.ID, "Blazemire Verge", "Land", blazemireVergeOracle)
+	// A Plains is a land, but not one the clause names.
+	effectstest.SeedManaLand(g, me.ID, "Plains", "Basic Land — Plains", "W")
+
+	if err := g.ActivateManaAbility(me.ID, verge, 1, game.ManaAbilityParams{}); !errors.Is(err, game.ErrConditionNotMet) {
+		t.Fatalf("gated {R} with no Swamp or Mountain: err = %v, want ErrConditionNotMet", err)
+	}
+	if c, _ := effectstest.BattlefieldCard(g, verge); c.Tapped {
+		t.Fatal("a refused activation tapped the verge")
+	}
+	if err := g.ActivateManaAbility(me.ID, verge, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("unconditional {B}: %v", err)
+	}
+	if got := effectstest.PoolColors(me); !reflect.DeepEqual(got, []string{"B"}) {
+		t.Errorf("pool = %v, want {B}", got)
+	}
+}
+
+// The unconditional half always works; the gated half is refused —
+// tapping nothing — until a land of one of the two named types is
+// beside it.
+func TestFloodfarmVergeSecondColourNeedsAPlainsOrAnIsland(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	verge := effectstest.SeedPermanentWithOracle(g, me.ID, "Floodfarm Verge", "Land", floodfarmVergeOracle)
+	// A Swamp is a land, but not one the clause names.
+	effectstest.SeedManaLand(g, me.ID, "Swamp", "Basic Land — Swamp", "B")
+
+	if err := g.ActivateManaAbility(me.ID, verge, 1, game.ManaAbilityParams{}); !errors.Is(err, game.ErrConditionNotMet) {
+		t.Fatalf("gated {U} with no Plains or Island: err = %v, want ErrConditionNotMet", err)
+	}
+	if c, _ := effectstest.BattlefieldCard(g, verge); c.Tapped {
+		t.Fatal("a refused activation tapped the verge")
+	}
+	if err := g.ActivateManaAbility(me.ID, verge, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("unconditional {W}: %v", err)
+	}
+	if got := effectstest.PoolColors(me); !reflect.DeepEqual(got, []string{"W"}) {
+		t.Errorf("pool = %v, want {W}", got)
+	}
+}
+
+// A NONBASIC land carrying the type counts — Hallowed Fountain is a
+// Plains Island — which is why the gate reads land subtypes rather than
+// names.
+func TestFloodfarmVergeSecondColourWithAShockland(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	verge := effectstest.SeedPermanentWithOracle(g, me.ID, "Floodfarm Verge", "Land", floodfarmVergeOracle)
+	effectstest.SeedPermanentWithOracle(g, me.ID, "Hallowed Fountain", "Land — Plains Island", "f1750962-a87c-49f6-b731-02ae971ac6ea")
+
+	if err := g.ActivateManaAbility(me.ID, verge, 1, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("gated {U} beside a Plains Island: %v", err)
+	}
+	if got := effectstest.PoolColors(me); !reflect.DeepEqual(got, []string{"U"}) {
+		t.Errorf("pool = %v, want {U}", got)
+	}
+}
+
+// An opponent's Island is not "you control".
+func TestFloodfarmVergeIgnoresAnOpponentsIsland(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	verge := effectstest.SeedPermanentWithOracle(g, me.ID, "Floodfarm Verge", "Land", floodfarmVergeOracle)
+	effectstest.SeedManaLand(g, opp.ID, "Island", "Basic Land — Island", "U")
+
+	if err := g.ActivateManaAbility(me.ID, verge, 1, game.ManaAbilityParams{}); !errors.Is(err, game.ErrConditionNotMet) {
+		t.Fatalf("err = %v, want ErrConditionNotMet", err)
+	}
+}
+
+// The other two verges in the table, each switched on by one of its
+// two types and producing the printed gated colour.
+func TestVergeCycleGatedColours(t *testing.T) {
+	for _, tc := range []struct {
+		name, oracle, beside, typeLine, want string
+	}{
+		{"Bleachbone Verge", bleachboneVergeOracle, "Plains", "Basic Land — Plains", "W"},
+		{"Bleachbone Verge", bleachboneVergeOracle, "Swamp", "Basic Land — Swamp", "W"},
+		{"Gloomlake Verge", gloomlakeVergeOracle, "Island", "Basic Land — Island", "B"},
+		{"Gloomlake Verge", gloomlakeVergeOracle, "Swamp", "Basic Land — Swamp", "B"},
+		{"Floodfarm Verge", floodfarmVergeOracle, "Island", "Basic Land — Island", "U"},
+		{"Blazemire Verge", blazemireVergeOracle, "Swamp", "Basic Land — Swamp", "R"},
+		{"Blazemire Verge", blazemireVergeOracle, "Mountain", "Basic Land — Mountain", "R"},
+		{"Riverpyre Verge", riverpyreVergeOracle, "Island", "Basic Land — Island", "U"},
+		{"Riverpyre Verge", riverpyreVergeOracle, "Mountain", "Basic Land — Mountain", "U"},
+	} {
+		t.Run(tc.name+"/"+tc.beside, func(t *testing.T) {
+			g := effectstest.NewCatalogGame(t)
+			me := g.Seats[0]
+			verge := effectstest.SeedPermanentWithOracle(g, me.ID, tc.name, "Land", tc.oracle)
+			effectstest.SeedManaLand(g, me.ID, tc.beside, tc.typeLine)
+			if err := g.ActivateManaAbility(me.ID, verge, 1, game.ManaAbilityParams{}); err != nil {
+				t.Fatalf("gated ability: %v", err)
+			}
+			if got := effectstest.PoolColors(me); !reflect.DeepEqual(got, []string{tc.want}) {
+				t.Errorf("pool = %v, want {%s}", got, tc.want)
+			}
+		})
+	}
+}

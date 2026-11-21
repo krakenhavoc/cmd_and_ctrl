@@ -53,7 +53,7 @@ func ControlledSinceTheBeginningOfTheTurn() CardPredicate {
 // forcedAttackTarget is the clause of Nettling Imp, Norritt and Arcum's
 // Whistle: "target non-Wall creature the active player has controlled
 // continuously since the beginning of the turn".
-func forcedAttackTarget() *game.TargetSpec {
+func ForcedAttackTarget() *game.TargetSpec {
 	return TargetCreature(
 		"target non-Wall creature the active player has controlled continuously since the beginning of the turn",
 		NonWall(), ControlledByTheActivePlayer(), ControlledSinceTheBeginningOfTheTurn())
@@ -67,7 +67,7 @@ var destroyUnlessItAttackedBody = game.DelayedBody("destroy/the-object-unless-it
 func destroyUnlessItAttacked(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	id := p.Object.ID
 	c, ok := g.LookupCardForEffect(id)
-	if !ok || c.ObjectEpoch != p.Object.Epoch || !onBattlefield(g, id) || g.AttackedThisTurn(id) {
+	if !ok || c.ObjectEpoch != p.Object.Epoch || !OnBattlefield(g, id) || g.AttackedThisTurn(id) {
 		return nil
 	}
 	return DestroyTarget{Target: id}.Apply(NewContext(g, item))
@@ -77,7 +77,7 @@ func destroyUnlessItAttacked(g *game.Game, item *game.StackItem, p game.EffectPa
 // (CR 508.1d) and sets up the destruction at the beginning of the next end
 // step if it didn't. The delayed trigger is the resolving ability's own
 // (CR 603.7), put on the stack at that end step.
-func mustAttackOrBeDestroyed(ctx *Context, creature uuid.UUID, label string) error {
+func MustAttackOrBeDestroyed(ctx *Context, creature uuid.UUID, label string) error {
 	c, ok := ctx.Game.LookupCardForEffect(creature)
 	if !ok {
 		return nil
@@ -107,13 +107,13 @@ func mustAttackOrBeDestroyed(ctx *Context, creature uuid.UUID, label string) err
 // beginning of the turn. That creature attacks this turn if able. Destroy
 // it at the beginning of the next end step if it didn't attack this
 // turn" (Nettling Imp, Norritt).
-func forceTheChosenCreature(label string) Effect {
+func ForceTheChosenCreature(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
-		return mustAttackOrBeDestroyed(ctx, id, label)
+		return MustAttackOrBeDestroyed(ctx, id, label)
 	}
 }

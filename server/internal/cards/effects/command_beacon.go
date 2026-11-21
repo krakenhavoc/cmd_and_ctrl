@@ -59,7 +59,7 @@ func init() {
 // commander is on the battlefield, or in a graveyard — does nothing,
 // which is what the printed card does too.
 func commandBeaconToHand(g *game.Game, item *game.StackItem) error {
-	return putCommanderIntoHand(g, item, "Command Beacon", false)
+	return PutCommanderIntoHand(g, item, "Command Beacon", false)
 }
 
 // putCommanderIntoHand is "Put your commander into your hand from the
@@ -69,7 +69,7 @@ func commandBeaconToHand(g *game.Game, item *game.StackItem) error {
 // `commandersOnly` narrows the candidates to the commanders the
 // controller owns (Road of Return); Command Beacon keeps every card in
 // its activator's command zone, as it always has.
-func putCommanderIntoHand(g *game.Game, item *game.StackItem, name string, commandersOnly bool) error {
+func PutCommanderIntoHand(g *game.Game, item *game.StackItem, name string, commandersOnly bool) error {
 	p := g.PlayerByIDForEffect(item.Controller)
 	if p == nil || p.Command == nil {
 		return nil
@@ -95,7 +95,7 @@ func putCommanderIntoHand(g *game.Game, item *game.StackItem, name string, comma
 		Cards:      candidates,
 		Min:        1,
 		Max:        1,
-		ThenKey:    commandBeaconPicked,
+		ThenKey:    CommandBeaconPicked,
 		LiveZone:   game.ZoneCommand,
 	})
 	return nil
@@ -104,7 +104,7 @@ func putCommanderIntoHand(g *game.Game, item *game.StackItem, name string, comma
 // commandBeaconPicked is the keyed answer to "put which commander into your
 // hand" (#4253). Shared by Command Beacon and Road of Return. An on-disk
 // key: never renamed, never reused.
-var commandBeaconPicked = game.RegisterChooseCardsThen("choose-cards/commander-into-hand", func(g *game.Game, r game.CardsChosen) error {
+var CommandBeaconPicked = game.RegisterChooseCardsThen("choose-cards/commander-into-hand", func(g *game.Game, r game.CardsChosen) error {
 	for _, id := range r.Picked {
 		if err := g.BounceToHandForEffect(id); err != nil {
 			return err

@@ -25,15 +25,15 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "vigilance", "haste"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, attacksForTheFirstTimeThisTurn,
+			On(game.EventAttack, AttacksForTheFirstTimeThisTurn,
 				"Aurelia, the Warleader — untap all creatures you control, additional combat",
-				untapAllYouControlThenExtraCombat),
+				UntapAllYouControlThenExtraCombat),
 		},
 	})
 }
 
 // attacksForTheFirstTimeThisTurn is "whenever ~ attacks for the first
 // time each turn" (Aurelia, Godo, Scourge of the Throne).
-func attacksForTheFirstTimeThisTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func AttacksForTheFirstTimeThisTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	return ThisAttacked(ev, source, lki, g) && g.TimesAttackedThisTurn(source.InstanceID) == 1
 }

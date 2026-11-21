@@ -156,7 +156,7 @@ func EquipAbilitiesAtInstantSpeed(label string, onlyDuringYourTurn bool) game.Ac
 			if q.Controller != q.Source.Controller {
 				return false
 			}
-			if onlyDuringYourTurn && !isActivePlayer(q.Game, q.Source.Controller) {
+			if onlyDuringYourTurn && !IsActivePlayer(q.Game, q.Source.Controller) {
 				return false
 			}
 			return true

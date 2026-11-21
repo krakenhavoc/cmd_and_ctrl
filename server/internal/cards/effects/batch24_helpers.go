@@ -39,7 +39,7 @@ import (
 // source, the source itself included. Damage is marked before the
 // state-based sweep, so a creature that took lethal is still on the
 // battlefield when its event fires and is read live.
-func b24SubtypeYouControlDealtDamage(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
+func B24SubtypeYouControlDealtDamage(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target == uuid.Nil {
 		return false
 	}
@@ -58,8 +58,8 @@ func b24SubtypeYouControlDealtDamage(ev game.Event, source *game.Card, g *game.G
 // already checks the combat flag, the player target and the dealing
 // creature's controller; this adds the creature type, read
 // post-layer so a changeling counts.
-func b24CombatDamageToPlayerByYourCreatureOfSubtypes(ev game.Event, source *game.Card, g *game.Game, subtypes ...string) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func B24CombatDamageToPlayerByYourCreatureOfSubtypes(ev game.Event, source *game.Card, g *game.Game, subtypes ...string) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)
@@ -79,12 +79,12 @@ func b24CombatDamageToPlayerByYourCreatureOfSubtypes(ev game.Event, source *game
 // legendary creature the source's controller controls. The
 // supertype is read post-layer, so a creature something else made
 // legendary counts.
-func b24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func B24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)
-	return ok && isLegendary(&dealer)
+	return ok && IsLegendary(&dealer)
 }
 
 // b24NaturesWillKey names Nature's Will's ability for the
@@ -92,12 +92,12 @@ func b24LegendaryCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, sour
 // damaged player and so cannot be the key; the player is the guard's
 // own second dimension (OncePerBatchPerPlayer), and this names the
 // ability the dimension hangs off.
-const b24NaturesWillKey = "Nature's Will — tap their lands, untap yours"
+const B24NaturesWillKey = "Nature's Will — tap their lands, untap yours"
 
 // b24NaturesWillLabel is Nature's Will's stack label for one damaged
 // player — the player's name is what makes two players' triggers two
 // labels.
-func b24NaturesWillLabel(g *game.Game, victim uuid.UUID) string {
+func B24NaturesWillLabel(g *game.Game, victim uuid.UUID) string {
 	name := "that player"
 	if p := g.PlayerByIDForEffect(victim); p != nil && p.Name != "" {
 		name = p.Name
@@ -109,9 +109,9 @@ func b24NaturesWillLabel(g *game.Game, victim uuid.UUID) string {
 // intervening-if at announce: the source's controller's end step
 // began and they gained life this turn. Re-run at resolution by the
 // effect body, as CR 603.4 asks.
-func b24YourEndStepAndYouGainedLifeThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+func B24YourEndStepAndYouGainedLifeThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
 	return ev.Kind == game.EventBeginEndStep && ev.Actor == source.Controller &&
-		b15LifeGainedThisTurn(g, source.Controller) > 0
+		B15LifeGainedThisTurn(g, source.Controller) > 0
 }
 
 // --- board reads -------------------------------------------------
@@ -119,7 +119,7 @@ func b24YourEndStepAndYouGainedLifeThisTurn(ev game.Event, source *game.Card, g 
 // b24ControlsCreatureWithPowerAtLeast is Bugenhagen's upkeep
 // intervening-if — "if you control a creature with power 7 or
 // greater". Current power, so counters and anthems count.
-func b24ControlsCreatureWithPowerAtLeast(g *game.Game, controller uuid.UUID, n int) bool {
+func B24ControlsCreatureWithPowerAtLeast(g *game.Game, controller uuid.UUID, n int) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.CurrentPower() >= n {
 			return true
@@ -131,7 +131,7 @@ func b24ControlsCreatureWithPowerAtLeast(g *game.Game, controller uuid.UUID, n i
 // b24TappedCreaturesControlled counts the tapped creatures
 // `controller` controls — Throne of the God-Pharaoh's amount, read as
 // the trigger resolves.
-func b24TappedCreaturesControlled(g *game.Game, controller uuid.UUID) int {
+func B24TappedCreaturesControlled(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.Tapped {
@@ -146,9 +146,9 @@ func b24TappedCreaturesControlled(g *game.Game, controller uuid.UUID) int {
 // you control", read as the trigger resolves so an Elf declared
 // after Dwynen still counts. Post-layer subtype, so a changeling
 // counts.
-func b24AttackingCreaturesOfSubtype(g *game.Game, controller uuid.UUID, subtype string) int {
+func B24AttackingCreaturesOfSubtype(g *game.Game, controller uuid.UUID, subtype string) int {
 	n := 0
-	for _, id := range b13AttackingCreaturesYouControl(g, controller) {
+	for _, id := range B13AttackingCreaturesYouControl(g, controller) {
 		if c, ok := g.LookupCardForEffect(id); ok && c.HasSubtype(subtype) {
 			n++
 		}
@@ -159,12 +159,12 @@ func b24AttackingCreaturesOfSubtype(g *game.Game, controller uuid.UUID, subtype 
 // b24AnyPlayerLostAtLeastThisTurn is Y'shtola's end-step
 // intervening-if — "if a player lost 4 or more life this turn" — any
 // seated player, the source's controller included.
-func b24AnyPlayerLostAtLeastThisTurn(g *game.Game, n int) bool {
+func B24AnyPlayerLostAtLeastThisTurn(g *game.Game, n int) bool {
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated {
 			continue
 		}
-		if b18LifeLostThisTurn(g, p.ID) >= n {
+		if B18LifeLostThisTurn(g, p.ID) >= n {
 			return true
 		}
 	}
@@ -174,7 +174,7 @@ func b24AnyPlayerLostAtLeastThisTurn(g *game.Game, n int) bool {
 // b24GraveyardHasCreatureCard reports whether `player`'s graveyard
 // holds a creature card — the question Witch of the Moors' targeted
 // declaration asks before it fires (the Hazel's Brewmaster split).
-func b24GraveyardHasCreatureCard(g *game.Game, player uuid.UUID) bool {
+func B24GraveyardHasCreatureCard(g *game.Game, player uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return false
@@ -191,7 +191,7 @@ func b24GraveyardHasCreatureCard(g *game.Game, player uuid.UUID) bool {
 // `owner` that carries at least one `kind` counter — the card Mari's
 // granted ability removes a hit counter from. The first in exile
 // order; every such card is interchangeable for the effect.
-func b24ExiledCardWithCounterOwnedBy(g *game.Game, owner uuid.UUID, kind string) (uuid.UUID, bool) {
+func B24ExiledCardWithCounterOwnedBy(g *game.Game, owner uuid.UUID, kind string) (uuid.UUID, bool) {
 	if g.Exile == nil {
 		return uuid.Nil, false
 	}
@@ -210,7 +210,7 @@ func b24ExiledCardWithCounterOwnedBy(g *game.Game, owner uuid.UUID, kind string)
 // creature type as a parameter: TargetAny's set minus permanents
 // with the subtype; players are never Dinosaurs, so the player half
 // is untouched.
-func b24TargetAnyNotSubtype(subtype string) *game.TargetSpec {
+func B24TargetAnyNotSubtype(subtype string) *game.TargetSpec {
 	spec := TargetAny()
 	spec.Label = "any target that isn't a " + subtype
 	base := spec.CardOK
@@ -228,7 +228,7 @@ func b24TargetAnyNotSubtype(subtype string) *game.TargetSpec {
 // picks a card from their own hand to discard, one prompt per
 // opponent, addressed to that opponent. A player with an empty hand
 // is skipped by the discard prompt itself.
-func eachOpponentDiscardsOne(g *game.Game, item *game.StackItem) error {
+func EachOpponentDiscardsOne(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, opp := range ctx.Opponents() {
 		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
@@ -243,7 +243,7 @@ func eachOpponentDiscardsOne(g *game.Game, item *game.StackItem) error {
 // b24TapAllLandsControlledBy taps every untapped land `player`
 // controls — Nature's Will's first half. Snapshot then tap, so the
 // tap events don't disturb the walk.
-func b24TapAllLandsControlledBy(ctx *Context, player uuid.UUID) error {
+func B24TapAllLandsControlledBy(ctx *Context, player uuid.UUID) error {
 	var ids []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsLand() && !c.Tapped {
@@ -251,7 +251,7 @@ func b24TapAllLandsControlledBy(ctx *Context, player uuid.UUID) error {
 		}
 	}
 	for _, id := range ids {
-		if err := (TapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (TapTarget{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -273,13 +273,13 @@ func b24TapAllLandsControlledBy(ctx *Context, player uuid.UUID) error {
 // Blood Artist's drain and this loss used to arrive in the wrong
 // sequence, and an opponent at 2 life lost it before choosing what to
 // sacrifice.
-func b24PlayersSacrificeGreatestPowerCreatureAndLoseLife(g *game.Game, item *game.StackItem, players []uuid.UUID, life int) error {
+func B24PlayersSacrificeGreatestPowerCreatureAndLoseLife(g *game.Game, item *game.StackItem, players []uuid.UUID, life int) error {
 	players = append([]uuid.UUID(nil), players...)
 	ctx := NewContext(g, item)
 	// Keyed (#4290): the players ride the run as its carry and the life as
 	// its number.
 	return ctx.PlayersSacrificeThen(players,
-		sacrificeSpec("a creature with the greatest power among creatures you control", GreatestPowerYouControl()),
+		SacrificeSpec("a creature with the greatest power among creatures you control", GreatestPowerYouControl()),
 		"Will of the Abzan — sacrifice a creature with the greatest power",
 		willOfTheAbzanLoseLife, ctx.RunData(players, life))
 }
@@ -304,8 +304,8 @@ var willOfTheAbzanLoseLife = RunThen("prompt-run/will-of-the-abzan-lose-life", f
 // their owner's control — Reveillark's return half. (Lich-Knights'
 // Conquest used it too until #2863 moved its pick to resolution.) The first `n` in announce order are taken, and they
 // enter together (#1867, CR 603.6a), so each sees the others enter.
-func b24ReturnGraveyardTargetsToBattlefield(ctx *Context, n int) error {
-	ids := legalTargetCardIDs(ctx)
+func B24ReturnGraveyardTargetsToBattlefield(ctx *Context, n int) error {
+	ids := LegalTargetCardIDs(ctx)
 	if n < 0 {
 		n = 0
 	}
@@ -320,8 +320,8 @@ func b24ReturnGraveyardTargetsToBattlefield(ctx *Context, n int) error {
 // exile, and if one was removed, draw a card and create two
 // Treasures. With no such card the ability does nothing — "if you
 // do" is the whole gate.
-func b24RemoveHitCounterDrawAndTreasures(g *game.Game, item *game.StackItem, victim uuid.UUID) error {
-	card, ok := b24ExiledCardWithCounterOwnedBy(g, victim, "hit")
+func B24RemoveHitCounterDrawAndTreasures(g *game.Game, item *game.StackItem, victim uuid.UUID) error {
+	card, ok := B24ExiledCardWithCounterOwnedBy(g, victim, "hit")
 	if !ok {
 		return nil
 	}

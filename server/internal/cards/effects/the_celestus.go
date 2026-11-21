@@ -61,12 +61,12 @@ func celestusFlip(g *game.Game, item *game.StackItem) error {
 		Draws:    1,
 		YesLabel: "Draw",
 		NoLabel:  "Decline",
-		Then:     celestusAnswer,
+		Then:     CelestusAnswer,
 	}.Apply(ctx)
 }
 
 // celestusAnswer is the "yes": draw a card, then discard a card. Keyed
 // (#4291).
-var celestusAnswer = MayYes("confirm/the-celestus-loot", func(ctx *Context, _ game.ConfirmAnswer) error {
-	return drawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), 1, 1, "")
+var CelestusAnswer = MayYes("confirm/the-celestus-loot", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return DrawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), 1, 1, "")
 })

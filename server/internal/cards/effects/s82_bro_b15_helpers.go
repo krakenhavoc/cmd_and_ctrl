@@ -25,7 +25,7 @@ var s82BroTotalValueRules = func() []PutRule {
 	for n := 0; n <= s82BroTotalValueRuleMax; n++ {
 		rules = append(rules, RegisterPutRule(
 			fmt.Sprintf("choose-cards/put-from-library-s82-bro-total-mana-value-%d", n),
-			b23TotalManaValueAtMost(n)))
+			B23TotalManaValueAtMost(n)))
 	}
 	return append(rules, RegisterPutRule("choose-cards/put-from-library-s82-bro-total-mana-value-unbounded",
 		func([]game.Card) bool { return true }))
@@ -36,7 +36,7 @@ var s82BroTotalValueRules = func() []PutRule {
 // looked-at cards can reach (at most `picks` of them are put) is the same
 // as no ceiling, so it is clamped to the largest sum there is before the
 // rule is picked; a clamp above the registered range is unbounded.
-func s82BroTotalValueRule(g *game.Game, looked []uuid.UUID, limit, picks int) PutRule {
+func S82BroTotalValueRule(g *game.Game, looked []uuid.UUID, limit, picks int) PutRule {
 	var values []int
 	for _, id := range looked {
 		if c, ok := g.LookupCardForEffect(id); ok {

@@ -63,7 +63,7 @@ type Convert struct {
 }
 
 func (c Convert) Apply(ctx *Context) error {
-	if c.Target == uuid.Nil || ctx.isNewSourceObject(c.Target) { // #1432
+	if c.Target == uuid.Nil || ctx.IsNewSourceObject(c.Target) { // #1432
 		return nil
 	}
 	// CR 701.28a converts a permanent. A card that has left the
@@ -89,7 +89,7 @@ func (c Convert) Apply(ctx *Context) error {
 type ConvertThis struct{}
 
 func (ConvertThis) Apply(ctx *Context) error {
-	if sourceTurnedOverSince(ctx) {
+	if SourceTurnedOverSince(ctx) {
 		return nil
 	}
 	return Convert{Target: ctx.Source()}.Apply(ctx)
@@ -98,7 +98,7 @@ func (ConvertThis) Apply(ctx *Context) error {
 // sourceTurnedOverSince is CR 701.27f / 701.28e for TransformThis and
 // ConvertThis: the resolving ability's source has transformed or
 // converted since the ability went on the stack (ADR 0152 §3).
-func sourceTurnedOverSince(ctx *Context) bool {
+func SourceTurnedOverSince(ctx *Context) bool {
 	return ctx != nil && ctx.Game != nil && ctx.Game.SourceTurnedOverSinceForEffect(ctx.Item)
 }
 
@@ -120,7 +120,7 @@ func LivingMetal() game.StaticAbility {
 		Label: "Living metal (During your turn, this Vehicle is also a creature.)",
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.InstanceID == source.InstanceID && isActivePlayer(g, source.Controller)
+			return target.InstanceID == source.InstanceID && IsActivePlayer(g, source.Controller)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, t := range []string{"Artifact", "Creature"} {

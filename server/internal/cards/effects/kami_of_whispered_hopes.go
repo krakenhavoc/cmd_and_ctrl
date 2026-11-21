@@ -32,7 +32,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			{
 				Watches:   []game.EventKind{game.EventCounterPlaced},
-				AppliesTo: kamiPlusOneCounterOnYourPermanent,
+				AppliesTo: KamiPlusOneCounterOnYourPermanent,
 				Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 					ev.CounterDelta += 1
 					return nil
@@ -55,7 +55,7 @@ func init() {
 // AppliesTo: the Hardened Scales predicate (CR 122.6 / CR 614.1 —
 // placement only) widened from "a creature you control" to "a
 // permanent you control".
-func kamiPlusOneCounterOnYourPermanent(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+func KamiPlusOneCounterOnYourPermanent(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if ev.Kind != game.RepEventCounter {
 		return false
 	}

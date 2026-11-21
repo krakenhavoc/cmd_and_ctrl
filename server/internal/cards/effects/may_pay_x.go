@@ -134,7 +134,7 @@ type CreateTokensAttackingYourChoice struct {
 // Carry and N). Call it once, from a package-level var.
 func AttackingTokensThen(key string, body func(ctx *Context, created []uuid.UUID, tail game.KeyedTail) error) game.TailRef {
 	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
-		return body(keyedContext(g, o.Tail.Player, o.Tail.Source), o.IDs, o.Tail)
+		return body(KeyedContext(g, o.Tail.Player, o.Tail.Source), o.IDs, o.Tail)
 	})
 }
 
@@ -181,15 +181,15 @@ func (c CreateTokensAttackingYourChoice) Apply(ctx *Context) error {
 func (c CreateTokensAttackingYourChoice) template(ctx *Context) game.Card {
 	switch {
 	case c.Copy:
-		return copiedToken(c.Template)
+		return CopiedToken(c.Template)
 	case c.RuleDefined:
-		return ruleDefinedToken(c.Template)
+		return RuleDefinedToken(c.Template)
 	}
 	return ctx.TextToken(c.Template)
 }
 
 // attackTargetName is a player's or a permanent's name for a question.
-func attackTargetName(g *game.Game, id uuid.UUID) string {
+func AttackTargetName(g *game.Game, id uuid.UUID) string {
 	if p := g.PlayerByIDForEffect(id); p != nil && p.Name != "" {
 		return p.Name
 	}

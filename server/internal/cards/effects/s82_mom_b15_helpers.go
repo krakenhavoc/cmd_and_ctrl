@@ -10,7 +10,7 @@ import (
 
 // blightsowerThallidCondition is "when this creature transforms into
 // Blightsower Thallid or dies": one ability, two conditions.
-func blightsowerThallidCondition(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
+func BlightsowerThallidCondition(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventTransform:
 		return ThisTransformedInto(1)(ev, source, c, g)
@@ -22,21 +22,21 @@ func blightsowerThallidCondition(ev game.Event, source *game.Card, c game.Charac
 
 // chromeHostHulkReshape sets the target's base power and toughness to
 // 5/5 until end of turn (layer 7b), under any pumps and counters.
-func chromeHostHulkReshape(g *game.Game, item *game.StackItem) error {
+func ChromeHostHulkReshape(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
-	return untilEndOfTurn(ctx, id, nil, "Chrome Host Hulk — base power and toughness 5/5 until end of turn",
+	return UntilEndOfTurn(ctx, id, nil, "Chrome Host Hulk — base power and toughness 5/5 until end of turn",
 		game.SetBasePTMods(5, 5)...)
 }
 
 // maladyInvokerShrink is -0/-X where X is the source's power as the
 // ability resolves, last-known if it has left the battlefield (CR 608.2h).
-func maladyInvokerShrink(g *game.Game, item *game.StackItem) error {
+func MaladyInvokerShrink(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -50,7 +50,7 @@ func maladyInvokerShrink(g *game.Game, item *game.StackItem) error {
 // orderOfTheAlabasterHostShrink gives the blocking creature -1/-1 until
 // end of turn. EventBlock names the blocker in CardID; the trigger's
 // object is that blocker.
-func orderOfTheAlabasterHostShrink(g *game.Game, item *game.StackItem) error {
+func OrderOfTheAlabasterHostShrink(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil || item.Trigger.Object == nil {
 		return nil
 	}

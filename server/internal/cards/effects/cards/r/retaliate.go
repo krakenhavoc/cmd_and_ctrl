@@ -1,0 +1,30 @@
+package cardsr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Retaliate — Instant {2}{W}{W}:
+//
+//	"Destroy all creatures that dealt damage to you this turn."
+//
+// The set is read as the spell resolves from the per-turn record of
+// which creature objects dealt damage to its controller (#2149), so a
+// creature that dealt damage and was then flickered is a new object
+// and is spared (CR 400.7), and a creature that never damaged you
+// survives whatever else it did. Regeneration is allowed: the card
+// does not say otherwise.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID: "37f5d022-2989-4b44-9bca-dc6b606afe10",
+		Name:     "Retaliate",
+		// ADR 0126 §6: only the creatures that dealt damage to you this turn.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, OpponentsOnly: true, Partial: true}},
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			return effects.DestroyAllMatching{Match: effects.And(effects.Creature(), effects.DealtDamageToPlayerThisTurn(item.Controller))}.Apply(ctx)
+		},
+	})
+}

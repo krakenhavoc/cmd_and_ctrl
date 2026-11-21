@@ -12,7 +12,7 @@ import (
 // gapB153ThreeOrMorePlusOneCounters is "creatures you control with three or
 // more +1/+1 counters on them" (Runadi, Behemoth Caller), read live off the
 // counter map: a counter is a marker the layers read, not a layered value.
-func gapB153ThreeOrMorePlusOneCounters(target *game.Card, _ *game.Game, source *game.Card) bool {
+func GapB153ThreeOrMorePlusOneCounters(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.Controller == source.Controller &&
 		target.Counters[game.CounterPlusOne] >= 3
 }
@@ -23,7 +23,7 @@ func gapB153ThreeOrMorePlusOneCounters(target *game.Card, _ *game.Game, source *
 // (an {X} spell counts the X it was cast with, CR 202.3e) and carried on the
 // trigger; on resolution the spell is marked so the counters ride its entry,
 // as Wildgrowth Archaic's do. A spell gone by resolution has nothing to mark.
-func gapB153RunadiCastTrigger(label string) game.TriggeredAbility {
+func GapB153RunadiCastTrigger(label string) game.TriggeredAbility {
 	t := On(game.EventCast, YouCast(And(Creature(), ManaValueGE(5))), label, func(g *game.Game, item *game.StackItem) error {
 		n := item.Params.Amount
 		if n <= 0 {
@@ -53,13 +53,13 @@ func gapB153RunadiCastTrigger(label string) game.TriggeredAbility {
 // number of +1/+1 counters from this creature onto another target creature".
 // The target is chosen as the trigger goes on the stack; how many move is
 // chosen as it resolves (CR 608.2c), zero being the "may" declined.
-func gapB153BandarMove(g *game.Game, item *game.StackItem) error {
+func GapB153BandarMove(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	self := item.SourceCardID
-	if !onBattlefield(g, self) || sourceIsNewObject(g, item) {
+	if !OnBattlefield(g, self) || SourceIsNewObject(g, item) {
 		return nil
 	}
-	to, ok := b16FirstLegalTargetCard(ctx)
+	to, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -89,10 +89,10 @@ var gapB153BandarMoved = NumberThen("number/s82-gap-b153-scrounging-bandar-move"
 			return nil
 		}
 		self, to := r.Carry[0], r.Carry[1]
-		if !onBattlefield(ctx.Game, self) || !onBattlefield(ctx.Game, to) {
+		if !OnBattlefield(ctx.Game, self) || !OnBattlefield(ctx.Game, to) {
 			return nil
 		}
-		moved, err := socB9RemoveCounters(ctx, self, game.CounterPlusOne, r.Number)
+		moved, err := SocB9RemoveCounters(ctx, self, game.CounterPlusOne, r.Number)
 		if err != nil || moved <= 0 {
 			return err
 		}
@@ -104,7 +104,7 @@ var gapB153BandarMoved = NumberThen("number/s82-gap-b153-scrounging-bandar-move"
 // target of a SPELL an opponent controls. EventBecomesTarget fires once per
 // target slot (CR 115.3), so only the first event of one spell for one
 // creature counts.
-func gapB153CreatureWithCounterTargetedBySpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func GapB153CreatureWithCounterTargetedBySpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventBecomesTarget || ev.CardID == uuid.Nil || ev.TargeterKind != game.StackItemSpell {
 		return false
 	}
@@ -112,7 +112,7 @@ func gapB153CreatureWithCounterTargetedBySpell(ev game.Event, source *game.Card,
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !onBattlefield(g, ev.CardID) || !c.IsCreature() || c.Controller != source.Controller ||
+	if !ok || !OnBattlefield(g, ev.CardID) || !c.IsCreature() || c.Controller != source.Controller ||
 		c.Counters[game.CounterPlusOne] <= 0 {
 		return false
 	}
@@ -137,7 +137,7 @@ func gapB153CreatureWithCounterTargetedBySpell(ev game.Event, source *game.Card,
 
 // gapB153GreatestManaValueAmongYourCreatures is the greatest mana value among
 // the creatures `controller` controls (Towering Gibbon), 0 with none.
-func gapB153GreatestManaValueAmongYourCreatures(g *game.Game, controller uuid.UUID) int {
+func GapB153GreatestManaValueAmongYourCreatures(g *game.Game, controller uuid.UUID) int {
 	greatest := 0
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
@@ -156,14 +156,14 @@ func gapB153GreatestManaValueAmongYourCreatures(g *game.Game, controller uuid.UU
 // the Wolf is still the permanent that activated the ability; the counter and
 // the keyword land first, as printed, so the tap that follows does not undo
 // the protection.
-func gapB153WickedWolfSacrificeFood(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+func GapB153WickedWolfSacrificeFood(g *game.Game, item *game.StackItem) error {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
-	if err := plusOneCountersOnThis(1)(g, item); err != nil {
+	if err := PlusOneCountersOnThis(1)(g, item); err != nil {
 		return err
 	}
-	if err := thisGainsKeywordUntilEndOfTurn("indestructible", "Wicked Wolf — indestructible until end of turn")(g, item); err != nil {
+	if err := ThisGainsKeywordUntilEndOfTurn("indestructible", "Wicked Wolf — indestructible until end of turn")(g, item); err != nil {
 		return err
 	}
 	return TapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))

@@ -149,7 +149,7 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 			keyed.Asked = game.NewAskedItem(ctx.Item)
 		}
 	}
-	candidates := handCardsMatching(ctx.Game, player, p.Match)
+	candidates := HandCardsMatching(ctx.Game, player, p.Match)
 	if len(candidates) == 0 {
 		return keyed.Run(ctx.Game, nil)
 	}
@@ -301,14 +301,14 @@ func MayPutALandFromHandTapped(cardName string) PutFromHandOntoBattlefield {
 // layer effect on the battlefield has nothing to say about it.
 //
 // Caller holds g.mu.
-func handCardsMatching(g *game.Game, playerID uuid.UUID, pred CardPredicate) []uuid.UUID {
+func HandCardsMatching(g *game.Game, playerID uuid.UUID, pred CardPredicate) []uuid.UUID {
 	p := g.PlayerByIDForEffect(playerID)
 	if p == nil || p.Hand == nil {
 		return nil
 	}
 	var out []uuid.UUID
 	for _, c := range p.Hand.Cards {
-		if !isPermanentCard(c) {
+		if !IsPermanentCard(c) {
 			continue
 		}
 		if pred != nil && !pred(g, playerID, c) {

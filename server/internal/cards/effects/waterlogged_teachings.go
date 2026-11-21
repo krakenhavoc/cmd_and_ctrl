@@ -22,12 +22,12 @@ func init() {
 		OracleID:     "e6ad1be9-f13d-4590-b3db-e2d0fff46f03",
 		Name:         "Waterlogged Teachings",
 		Completeness: CompletenessFull,
-		OnResolve: b06TutorToHand("Waterlogged Teachings — an instant card or a card with flash, revealed, to your hand",
-			waterloggedTeachingsFinds),
+		OnResolve: B06TutorToHand("Waterlogged Teachings — an instant card or a card with flash, revealed, to your hand",
+			WaterloggedTeachingsFinds),
 	})
 }
 
 // waterloggedTeachingsFinds is "an instant card or a card with flash".
-func waterloggedTeachingsFinds(c game.Card) bool {
+func WaterloggedTeachingsFinds(c game.Card) bool {
 	return c.IsInstant() || game.HasKeyword(&c, "flash")
 }

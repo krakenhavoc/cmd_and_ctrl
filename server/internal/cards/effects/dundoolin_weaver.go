@@ -29,16 +29,16 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(InterveningIf(CondBoard{
 				Name: "you control three or more creatures",
-				Test: func(ctx *Context) bool { return dundoolinWeaverThreeCreatures(ctx.Game, ctx.Controller()) },
+				Test: func(ctx *Context) bool { return DundoolinWeaverThreeCreatures(ctx.Game, ctx.Controller()) },
 			}, On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-				return Self(ev, source, lki, g) && dundoolinWeaverThreeCreatures(g, source.Controller)
-			}, "Dundoolin Weaver — return target permanent card from your graveyard to your hand", returnTargetGraveyardCardToHand)),
+				return Self(ev, source, lki, g) && DundoolinWeaverThreeCreatures(g, source.Controller)
+			}, "Dundoolin Weaver — return target permanent card from your graveyard to your hand", ReturnTargetGraveyardCardToHand)),
 				TargetCardInGraveyard("target permanent card from your graveyard", Permanent(), YouOwn())),
 		},
 	})
 }
 
 // dundoolinWeaverThreeCreatures is "you control three or more creatures".
-func dundoolinWeaverThreeCreatures(g *game.Game, controller uuid.UUID) bool {
-	return len(b23CreaturesYouControl(g, controller)) >= 3
+func DundoolinWeaverThreeCreatures(g *game.Game, controller uuid.UUID) bool {
+	return len(B23CreaturesYouControl(g, controller)) >= 3
 }

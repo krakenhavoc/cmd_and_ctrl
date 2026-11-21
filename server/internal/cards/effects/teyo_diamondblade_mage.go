@@ -25,14 +25,14 @@ func init() {
 		Name:            "Teyo, Diamondblade Mage",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
-		Triggered:       []game.TriggeredAbility{teyoEntersTrigger("Teyo, Diamondblade Mage — target permanent you control gains deathtouch until end of turn", "deathtouch")},
+		Triggered:       []game.TriggeredAbility{TeyoEntersTrigger("Teyo, Diamondblade Mage — target permanent you control gains deathtouch until end of turn", "deathtouch")},
 	})
 }
 
 // teyoEntersTrigger is the shared Teyo ETB: target permanent you control
 // gains `keyword` until end of turn, then a +1/+1 counter if it is a
 // creature and a loyalty counter if it is a planeswalker.
-func teyoEntersTrigger(label, keyword string) game.TriggeredAbility {
+func TeyoEntersTrigger(label, keyword string) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches:   []game.EventKind{game.EventETB},
 		AppliesTo: Self,
@@ -68,7 +68,7 @@ func teyoEntersTrigger(label, keyword string) game.TriggeredAbility {
 						continue
 					}
 					if c, ok := ctx.Game.LookupCardForEffect(t.ID); ok && c.IsPlaneswalker() {
-						return nothingIfGone(ctx.Game.AddCounterByForEffect(ctx.Controller(), t.ID, game.CounterLoyalty, 1))
+						return NothingIfGone(ctx.Game.AddCounterByForEffect(ctx.Controller(), t.ID, game.CounterLoyalty, 1))
 					}
 					return nil
 				}

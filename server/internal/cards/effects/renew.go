@@ -38,7 +38,7 @@ func Renew(cost, text string, targets *game.TargetSpec, effect func(g *game.Game
 // renew body of Adorned Crocodile, Agent of Kotis and Alchemist's
 // Assistant. A target that has left by resolution is illegal and the
 // ability does nothing (CR 608.2b).
-func renewCountersOnTarget(kind string, n int) func(g *game.Game, item *game.StackItem) error {
+func RenewCountersOnTarget(kind string, n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 			return nil

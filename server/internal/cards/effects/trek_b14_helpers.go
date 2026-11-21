@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // CastProvenance. An on-disk identity: never renamed, never reused. The
 // same string the other Star Trek batches' beam me up offers ride, so the
 // keyword is one key however many files spell its constructor.
-const trekB14AltCostKeyBeamMeUp = "beam_me_up"
+const TrekB14AltCostKeyBeamMeUp = "beam_me_up"
 
 // trekB14BeamMeUp is "Beam me up <cost> (You may cast this card from your
 // graveyard for <cost> if you also return a creature you control to its
@@ -26,9 +26,9 @@ const trekB14AltCostKeyBeamMeUp = "beam_me_up"
 //
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{trekB14BeamMeUp("{2}{R}")},
-func trekB14BeamMeUp(cost string) game.AlternativeCost {
+func TrekB14BeamMeUp(cost string) game.AlternativeCost {
 	ac := Flashback(cost)
-	ac.Key = trekB14AltCostKeyBeamMeUp
+	ac.Key = TrekB14AltCostKeyBeamMeUp
 	ac.Label = "Beam me up " + cost
 	ac.ReturnToHand = PermanentYouControl("a creature you control", Creature())
 	ac.PayLabel = "a creature you control"
@@ -39,9 +39,9 @@ func trekB14BeamMeUp(cost string) game.AlternativeCost {
 // Officer token you control": the tokens the source's controller controls
 // with the Officer subtype, read after the layers so a token that became
 // an Officer counts and one that stopped being one does not.
-func trekB14OfficerTokensYouControl(g *game.Game, source *game.Card) int {
+func TrekB14OfficerTokensYouControl(g *game.Game, source *game.Card) int {
 	if source == nil {
 		return 0
 	}
-	return len(permanentsControlledByMatching(g, source.Controller, And(Subtype("Officer"), IsTokenPredicate())))
+	return len(PermanentsControlledByMatching(g, source.Controller, And(Subtype("Officer"), IsTokenPredicate())))
 }

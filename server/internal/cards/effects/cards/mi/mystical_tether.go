@@ -1,0 +1,38 @@
+package cardsmi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Mystical Tether — Enchantment {2}{W} (Outlaws of Thunder Junction,
+// #4468):
+//
+//	"You may cast this spell as though it had flash if you pay {2} more
+//	 to cast it.
+//	 When this enchantment enters, exile target artifact or creature an
+//	 opponent controls until this enchantment leaves the battlefield."
+//
+// The surcharge is Asinine Antics's FlashForMore: an optional additional
+// {2} that opens the instant-speed window for the cast that announces it
+// (CR 601.3c, flash_for_more.go, #5207).
+// The exile is Glass Casket's: the target is chosen as the trigger goes
+// on the stack (CR 603.3d), and the card returns when the Tether leaves
+// the battlefield (CR 610.3). If the Tether has already left by the time
+// the trigger resolves, the card is not exiled at all.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:      "fb1a6986-39f7-4592-9039-7e30f5ccd009",
+		Name:          "Mystical Tether",
+		Completeness:  effects.CompletenessFull,
+		OptionalCosts: []game.AdditionalCost{effects.FlashForMore("{2}")},
+		Triggered: []game.TriggeredAbility{
+			effects.Targeting(effects.WhenThisEnters("Mystical Tether — exile target artifact or creature an opponent controls until this enchantment leaves the battlefield",
+				effects.ExileChosenTargetUntilThisLeaves("Mystical Tether — the exiled card returns when Mystical Tether leaves the battlefield")),
+				effects.TargetPermanent("target artifact or creature an opponent controls", effects.Or(effects.Artifact(), effects.Creature()), effects.OpponentControls())),
+		},
+	})
+}

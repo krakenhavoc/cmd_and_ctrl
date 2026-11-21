@@ -27,7 +27,7 @@ func init() {
 		ExertOnAttack:   ExertAsItAttacks(),
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				WhenExerted(label, targetCreatureCantBlockThisTurn(label)),
+				WhenExerted(label, TargetCreatureCantBlockThisTurn(label)),
 				TargetCreature("target creature")),
 		},
 	})
@@ -37,10 +37,10 @@ func init() {
 // turn" as a trigger body: the chosen creature, if still a legal target,
 // gains the can't-block restriction until end of turn (Ahn-Crop Crasher,
 // Spider-Man, Web-Spinner).
-func targetCreatureCantBlockThisTurn(label string) Effect {
+func TargetCreatureCantBlockThisTurn(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}

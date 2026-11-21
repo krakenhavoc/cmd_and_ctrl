@@ -15,6 +15,6 @@ import (
 // swampsControlledBy is the number of Swamps `player` controls as the
 // effect resolves. `swamp` is the land type as the counting object's
 // text now reads it (ctx.TextSubtype, CR 612.2).
-func swampsControlledBy(g *game.Game, player uuid.UUID, swamp string) int {
-	return countControlled(g, player, MatchLandSubtype(swamp))
+func SwampsControlledBy(g *game.Game, player uuid.UUID, swamp string) int {
+	return CountControlled(g, player, MatchLandSubtype(swamp))
 }

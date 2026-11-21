@@ -49,6 +49,6 @@ func (CondSacrificedAnArtifact) Holds(ctx *Context) bool {
 	return SacrificedAnArtifactThisTurn(ctx.Game, ctx.Controller())
 }
 
-func (CondSacrificedAnArtifact) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondArtifactSacrificed, 0), true
+func (CondSacrificedAnArtifact) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondArtifactSacrificed, 0), true
 }

@@ -1,0 +1,84 @@
+package cardsap
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Aven Interrupter — {1}{W}{W} Creature — Bird Rogue 2/2:
+//
+//	"Flash
+//	 Flying
+//	 When this creature enters, exile target spell. It becomes
+//	 plotted. (Its owner may cast it as a sorcery on a later turn
+//	 without paying its mana cost.)
+//	 Spells your opponents cast from graveyards or from exile cost {2}
+//	 more to cast."
+//
+// Waited on #1318. Its enters trigger is "exile target spell", and the
+// only way to exile a spell before that issue was the plain exile
+// route, which moved the card and left its stack record behind — the
+// same wedge Aang, Swift Savior's airbend of a spell hit. The engine
+// now retires the record on every stack exit, and "exile target spell"
+// is its own primitive (ExileTargetSpell → Game.ExileSpellKeyedForEffect),
+// which does not counter the spell: a spell that can't be countered is
+// exiled all the same.
+//
+// "It becomes plotted" (CR 702.170c/d) is the effect half of plot,
+// built alongside (game/plot.go): a free cast permission over the card
+// in exile, in its owner's main phase with the stack empty, on any
+// later turn, which no flash grant widens. It is granted from the
+// exile's continuation, so a commander spell whose owner takes the
+// command zone instead (CR 903.9) is not plotted — it is not in exile.
+//
+// The tax is an ordinary CR 601.2f cost increase on a cast whose
+// source zone is a graveyard or exile, so it also taxes the plotted
+// card this creature just made, when an opponent casts it — which is
+// the printed interaction, not an accident.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "d31fd12f-b4dd-4bc3-ace4-703dabd0f607",
+		Name:            "Aven Interrupter",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flash", "flying"},
+		Triggered: []game.TriggeredAbility{{
+			Watches:   []game.EventKind{game.EventETB},
+			AppliesTo: effects.B06SelfETB,
+			Targets:   effects.TargetSpell("target spell"),
+			Key:       "Aven Interrupter — exile target spell; it becomes plotted",
+			Effect:    avenInterrupterExileAndPlot,
+		}},
+		CostModifiers: []game.CostModifier{
+			effects.CostsMore(2, "Spells your opponents cast from graveyards or from exile cost {2} more to cast.",
+				effects.OpponentsSpell(), effects.CastFromGraveyardOrExile()),
+		},
+	})
+}
+
+// avenInterrupterExileAndPlot is the trigger body: the first still-legal
+// target (CR 608.2b — a spell that resolved or was countered in
+// response is gone, and the trigger does nothing), exiled, then plotted
+// if it landed there.
+func avenInterrupterExileAndPlot(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		return effects.ExileTargetSpell{StackID: t.ID, ThenTail: ctx.Tail(avenInterrupterPlot)}.Apply(ctx)
+	}
+	return nil
+}
+
+// avenInterrupterPlot is "it becomes plotted", told the spell when it
+// reached exile (#4253): a keyed tail, so a prompt the exile pauses on is a
+// restore point. An on-disk key.
+var avenInterrupterPlot = effects.CardTail("then/aven-interrupter-plot", func(ctx *effects.Context, o game.TailOutcome) error {
+	for _, id := range o.IDs {
+		if err := (effects.PlotExiled{Card: id}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})

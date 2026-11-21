@@ -8,7 +8,7 @@ import (
 
 // s82BnsB12GrantForLife is "Pay 2 life: This creature gains <keyword>
 // until end of turn" (Glorifier of Dusk). The life is a cost (CR 119.4).
-func s82BnsB12GrantForLife(keyword string) ActivatedAbility {
+func S82BnsB12GrantForLife(keyword string) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   "Pay 2 life: This creature gains " + keyword + " until end of turn.",
 		Purpose: game.Purpose{Answers: game.AnswerPump},
@@ -22,7 +22,7 @@ func s82BnsB12GrantForLife(keyword string) ActivatedAbility {
 
 // s82BnsB12OpponentsDealtDamage counts the opponents of controller who were
 // dealt damage this turn (damage that was prevented never was dealt).
-func s82BnsB12OpponentsDealtDamage(g *game.Game, controller uuid.UUID) int {
+func S82BnsB12OpponentsDealtDamage(g *game.Game, controller uuid.UUID) int {
 	hit := map[uuid.UUID]bool{}
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target == controller {
@@ -39,7 +39,7 @@ func s82BnsB12OpponentsDealtDamage(g *game.Game, controller uuid.UUID) int {
 // s82BnsB12HeraldCast is Herald of Ilharg's body: two counters, then, if the
 // cast spell has mana value 5 or greater, damage equal to the counters on it
 // to each opponent.
-func s82BnsB12HeraldCast(g *game.Game, item *game.StackItem) error {
+func S82BnsB12HeraldCast(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
@@ -47,7 +47,7 @@ func s82BnsB12HeraldCast(g *game.Game, item *game.StackItem) error {
 	if err := (CounterOnThis{Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
 		return err
 	}
-	if spellManaValueForEffect(g, item.Trigger.Event.CardID) < 5 {
+	if SpellManaValueForEffect(g, item.Trigger.Event.CardID) < 5 {
 		return nil
 	}
 	self, ok := g.LookupCardForEffect(item.SourceCardID)

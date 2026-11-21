@@ -24,13 +24,13 @@ func ProducedFromOwnPermanentColors() func(*game.Game, uuid.UUID, uuid.UUID) str
 				seen[strings.ToUpper(col)] = true
 			}
 		}
-		return pipeString(colorsOnly(orderedManaSymbols(seen)))
+		return PipeString(ColorsOnly(OrderedManaSymbols(seen)))
 	}
 }
 
 // rprBasicLandCard is "basic land card": a land with the basic supertype
 // (CR 205.4a), judged on the card where it is (a hand card here).
-func rprBasicLandCard() CardPredicate {
+func RprBasicLandCard() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsLand() && c.HasSupertype("basic")
 	}

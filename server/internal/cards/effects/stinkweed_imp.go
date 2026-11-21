@@ -27,14 +27,14 @@ func init() {
 		Replacements:    []game.ReplacementEffect{Dredge(5)},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventDealDamage},
-			AppliesTo: thisDealtCombatDamageToACreature,
+			AppliesTo: ThisDealtCombatDamageToACreature,
 			Key:       stinkweedImpDestroyLabel,
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source, stinkweedImpDestroyLabel)
-				item.Params.Object = damagedCreatureRef(g, ev.Target)
+				item.Params.Object = DamagedCreatureRef(g, ev.Target)
 				return item
 			},
-			Effect: destroyDamagedCreature,
+			Effect: DestroyDamagedCreature,
 		}},
 	})
 }
@@ -44,7 +44,7 @@ const stinkweedImpDestroyLabel = "Stinkweed Imp — destroy the creature it deal
 // destroyDamagedCreature is "destroy that creature": the object named on
 // item.Params.Object, and only while it is still that object on the
 // battlefield.
-func destroyDamagedCreature(g *game.Game, item *game.StackItem) error {
+func DestroyDamagedCreature(g *game.Game, item *game.StackItem) error {
 	ref := item.Params.Object
 	c, ok := g.LookupCardForEffect(ref.ID)
 	if !ok || c.ObjectEpoch != ref.Epoch {

@@ -39,7 +39,7 @@ type PermanentsDef struct {
 
 // PermanentsThen names a registered permanent pick. Hold one only from
 // RegisterPermanentsPick.
-type PermanentsThen struct{ run game.PromptRunThen }
+type PermanentsThen struct{ Run game.PromptRunThen }
 
 // RegisterPermanentsPick registers a permanent pick under key. Call it
 // once, from a package-level var, or from init when the body asks the
@@ -54,7 +54,7 @@ func RegisterPermanentsPick(key string, def PermanentsDef) PermanentsThen {
 		}
 		return nil
 	}
-	then := PermanentsThen{run: RunThenRule(key, def.Validate, func(ctx *Context, r game.RunDone) error {
+	then := PermanentsThen{Run: RunThenRule(key, def.Validate, func(ctx *Context, r game.RunDone) error {
 		picked := r.Picks()
 		if !def.Sacrifice || picked.Count() == 0 {
 			return body(ctx, picked, r)

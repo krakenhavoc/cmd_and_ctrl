@@ -35,7 +35,7 @@ func ThatManyEvents() *game.BatchEndCondition {
 
 // withAtBatchEnd returns t with its AtBatchEnd condition set, for the
 // constructors (On, OnAny) that build the whole ability from a label.
-func withAtBatchEnd(t game.TriggeredAbility, c *game.BatchEndCondition) game.TriggeredAbility {
+func WithAtBatchEnd(t game.TriggeredAbility, c *game.BatchEndCondition) game.TriggeredAbility {
 	t.AtBatchEnd = c
 	return t
 }
@@ -44,7 +44,7 @@ func withAtBatchEnd(t game.TriggeredAbility, c *game.BatchEndCondition) game.Tri
 // ability settled with: the triggering event's Amount, which the
 // settle pass rewrote (game/batch_total.go). At least 1 for a trigger
 // that somehow reaches resolution without one.
-func settledEventAmount(item *game.StackItem) int {
+func SettledEventAmount(item *game.StackItem) int {
 	if item.Trigger == nil || item.Trigger.Event.Amount < 1 {
 		return 1
 	}

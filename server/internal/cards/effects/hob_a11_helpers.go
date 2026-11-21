@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // goes to its owner's hand, with no prompt. `o.IDs` is the list the mill's
 // ThenTail was handed, the cards that really reached the graveyard (#4253); a
 // card that has left it since is not taken.
-func hobA11AllMilledToHand(ctx *Context, o game.TailOutcome, match CardPredicate) error {
+func HobA11AllMilledToHand(ctx *Context, o game.TailOutcome, match CardPredicate) error {
 	for _, id := range o.IDs {
 		c, ok := ctx.Game.LookupCardForEffect(id)
 		if !ok || !match(ctx.Game, ctx.Controller(), c) {

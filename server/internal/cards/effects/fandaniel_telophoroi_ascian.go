@@ -40,7 +40,7 @@ func init() {
 
 // fandanielInstantsAndSorceries counts the instant and sorcery cards in
 // `controller`'s graveyard.
-func fandanielInstantsAndSorceries(g *game.Game, controller uuid.UUID) int {
+func FandanielInstantsAndSorceries(g *game.Game, controller uuid.UUID) int {
 	p := g.PlayerByIDForEffect(controller)
 	if p == nil {
 		return 0
@@ -69,7 +69,7 @@ func fandanielNontokenCreatures(g *game.Game, opponent uuid.UUID) []uuid.UUID {
 // fandanielLoseLife is "loses 2 life for each instant and sorcery card in
 // its controller's graveyard", counted when it applies.
 func fandanielLoseLife(ctx *Context, controller, victim uuid.UUID) error {
-	if loss := 2 * fandanielInstantsAndSorceries(ctx.Game, controller); loss > 0 {
+	if loss := 2 * FandanielInstantsAndSorceries(ctx.Game, controller); loss > 0 {
 		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -loss)
 	}
 	return nil
@@ -98,7 +98,7 @@ func fandanielOpponentsStep(ctx *Context, controller uuid.UUID, remaining []uuid
 			Player:   victim,
 			Question: "Fandaniel, Telophoroi Ascian — sacrifice a nontoken creature, or lose 2 life for each instant and sorcery card in its controller's graveyard?",
 			Options: []game.ChoiceOption{
-				{Label: "Don't sacrifice — lose life", LifeCost: 2 * fandanielInstantsAndSorceries(ctx.Game, controller)},
+				{Label: "Don't sacrifice — lose life", LifeCost: 2 * FandanielInstantsAndSorceries(ctx.Game, controller)},
 				{Label: "Sacrifice a nontoken creature"},
 			},
 			ThenKey: fandanielChosen,
@@ -128,7 +128,7 @@ func fandanielAnswered(ctx *Context, r game.OptionPicked) error {
 			Player:     victim,
 			Candidates: fandanielNontokenCreatures(ctx.Game, victim),
 			Question:   "Fandaniel, Telophoroi Ascian — sacrifice a nontoken creature",
-			ThenTail:   withCarry(ctx.Tail(fandanielSacrificedNext), rest...),
+			ThenTail:   WithCarry(ctx.Tail(fandanielSacrificedNext), rest...),
 		}.Apply(ctx)
 	}
 	if err := fandanielLoseLife(ctx, controller, victim); err != nil {

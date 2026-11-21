@@ -63,7 +63,7 @@ func init() {
 			Optional(InExile(OnAny(
 				[]game.EventKind{game.EventZoneMove, game.EventMill, game.EventDiscardCard, game.EventCounterSpell},
 				nihilithCardInOpponentsGraveyard,
-				"Nihilith — remove a time counter from this card", nihilithRemoveTimeCounter)),
+				"Nihilith — remove a time counter from this card", NihilithRemoveTimeCounter)),
 				"Nihilith — remove a time counter from this card?"),
 		},
 	})
@@ -122,7 +122,7 @@ func cardPutIntoAnOpponentsGraveyard(ev game.Event, you uuid.UUID, g *game.Game)
 // (CR 702.62b), so a card whose counters are gone has nothing to lose:
 // removing one from it changes nothing and emits no event, which is why
 // the body needs no second suspended check.
-func nihilithRemoveTimeCounter(g *game.Game, item *game.StackItem) error {
+func NihilithRemoveTimeCounter(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
 	if !ok {

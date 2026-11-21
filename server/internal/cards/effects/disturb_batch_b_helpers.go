@@ -26,7 +26,7 @@ func AttackingAlone() CardPredicate {
 // the card is the caster's own — a card in a graveyard is in its
 // owner's graveyard (CR 404.1), so a spell cast out of an opponent's
 // graveyard is not one cast from YOUR graveyard.
-func youCastASpellFromYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func YouCastASpellFromYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -42,7 +42,7 @@ func youCastASpellFromYourGraveyard(ev game.Event, source *game.Card, _ game.Cha
 // target cards still in the graveyard go into their owner's — the
 // controller's, since the clause names "your graveyard" — library as
 // one move, and that library is shuffled.
-func shuffleTargetsIntoYourLibrary(g *game.Game, item *game.StackItem) error {
+func ShuffleTargetsIntoYourLibrary(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
@@ -50,5 +50,5 @@ func shuffleTargetsIntoYourLibrary(g *game.Game, item *game.StackItem) error {
 			ids = append(ids, t.ID)
 		}
 	}
-	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: item.Controller})
+	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, game.KeyedTail{Ref: ThenShuffle, Player: item.Controller})
 }

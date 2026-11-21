@@ -144,7 +144,7 @@ func VoteForPlayers(g *game.Game) []game.ChoiceOption {
 // voterStillIn reports whether a player a vote named is still in the
 // game (CR 800.4a: a player who has left is not affected). Caller
 // holds g.mu.
-func voterStillIn(g *game.Game, id uuid.UUID) bool {
+func VoterStillIn(g *game.Game, id uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(id)
 	return p != nil && !p.Eliminated
 }

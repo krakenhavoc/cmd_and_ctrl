@@ -35,7 +35,7 @@ import (
 // tapped so CreateTokensAttackingForEffect — which copies the
 // template and sets only the attack — puts it in tapped and
 // attacking.
-func b21TappedAttackingGoblin() game.Card {
+func B21TappedAttackingGoblin() game.Card {
 	tmpl := RedGoblinToken()
 	tmpl.Tapped = true
 	return tmpl
@@ -48,7 +48,7 @@ func b21TappedAttackingGoblin() game.Card {
 // trigger conditions, watching EventETB and EventAttack on one
 // declaration. Both kinds carry the card in CardID (Sun Titan's
 // shape).
-func b21SelfEnteredOrAttacked(ev game.Event, source *game.Card) bool {
+func B21SelfEnteredOrAttacked(ev game.Event, source *game.Card) bool {
 	return (ev.Kind == game.EventETB || ev.Kind == game.EventAttack) && ev.CardID == source.InstanceID
 }
 
@@ -58,8 +58,8 @@ func b21SelfEnteredOrAttacked(ev game.Event, source *game.Card) bool {
 // as it is declared), so effective subtypes apply and a changeling
 // counts. The source itself qualifies when it carries the subtype:
 // the printed text is "a Vampire you control", not "another".
-func b21CreatureOfSubtypeYouControlAttacked(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
+func B21CreatureOfSubtypeYouControlAttacked(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -72,8 +72,8 @@ func b21CreatureOfSubtypeYouControlAttacked(ev game.Event, source *game.Card, g 
 // an Angel entered under the controller's control. Effective
 // subtypes, so a changeling counts; the Sanctuary itself is a land
 // and can never match, so no "another" guard is needed.
-func b21AngelYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func B21AngelYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Angel"))
 }
 
@@ -83,7 +83,7 @@ func b21AngelYouControlEntered(ev game.Event, source *game.Card, g *game.Game) b
 // names the damaged permanent in Target; damage is marked before the
 // state-based sweep runs, so a Dragon that took lethal is still on
 // the battlefield when its event fires and is read live.
-func b21DragonYouControlDealtDamage(ev game.Event, source *game.Card, g *game.Game) bool {
+func B21DragonYouControlDealtDamage(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target == uuid.Nil {
 		return false
 	}
@@ -100,15 +100,15 @@ func b21DragonYouControlDealtDamage(ev game.Event, source *game.Card, g *game.Ga
 // and its controller are read as it last existed (leftAsType,
 // leftUnderControlOf — #1675, #1682), so a Treasure, a Clue, a token
 // creature and a nontoken one all count, as printed.
-func b21ArtifactOrCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
+func B21ArtifactOrCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return game.Card{}, false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || leftUnderControlOf(ev, c) != source.Controller {
+	if !ok || LeftUnderControlOf(ev, c) != source.Controller {
 		return game.Card{}, false
 	}
-	if !leftAsType(ev, c, "artifact") && !leftAsType(ev, c, "creature") {
+	if !LeftAsType(ev, c, "artifact") && !LeftAsType(ev, c, "creature") {
 		return game.Card{}, false
 	}
 	return c, true
@@ -120,7 +120,7 @@ func b21ArtifactOrCreatureYouControlDied(ev game.Event, source *game.Card, g *ga
 // graveyard holds at least one card — the legal-target set of
 // "target card from a graveyard" is non-empty. Hazel's Brewmaster
 // splits its trigger on this answer (see the card file).
-func b21AnyGraveyardHasACard(g *game.Game) bool {
+func B21AnyGraveyardHasACard(g *game.Game) bool {
 	for _, p := range g.Seats {
 		if p != nil && p.Graveyard != nil && p.Graveyard.Size() > 0 {
 			return true
@@ -136,7 +136,7 @@ func b21AnyGraveyardHasACard(g *game.Game) bool {
 // a creature, a planeswalker, a battle) minus permanents with the
 // Dragon subtype; players are never Dragons, so the player half is
 // untouched.
-func b21TargetAnyNonDragon() *game.TargetSpec {
+func B21TargetAnyNonDragon() *game.TargetSpec {
 	spec := TargetAny()
 	spec.Label = "any target that isn't a Dragon"
 	base := spec.CardOK
@@ -162,7 +162,7 @@ func b21TargetAnyNonDragon() *game.TargetSpec {
 // total once every opponent's own CR 614 window has settled — including
 // the ones that paused on a CR 616 ordering prompt, where reading the
 // life totals back on the next line saw nothing at all and gained zero.
-func b21DrainEachOpponentAndGainTheTotal(g *game.Game, item *game.StackItem, n int) error {
+func B21DrainEachOpponentAndGainTheTotal(g *game.Game, item *game.StackItem, n int) error {
 	if n <= 0 {
 		return nil
 	}
@@ -189,14 +189,14 @@ var drainGainTheTotal = game.RegisterTail("drain/gain-the-life-lost", func(g *ga
 // once before any damage is dealt (MatchingBattlefield snapshots),
 // so nothing is hit twice and a creature that dies later does so at
 // the state-based sweep, as printed.
-func b21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error {
+func B21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error {
 	return ctx.Game.DamageInstanceForEffect(func() error {
 		for _, opp := range ctx.Opponents() {
 			if err := (DealDamage{Source: ctx.Source(), Target: opp, Amount: n}).Apply(ctx); err != nil {
 				return err
 			}
 		}
-		return damageEachMatching(ctx, And(OpponentControls(), Or(Creature(), Planeswalker())), n)
+		return DamageEachMatching(ctx, And(OpponentControls(), Or(Creature(), Planeswalker())), n)
 	})
 }
 
@@ -240,7 +240,7 @@ func b21DamageEachOpponentAndTheirCreaturesAndWalkers(ctx *Context, n int) error
 // instruction about a settled run. The mill's answer is ignored: which
 // of the cards above reached a graveyard has no bearing on the land,
 // which was never one of them.
-func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
+func B21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Library == nil {
 		return nil
@@ -269,7 +269,7 @@ func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	return MillToZone{
 		Player:   player,
 		N:        above,
-		ThenTail: withCarry(ctx.ItemTail(batch21HelpersMilled), land),
+		ThenTail: WithCarry(ctx.ItemTail(batch21HelpersMilled), land),
 	}.Apply(ctx)
 }
 
@@ -282,7 +282,7 @@ func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 // controller's control as ONE entry (#1872), so a landfall payoff
 // sees every land. The candidates are read once, before anything
 // moves; the pick is re-checked against exile on submit.
-func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error {
+func B21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
@@ -302,7 +302,7 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 
 // oblivionSowerLands is the chosen land cards entering together, keyed
 // (#4253): the asking item rides the prompt as data.
-var oblivionSowerLands = askedPick("choose-cards/oblivion-sower-lands", func(ctx *Context, r game.CardsChosen) error {
+var oblivionSowerLands = AskedPick("choose-cards/oblivion-sower-lands", func(ctx *Context, r game.CardsChosen) error {
 	return ReturnFromExileTogether{Targets: r.Picked, Controller: ctx.Controller()}.Apply(ctx)
 })
 
@@ -312,9 +312,9 @@ var oblivionSowerLands = askedPick("choose-cards/oblivion-sower-lands", func(ctx
 // read before anything moves and enter together (#1867), each through
 // the CR 614 entry window, so its own enters-tapped clause runs and
 // every ETB trigger sees the whole batch (CR 603.6a).
-func b21ReturnAllArtifactAndEnchantmentCards(ctx *Context, player uuid.UUID) error {
+func B21ReturnAllArtifactAndEnchantmentCards(ctx *Context, player uuid.UUID) error {
 	return ReturnFromGraveyardTogether{
-		Targets: graveyardCardIDs(ctx, player, func(c game.Card) bool {
+		Targets: GraveyardCardIDs(ctx, player, func(c game.Card) bool {
 			return c.IsArtifact() || c.IsEnchantment()
 		}),
 	}.Apply(ctx)
@@ -322,7 +322,7 @@ func b21ReturnAllArtifactAndEnchantmentCards(ctx *Context, player uuid.UUID) err
 
 // batch21HelpersMilled is the clause after the mill (#4253 slice 9).
 var batch21HelpersMilled = CardTail("batch21-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
-	land := tailCarry0(o)
+	land := TailCarry0(o)
 
 	if land == uuid.Nil {
 		return nil

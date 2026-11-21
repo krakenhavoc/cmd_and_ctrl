@@ -12,7 +12,7 @@ import (
 // putACounterOnTheTarget is "Put a <kind> counter on target creature":
 // one counter on the first target, if it is still legal as the ability
 // resolves (CR 608.2b).
-func putACounterOnTheTarget(kind string) Effect {
+func PutACounterOnTheTarget(kind string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
@@ -25,7 +25,7 @@ func putACounterOnTheTarget(kind string) Effect {
 // putACounterOnEachCreatureWith is "put a <kind> counter on each
 // creature with a <kind> counter on it", whoever controls it. The set is
 // read before the first counter goes on, so a creature is counted once.
-func putACounterOnEachCreatureWith(kind string) Effect {
+func PutACounterOnEachCreatureWith(kind string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		var ids []uuid.UUID
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -33,7 +33,7 @@ func putACounterOnEachCreatureWith(kind string) Effect {
 				ids = append(ids, c.InstanceID)
 			}
 		}
-		ctx := NewContext(g, item).asGroupMember()
+		ctx := NewContext(g, item).AsGroupMember()
 		for _, id := range ids {
 			if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 				continue
@@ -50,7 +50,7 @@ func putACounterOnEachCreatureWith(kind string) Effect {
 // creature you control" (Illicit Masquerade's impostor counters). The
 // set is read before the first counter goes on, so a creature that
 // arrives mid-placement gets none, and one that left is skipped.
-func putACounterOnEachCreatureYouControl(kind string) Effect {
+func PutACounterOnEachCreatureYouControl(kind string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		var ids []uuid.UUID
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -58,9 +58,9 @@ func putACounterOnEachCreatureYouControl(kind string) Effect {
 				ids = append(ids, c.InstanceID)
 			}
 		}
-		ctx := NewContext(g, item).asGroupMember()
+		ctx := NewContext(g, item).AsGroupMember()
 		for _, id := range ids {
-			if !onBattlefield(g, id) {
+			if !OnBattlefield(g, id) {
 				continue
 			}
 			if err := (AddCounter{Target: id, Kind: kind, N: 1}).Apply(ctx); err != nil {
@@ -76,7 +76,7 @@ func putACounterOnEachCreatureYouControl(kind string) Effect {
 // permanent the resolving item's controller controls that `match`
 // admits. The set is read before the first counter goes on, and each
 // counter settles before the next (b13PutCounterOnEach).
-func putAPlusOneCounterOnEachYouControl(match CardPredicate) Effect {
+func PutAPlusOneCounterOnEachYouControl(match CardPredicate) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		var ids []uuid.UUID
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -84,7 +84,7 @@ func putAPlusOneCounterOnEachYouControl(match CardPredicate) Effect {
 				ids = append(ids, c.InstanceID)
 			}
 		}
-		return b13PutCounterOnEach(NewContext(g, item), ids)
+		return B13PutCounterOnEach(NewContext(g, item), ids)
 	}
 }
 
@@ -96,7 +96,7 @@ func putAPlusOneCounterOnEachYouControl(match CardPredicate) Effect {
 // counters" watcher sees one placement. The set is read before the
 // first counter goes on, and a creature that left meanwhile is
 // skipped.
-func putPlusOneCountersOnEachYouControlThat(n int, match CardPredicate) Effect {
+func PutPlusOneCountersOnEachYouControlThat(n int, match CardPredicate) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		var ids []uuid.UUID
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -104,9 +104,9 @@ func putPlusOneCountersOnEachYouControlThat(n int, match CardPredicate) Effect {
 				ids = append(ids, c.InstanceID)
 			}
 		}
-		ctx := NewContext(g, item).asGroupMember()
+		ctx := NewContext(g, item).AsGroupMember()
 		for _, id := range ids {
-			if !onBattlefield(g, id) {
+			if !OnBattlefield(g, id) {
 				continue
 			}
 			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}).Apply(ctx); err != nil {

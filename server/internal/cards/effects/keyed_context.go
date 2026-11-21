@@ -15,7 +15,7 @@ import (
 // builds this. A pay-unless, upkeep, counter-unless-pays or any-player
 // prompt carries the item as data (game.AskedItem) and runs against a copy
 // of it instead.
-func keyedContext(g *game.Game, controller, source uuid.UUID) *Context {
+func KeyedContext(g *game.Game, controller, source uuid.UUID) *Context {
 	return NewContext(g, &game.StackItem{
 		Kind:         game.StackItemTriggered,
 		Controller:   controller,
@@ -33,14 +33,14 @@ func keyedCarryContext(g *game.Game, chooser, source uuid.UUID, carry []uuid.UUI
 	if len(carry) > 0 {
 		controller, carry = carry[0], carry[1:]
 	}
-	return keyedContext(g, controller, source), carry
+	return KeyedContext(g, controller, source), carry
 }
 
 // askedContext is the Context a keyed answer runs against: a copy of the
 // asking item when the prompt carried one (game.AskedItem, #4264, #4291), the
 // stand-in of keyedCarryContext when it did not. The carry it returns is the
 // card's own.
-func askedContext(g *game.Game, item *game.StackItem, chooser, source uuid.UUID, carry []uuid.UUID) (*Context, []uuid.UUID) {
+func AskedContext(g *game.Game, item *game.StackItem, chooser, source uuid.UUID, carry []uuid.UUID) (*Context, []uuid.UUID) {
 	ctx, carry := keyedCarryContext(g, chooser, source, carry)
 	if item != nil {
 		ctx = NewContext(g, item)

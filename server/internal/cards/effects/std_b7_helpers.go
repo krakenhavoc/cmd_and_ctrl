@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (game.SacrificeManaValueX). Pair it with a target clause bound to the
 // same X (TargetSpec.WithManaValueEqualsXPlus).
 func SacrificeAnotherWithManaValueX(label string, preds ...CardPredicate) game.AbilityCost {
-	spec := Another(sacrificeSpec(label, preds...)).WithCount(1, 1)
+	spec := Another(SacrificeSpec(label, preds...)).WithCount(1, 1)
 	spec.ManaValueEqualsX = true
 	return game.AbilityCost{SacrificeOther: spec}
 }

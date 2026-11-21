@@ -40,7 +40,7 @@ func init() {
 			SpreeModeDoing("Copy target instant spell, sorcery spell, activated ability, or triggered ability. You may choose new targets for the copy.", "{1}",
 				TargetSpellOrAbility("target instant spell, sorcery spell, activated ability, or triggered ability",
 					AnyStackItem(AnAbilityItem(), ASpellItem(Or(Instant(), Sorcery())))),
-				copyTheModesSpellOrAbility),
+				CopyTheModesSpellOrAbility),
 			SpreeModeDoing("Change the target of target spell or ability with a single target.", "{1}",
 				TargetSpellOrAbility("target spell or ability with a single target", ItemHasASingleTarget()),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
@@ -63,7 +63,7 @@ func init() {
 // mode's still-legal target is copied by whichever primitive fits what
 // it is — CopySpell for a spell, CopyAbility for an activated or
 // triggered ability.
-func copyTheModesSpellOrAbility(_ *game.StackItem, ctx *Context, occ int) error {
+func CopyTheModesSpellOrAbility(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok {
 		return nil

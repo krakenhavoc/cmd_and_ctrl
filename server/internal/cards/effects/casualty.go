@@ -27,7 +27,7 @@ func Casualty(n int) game.AdditionalCost {
 	return game.AdditionalCost{
 		Optional:  true,
 		Key:       game.CasualtyKey,
-		Sacrifice: sacrificeSpec("a creature with power "+strconv.Itoa(n)+" or greater", Creature(), PowerGE(n)),
+		Sacrifice: SacrificeSpec("a creature with power "+strconv.Itoa(n)+" or greater", Creature(), PowerGE(n)),
 		Label:     "Casualty " + strconv.Itoa(n),
 	}
 }
@@ -47,7 +47,7 @@ func CasualtyX() game.AdditionalCost {
 	return game.AdditionalCost{
 		Optional:  true,
 		Key:       game.CasualtyKey,
-		Sacrifice: sacrificeSpec("a creature with power X", Creature(), PowerGE(0)),
+		Sacrifice: SacrificeSpec("a creature with power X", Creature(), PowerGE(0)),
 		CasualtyX: true,
 		Label:     "Casualty X",
 	}
@@ -57,7 +57,7 @@ func CasualtyX() game.AdditionalCost {
 // the optional cost CasualtyX builds, and the only sacrifice in the
 // card's plan, because the casualty trigger reads X off the first
 // permanent the cast sacrificed.
-func checkCasualtyX(spec Spec) {
+func CheckCasualtyX(spec Spec) {
 	if ac := spec.AdditionalCost; ac != nil {
 		if ac.CasualtyX {
 			panic(fmt.Sprintf("effects.Register: %q marks its mandatory additional cost CasualtyX — casualty is optional, build it with CasualtyX()", spec.Name))

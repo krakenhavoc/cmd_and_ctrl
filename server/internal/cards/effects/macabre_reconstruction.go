@@ -31,11 +31,11 @@ func init() {
 		SelfCostModifiers: []game.CostModifier{
 			CostsLess(2, "This spell costs {2} less to cast if a creature card was put into your graveyard from anywhere this turn.",
 				func(q game.CostQuery) bool {
-					return q.Game != nil && creatureCardPutIntoYourGraveyardThisTurn(q.Game, q.Controller)
+					return q.Game != nil && CreatureCardPutIntoYourGraveyardThisTurn(q.Game, q.Controller)
 				}),
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return returnLegalGraveyardTargetsToHand(ctx)
+			return ReturnLegalGraveyardTargetsToHand(ctx)
 		},
 	})
 }
@@ -46,7 +46,7 @@ func init() {
 // are read as it is now, as descendedThisTurn reads them.
 //
 // Caller holds g.mu.
-func creatureCardPutIntoYourGraveyardThisTurn(g *game.Game, player uuid.UUID) bool {
+func CreatureCardPutIntoYourGraveyardThisTurn(g *game.Game, player uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if ev.NewZone != game.ZoneGraveyard || ev.OldZone == game.ZoneGraveyard || ev.CardID == uuid.Nil {
 			continue

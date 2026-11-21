@@ -28,7 +28,7 @@ func init() {
 			TargetCreature("target creature you control", YouControl()),
 			TargetCreature("target creature an opponent controls", OpponentControls()),
 		),
-		OnResolve: counterOnYourCreatureThenBite(),
+		OnResolve: CounterOnYourCreatureThenBite(),
 	})
 }
 
@@ -38,7 +38,7 @@ func init() {
 // and then deals the damage, slot 1 takes it (Knockout Maneuver, Felling
 // Blow). The counter is its own step, so the power read is the power with
 // the counter on it.
-func counterOnYourCreatureThenBite() func(*game.StackItem, *Context) error {
+func CounterOnYourCreatureThenBite() func(*game.StackItem, *Context) error {
 	return ResolveSteps(
 		Instruction(func(ctx *Context) error {
 			mine, ok := ctx.ClauseTarget(0)
@@ -47,6 +47,6 @@ func counterOnYourCreatureThenBite() func(*game.StackItem, *Context) error {
 			}
 			return AddCounter{Target: mine.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 		}),
-		Instruction(func(ctx *Context) error { return oneSidedBite(ctx.Item, ctx) }),
+		Instruction(func(ctx *Context) error { return OneSidedBite(ctx.Item, ctx) }),
 	)
 }
