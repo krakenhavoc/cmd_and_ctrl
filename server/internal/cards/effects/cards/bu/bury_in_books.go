@@ -20,12 +20,6 @@ func init() {
 			effects.CostsLessIfItTargets(2, "This spell costs {2} less to cast if it targets an attacking creature.",
 				effects.AttackingCreature()),
 		},
-		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			t, ok := ctx.ClauseTarget(0)
-			if !ok || t.Kind != game.TargetCard || !ctx.IsTargetLegal(t) {
-				return nil
-			}
-			return effects.PutIntoLibrary{Card: t.ID, Depth: 2}.Apply(ctx)
-		},
+		OnResolve: effects.PutTargetPermanentSecondFromTheTop,
 	})
 }

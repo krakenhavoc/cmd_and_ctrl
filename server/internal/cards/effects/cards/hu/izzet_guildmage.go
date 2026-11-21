@@ -1,8 +1,6 @@
 package cardshu
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -31,24 +29,14 @@ func init() {
 				Label:   "{2}{U}: Copy target instant spell you control with mana value 2 or less. You may choose new targets for the copy.",
 				Cost:    effects.ManaCost("{2}{U}"),
 				Targets: effects.TargetSpell("target instant spell you control with mana value 2 or less", effects.Instant(), effects.YouControl(), effects.ManaValueLE(2)),
-				Effect:  gapB74CopyTheTargetSpell,
+				Effect:  effects.CopyTheFirstLegalTargetSpell,
 			},
 			{
 				Label:   "{2}{R}: Copy target sorcery spell you control with mana value 2 or less. You may choose new targets for the copy.",
 				Cost:    effects.ManaCost("{2}{R}"),
 				Targets: effects.TargetSpell("target sorcery spell you control with mana value 2 or less", effects.Sorcery(), effects.YouControl(), effects.ManaValueLE(2)),
-				Effect:  gapB74CopyTheTargetSpell,
+				Effect:  effects.CopyTheFirstLegalTargetSpell,
 			},
 		},
 	})
-}
-
-// gapB74CopyTheTargetSpell is "Copy target spell. You may choose new targets
-// for the copy." for the first target still legal as the ability resolves.
-func gapB74CopyTheTargetSpell(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		return effects.CopySpell{StackID: t.ID, Controller: item.Controller, ChooseNewTargets: true}.Apply(ctx)
-	}
-	return nil
 }

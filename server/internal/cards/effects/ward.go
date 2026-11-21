@@ -127,6 +127,13 @@ type WardCost struct {
 	// std_b43_ward_evidence.go.
 	CollectEvidence int
 
+	// ManaFromExperience is "ward {X}, where X is the number of experience
+	// counters you have" (Minthara, Merciless Soul): the cost is {X} read as
+	// the ward resolves, X being the experience counters the warded
+	// permanent's controller has then. Zero counters is a ward that charges
+	// nothing, so the spell is not countered. Standalone.
+	ManaFromExperience bool
+
 	// Blight is "Ward—Blight N" (Auntie Ool, Cursewretch, #5368, CR 701.68a):
 	// counter it unless that player blights N, putting N -1/-1 counters on
 	// a creature they control. A payer with no creature to blight can't pay
@@ -325,6 +332,9 @@ func (c WardCost) validate() {
 	if c.Blight > 0 {
 		n++
 	}
+	if c.ManaFromExperience {
+		n++
+	}
 	compound := n == 2 && c.Mana != "" && c.Life > 0
 	if (n != 1 && !compound) || (c.Sacrifice != nil && c.Sacrifice.OK == nil) {
 		panic(fmt.Sprintf("effects: a ward cost needs one component, or Mana plus Life: %+v", c))
@@ -507,6 +517,16 @@ func WardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 			return nil
 		}
 		cost.LifeEqualToPower, cost.Life = false, power
+	}
+	if cost.ManaFromExperience {
+		// "Ward {X}": X is the experience counters its controller has as
+		// the ability resolves. The trigger belongs to the warded
+		// permanent's controller (item.Controller).
+		x := ExperienceCounters(g, item.Controller)
+		if x <= 0 {
+			return nil
+		}
+		cost.ManaFromExperience, cost.Mana = false, fmt.Sprintf("{%d}", x)
 	}
 	switch {
 	case len(cost.Either) > 0:

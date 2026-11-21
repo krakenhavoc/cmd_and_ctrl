@@ -32,13 +32,7 @@ func init() {
 		Modes: effects.ChooseN("Choose one or both", 1, 2,
 			effects.ModeDoing("Exile target creature you control, then return it to the battlefield under its owner's control.",
 				effects.TargetCreature("target creature you control", effects.YouControl()),
-				func(_ *game.StackItem, ctx *effects.Context, occ int) error {
-					t, ok := effects.ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return effects.Flicker{Target: t.ID}.Apply(ctx)
-				}),
+				effects.FlickerTheModesTarget),
 			effects.ModeDoing("Go Ninja Go deals damage equal to the greatest power among creatures you control to target creature an opponent controls.",
 				effects.TargetCreature("target creature an opponent controls", effects.OpponentControls()),
 				func(item *game.StackItem, ctx *effects.Context, occ int) error {

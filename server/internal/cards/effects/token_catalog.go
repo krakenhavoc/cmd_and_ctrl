@@ -417,6 +417,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedS82SncB07FishToken,
 	// The Raven Man's Bird: flying, can't block (Dominaria United, #5487).
 	printedRavenManBirdToken,
+	// Cybernetica Datasmith's 4/4 Robot: can't block (Warhammer 40,000, #5948).
+	printedGapB190RobotToken,
 	// Kibo, Uktabi Prince's Banana (Jumpstart 2022, #5948).
 	printedGapB154BananaToken,
 
@@ -554,6 +556,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// S82 GAP batch 45: Tarmogoyf Nest's Tarmogoyf.
 	printedGapB45TarmogoyfToken,
+	// S82 GAP batch 194: Pink Horror's Blue Horror.
+	printedGapB194BlueHorrorToken,
 	// S82 GAP batch 56: Ral and the Implicit Maze's Spellgorger Weird.
 	printedGapB56SpellgorgerWeirdToken,
 
@@ -567,6 +571,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Moira Brown, Guide Author's Wasteland Survival Guide (Fallout, #5948).
 	printedGapB64SurvivalGuideToken,
+
+	// Wolf's Quarry's Boar (S82 GAP batch 176, #5948).
+	printedBoarFoodToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

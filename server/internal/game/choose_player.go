@@ -581,3 +581,13 @@ func ChosenPlayersOn(item *StackItem) []uuid.UUID {
 	}
 	return out
 }
+
+// SetChosenPlayerForEffect stamps `chosen` onto the battlefield permanent
+// `source` as its chosen player, for a resolving ability that chooses a player
+// and keeps the answer for the permanent's static clause to read ("choose an
+// opponent. Creatures attacking the last chosen player have menace", Triarch
+// Stalker). A source that has left the battlefield is left alone (CR 400.7).
+// Caller must hold g.mu, as an OptionPickThen body does.
+func (g *Game) SetChosenPlayerForEffect(source, chosen uuid.UUID) error {
+	return g.setChosenPlayerLocked(source, chosen)
+}

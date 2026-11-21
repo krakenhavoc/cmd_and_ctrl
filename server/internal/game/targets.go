@@ -201,6 +201,18 @@ func (s TargetSource) PowerToughness() (power, toughness int, ok bool) {
 	return 0, 0, false
 }
 
+// name is the source's name: the live object's, or the last-known
+// snapshot's (CR 608.2h). ok is false when the walk has neither.
+func (s TargetSource) name() (string, bool) {
+	switch {
+	case s.Object != nil:
+		return s.Object.Name, true
+	case s.Snapshot != nil:
+		return s.Snapshot.Name, true
+	}
+	return "", false
+}
+
 // loyalty is the number of loyalty counters on the source: the live
 // object's, or a departed source's last-known count (CR 608.2h). ok is
 // false when the walk has no source object.
@@ -338,10 +350,21 @@ func SourceChooser(controller uuid.UUID) TargetSource {
 // snapshot: a caller that has both kept the snapshot as a fallback.
 func (s TargetSource) Characteristics() *Characteristic {
 	if s.Object != nil {
+		var ch *Characteristic
 		if s.X > 0 {
-			return SourceCharacteristicsX(s.Object, s.X)
+			ch = SourceCharacteristicsX(s.Object, s.X)
+		} else {
+			ch = SourceCharacteristics(s.Object)
 		}
-		return SourceCharacteristics(s.Object)
+		if ch != nil && s.spell {
+			ch.SourceIsSpell = true
+		}
+		return ch
+	}
+	if s.Snapshot != nil && s.spell && !s.Snapshot.SourceIsSpell {
+		cp := copyCharacteristic(s.Snapshot)
+		cp.SourceIsSpell = true
+		return cp
 	}
 	return s.Snapshot
 }
@@ -1877,6 +1900,10 @@ const (
 	// the Unforgiving). The loyalty is the live object's while it stands
 	// and its last-known record's once it has left (CR 608.2h).
 	SourceManaValueVsLoyalty SourceStat = "mana_value_vs_loyalty"
+	// SourceSameName is "with the same name as this creature" (Callidus
+	// Assassin): the candidate's name equals the source's. It has no Cmp.
+	// Read from the live object's name, or the last-known snapshot's.
+	SourceSameName SourceStat = "same_name"
 )
 
 // SourceCmp is how the candidate's stat compares with the source's.
@@ -2142,7 +2169,15 @@ func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
 		return false
 	}
 	that := src.Trigger.Event.Target
-	return that != uuid.Nil && c.Controller == that
+	if that == uuid.Nil {
+		return false
+	}
+	// A card in a graveyard has no controller to speak of: "in that player's
+	// graveyard" is read from its owner (Neyam Shai Murad).
+	if len(s.Zones) == 1 && s.Zones[0] == ZoneGraveyard {
+		return c.Owner == that
+	}
+	return c.Controller == that
 }
 
 // attackingThatPlayerAdmits is AttackingThatPlayer's gate: true without the
@@ -2348,6 +2383,13 @@ func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
 	p, t, ok := src.PowerToughness()
 	loyalty, loyaltyOK := src.loyalty()
 	for _, sc := range s.RelativeToSource {
+		if sc.Stat == SourceSameName {
+			name, nameOK := src.name()
+			if !nameOK || name == "" || c.Name != name {
+				return false
+			}
+			continue
+		}
 		if sc.Stat == SourceManaValueVsLoyalty {
 			if !loyaltyOK || !sc.holds(c, loyalty, 0) {
 				return false

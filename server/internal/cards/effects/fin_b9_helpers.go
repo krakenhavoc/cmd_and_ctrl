@@ -44,29 +44,7 @@ func FinB9PartySizeOnBoard(g *game.Game, player uuid.UUID) int {
 			fits = append(fits, f)
 		}
 	}
-	owner := [4]int{-1, -1, -1, -1} // type slot → index into fits
-	var try func(c int, seen *[4]bool) bool
-	try = func(c int, seen *[4]bool) bool {
-		for t := 0; t < 4; t++ {
-			if !fits[c][t] || seen[t] {
-				continue
-			}
-			seen[t] = true
-			if owner[t] < 0 || try(owner[t], seen) {
-				owner[t] = c
-				return true
-			}
-		}
-		return false
-	}
-	n := 0
-	for c := range fits {
-		var seen [4]bool
-		if try(c, &seen) {
-			n++
-		}
-	}
-	return n
+	return PartyMatching(fits)
 }
 
 // finB9HasFullParty is "you have a full party": four creatures in the
