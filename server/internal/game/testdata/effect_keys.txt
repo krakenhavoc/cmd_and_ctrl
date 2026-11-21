@@ -2520,6 +2520,7 @@ run braids-frightful-return/edict
 run dalek-intensive-care/exile
 run engine/explore-each-pick
 run gap-b55-birthing-ritual/sacrifice
+run gap/tragic-lesson-return-a-land-or-discard
 run giant-opportunity/sacrifice-two-foods
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
@@ -3457,6 +3458,8 @@ tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land
 tail jaya-fiery-negotiator/choose-exiled
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
+tail justiciars-portal/after-exile
+tail justiciars-portal/first-strike
 tail kaervek-the-punisher/copy-exiled
 tail kaito-bane-of-nightmares/draw-per-opponent-who-lost-life
 tail kami-of-industry/entered
@@ -3630,6 +3633,7 @@ tail patient-naturalist/after-mill
 tail pavel-chekov-first-posting/taken
 tail pay-unless/paid
 tail pendant-of-prosperity/owners-half
+tail perilous-voyage/scry-if-small
 tail permanents-pick/sacrificed
 tail pestilent-cauldron/draw-a-card
 tail phelia-exuberant-shepherd/counter-if-yours
