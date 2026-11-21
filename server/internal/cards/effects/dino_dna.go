@@ -30,15 +30,7 @@ func init() {
 				Cost:         Plus(ManaCost("{1}"), TapCost()),
 				SorcerySpeed: true,
 				Targets:      TargetCardInGraveyard("target creature card from a graveyard", Creature()),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetCard {
-							return ExileTarget{Target: t.ID, Linked: true}.Apply(ctx)
-						}
-					}
-					return nil
-				},
+				Effect:       avB7ExileTargetLinked, // the shared linked-exile body (avatar_b7_helpers.go)
 			},
 			{
 				Label:        "{6}: Create a token that's a copy of target creature card exiled with this artifact, except it's a 6/6 green Dinosaur creature with trample. Activate only as a sorcery.",
