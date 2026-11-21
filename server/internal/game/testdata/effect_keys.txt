@@ -2465,6 +2465,7 @@ run prompt-run/ashnod-flesh-mechanist-powerstone
 run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
 run prompt-run/awaken-the-maelstrom-copy
+run prompt-run/battle-for-bretagard-copies
 run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
