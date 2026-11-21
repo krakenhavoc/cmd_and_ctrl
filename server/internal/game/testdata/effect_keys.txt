@@ -548,6 +548,7 @@ choose choose-cards/abdel-adrian-exile
 choose choose-cards/adventure-awaits-take
 choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
+choose choose-cards/aetherplasm-put
 choose choose-cards/aetherworks-marvel-cast
 choose choose-cards/agency-outfitter-search
 choose choose-cards/aggressive-sabotage-burn
@@ -3282,6 +3283,8 @@ tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
 tail gandalf-shadows-foe/return-lands-tapped
+tail gap-b75/aetherplasm-blocks
+tail gap-b75/aetherplasm-returned
 tail gardens-of-tranquil-repose/its-controller-scries
 tail gemstone-mine/sacrifice-if-empty
 tail georgiou-terran-emperor/draw-then-officers
