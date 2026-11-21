@@ -4170,6 +4170,8 @@ tail then/valiant-endeavor-knights
 tail then/vanish-into-memory-exiled
 tail then/vengeful-villagers-stun
 tail then/venture-into-the-dungeon
+tail then/viewpoint-synchronization-second
+tail then/viewpoint-synchronization-third
 tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen
 tail then/volcanic-offering-damage

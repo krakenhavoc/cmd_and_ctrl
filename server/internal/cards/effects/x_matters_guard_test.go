@@ -96,6 +96,7 @@ var xMattersAllowlist = map[string]string{
 	"gorex_the_tombshell.go Gorex, the Tombshell":                 "no X cost of its own: X is the number of creature cards its optional additional cost exiles, read only by its {2}-per-card discount; at X=0 Gorex is still cast for its full cost (#5895)",
 	"sylvan_offering.go Sylvan Offering":                          "X is read in the registered choose-an-opponent continuations (ChoosePlayerThen), which the scan cannot see: at X=0 it makes no token that lives",
 	"crime_punishment.go Punishment":                              "at X=0 it still destroys every artifact, creature and enchantment with mana value 0 (tokens included): the X picks which permanents die, it is not a quantity that can be zero",
+	"monastery_raid.go Monastery Raid":                            "X is read only when the freerunning cost was paid: cast for its mana cost it exiles the top two cards whatever X is, a real play at X=0, and the freerunning cast at X=0 exiles nothing",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its
