@@ -25,7 +25,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{5}, {T}: Scry 1, then draw a card. This ability costs {1} less to activate for each legendary creature you control.",
-			Purpose: game.Purpose{Scry: 1, Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Scry: 1, Draws: 1},
 			Cost:    effects.Plus(effects.ManaCost("{5}"), effects.TapCost()),
 			CostModifiers: []game.CostModifier{
 				effects.CostsLessEach(effects.PermanentsYouControl(effects.And(effects.Creature(), effects.Legendary())),
