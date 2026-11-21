@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // gapB129PutTwoCountersOnTarget is "put two +1/+1 counters on target
 // creature you control": the target announced with the ability, checked again
 // as it resolves (CR 608.2b), the counters put on it if it is still legal.
-func gapB129PutTwoCountersOnTarget(g *game.Game, item *game.StackItem) error {
+func GapB129PutTwoCountersOnTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	targets := ctx.LegalTargets()
 	if len(targets) == 0 {

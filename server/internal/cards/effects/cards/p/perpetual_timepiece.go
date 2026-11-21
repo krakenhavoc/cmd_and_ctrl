@@ -52,26 +52,8 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    effects.Plus(effects.ManaCost("{2}"), effects.ExileThis()),
 				Targets: effects.TargetCardInGraveyard("any number of target cards from your graveyard", effects.YouOwn()).WithCount(0, 0),
-				Effect:  shuffleTargetGraveyardCardsIntoLibrary,
+				Effect:  effects.R38ShuffleTargetGraveyardCardsIntoLibrary,
 			},
 		},
 	})
-}
-
-// shuffleTargetGraveyardCardsIntoLibrary is "Shuffle any number of
-// target cards from your graveyard into your library": every target
-// still legal goes into its owner's library, then the controller's
-// library is shuffled — once, and even when nothing was named, because
-// the instruction is the shuffle.
-func shuffleTargetGraveyardCardsIntoLibrary(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if err := (effects.ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneLibrary}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return effects.ShuffleLibrary{Player: item.Controller}.Apply(ctx)
 }
