@@ -97,6 +97,10 @@ func thisIsntACreatureUntilEndOfTurn(label string) Effect {
 // effect's controller.
 type TimeTravel struct {
 	Player uuid.UUID
+	// Times is "time travel N times" (The Tenth Doctor's "three times"): the
+	// whole instruction is done that many times in a row, each walk listing
+	// what the player may time travel as it begins. Zero is once.
+	Times int
 }
 
 func (t TimeTravel) Apply(ctx *Context) error {
@@ -104,7 +108,7 @@ func (t TimeTravel) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	return askTimeTravel(ctx, player, timeTravelObjects(ctx.Game, player))
+	return askTimeTravel(ctx, player, timeTravelObjects(ctx.Game, player), max(t.Times, 1)-1)
 }
 
 // timeTravelObjects lists what `player` may time travel: the permanents they
@@ -145,8 +149,9 @@ func timeTravelStillEligible(g *game.Game, player, id uuid.UUID) (game.Card, boo
 	return game.Card{}, false
 }
 
-// askTimeTravel asks about the first still-eligible object of `ids`.
-func askTimeTravel(ctx *Context, player uuid.UUID, ids []uuid.UUID) error {
+// askTimeTravel asks about the first still-eligible object of `ids`, and once
+// the walk is done starts the next of the `again` repeats.
+func askTimeTravel(ctx *Context, player uuid.UUID, ids []uuid.UUID, again int) error {
 	for len(ids) > 0 {
 		c, ok := timeTravelStillEligible(ctx.Game, player, ids[0])
 		if !ok {
@@ -167,8 +172,12 @@ func askTimeTravel(ctx *Context, player uuid.UUID, ids []uuid.UUID) error {
 			},
 			ThenKey:  timeTravelAnswered,
 			Carry:    append([]uuid.UUID(nil), ids...),
+			Nums:     []int{again},
 			WithItem: true,
 		}.Apply(ctx)
+	}
+	if again > 0 {
+		return askTimeTravel(ctx, player, timeTravelObjects(ctx.Game, player), again-1)
 	}
 	return nil
 }
@@ -197,5 +206,9 @@ func timeTravelAnswer(ctx *Context, r game.OptionPicked) error {
 			}
 		}
 	}
-	return askTimeTravel(ctx, player, r.Carry[1:])
+	again := 0
+	if len(r.Nums) > 0 {
+		again = r.Nums[0]
+	}
+	return askTimeTravel(ctx, player, r.Carry[1:], again)
 }
