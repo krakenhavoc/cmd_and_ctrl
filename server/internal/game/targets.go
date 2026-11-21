@@ -338,10 +338,21 @@ func SourceChooser(controller uuid.UUID) TargetSource {
 // snapshot: a caller that has both kept the snapshot as a fallback.
 func (s TargetSource) Characteristics() *Characteristic {
 	if s.Object != nil {
+		var ch *Characteristic
 		if s.X > 0 {
-			return SourceCharacteristicsX(s.Object, s.X)
+			ch = SourceCharacteristicsX(s.Object, s.X)
+		} else {
+			ch = SourceCharacteristics(s.Object)
 		}
-		return SourceCharacteristics(s.Object)
+		if ch != nil && s.spell {
+			ch.SourceIsSpell = true
+		}
+		return ch
+	}
+	if s.Snapshot != nil && s.spell && !s.Snapshot.SourceIsSpell {
+		cp := copyCharacteristic(s.Snapshot)
+		cp.SourceIsSpell = true
+		return cp
 	}
 	return s.Snapshot
 }
