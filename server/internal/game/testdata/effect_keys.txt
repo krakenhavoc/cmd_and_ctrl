@@ -1460,6 +1460,7 @@ choose choose-cards/west-coast-expansion-free-cast
 choose choose-cards/wick-the-whorled-mind-snail
 choose choose-cards/wicked-slumber-first-stun
 choose choose-cards/wicked-slumber-second-stun
+choose choose-cards/wildfire-devils-exile
 choose choose-cards/winota-joiner-of-forces-human
 choose choose-cards/winter-cynical-opportunist-exile
 choose choose-cards/winter-cynical-opportunist-put
@@ -4399,6 +4400,7 @@ tail wheel-of-potential/exiled-hand
 tail whiskervale-forerunner/after-put
 tail white-suns-twilight/destroy-all-other-creatures
 tail widespread-brutality/sweep
+tail wildfire-devils/copy-exiled
 tail will-of-the-sultai/after-mill
 tail will-of-the-sultai/counters-and-trample
 tail will-riker/rest-on-bottom-then-sacrifice-those-lands
