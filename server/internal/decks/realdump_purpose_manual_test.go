@@ -229,6 +229,10 @@ var reviewedNotAWipe = map[string]string{
 	"Azorius Skyguard": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 	// S82 MBS batch 1 (#5576).
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
+	// S82 GAP batch 15.
+	"Summary Dismissal": "exiles the other spells and counters the abilities on the stack: it touches no permanent",
+	// S82 GAP batch 41.
+	"Abstergo Entertainment": "its last ability returns a historic card then exiles the cards in every graveyard: it touches no permanent",
 
 	// S82 GAP batch 107 (#5948).
 	"Faerie Artisans": "exiles only the tokens it created itself (\"all other tokens created with this creature\"), never another permanent: not a board",

@@ -713,6 +713,19 @@ const (
 	// it reaches a creature that arrives or stops being a land after the
 	// effect began (CR 611.2c: it changes no characteristic).
 	ScopeCreaturesThatArentLands AffectedScope = "creaturesThatArentLands"
+	// ScopeCreaturesOddManaValue and ScopeCreaturesEvenManaValue are
+	// "creatures with an odd (even) mana value", every player's, read
+	// live (S82, Twins of Discord's "choose odd or even. Creatures with
+	// mana value of that quality can't block this turn", zero is even,
+	// CR 202.3). "Can't block" changes no characteristic, so CR 611.2c
+	// does not lock the set and a creature that arrives later in the turn
+	// is covered. A creature's mana value is a copiable value (a layer-1
+	// result, and a face-down one is 0), so, like
+	// ScopeCreaturesWithoutFlying, a record with this scope carries only
+	// mods read after the layer pass is finished (scopeReadsLayerResult).
+	// A creature whose cost the engine cannot read is in neither set.
+	ScopeCreaturesOddManaValue  AffectedScope = "creaturesOddManaValue"
+	ScopeCreaturesEvenManaValue AffectedScope = "creaturesEvenManaValue"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
@@ -720,7 +733,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
-		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands:
+		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
+		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
 		return true
 	}
 	return false
@@ -732,7 +746,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 // (foldedAfterLayers). A layer mod would read the characteristic
 // half-way through the pass (#1650).
 func scopeReadsLayerResult(scope AffectedScope) bool {
-	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands
+	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands ||
+		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue
 }
 
 // panicOnLayerModUnderLayerScope refuses, at registration, a layer mod on
@@ -1167,7 +1182,10 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAddColors:        {layer: Layer5Color},
 	ModAddKeywords:      {layer: Layer6Ability},
 	ModRemoveKeywords:   {layer: Layer6Ability},
-	ModLoseAllAbilities: {layer: Layer6Ability, removes: true},
+	// #5948: Shay Cormac's "lose protection and ward" (lose_keyword_families.go).
+	ModRemoveKeywordPrefixes: {layer: Layer6Ability},
+	ModSuppressWard:          {reader: readerRule},
+	ModLoseAllAbilities:      {layer: Layer6Ability, removes: true},
 	// #1859: one own row, not every ability, so it is not `removes`.
 	ModLoseOwnAbility:   {layer: Layer6Ability},
 	ModAddRestrictions:  {layer: Layer6Ability},
@@ -1305,6 +1323,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5718: Peace Talks' table-wide bar on spells and activated
 	// abilities.
 	ModCantBeTargetedBySpellsOrActivated: {reader: readerTargeting},
+	// #5948: Tax Collector's timed cost increase, read by the cast pricer
+	// (scoped_cost_tax.go).
+	ModSpellsCostMoreForOpponents: {reader: readerRule},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named
@@ -1856,6 +1877,12 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		if problem := hexproofModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := loseKeywordFamiliesModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := scopedCostTaxModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := copyModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -2250,6 +2277,15 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && !target.IsLand()
 		}
+	case ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
+		wantOdd := scope == ScopeCreaturesOddManaValue
+		return func(target *Card, g *Game, _ *Card) bool {
+			if target == nil || g == nil || !target.IsCreature() {
+				return false
+			}
+			mv, ok := g.ManaValueForEffect(*target)
+			return ok && (mv%2 != 0) == wantOdd
+		}
 	}
 	// ScopeGame names no object, so it matches none.
 	return func(*Card, *Game, *Card) bool { return false }
@@ -2432,6 +2468,8 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		}
 	case ModLoseOwnAbility:
 		return loseOwnAbilityApply(m)
+	case ModRemoveKeywordPrefixes:
+		return removeKeywordPrefixesApply(copyStrings(m.Keywords))
 	case ModRemoveKeywords:
 		keywords := m.Keywords
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {

@@ -238,6 +238,13 @@ const (
 	// (weaker than printed, never stronger). Combine it with
 	// ManaRestrictType("Creature") for the printed clause.
 	ManaRestrictSpellNoAbilities = "spell:no-abilities"
+	// ManaRestrictSpellFreerunning permits the token only on a spell that
+	// has freerunning (S82, CR 106.6, CR 702.173): Brotherhood
+	// Headquarters' "a spell that has freerunning". It asks about the
+	// card being cast, whatever cost is paid for it: a spell that offers
+	// a freerunning cost qualifies when it is cast for its mana cost too.
+	// An activation never satisfies it.
+	ManaRestrictSpellFreerunning = "spell:freerunning"
 )
 
 // ManaRestrictAltCost builds "spend this mana only to pay a [keyword]
@@ -526,6 +533,12 @@ type ManaSpendContext struct {
 	// is not a cast.
 	NoAbilitiesSpell bool
 
+	// FreerunningSpell is set when the spell being cast has freerunning
+	// (it offers a freerunning alternative cost): what
+	// ManaRestrictSpellFreerunning reads. False for every payment that
+	// is not a cast.
+	FreerunningSpell bool
+
 	// SpellOwner is the owner of the spell being cast (CR 108.3): what
 	// ManaRestrictSpellNotOwned compares with Payer (#5457). Set by
 	// ManaSpendForCast; zero for every payment that is not a cast.
@@ -739,6 +752,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		FaceDownSpell:    c.FaceDown,
 		NoAbilitiesSpell: c.FaceDown || PrintsNoAbilities(c),
+		FreerunningSpell: !c.FaceDown && AlternativeCostByKey(CatalogKey(c), "freerunning") != nil,
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		SpellOwner:       c.Owner,
 		wish:             newSpendWish(c),
@@ -828,6 +842,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast && ctx.FaceDownSpell
 	case ManaRestrictSpellNoAbilities:
 		return ctx.Purpose == SpendPurposeCast && ctx.NoAbilitiesSpell
+	case ManaRestrictSpellFreerunning:
+		return ctx.Purpose == SpendPurposeCast && ctx.FreerunningSpell
 	case ManaRestrictKickedSpell:
 		return ctx.Purpose == SpendPurposeCast && ctx.KickedSpell
 	case ManaRestrictSpellNotOwned:

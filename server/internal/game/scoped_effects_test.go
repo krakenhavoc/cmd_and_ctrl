@@ -315,6 +315,13 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// by targeting, not a layer, and its cases are in
 		// cant_have_1651_test.go here and in cards/effects.
 		ModCantHaveKeywords: true, ModWaiveHexproof: true,
+		// #5948: Shay Cormac's "lose protection and ward". Its cases are in
+		// lose_keyword_families_test.go here and in cards/effects.
+		ModRemoveKeywordPrefixes: true, ModSuppressWard: true,
+		// #5948: Tax Collector's timed cost increase, read by the cast
+		// pricer. Its cases are in scoped_cost_tax_test.go here and in
+		// cards/effects.
+		ModSpellsCostMoreForOpponents: true,
 		// #3860: read by targeting, like the waiver. Its cases are in
 		// targeting_bar_test.go.
 		ModCantBeTargetedByOpponents: true,
