@@ -546,6 +546,9 @@ var tokenTable = map[string]game.Card{
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
 	"3/1 red Construct artifact with haste":     {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 
+	// S82 GAP batch 109: Heliod, God of the Sun's Cleric.
+	"2/1 white Cleric enchantment creature": {Name: "Cleric", TypeLine: "Token Enchantment Creature — Cleric", Power: 2, Toughness: 1, Colors: []string{"W"}},
+
 	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
 	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	// S82 BNS batch 54: Giant Opportunity's Giant.
