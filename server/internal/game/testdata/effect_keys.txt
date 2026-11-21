@@ -1341,12 +1341,14 @@ choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
 choose choose-cards/the-deck-of-many-things-reanimate
 choose choose-cards/the-dragon-kami-reborn-pick
+choose choose-cards/the-eleventh-doctor-exile
 choose choose-cards/the-gitrog-ravenous-ride-sacrifice
 choose choose-cards/the-grand-evolution-put
 choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
 choose choose-cards/the-restoration-of-eiganjo-return
 choose choose-cards/the-ruinous-wrecking-crew-draw
+choose choose-cards/the-seventh-doctor-chosen
 choose choose-cards/the-ur-sphinx-cast
 choose choose-cards/the-world-spell-take
 choose choose-cards/the-wrath-of-khan-exile-from-hand
@@ -1448,6 +1450,7 @@ choose resolution-cast/s82-mom-b21-rashmi-after
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/smugglers-buggy-after-cast
 choose resolution-cast/swindlers-scheme-free-cast
+choose resolution-cast/the-seventh-doctor-investigate
 choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
@@ -1745,6 +1748,7 @@ confirm confirm/the-day-of-the-doctor-exile-others
 confirm confirm/the-falcon-sacrifice
 confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
+confirm confirm/the-seventh-doctor-guess
 confirm confirm/titan-of-littjara-loot
 confirm confirm/transcendent-archaic-draw
 confirm confirm/tricksters-talisman-sacrifice
