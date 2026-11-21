@@ -141,6 +141,36 @@ func TestGap150SkullslitherWormDiscardsOrGrows(t *testing.T) {
 	if got := effectstest.CountersOn(g, worm, game.CounterPlusOne); got != 2*n {
 		t.Errorf("%d counters with %d empty-handed opponents, want %d", got, n, 2*n)
 	}
+
+	// One opponent's hand is empty, the others discard: the two counters
+	// wait for the last discard.
+	g = effectstest.NewCatalogGame(t)
+	me, _ = gap150Seats(g)
+	opps = nil
+	for _, s := range g.Seats {
+		if s.ID != me.ID {
+			opps = append(opps, s)
+		}
+	}
+	effectstest.D2dSetHand(opps[0], 0)
+	for _, o := range opps[1:] {
+		effectstest.D2dSetHand(o, 2)
+	}
+	worm = effectstest.CastHoldCreature(t, g, "Skullslither Worm", "Creature — Worm", gap150SkullslitherWormOracle, 3, 3)
+	if got := effectstest.CountersOn(g, worm, game.CounterPlusOne); got != 0 {
+		t.Errorf("%d counters before the discards landed, want 0", got)
+	}
+	for _, o := range opps[1:] {
+		for i := 0; i < 4 && effectstest.DiscardChoiceFor(g, o.ID) != nil; i++ {
+			effectstest.DiscardFromHand(t, g, o.ID)
+		}
+		if o.Hand.Size() != 1 {
+			t.Errorf("%s holds %d cards, want 1", o.Name, o.Hand.Size())
+		}
+	}
+	if got := effectstest.CountersOn(g, worm, game.CounterPlusOne); got != 2 {
+		t.Errorf("%d counters with one empty-handed opponent, want 2", got)
+	}
 }
 
 func TestGap150SoulcageFiendDrainsEveryPlayer(t *testing.T) {
