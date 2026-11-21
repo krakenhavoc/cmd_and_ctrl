@@ -3332,8 +3332,8 @@ tail dice/earth-cult-elemental-table
 tail dice/ebony-fly-rolled
 tail dice/entry-roll
 tail dice/faridehs-fireball-table
-tail dice/gap-b216-druid-emerald-grove-table
 tail dice/gales-redirection-rolled
+tail dice/gap-b216-druid-emerald-grove-table
 tail dice/goblin-morningstar-table
 tail dice/grave-endeavor-rolled
 tail dice/herald-of-hadar-table
