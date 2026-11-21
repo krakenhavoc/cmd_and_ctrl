@@ -1,8 +1,6 @@
 package cardsbu
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -39,7 +37,7 @@ func init() {
 						N:      1,
 					}, effects.MscM1RendezvousDraw, nil)
 				}),
-			effects.ToSolve("Case of the Crimson Pulse — to solve: you have no cards in hand", youHaveNoCardsInHand),
+			effects.ToSolve("Case of the Crimson Pulse — to solve: you have no cards in hand", effects.R35YouHaveNoCardsInHand),
 			effects.WhenSolved(effects.AtYourUpkeep("Case of the Crimson Pulse — solved: discard your hand, then draw two cards", effects.Do(
 				effects.Instruction(func(ctx *effects.Context) error {
 					_, err := effects.DiscardWholeHand(ctx.Game, ctx.Controller())
@@ -49,10 +47,4 @@ func init() {
 			))),
 		},
 	})
-}
-
-// youHaveNoCardsInHand is the Case's solve condition.
-func youHaveNoCardsInHand(g *game.Game, controller, _ uuid.UUID) bool {
-	p := g.PlayerByIDForEffect(controller)
-	return p != nil && p.Hand.Size() == 0
 }

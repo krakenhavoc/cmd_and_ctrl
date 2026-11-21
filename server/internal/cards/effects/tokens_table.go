@@ -595,6 +595,10 @@ var TokenTable = map[string]game.Card{
 	// S82 GAP batch 05: Nivea, Beloved Battlemage's Akroma.
 	"6/6 white Legendary Angel named Akroma, Angel of Wrath with flying, first strike, vigilance, trample, haste and protection from black and from red": {Name: "Akroma, Angel of Wrath", TypeLine: "Token Legendary Creature — Angel", Power: 6, Toughness: 6, Colors: []string{"W"}, Keywords: []string{"flying", "first strike", "vigilance", "trample", "haste", "protection from black", "protection from red"}},
 
+	// S82 GAP batch 79: Assemble's Elf Knight and Warden's Sphinx.
+	"2/2 green and white Elf Knight with vigilance":       {Name: "Elf Knight", TypeLine: "Token Creature — Elf Knight", Power: 2, Toughness: 2, Colors: []string{"G", "W"}, Keywords: []string{"vigilance"}},
+	"4/4 white and blue Sphinx with flying and vigilance": {Name: "Sphinx", TypeLine: "Token Creature — Sphinx", Power: 4, Toughness: 4, Colors: []string{"W", "U"}, Keywords: []string{"flying", "vigilance"}},
+
 	// S82 GAP batch 06: Worzel, the Protector's Scryb Sprites.
 	"1/1 green Faerie with flying named Scryb Sprites": {Name: "Scryb Sprites", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"flying"}},
 	// #5559: Born of the Gods' enchantment creature tokens (Fated

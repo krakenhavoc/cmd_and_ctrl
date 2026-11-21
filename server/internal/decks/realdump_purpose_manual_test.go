@@ -234,6 +234,12 @@ var reviewedNotAWipe = map[string]string{
 	// S82 GAP batch 41.
 	"Abstergo Entertainment": "its last ability returns a historic card then exiles the cards in every graveyard: it touches no permanent",
 
+	// S82 GAP batch 68 (#5948).
+	"Ravages of War": "destroys lands, which no sweep class holds alone (Armageddon's reading)",
+	// S82 GAP batch 69 (#5948).
+	"Bottled Cloister": "exiles only its controller's own hand face down on an opponent's upkeep and returns it on theirs: no permanent leaves the battlefield",
+	// S82 GAP batch 80.
+	"Ghostway": "exiles only the creatures its caster controls and returns them at the next end step: a blink of the caster's own board, not a wipe",
 	// S82 GAP batch 107 (#5948).
 	"Faerie Artisans": "exiles only the tokens it created itself (\"all other tokens created with this creature\"), never another permanent: not a board",
 

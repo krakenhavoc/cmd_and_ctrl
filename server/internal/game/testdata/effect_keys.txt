@@ -215,6 +215,7 @@ body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
 body gap-b55-voltstorm-angel/modes
+body gap-b82/land-damages-creature
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
 body gastal-blockbuster/destroy
 body gaze-of-pain/damage-equal-to-its-power
@@ -552,6 +553,7 @@ body wishing-well/free-cast
 body wolf-in-blank-clothing/shrink
 body xira-the-golden-sting/draw-and-insect
 body yathan-roadwatcher/return
+body yes-man/draw-two-and-quest-counter
 body yotia-declares-war/damage
 body yunas-whistle/counters
 body zara/return-to-hand
@@ -580,6 +582,7 @@ choose choose-cards/adventure-awaits-take
 choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aesir-escape-valhalla-exile
+choose choose-cards/aetherplasm-put
 choose choose-cards/aetherworks-marvel-cast
 choose choose-cards/agency-outfitter-search
 choose choose-cards/aggressive-sabotage-burn
@@ -765,6 +768,7 @@ choose choose-cards/discard-two-unless-enchantment
 choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/dogmeat-return-aura-or-equipment
 choose choose-cards/dokuchi-silencer-destroy
+choose choose-cards/domri-rade-take
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
 choose choose-cards/dormant-volcano-return-an-untapped-mountain
@@ -835,6 +839,7 @@ choose choose-cards/gilgamesh-master-at-arms-samurai
 choose choose-cards/glacial-dragonhunt-discarded
 choose choose-cards/glamdring-cast
 choose choose-cards/glittering-wish-take
+choose choose-cards/glowspore-shaman-land-on-top
 choose choose-cards/gluntch-the-bestower-creature
 choose choose-cards/godsend-exile
 choose choose-cards/golden-wish-take
@@ -860,17 +865,20 @@ choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/hurkyl-master-wizard-card-type
 choose choose-cards/hypothesizzle-discarded
+choose choose-cards/ilharg-the-raze-boar-put
 choose choose-cards/ill-timed-explosion-discard
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
 choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/industrial-advancement-sacrifice
+choose choose-cards/infernal-tutor-reveal
 choose choose-cards/inscribed-tablet-take
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
 choose choose-cards/invasion-of-arcavios-outside
 choose choose-cards/invasion-of-tarkir-reveal
+choose choose-cards/inventory-management-attach
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/irreverent-gremlin-discard-draw
 choose choose-cards/isochron-scepter-imprint
@@ -985,6 +993,7 @@ choose choose-cards/living-wish-take
 choose choose-cards/lluwen-imperfect-naturalist-top
 choose choose-cards/loamcrafter-faun-discard
 choose choose-cards/london-mulligan-bottom
+choose choose-cards/lord-of-the-void-creature
 choose choose-cards/lord-windgrace-draw
 choose choose-cards/lost-monarch-of-ifnir-return-creature
 choose choose-cards/ludevic-olag-copy
@@ -1180,6 +1189,7 @@ choose choose-cards/next-of-kin-creature
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
+choose choose-cards/nicol-bolas-dragon-god-exile
 choose choose-cards/nicol-bolas-god-pharaoh-exile-two
 choose choose-cards/nihiloor-tap-for-opponent
 choose choose-cards/ninjas-blades-loot
@@ -1324,6 +1334,7 @@ choose choose-cards/show-and-tell-pick
 choose choose-cards/sigardas-vanguard-double-strike
 choose choose-cards/sigardian-zealot-pump
 choose choose-cards/silvan-reveler-discarded
+choose choose-cards/simic-guildmage-attach
 choose choose-cards/skywarp-skaab-exile
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/sludge-titan-creature
@@ -1437,6 +1448,9 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
+choose choose-cards/vault-101-attach
+choose choose-cards/vault-101-put
+choose choose-cards/vault-21-house-gambit-reveal
 choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/victor-valgavoths-seneschal-reanimate
@@ -1524,6 +1538,7 @@ coinflip coin-flip/nothing
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/sorcerers-strongbox
+coinflip coin-flip/stitch-in-time
 coinflip coin-flip/tavern-swindler-gain
 coinflip coin-flip/the-gold-saucer-treasure
 condition activate/you-activate-an-ability-of-a-planeswalker-type
@@ -1729,6 +1744,7 @@ confirm confirm/madame-null-pay-life-for-counters
 confirm confirm/mask-of-memory-loot
 confirm confirm/megatron-tyrant-convert
 confirm confirm/merciful-mandate-end-combat
+confirm confirm/mindleech-mass-look-and-cast
 confirm confirm/mistbreath-elder-return-self
 confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
@@ -1781,6 +1797,7 @@ confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
 confirm confirm/sanguine-spy-pay-life-draw
 confirm confirm/sauron-the-dark-lord-wheel
+confirm confirm/savra-pay-life-edict
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
 confirm confirm/sephiroth-cell-counter
@@ -1802,6 +1819,7 @@ confirm confirm/stromgald-spy-reveal-hand
 confirm confirm/sunfire-torch-sacrifice
 confirm confirm/superior-foes-exile-top
 confirm confirm/sword-of-light-and-shadow-return
+confirm confirm/sword-of-the-paruns-tap-or-untap
 confirm confirm/sylvan-library-pay-or-top
 confirm confirm/synth-eradicator-energy-or-play
 confirm confirm/tainted-pact-take
@@ -2069,6 +2087,8 @@ option option-pick/fact-or-fiction-splitter
 option option-pick/fandaniel-telophoroi-ascian-sacrifice-or-lose-life
 option option-pick/fateful-handoff-opponent
 option option-pick/flicker-return-under-an-opponent
+option option-pick/gap-b82-indoraptor-answer
+option option-pick/gap-b82-owen-grady-counter
 option option-pick/ghostly-dancers-return-or-unlock
 option option-pick/gideon-blackblade-keyword
 option option-pick/gluntch-the-bestower-first
@@ -2081,6 +2101,7 @@ option option-pick/hostile-negotiations-face-up
 option option-pick/hostile-negotiations-opponent
 option option-pick/hostile-negotiations-pile
 option option-pick/hunters-axe-keyword
+option option-pick/ilharg-the-raze-boar-attacks
 option option-pick/indulgent-tormentor-answer
 option option-pick/inspirit-flagship-vessel-counters
 option option-pick/intellectual-offering-draw
@@ -2195,6 +2216,7 @@ option option-pick/torment-of-hailfire-punisher
 option option-pick/torment-of-scarabs-answer
 option option-pick/tresserhorns-lord-returned-choice
 option option-pick/trigger-opponent-chooser
+option option-pick/turnabout-type-and-direction
 option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
 option option-pick/twins-of-discord-parity
@@ -2416,6 +2438,7 @@ payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nihil-spellbomb-draw
 payunless pay-unless/nothing
 payunless pay-unless/oreplate-pangolin-counter
+payunless pay-unless/overencumbered-no-attack
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/papercraft-decoy-draw
 payunless pay-unless/passenger-ferry-unblockable
@@ -2771,6 +2794,7 @@ run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
 run prompt-run/shrapnel-slinger-sacrifice
 run prompt-run/sidequest-play-blitzball-attach
+run prompt-run/single-combat-sacrifice
 run prompt-run/skull-storm-half-life
 run prompt-run/skyfisher-spider-sacrifice
 run prompt-run/slaughter-the-strong-keep
@@ -2947,6 +2971,7 @@ tail altair-ibn-la-ahad/after-exile
 tail aminatous-augury/after-mill
 tail anchor-to-reality/scry-if-cheaper
 tail ancient-adamantoise/after-exile
+tail animal-friend/counters-for-attachments
 tail animists-awakening/rest-then-untap
 tail another-round/after-return
 tail anowon-the-ruin-thief/after-mill
@@ -3182,6 +3207,7 @@ tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail demonlord-belzenlok/put-into-hand
 tail devastating-onslaught/haste-and-sacrifice-copies
+tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table
 tail dice/ancient-copper-dragon-treasures
 tail dice/ancient-gold-dragon-tokens
@@ -3418,6 +3444,8 @@ tail gap-b49/emperor-of-bones-entered
 tail gap-b53-party-thrasher/choose-exiled
 tail gap-b55-birthing-ritual/rest
 tail gap-b55-birthing-ritual/sacrificed
+tail gap-b75/aetherplasm-blocks
+tail gap-b75/aetherplasm-returned
 tail gardens-of-tranquil-repose/its-controller-scries
 tail garruk-apex-predator/gain-life
 tail gemstone-mine/sacrifice-if-empty
@@ -3498,6 +3526,7 @@ tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
+tail ilharg-the-raze-boar/return-at-end-step
 tail illuna-apex-of-wishes/after-exile
 tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
@@ -3906,6 +3935,7 @@ tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
+tail simic-guildmage/take-one
 tail sin-spiras-punishment/copy-exiled
 tail sin-spiras-punishment/repeat-for-a-land
 tail sinister-concierge/exiled
@@ -3971,16 +4001,19 @@ tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
 tail tail/anzrags-rampage-exiled
 tail tail/boreas-charger-put
+tail tail/bottled-cloister-draw
 tail tail/break-out-entered
 tail tail/deadly-cover-up-after-sweep
 tail tail/deadly-cover-up-draw
 tail tail/deadly-cover-up-exiled
 tail tail/eagles-are-coming-birds
 tail tail/fugitive-codebreaker-draw
+tail tail/gap-b82-savage-order-indestructible
 tail tail/hide-in-plain-sight-rest
 tail tail/intrude-on-the-mind-rest
 tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
+tail tail/lord-of-the-void-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
 tail tail/pumpkin-bombs-after-fuse
@@ -3994,6 +4027,8 @@ tail tail/s82-mom-b21-zimone-repeat
 tail tail/s82-neo-b18-behold-the-unspeakable-draw-two
 tail tail/s82-neo-b18-kirin-orochi-counter
 tail tail/s82-neo-b18-kirin-orochi-spirit
+tail tail/seal-of-the-guildpact-first-color
+tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
@@ -4081,6 +4116,7 @@ tail then/change-creature-type-word-to-fixed
 tail then/change-creature-type-word-with
 tail then/change-life
 tail then/chaos-warp-shuffle-reveal
+tail then/cindervines-damage
 tail then/clone-saga-named
 tail then/clutch-of-the-undercity-controller-loses-3
 tail then/cmdr2-s43-tectonic-giant-choose
@@ -4088,6 +4124,7 @@ tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others
 tail then/congregation-at-dawn-order
 tail then/created-gain-keyword-until-eot
+tail then/creeping-chill-drain
 tail then/crippling-fear-type-chosen
 tail then/crystal-spray-draw
 tail then/curse-of-silence-draw
@@ -4379,6 +4416,7 @@ tail valgavoths-onslaught/manifest-again
 tail valkyries-call/angel
 tail vanille-cheerful-lcie/after-mill
 tail vanish-into-memory/entered
+tail vault-101/entered
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
