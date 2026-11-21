@@ -550,6 +550,9 @@ var tokenTable = map[string]game.Card{
 	// S82 GAP batch 109: Heliod, God of the Sun's Cleric.
 	"2/1 white Cleric enchantment creature": {Name: "Cleric", TypeLine: "Token Enchantment Creature — Cleric", Power: 2, Toughness: 1, Colors: []string{"W"}},
 
+	// S82 GAP batch 110: Battle at the Helvault's Avacyn.
+	"8/8 white Legendary Angel named Avacyn with flying, vigilance, and indestructible": {Name: "Avacyn", TypeLine: "Token Legendary Creature — Angel", Power: 8, Toughness: 8, Colors: []string{"W"}, Keywords: []string{"flying", "vigilance", "indestructible"}},
+
 	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
 	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	// S82 BNS batch 54: Giant Opportunity's Giant.
