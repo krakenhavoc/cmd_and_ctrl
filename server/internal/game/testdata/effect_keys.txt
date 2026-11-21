@@ -1339,6 +1339,7 @@ choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
+choose choose-cards/seasoned-pyromancer-discarded
 choose choose-cards/seed-of-hope-permanent
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/serum-core-chimera-discarded
@@ -2365,6 +2366,7 @@ payunless pay-unless/dont-make-a-sound-surveil
 payunless pay-unless/draw-a-card
 payunless pay-unless/dutiful-replicator-copy
 payunless pay-unless/dwarven-hammer-dwarf-and-attach
+payunless pay-unless/dreamshaper-shaman-sacrifice
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
 payunless pay-unless/edgars-awakening-return
@@ -2704,6 +2706,7 @@ run prompt-run/disciple-of-caelus-nin-phase-out
 run prompt-run/disciple-of-freyalise-payout
 run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
+run prompt-run/dreamshaper-shaman-sacrifice
 run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
 run prompt-run/duneblast-destroy-the-rest
@@ -3043,6 +3046,7 @@ tail arcane-proxy/copy-exiled
 tail archdruids-charm/bite
 tail archfiends-vessel/demon
 tail arid-archway/surveil-if-desert-returned
+tail arjun-the-shifting-flame/draw-that-many
 tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
 tail arms-race/entered
@@ -3907,6 +3911,7 @@ tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
+tail sacrificed-one/prompt-run/dreamshaper-shaman-sacrifice
 tail sacrificed-one/prompt-run/exploit-colonel-autumn
 tail sacrificed-one/prompt-run/exploit-diver-skaab
 tail sacrificed-one/prompt-run/exploit-fell-stinger
