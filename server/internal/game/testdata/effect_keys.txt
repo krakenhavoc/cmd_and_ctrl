@@ -1269,6 +1269,7 @@ choose choose-cards/s82-bns-b05-wanderwine-prophets-champion
 choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take
+choose choose-cards/s82-gap-b143-trevas-ruins-return
 choose choose-cards/s82-mid-b03-take-reveal-rest-graveyard
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
@@ -4303,6 +4304,7 @@ tail vis/dormant-volcano-after-return
 tail vis/everglades-after-return
 tail vis/jungle-basin-after-return
 tail vis/karoo-after-return
+tail vis/s82-gap-b143-trevas-ruins-after-return
 tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
