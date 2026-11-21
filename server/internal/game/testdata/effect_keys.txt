@@ -3687,6 +3687,7 @@ tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
 tail ragnarok-divine-deliverance/return
+tail rampaging-growth/animate
 tail random-encounter/entered
 tail random-encounter/milled
 tail rapid-rescue/after-mill
