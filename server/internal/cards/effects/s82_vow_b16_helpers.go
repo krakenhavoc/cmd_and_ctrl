@@ -71,7 +71,7 @@ func VowB16ExiledWithCard(g *game.Game, source *game.Card, label string) []*game
 
 // vowB16SharesATypeWithAny reports whether `c` has a card type that any of
 // `exiled` has (CR 205.2a).
-func vowB16SharesATypeWithAny(c game.Card, exiled []*game.Card) bool {
+func VowB16SharesATypeWithAny(c game.Card, exiled []*game.Card) bool {
 	for _, t := range SemblanceCardTypes {
 		if !c.HasCardType(t) {
 			continue
@@ -108,7 +108,7 @@ func VowB16PlaysSharingAType(label string, who func(actor uuid.UUID, source *gam
 		if !ok || (who != nil && !who(actor, source)) {
 			return false
 		}
-		return vowB16SharesATypeWithAny(c, VowB16ExiledWithCard(g, source, label))
+		return VowB16SharesATypeWithAny(c, VowB16ExiledWithCard(g, source, label))
 	}
 }
 
@@ -126,7 +126,7 @@ func VowB16PlaySharesStillHolds(label string) Condition {
 			if !ok {
 				return false
 			}
-			return vowB16SharesATypeWithAny(c, vowB16ExiledWith(ctx.Game, game.PermissionCardRef(ref), label))
+			return VowB16SharesATypeWithAny(c, vowB16ExiledWith(ctx.Game, game.PermissionCardRef(ref), label))
 		},
 	}
 }

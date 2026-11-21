@@ -36,6 +36,15 @@ import "github.com/google/uuid"
 // hook (no catalog wired) means no permanent gives one.
 var CatalogPlayerLifeFloorOne func(oracleID string) bool
 
+// CatalogPlayerLifeFloorOneIfCreature reports whether a battlefield
+// permanent with this catalog key gives its CONTROLLER the floor only while
+// that player controls a creature — true for Worship ("If you control a
+// creature, damage that would reduce your life total to less than 1 reduces
+// it to 1 instead"). Populated at init time from
+// CardDef.PlayerLifeFloorOneIfCreature. A nil hook means no permanent gives
+// one.
+var CatalogPlayerLifeFloorOneIfCreature func(oracleID string) bool
+
 // GrantLifeFloorForEffect gives `player` the floor for duration d (until
 // end of turn when d is zero). Caller must hold g.mu.
 func (g *Game) GrantLifeFloorForEffect(player uuid.UUID, label string, source uuid.UUID, d Duration) {
@@ -61,7 +70,15 @@ func (g *Game) playerLifeFloorLocked(p *Player) bool {
 	if p == nil {
 		return false
 	}
-	if CatalogPlayerLifeFloorOne != nil && g.Battlefield != nil {
+	if (CatalogPlayerLifeFloorOne != nil || CatalogPlayerLifeFloorOneIfCreature != nil) && g.Battlefield != nil {
+		controlsCreature := func() bool {
+			for i := range g.Battlefield.Cards {
+				if c := &g.Battlefield.Cards[i]; c.Controller == p.ID && c.IsCreature() {
+					return true
+				}
+			}
+			return false
+		}
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
 			if c.Controller != p.ID {
@@ -71,7 +88,15 @@ func (g *Game) playerLifeFloorLocked(p *Player) bool {
 			// static ability of the permanent, so one that has lost its
 			// abilities (CR 613.1f) stops giving it.
 			key := catalogAbilityKeyOf(c)
-			if key != "" && CatalogPlayerLifeFloorOne(key) {
+			if key == "" {
+				continue
+			}
+			if CatalogPlayerLifeFloorOne != nil && CatalogPlayerLifeFloorOne(key) {
+				return true
+			}
+			// Worship: only while its controller controls a creature, read
+			// as the damage is dealt (CR 614.12-style: a state, not a choice).
+			if CatalogPlayerLifeFloorOneIfCreature != nil && CatalogPlayerLifeFloorOneIfCreature(key) && controlsCreature() {
 				return true
 			}
 		}

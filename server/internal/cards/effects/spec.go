@@ -1323,6 +1323,15 @@ type Spec struct {
 	// Issue #5770.
 	PlayerLifeFloorOne bool
 
+	// PlayerLifeFloorOneIfCreature declares Worship's printed static "If you
+	// control a creature, damage that would reduce your life total to less
+	// than 1 reduces it to 1 instead", about this permanent's CONTROLLER:
+	// PlayerLifeFloorOne that applies only while that player controls a
+	// creature (read through the layered view as the damage is dealt). True
+	// while the permanent is on the battlefield and nowhere else; see
+	// game/life_floor.go.
+	PlayerLifeFloorOneIfCreature bool
+
 	// DamageStaysThroughCleanup declares the printed static "Damage
 	// isn't removed from this creature during cleanup steps" (CR 514.2 —
 	// Ancient Adamantoise). Judged on the battlefield through
