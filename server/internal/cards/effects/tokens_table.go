@@ -642,4 +642,6 @@ var TokenTable = map[string]game.Card{
 	// Astartes Warrior (Marneus Calgar).
 	"4/4 black Legendary Demon with flying named Cherubael": {Name: "Cherubael", TypeLine: "Token Legendary Creature — Demon", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"2/2 white Astartes Warrior with vigilance":             {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
+	// S82 GAP batch 193: Tyranid Gargoyle (Gargoyle Flock, Tyranid Harridan).
+	"1/1 blue Tyranid Gargoyle with flying": {Name: "Tyranid Gargoyle", TypeLine: "Token Creature — Tyranid Gargoyle", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 }
