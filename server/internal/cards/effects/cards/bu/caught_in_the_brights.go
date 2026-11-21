@@ -26,7 +26,7 @@ func init() {
 		Static:       []game.StaticAbility{effects.RestrictAttached(game.CantAttackOrBlock)},
 		Triggered: []game.TriggeredAbility{
 			effects.On(game.EventAttack, effects.VehicleYouControlAttacked,
-				"Caught in the Brights — exile enchanted creature", effects.GapB169ExileEnchanted),
+				"Caught in the Brights — exile enchanted creature", effects.R41ExileEnchanted),
 		},
 	})
 }

@@ -11,18 +11,6 @@ import (
 // Helpers for S82 GAP batch 170 (Jumpstart 2022 enchantments and instants,
 // #5948).
 
-// GapB170ExileEnchanted is Weight of Conscience's "Exile enchanted
-// creature": whatever the Aura (the ability's source) is attached to as the
-// ability resolves.
-func GapB170ExileEnchanted(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	aura, ok := ctx.SourcePermanent()
-	if !ok || aura.AttachedTo.Kind != game.TargetCard {
-		return nil
-	}
-	return ExileTarget{Target: aura.AttachedTo.ID}.Apply(ctx)
-}
-
 // GapB170TapTwoSharingATypeCost is Weight of Conscience's cost, "Tap two
 // untapped creatures you control that share a creature type".
 func GapB170TapTwoSharingATypeCost() game.AbilityCost {

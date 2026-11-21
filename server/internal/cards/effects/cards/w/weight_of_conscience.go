@@ -33,7 +33,7 @@ func init() {
 			Label:   "Tap two untapped creatures you control that share a creature type: Exile enchanted creature.",
 			Purpose: game.Purpose{Answers: game.AnswerRemove},
 			Cost:    effects.GapB170TapTwoSharingATypeCost(),
-			Effect:  effects.GapB170ExileEnchanted,
+			Effect:  effects.R41ExileEnchanted,
 		}},
 	})
 }

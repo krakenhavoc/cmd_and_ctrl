@@ -100,17 +100,6 @@ func GapB169VehicleIsACreature() game.StaticAbility {
 	}
 }
 
-// GapB169ExileEnchanted is Caught in the Brights' "exile enchanted
-// creature", read as the trigger resolves.
-func GapB169ExileEnchanted(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	aura, ok := ctx.SourcePermanent()
-	if !ok || aura.AttachedTo.Kind != game.TargetCard {
-		return nil
-	}
-	return ExileTarget{Target: aura.AttachedTo.ID}.Apply(ctx)
-}
-
 // GapB169SoldiersEqualToItsPower is Murder Investigation's "create X 1/1
 // white Soldier creature tokens, where X is its power": the creature that
 // died, by its last-known power (CR 603.10a).
