@@ -39,7 +39,7 @@ func MshB2YouPutPlusOneOnThisTurn(g *game.Game, source *game.Card) bool {
 		if ev.Kind != game.EventCounterPlaced || ev.Target != source.InstanceID || ev.Label != game.CounterPlusOne {
 			continue
 		}
-		if _, ok := countersPutBy(ev, source.Controller, g, true); ok {
+		if _, ok := CountersPutBy(ev, source.Controller, g, true); ok {
 			return true
 		}
 	}

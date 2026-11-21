@@ -32,7 +32,7 @@ func init() {
 		Name:         "Võx, Child of the Collective",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.OnAny([]game.EventKind{game.EventETB, game.EventBeginPrecombatMain}, voxEntersOrYourFirstMain,
+			effects.OnAny([]game.EventKind{game.EventETB, game.EventBeginPrecombatMain}, effects.ThisEntersOrYourFirstMain,
 				"Võx, Child of the Collective — the next artifact creature spell and the next Spacecraft spell you cast this turn have undaunted",
 				effects.Do(
 					effects.GrantNextSpellPromise{From: "Võx, Child of the Collective", Promise: game.NextSpellPromise{
@@ -48,16 +48,4 @@ func init() {
 				)),
 		},
 	})
-}
-
-// voxEntersOrYourFirstMain is Võx entering, or the beginning of its
-// controller's precombat main phase.
-func voxEntersOrYourFirstMain(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-	switch ev.Kind {
-	case game.EventETB:
-		return effects.Self(ev, source, lki, g)
-	case game.EventBeginPrecombatMain:
-		return effects.ByYou(ev, source, lki, g)
-	}
-	return false
 }

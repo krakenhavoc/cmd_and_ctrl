@@ -317,6 +317,14 @@ const (
 	// every zone move and discard into Player's graveyard, a token
 	// excepted (a token is not a card). Reads Player. Scope ScopeGame.
 	ModExileInsteadOfYourGraveyard ModKind = "exileInsteadOfYourGraveyard"
+	// ModShuffleInsteadOfEnteringFromExile is "until end of turn, if one or
+	// more creatures would enter from exile or after being cast from exile,
+	// their owners shuffle them into their libraries instead" (Don't Blink,
+	// CR 614.1a): a CR 614 replacement on a creature card's move onto the
+	// battlefield from exile, or as a creature spell cast from exile
+	// resolves (StackItem.CastFromZone). A token never (it comes from
+	// nowhere, CR 111.1). Reads nothing. Scope ScopeGame.
+	ModShuffleInsteadOfEnteringFromExile ModKind = "shuffleInsteadOfEnteringFromExile"
 )
 
 // The rules kinds (ADR 0107 §5, #1853, #1880). Not layer operations and
@@ -344,6 +352,13 @@ const (
 	// ScopeOpponentsAndTheirCreatures is the record Controller's
 	// opponents (scopeCoversPlayer). Reads Player.
 	ModCantGainLife ModKind = "cantGainLife"
+	// ModCantLoseLife is "<players> can't lose life" for a duration (CR
+	// 119.8, Everybody Lives!): a rule gate asked before the life window
+	// (lifeChangeForbiddenLocked), by the damage that would cost the life
+	// (the damage is still dealt) and by the cost of paying life
+	// (CanPayLifeLocked). Scope ScopeGame with Player set is that one
+	// player, and with Player zero every player. Reads Player.
+	ModCantLoseLife ModKind = "cantLoseLife"
 	// ModCantGetPoisonCounters is "<player> can't get additional poison
 	// counters this turn" (Melira, the Living Cure; CR 101.2): a rule
 	// gate, not a replacement, asked before the counter window opens
@@ -1221,6 +1236,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModLandManaIsColor: {reader: readerReplacement},
 	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
+	// Don't Blink: creatures entering from exile are shuffled into their
+	// owners' libraries instead.
+	ModShuffleInsteadOfEnteringFromExile: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
@@ -1251,6 +1269,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
 	ModCantGainLife:           {reader: readerRule},
+	ModCantLoseLife:           {reader: readerRule},
 	ModCantGetPoisonCounters:  {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},

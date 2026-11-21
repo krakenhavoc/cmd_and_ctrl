@@ -80,7 +80,7 @@ func antManCounterPlaced(ev game.Event, source *game.Card, _ game.Characteristic
 	if source == nil || ev.Label != game.CounterPlusOne {
 		return false
 	}
-	if _, ok := countersPutBy(ev, source.Controller, g, true); !ok {
+	if _, ok := CountersPutBy(ev, source.Controller, g, true); !ok {
 		return false
 	}
 	if !antManIsCreature(g, ev.Target) {

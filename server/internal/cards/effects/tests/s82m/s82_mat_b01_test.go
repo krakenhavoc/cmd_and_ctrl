@@ -38,26 +38,6 @@ func matEntered(g *game.Game, id uuid.UUID) {
 	g.WithWriteLock(func() { g.EmitEvent(game.Event{Kind: game.EventETB, CardID: id}) })
 }
 
-// matWardPrompt casts Doom Blade at victim as opp and reports whether the
-// opponent is asked to pay a ward cost; the spell is then settled either way.
-func matWardPrompt(t *testing.T, g *game.Game, opp *game.Player, victim uuid.UUID) bool {
-	t.Helper()
-	effectstest.CastAtWardedCreature(t, g, opp, victim)
-	asked := false
-	for i := 0; i < 8; i++ {
-		if effectstest.HasPayUnlessFor(g, opp.ID) {
-			asked = true
-			effectstest.AnswerPayUnless(t, g, opp.ID, false)
-			break
-		}
-		if err := g.PassPriority(); err != nil {
-			t.Fatalf("PassPriority: %v", err)
-		}
-	}
-	effectstest.PassPriorityAroundTable(t, g)
-	return asked
-}
-
 // --- Coppercoat Vanguard ------------------------------------------------
 
 func TestCoppercoatVanguardPumpsAndWardsOtherHumansYouControl(t *testing.T) {
@@ -85,7 +65,7 @@ func TestCoppercoatVanguardPumpsAndWardsOtherHumansYouControl(t *testing.T) {
 		t.Errorf("an opponent's Human's power = %d, want 1 (\"you control\")", got)
 	}
 
-	if !matWardPrompt(t, g, opp, human) {
+	if !effectstest.MatWardPrompt(t, g, opp, human) {
 		t.Error("another Human you control has ward {1}: the opponent should be asked to pay")
 	}
 	if !g.Battlefield.Contains(human) {
@@ -101,7 +81,7 @@ func TestCoppercoatVanguardGivesNoWardToItselfNonHumansOrOpposingHumans(t *testi
 	bear := matPush(g, me.ID, "Bear", "Creature — Bear", "", 2, 2)
 	theirs := matPush(g, opp.ID, "Their Human", "Creature — Human Soldier", "", 1, 1)
 	for name, id := range map[string]uuid.UUID{"the Vanguard": vanguard, "a Bear": bear, "an opposing Human": theirs} {
-		if matWardPrompt(t, g, opp, id) {
+		if effectstest.MatWardPrompt(t, g, opp, id) {
 			t.Errorf("%s has no ward, but the opponent was asked to pay", name)
 		}
 	}
@@ -118,13 +98,13 @@ func TestGoldForgedThopteryxWardsEachLegendaryPermanentYouControl(t *testing.T) 
 	plain := matPush(g, me.ID, "Bear", "Creature — Bear", "", 2, 2)
 	theirLegend := effectstest.SeedLegendaryCreature(g, opp.ID, "Their Legend")
 
-	if !matWardPrompt(t, g, opp, legend) {
+	if !effectstest.MatWardPrompt(t, g, opp, legend) {
 		t.Error("a legendary permanent you control has ward {2}")
 	}
-	if matWardPrompt(t, g, opp, plain) {
+	if effectstest.MatWardPrompt(t, g, opp, plain) {
 		t.Error("a nonlegendary creature has no ward")
 	}
-	if matWardPrompt(t, g, opp, theirLegend) {
+	if effectstest.MatWardPrompt(t, g, opp, theirLegend) {
 		t.Error("an opponent's legendary creature has no ward from your Thopteryx")
 	}
 }
@@ -212,10 +192,10 @@ func TestLeylineImmersionGivesWardAndRestrictedFiveManaToTheHost(t *testing.T) {
 
 	// Ward {2} on the enchanted creature.
 	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
-	if !matWardPrompt(t, g, opp, legend) {
+	if !effectstest.MatWardPrompt(t, g, opp, legend) {
 		t.Error("the enchanted creature has ward {2}")
 	}
-	if matWardPrompt(t, g, opp, other) {
+	if effectstest.MatWardPrompt(t, g, opp, other) {
 		t.Error("an unenchanted creature has no ward")
 	}
 }

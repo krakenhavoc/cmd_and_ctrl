@@ -345,6 +345,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// unpreventable_damage_test.go and cant_gain_life_test.go.
 		ModDamageCantBePrevented: true, ModDamageCantBeRedirected: true,
 		ModCantGainLife: true, ModGainNoLife: true,
+		// Everybody Lives!: the loss twin of "can't gain life", read by the
+		// life gate, the damage tail and the pay-life check. Its cases are
+		// in the effects package's S82 GAP batch 95 tests.
+		ModCantLoseLife: true,
 		// #4307: Squid Fire Knight's dice replacement, read by no layer.
 		// Its cases are in dice_roll_test.go and cards/effects.
 		ModRollExtraDieIgnoreOne: true,
@@ -384,6 +388,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
+		// Don't Blink: the entering-from-exile replacement. Its cases are
+		// in the effects package's S82 GAP batch 94 tests.
+		ModShuffleInsteadOfEnteringFromExile: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
