@@ -810,6 +810,7 @@ choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/hurkyl-master-wizard-card-type
 choose choose-cards/hypothesizzle-discarded
+choose choose-cards/ilharg-the-raze-boar-put
 choose choose-cards/ill-timed-explosion-discard
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
@@ -1991,6 +1992,7 @@ option option-pick/hostile-negotiations-face-up
 option option-pick/hostile-negotiations-opponent
 option option-pick/hostile-negotiations-pile
 option option-pick/hunters-axe-keyword
+option option-pick/ilharg-the-raze-boar-attacks
 option option-pick/indulgent-tormentor-answer
 option option-pick/inspirit-flagship-vessel-counters
 option option-pick/intellectual-offering-draw
@@ -3338,6 +3340,7 @@ tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
+tail ilharg-the-raze-boar/return-at-end-step
 tail illuna-apex-of-wishes/after-exile
 tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
