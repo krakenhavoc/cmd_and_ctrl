@@ -37,7 +37,7 @@ func GrantedMyriad(name string) game.TriggeredAbility {
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label)
 			item.Params.Object, _ = g.PermanentRefForEffect(ev.CardID)
-			item.Params.Player = b17DefendingPlayer(g, ev)
+			item.Params.Player = B17DefendingPlayer(g, ev)
 			return item
 		},
 		Effect: func(g *game.Game, item *game.StackItem) error {
@@ -68,14 +68,14 @@ func myriadTokenCopies(g *game.Game, item *game.StackItem, name string) error {
 	if !ok {
 		return nil
 	}
-	return myriadChooseOpponents(NewContext(g, item), name, item.Params.Object, tmpl, b27OtherOpponents(g, item.Controller, defender), nil)
+	return myriadChooseOpponents(NewContext(g, item), name, item.Params.Object, tmpl, B27OtherOpponents(g, item.Controller, defender), nil)
 }
 
 // myriadGroups is a token copy attacking each of the opponents chosen.
 func myriadGroups(tmpl game.Card, chosen []uuid.UUID) []game.TokenGroup {
 	var groups []game.TokenGroup
 	for _, opponent := range chosen {
-		groups = append(groups, game.TokenGroup{Template: copiedToken(tmpl), Count: 1, Entry: game.TokenEntryOptions{Tapped: true}, AttackOpponent: opponent})
+		groups = append(groups, game.TokenGroup{Template: CopiedToken(tmpl), Count: 1, Entry: game.TokenEntryOptions{Tapped: true}, AttackOpponent: opponent})
 	}
 	return groups
 }
@@ -88,7 +88,7 @@ func myriadChooseOpponents(ctx *Context, name string, obj game.ObjectRef, tmpl g
 	if len(opponents) == 0 {
 		return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
 			Controller: ctx.Controller(), Source: ctx.Source(), Groups: myriadGroups(tmpl, chosen), Together: true, AttackChoicesLabel: name + " — myriad",
-		}, withWord(ctx.ItemTail(myriadExileTokens), name))
+		}, WithWord(ctx.ItemTail(myriadExileTokens), name))
 	}
 	opponent := opponents[0]
 	p := ctx.Game.PlayerByIDForEffect(opponent)
@@ -97,8 +97,8 @@ func myriadChooseOpponents(ctx *Context, name string, obj game.ObjectRef, tmpl g
 	}
 	return (MayChoice{Question: name + " — myriad: create a copy attacking " + p.Name + " or a planeswalker they control?",
 		YesLabel: "Create copy", NoLabel: "Skip opponent",
-		Then:    myriadAnswer,
-		Carry:   joinCarry(chosen, opponents),
+		Then:    MyriadAnswer,
+		Carry:   JoinCarry(chosen, opponents),
 		Word:    name,
 		Objects: []game.ObjectRef{obj},
 	}).Apply(ctx)
@@ -112,7 +112,7 @@ var myriadExileTokens = CardTail("myriad/exile-tokens-at-end-of-combat", func(ct
 		return nil
 	}
 	return (ScheduleDelayedTrigger{At: game.StepEndCombat, Controller: ctx.Item.Controller,
-		Label: o.Tail.Word + " — exile the myriad tokens", Cards: o.IDs, Body: exileListedCardsBody}).Apply(ctx)
+		Label: o.Tail.Word + " — exile the myriad tokens", Cards: o.IDs, Body: ExileListedCardsBody}).Apply(ctx)
 })
 
 // myriadAnswer is one opponent's offer of a token copy: a yes adds them to
@@ -121,10 +121,10 @@ var myriadExileTokens = CardTail("myriad/exile-tokens-at-end-of-combat", func(ct
 // carries, and Word is the card granting myriad. Registered in init because
 // it asks the next opponent through myriadChooseOpponents, which names it.
 // Keyed (#4291).
-var myriadAnswer game.ConfirmThen
+var MyriadAnswer game.ConfirmThen
 
 func init() {
-	myriadAnswer = MayAnswer("confirm/myriad-copy", func(ctx *Context, r game.ConfirmAnswer) error {
+	MyriadAnswer = MayAnswer("confirm/myriad-copy", func(ctx *Context, r game.ConfirmAnswer) error {
 		if len(r.Objects) == 0 {
 			return nil
 		}
@@ -135,7 +135,7 @@ func init() {
 		}
 		// The carry holds the opponents who said yes, then the one asked and
 		// the ones still to ask.
-		chosen, queue := splitCarry(r)
+		chosen, queue := SplitCarry(r)
 		if len(queue) == 0 {
 			return nil
 		}

@@ -24,10 +24,10 @@ type FlipThis struct{}
 
 func (FlipThis) Apply(ctx *Context) error {
 	id := ctx.Source()
-	if ctx.isNewSourceObjectAsThis(id) {
+	if ctx.IsNewSourceObjectAsThis(id) {
 		return nil
 	}
-	if !onBattlefield(ctx.Game, id) {
+	if !OnBattlefield(ctx.Game, id) {
 		return nil
 	}
 	return ctx.Game.FlipPermanentForEffect(id)

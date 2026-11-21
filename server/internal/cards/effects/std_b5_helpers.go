@@ -12,17 +12,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func EntersSacrificeUnlessYouTap(name, noun, plural string, of game.PermanentQuery) game.TriggeredAbility {
 	return WhenThisEnters(name+" — sacrifice it unless you tap an untapped "+noun+" you control",
 		func(g *game.Game, item *game.StackItem) error {
-			if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+			if !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 				return nil
 			}
 			pay := TapPayment(1, noun, plural, of)
-			words, action := pay.prompt()
+			words, action := pay.Prompt()
 			return UpkeepPayUnless{
 				Chooser:  item.Controller,
 				Cost:     words,
 				Action:   action,
 				Question: name + " — tap an untapped " + noun + " you control or sacrifice " + name + "?",
-				Else:     upkeepSacrificeSource,
+				Else:     UpkeepSacrificeSource,
 			}.Apply(NewContext(g, item))
 		})
 }
@@ -30,4 +30,4 @@ func EntersSacrificeUnlessYouTap(name, noun, plural string, of game.PermanentQue
 // DroneBlockerToken is the Drone's card value for CreateToken.
 // DroneBlockerToken is Pinnacle Emissary's Drone: the same printed token as
 // Desculpting Blast's (printedDroneToken, slug drone-blocks-only-fliers).
-func DroneBlockerToken() game.Card { return tokenFromCatalog(printedDroneToken) }
+func DroneBlockerToken() game.Card { return TokenFromCatalog(printedDroneToken) }

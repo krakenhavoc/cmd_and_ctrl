@@ -1,0 +1,41 @@
+package cardsbl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Blazing Crescendo — Instant {1}{R}:
+//
+//	"Target creature gets +3/+1 until end of turn.
+//	 Exile the top card of your library. Until the end of your next
+//	 turn, you may play that card."
+//
+// The boost is Titan's Strength's; the exile is the "until the end of
+// your next turn" impulse (ExileTopNUntilYourNextTurn), which grants a
+// play permission rather than a cast-only one, so an exiled land can
+// be played.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "6344c96a-efa5-4125-8219-d333228391cf",
+		Name:         "Blazing Crescendo",
+		Purpose:      effects.ForTargets(effects.BenefitUntilEOT(0, 3, 1)),
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetCreature("target creature"),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetCard {
+				if err := (effects.BoostUntilEOT{
+					Target: item.Targets[0].ID,
+					Power:  3, Toughness: 1,
+					Label: "Blazing Crescendo — +3/+1 until end of turn",
+				}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return effects.ExileTopNUntilYourNextTurn(ctx, 1)
+		},
+	})
+}

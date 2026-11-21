@@ -14,8 +14,8 @@ import (
 // together. The name is read at resolution off the effective
 // characteristics, so a copy of the target goes with it, and each creature is
 // exiled through the single-target verb.
-func rprB23ExileChosenCreatureAndOthersWithItsName(ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func RprB23ExileChosenCreatureAndOthersWithItsName(ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -31,10 +31,10 @@ func rprB23ExileChosenCreatureAndOthersWithItsName(ctx *Context) error {
 		}
 	}
 	for _, target := range ids {
-		if !onBattlefield(ctx.Game, target) {
+		if !OnBattlefield(ctx.Game, target) {
 			continue
 		}
-		if err := (ExileTarget{Target: target}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (ExileTarget{Target: target}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -44,10 +44,10 @@ func rprB23ExileChosenCreatureAndOthersWithItsName(ctx *Context) error {
 // rprB23SabertoothReturn bounces the creature Temur Sabertooth's controller
 // picked and, behind the move, gives the Sabertooth indestructible until end
 // of turn, only if the creature really reached a hand ("if you do").
-var rprB23SabertoothReturn = RegisterPermanentsPick("prompt-run/temur-sabertooth-return", PermanentsDef{
+var RprB23SabertoothReturn = RegisterPermanentsPick("prompt-run/temur-sabertooth-return", PermanentsDef{
 	Then: func(ctx *Context, picked game.PromptedPicks) error {
 		for _, id := range picked.Cards() {
-			if !onBattlefield(ctx.Game, id) {
+			if !OnBattlefield(ctx.Game, id) {
 				continue
 			}
 			return BounceToHand{Target: id, ThenTail: ctx.ItemTail(rprB23SabertoothGrant)}.Apply(ctx)
@@ -59,7 +59,7 @@ var rprB23SabertoothReturn = RegisterPermanentsPick("prompt-run/temur-sabertooth
 // rprB23SabertoothGrant is "this creature gains indestructible until end of
 // turn", told whether the bounce happened. An on-disk key.
 var rprB23SabertoothGrant = CardTail("temur-sabertooth/indestructible", func(ctx *Context, o game.TailOutcome) error {
-	if !oneWentThisWay(o) || !onBattlefield(ctx.Game, ctx.Source()) || ctx.Game.AbilitySourceIsNewObjectForEffect(ctx.Item) {
+	if !OneWentThisWay(o) || !OnBattlefield(ctx.Game, ctx.Source()) || ctx.Game.AbilitySourceIsNewObjectForEffect(ctx.Item) {
 		return nil
 	}
 	return GrantKeywordUntilEOT{Target: ctx.Source(), Keywords: []string{"indestructible"}, Label: "Temur Sabertooth — indestructible"}.Apply(ctx)
@@ -74,13 +74,13 @@ var rprB23SabertoothGrant = CardTail("temur-sabertooth/indestructible", func(ctx
 var rprB23BogbonderMoves *counterChoice
 
 func init() {
-	rprB23BogbonderMoves = registerCounterChoice("number/slippery-bogbonder-move-counters", nil,
+	rprB23BogbonderMoves = RegisterCounterChoice("number/slippery-bogbonder-move-counters", nil,
 		func(ctx *Context, from uuid.UUID, extra []uuid.UUID, picked map[string]int) error {
 			if len(extra) == 0 {
 				return nil
 			}
 			to := extra[0]
-			if onBattlefield(ctx.Game, to) {
+			if OnBattlefield(ctx.Game, to) {
 				kinds := make([]string, 0, len(picked))
 				for kind := range picked {
 					kinds = append(kinds, kind)
@@ -88,7 +88,7 @@ func init() {
 				sort.Strings(kinds)
 				for _, kind := range kinds {
 					src, ok := ctx.Game.LookupCardForEffect(from)
-					if !ok || !onBattlefield(ctx.Game, from) {
+					if !ok || !OnBattlefield(ctx.Game, from) {
 						break
 					}
 					n := min(picked[kind], src.Counters[kind])
@@ -110,12 +110,12 @@ func init() {
 // rprB23BogbonderNext asks about the next creature in line that still
 // carries counters.
 func rprB23BogbonderNext(ctx *Context, to uuid.UUID, rest []uuid.UUID) error {
-	if !onBattlefield(ctx.Game, to) {
+	if !OnBattlefield(ctx.Game, to) {
 		return nil
 	}
 	for i, id := range rest {
 		c, ok := ctx.Game.LookupCardForEffect(id)
-		if !ok || !onBattlefield(ctx.Game, id) {
+		if !ok || !OnBattlefield(ctx.Game, id) {
 			continue
 		}
 		has := false
@@ -128,16 +128,16 @@ func rprB23BogbonderNext(ctx *Context, to uuid.UUID, rest []uuid.UUID) error {
 			continue
 		}
 		extra := append([]uuid.UUID{to}, rest[i+1:]...)
-		return rprB23BogbonderMoves.choose(ctx, id, extra, 0, "Slippery Bogbonder — move any number of counters from "+c.Name+" onto that creature")
+		return rprB23BogbonderMoves.Choose(ctx, id, extra, 0, "Slippery Bogbonder — move any number of counters from "+c.Name+" onto that creature")
 	}
 	return nil
 }
 
 // rprB23BogbonderResolve is the enters trigger: a hexproof counter on the
 // target creature, then the moves.
-func rprB23BogbonderResolve(g *game.Game, item *game.StackItem) error {
+func RprB23BogbonderResolve(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	to, ok := b16FirstLegalTargetCard(ctx)
+	to, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

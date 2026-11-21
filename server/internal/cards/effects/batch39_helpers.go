@@ -41,13 +41,13 @@ import (
 //
 // "Plains" is a word of the searching card's text, read through the
 // text SearchLibrary lends (HasSubtypeWord, CR 612.2).
-func b39IsPlainsCard(c game.Card) bool { return c.HasSubtypeWord("Plains") }
+func B39IsPlainsCard(c game.Card) bool { return c.HasSubtypeWord("Plains") }
 
 // b39IsVampireOrWizardCreatureCard is Bloodline Necromancer's
 // reanimation filter, read off a card in a graveyard: a creature card
 // that is a Vampire or a Wizard. Printed subtypes, because a card in
 // a graveyard has no layer-applied characteristics to read.
-func b39IsVampireOrWizardCreatureCard() CardPredicate {
+func B39IsVampireOrWizardCreatureCard() CardPredicate {
 	return And(Creature(), Or(HasSubtype("Vampire"), HasSubtype("Wizard")))
 }
 
@@ -63,7 +63,7 @@ func b39IsVampireOrWizardCreatureCard() CardPredicate {
 // is the last moment the entering permanent is guaranteed to be
 // findable; the ID is then closed over, so a land that has left by
 // the time the trigger resolves still damages the right player.
-func b39LandEnteredController(ev game.Event, g *game.Game) (uuid.UUID, bool) {
+func B39LandEnteredController(ev game.Event, g *game.Game) (uuid.UUID, bool) {
 	if ev.Kind != game.EventETB {
 		return uuid.Nil, false
 	}
@@ -81,8 +81,8 @@ func b39LandEnteredController(ev game.Event, g *game.Game) (uuid.UUID, bool) {
 //
 // Effective subtypes, so a changeling and anything a type-granting
 // lord has touched joins the club (CR 702.73a).
-func b39SeaMonsterYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func B39SeaMonsterYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
@@ -96,9 +96,9 @@ func b39SeaMonsterYouControlDealtCombatDamageToPlayer(ev game.Event, source *gam
 // himself, died. The printed "another" excludes only the source
 // (CR 603.6c), so a second creature dying in the same batch is a
 // second trigger.
-func b39AnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && dead.InstanceID != source.InstanceID && leftUnderControlOf(ev, dead) == source.Controller
+func B39AnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && dead.InstanceID != source.InstanceID && LeftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b39PlusOneCountersOnCreatureYouControl is Shalai and Hallar's
@@ -115,7 +115,7 @@ func b39AnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.
 // object, read back off the log (b39CountersPlacedOnThisObject). The
 // permanent must still be on the battlefield, a creature, and the
 // source's controller's.
-func b39PlusOneCountersOnCreatureYouControl(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
+func B39PlusOneCountersOnCreatureYouControl(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
 	if ev.Kind != game.EventCounterPlaced || ev.Label != game.CounterPlusOne || ev.Target == uuid.Nil {
 		return 0, false
 	}
@@ -126,7 +126,7 @@ func b39PlusOneCountersOnCreatureYouControl(ev game.Event, source *game.Card, g 
 	if !ok || !target.IsCreature() || target.Controller != source.Controller {
 		return 0, false
 	}
-	n := b39CountersPlacedOnThisObject(ev, g)
+	n := B39CountersPlacedOnThisObject(ev, g)
 	return n, n > 0
 }
 
@@ -137,7 +137,7 @@ func b39PlusOneCountersOnCreatureYouControl(ev game.Event, source *game.Card, g 
 // no counters (CR 400.7), so the counters a returning permanent enters
 // with are not measured against the ones it had in an earlier life,
 // and a later placement is measured from those it entered with.
-func b39CountersPlacedOnThisObject(ev game.Event, g *game.Game) int {
+func B39CountersPlacedOnThisObject(ev game.Event, g *game.Game) int {
 	return max(0, ev.Amount-g.CounterCountBeforeForEffect(ev))
 }
 
@@ -146,7 +146,7 @@ func b39CountersPlacedOnThisObject(ev game.Event, g *game.Game) int {
 // b39CountersOn is the number of `kind` counters on `cardID` right
 // now — Dawn of a New Age's hope counters, Empowered Autogenerator's
 // charge counters. Zero for a card that has left the battlefield.
-func b39CountersOn(g *game.Game, cardID uuid.UUID, kind string) int {
+func B39CountersOn(g *game.Game, cardID uuid.UUID, kind string) int {
 	c, ok := g.LookupCardForEffect(cardID)
 	if !ok {
 		return 0
@@ -155,14 +155,14 @@ func b39CountersOn(g *game.Game, cardID uuid.UUID, kind string) int {
 }
 
 // b39ChargeCountersOn is b39CountersOn fixed to charge counters.
-func b39ChargeCountersOn(g *game.Game, cardID uuid.UUID) int {
-	return b39CountersOn(g, cardID, game.CounterCharge)
+func B39ChargeCountersOn(g *game.Game, cardID uuid.UUID) int {
+	return B39CountersOn(g, cardID, game.CounterCharge)
 }
 
 // b39CreaturesControlledBy counts the creatures `controller` controls
 // — Dawn of a New Age's "a hope counter for each creature you
 // control", read as the enchantment enters.
-func b39CreaturesControlledBy(g *game.Game, controller uuid.UUID) int {
+func B39CreaturesControlledBy(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.Battlefield.Cards {
 		if c.Controller == controller && c.IsCreature() {
@@ -179,19 +179,19 @@ func b39CreaturesControlledBy(g *game.Game, controller uuid.UUID) int {
 // not one "the opponent who is ahead" question. Each is evaluated at
 // resolution, in printed order, against the board as it then is.
 
-func b39AnOpponentControlsMoreLands(g *game.Game, you uuid.UUID) bool {
+func B39AnOpponentControlsMoreLands(g *game.Game, you uuid.UUID) bool {
 	return b39AnOpponentBeatsYou(g, you, func(p uuid.UUID) int {
 		return b39PermanentsControlledBy(g, p, func(c game.Card) bool { return c.IsLand() })
 	})
 }
 
-func b39AnOpponentControlsMoreCreatures(g *game.Game, you uuid.UUID) bool {
+func B39AnOpponentControlsMoreCreatures(g *game.Game, you uuid.UUID) bool {
 	return b39AnOpponentBeatsYou(g, you, func(p uuid.UUID) int {
 		return b39PermanentsControlledBy(g, p, func(c game.Card) bool { return c.IsCreature() })
 	})
 }
 
-func b39AnOpponentHasMoreLife(g *game.Game, you uuid.UUID) bool {
+func B39AnOpponentHasMoreLife(g *game.Game, you uuid.UUID) bool {
 	return b39AnOpponentBeatsYou(g, you, func(p uuid.UUID) int {
 		if pl := g.PlayerByIDForEffect(p); pl != nil {
 			return pl.Life
@@ -200,7 +200,7 @@ func b39AnOpponentHasMoreLife(g *game.Game, you uuid.UUID) bool {
 	})
 }
 
-func b39AnOpponentHasMoreCardsInHand(g *game.Game, you uuid.UUID) bool {
+func B39AnOpponentHasMoreCardsInHand(g *game.Game, you uuid.UUID) bool {
 	return b39AnOpponentBeatsYou(g, you, func(p uuid.UUID) int {
 		pl := g.PlayerByIDForEffect(p)
 		if pl == nil || pl.Hand == nil {
@@ -248,7 +248,7 @@ func b39PermanentsControlledBy(g *game.Game, controller uuid.UUID, match func(ga
 // "deals N damage to target opponent" trigger in the batch: the
 // announced player, if the target is still legal at resolution
 // (CR 608.2b), takes `amount` from the source.
-func b39DamageToFirstTargetPlayer(g *game.Game, item *game.StackItem) error {
+func B39DamageToFirstTargetPlayer(g *game.Game, item *game.StackItem) error {
 	amount := item.Params.Amount
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
@@ -287,8 +287,8 @@ func b39DamageToFirstTargetPlayer(g *game.Game, item *game.StackItem) error {
 // genuine "up to".
 // mayDiscardACardToDrawTwo is the commonest shape: "you may discard a
 // card. If you do, draw two cards." (Witch's Mark, Saheeli's Lattice).
-func mayDiscardACardToDrawTwo(question string) func(*Context) error {
-	return b39MayDiscardThenDraw(1, false, question, drawTwoIfDiscarded)
+func MayDiscardACardToDrawTwo(question string) func(*Context) error {
+	return B39MayDiscardThenDraw(1, false, question, DrawTwoIfDiscarded)
 }
 
 // discardDraw is how many cards a "discard, then draw" draws, as a
@@ -296,7 +296,7 @@ func mayDiscardACardToDrawTwo(question string) func(*Context) error {
 // discarded, shared by every card that draws that way, so the prompt of
 // all of them is a restore point. The player who draws is the player who
 // discarded.
-type discardDraw struct{ then game.DiscardThen }
+type discardDraw struct{ Then game.DiscardThen }
 
 // registerDiscardDraw registers one draw rule under `key`, ledgered
 // "choose <key>". `exactly`, when above zero, is the set rule "exactly
@@ -307,7 +307,7 @@ func registerDiscardDraw(key string, exactly int, draw func(discarded int) int) 
 	if exactly > 0 {
 		rule = func(picked []game.Card) bool { return len(picked) == exactly }
 	}
-	return discardDraw{then: game.RegisterDiscardThenRule(key, rule, func(g *game.Game, r game.DiscardsDone) error {
+	return discardDraw{Then: game.RegisterDiscardThenRule(key, rule, func(g *game.Game, r game.DiscardsDone) error {
 		if k := draw(r.Discarded.Count()); k > 0 {
 			return g.DrawNForEffect(r.Player, k)
 		}
@@ -318,15 +318,15 @@ func registerDiscardDraw(key string, exactly int, draw func(discarded int) int) 
 var (
 	// drawAsManyAsDiscarded is "discard up to N cards, then draw that
 	// many".
-	drawAsManyAsDiscarded = registerDiscardDraw("choose-cards/discard-draw-as-many", 0,
+	DrawAsManyAsDiscarded = registerDiscardDraw("choose-cards/discard-draw-as-many", 0,
 		func(discarded int) int { return discarded })
 	// drawOneMoreThanDiscarded is "discard any number of cards, then draw
 	// that many plus one", which draws one even for none.
-	drawOneMoreThanDiscarded = registerDiscardDraw("choose-cards/discard-draw-one-more", 0,
+	DrawOneMoreThanDiscarded = registerDiscardDraw("choose-cards/discard-draw-one-more", 0,
 		func(discarded int) int { return discarded + 1 })
 	// drawOneIfDiscarded is "you may discard a card. If you do, draw a
 	// card".
-	drawOneIfDiscarded = registerDiscardDraw("choose-cards/discard-draw-one-if-any", 0,
+	DrawOneIfDiscarded = registerDiscardDraw("choose-cards/discard-draw-one-if-any", 0,
 		func(discarded int) int {
 			if discarded > 0 {
 				return 1
@@ -335,7 +335,7 @@ var (
 		})
 	// drawTwoIfDiscarded is "you may discard a card. If you do, draw two
 	// cards".
-	drawTwoIfDiscarded = registerDiscardDraw("choose-cards/discard-draw-two-if-any", 0,
+	DrawTwoIfDiscarded = registerDiscardDraw("choose-cards/discard-draw-two-if-any", 0,
 		func(discarded int) int {
 			if discarded > 0 {
 				return 2
@@ -345,7 +345,7 @@ var (
 	// drawThreeIfDiscardedTwo is Thrilling Discovery's "you may discard
 	// two cards. If you do, draw three cards": the discard is exactly two
 	// or none, by a set rule registered with the key.
-	drawThreeIfDiscardedTwo = registerDiscardDraw("choose-cards/discard-draw-three-if-two", 2,
+	DrawThreeIfDiscardedTwo = registerDiscardDraw("choose-cards/discard-draw-three-if-two", 2,
 		func(discarded int) int {
 			if discarded < 2 {
 				return 0
@@ -358,17 +358,17 @@ var (
 // draw a card." as a whole effect (Shadow of the Goblin's trigger, Gristle
 // Glutton's ability): the discard is chosen as it resolves, and with an
 // empty hand nothing is discarded and nothing drawn.
-func discardACardIfYouDoDraw(g *game.Game, item *game.StackItem) error {
+func DiscardACardIfYouDoDraw(g *game.Game, item *game.StackItem) error {
 	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player: item.Controller,
 		Source: item.SourceCardID,
 		N:      1,
-	}, drawOneIfDiscarded.then, nil)
+	}, DrawOneIfDiscarded.Then, nil)
 }
 
-func b39MayDiscardThenDraw(n int, exact bool, question string, draw discardDraw) func(*Context) error {
+func B39MayDiscardThenDraw(n int, exact bool, question string, draw discardDraw) func(*Context) error {
 	return func(ctx *Context) error {
-		if exact != (draw.then.Key() == drawThreeIfDiscardedTwo.then.Key()) {
+		if exact != (draw.Then.Key() == DrawThreeIfDiscardedTwo.Then.Key()) {
 			// The "exactly N or none" set rule travels with the key, so a
 			// caller that wants it names the rule that has it.
 			return fmt.Errorf("%w: b39MayDiscardThenDraw exact=%v with the wrong draw rule", game.ErrInvalidParam, exact)
@@ -379,6 +379,6 @@ func b39MayDiscardThenDraw(n int, exact bool, question string, draw discardDraw)
 			N:        n,
 			UpTo:     true,
 			Question: question,
-		}, draw.then, nil)
+		}, draw.Then, nil)
 	}
 }

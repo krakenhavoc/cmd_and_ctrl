@@ -71,7 +71,7 @@ func SelfEntersTappedUnless(untapped func(g *game.Game, controller uuid.UUID) bo
 // Needles MUST be lowercase — containsFoldASCII folds the haystack
 // and not the needle, the trap already documented on
 // eventCardHasType.
-func youControlLandTyped(a, b string) func(*game.Game, uuid.UUID) bool {
+func YouControlLandTyped(a, b string) func(*game.Game, uuid.UUID) bool {
 	first, second := IsLandWithSubtype(a), IsLandWithSubtype(b)
 	return func(g *game.Game, controller uuid.UUID) bool {
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -89,7 +89,7 @@ func youControlLandTyped(a, b string) func(*game.Game, uuid.UUID) bool {
 // youControlTwoOrMoreBasics is the battle-land condition — "unless
 // you control two or more basic lands". Counts basics only, so the
 // dual cycle does not bootstrap itself off other nonbasics.
-func youControlTwoOrMoreBasics(g *game.Game, controller uuid.UUID) bool {
+func YouControlTwoOrMoreBasics(g *game.Game, controller uuid.UUID) bool {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && IsBasicLand(c) {
@@ -112,7 +112,7 @@ func youControlTwoOrMoreBasics(g *game.Game, controller uuid.UUID) bool {
 // played after two players are dead enters tapped. That is the
 // printed behaviour and it is why the count runs over live seats
 // rather than over len(g.Seats).
-func youHaveTwoOrMoreOpponents(g *game.Game, controller uuid.UUID) bool {
+func YouHaveTwoOrMoreOpponents(g *game.Game, controller uuid.UUID) bool {
 	n := 0
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.ID == controller {

@@ -13,7 +13,7 @@ import (
 // creature enters this way, it enters with an additional +1/+1 counter on
 // it": the card's kind is read before it moves, and the counter is an
 // "enters with" clause (CR 614.1c) that rides the entry itself.
-func s82Bro10ReturnTargetToBattlefield(plusOneIfCreature bool) Effect {
+func S82Bro10ReturnTargetToBattlefield(plusOneIfCreature bool) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -37,7 +37,7 @@ func s82Bro10ReturnTargetToBattlefield(plusOneIfCreature bool) Effect {
 // thisOrAnotherLegendaryCreatureYouControlEntered is "whenever ~ or another
 // legendary creature you control enters" (Frodo Baggins, Loran): the source's
 // own entry, or a legendary creature entering under its controller's control.
-func thisOrAnotherLegendaryCreatureYouControlEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func ThisOrAnotherLegendaryCreatureYouControlEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return true
 	}

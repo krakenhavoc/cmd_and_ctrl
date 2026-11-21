@@ -25,7 +25,7 @@ import (
 // controlledByNthOpponent passes for a permanent controlled by the
 // n-th seat (1-based) after the chooser's, in turn order. Eliminated
 // seats keep their place, so the numbering never shifts mid-game.
-func controlledByNthOpponent(n int) CardPredicate {
+func ControlledByNthOpponent(n int) CardPredicate {
 	return func(g *game.Game, chooser uuid.UUID, c game.Card) bool {
 		seats := len(g.Seats)
 		if n < 1 || n >= seats {
@@ -46,13 +46,13 @@ func controlledByNthOpponent(n int) CardPredicate {
 	}
 }
 
-var nthOpponentWords = [...]string{"", "first", "second", "third"}
+var NthOpponentWords = [...]string{"", "first", "second", "third"}
 
 // perOpponentClauses is `count` clauses (at most MaxPlayers-1), the
 // n-th matching `what` among permanents the n-th opponent controls,
 // each "up to one". The required form, one exact pick per opponent, is
 // perOpponentRequiredClauses.
-func perOpponentClauses(count int, noun string, what ...CardPredicate) *game.TargetSpec {
+func PerOpponentClauses(count int, noun string, what ...CardPredicate) *game.TargetSpec {
 	if count < 1 {
 		count = 1
 	}
@@ -61,8 +61,8 @@ func perOpponentClauses(count int, noun string, what ...CardPredicate) *game.Tar
 	}
 	var out []*game.TargetSpec
 	for n := 1; n <= count; n++ {
-		spec := TargetPermanent("target "+noun+" controlled by the "+nthOpponentWords[n]+" opponent after you in turn order",
-			append([]CardPredicate{controlledByNthOpponent(n)}, what...)...).WithCount(0, 1)
+		spec := TargetPermanent("target "+noun+" controlled by the "+NthOpponentWords[n]+" opponent after you in turn order",
+			append([]CardPredicate{ControlledByNthOpponent(n)}, what...)...).WithCount(0, 1)
 		out = append(out, spec)
 	}
 	return Clauses(out[0], out[1:]...)

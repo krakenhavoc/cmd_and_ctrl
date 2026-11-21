@@ -13,7 +13,7 @@ import (
 // cmdr2S42AnyColorRefundBody is Plasm Capture's delayed refund: add
 // <Amount> mana in any combination of colors. The amount rides as the
 // trigger's params (ADR 0041 phase 3), bounded like Mana Drain's.
-var cmdr2S42AnyColorRefundBody = game.DelayedBody("plasm-capture/refund",
+var Cmdr2S42AnyColorRefundBody = game.DelayedBody("plasm-capture/refund",
 	func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 		if p.Amount <= 0 {
 			return nil
@@ -31,23 +31,23 @@ var cmdr2S42AnyColorRefundBody = game.DelayedBody("plasm-capture/refund",
 // must meet (judged on the face being cast), `exile` is "if that spell would
 // be put into a graveyard, exile it instead". The offer is the
 // resolution_cast prompt (#4250); an uncast card stays where it is.
-func cmdr2S42FreeGraveyardCast(ctx *Context, name string, spell freeCastSpell, exile bool, ids []uuid.UUID) {
-	cmdr2S42FreeGraveyardCasts(ctx, name, spell, exile, true, ids)
+func Cmdr2S42FreeGraveyardCast(ctx *Context, name string, spell FreeCastSpell, exile bool, ids []uuid.UUID) {
+	Cmdr2S42FreeGraveyardCasts(ctx, name, spell, exile, true, ids)
 }
 
 // cmdr2S42FreeGraveyardCasts is cmdr2S42FreeGraveyardCast with the choice of
 // one shared permission (`one`: "cast a spell", the first cast spends it) or
 // one permission per card ("cast each", "for each opponent, cast ..."), so a
 // cast of one leaves the others open.
-func cmdr2S42FreeGraveyardCasts(ctx *Context, name string, spell freeCastSpell, exile, one bool, ids []uuid.UUID) {
-	cmdr2S42FreeGraveyardCastsThen(ctx, name, spell, exile, one, "", ids)
+func Cmdr2S42FreeGraveyardCasts(ctx *Context, name string, spell FreeCastSpell, exile, one bool, ids []uuid.UUID) {
+	Cmdr2S42FreeGraveyardCastsThen(ctx, name, spell, exile, one, "", ids)
 }
 
 // cmdr2S42FreeGraveyardCastsThen is cmdr2S42FreeGraveyardCasts with a
 // registered follow-up run for each cast made (game.CastPermission.FollowUp).
-func cmdr2S42FreeGraveyardCastsThen(ctx *Context, name string, spell freeCastSpell, exile, one bool, followUp game.CastFollowUpKey, ids []uuid.UUID) {
+func Cmdr2S42FreeGraveyardCastsThen(ctx *Context, name string, spell FreeCastSpell, exile, one bool, followUp game.CastFollowUpKey, ids []uuid.UUID) {
 	g := ctx.Game
-	perm := spell.on(game.CastPermission{
+	perm := spell.On(game.CastPermission{
 		Player:                  ctx.Controller(),
 		Zone:                    game.ZoneGraveyard,
 		Duration:                g.UntilEndOfTurnDuration(),
@@ -81,7 +81,7 @@ func cmdr2S42FreeGraveyardCastsThen(ctx *Context, name string, spell freeCastSpe
 		Permission:   &perm,
 		Keyword:      game.MayCastKeywordFreeCast,
 		AcceptLabel:  "Cast it free",
-		DeclineLabel: declineLeaveInGraveyard,
+		DeclineLabel: DeclineLeaveInGraveyard,
 	}
 	if !one {
 		offer.Permission = nil
@@ -98,7 +98,7 @@ func cmdr2S42FreeGraveyardCastsThen(ctx *Context, name string, spell freeCastSpe
 // without paying its mana cost. If that spell would be put into a graveyard,
 // exile it instead." X rides Params.Amount, fixed when the trigger was made
 // (CR 603.12); the clause is rebuilt from it on a restore.
-var cmdr2S42HaloForagerCastBody = game.ReflexiveBody("halo-forager/cast",
+var Cmdr2S42HaloForagerCastBody = game.ReflexiveBody("halo-forager/cast",
 	func(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
 		ctx := NewContext(g, item)
 		var ids []uuid.UUID
@@ -107,7 +107,7 @@ var cmdr2S42HaloForagerCastBody = game.ReflexiveBody("halo-forager/cast",
 				ids = append(ids, t.ID)
 			}
 		}
-		cmdr2S42FreeGraveyardCast(ctx, "Halo Forager", freeInstantOrSorcery(), true, ids)
+		Cmdr2S42FreeGraveyardCast(ctx, "Halo Forager", FreeInstantOrSorcery(), true, ids)
 		return nil
 	},
 	func(_ uuid.UUID, p game.EffectParams) *game.TargetSpec {

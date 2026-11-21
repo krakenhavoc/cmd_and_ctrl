@@ -87,7 +87,7 @@ func init() {
 		// game.CatalogKey. The back face registers under
 		// aangSwiftSaviorOracle + "#1" — see
 		// aang_and_la_oceans_fury.go.
-		OracleID:        aangSwiftSaviorOracle,
+		OracleID:        AangSwiftSaviorOracle,
 		Name:            "Aang, Swift Savior",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash", "flying"},
@@ -149,4 +149,4 @@ func targetOtherCreatureOrSpell(label string) *game.TargetSpec {
 // aangSwiftSaviorOracle is shared with the back face
 // (aang_and_la_oceans_fury.go), which registers under it plus "#1"
 // (game.CatalogKey).
-const aangSwiftSaviorOracle = "cbf09050-39d0-463b-96db-9e22011ae0d8"
+const AangSwiftSaviorOracle = "cbf09050-39d0-463b-96db-9e22011ae0d8"

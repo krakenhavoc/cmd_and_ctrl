@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 400.7) and the ability does nothing.
 
 // gideonAnimation is what one Gideon's becoming says.
-type gideonAnimation struct {
+type GideonAnimation struct {
 	// Label names the ability in the log.
 	Label string
 	// Subtypes are the creature types he gains ("Human", "Soldier").
@@ -47,7 +47,7 @@ type gideonAnimation struct {
 
 // animateGideon applies the becoming to the ability's source and then
 // the shield that protects him this turn.
-func animateGideon(g *game.Game, item *game.StackItem, a gideonAnimation) error {
+func AnimateGideon(g *game.Game, item *game.StackItem, a GideonAnimation) error {
 	ctx := NewContext(g, item)
 	self := item.SourceCardID
 	if z := g.FindCardZoneForEffect(self); z == nil || z.Kind != game.ZoneBattlefield {

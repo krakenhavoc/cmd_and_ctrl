@@ -46,7 +46,7 @@ import (
 // skipped (CR 603.7c), which is the right answer for the one case that
 // produces it: something else moved the card on in the meantime. A
 // token never comes back (CR 111.8).
-func returnExiledCardsToOwners(g *game.Game, item *game.StackItem) error {
+func ReturnExiledCardsToOwners(g *game.Game, item *game.StackItem) error {
 	var ids []uuid.UUID
 	for _, t := range item.Targets {
 		if t.Kind == game.TargetCard && t.ID != uuid.Nil {
@@ -66,9 +66,9 @@ func returnExiledCardsToOwners(g *game.Game, item *game.StackItem) error {
 //
 // A target that left legality in response (CR 608.2b) or an "up to
 // one" left unfilled is a no-op, not an error.
-func flickerFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func FlickerFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -79,9 +79,9 @@ func flickerFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 // printings that say "under its OWNER's control" (The Mind Stone, Photon,
 // Lady of Light): Controller is left at its zero value, so the card comes
 // back for its owner, not for the player whose ability blinked it.
-func flickerFirstLegalTargetUnderOwner(g *game.Game, item *game.StackItem) error {
+func FlickerFirstLegalTargetUnderOwner(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -104,14 +104,14 @@ func flickerFirstLegalTargetUnderOwner(g *game.Game, item *game.StackItem) error
 // not one event at all but three. The batch form is both halves at
 // once: the legs leave together, and the continuation is handed the
 // cards that reached exile.
-func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
-	return exileTargetsThenScheduleReturnBody(ctx, label, returnExiledToOwnersBody)
+func ExileTargetsThenScheduleReturn(ctx *Context, label string) error {
+	return ExileTargetsThenScheduleReturnBody(ctx, label, ReturnExiledToOwnersBody)
 }
 
 // exileTargetsThenScheduleReturnBody is exileTargetsThenScheduleReturn
 // with the delayed return's body named: Semester's End's return gives
 // each card its own counters (returnExiledWithAdditionalCountersBody).
-func exileTargetsThenScheduleReturnBody(ctx *Context, label string, body game.BodyRef) error {
+func ExileTargetsThenScheduleReturnBody(ctx *Context, label string, body game.BodyRef) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
@@ -127,8 +127,8 @@ func exileTargetsThenScheduleReturnBody(ctx *Context, label string, body game.Bo
 // "exile any number of other nonland permanents you own and control"):
 // the same one exile, and the same delayed trigger over the cards that
 // reached it.
-func exileCardsThenScheduleReturn(ctx *Context, ids []uuid.UUID, label string) error {
-	return exileCardsThenScheduleReturnBody(ctx, ids, label, returnExiledToOwnersBody)
+func ExileCardsThenScheduleReturn(ctx *Context, ids []uuid.UUID, label string) error {
+	return exileCardsThenScheduleReturnBody(ctx, ids, label, ReturnExiledToOwnersBody)
 }
 
 // exileCardsThenScheduleReturnBody is the one exile and the one delayed
@@ -138,7 +138,7 @@ func exileCardsThenScheduleReturnBody(ctx *Context, ids []uuid.UUID, label strin
 	if len(ids) == 0 {
 		return nil
 	}
-	return ctx.Game.ExileCardsKeyedForEffect(ids, withWord(ctx.ItemTail(flickerScheduleReturn), body.Key()+"|"+label))
+	return ctx.Game.ExileCardsKeyedForEffect(ids, WithWord(ctx.ItemTail(flickerScheduleReturn), body.Key()+"|"+label))
 }
 
 // returnExiledCardsWithAdditionalCounters is Semester's End's return:
@@ -184,7 +184,7 @@ func returnExiledCardsLandsTapped(g *game.Game, item *game.StackItem) error {
 // cards that reached exile, each carrying ScheduleDelayedTrigger.TurnOf,
 // so the delayed ability is still the resolving ability's controller's
 // (CR 603.7d) and only the moment it fires is the owner's.
-func exileTargetsThenReturnOnOwnersEndStep(ctx *Context, label string) error {
+func ExileTargetsThenReturnOnOwnersEndStep(ctx *Context, label string) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
@@ -192,7 +192,7 @@ func exileTargetsThenReturnOnOwnersEndStep(ctx *Context, label string) error {
 		}
 		ids = append(ids, t.ID)
 	}
-	return ctx.Game.ExileCardsKeyedForEffect(ids, withWord(ctx.ItemTail(flickerReturnOnOwnersEndStep), label))
+	return ctx.Game.ExileCardsKeyedForEffect(ids, WithWord(ctx.ItemTail(flickerReturnOnOwnersEndStep), label))
 }
 
 // exileThisThenReturnUnderAnOpponentsControl is "Exile <this>, then
@@ -202,8 +202,8 @@ func exileTargetsThenReturnOnOwnersEndStep(ctx *Context, label string) error {
 // object (CR 400.7). Only the permanent the ability came from moves —
 // one that died or was flickered in response has nothing to exile —
 // and with no opponent left to name nothing happens.
-func exileThisThenReturnUnderAnOpponentsControl(ctx *Context, item *game.StackItem, name string) error {
-	if !sourceIsStillThisPermanent(ctx.Game, item) {
+func ExileThisThenReturnUnderAnOpponentsControl(ctx *Context, item *game.StackItem, name string) error {
+	if !SourceIsStillThisPermanent(ctx.Game, item) {
 		return nil
 	}
 	self := item.SourceCardID
@@ -269,7 +269,7 @@ var flickerReturnOnOwnersEndStep = CardTail("flicker/return-on-owners-end-step",
 			Label:  label,
 			TurnOf: owner,
 			Cards:  byOwner[owner],
-			Body:   returnExiledToOwnersBody,
+			Body:   ReturnExiledToOwnersBody,
 		}).Apply(NewContext(g, item)); err != nil {
 			return err
 		}

@@ -114,7 +114,7 @@ func ManaRestrictAnyType(types ...string) string { return game.ManaRestrictAnyTy
 // orderedManaSymbols flattens a symbol set into canonical WUBRGC
 // order, so a derived pipe string is stable across activations and a
 // test can assert on it.
-func orderedManaSymbols(seen map[string]bool) []string {
+func OrderedManaSymbols(seen map[string]bool) []string {
 	var out []string
 	for _, m := range []string{"W", "U", "B", "R", "G", "C"} {
 		if seen[m] {
@@ -130,7 +130,7 @@ func orderedManaSymbols(seen map[string]bool) []string {
 // is the whole difference between those two cards' wordings and the
 // reason this is a separate step rather than baked into
 // producibleFrom.
-func colorsOnly(symbols []string) []string {
+func ColorsOnly(symbols []string) []string {
 	out := make([]string, 0, len(symbols))
 	for _, s := range symbols {
 		if s == "C" {
@@ -146,7 +146,7 @@ func colorsOnly(symbols []string) []string {
 // ActivateManaAbility treats as "this ability produced no mana": the
 // printed outcome for Exotic Orchard facing no opposing lands, and
 // the reason the return type is a string rather than a slice.
-func pipeString(symbols []string) string {
+func PipeString(symbols []string) string {
 	if len(symbols) == 0 {
 		return ""
 	}
@@ -207,17 +207,17 @@ func ProducedFromLegendaryPermanents() func(*game.Game, uuid.UUID, uuid.UUID) st
 				continue
 			}
 			ch := c.Effective()
-			if !hasFold(ch.Supertypes, "Legendary") {
+			if !HasFold(ch.Supertypes, "Legendary") {
 				continue
 			}
-			if !hasFold(ch.Types, "Creature") && !hasFold(ch.Types, "Planeswalker") {
+			if !HasFold(ch.Types, "Creature") && !HasFold(ch.Types, "Planeswalker") {
 				continue
 			}
 			for _, col := range c.EffectiveColors() {
 				seen[strings.ToUpper(col)] = true
 			}
 		}
-		return pipeString(colorsOnly(orderedManaSymbols(seen)))
+		return PipeString(ColorsOnly(OrderedManaSymbols(seen)))
 	}
 }
 
@@ -275,7 +275,7 @@ func MatchLandSubtype(subtype string) func(game.Card) bool {
 		if !c.IsLand() {
 			return false
 		}
-		return hasFold(c.Effective().Subtypes, c.LentSubtype(subtype))
+		return HasFold(c.Effective().Subtypes, c.LentSubtype(subtype))
 	}
 }
 
@@ -328,7 +328,7 @@ func MatchInstantOrSorcery(c game.Card) bool { return c.IsInstant() || c.IsSorce
 
 // hasFold is a case-insensitive membership test over a type-line
 // slice.
-func hasFold(xs []string, want string) bool {
+func HasFold(xs []string, want string) bool {
 	for _, x := range xs {
 		if strings.EqualFold(x, want) {
 			return true
@@ -361,7 +361,7 @@ func ProducedPerCounterOnThis(kind, symbol string) func(*game.Game, uuid.UUID, u
 // "{1}, {T}:" and City of Shadows' "{T}, Exile a creature you
 // control:". An activated ability, not a mana one: it adds no mana, so
 // it uses the stack (CR 605.1a).
-func putStorageCounterOnThis(g *game.Game, item *game.StackItem) error {
+func PutStorageCounterOnThis(g *game.Game, item *game.StackItem) error {
 	return AddCounter{
 		Target: item.SourceCardID,
 		Kind:   game.CounterStorage,

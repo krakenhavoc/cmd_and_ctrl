@@ -51,7 +51,7 @@ func init() {
 func underworldCerberusDies(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-		return eachPlayerReturnsCreatureCardsToHand(ctx)
+		return EachPlayerReturnsCreatureCardsToHand(ctx)
 	}
 	return ExileTarget{
 		Target:   item.SourceCardID,
@@ -62,8 +62,8 @@ func underworldCerberusDies(g *game.Game, item *game.StackItem) error {
 // eachPlayerReturnsCreatureCardsToHand is "each player returns all
 // creature cards from their graveyard to their hand": every creature
 // card in every graveyard, read once, to its owner's hand as one move.
-func eachPlayerReturnsCreatureCardsToHand(ctx *Context) error {
-	ids := allGraveyardsCardIDs(ctx, game.Card.IsCreature)
+func EachPlayerReturnsCreatureCardsToHand(ctx *Context) error {
+	ids := AllGraveyardsCardIDs(ctx, game.Card.IsCreature)
 	if len(ids) == 0 {
 		return nil
 	}
@@ -74,5 +74,5 @@ func eachPlayerReturnsCreatureCardsToHand(ctx *Context) error {
 // underworldCerberusExiled is the clause after the exile (#4253 slice 9).
 var underworldCerberusExiled = CardTail("underworld-cerberus/after-exile", func(ctx *Context, o game.TailOutcome) error {
 
-	return eachPlayerReturnsCreatureCardsToHand(ctx)
+	return EachPlayerReturnsCreatureCardsToHand(ctx)
 })

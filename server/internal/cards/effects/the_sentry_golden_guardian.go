@@ -40,11 +40,11 @@ func init() {
 
 // mshA8VoidToken is The Void, the legendary 5/5 black Horror Villain with
 // flying, indestructible and "The Void attacks each combat if able."
-func mshA8VoidToken() game.Card { return tokenFromCatalog(printedMshA8VoidToken) }
+func mshA8VoidToken() game.Card { return TokenFromCatalog(printedMshA8VoidToken) }
 
 // printedMshA8VoidToken is The Void as PRINTED.
-func printedMshA8VoidToken() tokenTemplate {
-	return tokenTemplate{
+func printedMshA8VoidToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "the-void-msh",
 		Card: game.Card{
 			Name:      "The Void",

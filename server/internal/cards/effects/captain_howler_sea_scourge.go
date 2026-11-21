@@ -40,8 +40,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Ward(WardManaAndLife("{2}", 2), "Captain Howler, Sea Scourge — ward {2}, pay 2 life"),
-			withAtBatchEnd(Targeting(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return discardedByYou(ev, source)
+			WithAtBatchEnd(Targeting(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return DiscardedByYou(ev, source)
 			}, "Captain Howler, Sea Scourge — target creature gets +2/+0 until end of turn for each card discarded this way",
 				captainHowlerPump), TargetCreature("target creature")), ThatManyEvents()),
 		},
@@ -51,10 +51,10 @@ func init() {
 var (
 	// "Whenever <that creature> deals combat damage to a player": an
 	// EventDealDamage, combat, from CondParams.Object, to a player.
-	thatCreatureHitAPlayerCondition = game.DelayedCondition("combat/that-creature-hit-a-player", thatCreatureHitAPlayer)
+	ThatCreatureHitAPlayerCondition = game.DelayedCondition("combat/that-creature-hit-a-player", thatCreatureHitAPlayer)
 
 	// "You draw a card."
-	drawACardForTheControllerBody = game.SimpleDelayedBody("draw/controller-one", drawACardForTheController)
+	DrawACardForTheControllerBody = game.SimpleDelayedBody("draw/controller-one", drawACardForTheController)
 )
 
 func thatCreatureHitAPlayer(ev game.Event, _ *game.DelayedTrigger, g *game.Game, p game.EffectParams) bool {
@@ -82,7 +82,7 @@ func captainHowlerPump(g *game.Game, item *game.StackItem) error {
 	target := item.Targets[0].ID
 	if err := (BoostUntilEOT{
 		Target: target,
-		Power:  2 * settledEventAmount(item),
+		Power:  2 * SettledEventAmount(item),
 		Label:  "Captain Howler, Sea Scourge — +2/+0 for each card discarded",
 	}).Apply(ctx); err != nil {
 		return err
@@ -94,9 +94,9 @@ func captainHowlerPump(g *game.Game, item *game.StackItem) error {
 	return DelayedOnEvent{
 		Label:      "Captain Howler, Sea Scourge — draw a card",
 		On:         []game.EventKind{game.EventDealDamage},
-		Condition:  thatCreatureHitAPlayerCondition,
+		Condition:  ThatCreatureHitAPlayerCondition,
 		CondParams: game.EffectParams{Object: game.ObjectRef{ID: target, Epoch: c.ObjectEpoch}},
-		Body:       drawACardForTheControllerBody,
+		Body:       DrawACardForTheControllerBody,
 		Repeats:    true,
 	}.Apply(ctx)
 }

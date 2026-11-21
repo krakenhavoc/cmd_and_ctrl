@@ -22,8 +22,8 @@ func (CondNoCombatDamageSinceYourLastTurn) Holds(ctx *Context) bool {
 	return !ctx.Game.DealtCombatDamageSinceLastTurnForEffect(ctx.Controller())
 }
 
-func (CondNoCombatDamageSinceYourLastTurn) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondNoCombatDamageSinceLastTurn, 0), true
+func (CondNoCombatDamageSinceYourLastTurn) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondNoCombatDamageSinceLastTurn, 0), true
 }
 
 // NoCombatDamageSinceYourLastTurn is the same condition as the ability

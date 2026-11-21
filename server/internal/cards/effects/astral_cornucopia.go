@@ -30,7 +30,7 @@ func init() {
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:           ManaAbilityCost{Tap: true},
-			ProducedAmount: ProducedOneColor(chargeCountersOn),
+			ProducedAmount: ProducedOneColor(ChargeCountersOn),
 			Label:          "Choose a color. Add one mana of that color for each charge counter on this artifact",
 		}},
 	})
@@ -40,7 +40,7 @@ func init() {
 // source, exactly as everflowingChaliceProduced does. Shared with The
 // Eternity Elevator's 20+ mana ability, which reads the same counter
 // off the same field.
-func chargeCountersOn(g *game.Game, _, source uuid.UUID) int {
+func ChargeCountersOn(g *game.Game, _, source uuid.UUID) int {
 	c, ok := g.LookupCardForEffect(source)
 	if !ok {
 		return 0

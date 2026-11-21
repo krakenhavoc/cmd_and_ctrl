@@ -96,7 +96,7 @@ var summonKujataDiscarded = game.RegisterDiscardThen("choose-cards/summon-kujata
 // summonKujataFinish records the card discarded, if any, and runs the draw and
 // the damage trigger.
 func summonKujataFinish(g *game.Game, controller, source uuid.UUID, discarded []uuid.UUID) error {
-	ctx := keyedContext(g, controller, source)
+	ctx := KeyedContext(g, controller, source)
 	ctx.RecordStep(summonKujataRecord, discarded)
 	return summonKujataDrawThenDamage.Run(ctx)
 }

@@ -88,7 +88,7 @@ func init() {
 // to intersect with the announced set rather than to read the board.
 func b41AttackersAgainst(g *game.Game, attacker, player uuid.UUID) int {
 	n := 0
-	for _, id := range b13AttackingCreaturesYouControl(g, attacker) {
+	for _, id := range B13AttackingCreaturesYouControl(g, attacker) {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue

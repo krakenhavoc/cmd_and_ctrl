@@ -43,7 +43,7 @@ func init() {
 // risenReefElementalEntered is "this creature or another Elemental you
 // control enters".
 func risenReefElementalEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	// "Elemental" is a word of the source's text (CR 612.2, #3984).
 	return ok && (c.InstanceID == source.InstanceID || c.HasSubtype(source.TextSubtype("Elemental")))
 }
@@ -59,14 +59,14 @@ func risenReefLook(g *game.Game, item *game.StackItem) error {
 		Optional: true,
 		Tapped:   true,
 		Label:    "Risen Reef — you may put the land onto the battlefield tapped (otherwise it goes into your hand)",
-		ThenTail: risenReefRestToHand,
+		ThenTail: RisenReefRestToHand,
 	}.Apply(ctx)
 }
 
 // risenReefRestToHand is the rider as a keyed tail (#4253 slice 6): the
 // card that was not put onto the battlefield goes into your hand. An
 // on-disk key.
-var risenReefRestToHand = PutFromLibraryTail("risen-reef/rest-into-hand", putRestIntoHand)
+var RisenReefRestToHand = PutFromLibraryTail("risen-reef/rest-into-hand", putRestIntoHand)
 
 // putRestIntoHand is "put the rest into your hand" for a look-at-the-top
 // pick (Risen Reef, Genesis Ultimatum): every card still in the library

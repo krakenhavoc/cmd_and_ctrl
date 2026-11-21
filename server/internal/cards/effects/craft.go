@@ -233,7 +233,7 @@ func returnCraftedCard(g *game.Game, item *game.StackItem) error {
 // craft ability made.
 //
 // Caller holds g.mu (a layer pass or a mana ability does).
-func craftMaterialsOf(g *game.Game, source *game.Card) []game.Card {
+func CraftMaterialsOf(g *game.Game, source *game.Card) []game.Card {
 	if source == nil || len(source.CraftedWith) == 0 {
 		return nil
 	}
@@ -244,9 +244,9 @@ func craftMaterialsOf(g *game.Game, source *game.Card) []game.Card {
 // to craft it" (Mastercraft Raptor, Wretched Bonemass): each card's
 // power where it is, its own characteristic-defining ability applied
 // (the rulings' Souls of the Lost), a negative total read as it is.
-func craftMaterialsTotalPower(g *game.Game, source *game.Card) int {
+func CraftMaterialsTotalPower(g *game.Game, source *game.Card) int {
 	total := 0
-	for _, c := range craftMaterialsOf(g, source) {
+	for _, c := range CraftMaterialsOf(g, source) {
 		total += g.PowerAnywhereForEffect(c)
 	}
 	return total
@@ -255,7 +255,7 @@ func craftMaterialsTotalPower(g *game.Game, source *game.Card) int {
 // craftMaterialColors is "each color among the exiled cards used to
 // craft it" (Sunbird Effigy): the colours the materials have, in WUBRG
 // order, each once.
-func craftMaterialColors(materials []game.Card) []string {
+func CraftMaterialColors(materials []game.Card) []string {
 	var out []string
 	for _, col := range []string{"W", "U", "B", "R", "G"} {
 		for _, c := range materials {

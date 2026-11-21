@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Communicator subtype is attached to. Both are read through the layered
 // view, so a creature that stopped being one, or an Equipment that lost
 // the subtype, does not count.
-func trekB26CommunicatorOnAnotherCreature(g *game.Game, self *game.Card) bool {
+func TrekB26CommunicatorOnAnotherCreature(g *game.Game, self *game.Card) bool {
 	if self == nil {
 		return false
 	}

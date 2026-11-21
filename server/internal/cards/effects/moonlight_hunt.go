@@ -36,7 +36,7 @@ func init() {
 				power  int
 			}
 			var bites []bite
-			for _, c := range wolvesAndWerewolvesOf(ctx, item.Controller) {
+			for _, c := range WolvesAndWerewolvesOf(ctx, item.Controller) {
 				if p := c.CurrentPower(); p > 0 {
 					bites = append(bites, bite{c.InstanceID, p})
 				}
@@ -60,7 +60,7 @@ func init() {
 // Wolf or a Werewolf, as they stand now ("each creature you control
 // that's a Wolf or a Werewolf": Moonlight Hunt, Hollowhenge Overlord).
 // The types are words of the resolving object's text (CR 612.2).
-func wolvesAndWerewolvesOf(ctx *Context, player uuid.UUID) []game.Card {
+func WolvesAndWerewolvesOf(ctx *Context, player uuid.UUID) []game.Card {
 	wolf, werewolf := ctx.TextSubtype("Wolf"), ctx.TextSubtype("Werewolf")
 	var out []game.Card
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {

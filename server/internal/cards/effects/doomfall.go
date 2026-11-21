@@ -35,7 +35,7 @@ func init() {
 					if !ok || t.Kind != game.TargetPlayer {
 						return nil
 					}
-					return msc17ExileEdict(ctx, t.ID, "Doomfall — exile a creature you control", Creature(), doomfallExile)
+					return Msc17ExileEdict(ctx, t.ID, "Doomfall — exile a creature you control", Creature(), DoomfallExile)
 				}),
 			ModeDoing("Target opponent reveals their hand. You choose a nonland card from it. Exile that card.",
 				TargetPlayer("target opponent", Opponent()),
@@ -56,7 +56,7 @@ func init() {
 }
 
 // doomfallExile exiles the creature the targeted opponent chose.
-var doomfallExile = game.RegisterChooseCardsThen("choose-cards/doomfall-exile",
+var DoomfallExile = game.RegisterChooseCardsThen("choose-cards/doomfall-exile",
 	func(g *game.Game, r game.CardsChosen) error {
 		return g.ExileCardsKeyedForEffect(r.Picked, game.KeyedTail{})
 	})
@@ -64,7 +64,7 @@ var doomfallExile = game.RegisterChooseCardsThen("choose-cards/doomfall-exile",
 // msc17ExileEdict asks `victim` to choose one permanent they control that
 // matches (an exile edict: they choose, they exile), then runs `then` on
 // the pick. An empty candidate set asks nothing.
-func msc17ExileEdict(ctx *Context, victim uuid.UUID, question string, match CardPredicate, then game.ChooseCardsThen) error {
+func Msc17ExileEdict(ctx *Context, victim uuid.UUID, question string, match CardPredicate, then game.ChooseCardsThen) error {
 	var cards []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == victim && match(ctx.Game, victim, c) {

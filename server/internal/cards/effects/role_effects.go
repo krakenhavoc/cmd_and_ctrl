@@ -15,10 +15,10 @@ import (
 // read off the announce-time target. A target that left makes the
 // instruction do nothing (CR 608.2b), and so does an "up to one" clause
 // that chose no target.
-func createRoleOnFirstTarget(kind RoleKind) Effect {
+func CreateRoleOnFirstTarget(kind RoleKind) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -31,7 +31,7 @@ func createRoleOnFirstTarget(kind RoleKind) Effect {
 // spell with several target clauses (Eriette's Whisper, Shatter the
 // Oath). Nothing happens when the slot chose nothing ("up to one") or
 // its target is no longer legal (CR 608.2b).
-func createRoleOnClauseTarget(ctx *Context, slot int, kind RoleKind) error {
+func CreateRoleOnClauseTarget(ctx *Context, slot int, kind RoleKind) error {
 	t, ok := ctx.ClauseTarget(slot)
 	if !ok || t.Kind != game.TargetCard {
 		return nil
@@ -42,7 +42,7 @@ func createRoleOnClauseTarget(ctx *Context, slot int, kind RoleKind) error {
 // createRoleOnThis is "create a <Role> token attached to it" /
 // "attached to this creature". CreateRoleToken creates nothing for a
 // host that is not a creature on the battlefield.
-func createRoleOnThis(kind RoleKind) Effect {
+func CreateRoleOnThis(kind RoleKind) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return CreateRoleToken{Role: kind, Host: item.SourceCardID}.Apply(NewContext(g, item))
 	}
@@ -53,7 +53,7 @@ func createRoleOnThis(kind RoleKind) Effect {
 // battlefield slice directly, so a layer-7 static can ask it for every
 // candidate without a per-call copy of the whole battlefield
 // (b15IsEnchanted copies it; PumpAttachedPer's note says why not).
-func isEnchantedByAura(g *game.Game, id uuid.UUID) bool {
+func IsEnchantedByAura(g *game.Game, id uuid.UUID) bool {
 	if g == nil || g.Battlefield == nil {
 		return false
 	}

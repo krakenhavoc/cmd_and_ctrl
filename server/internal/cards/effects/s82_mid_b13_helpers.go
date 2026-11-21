@@ -14,7 +14,7 @@ import (
 // creatures share a power, read through the layers and unclamped (a power of
 // -1 differs from 0). On-disk behaviour of the picks below; never captures
 // game state.
-func midB13DifferentPowers(picked []game.Card) bool {
+func MidB13DifferentPowers(picked []game.Card) bool {
 	seen := make(map[int]bool, len(picked))
 	for _, c := range picked {
 		p := c.PowerForComparison()
@@ -28,7 +28,7 @@ func midB13DifferentPowers(picked []game.Card) bool {
 
 // midB13CreaturesOnBattlefield lists every creature on the battlefield, any
 // controller, in battlefield order, through the layers.
-func midB13CreaturesOnBattlefield(g *game.Game) []game.Card {
+func MidB13CreaturesOnBattlefield(g *game.Game) []game.Card {
 	var out []game.Card
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsCreature() {
@@ -39,7 +39,7 @@ func midB13CreaturesOnBattlefield(g *game.Game) []game.Card {
 }
 
 // midB13DistinctPowers is the number of different powers among cs.
-func midB13DistinctPowers(cs []game.Card) int {
+func MidB13DistinctPowers(cs []game.Card) int {
 	seen := make(map[int]bool, len(cs))
 	for _, c := range cs {
 		seen[c.PowerForComparison()] = true
@@ -62,7 +62,7 @@ func midB13IDs(cs []game.Card) []uuid.UUID {
 // restore point and a bot is never offered a set the rule would refuse).
 // nums are handed to the continuation as CardsChosen.Nums and carry what was
 // read before the choice.
-func midB13ChooseDifferentPowers(ctx *Context, creatures []game.Card, min, max int, question string, then game.ChooseCardsThen, nums ...int) {
+func MidB13ChooseDifferentPowers(ctx *Context, creatures []game.Card, min, max int, question string, then game.ChooseCardsThen, nums ...int) {
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    ctx.Controller(),
 		FromPlayer: ctx.Controller(),

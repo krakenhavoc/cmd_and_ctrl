@@ -1,0 +1,54 @@
+package cardss
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Scurry of Gremlins — Enchantment {2}{R}{W}:
+//
+//	"When this enchantment enters, create two 1/1 red Gremlin creature
+//	 tokens. Then you get an amount of {E} (energy counters) equal to
+//	 the number of creatures you control.
+//	 Pay {E}{E}{E}{E}: Creatures you control get +1/+0 and gain haste
+//	 until end of turn."
+//
+// "Then": the creatures are counted after the two Gremlins are made, so
+// they count. The energy is counted at resolution, so the Purpose
+// declares only the tokens (ADR 0126 §6). The activated ability's set
+// of creatures is locked as it resolves (CR 611.2c), Overrun's shape.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "ff24d18d-9c5d-4ffe-846f-a8d568b32724",
+		Name:         "Scurry of Gremlins",
+		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Tokens: 2},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Scurry of Gremlins — two Gremlins, then {E} for each creature you control",
+				// The energy waits for a prompt the tokens' creation asks (a CR 616 order;
+				// CR 608.2c, #4155) and counts the creatures when it runs.
+				effects.Do(
+					effects.CreateToken{Template: effects.TokenCard("1/1 red Gremlin"), N: 2},
+					effects.Instruction(func(ctx *effects.Context) error {
+						return effects.GetEnergy{N: effects.B04CreaturesControlled(ctx.Game, ctx.Controller())}.Apply(ctx)
+					}),
+				)),
+		},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "Pay {E}{E}{E}{E}: Creatures you control get +1/+0 and gain haste until end of turn.",
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1, Keywords: []string{"haste"}}, Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    effects.PayEnergy(4),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := effects.NewContext(g, item)
+				yours := effects.And(effects.Creature(), effects.YouControl())
+				if err := (effects.BoostUntilEOT{Match: yours, Power: 1, Label: "Scurry of Gremlins — +1/+0"}).Apply(ctx); err != nil {
+					return err
+				}
+				return effects.GrantKeywordUntilEOT{Match: yours, Keywords: []string{"haste"}, Label: "Scurry of Gremlins — haste"}.Apply(ctx)
+			},
+		}},
+	})
+}

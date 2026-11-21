@@ -1,0 +1,45 @@
+package cardsri
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Robobrain War Mind — Artifact Creature — Robot {3}{U}, */5:
+//
+//	"Robobrain War Mind's power is equal to the number of cards in your
+//	 hand.
+//	 When this creature enters, you get an amount of {E} (energy
+//	 counters) equal to the number of artifact creatures you control.
+//	 Whenever this creature attacks, you may pay {E}{E}{E}. If you do,
+//	 draw a card."
+//
+// ADR 0129 §3 (#1995). The power is a characteristic-defining ability
+// (CR 604.3, layer 7a), Psychosis Crawler's shape with the toughness
+// left printed. The enters count is read as the trigger resolves, the
+// War Mind included when it is still there. The attack payment is made
+// as the trigger resolves (CR 118.12).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "6f9390ec-08b5-4761-8cb1-5d60190b9661",
+		Name:         "Robobrain War Mind",
+		Completeness: effects.CompletenessFull,
+		Static:       []game.StaticAbility{effects.PowerIsCardsInYourHand()},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Robobrain War Mind — you get {E} for each artifact creature you control",
+				func(g *game.Game, item *game.StackItem) error {
+					n := 0
+					for _, c := range g.Battlefield.Cards {
+						if c.Controller == item.Controller && c.IsCreature() && c.IsArtifact() {
+							n++
+						}
+					}
+					return effects.GetEnergy{N: n}.Apply(effects.NewContext(g, item))
+				}),
+			effects.WhenThisAttacksMayPayEnergy("Robobrain War Mind", 3, "draw a card", effects.MayPayDrawACard),
+		},
+	})
+}

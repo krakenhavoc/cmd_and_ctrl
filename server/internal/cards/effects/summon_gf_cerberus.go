@@ -29,11 +29,11 @@ func init() {
 			ChapterTrigger(1, SagaChapterLabel("Summon: G.F. Cerberus", 1, "surveil 1"), Do(Surveil{N: 1})),
 			ChapterTrigger(2, SagaChapterLabel("Summon: G.F. Cerberus", 2, "Double — copy the next instant or sorcery you cast this turn"), func(g *game.Game, item *game.StackItem) error {
 				return WhenYouNextCast("Summon: G.F. Cerberus — Double: copy that spell",
-					instantOrSorcery, copyTheSpellBody).Apply(NewContext(g, item))
+					instantOrSorcery, CopyTheSpellBody).Apply(NewContext(g, item))
 			}),
 			ChapterTrigger(3, SagaChapterLabel("Summon: G.F. Cerberus", 3, "Triple — copy the next instant or sorcery you cast this turn twice"), func(g *game.Game, item *game.StackItem) error {
 				return WhenYouNextCast("Summon: G.F. Cerberus — Triple: copy that spell twice",
-					instantOrSorcery, copyTheSpellTwiceBody).Apply(NewContext(g, item))
+					instantOrSorcery, CopyTheSpellTwiceBody).Apply(NewContext(g, item))
 			}),
 		},
 	})
@@ -41,7 +41,7 @@ func init() {
 
 // copyTheSpellTwiceBody is copyTheSpellYouJustCast with two copies
 // (Summon: G.F. Cerberus's chapter III).
-var copyTheSpellTwiceBody = game.SimpleDelayedBody("copy/the-spell-you-just-cast-twice", copyTheSpellYouJustCastTwice)
+var CopyTheSpellTwiceBody = game.SimpleDelayedBody("copy/the-spell-you-just-cast-twice", copyTheSpellYouJustCastTwice)
 
 func copyTheSpellYouJustCastTwice(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

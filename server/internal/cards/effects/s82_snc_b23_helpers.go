@@ -13,7 +13,7 @@ import (
 // it since they arrived (CR 400.7): "whenever you discard one or more
 // cards, … them". conspiracyTheoristDiscardedInBatch's walk without its
 // nonland filter.
-func s82SncB23DiscardedInBatch(g *game.Game, you uuid.UUID, trigger game.Event) []uuid.UUID {
+func S82SncB23DiscardedInBatch(g *game.Game, you uuid.UUID, trigger game.Event) []uuid.UUID {
 	events := g.EventsThisTurn()
 	var out []uuid.UUID
 	for i, ev := range events {

@@ -32,11 +32,11 @@ import (
 // as it resolves (CR 701.46a), after the convert.
 //
 // No simplification.
-const jetfireOracleID = "38de7183-81ef-4a79-b231-7195ba89a281"
+const JetfireOracleID = "38de7183-81ef-4a79-b231-7195ba89a281"
 
 func init() {
 	Register(Spec{
-		OracleID:         jetfireOracleID,
+		OracleID:         JetfireOracleID,
 		Name:             "Jetfire, Ingenious Scientist",
 		Completeness:     CompletenessFull,
 		PrintedKeywords:  []string{"flying"},
@@ -79,7 +79,7 @@ func init() {
 		}},
 	})
 	Register(Spec{
-		OracleID:        jetfireOracleID + "#1",
+		OracleID:        JetfireOracleID + "#1",
 		Name:            "Jetfire, Air Guardian",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
@@ -93,7 +93,7 @@ func init() {
 				if err := (ConvertThis{}).Apply(NewContext(g, item)); err != nil {
 					return err
 				}
-				return adaptN(g, item, 3)
+				return AdaptN(g, item, 3)
 			},
 		}},
 	})
@@ -101,7 +101,7 @@ func init() {
 
 // adaptN is "Adapt N" (CR 701.46a): if the source has no +1/+1 counters
 // on it as the ability resolves, put N on it.
-func adaptN(g *game.Game, item *game.StackItem, n int) error {
+func AdaptN(g *game.Game, item *game.StackItem, n int) error {
 	src, ok := g.LookupCardForEffect(item.SourceCardID)
 	if !ok || src.Counters[game.CounterPlusOne] > 0 {
 		return nil

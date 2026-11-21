@@ -61,7 +61,7 @@ func myriadLandscapeFetch(g *game.Game, item *game.StackItem) error {
 		Shuffle:       true,
 		TappedOnEntry: true,
 		Reason:        "Myriad Landscape — up to two basic lands that share a land type",
-		Rule:          searchRuleBasicsShareALandType,
+		Rule:          SearchRuleBasicsShareALandType,
 	}.Apply(NewContext(g, item))
 }
 
@@ -96,7 +96,7 @@ func basicLandSubtypeOf(c game.Card) string {
 		return ""
 	}
 	for _, sub := range []string{"plains", "island", "swamp", "mountain", "forest"} {
-		if containsFoldASCII(c.TypeLine, sub) {
+		if ContainsFoldASCII(c.TypeLine, sub) {
 			return sub
 		}
 	}

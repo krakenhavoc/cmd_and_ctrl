@@ -1,0 +1,57 @@
+package cardsmi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Mystic Confluence — Instant {3}{U}{U} (EDHREC rank 1462):
+//
+//	"Choose three. You may choose the same mode more than once.
+//	 • Counter target spell unless its controller pays {3}.
+//	 • Return target creature to its owner's hand.
+//	 • Draw a card."
+//
+// CR 700.2d, the rule the engine could not express before #764:
+// validateModes rejected a repeated index outright, so "draw three
+// cards" — the mode this card is most often cast for — was
+// unannounceable. ChooseNRepeating sets ModeSpec.Repeatable, the
+// announced list becomes a MULTISET in the order chosen ([2, 2, 2]),
+// and each occurrence gets its own target group, so "bounce two
+// creatures and draw a card" is [1, 1, 2] with two separate bounce
+// targets rather than one target the second bounce has to share.
+//
+// Each bullet's body runs once per occurrence in printed order
+// (CR 608.2c), which is what makes three draws three draws.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "cd11c27b-9368-4622-bc5a-2e0b993cc42b",
+		Name:         "Mystic Confluence",
+		Completeness: effects.CompletenessFull,
+		Modes: effects.ChooseNRepeating("Choose three (you may choose the same mode more than once)", 3, 3,
+			effects.ModeDoing("Counter target spell unless its controller pays {3}.",
+				effects.TargetSpell("target spell"),
+				func(item *game.StackItem, ctx *effects.Context, occ int) error {
+					t, ok := effects.ModeTarget(ctx, occ)
+					if !ok {
+						return nil
+					}
+					return effects.CounterUnlessPaid{
+						StackID:  t.ID,
+						Cost:     "{3}",
+						Question: "Mystic Confluence — pay {3} or your spell is countered",
+					}.Apply(ctx)
+				}),
+			effects.ModeDoing("Return target creature to its owner's hand.",
+				effects.TargetCreature("target creature"),
+				effects.BounceTheModesTarget),
+			effects.ModeWithPurpose(effects.ModeDoing("Draw a card.", nil,
+				func(item *game.StackItem, ctx *effects.Context, _ int) error {
+					return effects.DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+				}), game.Purpose{Draws: 1, Answers: game.AnswerValue}), // #2877: three draws answer nothing
+		),
+	})
+}

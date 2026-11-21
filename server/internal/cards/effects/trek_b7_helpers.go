@@ -22,9 +22,9 @@ func YouFacedADilemma(ev game.Event, source *game.Card, _ game.Characteristic, _
 // creature type (and so is a Borg, and counts for nothing). "Borg" is a
 // word of the source's text (CR 612.2), read through its lens while the
 // source is still on the battlefield.
-func trekB7CreatureTypesAmongNonBorgYouControl(g *game.Game, item *game.StackItem) int {
+func TrekB7CreatureTypesAmongNonBorgYouControl(g *game.Game, item *game.StackItem) int {
 	var reader *game.Card
-	if src, ok := g.LookupCardForEffect(item.SourceCardID); ok && onBattlefield(g, item.SourceCardID) {
+	if src, ok := g.LookupCardForEffect(item.SourceCardID); ok && OnBattlefield(g, item.SourceCardID) {
 		reader = &src
 	}
 	seen := map[string]bool{}
@@ -48,9 +48,9 @@ func trekB7CreatureTypesAmongNonBorgYouControl(g *game.Game, item *game.StackIte
 // The type is a word of the source's text (CR 612.2), read through its
 // lens while the source is on the battlefield, as its last-known text
 // is not kept.
-func trekB7YouControlA(g *game.Game, item *game.StackItem, subtype string) bool {
+func TrekB7YouControlA(g *game.Game, item *game.StackItem, subtype string) bool {
 	var reader *game.Card
-	if src, ok := g.LookupCardForEffect(item.SourceCardID); ok && onBattlefield(g, item.SourceCardID) {
+	if src, ok := g.LookupCardForEffect(item.SourceCardID); ok && OnBattlefield(g, item.SourceCardID) {
 		reader = &src
 	}
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -69,7 +69,7 @@ func trekB7YouControlA(g *game.Game, item *game.StackItem, subtype string) bool 
 // as a new object (CR 400.7), gets nothing attached and the token stays
 // unattached (CR 701.3b).
 func createTokenAttachedToSource(g *game.Game, item *game.StackItem, template game.Card) error {
-	if sourceIsNewObject(g, item) || !onBattlefield(g, item.SourceCardID) {
+	if SourceIsNewObject(g, item) || !OnBattlefield(g, item.SourceCardID) {
 		return CreateToken{Template: template, N: 1}.Apply(NewContext(g, item))
 	}
 	ctx := NewContext(g, item)

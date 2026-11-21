@@ -24,7 +24,7 @@ func init() {
 		Name:         "Praetor's Counsel",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := returnWholeGraveyardToHand(ctx, func(game.Card) bool { return true }); err != nil {
+			if err := ReturnWholeGraveyardToHand(ctx, func(game.Card) bool { return true }); err != nil {
 				return err
 			}
 			if err := (ExileTarget{Target: ctx.Source()}).Apply(ctx); err != nil {
@@ -37,8 +37,8 @@ func init() {
 
 // returnWholeGraveyardToHand is "return all <matching> cards from your
 // graveyard to your hand": the cards are read once, then each moves.
-func returnWholeGraveyardToHand(ctx *Context, match func(game.Card) bool) error {
-	for _, id := range graveyardCardIDs(ctx, ctx.Controller(), match) {
+func ReturnWholeGraveyardToHand(ctx *Context, match func(game.Card) bool) error {
+	for _, id := range GraveyardCardIDs(ctx, ctx.Controller(), match) {
 		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
 			return err
 		}

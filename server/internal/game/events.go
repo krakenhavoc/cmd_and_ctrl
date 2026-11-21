@@ -2080,6 +2080,13 @@ type Event struct {
 	// radiation"; rad_counters.go, #2042). False on every other event.
 	FromRadiation bool `json:"from_radiation,omitempty"`
 
+	// LifePayment marks an EventChangeLife that was life PAID as a cost
+	// (CR 119.4, payLifeAsCostLocked), as against life an effect made a
+	// player lose: "whenever a spell or ability you control causes you to
+	// lose life" (Sahir, Visitor in Darkness, #5948) reads the second only.
+	// False on every other event. Additive within the snapshot version.
+	LifePayment bool `json:"life_payment,omitempty"`
+
 	// CardIDs are the cards one keyword action moved together, on the
 	// event that names the action rather than a single card: the cards
 	// an EventCollectEvidence exiled, in the order named (#5223). Nil on
@@ -2200,6 +2207,15 @@ type Event struct {
 	// a downstream prompt is answered). "Whenever ~ deals combat
 	// damage to a player" triggers read both. Added in S19 sub-PR 7.
 	Combat bool `json:"combat,omitempty"`
+
+	// SourceName is, on a combat EventDealDamage, the name of the dealing
+	// object as it was when it dealt the damage (its layered name: a copy
+	// has the copied name, CR 707.2), captured at emit time because the
+	// source may since have left the game or been changed. "Each opponent
+	// dealt combat damage this game by a creature named Gollum, Obsessed
+	// Stalker" reads it off the append-only log. Empty on every other event.
+	// Additive within schema v9.
+	SourceName string `json:"source_name,omitempty"`
 
 	// Exhaust marks an EventActivateAbility or
 	// EventManaAbilityActivated whose ability prints the exhaust
@@ -2596,6 +2612,7 @@ func (g *Game) EmitEvent(ev Event) {
 	// harvester saw.
 	ev.Batch = g.currentEventBatchLocked()
 	g.stampPublicNamesLocked(&ev)
+	g.stampCombatSourceNameLocked(&ev)
 	g.Events = append(g.Events, ev)
 	// S17 sub-PR 6 diagnostic: effect-error events are otherwise
 	// silent (no client toast yet). Surfacing them in the server log

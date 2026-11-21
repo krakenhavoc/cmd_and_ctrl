@@ -29,10 +29,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordStoried},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventETB, balinOrAnotherDwarfEntered, "Balin, Loremaster — discard your hand, draw that many",
+			Optional(On(game.EventETB, BalinOrAnotherDwarfEntered, "Balin, Loremaster — discard your hand, draw that many",
 				Do(
 					Instruction(func(ctx *Context) error {
-						n, err := discardWholeHand(ctx.Game, ctx.Controller())
+						n, err := DiscardWholeHand(ctx.Game, ctx.Controller())
 						ctx.RecordStep(balinLoremasterDiscarded, nil, n)
 						return err
 					}),
@@ -58,7 +58,7 @@ func init() {
 
 // balinOrAnotherDwarfEntered is "Balin or another Dwarf you control
 // enters".
-func balinOrAnotherDwarfEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func BalinOrAnotherDwarfEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return true
 	}

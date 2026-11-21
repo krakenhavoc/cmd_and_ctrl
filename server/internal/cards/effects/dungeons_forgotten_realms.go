@@ -222,7 +222,7 @@ func init() {
 				Key: "oubliette", Name: "Oubliette",
 				Text:    "Discard a card and sacrifice a creature, an artifact, and a land.",
 				LeadsTo: []string{"cradle-of-the-death-god"},
-				Effect:  tombOubliette,
+				Effect:  TombOubliette,
 			},
 			{
 				Key: "cradle-of-the-death-god", Name: "Cradle of the Death God",
@@ -238,7 +238,7 @@ func init() {
 func dungeonCounterOnTarget(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -251,7 +251,7 @@ func dungeonCounterOnTarget(n int) Effect {
 // the room's owner's next turn begins.
 func lostMineFungiCavern(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -267,7 +267,7 @@ func lostMineFungiCavern(g *game.Game, item *game.StackItem) error {
 // turn.
 func madMageTwistedCaverns(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -343,18 +343,18 @@ var madWizardsLairAfterDraw = game.RegisterDrawThen("dungeon/mad-wizards-lair", 
 	// The keyed free-cast offer (free_hand_cast.go, #4246), so a table
 	// waiting on it is a restore point. It offers the drawn cards with a
 	// spell to cast, face by face (#4509): a land is never one.
-	offerFreeHandCastOver(g, d.Player, d.Source, madWizardsLairFreeCast,
-		"Mad Wizard's Lair — cast one of them without paying its mana cost?", anySpell, drawn)
+	OfferFreeHandCastOver(g, d.Player, d.Source, madWizardsLairFreeCast,
+		"Mad Wizard's Lair — cast one of them without paying its mana cost?", AnySpell, drawn)
 	return nil
 })
 
 // madWizardsLairFreeCast is the room's free-cast offer, keyed (#4246).
-var madWizardsLairFreeCast = registerFreeHandCastOffer("choose-cards/mad-wizards-lair-cast", dungeonOfTheMadMageName)
+var madWizardsLairFreeCast = RegisterFreeHandCastOffer("choose-cards/mad-wizards-lair-cast", dungeonOfTheMadMageName)
 
 // tombTrappedEntry: each player loses 1 life.
 func tombTrappedEntry(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, id := range apnapPlayers(g) {
+	for _, id := range ApnapPlayers(g) {
 		if err := g.ChangePlayerLifeForEffect(ctx.Source(), id, -1); err != nil {
 			return err
 		}
@@ -384,7 +384,7 @@ func tombSandfallSpec() *game.TargetSpec {
 // 101.4) chooses, knowing the choices made before theirs.
 func tombUnlessRoom(kind tombUnless) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		return tombUnlessStep(NewContext(g, item), kind, apnapPlayers(g))
+		return tombUnlessStep(NewContext(g, item), kind, ApnapPlayers(g))
 	}
 }
 
@@ -453,13 +453,13 @@ func init() {
 	tombSandfallSacrificed = RunThen("prompt-run/tomb-of-annihilation-sandfall-sacrificed", func(ctx *Context, r game.RunDone) error {
 		return tombUnlessStep(ctx, tombSandfall, r.Carry)
 	})
-	oublietteSacrificed[0] = RunThen("prompt-run/tomb-of-annihilation-oubliette-creature", func(ctx *Context, _ game.RunDone) error {
+	OublietteSacrificed[0] = RunThen("prompt-run/tomb-of-annihilation-oubliette-creature", func(ctx *Context, _ game.RunDone) error {
 		return oublietteSacrifice(ctx, 1)
 	})
-	oublietteSacrificed[1] = RunThen("prompt-run/tomb-of-annihilation-oubliette-artifact", func(ctx *Context, _ game.RunDone) error {
+	OublietteSacrificed[1] = RunThen("prompt-run/tomb-of-annihilation-oubliette-artifact", func(ctx *Context, _ game.RunDone) error {
 		return oublietteSacrifice(ctx, 2)
 	})
-	oublietteSacrificed[2] = RunThen("prompt-run/tomb-of-annihilation-oubliette-land", func(ctx *Context, _ game.RunDone) error {
+	OublietteSacrificed[2] = RunThen("prompt-run/tomb-of-annihilation-oubliette-land", func(ctx *Context, _ game.RunDone) error {
 		return oublietteSacrifice(ctx, 3)
 	})
 }
@@ -470,7 +470,7 @@ var tombVeilsDiscarded = game.RegisterDiscardThen("choose-cards/tomb-of-annihila
 	if len(r.Carry) == 0 {
 		return nil
 	}
-	return tombUnlessStep(keyedContext(g, r.Carry[0], r.Source), tombVeils, r.Carry[1:])
+	return tombUnlessStep(KeyedContext(g, r.Carry[0], r.Source), tombVeils, r.Carry[1:])
 })
 
 // tombUnlessAnswered applies one player's answer and asks the next. A
@@ -521,7 +521,7 @@ var tombSandfallSacrificed game.PromptRunThen
 // artifact creature taken as the creature is gone before the artifact
 // is chosen, and a player with nothing of a kind skips it (CR 701.21a).
 // The discard is asked beside them; nothing waits on it.
-func tombOubliette(g *game.Game, item *game.StackItem) error {
+func TombOubliette(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	you := item.Controller
 	if p := g.PlayerByIDForEffect(you); p != nil && p.Hand != nil && p.Hand.Size() > 0 {
@@ -549,7 +549,7 @@ var oublietteSacrifices = []struct {
 // oublietteSacrificed is the keyed step after each of the three
 // sacrifices (#4290): the run's continuation asks the next one. Registered
 // in init because each asks the next, which names the keys again.
-var oublietteSacrificed [3]game.PromptRunThen
+var OublietteSacrificed [3]game.PromptRunThen
 
 // oublietteSacrifice asks for Oubliette's i-th sacrifice and, once it
 // has settled, the next.
@@ -559,5 +559,5 @@ func oublietteSacrifice(ctx *Context, i int) error {
 	}
 	s := oublietteSacrifices[i]
 	return ctx.SacrificeThen(ctx.Controller(), TargetPermanent(s.label, s.pred()),
-		"Tomb of Annihilation — Oubliette: sacrifice "+s.label, 1, oublietteSacrificed[i])
+		"Tomb of Annihilation — Oubliette: sacrifice "+s.label, 1, OublietteSacrificed[i])
 }

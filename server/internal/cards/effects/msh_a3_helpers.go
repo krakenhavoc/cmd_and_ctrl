@@ -6,17 +6,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cards (#4455). Every package-level name carries the mshA3 prefix.
 
 // mshA3PlanCounter is the counter kind of the Plan enchantments.
-const mshA3PlanCounter = "plan"
+const MshA3PlanCounter = "plan"
 
 // mshA3PlanCounterReaches is "when the Nth plan counter is put on this
 // enchantment": a plan-counter placement on the source whose new total
 // reaches n from below, so a counter put on above n, or a placement that
 // starts above n, fires nothing (Construct a Cosmic Cube's seventh).
-func mshA3PlanCounterReaches(n int) When {
+func MshA3PlanCounterReaches(n int) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		if ev.Kind != game.EventCounterPlaced || ev.Target != source.InstanceID || ev.Label != mshA3PlanCounter || ev.Amount < n {
+		if ev.Kind != game.EventCounterPlaced || ev.Target != source.InstanceID || ev.Label != MshA3PlanCounter || ev.Amount < n {
 			return false
 		}
-		return b12CounterTotalBefore(ev, g) < n
+		return B12CounterTotalBefore(ev, g) < n
 	}
 }

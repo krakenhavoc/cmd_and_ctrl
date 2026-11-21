@@ -1,0 +1,41 @@
+package cardsn
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Nutrient Block — Artifact {1} (Edge of Eternities):
+//
+//	"Indestructible (Effects that say "destroy" don't destroy this
+//	 artifact.)
+//	 {2}, {T}, Sacrifice this artifact: You gain 3 life.
+//	 When this artifact is put into a graveyard from the battlefield,
+//	 draw a card."
+//
+// Chromatic Star's shape with a life-gain ability: the activation's three
+// cost parts are paid together, and the draw is a leaves-for-the-
+// graveyard trigger on the artifact itself, so it fires however the
+// artifact got there (sacrificed to this ability, to another effect, or
+// state-based). Indestructible is the printed keyword, read through the
+// layers.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "04a0382f-7e4e-4450-ae70-18999379d875",
+		Name:            "Nutrient Block",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"indestructible"},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    effects.Plus(effects.ManaCost("{2}"), effects.TapCost(), effects.SacrificeThis()),
+			Effect:  effects.Do(effects.GainLife{Amount: 3}),
+		}},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisDies("Nutrient Block — draw a card", effects.Do(effects.DrawCards{N: 1})),
+		},
+	})
+}

@@ -1,0 +1,71 @@
+package cardsr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Rhystic Study — Enchantment for {2}{U}:
+//
+//	"Whenever an opponent casts a spell, you may draw a card unless
+//	that player pays {1}."
+//
+// S19 sub-PR 6: the first cast trigger on the auto-fire pipeline,
+// and the first pay-unless card. EventCast carries the caster in
+// Actor; AppliesTo gates on Actor != Controller. The trigger goes
+// on the stack; on resolution it asks the caster "pay {1}?" via
+// PayUnless. Declining (or answering yes without the mana) asks the
+// Study's controller a second, independent question — "draw a
+// card?" — via MayChoice (#796), which is exactly the "you may [do
+// X] mid-resolution" primitive this needed: the decision comes
+// after the caster's answer, addressed to a different seat, neither
+// a search nor a cost the engine already prompts for. A controller
+// with an empty library can decline and stay alive; declining a
+// "you may draw" that would kill you is a real line in paper and
+// now a real choice here.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "53236dd7-845a-444c-96d5-f41ed7325d8f",
+		Name:         "Rhystic Study",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventCast},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Actor != source.Controller
+			},
+			Key: "Rhystic Study — draw unless caster pays {1}",
+			// What a decline gives the Study's controller (ADR 0126 §6):
+			// the card a tax-paying bot weighs (ADR 0136, 2026-10-09).
+			Purpose: game.Purpose{Draws: 1},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := effects.NewContext(g, item)
+				return effects.PayUnless{
+					Chooser:  ctx.Trigger().Event.Actor,
+					Cost:     "{1}",
+					Question: "Rhystic Study — pay {1}?",
+					Else:     RhysticStudyDecline,
+				}.Apply(ctx)
+			},
+		}},
+	})
+}
+
+// rhysticStudyDecline is "you may draw a card" once the tax is not paid,
+// keyed (#4256): a table waiting on the payer is a restore point.
+var RhysticStudyDecline = effects.PayUnlessElse("pay-unless/rhystic-study-may-draw", func(ctx *effects.Context, _ game.PayUnlessAnswer) error {
+	return effects.MayChoice{
+		Question: "Rhystic Study — draw a card?",
+		Draws:    1,
+		Then:     RhysticStudyDraw,
+	}.Apply(ctx)
+})
+
+// rhysticStudyDraw is the Study's controller's answer to "draw a card?",
+// keyed (#4264): a table waiting on it is a restore point.
+var RhysticStudyDraw = effects.MayAnswer("confirm/rhystic-study-draw", func(ctx *effects.Context, r game.ConfirmAnswer) error {
+	if !r.Accepted {
+		return nil
+	}
+	return effects.DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

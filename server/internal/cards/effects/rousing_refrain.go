@@ -38,19 +38,19 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (AddMana{
 				Player: item.Controller,
-				Amount: ManaN(b14HandSize(ctx.Game, TargetedPlayer(ctx)), "R"),
+				Amount: ManaN(B14HandSize(ctx.Game, TargetedPlayer(ctx)), "R"),
 				Riders: []game.ManaSpendRider{KeepManaUntilEndOfTurn()},
 			}).Apply(ctx); err != nil {
 				return err
 			}
-			return ExileTarget{Target: item.SourceCardID, ThenTail: ctx.ItemTail(rousingRefrainSuspended)}.Apply(ctx)
+			return ExileTarget{Target: item.SourceCardID, ThenTail: ctx.ItemTail(RousingRefrainSuspended)}.Apply(ctx)
 		},
 	})
 }
 
 // rousingRefrainSuspended is "with three time counters on it": the card
 // that reached exile is suspended. An on-disk key.
-var rousingRefrainSuspended = CardTail("rousing-refrain/three-time-counters", func(ctx *Context, o game.TailOutcome) error {
+var RousingRefrainSuspended = CardTail("rousing-refrain/three-time-counters", func(ctx *Context, o game.TailOutcome) error {
 	for _, id := range o.IDs {
 		if err := ctx.Game.AddCounterByForEffect(ctx.Controller(), id, game.CounterTime, 3); err != nil {
 			return err

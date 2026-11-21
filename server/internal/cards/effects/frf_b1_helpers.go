@@ -17,18 +17,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // reads its one colour. `a` and `b` are mana letters ("R", "W").
 func frfYouControlEither(a, b string) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(_ *game.Card, g *game.Game, source *game.Card) bool {
-		return b18ControlsPermanentOfColor(g, source.Controller, source.TextColor(a)) ||
-			b18ControlsPermanentOfColor(g, source.Controller, source.TextColor(b))
+		return B18ControlsPermanentOfColor(g, source.Controller, source.TextColor(a)) ||
+			B18ControlsPermanentOfColor(g, source.Controller, source.TextColor(b))
 	}
 }
 
 // frfSelfWhileYouControlEither is the AppliesTo of "This creature <has/gets
 // …> as long as you control a <colour> or <colour> permanent": the source
 // alone, while it is a creature and frfYouControlEither holds.
-func frfSelfWhileYouControlEither(a, b string) func(target *game.Card, g *game.Game, source *game.Card) bool {
+func FrfSelfWhileYouControlEither(a, b string) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	either := frfYouControlEither(a, b)
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return selfCreature(target, g, source) && either(target, g, source)
+		return SelfCreature(target, g, source) && either(target, g, source)
 	}
 }
 
@@ -37,7 +37,7 @@ func frfSelfWhileYouControlEither(a, b string) func(target *game.Card, g *game.G
 // permanent." The pump is layer 7c, the keyword layer 6, and the condition
 // is re-read on every recompute, so the keyword comes and goes with the
 // coloured permanents while the pump stays.
-func frfRunemark(keyword, a, b string) []game.StaticAbility {
+func FrfRunemark(keyword, a, b string) []game.StaticAbility {
 	return []game.StaticAbility{
 		PumpAttached(2, 2),
 		GrantToAttachedWhile(frfYouControlEither(a, b), keyword),

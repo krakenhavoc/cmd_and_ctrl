@@ -37,7 +37,7 @@ func init() {
 // nontokenCreaturesDiedThisTurn counts the nontoken creatures that died
 // this turn, any controller.
 func nontokenCreaturesDiedThisTurn(g *game.Game) int {
-	return nontokenCreaturesDiedThisTurnOwnedBy(g, uuid.Nil)
+	return NontokenCreaturesDiedThisTurnOwnedBy(g, uuid.Nil)
 }
 
 // nontokenCreaturesDiedThisTurnOwnedBy is nontokenCreaturesDiedThisTurn
@@ -45,14 +45,14 @@ func nontokenCreaturesDiedThisTurn(g *game.Game) int {
 // put into its owner's graveyard (CR 400.3), so with an owner it is
 // "nontoken creatures put into your graveyard from the battlefield this
 // turn" (Caller of the Claw), counting a card that has since left it.
-func nontokenCreaturesDiedThisTurnOwnedBy(g *game.Game, owner uuid.UUID) int {
+func NontokenCreaturesDiedThisTurnOwnedBy(g *game.Game, owner uuid.UUID) int {
 	n := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 			continue
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		if !ok || c.IsToken() || !leftAsType(ev, c, "creature") {
+		if !ok || c.IsToken() || !LeftAsType(ev, c, "creature") {
 			continue
 		}
 		if owner != uuid.Nil && c.Owner != owner {

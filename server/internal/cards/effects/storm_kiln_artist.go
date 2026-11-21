@@ -39,7 +39,7 @@ func init() {
 				return target.InstanceID == source.InstanceID
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				c.Power += artifactsControlledBy(g, source)
+				c.Power += ArtifactsControlledBy(g, source)
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
@@ -57,7 +57,7 @@ func init() {
 // pass, so the effective type set is settled by the time this
 // reads it). Runs inside a layer recompute, so it walks the live
 // battlefield slice rather than taking a copy.
-func artifactsControlledBy(g *game.Game, source *game.Card) int {
+func ArtifactsControlledBy(g *game.Game, source *game.Card) int {
 	n := 0
 	for i := range g.Battlefield.Cards {
 		other := &g.Battlefield.Cards[i]

@@ -33,16 +33,16 @@ import (
 // var.
 func CardTail(key string, body func(ctx *Context, o game.TailOutcome) error) game.TailRef {
 	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
-		return body(tailContext(g, o.Tail), o)
+		return body(TailContext(g, o.Tail), o)
 	})
 }
 
 // tailContext is the Context a card's keyed tail runs against.
-func tailContext(g *game.Game, t game.KeyedTail) *Context {
+func TailContext(g *game.Game, t game.KeyedTail) *Context {
 	if item := t.Asked.StackItem(); item != nil {
 		return NewContext(g, item)
 	}
-	return keyedContext(g, t.Player, t.Source)
+	return KeyedContext(g, t.Player, t.Source)
 }
 
 // Tail is a keyed "then" for ref with this effect's controller and
@@ -60,7 +60,7 @@ func (c *Context) TailN(ref game.TailRef, n int) game.KeyedTail {
 }
 
 // withN sets the number the tail's body reads.
-func withN(t game.KeyedTail, n int) game.KeyedTail {
+func WithN(t game.KeyedTail, n int) game.KeyedTail {
 	t.N = n
 	return t
 }
@@ -93,7 +93,7 @@ func EnteredTail(key string, body func(ctx *Context, entered uuid.UUID, o game.T
 }
 
 // withWord sets the word the tail's body reads.
-func withWord(t game.KeyedTail, w string) game.KeyedTail {
+func WithWord(t game.KeyedTail, w string) game.KeyedTail {
 	t.Word = w
 	return t
 }
@@ -103,7 +103,7 @@ func withWord(t game.KeyedTail, w string) game.KeyedTail {
 // Mardu Charm's first strike): the keyword is the tail's Word, any more
 // keywords its Words (Mardu Monument's "menace and haste"), and the
 // effect's label the source card's name. An on-disk key.
-var thenCreatedGainKeywordUntilEOT = CardTail("then/created-gain-keyword-until-eot", func(ctx *Context, o game.TailOutcome) error {
+var ThenCreatedGainKeywordUntilEOT = CardTail("then/created-gain-keyword-until-eot", func(ctx *Context, o game.TailOutcome) error {
 	label := ""
 	if c, ok := ctx.Game.LookupCardForEffect(o.Tail.Source); ok {
 		label = c.Name
@@ -123,7 +123,7 @@ var thenCreatedGainKeywordUntilEOT = CardTail("then/created-gain-keyword-until-e
 // the Suspect primitive, whose #1432 guard would read an ability whose
 // source IS the card that came back as the old object reaching the new
 // one. An on-disk key.
-var thenSuspectEach = game.RegisterTail("then/suspect-each", func(g *game.Game, o game.TailOutcome) error {
+var ThenSuspectEach = game.RegisterTail("then/suspect-each", func(g *game.Game, o game.TailOutcome) error {
 	for _, id := range o.IDs {
 		g.SuspectForEffect(id)
 	}
@@ -131,30 +131,30 @@ var thenSuspectEach = game.RegisterTail("then/suspect-each", func(g *game.Game, 
 })
 
 // thenShuffle is "then shuffle", Tail.Player's library. An on-disk key.
-var thenShuffle = game.RegisterTail("then/shuffle", func(g *game.Game, o game.TailOutcome) error {
+var ThenShuffle = game.RegisterTail("then/shuffle", func(g *game.Game, o game.TailOutcome) error {
 	return g.ShuffleLibraryForEffect(o.Tail.Player)
 })
 
 // thenDrawCards is "then draw N cards", Tail.N of them, for Tail.Player.
 // An on-disk key.
-var thenDrawCards = game.RegisterTail("then/draw-n-cards", func(g *game.Game, o game.TailOutcome) error {
+var ThenDrawCards = game.RegisterTail("then/draw-n-cards", func(g *game.Game, o game.TailOutcome) error {
 	return g.DrawNForEffect(o.Tail.Player, o.Tail.N)
 })
 
 // thenChangeLife is "you gain N life" (N > 0) or "you lose N life"
 // (N < 0), Tail.Player's life, attributed to Tail.Source. An on-disk key.
-var thenChangeLife = game.RegisterTail("then/change-life", func(g *game.Game, o game.TailOutcome) error {
+var ThenChangeLife = game.RegisterTail("then/change-life", func(g *game.Game, o game.TailOutcome) error {
 	return g.ChangePlayerLifeForEffect(o.Tail.Source, o.Tail.Player, o.Tail.N)
 })
 
 // thenDiscardAtRandom is "then discard N cards at random", Tail.N of
 // Tail.Player's. An on-disk key.
-var thenDiscardAtRandom = game.RegisterTail("then/discard-at-random", func(g *game.Game, o game.TailOutcome) error {
+var ThenDiscardAtRandom = game.RegisterTail("then/discard-at-random", func(g *game.Game, o game.TailOutcome) error {
 	return g.DiscardRandomForEffect(o.Tail.Player, o.Tail.N)
 })
 
 // thenGetEnergy is "you get N {E}", Tail.Player's. An on-disk key.
-var thenGetEnergy = game.RegisterTail("then/get-energy", func(g *game.Game, o game.TailOutcome) error {
+var ThenGetEnergy = game.RegisterTail("then/get-energy", func(g *game.Game, o game.TailOutcome) error {
 	return g.AddPlayerCounterByForEffect(o.Tail.Player, o.Tail.Player, game.CounterEnergy, o.Tail.N)
 })
 

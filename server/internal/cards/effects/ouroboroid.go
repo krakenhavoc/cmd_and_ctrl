@@ -42,7 +42,7 @@ func init() {
 
 func ouroboroidCombatCounters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	x, ok := ouroboroidPower(g, ctx)
+	x, ok := OuroboroidPower(g, ctx)
 	if !ok {
 		return nil
 	}
@@ -53,7 +53,7 @@ func ouroboroidCombatCounters(g *game.Game, item *game.StackItem) error {
 		if c.Controller != item.Controller || !c.IsCreature() {
 			continue
 		}
-		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: x}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: x}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -65,7 +65,7 @@ func ouroboroidCombatCounters(g *game.Game, item *game.StackItem) error {
 // item with no source object stamped (a restore point written before
 // StackItem.SourceObject existed) falls back to the card on the
 // battlefield, if it is there.
-func ouroboroidPower(g *game.Game, ctx *Context) (int, bool) {
+func OuroboroidPower(g *game.Game, ctx *Context) (int, bool) {
 	if info, ok := ctx.SourcePermanent(); ok {
 		return info.Power, true
 	}

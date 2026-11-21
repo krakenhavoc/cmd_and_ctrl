@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // pairsSpent is the number of times "{C}{C}" was spent: "for each {U}{U}
 // spent to cast it" counts pairs, so four blue mana is two of them (the
 // same reading as Deceit's "{U}{U} was spent", per pair rather than once).
-func pairsSpent(m game.ManaSpent, color string) int { return m.Count(color) / 2 }
+func PairsSpent(m game.ManaSpent, color string) int { return m.Count(color) / 2 }
 
 // WhenThisEntersForEachPairSpent is "When this creature enters, for each
 // {C}{C} spent to cast it, <effect>": the pairs are counted as the
@@ -21,7 +21,7 @@ func WhenThisEntersForEachPairSpent(color, label string, effect Effect) game.Tri
 	t := WhenThisEnters(label, effect)
 	t.Build = func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 		item := game.NewTriggeredItem(source, label)
-		item.Params.Amount = pairsSpent(source.ManaSpentToCast(), color)
+		item.Params.Amount = PairsSpent(source.ManaSpentToCast(), color)
 		return item
 	}
 	return t
@@ -71,13 +71,13 @@ func (s DrawForEach) footprints() ([]game.FootprintStep, bool) {
 	if s.Count == nil {
 		return nil, false
 	}
-	step, _ := DrawCards{N: 1}.footprint()
-	return []game.FootprintStep{condStep(game.FootprintCondBoard, 0), step}, true
+	step, _ := DrawCards{N: 1}.Footprint()
+	return []game.FootprintStep{CondStep(game.FootprintCondBoard, 0), step}, true
 }
 
 // itemPairsSpent is the pair count WhenThisEntersForEachPairSpent put on
 // the item.
-func itemPairsSpent(ctx *Context) int {
+func ItemPairsSpent(ctx *Context) int {
 	if ctx.Item == nil {
 		return 0
 	}

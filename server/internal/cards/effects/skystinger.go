@@ -24,9 +24,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBlock, skystingerBlockedAFlier,
+			On(game.EventBlock, SkystingerBlockedAFlier,
 				"Skystinger — +5/+0 until end of turn",
-				thisGetsUntilEndOfTurn(5, 0, "Skystinger — +5/+0 until end of turn")),
+				ThisGetsUntilEndOfTurn(5, 0, "Skystinger — +5/+0 until end of turn")),
 		},
 	})
 }
@@ -34,7 +34,7 @@ func init() {
 // skystingerBlockedAFlier is "this creature blocks a creature with
 // flying": the block pair names this creature as the blocker and an
 // attacker that has flying.
-func skystingerBlockedAFlier(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SkystingerBlockedAFlier(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.CardID != source.InstanceID {
 		return false
 	}

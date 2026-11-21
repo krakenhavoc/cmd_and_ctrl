@@ -15,7 +15,7 @@ import (
 // counted once per English name (socB23DifferentlyNamedLands, read off a
 // CostQuery instead of a resolving item). The live battlefield, so an
 // animated or type-changed land counts by its effective types.
-func trekB5DifferentlyNamedLandsYouControl() func(q game.CostQuery) int {
+func TrekB5DifferentlyNamedLandsYouControl() func(q game.CostQuery) int {
 	return func(q game.CostQuery) int {
 		if q.Game == nil || q.Game.Battlefield == nil {
 			return 0
@@ -33,9 +33,9 @@ func trekB5DifferentlyNamedLandsYouControl() func(q game.CostQuery) int {
 // trekB5CountersOnThis is the number of `kind` counters on the source of a
 // resolving ability: live while it is on the battlefield, its last-known
 // counters once it has left (CR 608.2h).
-func trekB5CountersOnThis(g *game.Game, source uuid.UUID, kind string) int {
+func TrekB5CountersOnThis(g *game.Game, source uuid.UUID, kind string) int {
 	if z := g.FindCardZoneForEffect(source); z != nil && z.Kind == game.ZoneBattlefield {
-		return b39CountersOn(g, source, kind)
+		return B39CountersOn(g, source, kind)
 	}
 	return g.LastKnownCountersForEffect(source)[kind]
 }

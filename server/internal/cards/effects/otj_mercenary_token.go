@@ -16,14 +16,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controller's control this turn can't pay it.
 
 // MercenaryToken is the Outlaws of Thunder Junction Mercenary.
-func MercenaryToken() game.Card { return tokenFromCatalog(printedMercenaryToken) }
+func MercenaryToken() game.Card { return TokenFromCatalog(printedMercenaryToken) }
 
 // printedMercenaryToken is the Mercenary as PRINTED.
 //
 // No Purpose.Answers: the row is sorcery speed and always names a
 // target, the shape ADR 0142 leaves undeclared.
-func printedMercenaryToken() tokenTemplate {
-	return tokenTemplate{
+func printedMercenaryToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "mercenary",
 		Card: game.Card{
 			Name:      "Mercenary",
@@ -38,11 +38,11 @@ func printedMercenaryToken() tokenTemplate {
 			Cost:         game.AbilityCost{Tap: true},
 			Targets:      TargetCreature("target creature you control", YouControl()),
 			SorcerySpeed: true,
-			Effect:       boostTargetUntilEOT("Mercenary — +1/+0", 1, 0),
+			Effect:       BoostTargetUntilEOT("Mercenary — +1/+0", 1, 0),
 		}},
 	}
 }
 
 // createAMercenary is "create a 1/1 red Mercenary creature token with …"
 // as an ability's whole effect, under the ability's controller.
-func createAMercenary() Effect { return Do(CreateToken{Template: MercenaryToken(), N: 1}) }
+func CreateAMercenary() Effect { return Do(CreateToken{Template: MercenaryToken(), N: 1}) }

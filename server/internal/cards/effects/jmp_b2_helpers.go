@@ -13,7 +13,7 @@ import (
 // so the life loss still lands when the creature is indestructible or
 // regenerated, and the spell does nothing when its target is gone
 // (CR 608.2b).
-func jmpB2DestroyTargetCreatureItsControllerLosesTwo(_ *game.StackItem, ctx *Context) error {
+func JmpB2DestroyTargetCreatureItsControllerLosesTwo(_ *game.StackItem, ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		c, ok := ctx.Game.LookupCardForEffect(t.ID)
 		if !ok {
@@ -33,7 +33,7 @@ func jmpB2DestroyTargetCreatureItsControllerLosesTwo(_ *game.StackItem, ctx *Con
 // its mana cost" (Scourge of Nel Toth): SacrificeInstead's sacrifice, a
 // printed mana price, and bound to the graveyard, so a cast from hand may
 // not claim it and a cast from the graveyard must.
-func jmpB2CastFromGraveyardBySacrificing(mana string, n int, label string, preds ...CardPredicate) game.AlternativeCost {
+func JmpB2CastFromGraveyardBySacrificing(mana string, n int, label string, preds ...CardPredicate) game.AlternativeCost {
 	ac := SacrificeInstead(n, label, 0, preds...)
 	ac.Key = "graveyard_sacrifice"
 	ac.Label = "Cast this card from your graveyard by paying " + mana + " and sacrificing " + label

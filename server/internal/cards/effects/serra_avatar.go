@@ -35,7 +35,7 @@ func init() {
 
 // yourLifeTotal is the life total of `source`'s controller, or of its
 // owner when it has none (CR 108.4a); 0 when that player is gone.
-func yourLifeTotal(g *game.Game, source *game.Card) int {
+func YourLifeTotal(g *game.Game, source *game.Card) int {
 	you := source.Controller
 	if you == uuid.Nil {
 		you = source.Owner

@@ -30,14 +30,14 @@ func init() {
 				Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1},
 				Cost:    LoyaltyCost(2),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return CreateToken{Template: tokenFromCatalog(printedC14ElfDruidToken), N: 1}.Apply(NewContext(g, item))
+					return CreateToken{Template: TokenFromCatalog(printedC14ElfDruidToken), N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
 				Label:   "−2: Destroy target artifact or enchantment.",
 				Cost:    LoyaltyCost(-2),
 				Targets: TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-				Effect:  destroyFirstLegalTarget,
+				Effect:  DestroyFirstLegalTarget,
 			},
 			{
 				Label: "−6: Draw a card for each green creature you control.",
@@ -57,8 +57,8 @@ func init() {
 // printedC14ElfDruidToken is Freyalise's 1/1 green Elf Druid creature token
 // with "{T}: Add {G}." (Commander 2014's token). Its slug is an on-disk
 // identity.
-func printedC14ElfDruidToken() tokenTemplate {
-	return tokenTemplate{
+func printedC14ElfDruidToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "elf-druid-tap-g",
 		Card: game.Card{
 			Name:      "Elf Druid",

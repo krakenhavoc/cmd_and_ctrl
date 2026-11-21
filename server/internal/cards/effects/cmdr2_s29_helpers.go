@@ -9,7 +9,7 @@ import (
 // card types on the cards' type lines, counted as b16CardTypesInGraveyard does.
 // It is a function of the cards alone and captures nothing, as a registered
 // set rule must.
-func cmdr2S29FourCardTypes(picked []game.Card) bool {
+func Cmdr2S29FourCardTypes(picked []game.Card) bool {
 	seen := map[string]bool{}
 	for _, c := range picked {
 		_, types, _ := game.ParseTypeLine(c.TypeLine)

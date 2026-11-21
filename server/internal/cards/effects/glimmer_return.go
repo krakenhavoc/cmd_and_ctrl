@@ -44,7 +44,7 @@ import (
 // the card named `name`.
 func WhenThisDiesReturnItAsAnEnchantment(name string) game.TriggeredAbility {
 	return On(game.EventLTB, func(ev game.Event, source *game.Card, lki game.Characteristic, _ *game.Game) bool {
-		return cardDied(ev, source) && keywordSliceContains(lki.Types, "Creature")
+		return CardDied(ev, source) && KeywordSliceContains(lki.Types, "Creature")
 	}, name+" — return it to the battlefield; it's an enchantment, not a creature",
 		returnItAsAnEnchantment(name))
 }
@@ -59,7 +59,7 @@ func WhenThisDiesReturnItAsAnEnchantment(name string) game.TriggeredAbility {
 func returnItAsAnEnchantment(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		z := g.FindCardZoneForEffect(item.SourceCardID)
-		if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
+		if z == nil || z.Kind != game.ZoneGraveyard || !SameGraveyardObject(z, item) {
 			// CR 608.2b: something moved the card out of the graveyard
 			// in response, and the trigger has nothing left to bring
 			// back. Anything that came back since is a new object the

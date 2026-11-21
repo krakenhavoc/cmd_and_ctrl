@@ -38,10 +38,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclared(ev, source)
+				return AttackDeclared(ev, source)
 			}, "Conspiracy Theorist — you may pay {1} and discard a card; if you do, draw a card",
 				func(g *game.Game, item *game.StackItem) error {
-					if b14HandSize(g, item.Controller) == 0 {
+					if B14HandSize(g, item.Controller) == 0 {
 						return nil
 					}
 					return MayPay{
@@ -51,8 +51,8 @@ func init() {
 						Then:     conspiracyTheoristPaid,
 					}.Apply(NewContext(g, item))
 				}),
-			withAtBatchEnd(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return discardedByYou(ev, source) && conspiracyTheoristNonland(g, ev.CardID)
+			WithAtBatchEnd(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return DiscardedByYou(ev, source) && ConspiracyTheoristNonland(g, ev.CardID)
 			}, "Conspiracy Theorist — you may exile one of the discarded nonland cards; you may cast it this turn",
 				conspiracyTheoristExileOne), ThatManyEvents()),
 		},
@@ -77,12 +77,12 @@ var conspiracyTheoristDraw = game.RegisterDiscardThen("choose-cards/conspiracy-t
 	if !r.Discarded.Discarded(r.Player) {
 		return nil
 	}
-	return DrawCards{Player: r.Player, N: 1}.Apply(keyedContext(g, r.Player, r.Source))
+	return DrawCards{Player: r.Player, N: 1}.Apply(KeyedContext(g, r.Player, r.Source))
 })
 
 // conspiracyTheoristNonland says whether the discarded card is a nonland
 // card.
-func conspiracyTheoristNonland(g *game.Game, id uuid.UUID) bool {
+func ConspiracyTheoristNonland(g *game.Game, id uuid.UUID) bool {
 	c, ok := g.LookupCardForEffect(id)
 	return ok && !c.IsLand()
 }
@@ -125,7 +125,7 @@ func conspiracyTheoristDiscardedInBatch(g *game.Game, you uuid.UUID, trigger gam
 		if trigger.Batch == 0 && ev.Seq != trigger.Seq {
 			continue
 		}
-		if !conspiracyTheoristNonland(g, ev.CardID) || !conspiracyTheoristInGraveyardOf(g, you, ev.CardID) {
+		if !ConspiracyTheoristNonland(g, ev.CardID) || !conspiracyTheoristInGraveyardOf(g, you, ev.CardID) {
 			continue
 		}
 		left := false

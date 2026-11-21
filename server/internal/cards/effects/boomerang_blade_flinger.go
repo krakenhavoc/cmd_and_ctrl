@@ -22,15 +22,15 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, ThisAttacked,
 				"Boomerang, Blade Flinger — 1 damage to each opponent and gain 1 life",
-				Do(Instruction(boomerangPingAndGain))),
+				Do(Instruction(BoomerangPingAndGain))),
 		},
 	})
 }
 
 // boomerangPingAndGain is the attack trigger's body: one damage to every
 // opponent, then one life for the controller.
-func boomerangPingAndGain(ctx *Context) error {
-	if err := damageToEachOpponent(ctx.Game, ctx.Item, 1); err != nil {
+func BoomerangPingAndGain(ctx *Context) error {
+	if err := DamageToEachOpponent(ctx.Game, ctx.Item, 1); err != nil {
 		return err
 	}
 	return GainLife{Player: ctx.Controller(), Amount: 1}.Apply(ctx)

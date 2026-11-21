@@ -50,7 +50,7 @@ func init() {
 // spellMastery is "if there are two or more instant and/or sorcery
 // cards in your graveyard". Spell mastery is an ability word (CR 207.2c)
 // with no rules meaning of its own; the condition is the whole of it.
-func spellMastery(g *game.Game, player uuid.UUID) bool {
+func SpellMastery(g *game.Game, player uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return false
@@ -73,7 +73,7 @@ var animistsAwakeningRest = PutFromLibraryTail("animists-awakening/rest-then-unt
 		if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
 			return err
 		}
-		if !spellMastery(g, res.Player) {
+		if !SpellMastery(g, res.Player) {
 			return nil
 		}
 		for _, id := range res.Entered {

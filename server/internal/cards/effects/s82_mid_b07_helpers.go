@@ -14,7 +14,7 @@ import (
 // cost (game.HasFlashback); disturb is a canonical keyword the importer
 // carries, or the catalog's disturb cost. A keyword another effect granted
 // is not printed and does not count; a face-down card has neither.
-func hasFlashbackOrDisturb(c game.Card) bool {
+func HasFlashbackOrDisturb(c game.Card) bool {
 	if c.FaceDown {
 		return false
 	}
@@ -26,14 +26,14 @@ func hasFlashbackOrDisturb(c game.Card) bool {
 // Thraben Exorcism's "creature with disturb" and Phantom Carriage's and
 // Shipwreck Sifters' "card with flashback or disturb".
 func WithFlashbackOrDisturb() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hasFlashbackOrDisturb(c) }
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return HasFlashbackOrDisturb(c) }
 }
 
 // s82MidB07ExileUpToOneFromAGraveyard is the enters trigger of the two
 // scarecrow-and-hippogriff graveyard hate cards: "exile up to one target
 // card from a graveyard".
-func s82MidB07ExileUpToOneFromAGraveyard(name string) game.TriggeredAbility {
+func S82MidB07ExileUpToOneFromAGraveyard(name string) game.TriggeredAbility {
 	return Targeting(
-		WhenThisEnters(name+" — exile up to one target card from a graveyard", b27ExileChosenTarget),
+		WhenThisEnters(name+" — exile up to one target card from a graveyard", B27ExileChosenTarget),
 		TargetCardInGraveyard("up to one target card from a graveyard").WithCount(0, 1))
 }

@@ -34,7 +34,7 @@ func init() {
 			Cost:    Plus(ManaCost("{5}"), TapCost()),
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: Do(Instruction(func(ctx *Context) error {
-				return DrawCards{N: pipBobbleheadsYouControl(ctx.Game, ctx.Controller())}.Apply(ctx)
+				return DrawCards{N: PipBobbleheadsYouControl(ctx.Game, ctx.Controller())}.Apply(ctx)
 			})),
 		}},
 	})
@@ -43,6 +43,6 @@ func init() {
 // pipBobbleheadsYouControl is the Fallout Bobbleheads' "the number of
 // Bobbleheads you control": every permanent `player` controls with the
 // Bobblehead artifact subtype, the counting Bobblehead included.
-func pipBobbleheadsYouControl(g *game.Game, player uuid.UUID) int {
-	return countControlled(g, player, func(c game.Card) bool { return c.HasSubtype("Bobblehead") })
+func PipBobbleheadsYouControl(g *game.Game, player uuid.UUID) int {
+	return CountControlled(g, player, func(c game.Card) bool { return c.HasSubtype("Bobblehead") })
 }

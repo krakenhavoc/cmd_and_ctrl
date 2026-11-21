@@ -10,14 +10,14 @@ import (
 // (#5908). Keys are on-disk identities: never renamed, never reused.
 
 // rprB15SpellbombPaid is Nihil Spellbomb's paid branch: draw a card.
-var rprB15SpellbombPaid = PayUnlessBranches("pay-unless/nihil-spellbomb-draw",
+var RprB15SpellbombPaid = PayUnlessBranches("pay-unless/nihil-spellbomb-draw",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 	}, nil)
 
 // rprB15RestOnBottomAnyOrderTail is "put the rest on the bottom of your
 // library in any order" as a PutFromLibraryOntoBattlefield rider.
-var rprB15RestOnBottomAnyOrderTail = PutFromLibraryTail("put-from-library/rest-on-bottom-in-any-order-s82-rpr-b15",
+var RprB15RestOnBottomAnyOrderTail = PutFromLibraryTail("put-from-library/rest-on-bottom-in-any-order-s82-rpr-b15",
 	func(ctx *Context, res PutFromLibraryResult) error {
 		return TakeRestOnBottomInAnyOrder(ctx.Game, TakeFromLibraryResult{Player: res.Player, Source: res.Source, Rest: res.Rest})
 	})
@@ -25,7 +25,7 @@ var rprB15RestOnBottomAnyOrderTail = PutFromLibraryTail("put-from-library/rest-o
 // rprB15TargetExilesOwnGraveyardCard is Relic of Progenitus's "target
 // player exiles a card from their graveyard": the TARGET player chooses,
 // from their own graveyard, as the ability resolves.
-func rprB15TargetExilesOwnGraveyardCard(g *game.Game, item *game.StackItem) error {
+func RprB15TargetExilesOwnGraveyardCard(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var player uuid.UUID
 	for _, t := range ctx.LegalTargets() {
@@ -37,7 +37,7 @@ func rprB15TargetExilesOwnGraveyardCard(g *game.Game, item *game.StackItem) erro
 	if player == uuid.Nil {
 		return nil
 	}
-	cards := graveyardCardsOfPlayer(g, player)
+	cards := GraveyardCardsOfPlayer(g, player)
 	if len(cards) == 0 {
 		return nil
 	}
@@ -56,7 +56,7 @@ func rprB15TargetExilesOwnGraveyardCard(g *game.Game, item *game.StackItem) erro
 	return nil
 }
 
-var rprB15RelicExiled = askedPick("choose-cards/relic-of-progenitus-exile", func(ctx *Context, r game.CardsChosen) error {
+var rprB15RelicExiled = AskedPick("choose-cards/relic-of-progenitus-exile", func(ctx *Context, r game.CardsChosen) error {
 	for _, id := range r.Picked {
 		if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
 			return err
@@ -67,8 +67,8 @@ var rprB15RelicExiled = askedPick("choose-cards/relic-of-progenitus-exile", func
 
 // rprB15ExileAllGraveyardsThenDraw is Relic of Progenitus's second
 // ability: every seat's graveyard, yours too, then you draw a card.
-func rprB15ExileAllGraveyardsThenDraw(g *game.Game, item *game.StackItem) error {
-	if err := b02ExileAllGraveyards(g, item); err != nil {
+func RprB15ExileAllGraveyardsThenDraw(g *game.Game, item *game.StackItem) error {
+	if err := B02ExileAllGraveyards(g, item); err != nil {
 		return err
 	}
 	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
@@ -76,18 +76,18 @@ func rprB15ExileAllGraveyardsThenDraw(g *game.Game, item *game.StackItem) error 
 
 // rprB15FateCounter is the kind Oblivion Stone stamps. The game has no
 // constant for it: it is only a name on Card.Counters.
-const rprB15FateCounter = "fate"
+const RprB15FateCounter = "fate"
 
 // rprB15DestroyUnfatedThenClear is Oblivion Stone's second ability: destroy
 // each nonland permanent without a fate counter, then remove all fate
 // counters from all permanents. The permanents to clear are read AFTER the
 // destruction, so a survivor (indestructible, regenerated) loses its
 // counter as well.
-func rprB15DestroyUnfatedThenClear(g *game.Game, item *game.StackItem) error {
+func RprB15DestroyUnfatedThenClear(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if err := (DestroyAllMatching{
 		Match: And(Nonland(), func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-			return c.Counters[rprB15FateCounter] <= 0
+			return c.Counters[RprB15FateCounter] <= 0
 		}),
 	}).Apply(ctx); err != nil {
 		return err
@@ -98,12 +98,12 @@ func rprB15DestroyUnfatedThenClear(g *game.Game, item *game.StackItem) error {
 	}
 	var all []fated
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if n := c.Counters[rprB15FateCounter]; n > 0 {
+		if n := c.Counters[RprB15FateCounter]; n > 0 {
 			all = append(all, fated{c.InstanceID, n})
 		}
 	}
 	for _, f := range all {
-		if err := (AddCounter{Target: f.id, Kind: rprB15FateCounter, N: -f.n}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: f.id, Kind: RprB15FateCounter, N: -f.n}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

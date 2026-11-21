@@ -40,7 +40,7 @@ func Provoke() game.TriggeredAbility {
 // blocks the provoker this turn if able.
 func provokeUntapAndBlock(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -60,7 +60,7 @@ func provokeUntapAndBlock(g *game.Game, item *game.StackItem) error {
 // trigger's event names (the equipped creature), not the Equipment.
 func TargetBlocksTheAttacker(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -78,7 +78,7 @@ func TargetBlocksTheAttacker(g *game.Game, item *game.StackItem) error {
 // never does.
 func TargetBlocksThisCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

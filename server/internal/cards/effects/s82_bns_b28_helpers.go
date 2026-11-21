@@ -8,7 +8,7 @@ import (
 
 // s82BnsB28CountersOnYourCreatures totals the +1/+1 counters on the
 // creatures the ability's controller controls (Deepwood Denizen).
-func s82BnsB28CountersOnYourCreatures(q game.CostQuery) int {
+func S82BnsB28CountersOnYourCreatures(q game.CostQuery) int {
 	if q.Game == nil || q.Game.Battlefield == nil {
 		return 0
 	}
@@ -21,11 +21,11 @@ func s82BnsB28CountersOnYourCreatures(q game.CostQuery) int {
 	return n
 }
 
-var s82BnsB28DraugrToGraveyard = MayYes("s82-bns-b28/draugr-to-graveyard", putCarriedLibraryCardIntoGraveyard)
+var s82BnsB28DraugrToGraveyard = MayYes("s82-bns-b28/draugr-to-graveyard", PutCarriedLibraryCardIntoGraveyard)
 
 // s82BnsB28DraugrLook is "look at the top card of target player's
 // library. You may put that card into their graveyard."
-func s82BnsB28DraugrLook(g *game.Game, item *game.StackItem) error {
+func S82BnsB28DraugrLook(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var victim uuid.UUID
 	for _, t := range ctx.LegalTargets() {

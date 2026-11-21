@@ -31,7 +31,7 @@ func WheneverYouPutOneOrMoreCountersOnACreature(match func(g *game.Game, source 
 		if source == nil {
 			return false
 		}
-		if _, ok := b12CountersPlacedByYou(ev, source, g); !ok {
+		if _, ok := B12CountersPlacedByYou(ev, source, g); !ok {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.Target)
@@ -52,12 +52,12 @@ func counterTargetBatchKey(ev game.Event, _ *game.Card, _ *game.Game) string {
 
 // creatureYouDontControl is the match for "a creature you don't
 // control".
-func creatureYouDontControl(_ *game.Game, source *game.Card, c game.Card) bool {
+func CreatureYouDontControl(_ *game.Game, source *game.Card, c game.Card) bool {
 	return c.Controller != source.Controller && c.Controller != uuid.Nil
 }
 
 // creatureYouControl is the match for "a creature you control".
-func creatureYouControl(_ *game.Game, source *game.Card, c game.Card) bool {
+func CreatureYouControl(_ *game.Game, source *game.Card, c game.Card) bool {
 	return c.Controller == source.Controller && c.Controller != uuid.Nil
 }
 

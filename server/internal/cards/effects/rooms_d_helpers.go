@@ -16,7 +16,7 @@ import (
 // of `milled` that are still in the controller's graveyard. The Then
 // rebuilds its Context from the game the resolver hands back, the
 // contract every queued continuation follows.
-func mayTakeUpToFromAmongThem(ctx *Context, milled []uuid.UUID, max int, match CardPredicate, question string) error {
+func MayTakeUpToFromAmongThem(ctx *Context, milled []uuid.UUID, max int, match CardPredicate, question string) error {
 	player := ctx.Controller()
 	var candidates []uuid.UUID
 	for _, id := range milled {
@@ -48,7 +48,7 @@ func mayTakeUpToFromAmongThem(ctx *Context, milled []uuid.UUID, max int, match C
 
 // distinctDoorNames counts the different names among the unlocked
 // doors of the Rooms `player` controls (Promising Stairs).
-func distinctDoorNames(g *game.Game, player uuid.UUID) int {
+func DistinctDoorNames(g *game.Game, player uuid.UUID) int {
 	seen := map[string]bool{}
 	for _, n := range UnlockedDoorNamesYouControl(g, player) {
 		seen[n] = true
@@ -58,7 +58,7 @@ func distinctDoorNames(g *game.Game, player uuid.UUID) int {
 
 // mayTakeUpToFromMilled is the cards chosen going to the hand, keyed
 // (#4253): the asking item rides the prompt as data.
-var mayTakeUpToFromMilled = askedPick("choose-cards/rooms-d-take-up-to-from-milled", func(ctx *Context, r game.CardsChosen) error {
+var mayTakeUpToFromMilled = AskedPick("choose-cards/rooms-d-take-up-to-from-milled", func(ctx *Context, r game.CardsChosen) error {
 	for _, id := range r.Picked {
 		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
 			return err

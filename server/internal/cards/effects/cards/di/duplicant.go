@@ -1,0 +1,54 @@
+package cardsdi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Duplicant — Artifact Creature — Shapeshifter {6}, 2/4 (EDHREC rank
+// 2911):
+//
+//	"Imprint — When this creature enters, you may exile target
+//	 nontoken creature.
+//	 As long as a card exiled with this creature is a creature card,
+//	 this creature has the power, toughness, and creature types of
+//	 the last creature card exiled with it. It's still a
+//	 Shapeshifter."
+//
+// Colourless exile removal that wears what it ate. The imprint is an
+// optional targeted ETB (Springbloom Druid's prompt-then-pick
+// shape): the target is chosen when the trigger goes on the stack,
+// re-checked at resolution (CR 608.2b), and exiled by a LINKED exile
+// (ExileTarget.Linked, ADR 0155 §8): the card lands with
+// Card.ExiledWith naming this Duplicant object, and the link goes with
+// the card the moment it leaves exile. Two statics then read the LAST such card that is a creature card —
+// layer 4 replaces Duplicant's creature types with that card's plus
+// Shapeshifter, layer 7b sets its power and toughness to that
+// card's printed values (not a CDA: the ability is conditional, CR
+// 604.3a, so counters and anthems still apply on top). With nothing
+// exiled — or only a noncreature, which the target clause forbids
+// anyway — Duplicant stays a 2/4 Shapeshifter. A Duplicant that
+// leaves and returns is a new object with an empty record, as
+// printed.
+//
+// Both statics declare DependsOnExile (#3172), so the layers are re-read
+// when the imprinted card leaves exile for the hand, a library or the
+// stack, and Duplicant gives the borrowed body back at once. A move to the
+// battlefield or a graveyard already re-reads them.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "ea86abfa-6cab-4ef0-8463-34136fc25b59",
+		Name:         "Duplicant",
+		Completeness: effects.CompletenessFull,
+		Static:       effects.B27DuplicantStatics(),
+		Triggered: []game.TriggeredAbility{{
+			Watches:        []game.EventKind{game.EventETB},
+			AppliesTo:      effects.B06SelfETB,
+			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Duplicant — exile target nontoken creature?"},
+			Targets:        effects.TargetCreature("target nontoken creature", effects.Not(effects.IsTokenPredicate())),
+			Key:            effects.B27DuplicantLabel,
+			Effect:         effects.ExileLinkedTargetsEffect,
+		}},
+	})
+}

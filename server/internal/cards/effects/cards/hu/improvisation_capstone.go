@@ -1,0 +1,143 @@
+package cardshu
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Improvisation Capstone — Sorcery — Lesson {5}{R}{R}:
+//
+//	"Exile cards from the top of your library until you exile cards
+//	 with total mana value 4 or greater. You may cast any number of
+//	 spells from among them without paying their mana costs.
+//	 Paradigm (Then exile this spell. After you first resolve a spell
+//	 with this name, you may cast a copy of it from exile without
+//	 paying its mana cost at the beginning of each of your first main
+//	 phases.)"
+//
+// The body ships whole, in two halves.
+//
+// # The depth is a running total, not a count
+//
+// MillToZone{To: ZoneExile} with an Until predicate is exactly the
+// printed sentence: Until ends the run after the first card it
+// answers true for, so a closure that adds each card's mana value and
+// asks "am I at 4 yet" stops on the card that carries the total over
+// the line, and that card is exiled too. N is left at 0, which with
+// Until set means "no limit but the library" — a library that cannot
+// reach 4 exiles what it has, because "until" is satisfied by
+// exhaustion, and nobody loses for it (only a draw from an empty
+// library does, CR 104.3c).
+//
+// The IDs come back through the continuation rather than being
+// guessed at from a pre-count of the library. That is the difference
+// CR 400.7 cares about: a card a replacement sent somewhere else —
+// a commander taking the command zone, "if a card would be put into
+// exile, instead …" — never reached exile, so it is not one of the
+// cards the second sentence is about, and it is not granted.
+//
+// THE RUNNING TOTAL GETS IT RIGHT TOO, since #1159, and the caveat
+// this card shipped with (#1158) is gone. `Until` used to be answered
+// in millPlanLocked against the cards that came OFF the library,
+// before the CR 614 window had said where any of them went, so a
+// diverted commander's mana value still counted toward the 4 and could
+// end the run one card short. It is now answered in the routing loop
+// against the cards that LANDED, which is the same list the second
+// sentence reads — one rule, asked once. The plan is still the flat
+// list of IDs the batch body can proceed around (#529), because the
+// plan no longer carries the verdict.
+//
+// # The permission is per-object, and exactly what is printed
+//
+// Each exiled card gets its own ADR 0066 grant, stamped against that
+// card OBJECT at its current epoch. That is what "any number of
+// spells from among them" means: the grants are independent, casting
+// one does not touch the others, and a card that leaves exile and
+// comes back is a new object with nothing granted.
+//
+// Three fields carry the printed clause and no more than it:
+//
+//	Cost "{0}"   "without paying their mana costs". Empty would mean
+//	             "pay the printed cost", which is the opposite.
+//	CastOnly     "cast any number of SPELLS" — a land among them is
+//	             stranded, because playing a land is not casting
+//	             (CR 305.1, 116.2a).
+//	Indefinite   the card states no window, and CR 611.2a is that an
+//	             effect with no stated duration lasts indefinitely. It
+//	             would be an invention to stamp an end-of-turn expiry
+//	             the card does not print. The grant is still swept the
+//	             moment its object is no longer in exile wearing the
+//	             epoch it was granted at, so nothing here can leave a
+//	             card castable forever.
+//
+// No Timing is granted, so ordinary timing rules still apply on top:
+// the card says you MAY cast, not when, and a sorcery among them
+// waits for a main phase.
+//
+// There is no "grant instead of an inline cast" deviation to declare
+// here, the one Malcolm, Alluring Scoundrel and the madness cards
+// carry. Those cards print "cast it" and the engine offers a grant
+// instead; this card prints the permission itself, so a grant IS the
+// printed effect.
+//
+// # Paradigm
+//
+// The printed keyword, and the engine does the rest (game/paradigm.go,
+// #1866): the spell exiles itself as it resolves, and the first time
+// you resolve one, each of your precombat main phases for the rest of
+// the game offers you a free cast of a copy of it.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "fd4f0315-567a-4cc5-bc7e-88a9d2cee910",
+		Name:            "Improvisation Capstone",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{game.KeywordParadigm},
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			controller := item.Controller
+			return effects.MillToZone{
+				Player:   controller,
+				To:       game.ZoneExile,
+				Until:    effects.UntilTotalManaValueOf(improvisationCapstoneThreshold),
+				ThenTail: ctx.ItemTail(improvisationCapstoneMilled),
+			}.Apply(ctx)
+		},
+	})
+}
+
+// improvisationCapstoneThreshold is the printed "total mana value 4
+// or greater".
+const improvisationCapstoneThreshold = 4
+
+// improvisationCapstoneGrantCasts is the second sentence: one grant
+// per card that actually reached exile, each naming that one object.
+//
+// Captures nothing but IDs, so an undo replays it against the
+// restored game.
+func improvisationCapstoneGrantCasts(g *game.Game, controller, source uuid.UUID, exiled []uuid.UUID) {
+	for _, id := range exiled {
+		g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+			Player: controller,
+			// Named rather than filled in from wherever the card
+			// landed: a card that is not in exile is not one of
+			// "them", and the grant should be refused rather than
+			// follow it.
+			Zone:     game.ZoneExile,
+			Cost:     "{0}",
+			CastOnly: true,
+			Duration: game.IndefiniteDuration(),
+			Source:   source,
+			Label:    "Improvisation Capstone — cast it without paying its mana cost",
+		})
+	}
+}
+
+// improvisationCapstoneMilled is the clause after the mill (#4253 slice 9).
+var improvisationCapstoneMilled = effects.CardTail("improvisation-capstone/after-mill", func(ctx *effects.Context, o game.TailOutcome) error {
+	controller, source := ctx.Controller(), ctx.Source()
+	exiled := o.IDs
+
+	improvisationCapstoneGrantCasts(ctx.Game, controller, source, exiled)
+	return nil
+})

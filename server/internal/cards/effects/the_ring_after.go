@@ -20,21 +20,21 @@ import (
 // the game the continuation is handed (the StackItem.Effect contract,
 // so an undo across the prompt lands on the restored game) and is
 // controlled by the item's controller.
-func ringTemptsYouNext(item *game.StackItem) func(*game.Game) error {
+func RingTemptsYouNext(item *game.StackItem) func(*game.Game) error {
 	return func(g *game.Game) error { return TheRingTemptsYou{}.Apply(NewContext(g, item)) }
 }
 
 // ringTemptsYouTail is ringTemptsYouNext as a registered tail (#4253 slice
 // 4), for a scry whose "then" is "the Ring tempts you": the item rides it
 // (Context.ItemTail). An on-disk key.
-var ringTemptsYouTail = CardTail("the-ring/tempts-you-next", func(ctx *Context, _ game.TailOutcome) error {
+var RingTemptsYouTail = CardTail("the-ring/tempts-you-next", func(ctx *Context, _ game.TailOutcome) error {
 	return TheRingTemptsYou{}.Apply(ctx)
 })
 
 // legalTargetIDs is the IDs of the item's targets that are still legal
 // as it resolves (CR 608.2b), in announce order: the list a batch
 // action takes.
-func legalTargetIDs(ctx *Context) []uuid.UUID {
+func LegalTargetIDs(ctx *Context) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		ids = append(ids, t.ID)
@@ -55,7 +55,7 @@ func AtYourEndStepIfACreatureDied(label string, effect Effect) game.TriggeredAbi
 	when := AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return aCreatureDiedUnderYourControlThisTurn(g, source.Controller)
 	})
-	if steps, ok := doStepsOf(effect); ok {
+	if steps, ok := DoStepsOf(effect); ok {
 		return On(game.EventBeginEndStep, when, label,
 			Do(If{Cond: CondCreatureDied{}, Then: steps}))
 	}

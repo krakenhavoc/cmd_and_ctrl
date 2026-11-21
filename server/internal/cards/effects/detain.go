@@ -40,11 +40,11 @@ type Detain struct {
 const detainRestrictions = game.CantAttackOrBlock | game.CantActivate | game.CantActivateMana
 
 func (d Detain) Apply(ctx *Context) error {
-	set := eotSnapshot(ctx, uuid.Nil, d.Match)
+	set := EotSnapshot(ctx, uuid.Nil, d.Match)
 	if set == nil {
 		return nil
 	}
-	ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), set.affectedObjects(),
+	ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), set.AffectedObjects(),
 		[]game.Mod{game.AddRestrictionsMod(detainRestrictions)},
 		DurationUntilYourNextTurn(ctx, ctx.Controller()),
 		eotLabel(d.Label, "detain"))

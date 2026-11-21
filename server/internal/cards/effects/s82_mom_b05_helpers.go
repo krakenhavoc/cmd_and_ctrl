@@ -31,7 +31,7 @@ func BackupAlso(name string, n int, grantKey string, mods []game.Mod, keywords .
 			if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: n}).Apply(ctx); err != nil {
 				return err
 			}
-			if t.ID == item.SourceCardID || !onBattlefield(g, t.ID) {
+			if t.ID == item.SourceCardID || !OnBattlefield(g, t.ID) {
 				return nil
 			}
 			also := append([]game.Mod(nil), mods...)
@@ -60,9 +60,9 @@ func BackupAlso(name string, n int, grantKey string, mods []game.Mod, keywords .
 // turn (Game.TimesPlusOneCountersPutThisTurn, written ahead of the
 // trigger harvester). The object is the event's target; the caller
 // judges whose permanent it is.
-func momB05PlusOneCountersFirstTimeThisTurn(ev game.Event, g *game.Game) bool {
+func MomB05PlusOneCountersFirstTimeThisTurn(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventCounterPlaced || ev.Target == uuid.Nil ||
-		b33CountersPlacedDelta(ev, game.CounterPlusOne, g) <= 0 {
+		B33CountersPlacedDelta(ev, game.CounterPlusOne, g) <= 0 {
 		return false
 	}
 	return g.TimesPlusOneCountersPutThisTurn(ev.Target) == 1

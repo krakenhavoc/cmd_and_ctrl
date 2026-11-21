@@ -34,10 +34,10 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice a Food: Return this card from your graveyard to the battlefield.",
 			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
-			Cost:    game.AbilityCost{SacrificeOther: sacrificeSpec("a Food", HasSubtype("Food"))},
+			Cost:    game.AbilityCost{SacrificeOther: SacrificeSpec("a Food", HasSubtype("Food"))},
 			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return returnThisFromGraveyardToBattlefield(g, item)
+				return ReturnThisFromGraveyardToBattlefield(g, item)
 			},
 		}},
 	})
@@ -48,7 +48,7 @@ func init() {
 // card from your graveyard to the battlefield," no "tapped" clause.
 // Cauldron Familiar is the first card to need it (#1381); package-level
 // for the same undo-safety reason every other Effect closure is.
-func returnThisFromGraveyardToBattlefield(g *game.Game, item *game.StackItem) error {
+func ReturnThisFromGraveyardToBattlefield(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	// CR 602.5 / 608.2a: the card may have left the graveyard between
 	// activation and resolution.

@@ -152,7 +152,7 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 		// #4250: the cast is made during the trigger's resolution (CR
 		// 608.2g), through the resolution_cast prompt over the exiled
 		// card; the decline leaves it in exile.
-		return exileWithPermissionThenOffer(g, battleID, battleID, game.CastPermission{
+		return ExileWithPermissionThenOffer(g, battleID, battleID, game.CastPermission{
 			Player:      item.Controller,
 			Cost:        "{0}",
 			CastOnly:    true,

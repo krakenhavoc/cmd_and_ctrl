@@ -85,7 +85,7 @@ func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural strin
 		// permanent that left in response has nothing to age and
 		// nothing to sacrifice, and its controller is not billed.
 		// Left and came back is the same answer (#1432, CR 400.7).
-		if !onBattlefield(g, source) || sourceIsNewObject(g, item) {
+		if !OnBattlefield(g, source) || SourceIsNewObject(g, item) {
 			return nil
 		}
 		// #1290: what the rule charges for is the counters that are
@@ -130,12 +130,12 @@ func cumulativeUpkeepTail(label string, each UpkeepPayment, noun, plural string)
 	cumulativeUpkeepMu.Unlock()
 	return CardTail(key, func(ctx *Context, _ game.TailOutcome) error {
 		source := ctx.Item.SourceCardID
-		age := counterCountOn(ctx.Game, source, game.CounterAge)
+		age := CounterCountOn(ctx.Game, source, game.CounterAge)
 		if age <= 0 {
 			return nil
 		}
 		owed := each.times(age, noun, plural)
-		cost, action := owed.prompt()
+		cost, action := owed.Prompt()
 		prompt := UpkeepPayUnless{
 			Chooser:  ctx.Controller(),
 			Cost:     cost,
@@ -145,11 +145,11 @@ func cumulativeUpkeepTail(label string, each UpkeepPayment, noun, plural string)
 		if owed.Flips > 0 {
 			// The flips are the payment, queued once it is made
 			// (cumulativeUpkeepFlipCoins).
-			prompt.Else = cumulativeUpkeepFlipCoins
+			prompt.Else = CumulativeUpkeepFlipCoins
 		} else {
 			// #4264: keyed, so a table waiting on the payer is a
 			// restore point.
-			prompt.Else = upkeepSacrificeSource
+			prompt.Else = UpkeepSacrificeSource
 		}
 		return prompt.Apply(ctx)
 	})
@@ -164,9 +164,9 @@ func cumulativeUpkeepTail(label string, each UpkeepPayment, noun, plural string)
 // the answer arrives, which is what the prompt was queued with, because the
 // upkeep holds the table until it is answered. The question is the asking
 // trigger's label.
-var cumulativeUpkeepFlipCoins = PayUnlessBranches("pay-unless/cumulative-upkeep-flip-coins",
+var CumulativeUpkeepFlipCoins = PayUnlessBranches("pay-unless/cumulative-upkeep-flip-coins",
 	func(ctx *Context, r game.PayUnlessAnswer) error {
-		owed := FlipCoinsPayment(1).times(counterCountOn(ctx.Game, r.Source, game.CounterAge), "", "")
+		owed := FlipCoinsPayment(1).times(CounterCountOn(ctx.Game, r.Source, game.CounterAge), "", "")
 		ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
 			Flipper:  ctx.Controller(),
 			Source:   r.Source,
@@ -221,7 +221,7 @@ func DoesNotHaveCumulativeUpkeep() CardPredicate {
 }
 
 // counterCountOn reads one counter kind off a card in any zone.
-func counterCountOn(g *game.Game, id uuid.UUID, kind string) int {
+func CounterCountOn(g *game.Game, id uuid.UUID, kind string) int {
 	c, ok := g.LookupCardForEffect(id)
 	if !ok {
 		return 0

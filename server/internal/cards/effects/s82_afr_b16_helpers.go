@@ -10,7 +10,7 @@ import (
 // spell was cast FROM (Event.OldZone), which a bare spell card cannot say.
 // The trigger is the grantor's own battlefield trigger on the controller's
 // cast, with cascade's own effect and its mana-value cap read off the spell.
-func s82AfrB16GrantsCascadeWhen(label string, when func(ev game.Event, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
+func S82AfrB16GrantsCascadeWhen(label string, when func(ev game.Event, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
 	t := GrantsCascade(label, nil)
 	t.AppliesTo = func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return ev.Actor == source.Controller && when(ev, source, g)
@@ -28,8 +28,8 @@ func s82AfrB16GrantsCascadeWhen(label string, when func(ev game.Event, source *g
 //
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{s82AfrB16CastFromGraveyardByExiling("{U}{U}{U}{U}", 4, "instant and/or sorcery", Or(Instant(), Sorcery()))},
-func s82AfrB16CastFromGraveyardByExiling(printedCost string, n int, kind string, pred CardPredicate) game.AlternativeCost {
-	what := numberWord(n) + " " + kind + " cards from your graveyard"
+func S82AfrB16CastFromGraveyardByExiling(printedCost string, n int, kind string, pred CardPredicate) game.AlternativeCost {
+	what := NumberWord(n) + " " + kind + " cards from your graveyard"
 	return game.AlternativeCost{
 		Key:                "exile_from_graveyard_in_addition",
 		Label:              "Exile " + what + " to cast this card from your graveyard",

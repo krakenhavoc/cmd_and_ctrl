@@ -1,0 +1,38 @@
+package cardspr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Prized Statue — Artifact {2} (EDHREC rank 2313):
+//
+//	"When this artifact enters or is put into a graveyard from the
+//	 battlefield, create a Treasure token. (It's an artifact with
+//	 "{T}, Sacrifice this token: Add one mana of any color.")"
+//
+// A two-mana rock that refunds itself twice. One printed ability
+// with two trigger conditions (CR 603.2c), so one TriggeredAbility
+// watching two kinds: its own entry (EventETB) and its own death
+// (EventLTB into a graveyard — cardDied, so a bounce or an exile
+// makes nothing). The dies half is harvested off the card in the
+// graveyard with its controller intact, so the Treasure goes to
+// whoever controlled the Statue as it died.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "681fc668-cb26-4ba4-a915-48ddfa2b9520",
+		Name:         "Prized Statue",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.OnAny([]game.EventKind{game.EventETB, game.EventLTB}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				if ev.Kind == game.EventETB {
+					return ev.CardID == source.InstanceID
+				}
+				return effects.CardDied(ev, source)
+			}, "Prized Statue — create a Treasure", effects.Do(effects.CreateToken{Template: effects.TreasureToken(), N: 1})),
+		},
+	})
+}

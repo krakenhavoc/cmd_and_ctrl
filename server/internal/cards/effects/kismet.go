@@ -32,7 +32,7 @@ func init() {
 		OracleID:     "81fdd1c4-d43b-4f8b-8712-7c2bf45a3e0b",
 		Name:         "Kismet",
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{opponentsArtifactsCreaturesAndLandsEnterTapped("Kismet")},
+		Replacements: []game.ReplacementEffect{OpponentsArtifactsCreaturesAndLandsEnterTapped("Kismet")},
 	})
 }
 
@@ -40,7 +40,7 @@ func init() {
 // shared with Loxodon Gatekeeper (#5600), which prints the same line:
 // "Artifacts, creatures, and lands your opponents control enter tapped."
 // The label is "<name>: enter tapped".
-func opponentsArtifactsCreaturesAndLandsEnterTapped(name string) game.ReplacementEffect {
+func OpponentsArtifactsCreaturesAndLandsEnterTapped(name string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

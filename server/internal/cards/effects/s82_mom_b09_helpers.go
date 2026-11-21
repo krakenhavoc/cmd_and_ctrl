@@ -11,8 +11,8 @@ import (
 // s82Mom09KnightEnteredUnderYourControl is "another Knight you control
 // enters": an EventETB for a permanent other than the source, now a Knight
 // and controlled by the source's controller (CR 603.6a).
-func s82Mom09AnotherKnightEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Knight"))
+func S82Mom09AnotherKnightEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	return B10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Knight"))
 }
 
 // s82Mom09OtherKnightsControlled counts the Knights source's controller
@@ -32,7 +32,7 @@ func s82Mom09OtherKnightsControlled(g *game.Game, source game.Card) int {
 // another Knight entered the battlefield under the controller's control this
 // turn. The per-turn tally counts every Knight that entered, so the source's
 // own entry (if it entered this turn) is taken off before asking.
-func s82Mom09AnotherKnightEnteredThisTurn(g *game.Game, source *game.Card) bool {
+func S82Mom09AnotherKnightEnteredThisTurn(g *game.Game, source *game.Card) bool {
 	n := g.EnteredWithSubtypeThisTurn(source.Controller, source.TextSubtype("Knight"))
 	n -= g.TurnTally.Entered[source.InstanceID]
 	return n > 0
@@ -41,7 +41,7 @@ func s82Mom09AnotherKnightEnteredThisTurn(g *game.Game, source *game.Card) bool 
 // s82Mom09TapAndMaybeStun is Protocol Knight's body: tap the target, then
 // put a stun counter on it if the controller controls another Knight, checked
 // as the ability resolves (it is not an intervening "if").
-func s82Mom09TapAndMaybeStun(g *game.Game, item *game.StackItem) error {
+func S82Mom09TapAndMaybeStun(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
@@ -64,8 +64,8 @@ func s82Mom09TapAndMaybeStun(g *game.Game, item *game.StackItem) error {
 
 // s82Mom09KnightDealtCombatDamage is "a Knight you control deals combat
 // damage to a player".
-func s82Mom09KnightDealtCombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func S82Mom09KnightDealtCombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
@@ -74,7 +74,7 @@ func s82Mom09KnightDealtCombatDamage(ev game.Event, source *game.Card, _ game.Ch
 
 // s82Mom09CounterOnThatCreature puts a +1/+1 counter on the creature that
 // dealt the combat damage; one that has left does nothing (CR 608.2b).
-func s82Mom09CounterOnThatCreature(g *game.Game, item *game.StackItem) error {
+func S82Mom09CounterOnThatCreature(g *game.Game, item *game.StackItem) error {
 	id := item.Trigger.Event.Source
 	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
@@ -84,16 +84,16 @@ func s82Mom09CounterOnThatCreature(g *game.Game, item *game.StackItem) error {
 
 // s82Mom09NontokenKnightYouControlDied is "a nontoken Knight you control
 // dies", read from the creature's last-known information (CR 603.10a).
-func s82Mom09NontokenKnightYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && !IsToken(dead) && leftUnderControlOf(ev, dead) == source.Controller &&
-		leftAsSubtype(ev, dead, source.TextSubtype("Knight"))
+func S82Mom09NontokenKnightYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && !IsToken(dead) && LeftUnderControlOf(ev, dead) == source.Controller &&
+		LeftAsSubtype(ev, dead, source.TextSubtype("Knight"))
 }
 
 // s82Mom09CounterOnEachOtherMerfolkOrKnight is Vodalian Wave-Knight's body:
 // one +1/+1 counter on each other Merfolk and/or Knight the controller
 // controls (a Merfolk Knight gets one counter, not two).
-func s82Mom09CounterOnEachOtherMerfolkOrKnight(g *game.Game, item *game.StackItem) error {
+func S82Mom09CounterOnEachOtherMerfolkOrKnight(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	src, ok := g.LookupCardForEffect(item.SourceCardID)
 	if !ok {
@@ -112,7 +112,7 @@ func s82Mom09CounterOnEachOtherMerfolkOrKnight(g *game.Game, item *game.StackIte
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -121,6 +121,6 @@ func s82Mom09CounterOnEachOtherMerfolkOrKnight(g *game.Game, item *game.StackIte
 
 // s82Mom09CastTwoOrMoreSpellsThisTurn is "Activate only if you've cast two or
 // more spells this turn".
-func s82Mom09CastTwoOrMoreSpellsThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
+func S82Mom09CastTwoOrMoreSpellsThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
 	return g.CastTallyFor(controller).Total >= 2
 }

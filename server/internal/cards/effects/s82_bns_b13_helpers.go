@@ -8,7 +8,7 @@ import (
 
 // bnsB13OtherCreatureYouControlEnters is the entry condition "another creature
 // under the source's controller's control enters the battlefield".
-func bnsB13OtherCreatureYouControlEnters(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+func BnsB13OtherCreatureYouControlEnters(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield || src == nil || ev.CardID == src.InstanceID {
 		return false
 	}
@@ -21,10 +21,10 @@ func bnsB13OtherCreatureYouControlEnters(ev *game.ReplacementEvent, g *game.Game
 // additional +1/+1 counters equal to the Biomancer's power (as it is when
 // the creature enters, counters and anthems included) and as a Mutant in
 // addition to its other types (CR 614.1c, CR 205.3d).
-func bnsB13OtherCreaturesEnterWithPowerCountersAsMutants(label string) game.ReplacementEffect {
+func BnsB13OtherCreaturesEnterWithPowerCountersAsMutants(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:   []game.EventKind{game.EventZoneMove},
-		AppliesTo: bnsB13OtherCreatureYouControlEnters,
+		AppliesTo: BnsB13OtherCreatureYouControlEnters,
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) error {
 			ev.AddCounterAtETB(game.CounterPlusOne, src.CurrentPower())
 			ev.AddSubtypeAtETB("Mutant", label)
@@ -44,7 +44,7 @@ func bnsB13OtherCreaturesEnterWithPowerCountersAsMutants(label string) game.Repl
 // the card in its graveyard ({0}, so X is locked at 0 and additional costs
 // are still paid); a decline, or the holder's next priority pass, leaves the
 // card where it is.
-func bnsB13FreeCastFromGraveyard(sourceName string) func(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
+func BnsB13FreeCastFromGraveyard(sourceName string) func(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
 	return func(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -69,7 +69,7 @@ func bnsB13FreeCastFromGraveyard(sourceName string) func(g *game.Game, item *gam
 				SourceName:  sourceName,
 				Label:       sourceName + " — cast " + c.Name + " without paying its mana cost",
 			}, []game.Card{c})
-			offerResolutionCastOver(g, item.Controller, item.SourceCardID, sourceName, game.MayCastKeywordFreeCast, declineLeaveInGraveyard, c.InstanceID)
+			OfferResolutionCastOver(g, item.Controller, item.SourceCardID, sourceName, game.MayCastKeywordFreeCast, DeclineLeaveInGraveyard, c.InstanceID)
 			return nil
 		}
 		return nil
@@ -81,7 +81,7 @@ func bnsB13FreeCastFromGraveyard(sourceName string) func(g *game.Game, item *gam
 // clause is TargetCardInGraveyard(... YouOwn(), Or(Instant(), Sorcery())):
 // the target is re-checked as the ability resolves (CR 608.2b), and a card
 // that has left the graveyard is not returned (Pinnacle Monk, Living Lightning).
-func returnTargetInstantOrSorceryFromYourGraveyard(g *game.Game, item *game.StackItem) error {
+func ReturnTargetInstantOrSorceryFromYourGraveyard(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}

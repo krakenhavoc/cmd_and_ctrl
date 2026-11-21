@@ -1,0 +1,71 @@
+package cardsj
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Kolodin, Triumph Caster — Legendary Creature — Human Pilot {R}{W}:
+//
+//	"Mounts and Vehicles you control have haste.
+//	 Whenever a Mount you control enters, it becomes saddled until end
+//	 of turn.
+//	 Whenever a Vehicle you control enters, it becomes an artifact
+//	 creature until end of turn."
+//
+// The entering permanent is recorded when the trigger is built, with its
+// object epoch, so a Mount that has left and come back is a new object
+// the old trigger does not saddle (#1432). Kolodin is not a Mount or a
+// Vehicle, so he triggers for neither of his own entries.
+//
+// No simplification.
+func init() {
+	// "Mount" is a creature-type word of Kolodin's text, read through
+	// the source here and in `enters` (CR 612.2, #3984); "Vehicle" is an
+	// artifact type no text change reaches, and TextSubtype leaves it.
+	mountsAndVehicles := func(target *game.Card, _ *game.Game, source *game.Card) bool {
+		return target.Controller == source.Controller && (target.HasSubtype(source.TextSubtype("Mount")) || target.HasSubtype("Vehicle"))
+	}
+	enters := func(subtype, label string, effect effects.Effect) game.TriggeredAbility {
+		return game.TriggeredAbility{
+			Watches: []game.EventKind{game.EventETB},
+			Key:     label,
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				c, ok := effects.EnteredUnderYourControl(ev, source, g, true)
+				return ok && c.HasSubtype(source.TextSubtype(subtype))
+			},
+			Build:  effects.EventCardTriggerItem(label),
+			Effect: effect,
+		}
+	}
+	// stillThatObject resolves the recorded permanent, if it is the same
+	// object and still on the battlefield.
+	stillThatObject := func(g *game.Game, item *game.StackItem) (game.ObjectRef, bool) {
+		o := item.Params.Object
+		c, ok := g.LookupCardForEffect(o.ID)
+		return o, ok && c.ObjectEpoch == o.Epoch && effects.OnBattlefield(g, o.ID)
+	}
+	effects.Register(effects.Spec{
+		OracleID:     "45682055-d02a-450c-a41d-aa67162ff015",
+		Name:         "Kolodin, Triumph Caster",
+		Completeness: effects.CompletenessFull,
+		Static:       []game.StaticAbility{effects.KeywordGrant(mountsAndVehicles, "haste")},
+		Triggered: []game.TriggeredAbility{
+			enters("Mount", "Kolodin, Triumph Caster — that Mount becomes saddled until end of turn", func(g *game.Game, item *game.StackItem) error {
+				o, ok := stillThatObject(g, item)
+				if !ok {
+					return nil
+				}
+				return effects.BecomeSaddled{Target: o.ID}.Apply(effects.NewContext(g, item))
+			}),
+			enters("Vehicle", "Kolodin, Triumph Caster — that Vehicle becomes an artifact creature until end of turn", func(g *game.Game, item *game.StackItem) error {
+				o, ok := stillThatObject(g, item)
+				if !ok {
+					return nil
+				}
+				return effects.BecomeCreatureUntilEOT{Target: o.ID, Label: "Kolodin, Triumph Caster — becomes an artifact creature"}.Apply(effects.NewContext(g, item))
+			}),
+		},
+	})
+}

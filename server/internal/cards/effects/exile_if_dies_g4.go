@@ -22,7 +22,7 @@ import (
 // newest arrival counts).
 //
 // Caller holds g.mu.
-func putIntoGraveyardFromBattlefieldThisTurn(g *game.Game, cardID uuid.UUID) bool {
+func PutIntoGraveyardFromBattlefieldThisTurn(g *game.Game, cardID uuid.UUID) bool {
 	arrived, fromBattlefield := false, false
 	for _, ev := range g.EventsThisTurn() {
 		if ev.CardID != cardID {
@@ -50,14 +50,14 @@ func putIntoGraveyardFromBattlefieldThisTurn(g *game.Game, cardID uuid.UUID) boo
 // (CR 108.2). "Creature card" is the card as it is in the graveyard,
 // its printed type line. The set is read before the first card is
 // exiled.
-func exileCreatureCardsPutIntoGraveyardsFromBattlefieldThisTurn(ctx *Context) error {
+func ExileCreatureCardsPutIntoGraveyardsFromBattlefieldThisTurn(ctx *Context) error {
 	var ids []uuid.UUID
 	for _, p := range ctx.Game.Seats {
 		if p == nil || p.Graveyard == nil {
 			continue
 		}
 		for _, c := range p.Graveyard.Cards {
-			if c.IsCreature() && !c.IsToken() && putIntoGraveyardFromBattlefieldThisTurn(ctx.Game, c.InstanceID) {
+			if c.IsCreature() && !c.IsToken() && PutIntoGraveyardFromBattlefieldThisTurn(ctx.Game, c.InstanceID) {
 				ids = append(ids, c.InstanceID)
 			}
 		}
@@ -85,7 +85,7 @@ func exileCreatureCardsPutIntoGraveyardsFromBattlefieldThisTurn(ctx *Context) er
 //
 // A token is not a card (CR 108.2), and the ability's own source is not
 // "other".
-func otherCardPutIntoExile(ev game.Event, source *game.Card, g *game.Game) bool {
+func OtherCardPutIntoExile(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == uuid.Nil || ev.CardID == source.InstanceID {
 		return false
 	}

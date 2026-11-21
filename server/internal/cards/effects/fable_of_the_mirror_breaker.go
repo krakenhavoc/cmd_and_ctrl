@@ -37,17 +37,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // tokens" seam.
 func init() {
 	Register(Spec{
-		OracleID:     fableOfTheMirrorBreakerOracleID,
+		OracleID:     FableOfTheMirrorBreakerOracleID,
 		Name:         "Fable of the Mirror-Breaker",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, "Fable of the Mirror-Breaker — create a 2/2 red Goblin Shaman",
-				Do(CreateToken{Template: fableGoblinShamanToken(), N: 1})),
+				Do(CreateToken{Template: FableGoblinShamanToken(), N: 1})),
 			ChapterTrigger(2, "Fable of the Mirror-Breaker — discard up to two cards, then draw that many",
 				func(g *game.Game, item *game.StackItem) error {
-					return b39MayDiscardThenDraw(2, false,
+					return B39MayDiscardThenDraw(2, false,
 						"Fable of the Mirror-Breaker — discard up to two cards, then draw that many",
-						drawAsManyAsDiscarded)(NewContext(g, item))
+						DrawAsManyAsDiscarded)(NewContext(g, item))
 				}),
 			ChapterTrigger(3, "Fable of the Mirror-Breaker — exile it, then return it transformed",
 				ChapterExileAndReturnTransformed),
@@ -57,11 +57,11 @@ func init() {
 
 // fableOfTheMirrorBreakerOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const fableOfTheMirrorBreakerOracleID = "c0957e5e-c71b-439c-931c-9f55d2f76ace"
+const FableOfTheMirrorBreakerOracleID = "c0957e5e-c71b-439c-931c-9f55d2f76ace"
 
 // fableGoblinShamanToken is chapter I's 2/2 red Goblin Shaman with
 // "Whenever this creature attacks, create a Treasure token."
-func fableGoblinShamanToken() game.Card { return tokenFromCatalog(printedFableGoblinShamanToken) }
+func FableGoblinShamanToken() game.Card { return TokenFromCatalog(printedFableGoblinShamanToken) }
 
 // printedFableGoblinShamanToken is that Goblin Shaman as PRINTED.
 //
@@ -69,8 +69,8 @@ func fableGoblinShamanToken() game.Card { return tokenFromCatalog(printedFableGo
 // whose ability creates another token is two catalog entries and no
 // new machinery: the attack trigger resolves and calls the same
 // CreateToken every printed card calls.
-func printedFableGoblinShamanToken() tokenTemplate {
-	return tokenTemplate{
+func printedFableGoblinShamanToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "goblin-shaman",
 		Card: game.Card{
 			Name:      "Goblin Shaman",

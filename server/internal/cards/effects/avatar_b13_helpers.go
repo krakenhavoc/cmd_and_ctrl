@@ -14,7 +14,7 @@ import (
 // static on the source alone that adds the artifact and creature types
 // while cond holds, read live on every layer pass. The Vehicle keeps its
 // printed power and toughness.
-func selfIsArtifactCreatureWhile(label string, cond func(g *game.Game, source *game.Card) bool) game.StaticAbility {
+func SelfIsArtifactCreatureWhile(label string, cond func(g *game.Game, source *game.Card) bool) game.StaticAbility {
 	return game.StaticAbility{
 		Label: label,
 		Layer: game.Layer4Type,

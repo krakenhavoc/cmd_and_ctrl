@@ -31,7 +31,7 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("You may sacrifice a permanent. If you do, draw two cards.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
-					return maySacrificeOne(ctx.Game, item, "Witherbloom Charm — sacrifice a permanent to draw two cards?", Permanent(), false, witherbloomCharmDraw)
+					return MaySacrificeOne(ctx.Game, item, "Witherbloom Charm — sacrifice a permanent to draw two cards?", Permanent(), false, WitherbloomCharmDraw)
 				}),
 			ModeDoing("You gain 5 life.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
@@ -46,6 +46,6 @@ func init() {
 
 // witherbloomCharmDraw is the two cards, once a permanent has really been
 // sacrificed. Keyed (#4290): an on-disk identity, never renamed or reused.
-var witherbloomCharmDraw = RegisterSacrificedOne("prompt-run/witherbloom-charm-sacrifice-draw", func(ctx *Context, _ uuid.UUID) error {
+var WitherbloomCharmDraw = RegisterSacrificedOne("prompt-run/witherbloom-charm-sacrifice-draw", func(ctx *Context, _ uuid.UUID) error {
 	return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)
 })

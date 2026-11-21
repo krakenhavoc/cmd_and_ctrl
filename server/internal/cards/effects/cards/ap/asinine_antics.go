@@ -1,0 +1,49 @@
+package cardsap
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Asinine Antics — Sorcery {2}{U}{U}:
+//
+//	"You may cast this spell as though it had flash if you pay {2} more
+//	 to cast it.
+//	 For each creature your opponents control, create a Cursed Role
+//	 token attached to that creature. (If you control another Role on
+//	 it, put that one into the graveyard. Enchanted creature is 1/1.)"
+//
+// The creature set is read once, at resolution: every creature an
+// opponent controls then. A Cursed Role is a base-P/T set to 1/1, so
+// each one the caster controls replaces the caster's earlier Role on
+// that creature (CR 704.5z).
+//
+// The flash clause is FlashForMore (flash_for_more.go): an optional
+// additional {2} that opens the instant-speed window for the cast that
+// announces it (CR 601.3c). It is not an alternative cost, so a flash
+// cast may still claim one (CR 118.9a) and pays the {2} on top.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:      "0a0a051c-59ed-4286-b842-a34da7ef15d5",
+		Name:          "Asinine Antics",
+		Completeness:  effects.CompletenessFull,
+		OptionalCosts: []game.AdditionalCost{effects.FlashForMore("{2}")},
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			var hosts []game.Card
+			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+				if c.IsCreature() && c.Controller != item.Controller {
+					hosts = append(hosts, c)
+				}
+			}
+			for _, c := range hosts {
+				if err := (effects.CreateRoleToken{Role: effects.RoleCursed, Host: c.InstanceID}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
+}

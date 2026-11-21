@@ -18,21 +18,21 @@ func s82MomB12Damageable(c game.Card) bool {
 
 // s82MomB12CreaturePlaneswalkerOrBattle is the target clause "target
 // creature, planeswalker, or battle".
-func s82MomB12CreaturePlaneswalkerOrBattle(label string) *game.TargetSpec {
-	return battlefieldSpec("permanent", label, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func S82MomB12CreaturePlaneswalkerOrBattle(label string) *game.TargetSpec {
+	return BattlefieldSpec("permanent", label, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return s82MomB12Damageable(c)
 	})
 }
 
 // s82MomB12TargetBattle is "target battle".
-func s82MomB12TargetBattle() *game.TargetSpec {
-	return battlefieldSpec("permanent", "target battle", func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func S82MomB12TargetBattle() *game.TargetSpec {
+	return BattlefieldSpec("permanent", "target battle", func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsBattle()
 	})
 }
 
 // s82MomB12PlayerOrBattle is "target player or battle".
-func s82MomB12PlayerOrBattle() *game.TargetSpec {
+func S82MomB12PlayerOrBattle() *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:    "any",
 		Label:   "target player or battle",
@@ -56,9 +56,9 @@ func s82MomB12AnOpponentProtects(c game.Card, controller uuid.UUID) bool {
 // it, remove N defense counters from it. Otherwise, put N defense counters
 // on it." (Etched Host Doombringer, Portent Tracker). The protector is read
 // as the instruction resolves; a battle that is gone does nothing (CR 608.2b).
-func s82MomB12DefenseEither(ctx *Context, battle uuid.UUID, n int) error {
+func S82MomB12DefenseEither(ctx *Context, battle uuid.UUID, n int) error {
 	c, ok := ctx.Game.LookupCardForEffect(battle)
-	if !ok || !c.IsBattle() || !onBattlefield(ctx.Game, battle) {
+	if !ok || !c.IsBattle() || !OnBattlefield(ctx.Game, battle) {
 		return nil
 	}
 	if s82MomB12AnOpponentProtects(c, ctx.Controller()) {
@@ -80,7 +80,7 @@ func s82MomB12DefenseEither(ctx *Context, battle uuid.UUID, n int) error {
 // for a creature, beyond loyalty for a planeswalker, beyond defense for a
 // battle, the greatest of those for a permanent of several types. Read
 // after the damage lands, so a prevention shield lowers it.
-func s82MomB12DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, error) {
+func S82MomB12DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, error) {
 	c, ok := ctx.Game.LookupCardForEffect(target)
 	if !ok || amount <= 0 {
 		return 0, nil
@@ -96,11 +96,11 @@ func s82MomB12DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (
 	if c.IsBattle() {
 		needs = append(needs, max(c.Counters[game.CounterDefense], 0))
 	}
-	cursor := b25LastEventSeq(ctx.Game)
+	cursor := B25LastEventSeq(ctx.Game)
 	if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: amount}).Apply(ctx); err != nil {
 		return 0, err
 	}
-	dealt := b27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor)
+	dealt := B27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor)
 	best := 0
 	for _, need := range needs {
 		best = max(best, dealt-need)

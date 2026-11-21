@@ -21,9 +21,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is not destroyed again, and one that left and came back is a new
 // object the ability knows nothing about (CR 400.7) — DestroyTarget
 // asks that question itself (#1432).
-func destroyThisPermanent(cantBeRegenerated bool) Effect {
+func DestroyThisPermanent(cantBeRegenerated bool) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !onBattlefield(g, item.SourceCardID) {
+		if !OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
 		return DestroyTarget{Target: item.SourceCardID, CantBeRegenerated: cantBeRegenerated}.
@@ -36,10 +36,10 @@ func destroyThisPermanent(cantBeRegenerated bool) Effect {
 // Infinite Hourglass) — the effect, not RemoveCountersFromThis's
 // cost, so it can be activated with no counter there and then does
 // nothing (CR 609.3: it does only as much as possible).
-func removeACounterFromThis(kind string) Effect {
+func RemoveACounterFromThis(kind string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		c, ok := g.LookupCardForEffect(item.SourceCardID)
-		if !ok || !onBattlefield(g, item.SourceCardID) || c.Counters[kind] <= 0 {
+		if !ok || !OnBattlefield(g, item.SourceCardID) || c.Counters[kind] <= 0 {
 			return nil
 		}
 		return AddCounter{Target: item.SourceCardID, Kind: kind, N: -1}.Apply(NewContext(g, item))
@@ -50,9 +50,9 @@ func removeACounterFromThis(kind string) Effect {
 // trigger's whole effect (Armageddon Clock's doom counter, Infinite
 // Hourglass's time counter). A source that has left has nothing to put
 // it on, and one that came back is a new object (#1432, AddCounter).
-func putACounterOnThis(kind string) Effect {
+func PutACounterOnThis(kind string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !onBattlefield(g, item.SourceCardID) {
+		if !OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
 		return AddCounter{Target: item.SourceCardID, Kind: kind, N: 1}.Apply(NewContext(g, item))

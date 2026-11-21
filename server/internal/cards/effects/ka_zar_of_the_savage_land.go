@@ -37,12 +37,12 @@ func init() {
 }
 
 // zabuToken is Ka-Zar's Zabu.
-func zabuToken() game.Card { return tokenFromCatalog(printedZabuToken) }
+func zabuToken() game.Card { return TokenFromCatalog(printedZabuToken) }
 
 // printedZabuToken is Zabu as PRINTED: a legendary 2/2 green Cat whose
 // landfall puts a +1/+1 counter on itself.
-func printedZabuToken() tokenTemplate {
-	return tokenTemplate{
+func printedZabuToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "zabu",
 		Card: game.Card{
 			Name:      "Zabu",
@@ -52,7 +52,7 @@ func printedZabuToken() tokenTemplate {
 			Colors:    []string{"G"},
 		},
 		Triggered: []game.TriggeredAbility{
-			LandfallPaying("Zabu — landfall: put a +1/+1 counter on it", game.LandfallPayoff{Counters: 1}, plusOneCountersOnThis(1)),
+			LandfallPaying("Zabu — landfall: put a +1/+1 counter on it", game.LandfallPayoff{Counters: 1}, PlusOneCountersOnThis(1)),
 		},
 		Text: "Landfall — Whenever a land you control enters, put a +1/+1 counter on Zabu.",
 	}

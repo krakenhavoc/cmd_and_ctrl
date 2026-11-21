@@ -33,7 +33,7 @@ func init() {
 		Name:         "Team Avatar",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, mshB1YouAttackAlone,
+			On(game.EventAttack, MshB1YouAttackAlone,
 				"Team Avatar — the lone attacker gets +X/+X until end of turn, where X is the number of creatures you control",
 				teamAvatarPump),
 		},
@@ -48,23 +48,23 @@ func init() {
 				if target == uuid.Nil {
 					return nil
 				}
-				return DealDamage{Source: item.SourceCardID, Target: target, Amount: teamAvatarCreatures(g, item)}.Apply(ctx)
+				return DealDamage{Source: item.SourceCardID, Target: target, Amount: TeamAvatarCreatures(g, item)}.Apply(ctx)
 			},
 		}},
 	})
 }
 
 // teamAvatarCreatures is "the number of creatures you control".
-func teamAvatarCreatures(g *game.Game, item *game.StackItem) int {
-	return countControlled(g, item.Controller, func(c game.Card) bool { return c.IsCreature() })
+func TeamAvatarCreatures(g *game.Game, item *game.StackItem) int {
+	return CountControlled(g, item.Controller, func(c game.Card) bool { return c.IsCreature() })
 }
 
 func teamAvatarPump(g *game.Game, item *game.StackItem) error {
 	attacker := item.Trigger.Event.CardID
-	if !onBattlefield(g, attacker) {
+	if !OnBattlefield(g, attacker) {
 		return nil
 	}
-	x := teamAvatarCreatures(g, item)
+	x := TeamAvatarCreatures(g, item)
 	return BoostUntilEOT{
 		Target:    attacker,
 		Power:     x,

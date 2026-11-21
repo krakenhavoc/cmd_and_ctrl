@@ -18,7 +18,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventStepBegan, AllOf(StepBegan(game.StepBeginCombat, true), franklinCastNoncreature),
+			On(game.EventStepBegan, AllOf(StepBegan(game.StepBeginCombat, true), FranklinCastNoncreature),
 				"Franklin Richards, Ascendant — discover 6",
 				func(g *game.Game, item *game.StackItem) error {
 					if g.CastTallyFor(item.Controller).Noncreature == 0 {
@@ -32,6 +32,6 @@ func init() {
 
 // franklinCastNoncreature is "if you've cast a noncreature spell this
 // turn".
-func franklinCastNoncreature(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func FranklinCastNoncreature(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return source != nil && g.CastTallyFor(source.Controller).Noncreature > 0
 }

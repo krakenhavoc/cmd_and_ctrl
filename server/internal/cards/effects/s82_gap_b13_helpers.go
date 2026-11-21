@@ -6,7 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trigger whose card is linked to this object (Card.ExiledWith, CR 400.7):
 // the shared body of Spell Queller and Smirking Spelljacker. A spell that has
 // left the stack by resolution links nothing.
-func gapExileTargetSpellLinked(g *game.Game, item *game.StackItem) error {
+func GapExileTargetSpellLinked(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
 	if !ok {

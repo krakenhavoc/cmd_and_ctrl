@@ -20,7 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverAnotherCreatureEntersUnderYourControl("Ogre Battledriver — that creature gets +2/+0 and gains haste until end of turn",
-				enteredCreatureGetsTwoAndHaste("Ogre Battledriver")),
+				EnteredCreatureGetsTwoAndHaste("Ogre Battledriver")),
 		},
 	})
 }
@@ -30,7 +30,7 @@ func init() {
 // ability (the trigger's object), applied only while it is still on the
 // battlefield. Ogre Battledriver and In the Web of War share it; `name`
 // labels the two effects.
-func enteredCreatureGetsTwoAndHaste(name string) Effect {
+func EnteredCreatureGetsTwoAndHaste(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		info, ok := ctx.TriggeringPermanent()

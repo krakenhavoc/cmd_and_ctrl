@@ -63,12 +63,12 @@ var selvalasStampedeVoted = VoteResultThen("vote/selvalas-stampede", func(ctx *C
 		return selvalasStampedeFree(ctx, free)
 	}
 	player := ctx.Controller()
-	run, hits := revealUntilCount(ctx, player, func(c game.Card) bool { return c.IsCreature() },
+	run, hits := RevealUntilCount(ctx, player, func(c game.Card) bool { return c.IsCreature() },
 		wild, "Selvala's Stampede — reveal until a creature card for each wild vote")
 	return PutFromLibraryOntoBattlefield{
 		Player:   player,
 		Cards:    run,
-		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return selvalasStampedeIsHit(hits, c.InstanceID) },
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return SelvalasStampedeIsHit(hits, c.InstanceID) },
 		All:      true,
 		ThenTail: selvalasStampedeShuffleThenFree,
 		ThenN:    free,
@@ -77,7 +77,7 @@ var selvalasStampedeVoted = VoteResultThen("vote/selvalas-stampede", func(ctx *C
 
 // selvalasStampedeIsHit reports whether id is one of the creature cards
 // the reveal stopped on.
-func selvalasStampedeIsHit(hits []uuid.UUID, id uuid.UUID) bool {
+func SelvalasStampedeIsHit(hits []uuid.UUID, id uuid.UUID) bool {
 	for _, h := range hits {
 		if h == id {
 			return true

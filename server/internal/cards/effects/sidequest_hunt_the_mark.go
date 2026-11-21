@@ -32,12 +32,12 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     sidequestHuntTheMarkOracleID,
+		OracleID:     SidequestHuntTheMarkOracleID,
 		Name:         "Sidequest: Hunt the Mark",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				WhenThisEnters("Sidequest: Hunt the Mark — destroy up to one target creature", destroyTheFirstLegalTarget),
+				WhenThisEnters("Sidequest: Hunt the Mark — destroy up to one target creature", DestroyTheFirstLegalTarget),
 				UpToOneTargetCreature("up to one target creature")),
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && anOpponentCreatureDiedThisTurn(g, source.Controller)
@@ -65,7 +65,7 @@ func init() {
 
 // sidequestHuntTheMarkOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const sidequestHuntTheMarkOracleID = "d74f9a18-8dab-4549-be3f-9697ff68d73c"
+const SidequestHuntTheMarkOracleID = "d74f9a18-8dab-4549-be3f-9697ff68d73c"
 
 // anOpponentCreatureDiedThisTurn is "a creature died under an opponent's
 // control this turn": some other player's per-turn tally of creatures that
@@ -82,7 +82,7 @@ func anOpponentCreatureDiedThisTurn(g *game.Game, you uuid.UUID) bool {
 // sidequestHuntTheMarkTransform is "then if you control three or more
 // Treasures, transform this enchantment".
 func sidequestHuntTheMarkTransform(ctx *Context) error {
-	if countControlled(ctx.Game, ctx.Controller(), func(c game.Card) bool { return c.HasSubtype("Treasure") }) < 3 {
+	if CountControlled(ctx.Game, ctx.Controller(), func(c game.Card) bool { return c.HasSubtype("Treasure") }) < 3 {
 		return nil
 	}
 	return TransformThis{}.Apply(ctx)
