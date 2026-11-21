@@ -3373,6 +3373,7 @@ tail engine/entry-choice-acted
 tail engine/evolved
 tail engine/exile-card-granted
 tail engine/exile-return-transformed
+tail engine/exile-return-transformed-then
 tail engine/exile-return-transformed-with-counter
 tail engine/exile-until-another-granted
 tail engine/exiled-and-plotted
@@ -3641,6 +3642,7 @@ tail lieutenant-nyota-uhura/after-exile
 tail life-exchange/second-half
 tail life/gain-equal-to-lost
 tail liliana-deaths-majesty/black-zombies
+tail liliana-heretical-healer/zombie
 tail living-death/return-exiled
 tail living-death/sacrifice-creatures
 tail loafing-giant/after-mill
