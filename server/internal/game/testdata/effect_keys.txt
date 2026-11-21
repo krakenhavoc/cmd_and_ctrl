@@ -786,6 +786,7 @@ choose choose-cards/gilgamesh-master-at-arms-samurai
 choose choose-cards/glacial-dragonhunt-discarded
 choose choose-cards/glamdring-cast
 choose choose-cards/glittering-wish-take
+choose choose-cards/glowspore-shaman-land-on-top
 choose choose-cards/gluntch-the-bestower-creature
 choose choose-cards/godsend-exile
 choose choose-cards/golden-wish-take
@@ -1712,6 +1713,7 @@ confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
 confirm confirm/sanguine-spy-pay-life-draw
 confirm confirm/sauron-the-dark-lord-wheel
+confirm confirm/savra-pay-life-edict
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
 confirm confirm/sephiroth-cell-counter
