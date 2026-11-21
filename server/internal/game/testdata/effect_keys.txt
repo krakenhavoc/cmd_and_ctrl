@@ -2473,6 +2473,7 @@ payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/satya-sacrifice-token
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
+payunless pay-unless/serene-steward-counter
 payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shanna-draw
 payunless pay-unless/shriek-treblemaker-cant-block
