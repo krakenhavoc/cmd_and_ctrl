@@ -190,6 +190,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 red Survivor":                                                 {Name: "Survivor", TypeLine: "Token Creature — Survivor", Power: 1, Toughness: 1, Colors: []string{"R"}}, // Varchild, Betrayer of Kjeldor
 	"1/1 red and white Soldier with haste":                             {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"haste"}},
 	"1/1 blue Bird with flying":                                        {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"1/1 white Cat Bird with flying":                                   {Name: "Cat Bird", TypeLine: "Token Creature — Cat Bird", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 white Bird Soldier with flying":                               {Name: "Bird Soldier", TypeLine: "Token Creature — Bird Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}}, // #5586: Flurry of Wings
 	"3/3 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -309,6 +310,7 @@ var TokenTable = map[string]game.Card{
 	"2/2 white Soldier with vigilance":                                 {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/1 black Skeleton":                                               {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 2, Toughness: 1, Colors: []string{"B"}},
 	"2/1 black Warrior":                                                {Name: "Warrior", TypeLine: "Token Creature — Warrior", Power: 2, Toughness: 1, Colors: []string{"B"}},
+	"1/1 red Pirate with menace and haste":                             {Name: "Pirate", TypeLine: "Token Creature — Pirate", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"menace", "haste"}},
 	"2/2 black Pirate with menace":                                     {Name: "Pirate", TypeLine: "Token Creature — Pirate", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"2/2 black Skeleton Pirate":                                        {Name: "Skeleton Pirate", TypeLine: "Token Creature — Skeleton Pirate", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 white and blue Knight with vigilance":                         {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W", "U"}, Keywords: []string{"vigilance"}},
@@ -635,14 +637,25 @@ var TokenTable = map[string]game.Card{
 	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
 	// S82 GAP batch 62: Mr. House, President and CEO's Robot.
 	"3/3 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 3, Toughness: 3},
-
-	// S82 GAP batch 197: Warhammer 40,000 Commander's Astartes Warrior (Birth of the Imperium,
-	// Defenders of Humanity) and the 3/3 red Spawn (The Lost and the Damned).
-	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
-	"3/3 red Spawn": {Name: "Spawn", TypeLine: "Token Creature — Spawn", Power: 3, Toughness: 3, Colors: []string{"R"}},
-	// S82 GAP batch 198: Warhammer 40,000 Commander's Necron Warrior (Their Number Is Legion).
-	// Its Tyranid Warrior (Tyranid Invasion) is develop's row above.
+	// S82 GAP batch 185: Soundwave, Superior Captain's Ravage and Laserbeak.
+	"3/3 black Legendary Robot artifact named Ravage with menace and deathtouch": {Name: "Ravage", TypeLine: "Token Legendary Artifact Creature — Robot", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"menace", "deathtouch"}},
+	"2/2 blue Legendary Robot artifact named Laserbeak with flying and hexproof": {Name: "Laserbeak", TypeLine: "Token Legendary Artifact Creature — Robot", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying", "hexproof"}},
+	// S82 GAP batches 186, 188 and 196 (Warhammer 40,000 Commander): Necron Warrior,
+	// shared by batch 186's cards, batch 188's cards and Biotransference.
 	"2/2 black Necron Warrior artifact": {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	// S82 GAP batches 186, 190 and 195: white Astartes Warrior with vigilance,
+	// shared by batch 186's cards, Marneus Calgar and Belisarius Cawl.
+	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
+	// S82 GAP batches 187 and 196: Great Unclean One's and Nurgle's Rot's Plaguebearer of Nurgle.
+	"1/3 black Demon named Plaguebearer of Nurgle": {Name: "Plaguebearer of Nurgle", TypeLine: "Token Creature — Demon", Power: 1, Toughness: 3, Colors: []string{"B"}},
+	// S82 GAP batch 188: Mortarion's Astartes Warrior.
+	"2/2 black Astartes Warrior with menace": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"menace"}},
+	// #5948: Warhammer 40,000 Commander's Cherubael (Inquisitor Eisenhorn).
+	"4/4 black Legendary Demon with flying named Cherubael": {Name: "Cherubael", TypeLine: "Token Legendary Creature — Demon", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"flying"}},
+	// S82 GAP batch 193: Tyranid Gargoyle (Gargoyle Flock, Tyranid Harridan).
+	"1/1 blue Tyranid Gargoyle with flying": {Name: "Tyranid Gargoyle", TypeLine: "Token Creature — Tyranid Gargoyle", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	// S82 GAP batch 194: Magnus the Red's Spawn.
+	"3/3 red Spawn": {Name: "Spawn", TypeLine: "Token Creature — Spawn", Power: 3, Toughness: 3, Colors: []string{"R"}},
 	// S82 GAP batch 175: Kasmina, Enigmatic Mentor's Wizard.
 	"2/2 blue Wizard": {Name: "Wizard", TypeLine: "Token Creature — Wizard", Power: 2, Toughness: 2, Colors: []string{"U"}},
 	// S82 GAP batch 136: Penumbra Bobcat's Cat.

@@ -56,14 +56,8 @@ func init() {
 // The library is read at each draw, as Laboratory Maniac's is.
 func ormosCountersInsteadOfDrawing() game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventDrawCard},
-		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-			if ev.Kind != game.RepEventDraw || ev.DrawCount <= 0 || src == nil || ev.DrawPlayer != src.Controller {
-				return false
-			}
-			p := g.PlayerByIDForEffect(ev.DrawPlayer)
-			return p != nil && !p.Eliminated && p.Library.Size() == 0
-		},
+		Watches:     []game.EventKind{game.EventDrawCard},
+		AppliesTo:   effects.DrawFromAnEmptyLibraryApplies,
 		DrawInstead: game.RegisterDrawInstead("ormos-archive-keeper", ormosPutCounters),
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 			return src.Controller

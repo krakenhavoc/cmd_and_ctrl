@@ -69,14 +69,7 @@ func init() {
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return true // all permanents
 				},
-				Apply: func(c *game.Characteristic, target *game.Card, g *game.Game, source *game.Card) {
-					for _, t := range c.Types {
-						if t == "Artifact" {
-							return // idempotent: already an artifact
-						}
-					}
-					c.Types = append(c.Types, "Artifact")
-				},
+				Apply: effects.AddTheArtifactTypeOnce, // idempotent: already an artifact
 			},
 		},
 	})
