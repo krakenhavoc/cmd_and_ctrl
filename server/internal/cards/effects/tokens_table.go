@@ -633,6 +633,8 @@ var TokenTable = map[string]game.Card{
 	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
 	// S82 GAP batch 62: Mr. House, President and CEO's Robot.
 	"3/3 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 3, Toughness: 3},
+	// S82 GAP batch 175: Kasmina, Enigmatic Mentor's Wizard.
+	"2/2 blue Wizard": {Name: "Wizard", TypeLine: "Token Creature — Wizard", Power: 2, Toughness: 2, Colors: []string{"U"}},
 	// S82 GAP batch 136: Penumbra Bobcat's Cat.
 	"2/1 black Cat": {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 1, Colors: []string{"B"}},
 }
