@@ -387,6 +387,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.RevealHand {
 			out.RevealHand = true
 		}
+		if c.RevealThis {
+			out.RevealThis = true
+		}
 		// "Reveal the creature type you chose" likewise: dropped, A Killer
 		// Among Us would show nothing and need no choice.
 		if c.RevealSecretChoice {
