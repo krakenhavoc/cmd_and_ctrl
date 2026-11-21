@@ -88,13 +88,7 @@ func init() {
 				Label:   "−1: Exile another target permanent you own, then return it to the battlefield under your control.",
 				Cost:    effects.LoyaltyCost(-1),
 				Targets: effects.Another(effects.TargetPermanent("another target permanent you own", effects.YouOwn())),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
-						return nil
-					}
-					return effects.Flicker{Target: item.Targets[0].ID, Controller: ctx.Controller()}.Apply(ctx)
-				},
+				Effect:  effects.FlickerFirstLegalTarget,
 			},
 			{
 				Label: "−6: Choose left or right. Each player gains control of all nonland permanents other than Aminatou controlled by the next player in the chosen direction.",
