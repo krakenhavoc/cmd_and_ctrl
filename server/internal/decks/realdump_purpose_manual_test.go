@@ -256,6 +256,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 156 (#5948).
 	"Ib Halfheart, Goblin Tactician": "4 damage only to the creatures blocking the Goblin it sacrifices: a blocked attacker's blockers, not a board",
+
+	// S82 GAP batch 231 (#5948).
+	"Cloudkill": "-X/-X to every creature where X is the greatest mana value of a commander its caster owns on the battlefield or in the command zone: no fixed amount a sweep can declare, and zero with no commander",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
