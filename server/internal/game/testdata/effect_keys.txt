@@ -316,6 +316,7 @@ body nine-lives/incarnation-counter
 body noctis/warp-strike-return
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
+body nyssa-of-traken/sonic-booster
 body ochre-jelly/split-token
 body offspring/granted-token
 body ondu-rising/attacker-gains-lifelink
@@ -2267,6 +2268,7 @@ payunless pay-unless/jolted-awake-return
 payunless pay-unless/jubilant-mascot-support
 payunless pay-unless/kalastria-highborn-drain
 payunless pay-unless/karn-living-legacy-look
+payunless pay-unless/kate-stewart-pump
 payunless pay-unless/kavaron-harrier-robot
 payunless pay-unless/kazuul-ogre
 payunless pay-unless/kinzu-of-the-bleak-coven-exile
@@ -2599,6 +2601,7 @@ run prompt-run/mukotai-soulripper-grow
 run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
+run prompt-run/nyssa-of-traken-sacrifice
 run prompt-run/osseous-sticktwister-discarded
 run prompt-run/osseous-sticktwister-sacrificed
 run prompt-run/phenomenon-investigators-return
