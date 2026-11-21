@@ -402,6 +402,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedS82SncB07FishToken,
 	// The Raven Man's Bird: flying, can't block (Dominaria United, #5487).
 	printedRavenManBirdToken,
+	// Kibo, Uktabi Prince's Banana (Jumpstart 2022, #5948).
+	printedGapB154BananaToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.
