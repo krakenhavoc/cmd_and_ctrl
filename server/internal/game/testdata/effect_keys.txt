@@ -49,6 +49,7 @@ body ambulatory-edifice/shrink
 body ancestral-katana/attach
 body angel-of-suffering/mill-twice
 body annihilator/sacrifice
+body anointer-of-valor/counter
 body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-denial/draws
@@ -2200,6 +2201,7 @@ payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/alesha-who-smiles-at-death-return
 payunless pay-unless/ancestral-katana-attach
+payunless pay-unless/anointer-of-valor-counter
 payunless pay-unless/ant-man-colony-commander-counter
 payunless pay-unless/antagonist-incorporator-borg
 payunless pay-unless/anthropede-destroy-room
@@ -2479,6 +2481,7 @@ pick revealed-pick/soul-search-spirit
 pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
 pick revealed-pick/traumatic-revelation-incubate
+pick revealed-pick/vendilion-clique-tuck
 pick revealed-pick/word-of-command-play
 pick revealed-pick/zero-incorporeal-sensate-exile
 resume replacement-resume/combat-damage
@@ -4233,6 +4236,7 @@ tail then/urza-assembles-the-titans-may-reveal
 tail then/valakut-exploration-damage
 tail then/valiant-endeavor-knights
 tail then/vanish-into-memory-exiled
+tail then/vendilion-clique-draw
 tail then/vengeful-villagers-stun
 tail then/venture-into-the-dungeon
 tail then/vision-charm-basic-type-chosen
