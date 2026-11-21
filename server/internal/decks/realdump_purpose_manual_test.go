@@ -230,6 +230,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 107 (#5948).
 	"Faerie Artisans": "exiles only the tokens it created itself (\"all other tokens created with this creature\"), never another permanent: not a board",
+
+	// S82 GAP batch 114.
+	"Day's Undoing": "shuffles hands and graveyards into libraries and ends the turn: it exiles the stack, not permanents",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
