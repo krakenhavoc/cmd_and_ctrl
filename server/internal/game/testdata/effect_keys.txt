@@ -1735,6 +1735,7 @@ confirm confirm/tainted-pact-take
 confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-bunnies
 confirm confirm/tempt-with-discovery-search
+confirm confirm/tempt-with-mayhem
 confirm confirm/tempt-with-vengeance
 confirm confirm/terrapact-intimidator-landers-or-counters
 confirm confirm/the-celestus-loot
@@ -3213,6 +3214,7 @@ tail evelyn-the-covetous/exile-step
 tail evolving-door/cast
 tail exile-from-hand-and-plot/plot
 tail exile-then-token-copy/ardyn-the-usurper
+tail exile-then-token-copy/lazotep-quarry
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
 tail exile-then/mysterious-limousine-return-others
@@ -3298,6 +3300,7 @@ tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
 tail graveyard-exile/hour-of-eternity-zombie-copies
+tail graveyard-exile/suffer-the-past-drain
 tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
