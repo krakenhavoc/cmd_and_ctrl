@@ -52,7 +52,7 @@ func init() {
 				Label:   "−2: Return target creature card with mana value 3 or less from your graveyard to the battlefield.",
 				Cost:    LoyaltyCost(-2),
 				Targets: TargetCardInGraveyard("target creature card with mana value 3 or less in your graveyard", YouOwn(), And(Creature(), ManaValueLE(3))),
-				Effect:  ralZarekReanimate,
+				Effect:  RalZarekReanimate,
 			},
 			{
 				Label:   "−7: Flip five coins. Target opponent skips their next X turns, where X is the number of coins that came up heads.",
@@ -79,7 +79,7 @@ func RalZarekDiscard(g *game.Game, item *game.StackItem) error {
 
 // ralZarekReanimate puts the still-legal target onto the battlefield
 // under its owner's control (it is in your graveyard, so that is you).
-func ralZarekReanimate(g *game.Game, item *game.StackItem) error {
+func RalZarekReanimate(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ids := LegalTargetCardIDs(ctx)
 	if len(ids) == 0 {

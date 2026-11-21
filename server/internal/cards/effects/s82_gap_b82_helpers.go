@@ -13,7 +13,7 @@ import (
 // turn" (Bloodthirst X, CR 702.54b): the total of every damage event this
 // turn whose target is a player other than `controller`. Damage dealt, not
 // life lost; a prevented point was never dealt.
-func gapB82DamageDealtToOpponents(g *game.Game, controller uuid.UUID) int {
+func GapB82DamageDealtToOpponents(g *game.Game, controller uuid.UUID) int {
 	total := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target == controller {
@@ -28,7 +28,7 @@ func gapB82DamageDealtToOpponents(g *game.Game, controller uuid.UUID) int {
 }
 
 const (
-	gapB82IndoraptorTakeLabel = "Take the damage"
+	GapB82IndoraptorTakeLabel = "Take the damage"
 	gapB82IndoraptorSacLabel  = "Sacrifice a nontoken creature"
 )
 
@@ -47,7 +47,7 @@ func gapB82NontokenCreatures(g *game.Game, player uuid.UUID) []uuid.UUID {
 // damage equal to its power to that player unless they sacrifice a nontoken
 // creature of their choice": the chosen opponent decides; with no nontoken
 // creature to sacrifice the damage is dealt without asking.
-func gapB82IndoraptorEnrage(g *game.Game, item *game.StackItem) error {
+func GapB82IndoraptorEnrage(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var live []uuid.UUID
 	for _, o := range ctx.Opponents() {
@@ -58,7 +58,7 @@ func gapB82IndoraptorEnrage(g *game.Game, item *game.StackItem) error {
 	if len(live) == 0 {
 		return nil
 	}
-	pick := g.ChooseAtRandomForEffect(randomDraw(ctx), live, 1)
+	pick := g.ChooseAtRandomForEffect(RandomDraw(ctx), live, 1)
 	if len(pick) == 0 {
 		return nil
 	}
@@ -70,7 +70,7 @@ func gapB82IndoraptorEnrage(g *game.Game, item *game.StackItem) error {
 		Player:   victim,
 		Question: "Indoraptor — take damage equal to its power, or sacrifice a nontoken creature?",
 		Options: []game.ChoiceOption{
-			{Label: gapB82IndoraptorTakeLabel},
+			{Label: GapB82IndoraptorTakeLabel},
 			{Label: gapB82IndoraptorSacLabel},
 		},
 		ThenKey: gapB82IndoraptorAnswer,
@@ -102,7 +102,7 @@ var gapB82IndoraptorAnswer = OptionPickThen("option-pick/gap-b82-indoraptor-answ
 // gapB82OpponentCreaturesWithPower4 counts the creatures with power 4 or
 // greater `q.Controller`'s opponents control (Grim Giganotosaurus's cost
 // reduction), read through the layered view.
-func gapB82OpponentCreaturesWithPower4(q game.CostQuery) int {
+func GapB82OpponentCreaturesWithPower4(q game.CostQuery) int {
 	if q.Game == nil {
 		return 0
 	}
@@ -115,19 +115,19 @@ func gapB82OpponentCreaturesWithPower4(q game.CostQuery) int {
 	return n
 }
 
-var gapB82OwenKinds = []string{game.CounterReach, game.CounterMenace, game.CounterTrample, game.CounterHaste}
+var GapB82OwenKinds = []string{game.CounterReach, game.CounterMenace, game.CounterTrample, game.CounterHaste}
 
 // gapB82OwenCounterChosen puts the chosen counter on the ability's target if
 // it is still a legal one. An on-disk key: never renamed, never reused.
-var gapB82OwenCounterChosen = OptionPickThen("option-pick/gap-b82-owen-grady-counter", func(ctx *Context, r game.OptionPicked) error {
-	if r.Index < 0 || r.Index >= len(gapB82OwenKinds) {
+var GapB82OwenCounterChosen = OptionPickThen("option-pick/gap-b82-owen-grady-counter", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(GapB82OwenKinds) {
 		return nil
 	}
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		return ctx.Game.AddCounterByForEffect(ctx.Controller(), t.ID, gapB82OwenKinds[r.Index], 1)
+		return ctx.Game.AddCounterByForEffect(ctx.Controller(), t.ID, GapB82OwenKinds[r.Index], 1)
 	}
 	return nil
 })
@@ -139,7 +139,7 @@ const GrantedAltCostProwl = "granted-prowl"
 
 // gapB82SavageOrderTail is "It gains indestructible until your next turn" on
 // the card Savage Order found. An on-disk key: never renamed, never reused.
-var gapB82SavageOrderTail = CardTail("tail/gap-b82-savage-order-indestructible", func(ctx *Context, o game.TailOutcome) error {
+var GapB82SavageOrderTail = CardTail("tail/gap-b82-savage-order-indestructible", func(ctx *Context, o game.TailOutcome) error {
 	for _, id := range o.IDs {
 		if err := (ScopedEffectFor{
 			Target:   id,
@@ -158,7 +158,7 @@ var gapB82SavageOrderTail = CardTail("tail/gap-b82-savage-order-indestructible",
 // creature". The scheduled Cards are the land then the creature; either gone
 // from the battlefield and nothing happens (CR 608.2b). An on-disk key: never
 // renamed, never reused.
-var gapB82LandDamagesCreatureBody = game.SimpleDelayedBody("gap-b82/land-damages-creature", func(g *game.Game, item *game.StackItem) error {
+var GapB82LandDamagesCreatureBody = game.SimpleDelayedBody("gap-b82/land-damages-creature", func(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) < 2 {
 		return nil
 	}

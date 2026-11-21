@@ -15,10 +15,10 @@ func registerGapB73Tokens() bool {
 		// Tolsimir Wolfblood.
 		"2/2 green and white Legendary Wolf named Voja": {Name: "Voja", TypeLine: "Token Legendary Creature — Wolf", Power: 2, Toughness: 2, Colors: []string{"G", "W"}},
 	} {
-		if _, dup := tokenTable[key]; dup {
+		if _, dup := TokenTable[key]; dup {
 			panic("s82_gap_b73_helpers: token key already in the table: " + key)
 		}
-		tokenTable[key] = card
+		TokenTable[key] = card
 	}
 	return true
 }

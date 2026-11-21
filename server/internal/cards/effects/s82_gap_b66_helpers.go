@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // targets is the permanent the modifier's own source is attached to
 // (q.Source is the Aura). It reads q.Targets, so it is only meaningful on a
 // modifier that sets ReadsTargets.
-func gapTargetsEnchantedCreature() CostPredicate {
+func GapTargetsEnchantedCreature() CostPredicate {
 	return func(q game.CostQuery) bool {
 		for _, t := range q.Targets {
 			if t.Kind == game.TargetCard && q.Source.IsAttachedTo(t.ID) {
@@ -19,6 +19,6 @@ func gapTargetsEnchantedCreature() CostPredicate {
 }
 
 // gapAuraSpell is "Aura spells": the spell being cast has the subtype Aura.
-func gapAuraSpell() CostPredicate {
+func GapAuraSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.HasSubtype("Aura") }
 }

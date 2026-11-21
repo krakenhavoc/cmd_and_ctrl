@@ -11,7 +11,7 @@ import (
 
 // gapB78HasPlusOneCounter is "a creature … with a +1/+1 counter on it"
 // (Titanic Brawl): a card carrying at least one +1/+1 counter.
-func gapB78HasPlusOneCounter() CardPredicate {
+func GapB78HasPlusOneCounter() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.Counters[game.CounterPlusOne] > 0
 	}

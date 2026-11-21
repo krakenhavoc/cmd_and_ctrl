@@ -1,8 +1,6 @@
 package cardsbu
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -30,20 +28,7 @@ func init() {
 			Label:   "{U}: This creature's owner shuffles it into their library.",
 			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    effects.ManaCost("{U}"),
-			Effect:  ceruleanSphinxShuffleItself,
+			Effect:  effects.R35CeruleanSphinxShuffleItself,
 		}},
 	})
-}
-
-// ceruleanSphinxShuffleItself tucks the Sphinx into its owner's library,
-// then that owner shuffles.
-func ceruleanSphinxShuffleItself(g *game.Game, item *game.StackItem) error {
-	if !effects.SourceIsStillThisPermanent(g, item) {
-		return nil
-	}
-	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok {
-		return nil
-	}
-	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{item.SourceCardID}, game.TuckOptions{}, game.KeyedTail{Ref: effects.ThenShuffle, Player: c.Owner})
 }

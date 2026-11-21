@@ -9,13 +9,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is owed once they say yes; the offer lists the spells among those cards they
 // could legally cast free, and nothing is asked when there is none
 // (CR 608.2c, 118.9).
-func gapB71LookAtHandThenMayCastFree(g *game.Game, item *game.StackItem, name string) error {
+func GapB71LookAtHandThenMayCastFree(g *game.Game, item *game.StackItem, name string) error {
 	if item == nil || item.Trigger == nil {
 		return nil
 	}
 	hand := g.LookAtHandForEffect(item.Controller, item.Trigger.Event.Target)
 	perm := g.FreeCastFromHandPermission(item.Controller, item.SourceCardID, name)
-	candidates := freeCastCandidates(g, &perm, hand)
+	candidates := FreeCastCandidates(g, &perm, hand)
 	if len(candidates) == 0 {
 		return nil
 	}

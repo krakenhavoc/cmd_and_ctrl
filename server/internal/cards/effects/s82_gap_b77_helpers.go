@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // other than the source, that its controller (read as it died) matches the
 // source's controller, and that was a creature or a planeswalker as it left
 // (last-known types, CR 603.10a).
-func gapB77AnotherCreatureOrPlaneswalkerYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func GapB77AnotherCreatureOrPlaneswalkerYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.CardID == source.InstanceID {
 		return false
 	}
@@ -19,5 +19,5 @@ func gapB77AnotherCreatureOrPlaneswalkerYouControlDied(ev game.Event, source *ga
 	if !ok || dead.Controller != source.Controller {
 		return false
 	}
-	return leftAsType(ev, dead, "creature") || leftAsType(ev, dead, "planeswalker")
+	return LeftAsType(ev, dead, "creature") || LeftAsType(ev, dead, "planeswalker")
 }
