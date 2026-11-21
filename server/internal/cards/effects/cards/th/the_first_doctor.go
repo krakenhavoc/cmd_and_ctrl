@@ -1,8 +1,6 @@
 package cardsth
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -43,20 +41,9 @@ func init() {
 					}.Apply(effects.NewContext(g, item))
 				}),
 			effects.Targeting(
-				effects.WheneverYouCast(spellWithCascade, "The First Doctor — put a +1/+1 counter on target artifact or creature",
+				effects.WheneverYouCast(effects.GapB218SpellWithCascade, "The First Doctor — put a +1/+1 counter on target artifact or creature",
 					effects.B36CounterOnChosenAnimal),
 				effects.TargetPermanent("target artifact or creature", effects.Or(effects.Artifact(), effects.Creature()))),
 		},
 	})
-}
-
-// spellWithCascade is "a spell with cascade": a card whose own triggered
-// abilities include the cascade keyword's.
-func spellWithCascade(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-	for _, t := range game.TriggersForCard(c) {
-		if t.Keyword == effects.KeywordCascade {
-			return true
-		}
-	}
-	return false
 }

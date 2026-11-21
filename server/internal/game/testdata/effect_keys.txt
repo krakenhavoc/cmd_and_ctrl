@@ -1717,6 +1717,7 @@ confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
 confirm confirm/gain-life
 confirm confirm/galadriel-reveal
+confirm confirm/gap-b218-amber-gristle-discard-hand
 confirm confirm/gap-b56-powerbalance-reveal
 confirm confirm/gap-b98-matter-reshaper
 confirm confirm/gathering-stone-take
