@@ -2724,6 +2724,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasSubtype(ch, "Otter") && !strings.EqualFold(sc.Name, "Alania, Divergent Storm") {
 				tally.OtterSpellsExceptAlania++
 			}
+			// Acolyte of Bahamut's "first Dragon spell you cast each turn".
+			if characteristicHasSubtype(ch, "Dragon") {
+				tally.DragonSpells++
+			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {
 				tally.InstantSorceryVillain++

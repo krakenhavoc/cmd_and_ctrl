@@ -461,6 +461,7 @@ body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
 body shrapnel-slinger/destroy
 body shriek-treblemaker/cant-block
+body sigil-of-myrkul/boost
 body silumgar-butcher/minus-three
 body skyfisher-spider/destroy
 body slumbering-walker/return-from-graveyard
