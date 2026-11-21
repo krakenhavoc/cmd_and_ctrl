@@ -39,9 +39,9 @@ func init() {
 		Name:         "Waterbender's Restoration",
 		Completeness: CompletenessFull,
 		TapCost:      Waterbend("{X}"),
-		Targets:      targetsCountedByX(TargetCreature("X target creatures you control", YouControl())),
+		Targets:      TargetsCountedByX(TargetCreature("X target creatures you control", YouControl())),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return exileTargetsThenScheduleReturn(ctx,
+			return ExileTargetsThenScheduleReturn(ctx,
 				"Waterbender's Restoration — return the exiled creatures")
 		},
 	})
@@ -55,7 +55,7 @@ func init() {
 // A helper rather than a raw field poke so the one card using it
 // reads as a clause instead of as a struct edit, and so a second one
 // doesn't have to rediscover that Min and Max must be left alone.
-func targetsCountedByX(spec *game.TargetSpec) *game.TargetSpec {
+func TargetsCountedByX(spec *game.TargetSpec) *game.TargetSpec {
 	spec.CountFromX = true
 	return spec
 }

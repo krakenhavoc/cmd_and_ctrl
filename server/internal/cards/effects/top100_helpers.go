@@ -20,7 +20,7 @@ import (
 // two +1/+1 counters counts. It does not consult the layer engine's
 // effective characteristics, matching the posture every other
 // power-reading predicate in the catalog takes (PowerGE, PowerLE).
-func youControlPowerFourOrGreater(g *game.Game, controller uuid.UUID) bool {
+func YouControlPowerFourOrGreater(g *game.Game, controller uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.CurrentPower() >= 4 {
 			return true
@@ -36,7 +36,7 @@ func youControlPowerFourOrGreater(g *game.Game, controller uuid.UUID) bool {
 // upkeep trigger, Beastbond Outcaster's enters trigger and Garruk's
 // Uprising's enters trigger share it. A Do with an If, so the rows
 // declare a footprint (#3033).
-var drawIfYouControlPowerFourOrGreater = Do(If{
+var DrawIfYouControlPowerFourOrGreater = Do(If{
 	Cond: CondPowerAtLeast{N: 4},
 	Then: []Applier{DrawCards{N: 1}},
 })

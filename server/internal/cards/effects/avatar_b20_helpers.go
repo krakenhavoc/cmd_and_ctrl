@@ -20,18 +20,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // mana-tap-sacrifice cost that uses the stack, so the land is gone before
 // the card is drawn and a response can't save it. Each member has its own
 // file and registers through here.
-func avatarB20CyclingTapland(oracleID, name, a, b string) Spec {
+func AvatarB20CyclingTapland(oracleID, name, a, b string) Spec {
 	return Spec{
 		OracleID:      oracleID,
 		Name:          name,
 		Completeness:  CompletenessFull,
 		Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
-		ManaAbilities: []ManaAbility{dualManaAbility(a, b)},
+		ManaAbilities: []ManaAbility{DualManaAbility(a, b)},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}, {T}, Sacrifice this land: Draw a card.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{4}"), TapCost(), SacrificeThis()),
-			Effect:  drawOneCardEffect,
+			Effect:  DrawOneCardEffect,
 		}},
 	}
 }

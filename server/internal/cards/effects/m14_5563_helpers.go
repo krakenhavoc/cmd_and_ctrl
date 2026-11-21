@@ -9,9 +9,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // one printed ability with two trigger conditions (OnAny), so a spell cast and
 // a land entering each trigger it once. The spell's color and the land type
 // are words of the Staff's text (CR 612.2), read through it.
-func m14StaffOfTheMagus(name, color, landType string) game.TriggeredAbility {
+func M14StaffOfTheMagus(name, color, landType string) game.TriggeredAbility {
 	cast := YouCast(OfColor(color))
-	land := cmdr2S14SubtypeLandEntersUnderYourControl(landType)
+	land := Cmdr2S14SubtypeLandEntersUnderYourControl(landType)
 	return OnAny([]game.EventKind{game.EventCast, game.EventETB},
 		func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 			if ev.Kind == game.EventETB {
@@ -26,25 +26,25 @@ func m14StaffOfTheMagus(name, color, landType string) game.TriggeredAbility {
 // whatever its types, and another creature counts when it was a Human under
 // the source's controller as it last existed (leftAsSubtype,
 // leftUnderControlOf, CR 603.10a).
-func m14ThisOrAnotherHumanYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
+func M14ThisOrAnotherHumanYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
 	if !ok {
 		return false
 	}
 	if ev.CardID == source.InstanceID {
 		return true
 	}
-	return leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Human"))
+	return LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Human"))
 }
 
 // m14MaraudingMaulhornMustAttack is "This creature attacks each combat if able
 // unless you control a creature named Advocate of the Beast": Bloodrock
 // Cyclops's requirement, switched off while the exemption holds. The name is
 // read in the layer pass (youControlACreatureNamed).
-func m14MaraudingMaulhornMustAttack() game.StaticAbility {
-	exempt := youControlACreatureNamed("Advocate of the Beast")
+func M14MaraudingMaulhornMustAttack() game.StaticAbility {
+	exempt := YouControlACreatureNamed("Advocate of the Beast")
 	s := AttacksEachCombatWhere(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return selfOnly(target, g, source) && !exempt(g, source)
+		return SelfOnly(target, g, source) && !exempt(g, source)
 	})
 	s.Label = "Attacks each combat if able unless you control a creature named Advocate of the Beast."
 	return s
@@ -52,7 +52,7 @@ func m14MaraudingMaulhornMustAttack() game.StaticAbility {
 
 // ringOfThreeWishesTutor is Ring of Three Wishes' "Search your library for a
 // card, put that card into your hand, then shuffle."
-func ringOfThreeWishesTutor(g *game.Game, item *game.StackItem) error {
+func RingOfThreeWishesTutor(g *game.Game, item *game.StackItem) error {
 	return SearchLibrary{
 		Player:  item.Controller,
 		Dest:    game.ZoneHand,

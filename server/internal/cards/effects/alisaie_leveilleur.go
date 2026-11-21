@@ -30,14 +30,14 @@ func init() {
 		},
 		CostModifiers: []game.CostModifier{
 			CostsLess(2, "Dualcast — the second spell you cast each turn costs {2} less to cast.",
-				YourSpell(), secondSpellYouCastThisTurn()),
+				YourSpell(), SecondSpellYouCastThisTurn()),
 		},
 	})
 }
 
 // secondSpellYouCastThisTurn passes while the caster has cast exactly one
 // spell this turn, so the spell being priced is their second.
-func secondSpellYouCastThisTurn() CostPredicate {
+func SecondSpellYouCastThisTurn() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.Game != nil && q.Game.CastTallyFor(q.Controller).Total == 1
 	}

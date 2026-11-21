@@ -271,7 +271,7 @@ func (s CreateTokensForPlacedSticker) Apply(ctx *Context) error {
 
 // The step is a token creation whichever count the event picks, as
 // CreateXByXToken's is whatever size its X picks.
-func (s CreateTokensForPlacedSticker) footprint() (game.FootprintStep, bool) {
+func (s CreateTokensForPlacedSticker) Footprint() (game.FootprintStep, bool) {
 	key, manual, keywords := game.FootprintTokenOf(s.Template)
 	return game.FootprintStep{
 		Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
@@ -367,7 +367,7 @@ func placedNameSticker(ctx *Context) (text string, ok bool) {
 
 // uniqueVowelsOnPlacedSticker is "the number of unique vowels on that
 // sticker" (CR 123.6e): zero when the instruction put no name sticker on.
-func uniqueVowelsOnPlacedSticker(ctx *Context) int {
+func UniqueVowelsOnPlacedSticker(ctx *Context) int {
 	text, ok := placedNameSticker(ctx)
 	if !ok {
 		return 0
@@ -388,7 +388,7 @@ func nameStickersOn(c game.Card) []string {
 }
 
 // nameStickerCount is "each name sticker on it that <matches>".
-func nameStickerCount(c game.Card, matches func(text string) bool) int {
+func NameStickerCount(c game.Card, matches func(text string) bool) int {
 	n := 0
 	for _, t := range nameStickersOn(c) {
 		if matches == nil || matches(t) {

@@ -1,0 +1,96 @@
+package cardshu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Ill-Tempered Loner // Howlpack Avenger — {2}{R}{R} Creature — Human
+// Werewolf 3/3 // Creature — Werewolf 4/4 (#2586, ADR 0132):
+//
+//	Front: "Whenever this creature is dealt damage, it deals that much
+//	        damage to any target.
+//	        {1}{R}: This creature gets +2/+0 until end of turn.
+//	        Daybound"
+//	Back:  "Whenever a permanent you control is dealt damage, this
+//	        creature deals that much damage to any target.
+//	        {1}{R}: This creature gets +2/+0 until end of turn.
+//	        Nightbound"
+//
+// Screaming Nemesis's shape: EventDealDamage names the damaged
+// permanent in Target, the controller picks any target as the trigger
+// goes on the stack, and the creature deals the event's amount on
+// resolution. The source is the Loner / Avenger itself, as printed, and
+// one that died to the damage still deals it. "Any target" includes the
+// creature itself. The back face watches every permanent its controller
+// controls (including itself), so a planeswalker or battle takes part.
+//
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and reflects the
+// TOTAL the creature was dealt at the same time, with one target pick: a
+// creature damaged by two blockers at once triggers once, as printed
+// (CR 120.3, CR 510.2). The back face groups per damaged permanent.
+func init() {
+	const oracle = "6e0b3317-394d-42cc-a350-cb5ce051787a"
+	pump := func(name string) effects.ActivatedAbility {
+		return effects.ActivatedAbility{
+			Label:   "{1}{R}: This creature gets +2/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    effects.ManaCost("{1}{R}"),
+			Effect:  effects.ThisCreatureUntilEOT(name+" — +2/+0", 2, 0),
+		}
+	}
+	reflect := func(name string, when func(ev game.Event, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
+		label := name + " — deal that much damage to any target"
+		return game.TriggeredAbility{
+			Watches: []game.EventKind{game.EventDealDamage},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return ev.Kind == game.EventDealDamage && ev.Amount > 0 && when(ev, source, g)
+			},
+			Targets:    effects.TargetAny(),
+			Key:        label,
+			AtBatchEnd: effects.ThatMuchDamage(),
+			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				item := game.NewTriggeredItem(source, label)
+				item.Params.Amount = ev.Amount
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Params.Amount <= 0 {
+					return nil
+				}
+				ctx := effects.NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					return effects.DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: item.Params.Amount}.Apply(ctx)
+				}
+				return nil
+			},
+		}
+	}
+	effects.Register(effects.Spec{
+		OracleID:        oracle,
+		Name:            "Ill-Tempered Loner",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"daybound"},
+		Triggered: []game.TriggeredAbility{
+			reflect("Ill-Tempered Loner", func(ev game.Event, source *game.Card, _ *game.Game) bool {
+				return effects.B35SelfWasDealtDamage(ev, source)
+			}),
+		},
+		Activated: []effects.ActivatedAbility{pump("Ill-Tempered Loner")},
+	})
+	effects.Register(effects.Spec{
+		OracleID:        oracle + "#1",
+		Name:            "Howlpack Avenger",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"nightbound"},
+		Triggered: []game.TriggeredAbility{
+			reflect("Howlpack Avenger", func(ev game.Event, source *game.Card, g *game.Game) bool {
+				damaged, ok := g.LookupCardForEffect(ev.Target)
+				return ok && damaged.Controller == source.Controller && effects.OnBattlefield(g, ev.Target)
+			}),
+		},
+		Activated: []effects.ActivatedAbility{pump("Howlpack Avenger")},
+	})
+}

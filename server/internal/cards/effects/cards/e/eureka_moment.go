@@ -1,0 +1,41 @@
+package cardse
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Eureka Moment — Instant {2}{G}{U} (EDHREC rank 1986):
+//
+//	"Draw two cards. You may put a land card from your hand onto the
+//	 battlefield."
+//
+// Instant-speed card draw with a free land drop attached.
+//
+// Both halves run, in printed order: the draws first, so a land just
+// drawn is a legal pick, then the offer. The land drop is the shared
+// MayPutALandFromHand clause (#654) — a pick-from-hand prompt whose
+// continuation puts the land onto the battlefield through the CR 614
+// entry pipeline. It is not a land PLAY (CR 305.4), so the turn's
+// land drop is still available afterwards.
+//
+// Until #654 the clause was omitted and declared: the prompt existed
+// (#552) but the hand-to-battlefield move did not, and shipping it as
+// "put the first land" would have been a choice the player never
+// made.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "0e2c11b2-d95f-4402-9a4a-afd3f7ffb8be",
+		Name:         "Eureka Moment",
+		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Draws: 2, Answers: game.AnswerValue}, // #4734: draw and a land answer nothing
+		OnResolve: effects.ResolveSteps(
+			// The land waits for a prompt the draws ask (CR 608.2c, #4155).
+			effects.DrawCards{N: 2},
+			effects.Instruction(func(ctx *effects.Context) error {
+				return effects.MayPutALandFromHand("Eureka Moment").Apply(ctx)
+			}),
+		),
+	})
+}

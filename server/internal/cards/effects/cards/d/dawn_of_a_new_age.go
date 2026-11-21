@@ -1,0 +1,125 @@
+package cardsd
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Dawn of a New Age — Enchantment {1}{W} (EDHREC rank 4147):
+//
+//	"This enchantment enters with a hope counter on it for each
+//	 creature you control.
+//	 At the beginning of your end step, remove a hope counter from
+//	 this enchantment. If you do, draw a card. Then if this
+//	 enchantment has no hope counters on it, sacrifice it and you
+//	 gain 4 life."
+//
+// Two mana that draws you one card a turn for as many turns as you
+// had creatures when it landed, and then pays 4 life on the way out.
+// A token deck casting this after a Secure the Wastes is drawing
+// five or six cards for two mana; cast on an empty board it is a
+// two-mana "gain 4 life" at the end of the turn, which is the
+// printed floor and is not a bug.
+//
+// THE COUNT IS TAKEN AS IT ENTERS, ONCE, AND NEVER AGAIN. Creatures
+// that arrive later add nothing — it is an entry replacement
+// (CR 614.1c), not a static. The count runs inside the replacement,
+// so a creature that died in response is already gone and is not
+// counted, exactly as printed. Dawn of a New Age is an enchantment
+// and never counts itself.
+//
+// THE END-STEP TRIGGER HAS NO INTERVENING "IF", so it fires on every
+// one of its controller's end steps regardless of how many counters
+// are left — which is what makes the last chapter work. Read the
+// three clauses in order:
+//
+//  1. "Remove a hope counter" — with none left, nothing is removed.
+//  2. "IF YOU DO, draw a card" — conditional on the removal actually
+//     happening. No counter, no draw.
+//  3. "THEN if it has no hope counters, sacrifice it and gain 4" —
+//     checked AFTER the removal, so the turn that spends the last
+//     counter both draws the card and cashes the enchantment in.
+//     That ordering is the whole card and it is why this is one
+//     trigger body rather than three primitives in a Do().
+//
+// "YOUR END STEP" is the controller's, matched on the event's actor,
+// so an opponent's end step does nothing. A Dawn that has already
+// left the battlefield when the trigger resolves does nothing at all.
+//
+// The sacrifice is the enchantment's own, so it is a real sacrifice:
+// aristocrats payoffs see it, and indestructible would not save it.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "37df5ade-6a21-4b0c-89f8-e2e917589a8d",
+		Name:         "Dawn of a New Age",
+		Completeness: effects.CompletenessFull,
+		Replacements: []game.ReplacementEffect{
+			effects.B19EntersWithCountersCounted(B39HopeCounter, func(g *game.Game, src *game.Card) int {
+				return effects.B39CreaturesControlledBy(g, src.Controller)
+			}, "Dawn of a New Age: enters with a hope counter for each creature you control"),
+		},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Actor == source.Controller
+			}, "Dawn of a New Age — remove a hope counter and draw", B39DawnOfANewAgeEndStep),
+		},
+	})
+}
+
+// b39HopeCounter is Dawn of a New Age's printed counter kind. Counter
+// kinds are free-form strings (Gemstone Mine's "mining" is the
+// precedent); naming it here keeps the entry replacement and the end
+// step reading the same one.
+const B39HopeCounter = "hope"
+
+// b39DawnOfANewAgeEndStep is the end-step body, in printed order:
+// remove one counter if there is one, draw only if a counter actually
+// came off, then check for zero and cash the enchantment in.
+func B39DawnOfANewAgeEndStep(g *game.Game, item *game.StackItem) error {
+	if !effects.B09SourceStillOnBattlefield(g, item) {
+		return nil
+	}
+	source := item.SourceCardID
+
+	if effects.B39CountersOn(g, source, B39HopeCounter) > 0 {
+		// #1282: the draw and the zero check are the removal's
+		// continuation. The removal runs the CR 614 counter window,
+		// and a window that pauses on a CR 616 ordering prompt removes
+		// nothing until the prompt is answered — read on the next
+		// line, the check would still see the last hope counter and
+		// never cash the enchantment in.
+		return g.AddCounterByKeyedForEffect(uuid.Nil, source, B39HopeCounter, -1,
+			effects.NewContext(g, item).ItemTail(dawnOfANewAgeAfterRemoval))
+	}
+	return b39DawnOfANewAgeCashIn(g, item)
+}
+
+// dawnOfANewAgeAfterRemoval is the draw and the zero check behind the hope
+// counter's removal. An on-disk key: never renamed, never reused.
+var dawnOfANewAgeAfterRemoval = effects.CardTail("dawn-of-a-new-age/after-removal", func(ctx *effects.Context, _ game.TailOutcome) error {
+	return b39DawnOfANewAgeDrawThenCashIn.Run(ctx)
+})
+
+// b39DawnOfANewAgeCashIn is the end step's last sentence: with no hope
+// counters left, sacrifice the enchantment and gain 4 life.
+func b39DawnOfANewAgeCashIn(g *game.Game, item *game.StackItem) error {
+	if effects.B39CountersOn(g, item.SourceCardID, B39HopeCounter) > 0 {
+		return nil
+	}
+	ctx := effects.NewContext(g, item)
+	if err := (effects.SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
+		return err
+	}
+	return effects.GainLife{Player: item.Controller, Amount: 4}.Apply(ctx)
+}
+
+// b39DawnOfANewAgeDrawThenCashIn is the draw and then the cash-in: the cash-in
+// waits for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+var b39DawnOfANewAgeDrawThenCashIn = effects.RegisterThenSteps("then-steps/dawn-of-a-new-age-draw",
+	effects.DrawCards{N: 1},
+	effects.Instruction(func(ctx *effects.Context) error { return b39DawnOfANewAgeCashIn(ctx.Game, ctx.Item) }),
+)

@@ -13,7 +13,7 @@ import (
 // rfReprintABrainsurgePutBack is Brainsurge's "then put two cards from
 // your hand on top of your library in any order", registered under its
 // own key so the prompt names the right card.
-var rfReprintABrainsurgePutBack = game.RegisterDrawThen("brainsurge-put-back", func(g *game.Game, d game.DrawThen) error {
+var RfReprintABrainsurgePutBack = game.RegisterDrawThen("brainsurge-put-back", func(g *game.Game, d game.DrawThen) error {
 	ctx := NewContext(g, &game.StackItem{Controller: d.Player, SourceCardID: d.Source})
 	return PutFromHandOnTopInAnyOrder{
 		Player: d.Player,
@@ -26,7 +26,7 @@ var rfReprintABrainsurgePutBack = game.RegisterDrawThen("brainsurge-put-back", f
 // {C}. {T}, Sacrifice this land: Search your library for a basic A, B,
 // or C card, put it onto the battlefield tapped, then shuffle. Cycling
 // {cost}". The fetch is the Panorama's without the {1}.
-func rfReprintALandscape(oracleID, name, cyclingCost string, subtypes ...string) Spec {
+func RfReprintALandscape(oracleID, name, cyclingCost string, subtypes ...string) Spec {
 	match := IsBasicLandOfAnySubtype(subtypes...)
 	label := "{T}, Sacrifice this land: Search your library for a basic " +
 		subtypes[0] + ", " + subtypes[1] + ", or " + subtypes[2] +
@@ -67,7 +67,7 @@ func rfReprintALandscape(oracleID, name, cyclingCost string, subtypes ...string)
 // cards. Create a 1/1 white Spirit creature token with flying for each
 // card type among cards discarded this way", registered as the draw's
 // continuation so the discard prompt opens only once the draws are done.
-var rfReprintAOccultEpiphanyDiscard = game.RegisterDrawThen("occult-epiphany-discard", func(g *game.Game, d game.DrawThen) error {
+var RfReprintAOccultEpiphanyDiscard = game.RegisterDrawThen("occult-epiphany-discard", func(g *game.Game, d game.DrawThen) error {
 	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   d.Player,
 		Source:   d.Source,
@@ -113,7 +113,7 @@ func rfReprintACardTypesAmong(g *game.Game, ids []uuid.UUID) int {
 // battlefield, then shuffle the rest of the revealed cards into your
 // library." A library that runs out first reveals itself entirely.
 // Tokens are not cards (CR 108.2), so they never count.
-func rfReprintAMassPolymorphReveal(ctx *Context, want int) error {
+func RfReprintAMassPolymorphReveal(ctx *Context, want int) error {
 	player := ctx.Controller()
 	p := ctx.PlayerByID(player)
 	var run []uuid.UUID
@@ -140,6 +140,6 @@ func rfReprintAMassPolymorphReveal(ctx *Context, want int) error {
 		Cards:    run,
 		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit[c.InstanceID] },
 		All:      true,
-		ThenTail: thenShuffle,
+		ThenTail: ThenShuffle,
 	}.Apply(ctx)
 }

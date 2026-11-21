@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trigger body (Glider Staff): the first target still legal on
 // resolution is airbent (CR 608.2b); none, and nothing happens.
 // Unlike AirbendOtherTarget it has no "other" clause to enforce.
-func airbendFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func AirbendFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {

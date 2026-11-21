@@ -55,9 +55,9 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, nghaHorrorDealtCombatDamageToAPlayer, nghaMillLabel, nghaMillThatMany),
 			Targeting(
-				AtYourEndStep(nghaReanimateLabel, returnFirstLegalGraveyardTargetUnderYourControl),
+				AtYourEndStep(nghaReanimateLabel, ReturnFirstLegalGraveyardTargetUnderYourControl),
 				TargetCardInGraveyard("target artifact or creature card in an opponent's graveyard that was put there from their library this turn",
-					Or(Artifact(), Creature()), Not(YouOwn()), nghaPutThereFromLibraryThisTurn),
+					Or(Artifact(), Creature()), Not(YouOwn()), NghaPutThereFromLibraryThisTurn),
 			),
 		},
 	})
@@ -67,7 +67,7 @@ func init() {
 // combat damage to a player from a creature the Captain's controller
 // controls that is a Horror as the damage is dealt.
 func nghaHorrorDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
@@ -93,7 +93,7 @@ func nghaMillThatMany(g *game.Game, item *game.StackItem) error {
 // already in the graveyard when the turn began.
 //
 // Caller holds g.mu.
-func nghaPutThereFromLibraryThisTurn(g *game.Game, _ uuid.UUID, c game.Card) bool {
+func NghaPutThereFromLibraryThisTurn(g *game.Game, _ uuid.UUID, c game.Card) bool {
 	inArrival, fromLibrary := false, false
 	for _, ev := range g.EventsThisTurn() {
 		if ev.CardID != c.InstanceID {

@@ -38,7 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(Targeting(WhenThisEnters("Magmatic Galleon — 5 damage to target creature an opponent controls",
-				sourceDealsFiveToTheChosenTarget),
+				SourceDealsFiveToTheChosenTarget),
 				TargetCreature("target creature an opponent controls", OpponentControls())), ForTargets(DamageToTarget(0, 5))),
 			OncePerBatch(On(game.EventDealDamage, magmaticGalleonExcessNoncombatDamage,
 				"Magmatic Galleon — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1}))),
@@ -55,7 +55,7 @@ func init() {
 // sourceDealsFiveToTheChosenTarget (Magmatic Galleon, Steel Wrecking Ball) reads the chosen target off ctx.LegalTargets()
 // (CR 608.2b re-checks legality; an illegal-by-resolution target is
 // simply not there any more) and deals 5 damage.
-func sourceDealsFiveToTheChosenTarget(g *game.Game, item *game.StackItem) error {
+func SourceDealsFiveToTheChosenTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
@@ -70,5 +70,5 @@ func sourceDealsFiveToTheChosenTarget(g *game.Game, item *game.StackItem) error 
 // (see the file comment for why the before/after subtraction
 // matters).
 func magmaticGalleonExcessNoncombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return excessNoncombatDamageToOpponentCreature(ev, source, g) > 0
+	return ExcessNoncombatDamageToOpponentCreature(ev, source, g) > 0
 }

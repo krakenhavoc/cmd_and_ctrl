@@ -18,7 +18,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, AllOf(Self, geologicalAppraiserWasCast), "Geological Appraiser — discover 3",
+			On(game.EventETB, AllOf(Self, GeologicalAppraiserWasCast), "Geological Appraiser — discover 3",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					if ctx.CastProvenance().FromZone == "" {
@@ -32,6 +32,6 @@ func init() {
 
 // geologicalAppraiserWasCast is "if you cast it": the entering permanent
 // came from a spell.
-func geologicalAppraiserWasCast(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func GeologicalAppraiserWasCast(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return source != nil && source.Provenance.FromZone != ""
 }

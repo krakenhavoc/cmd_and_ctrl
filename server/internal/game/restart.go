@@ -431,6 +431,7 @@ func restartCards(c Card) []Card {
 		card.PutInGraveyardFrom = ""
 		card.PutInGraveyardThisTurn = false
 		card.Surveilled = false
+		card.Milled = false
 		card.FaceDownListed = nil
 		card.effective = nil
 	}

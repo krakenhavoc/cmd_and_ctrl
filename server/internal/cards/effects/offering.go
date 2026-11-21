@@ -49,7 +49,7 @@ func Offering(quality string, preds ...CardPredicate) game.AdditionalCost {
 		Optional:                    true,
 		Key:                         OfferingKey,
 		Label:                       strings.ToUpper(quality[:1]) + quality[1:] + " offering",
-		Sacrifice:                   sacrificeSpec(what, preds...),
+		Sacrifice:                   SacrificeSpec(what, preds...),
 		AsThoughFlash:               true,
 		ReducedBySacrificedManaCost: true,
 	}

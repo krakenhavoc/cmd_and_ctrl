@@ -37,7 +37,7 @@ func init() {
 // argentumMasticoreUpkeep asks for the discard, or sacrifices at once when
 // there is no card to discard.
 func argentumMasticoreUpkeep(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	p := g.PlayerByIDForEffect(item.Controller)
@@ -66,7 +66,7 @@ var argentumMasticoreDiscarded = game.RegisterDiscardThen("choose-cards/argentum
 	ctx := NewContext(g, r.Item)
 	discarded := r.Discarded.Cards()
 	if len(discarded) == 0 {
-		if !sourceIsStillThisPermanent(g, r.Item) {
+		if !SourceIsStillThisPermanent(g, r.Item) {
 			return nil
 		}
 		return SacrificePermanent{Target: r.Item.SourceCardID}.Apply(ctx)

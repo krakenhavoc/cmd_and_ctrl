@@ -60,7 +60,7 @@ func init() {
 				// other way while the trigger sat on the
 				// stack. Nothing to airbend is not an error
 				// (CR 608.2c).
-				if !onBattlefield(g, victim) {
+				if !OnBattlefield(g, victim) {
 					return nil
 				}
 				return Airbend{Target: victim}.Apply(NewContext(g, item))
@@ -83,7 +83,7 @@ func targetedAnotherCreatureYouControl(ev game.Event, source *game.Card, g *game
 	if ev.CardID == uuid.Nil || ev.CardID == source.InstanceID || g == nil {
 		return false
 	}
-	if !onBattlefield(g, ev.CardID) {
+	if !OnBattlefield(g, ev.CardID) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -94,7 +94,7 @@ func targetedAnotherCreatureYouControl(ev game.Event, source *game.Card, g *game
 // permanent. Card.Controller is only meaningful there — off the
 // battlefield it tracks Owner — so any "you control" test has to
 // establish the zone first.
-func onBattlefield(g *game.Game, cardID uuid.UUID) bool {
+func OnBattlefield(g *game.Game, cardID uuid.UUID) bool {
 	z := g.FindCardZoneForEffect(cardID)
 	return z != nil && z.Kind == game.ZoneBattlefield
 }

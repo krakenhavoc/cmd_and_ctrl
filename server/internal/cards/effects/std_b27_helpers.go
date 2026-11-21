@@ -18,10 +18,10 @@ import (
 type CondYourGraveyardAtLeast struct{ N int }
 
 func (c CondYourGraveyardAtLeast) Holds(ctx *Context) bool {
-	return b31GraveyardSize(ctx.Game, ctx.Controller()) >= c.N
+	return B31GraveyardSize(ctx.Game, ctx.Controller()) >= c.N
 }
 
-func (CondYourGraveyardAtLeast) condition() (game.FootprintStep, bool) {
+func (CondYourGraveyardAtLeast) Condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }
 
@@ -30,12 +30,12 @@ func (CondYourGraveyardAtLeast) condition() (game.FootprintStep, bool) {
 // VrenRatToken is the 1/1 black Rat creature token with "This token gets
 // +1/+1 for each other Rat you control" (Vren, the Relentless; the printed
 // Rat token of Bloomburrow, tblb #13).
-func VrenRatToken() game.Card { return tokenFromCatalog(printedVrenRatToken) }
+func VrenRatToken() game.Card { return TokenFromCatalog(printedVrenRatToken) }
 
 // printedVrenRatToken is that Rat as PRINTED. Its slug is an on-disk
 // identity and is never renamed.
-func printedVrenRatToken() tokenTemplate {
-	return tokenTemplate{
+func printedVrenRatToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "rat-pumped-by-other-rats",
 		Card: game.Card{
 			Name:      "Rat",
@@ -52,7 +52,7 @@ func printedVrenRatToken() tokenTemplate {
 				return target.InstanceID == source.InstanceID
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := hobA9OtherSubtypeYouControl(g, source, source.TextSubtype("Rat"))
+				n := HobA9OtherSubtypeYouControl(g, source, source.TextSubtype("Rat"))
 				c.Power += n
 				c.Toughness += n
 			},
@@ -68,8 +68,8 @@ func printedVrenRatToken() tokenTemplate {
 // creature `ref` names: the Flicker primitive, done only when that very
 // object is still on the battlefield. A creature that left and came back is
 // a new object (CR 400.7) the trigger knows nothing of, so it is left alone.
-func stdB27FlickerObject(ctx *Context, ref game.ObjectRef) error {
-	if ref.ID == uuid.Nil || !onBattlefield(ctx.Game, ref.ID) {
+func StdB27FlickerObject(ctx *Context, ref game.ObjectRef) error {
+	if ref.ID == uuid.Nil || !OnBattlefield(ctx.Game, ref.ID) {
 		return nil
 	}
 	c, ok := ctx.Game.LookupCardForEffect(ref.ID)
@@ -81,7 +81,7 @@ func stdB27FlickerObject(ctx *Context, ref game.ObjectRef) error {
 
 // targetPlayerMillsTwo is "target player mills two cards": the still-legal
 // player target mills two (Scavenger's Talent, Extractor Demon).
-func targetPlayerMillsTwo(g *game.Game, item *game.StackItem) error {
+func TargetPlayerMillsTwo(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {

@@ -13,12 +13,12 @@ import (
 // declaration (CR 506.5), read as the trigger is harvested, after every
 // attacker is stamped; the creature that gains it is the one the event
 // names, and one that left in response gains nothing (CR 400.7).
-func alaB1LoneAttackerGains(name, keyword string) game.TriggeredAbility {
-	return On(game.EventAttack, mshB1YouAttackAlone,
+func AlaB1LoneAttackerGains(name, keyword string) game.TriggeredAbility {
+	return On(game.EventAttack, MshB1YouAttackAlone,
 		name+" — the lone attacker gains "+keyword+" until end of turn",
 		func(g *game.Game, item *game.StackItem) error {
 			attacker := item.Trigger.Event.CardID
-			if !onBattlefield(g, attacker) {
+			if !OnBattlefield(g, attacker) {
 				return nil
 			}
 			return GrantKeywordUntilEOT{
@@ -38,9 +38,9 @@ var alaB1PowerFiveOrGreater = CondPowerAtLeast{N: 5}
 // alaB1AtYourEndStepIfPowerFive is "At the beginning of your end step, if
 // you control a creature with power 5 or greater, <effect>." The trigger
 // condition and the resolution re-check read the same board (CR 603.4).
-func alaB1AtYourEndStepIfPowerFive(label string, effect Effect) game.TriggeredAbility {
+func AlaB1AtYourEndStepIfPowerFive(label string, effect Effect) game.TriggeredAbility {
 	return InterveningIf(alaB1PowerFiveOrGreater, On(game.EventBeginEndStep,
 		func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			return ev.Actor == source.Controller && b24ControlsCreatureWithPowerAtLeast(g, source.Controller, 5)
+			return ev.Actor == source.Controller && B24ControlsCreatureWithPowerAtLeast(g, source.Controller, 5)
 		}, label, effect))
 }

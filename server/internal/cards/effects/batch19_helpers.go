@@ -32,7 +32,7 @@ import (
 // has no layer cache, so this is the printed type line; a changeling
 // counts, as printed. `zombie` is the creature type as the counting
 // object's text now reads it (TextSubtype, CR 612.2, #3984).
-func b19ZombieCardsInGraveyard(g *game.Game, player uuid.UUID, zombie string) int {
+func B19ZombieCardsInGraveyard(g *game.Game, player uuid.UUID, zombie string) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
@@ -52,7 +52,7 @@ func b19ZombieCardsInGraveyard(g *game.Game, player uuid.UUID, zombie string) in
 // a Zombie spell" — b17ElfSpellCastByYou with the tribe swapped. The
 // spell is read off the stack, where its printed type line is intact;
 // a changeling counts.
-func b19ZombieSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B19ZombieSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -63,12 +63,12 @@ func b19ZombieSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) boo
 
 // b19AnotherNontokenCreatureYouControlDied is Liesa's condition:
 // b17AnotherNontokenCreatureDied narrowed to the source's controller.
-func b19AnotherNontokenCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func B19AnotherNontokenCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	dead, ok := diedCreature(ev, g)
-	return ok && !IsToken(dead) && leftUnderControlOf(ev, dead) == source.Controller
+	dead, ok := DiedCreature(ev, g)
+	return ok && !IsToken(dead) && LeftUnderControlOf(ev, dead) == source.Controller
 }
 
 // --- replacements ------------------------------------------------
@@ -79,7 +79,7 @@ func b19AnotherNontokenCreatureYouControlDied(ev game.Event, source *game.Card, 
 // receives the entering card (still the stack object, so its
 // Controller is the caster) and runs inside the replacement, so a
 // Zombie that hit the graveyard in response is counted, as printed.
-func b19EntersWithCountersCounted(kind string, count func(g *game.Game, src *game.Card) int, label string) game.ReplacementEffect {
+func B19EntersWithCountersCounted(kind string, count func(g *game.Game, src *game.Card) int, label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
@@ -110,7 +110,7 @@ func b19EntersWithCountersCounted(kind string, count func(g *game.Game, src *gam
 // ADR 0063's seat-turn counter says the clause directly —
 // `Player.TurnsBegun + 1`, which is your next turn whoever you are —
 // so the backstop, the trigger and the re-stamp helper are all gone.
-func b19ExileTopTwoUntilEndOfNextTurn(g *game.Game, item *game.StackItem) error {
+func B19ExileTopTwoUntilEndOfNextTurn(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
 	_, err := g.ExileTopWithPermissionForEffect(controller, controller, 2, game.CastPermission{
 		Duration: g.UntilEndOfYourNextTurnDuration(controller),
@@ -126,8 +126,8 @@ func b19ExileTopTwoUntilEndOfNextTurn(g *game.Game, item *game.StackItem) error 
 // survives the move, and a token's is zero, so a sacrificed token
 // fetches a one-drop as printed. With no sacrifice on record the
 // ability does nothing.
-func b19BirthingPodSearch(g *game.Game, item *game.StackItem) error {
-	sacrificed, ok := b17PermanentSacrificedToPay(g, item)
+func B19BirthingPodSearch(g *game.Game, item *game.StackItem) error {
+	sacrificed, ok := B17PermanentSacrificedToPay(g, item)
 	if !ok {
 		return nil
 	}

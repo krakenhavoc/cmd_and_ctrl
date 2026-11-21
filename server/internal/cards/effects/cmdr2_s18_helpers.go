@@ -12,12 +12,12 @@ import (
 // tokens": one per point of the combat damage that triggered the ability
 // (Prosperous Bandit). Its footprint is CreateTokensForEach's: a token step
 // entering tapped changes only the new token's own state.
-type cmdr2S18TappedTreasuresForDamage struct {
+type Cmdr2S18TappedTreasuresForDamage struct {
 	// Count is how many: the combat damage that triggered the ability.
 	Count func(ctx *Context) int
 }
 
-func (s cmdr2S18TappedTreasuresForDamage) Apply(ctx *Context) error {
+func (s Cmdr2S18TappedTreasuresForDamage) Apply(ctx *Context) error {
 	if s.Count == nil {
 		return nil
 	}
@@ -28,20 +28,20 @@ func (s cmdr2S18TappedTreasuresForDamage) Apply(ctx *Context) error {
 	return CreateTokenAdvanced{Spec: Token(TreasureToken()).EntersTapped(), N: n}.Apply(ctx)
 }
 
-func (s cmdr2S18TappedTreasuresForDamage) footprints() ([]game.FootprintStep, bool) {
+func (s Cmdr2S18TappedTreasuresForDamage) footprints() ([]game.FootprintStep, bool) {
 	if s.Count == nil {
 		return nil, false
 	}
 	key, manual, keywords := game.FootprintTokenOf(TreasureToken())
 	return []game.FootprintStep{
-		condStep(game.FootprintCondBoard, 0),
+		CondStep(game.FootprintCondBoard, 0),
 		{Kind: game.FootprintCreateToken, N: 1, TokenKey: key, TokenManual: manual, TokenKeywords: keywords},
 	}, true
 }
 
 // cmdr2S18OpponentCastsNoncreature is "an opponent casts a noncreature
 // spell".
-func cmdr2S18OpponentCastsNoncreature(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func Cmdr2S18OpponentCastsNoncreature(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	return ByAnOpponent(ev, source, lki, g) && aPlayerCastsANoncreatureSpell(ev, source, lki, g)
 }
 
@@ -49,7 +49,7 @@ func cmdr2S18OpponentCastsNoncreature(ev game.Event, source *game.Card, lki game
 // {2} and sacrifice a token. If you do, create a 4/4 green Rhino Warrior".
 // Both halves are costs, so it is offered only when the controller has a
 // token to sacrifice; the sacrifice is then forced once the {2} is paid.
-func cmdr2S18KillerServiceOffer(g *game.Game, item *game.StackItem) error {
+func Cmdr2S18KillerServiceOffer(g *game.Game, item *game.StackItem) error {
 	has := false
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == item.Controller && c.IsToken() {
@@ -70,7 +70,7 @@ func cmdr2S18KillerServiceOffer(g *game.Game, item *game.StackItem) error {
 
 var cmdr2S18KillerServicePaid = PayUnlessBranches("pay-unless/cmdr2-s18-killer-service",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
-		return mustSacrificeOne(ctx.Game, ctx.Item, "Killer Service — sacrifice a token", IsTokenPredicate(), cmdr2S18KillerServiceRhino)
+		return MustSacrificeOne(ctx.Game, ctx.Item, "Killer Service — sacrifice a token", IsTokenPredicate(), cmdr2S18KillerServiceRhino)
 	}, nil)
 
 var cmdr2S18KillerServiceRhino = RegisterSacrificedOne("prompt-run/cmdr2-s18-killer-service-rhino",
@@ -80,7 +80,7 @@ var cmdr2S18KillerServiceRhino = RegisterSacrificedOne("prompt-run/cmdr2-s18-kil
 
 // cmdr2S18GreatestArtifactManaValue is the greatest mana value among the
 // artifacts `player` controls, zero with none.
-func cmdr2S18GreatestArtifactManaValue(g *game.Game, player uuid.UUID) int {
+func Cmdr2S18GreatestArtifactManaValue(g *game.Game, player uuid.UUID) int {
 	best := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsArtifact() {
@@ -109,17 +109,17 @@ func cmdr2S18BelloAppliesTo(target *game.Card, g *game.Game, source *game.Card) 
 // creature type (layer 4) and base power and toughness (layer 7b), the
 // indestructible and haste keywords (layer 6), and the granted combat
 // damage draw (layer 6, a keyed grant).
-func cmdr2S18BelloStatics(grantKey string) []game.StaticAbility {
+func Cmdr2S18BelloStatics(grantKey string) []game.StaticAbility {
 	return []game.StaticAbility{
 		{
 			Label:     "Bello — each such artifact and enchantment is a creature in addition to its other types",
 			Layer:     game.Layer4Type,
 			AppliesTo: cmdr2S18BelloAppliesTo,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				if !eotHasType(c.Types, "Creature") {
+				if !EotHasType(c.Types, "Creature") {
 					c.Types = append(append([]string(nil), c.Types...), "Creature")
 				}
-				if !eotHasType(c.Subtypes, "Elemental") {
+				if !EotHasType(c.Subtypes, "Elemental") {
 					c.Subtypes = append(append([]string(nil), c.Subtypes...), "Elemental")
 				}
 			},
@@ -148,19 +148,19 @@ func cmdr2S18BelloStatics(grantKey string) []game.StaticAbility {
 }
 
 // cmdr2S18IsFood matches a Food permanent.
-func cmdr2S18IsFood(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-	return hasSubtype(c, "Food")
+func Cmdr2S18IsFood(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+	return CardHasSubtype(c, "Food")
 }
 
 // cmdr2S18ArtifactsYouControlOnYourTurn is Gourmand's Talent's set:
 // "during your turn, artifacts you control".
-func cmdr2S18ArtifactsYouControlOnYourTurn(target *game.Card, g *game.Game, source *game.Card) bool {
+func Cmdr2S18ArtifactsYouControlOnYourTurn(target *game.Card, g *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.IsArtifact() && IsYourTurn(g, source.Controller)
 }
 
 // cmdr2S18FoodSacrificeAbility is "{2}, {T}, Sacrifice this artifact: You
 // gain 3 life." as the Food rider a granted artifact carries.
-func cmdr2S18FoodSacrificeAbility() ActivatedAbility {
+func Cmdr2S18FoodSacrificeAbility() ActivatedAbility {
 	return ActivatedAbility{
 		Label:   "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
 		Purpose: game.Purpose{Answers: game.AnswerValue},

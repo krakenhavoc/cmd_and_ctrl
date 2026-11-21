@@ -25,7 +25,7 @@ func init() {
 			Label:        "{2}{G}: This creature explores. Activate only as a sorcery.",
 			Cost:         ManaCost("{2}{G}"),
 			SorcerySpeed: true,
-			Effect:       thisCreatureExplores,
+			Effect:       ThisCreatureExplores,
 		}},
 	})
 }
@@ -33,7 +33,7 @@ func init() {
 // thisCreatureExplores is "This creature explores" from the creature's own
 // activated ability: the object the ability came from explores under the
 // ability's controller (CR 701.44a, CR 701.44c).
-func thisCreatureExplores(g *game.Game, item *game.StackItem) error {
+func ThisCreatureExplores(g *game.Game, item *game.StackItem) error {
 	ref, ok := NewContext(g, item).SourceRef()
 	if !ok {
 		ref = game.ObjectRef{ID: item.SourceCardID, Epoch: item.SourceEpoch}

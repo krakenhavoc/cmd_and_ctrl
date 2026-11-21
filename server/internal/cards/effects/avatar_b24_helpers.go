@@ -15,8 +15,8 @@ import (
 // the last placement has settled (a CR 616 ordering prompt over any of them
 // is a restore point: the rest of the list rides the tail, b13's shape with
 // the kind and the count as data). Black Sun's Zenith.
-func avB24PutCountersOnEachThen(ctx *Context, ids []uuid.UUID, kind string, n int, then game.KeyedTail) error {
-	for len(ids) > 0 && !onBattlefield(ctx.Game, ids[0]) {
+func AvB24PutCountersOnEachThen(ctx *Context, ids []uuid.UUID, kind string, n int, then game.KeyedTail) error {
+	for len(ids) > 0 && !OnBattlefield(ctx.Game, ids[0]) {
 		ids = ids[1:]
 	}
 	if len(ids) == 0 || n <= 0 {
@@ -44,7 +44,7 @@ func init() {
 		if o.Tail.Next != nil {
 			then = *o.Tail.Next
 		}
-		return avB24PutCountersOnEachThen(ctx, o.Tail.Carry, o.Tail.Word, o.Tail.N, then)
+		return AvB24PutCountersOnEachThen(ctx, o.Tail.Carry, o.Tail.Word, o.Tail.N, then)
 	})
 }
 
@@ -53,7 +53,7 @@ func init() {
 // controller's control and has flying as it is on the battlefield, read
 // through the layered view. Watcher of the Spheres and Momo, Friendly
 // Flier.
-func anotherFlierEnteredUnderYourControl(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func AnotherFlierEnteredUnderYourControl(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	if !AnotherCreatureEnteredUnderYourControl(ev, source, lki, g) {
 		return false
 	}
@@ -69,7 +69,7 @@ func anotherFlierEnteredUnderYourControl(ev game.Event, source *game.Card, lki g
 // after a spell is priced, so none so far means this is the first). A
 // first such spell spends the discount whether or not it had generic mana
 // to take it off (the ruling).
-func avB24FirstSpellWithoutSubtypeOnYourTurn(subtype string) CostPredicate {
+func AvB24FirstSpellWithoutSubtypeOnYourTurn(subtype string) CostPredicate {
 	return func(q game.CostQuery) bool {
 		if q.Game == nil || !IsYourTurn(q.Game, q.Controller) {
 			return false
@@ -81,12 +81,12 @@ func avB24FirstSpellWithoutSubtypeOnYourTurn(subtype string) CostPredicate {
 
 // avB24ZeppelinToken is Lita, Mechanical Engineer's Zeppelin: a 5/5
 // colorless Vehicle artifact token with flying and crew 3.
-func avB24ZeppelinToken() game.Card { return tokenFromCatalog(printedAvB24ZeppelinToken) }
+func AvB24ZeppelinToken() game.Card { return TokenFromCatalog(printedAvB24ZeppelinToken) }
 
 // printedAvB24ZeppelinToken is the Zeppelin as PRINTED. Its slug is an
 // on-disk identity and is never renamed.
-func printedAvB24ZeppelinToken() tokenTemplate {
-	return tokenTemplate{
+func printedAvB24ZeppelinToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "zeppelin",
 		Card: game.Card{
 			Name:      "Zeppelin",

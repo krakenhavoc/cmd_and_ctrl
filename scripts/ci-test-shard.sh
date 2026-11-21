@@ -42,7 +42,7 @@ MODULE=github.com/krakenhavoc/cmd_and_ctrl/server
 
 # name, then the packages it runs, relative to the module.
 PINNED=(
-  "effects internal/cards/effects"
+  "effects internal/cards/effects/..."
   "lobby internal/lobby internal/botarena"
 )
 

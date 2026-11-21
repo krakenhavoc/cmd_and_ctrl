@@ -96,7 +96,7 @@ func init() {
 // Teferi at 2 loyalty who paid it — and AddCounter does not gate on
 // zone, so the guard is this file's job.
 func teferiPilgrimLoyaltyCounter(g *game.Game, item *game.StackItem) error {
-	if !b09SourceStillOnBattlefield(g, item) {
+	if !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	return AddCounter{
@@ -108,13 +108,13 @@ func teferiPilgrimLoyaltyCounter(g *game.Game, item *game.StackItem) error {
 
 // teferiPilgrimSpiritToken is the −2's 2/2 blue Spirit with vigilance
 // and "Whenever you draw a card, put a +1/+1 counter on this token."
-func teferiPilgrimSpiritToken() game.Card { return tokenFromCatalog(printedTeferiPilgrimSpiritToken) }
+func teferiPilgrimSpiritToken() game.Card { return TokenFromCatalog(printedTeferiPilgrimSpiritToken) }
 
 // printedTeferiPilgrimSpiritToken is that Spirit as PRINTED, ability
 // included. The slug takes the card's name as its qualifier, because
 // "spirit" alone names many different tokens.
-func printedTeferiPilgrimSpiritToken() tokenTemplate {
-	return tokenTemplate{
+func printedTeferiPilgrimSpiritToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "spirit-temporal-pilgrim",
 		Card: game.Card{
 			Name:      "Spirit",
@@ -125,7 +125,7 @@ func printedTeferiPilgrimSpiritToken() tokenTemplate {
 			Keywords:  []string{"vigilance"},
 		},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouDraw("Spirit — put a +1/+1 counter on it", putCounterOnSelf),
+			WheneverYouDraw("Spirit — put a +1/+1 counter on it", PutCounterOnSelf),
 		},
 		Text: "Whenever you draw a card, put a +1/+1 counter on this token.",
 	}
@@ -146,7 +146,7 @@ func teferiPilgrimMinusTwelve(g *game.Game, item *game.StackItem) error {
 	if opp == uuid.Nil {
 		return nil
 	}
-	perms := permanentsControlledByMatching(g, opp, nil)
+	perms := PermanentsControlledByMatching(g, opp, nil)
 	if len(perms) == 0 {
 		return nil
 	}
@@ -188,14 +188,14 @@ func teferiPilgrimReturnThenShuffle(g *game.Game, opp uuid.UUID, picked []uuid.U
 // teferiPilgrimBounced is the shuffle-away after the return, keyed (#4253
 // slice 10a): the opponent is Carry[0].
 var teferiPilgrimBounced = game.RegisterTail("then/teferi-temporal-pilgrim-shuffle-nonland", func(g *game.Game, o game.TailOutcome) error {
-	return teferiPilgrimShuffleNonland(g, tailCarry0(o))
+	return teferiPilgrimShuffleNonland(g, TailCarry0(o))
 })
 
 // teferiPilgrimShuffleNonland puts every nonland permanent `opp`
 // controls into its owner's library as one move, then shuffles each
 // of those owners' libraries, in seat order.
 func teferiPilgrimShuffleNonland(g *game.Game, opp uuid.UUID) error {
-	ids := permanentsControlledByMatching(g, opp, Not(Land()))
+	ids := PermanentsControlledByMatching(g, opp, Not(Land()))
 	if len(ids) == 0 {
 		return nil
 	}
@@ -212,5 +212,5 @@ func teferiPilgrimShuffleNonland(g *game.Game, opp uuid.UUID) error {
 			order = append(order, p.ID)
 		}
 	}
-	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffleEachCarried, Carry: order})
+	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, game.KeyedTail{Ref: ThenShuffleEachCarried, Carry: order})
 }

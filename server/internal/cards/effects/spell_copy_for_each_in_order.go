@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Unanswered, the player has left the game, and so would the copies they
 // controlled (CR 800.4a).
-func copySpellForEachChosenInOrder(g *game.Game, r game.CardsChosen) error {
+func CopySpellForEachChosenInOrder(g *game.Game, r game.CardsChosen) error {
 	if len(r.Carry) < 2 || !r.Answered {
 		return nil
 	}

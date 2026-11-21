@@ -1,0 +1,31 @@
+package cardsd
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Daraja Griffin — Creature — Griffin {3}{W}, 2/2 (Visions, #5631):
+//
+//	"Flying
+//	 Sacrifice this creature: Destroy target black creature."
+//
+// Flying is an engine keyword carried as printed data (CR 702.9b). The
+// sacrifice is a cost, so the Griffin is gone before the ability
+// resolves; a target that is no longer black, or has left, is an illegal
+// target and nothing is destroyed (CR 608.2b).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "daa0d720-cac1-487a-93e2-33e18f91f19b",
+		Name:            "Daraja Griffin",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "Sacrifice this creature: Destroy target black creature.",
+			Cost:    effects.SacrificeThis(),
+			Targets: effects.TargetCreature("target black creature", effects.OfColor("B")),
+			Effect:  effects.DestroyFirstLegalCardTarget,
+		}},
+	})
+}

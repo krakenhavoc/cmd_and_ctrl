@@ -18,7 +18,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return lureTargetForTheTurn(ctx, "Alluring Scent — all creatures able to block it do so")
+			return LureTargetForTheTurn(ctx, "Alluring Scent — all creatures able to block it do so")
 		},
 	})
 }
@@ -27,7 +27,7 @@ func init() {
 // this turn do so" (Alluring Scent, Bloodscent): a Lure record on the
 // first still-legal target until end of turn. A target that left in
 // response is skipped (CR 608.2b).
-func lureTargetForTheTurn(ctx *Context, label string) error {
+func LureTargetForTheTurn(ctx *Context, label string) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue

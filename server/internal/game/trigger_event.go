@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -517,6 +518,9 @@ func (g *Game) triggerTargetsLocked(t TriggeredAbility, tc TriggerContext, sourc
 	if t.XFromCast && t.Targets != nil && t.Targets.CountFromX {
 		return xCountedTriggerTargets(t.Targets, source)
 	}
+	if t.XFromCast && t.Targets != nil && t.Targets.Total != nil && t.Targets.Total.MaxIsX {
+		return xBoundTotalTriggerTargets(t.Targets, source)
+	}
 	return t.Targets
 }
 
@@ -536,6 +540,27 @@ func (g *Game) colorsAmongPermanentsLocked(player uuid.UUID) int {
 		}
 	}
 	return len(seen)
+}
+
+// xBoundTotalTriggerTargets is the clause of "When this enters, destroy any
+// number of target artifacts and/or enchantments with total mana value X or
+// less" (Rampaging Yao Guai): a clause with a total ceiling of X
+// (TargetTotal.MaxIsX) and no count of X, on a XFromCast row, gets the X its
+// source was cast with (Card.CastX, CR 107.3m) as its ceiling, on a copy so
+// the catalog's clause is untouched. The re-check as the ability resolves
+// binds the same X from the item (itemAnnouncedClauses). An X of zero still
+// admits the permanents whose mana value is 0.
+func xBoundTotalTriggerTargets(spec *TargetSpec, source *Card) *TargetSpec {
+	x := 0
+	if source != nil {
+		x = source.CastX()
+	}
+	cp := *spec
+	t := *spec.Total
+	t.Max = max(x, 0)
+	t.Label = "have total mana value " + strconv.Itoa(t.Max) + " or less"
+	cp.Total = &t
+	return &cp
 }
 
 // xCountedTriggerTargets is the clause of "When this enters, tap X target

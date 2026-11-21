@@ -26,10 +26,10 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Street Justice — Exile target creature with toughness 4 or greater.",
 				TargetCreature("target creature with toughness 4 or greater", ToughnessGE(4)),
-				exileTheModesTarget),
+				MurdocksExileTheModesTarget),
 			ModeDoing("Legal Justice — Exile target enchantment with mana value 4 or greater.",
 				TargetPermanent("target enchantment with mana value 4 or greater", Enchantment(), ManaValueGE(4)),
-				exileTheModesTarget),
+				MurdocksExileTheModesTarget),
 		).InsteadIf(2, TeamworkUsed),
 	})
 }
@@ -37,7 +37,7 @@ func init() {
 // exileTheModesTarget is "exile target <thing>" as a modal bullet's
 // body — both of Murdock's Crusade's bullets, which differ only in the
 // clause on the option.
-func exileTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
+func MurdocksExileTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok {
 		return nil

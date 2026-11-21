@@ -51,7 +51,7 @@ func init() {
 	// under. It gets the same list, because the list reads nothing the
 	// game can change — see moltenPrimordialClauses — so the row is not
 	// TargetsFromReadsBoard and its item is a restore point.
-	enters.TargetsFrom = moltenPrimordialClauses
+	enters.TargetsFrom = MoltenPrimordialClauses
 	Register(Spec{
 		OracleID:        "8d8c9f7b-92c7-4284-ad9c-304ce42edba5",
 		Name:            "Molten Primordial",
@@ -82,7 +82,7 @@ func init() {
 //     lobby-only, and an eliminated seat stays in the list), and a
 //     snapshot restores g.Seats in order, so over an active game the
 //     list is a constant, not board state.
-func moltenPrimordialClauses(tc game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
+func MoltenPrimordialClauses(tc game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
 	controller := source.Controller
 	if obj := tc.Object; obj != nil && obj.ID == source.InstanceID && obj.Controller != uuid.Nil {
 		controller = obj.Controller

@@ -1,0 +1,43 @@
+package cardsg
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Goblin Matron — Creature — Goblin {2}{R}, 1/1 (EDHREC rank 1787):
+//
+//	"When this creature enters, you may search your library for a
+//	 Goblin card, reveal that card, put it into your hand, then
+//	 shuffle."
+//
+// The Goblin deck's tutor on legs. Recruiter of the Guard's shape
+// with a subtype for the toughness clause: the tutor is optional, so
+// the prompt always opens and "fail to find" is always an answer.
+// Effective subtypes on a library card are its printed ones.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "145737a7-c597-4dec-b752-207c2d0501e3",
+		Name:         "Goblin Matron",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Goblin Matron — search for a Goblin card", func(g *game.Game, item *game.StackItem) error {
+				return effects.SearchLibrary{
+					Player: item.Controller,
+					// "Goblin" is a word of the source's text; SearchLibrary
+					// lends it to each card (CR 612.2, #3984).
+					Predicate: func(c game.Card) bool { return c.HasSubtypeWord("Goblin") },
+					Dest:      game.ZoneHand,
+					Limit:     1,
+					Reveal:    true,
+					Shuffle:   true,
+					Optional:  true,
+					Reason:    "Goblin Matron — a Goblin card, revealed, to hand",
+				}.Apply(effects.NewContext(g, item))
+			}),
+		},
+	})
+}

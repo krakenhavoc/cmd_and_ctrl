@@ -1,0 +1,53 @@
+package cardsb
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Beast Within — Instant {2}{G}:
+//
+//	"Destroy target permanent. Its controller creates a 3/3 green
+//	Beast creature token."
+//
+// The most-played answer in Commander precisely because the target
+// clause is unrestricted: lands, commanders, indestructible-adjacent
+// problems, anything. TargetPermanent with no predicate is the whole
+// card.
+//
+// Order matters and is printed order: the permanent is destroyed
+// first, then the token is created. That means the controller is
+// read BEFORE the destroy — after it, the card is in a graveyard and
+// LookupCardForEffect would report a stale controller for a token
+// that changed hands. If the target has left the battlefield in
+// response, both halves are skipped: no destroy, no token (CR
+// 608.2b — the spell has one target, so it fizzles entirely).
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "7735eeba-693b-47e2-bd51-414379cf1016",
+		Name:         "Beast Within",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetPermanent("target permanent"),
+		// #2679: what the target's controller is given back.
+		Purpose: game.Purpose{Targets: game.ForTargets(effects.RemovalReturning(0, game.TargetReturn{CreatureTokens: 1, TokenPower: 3, TokenToughness: 3})), Answers: game.AnswerRemove}, // #4734: destroys a permanent
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+				return nil
+			}
+			target := item.Targets[0].ID
+			controller, ok := effects.ControllerOfTarget(ctx, target)
+			if !ok {
+				return nil
+			}
+			if err := (effects.DestroyTarget{Target: target}).Apply(ctx); err != nil {
+				return err
+			}
+			return effects.CreateToken{
+				Controller: controller,
+				Template:   effects.TokenCard("3/3 green Beast"),
+				N:          1,
+			}.Apply(ctx)
+		},
+	})
+}

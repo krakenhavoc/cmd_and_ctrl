@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // stun counters on it equal to three minus X" (Slumbering Trudge): a CR
 // 614.1c clause over the announced X, floored at zero (a negative amount puts
 // none on). A permanent that was not cast has an X of 0 and enters with three.
-func socB34StunCountersThreeMinusX() game.EntryCountersFromCast {
+func SocB34StunCountersThreeMinusX() game.EntryCountersFromCast {
 	return game.EntryCountersFromCast{
 		Kind: game.CounterStun,
 		Count: func(cast game.CastCounts) int {
@@ -25,7 +25,7 @@ func socB34StunCountersThreeMinusX() game.EntryCountersFromCast {
 // own spell was cast with (EntryCastCountsForEffect, CR 107.3m). It is
 // SelfEntersTapped's shape with the condition read off the cast; an
 // unconditional SelfEntersTapped would be wrong for X above N.
-func socB34EntersTappedIfXAtMost(n int) game.ReplacementEffect {
+func SocB34EntersTappedIfXAtMost(n int) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		RowLabel:  "Enters tapped if X is 2 or less.",
 		EntryOnly: true,

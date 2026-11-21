@@ -54,7 +54,7 @@ var grantedOffspringTokenBody = game.SimpleDelayedBody("offspring/granted-token"
 		Controller: item.Controller,
 		Copy:       item.SourceCardID,
 		N:          1,
-		Except:     offspringOneOne,
+		Except:     OffspringOneOne,
 	}.Apply(NewContext(g, item))
 })
 

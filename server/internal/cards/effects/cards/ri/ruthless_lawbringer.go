@@ -1,0 +1,53 @@
+package cardsri
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Ruthless Lawbringer — Creature — Vampire Assassin {1}{W}{B}, 3/2
+// (Outlaws of Thunder Junction, #4468):
+//
+//	"When this creature enters, you may sacrifice another creature. When
+//	 you do, destroy target nonland permanent."
+//
+// Gastal Blockbuster's shape with Bolg of the North's "another": the
+// sacrifice is asked as the enters trigger resolves, over the other
+// creatures you control then, with a floor of zero for the "may". Only
+// once a creature has really been sacrificed is the destroy created, as a
+// reflexive trigger that chooses its target as it goes on the stack (CR
+// 603.12), so the target is picked after the sacrifice. Any nonland
+// permanent is legal, the Lawbringer itself included; with none, the
+// trigger is removed for want of a target (CR 603.3d).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "82b6a283-9897-4ce1-8de3-e7579cc9b75b",
+		Name:         "Ruthless Lawbringer",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Ruthless Lawbringer — you may sacrifice another creature", ruthlessLawbringerSacrifice),
+		},
+	})
+}
+
+func ruthlessLawbringerSacrifice(g *game.Game, item *game.StackItem) error {
+	return effects.MaySacrificeOne(g, item, "Ruthless Lawbringer — sacrifice another creature to destroy target nonland permanent?",
+		effects.Creature(), true, ruthlessLawbringerSacrificed)
+}
+
+// ruthlessLawbringerSacrificed is the "when you do". An on-disk key: never
+// renamed, never reused.
+var ruthlessLawbringerSacrificed = effects.RegisterSacrificedOne("prompt-run/ruthless-lawbringer-sacrifice", func(ctx *effects.Context, _ uuid.UUID) error {
+	return effects.WhenYouDo("Ruthless Lawbringer — destroy target nonland permanent", ruthlessLawbringerDestroyBody).Apply(ctx)
+})
+
+// ruthlessLawbringerDestroyBody is the reflexive trigger. An on-disk key:
+// never renamed, never reused.
+var ruthlessLawbringerDestroyBody = game.ReflexiveBody("ruthless-lawbringer/destroy", effects.SimpleBody(effects.DestroyFirstLegalCardTarget),
+	effects.ConstTargets(func() *game.TargetSpec {
+		return effects.TargetPermanent("target nonland permanent", effects.Nonland())
+	}))

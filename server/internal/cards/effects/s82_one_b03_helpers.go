@@ -10,7 +10,7 @@ import (
 
 // tapEachLegalTargetBody is "tap target creature" as a trigger body: every
 // target still legal as the ability resolves is tapped (CR 608.2b).
-func tapEachLegalTargetBody(g *game.Game, item *game.StackItem) error {
+func TapEachLegalTargetBody(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if err := (TapTarget{Target: t.ID}).Apply(ctx); err != nil {
@@ -23,8 +23,8 @@ func tapEachLegalTargetBody(g *game.Game, item *game.StackItem) error {
 // Ambulatory Edifice: "you may pay 2 life. When you do, target creature gets
 // -1/-1 until end of turn." The answer pays the life (re-checked, CR 119.4)
 // and raises the reflexive trigger (CR 603.12). On-disk keys: never renamed.
-var ambulatoryEdificePaid = MayYes("confirm/ambulatory-edifice-pay-life", func(ctx *Context, r game.ConfirmAnswer) error {
-	if !canPayLifeNow(ctx, 2) {
+var AmbulatoryEdificePaid = MayYes("confirm/ambulatory-edifice-pay-life", func(ctx *Context, r game.ConfirmAnswer) error {
+	if !CanPayLifeNow(ctx, 2) {
 		return nil
 	}
 	if err := ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), 2); err != nil {
@@ -40,19 +40,19 @@ var ambulatoryEdificePaid = MayYes("confirm/ambulatory-edifice-pay-life", func(c
 })
 
 var ambulatoryEdificeShrinkBody = game.ReflexiveBody("ambulatory-edifice/shrink",
-	simpleBody(func(g *game.Game, item *game.StackItem) error {
+	SimpleBody(func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
 		return BoostUntilEOT{Target: id, Power: -1, Toughness: -1,
 			Label: "Ambulatory Edifice — -1/-1 until end of turn"}.Apply(ctx)
 	}),
-	constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+	ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
 
 // Shrapnel Slinger: the sacrifice's "when you do".
-var shrapnelSlingerSacrificed = RegisterSacrificedOne("prompt-run/shrapnel-slinger-sacrifice", func(ctx *Context, _ uuid.UUID) error {
+var ShrapnelSlingerSacrificed = RegisterSacrificedOne("prompt-run/shrapnel-slinger-sacrifice", func(ctx *Context, _ uuid.UUID) error {
 	return ReflexiveTrigger{
 		Label: "Shrapnel Slinger — destroy target artifact an opponent controls",
 		Body:  shrapnelSlingerDestroyBody,
@@ -60,10 +60,10 @@ var shrapnelSlingerSacrificed = RegisterSacrificedOne("prompt-run/shrapnel-sling
 })
 
 var shrapnelSlingerDestroyBody = game.ReflexiveBody("shrapnel-slinger/destroy",
-	simpleBody(func(g *game.Game, item *game.StackItem) error {
-		return destroyTheTargetPermanent(item, NewContext(g, item))
+	SimpleBody(func(g *game.Game, item *game.StackItem) error {
+		return DestroyTheTargetPermanent(item, NewContext(g, item))
 	}),
-	constTargets(func() *game.TargetSpec {
+	ConstTargets(func() *game.TargetSpec {
 		return TargetPermanent("target artifact an opponent controls", Artifact(), OpponentControls())
 	}))
 
@@ -88,19 +88,19 @@ func init() {
 		if !r.Accepted {
 			return myrCustodianAsk(ctx, r.Carry)
 		}
-		next := ctx.ItemTail(myrCustodianAskOpponents)
+		next := ctx.ItemTail(MyrCustodianAskOpponents)
 		next.Carry = r.Carry
 		return Scry{Player: r.Chooser, N: 1, ThenTail: next}.Apply(ctx)
 	})
 }
 
-var myrCustodianAskOpponents = CardTail("myr-custodian/ask-opponents", func(ctx *Context, o game.TailOutcome) error {
+var MyrCustodianAskOpponents = CardTail("myr-custodian/ask-opponents", func(ctx *Context, o game.TailOutcome) error {
 	return myrCustodianAsk(ctx, o.Tail.Carry)
 })
 
 // cruelGrimnarchEnters: each opponent discards a card as one run, then the
 // controller gains 4 life for each opponent who discarded nothing (cruelGrimnarchGain).
-func cruelGrimnarchEnters(g *game.Game, item *game.StackItem) error {
+func CruelGrimnarchEnters(g *game.Game, item *game.StackItem) error {
 	return g.EachPlayerDiscardsThenKeyedForEffect(item.Controller,
 		game.DiscardPrompt{Source: item.SourceCardID, N: 1},
 		cruelGrimnarchGain, []uuid.UUID{item.Controller})
@@ -128,5 +128,5 @@ var cruelGrimnarchGain = game.RegisterPromptRunThen("prompt-run/cruel-grimnarch-
 	if cant == 0 {
 		return nil
 	}
-	return GainLife{Player: you, Amount: 4 * cant}.Apply(keyedContext(g, you, r.Source))
+	return GainLife{Player: you, Amount: 4 * cant}.Apply(KeyedContext(g, you, r.Source))
 })

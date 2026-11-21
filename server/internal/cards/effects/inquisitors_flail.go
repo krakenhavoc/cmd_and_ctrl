@@ -62,8 +62,8 @@ func init() {
 				AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
 					return b39IsCombatDamage(ev) && src.IsAttachedTo(ev.DamageSource)
 				},
-				Replace:    b39DoubleTheDamage,
-				Controller: b39SourceController,
+				Replace:    B39DoubleTheDamage,
+				Controller: B39SourceController,
 				Label:      "Inquisitor's Flail: double the equipped creature's combat damage",
 			},
 			{
@@ -84,11 +84,11 @@ func init() {
 					// dealt its damage and then left (or was
 					// type-changed on the way out) is still judged
 					// by what it was when it dealt the damage.
-					ch, ok := damageSourceCharacteristics(ev, g)
-					return ok && hasFold(ch.Types, "Creature")
+					ch, ok := DamageSourceCharacteristics(ev, g)
+					return ok && HasFold(ch.Types, "Creature")
 				},
-				Replace:    b39DoubleTheDamage,
-				Controller: b39SourceController,
+				Replace:    B39DoubleTheDamage,
+				Controller: B39SourceController,
 				Label:      "Inquisitor's Flail: double the combat damage dealt to the equipped creature",
 			},
 		},
@@ -108,13 +108,13 @@ func b39IsCombatDamage(ev *game.ReplacementEvent) bool {
 
 // b39DoubleTheDamage is the "it deals double that damage instead"
 // body (CR 614.1b), shared by both of the Flail's clauses.
-func b39DoubleTheDamage(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+func B39DoubleTheDamage(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 	ev.DamageAmount *= 2
 	return nil
 }
 
 // b39SourceController names the replacement's controller for the
 // CR 616.1 ordering prompt: whoever controls the Equipment.
-func b39SourceController(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+func B39SourceController(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 	return src.Controller
 }

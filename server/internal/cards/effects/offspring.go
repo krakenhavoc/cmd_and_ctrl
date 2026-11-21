@@ -87,7 +87,7 @@ func OffspringToken(cardName string) game.TriggeredAbility {
 				Controller: item.Controller,
 				Copy:       item.SourceCardID,
 				N:          1,
-				Except:     offspringOneOne,
+				Except:     OffspringOneOne,
 			}.Apply(NewContext(g, item))
 		})
 }
@@ -106,7 +106,7 @@ func offspringWasPaid(_ game.Event, source *game.Card, _ game.Characteristic, _ 
 // offspring token of a 6/6 a 1/1 — and it clears the variable-P/T bit
 // with it, because a fixed 1 is not a stand-in for a characteristic-
 // defining toughness however the original printed it (#683).
-func offspringOneOne(t *game.Card) {
+func OffspringOneOne(t *game.Card) {
 	t.Power = 1
 	t.Toughness = 1
 	t.VariableToughness = false

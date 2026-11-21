@@ -36,13 +36,13 @@ func init() {
 		OracleID:     "a02a7816-c967-4503-bb08-f8db44915250",
 		Name:         "The Abyss",
 		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{theAbyssTrigger("The Abyss")},
+		Triggered:    []game.TriggeredAbility{TheAbyssTrigger("The Abyss")},
 	})
 }
 
 // theAbyssTrigger is the upkeep trigger The Abyss and Magus of the Abyss
 // share, labelled with the card's name.
-func theAbyssTrigger(name string) game.TriggeredAbility {
+func TheAbyssTrigger(name string) game.TriggeredAbility {
 	return Targeting(
 		AtEachUpkeep(name+" — destroy target nonartifact creature that player controls of their choice; it can't be regenerated", theAbyssDestroy),
 		Harmful(TheyControl(OfThatPlayersChoice(TargetCreature("target nonartifact creature that player controls of their choice", Not(Artifact()))))),

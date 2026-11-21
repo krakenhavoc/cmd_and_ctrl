@@ -1,0 +1,108 @@
+package cardsbu
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Cemetery Prowler — Creature — Wolf {1}{G}{G}, 3/4:
+//
+//	"Vigilance
+//	 Whenever this creature enters or attacks, exile a card from a
+//	 graveyard.
+//	 Spells you cast cost {1} less to cast for each card type they share
+//	 with cards exiled with this creature."
+//
+// The exile is not targeted: the controller picks one card from any
+// graveyard as the trigger resolves (nothing happens with every graveyard
+// empty) and it is exiled LINKED to this Prowler's trigger
+// (ExileTarget.Linked, CR 607.2a), so cards another effect exiled, or
+// that this Prowler exiled in an earlier life (CR 400.7), are not its
+// cards. The cost reduction is one CostsLessEach: the card types the spell
+// shares with ANY of the cards still exiled with the Prowler, each type
+// counted once however many exiled cards have it ("for each card type",
+// not for each card). Generic mana only, never below zero, applied to
+// every spell its controller casts, the Prowler's own cast excluded
+// because it is not on the battlefield yet.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "fa53cc50-f06f-44b0-850f-cfa6e0caa4c5",
+		Name:            "Cemetery Prowler",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"vigilance"},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEntersOrAttacks(cemeteryProwlerLabel, cemeteryProwlerExile),
+		},
+		CostModifiers: []game.CostModifier{
+			effects.CostsLessEach(cemeteryProwlerDiscount,
+				"Spells you cast cost {1} less to cast for each card type they share with cards exiled with this creature.",
+				effects.YourSpell()),
+		},
+	})
+}
+
+// cemeteryProwlerLabel is the trigger's stack label and Key: the catalog
+// row the linked exile names.
+const cemeteryProwlerLabel = "Cemetery Prowler — exile a card from a graveyard"
+
+// cemeteryProwlerExile queues the pick and exiles it, linked.
+func cemeteryProwlerExile(g *game.Game, item *game.StackItem) error {
+	var candidates []uuid.UUID
+	for _, p := range g.Seats {
+		if p != nil {
+			candidates = append(candidates, effects.GraveyardCardsOfPlayer(g, p.ID)...)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  item.Controller,
+		Source:   item.SourceCardID,
+		Question: cemeteryProwlerLabel,
+		Cards:    candidates,
+		Min:      1,
+		Max:      1,
+		// No Zone: the candidates span every seat's graveyard.
+		ThenKey: cemeteryProwlerExiled,
+		Asked:   game.NewAskedItem(item),
+	})
+	return nil
+}
+
+// cemeteryProwlerExiled is the keyed answer to "which card": it exiles the
+// pick, linked to the asking trigger (#4253). Its key is an on-disk
+// identity: never renamed, never reused.
+var cemeteryProwlerExiled = game.RegisterChooseCardsThen("choose-cards/cemetery-prowler-exile", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || r.Asked == nil {
+		return nil
+	}
+	return effects.ExileTarget{Target: r.Picked[0], Linked: true}.Apply(effects.NewContext(g, r.Asked))
+})
+
+// cemeteryProwlerDiscount is the number of card types the spell shares
+// with the cards exiled with the modifier's source by its trigger.
+func cemeteryProwlerDiscount(q game.CostQuery) int {
+	if q.Game == nil {
+		return 0
+	}
+	ref := game.PermissionCardRef{ID: q.Source.InstanceID, Epoch: q.Source.ObjectEpoch}
+	exiled := q.Game.ExiledWithRowForEffect(ref, game.AbilitySlotTriggered, cemeteryProwlerLabel)
+	n := 0
+	for _, t := range effects.SemblanceCardTypes {
+		if !q.Card.HasCardType(t) {
+			continue
+		}
+		for _, c := range exiled {
+			if c.HasCardType(t) {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}

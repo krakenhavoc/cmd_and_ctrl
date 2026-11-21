@@ -15,7 +15,7 @@ import (
 
 // cardsInHand is the number of cards in `player`'s hand, zero for a
 // seat with no hand zone.
-func cardsInHand(g *game.Game, player uuid.UUID) int {
+func CardsInHand(g *game.Game, player uuid.UUID) int {
 	if p := g.PlayerByIDForEffect(player); p != nil && p.Hand != nil {
 		return p.Hand.Size()
 	}
@@ -27,7 +27,7 @@ func cardsInHand(g *game.Game, player uuid.UUID) int {
 // player is the upkeep's player, read off the trigger's event, and X
 // is counted as the trigger resolves (CR 608.2h). A result of zero or
 // less deals nothing (CR 107.1b).
-func damageUpkeepPlayerByHand(amount func(hand int) int) Effect {
+func DamageUpkeepPlayerByHand(amount func(hand int) int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		player := NewContext(g, item).Trigger().Event.Actor
 		if player == uuid.Nil {
@@ -36,10 +36,10 @@ func damageUpkeepPlayerByHand(amount func(hand int) int) Effect {
 		return DealDamage{
 			Source: item.SourceCardID,
 			Target: player,
-			Amount: amount(cardsInHand(g, player)),
+			Amount: amount(CardsInHand(g, player)),
 		}.Apply(NewContext(g, item))
 	}
 }
 
 // handMinusFour is Iron Maiden's and Viseling's X.
-func handMinusFour(hand int) int { return hand - 4 }
+func HandMinusFour(hand int) int { return hand - 4 }

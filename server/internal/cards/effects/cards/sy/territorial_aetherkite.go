@@ -1,0 +1,60 @@
+package cardssy
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Territorial Aetherkite — Creature — Cat Dragon {4}{R}{R}, 6/5:
+//
+//	"Flying, haste
+//	 When this creature enters, you get {E}{E} (two energy counters).
+//	 Then you may pay one or more {E}. When you do, this creature deals
+//	 that much damage to each other creature."
+//
+// ADR 0129 §3 (#1995, owner decision 3): "one or more" is the pay_amount
+// prompt with a floor of 1, from the energy just gotten and any held
+// before. Paying is "doing" (CR 603.12): the reflexive trigger carries
+// the amount paid and deals it to each other creature. Its purpose
+// declares the sweep at the two energy it gives, the amount it can
+// always pay.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "4f63d306-cc14-405c-8424-d8990c670c74",
+		Name:            "Territorial Aetherkite",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying", "haste"},
+		Purpose: game.Purpose{Energy: 2,
+			Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2}},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Territorial Aetherkite — you get {E}{E}, then may pay one or more {E}",
+				func(g *game.Game, item *game.StackItem) error {
+					ctx := effects.NewContext(g, item)
+					if err := (effects.GetEnergy{N: 2}).Apply(ctx); err != nil {
+						return err
+					}
+					return effects.PayEnergyAmount{
+						Min:      1,
+						Question: "Territorial Aetherkite — pay one or more {E}; it deals that much damage to each other creature",
+						Unit:     game.PayAmountDamage,
+						Then:     territorialAetherkiteReflexive,
+					}.Apply(ctx)
+				}),
+		},
+	})
+}
+
+// territorialAetherkiteReflexive is the paid half (#4294): the reflexive
+// trigger that deals that much damage to each other creature.
+var territorialAetherkiteReflexive = effects.NumberThen("number/territorial-aetherkite-damage-each-other-creature",
+	func(ctx *effects.Context, r game.NumberAnswer) error {
+		if r.Number <= 0 {
+			return nil
+		}
+		t := effects.WhenYouDo("Territorial Aetherkite — that much damage to each other creature", effects.TerritorialAetherkiteDamageBody)
+		t.Params = game.EffectParams{Amount: r.Number}
+		return t.Apply(ctx)
+	})

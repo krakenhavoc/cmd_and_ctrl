@@ -30,10 +30,10 @@ func init() {
 			Label:     "{2}{B}, {T}, Sacrifice a creature: Return a Zombie creature card at random from your graveyard to the battlefield. Activate only during your turn and only if there are at least three Zombie creature cards in your graveyard.",
 			Purpose:   game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost:      Plus(ManaCost("{2}{B}"), TapCost(), SacrificeN(1, "a creature", Creature())),
-			Condition: AllConditions(DuringYourTurn(), GraveyardAtLeast(3, tombTyrantZombieCard)),
+			Condition: AllConditions(DuringYourTurn(), GraveyardAtLeast(3, TombTyrantZombieCard)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				pick := g.ChooseAtRandomForEffect(randomDraw(ctx), graveyardIDs(g, ctx.Controller(), tombTyrantZombieCard), 1)
+				pick := g.ChooseAtRandomForEffect(RandomDraw(ctx), GraveyardIDs(g, ctx.Controller(), TombTyrantZombieCard), 1)
 				if len(pick) == 0 {
 					return nil
 				}
@@ -44,6 +44,6 @@ func init() {
 }
 
 // tombTyrantZombieCard is "Zombie creature card" in a graveyard.
-func tombTyrantZombieCard(c game.Card) bool {
+func TombTyrantZombieCard(c game.Card) bool {
 	return c.IsCreature() && c.HasSubtypeWord("Zombie")
 }

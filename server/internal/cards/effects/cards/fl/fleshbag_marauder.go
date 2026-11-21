@@ -1,0 +1,40 @@
+package cardsfl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Fleshbag Marauder — Creature — Zombie Warrior {2}{B}, 3/1:
+//
+//	"When this creature enters, each player sacrifices a creature of
+//	 their choice."
+//
+// Note "each player" — YOU sacrifice too, and the Marauder itself is
+// on the battlefield when its own trigger resolves, so it is a legal
+// choice for its own effect. That is exactly how the card is played:
+// eat the Marauder, keep your real creatures, and every opponent still
+// loses one. Feeding it to a sacrifice outlet first is the other line,
+// and it is why ExceptController is false here.
+//
+// A one-sided edict for three mana that leaves a 3/1 behind if nobody
+// makes it eat itself.
+//
+// The ETB is a triggered ability and uses the stack (#578). It used to
+// run from the direct AsEnters hook, which gave nobody a response
+// window; now the trigger waits for every player to pass, like every
+// other "When ~ enters".
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "4b1bf05e-753e-4350-a913-894cf3cecc0c",
+		Name:         "Fleshbag Marauder",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.TriggerEdict(effects.WhenThisEnters("Fleshbag Marauder — each player sacrifices a creature", effects.Do(effects.EachPlayerSacrifices{
+				Match: effects.Creature(),
+				Label: "a creature",
+			}))),
+		},
+	})
+}

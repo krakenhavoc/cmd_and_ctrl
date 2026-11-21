@@ -56,7 +56,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclared(ev, source)
+				return AttackDeclared(ev, source)
 			},
 			TargetsFrom: AnotherTarget(func(other CardPredicate) *game.TargetSpec {
 				return TargetPermanent("up to one other target nonland permanent", Nonland(), other).WithCount(0, 1)

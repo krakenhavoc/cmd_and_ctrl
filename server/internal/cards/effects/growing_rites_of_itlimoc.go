@@ -32,7 +32,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     growingRitesOfItlimocOracleID,
+		OracleID:     GrowingRitesOfItlimocOracleID,
 		Name:         "Growing Rites of Itlimoc",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -47,14 +47,14 @@ func init() {
 						Max:      1,
 						Optional: true,
 						Label:    "Growing Rites of Itlimoc — reveal a creature card and put it into your hand",
-						Key:      takeRevealRestBottomAny,
+						Key:      TakeRevealRestBottomAny,
 					}.Apply(ctx)
 				}),
 			On(game.EventBeginEndStep, growingRitesHasFourCreatures,
 				"Growing Rites of Itlimoc — transform it",
 				func(g *game.Game, item *game.StackItem) error {
 					// CR 603.4's second check, as it resolves.
-					if countControlled(g, item.Controller, MatchCreature) < 4 {
+					if CountControlled(g, item.Controller, MatchCreature) < 4 {
 						return nil
 					}
 					return TransformThis{}.Apply(NewContext(g, item))
@@ -67,9 +67,9 @@ func init() {
 // (CR 603.4), as your end step begins.
 func growingRitesHasFourCreatures(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.Actor == source.Controller &&
-		countControlled(g, source.Controller, MatchCreature) >= 4
+		CountControlled(g, source.Controller, MatchCreature) >= 4
 }
 
 // growingRitesOfItlimocOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const growingRitesOfItlimocOracleID = "ea9c459a-6047-43aa-968f-a582be4000e8"
+const GrowingRitesOfItlimocOracleID = "ea9c459a-6047-43aa-968f-a582be4000e8"

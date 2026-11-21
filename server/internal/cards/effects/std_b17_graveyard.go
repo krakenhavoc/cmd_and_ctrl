@@ -25,7 +25,7 @@ func PutIntoAGraveyardThisTurn() CardPredicate {
 // tokenCopyIsAlsoASubtype is "except it's a <subtype> in addition to its other
 // types" on a token copy's template (CR 707.9b): the subtype, read through the
 // text of the object that made the copy, joins the copiable values.
-func tokenCopyIsAlsoASubtype(t *game.Card, subtype string) {
+func TokenCopyIsAlsoASubtype(t *game.Card, subtype string) {
 	v := game.PrintedValues{TypeLine: t.TypeLine}
 	v.AddSubtype(subtype)
 	t.TypeLine = v.TypeLine

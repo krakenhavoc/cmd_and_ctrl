@@ -179,7 +179,7 @@ func PayAnyAmountOfLifeAsEnters(label, unit string, goal func(life int) int) fun
 			// #4294: keyed, with no asking item (an "as it enters" choice
 			// has none). The controller rides first on the Carry, as it
 			// does for every keyed number prompt.
-			Branch: game.NumberBranch{Then: storeChosenNumber, Carry: []uuid.UUID{card.Controller}},
+			Branch: game.NumberBranch{Then: StoreChosenNumber, Carry: []uuid.UUID{card.Controller}},
 		})
 	}
 }
@@ -187,7 +187,7 @@ func PayAnyAmountOfLifeAsEnters(label, unit string, goal func(life int) int) fun
 // storeChosenNumber is the branch behind "As this enters, pay any amount
 // of life": the life paid is stored on the entering permanent, which is
 // the prompt's source.
-var storeChosenNumber = NumberThen("number/store-the-life-paid-as-it-enters", func(ctx *Context, r game.NumberAnswer) error {
+var StoreChosenNumber = NumberThen("number/store-the-life-paid-as-it-enters", func(ctx *Context, r game.NumberAnswer) error {
 	ctx.Game.SetChosenNumberForEffect(r.Source, r.Number)
 	return nil
 })

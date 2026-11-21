@@ -10,8 +10,8 @@ import (
 
 // s82OneB08Corrupted is corrupted as a cost predicate (Distorted
 // Curiosity): an opponent of the caster has three or more poison counters.
-func s82OneB08Corrupted(q game.CostQuery) bool {
-	return rfReprintBCorrupted(q.Game, q.Controller)
+func S82OneB08Corrupted(q game.CostQuery) bool {
+	return RfReprintBCorrupted(q.Game, q.Controller)
 }
 
 // s82OneB08ManaValueAtMost reads, before anything happens to it, whether the
@@ -20,7 +20,7 @@ func s82OneB08Corrupted(q game.CostQuery) bool {
 // last known (CR 608.2h), so it must be read before the counter, bounce or
 // destruction. An X spell counts its X on the stack and a permanent's X is 0
 // (CR 202.3e). False when the object cannot be found.
-func s82OneB08ManaValueAtMost(ctx *Context, id uuid.UUID, limit int) bool {
+func S82OneB08ManaValueAtMost(ctx *Context, id uuid.UUID, limit int) bool {
 	card, ok := ctx.Game.LookupCardForEffect(id)
 	if !ok {
 		return false
@@ -33,10 +33,10 @@ func s82OneB08ManaValueAtMost(ctx *Context, id uuid.UUID, limit int) bool {
 // lands are chosen: the unchosen cards go on the bottom in a random order,
 // then proliferate once for each land fewer than two that was put onto the
 // battlefield.
-var s82OneB08ExpandTheSphereRest = PutFromLibraryTail("s82-one-b08/expand-the-sphere-rest",
+var S82OneB08ExpandTheSphereRest = PutFromLibraryTail("s82-one-b08/expand-the-sphere-rest",
 	func(ctx *Context, res PutFromLibraryResult) error {
 		if err := PutRestOnBottomInRandomOrder(ctx.Game, res); err != nil {
 			return err
 		}
-		return proliferateTimesKeyed(ctx.Game, res.Player, res.Source, 2-len(res.Entered))
+		return ProliferateTimesKeyed(ctx.Game, res.Player, res.Source, 2-len(res.Entered))
 	})

@@ -37,8 +37,8 @@ func init() {
 				return DelayedOnEvent{
 					Label:     "First Day of Class — put a +1/+1 counter on it and it gains haste until end of turn",
 					On:        []game.EventKind{game.EventETB},
-					Condition: eachCreatureYouControlEntersCondition,
-					Body:      counterAndHasteForThePayloadBody,
+					Condition: EachCreatureYouControlEntersCondition,
+					Body:      CounterAndHasteForThePayloadBody,
 					Repeats:   true,
 				}.Apply(ctx)
 			}),
@@ -65,11 +65,11 @@ func eachCreatureYouControlEntered(ev game.Event, dt *game.DelayedTrigger, g *ga
 // object on the battlefield.
 func counterAndHasteForThePayload(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	obj, ok := payloadObject(ctx)
+	obj, ok := PayloadObject(ctx)
 	if !ok {
 		return nil
 	}
-	c, ok := battlefieldCardForEffect(g, obj.ID)
+	c, ok := BattlefieldCardForEffect(g, obj.ID)
 	if !ok || c.ObjectEpoch != obj.Epoch {
 		return nil
 	}

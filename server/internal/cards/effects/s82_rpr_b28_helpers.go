@@ -10,7 +10,7 @@ import (
 // end of turn. Untap those creatures. They gain haste until end of turn"
 // (Mob Rule). The creatures are fixed as the spell resolves (CR 608.2c);
 // every creature is taken, then untapped, then given haste, in that order.
-func rprB28StealAllMatching(ctx *Context, label string, match CardPredicate) error {
+func RprB28StealAllMatching(ctx *Context, label string, match CardPredicate) error {
 	creatures := MatchingBattlefield(ctx, match)
 	for _, c := range creatures {
 		if err := (GainControl{
@@ -39,7 +39,7 @@ func rprB28StealAllMatching(ctx *Context, label string, match CardPredicate) err
 }
 
 // rprB28CreatureWithPower is a creature whose layered power passes `ok`.
-func rprB28CreatureWithPower(ok func(power int) bool) CardPredicate {
+func RprB28CreatureWithPower(ok func(power int) bool) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsCreature() && ok(c.CurrentPower())
 	}

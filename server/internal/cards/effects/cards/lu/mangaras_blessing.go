@@ -1,0 +1,50 @@
+package cardslu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Mangara's Blessing — Instant {2}{W}:
+//
+//	"You gain 5 life.
+//	 When a spell or ability an opponent controls causes you to discard
+//	 this card, you gain 2 life, and you return this card from your
+//	 graveyard to your hand at the beginning of the next end step."
+//
+// The family's "this card" trigger (ADR 0153 §4), watching from
+// wherever the card landed (WhereverDiscarded, #3859) on a discard an opponent's spell or ability caused (the stack
+// item's controller, CR 113.8). It gains 2 life at once and schedules a
+// delayed trigger for the next end step that returns the card, pinned as
+// an object (CR 400.7): a card that has left the graveyard in the
+// meantime is not dragged back. "You" is the card's owner while it sits
+// there (CR 108.4).
+//
+// No simplification: the discard ability is watched from wherever the
+// discard left the card (WhereverDiscarded, #3859), so madness or Rest in
+// Peace sending it to exile instead of the graveyard does not stop it.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:          "5d9431de-7cf0-43d4-9b86-e0ef4a7756f9",
+		Name:              "Mangara's Blessing",
+		Completeness:      effects.CompletenessFull,
+		DiscardByOpponent: game.DiscardByOpponentTrigger,
+		Purpose:           game.Purpose{LifeGain: 5},
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.GainLife{Amount: 5}.Apply(ctx)
+		},
+		Triggered: []game.TriggeredAbility{
+			effects.WhereverDiscarded(effects.On(game.EventDiscardCard, effects.DiscardedByAnOpponent(true),
+				"Mangara's Blessing — discarded: gain 2 life, return it to your hand at the next end step",
+				// The delayed return waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+				effects.Do(
+					effects.GainLife{Amount: 2},
+					effects.Instruction(func(ctx *effects.Context) error {
+						return effects.ScheduleReturnOfThisCard(ctx.Game, ctx.Item,
+							"Mangara's Blessing — return it from your graveyard to your hand", effects.ReturnDiscardedToHandBody)
+					}),
+				))),
+		},
+	})
+}

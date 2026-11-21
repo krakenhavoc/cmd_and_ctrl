@@ -62,13 +62,13 @@ func init() {
 					if source.Counters["quest"] < 3 {
 						return false
 					}
-					_, ok := b06CardInOpponentsGraveyard(ev, source.Controller, g)
+					_, ok := B06CardInOpponentsGraveyard(ev, source.Controller, g)
 					return ok
 				},
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Bloodchief Ascension — have that player lose 2 life? (You gain 2 life.)"},
 				Key:            "Bloodchief Ascension — that player loses 2 life and you gain 2 life",
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					victim, _ := b06CardInOpponentsGraveyard(ev, source.Controller, g)
+					victim, _ := B06CardInOpponentsGraveyard(ev, source.Controller, g)
 					item := game.NewTriggeredItem(source, "Bloodchief Ascension — that player loses 2 life and you gain 2 life")
 					item.Params.Player = victim
 					return item
@@ -101,7 +101,7 @@ func init() {
 // graveyard it is. The zone is read at event time, and every
 // graveyard-entry path emits its event AFTER the move, so the answer
 // is current.
-func b06CardInOpponentsGraveyard(ev game.Event, controller uuid.UUID, g *game.Game) (uuid.UUID, bool) {
+func B06CardInOpponentsGraveyard(ev game.Event, controller uuid.UUID, g *game.Game) (uuid.UUID, bool) {
 	if ev.CardID == uuid.Nil {
 		return uuid.Nil, false
 	}

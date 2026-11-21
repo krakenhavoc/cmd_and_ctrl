@@ -35,8 +35,8 @@ var (
 // vanishIntoMemoryResolve is the spell: the creature's power and
 // toughness are read now, as it last existed (CR 608.2h), and ride the
 // exile's tail.
-func vanishIntoMemoryResolve(_ *game.StackItem, ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func VanishIntoMemoryResolve(_ *game.StackItem, ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

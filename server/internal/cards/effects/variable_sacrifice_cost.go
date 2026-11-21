@@ -24,7 +24,7 @@ import (
 // Competition's "destroy X target creatures", Immoral Bargain's
 // "destroy X target nonland permanents". One event, so a Blood Artist
 // sees every death at once rather than one per target.
-func vsDestroyTheTargets(ctx *Context) error {
+func VsDestroyTheTargets(ctx *Context) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -41,7 +41,7 @@ func vsDestroyTheTargets(ctx *Context) error {
 // until end of turn, when it is still legal and the boost is not zero —
 // Vicious Betrayal's "+2/+2 for each creature sacrificed this way",
 // Devouring Rage's "+3/+0, and +3/+0 more for each Spirit".
-func vsPumpTheTarget(ctx *Context, power, toughness int, label string) error {
+func VsPumpTheTarget(ctx *Context, power, toughness int, label string) error {
 	legal := ctx.LegalTargets()
 	if len(legal) == 0 || legal[0].Kind != game.TargetCard {
 		return nil
@@ -52,7 +52,7 @@ func vsPumpTheTarget(ctx *Context, power, toughness int, label string) error {
 // vsXTarget is "X target <permanents>" — the target clause whose count
 // is the announced X, which on these cards is the sacrifice count
 // (CR 107.3i: every X on the object is one number).
-func vsXTarget(label string, preds ...CardPredicate) *game.TargetSpec {
+func VsXTarget(label string, preds ...CardPredicate) *game.TargetSpec {
 	spec := TargetPermanent(label, preds...)
 	spec.CountFromX = true
 	return spec

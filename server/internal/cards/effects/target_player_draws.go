@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // targetPlayerDrawsTwo is "Target player draws two cards." (Deep
 // Analysis, Inspiration #5631). A target that is no longer legal never
 // gets here (CR 608.2b).
-func targetPlayerDrawsTwo(item *game.StackItem, ctx *Context) error {
+func TargetPlayerDrawsTwo(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}
@@ -19,10 +19,10 @@ func targetPlayerDrawsTwo(item *game.StackItem, ctx *Context) error {
 // activated row's Effect (Limestone Golem's "draws a card" is N = 1). A
 // target that is no longer legal as the ability resolves draws nothing
 // (CR 608.2b).
-func theTargetPlayerDraws(n int) Effect {
+func TheTargetPlayerDraws(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		p, ok := firstLegalPlayerTarget(ctx)
+		p, ok := FirstLegalPlayerTarget(ctx)
 		if !ok {
 			return nil
 		}

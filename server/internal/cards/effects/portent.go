@@ -38,7 +38,7 @@ func init() {
 			if err := (ScheduleDelayedTrigger{
 				At:    game.StepUpkeep,
 				Label: "Portent — draw a card",
-				Body:  portentDrawBody,
+				Body:  PortentDrawBody,
 			}).Apply(ctx); err != nil {
 				return err
 			}
@@ -51,7 +51,7 @@ func init() {
 			if victim == uuid.Nil {
 				return nil
 			}
-			ask := ctx.ItemTail(portentAskShuffle)
+			ask := ctx.ItemTail(PortentAskShuffle)
 			ask.Carry = []uuid.UUID{victim}
 			return LookAtLibraryThenPlace{
 				Owner:     victim,
@@ -67,20 +67,20 @@ func init() {
 // portentAskShuffle is the order prompt's "then": ask whether the library's
 // owner shuffles (#4301: a registered tail; the owner is its carried ID and
 // the asking item its data). An on-disk key.
-var portentAskShuffle = CardTail("portent/ask-shuffle", func(ctx *Context, o game.TailOutcome) error {
+var PortentAskShuffle = CardTail("portent/ask-shuffle", func(ctx *Context, o game.TailOutcome) error {
 	return MayChoice{
 		Question: "Portent — have that player shuffle their library?",
 		YesLabel: "Shuffle",
 		NoLabel:  "Leave it",
-		Then:     portentShuffle,
+		Then:     PortentShuffle,
 		Carry:    o.Tail.Carry,
 	}.Apply(ctx)
 })
 
 // portentShuffle is "you may have that player shuffle": the player is the
 // prompt's carried ID (#4298: keyed).
-var portentShuffle = MayYes("confirm/portent-shuffle", func(ctx *Context, r game.ConfirmAnswer) error {
-	return ctx.Game.ShuffleLibraryForEffect(carryAt(r, 0))
+var PortentShuffle = MayYes("confirm/portent-shuffle", func(ctx *Context, r game.ConfirmAnswer) error {
+	return ctx.Game.ShuffleLibraryForEffect(CarryAt(r, 0))
 })
 
 // portentDraw is the delayed trigger's effect: its controller draws a

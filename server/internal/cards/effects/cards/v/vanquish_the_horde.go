@@ -1,0 +1,28 @@
+package cardsv
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Vanquish the Horde — Sorcery {6}{W}{W}:
+//
+//	"This spell costs {1} less to cast for each creature on the
+//	 battlefield.
+//	 Destroy all creatures."
+//
+// #746: the Blasphemous Act reduction, on a Wrath.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "a332e80a-dc51-4dc6-bc85-e114a1c6fdb8",
+		Name:         "Vanquish the Horde",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
+		Completeness: effects.CompletenessFull,
+		SelfCostModifiers: []game.CostModifier{
+			effects.CostsLessEach(effects.PermanentsOnBattlefield(effects.Creature()),
+				"This spell costs {1} less to cast for each creature on the battlefield."),
+		},
+		OnResolve: effects.WrathDestroyAllCreatures,
+	})
+}

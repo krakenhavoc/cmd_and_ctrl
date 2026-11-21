@@ -68,7 +68,7 @@ func ThisEndures(name string, n int) Effect {
 // endureCanTakeCounters is whether `permanent` is still the object the
 // effect names and on the battlefield.
 func endureCanTakeCounters(ctx *Context, permanent uuid.UUID) bool {
-	return onBattlefield(ctx.Game, permanent) && !ctx.isNewSourceObject(permanent)
+	return OnBattlefield(ctx.Game, permanent) && !ctx.IsNewSourceObject(permanent)
 }
 
 // endureAnswered is the choice, keyed: Carry is the permanent and Nums the

@@ -1,0 +1,57 @@
+package cardsa
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Academy Manufactor — Artifact Creature — Assembly-Worker {3}, 1/3
+// (EDHREC rank 262):
+//
+//	"If you would create a Clue, Food, or Treasure token, instead
+//	 create one of each."
+//
+// The artifact deck's engine, and the card that decides the SHAPE of
+// the CR 701.7b creation event: it does not change how MANY tokens
+// are created, it changes WHICH. That is why the event carries
+// groups — a template and a count each — rather than a bare number
+// (#762, ADR 0061). A count alone could express Parallel Lives and
+// nothing else.
+//
+// The replacement rewrites only the groups it names, so "create a
+// Treasure and two Soldiers" comes out as a Clue, a Food, a Treasure
+// and two Soldiers; and it keeps each group's count, so "create two
+// Clues" is two of each (ruling, 2021-11-19).
+//
+// It stacks with a doubler through the CR 616 ordering prompt, and
+// the order is observable: with a Doubling Season out, one Clue
+// doubled first is two Clues and then two of each kind, six tokens;
+// one Clue turned into one of each first is three tokens and then
+// doubled, also six — but a Manufactor that fires on a Clue-only
+// instruction and a Season that fires afterwards produce different
+// KINDS on the way through, which is why the affected player is asked
+// rather than the engine deciding.
+//
+// No simplifications.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "f36d1d8b-8303-44a9-ab56-531931641ea2",
+		Name:         "Academy Manufactor",
+		Completeness: effects.CompletenessFull,
+		Replacements: []game.ReplacementEffect{
+			effects.HobA9InsteadCreateTokens("Academy Manufactor: a Clue, a Food and a Treasure instead",
+				isClueFoodOrTreasure, func() []game.Card {
+					return []game.Card{effects.ClueToken(), effects.FoodToken(), effects.TreasureToken()}
+				}),
+		},
+	})
+}
+
+// isClueFoodOrTreasure is the Manufactor's clause, read off a token
+// template's printed type line — the template is not on the
+// battlefield yet, so there is nothing else to read, and no layer
+// effect has had a chance to change it.
+func isClueFoodOrTreasure(t game.Card) bool {
+	return t.HasSubtype("Clue") || t.HasSubtype("Food") || t.HasSubtype("Treasure")
+}

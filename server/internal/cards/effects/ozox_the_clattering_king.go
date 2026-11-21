@@ -37,11 +37,11 @@ func init() {
 	})
 }
 
-func s82BnsB51JumblebonesToken() game.Card { return tokenFromCatalog(printedBnsB51JumblebonesToken) }
+func s82BnsB51JumblebonesToken() game.Card { return TokenFromCatalog(printedBnsB51JumblebonesToken) }
 
 // printedBnsB51JumblebonesToken is Jumblebones as PRINTED.
-func printedBnsB51JumblebonesToken() tokenTemplate {
-	return tokenTemplate{
+func printedBnsB51JumblebonesToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "jumblebones",
 		Card: game.Card{
 			Name:      "Jumblebones",
@@ -53,7 +53,7 @@ func printedBnsB51JumblebonesToken() tokenTemplate {
 		Static: []game.StaticAbility{RestrictSelf(game.CantBlock)},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisLeaves("Jumblebones — return target card named Ozox, the Clattering King from your graveyard to your hand",
-				returnFirstLegalGraveyardTargetToHand),
+				ReturnFirstLegalGraveyardTargetToHand),
 				TargetCardInGraveyard("target card named Ozox, the Clattering King from your graveyard", YouOwn(),
 					func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.Name == "Ozox, the Clattering King" })),
 		},

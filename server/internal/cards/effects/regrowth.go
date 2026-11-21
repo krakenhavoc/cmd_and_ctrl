@@ -24,7 +24,7 @@ func init() {
 		Name:         "Regrowth",
 		Completeness: CompletenessFull,
 		Targets:      TargetCardInGraveyard("target card in your graveyard", YouOwn()),
-		OnResolve:    returnTargetFromGraveyardToHand,
+		OnResolve:    ReturnTargetFromGraveyardToHand,
 	})
 }
 
@@ -32,7 +32,7 @@ func init() {
 // graveyard to your hand" as a spell's whole body: Regrowth, and the
 // front of Bala Ged Recovery. A target that left in response does
 // nothing (CR 608.2b).
-func returnTargetFromGraveyardToHand(item *game.StackItem, ctx *Context) error {
+func ReturnTargetFromGraveyardToHand(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}

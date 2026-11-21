@@ -1,0 +1,40 @@
+package cardskr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Leering Onlooker — Creature — Vampire {1}{B}, 1/3 (Murders at Karlov
+// Manor, #4469):
+//
+//	"Flying
+//	 {2}{B}{B}, Exile this card from your graveyard: Create two tapped 1/1
+//	 black Bat creature tokens with flying."
+//
+// The graveyard activation is Spider-Slayer, Hatred Honed's: exiling the
+// card is part of the cost (CR 602.2b), so it can be activated once, at
+// instant speed. The Bats enter tapped (CreateTokenAdvanced,
+// EntersTapped), so they block nothing the turn they arrive, and the row
+// declares that it answers nothing (ADR 0142).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "06a37f16-c929-4b89-bf18-1b3f8f472eef",
+		Name:            "Leering Onlooker",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{2}{B}{B}, Exile this card from your graveyard: Create two tapped 1/1 black Bat creature tokens with flying.",
+			Purpose: game.Purpose{Answers: game.AnswerValue, Tokens: 2},
+			Cost:    effects.Plus(effects.ManaCost("{2}{B}{B}"), effects.ExileThis()),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
+			Effect: effects.Do(effects.CreateTokenAdvanced{
+				Spec: effects.Token(effects.TokenCard("1/1 black Bat with flying")).EntersTapped(),
+				N:    2,
+			}),
+		}},
+	})
+}

@@ -25,7 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, virulentSilencerConnects,
-				"Virulent Silencer — that player gets two poison counters", virulentSilencerPoison),
+				"Virulent Silencer — that player gets two poison counters", VirulentSilencerPoison),
 		},
 	})
 }
@@ -33,7 +33,7 @@ func init() {
 // virulentSilencerConnects is "a nontoken artifact creature you control
 // deals combat damage to a player".
 func virulentSilencerConnects(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !b36ArtifactCreatureYouControlDealtCombatDamageToPlayer(ev, source, g) {
+	if !B36ArtifactCreatureYouControlDealtCombatDamageToPlayer(ev, source, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
@@ -41,7 +41,7 @@ func virulentSilencerConnects(ev game.Event, source *game.Card, _ game.Character
 }
 
 // virulentSilencerPoison gives the damaged player two poison counters.
-func virulentSilencerPoison(g *game.Game, item *game.StackItem) error {
+func VirulentSilencerPoison(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}

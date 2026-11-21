@@ -25,7 +25,7 @@ import (
 func Soulshift(n int, name string) game.TriggeredAbility {
 	label := fmt.Sprintf("%s — soulshift %d", name, n)
 	return Targeting(
-		Optional(WhenThisDies(label, returnFirstLegalGraveyardTargetToHand),
+		Optional(WhenThisDies(label, ReturnFirstLegalGraveyardTargetToHand),
 			fmt.Sprintf("%s — return a Spirit card with mana value %d or less from your graveyard to your hand?", name, n)),
 		TargetCardInGraveyard(
 			fmt.Sprintf("target Spirit card with mana value %d or less from your graveyard", n),

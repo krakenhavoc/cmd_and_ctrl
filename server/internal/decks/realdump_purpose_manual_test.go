@@ -220,6 +220,8 @@ var reviewedNotAWipe = map[string]string{
 	// S82 GAP batch 34.
 	"Ruination": "destroys the nonbasic lands, which no sweep class holds alone",
 
+	// S82 GAP batch 35.
+	"Yggdrasil, Rebirth Engine": "exiles only the creature cards in its controller's graveyard, which are no permanents",
 	// S82 BOK batch 1 (#5602).
 	"Yukora, the Prisoner": "its leaves trigger sacrifices only its controller's own non-Ogre creatures: a drawback, not a board",
 
@@ -227,6 +229,9 @@ var reviewedNotAWipe = map[string]string{
 	"Azorius Skyguard": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 	// S82 MBS batch 1 (#5576).
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
+
+	// S82 GAP batch 64 (#5948).
+	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -23,7 +23,7 @@ import (
 
 // signedPT renders a power/toughness change the way the card prints it:
 // "+1/+1", "-2/-2", "+3/-1".
-func signedPT(power, toughness int) string {
+func SignedPT(power, toughness int) string {
 	return fmt.Sprintf("%+d/%+d", power, toughness)
 }
 

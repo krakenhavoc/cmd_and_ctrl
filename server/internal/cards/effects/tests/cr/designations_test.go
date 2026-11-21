@@ -1,0 +1,456 @@
+package testscr
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// --- Wizard Class (CR 716) -------------------------------------------
+
+// TestWizardClassStartsAtLevelOneWithOnlyItsLevelOneAbility is the
+// first half of the ADR: a Class enters level 1 (CR 716.2b) and its
+// later lines are not abilities it has.
+func TestWizardClassStartsAtLevelOneWithOnlyItsLevelOneAbility(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	id := effectstest.PushClass(g, me.ID, "Wizard Class", "Enchantment — Class", effectstest.WizardClassOracle)
+
+	if got := effectstest.LevelOf(g, id); got != 1 {
+		t.Errorf("a Class that has never been levelled is level %d, want 1 (CR 716.2b)", got)
+	}
+	// Level 1 — "You have no maximum hand size" — is on from the
+	// start, and it is the printed NoMaxHandSize slot rather than a
+	// gated static, because a level-1 line has nothing to wait for.
+	if hs := game.CatalogHandSize(effectstest.WizardClassOracle); len(hs) != 1 || hs[0].Kind != game.HandSizeNoMaximum || hs[0].Players != game.HandSizeYou {
+		t.Errorf("Wizard Class level 1 should declare NoMaxHandSize, got %+v", hs)
+	}
+
+	card := effectstest.LayeredCard(t, g, id)
+	live := game.TriggersForCard(card)
+	if len(live) != 0 {
+		t.Errorf("at level 1 the level-2 and level-3 triggers must not exist: got %d", len(live))
+	}
+	// Both level-up abilities ARE there — they are printed on the
+	// card from the moment it enters (CR 716.2a) and are limited by
+	// their activation condition, not by a gate.
+	if got := len(game.ActivatedAbilitiesForCard(card)); got != 2 {
+		t.Errorf("level-up abilities offered = %d, want 2", got)
+	}
+}
+
+// TestWizardClassLevelTwoDrawsAndTurnsOnItsTrigger walks the whole
+// CR 716.2 lifecycle on a real card: level up, the level event, the
+// "becomes level 2" trigger, and the level-3 trigger still absent.
+func TestWizardClassLevelTwoDrawsAndTurnsOnItsTrigger(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	id := effectstest.PushClass(g, me.ID, "Wizard Class", "Enchantment — Class", effectstest.WizardClassOracle)
+	effectstest.AdvanceTo(t, g, game.StepPrecombatMain)
+
+	before := len(me.Hand.Cards)
+	if err := effectstest.LevelUpTo(t, g, me.ID, id, 0, "{2}{U}"); err != nil {
+		t.Fatalf("level 2: %v", err)
+	}
+	if got := effectstest.LevelOf(g, id); got != 2 {
+		t.Fatalf("level after the level-2 activation = %d, want 2", got)
+	}
+	// "When this Class becomes level 2, draw two cards."
+	if got := len(me.Hand.Cards) - before; got != 2 {
+		t.Errorf("cards drawn = %d, want 2", got)
+	}
+
+	card := effectstest.LayeredCard(t, g, id)
+	live := game.TriggersForCard(card)
+	if len(live) != 1 {
+		t.Fatalf("at level 2 exactly the level-2 trigger exists: got %d", len(live))
+	}
+	// The level-3 "whenever you draw a card" line must NOT have been
+	// live for the two cards the level-2 ability just drew — which is
+	// the difference between a gate and an `if level >= 3` inside
+	// AppliesTo.
+	if pendingTriggerCount(g) != 0 {
+		t.Errorf("the level-3 draw trigger fired at level 2: %d pending", pendingTriggerCount(g))
+	}
+}
+
+// TestWizardClassLevelThreeActivatesEveryLine — at level 3 all three
+// printed lines are live, and the draw trigger is one of them.
+func TestWizardClassLevelThreeActivatesEveryLine(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	id := effectstest.PushClass(g, me.ID, "Wizard Class", "Enchantment — Class", effectstest.WizardClassOracle)
+	creature := effectstest.PushCatalogPermanent(g, me.ID, "Bear", "Creature — Bear", "", false)
+	effectstest.AdvanceTo(t, g, game.StepPrecombatMain)
+
+	if err := effectstest.LevelUpTo(t, g, me.ID, id, 0, "{2}{U}"); err != nil {
+		t.Fatalf("level 2: %v", err)
+	}
+	if err := effectstest.LevelUpTo(t, g, me.ID, id, 1, "{4}{U}"); err != nil {
+		t.Fatalf("level 3: %v", err)
+	}
+	if got := effectstest.LevelOf(g, id); got != 3 {
+		t.Fatalf("level = %d, want 3", got)
+	}
+	if got := len(game.TriggersForCard(effectstest.LayeredCard(t, g, id))); got != 2 {
+		t.Errorf("at level 3 both triggers exist: got %d", got)
+	}
+
+	// Draw a card and let the level-3 trigger put a counter on the
+	// Bear. It targets, so the harvester opens a pick_target prompt
+	// as the ability goes on the stack (CR 603.3d).
+	g.WithWriteLock(func() { _ = g.DrawNForEffect(me.ID, 1) })
+	effectstest.PickCard(t, g, me.ID, creature)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effects.CounterCountOn(g, creature, game.CounterPlusOne); got != 1 {
+		t.Errorf("+1/+1 counters on the target = %d, want 1", got)
+	}
+}
+
+// TestWizardClassLevelUpIsSorceryTimedAndInOrder — CR 716.2d and
+// 716.2a, the two rules LevelUp carries so no card file has to.
+func TestWizardClassLevelUpIsSorceryTimedAndInOrder(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	id := effectstest.PushClass(g, me.ID, "Wizard Class", "Enchantment — Class", effectstest.WizardClassOracle)
+	effectstest.AdvanceTo(t, g, game.StepPrecombatMain)
+
+	// CR 716.2a: level 3 cannot be activated from level 1.
+	g.WithWriteLock(func() { _ = g.AddManaForEffect(me.ID, uuid.Nil, "{4}{U}") })
+	if err := g.ActivateCatalogAbility(me.ID, id, 1, game.ActivateAbilityParams{}); err == nil {
+		t.Error("level 3 from level 1 must be refused (CR 716.2a)")
+	}
+	if got := effectstest.LevelOf(g, id); got != 1 {
+		t.Errorf("a refused activation must not change the level: %d", got)
+	}
+
+	// CR 716.2d: sorcery speed. The upkeep is not a main phase.
+	effectstest.AdvanceTo(t, g, game.StepUpkeep)
+	g.WithWriteLock(func() { _ = g.AddManaForEffect(me.ID, uuid.Nil, "{2}{U}") })
+	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Error("a level-up at instant speed must be refused (CR 716.2d)")
+	}
+}
+
+// TestClassLevelIsNotCopiedByACopyEffect — CR 716.2c through the
+// catalog: the copy is level 1 and therefore has only the level-1
+// line, whatever the original had climbed to.
+func TestClassLevelIsNotCopiedByACopyEffect(t *testing.T) {
+	original := game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Wizard Class",
+		TypeLine:   "Enchantment — Class",
+		OracleID:   effectstest.WizardClassOracle,
+		ClassLevel: 2,
+	}
+	if got := len(game.TriggersForCard(original)); got != 1 {
+		t.Fatalf("the original at level 2 has %d triggers, want 1", got)
+	}
+	// A copy takes the COPIABLE VALUES and nothing else (CR 707.2),
+	// and the level is not among them — game.PrintedValues has no
+	// slot for it, which is CR 716.2c enforced by the type rather
+	// than by a rule in the copy path. What a copy therefore looks
+	// like is a permanent carrying those values at level 1:
+	v := game.CopiableValuesOf(original)
+	copied := game.Card{
+		InstanceID: uuid.New(),
+		OracleID:   v.OracleID,
+		Name:       v.Name,
+		TypeLine:   v.TypeLine,
+	}
+	if copied.OracleID != original.OracleID {
+		t.Fatal("the copy should carry the original's catalog identity")
+	}
+	if copied.ClassLevel != 0 {
+		t.Errorf("the copy took the level designation: %d (CR 716.2c says it must not)", copied.ClassLevel)
+	}
+	if got := len(game.TriggersForCard(copied)); got != 0 {
+		t.Errorf("a copy of a level-2 Class has %d triggers, want 0 — it is level 1", got)
+	}
+}
+
+// --- Fortune Teller's Talent (#333) ----------------------------------
+
+// TestFortuneTellersTalentOwnerSeesTheTopCardAtLevelOne is level 1's
+// "you may look at the top card of your library any time" (CR 401.5):
+// with the Talent on the battlefield at level 1 its controller — and
+// only its controller — knows the top card of their own library. The
+// opponent's library is untouched, and without the Talent nobody sees
+// anything.
+func TestFortuneTellersTalentOwnerSeesTheTopCardAtLevelOne(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	if me.Library.Size() == 0 {
+		t.Fatalf("test needs a non-empty library")
+	}
+
+	visible := func(owner, viewer uuid.UUID) bool {
+		var ok bool
+		g.ReadSnapshot(func() { ok = g.LibraryTopVisibleToLocked(owner, viewer) })
+		return ok
+	}
+	knowers := func(owner uuid.UUID) []uuid.UUID {
+		var out []uuid.UUID
+		g.ReadSnapshot(func() { out, _ = g.LibraryTopKnowersLocked(owner) })
+		return out
+	}
+
+	if visible(me.ID, me.ID) {
+		t.Fatalf("the top card is visible before the Talent is on the battlefield")
+	}
+
+	talent := effectstest.PushClass(g, me.ID, "Fortune Teller's Talent", "Enchantment — Class", effectstest.FortuneTellersTalentOracle)
+	if got := effectstest.LevelOf(g, talent); got != 1 {
+		t.Fatalf("the Talent should be level 1, got %d", got)
+	}
+
+	if !visible(me.ID, me.ID) {
+		t.Errorf("at level 1 the Talent's controller should see the top card of their library")
+	}
+	if visible(me.ID, opp.ID) {
+		t.Errorf("an opponent sees the top card; the Talent's look is private, not a reveal")
+	}
+	if got := knowers(me.ID); len(got) != 1 || got[0] != me.ID {
+		t.Errorf("top-card knowers = %v, want exactly the owner %v", got, me.ID)
+	}
+	if visible(opp.ID, me.ID) || visible(opp.ID, opp.ID) {
+		t.Errorf("the Talent opened the top of an OPPONENT's library")
+	}
+}
+
+// TestFortuneTellersTalentReductionWaitsForLevelThree is the gated
+// COST MODIFIER, the fourth slot the gate covers. The reduction must
+// not apply at level 1 or 2 and must apply at level 3 — and only to
+// a spell cast from outside its controller's hand.
+func TestFortuneTellersTalentReductionWaitsForLevelThree(t *testing.T) {
+	seat := uuid.New()
+	talent := game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Fortune Teller's Talent",
+		TypeLine:   "Enchantment — Class",
+		OracleID:   effectstest.FortuneTellersTalentOracle,
+		Owner:      seat,
+		Controller: seat,
+	}
+	if got := len(game.CostModifiersForCard(talent)); got != 0 {
+		t.Errorf("at level 1 the reduction must not exist: got %d modifiers", got)
+	}
+	talent.ClassLevel = 2
+	if got := len(game.CostModifiersForCard(talent)); got != 0 {
+		t.Errorf("at level 2 the reduction must not exist: got %d modifiers", got)
+	}
+	talent.ClassLevel = 3
+	mods := game.CostModifiersForCard(talent)
+	if len(mods) != 1 {
+		t.Fatalf("at level 3 the reduction must exist: got %d modifiers", len(mods))
+	}
+	m := mods[0]
+	q := game.CostQuery{
+		Controller: seat,
+		Source:     talent,
+		FromZone:   game.ZoneGraveyard,
+	}
+	if m.AppliesTo == nil || !m.AppliesTo(q) {
+		t.Error("a spell cast from the graveyard should be discounted")
+	}
+	q.FromZone = game.ZoneHand
+	if m.AppliesTo(q) {
+		t.Error("a spell cast from HAND must not be discounted — the card says 'anywhere other than your hand'")
+	}
+	q.FromZone = game.ZoneGraveyard
+	q.Controller = uuid.New()
+	if m.AppliesTo(q) {
+		t.Error("an opponent's spell must not be discounted — the card says 'spells you cast'")
+	}
+	if m.Amount == nil || m.Amount(q) != 2 {
+		t.Error("the reduction is {2}")
+	}
+}
+
+// TestFortuneTellersTalentIsFull — #1314 closed the last gap (level
+// 2's play, gated by a Designation and a Condition together), so the
+// card ships with no simplification at all.
+func TestFortuneTellersTalentIsFull(t *testing.T) {
+	spec, ok := effects.Lookup(effectstest.FortuneTellersTalentOracle)
+	if !ok {
+		t.Fatal("Fortune Teller's Talent is not registered")
+	}
+	if spec.Completeness != effects.CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("want CompletenessFull with no caveats, got %s with %d", spec.Completeness, len(spec.Caveats))
+	}
+}
+
+// TestFortuneTellersTalentLevelTwoGatesOnLevelAndACastThisTurn is
+// #1314's proof: the level-2 line is a `game.CastPermission` gated by
+// BOTH a Designation (CR 716.2a, Level(2)) and a Condition ("as long
+// as you've cast a spell this turn") — neither alone is what the
+// printed card says, and the card must not open the top of the
+// library on either one by itself.
+func TestFortuneTellersTalentLevelTwoGatesOnLevelAndACastThisTurn(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	classID := effectstest.PushClass(g, me.ID, "Fortune Teller's Talent", "Enchantment — Class", effectstest.FortuneTellersTalentOracle)
+	effectstest.AdvanceTo(t, g, game.StepPrecombatMain)
+
+	var top uuid.UUID
+	g.WithWriteLock(func() {
+		c := game.NewCard("On Top", me.ID)
+		c.TypeLine = "Instant"
+		me.Library.PushTop(c)
+		top = c.InstanceID
+	})
+
+	permissionGranted := func() bool {
+		granted := false
+		g.ReadSnapshot(func() {
+			card, ok := g.LookupCardForEffect(top)
+			if !ok {
+				return
+			}
+			granted = g.CastPermissionForLocked(me.ID, card, game.ZoneLibrary).Granted()
+		})
+		return granted
+	}
+
+	// Level 1, nothing cast: level 1's own line ("look at the top card
+	// any time") is live, but level 2's is not — neither the gate nor
+	// the condition is satisfied.
+	if got := g.LibraryTopVisibilityForEffect(me.ID); got != game.LibraryTopOwner {
+		t.Fatalf("level 1's look should be live from the start, got %v", got)
+	}
+	if permissionGranted() {
+		t.Error("the top of the library is playable at level 1")
+	}
+
+	// Level 2, still nothing cast this turn: the DESIGNATION is
+	// satisfied and the CONDITION is not.
+	if err := effectstest.LevelUpTo(t, g, me.ID, classID, 0, "{3}{U}"); err != nil {
+		t.Fatalf("level 2: %v", err)
+	}
+	if permissionGranted() {
+		t.Error("the top of the library is playable at level 2 with no spell cast this turn")
+	}
+
+	// A spell cast this turn: both halves are satisfied.
+	g.WithWriteLock(func() {
+		if g.SpellsCastThisTurn == nil {
+			g.SpellsCastThisTurn = make(map[uuid.UUID]game.CastTally)
+		}
+		g.SpellsCastThisTurn[me.ID] = game.CastTally{Total: 1}
+	})
+	if !permissionGranted() {
+		t.Error("the top of the library should be playable at level 2 after casting a spell this turn")
+	}
+
+	// An opponent gets nothing from someone else's Talent.
+	them := g.Seats[1]
+	opponentGranted := false
+	g.ReadSnapshot(func() {
+		card, _ := g.LookupCardForEffect(top)
+		opponentGranted = g.CastPermissionForLocked(them.ID, card, game.ZoneLibrary).Granted()
+	})
+	if opponentGranted {
+		t.Error("an opponent should not be able to play off this Talent's controller's library")
+	}
+}
+
+// --- Case of the Shattered Pact (CR 719) -----------------------------
+
+// TestCaseSolvesAtTheEndStepWhenItsConditionHolds is the CR 719.3a
+// lifecycle: the trigger is the end step, the condition is the
+// intervening if, and the solved line turns on.
+func TestCaseSolvesAtTheEndStepWhenItsConditionHolds(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	id := effectstest.PushClass(g, me.ID, "Case of the Shattered Pact", "Enchantment — Case", effectstest.CaseOfTheShatteredPactOracl)
+
+	// Four colours: not solvable yet.
+	for _, color := range []string{"W", "U", "B", "R"} {
+		pushColoredPermanent(g, me.ID, "Pip "+color, color)
+	}
+	effectstest.AdvanceTo(t, g, game.StepEnd)
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.IsSolved(g, id) {
+		t.Fatal("a Case solved with only four colours among its controller's permanents")
+	}
+	if got := len(game.TriggersForCard(effectstest.LayeredCard(t, g, id))); got != 2 {
+		t.Errorf("unsolved, the ETB and to-solve triggers exist and the solved one does not: got %d", got)
+	}
+
+	// Fifth colour, and round to this seat's NEXT end step — a full
+	// four-seat turn cycle away, because "To solve" is a trigger on
+	// the CONTROLLER's end step (CR 719.3a).
+	pushColoredPermanent(g, me.ID, "Pip G", "G")
+	for i := 0; i < 200 && !effectstest.IsSolved(g, id); i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+		effectstest.PassPriorityAroundTable(t, g)
+	}
+	if !effectstest.IsSolved(g, id) {
+		t.Fatal("the Case never solved with five colours among its controller's permanents")
+	}
+	if got := len(game.TriggersForCard(effectstest.LayeredCard(t, g, id))); got != 3 {
+		t.Errorf("solved, all three triggers exist: got %d", got)
+	}
+}
+
+// TestSolvedCaseStaysSolvedWhenItsConditionStops — CR 719.3b. The
+// condition is a one-time question, not an "as long as".
+func TestSolvedCaseStaysSolvedWhenItsConditionStops(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	id := effectstest.PushClass(g, me.ID, "Case of the Shattered Pact", "Enchantment — Case", effectstest.CaseOfTheShatteredPactOracl)
+	g.WithWriteLock(func() {
+		if err := g.SolveCaseForEffect(id); err != nil {
+			t.Fatalf("SolveCaseForEffect: %v", err)
+		}
+	})
+	if !effectstest.IsSolved(g, id) {
+		t.Fatal("the Case did not solve")
+	}
+	// No permanents of any colour at all; the condition is false.
+	if !effectstest.IsSolved(g, id) {
+		t.Error("a solved Case must stay solved (CR 719.3b)")
+	}
+	if got := len(game.TriggersForCard(effectstest.LayeredCard(t, g, id))); got != 3 {
+		t.Errorf("a solved Case keeps its solved ability: got %d triggers, want 3", got)
+	}
+}
+
+func pendingTriggerCount(g *game.Game) int {
+	n := 0
+	g.ReadSnapshot(func() { n = len(g.PendingTriggers) })
+	return n
+}
+
+// pushColoredPermanent seeds a one-colour permanent, for Case of the
+// Shattered Pact's "five colors among permanents you control".
+func pushColoredPermanent(g *game.Game, owner uuid.UUID, name, color string) uuid.UUID {
+	return effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       name,
+		TypeLine:   "Enchantment",
+		Colors:     []string{color},
+		Owner:      owner,
+		Controller: owner,
+	})
+}
+
+// --- catalog-wide guards ---------------------------------------------
+
+// TestEveryRegisteredSpecKeepsTheDoorRules — ADR 0103. Register
+// refuses a Room with an ungated ability and a door gate on anything
+// that is not a Room (checkRoomSpec); this is the whole-catalog sweep
+// that says so without needing a card to try.
+func TestEveryRegisteredSpecKeepsTheDoorRules(t *testing.T) {
+	for _, spec := range effects.All() {
+		if problem := effects.CheckRoomSpec(spec); problem != "" {
+			t.Errorf("%s %s", spec.Name, problem)
+		}
+	}
+}

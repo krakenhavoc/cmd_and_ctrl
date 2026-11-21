@@ -37,7 +37,7 @@ func init() {
 				Label:   "{1}: This creature deals 1 damage to target creature that's blocking it.",
 				Cost:    ManaCost("{1}"),
 				Targets: BlockingSource(TargetCreature("target creature that's blocking it")),
-				Effect:  arcSpitterPing,
+				Effect:  ArcSpitterPing,
 			}},
 			Text: "{1}: This creature deals 1 damage to target creature that's blocking it.",
 		}},
@@ -46,7 +46,7 @@ func init() {
 	})
 }
 
-func arcSpitterPing(g *game.Game, item *game.StackItem) error {
+func ArcSpitterPing(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	target := FirstLegalBattlefieldTarget(ctx)
 	if target == uuid.Nil {

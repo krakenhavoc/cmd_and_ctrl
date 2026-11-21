@@ -20,11 +20,11 @@ import (
 
 // counterPlacementDelta is how many counters ev put on its permanent:
 // zero for anything that was not a placement.
-func counterPlacementDelta(ev game.Event, g *game.Game) int {
+func CounterPlacementDelta(ev game.Event, g *game.Game) int {
 	if ev.Kind != game.EventCounterPlaced || ev.Target == uuid.Nil || ev.Label == "" {
 		return 0
 	}
-	before := b12CounterTotalBefore(ev, g)
+	before := B12CounterTotalBefore(ev, g)
 	if d := ev.Amount - before; d > 0 {
 		return d
 	}
@@ -86,7 +86,7 @@ func ACounterWasPutOnThisObjectThisTurn(g *game.Game, id uuid.UUID) bool {
 		if ev.Kind == game.EventLTB && ev.CardID == id {
 			return false
 		}
-		if ev.Kind == game.EventCounterPlaced && ev.Target == id && counterPlacementDelta(ev, g) > 0 {
+		if ev.Kind == game.EventCounterPlaced && ev.Target == id && CounterPlacementDelta(ev, g) > 0 {
 			return true
 		}
 	}

@@ -24,9 +24,9 @@ func init() {
 		Name:         "Hand That Feeds",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, AllOf(ThisAttacked, youHaveDeliriumWhen), label,
+			On(game.EventAttack, AllOf(ThisAttacked, YouHaveDeliriumWhen), label,
 				func(g *game.Game, item *game.StackItem) error {
-					return socB27ThisGetsAndGains(NewContext(g, item), 2, "menace", "Hand That Feeds")
+					return SocB27ThisGetsAndGains(NewContext(g, item), 2, "menace", "Hand That Feeds")
 				}),
 		},
 	})
@@ -35,6 +35,6 @@ func init() {
 // youHaveDeliriumWhen is a trigger condition's "while there are four or
 // more card types among cards in your graveyard" (delirium, CR 207.2c),
 // read for the source's controller as the event happens.
-func youHaveDeliriumWhen(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return b16CardTypesInGraveyard(g, source.Controller) >= 4
+func YouHaveDeliriumWhen(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return B16CardTypesInGraveyard(g, source.Controller) >= 4
 }

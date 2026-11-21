@@ -13,7 +13,7 @@ import (
 // the rest into their graveyard. You may cast that card for as long as it
 // remains exiled, and mana of any type can be spent to cast that spell."
 // `from` is the player whose library is looked at, `controller` the looker.
-func cmdr2S45LookExileOneRestToGraveyard(g *game.Game, item *game.StackItem, from uuid.UUID, n int, name string) error {
+func Cmdr2S45LookExileOneRestToGraveyard(g *game.Game, item *game.StackItem, from uuid.UUID, n int, name string) error {
 	controller, source := item.Controller, item.SourceCardID
 	looked := g.LookAtTopOfPlayersLibraryForEffect(controller, from, n)
 	if len(looked) == 0 {
@@ -61,7 +61,7 @@ func cmdr2S45ThiefFinish(g *game.Game, controller, source uuid.UUID, name string
 		took[id] = true
 	}
 	var rest []uuid.UUID
-	for _, id := range cardsStillInALibrary(g, looked) {
+	for _, id := range CardsStillInALibrary(g, looked) {
 		if !took[id] {
 			rest = append(rest, id)
 		}
@@ -78,14 +78,14 @@ func cmdr2S45ThiefFinish(g *game.Game, controller, source uuid.UUID, name string
 // cast by the modifier's controller and its owner is someone else (Gonti,
 // Canny Acquisitor). Ownership is the card's printed owner, so a spell cast
 // from an opponent's library, graveyard or exile counts.
-func cmdr2S45SpellYouDontOwn() CostPredicate {
+func Cmdr2S45SpellYouDontOwn() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.Owner != q.Controller }
 }
 
 // cmdr2S45EquippedCreatureDealtCombatDamageToAPlayer is "whenever equipped
 // creature deals combat damage to a player": the Equipment's own trigger,
 // the damaged player the event's Target.
-func cmdr2S45EquippedCreatureDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Cmdr2S45EquippedCreatureDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
@@ -96,9 +96,9 @@ func cmdr2S45EquippedCreatureDealtCombatDamageToAPlayer(ev game.Event, source *g
 // library, then exile it face down. You may play that card for as long as it
 // remains exiled, and mana of any type can be spent to cast that spell" for
 // the trigger's damaged player, the card going to the ability's controller.
-func cmdr2S45ExileTopFaceDownToPlay(g *game.Game, item *game.StackItem) error {
+func Cmdr2S45ExileTopFaceDownToPlay(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	return gontiExileTopForPlay(NewContext(g, item), item.Trigger.Event.Target, item.Controller, 1)
+	return GontiExileTopForPlay(NewContext(g, item), item.Trigger.Event.Target, item.Controller, 1)
 }

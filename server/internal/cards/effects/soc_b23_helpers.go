@@ -11,7 +11,7 @@ import (
 
 // socB23DifferentlyNamedLands is "the number of differently named lands you
 // control": each land counted once, however many share its English name.
-func socB23DifferentlyNamedLands(ctx *Context) int {
+func SocB23DifferentlyNamedLands(ctx *Context) int {
 	names := map[string]bool{}
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == ctx.Controller() && c.IsLand() {
@@ -24,9 +24,9 @@ func socB23DifferentlyNamedLands(ctx *Context) int {
 // socB23MayTapOrUntap is "you may tap or untap target creature" as the
 // spell resolves: the caster picks tap it, untap it or leave it, and the
 // answer is applied to the target carried on the prompt.
-func socB23MayTapOrUntap(ctx *Context, cardName string, target uuid.UUID) error {
+func SocB23MayTapOrUntap(ctx *Context, cardName string, target uuid.UUID) error {
 	return PickOption{
-		Question: cardName + " — you may tap or untap " + cardNameFor(ctx.Game, target),
+		Question: cardName + " — you may tap or untap " + CardNameFor(ctx.Game, target),
 		Options: []game.ChoiceOption{
 			{Label: "Tap it", Cards: []uuid.UUID{target}},
 			{Label: "Untap it", Cards: []uuid.UUID{target}},

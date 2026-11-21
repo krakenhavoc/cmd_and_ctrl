@@ -1,0 +1,53 @@
+package cardskr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Liliana's Talent — Enchantment — Aura {B}{B}:
+//
+//	"Enchant planeswalker
+//	 Enchanted planeswalker has "[−8]: Put all creature cards from all
+//	 graveyards onto the battlefield under your control."
+//	 Whenever a creature deals damage to enchanted planeswalker, destroy
+//	 that creature."
+//
+// The −8 is a loyalty ability granted to the enchanted planeswalker
+// (ADR 0109 §2): the walker pays it (CR 606.6) and it shares the
+// walker's one loyalty activation a turn (CR 606.3). "Under your
+// control" is the ability's controller. The cards are read before
+// any moves and enter together, Rise of the Dark Realms' sentence.
+//
+// The trigger is No Mercy's with "enchanted planeswalker" for "you":
+// one trigger per damaging creature, combat or not; the creature is
+// destroyed only if it is still on the battlefield, and it is not
+// targeted.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "8c55039d-1303-420c-8547-ebdffb63bf89",
+		Name:         "Liliana's Talent",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.EnchantPlaneswalker(),
+		Grants: []effects.AbilityGrant{{
+			Key: lilianasTalentGrant,
+			Activated: []effects.ActivatedAbility{{
+				Label:  "−8: Put all creature cards from all graveyards onto the battlefield under your control.",
+				Cost:   effects.LoyaltyCost(-8),
+				Effect: effects.PutAllCreatureCardsFromAllGraveyardsOntoTheBattlefield,
+			}},
+			Text: "[−8]: Put all creature cards from all graveyards onto the battlefield under your control.",
+		}},
+		Static: []game.StaticAbility{effects.GrantAbilitiesToAttached(lilianasTalentGrant)},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventDealDamage, effects.ACreatureDealtDamageToEnchanted,
+				"Liliana's Talent — destroy the creature that damaged enchanted planeswalker",
+				effects.DestroyTheCreatureThatDealtTheDamage),
+		},
+	})
+}
+
+const lilianasTalentGrant = "lilianas-talent/reanimate"

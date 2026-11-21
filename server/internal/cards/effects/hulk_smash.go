@@ -34,7 +34,7 @@ func init() {
 					TargetCreature("target creature you control", YouControl()),
 					TargetCreature("target creature an opponent controls", OpponentControls()),
 				),
-				biteTheModesSecondTarget),
+				BiteTheModesSecondTarget),
 		).InsteadIf(2, TeamworkUsed),
 	})
 }
@@ -42,7 +42,7 @@ func init() {
 // biteTheModesSecondTarget is "target creature you control deals
 // damage equal to its power to target creature an opponent controls"
 // as a modal bullet: slot 0 bites slot 1.
-func biteTheModesSecondTarget(_ *game.StackItem, ctx *Context, occ int) error {
+func BiteTheModesSecondTarget(_ *game.StackItem, ctx *Context, occ int) error {
 	biter, ok := ModeClauseTarget(ctx, occ, 0)
 	if !ok {
 		return nil

@@ -97,7 +97,7 @@ func OpponentsWithMoreCantCast(label string, q game.PermanentQuery, match CardPr
 		Forbids: func(cq game.CastQuery) bool {
 			return cq.Source.Controller != cq.Controller &&
 				controlsMoreThan(cq.Game, cq.Controller, cq.Source.Controller, q) &&
-				matchCastCard(cq.Game, match, cq.Controller, cq.Card)
+				MatchCastCard(cq.Game, match, cq.Controller, cq.Card)
 		},
 	}
 }
@@ -115,7 +115,7 @@ func controlsMoreThan(g *game.Game, player, other uuid.UUID, q game.PermanentQue
 // if an EventCast names it and it has not left the battlefield since: a
 // permanent that was bounced and flickered back is a new object (CR
 // 400.7) that was not cast.
-func permanentWasCastThisTurn(g *game.Game, id uuid.UUID) bool {
+func PermanentWasCastThisTurn(g *game.Game, id uuid.UUID) bool {
 	cast := false
 	for _, ev := range g.EventsThisTurn() {
 		if ev.CardID != id {

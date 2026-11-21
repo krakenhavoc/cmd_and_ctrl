@@ -55,7 +55,7 @@ func ManaValueAtMostLifeGainedThisTurn() CardPredicate {
 //
 // It is life LOSS, not damage, so prevention and damage doublers
 // never see it — the CR 614 life window still runs.
-func drainTargetedOpponent(amount int) Effect {
+func DrainTargetedOpponent(amount int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if amount <= 0 {
 			return nil
@@ -77,8 +77,8 @@ func drainTargetedOpponent(amount int) Effect {
 // loses 2 life and you gain 2 life" (Sol'Kanar the Tainted, Gollum,
 // Riddle Master). Life loss, not damage, and you gain 2 once, however
 // many opponents lost it.
-func eachOpponentLosesTwoYouGainTwo(item *game.StackItem, ctx *Context, _ int) error {
-	if err := eachOpponentLosesLife(ctx.Game, item, 2); err != nil {
+func EachOpponentLosesTwoYouGainTwo(item *game.StackItem, ctx *Context, _ int) error {
+	if err := EachOpponentLosesLifeNow(ctx.Game, item, 2); err != nil {
 		return err
 	}
 	return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)

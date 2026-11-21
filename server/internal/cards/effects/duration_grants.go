@@ -112,7 +112,7 @@ func (s GrantAbilitiesFor) Apply(ctx *Context) error {
 // removal, grant or borrow of its own (game.GrantedStaticProblem). The
 // same refusal
 // TestEveryGrantKeyResolves makes of a granting static.
-func checkGrantMods(mods []game.Mod) error {
+func CheckGrantMods(mods []game.Mod) error {
 	for _, m := range mods {
 		if m.Kind != game.ModGrantAbilities {
 			continue
@@ -121,7 +121,7 @@ func checkGrantMods(mods []game.Mod) error {
 			return fmt.Errorf("effects: a grantAbilities mod names no ability bundle")
 		}
 		for _, k := range m.Grants {
-			if err := durationGrantKeyProblem(k); err != "" {
+			if err := DurationGrantKeyProblem(k); err != "" {
 				return fmt.Errorf("effects: %s", err)
 			}
 		}
@@ -133,12 +133,12 @@ func checkGrantMods(mods []game.Mod) error {
 // effect grant this bundle": registered, and every static in it one a
 // layer-6 grant can give. Empty when it may. Shared by the
 // resolution-time check and the build-time scan.
-func durationGrantKeyProblem(key string) string {
-	def := defs[game.GrantKey(key)]
+func DurationGrantKeyProblem(key string) string {
+	def := Defs[game.GrantKey(key)]
 	if def == nil {
 		return fmt.Sprintf("ability grant %q names no bundle any card registers in Spec.Grants", key)
 	}
-	if problem := layerGrantStaticProblem(def); problem != "" {
+	if problem := LayerGrantStaticProblem(def); problem != "" {
 		return fmt.Sprintf("ability grant %q names a bundle with a static it cannot give: %s", key, problem)
 	}
 	return ""
@@ -148,7 +148,7 @@ func durationGrantKeyProblem(key string) string {
 // layer-6 grant cannot give (game.GrantedStaticProblem), or "" when
 // there is none. ADR 0093 Decision 10 as amended 2026-10-10 (#2562) and
 // 2026-10-15 (#3784).
-func layerGrantStaticProblem(def *game.CardDef) string {
+func LayerGrantStaticProblem(def *game.CardDef) string {
 	for _, s := range def.Static {
 		if problem := game.GrantedStaticProblem(s); problem != "" {
 			return problem
@@ -176,10 +176,10 @@ func layerGrantStaticProblem(def *game.CardDef) string {
 // `then` is the rest of the sentence ("and you create a Treasure
 // token") and runs whether or not the card came back: it is joined by
 // "and", not "if you do".
-func returnThisCreatureFromGraveyard(counters map[string]int, then func(ctx *Context) error) Effect {
+func ReturnThisCreatureFromGraveyard(counters map[string]int, then func(ctx *Context) error) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneGraveyard && sameGraveyardObject(z, item) {
+		if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneGraveyard && SameGraveyardObject(z, item) {
 			if _, err := g.ReturnFromGraveyardWithCountersForEffect(item.SourceCardID, uuid.Nil, true, counters); err != nil && !errors.Is(err, game.ErrCardNotFound) {
 				return err
 			}
@@ -196,7 +196,7 @@ func returnThisCreatureFromGraveyard(counters map[string]int, then func(ctx *Con
 // is exactly one past the battlefield epoch stamped on the item. An
 // item with no stamp (a snapshot older than #1418) keeps the old
 // "is it in a graveyard" answer.
-func sameGraveyardObject(z *game.Zone, item *game.StackItem) bool {
+func SameGraveyardObject(z *game.Zone, item *game.StackItem) bool {
 	ref := item.SourceObject
 	if ref.ID != item.SourceCardID || ref.ID == uuid.Nil {
 		return true

@@ -66,14 +66,14 @@ func init() {
 // intervening "if" re-checked (the same object still on the
 // battlefield), then each player's Tombspawn in APNAP order.
 func tombstoneStairwellUpkeep(g *game.Game, item *game.StackItem) error {
-	if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+	if !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 		return nil
 	}
 	ref, ok := NewContext(g, item).SourceRef()
 	if !ok {
 		return nil
 	}
-	return tombstoneStairwellCreate(g, item, game.PermissionCardRef(ref), apnapPlayers(g))
+	return tombstoneStairwellCreate(g, item, game.PermissionCardRef(ref), ApnapPlayers(g))
 }
 
 // tombstoneStairwellCreate creates the first player's Tombspawn and
@@ -83,7 +83,7 @@ func tombstoneStairwellCreate(g *game.Game, item *game.StackItem, link game.Perm
 	for len(order) > 0 {
 		player := order[0]
 		order = order[1:]
-		n := len(graveyardIDs(g, player, func(c game.Card) bool { return c.IsCreature() }))
+		n := len(GraveyardIDs(g, player, func(c game.Card) bool { return c.IsCreature() }))
 		if n == 0 {
 			continue
 		}

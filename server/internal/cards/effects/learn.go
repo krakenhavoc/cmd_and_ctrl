@@ -42,7 +42,7 @@ import (
 
 // isLessonCard is the Lesson clause: a Lesson is a spell subtype
 // (CR 205.3k), read off the card's type line like Arcane or Adventure.
-func isLessonCard(c game.Card) bool { return c.HasSubtype("Lesson") }
+func IsLessonCard(c game.Card) bool { return c.HasSubtype("Lesson") }
 
 // learnLessonQuestion is the Lesson prompt's header.
 const learnLessonQuestion = "Learn — reveal a Lesson card you own from outside the game, or none"
@@ -82,12 +82,12 @@ func learnBody(g *game.Game, player, source uuid.UUID) error {
 		N:        1,
 		UpTo:     true,
 		Question: learnDiscardQuestion,
-	}, learnAfterDiscard, nil)
+	}, LearnAfterDiscard, nil)
 }
 
 // learnAfterDiscard is the rest of learn once the discard has settled:
 // "if you do, draw a card", else the Lesson pick.
-var learnAfterDiscard = game.RegisterDiscardThen("choose-cards/learn-discard", func(g *game.Game, r game.DiscardsDone) error {
+var LearnAfterDiscard = game.RegisterDiscardThen("choose-cards/learn-discard", func(g *game.Game, r game.DiscardsDone) error {
 	if r.Discarded.Discarded(r.Player) {
 		// "If you do, draw a card."
 		return g.DrawNForEffect(r.Player, 1)
@@ -95,7 +95,7 @@ var learnAfterDiscard = game.RegisterDiscardThen("choose-cards/learn-discard", f
 	// "If you didn't discard a card, you may reveal a Lesson card you
 	// own from outside the game and put it into your hand."
 	takeFromOutside(g, r.Player, r.Source, TakeFromOutside{
-		Pick:     learnLessonTake,
+		Pick:     LearnLessonTake,
 		Question: learnLessonQuestion,
 	})
 	return nil
@@ -113,7 +113,7 @@ var learnAfterDiscard = game.RegisterDiscardThen("choose-cards/learn-discard", f
 // countered whole by the engine before any step runs.
 func OnTheTargetCard(f func(ctx *Context, id uuid.UUID) error) Instruction {
 	return func(ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -123,4 +123,4 @@ func OnTheTargetCard(f func(ctx *Context, id uuid.UUID) error) Instruction {
 
 // learnLessonTake is learn's Lesson pick, keyed (#4256): a table waiting
 // on it is a restore point.
-var learnLessonTake = registerOutsideTake("choose-cards/learn-lesson", isLessonCard, true)
+var LearnLessonTake = RegisterOutsideTake("choose-cards/learn-lesson", IsLessonCard, true)

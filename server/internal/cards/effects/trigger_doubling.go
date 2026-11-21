@@ -17,7 +17,7 @@ func DoublesEntering(filter CardPredicate) game.TriggerDoubler {
 		Label:    "entering",
 		RowLabel: "Abilities that trigger when a permanent enters trigger an additional time.",
 		Applies: func(g *game.Game, q game.TriggerDoublingQuery) bool {
-			if q.FromSpell || !q.HasSubject || !isEntering(q.Event) {
+			if q.FromSpell || !q.HasSubject || !IsEntering(q.Event) {
 				return false
 			}
 			if q.SourceLKI.Controller != q.DoublerLKI.Controller {
@@ -36,7 +36,7 @@ func DoublesDying(filter CardPredicate) game.TriggerDoubler {
 		Label:    "dying",
 		RowLabel: "Abilities that trigger when a creature dies trigger an additional time.",
 		Applies: func(g *game.Game, q game.TriggerDoublingQuery) bool {
-			if q.FromSpell || !q.HasSubject || !isDying(q.Event) {
+			if q.FromSpell || !q.HasSubject || !IsDying(q.Event) {
 				return false
 			}
 			if q.SourceLKI.Controller != q.DoublerLKI.Controller {
@@ -92,12 +92,12 @@ func DoublesAbilitiesOf(filter CardPredicate, opts DoublesAbilitiesOfOptions) ga
 			if opts.SourceMatch != nil {
 				return opts.SourceMatch(g, q)
 			}
-			return filter == nil || filter(g, q.DoublerLKI.Controller, characteristicCard(q.Source.InstanceID, q.Source, q.SourceLKI))
+			return filter == nil || filter(g, q.DoublerLKI.Controller, CharacteristicCard(q.Source.InstanceID, q.Source, q.SourceLKI))
 		},
 	}
 }
 
-func isEntering(ev game.Event) bool {
+func IsEntering(ev game.Event) bool {
 	if ev.Kind == game.EventETB || ev.Kind == game.EventTokenCreated {
 		return true
 	}
@@ -117,10 +117,10 @@ func eventSubjectCard(g *game.Game, id uuid.UUID, ch game.Characteristic) game.C
 	if g != nil {
 		fallback, _ = g.LookupCardForEffect(id)
 	}
-	return characteristicCard(id, fallback, ch)
+	return CharacteristicCard(id, fallback, ch)
 }
 
-func characteristicCard(id uuid.UUID, fallback game.Card, ch game.Characteristic) game.Card {
+func CharacteristicCard(id uuid.UUID, fallback game.Card, ch game.Characteristic) game.Card {
 	c := game.Card{InstanceID: id, Name: ch.Name, Owner: fallback.Owner, Controller: ch.Controller, Power: ch.Power, Toughness: ch.Toughness, Colors: append([]string(nil), ch.Colors...), Keywords: append([]string(nil), ch.Abilities...), ManaCost: fallback.ManaCost}
 	// Keep immutable identity and attachment information when the caller's
 	// fallback is the live source. The characteristic is authoritative for
@@ -135,7 +135,7 @@ func characteristicCard(id uuid.UUID, fallback game.Card, ch game.Characteristic
 	return c
 }
 
-func isDying(ev game.Event) bool {
+func IsDying(ev game.Event) bool {
 	if ev.Kind == game.EventLTB {
 		return ev.NewZone == game.ZoneGraveyard
 	}

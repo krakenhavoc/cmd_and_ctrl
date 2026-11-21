@@ -28,7 +28,7 @@ import (
 
 // awakenKey is the offer's wire key, read back at resolution with
 // ctx.PaidAltCost.
-const awakenKey = "awaken"
+const AwakenKey = "awaken"
 
 // AwakenLandTargets is the clause awaken adds: "target land you
 // control" (CR 702.113a). Not Distinct, so Earthen Arms may put its own
@@ -59,7 +59,7 @@ func Awaken(n int, cost string, printed *game.TargetSpec) game.AlternativeCost {
 		targets = head.Then(land)
 	}
 	return game.AlternativeCost{
-		Key:      awakenKey,
+		Key:      AwakenKey,
 		Label:    fmt.Sprintf("Awaken %d—%s", n, cost),
 		ManaCost: cost,
 		Targets:  targets,
@@ -97,16 +97,16 @@ func AwakenAfter(n int, effect func(*game.StackItem, *Context) error) func(*game
 // Awaken appends (Register holds every awaken offer to that shape), and
 // awaken being paid means that clause was answered.
 func AwakenIfPaid(ctx *Context, n int) error {
-	if !ctx.PaidAltCost(awakenKey) {
+	if !ctx.PaidAltCost(AwakenKey) {
 		return nil
 	}
-	return awakenPaidClause(ctx, n)
+	return AwakenPaidClause(ctx, n)
 }
 
 // awakenPaidClause is AwakenIfPaid once awaken is known to have been paid.
 // Earthen Arms' tail carries that as data: the alternative cost the spell was
 // cast with is not part of the asking item a tail rebuilds (#4253 slice 7).
-func awakenPaidClause(ctx *Context, n int) error {
+func AwakenPaidClause(ctx *Context, n int) error {
 	slot := -1
 	for _, t := range ctx.Targets() {
 		if t.Mode == 0 && t.Slot > slot {
@@ -128,7 +128,7 @@ func awakenPaidClause(ctx *Context, n int) error {
 // 608.2b). Read by slot, never as "the first legal target": with awaken
 // paid the statement also holds the land, and a printed target that
 // left must not hand the instruction to the land.
-func awakenSpellCardTarget(ctx *Context) (uuid.UUID, bool) {
+func AwakenSpellCardTarget(ctx *Context) (uuid.UUID, bool) {
 	t, ok := ctx.ClauseTarget(0)
 	if !ok || t.Kind != game.TargetCard {
 		return uuid.Nil, false
@@ -138,8 +138,8 @@ func awakenSpellCardTarget(ctx *Context) (uuid.UUID, bool) {
 
 // destroyAwakenSpellTarget is "Destroy target <permanent>" as the printed
 // half of an awaken spell (Ruinous Path, Sheer Drop).
-func destroyAwakenSpellTarget(_ *game.StackItem, ctx *Context) error {
-	if id, ok := awakenSpellCardTarget(ctx); ok {
+func DestroyAwakenSpellTarget(_ *game.StackItem, ctx *Context) error {
+	if id, ok := AwakenSpellCardTarget(ctx); ok {
 		return DestroyTarget{Target: id}.Apply(ctx)
 	}
 	return nil
@@ -151,7 +151,7 @@ func destroyAwakenSpellTarget(_ *game.StackItem, ctx *Context) error {
 // order, followed by "target land you control" — so the two cannot
 // drift and AwakenIfPaid's "last clause" is the land.
 func checkAwaken(spec Spec, ac game.AlternativeCost) {
-	isKey := ac.Key == awakenKey
+	isKey := ac.Key == AwakenKey
 	if !isKey && ac.Purpose.AwakenLand == 0 {
 		return
 	}

@@ -15,12 +15,12 @@ import (
 // source itself included when it is one. It runs inside a layer
 // recompute, so it reads the battlefield in place.
 func somB1Metalcraft(g *game.Game, source *game.Card) bool {
-	return permanentsYouControl(g, source, func(c *game.Card) bool { return c.IsArtifact() }) >= 3
+	return CountPermanentsYouControl(g, source, func(c *game.Card) bool { return c.IsArtifact() }) >= 3
 }
 
 // somB1MetalcraftCost is the same condition for a cost reduction (Stoic
 // Rebuttal), counted as the spell is cast.
-func somB1MetalcraftCost() CostPredicate {
+func SomB1MetalcraftCost() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return PermanentsYouControl(Artifact())(q) >= 3
 	}
@@ -30,15 +30,15 @@ func somB1MetalcraftCost() CostPredicate {
 // you control three or more artifacts." (Chrome Steed): Drover of the
 // Mighty's layer 7c self pump on the metalcraft gate. It is not locked
 // in (CR 611.3a): it turns on and off as the count crosses three.
-func somB1MetalcraftPump(label string, power, toughness int) game.StaticAbility {
+func SomB1MetalcraftPump(label string, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
 		Label:    label,
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return selfOnly(target, g, source) && somB1Metalcraft(g, source)
+			return SelfOnly(target, g, source) && somB1Metalcraft(g, source)
 		},
-		Apply: pumpBy(power, toughness),
+		Apply: PumpBy(power, toughness),
 	}
 }
 
@@ -46,13 +46,13 @@ func somB1MetalcraftPump(label string, power, toughness int) game.StaticAbility 
 // end of turn." (Wall of Tanglecord, Vector Asp). An activation whose
 // creature has left, or come back as a new object (CR 400.7), does
 // nothing.
-func somB1SelfGainsUntilEOT(name, cost, keyword string) ActivatedAbility {
+func SomB1SelfGainsUntilEOT(name, cost, keyword string) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   cost + ": This creature gains " + keyword + " until end of turn.",
 		Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
 		Cost:    ManaCost(cost),
 		Effect: func(g *game.Game, item *game.StackItem) error {
-			if !sourceIsStillThisPermanent(g, item) {
+			if !SourceIsStillThisPermanent(g, item) {
 				return nil
 			}
 			return GrantKeywordUntilEOT{
@@ -66,7 +66,7 @@ func somB1SelfGainsUntilEOT(name, cost, keyword string) ActivatedAbility {
 // somB1CounterTheTargetSpells is "Counter target spell" as a spell's
 // resolution (Turn Aside, Stoic Rebuttal, Rebuff the Wicked): each target
 // spell still legal is countered (CR 608.2b).
-func somB1CounterTheTargetSpells(_ *game.StackItem, ctx *Context) error {
+func SomB1CounterTheTargetSpells(_ *game.StackItem, ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if err := (CounterTarget{StackID: t.ID}).Apply(ctx); err != nil {
 			return err
@@ -80,7 +80,7 @@ func somB1CounterTheTargetSpells(_ *game.StackItem, ctx *Context) error {
 // once as the ability resolves; the source is never in it, whether or not
 // it is still on the battlefield, and each untap is a member of one group
 // (CR 608.2h).
-func somB1UntapEachOther(match func(ctx *Context, c game.Card) bool) Effect {
+func SomB1UntapEachOther(match func(ctx *Context, c game.Card) bool) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		var ids []uuid.UUID
@@ -91,7 +91,7 @@ func somB1UntapEachOther(match func(ctx *Context, c game.Card) bool) Effect {
 			ids = append(ids, c.InstanceID)
 		}
 		for _, id := range ids {
-			if err := (UntapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+			if err := (UntapTarget{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 				return err
 			}
 		}

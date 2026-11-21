@@ -46,7 +46,7 @@ func init() {
 			Distinct(TargetPlayer("target player")), shadrixInkling),
 		ModeSteps("Target player draws a card and loses 1 life.",
 			Distinct(TargetPlayer("target player")),
-			Instruction(shadrixDraw), Instruction(shadrixLoseLife)),
+			Instruction(ShadrixDraw), Instruction(ShadrixLoseLife)),
 		ModeDoing("Target player puts a +1/+1 counter on each creature they control.",
 			Distinct(TargetPlayer("target player")), shadrixCounters),
 	)
@@ -80,7 +80,7 @@ func shadrixInkling(_ *game.StackItem, ctx *Context, occ int) error {
 
 // shadrixDraw and shadrixLoseLife are the second bullet's two
 // instructions, both to its target player.
-func shadrixDraw(ctx *Context) error {
+func ShadrixDraw(ctx *Context) error {
 	t, ok := shadrixModePlayer(ctx, ctx.Occurrence())
 	if !ok {
 		return nil
@@ -88,7 +88,7 @@ func shadrixDraw(ctx *Context) error {
 	return DrawCards{Player: t.ID, N: 1}.Apply(ctx)
 }
 
-func shadrixLoseLife(ctx *Context) error {
+func ShadrixLoseLife(ctx *Context) error {
 	t, ok := shadrixModePlayer(ctx, ctx.Occurrence())
 	if !ok {
 		return nil
@@ -113,7 +113,7 @@ func shadrixCounters(_ *game.StackItem, ctx *Context, occ int) error {
 		if z := ctx.Game.FindCardZoneForEffect(c.InstanceID); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

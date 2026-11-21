@@ -146,7 +146,7 @@ func MayAnswer(key string, body func(ctx *Context, r game.ConfirmAnswer) error) 
 		// MayChoice.Apply puts the asking effect's controller first; the
 		// card's own Carry follows it.
 		var ctx *Context
-		ctx, r.Carry = askedContext(g, r.Item, r.Chooser, r.Source, r.Carry)
+		ctx, r.Carry = AskedContext(g, r.Item, r.Chooser, r.Source, r.Carry)
 		return body(ctx, r)
 	})
 }
@@ -180,7 +180,7 @@ func MayYesNo(key string, onYes, onNo func(ctx *Context, r game.ConfirmAnswer) e
 
 // wordInt reads the amount a keyed answer was parameterised with
 // (MayChoice.Word), 0 when it holds none.
-func wordInt(r game.ConfirmAnswer) int {
+func WordInt(r game.ConfirmAnswer) int {
 	n, _ := strconv.Atoi(r.Word)
 	return n
 }

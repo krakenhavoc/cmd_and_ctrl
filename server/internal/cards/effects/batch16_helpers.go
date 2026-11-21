@@ -34,15 +34,15 @@ import (
 // do, because a token has no oracle ID for the catalog to key one
 // on. The search is the S22 chooser; a Lander cracked with no basic
 // left still shuffles.
-func b16LanderToken() game.Card { return tokenFromCatalog(printedB16LanderToken) }
+func B16LanderToken() game.Card { return TokenFromCatalog(printedB16LanderToken) }
 
 // printedB16LanderToken is the Lander as PRINTED —
 // the ability included. It is the catalog's entry for this token
 // (token_catalog.go, #521): the ability is registered from here at
 // boot, and the template that reaches the battlefield carries the
 // key that finds it rather than the closure itself.
-func printedB16LanderToken() tokenTemplate {
-	return tokenTemplate{
+func printedB16LanderToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "lander",
 		Card: game.Card{
 			Name:     "Lander",
@@ -59,7 +59,7 @@ func printedB16LanderToken() tokenTemplate {
 			},
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return b07SearchBasicOntoBattlefield(g, item, item.Controller, true, false,
+				return B07SearchBasicOntoBattlefield(g, item, item.Controller, true, false,
 					"Lander — a basic land, onto the battlefield tapped")
 			},
 		}},
@@ -70,9 +70,9 @@ func printedB16LanderToken() tokenTemplate {
 
 // b16Anthem is a Layer 7c "+P/+T" static over whatever `applies`
 // selects — Death Baron's Skeletons and Zombies, Lyra's Angels.
-func b16Anthem(applies func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
+func B16Anthem(applies func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Gives " + signedPT(power, toughness) + ".",
+		Label:     "Gives " + SignedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: applies,
@@ -89,7 +89,7 @@ func b16Anthem(applies func(target *game.Card, g *game.Game, source *game.Card) 
 // vigilance" (Brave the Sands). Keywords must be canonical tokens the
 // engine honours; deduped on apply so a creature that prints the
 // keyword gets one badge.
-func b16GrantKeywords(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
+func B16GrantKeywords(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "Gives " + joinWords(keywords) + ".",
 		Layer:     game.Layer6Ability,
@@ -104,7 +104,7 @@ func b16GrantKeywords(applies func(target *game.Card, g *game.Game, source *game
 
 // b16CreaturesYouControl is the "creatures you control" AppliesTo,
 // the source included.
-func b16CreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B16CreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.Controller == source.Controller
 }
 
@@ -113,7 +113,7 @@ func b16CreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) 
 // counts. `subtype` is the printed word, read through the source's
 // text (CR 612.2, #3984): Lyra under Artificial Evolution pumps the
 // new type.
-func b16OtherCreaturesYouControlOfSubtype(subtype string) func(target *game.Card, g *game.Game, source *game.Card) bool {
+func B16OtherCreaturesYouControlOfSubtype(subtype string) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.InstanceID != source.InstanceID && target.IsCreature() &&
 			target.Controller == source.Controller && target.HasSubtype(source.TextSubtype(subtype))
@@ -123,7 +123,7 @@ func b16OtherCreaturesYouControlOfSubtype(subtype string) func(target *game.Card
 // b16DeathBaronApplies is "Skeletons you control and other Zombies
 // you control" — a Skeleton Zombie Baron would count itself, as
 // printed, and a plain Zombie Baron does not.
-func b16DeathBaronApplies(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B16DeathBaronApplies(target *game.Card, _ *game.Game, source *game.Card) bool {
 	if !target.IsCreature() || target.Controller != source.Controller {
 		return false
 	}
@@ -150,7 +150,7 @@ func b16DeathBaronApplies(target *game.Card, _ *game.Game, source *game.Card) bo
 // cast record is asked too: false when it names a caster who is not
 // the permanent's controller. A record with no caster (a permanent
 // restored from a file older than the field) keeps the log's answer.
-func b16EnteredFromStack(g *game.Game, cardID uuid.UUID) bool {
+func B16EnteredFromStack(g *game.Game, cardID uuid.UUID) bool {
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		ev := g.Events[i]
 		if ev.Kind == game.EventZoneMove && ev.CardID == cardID && ev.NewZone == game.ZoneBattlefield {
@@ -172,25 +172,25 @@ func b16EnteredFromStack(g *game.Game, cardID uuid.UUID) bool {
 // condition: the source itself died, or a creature its controller
 // controlled did. The source's own death arrives with the card
 // already in the graveyard, which cardDied reads by ID.
-func b16SelfOrAnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	if cardDied(ev, source) {
+func B16SelfOrAnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	if CardDied(ev, source) {
 		return true
 	}
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b16AnotherCreatureYouControlEnteredOrDied is Daxos's condition on
 // one ability watching two kinds.
-func b16AnotherCreatureYouControlEnteredOrDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	if b13AnotherCreatureYouControlEntered(ev, source, g) {
+func B16AnotherCreatureYouControlEnteredOrDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	if B13AnotherCreatureYouControlEntered(ev, source, g) {
 		return true
 	}
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b16PlayerAttackedWithAtLeast is Aurelia's condition: an attacker
@@ -206,14 +206,14 @@ func b16AnotherCreatureYouControlEnteredOrDied(ev game.Event, source *game.Card,
 // combats, so
 // once-per-turn is once-per-declaration. Weaker than printed under
 // an extra combat, never stronger.
-func b16PlayerAttackedWithAtLeast(ev game.Event, source *game.Card, g *game.Game, n int, label string) bool {
+func B16PlayerAttackedWithAtLeast(ev game.Event, source *game.Card, g *game.Game, n int, label string) bool {
 	if ev.Kind != game.EventAttack || ev.Actor == uuid.Nil {
 		return false
 	}
-	if len(b13AttackingCreaturesYouControl(g, ev.Actor)) < n {
+	if len(B13AttackingCreaturesYouControl(g, ev.Actor)) < n {
 		return false
 	}
-	return !b11TriggeredThisTurn(g, source.InstanceID, label)
+	return !B11TriggeredThisTurn(g, source.InstanceID, label)
 }
 
 // b16YouAttackedAPlayer is Horizon Explorer's condition: a creature
@@ -222,8 +222,8 @@ func b16PlayerAttackedWithAtLeast(ev game.Event, source *game.Card, g *game.Game
 // engine has no attack-a-planeswalker path, so every declaration is
 // at a player; the check is kept so the day one exists this stays
 // honest.
-func b16YouAttackedAPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
+func B16YouAttackedAPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	return g.PlayerByIDForEffect(ev.Target) != nil
@@ -233,7 +233,7 @@ func b16YouAttackedAPlayer(ev game.Event, source *game.Card, g *game.Game) bool 
 // this turn — Bennie Bracks's intervening if. EventTokenCreated
 // carries the creator in Actor, and the per-turn tally counts it
 // there.
-func b16CreatedATokenThisTurn(g *game.Game, player uuid.UUID) bool {
+func B16CreatedATokenThisTurn(g *game.Game, player uuid.UUID) bool {
 	return g.TurnTallyFor(player).TokensCreated > 0
 }
 
@@ -243,7 +243,7 @@ func b16CreatedATokenThisTurn(g *game.Game, player uuid.UUID) bool {
 // cards in `player`'s graveyard — delirium (Demonic Counsel). Printed
 // type lines: a card in a graveyard has no layer cache and nothing
 // changes its types there.
-func b16CardTypesInGraveyard(g *game.Game, player uuid.UUID) int {
+func B16CardTypesInGraveyard(g *game.Game, player uuid.UUID) int {
 	return cardTypesInGraveyardExcept(g, player, uuid.Nil)
 }
 
@@ -271,7 +271,7 @@ func cardTypesInGraveyardExcept(g *game.Game, player, except uuid.UUID) int {
 // b16ColorlessCreaturesControlled counts the colorless creatures
 // `player` controls — Tomb of the Spirit Dragon. Effective colours,
 // so a creature painted by a colour-setting effect stops counting.
-func b16ColorlessCreaturesControlled(g *game.Game, player uuid.UUID) int {
+func B16ColorlessCreaturesControlled(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() && c.IsColorless() {
@@ -287,7 +287,7 @@ func b16ColorlessCreaturesControlled(g *game.Game, player uuid.UUID) int {
 // `controller` controls that passes `match` — Zacama's lands,
 // Unstoppable Plan's nonland permanents. Snapshot then untap, so the
 // untap events don't disturb the walk.
-func b16UntapAllYouControlMatching(ctx *Context, controller uuid.UUID, match func(game.Card) bool) error {
+func B16UntapAllYouControlMatching(ctx *Context, controller uuid.UUID, match func(game.Card) bool) error {
 	var ids []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.Tapped && match(c) {
@@ -295,7 +295,7 @@ func b16UntapAllYouControlMatching(ctx *Context, controller uuid.UUID, match fun
 		}
 	}
 	for _, id := range ids {
-		if err := (UntapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (UntapTarget{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -306,14 +306,14 @@ func b16UntapAllYouControlMatching(ctx *Context, controller uuid.UUID, match fun
 // printed order (Relic of Sauron's two-for-one): the draws land first so a
 // drawn card is a legal discard, and the discard is the player's
 // choice, queued as a prompt.
-func b16DrawThenDiscard(g *game.Game, item *game.StackItem, draw int) error {
-	return drawThenDiscard(g, item.Controller, item.SourceCardID, draw, 1, "")
+func B16DrawThenDiscard(g *game.Game, item *game.StackItem, draw int) error {
+	return DrawThenDiscard(g, item.Controller, item.SourceCardID, draw, 1, "")
 }
 
 // b16FirstLegalTargetCard returns the first announce-time target
 // slot that is still a legal battlefield card, for a single-target
 // ability whose target may have left in response.
-func b16FirstLegalTargetCard(ctx *Context) (uuid.UUID, bool) {
+func B16FirstLegalTargetCard(ctx *Context) (uuid.UUID, bool) {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
 			return t.ID, true
@@ -325,9 +325,9 @@ func b16FirstLegalTargetCard(ctx *Context) (uuid.UUID, bool) {
 // untapFirstLegalTarget is "untap target <thing>" as an activated
 // ability's whole body — Voltaic Key's and Sonic Screwdriver's own
 // untap bullet, which differ only in the clause on the ability.
-func untapFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func UntapFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -366,7 +366,7 @@ func untapFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 // resumable and carries its tail across the pause — so the retreat
 // was describing a hole that had already been filled, and #732 took
 // it out. Every land is as printed now.
-func b16LandsYouControlEnterUntapped() game.ReplacementEffect {
+func B16LandsYouControlEnterUntapped() game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

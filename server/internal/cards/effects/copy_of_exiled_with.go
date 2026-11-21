@@ -87,7 +87,7 @@ func (b BecomeCopyOfExiledWith) Apply(ctx *Context) error {
 	// Don't ask a question whose answer can do nothing (CR 611.2b), nor
 	// about a target that is no longer the object it was (#1432).
 	targets := []uuid.UUID{b.Target}
-	if ctx.isNewSourceObject(b.Target) {
+	if ctx.IsNewSourceObject(b.Target) {
 		return nil
 	}
 	if _, ok := copyDurationFor(ctx.Game, b.Duration, ctx.Source(), ctx.Controller(), uuid.Nil, targets); !ok {

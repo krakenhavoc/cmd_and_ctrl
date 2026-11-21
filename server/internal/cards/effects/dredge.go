@@ -51,7 +51,7 @@ func Dredge(n int) game.ReplacementEffect {
 		},
 		DrawInstead: game.RegisterDrawInstead(fmt.Sprintf("dredge-%d", n),
 			func(g *game.Game, drawer, card uuid.UUID, done game.DrawDone) error {
-				return dredgeBody(g, drawer, card, n, done)
+				return DredgeBody(g, drawer, card, n, done)
 			}),
 		Controller: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) uuid.UUID {
 			return ev.DrawPlayer
@@ -69,7 +69,7 @@ func Dredge(n int) game.ReplacementEffect {
 // The return rides the mill as data (#4253): the card and the parked draw
 // (DrawDone.Park) are the keyed tail's Carry, so a CR 616 prompt the mill
 // pauses on is a restore point.
-func dredgeBody(g *game.Game, drawer, card uuid.UUID, n int, done game.DrawDone) error {
+func DredgeBody(g *game.Game, drawer, card uuid.UUID, n int, done game.DrawDone) error {
 	then := game.KeyedTail{Ref: dredgeReturn, Player: drawer, Carry: []uuid.UUID{card, done.Park(g)}}
 	return g.MillToZoneKeyedForEffect(drawer, n, game.ZoneGraveyard, game.MillUntil{}, then)
 }
@@ -93,7 +93,7 @@ var dredgeReturn = game.RegisterTail("dredge/return-then-draw", func(g *game.Gam
 
 // gyCardIDs lists the cards in a player's graveyard, oldest
 // first, optionally filtered.
-func gyCardIDs(g *game.Game, player uuid.UUID, match func(game.Card) bool) []uuid.UUID {
+func GyCardIDs(g *game.Game, player uuid.UUID, match func(game.Card) bool) []uuid.UUID {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return nil
@@ -118,7 +118,7 @@ func gyCardIDs(g *game.Game, player uuid.UUID, match func(game.Card) bool) []uui
 // restore point while the player picks.
 func ChooseFromGraveyardToHandInstead(question string, none func(g *game.Game, drawer, source uuid.UUID) error) game.DrawInsteadFunc {
 	return func(g *game.Game, drawer, source uuid.UUID, done game.DrawDone) error {
-		cards := gyCardIDs(g, drawer, nil)
+		cards := GyCardIDs(g, drawer, nil)
 		if len(cards) == 0 {
 			if none == nil {
 				return done.Run(g)

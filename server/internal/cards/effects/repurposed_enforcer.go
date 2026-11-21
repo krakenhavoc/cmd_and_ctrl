@@ -25,7 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Repurposed Enforcer — empower Jace X, where X is the number of creatures you control",
 				Do(EmpowerJace{Count: func(ctx *Context) int {
-					return creaturesControlledBy(ctx.Game, ctx.Controller())
+					return CreaturesControlledBy(ctx.Game, ctx.Controller())
 				}})),
 		},
 	})
@@ -33,7 +33,7 @@ func init() {
 
 // creaturesControlledBy is "the number of creatures you control".
 // Caller must hold g.mu.
-func creaturesControlledBy(g *game.Game, player uuid.UUID) int {
+func CreaturesControlledBy(g *game.Game, player uuid.UUID) int {
 	g.RecomputeLayersIfStaleLocked()
 	n := 0
 	for _, c := range g.Battlefield.Cards {

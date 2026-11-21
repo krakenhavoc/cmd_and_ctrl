@@ -279,7 +279,7 @@ func replacementThenProblem(r game.ReplacementEffect) string {
 
 // thatDamage is "that damage" / "that many": the damage the prevention
 // effect was applied to, prevented or not (CR 615.12).
-func thatDamage(item *game.StackItem) int {
+func ThatDamage(item *game.StackItem) int {
 	if item == nil || item.Trigger == nil {
 		return 0
 	}
@@ -288,7 +288,7 @@ func thatDamage(item *game.StackItem) int {
 
 // followUpRecipient is "it" / "that creature": the permanent the damage
 // would have been dealt to, while it is still that object.
-func followUpRecipient(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
+func FollowUpRecipient(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
 	if item == nil || item.Trigger == nil {
 		return uuid.Nil, false
 	}
@@ -304,7 +304,7 @@ func followUpRecipient(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
 // followUpThis is "this creature" in a static's follow-up: the permanent
 // whose static it is, while it is still that object (CR 400.7). Last-known
 // information is something to read, not to put counters on.
-func followUpThis(g *game.Game, item *game.StackItem) (game.PermanentInfo, bool) {
+func FollowUpThis(g *game.Game, item *game.StackItem) (game.PermanentInfo, bool) {
 	info, ok := NewContext(g, item).SourcePermanent()
 	return info, ok && !info.Left
 }
@@ -315,31 +315,31 @@ var (
 	// "Remove a +1/+1 counter from this creature" (the Phantoms,
 	// Oathsworn Knight, Unbreathing Horde, Undergrowth Champion): one per
 	// application, whatever the amount, and still under CR 615.12.
-	removeACounterFromThisBody = game.DelayedBody("prevention/remove-a-counter-from-this", followUpRemoveACounterFromThis)
+	RemoveACounterFromThisBody = game.DelayedBody("prevention/remove-a-counter-from-this", followUpRemoveACounterFromThis)
 
 	// "Remove that many +1/+1 counters from it" (Polukranos, Ugin's
 	// Conjurant): that damage, or every counter it has when that is fewer
 	// (the rulings), and still under CR 615.12.
-	removeThatManyCountersFromThisBody = game.DelayedBody("prevention/remove-that-many-counters-from-this", followUpRemoveThatManyCountersFromThis)
+	RemoveThatManyCountersFromThisBody = game.DelayedBody("prevention/remove-that-many-counters-from-this", followUpRemoveThatManyCountersFromThis)
 
 	// "Put that many +1/+1 counters on him" (Anti-Venom).
-	thatManyCountersOnThisBody = game.DelayedBody("prevention/that-many-counters-on-this", followUpThatManyCountersOnThis)
+	ThatManyCountersOnThisBody = game.DelayedBody("prevention/that-many-counters-on-this", followUpThatManyCountersOnThis)
 
 	// "Put a +1/+1 counter on this creature for each 1 damage prevented
 	// this way" (Stormwild Capridor): none under CR 615.12.
-	countersOnThisPerPreventedBody = game.DelayedBody("prevention/counters-on-this-per-prevented", followUpCountersOnThisPerPrevented)
+	CountersOnThisPerPreventedBody = game.DelayedBody("prevention/counters-on-this-per-prevented", followUpCountersOnThisPerPrevented)
 
 	// "Put a +1/+1 counter on this creature" (Ironscale Hydra): one per
 	// application.
-	aCounterOnThisBody = game.DelayedBody("prevention/a-counter-on-this", followUpACounterOnThis)
+	ACounterOnThisBody = game.DelayedBody("prevention/a-counter-on-this", followUpACounterOnThis)
 
 	// "Put that many +1/+1 counters on it" (Panther Habit): on the
 	// creature the damage would have been dealt to.
-	thatManyCountersOnItBody = game.DelayedBody("prevention/that-many-counters-on-it", followUpThatManyCountersOnIt)
+	ThatManyCountersOnItBody = game.DelayedBody("prevention/that-many-counters-on-it", followUpThatManyCountersOnIt)
 
 	// "For each 1 damage prevented this way, put a +1/+1 counter on that
 	// creature" (Test of Faith, Temper).
-	countersOnItPerPreventedBody = game.DelayedBody("prevention/counters-on-it-per-prevented", followUpCountersOnItPerPrevented)
+	CountersOnItPerPreventedBody = game.DelayedBody("prevention/counters-on-it-per-prevented", followUpCountersOnItPerPrevented)
 
 	// "You gain life equal to the damage prevented this way", on a
 	// charged shield (Candles' Glow). The same rule as the source shields'
@@ -347,14 +347,14 @@ var (
 	// ADR 0108 PR 8 knows that key but not that a preventDamage shield
 	// has a follow-up, and would restore the shield with its follow-up
 	// silently dropped. A key it does not know makes it refuse the file.
-	shieldGainLifeEqualBody = game.DelayedBody("prevention/shield-gain-life-equal", preventedGainLife)
+	ShieldGainLifeEqualBody = game.DelayedBody("prevention/shield-gain-life-equal", preventedGainLife)
 
 	// "<This> deals that much damage to <the chosen target>" (Acolyte's
 	// Reward, Vengeful Archon): the amount prevented, to the follow-up's
 	// recipient (game.ShieldFollowUp.To), from the shield's source. Not a
 	// redirection: the shield's source deals it, and it is not combat
 	// damage (the rulings).
-	dealThatMuchToTheChosenTargetBody = game.DelayedBody("prevention/deal-that-much-to-the-chosen-target", followUpDealThatMuchToTheChosenTarget)
+	DealThatMuchToTheChosenTargetBody = game.DelayedBody("prevention/deal-that-much-to-the-chosen-target", followUpDealThatMuchToTheChosenTarget)
 
 	// "At the beginning of the next end step, put a +0/+1 counter on that
 	// creature for each 1 damage prevented this way" (Sacred Boon, Scars
@@ -367,7 +367,7 @@ var (
 )
 
 func followUpRemoveACounterFromThis(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
-	info, ok := followUpThis(g, item)
+	info, ok := FollowUpThis(g, item)
 	if !ok || info.Counters[game.CounterPlusOne] <= 0 {
 		return nil
 	}
@@ -375,11 +375,11 @@ func followUpRemoveACounterFromThis(g *game.Game, item *game.StackItem, _ game.E
 }
 
 func followUpRemoveThatManyCountersFromThis(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
-	info, ok := followUpThis(g, item)
+	info, ok := FollowUpThis(g, item)
 	if !ok {
 		return nil
 	}
-	n := min(thatDamage(item), info.Counters[game.CounterPlusOne])
+	n := min(ThatDamage(item), info.Counters[game.CounterPlusOne])
 	if n <= 0 {
 		return nil
 	}
@@ -387,36 +387,36 @@ func followUpRemoveThatManyCountersFromThis(g *game.Game, item *game.StackItem, 
 }
 
 func followUpThatManyCountersOnThis(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
-	if _, ok := followUpThis(g, item); !ok || thatDamage(item) <= 0 {
+	if _, ok := FollowUpThis(g, item); !ok || ThatDamage(item) <= 0 {
 		return nil
 	}
-	return g.AddCounterByForEffect(item.Controller, item.SourceCardID, game.CounterPlusOne, thatDamage(item))
+	return g.AddCounterByForEffect(item.Controller, item.SourceCardID, game.CounterPlusOne, ThatDamage(item))
 }
 
 func followUpCountersOnThisPerPrevented(g *game.Game, item *game.StackItem, p game.EffectParams) error {
-	if _, ok := followUpThis(g, item); !ok || p.Amount <= 0 {
+	if _, ok := FollowUpThis(g, item); !ok || p.Amount <= 0 {
 		return nil
 	}
 	return g.AddCounterByForEffect(item.Controller, item.SourceCardID, game.CounterPlusOne, p.Amount)
 }
 
 func followUpACounterOnThis(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
-	if _, ok := followUpThis(g, item); !ok {
+	if _, ok := FollowUpThis(g, item); !ok {
 		return nil
 	}
 	return g.AddCounterByForEffect(item.Controller, item.SourceCardID, game.CounterPlusOne, 1)
 }
 
 func followUpThatManyCountersOnIt(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
-	it, ok := followUpRecipient(g, item)
-	if !ok || thatDamage(item) <= 0 {
+	it, ok := FollowUpRecipient(g, item)
+	if !ok || ThatDamage(item) <= 0 {
 		return nil
 	}
-	return g.AddCounterByForEffect(item.Controller, it, game.CounterPlusOne, thatDamage(item))
+	return g.AddCounterByForEffect(item.Controller, it, game.CounterPlusOne, ThatDamage(item))
 }
 
 func followUpCountersOnItPerPrevented(g *game.Game, item *game.StackItem, p game.EffectParams) error {
-	it, ok := followUpRecipient(g, item)
+	it, ok := FollowUpRecipient(g, item)
 	if !ok || p.Amount <= 0 {
 		return nil
 	}
@@ -434,21 +434,21 @@ func followUpDealThatMuchToTheChosenTarget(g *game.Game, item *game.StackItem, p
 // dealt to target creature this turn. For each 1 damage prevented this
 // way, put a +1/+1 counter on that creature." (Test of Faith, Temper). A
 // target gone by resolution gets no shield (CR 608.2b).
-func countersPerPreventedShield(_ *game.StackItem, ctx *Context, n int, name string) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func CountersPerPreventedShield(_ *game.StackItem, ctx *Context, n int, name string) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok || n < 1 {
 		return nil
 	}
 	return PreventNextDamage{
 		Target: id,
 		Amount: n,
-		Then:   countersOnItPerPreventedBody,
+		Then:   CountersOnItPerPreventedBody,
 		Label:  fmt.Sprintf("%s — prevent the next %d damage", name, n),
 	}.Apply(ctx)
 }
 
 func followUpEndStepToughnessCounters(g *game.Game, item *game.StackItem, p game.EffectParams) error {
-	it, ok := followUpRecipient(g, item)
+	it, ok := FollowUpRecipient(g, item)
 	if !ok || p.Amount <= 0 {
 		return nil
 	}

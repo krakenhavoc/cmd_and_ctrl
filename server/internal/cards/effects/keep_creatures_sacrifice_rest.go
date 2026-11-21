@@ -33,7 +33,7 @@ import (
 // A seat that can keep everything it controls — `most` or fewer
 // creatures, and the set rule holds for all of them — is not asked:
 // keeping everything is the only answer worth giving.
-func keepCreaturesThenSacrificeTheRest(g *game.Game, item *game.StackItem, seats []uuid.UUID, question string, most int, keep keepRun) error {
+func KeepCreaturesThenSacrificeTheRest(g *game.Game, item *game.StackItem, seats []uuid.UUID, question string, most int, keep keepRun) error {
 	valid := keep.valid
 	var legs []game.ChooseCardsPrompt
 	var asked []uuid.UUID
@@ -42,7 +42,7 @@ func keepCreaturesThenSacrificeTheRest(g *game.Game, item *game.StackItem, seats
 		if p == nil || p.Eliminated {
 			continue
 		}
-		creatures := permanentsControlledByMatching(g, seat, Creature())
+		creatures := PermanentsControlledByMatching(g, seat, Creature())
 		if len(creatures) == 0 || (keepsAll(g, creatures, most, valid)) {
 			continue
 		}
@@ -64,7 +64,7 @@ func keepCreaturesThenSacrificeTheRest(g *game.Game, item *game.StackItem, seats
 	}
 	// Keyed (#4290): the seats asked ride the run as its carry, and the
 	// set rule is registered with the leg.
-	_, err := g.ChooseCardsRunThenKeyedForEffect(legs, keep.then, item.SourceCardID, game.RunData{Carry: asked})
+	_, err := g.ChooseCardsRunThenKeyedForEffect(legs, keep.Then, item.SourceCardID, game.RunData{Carry: asked})
 	return err
 }
 
@@ -73,19 +73,19 @@ func keepCreaturesThenSacrificeTheRest(g *game.Game, item *game.StackItem, seats
 // set rule over what a seat keeps. valid is the same rule at queue time,
 // to skip a seat that can keep everything.
 type keepRun struct {
-	then  game.PromptRunThen
+	Then  game.PromptRunThen
 	leg   game.ChooseCardsThen
 	valid func(picked []game.Card) bool
 }
 
 // newKeepRun registers the continuation under runKey, and, when valid is
 // set, the leg and its set rule under legKey.
-func newKeepRun(runKey, legKey string, valid func(picked []game.Card) bool) keepRun {
+func NewKeepRun(runKey, legKey string, valid func(picked []game.Card) bool) keepRun {
 	leg := game.ChooseCardsRunLeg
 	if valid != nil {
 		leg = game.RegisterChooseCardsRunLegRule(legKey, valid)
 	}
-	return keepRun{then: RunThen(runKey, sacrificeTheRest), leg: leg, valid: valid}
+	return keepRun{Then: RunThen(runKey, sacrificeTheRest), leg: leg, valid: valid}
 }
 
 // sacrificeTheRest sacrifices every creature the asked seats (the carry)
@@ -97,7 +97,7 @@ func sacrificeTheRest(ctx *Context, r game.RunDone) error {
 	}
 	var rest []uuid.UUID
 	for _, seat := range r.Carry {
-		for _, id := range permanentsControlledByMatching(ctx.Game, seat, Creature()) {
+		for _, id := range PermanentsControlledByMatching(ctx.Game, seat, Creature()) {
 			if !kept[id] {
 				rest = append(rest, id)
 			}

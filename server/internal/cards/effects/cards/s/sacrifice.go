@@ -1,0 +1,33 @@
+package cardss
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Sacrifice — Instant {B}:
+//
+//	"As an additional cost to cast this spell, sacrifice a creature.
+//	 Add an amount of {B} equal to the sacrificed creature's mana value."
+//
+// The sacrificed creature's mana value as it last existed on the
+// battlefield (CR 608.2h), read off the payment record (ADR 0113 §1). An
+// animated land or a token that is no copy has mana value 0 and adds
+// nothing (the 2004-10-04 ruling).
+//
+// No simplifications.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:       "068b3692-411b-44d4-a7e9-005262760cfc",
+		Name:           "Sacrifice",
+		Completeness:   effects.CompletenessFull,
+		AdditionalCost: effects.SacrificeCost("a creature", effects.Creature()),
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			x := effects.SacrificedManaValue(ctx)
+			if x <= 0 {
+				return nil
+			}
+			return effects.AddMana{Amount: effects.ManaN(x, "B")}.Apply(ctx)
+		},
+	})
+}

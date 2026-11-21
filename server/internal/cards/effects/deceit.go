@@ -40,14 +40,14 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				On(game.EventETB, AllOf(Self, deceitSpent("U")),
+				On(game.EventETB, AllOf(Self, DeceitSpent("U")),
 					"Deceit — return up to one other nonland permanent to its owner's hand",
 					func(g *game.Game, item *game.StackItem) error {
-						return bounceTheTarget(item, NewContext(g, item))
+						return BounceTheTarget(item, NewContext(g, item))
 					}),
 				Another(TargetPermanent("up to one other target nonland permanent", Nonland()).WithCount(0, 1))),
 			Targeting(
-				On(game.EventETB, AllOf(Self, deceitSpent("B")),
+				On(game.EventETB, AllOf(Self, DeceitSpent("B")),
 					"Deceit — target opponent reveals their hand, you choose a nonland card",
 					TargetRevealsYouChooseDiscardAbility(Nonland(), "nonland card")),
 				TargetPlayer("target opponent", Opponent())),
@@ -58,7 +58,7 @@ func init() {
 // deceitSpent is "if {C}{C} was spent to cast it" for the colour
 // symbol c: at least two mana of that colour paid for the spell this
 // permanent was.
-func deceitSpent(c string) When {
+func DeceitSpent(c string) When {
 	return func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 		return source.ManaSpentToCast().Count(c) >= 2
 	}

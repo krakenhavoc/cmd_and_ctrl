@@ -14,12 +14,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is the card's own, with X as 0 (CR 202.3e). The search names a
 // quality, so the searcher may find nothing (CR 701.23b); the library
 // is shuffled either way.
-func searchForASubtypePermanentWithManaValueAtMost(subtype string, n int, reason string) Effect {
+func SearchForASubtypePermanentWithManaValueAtMost(subtype string, n int, reason string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{
 			Player: item.Controller,
 			Predicate: func(c game.Card) bool {
-				return isPermanentCard(c) && c.HasSubtypeWord(subtype) && c.ManaValue() <= n
+				return IsPermanentCard(c) && c.HasSubtypeWord(subtype) && c.ManaValue() <= n
 			},
 			Dest:    game.ZoneBattlefield,
 			Limit:   1,

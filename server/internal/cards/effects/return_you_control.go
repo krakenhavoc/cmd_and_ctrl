@@ -44,7 +44,7 @@ func (r ReturnOneYouControl) Apply(ctx *Context) error {
 	// The clause's colour or type is a word of the effect's text
 	// (CR 612.2): Trusted Advisor's "a blue creature" under a Sleight of
 	// Mind. A Match that reads HasColorWord follows it.
-	reader := ctx.textReader()
+	reader := ctx.TextReader()
 	return ChoosePermanents{
 		Question: r.Question,
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
@@ -56,13 +56,13 @@ func (r ReturnOneYouControl) Apply(ctx *Context) error {
 			}
 			return out, 1, 1
 		},
-		Keyed: bouncedChosen,
+		Keyed: BouncedChosen,
 	}.Apply(ctx)
 }
 
 // bouncedChosen is the chosen permanent returning to its owner's hand,
 // keyed (#4290): ReturnOneYouControl's and Cloudstone Curio's.
-var bouncedChosen = RegisterPermanentsPick("prompt-run/return-chosen-permanent-to-hand", PermanentsDef{
+var BouncedChosen = RegisterPermanentsPick("prompt-run/return-chosen-permanent-to-hand", PermanentsDef{
 	Then: bouncePickedToHand,
 })
 
@@ -73,7 +73,7 @@ var bouncedChosen = RegisterPermanentsPick("prompt-run/return-chosen-permanent-t
 // entered) can't be expressed as a Match predicate.
 func bouncePickedToHand(ctx *Context, picked game.PromptedPicks) error {
 	for _, id := range picked.Cards() {
-		if err := (BounceToHand{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (BounceToHand{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

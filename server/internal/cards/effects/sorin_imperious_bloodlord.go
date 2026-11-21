@@ -74,7 +74,7 @@ func init() {
 // sorinImperiousGrant is the first +1, in printed order.
 func sorinImperiousGrant(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	target, ok := b16FirstLegalTargetCard(ctx)
+	target, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -95,7 +95,7 @@ func sorinImperiousGrant(g *game.Game, item *game.StackItem) error {
 // sorinImperiousMaySacrifice is the second +1: the optional sacrifice,
 // then the reflexive strike for a Vampire that really went.
 func sorinImperiousMaySacrifice(g *game.Game, item *game.StackItem) error {
-	return maySacrificeOne(g, item, "Sorin, Imperious Bloodlord — sacrifice a Vampire to deal 3 damage to any target and gain 3 life?",
+	return MaySacrificeOne(g, item, "Sorin, Imperious Bloodlord — sacrifice a Vampire to deal 3 damage to any target and gain 3 life?",
 		HasSubtype("Vampire"), false, sorinImperiousSacrificed)
 }
 

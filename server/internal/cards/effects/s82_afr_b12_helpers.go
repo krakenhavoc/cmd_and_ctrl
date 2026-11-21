@@ -22,7 +22,7 @@ import (
 // tail is key+"-rolled" and the answer is "confirm/"+the key's last
 // segment+"-result"; never renamed, never reused. Call it once, from a
 // package-level var.
-func afrEndeavorTail(key, name string, describe func(chosen, other int) string, apply func(ctx *Context, chosen, other int) error) game.TailRef {
+func AfrEndeavorTail(key, name string, describe func(chosen, other int) string, apply func(ctx *Context, chosen, other int) error) game.TailRef {
 	answer := MayAnswer("confirm/"+strings.TrimPrefix(key, "dice/")+"-result", func(ctx *Context, r game.ConfirmAnswer) error {
 		first, second, ok := strings.Cut(r.Word, " ")
 		a, errA := strconv.Atoi(first)
@@ -56,7 +56,7 @@ func afrEndeavorTail(key, name string, describe func(chosen, other int) string, 
 // that does not read the results, written as effects.Do primitives so the
 // row declares its footprint (Brazen Dwarf's "deals 1 damage to each
 // opponent"). The trigger is the same: once per instruction to roll.
-func afrWheneverYouRollDiceDo(label string, effect Effect) game.TriggeredAbility {
+func AfrWheneverYouRollDiceDo(label string, effect Effect) game.TriggeredAbility {
 	t := WheneverYouRollDice(label, func(*game.Game, *game.StackItem, int) error { return nil })
 	t.Effect = effect
 	return t

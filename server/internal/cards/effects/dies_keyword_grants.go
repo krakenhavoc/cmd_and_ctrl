@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Evermore. The grant is a layer-6 record pinned to the object, so a
 // creature that dies wearing it has the keyword as it last existed
 // (CR 603.10a) and its dies trigger fires.
-func grantEachLegalTargetUntilEOT(ctx *Context, keyword, label string) error {
+func GrantEachLegalTargetUntilEOT(ctx *Context, keyword, label string) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -28,9 +28,9 @@ func grantEachLegalTargetUntilEOT(ctx *Context, keyword, label string) error {
 // creature has <keyword> as long as you control a <pred> creature"
 // (Rattleblaze Scarecrow, Wingrattle Scarecrow). The source itself
 // counts if it matches.
-func selfWhileYouControlA(pred CardPredicate) func(target *game.Card, g *game.Game, source *game.Card) bool {
+func SelfWhileYouControlA(pred CardPredicate) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
 		return target.InstanceID == source.InstanceID &&
-			len(permanentsControlledByMatching(g, source.Controller, pred)) > 0
+			len(PermanentsControlledByMatching(g, source.Controller, pred)) > 0
 	}
 }

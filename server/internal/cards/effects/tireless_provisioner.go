@@ -27,7 +27,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			LandfallPaying("Tireless Provisioner — create a Treasure (landfall)", game.LandfallPayoff{Tokens: 1},
-				createFoodOrTreasure("Tireless Provisioner — create a Food token or a Treasure token")),
+				CreateFoodOrTreasure("Tireless Provisioner — create a Food token or a Treasure token")),
 		},
 	})
 }
@@ -35,7 +35,7 @@ func init() {
 // createFoodOrTreasure is "create a Food token or a Treasure token" as an
 // effect: the controller picks as it resolves, Treasure first. Ant-Man's
 // Army (#4455) shares it.
-func createFoodOrTreasure(question string) Effect {
+func CreateFoodOrTreasure(question string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return PickOption{
 			Question: question,

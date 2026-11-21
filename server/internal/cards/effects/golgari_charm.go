@@ -42,9 +42,9 @@ func init() {
 					Label:     "Golgari Charm — -1/-1",
 				}.Apply(ctx)
 			case ctx.HasMode(1):
-				return destroyChosenPermanent(ctx.Game, item)
+				return DestroyChosenPermanent(ctx.Game, item)
 			case ctx.HasMode(2):
-				return regenerateEachCreatureControlledBy(ctx, ctx.Controller())
+				return RegenerateEachCreatureControlledBy(ctx, ctx.Controller())
 			}
 			return nil
 		},
@@ -54,7 +54,7 @@ func init() {
 // regenerateEachCreatureControlledBy is "regenerate each creature you
 // control": snapshot the set, then shield each one, the same posture
 // putPlusOneCounterOnEachCreatureControlledBy uses.
-func regenerateEachCreatureControlledBy(ctx *Context, player uuid.UUID) error {
+func RegenerateEachCreatureControlledBy(ctx *Context, player uuid.UUID) error {
 	var ids []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() {
@@ -62,7 +62,7 @@ func regenerateEachCreatureControlledBy(ctx *Context, player uuid.UUID) error {
 		}
 	}
 	for _, id := range ids {
-		if err := (Regenerate{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (Regenerate{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

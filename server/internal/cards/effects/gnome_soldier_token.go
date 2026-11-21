@@ -15,12 +15,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (the rulings). The count is live: it is re-read on every recompute.
 
 // GnomeSoldierToken is the Lost Caverns Gnome Soldier.
-func GnomeSoldierToken() game.Card { return tokenFromCatalog(printedGnomeSoldierToken) }
+func GnomeSoldierToken() game.Card { return TokenFromCatalog(printedGnomeSoldierToken) }
 
 // printedGnomeSoldierToken is the Gnome Soldier as printed. Its slug is an
 // on-disk identity: never renamed, never reused.
-func printedGnomeSoldierToken() tokenTemplate {
-	return tokenTemplate{
+func printedGnomeSoldierToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "gnome-soldier",
 		Card: game.Card{
 			Name:     "Gnome Soldier",
@@ -31,7 +31,7 @@ func printedGnomeSoldierToken() tokenTemplate {
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,
 			Label:     "This token's power and toughness are each equal to the number of artifacts and/or creatures you control.",
-			AppliesTo: selfOnly,
+			AppliesTo: SelfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				n := 0
 				for _, p := range g.BattlefieldCardsForEffect() {
