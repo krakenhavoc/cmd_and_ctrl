@@ -2099,6 +2099,7 @@ option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
 option option-pick/torment-of-scarabs-answer
 option option-pick/trigger-opponent-chooser
+option option-pick/turnabout-type-and-direction
 option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
 option option-pick/ultra-magnus-tactician-attacks
