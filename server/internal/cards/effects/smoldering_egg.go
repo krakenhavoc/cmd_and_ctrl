@@ -46,13 +46,7 @@ func init() {
 		Triggered:       []game.TriggeredAbility{egg},
 	})
 	burn := WheneverYouCast(Or(Instant(), Sorcery()), "Ashmouth Dragon — it deals 2 damage to any target",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			for _, t := range ctx.LegalTargets() {
-				return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}.Apply(ctx)
-			}
-			return nil
-		})
+		gapTwoDamageToChosenTarget)
 	burn.Targets = TargetAny()
 	Register(Spec{
 		OracleID:        oracle + "#1",

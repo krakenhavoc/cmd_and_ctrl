@@ -213,6 +213,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Spirit":                                                 {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"1/1 blue Human Wizard":                                            {Name: "Human Wizard", TypeLine: "Token Creature — Human Wizard", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"3/3 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 black Vampire":                                                {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"B"}},
@@ -583,6 +584,8 @@ var tokenTable = map[string]game.Card{
 	// S82 GAP batch 05: Nivea, Beloved Battlemage's Akroma.
 	"6/6 white Legendary Angel named Akroma, Angel of Wrath with flying, first strike, vigilance, trample, haste and protection from black and from red": {Name: "Akroma, Angel of Wrath", TypeLine: "Token Legendary Creature — Angel", Power: 6, Toughness: 6, Colors: []string{"W"}, Keywords: []string{"flying", "first strike", "vigilance", "trample", "haste", "protection from black", "protection from red"}},
 
+	// S82 GAP batch 06: Worzel, the Protector's Scryb Sprites.
+	"1/1 green Faerie with flying named Scryb Sprites": {Name: "Scryb Sprites", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"flying"}},
 	// #5559: Born of the Gods' enchantment creature tokens (Fated
 	// Intervention, Pheres-Band Raiders, God-Favored General, Satyr Nyx-Smith).
 	"3/3 green Centaur enchantment":            {Name: "Centaur", TypeLine: "Token Enchantment Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
