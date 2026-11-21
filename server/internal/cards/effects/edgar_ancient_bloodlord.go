@@ -28,14 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.CardID == source.InstanceID {
-					return false
-				}
-				dead, ok := g.LookupCardForEffect(ev.CardID)
-				if !ok || dead.Controller != source.Controller {
-					return false
-				}
-				return leftAsType(ev, dead, "creature") || leftAsType(ev, dead, "planeswalker")
+				return gapB77AnotherCreatureOrPlaneswalkerYouControlDied(ev, source, g)
 			},
 			Key:     "Edgar, Ancient Bloodlord — you gain 1 life",
 			Purpose: game.Purpose{DeathPayoff: true},

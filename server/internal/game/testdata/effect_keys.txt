@@ -3930,6 +3930,7 @@ tail then/change-creature-type-word-to-fixed
 tail then/change-creature-type-word-with
 tail then/change-life
 tail then/chaos-warp-shuffle-reveal
+tail then/cindervines-damage
 tail then/clone-saga-named
 tail then/clutch-of-the-undercity-controller-loses-3
 tail then/cmdr2-s43-tectonic-giant-choose
