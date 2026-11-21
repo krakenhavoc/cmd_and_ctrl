@@ -28,17 +28,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(
 				effects.On(game.EventCast, effects.StdB64YouCastDuringAnOpponentsTurn,
-					"Nightmare Sower — put a -1/-1 counter on up to one target creature", nightmareSowerCounter),
+					"Nightmare Sower — put a -1/-1 counter on up to one target creature", effects.R35NightmareSowerCounter),
 				effects.UpToOneTargetCreature("up to one target creature")),
 		},
 	})
-}
-
-func nightmareSowerCounter(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	id, ok := effects.B16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	return effects.AddCounter{Target: id, Kind: game.CounterMinusOne, N: 1}.Apply(ctx)
 }

@@ -174,6 +174,20 @@ func ChooseColorTail(purpose game.ColorPurpose, g *game.Game, chooser, source uu
 	})
 }
 
+// ChooseColorOtherThanTail is ChooseColorTail for "choose a color other than
+// <color>": the colour already named is not offered. Seal of the Guildpact's
+// second colour ("choose two colors" asks twice, and the two differ).
+func ChooseColorOtherThanTail(purpose game.ColorPurpose, g *game.Game, chooser, source uuid.UUID, question, color string, then game.KeyedTail) {
+	g.QueueColorChoiceThenForEffect(game.ColorPrompt{
+		Chooser:  chooser,
+		Source:   source,
+		Question: question,
+		Options:  game.ColorsOtherThan(color),
+		Purpose:  purpose,
+		ThenTail: then,
+	})
+}
+
 // ChooseColorOrColorlessTail is ChooseColorTail for "colorless or the
 // color of your choice" (Angelic Intervention, #5650): the five colours
 // and one more answer, game.ColorlessChoice, which the tail is told as
