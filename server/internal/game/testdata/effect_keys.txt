@@ -557,6 +557,7 @@ castfollowup kyloxs-voltstrider-bottom-instead-of-graveyard
 castfollowup maralen-fae-ascendant-once-each-turn
 castfollowup msc6/helmut-zemo-mastermind-counter
 castfollowup share-the-spoils-played
+castfollowup soundwave/convert-if-cast
 castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
 choose any-player-each/cleansing-destroy
@@ -3858,6 +3859,7 @@ tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
 tail sothera-the-supervoid/put-exiled-creature
 tail soul-shackled-zombie/drain-if-creature
+tail soundwave/copy-exiled
 tail spare-dagger/sacrificed
 tail sparring-dummy/after-mill
 tail speak-secrets/after-mill
