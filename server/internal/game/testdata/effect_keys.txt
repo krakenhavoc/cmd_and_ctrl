@@ -212,6 +212,7 @@ body general-traag-heart-of-stone/strike
 body generous-plunderer/gift
 body gift-of-immortality/return-aura
 body gilgamesh/attach-equipment
+body gilraen-dunedain-protector/return-with-counters
 body glacial-dragonhunt/damage
 body glissas-retriever/return-to-hand
 body gloom-surgeon/exile-that-many
@@ -1304,6 +1305,7 @@ choose choose-cards/std-b40-exile-from-hand
 choose choose-cards/steamcore-scholar-discard
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/stitcher-geralf-exile
+choose choose-cards/stonehewer-giant-attach
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/strefan-maurer-progenitor-put
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -1629,6 +1631,7 @@ confirm confirm/gathering-stone-take
 confirm confirm/gathering-stone-to-graveyard
 confirm confirm/gaze-of-pain-damage
 confirm confirm/geier-reach-bandit-transform
+confirm confirm/gilraen-dunedain-protector-return
 confirm confirm/gitaxian-anatomist-tap
 confirm confirm/gogo-copy
 confirm confirm/graha-tia-pay-and-create
@@ -2151,6 +2154,7 @@ option venture/room
 payunless aphelia-viper-whisperer/paid
 payunless arni-metalbrow/paid
 payunless cadric-soul-kindler/paid
+payunless champions-of-minas-tirith/cant-attack
 payunless evereth-viceroy-of-plunder/paid
 payunless god-favored-general/paid
 payunless najal-the-storm-runner/paid
@@ -2311,6 +2315,7 @@ payunless pay-unless/meathook-massacre-ii-you-paid
 payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/mirrorworks-copy
+payunless pay-unless/monstrosity-of-the-lake-stun
 payunless pay-unless/mtenda-lion-prevent-combat-damage
 payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
@@ -3292,6 +3297,7 @@ tail ghostly-flicker/return-under-your-control
 tail ghouls-night-out/black-zombies
 tail gifts-ungiven/choose
 tail gilgamesh-master-at-arms/rest-then-attach-trigger
+tail gilraen-dunedain-protector/exiled
 tail gisa/decayed
 tail glamdring-foe-hammer/gleam-of-death-after-mill
 tail glimmer-of-genius/then
@@ -3312,6 +3318,7 @@ tail graveyard-exile/hour-of-eternity-zombie-copies
 tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
+tail grey-host-reinforcements/counters-per-creature
 tail grime-gorger/counter-per-exiled-card
 tail grip-of-phyresis/attach
 tail grizzled-angler/after-mill
@@ -3792,6 +3799,7 @@ tail stillness-in-motion/after-mill
 tail stitcher-geralf/ask
 tail stitcher-geralf/exiled
 tail stockpiling-celebrant/scry
+tail stonehewer-giant/attach-found-equipment
 tail strago-and-relm/after-mill
 tail strefan-maurer-progenitor/indestructible
 tail study-the-classics/double
