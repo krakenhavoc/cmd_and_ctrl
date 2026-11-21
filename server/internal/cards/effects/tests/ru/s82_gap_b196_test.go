@@ -54,34 +54,6 @@ func TestGapB196CardsAreRegisteredFull(t *testing.T) {
 	}
 }
 
-// gapB196Settle passes priority until the stack is empty, ordering triggers and
-// answering every target prompt with `keep` (the zero value answers nothing).
-func gapB196Settle(t *testing.T, g *game.Game, who uuid.UUID, keep game.TargetRef) {
-	t.Helper()
-	for i := 0; i < 96; i++ {
-		if p := effectstest.TriggerOrderPromptFor(g, who); p != nil {
-			order := append([]uuid.UUID(nil), p.TriggerOrderIDs...)
-			if err := g.ResolveTriggerOrder(p.ID, who, order); err != nil {
-				t.Fatalf("ResolveTriggerOrder: %v", err)
-			}
-			continue
-		}
-		if p := effectstest.LatestPickTarget(g, who); p != nil && keep.ID != uuid.Nil {
-			if err := g.ResolvePickTarget(p.ID, who, keep); err != nil {
-				t.Fatalf("ResolvePickTarget: %v", err)
-			}
-			continue
-		}
-		if effectstest.StackFullyEmpty(g) {
-			return
-		}
-		if err := g.PassPriority(); err != nil {
-			t.Fatalf("PassPriority: %v", err)
-		}
-	}
-	t.Fatal("the stack never emptied")
-}
-
 func gapB196Card(t *testing.T, g *game.Game, name, typeLine, oracle, cost string, p, tough int) uuid.UUID {
 	t.Helper()
 	id, err := effectstest.SpmB4Cast(t, g, name, typeLine, oracle, cost, p, tough, 0)

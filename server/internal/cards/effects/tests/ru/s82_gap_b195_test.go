@@ -470,8 +470,7 @@ func TestGapB195SisterOfSilenceCannotTargetACreatureSpell(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	effectstest.AdvanceToMain(t, g)
-	bear := uuid.New()
-	bear = effectstest.CastFlashCreatureFrom(t, g, opp, game.Card{Name: "Their Bear", TypeLine: "Creature — Bear", ManaCost: "{1}{G}", Power: 2, Toughness: 2})
+	bear := effectstest.CastFlashCreatureFrom(t, g, opp, game.Card{Name: "Their Bear", TypeLine: "Creature — Bear", ManaCost: "{1}{G}", Power: 2, Toughness: 2})
 	gapB195SisterOnTop(t, g, me)
 	for i := 0; i < 16 && effectstest.LatestPickTarget(g, me.ID) == nil && !effectstest.StackFullyEmpty(g); i++ {
 		if err := g.PassPriority(); err != nil {
