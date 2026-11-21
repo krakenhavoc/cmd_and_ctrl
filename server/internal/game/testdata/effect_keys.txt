@@ -1402,6 +1402,7 @@ choose choose-cards/tangle-wire-tap
 choose choose-cards/tasigur-the-golden-fang-return
 choose choose-cards/taster-of-wares-exile
 choose choose-cards/taster-of-wares-reveal
+choose choose-cards/technomancer-return
 choose choose-cards/teferi-akosa-discard-the-one
 choose choose-cards/teferi-akosa-discard-two-or-creature
 choose choose-cards/teferi-akosa-tap-any-number
@@ -2237,6 +2238,7 @@ option option-pick/thrull-wizard-pay
 option option-pick/time-travel
 option option-pick/tireless-provisioner-token
 option option-pick/toils-of-night-and-day-tap-or-untap
+option option-pick/tomb-blade-lose-or-sacrifice
 option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
@@ -4050,6 +4052,7 @@ tail sword-of-once-and-future/after-surveil
 tail sword-of-the-meek/attach
 tail synthesis-pod/exiled
 tail systems-override/schedule-charge-removal
+tail szarekh-the-silent-king/after-mill
 tail tablet-of-discovery/after-mill
 tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
