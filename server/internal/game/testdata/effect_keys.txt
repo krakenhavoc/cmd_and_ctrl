@@ -58,6 +58,7 @@ body atraxas-skitterfang/grant
 body attach/sacrifice-the-returned-creature
 body augusta-order-returned/counters
 body auron-venerated-guardian/exile
+body aurora-shifter/copy
 body awaken-the-honored-dead/return-to-hand
 body basri-ket/soldiers-tapped-and-attacking
 body behemoth-of-vault-0/destroy
@@ -119,6 +120,7 @@ body delayed/biolume-egg-return-transformed
 body delayed/daretti-scrap-savant-return
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
+body desert-warfare/put-listed-onto-the-battlefield
 body desperate-measures/draw-two
 body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
@@ -418,6 +420,7 @@ body sakashima/return-listed-to-hand
 body sample-collector/counter
 body sandbender-scavengers/return-to-battlefield
 body saruman-of-many-colors/exile-and-copy
+body satya-aetherflux-genius/sacrifice-unless-energy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
 body savior-of-ollenbock/exile
 body scarblades-malice/elf
@@ -2153,6 +2156,7 @@ payunless pay-unless/ashling-the-limitless-sacrifice-token
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
+payunless pay-unless/aurora-shifter-copy
 payunless pay-unless/avatar-b30-moku-pump-and-haste
 payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
@@ -2336,6 +2340,7 @@ payunless pay-unless/s82-neo-sokenzan-smelter
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
+payunless pay-unless/satya-sacrifice-token
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
 payunless pay-unless/seymour-flux-draw-and-counter
@@ -2456,6 +2461,7 @@ run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
 run prompt-run/altar-of-the-wretched-payout
 run prompt-run/ambrosia-whiteheart-return
+run prompt-run/angelic-aberration-sacrifice
 run prompt-run/annihilator-sacrifice
 run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
@@ -2466,6 +2472,8 @@ run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
 run prompt-run/awaken-the-maelstrom-copy
 run prompt-run/beetle-headed-merchants-draw-and-counter
+run prompt-run/benthic-anomaly-chosen
+run prompt-run/benthic-anomaly-copy
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
 run prompt-run/bloodcrazed-socialite-pump
