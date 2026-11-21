@@ -1284,6 +1284,10 @@ choose choose-cards/s82-bns-b05-wanderwine-prophets-champion
 choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take
+choose choose-cards/s82-gap-b142-crosiss-catacombs-return
+choose choose-cards/s82-gap-b142-darigaazs-caldera-return
+choose choose-cards/s82-gap-b142-dromars-cavern-return
+choose choose-cards/s82-gap-b142-riths-grove-return
 choose choose-cards/s82-mid-b03-take-reveal-rest-graveyard
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
@@ -3765,6 +3769,7 @@ tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-dmu/slimefoots-survey-look
 tail s82-gap-b141/recoil-discard
 tail s82-gap-b141/spinal-embrace-life
+tail s82-gap-b142/orims-thunder-damage
 tail s82-gap-b21/anax-kynaios-land-then-draw
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
@@ -4363,6 +4368,10 @@ tail vis/dormant-volcano-after-return
 tail vis/everglades-after-return
 tail vis/jungle-basin-after-return
 tail vis/karoo-after-return
+tail vis/s82-gap-b142-crosiss-catacombs-after-return
+tail vis/s82-gap-b142-darigaazs-caldera-after-return
+tail vis/s82-gap-b142-dromars-cavern-after-return
+tail vis/s82-gap-b142-riths-grove-after-return
 tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
