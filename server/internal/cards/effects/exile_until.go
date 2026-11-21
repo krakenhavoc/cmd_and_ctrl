@@ -35,6 +35,14 @@ type ExileUntil struct {
 	// ThisLeaves is "until this permanent leaves the battlefield".
 	ThisLeaves bool
 
+	// UntilLeaves is "until <another object> leaves the battlefield", the
+	// object named by its ref (Calix, Destiny's Hand's "until target
+	// enchantment you control leaves the battlefield"). It rides the
+	// event-conditioned record like a Leaves object, so a restore point holds
+	// it. An object that has already left makes the exile do nothing
+	// (CR 610.3c). Used instead of ThisLeaves, never with it.
+	UntilLeaves game.ObjectRef
+
 	// On and Condition are "until <an event>": the events watched and a
 	// registered condition over them (one that reads no parameters).
 	On        []game.EventKind
@@ -101,6 +109,9 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		Condition:    e.Condition,
 	}
 	record := true
+	if e.UntilLeaves.ID != uuid.Nil {
+		u.Leaves = e.UntilLeaves
+	}
 	if e.ThisLeaves {
 		ref, ok := ctx.SourceRef()
 		if ok {
