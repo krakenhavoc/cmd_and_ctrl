@@ -215,6 +215,7 @@ body forgehammer-centurion/cant-block
 body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
+body gap-b215/ancient-bronze-dragon-counters
 body gap-b55-voltstorm-angel/modes
 body gap-b82/land-damages-creature
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
@@ -1654,6 +1655,7 @@ confirm confirm/armor-wars-draw
 confirm confirm/ashcoat-mill-four
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/awaken-the-sleeper-destroy-equipment
+confirm confirm/bane-lord-of-darkness-draw-or-put
 confirm confirm/barrowgoyf-mill
 confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
 confirm confirm/bebop-skull-and-crossbones-draw-lose
@@ -3246,6 +3248,7 @@ tail demonlord-belzenlok/put-into-hand
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table
+tail dice/ancient-bronze-dragon-roll
 tail dice/ancient-copper-dragon-treasures
 tail dice/ancient-gold-dragon-tokens
 tail dice/ancient-silver-dragon-draw
