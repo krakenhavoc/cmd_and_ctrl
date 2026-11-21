@@ -503,6 +503,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
 	// size is its controller's experience counters.
 	printedC15DaxosSpiritToken,
+
+	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
+	// (Commander Masters, S82 GAP batch 104, #5948).
+	printedGapB104SatyrCantBlockToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
