@@ -290,6 +290,12 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		// lends EVERY ability, its replacement effects included ("if
 		// this creature would die, …" keeps working from underneath).
 		// No other granted part carries them.
+		// A layer-6 grant bundle may carry replacement effects of the
+		// recipient's own (Master Chef, Scion of Halaster): the recipient
+		// is each one's source, so they end the pass the grant does.
+		if len(g.GrantedReplacements) > 0 {
+			merged.Replacements = append(append([]ReplacementEffect(nil), merged.Replacements...), g.GrantedReplacements...)
+		}
 		if g.MergedComponent && len(g.Replacements) > 0 {
 			merged.Replacements = append(append([]ReplacementEffect(nil), merged.Replacements...), g.Replacements...)
 		}

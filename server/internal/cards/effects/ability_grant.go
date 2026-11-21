@@ -150,6 +150,14 @@ type AbilityGrant struct {
 	// token copy). The recipient is the modifier's source, so "this" is
 	// the recipient; it is read live off the composite key and ends the
 	// pass the grant does.
+	// Replacements are replacement effects the recipient has while it has
+	// the grant, as its own (Master Chef's "enters with an additional +1/+1
+	// counter", Scion of Halaster's "first time you would draw a card each
+	// turn"): the recipient is each one's source, so "this creature" and
+	// "you" are the recipient and its controller. Merged by the composite
+	// definition (game.CardDef.GrantedReplacements).
+	Replacements []game.ReplacementEffect
+
 	CostModifiers   []game.CostModifier
 	CastPermissions []game.CastPermission
 
@@ -226,6 +234,7 @@ func BuildGrantDef(gr AbilityGrant) *game.CardDef {
 		AdditionalLandPlays: gr.AdditionalLandPlays,
 		CastPermissions:     standingCastPermissions(gr.CastPermissions),
 		CostModifiers:       gr.CostModifiers,
+		GrantedReplacements: gr.Replacements,
 	}
 }
 
@@ -324,7 +333,7 @@ func CheckGrants(name string, grants []AbilityGrant) {
 		}
 		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
 			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 && len(gr.TriggerDoublers) == 0 &&
-			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 && gr.LibraryTopVisible == game.LibraryTopHidden {
+			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 && len(gr.Replacements) == 0 && gr.LibraryTopVisible == game.LibraryTopHidden {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {

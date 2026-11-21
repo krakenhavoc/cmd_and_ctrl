@@ -101,6 +101,14 @@ type CardDef struct {
 	// PrintedKeywords, appended once at build time.
 	Static       []StaticAbility
 	Replacements []ReplacementEffect
+	// GrantedReplacements are the replacement effects a layer-6 grant
+	// bundle carries (Master Chef's "This creature enters with an additional
+	// +1/+1 counter on it", Scion of Halaster's draw replacement): a
+	// recipient has them while it has the grant, as its own, so the source
+	// of each is the recipient and "you" is the recipient's controller.
+	// Merged into the composite definition's Replacements
+	// (copy_grants.go); empty on every definition but a grant bundle's.
+	GrantedReplacements []ReplacementEffect
 	// EntersWithCountersFromCast are the card's printed "this
 	// permanent enters with N counters on it" clauses whose N is read
 	// from the spell that became it (CR 614.1c) — Hangarback Walker's
