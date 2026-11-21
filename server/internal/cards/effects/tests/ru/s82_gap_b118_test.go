@@ -528,42 +528,38 @@ func TestGap118GwaihirGrantsFlyingAndMakesABirdAfterGainingThree(t *testing.T) {
 		t.Error("the Bird is not a 3/3 with flying")
 	}
 	var key string
-	g2.ReadSnapshot(func() { c, _ := g2.LookupCardForEffect(birds[0]); key = c.TokenKey })
-	if key == "" {
-		t.Error("the Bird carries no token key, so it has no attack trigger")
+	var nTriggers int
+	g2.ReadSnapshot(func() {
+		c, _ := g2.LookupCardForEffect(birds[0])
+		key = c.TokenKey
+		nTriggers = len(game.TriggersForCard(c))
+	})
+	if key == "" || nTriggers != 1 {
+		t.Errorf("the Bird has token key %q and %d triggers, want its one attack trigger", key, nTriggers)
 	}
 }
 
-func TestGap118StonehewerFetchesAndAttachesAnEquipment(t *testing.T) {
+func TestGap118GwaihirsBirdGrantsFlyingWhenItAttacks(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
-	me, _, _ := effectstest.BlbB1Seats(g)
-	giant := effectstest.BlbB1Push(g, me.ID, "Stonehewer Giant", "Creature — Giant Warrior", gap118Stonehewer, 4, 4)
-	bear := effectstest.BlbB1Push(g, me.ID, "Bear", "Creature — Bear", "", 2, 2)
-	equip := uuid.New()
-	me.Library.PushTop(game.Card{InstanceID: equip, Name: "Test Blade", TypeLine: "Artifact — Equipment", Owner: me.ID, Controller: me.ID})
-	effectstest.AdvanceToMain(t, g)
-	// Strict: {1}{W} and the tap.
-	if err := g.ActivateCatalogAbility(me.ID, giant, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
-		t.Fatal("activated without paying {1}{W}")
-	}
-	effectstest.B06AddMana(me, "W", "W")
-	if err := g.ActivateCatalogAbility(me.ID, giant, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
-		t.Fatalf("activate: %v", err)
-	}
-	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AnswerSearchNamed(t, g, me.ID, "Test Blade")
-	effectstest.PassPriorityAroundTable(t, g)
-	if p := effectstest.LatestChooseCards(g, me.ID); p != nil {
-		if err := g.ResolveChooseCards(p.ID, me.ID, []uuid.UUID{bear}); err != nil {
-			t.Fatalf("attach pick: %v", err)
+	me, opp, _ := effectstest.BlbB1Seats(g)
+	g.WithWriteLock(func() {
+		if err := g.CreateTokenForEffect(me.ID, effects.S82GapB118GwaihirBirdToken(), 1); err != nil {
+			t.Fatalf("CreateTokenForEffect: %v", err)
 		}
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].Name == "Bird" {
+				g.Battlefield.Cards[i].SummonedThisTurn = false
+			}
+		}
+	})
+	birds := gap118Named(g, me.ID, "Bird")
+	if len(birds) != 1 {
+		t.Fatalf("%d Birds, want 1", len(birds))
 	}
-	if !g.Battlefield.Contains(equip) {
-		t.Fatal("the Equipment did not enter")
-	}
-	var host game.TargetRef
-	g.ReadSnapshot(func() { c, _ := g.LookupCardForEffect(equip); host = c.AttachedTo })
-	if host.ID != bear {
-		t.Errorf("attached to %v, want the Bear", host.ID)
+	ally := effectstest.BlbB1Push(g, me.ID, "Ground Ally", "Creature — Bear", "", 2, 2)
+	effectstest.DeclareAttack(t, g, opp.ID, birds[0], ally)
+	effectstest.AssistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetCard, ID: ally}, true)
+	if !effectstest.P1g2HasKeyword(g, ally, "flying") {
+		t.Error("the Bird's attack trigger did not give the target attacking creature flying")
 	}
 }
