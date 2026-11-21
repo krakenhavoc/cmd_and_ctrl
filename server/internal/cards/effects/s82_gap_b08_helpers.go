@@ -16,17 +16,6 @@ func gapB08APlayerHasNoCardsInHand(g *game.Game) bool {
 	return false
 }
 
-// gapB08TuckTheTargetCard is "put target card from your graveyard on the bottom
-// of your library" (Epitaph Golem): the one target, if it is still legal as the
-// ability resolves, goes to the bottom of its owner's library.
-func gapB08TuckTheTargetCard(g *game.Game, item *game.StackItem) error {
-	t, ok := firstLegalTarget(NewContext(g, item))
-	if !ok || t.Kind != game.TargetCard {
-		return nil
-	}
-	return g.TuckToLibraryForEffect(t.ID, true)
-}
-
 // gapB08CondEachPlayerHasAtMostLife is "each player has N or less life" as an
 // intervening-if Condition (Cryptolith Fragment): every player still in the game,
 // read as the trigger goes on the stack and again as it resolves (CR 603.4). It

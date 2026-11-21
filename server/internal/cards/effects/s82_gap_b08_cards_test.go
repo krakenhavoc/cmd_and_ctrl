@@ -49,16 +49,6 @@ func gapB08PT(g *game.Game, id uuid.UUID) (int, int) {
 	return c.CurrentPower(), c.CurrentToughness()
 }
 
-func gapB08Named(g *game.Game, name string) []game.Card {
-	var out []game.Card
-	for _, c := range g.Battlefield.Cards {
-		if c.Name == name {
-			out = append(out, c)
-		}
-	}
-	return out
-}
-
 func gapB08DFC(owner uuid.UUID, oracle string, face int, front, back game.Face) game.Card {
 	c := game.Card{InstanceID: uuid.New(), OracleID: oracle, Layout: game.LayoutTransform,
 		Owner: owner, Controller: owner, Faces: []game.Face{front, back}}
