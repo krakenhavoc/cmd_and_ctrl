@@ -118,6 +118,12 @@ type tokenTemplate struct {
 	Triggered []game.TriggeredAbility
 	Static    []game.StaticAbility
 
+	// Replacements are the token's printed replacement effects (CR 614),
+	// written exactly as Spec.Replacements are and filed under the same
+	// token key — Selenia's Curse's "If enchanted player would lose life,
+	// they lose twice that much life instead" (S82 GAP batch 3).
+	Replacements []game.ReplacementEffect
+
 	// CostModifiers are the token's printed "spells you cast cost {N}
 	// less" clauses (Tamiyo's Notebook, S82 NEO batch 20), written exactly
 	// as Spec.CostModifiers are and filed under the same token key. The
@@ -498,6 +504,14 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
 	printedGapB05BlackLotusToken,
 	printedGapB05LordOfThePitToken,
+	// S82 GAP batch 3: Selenia, the Cursed Heart's Selenia's Curse.
+	printedSeleniasCurseToken,
+	// S82 GAP batch 3: Zagorka, Mother of Sanctum's Sanctum.
+	printedSanctumToken,
+	// S82 GAP batch 06: Feroz's Ban, Greensleeves's Giant Badger and Worzel's Cat.
+	printedGapB06FerozsBanToken,
+	printedGapB06GiantBadgerToken,
+	printedGapB06LoyaltyCatToken,
 	// S82 C14 batch 1 (#5553): Freyalise, Llanowar's Fury's Elf Druid.
 	printedC14ElfDruidToken,
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
@@ -519,6 +533,7 @@ func buildTokenDef(t tokenTemplate) *game.CardDef {
 		Activated:     t.Activated,
 		Triggered:     t.Triggered,
 		Static:        t.Static,
+		Replacements:  t.Replacements,
 		CostModifiers: t.CostModifiers,
 		BlockRules:    t.BlockRules,
 		AttackLimits:  t.AttackLimits,
@@ -536,7 +551,7 @@ func checkTokenTemplate(t tokenTemplate) string {
 	switch {
 	case t.Slug == "":
 		return "declares no slug — the slug is its catalog identity"
-	case len(t.Mana) == 0 && len(t.Activated) == 0 && len(t.Triggered) == 0 && len(t.Static) == 0 && len(t.CostModifiers) == 0 && len(t.BlockRules) == 0 && len(t.AttackLimits) == 0:
+	case len(t.Mana) == 0 && len(t.Activated) == 0 && len(t.Triggered) == 0 && len(t.Static) == 0 && len(t.Replacements) == 0 && len(t.CostModifiers) == 0 && len(t.BlockRules) == 0 && len(t.AttackLimits) == 0:
 		// A template with nothing to register would hand out a key
 		// that resolves to an empty entry, which reads as "this
 		// token's abilities were removed" everywhere downstream. A
@@ -601,7 +616,7 @@ func checkTokenBack(t tokenTemplate) string {
 // hasAbilities reports whether the template declares any ability slot.
 func (t tokenTemplate) hasAbilities() bool {
 	return len(t.Mana) > 0 || len(t.Activated) > 0 || len(t.Triggered) > 0 ||
-		len(t.Static) > 0 || len(t.CostModifiers) > 0 || len(t.BlockRules) > 0 || len(t.AttackLimits) > 0
+		len(t.Static) > 0 || len(t.Replacements) > 0 || len(t.CostModifiers) > 0 || len(t.BlockRules) > 0 || len(t.AttackLimits) > 0
 }
 
 // tokenBackKey is the catalog key of a double-faced token's back face:
