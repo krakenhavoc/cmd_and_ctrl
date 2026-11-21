@@ -489,6 +489,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedNeoB20KeimiToken,
 	printedNeoB20NotebookToken,
 	printedNeoB20NinjaToken,
+	// S82 GAP batch 93: The Eleventh Hour's Human (Doctor spells cost {1} less).
+	printedGapDoctorHumanToken,
 	// ADR 0223 (#5910): Everquill Phoenix's Feather.
 	printedFeatherToken,
 	// S82 BNS batch 02: Outlaws' Merriment's Human Rogue.
