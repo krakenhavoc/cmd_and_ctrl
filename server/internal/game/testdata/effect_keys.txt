@@ -1419,6 +1419,7 @@ choose choose-cards/the-day-of-the-doctor-spare
 choose choose-cards/the-deck-of-many-things-reanimate
 choose choose-cards/the-dragon-kami-reborn-pick
 choose choose-cards/the-eleventh-doctor-exile
+choose choose-cards/the-first-tyrannic-war-put-creature
 choose choose-cards/the-gitrog-ravenous-ride-sacrifice
 choose choose-cards/the-grand-evolution-put
 choose choose-cards/the-grim-captain-put
@@ -2918,6 +2919,7 @@ run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
 run run/consuming-tide-return
 run run/krenkos-buzzcrusher-destroy
+run run/the-horus-heresy-destroy
 run soulbond/pair
 run the-city-on-the-edge-of-forever/gain-five
 run wanderwine-prophets/extra-turn
