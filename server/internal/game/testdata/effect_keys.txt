@@ -1444,6 +1444,7 @@ choose resolution-cast/smugglers-buggy-after-cast
 choose resolution-cast/swindlers-scheme-free-cast
 choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
+choose resolution-cast/yennett-draw-if-not-cast
 choose sticker/choose-object
 coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
