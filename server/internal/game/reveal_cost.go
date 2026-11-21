@@ -102,6 +102,11 @@ type RevealCost struct {
 	// Kindred permanent of the type (its ruling), so the quality is the
 	// card type as well as the creature type.
 	Creature bool `json:",omitempty"`
+	// Colorless narrows the candidates to colorless cards (CR 105.2c):
+	// Calamity of the Titans' "reveal a colorless creature card from your
+	// hand". Read with Card.IsColorless; combines with the other
+	// qualities by AND.
+	Colorless bool `json:",omitempty"`
 }
 
 // count is how many objects one payment of the clause beholds: Count,
@@ -160,6 +165,9 @@ func (rc *RevealCost) matches(c Card) bool {
 		return false
 	}
 	if rc.CardType != "" && !c.HasCardType(rc.CardType) {
+		return false
+	}
+	if rc.Colorless && !c.IsColorless() {
 		return false
 	}
 	return true
@@ -322,6 +330,12 @@ func (g *Game) payRevealLocked(playerID, castID uuid.UUID, plan []costPayment, i
 		return nil
 	}
 	reason := "reveal a " + rc.Subtype + " card from hand"
+	if rc.Subtype == "" && rc.CardType != "" {
+		reason = "reveal a " + rc.CardType + " card from hand"
+		if rc.Colorless {
+			reason = "reveal a colorless " + rc.CardType + " card from hand"
+		}
+	}
 	if c, ok := g.LookupCardForEffect(castID); ok {
 		reason = c.Name + " — " + reason
 	}

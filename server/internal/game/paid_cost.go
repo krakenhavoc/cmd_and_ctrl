@@ -439,6 +439,9 @@ type PaidTap struct {
 	// toughness), kept and rewritten at the same two moments. Zero falls
 	// back to Power. Read it through PaidTapStationAnyPowerForEffect.
 	StationAnyPower int `json:"stationAnyPower,omitempty"`
+	// ManaValue is the card's mana value when a Chosen reveal recorded it
+	// from the hand (Calamity of the Titans); zero for every other record.
+	ManaValue int `json:"manaValue,omitempty"`
 }
 
 // PaidOptionalCost reports whether the optional cost at `index` was
