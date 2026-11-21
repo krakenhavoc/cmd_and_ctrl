@@ -38,11 +38,11 @@ import (
 // is every protection ability a material has, with its quality.
 //
 // No simplification.
-const altarOfTheWretchedOracleID = "c551f007-9740-4a2a-8ef5-7be1a7afe14b"
+const AltarOfTheWretchedOracleID = "c551f007-9740-4a2a-8ef5-7be1a7afe14b"
 
 func init() {
 	Register(Spec{
-		OracleID:     altarOfTheWretchedOracleID,
+		OracleID:     AltarOfTheWretchedOracleID,
 		Name:         "Altar of the Wretched",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -55,31 +55,31 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    ManaCost("{2}{B}"),
 				Zones:   []game.ZoneKind{game.ZoneGraveyard},
-				Effect:  returnThisCardFromYourGraveyardToYourHand,
+				Effect:  ReturnThisCardFromYourGraveyardToYourHand,
 			},
 		},
 	})
 
 	Register(Spec{
-		OracleID:     altarOfTheWretchedOracleID + "#1",
+		OracleID:     AltarOfTheWretchedOracleID + "#1",
 		Name:         "Wretched Bonemass",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7A_CDA,
-				AppliesTo: selfOnly,
+				AppliesTo: SelfOnly,
 				Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-					n := craftMaterialsTotalPower(g, source)
+					n := CraftMaterialsTotalPower(g, source)
 					c.Power, c.Toughness = n, n
 				},
 			},
 			{
 				Layer:     game.Layer6Ability,
-				AppliesTo: selfOnly,
+				AppliesTo: SelfOnly,
 				Label:     "Has each listed keyword an exiled card used to craft it has",
 				Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-					for _, kw := range wretchedBonemassKeywords(craftMaterialsOf(g, source)) {
+					for _, kw := range WretchedBonemassKeywords(CraftMaterialsOf(g, source)) {
 						c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)
 					}
 				},
@@ -97,13 +97,13 @@ var wretchedBonemassSharedKeywords = []string{
 
 // wretchedBonemassKeywords is the keywords of the list the materials
 // have, each once, plus every protection ability any of them has.
-func wretchedBonemassKeywords(materials []game.Card) []string {
+func WretchedBonemassKeywords(materials []game.Card) []string {
 	have := map[string]bool{}
 	var protections []string
 	for _, m := range materials {
 		for _, a := range m.Effective().Abilities {
 			have[a] = true
-			if strings.HasPrefix(a, game.KeywordProtection+" from ") && !keywordSliceContains(protections, a) {
+			if strings.HasPrefix(a, game.KeywordProtection+" from ") && !KeywordSliceContains(protections, a) {
 				protections = append(protections, a)
 			}
 		}
@@ -134,7 +134,7 @@ var altarOfTheWretchedDrawMill = RegisterThenSteps("then-steps/altar-of-the-wret
 // altarOfTheWretchedEnters is the enters trigger: the optional
 // sacrifice, then draw X and mill X for that creature's power.
 func altarOfTheWretchedEnters(g *game.Game, item *game.StackItem) error {
-	if countControlled(g, item.Controller, func(c game.Card) bool { return c.IsCreature() && !IsToken(c) }) == 0 {
+	if CountControlled(g, item.Controller, func(c game.Card) bool { return c.IsCreature() && !IsToken(c) }) == 0 {
 		return nil
 	}
 	return MayChoice{
@@ -149,7 +149,7 @@ func altarOfTheWretchedEnters(g *game.Game, item *game.StackItem) error {
 // then draw and mill for its power. Keyed (#4291).
 var altarOfTheWretchedSacrifice = MayYes("confirm/altar-of-the-wretched-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
 	return ctx.SacrificeThen(ctx.Controller(),
-		sacrificeSpec("a nontoken creature", And(Creature(), Not(IsTokenPredicate()))),
+		SacrificeSpec("a nontoken creature", And(Creature(), Not(IsTokenPredicate()))),
 		"Altar of the Wretched — sacrifice a nontoken creature",
 		1, altarOfTheWretchedPayout)
 })

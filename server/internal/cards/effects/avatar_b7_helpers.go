@@ -23,12 +23,12 @@ func avB7EnchantedCreatureOnBattlefield(ctx *Context) (uuid.UUID, bool) {
 	if aura.AttachedObject != nil {
 		host := *aura.AttachedObject
 		c, ok := ctx.Game.LookupCardForEffect(host.ID)
-		if !ok || c.ObjectEpoch != host.Epoch || !onBattlefield(ctx.Game, host.ID) {
+		if !ok || c.ObjectEpoch != host.Epoch || !OnBattlefield(ctx.Game, host.ID) {
 			return uuid.Nil, false
 		}
 		return host.ID, true
 	}
-	if aura.AttachedTo.Kind != game.TargetCard || !onBattlefield(ctx.Game, aura.AttachedTo.ID) {
+	if aura.AttachedTo.Kind != game.TargetCard || !OnBattlefield(ctx.Game, aura.AttachedTo.ID) {
 		return uuid.Nil, false
 	}
 	return aura.AttachedTo.ID, true
@@ -37,7 +37,7 @@ func avB7EnchantedCreatureOnBattlefield(ctx *Context) (uuid.UUID, bool) {
 // avB7ShuffleEnchantedIntoLibrary is "Enchanted creature's owner
 // shuffles it into their library" (Watery Grasp): the creature goes to
 // its owner's library, and that owner shuffles (Living Library's tuck).
-func avB7ShuffleEnchantedIntoLibrary(g *game.Game, item *game.StackItem) error {
+func AvB7ShuffleEnchantedIntoLibrary(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	host, ok := avB7EnchantedCreatureOnBattlefield(ctx)
 	if !ok {
@@ -47,14 +47,14 @@ func avB7ShuffleEnchantedIntoLibrary(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{host}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: c.Owner})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{host}, game.TuckOptions{}, game.KeyedTail{Ref: ThenShuffle, Player: c.Owner})
 }
 
 // avB7ExileTargetLinked is "Exile target card from a graveyard" whose
 // card another ability of the same source reads back as "exiled with
 // this creature" (CR 406.6, 607.2a): the exile stamps the link (Boiling
 // Rock Rioter). A source that has left exiles with no link.
-func avB7ExileTargetLinked(g *game.Game, item *game.StackItem) error {
+func AvB7ExileTargetLinked(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {

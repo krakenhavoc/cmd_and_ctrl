@@ -1,0 +1,42 @@
+package cardshu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Illusion of Choice — Instant {U}:
+//
+//	"You choose how each player votes this turn.
+//	 Draw a card."
+//
+// A turn-scoped rule on ADR 0146's vote (CR 701.38, amendment of
+// 2026-10-13): a stored ModVoteChooser record naming the caster, swept
+// at cleanup (CR 514.2) and carried by the snapshot like every scoped
+// effect. While it stands, every ballot of every vote is put to the
+// caster instead of the voter — the same ballot, in the same turn order
+// and with the voter's extra votes (CR 701.38d), logged as the voter's
+// vote — and the prompt says whose vote it is. A vote that begins later
+// in the turn is covered, which is why this is a record and not a flag
+// on one vote.
+//
+// Two of them: the newer record wins (CR 613.7), so the last caster
+// chooses. A caster who leaves the game stops choosing and their
+// ballots go back to the voters.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "e3ad9287-ef13-4b66-9df8-b17e15bb4b0f",
+		Name:         "Illusion of Choice",
+		Completeness: effects.CompletenessFull,
+		// The draw waits for the choice's prompt (CR 608.2c, #4155).
+		OnResolve: effects.ResolveSteps(
+			effects.Instruction(func(ctx *effects.Context) error {
+				ctx.Game.ChooseHowEachPlayerVotesThisTurnForEffect(ctx.Source(), ctx.Controller(),
+					"Illusion of Choice — you choose how each player votes this turn")
+				return nil
+			}),
+			effects.DrawCards{N: 1},
+		),
+	})
+}

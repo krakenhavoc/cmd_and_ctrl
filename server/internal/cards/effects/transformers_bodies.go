@@ -10,6 +10,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // <this> at end of combat" (Ultra Magnus). The trigger records the
 // source's turn-over count when it is created (CR 701.28e), which
 // ConvertThis reads, so a Magnus that turned over in between ignores it.
-var transformersConvertThisBody = game.SimpleDelayedBody("transformers/convert-this", func(g *game.Game, item *game.StackItem) error {
+var TransformersConvertThisBody = game.SimpleDelayedBody("transformers/convert-this", func(g *game.Game, item *game.StackItem) error {
 	return ConvertThis{}.Apply(NewContext(g, item))
 })

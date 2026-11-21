@@ -13,17 +13,17 @@ import (
 // on it" (CR 122.1c, CR 614.1c): a self-entry replacement, so the
 // counter is there before any enters trigger and before the creature
 // can be damaged.
-func snc6EntersWithShield(name string, n int) game.ReplacementEffect {
+func Snc6EntersWithShield(name string, n int) game.ReplacementEffect {
 	rowLabel := name + ": enters with a shield counter"
 	if n != 1 {
 		rowLabel = name + ": enters with shield counters"
 	}
-	return b10EntersWithCounters(game.CounterShield, n, rowLabel)
+	return B10EntersWithCounters(game.CounterShield, n, rowLabel)
 }
 
 // snc6AttacksPlayerOrPlaneswalker is the defender of an attack event
 // being a player or a planeswalker, never a battle (CR 506.2).
-func snc6AttacksPlayerOrPlaneswalker(g *game.Game, ev game.Event) bool {
+func Snc6AttacksPlayerOrPlaneswalker(g *game.Game, ev game.Event) bool {
 	c, ok := g.LookupCardForEffect(ev.Target)
 	return !ok || !c.IsBattle()
 }
@@ -38,7 +38,7 @@ const (
 // create a 1/1 green and white Citizen creature token." One option per
 // (permanent, counter kind) pair, after a first "don't" option the
 // chooser can always take. The permanent is chosen, not targeted.
-func snc6WardenRemove(ctx *Context) error {
+func Snc6WardenRemove(ctx *Context) error {
 	options := []game.ChoiceOption{{Label: "Don't remove a counter"}}
 	carry := []uuid.UUID{uuid.Nil}
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
@@ -82,7 +82,7 @@ var snc6WardenRemoveAnswer = OptionPickThen("option-pick/sanctuary-warden-remove
 	}
 	id := r.Carry[r.Index]
 	c, ok := ctx.Game.LookupCardForEffect(id)
-	if !ok || !onBattlefield(ctx.Game, id) || c.Counters[kind] <= 0 {
+	if !ok || !OnBattlefield(ctx.Game, id) || c.Counters[kind] <= 0 {
 		return nil
 	}
 	if err := (AddCounter{Target: id, Kind: kind, N: -1}).Apply(ctx); err != nil {
@@ -96,6 +96,6 @@ var snc6WardenRemoveAnswer = OptionPickThen("option-pick/sanctuary-warden-remove
 
 // snc6Entry is the one-shield-counter self-entry replacement as the
 // Replacements slice a Spec wants.
-func snc6Entry(name string) []game.ReplacementEffect {
-	return []game.ReplacementEffect{snc6EntersWithShield(name, 1)}
+func Snc6Entry(name string) []game.ReplacementEffect {
+	return []game.ReplacementEffect{Snc6EntersWithShield(name, 1)}
 }

@@ -22,12 +22,12 @@ func init() {
 		OracleID:      "c2283655-f6b8-4399-ba1f-68a7107f9485",
 		Name:          "Diminisher Witch",
 		Completeness:  CompletenessFull,
-		OptionalCosts: []game.AdditionalCost{g2Bargain()},
+		OptionalCosts: []game.AdditionalCost{G2Bargain()},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				On(game.EventETB, AllOf(Self, diminisherWitchWasBargained),
+				On(game.EventETB, AllOf(Self, DiminisherWitchWasBargained),
 					"Diminisher Witch — create a Cursed Role token attached to target creature an opponent controls",
-					createRoleOnFirstTarget(RoleCursed)),
+					CreateRoleOnFirstTarget(RoleCursed)),
 				TargetCreature("target creature an opponent controls", OpponentControls())),
 		},
 	})
@@ -36,6 +36,6 @@ func init() {
 // diminisherWitchWasBargained is "if it was bargained" for a permanent:
 // the bargain cost's index is among those the resolution path carried
 // onto it.
-func diminisherWitchWasBargained(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func DiminisherWitchWasBargained(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return game.OptionalCostTimesPaid(*source, source.Provenance.OptionalCosts, g2BargainKey) > 0
 }

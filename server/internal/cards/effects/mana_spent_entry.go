@@ -129,7 +129,7 @@ func SelfExiledInsteadIfNoManaSpent(name string) game.ReplacementEffect {
 // that has left the battlefield since has lost that record, so it counts
 // as mana spent if it entered from the stack — weaker again, never
 // stronger.
-func noneCastWithManaInBatch(g *game.Game, batch uint64, controller uuid.UUID) bool {
+func NoneCastWithManaInBatch(g *game.Game, batch uint64, controller uuid.UUID) bool {
 	events := g.EventsThisTurn()
 	fromStack := map[uuid.UUID]bool{}
 	for _, ev := range events {
@@ -145,7 +145,7 @@ func noneCastWithManaInBatch(g *game.Game, batch uint64, controller uuid.UUID) b
 		if !ok || !c.IsCreature() || IsToken(c) {
 			continue
 		}
-		if !onBattlefield(g, ev.CardID) {
+		if !OnBattlefield(g, ev.CardID) {
 			if c.Owner == controller && fromStack[ev.CardID] {
 				return false
 			}

@@ -80,9 +80,9 @@ func darettiSacrificeToReturn(g *game.Game, item *game.StackItem) error {
 	}.Apply(ctx)
 }
 
-func darettiSacrificeThenReturn(ctx *Context) error {
+func DarettiSacrificeThenReturn(ctx *Context) error {
 	return ctx.SacrificeThen(ctx.Controller(),
-		sacrificeSpec("an artifact", Artifact()),
+		SacrificeSpec("an artifact", Artifact()),
 		"Daretti — sacrifice an artifact",
 		1, darettiReturn)
 }
@@ -109,5 +109,5 @@ var darettiReturn = RunThen("prompt-run/daretti-return", func(ctx *Context, r ga
 // darettiAnswer is the "yes": sacrifice an artifact, then return the chosen
 // card. Keyed (#4291).
 var darettiAnswer = MayYes("confirm/daretti-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
-	return darettiSacrificeThenReturn(ctx)
+	return DarettiSacrificeThenReturn(ctx)
 })

@@ -1,0 +1,37 @@
+package cardsgr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Greedy Freebooter — Creature — Human Pirate {B}, 1/1 (EDHREC rank
+// 3221):
+//
+//	"When this creature dies, scry 1 and create a Treasure token."
+//
+// A one-mana body that pays for itself in a sacrifice deck. The dies
+// trigger is the shared ThisDied condition (graveyard only — bounce
+// or exile don't count); scry and the token creation have no
+// ordering dependency on each other, so both run in the one Effect
+// closure.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "d4a9d63a-5a8a-4f51-9e49-43d6dc3234b1",
+		Name:         "Greedy Freebooter",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisDies("Greedy Freebooter — scry 1 and create a Treasure token",
+				effects.Do(
+					// The Treasure waits for the scry's answer (CR 608.2c, #4155).
+					effects.Instruction(func(ctx *effects.Context) error {
+						return effects.Scry{Player: ctx.Controller(), N: 1}.Apply(ctx)
+					}),
+					effects.CreateToken{Template: effects.TreasureToken(), N: 1},
+				)),
+		},
+	})
+}

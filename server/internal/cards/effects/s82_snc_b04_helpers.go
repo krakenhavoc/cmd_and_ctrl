@@ -33,7 +33,7 @@ func conniveThenReflexive(key, label string, body game.BodyRef) func(g *game.Gam
 				nonland++
 			}
 		}
-		if nonland > 0 && onBattlefield(g, creature) {
+		if nonland > 0 && OnBattlefield(g, creature) {
 			if err := g.AddCounterForEffect(creature, game.CounterPlusOne, nonland); err != nil {
 				return err
 			}
@@ -80,21 +80,21 @@ func conniveThenReflexive(key, label string, body game.BodyRef) func(g *game.Gam
 // spell to its owner's hand." Not a counter (Reprieve's reading): the spell
 // is put into its owner's hand and nothing about "countered" applies.
 var (
-	obscuraInterceptorBody = game.ReflexiveBody("snc-b04/obscura-interceptor-return-spell", simpleBody(obscuraInterceptorReturn),
-		constTargets(func() *game.TargetSpec {
+	obscuraInterceptorBody = game.ReflexiveBody("snc-b04/obscura-interceptor-return-spell", SimpleBody(obscuraInterceptorReturn),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetSpell("up to one target spell").WithCount(0, 1)
 		}))
 
 	// Psychic Pickpocket: "return up to one target nonland permanent to its
 	// owner's hand".
-	psychicPickpocketBody = game.ReflexiveBody("snc-b04/psychic-pickpocket-return-permanent", simpleBody(bounceEachLegalTarget),
-		constTargets(func() *game.TargetSpec {
+	psychicPickpocketBody = game.ReflexiveBody("snc-b04/psychic-pickpocket-return-permanent", SimpleBody(BounceEachLegalTarget),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetPermanent("up to one target nonland permanent", Nonland()).WithCount(0, 1)
 		}))
 
-	obscuraInterceptorConnive = conniveThenReflexive("obscura-interceptor",
+	ObscuraInterceptorConnive = conniveThenReflexive("obscura-interceptor",
 		"Obscura Interceptor — return up to one target spell to its owner's hand", obscuraInterceptorBody)
-	psychicPickpocketConnive = conniveThenReflexive("psychic-pickpocket",
+	PsychicPickpocketConnive = conniveThenReflexive("psychic-pickpocket",
 		"Psychic Pickpocket — return up to one target nonland permanent to its owner's hand", psychicPickpocketBody)
 )
 
@@ -112,7 +112,7 @@ func obscuraInterceptorReturn(g *game.Game, item *game.StackItem) error {
 // body: "it connives X, where X is the amount of damage it dealt to that
 // player". The creature is the one the damage event names (the equipped
 // creature, as it dealt the damage) and X is the event's amount.
-func theEquippedCreatureConnivesForDamage(g *game.Game, item *game.StackItem) error {
+func TheEquippedCreatureConnivesForDamage(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ev := ctx.Trigger().Event
 	creature, ok := g.LookupCardForEffect(ev.Source)
@@ -125,6 +125,6 @@ func theEquippedCreatureConnivesForDamage(g *game.Game, item *game.StackItem) er
 // conniveGrantedCreature is "it connives" for a trigger granted to a
 // creature: the creature is the ability's source and its controller draws
 // and discards (Security Bypass).
-func conniveGrantedCreature(g *game.Game, item *game.StackItem) error {
-	return sourceConnives(NewContext(g, item))
+func ConniveGrantedCreature(g *game.Game, item *game.StackItem) error {
+	return SourceConnives(NewContext(g, item))
 }

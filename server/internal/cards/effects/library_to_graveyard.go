@@ -21,13 +21,13 @@ import (
 
 // libraryToGraveyardKinds are the two event kinds a library-to-graveyard
 // arrival is announced by.
-var libraryToGraveyardKinds = []game.EventKind{game.EventMill, game.EventZoneMove}
+var LibraryToGraveyardKinds = []game.EventKind{game.EventMill, game.EventZoneMove}
 
 // cardPutIntoYourGraveyardFromYourLibrary reports whether ev is a card
 // the source's controller owns arriving in their graveyard from their
 // library, by any route, that `match` accepts. A graveyard is always
 // its owner's, so ownership reads the destination.
-func cardPutIntoYourGraveyardFromYourLibrary(ev game.Event, source *game.Card, g *game.Game, match func(game.Card) bool) bool {
+func CardPutIntoYourGraveyardFromYourLibrary(ev game.Event, source *game.Card, g *game.Game, match func(game.Card) bool) bool {
 	return libraryArrivals(match).When()(ev, source, game.Characteristic{}, g)
 }
 
@@ -37,16 +37,16 @@ func cardPutIntoYourGraveyardFromYourLibrary(ev game.Event, source *game.Card, g
 // recent zone change this turn is still that move — still the same
 // object in the graveyard (CR 400.7). It is graveyardArrivals
 // (graveyard_arrival.go) narrowed to the library and to the present.
-func cardsPutIntoGraveyardFromLibraryInBatch(g *game.Game, batch uint64, owner uuid.UUID, match func(game.Card) bool) []uuid.UUID {
+func CardsPutIntoGraveyardFromLibraryInBatch(g *game.Game, batch uint64, owner uuid.UUID, match func(game.Card) bool) []uuid.UUID {
 	return libraryArrivals(match).InBatch(g, batch, owner)
 }
 
 // libraryArrivals is "put into your graveyard from your library" for the
 // cards `match` accepts, counting only those still there.
-func libraryArrivals(match func(game.Card) bool) graveyardArrivals {
-	return graveyardArrivals{From: []game.ZoneKind{game.ZoneLibrary}, Match: match, Present: true}
+func libraryArrivals(match func(game.Card) bool) GraveyardArrivals {
+	return GraveyardArrivals{From: []game.ZoneKind{game.ZoneLibrary}, Match: match, Present: true}
 }
 
 // isCreatureCard is the creature filter the library batch is read with
 // (isLandCard, enters_only_if.go, is the land one).
-func isCreatureCard(c game.Card) bool { return c.IsCreature() }
+func IsCreatureCard(c game.Card) bool { return c.IsCreature() }

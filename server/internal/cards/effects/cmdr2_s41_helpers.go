@@ -15,7 +15,7 @@ import (
 // with lesser mana value than that spell, which is read as the trigger
 // resolves (an X spell counts its X, CR 202.3e) from last-known information
 // if the spell has left the stack (CR 608.2h).
-var cmdr2S41CascadeTheSpellBody = game.SimpleDelayedBody("cascade/the-spell-just-cast", cmdr2S41CascadeTheSpell)
+var Cmdr2S41CascadeTheSpellBody = game.SimpleDelayedBody("cascade/the-spell-just-cast", cmdr2S41CascadeTheSpell)
 
 func cmdr2S41CascadeTheSpell(g *game.Game, item *game.StackItem) error {
 	cast := NewContext(g, item).PayloadCards()
@@ -33,7 +33,7 @@ func cmdr2S41CascadeTheSpell(g *game.Game, item *game.StackItem) error {
 // values among the instant and sorcery cards in a player's graveyard (Eris,
 // Roar of the Storm). Mana value is read through the layered view, and an X
 // in a card's cost is 0 outside the stack (CR 202.3e).
-func cmdr2S41DifferentInstantSorceryManaValues(g *game.Game, controller uuid.UUID) int {
+func Cmdr2S41DifferentInstantSorceryManaValues(g *game.Game, controller uuid.UUID) int {
 	p := g.PlayerByIDForEffect(controller)
 	if p == nil {
 		return 0
@@ -52,27 +52,27 @@ func cmdr2S41DifferentInstantSorceryManaValues(g *game.Game, controller uuid.UUI
 // "Activate only if you've cast three or more spells this turn": the
 // per-turn cast tally, which counts every spell the player cast (copies are
 // not cast and are not counted, CR 707.10).
-func cmdr2S41CastThreeOrMoreSpellsThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
+func Cmdr2S41CastThreeOrMoreSpellsThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
 	return g.CastTallyFor(controller).Total >= 3
 }
 
 // cmdr2S41EightOrMoreInstantsSorceriesInGraveyard is Octavia's cost gate,
 // "if you have eight or more instant and/or sorcery cards in your graveyard",
 // read at CR 601.2f off the graveyard as it stands.
-func cmdr2S41EightOrMoreInstantsSorceriesInGraveyard(q game.CostQuery) bool {
-	return q.Game != nil && fandanielInstantsAndSorceries(q.Game, q.Controller) >= 8
+func Cmdr2S41EightOrMoreInstantsSorceriesInGraveyard(q game.CostQuery) bool {
+	return q.Game != nil && FandanielInstantsAndSorceries(q.Game, q.Controller) >= 8
 }
 
 // cmdr2S41BaseEightEight makes the chosen creature 8/8 at base until end
 // of turn (Octavia, Living Thesis). It sets base power and toughness (layer
 // 7b), so counters and anthems still apply on top of it.
-func cmdr2S41BaseEightEight(g *game.Game, item *game.StackItem) error {
+func Cmdr2S41BaseEightEight(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		return untilEndOfTurn(ctx, t.ID, nil,
+		return UntilEndOfTurn(ctx, t.ID, nil,
 			"Octavia, Living Thesis — base power and toughness 8/8 until end of turn",
 			game.SetBasePTMods(8, 8)...)
 	}
@@ -83,7 +83,7 @@ func cmdr2S41BaseEightEight(g *game.Game, item *game.StackItem) error {
 // solve condition, "there are fifteen or more cards in your graveyard",
 // checked at the beginning of the end step and again as the trigger
 // resolves (CR 603.4).
-func cmdr2S41FifteenOrMoreCardsInGraveyard(g *game.Game, controller, _ uuid.UUID) bool {
+func Cmdr2S41FifteenOrMoreCardsInGraveyard(g *game.Game, controller, _ uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(controller)
 	return p != nil && len(p.Graveyard.Cards) >= 15
 }
@@ -91,7 +91,7 @@ func cmdr2S41FifteenOrMoreCardsInGraveyard(g *game.Game, controller, _ uuid.UUID
 // cmdr2S41BirdsYouControl is Murmuration's "Birds you control" AppliesTo. The
 // type is read through the source's text (CR 612.2) and the creature's
 // effective subtypes, so a changeling counts.
-func cmdr2S41BirdsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func Cmdr2S41BirdsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.Controller == source.Controller &&
 		target.HasSubtype(source.TextSubtype("Bird"))
 }
@@ -100,7 +100,7 @@ func cmdr2S41BirdsYouControl(target *game.Card, _ *game.Game, source *game.Card)
 // blue Bird token named Storm Crow for each spell its controller has cast
 // this turn (the per-turn cast tally, which counts every spell cast, from any
 // zone, countered or not).
-func cmdr2S41StormCrowForEachSpell(g *game.Game, item *game.StackItem) error {
+func Cmdr2S41StormCrowForEachSpell(g *game.Game, item *game.StackItem) error {
 	n := g.CastTallyFor(item.Controller).Total
 	if n <= 0 {
 		return nil
@@ -110,7 +110,7 @@ func cmdr2S41StormCrowForEachSpell(g *game.Game, item *game.StackItem) error {
 
 // cmdr2S41FoundryCheapInstantOrSorcery is Forger's Foundry's spend filter:
 // the mana paid for an instant or sorcery spell with mana value 3 or less.
-func cmdr2S41FoundryCheapInstantOrSorcery(g *game.Game, _ uuid.UUID, paidFor game.Card) bool {
+func Cmdr2S41FoundryCheapInstantOrSorcery(g *game.Game, _ uuid.UUID, paidFor game.Card) bool {
 	if !paidFor.IsInstant() && !paidFor.IsSorcery() {
 		return false
 	}
@@ -138,7 +138,7 @@ var cmdr2S41FoundryExileAnswer = MayYes("cmdr2-s41/forgers-foundry-exile", func(
 
 // cmdr2S41FoundryExileTrigger is the spend trigger's effect: ask whether to
 // exile the spell the mana paid for (Payload[0]).
-func cmdr2S41FoundryExileTrigger(g *game.Game, item *game.StackItem) error {
+func Cmdr2S41FoundryExileTrigger(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	cards := ctx.PayloadCards()
 	if len(cards) == 0 {
@@ -161,7 +161,7 @@ func cmdr2S41FoundryExileTrigger(g *game.Game, item *game.StackItem) error {
 // the offer is the resolution_cast prompt (CR 608.2g). An {X} in a cast
 // spell's cost is 0 (CR 107.3b). A land among them cannot be cast and is left
 // where it is.
-func cmdr2S41FoundryCastExiled(g *game.Game, item *game.StackItem) error {
+func Cmdr2S41FoundryCastExiled(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
 	if !ok {
@@ -196,7 +196,7 @@ func cmdr2S41FoundryCastExiled(g *game.Game, item *game.StackItem) error {
 	if len(granted) == 0 {
 		return nil
 	}
-	offerResolutionCastOver(g, controller, ctx.Source(), "Forger's Foundry", game.MayCastKeywordFreeCast, declineLeaveInExile, granted...)
+	OfferResolutionCastOver(g, controller, ctx.Source(), "Forger's Foundry", game.MayCastKeywordFreeCast, DeclineLeaveInExile, granted...)
 	return nil
 }
 
@@ -204,7 +204,7 @@ func cmdr2S41FoundryCastExiled(g *game.Game, item *game.StackItem) error {
 // controller cast a noncreature spell that targets only Feather ("only" is
 // every target, in each instance of the word, being Feather: a spell that
 // names Feather twice qualifies, one that names anything else does not).
-func cmdr2S41FeatherTargetsOnlyThis(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Cmdr2S41FeatherTargetsOnlyThis(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -239,7 +239,7 @@ func cmdr2S41FeatherCandidates(g *game.Game, spell, caster, feather uuid.UUID) [
 // copy it for, up to the number of such creatures. The number is chosen first
 // and the creatures after, which is the same choice (CR 608.2d) with the
 // payment known.
-func cmdr2S41FeatherOffer(g *game.Game, item *game.StackItem) error {
+func Cmdr2S41FeatherOffer(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
@@ -308,7 +308,7 @@ func cmdr2S41FeatherCopies(g *game.Game, spell, caster, feather uuid.UUID, creat
 // named, not targeted, so one countered before the trigger resolves is still
 // copied from last-known information (CR 608.2h); the copy keeps the
 // original's targets (CR 707.10) and is not cast.
-func cmdr2S41CopyTheSpellJustCast(g *game.Game, item *game.StackItem) error {
+func Cmdr2S41CopyTheSpellJustCast(g *game.Game, item *game.StackItem) error {
 	return CopySpell{
 		StackID:       item.Trigger.Event.CardID,
 		Controller:    item.Controller,

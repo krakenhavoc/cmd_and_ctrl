@@ -25,10 +25,10 @@ import (
 // `toughness` false is "double its power" and leaves Y at zero. The
 // second result is false when the object is not a creature on the
 // battlefield any more, in which case nothing is doubled.
-func doubledBy(g *game.Game, id uuid.UUID, toughness bool) (int, int, bool) {
+func DoubledBy(g *game.Game, id uuid.UUID, toughness bool) (int, int, bool) {
 	g.RecomputeLayersIfStaleLocked()
 	c, ok := g.LookupCardForEffect(id)
-	if !ok || !onBattlefield(g, id) || !c.IsCreature() {
+	if !ok || !OnBattlefield(g, id) || !c.IsCreature() {
 		return 0, 0, false
 	}
 	dt := 0
@@ -42,7 +42,7 @@ func doubledBy(g *game.Game, id uuid.UUID, toughness bool) (int, int, bool) {
 // turn" (Unleash Fury, Bulk Up's wording; The Skullspore Nexus's
 // activated ability).
 func DoublePowerUntilEOT(ctx *Context, id uuid.UUID, label string) error {
-	dp, _, ok := doubledBy(ctx.Game, id, false)
+	dp, _, ok := DoubledBy(ctx.Game, id, false)
 	if !ok {
 		return nil
 	}
@@ -61,13 +61,13 @@ func DoublePowerAndToughnessOfEachUntilEOT(ctx *Context, ids []uuid.UUID, label 
 	}
 	bumps := make([]bump, 0, len(ids))
 	for _, id := range ids {
-		dp, dt, ok := doubledBy(ctx.Game, id, true)
+		dp, dt, ok := DoubledBy(ctx.Game, id, true)
 		if ok {
 			bumps = append(bumps, bump{id: id, dp: dp, dt: dt})
 		}
 	}
 	for _, b := range bumps {
-		if err := (BoostUntilEOT{Target: b.id, Power: b.dp, Toughness: b.dt, Label: label}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (BoostUntilEOT{Target: b.id, Power: b.dp, Toughness: b.dt, Label: label}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -84,12 +84,12 @@ func DoublePowerOfEachUntilEOT(ctx *Context, ids []uuid.UUID, label string) erro
 	}
 	bumps := make([]bump, 0, len(ids))
 	for _, id := range ids {
-		if dp, _, ok := doubledBy(ctx.Game, id, false); ok {
+		if dp, _, ok := DoubledBy(ctx.Game, id, false); ok {
 			bumps = append(bumps, bump{id: id, dp: dp})
 		}
 	}
 	for _, b := range bumps {
-		if err := (BoostUntilEOT{Target: b.id, Power: b.dp, Label: label}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (BoostUntilEOT{Target: b.id, Power: b.dp, Label: label}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

@@ -1,0 +1,45 @@
+package cardsa
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Angelic Gift — Enchantment — Aura for {1}{W} (EDHREC rank 3628):
+//
+//	"Enchant creature
+//	 When this Aura enters, draw a card.
+//	 Enchanted creature has flying."
+//
+// The cantrip Aura, and the reason it is worth a slot when Rancor is
+// strictly bigger: the card replaces itself the moment it resolves,
+// so the two-for-one that makes Auras bad never happens even if the
+// creature dies in response to the next removal spell.
+//
+// Flying is the evasion that makes the rest of a Voltron board work —
+// it is what gets a Loxodon Warhammer's trample damage to a player at
+// all — and it is honoured by the block-legality check.
+//
+// THE ETB IS A TRIGGER, NOT AN OnETB HOOK, because that is what the
+// card prints: "when this Aura enters" uses the stack, can be
+// responded to, and resolves separately from the Aura itself. It
+// fires on the Aura's own entry (b06SelfETB), which is the same
+// self-ETB predicate every other catalog enters-trigger uses.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "e5e04968-d9b7-4bd5-b826-be9502360cd3",
+		Name:         "Angelic Gift",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
+		Static: []game.StaticAbility{
+			effects.GrantToAttached("flying"),
+		},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Angelic Gift — draw a card", effects.Do(effects.DrawCards{N: 1})),
+		},
+	})
+}

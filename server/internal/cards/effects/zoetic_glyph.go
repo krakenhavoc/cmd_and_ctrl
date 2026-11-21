@@ -33,12 +33,12 @@ func init() {
 				Layer:     game.Layer4Type,
 				AppliesTo: AttachedToSource,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-					if !zoeticHas(c.Types, "Creature") {
+					if !ZoeticHas(c.Types, "Creature") {
 						c.Types = append(c.Types, "Creature")
 					}
 					// "Golem" is a word of the Aura's text (CR 612.2, #3984).
 					golem := source.TextSubtype("Golem")
-					if !zoeticHas(c.Subtypes, golem) {
+					if !ZoeticHas(c.Subtypes, golem) {
 						c.Subtypes = append(c.Subtypes, golem)
 					}
 				},
@@ -47,13 +47,13 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
+				return CardDied(ev, source)
 			}, "Zoetic Glyph — discover 3", DiscoverN(3)),
 		},
 	})
 }
 
-func zoeticHas(list []string, want string) bool {
+func ZoeticHas(list []string, want string) bool {
 	for _, s := range list {
 		if strings.EqualFold(s, want) {
 			return true

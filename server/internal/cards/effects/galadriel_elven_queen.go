@@ -86,13 +86,13 @@ var galadrielElvenQueenVoted = VoteResultThen("vote/galadriel-elven-queen", func
 		return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 	}
 	// Keyed (#4253 slice 10b): the counter is the tempt's tail.
-	return TheRingTemptsYou{ThenTail: ctx.ItemTail(galadrielElvenQueenBearerCounter)}.Apply(ctx)
+	return TheRingTemptsYou{ThenTail: ctx.ItemTail(GaladrielElvenQueenBearerCounter)}.Apply(ctx)
 })
 
 // galadrielElvenQueenBearerCounter is "put a +1/+1 counter on your
 // Ring-bearer", told the creature chosen. An on-disk key: never renamed,
 // never reused.
-var galadrielElvenQueenBearerCounter = RingTail("then/galadriel-elven-queen-bearer-counter", func(ctx *Context, ringBearer uuid.UUID) error {
+var GaladrielElvenQueenBearerCounter = RingTail("then/galadriel-elven-queen-bearer-counter", func(ctx *Context, ringBearer uuid.UUID) error {
 	if ringBearer == uuid.Nil {
 		return nil
 	}

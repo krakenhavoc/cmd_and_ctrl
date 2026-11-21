@@ -15,18 +15,18 @@ import (
 // copies the bullet's own target (a pick that has left does nothing, CR
 // 608.2b). The haste has no duration printed, so it is pinned to the token
 // as that object; the sacrifice is a delayed trigger over the token.
-func s82SncB15CopyWithHasteSacrifice(label string) func(*game.StackItem, *Context, int) error {
+func S82SncB15CopyWithHasteSacrifice(label string) func(*game.StackItem, *Context, int) error {
 	return func(item *game.StackItem, ctx *Context, occ int) error {
 		t, ok := ModeTarget(ctx, occ)
 		if !ok || t.Kind != game.TargetCard {
 			return nil
 		}
 		g := ctx.Game
-		cursor := b25LastEventSeq(g)
+		cursor := B25LastEventSeq(g)
 		if err := (CreateTokenCopy{Controller: item.Controller, Copy: t.ID, N: 1}).Apply(ctx); err != nil {
 			return err
 		}
-		tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
+		tokens := B27TokensCreatedByAfter(g, item.Controller, cursor)
 		if len(tokens) == 0 {
 			return nil
 		}
@@ -43,12 +43,12 @@ func s82SncB15CopyWithHasteSacrifice(label string) func(*game.StackItem, *Contex
 		return ScheduleDelayedTrigger{
 			Label: label + " — sacrifice the token",
 			Cards: tokens,
-			Body:  sacrificeListedCardsBody,
+			Body:  SacrificeListedCardsBody,
 		}.Apply(ctx)
 	}
 }
 
 // s82SncB15ControlledBy is the layered "creatures target player controls".
-func s82SncB15ControlledBy(player uuid.UUID) CardPredicate {
+func S82SncB15ControlledBy(player uuid.UUID) CardPredicate {
 	return And(Creature(), ControlledBy(player))
 }

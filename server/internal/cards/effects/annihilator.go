@@ -122,7 +122,7 @@ func WhenThisIsPutIntoAGraveyardFromAnywhere(label string, effect Effect) game.T
 // into their library, which is then shuffled. An empty graveyard still
 // shuffles the library.
 func ShuffleYourGraveyardIntoYourLibrary(g *game.Game, item *game.StackItem) error {
-	return finaleShuffleGraveyardIntoLibrary(NewContext(g, item), item.Controller)
+	return FinaleShuffleGraveyardIntoLibrary(NewContext(g, item), item.Controller)
 }
 
 // WhenYouCastThisSpell is "When you cast this spell, …" (CR 601.2i,
@@ -150,7 +150,7 @@ func WhenYouCastThisSpell(label string, effect Effect) game.TriggeredAbility {
 // the library is counted as the ability resolves, and exiling the top
 // of a library is not milling (CR 701.17a), so nothing that watches a
 // mill sees it.
-func targetOpponentExilesTopHalfOfTheirLibrary(g *game.Game, item *game.StackItem) error {
+func TargetOpponentExilesTopHalfOfTheirLibrary(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var opp uuid.UUID
 	for _, ref := range ctx.LegalTargets() {
@@ -175,7 +175,7 @@ func targetOpponentExilesTopHalfOfTheirLibrary(g *game.Game, item *game.StackIte
 // (Flayer of Loyalties, Hideous Taskmaster): control, the untap and the
 // keyword grant, in that order, each for this turn. `name` labels the
 // three effects.
-func threatenAndGrant(ctx *Context, target uuid.UUID, name string, keywords ...string) error {
+func ThreatenAndGrant(ctx *Context, target uuid.UUID, name string, keywords ...string) error {
 	if err := (GainControl{
 		Target:   target,
 		Duration: DurationUntilEndOfTurn(ctx),

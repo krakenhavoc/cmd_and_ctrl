@@ -1,0 +1,97 @@
+package cardss
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Scrap Trawler — Artifact Creature — Construct {3}, 2/2 (#300, #1223):
+//
+//	"Whenever this creature dies or another artifact you control is
+//	 put into a graveyard from the battlefield, return to your hand
+//	 target artifact card in your graveyard with lesser mana value."
+//
+// The card the trigger-data seam was filed on, and the shortest
+// statement of it: "LESSER" is lesser than the mana value of the
+// artifact that just died, and `TriggeredAbility.Targets` is static
+// catalog data declared before the game started. There was nowhere
+// for the number to come from.
+//
+// `TargetsFrom` is where it comes from now: the clause is built when
+// the trigger is put on the stack (CR 603.3d), from the same
+// CR 603.10 last-known-information snapshot the rules say an
+// LTB-triggered ability is judged on. A 4-mana artifact dying offers
+// the 3-drops and the 2-drops; a Scrap Trawler chain resolves in
+// descending mana value exactly as it does in paper, because each
+// link's clause is cut to its own link.
+//
+// CR 603.3d does the rest: when nothing in the graveyard is cheaper,
+// the ability is not put on the stack at all and nobody is prompted.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "164f3f85-21fc-40b7-9871-4f303ba98428",
+		Name:         "Scrap Trawler",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches:   []game.EventKind{game.EventLTB},
+			AppliesTo: ScrapTrawlerArtifactHitTheYard,
+			// TargetsFrom, not Targets: the clause is a fact about
+			// what just died. See trigger_event.go.
+			TargetsFrom: scrapTrawlerCheaperArtifactClause,
+			Key:         "Scrap Trawler — return a cheaper artifact card to your hand",
+			Effect:      effects.B15ReturnListedCardsFromGraveyardToHand,
+		}},
+	})
+}
+
+// scrapTrawlerArtifactHitTheYard is the trigger condition: the source
+// itself died, or another artifact its controller controlled was put
+// into a graveyard from the battlefield.
+//
+// "Put into a graveyard from the battlefield" rather than "dies" for
+// the non-creature half — they are the same event here (CR 700.4
+// defines "dies" for creatures only) and EventLTB with a graveyard
+// destination is how the engine says both.
+//
+// The controller test is the controller the artifact had as it left
+// (leftUnderControlOf, #1682): a card in a graveyard has no controller
+// (CR 108.4), so the exit stamps the one the permanent had on the
+// event, and every dies-trigger in the catalog reads it there.
+func ScrapTrawlerArtifactHitTheYard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
+		return false
+	}
+	if ev.CardID == source.InstanceID {
+		return true
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && effects.LeftAsType(ev, c, "artifact") && effects.LeftUnderControlOf(ev, c) == source.Controller
+}
+
+// scrapTrawlerCheaperArtifactClause builds the target clause from the
+// triggering event: "target artifact card in your graveyard with
+// lesser mana value".
+//
+// The ceiling is the mana value of the object that LEFT, read off the
+// trigger's CR 603.10 snapshot rather than off the card now sitting
+// in the graveyard. For most boards the two agree; they part company
+// for exactly the objects the rule was written about — a copied
+// artifact, one that was animated and then destroyed, a face-down
+// permanent — and the snapshot is the one the rules ask for.
+//
+// A zero ceiling returns a clause nothing can satisfy rather than
+// nil: "lesser than 0" has no answers, and CR 603.3d removes the
+// ability. Returning nil would instead say "this trigger targets
+// nothing", which would put an ability on the stack that returns
+// nothing to nobody.
+func scrapTrawlerCheaperArtifactClause(tc game.TriggerContext, _ *game.Card, _ *game.Game) *game.TargetSpec {
+	ceiling := 0
+	if tc.Object != nil {
+		ceiling = tc.Object.ManaValue
+	}
+	return effects.TargetCardInGraveyard(
+		"target artifact card in your graveyard with lesser mana value",
+		effects.YouOwn(), effects.Artifact(), effects.ManaValueLE(ceiling-1),
+	)
+}

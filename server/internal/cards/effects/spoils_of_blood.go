@@ -19,7 +19,7 @@ func init() {
 		Name:         "Spoils of Blood",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return CreateToken{Template: c14BlackHorror(b11CreaturesDiedThisTurn(ctx.Game)), N: 1}.Apply(ctx)
+			return CreateToken{Template: C14BlackHorror(B11CreaturesDiedThisTurn(ctx.Game)), N: 1}.Apply(ctx)
 		},
 	})
 }
@@ -27,7 +27,7 @@ func init() {
 // c14BlackHorror is Commander 2014's "X/X black Horror creature token"
 // (Spoils of Blood, Flesh Carver): the 1/1 Horror template sized to x, with
 // its printed size known so a 0/0 is a 0/0 and not an unknown one.
-func c14BlackHorror(x int) game.Card {
+func C14BlackHorror(x int) game.Card {
 	horror := TokenCard("1/1 black Horror")
 	horror.Power, horror.Toughness, horror.PrintedPTKnown = x, x, true
 	return horror

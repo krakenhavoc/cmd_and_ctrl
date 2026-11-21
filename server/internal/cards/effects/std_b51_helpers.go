@@ -58,7 +58,7 @@ func (r CantBeBlockedThisTurnByPowerAtLeast) Apply(ctx *Context) error {
 // cards in `player`'s graveyard: "four or more permanent types among cards
 // in your graveyard" (Matzalantli, the Great Door). A card with two of them
 // counts for both. Printed characteristics, as every graveyard read is.
-func permanentTypesInGraveyard(g *game.Game, player uuid.UUID) int {
+func PermanentTypesInGraveyard(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0

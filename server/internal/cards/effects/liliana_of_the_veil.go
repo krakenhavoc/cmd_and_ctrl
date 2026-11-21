@@ -81,7 +81,7 @@ func init() {
 							continue
 						}
 						g.PlayerSacrificesForEffect(item.SourceCardID, t.ID,
-							sacrificeSpec("a creature", Creature()),
+							SacrificeSpec("a creature", Creature()),
 							"Liliana of the Veil — sacrifice a creature")
 					}
 					return nil
@@ -105,7 +105,7 @@ func init() {
 							Owner:         t.ID,
 							SplitQuestion: "Liliana of the Veil — separate these permanents into two piles",
 							PickQuestion:  "Liliana of the Veil — choose a pile; you sacrifice every permanent in it",
-							Cards:         permanentsControlledByPlayer(g, t.ID),
+							Cards:         PermanentsControlledByPlayer(g, t.ID),
 							// Keyed (#4253 slice 10b): both prompts carry the tail.
 							ThenTail: ctx.Tail(lilianaSacrificePile),
 						}.Apply(ctx)
@@ -126,7 +126,7 @@ var lilianaSacrificePile = PileTail("then/liliana-of-the-veil-sacrifice-pile", f
 
 // permanentsControlledByPlayer is every permanent on the battlefield
 // the player controls, in battlefield order.
-func permanentsControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+func PermanentsControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 	if playerID == uuid.Nil {
 		return nil
 	}

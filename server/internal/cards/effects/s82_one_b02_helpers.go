@@ -10,7 +10,7 @@ import (
 // Sphere lands (S82, #5479).
 
 // s82OneOilCounter is the oil counter's on-disk kind.
-const s82OneOilCounter = "oil"
+const S82OneOilCounter = "oil"
 
 // s82OneSkullbomb is the Skullbomb cycle: a {1} artifact with "{1},
 // Sacrifice this artifact: Draw a card." and a second, sorcery-speed
@@ -19,7 +19,7 @@ const s82OneOilCounter = "oil"
 // added here. `apply` runs the effect on the ability's chosen target and
 // the card is drawn after it, so an ability whose only target became
 // illegal does nothing at all (CR 608.2b) and draws nothing.
-func s82OneSkullbomb(oracleID, name, label string, manaCost string, targets *game.TargetSpec,
+func S82OneSkullbomb(oracleID, name, label string, manaCost string, targets *game.TargetSpec,
 	purpose game.Purpose, apply func(ctx *Context, target uuid.UUID) error) Spec {
 	return Spec{
 		OracleID:     oracleID,
@@ -42,7 +42,7 @@ func s82OneSkullbomb(oracleID, name, label string, manaCost string, targets *gam
 				SorcerySpeed: true,
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
+					id, ok := B16FirstLegalTargetCard(ctx)
 					if !ok {
 						return nil
 					}
@@ -59,7 +59,7 @@ func s82OneSkullbomb(oracleID, name, label string, manaCost string, targets *gam
 // s82OneSphereDrawLand is the five tapped Sphere lands: "This land
 // enters tapped. {T}: Add <colour>. {1}<colour>, {T}, Sacrifice this
 // land: Draw a card."
-func s82OneSphereDrawLand(oracleID, name, colour string) Spec {
+func S82OneSphereDrawLand(oracleID, name, colour string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -83,17 +83,17 @@ func s82OneSphereDrawLand(oracleID, name, colour string) Spec {
 
 // s82OneYourArtifactOrCreature is "target artifact or creature you
 // control".
-func s82OneYourArtifactOrCreature() *game.TargetSpec {
+func S82OneYourArtifactOrCreature() *game.TargetSpec {
 	return TargetPermanent("target artifact or creature you control", And(Or(Artifact(), Creature()), YouControl()))
 }
 
 // s82OnePutOilOnTarget is "put an oil counter on target artifact or
 // creature you control" as an activated ability's whole effect.
-func s82OnePutOilOnTarget(g *game.Game, item *game.StackItem) error {
+func S82OnePutOilOnTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
-	return AddCounter{Target: id, Kind: s82OneOilCounter, N: 1}.Apply(ctx)
+	return AddCounter{Target: id, Kind: S82OneOilCounter, N: 1}.Apply(ctx)
 }

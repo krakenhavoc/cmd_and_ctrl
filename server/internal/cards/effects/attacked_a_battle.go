@@ -23,7 +23,7 @@ import (
 // ThisAttackedABattle — "this creature attacks a battle": the source was
 // declared as an attacker and what it was declared at is a battle.
 func ThisAttackedABattle(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return attackDeclared(ev, source) && g.ClassifyAttackTargetForEffect(ev.Target) == game.AttackTargetBattle
+	return AttackDeclared(ev, source) && g.ClassifyAttackTargetForEffect(ev.Target) == game.AttackTargetBattle
 }
 
 // WheneverThisAttacksABattle — "Whenever this creature attacks a battle".
@@ -32,7 +32,7 @@ func WheneverThisAttacksABattle(label string, effect Effect) game.TriggeredAbili
 }
 
 // isAttackingABattle reports whether `c` is attacking a battle now.
-func isAttackingABattle(g *game.Game, c game.Card) bool {
+func IsAttackingABattle(g *game.Game, c game.Card) bool {
 	return g.ClassifyAttackTargetForEffect(c.AttackingTarget) == game.AttackTargetBattle
 }
 
@@ -43,7 +43,7 @@ func isAttackingABattle(g *game.Game, c game.Card) bool {
 // advance clears it.
 func SelfKeywordWhileItAttackedABattleThisTurn(keyword string) game.StaticAbility {
 	ab := KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return selfCreature(target, g, source) && g.AttackedBattleThisTurn(source.InstanceID)
+		return SelfCreature(target, g, source) && g.AttackedBattleThisTurn(source.InstanceID)
 	}, keyword)
 	ab.Label = "Has " + keyword + " as long as it attacked a battle this turn."
 	ab.DependsOnEvents = []game.EventKind{game.EventAttack}

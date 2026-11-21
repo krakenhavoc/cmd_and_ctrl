@@ -31,7 +31,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Setzer, Wandering Gambler — create The Blackjack", Do(CreateToken{Template: BlackjackToken(), N: 1})),
-			On(game.EventDealDamage, setzerVehicleDealtCombatDamageToAPlayer,
+			On(game.EventDealDamage, SetzerVehicleDealtCombatDamageToAPlayer,
 				"Setzer, Wandering Gambler — flip a coin",
 				Do(FlipACoin{Question: "Setzer, Wandering Gambler — call the coin flip"})),
 			WheneverYouWinACoinFlip("Setzer, Wandering Gambler — create two tapped Treasure tokens", setzerTappedTreasures),
@@ -43,8 +43,8 @@ func init() {
 // control deals combat damage to a player": the damage source is a
 // creature the trigger's controller controls (combatDamageToPlayerBy) and
 // a Vehicle as it deals the damage.
-func setzerVehicleDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func SetzerVehicleDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
@@ -56,6 +56,6 @@ func setzerTappedTreasures(g *game.Game, item *game.StackItem) error {
 	if item.Controller == uuid.Nil {
 		return nil
 	}
-	_, err := g.CreateTokensForEffect(item.Controller, ruleDefinedToken(TreasureToken()), 2, game.TokenEntryOptions{Tapped: true})
+	_, err := g.CreateTokensForEffect(item.Controller, RuleDefinedToken(TreasureToken()), 2, game.TokenEntryOptions{Tapped: true})
 	return err
 }

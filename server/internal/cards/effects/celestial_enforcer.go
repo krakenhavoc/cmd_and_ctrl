@@ -21,13 +21,13 @@ func init() {
 			Label:     "{1}{W}, {T}: Tap target creature. Activate only if you control a creature with flying.",
 			Cost:      Plus(ManaCost("{1}{W}"), TapCost()),
 			Targets:   TargetCreature("target creature"),
-			Condition: ControlsAtLeast(1, bnsB27CreatureWithFlying),
-			Effect:    tapChosenPermanent,
+			Condition: ControlsAtLeast(1, BnsB27CreatureWithFlying),
+			Effect:    TapChosenPermanent,
 		}},
 	})
 }
 
 // bnsB27CreatureWithFlying matches a creature that currently has flying.
-func bnsB27CreatureWithFlying(c game.Card) bool {
+func BnsB27CreatureWithFlying(c game.Card) bool {
 	return c.IsCreature() && game.HasKeyword(&c, "flying")
 }

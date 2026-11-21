@@ -46,7 +46,7 @@ func init() {
 }
 
 // abstractPerformanceStillExiled is the members of ids still in exile.
-func abstractPerformanceStillExiled(g *game.Game, ids []uuid.UUID) []uuid.UUID {
+func AbstractPerformanceStillExiled(g *game.Game, ids []uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, id := range ids {
 		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneExile {
@@ -71,7 +71,7 @@ var abstractPerformanceFaceUp = CardTail("abstract-performance/after-face-up", f
 		Among:    Opponents,
 		Question: "Abstract Performance — choose an opponent to choose one of the piles",
 		ThenKey:  abstractPerformanceChooser,
-		Carry:    packIDLists(abstractPerformanceStillExiled(g, o.Tail.Carry), abstractPerformanceStillExiled(g, o.IDs)),
+		Carry:    PackIDLists(AbstractPerformanceStillExiled(g, o.Tail.Carry), AbstractPerformanceStillExiled(g, o.IDs)),
 	}.Apply(ctx)
 })
 
@@ -81,7 +81,7 @@ var abstractPerformanceChooser = ChoosePlayerThen("option-pick/abstract-performa
 	if opp == uuid.Nil {
 		return nil
 	}
-	faceDown, faceUp := unpackIDPair(carry)
+	faceDown, faceUp := UnpackIDPair(carry)
 	return PickOption{
 		Player:   opp,
 		From:     ctx.Controller(),
@@ -103,14 +103,14 @@ var abstractPerformancePile = OptionPickThen("option-pick/abstract-performance-p
 		return nil
 	}
 	g := ctx.Game
-	faceDown, faceUp := unpackIDPair(r.Carry)
+	faceDown, faceUp := UnpackIDPair(r.Carry)
 	binned, kept := faceDown, faceUp
 	if r.Index == 1 {
 		binned, kept = faceUp, faceDown
 	}
 	next := ctx.ItemTail(abstractPerformanceKept)
 	next.Carry = kept
-	binned = abstractPerformanceStillExiled(g, binned)
+	binned = AbstractPerformanceStillExiled(g, binned)
 	if len(binned) == 0 {
 		return next.Run(g, nil)
 	}
@@ -121,7 +121,7 @@ var abstractPerformancePile = OptionPickThen("option-pick/abstract-performance-p
 // then puts the rest into the hand. An on-disk key.
 var abstractPerformanceKept = CardTail("abstract-performance/offer-cast", func(ctx *Context, o game.TailOutcome) error {
 	g, controller, source := ctx.Game, ctx.Controller(), ctx.Source()
-	kept := abstractPerformanceStillExiled(g, o.Tail.Carry)
+	kept := AbstractPerformanceStillExiled(g, o.Tail.Carry)
 	if len(kept) == 0 {
 		return nil
 	}
@@ -151,12 +151,12 @@ var abstractPerformanceKept = CardTail("abstract-performance/offer-cast", func(c
 	}) {
 		return nil
 	}
-	return gloriousPurposePutRest(g, controller, source, kept)
+	return GloriousPurposePutRest(g, controller, source, kept)
 })
 
 // abstractPerformanceRestToHand is "Put the rest into your hand", once the
 // cast is answered: Carry is the pile. An on-disk key.
 var abstractPerformanceRestToHand = game.RegisterChooseCardsThen("resolution-cast/abstract-performance-rest-to-hand",
 	func(g *game.Game, r game.CardsChosen) error {
-		return gloriousPurposePutRest(g, r.Chooser, r.Source, r.Carry)
+		return GloriousPurposePutRest(g, r.Chooser, r.Source, r.Carry)
 	})

@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // roomDamageToOpponentCreature is "When you unlock this door, this Room
 // deals <amount> damage to target creature an opponent controls." The
 // amount is read at resolution (Roaring Furnace counts the hand then).
-func roomDamageToOpponentCreature(door game.DoorSide, label string, amount func(g *game.Game, item *game.StackItem) int) game.TriggeredAbility {
+func RoomDamageToOpponentCreature(door game.DoorSide, label string, amount func(g *game.Game, item *game.StackItem) int) game.TriggeredAbility {
 	return Targeting(
 		WhenYouUnlockThisDoor(door, label, func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)

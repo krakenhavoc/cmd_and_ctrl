@@ -59,7 +59,7 @@ func soulbondThisEntered(ev game.Event, source *game.Card, _ game.Characteristic
 // creature entered under this creature's controller's control, this
 // creature has soulbond, and the two may be paired.
 func soulbondAnotherEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	if !ok || !c.IsCreature() || !game.HasKeyword(source, game.KeywordSoulbond) {
 		return false
 	}
@@ -179,6 +179,6 @@ func PairedCreaturesGet(label string, power, toughness int) game.StaticAbility {
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: pairedWithSource,
-		Apply:     pumpBy(power, toughness),
+		Apply:     PumpBy(power, toughness),
 	}
 }

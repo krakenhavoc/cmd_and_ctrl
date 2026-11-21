@@ -45,7 +45,7 @@ func WheneverYouPutOneOrMoreCountersOnThis(label string, effect Effect) game.Tri
 		if source == nil || ev.Target != source.InstanceID {
 			return false
 		}
-		_, ok := b12CountersPlacedByYou(ev, source, g)
+		_, ok := B12CountersPlacedByYou(ev, source, g)
 		return ok
 	}, label, effect))
 }

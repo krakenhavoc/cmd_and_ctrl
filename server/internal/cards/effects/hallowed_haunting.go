@@ -31,10 +31,10 @@ func init() {
 		Name:         "Hallowed Haunting",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			b16GrantKeywords(b29CreaturesYouControlWithSevenEnchantments, "flying", "vigilance"),
+			B16GrantKeywords(b29CreaturesYouControlWithSevenEnchantments, "flying", "vigilance"),
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, enchantmentSpellCastByYou, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: spiritClericToken(), N: 1})),
+			On(game.EventCast, EnchantmentSpellCastByYou, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: SpiritClericToken(), N: 1})),
 		},
 	})
 }
@@ -42,10 +42,10 @@ func init() {
 // spiritClericToken is the white Spirit Cleric creature token with "This
 // token's power and toughness are each equal to the number of Spirits you
 // control."
-func spiritClericToken() game.Card { return tokenFromCatalog(printedSpiritClericToken) }
+func SpiritClericToken() game.Card { return TokenFromCatalog(printedSpiritClericToken) }
 
-func printedSpiritClericToken() tokenTemplate {
-	return tokenTemplate{
+func printedSpiritClericToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "spirit-cleric",
 		Card: game.Card{
 			Name:              "Spirit Cleric",

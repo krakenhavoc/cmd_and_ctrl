@@ -62,10 +62,10 @@ func (u UntapUpToLands) Apply(ctx *Context) error {
 // untapLandsChosen untaps each land picked that is still on the battlefield:
 // UntapUpToLands' keyed answer (#4253). The asking item rides the prompt as
 // data.
-var untapLandsChosen = askedPick("choose-cards/untap-up-to-lands", func(ctx *Context, r game.CardsChosen) error {
-	next := ctx.asGroupMember()
+var untapLandsChosen = AskedPick("choose-cards/untap-up-to-lands", func(ctx *Context, r game.CardsChosen) error {
+	next := ctx.AsGroupMember()
 	for _, id := range r.Picked {
-		if !onBattlefield(ctx.Game, id) {
+		if !OnBattlefield(ctx.Game, id) {
 			continue
 		}
 		if err := (UntapTarget{Target: id}).Apply(next); err != nil {

@@ -11,7 +11,7 @@ import (
 
 // hobB9MillFour is "mill four cards, then <the tail>": the tail runs once the
 // four have landed, with the cards that really reached the graveyard.
-func hobB9MillFour(ctx *Context, tail game.TailRef) error {
+func HobB9MillFour(ctx *Context, tail game.TailRef) error {
 	return MillToZone{Player: ctx.Controller(), N: 4, ThenTail: ctx.ItemTail(tail)}.Apply(ctx)
 }
 
@@ -19,7 +19,7 @@ func hobB9MillFour(ctx *Context, tail game.TailRef) error {
 // your hand", asked of the resolving effect's controller (Speak Secrets, Silvan
 // Rally). `milled` is MillToZone.ThenTail's list; a card that matches but has
 // since left the graveyard is not offered. Nothing to offer asks nothing.
-func hobB9TakeFromMilled(ctx *Context, milled []uuid.UUID, match CardPredicate, question string, min, max int) error {
+func HobB9TakeFromMilled(ctx *Context, milled []uuid.UUID, match CardPredicate, question string, min, max int) error {
 	player := ctx.Controller()
 	var candidates []uuid.UUID
 	for _, id := range milled {
@@ -51,6 +51,6 @@ func hobB9TakeFromMilled(ctx *Context, milled []uuid.UUID, match CardPredicate, 
 
 // hobB9MilledToHand puts the picked cards from the graveyard into the hand,
 // keyed (#4253): the asking item rides the prompt as data.
-var hobB9MilledToHand = askedPick("choose-cards/hobbit-take-milled-into-hand", func(ctx *Context, r game.CardsChosen) error {
+var hobB9MilledToHand = AskedPick("choose-cards/hobbit-take-milled-into-hand", func(ctx *Context, r game.CardsChosen) error {
 	return ReturnPickedToHandNow(ctx, r.Picked)
 })

@@ -34,12 +34,12 @@ func init() {
 		OracleID:     "12326d23-1fb5-4084-a23a-d6e2c90ea36c",
 		Name:         "Arena",
 		Completeness: CompletenessFull,
-		Activated:    []ActivatedAbility{arenaRow()},
+		Activated:    []ActivatedAbility{ArenaRow()},
 	})
 }
 
 // arenaRow is the ability Arena and Magus of the Arena both print.
-func arenaRow() ActivatedAbility {
+func ArenaRow() ActivatedAbility {
 	return ActivatedAbility{
 		Label: arenaLabel,
 		Cost:  Plus(ManaCost("{3}"), TapCost()),
@@ -70,5 +70,5 @@ func arenaTapAndFight(g *game.Game, item *game.StackItem) error {
 	if len(fighters) != 2 {
 		return nil
 	}
-	return b10Fight(ctx, fighters[0], fighters[1])
+	return B10Fight(ctx, fighters[0], fighters[1])
 }

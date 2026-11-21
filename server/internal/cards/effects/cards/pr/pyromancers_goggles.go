@@ -1,0 +1,54 @@
+package cardspr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Pyromancer's Goggles — Legendary Artifact {5} (EDHREC rank 2825):
+//
+//	"{T}: Add {R}. When that mana is spent to cast a red instant or
+//	 sorcery spell, copy that spell and you may choose new targets for
+//	 the copy."
+//
+// The card #1547's spend riders were opened for beside Cavern of Souls.
+// The {R} is unrestricted — it pays for anything, and the auto-tapper
+// plans the Goggles like any red source — and carries a trigger rider
+// whose filter is the printed clause: a cast (not an activation), of a
+// RED object that is an instant OR a sorcery. When the token pays for
+// such a spell, the trigger goes on the stack above it, so the copy
+// resolves first.
+//
+// "Copy that spell" names the spell without targeting it (CR 115.10),
+// so it is read off the trigger's payload and copied from last-known
+// information if it was countered in response — CR 608.2h, the storm
+// and Doublecast reading (copyTheSpellYouJustCast). The copy is not
+// cast (CR 707.10), so it spent no mana: it does not trigger the
+// Goggles again, and it is not uncounterable because the original was.
+//
+// "When THAT mana is spent" is one activation's mana: a Mana Reflection
+// that doubles the {R} is still one copy (ManaSpendRider.Production).
+//
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:       "f76bcbfe-483f-4e63-8425-76feca1abf3e",
+		Name:           "Pyromancer's Goggles",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   effects.CompletenessFull,
+		ManaAbilities: []effects.ManaAbility{{
+			Cost:     effects.ManaAbilityCost{Tap: true},
+			Produced: "{R}",
+			Label:    "Add {R}",
+			SpendRiders: []game.ManaSpendRider{effects.WhenManaSpent("Pyromancer's Goggles", game.ManaSpendTrigger{
+				Label:  "Pyromancer's Goggles — copy that spell",
+				Effect: effects.CopyTheSpellYouJustCast,
+			}, effects.ManaRestrictCast, effects.ManaRestrictColor("R"), effects.ManaRestrictAnyType("Instant", "Sorcery"))},
+		}},
+	})
+}

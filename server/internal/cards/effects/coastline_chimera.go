@@ -21,7 +21,7 @@ func init() {
 			Label:   "{1}{W}: This creature can block an additional creature this turn.",
 			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
 			Cost:    ManaCost("{1}{W}"),
-			Effect:  selfBlocksAdditionalThisTurn("Coastline Chimera — can block an additional creature this turn"),
+			Effect:  SelfBlocksAdditionalThisTurn("Coastline Chimera — can block an additional creature this turn"),
 		}},
 	})
 }
@@ -29,7 +29,7 @@ func init() {
 // selfBlocksAdditionalThisTurn is the effect of "{cost}: This creature
 // can block an additional creature this turn" (Coastline Chimera,
 // Mounted Archers): one more attacker for the ability's source.
-func selfBlocksAdditionalThisTurn(label string) func(g *game.Game, item *game.StackItem) error {
+func SelfBlocksAdditionalThisTurn(label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		return BlockCapacityUntilEOT{Target: item.SourceCardID, Additional: 1, Label: label}.Apply(NewContext(g, item))
 	}

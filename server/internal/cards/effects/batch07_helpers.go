@@ -27,7 +27,7 @@ import (
 // recompute, where the static that grants trample calls it.
 //
 // Caller must hold g.mu.
-func b07IsModified(g *game.Game, c game.Card) bool {
+func B07IsModified(g *game.Game, c game.Card) bool {
 	for _, n := range c.Counters {
 		if n > 0 {
 			return true
@@ -53,8 +53,8 @@ func b07IsModified(g *game.Game, c game.Card) bool {
 
 // drainEachOpponent is "each opponent loses 1 life and you gain 1
 // life" — Ayara's ETB, Nadier's Nightblade.
-func drainEachOpponent(g *game.Game, item *game.StackItem) error {
-	if err := eachOpponentLosesLife(g, item, 1); err != nil {
+func DrainEachOpponent(g *game.Game, item *game.StackItem) error {
+	if err := EachOpponentLosesLifeNow(g, item, 1); err != nil {
 		return err
 	}
 	return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
@@ -64,14 +64,14 @@ func drainEachOpponent(g *game.Game, item *game.StackItem) error {
 // Fire: "if a source you control would deal damage to a permanent or
 // player, it deals triple that damage instead." Angrath's Marauders'
 // doubler with a 3, and — unlike Solphim — combat damage included.
-func b07TripleDamageFromYourSources() game.ReplacementEffect {
+func B07TripleDamageFromYourSources() game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventDealDamage},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 			if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 {
 				return false
 			}
-			return damageSourceControlledBy(ev, g, src.Controller)
+			return DamageSourceControlledBy(ev, g, src.Controller)
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.DamageAmount *= 3
@@ -91,7 +91,7 @@ func b07TripleDamageFromYourSources() game.ReplacementEffect {
 // not be the item's controller: Ghost Quarter's search belongs to
 // the destroyed land's controller, and the prompt is addressed to
 // whoever `player` is.
-func b07SearchBasicOntoBattlefield(g *game.Game, item *game.StackItem, player uuid.UUID, tapped, optional bool, reason string) error {
+func B07SearchBasicOntoBattlefield(g *game.Game, item *game.StackItem, player uuid.UUID, tapped, optional bool, reason string) error {
 	return SearchLibrary{
 		Player:        player,
 		Predicate:     IsBasicLand,
@@ -139,7 +139,7 @@ func b07TemptWithDiscoveryOffer(ctx *Context, opponents []uuid.UUID) error {
 	return MayChoice{
 		Player:   opponents[0],
 		Question: "Tempt with Discovery — search your library for a land (the caster gets one too if you do)?",
-		Then:     b07TemptWithDiscoveryAnswer,
+		Then:     B07TemptWithDiscoveryAnswer,
 		Carry:    opponents[1:],
 	}.Apply(ctx)
 }
@@ -148,10 +148,10 @@ func b07TemptWithDiscoveryOffer(ctx *Context, opponents []uuid.UUID) error {
 // offer: a yes searches for a land and earns the caster one, either way the
 // next opponent is asked. Registered in init, because it asks the next
 // opponent through b07TemptWithDiscoveryOffer, which names it.
-var b07TemptWithDiscoveryAnswer game.ConfirmThen
+var B07TemptWithDiscoveryAnswer game.ConfirmThen
 
 func init() {
-	b07TemptWithDiscoveryAnswer = MayAnswer("confirm/tempt-with-discovery-search", func(ctx *Context, r game.ConfirmAnswer) error {
+	B07TemptWithDiscoveryAnswer = MayAnswer("confirm/tempt-with-discovery-search", func(ctx *Context, r game.ConfirmAnswer) error {
 		rest := r.Carry
 		if !r.Accepted {
 			return b07TemptWithDiscoveryOffer(ctx, rest)
@@ -165,7 +165,7 @@ func init() {
 		return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
 			Player:   r.Chooser,
 			Source:   r.Source,
-			Pred:     b03IsLandCard,
+			Pred:     B03IsLandCard,
 			Dest:     game.ZoneBattlefield,
 			Limit:    1,
 			Shuffle:  true,
@@ -187,7 +187,7 @@ var b07TemptCasterSearch, b07TemptNextOffer game.TailRef
 
 func init() {
 	b07TemptCasterSearch = CardTail("tempt-with-discovery/caster-search", func(ctx *Context, o game.TailOutcome) error {
-		return b07TemptWithDiscoveryCasterSearch(ctx, o.Tail.Carry)
+		return B07TemptWithDiscoveryCasterSearch(ctx, o.Tail.Carry)
 	})
 	b07TemptNextOffer = CardTail("tempt-with-discovery/next-offer", func(ctx *Context, o game.TailOutcome) error {
 		return b07TemptWithDiscoveryOffer(ctx, o.Tail.Carry)
@@ -199,13 +199,13 @@ func init() {
 // opening one and every one an opponent's acceptance earns. Not
 // optional and untapped, as printed. The offer continues at the opponents
 // still to ask (`rest`) once this search has settled.
-func b07TemptWithDiscoveryCasterSearch(ctx *Context, rest []uuid.UUID) error {
+func B07TemptWithDiscoveryCasterSearch(ctx *Context, rest []uuid.UUID) error {
 	next := ctx.ItemTail(b07TemptNextOffer)
 	next.Carry = rest
 	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
 		Player:   ctx.Controller(),
 		Source:   ctx.Source(),
-		Pred:     b03IsLandCard,
+		Pred:     B03IsLandCard,
 		Dest:     game.ZoneBattlefield,
 		Limit:    1,
 		Shuffle:  true,

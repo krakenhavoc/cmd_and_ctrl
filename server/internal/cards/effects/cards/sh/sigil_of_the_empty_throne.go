@@ -1,0 +1,32 @@
+package cardssh
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Sigil of the Empty Throne — Enchantment {3}{W}{W} (EDHREC rank
+// 1364):
+//
+//	"Whenever you cast an enchantment spell, create a 4/4 white Angel
+//	 creature token with flying."
+//
+// The enchantress deck's win condition: every enchantment cast after
+// it is a Serra Angel without vigilance. Cast, not resolve — the
+// Angel comes even if the enchantment is countered — and the spell's
+// type is read off the stack where its type line is intact. The
+// Sigil does not trigger on itself (it is not on the battlefield
+// when it is cast).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "3b9b5b22-5a7d-4e37-a870-ca0f0efa4f36",
+		Name:         "Sigil of the Empty Throne",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventCast, effects.EnchantmentSpellCastByYou, "Sigil of the Empty Throne — a 4/4 Angel with flying", effects.Do(effects.CreateToken{Template: effects.TokenCard("4/4 white Angel with flying"), N: 1})),
+		},
+	})
+}

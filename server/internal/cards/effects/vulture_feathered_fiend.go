@@ -71,7 +71,7 @@ func init() {
 // vultureFlyerHitAPlayer is "a creature you control with flying dealt combat
 // damage to a player", read as the damage is dealt.
 func vultureFlyerHitAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
@@ -84,7 +84,7 @@ func vultureCountersAndDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, ref := range item.Params.Objects {
 		c, ok := g.LookupCardForEffect(ref.ID)
-		if !ok || c.ObjectEpoch != ref.Epoch || !onBattlefield(g, ref.ID) {
+		if !ok || c.ObjectEpoch != ref.Epoch || !OnBattlefield(g, ref.ID) {
 			continue
 		}
 		if err := (AddCounter{Target: ref.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {

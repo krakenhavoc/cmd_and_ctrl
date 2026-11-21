@@ -1,0 +1,79 @@
+package cardsbu
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Cease // Desist — split card, oracle ba4d644f-1931-4fc4-aed5-681a476a5a58:
+//
+//	Cease — Instant {1}{B/G}: "Exile up to two target cards from a
+//	        single graveyard. Target player gains 2 life and draws a
+//	        card."
+//	Desist — Sorcery {4}{G/W}{G/W}: "Destroy all artifacts and
+//	         enchantments."
+//
+// #1807, ADR 0106 §5. Each half is an ADR 0034 face (ADR 0103): Cease
+// under the bare oracle ID, Desist under "#1". Only one half can be
+// cast (CR 709.3; the card has no fuse).
+//
+// Cease has two target clauses: the cards, which must share a
+// graveyard, then the player. Each is read from its own slot. The
+// player is not tied to the graveyard — any player may gain the life,
+// whoever's graveyard was hit.
+//
+// No simplification.
+// ceaseGainAndDraw is "that player gains 2 life and draws a card": the draw
+// waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+var ceaseGainAndDraw = effects.RegisterThenSteps("then-steps/cease-gain-and-draw",
+	effects.Instruction(func(ctx *effects.Context) error {
+		p, ok := ctx.ClauseTarget(1)
+		if !ok || p.Kind != game.TargetPlayer {
+			return nil
+		}
+		return effects.GainLife{Player: p.ID, Amount: 2}.Apply(ctx)
+	}),
+	effects.Instruction(func(ctx *effects.Context) error {
+		p, ok := ctx.ClauseTarget(1)
+		if !ok || p.Kind != game.TargetPlayer {
+			return nil
+		}
+		return effects.DrawCards{Player: p.ID, N: 1}.Apply(ctx)
+	}),
+)
+
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "ba4d644f-1931-4fc4-aed5-681a476a5a58",
+		Name:         "Cease",
+		Completeness: effects.CompletenessFull,
+		// Slot 0 is the graveyard cards exiled; slot 1 gains 2 life and draws.
+		Purpose: effects.ForTargets(game.TargetPurpose{Slot: 1, LifeGain: 2, Draws: 1}),
+		Targets: effects.Clauses(
+			effects.UpToNCardsFromASingleGraveyard(2),
+			effects.TargetPlayer("target player"),
+		),
+		// The second sentence runs from the exile's continuation, so it
+		// follows the exile even when a commander card among the targets
+		// pauses it on its owner's CR 903.9 choice (CR 608.2c: in order).
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.ExileTargetCardsThen(ctx, ceaseAfterExile)
+		},
+	})
+	effects.Register(effects.Spec{
+		OracleID:     "ba4d644f-1931-4fc4-aed5-681a476a5a58#1",
+		Name:         "Desist",
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifactsAndEnchantments, How: game.SweepDestroy}},
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.DestroyAllMatching{Match: effects.Or(effects.Artifact(), effects.Enchantment())}.Apply(ctx)
+		},
+	})
+}
+
+// ceaseAfterExile is Cease's second sentence after the exile (#4253 slice 9).
+var ceaseAfterExile = effects.GraveyardExileTail("cease/gain-and-draw", func(ctx *effects.Context, _ []uuid.UUID, _ map[uuid.UUID]bool) error {
+	return ceaseGainAndDraw.Run(ctx)
+})

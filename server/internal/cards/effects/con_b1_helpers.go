@@ -17,9 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // source itself counts if something has made it that colour). The
 // colour is a word of the source's text (CR 612.2), so a text-changing
 // effect moves it. `letter` is the colour's mana letter ("R", "W").
-func conB1WhileYouControlA(letter string) func(target *game.Card, g *game.Game, source *game.Card) bool {
+func ConB1WhileYouControlA(letter string) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return selfCreature(target, g, source) && b18ControlsPermanentOfColor(g, source.Controller, source.TextColor(letter))
+		return SelfCreature(target, g, source) && B18ControlsPermanentOfColor(g, source.Controller, source.TextColor(letter))
 	}
 }
 
@@ -29,9 +29,9 @@ func conB1WhileYouControlA(letter string) func(target *game.Card, g *game.Game, 
 // Down). The count is read once, as the spell resolves (CR 608.2h), and
 // the boost ends in the cleanup step (CR 514.2). A target that is no
 // longer legal gets nothing (CR 608.2b).
-func conB1DomainBoostTheTarget(sign int, label string) func(item *game.StackItem, ctx *Context) error {
+func ConB1DomainBoostTheTarget(sign int, label string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -46,11 +46,11 @@ func conB1DomainBoostTheTarget(sign int, label string) func(item *game.StackItem
 // source that ends in the cleanup step (CR 514.2). With no {T} in the
 // cost it can be activated any number of times, the turn the creature
 // arrives included.
-func conB1ThisGainsRow(cost, keyword, name string, answers game.Answers) ActivatedAbility {
+func ConB1ThisGainsRow(cost, keyword, name string, answers game.Answers) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   cost + ": This creature gains " + keyword + " until end of turn.",
 		Purpose: game.Purpose{Answers: answers, Pump: &game.Pump{Keywords: []string{keyword}}},
 		Cost:    ManaCost(cost),
-		Effect:  thisGainsKeywordUntilEndOfTurn(keyword, name+" — "+keyword+" until end of turn"),
+		Effect:  ThisGainsKeywordUntilEndOfTurn(keyword, name+" — "+keyword+" until end of turn"),
 	}
 }

@@ -10,7 +10,7 @@ import (
 // than `self` ("if you control another Hero"). It reads effective subtypes, so
 // a changeling counts. `hero` is the word as the source reads it
 // (source.TextSubtype("Hero")), so a text-changing effect reaches it.
-func mshB4ControlsAnotherHero(g *game.Game, controller, self uuid.UUID, hero string) bool {
+func MshB4ControlsAnotherHero(g *game.Game, controller, self uuid.UUID, hero string) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.InstanceID != self && c.HasSubtype(hero) {
 			return true
@@ -23,8 +23,8 @@ func mshB4ControlsAnotherHero(g *game.Game, controller, self uuid.UUID, hero str
 // targets a creature you control" (Colleen Wing, Iron Fist): the cast is by
 // the source's controller, and at least one of the spell's targets is a
 // creature on the battlefield under that player's control.
-func mshB4CastSpellTargetingYourCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return castSpellTargetingACreature(ev, source, g, true)
+func MshB4CastSpellTargetingYourCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return CastSpellTargetingACreature(ev, source, g, true)
 }
 
 // castSpellTargetingACreature is the shared body of "whenever you cast a
@@ -32,7 +32,7 @@ func mshB4CastSpellTargetingYourCreature(ev game.Event, source *game.Card, _ gam
 // controller and at least one target is a creature on the battlefield,
 // under that player's control when yoursOnly is set (Hawkeye, Bowslinger
 // does not set it).
-func castSpellTargetingACreature(ev game.Event, source *game.Card, g *game.Game, yoursOnly bool) bool {
+func CastSpellTargetingACreature(ev game.Event, source *game.Card, g *game.Game, yoursOnly bool) bool {
 	if ev.Actor != source.Controller {
 		return false
 	}
@@ -44,7 +44,7 @@ func castSpellTargetingACreature(ev game.Event, source *game.Card, g *game.Game,
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		if c, ok := g.LookupCardForEffect(t.ID); ok && c.IsCreature() && (!yoursOnly || c.Controller == source.Controller) && onBattlefield(g, t.ID) {
+		if c, ok := g.LookupCardForEffect(t.ID); ok && c.IsCreature() && (!yoursOnly || c.Controller == source.Controller) && OnBattlefield(g, t.ID) {
 			return true
 		}
 	}

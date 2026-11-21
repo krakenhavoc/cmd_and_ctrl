@@ -48,8 +48,8 @@ type CondCelebration struct{}
 
 func (CondCelebration) Holds(ctx *Context) bool { return Celebration(ctx.Game, ctx.Controller()) }
 
-func (CondCelebration) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondCelebration, celebrationThreshold), true
+func (CondCelebration) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondCelebration, celebrationThreshold), true
 }
 
 // YouHaveCelebration is the When for celebration as the trigger fires,
@@ -64,11 +64,11 @@ func YouHaveCelebration(_ game.Event, source *game.Card, _ game.Characteristic, 
 // is on while the source's controller has celebration.
 func SelfPumpWhileCelebration(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Gets " + signedPT(power, toughness) + " as long as two or more nonland permanents entered the battlefield under your control this turn.",
+		Label:     "Gets " + SignedPT(power, toughness) + " as long as two or more nonland permanents entered the battlefield under your control this turn.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
-		AppliesTo: whileYouHave(Celebration, selfCreature),
-		Apply:     pumpBy(power, toughness),
+		AppliesTo: WhileYouHave(Celebration, SelfCreature),
+		Apply:     PumpBy(power, toughness),
 	}
 }
 
@@ -94,7 +94,7 @@ func AtBeginningOfYourCombatIfCelebration(label string, effect Effect) game.Trig
 // double strike, Grand Ball Guest's trample): a layer 6 grant
 // (CR 613.1f) that is on while the source's controller has celebration.
 func SelfKeywordWhileCelebration(keyword string) game.StaticAbility {
-	ab := KeywordGrant(whileYouHave(Celebration, selfCreature), keyword)
+	ab := KeywordGrant(WhileYouHave(Celebration, SelfCreature), keyword)
 	ab.Label = "Has " + keyword + " as long as two or more nonland permanents entered the battlefield under your control this turn."
 	return ab
 }

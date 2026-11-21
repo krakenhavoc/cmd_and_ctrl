@@ -16,11 +16,11 @@ const cmdr2B11FlashByTappingKey = "flash-by-tapping"
 // cost opens the window for that cast alone, and the taps ride
 // cast_spell's teamwork_ids like conspire's. Tapping is not the {T}
 // symbol, so a creature that arrived this turn may pay (CR 302.6).
-func cmdr2B11FlashByTapping(n int, label string, preds ...CardPredicate) game.AdditionalCost {
+func Cmdr2B11FlashByTapping(n int, label string, preds ...CardPredicate) game.AdditionalCost {
 	return game.AdditionalCost{
 		Optional:      true,
 		Key:           cmdr2B11FlashByTappingKey,
-		TapOthers:     tapOthersPrice(n, label, preds...),
+		TapOthers:     TapOthersPrice(n, label, preds...),
 		Label:         "Tap " + label + " to cast it as though it had flash",
 		AsThoughFlash: true,
 	}
@@ -31,7 +31,7 @@ func cmdr2B11FlashByTapping(n int, label string, preds ...CardPredicate) game.Ad
 // types until end of turn" for the creature that attacked. The set is
 // that one object (CR 611.2c); an attacker that has left, or come back as
 // a new object, is not changed (CR 400.7).
-func cmdr2B11BecomeRedDragon(g *game.Game, item *game.StackItem) error {
+func Cmdr2B11BecomeRedDragon(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	info, ok := ctx.TriggeringPermanent()
 	if !ok || info.Left || item.Trigger == nil {
@@ -52,7 +52,7 @@ func cmdr2B11BecomeRedDragon(g *game.Game, item *game.StackItem) error {
 
 // cmdr2B11StolenByTheFaeTokens is "You create X 1/1 blue Faerie creature
 // tokens with flying" once the bounce has settled. An on-disk key.
-var cmdr2B11StolenByTheFaeTokens = CardTail("cmdr2-b11/stolen-by-the-fae-tokens", func(ctx *Context, _ game.TailOutcome) error {
+var Cmdr2B11StolenByTheFaeTokens = CardTail("cmdr2-b11/stolen-by-the-fae-tokens", func(ctx *Context, _ game.TailOutcome) error {
 	x := ctx.X()
 	if x <= 0 {
 		return nil

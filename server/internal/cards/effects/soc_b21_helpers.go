@@ -10,7 +10,7 @@ import (
 
 // seethingSongResolve is "Add {R}{R}{R}{R}{R}." as a spell's whole body:
 // Seething Song, and the prepare spell of Blazing Firesinger.
-func seethingSongResolve(item *game.StackItem, ctx *Context) error {
+func SeethingSongResolve(item *game.StackItem, ctx *Context) error {
 	return AddMana{Player: item.Controller, Produced: "{R}{R}{R}{R}{R}"}.Apply(ctx)
 }
 
@@ -20,7 +20,7 @@ func seethingSongResolve(item *game.StackItem, ctx *Context) error {
 // spent by CR 118.7 (a coloured symbol removes one mana of its colour, or one
 // generic when the cost has none of it left; the cost never goes below {0},
 // CR 601.2f). Panics at init on a string the parser rejects.
-func socB21CostsLessManaIfItTargets(unit, label string, match CardPredicate) game.CostModifier {
+func SocB21CostsLessManaIfItTargets(unit, label string, match CardPredicate) game.CostModifier {
 	u, err := game.ParseCost(unit)
 	if err != nil || u.XSlots > 0 || u.ManaValue() == 0 {
 		panic(fmt.Sprintf("effects.socB21CostsLessManaIfItTargets: %q is not a fixed mana amount (%v)", unit, err))
@@ -47,7 +47,7 @@ func socB21CastAnotherInstantOrSorcery(item *game.StackItem, ctx *Context) bool 
 // two-clause announcement: slot 0 is the creature you control, slot 1 the
 // "up to one" opposing creature. The pump comes first and stays when the
 // damage cannot happen; a gone creature of yours deals nothing.
-func socB21BurrogBarrage(item *game.StackItem, ctx *Context) error {
+func SocB21BurrogBarrage(item *game.StackItem, ctx *Context) error {
 	mine, ok := ctx.ClauseTarget(0)
 	if !ok || mine.Kind != game.TargetCard {
 		return nil
@@ -63,13 +63,13 @@ func socB21BurrogBarrage(item *game.StackItem, ctx *Context) error {
 	}
 	// The layers are brought current first: the +1/+0 above is a scoped
 	// effect the cached view has not seen yet.
-	return DealDamage{Source: mine.ID, Target: theirs.ID, Amount: b31CurrentPowerOf(ctx.Game, mine.ID)}.Apply(ctx)
+	return DealDamage{Source: mine.ID, Target: theirs.ID, Amount: B31CurrentPowerOf(ctx.Game, mine.ID)}.Apply(ctx)
 }
 
 // borrowedKnowledgeOpponentsHand is the draw of the first bullet, run once
 // the discard has settled: a card for each card in the target opponent's
 // hand, counted then (CR 608.2c). An on-disk key.
-var borrowedKnowledgeOpponentsHand = CardTail("borrowed-knowledge/draw-opponents-hand", func(ctx *Context, _ game.TailOutcome) error {
+var BorrowedKnowledgeOpponentsHand = CardTail("borrowed-knowledge/draw-opponents-hand", func(ctx *Context, _ game.TailOutcome) error {
 	t, ok := ModeTarget(ctx, 0)
 	if !ok || t.Kind != game.TargetPlayer {
 		return nil
@@ -84,7 +84,7 @@ var borrowedKnowledgeOpponentsHand = CardTail("borrowed-knowledge/draw-opponents
 // socB21DiscardHandThen discards the controller's whole hand and runs `then`
 // once the discard has settled, told the cards that really reached a graveyard
 // (Forgotten Creation's shape). It runs even for an empty hand.
-func socB21DiscardHandThen(ctx *Context, item *game.StackItem, then game.TailRef) error {
+func SocB21DiscardHandThen(ctx *Context, item *game.StackItem, then game.TailRef) error {
 	p := ctx.Game.PlayerByIDForEffect(item.Controller)
 	if p == nil {
 		return nil

@@ -33,20 +33,20 @@ import (
 // printed type line survives the move, and a token is still
 // findable until the state-based sweep removes it (the same read
 // Agent of the Iron Throne makes for a Treasure).
-func b23ArtifactPutIntoGraveyardFromBattlefield(ev game.Event, g *game.Game) bool {
+func B23ArtifactPutIntoGraveyardFromBattlefield(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftAsType(ev, c, "artifact")
+	return ok && LeftAsType(ev, c, "artifact")
 }
 
 // b23AnotherGreenCreatureYouControlEntered is Ivy Lane Denizen's
 // condition: another creature entered under the source's
 // controller's control, and it is green. Colours are the effective
 // ones, so a creature something else painted green counts.
-func b23AnotherGreenCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !b13AnotherCreatureYouControlEntered(ev, source, g) {
+func B23AnotherGreenCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !B13AnotherCreatureYouControlEntered(ev, source, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -58,7 +58,7 @@ func b23AnotherGreenCreatureYouControlEntered(ev game.Event, source *game.Card, 
 // Effective subtypes, so a changeling counts; the enchantment itself
 // is never a Dragon, so no "another" guard is needed.
 func b23DragonYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	// "Dragon" is a word of the source's text (CR 612.2, #3984).
 	return ok && c.HasSubtype(source.TextSubtype("Dragon"))
 }
@@ -66,7 +66,7 @@ func b23DragonYouControlEntered(ev game.Event, source *game.Card, g *game.Game) 
 // b23NoCreaturesOnBattlefield is Pyrohemia's intervening-if: no
 // creature — anyone's — is on the battlefield. Post-layer type, so
 // an animated land keeps the enchantment alive.
-func b23NoCreaturesOnBattlefield(g *game.Game) bool {
+func B23NoCreaturesOnBattlefield(g *game.Game) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsCreature() {
 			return false
@@ -85,8 +85,8 @@ func b23NoCreaturesOnBattlefield(g *game.Game) bool {
 // keeps the enchantment. It also checks that the source is still on
 // the battlefield, because a permanent that has already left cannot
 // be sacrificed and doing so would be a second departure.
-func b23SacrificeSelfWhenNoCreatures(g *game.Game, item *game.StackItem) error {
-	if !b23NoCreaturesOnBattlefield(g) || !onBattlefield(g, item.SourceCardID) {
+func B23SacrificeSelfWhenNoCreatures(g *game.Game, item *game.StackItem) error {
+	if !B23NoCreaturesOnBattlefield(g) || !OnBattlefield(g, item.SourceCardID) {
 		return nil
 	}
 	return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
@@ -99,7 +99,7 @@ func b23SacrificeSelfWhenNoCreatures(g *game.Game, item *game.StackItem) error {
 // of Fangs of Kalonia per creature. Placed through AddCounter, so a
 // counter doubler applies to the doubling, as printed. A target that
 // has left the battlefield, or has no +1/+1 counters, is left alone.
-func b23DoublePlusOneCountersOn(ctx *Context, target uuid.UUID) error {
+func B23DoublePlusOneCountersOn(ctx *Context, target uuid.UUID) error {
 	if z := ctx.Game.FindCardZoneForEffect(target); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}
@@ -131,7 +131,7 @@ func b23DoublePlusOneCountersOn(ctx *Context, target uuid.UUID) error {
 // is on the board before that same creature's doubling is read;
 // nothing here depends on a different creature's placement having
 // settled first.
-func b23GrowThenDoubleEach(ctx *Context, ids []uuid.UUID) error {
+func B23GrowThenDoubleEach(ctx *Context, ids []uuid.UUID) error {
 	for _, id := range ids {
 		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
@@ -155,17 +155,17 @@ func b23GrowThenDoubleEach(ctx *Context, ids []uuid.UUID) error {
 // is the creature and N the count it had before the placement. An on-disk
 // key: never renamed, never reused.
 var b23DoubleIfGrew = CardTail("counter/double-if-grew", func(ctx *Context, o game.TailOutcome) error {
-	id := carryFirst(o.Tail)
+	id := CarryFirst(o.Tail)
 	c, ok := ctx.Game.LookupCardForEffect(id)
 	if !ok || c.Counters["+1/+1"] <= o.Tail.N {
 		return nil
 	}
-	return b23DoublePlusOneCountersOn(ctx, id)
+	return B23DoublePlusOneCountersOn(ctx, id)
 })
 
 // b23CreaturesYouControl lists the controller's creatures, the set
 // snapshotted before anything is placed (CR 608.2).
-func b23CreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
+func B23CreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() {
@@ -181,9 +181,9 @@ func b23CreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
 // snapshotted before the first point lands; a creature that took
 // lethal dies at the state-based sweep, so the end-step sacrifice
 // clause sees an empty board only after the last activation.
-func b23DamageEachCreatureAndEachPlayer(ctx *Context, n int) error {
+func B23DamageEachCreatureAndEachPlayer(ctx *Context, n int) error {
 	return ctx.Game.DamageInstanceForEffect(func() error {
-		if err := damageEachMatching(ctx, Creature(), n); err != nil {
+		if err := DamageEachMatching(ctx, Creature(), n); err != nil {
 			return err
 		}
 		for _, p := range ctx.Game.Seats {
@@ -203,11 +203,11 @@ func b23DamageEachCreatureAndEachPlayer(ctx *Context, n int) error {
 // on it. An Engine that left the battlefield in response cannot take
 // the counter, and the draw reads its last-known count (CR 113.7a),
 // which the source's departure record supplies.
-func b23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
+func B23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	// #1432: an Engine that left and came back is a new object — it
 	// takes no counter, and the draw is the departed Engine's count.
-	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) {
+	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield || SourceIsNewObject(g, item) {
 		ctx := NewContext(g, item)
 		charges := 0
 		if info, ok := ctx.SourcePermanent(); ok {
@@ -220,7 +220,7 @@ func b23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
 	// Scales board pauses the placement on a CR 616 prompt, and
 	// reading before it resumes would draw for the pre-placement
 	// count.
-	then := NewContext(g, item).ItemTail(thenDrawPerCounter)
+	then := NewContext(g, item).ItemTail(ThenDrawPerCounter)
 	then.Carry = []uuid.UUID{id}
 	then.Word = "charge"
 	return g.AddCounterByKeyedForEffect(uuid.Nil, id, "charge", 1, then)
@@ -229,7 +229,7 @@ func b23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
 // b23TotalManaValueAtMost is Protean Hulk's set constraint: the
 // picked creature cards' mana values, printed and with X as zero
 // (CR 202.3e), sum to `limit` or less.
-func b23TotalManaValueAtMost(limit int) func([]game.Card) bool {
+func B23TotalManaValueAtMost(limit int) func([]game.Card) bool {
 	return func(cards []game.Card) bool {
 		total := 0
 		for _, c := range cards {
@@ -247,7 +247,7 @@ func b23TotalManaValueAtMost(limit int) func([]game.Card) bool {
 // Validate clause is checked on the picked set, and an empty pick is
 // the ordinary "fail to find". Each card enters through the search
 // path, so its own enters-tapped clause and every ETB trigger fire.
-func b23SearchCreaturesWithTotalManaValue(g *game.Game, item *game.StackItem, limit int, reason string) error {
+func B23SearchCreaturesWithTotalManaValue(g *game.Game, item *game.StackItem, limit int, reason string) error {
 	ctx := NewContext(g, item)
 	p := ctx.PlayerByID(item.Controller)
 	if p == nil || p.Library == nil {

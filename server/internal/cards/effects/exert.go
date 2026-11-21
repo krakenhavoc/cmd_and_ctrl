@@ -92,13 +92,13 @@ func youExertedACreature(ev game.Event, source *game.Card, lki game.Characterist
 // control" (Combat Celebrant, Ahn-Crop Champion). "Other" is the
 // ability's source object; if that permanent has left and come back it
 // is a new object (CR 400.7), and is untapped like any other creature.
-func untapAllOtherCreaturesYouControl(g *game.Game, item *game.StackItem) error {
+func UntapAllOtherCreaturesYouControl(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	self := item.SourceCardID
-	if sourceIsNewObject(g, item) {
+	if SourceIsNewObject(g, item) {
 		self = uuid.Nil
 	}
-	return b16UntapAllYouControlMatching(ctx, item.Controller, func(c game.Card) bool {
+	return B16UntapAllYouControlMatching(ctx, item.Controller, func(c game.Card) bool {
 		return c.IsCreature() && c.InstanceID != self
 	})
 }
@@ -123,7 +123,7 @@ func ExertedGets(label string, power, toughness int, keywords ...string) game.Tr
 // block rule are one record, both pinned to this creature as the exert
 // made it an object (CR 611.2c, 400.7); the pump is the row's Purpose.
 func ExertedGetsAndCantBeBlockedByPower(label string, power, toughness, atMost int) game.TriggeredAbility {
-	return exertedPump(label, power, toughness, nil, []game.Mod{cantBeBlockedByPowerMod(atMost)})
+	return exertedPump(label, power, toughness, nil, []game.Mod{CantBeBlockedByPowerMod(atMost)})
 }
 
 // exertedPump is the body ExertedGets and its siblings share: the
@@ -154,7 +154,7 @@ func exertedPump(label string, power, toughness int, keywords []string, extra []
 // payoff that refers to "that creature" (Rohirrim Chargers): it records
 // the exerted object, instance and epoch, in Params.Object, so the
 // effect can tell whether it is still the same permanent (CR 400.7).
-func whenYouExertBuild(label string) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+func WhenYouExertBuild(label string) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 		item := game.NewTriggeredItem(source, label)
 		ref := game.ObjectRef{ID: ev.CardID}

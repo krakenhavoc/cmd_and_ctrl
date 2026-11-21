@@ -30,7 +30,7 @@ func lookAtOpponentsHandExileTaxed(g *game.Game, item *game.StackItem) error {
 
 // putPlusOneCounterOnEach puts one +1/+1 counter on each permanent that
 // matches, the set taken before the first counter lands.
-func putPlusOneCounterOnEach(ctx *Context, match CardPredicate) error {
+func PutPlusOneCounterOnEach(ctx *Context, match CardPredicate) error {
 	var ids = make([]game.Card, 0)
 	ids = append(ids, MatchingBattlefield(ctx, match)...)
 	for _, c := range ids {
@@ -67,7 +67,7 @@ func WhenThisEntersWithCastX(label string, effect Effect) game.TriggeredAbility 
 // (Doctor Doom, King of Latveria; Pyre of the World Tree): a discard by the
 // source's controller of a card that is a land card, read where it landed.
 func YouDiscardedALandCard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !discardedByYou(ev, source) {
+	if !DiscardedByYou(ev, source) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)

@@ -43,8 +43,8 @@ func init() {
 // the clause the instance went on the stack with.
 func gazeOfPain(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	it := firstPayloadCard(ctx)
-	target := firstLegalCardTarget(ctx)
+	it := FirstPayloadCard(ctx)
+	target := FirstLegalCardTarget(ctx)
 	if it == uuid.Nil || target == uuid.Nil {
 		return nil
 	}
@@ -59,8 +59,8 @@ func gazeOfPain(g *game.Game, item *game.StackItem) error {
 // ID) deals damage equal to its power to the target (the second), then
 // assigns no combat damage this turn. Keyed (#4291).
 var gazeOfPainAnswer = MayYes("confirm/gaze-of-pain-damage", func(ctx *Context, r game.ConfirmAnswer) error {
-	it, target := carryAt(r, 0), carryAt(r, 1)
-	if err := (DealDamage{Source: it, Target: target, Amount: powerNowOrLastKnown(ctx.Game, it)}).Apply(ctx); err != nil {
+	it, target := CarryAt(r, 0), CarryAt(r, 1)
+	if err := (DealDamage{Source: it, Target: target, Amount: PowerNowOrLastKnown(ctx.Game, it)}).Apply(ctx); err != nil {
 		return err
 	}
 	ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), it, "Gaze of Pain — assigns no combat damage this turn")

@@ -12,7 +12,7 @@ import (
 // matArtifactOrEnchantmentFromYourGraveyard is the target clause of
 // "return target artifact or enchantment card from your graveyard to the
 // battlefield" (Harnessed Snubhorn, Campus Renovation).
-func matArtifactOrEnchantmentFromYourGraveyard(text string) *game.TargetSpec {
+func MatArtifactOrEnchantmentFromYourGraveyard(text string) *game.TargetSpec {
 	return TargetCardInGraveyard(text, Or(Artifact(), Enchantment()), YouOwn())
 }
 
@@ -20,8 +20,8 @@ func matArtifactOrEnchantmentFromYourGraveyard(text string) *game.TargetSpec {
 // targeted to the battlefield under its controller's control. A target
 // that left the graveyard in response (or no target at all, for "up to
 // one") does nothing (CR 608.2b).
-func matReturnTargetToBattlefield(ctx *Context) {
-	_, _ = reanimateSingleTarget(ctx, ctx.Controller())
+func MatReturnTargetToBattlefield(ctx *Context) {
+	_, _ = ReanimateSingleTarget(ctx, ctx.Controller())
 }
 
 // matDivideCreatureCardsInYourGraveyard is "distribute X counters …, where X
@@ -29,9 +29,9 @@ func matReturnTargetToBattlefield(ctx *Context) {
 // (Undercity Upheaval): read once as the targets are announced (CR 601.2d),
 // so a creature card that leaves the graveyard in response does not change
 // how many counters are divided.
-var matDivideCreatureCardsInYourGraveyard = game.RegisterDivideAmount("mat-creature-cards-in-your-graveyard",
+var MatDivideCreatureCardsInYourGraveyard = game.RegisterDivideAmount("mat-creature-cards-in-your-graveyard",
 	func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
-		return game.DivideSpec{Total: b11CreatureCardsInGraveyard(g, a.Controller)}
+		return game.DivideSpec{Total: B11CreatureCardsInGraveyard(g, a.Controller)}
 	})
 
 // matControlledCreatures are the creatures `player` controls, through the
@@ -55,7 +55,7 @@ func matControlledCreatures(g *game.Game, player uuid.UUID) []uuid.UUID {
 // what is left. One creature takes all N; no creature, or N of 0, does
 // nothing. A creature that left the battlefield between the choices loses
 // its share.
-func matDistributePlusOneCounters(ctx *Context, n int) error {
+func MatDistributePlusOneCounters(ctx *Context, n int) error {
 	cands := matControlledCreatures(ctx.Game, ctx.Controller())
 	if n <= 0 || len(cands) == 0 {
 		return nil
@@ -79,7 +79,7 @@ func matDistributePlusOneCounters(ctx *Context, n int) error {
 }
 
 // matDistributePick is the creatures chosen: it starts the shares.
-var matDistributePick = askedPick("choose-cards/mat-distribute-counters-among", func(ctx *Context, r game.CardsChosen) error {
+var matDistributePick = AskedPick("choose-cards/mat-distribute-counters-among", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Nums) == 0 {
 		return nil
 	}

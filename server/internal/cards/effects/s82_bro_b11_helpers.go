@@ -16,8 +16,8 @@ import (
 // satisfies both. Read live, as an ability resolves (Mine Worker, Power
 // Plant Worker) or as mana is produced (Tower Worker), through the layered
 // view: a creature that is not currently a creature does not count.
-func s82BroB11AssemblyTrio(g *game.Game, controller uuid.UUID, a, b string) bool {
-	return jmpB1YouControlACreatureNamed(g, controller, a) && jmpB1YouControlACreatureNamed(g, controller, b)
+func S82BroB11AssemblyTrio(g *game.Game, controller uuid.UUID, a, b string) bool {
+	return JmpB1YouControlACreatureNamed(g, controller, a) && JmpB1YouControlACreatureNamed(g, controller, b)
 }
 
 // s82BroB11BecomesArtifactCreature is "target noncreature artifact becomes
@@ -29,7 +29,7 @@ func s82BroB11AssemblyTrio(g *game.Game, controller uuid.UUID, a, b string) bool
 // the resolving ability (CR 611.2a) pinned to the object (CR 400.7) for
 // `duration`: Creature in layer 4 and the base power and toughness in
 // layer 7b.
-func s82BroB11BecomesArtifactCreature(ctx *Context, id uuid.UUID, power, toughness int, duration game.Duration, label string) error {
+func S82BroB11BecomesArtifactCreature(ctx *Context, id uuid.UUID, power, toughness int, duration game.Duration, label string) error {
 	c, ok := ctx.Game.LookupCardForEffect(id)
 	if !ok {
 		return nil

@@ -38,7 +38,7 @@ func SpliceOntoArcaneCost(cost *game.SpliceCost) *game.SpliceAbility {
 func SpliceSacrifice(n int, label string, preds ...CardPredicate) *game.SpliceCost {
 	return &game.SpliceCost{
 		Label:     "Sacrifice " + label,
-		Sacrifice: sacrificeSpec(label, preds...).WithCount(n, n),
+		Sacrifice: SacrificeSpec(label, preds...).WithCount(n, n),
 	}
 }
 
@@ -61,7 +61,7 @@ func SpliceExileFromGraveyard(n int, label string) *game.SpliceCost {
 func SpliceTapUntapped(label string, preds ...CardPredicate) *game.SpliceCost {
 	return &game.SpliceCost{
 		Label:     "Tap " + label,
-		TapOthers: tapOthersPrice(1, label, preds...),
+		TapOthers: TapOthersPrice(1, label, preds...),
 	}
 }
 

@@ -1,0 +1,35 @@
+package cardsth
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Thran Vigil — Enchantment {1}{B} (The Brothers' War, #5482):
+//
+//	"Whenever one or more artifact and/or creature cards leave your
+//	 graveyard during your turn, put a +1/+1 counter on target creature you
+//	 control."
+//
+// Attuned Hunter's trigger (left_graveyard.go) over artifact and/or creature
+// cards: every route a card leaves your graveyard by counts (an unearth, an
+// exile, a return, a cast from it), cards leaving together trigger it once
+// (OncePerBatch, CR 603.2c), and the type is the card's as it was in the
+// graveyard (CR 603.10a). The target is chosen as the trigger goes on the
+// stack and is re-checked as it resolves (CR 608.2b).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "01c179aa-533e-47e1-b6e5-c35587a39680",
+		Name:         "Thran Vigil",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.Targeting(effects.OncePerBatch(effects.OnAny(effects.LeftGraveyardEvents, effects.S82Bro13ArtifactOrCreatureCardLeftYourGraveyard,
+				"Thran Vigil — put a +1/+1 counter on target creature you control",
+				effects.Cmdr2S46PlusOneCounterOnClauseTarget)),
+				effects.TargetCreature("target creature you control", effects.YouControl())),
+		},
+	})
+}

@@ -54,7 +54,7 @@ func crystalShardAsk(g *game.Game, item *game.StackItem) error {
 			Chooser:  c.Controller,
 			Cost:     "{1}",
 			Question: "Crystal Shard — pay {1}, or " + c.Name + " returns to its owner's hand?",
-			Else:     crystalShardBounce,
+			Else:     CrystalShardBounce,
 		}.Apply(ctx)
 	}
 	return nil
@@ -63,7 +63,7 @@ func crystalShardAsk(g *game.Game, item *game.StackItem) error {
 // crystalShardBounce is the decline: the creature goes to its owner's
 // hand. Keyed, an on-disk identity: a table waiting on the payer is a
 // restore point.
-var crystalShardBounce = PayUnlessElse("pay-unless/crystal-shard-return-to-hand",
+var CrystalShardBounce = PayUnlessElse("pay-unless/crystal-shard-return-to-hand",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		for _, t := range ctx.LegalTargets() {
 			if t.Kind == game.TargetCard {

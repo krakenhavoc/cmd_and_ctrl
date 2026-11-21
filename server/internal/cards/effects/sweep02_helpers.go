@@ -17,6 +17,6 @@ import (
 // choose_cards continuation that runs against a Context rebuilt from the
 // asking item. The key is an on-disk identity ("choose-cards/<card>-<what>"),
 // ledgered: never renamed, never reused.
-func itemChoice(key string, body func(ctx *Context, r game.CardsChosen) error) game.ChooseCardsThen {
-	return askedPick(key, body)
+func ItemChoice(key string, body func(ctx *Context, r game.CardsChosen) error) game.ChooseCardsThen {
+	return AskedPick(key, body)
 }

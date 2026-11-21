@@ -34,7 +34,7 @@ func init() {
 			Targeting(WheneverChaosEnsues("Bowie Base One — target creature gains islandwalk until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					t, ok := b16FirstLegalTargetCard(ctx)
+					t, ok := B16FirstLegalTargetCard(ctx)
 					if !ok {
 						return nil
 					}

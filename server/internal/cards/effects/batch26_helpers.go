@@ -38,7 +38,7 @@ import (
 // the spell's announce record; a commander cast from the command
 // zone, a flashback, an impulse-exile cast and a cast off the
 // Extortionist's own exile grant all count, as printed.
-func b26AnotherPlayerCastFromOutsideHand(ev game.Event, source *game.Card, g *game.Game) bool {
+func B26AnotherPlayerCastFromOutsideHand(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
@@ -49,19 +49,19 @@ func b26AnotherPlayerCastFromOutsideHand(ev game.Event, source *game.Card, g *ga
 // b26SelfEnteredOrDealtCombatDamageToPlayer is "whenever this
 // creature enters or deals combat damage to a player" — one printed
 // ability with two conditions (Aerial Extortionist).
-func b26SelfEnteredOrDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
+func B26SelfEnteredOrDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind == game.EventETB {
 		return ev.CardID == source.InstanceID
 	}
-	return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
+	return ev.Source == source.InstanceID && CombatDamageToPlayerBy(ev, source.Controller, g)
 }
 
 // b26CreatureYouControlWithPowerAtLeastAttacked is The Earth King's
 // condition before the "one or more" dedup: a creature the source's
 // controller controls was declared as an attacker and its power,
 // read live at declaration, is at least n.
-func b26CreatureYouControlWithPowerAtLeastAttacked(ev game.Event, source *game.Card, g *game.Game, n int) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
+func B26CreatureYouControlWithPowerAtLeastAttacked(ev game.Event, source *game.Card, g *game.Game, n int) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -71,7 +71,7 @@ func b26CreatureYouControlWithPowerAtLeastAttacked(ev game.Event, source *game.C
 // b26NontokenCreatureEntered resolves the nontoken creature that just
 // entered the battlefield under anyone's control — Genesis Chamber's
 // trigger, which has no controller clause.
-func b26NontokenCreatureEntered(ev game.Event, g *game.Game) (game.Card, bool) {
+func B26NontokenCreatureEntered(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
 		return game.Card{}, false
 	}
@@ -93,7 +93,7 @@ func b26NontokenCreatureEntered(ev game.Event, g *game.Game) (game.Card, bool) {
 // block is already one event; before that the engine emitted one
 // event per BLOCKER and every reader had to walk the log back to the
 // attacker's EventAttack to tell the first from the rest.
-func b26ArtifactCreatureYouControlBecameBlocked(ev game.Event, source *game.Card, g *game.Game) bool {
+func B26ArtifactCreatureYouControlBecameBlocked(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventBecomesBlocked {
 		return false
 	}
@@ -105,14 +105,14 @@ func b26ArtifactCreatureYouControlBecameBlocked(ev game.Event, source *game.Card
 // sacrifice it" — Heaped Harvest's one ability with two conditions.
 // The sacrifice event fires while the permanent is still on the
 // battlefield, so the harvester finds the source.
-func b26SelfEnteredOrWasSacrificed(ev game.Event, source *game.Card) bool {
+func B26SelfEnteredOrWasSacrificed(ev game.Event, source *game.Card) bool {
 	return (ev.Kind == game.EventETB || ev.Kind == game.EventSacrifice) && ev.CardID == source.InstanceID
 }
 
 // b26SelfEnteredUntapped is Dwarven Mine's "when this land enters
 // untapped": the source's own ETB, read after its enters-tapped
 // replacement has decided how it entered.
-func b26SelfEnteredUntapped(ev game.Event, source *game.Card) bool {
+func B26SelfEnteredUntapped(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventETB && ev.CardID == source.InstanceID && !source.Tapped
 }
 
@@ -120,8 +120,8 @@ func b26SelfEnteredUntapped(ev game.Event, source *game.Card) bool {
 // intervening-if at announce: any player's end step began and the
 // source's controller gained at least n life this turn. Re-run at
 // resolution by the effect body, as CR 603.4 asks.
-func b26EachEndStepAndYouGainedAtLeastThisTurn(ev game.Event, source *game.Card, g *game.Game, n int) bool {
-	return b15EndStepBegan(ev) && b15LifeGainedThisTurn(g, source.Controller) >= n
+func B26EachEndStepAndYouGainedAtLeastThisTurn(ev game.Event, source *game.Card, g *game.Game, n int) bool {
+	return B15EndStepBegan(ev) && B15LifeGainedThisTurn(g, source.Controller) >= n
 }
 
 // --- board reads -------------------------------------------------
@@ -129,9 +129,9 @@ func b26EachEndStepAndYouGainedAtLeastThisTurn(ev game.Event, source *game.Card,
 // b26AttackingCreaturesYouControlWithPowerAtLeast counts the
 // attacking creatures `controller` controls whose power is at least
 // n — The Earth King's "that many", read as the trigger resolves.
-func b26AttackingCreaturesYouControlWithPowerAtLeast(g *game.Game, controller uuid.UUID, n int) int {
+func B26AttackingCreaturesYouControlWithPowerAtLeast(g *game.Game, controller uuid.UUID, n int) int {
 	count := 0
-	for _, id := range b13AttackingCreaturesYouControl(g, controller) {
+	for _, id := range B13AttackingCreaturesYouControl(g, controller) {
 		if c, ok := g.LookupCardForEffect(id); ok && c.CurrentPower() >= n {
 			count++
 		}
@@ -142,7 +142,7 @@ func b26AttackingCreaturesYouControlWithPowerAtLeast(g *game.Game, controller uu
 // b26AttackingCreatures snapshots every attacking creature on the
 // battlefield, any controller — Aetherspouts' "each attacking
 // creature". Copies, taken before anything moves.
-func b26AttackingCreatures(g *game.Game) []game.Card {
+func B26AttackingCreatures(g *game.Game) []game.Card {
 	var out []game.Card
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsCreature() && c.AttackingTarget != uuid.Nil {
@@ -156,7 +156,7 @@ func b26AttackingCreatures(g *game.Game) []game.Card {
 // controls with the given subtype — Elven Ambush's "for each Elf you
 // control". Any permanent, as printed; effective subtypes, so a
 // changeling counts.
-func b26PermanentsOfSubtypeControlled(g *game.Game, controller uuid.UUID, subtype string) int {
+func B26PermanentsOfSubtypeControlled(g *game.Game, controller uuid.UUID, subtype string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.HasSubtype(subtype) {
@@ -171,8 +171,8 @@ func b26PermanentsOfSubtypeControlled(g *game.Game, controller uuid.UUID, subtyp
 // absence of the Basic SUPERTYPE (b10NonbasicLand), not a type-line
 // substring: a Snow-Covered Island is "Basic Snow Land — Island" and
 // is basic.
-func b26NonbasicLandsControlled(g *game.Game, player uuid.UUID) int {
-	nonbasic := b10NonbasicLand()
+func B26NonbasicLandsControlled(g *game.Game, player uuid.UUID) int {
+	nonbasic := B10NonbasicLand()
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && nonbasic(g, player, c) {
@@ -187,7 +187,7 @@ func b26NonbasicLandsControlled(g *game.Game, player uuid.UUID) int {
 // "Carmen's power" read from inside a target predicate, where the
 // source is not to hand. -1 when they control none, so a mana-value
 // comparison against it admits nothing.
-func b26GreatestPowerOfOracleYouControl(g *game.Game, controller uuid.UUID, oracleID string) int {
+func B26GreatestPowerOfOracleYouControl(g *game.Game, controller uuid.UUID, oracleID string) int {
 	best := -1
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || c.OracleID != oracleID {
@@ -206,7 +206,7 @@ func b26GreatestPowerOfOracleYouControl(g *game.Game, controller uuid.UUID, orac
 // players differ when the commander has been stolen: the printed
 // grant then works for the thief, whose tokens grow, and not for the
 // owner. Walks the live slice: it runs inside a layer recompute.
-func b26ControlsCommanderCreatureOwnedBy(g *game.Game, controller, owner uuid.UUID) bool {
+func B26ControlsCommanderCreatureOwnedBy(g *game.Game, controller, owner uuid.UUID) bool {
 	if g.Battlefield == nil {
 		return false
 	}
@@ -227,11 +227,11 @@ func b26ControlsCommanderCreatureOwnedBy(g *game.Game, controller, owner uuid.UU
 // The power is Carmen's current power, read when the legal set is
 // computed and again at resolution, so a counter placed in response
 // widens the set and a shrink narrows it, as CR 608.2b asks.
-func b26TargetPermanentCardInYourGraveyardWithManaValueAtMostPowerOf(oracleID string) *game.TargetSpec {
+func B26TargetPermanentCardInYourGraveyardWithManaValueAtMostPowerOf(oracleID string) *game.TargetSpec {
 	return TargetCardInGraveyard("up to one target permanent card with mana value less than or equal to Carmen's power from your graveyard",
 		YouOwn(), Permanent(),
 		func(g *game.Game, caster uuid.UUID, c game.Card) bool {
-			return c.ManaValue() <= b26GreatestPowerOfOracleYouControl(g, caster, oracleID)
+			return c.ManaValue() <= B26GreatestPowerOfOracleYouControl(g, caster, oracleID)
 		},
 	).WithCount(0, 1)
 }
@@ -242,9 +242,9 @@ func b26TargetPermanentCardInYourGraveyardWithManaValueAtMostPowerOf(oracleID st
 // every seated player, the caster included, takes damage equal to
 // twice the nonbasic lands they control. Counts are snapshotted
 // before any damage is dealt.
-func b26DamageEachPlayerTwiceTheirNonbasicLands(ctx *Context) error {
-	return damageEachPlayerByCount(ctx, func(player uuid.UUID) int {
-		return 2 * b26NonbasicLandsControlled(ctx.Game, player)
+func B26DamageEachPlayerTwiceTheirNonbasicLands(ctx *Context) error {
+	return DamageEachPlayerByCount(ctx, func(player uuid.UUID) int {
+		return 2 * B26NonbasicLandsControlled(ctx.Game, player)
 	})
 }
 
@@ -253,7 +253,7 @@ func b26DamageEachPlayerTwiceTheirNonbasicLands(ctx *Context) error {
 // included, takes the amount `count` gives for them (Price of Progress,
 // Acidic Soil). Every count is read before any damage is dealt, and the
 // damage is one simultaneous instance.
-func damageEachPlayerByCount(ctx *Context, count func(player uuid.UUID) int) error {
+func DamageEachPlayerByCount(ctx *Context, count func(player uuid.UUID) int) error {
 	type hit struct {
 		player uuid.UUID
 		amount int
@@ -293,14 +293,14 @@ func damageEachPlayerByCount(ctx *Context, count func(player uuid.UUID) int) err
 // landed on top of the library, after the scry, never ordered. A
 // commander that takes the command zone was never put into a library
 // (CR 400.7), so it is not among the cards its owner arranges.
-func b26TuckAttackersTopOrBottomByOwnersChoice(ctx *Context) error {
-	attackers := b26AttackingCreatures(ctx.Game)
+func B26TuckAttackersTopOrBottomByOwnersChoice(ctx *Context) error {
+	attackers := B26AttackingCreatures(ctx.Game)
 	ids := make([]uuid.UUID, 0, len(attackers))
 	for _, c := range attackers {
 		ids = append(ids, c.InstanceID)
 	}
 	// Keyed (#4253 slice 10a): the ordering prompts are the tuck's tail.
-	tail := withWord(withN(ctx.ItemTail(tuckEachOwnerOrders), tuckOrderTopOrBottom),
+	tail := WithWord(WithN(ctx.ItemTail(tuckEachOwnerOrders), tuckOrderTopOrBottom),
 		"Aetherspouts — put each on the top or the bottom of your library")
 	return ctx.Game.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, tail)
 }
@@ -310,9 +310,9 @@ func b26TuckAttackersTopOrBottomByOwnersChoice(ctx *Context) error {
 // graveyard comes back to the battlefield under its owner's control.
 // Read before anything moves, and entering together (#1867), so each
 // sees the others enter (CR 603.6a).
-func b26ReturnCreatureCardsWithManaValueAtMostFromGraveyard(ctx *Context, player uuid.UUID, n int) error {
+func B26ReturnCreatureCardsWithManaValueAtMostFromGraveyard(ctx *Context, player uuid.UUID, n int) error {
 	return ReturnFromGraveyardTogether{
-		Targets: graveyardCardIDs(ctx, player, func(c game.Card) bool {
+		Targets: GraveyardCardIDs(ctx, player, func(c game.Card) bool {
 			return c.IsCreature() && c.ManaValue() <= n
 		}),
 	}.Apply(ctx)
@@ -324,9 +324,9 @@ func b26ReturnCreatureCardsWithManaValueAtMostFromGraveyard(ctx *Context, player
 // The permission is unbounded ("for as long as that card remains
 // exiled") and cast-only, as printed — nothing the ability can
 // target is a land, so "cast" and "play" coincide anyway.
-func b26ExileFirstLegalTargetOwnerMayCast(g *game.Game, item *game.StackItem) error {
+func B26ExileFirstLegalTargetOwnerMayCast(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -339,7 +339,7 @@ func b26ExileFirstLegalTargetOwnerMayCast(g *game.Game, item *game.StackItem) er
 // b26SearchBasicsOntoBattlefieldTapped is The Earth King's search:
 // up to n basic land cards, onto the battlefield tapped, then
 // shuffle. Zero is a shuffle and nothing else, as printed.
-func b26SearchBasicsOntoBattlefieldTapped(g *game.Game, item *game.StackItem, n int, reason string) error {
+func B26SearchBasicsOntoBattlefieldTapped(g *game.Game, item *game.StackItem, n int, reason string) error {
 	if n <= 0 {
 		return nil
 	}
@@ -358,7 +358,7 @@ func b26SearchBasicsOntoBattlefieldTapped(g *game.Game, item *game.StackItem, n 
 // a +1/+1 counter on the source if it is still on the battlefield,
 // and 1 life either way — the life is not conditional on the
 // counter landing.
-func b26PutCounterOnSelfAndGainLife(g *game.Game, item *game.StackItem) error {
+func B26PutCounterOnSelfAndGainLife(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneBattlefield {
 		if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
@@ -372,7 +372,7 @@ func b26PutCounterOnSelfAndGainLife(g *game.Game, item *game.StackItem) error {
 // still-legal graveyard target onto the battlefield under its
 // owner's control — Carmen's attack trigger, whose "up to one" may
 // have been answered with nothing.
-func b26ReturnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.StackItem) error {
+func B26ReturnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -386,7 +386,7 @@ func b26ReturnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.St
 // b26SourceOnBattlefieldUntapped reports whether the item's source is
 // still on the battlefield and untapped — Genesis Chamber's
 // intervening-if, re-run at resolution.
-func b26SourceOnBattlefieldUntapped(g *game.Game, item *game.StackItem) bool {
+func B26SourceOnBattlefieldUntapped(g *game.Game, item *game.StackItem) bool {
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
 		return false
 	}

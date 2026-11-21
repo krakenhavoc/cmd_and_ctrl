@@ -1,0 +1,21 @@
+package cardsv
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Vampire Nighthawk — "Flying, deathtouch, lifelink."
+//
+// Triple-threat creature — 2/3 for 1BB. The three keywords all
+// flow through the same PrintedKeywords slot. Combat interactions
+// exercise deathtouch (flag any blocker for destruction) + lifelink
+// (source controller gains damage as life) + flying (only flying /
+// reach blockers can stop it).
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "feb244f8-bcb1-44cf-9940-2719221a7309",
+		Name:            "Vampire Nighthawk",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying", "deathtouch", "lifelink"},
+	})
+}

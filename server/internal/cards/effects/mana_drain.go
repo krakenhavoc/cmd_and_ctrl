@@ -64,10 +64,10 @@ func init() {
 				return nil
 			}
 			return ScheduleDelayedTrigger{
-				At:                 manaDrainNextMainPhaseStep(ctx.Game, item.Controller),
+				At:                 ManaDrainNextMainPhaseStep(ctx.Game, item.Controller),
 				ControllerTurnOnly: true,
 				Label:              "Mana Drain — add {C} × " + strconv.Itoa(mv),
-				Body:               manaDrainRefundBody,
+				Body:               ManaDrainRefundBody,
 				Params:             game.EffectParams{Amount: mv},
 			}.Apply(ctx)
 		},
@@ -84,7 +84,7 @@ func init() {
 // yet on your current or next turn"). Reads g.Turn and g.Seats
 // directly rather than through g.ActivePlayer, which takes the read
 // lock this runs under already (IsYourTurn's own contract).
-func manaDrainNextMainPhaseStep(g *game.Game, controller uuid.UUID) game.Step {
+func ManaDrainNextMainPhaseStep(g *game.Game, controller uuid.UUID) game.Step {
 	if !IsYourTurn(g, controller) {
 		// Not my turn at all: the earliest main phase I can have is
 		// my next precombat main, however many turns away that is —

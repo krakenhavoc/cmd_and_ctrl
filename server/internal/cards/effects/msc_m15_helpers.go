@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // permission's ExileInsteadOfGraveyard (#3863): the spell is exiled whether
 // it resolves, is countered or fizzles. The target is re-checked as the
 // ability resolves (CR 608.2b): one that left the graveyard is not cast.
-func freeCastTargetFromYourGraveyardExilingIt(sourceName string) Effect {
+func FreeCastTargetFromYourGraveyardExilingIt(sourceName string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -47,7 +47,7 @@ func freeCastTargetFromYourGraveyardExilingIt(sourceName string) Effect {
 				Label:       sourceName + " — cast " + c.Name + " without paying its mana cost",
 			}, []game.Card{c})
 			// #4250: cast during the resolution (CR 608.2g).
-			offerResolutionCastOver(g, item.Controller, item.SourceCardID, sourceName, game.MayCastKeywordFreeCast, declineLeaveInGraveyard, c.InstanceID)
+			OfferResolutionCastOver(g, item.Controller, item.SourceCardID, sourceName, game.MayCastKeywordFreeCast, DeclineLeaveInGraveyard, c.InstanceID)
 			return nil
 		}
 		return nil
@@ -58,9 +58,9 @@ func freeCastTargetFromYourGraveyardExilingIt(sourceName string) Effect {
 // with one target: the first target still legal as the ability resolves
 // (CR 608.2b), or nothing (The Witch's Vanity's first chapter, The Spear of
 // Bashenga).
-func destroyTheFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func DestroyTheFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if id, ok := b16FirstLegalTargetCard(ctx); ok {
+	if id, ok := B16FirstLegalTargetCard(ctx); ok {
 		return DestroyTarget{Target: id}.Apply(ctx)
 	}
 	return nil

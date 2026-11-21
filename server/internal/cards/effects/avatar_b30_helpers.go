@@ -16,7 +16,7 @@ import (
 // layer-7a characteristic-defining ability (CR 604.3), self-only. It
 // functions in every zone (CR 604.3, the card's ruling): the engine lends a
 // card off the battlefield its own reading (Game.withPTAnywhereLocked).
-func avB30aPowerEqualsCreaturesYouControl(label string) game.StaticAbility {
+func AvB30aPowerEqualsCreaturesYouControl(label string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:    label,
 		Layer:    game.Layer7PT,
@@ -25,7 +25,7 @@ func avB30aPowerEqualsCreaturesYouControl(label string) game.StaticAbility {
 			return target.InstanceID == source.InstanceID
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			c.Power = b04CreaturesControlled(g, source.Controller)
+			c.Power = B04CreaturesControlled(g, source.Controller)
 		},
 	}
 }
@@ -34,7 +34,7 @@ func avB30aPowerEqualsCreaturesYouControl(label string) game.StaticAbility {
 // <subtype> you control" (Lo and Li's Advisors): the set is read as the
 // ability resolves and every counter is placed by b13PutCounterOnEach. The
 // subtype is a word of the source's text (CR 612.2).
-func avB30aPutCounterOnEachOfSubtypeYouControl(subtype string) Effect {
+func AvB30aPutCounterOnEachOfSubtypeYouControl(subtype string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		word := g.TextReaderForEffect(item).TextSubtype(subtype)
 		var ids []uuid.UUID
@@ -43,7 +43,7 @@ func avB30aPutCounterOnEachOfSubtypeYouControl(subtype string) Effect {
 				ids = append(ids, c.InstanceID)
 			}
 		}
-		return b13PutCounterOnEach(NewContext(g, item), ids)
+		return B13PutCounterOnEach(NewContext(g, item), ids)
 	}
 }
 
@@ -51,7 +51,7 @@ func avB30aPutCounterOnEachOfSubtypeYouControl(subtype string) Effect {
 // control an attacking legendary creature": a legendary creature you control
 // that is currently declared as an attacker (Card.AttackingTarget, cleared
 // as it leaves combat).
-func avB30aYouControlAnAttackingLegendaryCreature(g *game.Game, you uuid.UUID) bool {
+func AvB30aYouControlAnAttackingLegendaryCreature(g *game.Game, you uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == you && c.IsCreature() && c.IsLegendary() && c.AttackingTarget != uuid.Nil {
 			return true
@@ -63,10 +63,10 @@ func avB30aYouControlAnAttackingLegendaryCreature(g *game.Game, you uuid.UUID) b
 // avB30cEachPlayerCreatesAFood is "each player creates a Food token": one
 // Food for every seat, in turn order from the active player, each created
 // under that player's control (Party Dude, Elephant-Mandrill).
-func avB30cEachPlayerCreatesAFood(g *game.Game, item *game.StackItem) error {
+func AvB30cEachPlayerCreatesAFood(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, p := range seatsFromActive(g) {
-		if err := (CreateToken{Controller: p, Template: FoodToken(), N: 1}).Apply(ctx.asGroupMember()); err != nil {
+	for _, p := range SeatsFromActive(g) {
+		if err := (CreateToken{Controller: p, Template: FoodToken(), N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -83,9 +83,9 @@ func avB30cEachPlayerCreatesAFood(g *game.Game, item *game.StackItem) error {
 // carries the "any number" bounds, as SacrificeAllCost's does, so the
 // validator checks what was named and the flag says how many. Only the
 // mandatory slot may carry it (avB30cCheckSacrificeHalfCost).
-func avB30cSacrificeHalfRoundedUpCost(label string, preds ...CardPredicate) *game.AdditionalCost {
+func AvB30cSacrificeHalfRoundedUpCost(label string, preds ...CardPredicate) *game.AdditionalCost {
 	return &game.AdditionalCost{
-		Sacrifice:              sacrificeSpec(label, preds...).WithCount(0, 0),
+		Sacrifice:              SacrificeSpec(label, preds...).WithCount(0, 0),
 		SacrificeHalfRoundedUp: true,
 		Label:                  "Sacrifice half the " + label + ", rounded up",
 	}

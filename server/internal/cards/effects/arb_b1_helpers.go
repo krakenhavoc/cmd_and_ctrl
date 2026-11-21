@@ -31,7 +31,7 @@ func arbB1AnotherMulticolored(g *game.Game, source *game.Card) bool {
 // control another multicolored permanent, this creature …": the source
 // alone, while the condition holds.
 func arbB1SelfWhileAnotherMulticolored(target *game.Card, g *game.Game, source *game.Card) bool {
-	return selfCreature(target, g, source) && arbB1AnotherMulticolored(g, source)
+	return SelfCreature(target, g, source) && arbB1AnotherMulticolored(g, source)
 }
 
 // arbB1Blade is the cycle's whole static: "As long as you control another
@@ -39,7 +39,7 @@ func arbB1SelfWhileAnotherMulticolored(target *game.Card, g *game.Game, source *
 // layer 7c +1/+1 and a layer 6 grant (CR 613.1f), both read live, so the
 // bonus ends the moment the last other multicolored permanent leaves or
 // loses a colour.
-func arbB1Blade(keyword string) []game.StaticAbility {
+func ArbB1Blade(keyword string) []game.StaticAbility {
 	grant := KeywordGrant(arbB1SelfWhileAnotherMulticolored, keyword)
 	grant.Label = "As long as you control another multicolored permanent, this creature has " + keyword + "."
 	return []game.StaticAbility{
@@ -48,7 +48,7 @@ func arbB1Blade(keyword string) []game.StaticAbility {
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: arbB1SelfWhileAnotherMulticolored,
-			Apply:     pumpBy(1, 1),
+			Apply:     PumpBy(1, 1),
 		},
 		grant,
 	}

@@ -9,7 +9,7 @@ import (
 // s82VowB02ControlsAnother reports whether `controller` controls a
 // permanent other than `self` with the creature subtype, read through the
 // layers (Resistance Squad's "if you control another Human").
-func s82VowB02ControlsAnother(g *game.Game, controller, self uuid.UUID, subtype string) bool {
+func S82VowB02ControlsAnother(g *game.Game, controller, self uuid.UUID, subtype string) bool {
 	g.RecomputeLayersIfStaleLocked()
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.InstanceID != self && c.IsCreature() && c.HasSubtype(subtype) {
@@ -21,16 +21,16 @@ func s82VowB02ControlsAnother(g *game.Game, controller, self uuid.UUID, subtype 
 
 // s82VowB02ControlsAnotherHuman is Resistance Squad's intervening "if",
 // re-read as its trigger resolves.
-var s82VowB02ControlsAnotherHuman = CondBoard{
+var S82VowB02ControlsAnotherHuman = CondBoard{
 	Name: "you control another Human",
 	Test: func(ctx *Context) bool {
-		return s82VowB02ControlsAnother(ctx.Game, ctx.Controller(), ctx.Source(), "Human")
+		return S82VowB02ControlsAnother(ctx.Game, ctx.Controller(), ctx.Source(), "Human")
 	},
 }
 
 // s82VowB02ArmSlot is one of Arm the Cathars' three picks: +N/+N and
 // vigilance until end of turn for the slot's target if it is still legal.
-func s82VowB02ArmSlot(ctx *Context, slot, n int) error {
+func S82VowB02ArmSlot(ctx *Context, slot, n int) error {
 	t, ok := ctx.ClauseTarget(slot)
 	if !ok || t.Kind != game.TargetCard {
 		return nil

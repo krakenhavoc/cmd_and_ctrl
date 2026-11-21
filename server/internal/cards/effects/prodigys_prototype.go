@@ -30,15 +30,15 @@ func init() {
 			Effect:  CrewEffect("Prodigy's Prototype"),
 		}},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventAttack, vehicleYouControlAttacked, label,
+			OncePerBatch(On(game.EventAttack, VehicleYouControlAttacked, label,
 				Do(CreateToken{Template: CrewPilotToken(), N: 1}))),
 		},
 	})
 }
 
 // vehicleYouControlAttacked is "a Vehicle you control attacks".
-func vehicleYouControlAttacked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || !attackDeclaredByYou(ev, source.Controller) {
+func VehicleYouControlAttacked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if source == nil || !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)

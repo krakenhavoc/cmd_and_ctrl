@@ -1,0 +1,154 @@
+package testsg
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+const ghostOfRamirezOracle = "07fe0fb5-cf34-4ba4-a3f3-ac0cc919bf91"
+
+// The evasion: a blocker with toughness 3 or greater is refused, a
+// smaller one is not.
+func TestGhostOfRamirezCantBeBlockedByToughnessThreeOrGreater(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ghost := effectstest.B12Push(g, me.ID, "Ghost of Ramirez DePietro", "Legendary Creature — Spirit Pirate", ghostOfRamirezOracle, 2, 3)
+	wall := effectstest.B12Creature(g, opp.ID, "Wall", "Creature — Wall", 0, 3)
+	bear := effectstest.B12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
+	effectstest.BrAttack(t, g, ghost)
+
+	refused := effectstest.BrRefusal(t, g.DeclareBlocker(wall, ghost), game.BlockReasonCantBeBlockedBy)
+	if refused.Label != "creatures with toughness 3 or greater" {
+		t.Errorf("refusal label %q", refused.Label)
+	}
+	if err := g.DeclareBlocker(bear, ghost); err != nil {
+		t.Fatalf("a 2-toughness creature may block: %v", err)
+	}
+}
+
+// The trigger's target: a card discarded or milled this turn, in any
+// graveyard — not a creature that died, and not a card that was
+// already there. The chosen card goes to its OWNER's hand.
+func TestGhostOfRamirezReturnsACardDiscardedOrMilledThisTurn(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ghost := effectstest.B12Push(g, me.ID, "Ghost of Ramirez DePietro", "Legendary Creature — Spirit Pirate", ghostOfRamirezOracle, 2, 3)
+
+	old := effectstest.SsCard(opp.Graveyard, opp.ID, "Old Card", "Sorcery", 0, 0)
+
+	opp.Hand.Cards = nil
+	discarded := effectstest.SsCard(opp.Hand, opp.ID, "Discarded Card", "Instant", 0, 0)
+	milled := effectstest.SsCard(me.Library, me.ID, "Milled Card", "Sorcery", 0, 0)
+	died := effectstest.B12Creature(g, opp.ID, "Doomed Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() {
+		if err := g.DiscardRandomForEffect(opp.ID, 1); err != nil {
+			t.Fatalf("discard: %v", err)
+		}
+		if _, err := g.MillToZoneForEffect(me.ID, 1, game.ZoneGraveyard); err != nil {
+			t.Fatalf("mill: %v", err)
+		}
+		_ = g.DestroyPermanentForEffect(died)
+	})
+	effectstest.PassPriorityAroundTable(t, g)
+	if !opp.Graveyard.Contains(discarded) || !me.Graveyard.Contains(milled) || !opp.Graveyard.Contains(died) {
+		t.Fatal("setup: the three cards reach their graveyards")
+	}
+
+	effectstest.EmitDamageEventForTest(g, ghost, opp.ID, 2, true)
+	effectstest.B04WaitForPick(t, g, me.ID)
+	p := effectstest.LatestPickTarget(g, me.ID)
+	if !effectstest.HasID(p.PickTargetCards, discarded) || !effectstest.HasID(p.PickTargetCards, milled) {
+		t.Errorf("a discarded card and a milled card are legal targets: %v", p.PickTargetCards)
+	}
+	if effectstest.HasID(p.PickTargetCards, died) {
+		t.Error("a creature that died this turn was not discarded or milled")
+	}
+	if effectstest.HasID(p.PickTargetCards, old) {
+		t.Error("a card already in the graveyard before this turn is not a target")
+	}
+	if p.PickTargetMin != 0 {
+		t.Errorf("up to one target: min %d", p.PickTargetMin)
+	}
+	effectstest.PickCard(t, g, me.ID, discarded)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if !opp.Hand.Contains(discarded) {
+		t.Error("the card goes to its owner's hand")
+	}
+	if me.Hand.Contains(discarded) {
+		t.Error("not to the Ghost's controller's hand")
+	}
+}
+
+// A card discarded this turn that has since left the graveyard and
+// come back another way is judged by its latest arrival.
+func TestGhostOfRamirezReadsTheLatestArrival(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	me.Hand.Cards = nil
+	card := effectstest.SsCard(me.Hand, me.ID, "Bear Card", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() {
+		if err := g.DiscardRandomForEffect(me.ID, 1); err != nil {
+			t.Fatalf("discard: %v", err)
+		}
+	})
+	var discardedThen bool
+	g.ReadSnapshot(func() { discardedThen = effects.DiscardedOrMilledThisTurn(g, card) })
+	if !discardedThen {
+		t.Fatal("a card just discarded was discarded this turn")
+	}
+
+	// Reanimated, then destroyed: its latest arrival is a death.
+	g.WithWriteLock(func() {
+		if err := (effects.ReturnFromGraveyard{Target: card, Dest: game.ZoneBattlefield}).Apply(effects.NewContext(g, &game.StackItem{Controller: me.ID})); err != nil {
+			t.Fatalf("reanimate: %v", err)
+		}
+	})
+	if !g.Battlefield.Contains(card) {
+		t.Fatal("setup: the card is on the battlefield")
+	}
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(card) })
+	effectstest.PassPriorityAroundTable(t, g)
+	var stillCounts bool
+	g.ReadSnapshot(func() { stillCounts = effects.DiscardedOrMilledThisTurn(g, card) })
+	if stillCounts {
+		t.Error("a card whose latest arrival was a death is not 'discarded this turn'")
+	}
+}
+
+// #2608: the trigger has "up to one" target and nothing to point at, so
+// it needs no prompt and finishes inside the harvest. The state-based
+// sweep that used to run from there eliminated the damaged player while
+// the battlefield was being walked, took their permanents out from under
+// the walk, and panicked with an index out of range. The harvest is
+// read-only: the sweep is the damage step's boundary, not the harvest's.
+func TestGhostOfRamirezHarvestDoesNotSweepTheBattlefieldItIsWalking(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ghost := effectstest.B12Push(g, me.ID, "Ghost of Ramirez DePietro", "Legendary Creature — Spirit Pirate", ghostOfRamirezOracle, 2, 3)
+	// Behind the Ghost in the walk, so a shrinking battlefield is
+	// exactly what would have been indexed past.
+	var bears []uuid.UUID
+	for i := 0; i < 6; i++ {
+		bears = append(bears, effectstest.B12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2))
+	}
+	g.WithWriteLock(func() { opp.Life = 0 })
+
+	effectstest.EmitDamageEventForTest(g, ghost, opp.ID, 2, true)
+
+	if !g.Battlefield.Contains(bears[0]) {
+		t.Error("the harvest must not run the state-based sweep under its own walk")
+	}
+	g.RunStateChecksForTest()
+	if g.Battlefield.Contains(bears[0]) {
+		t.Error("the damage step's boundary eliminates the player and sweeps their permanents")
+	}
+	if !g.Battlefield.Contains(ghost) {
+		t.Error("the Ghost stays")
+	}
+}

@@ -1,0 +1,209 @@
+package testsex
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// free_offer_faces_4697_test.go — #4697: Beseech the Mirror's "if that
+// spell's mana value is 4 or less" and Ziatora's Envoy's and Rashmi's "a
+// spell with mana value N or less" are about the spell, so the card is
+// offered when some face a cast may choose is a spell that fits
+// (CR 601.3e, 712.11c, 715.3a), and the cast is that face.
+
+// cheapBackMDFC is a modal DFC whose front face (mana value 7) fits no cap
+// and whose back face (a mana value 2 sorcery) fits every cap here.
+func cheapBackMDFC(owner uuid.UUID) game.Card {
+	return effectstest.MdfcCard(owner, "", game.LayoutModalDFC,
+		game.Face{Name: "Fixture Colossus", TypeLine: "Creature — Giant", ManaCost: "{5}{B}{B}",
+			Colors: []string{"B"}, Power: 7, Toughness: 7},
+		game.Face{Name: "Fixture Rite", TypeLine: "Sorcery", ManaCost: "{1}{B}", Colors: []string{"B"}},
+	)
+}
+
+// beseechFaceTable is mcBeseechTable with a chosen card to find.
+func beseechFaceTable(t *testing.T, wanted game.Card) (*game.Game, *game.Player, uuid.UUID) {
+	t.Helper()
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	wanted.Owner, wanted.Controller = me.ID, me.ID
+	g.WithWriteLock(func() {
+		effectstest.PushLibraryCardForTest(me, wanted)
+		effectstest.PushLibraryCardForTest(me, game.Card{Name: "Filler", TypeLine: "Sorcery", ManaCost: "{1}", Owner: me.ID, Controller: me.ID})
+	})
+	return g, me, wanted.InstanceID
+}
+
+// bargainedBeseechFinds casts Beseech the Mirror bargained and finds `id`.
+func bargainedBeseechFinds(t *testing.T, g *game.Game, me *game.Player, id uuid.UUID) {
+	t.Helper()
+	token := effectstest.PushTokens(g, me.ID, effects.RedGoblinToken(), 1)[0]
+	if _, err := effectstest.CastWithOptionalCosts(t, g, "Beseech the Mirror", "Sorcery", effectstest.McBeseechOracle, nil, []int{0}, []uuid.UUID{token}); err != nil {
+		t.Fatalf("bargained cast: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerSearchByID(t, g, me.ID, id)
+}
+
+func TestBeseechTheMirrorOffersAModalDFCWhoseBackFaceFits(t *testing.T) {
+	g, me, id := beseechFaceTable(t, cheapBackMDFC(uuid.Nil))
+	bargainedBeseechFinds(t, g, me, id)
+
+	c := effectstest.KeywordCastPromptFor(g, me.ID)
+	if c == nil || effectstest.KeywordCastCard(c) != id {
+		t.Fatalf("the modal DFC went to the hand (%v) instead of being offered: %+v", me.Hand.Contains(id), c)
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "exile", Face: 0}); err == nil {
+		t.Fatal("the mana value 7 front face was cast through a cap of 4")
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "exile", Face: 1}); err != nil {
+		t.Fatalf("cast the back face free: %v", err)
+	}
+	if spell, ok := effectstest.StackCardOf(g, id); !ok || spell.ActiveFace != 1 || !spell.IsSorcery() {
+		t.Fatalf("on the stack: %+v, want the sorcery back face", spell)
+	}
+}
+
+func TestBeseechTheMirrorOffersACreatureWhoseAdventureFits(t *testing.T) {
+	g, me, id := beseechFaceTable(t, effectstest.ExpensiveFrontCheapBack(uuid.Nil))
+	bargainedBeseechFinds(t, g, me, id)
+
+	if c := effectstest.KeywordCastPromptFor(g, me.ID); c == nil || effectstest.KeywordCastCard(c) != id {
+		t.Fatalf("the adventurer card was not offered for its Adventure: %+v", c)
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "exile", Face: 1}); err != nil {
+		t.Fatalf("cast the Adventure free: %v", err)
+	}
+	if spell, ok := effectstest.StackCardOf(g, id); !ok || spell.ActiveFace != 1 || spell.IsCreature() {
+		t.Fatalf("on the stack: %+v, want the Adventure", spell)
+	}
+}
+
+// A card no face of which fits still goes straight to the hand.
+func TestBeseechTheMirrorStillSendsACardWithNoFittingFaceToHand(t *testing.T) {
+	big := cheapBackMDFC(uuid.Nil)
+	big.Faces[1].ManaCost = "{4}{B}"
+	g, me, id := beseechFaceTable(t, big)
+	bargainedBeseechFinds(t, g, me, id)
+	if !me.Hand.Contains(id) || effectstest.KeywordCastPromptFor(g, me.ID) != nil {
+		t.Fatal("a card with no face of mana value 4 or less was offered")
+	}
+}
+
+func TestZiatorasEnvoyCastsAModalDFCsBackFaceFromTheTop(t *testing.T) {
+	tb := effectstest.NewEnvoyTable(t)
+	id := tb.PushTop(cheapBackMDFC(uuid.Nil))
+	tb.Attack(t)
+	c := tb.MayCast()
+	if c == nil || c.Kind != game.PendingChoiceResolutionCast || effectstest.KeywordCastCard(c) != id {
+		t.Fatalf("the modal DFC whose back face fits was not offered: %+v (in hand %v)", c, tb.Me.Hand.Contains(id))
+	}
+	if err := tb.G.CastSpell(tb.Me.ID, id, game.CastSpellParams{FromZone: "library", Face: 0}); err == nil {
+		t.Fatal("the mana value 7 front face was cast after 5 damage")
+	}
+	if err := tb.G.CastSpell(tb.Me.ID, id, game.CastSpellParams{FromZone: "library", Face: 1}); err != nil {
+		t.Fatalf("cast the back face from the library: %v", err)
+	}
+	if spell, ok := effectstest.StackCardOf(tb.G, id); !ok || spell.ActiveFace != 1 || !spell.IsSorcery() {
+		t.Fatalf("on the stack: %+v, want the sorcery back face", spell)
+	}
+}
+
+func TestZiatorasEnvoyCastsAnAdventureThatFits(t *testing.T) {
+	tb := effectstest.NewEnvoyTable(t)
+	id := tb.PushTop(effectstest.ExpensiveFrontCheapBack(uuid.Nil))
+	tb.Attack(t)
+	if c := tb.MayCast(); c == nil || effectstest.KeywordCastCard(c) != id {
+		t.Fatalf("the adventurer card was not offered for its Adventure: %+v", c)
+	}
+	if err := tb.G.CastSpell(tb.Me.ID, id, game.CastSpellParams{FromZone: "library", Face: 1}); err != nil {
+		t.Fatalf("cast the Adventure from the library: %v", err)
+	}
+	if spell, ok := effectstest.StackCardOf(tb.G, id); !ok || spell.ActiveFace != 1 || spell.IsCreature() {
+		t.Fatalf("on the stack: %+v, want the Adventure", spell)
+	}
+}
+
+// A Town whose land cannot be played (the land drop is spent) is still a
+// spell to cast: its sorcery Adventure.
+func TestZiatorasEnvoyCastsATownsAdventureWhenTheLandCannotBePlayed(t *testing.T) {
+	tb := effectstest.NewEnvoyTable(t)
+	id := tb.PushTop(effectstest.LandAdventureCard(uuid.Nil, "", "Fixture Town", "Fixture Overture", "{1}{U}", []string{"U"}))
+	tb.G.WithWriteLock(func() { tb.G.LandsPlayedThisTurn = map[uuid.UUID]int{tb.Me.ID: 1} })
+	tb.Attack(t)
+	c := tb.MayCast()
+	if c == nil || c.Kind != game.PendingChoiceResolutionCast || effectstest.KeywordCastCard(c) != id {
+		t.Fatalf("the Town's Adventure was not offered: %+v (in hand %v)", c, tb.Me.Hand.Contains(id))
+	}
+	if err := tb.G.CastSpell(tb.Me.ID, id, game.CastSpellParams{FromZone: "library", Face: 1}); err != nil {
+		t.Fatalf("cast the Town's Adventure: %v", err)
+	}
+	if spell, ok := effectstest.StackCardOf(tb.G, id); !ok || !spell.IsSorcery() || spell.IsLand() {
+		t.Fatalf("on the stack: %+v, want the sorcery Adventure", spell)
+	}
+}
+
+// With the land drop still there, a Town whose Adventure fits is both
+// answers in one offer (free_offer_combined_4697_test.go has the three
+// ways of answering it).
+func TestZiatorasEnvoyOffersATownAsALandPlayOrItsAdventure(t *testing.T) {
+	tb := effectstest.NewEnvoyTable(t)
+	id := tb.PushTop(effectstest.LandAdventureCard(uuid.Nil, "", "Fixture Town", "Fixture Overture", "{1}{U}", []string{"U"}))
+	tb.Attack(t)
+	c := tb.MayCast()
+	if c == nil || c.MayCastKeyword != game.MayCastKeywordPlayOrFreeOrHand || effectstest.KeywordCastCard(c) != id {
+		t.Fatalf("offer %+v, want the land play or the cast", c)
+	}
+}
+
+// A Town whose Adventure is over the damage dealt is the land play alone.
+func TestZiatorasEnvoyStillOffersATownOverTheCapAsALandPlay(t *testing.T) {
+	tb := effectstest.NewEnvoyTable(t)
+	id := tb.PushTop(effectstest.LandAdventureCard(uuid.Nil, "", "Fixture Town", "Fixture Overture", "{5}{U}{U}", []string{"U"}))
+	tb.Attack(t)
+	c := tb.MayCast()
+	if c == nil || c.MayCastKeyword != game.MayCastKeywordPlayOrHand || c.MayCastCard != id {
+		t.Fatalf("offer %+v, want the land play", c)
+	}
+}
+
+// A modal DFC whose back face is a land, and whose front face is a spell
+// over the damage dealt, is offered as a play of its land back face
+// (CR 712.12).
+func TestZiatorasEnvoyPlaysAModalDFCsLandBackFace(t *testing.T) {
+	tb := effectstest.NewEnvoyTable(t)
+	id := tb.PushTop(effectstest.MdfcCard(uuid.Nil, "", game.LayoutModalDFC,
+		game.Face{Name: "Fixture Awakening", TypeLine: "Sorcery", ManaCost: "{5}{G}{G}", Colors: []string{"G"}},
+		game.Face{Name: "Fixture Undercrypt", TypeLine: "Land"},
+	))
+	tb.Attack(t)
+	c := tb.MayCast()
+	if c == nil || c.MayCastKeyword != game.MayCastKeywordPlayOrHand || c.MayCastCard != id {
+		t.Fatalf("offer %+v (in hand %v), want the land back face's play", c, tb.Me.Hand.Contains(id))
+	}
+	tb.Answer(t, true)
+	land, ok := effectstest.BattlefieldCard(tb.G, id)
+	if !ok || land.ActiveFace != 1 || !land.IsLand() {
+		t.Fatalf("on the battlefield: %+v, want the land back face", land)
+	}
+	if got := tb.G.LandsPlayedThisTurnFor(tb.Me.ID); got != 1 {
+		t.Errorf("lands played this turn = %d, want 1", got)
+	}
+}
+
+// Rashmi's clause is spell-only: a revealed Town is offered for its
+// Adventure.
+func TestRashmiOffersARevealedTownsAdventure(t *testing.T) {
+	rt := newRashmiTable(t)
+	town := effectstest.LandAdventureCard(rt.me.ID, "", "Fixture Town", "Fixture Overture", "{1}{U}", []string{"U"})
+	rt.g.WithWriteLock(func() { rt.me.Library.PushTop(town) })
+	rt.castFirst(t, "{3}")
+	if c := rt.MayCast(); c == nil || effectstest.KeywordCastCard(c) != town.InstanceID {
+		t.Fatalf("a Town whose mana value 2 Adventure is lesser than 3 was not offered: %+v", c)
+	}
+}

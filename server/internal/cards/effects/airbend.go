@@ -86,19 +86,19 @@ type ExileWithPermission struct {
 }
 
 func (e ExileWithPermission) Apply(ctx *Context) error {
-	if ctx.isNewSourceObject(e.Target) { // #1432
+	if ctx.IsNewSourceObject(e.Target) { // #1432
 		return nil
 	}
 	if e.Linked {
 		link, _ := ctx.SourceRef()
-		return ctx.Game.ExileLinkedKeyedForEffect(link, []uuid.UUID{e.Target}, grantOverLandedTail(e.permission()))
+		return ctx.Game.ExileLinkedKeyedForEffect(link, []uuid.UUID{e.Target}, grantOverLandedTail(e.Permission()))
 	}
-	return exileAllWithPermission(ctx.Game, []uuid.UUID{e.Target}, e.permission())
+	return ExileAllWithPermission(ctx.Game, []uuid.UUID{e.Target}, e.Permission())
 }
 
 // permission is the grant the primitive's fields describe, before the
 // holder and zone are filled in per landed card.
-func (e ExileWithPermission) permission() game.CastPermission {
+func (e ExileWithPermission) Permission() game.CastPermission {
 	perm := game.CastPermission{
 		Player:   e.GrantTo,
 		CastOnly: e.CastOnly,
@@ -137,7 +137,7 @@ func (e ExileWithPermission) permission() game.CastPermission {
 // (GrantCastPermissionOverCardForEffect fills a zero holder in), so
 // one airbend of two players' permanents hands each player their own
 // card back.
-func exileAllWithPermission(g *game.Game, ids []uuid.UUID, perm game.CastPermission) error {
+func ExileAllWithPermission(g *game.Game, ids []uuid.UUID, perm game.CastPermission) error {
 	return g.ExileCardsKeyedForEffect(ids, grantOverLandedTail(perm))
 }
 
@@ -196,7 +196,7 @@ type AirbendAll struct {
 }
 
 func (a AirbendAll) Apply(ctx *Context) error {
-	targets := ctx.withoutNewSourceObject(a.Targets) // #1432
+	targets := ctx.WithoutNewSourceObject(a.Targets) // #1432
 	if len(targets) == 0 {
 		return nil
 	}
@@ -204,7 +204,7 @@ func (a AirbendAll) Apply(ctx *Context) error {
 		CastOnly:     true,
 		WhileExiled:  true,
 		CostOverride: AirbendCost,
-	}.permission()
+	}.Permission()
 	return ctx.Game.ExileCardsKeyedForEffect(targets, game.KeyedTail{
 		Ref:        airbendLanded,
 		Player:     ctx.Controller(),

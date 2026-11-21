@@ -1,0 +1,38 @@
+package cardsex
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Fate Unraveler — Enchantment Creature — Hag {3}{B}, 3/4 (EDHREC
+// rank 1707):
+//
+//	"Whenever an opponent draws a card, this creature deals 1 damage
+//	 to that player."
+//
+// Underworld Dreams on a body — and an enchantment body, so it is
+// both a creature and an enchantment for anything that counts
+// either. Razorkin Needlehead's trigger exactly: EventDrawCard fires
+// once per card, the drawer's ID is captured in Build by value (the
+// Edric pattern), and the Hag is the damage source, so a Fog-class
+// shield stops it.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "7d66f67d-3148-4636-ac5a-2cf8a51d5e50",
+		Name:         "Fate Unraveler",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventDrawCard},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Actor != uuid.Nil && ev.Actor != source.Controller
+			},
+			Key:    "Fate Unraveler — 1 damage to the player who drew",
+			Effect: effects.DealOneDamageToPlayerWhoDrew,
+		}},
+	})
+}

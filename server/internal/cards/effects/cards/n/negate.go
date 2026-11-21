@@ -1,0 +1,29 @@
+package cardsn
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Negate — "Counter target noncreature spell." Sandbox
+// S20: the "noncreature" predicate is enforced — the picker only
+// offers noncreature spells and the engine rejects a creature spell
+// at announce (CR 601.2c). Previously the announce-time picker let the
+// caster target any spell; the CounterTarget primitive does the
+// rest. Social self-policing catches misplays in casual.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "3407fe41-fdd3-4119-8f70-4bc4590a379f",
+		Name:         "Negate",
+		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
+		Targets:      effects.TargetSpell("target noncreature spell", effects.Noncreature()),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if len(item.Targets) == 0 {
+				return nil
+			}
+			return effects.CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
+		},
+	})
+}

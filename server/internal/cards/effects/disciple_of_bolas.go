@@ -43,41 +43,41 @@ func init() {
 // Caller holds g.mu (resolution frame).
 func discipleOfBolasSacrificeThenPayout(g *game.Game, item *game.StackItem) error {
 	return NewContext(g, item).SacrificeThen(item.Controller,
-		sacrificeSpec("another creature", Creature(), NotSelf(item.SourceCardID)),
-		"Disciple of Bolas — sacrifice another creature", 1, discipleOfBolasPayout)
+		SacrificeSpec("another creature", Creature(), NotSelf(item.SourceCardID)),
+		"Disciple of Bolas — sacrifice another creature", 1, DiscipleOfBolasPayout)
 }
 
 // discipleOfBolasPayout is the life gain and the draw once the creature has
 // really been sacrificed, keyed (#4290): the item rides the run as data, so
 // the creature's power is filed as the step record under the same item.
-var discipleOfBolasPayout = RunThen("prompt-run/disciple-of-bolas-payout", func(ctx *Context, r game.RunDone) error {
+var DiscipleOfBolasPayout = RunThen("prompt-run/disciple-of-bolas-payout", func(ctx *Context, r game.RunDone) error {
 	ids := r.Sacrifices().By(ctx.Controller())
 	if len(ids) == 0 {
 		// No other creature to sacrifice — the ability does
 		// as much as it can, which is nothing.
 		return nil
 	}
-	ctx.RecordStep(sacrificedPowerRecord, nil, departedCreaturePower(ctx.Game, ids[0]))
-	return gainThenDrawSacrificedPower.Run(ctx)
+	ctx.RecordStep(SacrificedPowerRecord, nil, DepartedCreaturePower(ctx.Game, ids[0]))
+	return GainThenDrawSacrificedPower.Run(ctx)
 })
 
 // sacrificedPowerRecord is the sacrificed creature's last-known power,
 // handed from a sacrifice's continuation to the steps after it.
-const sacrificedPowerRecord = "sacrificed-power"
+const SacrificedPowerRecord = "sacrificed-power"
 
 // gainThenDrawSacrificedPower is "you gain X life and draw X cards, where
 // X is that creature's power" as continuation steps (#4162, CR 608.2c):
 // the draw waits for a prompt the life gain asks (a CR 616 order of two
 // life-gain replacements). Disciple of Bolas and Disciple of Freyalise.
-var gainThenDrawSacrificedPower = RegisterThenSteps("then-steps/gain-then-draw-sacrificed-power",
+var GainThenDrawSacrificedPower = RegisterThenSteps("then-steps/gain-then-draw-sacrificed-power",
 	Instruction(func(ctx *Context) error {
-		if n := ctx.StepRecord(sacrificedPowerRecord).N(); n > 0 {
+		if n := ctx.StepRecord(SacrificedPowerRecord).N(); n > 0 {
 			return GainLife{Amount: n}.Apply(ctx)
 		}
 		return nil
 	}),
 	Instruction(func(ctx *Context) error {
-		if n := ctx.StepRecord(sacrificedPowerRecord).N(); n > 0 {
+		if n := ctx.StepRecord(SacrificedPowerRecord).N(); n > 0 {
 			return DrawCards{N: n}.Apply(ctx)
 		}
 		return nil

@@ -1,0 +1,26 @@
+package cardsst
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Swiftblade Vindicator — Creature — Human Soldier {R}{W}, 1/1
+// (Foundations, #4465):
+//
+//	"Double strike
+//	 Vigilance
+//	 Trample"
+//
+// Three printed keywords the engine enforces from PrintedKeywords: it
+// deals first-strike and regular combat damage, attacking doesn't tap
+// it, and its excess combat damage tramples over.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "44240b1e-c104-4eb4-8ab9-0d56607ba241",
+		Name:            "Swiftblade Vindicator",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"double strike", "vigilance", "trample"},
+	})
+}

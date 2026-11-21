@@ -60,7 +60,7 @@ func init() {
 		Name:         "Magus of the Moon",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			SetsBasicLandType(nonbasicLand, nil, []string{"Mountain"}),
+			SetsBasicLandType(IsNonbasicLand, nil, []string{"Mountain"}),
 		},
 	})
 }
@@ -69,6 +69,6 @@ func init() {
 // basic SUPERTYPE. Effective on both halves, so a permanent another
 // layer-4 effect made a land is one — and, being in the same layer,
 // ordered against that effect by CR 613.8 rather than by timestamp.
-func nonbasicLand(target *game.Card, _ *game.Game, _ *game.Card) bool {
+func IsNonbasicLand(target *game.Card, _ *game.Game, _ *game.Card) bool {
 	return target.IsLand() && !target.HasSupertype("basic")
 }

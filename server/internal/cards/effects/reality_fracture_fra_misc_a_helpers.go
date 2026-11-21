@@ -17,7 +17,7 @@ import (
 // life. The damage and the life are not conditional on the sacrifice
 // (CR 608.2c: "it" is the Eye by last-known information), so an Eye
 // removed in response to the trigger still pays out.
-func rfMiscAEyeOfJaceUpkeep(g *game.Game, item *game.StackItem) error {
+func RfMiscAEyeOfJaceUpkeep(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	return Surveil{N: 1, ThenTail: ctx.ItemTail(rfMiscAEyeOfJaceCheck)}.Apply(ctx)
 }
@@ -26,15 +26,15 @@ func rfMiscAEyeOfJaceUpkeep(g *game.Game, item *game.StackItem) error {
 // once the surveil has settled; the item rides the tail. An on-disk key.
 var rfMiscAEyeOfJaceCheck = CardTail("eye-of-jace/graveyard-check", func(ctx *Context, o game.TailOutcome) error {
 	g, controller, eye, it := ctx.Game, o.Tail.Player, o.Tail.Source, ctx.Item
-	if b31GraveyardSize(g, controller) < 7 {
+	if B31GraveyardSize(g, controller) < 7 {
 		return nil
 	}
-	if onBattlefield(g, eye) && !sourceIsNewObject(g, it) {
+	if OnBattlefield(g, eye) && !SourceIsNewObject(g, it) {
 		if err := (SacrificePermanent{Target: eye}).Apply(ctx); err != nil {
 			return err
 		}
 	}
-	if err := damageToEachOpponent(g, it, 2); err != nil {
+	if err := DamageToEachOpponent(g, it, 2); err != nil {
 		return err
 	}
 	return GainLife{Player: controller, Amount: 2}.Apply(ctx)
@@ -45,9 +45,9 @@ var rfMiscAEyeOfJaceCheck = CardTail("eye-of-jace/graveyard-check", func(ctx *Co
 // resolves (CR 603.4). The amount is read once, then the surveil runs;
 // if the card that was on top went to the graveyard THIS WAY and its
 // mana value is no greater than the life gained, it goes to hand.
-func rfMiscAConfidantEndStep(g *game.Game, item *game.StackItem) error {
+func RfMiscAConfidantEndStep(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
-	gained := b15LifeGainedThisTurn(g, controller)
+	gained := B15LifeGainedThisTurn(g, controller)
 	if gained <= 0 {
 		return nil
 	}
@@ -95,7 +95,7 @@ var rfMiscAConfidantReturn = CardTail("enlightened-confidant/return-top-card", f
 // rfMiscAForestsYouControlOtherThan counts the Forests `controller`
 // controls apart from `except` (post-layer land types). `forest` is the
 // land type as the counting object's text now reads it (CR 612.2).
-func rfMiscAForestsYouControlOtherThan(g *game.Game, controller, except uuid.UUID, forest string) int {
+func RfMiscAForestsYouControlOtherThan(g *game.Game, controller, except uuid.UUID, forest string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.InstanceID != except && c.HasSubtype(forest) {
@@ -108,11 +108,11 @@ func rfMiscAForestsYouControlOtherThan(g *game.Game, controller, except uuid.UUI
 // rfMiscAForestEnteredWithFiveOthers is Roiling Canopy's trigger
 // condition, intervening-if included: a Forest you control entered and
 // you control at least five other Forests.
-func rfMiscAForestEnteredWithFiveOthers(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RfMiscAForestEnteredWithFiveOthers(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	forest := source.TextSubtype("Forest")
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	if !ok || !c.HasSubtype(forest) {
 		return false
 	}
-	return rfMiscAForestsYouControlOtherThan(g, source.Controller, c.InstanceID, forest) >= 5
+	return RfMiscAForestsYouControlOtherThan(g, source.Controller, c.InstanceID, forest) >= 5
 }

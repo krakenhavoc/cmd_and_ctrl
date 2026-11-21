@@ -57,7 +57,7 @@ func holisticWisdomReturn(g *game.Game, item *game.StackItem) error {
 			continue
 		}
 		target, ok := g.LookupCardForEffect(ref.ID)
-		if !ok || !sharesACardType(paid, target) {
+		if !ok || !SharesACardType(paid, target) {
 			return nil
 		}
 		return ReturnFromGraveyard{Target: ref.ID, Dest: game.ZoneHand}.Apply(ctx)
@@ -75,7 +75,7 @@ var cardTypesCR205 = []string{
 
 // sharesACardType reports whether `a` and `b` have at least one card
 // type in common (CR 205.2a). Subtypes and supertypes do not count.
-func sharesACardType(a, b game.Card) bool {
+func SharesACardType(a, b game.Card) bool {
 	for _, t := range cardTypesCR205 {
 		if a.HasCardType(t) && b.HasCardType(t) {
 			return true

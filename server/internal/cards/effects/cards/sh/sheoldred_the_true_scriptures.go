@@ -1,0 +1,160 @@
+package cardssh
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Sheoldred // The True Scriptures — a transforming Praetor whose back face
+// is a Saga.
+//
+// Front face, Legendary Creature — Phyrexian Praetor {3}{B}{B}, 4/5:
+//
+//	"Menace
+//	 When Sheoldred enters, each opponent sacrifices a nontoken creature
+//	 or planeswalker of their choice.
+//	 {4}{B}: Exile Sheoldred, then return it to the battlefield
+//	 transformed under its owner's control. Activate only as a sorcery
+//	 and only if an opponent has eight or more cards in their graveyard."
+//
+// Back face, Enchantment — Saga:
+//
+//	"(As this Saga enters and after your draw step, add a lore counter.)
+//	 I — For each opponent, destroy up to one target creature or
+//	     planeswalker that player controls.
+//	 II — Each opponent discards three cards, then mills three cards.
+//	 III — Put all creature cards from all graveyards onto the battlefield
+//	       under your control. Exile this Saga, then return it to the
+//	       battlefield (front face up)."
+//
+// The ETB is an edict: each opponent chooses their own nontoken creature or
+// planeswalker through the sacrifice prompt, nothing targets, and an
+// opponent with none is skipped. The flip is ExileAndReturnTransformed, as
+// Crystal Fragments; the back face registers under "<oracle_id>#1". The
+// activation condition reads every opponent's graveyard live, so one
+// opponent at eight is enough.
+//
+// Chapter I has one "up to one" clause per opponent, bound to that
+// opponent's permanents (Molten Primordial's TargetsFrom), so the pick for
+// one opponent can't be a permanent of another; a clause with nothing legal
+// offers nothing. Chapter II fans the discard out to every opponent and
+// mills three for each of them after all the discards are answered, which
+// is the printed order. Chapter III returns every creature card in every
+// graveyard together, under the Saga's controller, then flickers the Saga
+// (front face up, a new object).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        SheoldredTrueScripturesOracleID,
+		Name:            "Sheoldred",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"menace"},
+		Triggered: []game.TriggeredAbility{
+			effects.TriggerEdict(effects.WhenThisEnters("Sheoldred — each opponent sacrifices a nontoken creature or planeswalker", effects.Do(effects.EachPlayerSacrifices{
+				ExceptController: true,
+				Match:            effects.And(effects.Or(effects.Creature(), effects.Planeswalker()), effects.Not(effects.IsTokenPredicate())),
+				Label:            "a nontoken creature or planeswalker",
+			}))),
+		},
+		Activated: []effects.ActivatedAbility{{
+			Label: "{4}{B}: Exile Sheoldred, then return it to the battlefield transformed under its owner's control. " +
+				"Activate only as a sorcery and only if an opponent has eight or more cards in their graveyard.",
+			Cost:         effects.ManaCost("{4}{B}"),
+			SorcerySpeed: true,
+			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
+				for _, p := range g.Seats {
+					if p != nil && p.ID != controller && !p.Eliminated && p.Graveyard != nil && p.Graveyard.Size() >= 8 {
+						return true
+					}
+				}
+				return false
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.ExileAndReturnTransformed{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+
+	chapterOne := effects.ChapterTrigger(1, effects.SagaChapterLabel("The True Scriptures", 1, "for each opponent, destroy up to one target creature or planeswalker that player controls"),
+		func(g *game.Game, item *game.StackItem) error {
+			return effects.DestroyEachLegalTarget(item, effects.NewContext(g, item))
+		})
+	chapterOne.TargetsFrom = trueScripturesChapterOneClauses
+	effects.Register(effects.Spec{
+		OracleID:     SheoldredTrueScripturesOracleID + "#1",
+		Name:         "The True Scriptures",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			chapterOne,
+			effects.ChapterTrigger(2, effects.SagaChapterLabel("The True Scriptures", 2, "each opponent discards three cards, then mills three cards"),
+				trueScripturesChapterTwo),
+			effects.ChapterTrigger(3, effects.SagaChapterLabel("The True Scriptures", 3, "put all creature cards from all graveyards onto the battlefield under your control, then exile this Saga and return it front face up"),
+				trueScripturesChapterThree),
+		},
+	})
+}
+
+const SheoldredTrueScripturesOracleID = "97652492-7906-4d79-983c-fa1dc1239eba"
+
+// trueScripturesChapterOneClauses is one "up to one target creature or
+// planeswalker <player> controls" clause per opponent of the Saga's
+// controller, in turn order. It reads nothing the game can change but the
+// seat list, so the row restores.
+func trueScripturesChapterOneClauses(tc game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
+	controller := source.Controller
+	if obj := tc.Object; obj != nil && obj.ID == source.InstanceID && obj.Controller != uuid.Nil {
+		controller = obj.Controller
+	}
+	var clauses []*game.TargetSpec
+	for _, p := range g.Seats {
+		if p == nil || p.ID == controller {
+			continue
+		}
+		clauses = append(clauses, effects.TargetPermanent("up to one target creature or planeswalker "+p.Name+" controls",
+			effects.And(effects.Or(effects.Creature(), effects.Planeswalker()), effects.ControlledBy(p.ID))).WithCount(0, 1))
+	}
+	if len(clauses) == 0 {
+		return nil
+	}
+	return effects.Clauses(clauses[0], clauses[1:]...)
+}
+
+// trueScripturesChapterTwo is "each opponent discards three cards, then
+// mills three cards". Keyed (#4290): the controller rides the run as its
+// carry, so a table waiting on any opponent's discard is a restore point.
+func trueScripturesChapterTwo(g *game.Game, item *game.StackItem) error {
+	return g.EachPlayerDiscardsThenKeyedForEffect(item.Controller,
+		game.DiscardPrompt{Source: item.SourceCardID, N: 3},
+		trueScripturesMill, []uuid.UUID{item.Controller})
+}
+
+// trueScripturesMill is chapter II's mill, once every opponent has
+// discarded.
+var trueScripturesMill = game.RegisterPromptRunThen("prompt-run/sheoldred-the-true-scriptures-mill", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	c := effects.KeyedContext(g, r.Carry[0], r.Source)
+	return effects.MillEachPlayerInTurn(c, c.Opponents(), effects.ConstantMill(3), game.KeyedTail{})
+})
+
+func trueScripturesChapterThree(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	ids := effects.AllGraveyardsCardIDs(ctx, func(c game.Card) bool { return c.IsCreature() })
+	return effects.ReturnFromGraveyardTogether{
+		Targets:    ids,
+		Controller: item.Controller,
+		ThenTail:   sheoldredFlickerThis,
+	}.Apply(ctx)
+}
+
+// sheoldredFlickerThis is "then exile this Saga, then return it" as a keyed
+// tail (#4253 slice 6), told its own card and controller by the asking
+// item. An on-disk key.
+var sheoldredFlickerThis = effects.TogetherTail("sheoldred-the-true-scriptures/flicker-this",
+	func(ctx *effects.Context, _ []uuid.UUID, _ int) error {
+		return effects.Flicker{Target: ctx.Item.SourceCardID, Controller: ctx.Item.Controller}.Apply(ctx)
+	})

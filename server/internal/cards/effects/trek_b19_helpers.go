@@ -15,7 +15,7 @@ import (
 // trigger's controller (CR 701.44a). A creature that has left by the time
 // the trigger resolves still explores by its last known information (CR
 // 701.44c): the card is revealed, and no counter is put on anything.
-func thatCreatureExplores(g *game.Game, item *game.StackItem) error {
+func ThatCreatureExplores(g *game.Game, item *game.StackItem) error {
 	if o := item.Trigger.Object; o != nil {
 		// The object that entered, not a later one.
 		return g.ExploreForEffect(item.SourceCardID, game.ObjectRef{ID: o.ID, Epoch: o.Epoch}, item.Controller)
@@ -29,12 +29,12 @@ func thatCreatureExplores(g *game.Game, item *game.StackItem) error {
 // CR 604.3a), counted every layer pass: each land its controller
 // controls, once per name. It reads the battlefield directly, as
 // landsYouControlPT does, so it is safe inside a layer pass.
-func trekB19DifferentlyNamedLandsPT(label string) game.StaticAbility {
+func TrekB19DifferentlyNamedLandsPT(label string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7A_CDA,
 		Label:     label,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 			n := 0
 			if g.Battlefield != nil {
@@ -57,7 +57,7 @@ func trekB19DifferentlyNamedLandsPT(label string) game.StaticAbility {
 // the battlefield deals damage equal to its current power to the victim,
 // all in one damage event, each with its own deathtouch and lifelink. The
 // caller has already dropped the sources that are no longer legal targets.
-func eachDealsDamageEqualToItsPower(ctx *Context, sources []game.TargetRef, victim uuid.UUID) error {
+func EachDealsDamageEqualToItsPower(ctx *Context, sources []game.TargetRef, victim uuid.UUID) error {
 	return ctx.Game.DamageInstanceForEffect(func() error {
 		for _, s := range sources {
 			c, ok := ctx.Game.LookupCardForEffect(s.ID)

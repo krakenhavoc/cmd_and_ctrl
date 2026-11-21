@@ -1,0 +1,48 @@
+package cardsdi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Drain Power — Sorcery {U}{U}:
+//
+//	"Target player activates a mana ability of each land they control.
+//	 Then that player loses all unspent mana and you add the mana lost this
+//	 way."
+//
+// #3952, ADR 0200: the target player activates a mana ability of each land
+// they control, choosing which one and its colours (the 2004-10-04
+// rulings), through ActivateAManaAbilityOfEachLand, then loses their whole
+// pool, mana that was already in it included. You add mana of the same
+// types and amounts. It is new mana Drain Power makes, so a restriction or
+// spend rider the lost mana carried from the ability that made it does not
+// come with it.
+//
+// No simplifications.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "0669172d-396b-4f5a-9703-129c5c849b55",
+		Name:         "Drain Power",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetPlayer("target player"),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			target, ok := effects.FirstLegalPlayerTarget(ctx)
+			if !ok {
+				return nil
+			}
+			return effects.ActivateAManaAbilityOfEachLand{
+				Player: target,
+				Card:   "Drain Power",
+				Then:   drainPowerAddsTheMana,
+			}.Apply(ctx)
+		},
+	})
+}
+
+// drainPowerAddsTheMana is "you add the mana lost this way": the walk's
+// tail runs with the spell's controller, the caster, as its controller.
+// An on-disk key.
+var drainPowerAddsTheMana = effects.RegisterLandManaThen("then/drain-power-add-lost-mana", func(ctx *effects.Context, lost []game.ManaToken) error {
+	return effects.AddManaLike(ctx, ctx.Controller(), lost)
+})

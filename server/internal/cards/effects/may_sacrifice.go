@@ -29,7 +29,7 @@ import (
 // maySacrificeOne queues the "you may sacrifice" prompt for the item's
 // controller over the permanents `match` admits (the source is excluded
 // when `another` is set). Nothing to sacrifice means no question.
-func maySacrificeOne(g *game.Game, item *game.StackItem, question string, match CardPredicate, another bool, then SacrificedOne, nums ...int) error {
+func MaySacrificeOne(g *game.Game, item *game.StackItem, question string, match CardPredicate, another bool, then SacrificedOne, nums ...int) error {
 	return sacrificeOneThen(g, item, question, match, another, 0, then, nums...)
 }
 
@@ -37,7 +37,7 @@ func maySacrificeOne(g *game.Game, item *game.StackItem, question string, match 
 // mustSacrificeOne (#4290): it runs against a Context rebuilt from the
 // asking item, told the permanent that really left. Hold one only from
 // RegisterSacrificedOne.
-type SacrificedOne struct{ pick PermanentsThen }
+type SacrificedOne struct{ Pick PermanentsThen }
 
 // RegisterSacrificedOne registers the "if you do" of a sacrifice under key
 // (ledgered "run <key>": never renamed, never reused). Call it once, from
@@ -72,7 +72,7 @@ func RegisterSacrificedOneRun(key string, then func(ctx *Context, sacrificed uui
 		}
 		return then(ctx, o.IDs[0], r)
 	})
-	return SacrificedOne{pick: RegisterPermanentsPick(key, PermanentsDef{
+	return SacrificedOne{Pick: RegisterPermanentsPick(key, PermanentsDef{
 		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
 			cards := picked.Cards()
 			if len(cards) == 0 {
@@ -109,7 +109,7 @@ const (
 // non-Demon creature. If you do, …" (Dreadfeast Demon). The prompt has
 // a floor of one, and a controller with nothing that matches is not
 // asked and `then` does not run.
-func mustSacrificeOne(g *game.Game, item *game.StackItem, question string, match CardPredicate, then SacrificedOne) error {
+func MustSacrificeOne(g *game.Game, item *game.StackItem, question string, match CardPredicate, then SacrificedOne) error {
 	return sacrificeOneThen(g, item, question, match, false, 1, then)
 }
 
@@ -121,7 +121,7 @@ func sacrificeOneThen(g *game.Game, item *game.StackItem, question string, match
 		Question: question,
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			var out []uuid.UUID
-			for _, id := range permanentsControlledByMatching(g, of, match) {
+			for _, id := range PermanentsControlledByMatching(g, of, match) {
 				if another && id == self {
 					continue
 				}
@@ -132,7 +132,7 @@ func sacrificeOneThen(g *game.Game, item *game.StackItem, question string, match
 			}
 			return out, floor, 1
 		},
-		Keyed: then.pick,
+		Keyed: then.Pick,
 		Nums:  nums,
 	}.Apply(NewContext(g, item))
 }

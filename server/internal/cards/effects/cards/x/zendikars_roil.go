@@ -1,0 +1,30 @@
+package cardsx
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Zendikar's Roil — Enchantment {3}{G}{G} (EDHREC rank 2119):
+//
+//	"Landfall — Whenever a land you control enters, create a 2/2
+//	 green Elemental creature token."
+//
+// Rampaging Baloths on an enchantment, half the size. Landfall is
+// the ETB-filtered trigger every landfall card in the catalog uses
+// (Avenger of Zendikar, Tireless Provisioner): a land entering under
+// the controller's control — played, fetched, or reanimated — makes
+// one Elemental.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "a842cc2b-52eb-4dc5-86c6-6575c2ed913d",
+		Name:         "Zendikar's Roil",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.LandfallPaying("Zendikar's Roil — create a 2/2 Elemental (landfall)", game.LandfallPayoff{Tokens: 1}, effects.Do(effects.CreateToken{Template: effects.TokenCard("2/2 green Elemental"), N: 1})),
+		},
+	})
+}

@@ -1,0 +1,73 @@
+package cardse
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Entish Restoration — Instant {2}{G} (EDHREC rank 449):
+//
+//	"Sacrifice a land. Search your library for up to two basic land
+//	 cards, put them onto the battlefield tapped, then shuffle. If
+//	 you control a creature with power 4 or greater, instead search
+//	 your library for up to three basic land cards, put them onto the
+//	 battlefield tapped, then shuffle."
+//
+// Instant-speed ramp that nets one land, or two with a big creature
+// out. The ferocious branch is decided as the spell resolves, using
+// the same power-4 check Garruk's Uprising uses (CurrentPower, so
+// counters and pumps count), and the search is one SearchLibrary
+// with the limit set by that branch — "up to" is the chooser's
+// minimum of zero.
+//
+// "Sacrifice a land" is part of the EFFECT, not a cost (#2876, the
+// Victimize pattern of #2863, ADR 0013's amendment of 2026-10-09). It
+// is a one-seat sacrifice run (PlayerSacrificesThenKeyedForEffect): the
+// caster picks a land as the spell resolves and the search follows,
+// whether or not a land was sacrificed ("Sacrifice a land. Search..." is
+// not an "if you do"). So a countered spell costs no land, and the
+// spell can be cast with no land at all. The power-4 check is read
+// after the sacrifice, as the printed sequence has it.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "736017e2-bc33-49e8-812d-1639443fdb51",
+		Name:         "Entish Restoration",
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			// Keyed (#4290): the caster rides the run as its carry, so
+			// a table waiting on the sacrifice is a restore point.
+			controller := ctx.Controller()
+			return ctx.Game.PlayerSacrificesThenKeyedForEffect(
+				ctx.Source(), controller,
+				effects.SacrificeSpec("a land", effects.Land()),
+				"Entish Restoration — sacrifice a land",
+				1,
+				entishRestorationSearch, []uuid.UUID{controller})
+		},
+	})
+}
+
+// entishRestorationSearch is the search after the sacrifice, which runs
+// whether or not a land was sacrificed ("Sacrifice a land. Search …" is
+// not an "if you do"); the power-4 check is read after the sacrifice.
+var entishRestorationSearch = game.RegisterPromptRunThen("prompt-run/entish-restoration-search", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	controller := r.Carry[0]
+	limit := 2
+	if effects.YouControlPowerFourOrGreater(g, controller) {
+		limit = 3
+	}
+	return effects.SearchLibrary{
+		Player:        controller,
+		Predicate:     effects.IsBasicLand,
+		Dest:          game.ZoneBattlefield,
+		Limit:         limit,
+		Shuffle:       true,
+		TappedOnEntry: true,
+		Reason:        "Entish Restoration — basic lands, onto the battlefield tapped",
+	}.Apply(effects.KeyedContext(g, controller, r.Source))
+})

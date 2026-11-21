@@ -63,4 +63,4 @@ func WheneverYouCastThatEntersWithCounters(name string, spell CardPredicate, kin
 }
 
 // colorsOfManaSpent is "the number of colors of mana spent to cast it".
-func colorsOfManaSpent(m game.ManaSpent) int { return m.ColorCount() }
+func ColorsOfManaSpent(m game.ManaSpent) int { return m.ColorCount() }

@@ -14,7 +14,7 @@ import (
 // words are words of the card's text, passed in already read (CR 612.2), so a changed word counts
 // the changed type. Leaving `except` out of the count is "another": pass
 // the source's own id, or uuid.Nil to count every one.
-func vowB07WolvesAndWerewolves(g *game.Game, player uuid.UUID, wolf, werewolf string, except uuid.UUID) int {
+func VowB07WolvesAndWerewolves(g *game.Game, player uuid.UUID, wolf, werewolf string, except uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != player || c.InstanceID == except {
@@ -29,14 +29,14 @@ func vowB07WolvesAndWerewolves(g *game.Game, player uuid.UUID, wolf, werewolf st
 
 // vowB07AnotherWolfOrWerewolf is "you control another Wolf or Werewolf",
 // read for the source's controller.
-func vowB07AnotherWolfOrWerewolf(g *game.Game, source *game.Card) bool {
-	return vowB07WolvesAndWerewolves(g, source.Controller, source.TextSubtype("Wolf"), source.TextSubtype("Werewolf"), source.InstanceID) > 0
+func VowB07AnotherWolfOrWerewolf(g *game.Game, source *game.Card) bool {
+	return VowB07WolvesAndWerewolves(g, source.Controller, source.TextSubtype("Wolf"), source.TextSubtype("Werewolf"), source.InstanceID) > 0
 }
 
 // vowB07SelfWhileAnotherWolf is the AppliesTo of "as long as you control
 // another Wolf or Werewolf, this creature gets/has ...": the source alone.
-func vowB07SelfWhileAnotherWolf(target *game.Card, g *game.Game, source *game.Card) bool {
-	return target.InstanceID == source.InstanceID && vowB07AnotherWolfOrWerewolf(g, source)
+func VowB07SelfWhileAnotherWolf(target *game.Card, g *game.Game, source *game.Card) bool {
+	return target.InstanceID == source.InstanceID && VowB07AnotherWolfOrWerewolf(g, source)
 }
 
 // vowB07OneIfYouControlManaValueFourOrMore is the count of Ascendant
@@ -45,7 +45,7 @@ func vowB07SelfWhileAnotherWolf(target *game.Card, g *game.Game, source *game.Ca
 // one when its controller controls such a permanent as it enters (it is
 // still the stack object, so it is never its own permanent; a token has
 // mana value 0).
-func vowB07OneIfYouControlManaValueFourOrMore(g *game.Game, src *game.Card) int {
+func VowB07OneIfYouControlManaValueFourOrMore(g *game.Game, src *game.Card) int {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == src.Controller && c.ManaValue() >= 4 {
 			return 1
@@ -59,7 +59,7 @@ func vowB07OneIfYouControlManaValueFourOrMore(g *game.Game, src *game.Card) int 
 // for b19EntersWithCountersCounted: two per Human its controller controls
 // as it enters, through the layers (a changeling counts), tokens left out.
 // The Vanguard is still the stack object, so it is never counted itself.
-func vowB07TwoPerOtherNontokenHuman(g *game.Game, src *game.Card) int {
+func VowB07TwoPerOtherNontokenHuman(g *game.Game, src *game.Card) int {
 	human := src.TextSubtype("Human")
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -74,7 +74,7 @@ func vowB07TwoPerOtherNontokenHuman(g *game.Game, src *game.Card) int {
 // exiles two cards from their hand" (Aim for the Head): the opponent picks
 // their own two cards (all of them with fewer than two, none from an empty
 // hand) and each is exiled through Ruthless Negotiation's keyed answer.
-func vowB07OpponentExilesTwoFromHand(_ *game.StackItem, ctx *Context, occ int) error {
+func VowB07OpponentExilesTwoFromHand(_ *game.StackItem, ctx *Context, occ int) error {
 	for _, t := range ctx.ModeTargets(occ) {
 		if t.Kind != game.TargetPlayer || !ctx.IsTargetLegal(t) {
 			continue
@@ -96,7 +96,7 @@ func vowB07OpponentExilesTwoFromHand(_ *game.StackItem, ctx *Context, occ int) e
 			Cards:      cards,
 			Min:        n,
 			Max:        n,
-			ThenKey:    ruthlessNegotiationExiled,
+			ThenKey:    RuthlessNegotiationExiled,
 			LiveZone:   game.ZoneHand,
 		})
 		return nil
@@ -108,7 +108,7 @@ func vowB07OpponentExilesTwoFromHand(_ *game.StackItem, ctx *Context, occ int) e
 // deals damage equal to its power to another target creature" (Markov
 // Retribution): Bite Down's one-sided bite over this occurrence's two
 // clauses. Nothing is dealt unless both picks are still legal (CR 608.2b).
-func vowB07VampireBitesAnother(_ *game.StackItem, ctx *Context, occ int) error {
+func VowB07VampireBitesAnother(_ *game.StackItem, ctx *Context, occ int) error {
 	var biter, victim game.TargetRef
 	var haveBiter, haveVictim bool
 	for _, t := range ctx.ModeTargets(occ) {

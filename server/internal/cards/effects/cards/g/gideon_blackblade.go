@@ -1,0 +1,154 @@
+package cardsg
+
+import (
+	"slices"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Gideon Blackblade — Legendary Planeswalker — Gideon {1}{W}{W},
+// starting loyalty 4:
+//
+//	"During your turn, Gideon Blackblade is a 4/4 Human Soldier creature
+//	 with indestructible that's still a planeswalker.
+//	 Prevent all damage that would be dealt to Gideon Blackblade during
+//	 your turn.
+//	 +1: Up to one other target creature you control gains your choice
+//	 of vigilance, lifelink, or indestructible until end of turn.
+//	 −6: Exile target nonland permanent."
+//
+// THE FIRST STATIC is three layered effects on the same condition, "it
+// is its controller's turn", read at every layer pass: layer 4 adds the
+// Creature type and the Human and Soldier subtypes (he keeps Planeswalker
+// and Gideon), layer 6 adds indestructible, layer 7b sets the base power
+// and toughness. They disappear the moment the turn passes, and a
+// permanent that is a creature only on its controller's turn can attack
+// on it once it has been under their control since the turn began
+// (CR 302.6). THE SECOND is a standing CR 615 prevention that stops
+// every damage event to him while it is that turn, the Marble Priest
+// shape; damage that can't be prevented (CR 615.12) still removes loyalty
+// and is marked on him, and both state-based actions apply (#2046, ADR
+// 0032 amendment of 2026-10-07). THE +1 asks for the keyword as it
+// resolves, on "up to one other target creature you control"; with no
+// target it does nothing. THE −6 is a plain targeted exile.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "813c19f5-3580-488d-9eee-c7a563def532",
+		Name:            "Gideon Blackblade",
+		Completeness:    effects.CompletenessFull,
+		StartingLoyalty: 4,
+		Static: []game.StaticAbility{
+			{
+				Label: "During your turn, this is a Human Soldier creature in addition to its other types.",
+				Layer: game.Layer4Type,
+				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+					return gideonBlackbladeIsACreature(target, g, source)
+				},
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+					if !slices.Contains(c.Types, "Creature") {
+						c.Types = append(c.Types, "Creature")
+					}
+					// "Human Soldier" are words of his text (CR 612.2, #3984).
+					for _, st := range source.TextSubtypes("Human", "Soldier") {
+						if !slices.Contains(c.Subtypes, st) {
+							c.Subtypes = append(c.Subtypes, st)
+						}
+					}
+				},
+			},
+			effects.Labelled(effects.KeywordGrant(gideonBlackbladeIsACreature, "indestructible"), "During your turn, this has indestructible."),
+			{
+				Label:    "During your turn, this is a 4/4.",
+				Layer:    game.Layer7PT,
+				SubLayer: game.SubLayer7B_Set,
+				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+					return gideonBlackbladeIsACreature(target, g, source)
+				},
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+					c.Power, c.Toughness = 4, 4
+				},
+			},
+		},
+		Replacements: []game.ReplacementEffect{{
+			Watches:    []game.EventKind{game.EventDealDamage},
+			Prevention: true, // CR 615.1a — "prevent"; CR 615.12 reads it
+			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+				return ev.Kind == game.RepEventDamage && ev.DamageTarget == src.InstanceID &&
+					effects.IsActivePlayer(g, src.Controller)
+			},
+			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+				ev.Cancel()
+				return nil
+			},
+			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+				return src.Controller
+			},
+			Label: "Gideon Blackblade — prevent all damage that would be dealt to him during your turn",
+		}},
+		Activated: []effects.ActivatedAbility{
+			{
+				Label:   "+1: Up to one other target creature you control gains your choice of vigilance, lifelink, or indestructible until end of turn.",
+				Purpose: effects.ForTargets(effects.BenefitUntilEOT(0, 0, 0)),
+				Cost:    effects.LoyaltyCost(1),
+				Targets: effects.Another(effects.TargetCreature("up to one other target creature you control", effects.YouControl())).WithCount(0, 1),
+				Effect:  gideonBlackbladePlusOne,
+			},
+			{
+				Label:   "−6: Exile target nonland permanent.",
+				Cost:    effects.LoyaltyCost(-6),
+				Targets: effects.TargetPermanent("target nonland permanent", effects.Nonland()),
+				Effect:  effects.ExileFirstTarget,
+			},
+		},
+	})
+}
+
+// gideonBlackbladeIsACreature is the condition of his first sentence:
+// it is his controller's turn, read at every layer pass.
+func gideonBlackbladeIsACreature(target *game.Card, g *game.Game, source *game.Card) bool {
+	return target.InstanceID == source.InstanceID && effects.IsActivePlayer(g, source.Controller)
+}
+
+// gideonBlackbladeKeywords are the three keywords the +1 offers, in
+// printed order.
+var gideonBlackbladeKeywords = []string{"vigilance", "lifelink", "indestructible"}
+
+// gideonBlackbladePlusOne asks the controller for a keyword as the
+// ability resolves and grants it to the target until end of turn. No
+// target, or a target that left, does nothing (CR 608.2b).
+func gideonBlackbladePlusOne(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	targets := ctx.LegalTargets()
+	if len(targets) == 0 || targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	target := targets[0].ID
+	options := make([]game.ChoiceOption, len(gideonBlackbladeKeywords))
+	for i, kw := range gideonBlackbladeKeywords {
+		options[i] = game.ChoiceOption{Label: "Gains " + kw + " until end of turn"}
+	}
+	return effects.PickOption{
+		Question: "Gideon Blackblade — the creature gains your choice of vigilance, lifelink, or indestructible until end of turn",
+		Options:  options,
+		ThenKey:  gideonBlackbladeChosen,
+		Carry:    []uuid.UUID{target},
+	}.Apply(ctx)
+}
+
+// gideonBlackbladeChosen is the chosen keyword granted to the target until
+// end of turn, keyed (#4253): the target rides the prompt as its carry.
+var gideonBlackbladeChosen = effects.OptionPickThen("option-pick/gideon-blackblade-keyword", func(ctx *effects.Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(gideonBlackbladeKeywords) || len(r.Carry) == 0 {
+		return nil
+	}
+	return effects.GrantKeywordUntilEOT{
+		Target:   r.Carry[0],
+		Keywords: []string{gideonBlackbladeKeywords[r.Index]},
+		Label:    "Gideon Blackblade — gains " + gideonBlackbladeKeywords[r.Index] + " until end of turn",
+	}.Apply(ctx)
+})
