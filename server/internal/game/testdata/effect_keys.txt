@@ -521,6 +521,7 @@ body wishing-well/free-cast
 body wolf-in-blank-clothing/shrink
 body xira-the-golden-sting/draw-and-insect
 body yathan-roadwatcher/return
+body yes-man/draw-two-and-quest-counter
 body yotia-declares-war/damage
 body yunas-whistle/counters
 body zara/return-to-hand
@@ -1375,6 +1376,7 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
+choose choose-cards/vault-21-house-gambit-reveal
 choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/victor-valgavoths-seneschal-reanimate
@@ -2811,6 +2813,7 @@ tail alien-invasion/grow
 tail aminatous-augury/after-mill
 tail anchor-to-reality/scry-if-cheaper
 tail ancient-adamantoise/after-exile
+tail animal-friend/counters-for-attachments
 tail animists-awakening/rest-then-untap
 tail another-round/after-return
 tail anowon-the-ruin-thief/after-mill
