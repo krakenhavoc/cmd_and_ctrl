@@ -1208,6 +1208,7 @@ choose choose-cards/organ-hoarder-take
 choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/otc-gonti-lord-of-luxury-exile
+choose choose-cards/out-of-the-tombs-return
 choose choose-cards/ovinomancer-return-three-basic-lands
 choose choose-cards/pack-guardian-discard-land
 choose choose-cards/paladin-elizabeth-taggerdy-put
@@ -1898,6 +1899,7 @@ drawinstead forbidden-crypt
 drawinstead hullbreacher-treasure
 drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
+drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
@@ -3374,6 +3376,7 @@ tail evelyn-the-covetous/collect
 tail evelyn-the-covetous/exile-step
 tail evolving-door/cast
 tail exile-from-hand-and-plot/plot
+tail exile-pile/praesidium-protectiva-back-on-top
 tail exile-then-token-copy/anikthea-hand-of-erebos
 tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/lazotep-quarry

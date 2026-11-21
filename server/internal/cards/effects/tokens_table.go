@@ -619,4 +619,7 @@ var TokenTable = map[string]game.Card{
 	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
 	// S82 GAP batch 62: Mr. House, President and CEO's Robot.
 	"3/3 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 3, Toughness: 3},
+	// S82 GAP batch 196: Biotransference's Necron Warrior and Nurgle's Rot's Plaguebearer of Nurgle.
+	"2/2 black Necron Warrior artifact":            {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	"1/3 black Demon named Plaguebearer of Nurgle": {Name: "Plaguebearer of Nurgle", TypeLine: "Token Creature — Demon", Power: 1, Toughness: 3, Colors: []string{"B"}},
 }
