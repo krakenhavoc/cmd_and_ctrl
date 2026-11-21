@@ -223,6 +223,7 @@ func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbil
 				// its land type in the source's text (CR 612.2).
 				r.DefenderMustControl = game.PermanentQueriesThroughTextOf(r.DefenderMustControl, source)
 				r.ControllerMustControlMore = game.PermanentQueriesThroughTextOf(r.ControllerMustControlMore, source)
+				r.ControllerMustControl = game.PermanentQueriesThroughTextOf(r.ControllerMustControl, source)
 			}
 			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, r)
 		},

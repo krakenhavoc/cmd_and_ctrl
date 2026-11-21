@@ -256,6 +256,15 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 156 (#5948).
 	"Ib Halfheart, Goblin Tactician": "4 damage only to the creatures blocking the Goblin it sacrifices: a blocked attacker's blockers, not a board",
+
+	// S82 GAP batch 212 (#5948).
+	"Elder Brain": "exiles only the attacked player's hand, then they draw that many: it touches no permanent",
+
+	// S82 GAP batch 222 (#5948).
+	"Sea Hag // Aquatic Ingress": "-4/-0 to the opponents' creatures until end of turn kills nothing",
+
+	// S82 GAP batch 230 (#5948).
+	"Lae'zel's Acrobatics": "exiles only the nontoken creatures its caster controls and returns them (at once on a high roll, then again at the next end step): a blink of the caster's own board, not a wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

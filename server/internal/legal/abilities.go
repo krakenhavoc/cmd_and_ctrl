@@ -398,6 +398,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				continue
 			}
 		}
+		if ab.Cost.UntapSelf {
+			// CR 107.6, through the gates ActivateCatalogAbility refuses with.
+			if !source.Tapped || g.CantBecomeUntappedLocked(source) || g.ActivationSummoningSickLocked(source, e.seat) {
+				continue
+			}
+		}
 		// CR 119.4 and CR 119.8, through the one predicate
 		// ActivateCatalogAbility validates with (#544, #1200): a
 		// policy is never offered a life cost the engine refuses,

@@ -69,6 +69,10 @@ func TokenKeys() []string {
 }
 
 var TokenTable = map[string]game.Card{
+	// Warhammer 40,000 Commander Tyranids (#5948, S82 GAP batch 192).
+	"1/1 green Tyranid":                                             {Name: "Tyranid", TypeLine: "Token Creature — Tyranid", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"5/5 green Tyranid":                                             {Name: "Tyranid", TypeLine: "Token Creature — Tyranid", Power: 5, Toughness: 5, Colors: []string{"G"}},
+	"3/3 green Tyranid Warrior with trample":                        {Name: "Tyranid Warrior", TypeLine: "Token Creature — Tyranid Warrior", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"1/1 green and white Human Citizen":                             {Name: "Human Citizen", TypeLine: "Token Creature — Human Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Citizen":                                   {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Kithkin":                                   {Name: "Kithkin", TypeLine: "Token Creature — Kithkin", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
@@ -270,6 +274,8 @@ var TokenTable = map[string]game.Card{
 	"3/1 green Dog with vigilance":                                     {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 3, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"vigilance"}},
 	"2/2 colorless Spawn artifact":                                     {Name: "Spawn", TypeLine: "Token Artifact Creature — Spawn", Power: 2, Toughness: 2},
 	"2/2 white Alien":                                                  {Name: "Alien", TypeLine: "Token Creature — Alien", Power: 2, Toughness: 2, Colors: []string{"W"}},
+	"4/4 green Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 4, Toughness: 4, Colors: []string{"G"}},                                         // GAP b230: Contraband Livestock
+	"2/2 red and green Satyr with haste":                               {Name: "Satyr", TypeLine: "Token Creature — Satyr", Power: 2, Toughness: 2, Colors: []string{"R", "G"}, Keywords: []string{"haste"}}, // GAP b230: Xenagos, the Reveler
 	"2/4 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 4, Colors: []string{"W"}},
 	"2/2 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Soldier":                                                {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}}, // Signaling Roar (#5175)
@@ -297,6 +303,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 green Ooze":                                                   {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"2/2 green Ooze":                                                   {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"0/0 green Ooze with trample":                                      {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 0, Toughness: 0, Colors: []string{"G"}, Keywords: []string{"trample"}, PrintedPTKnown: true},
+	"1/1 white Pegasus with flying":                                    {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Pegasus with flying":                                    {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Soldier with vigilance":                                 {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/1 black Skeleton":                                               {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 2, Toughness: 1, Colors: []string{"B"}},
