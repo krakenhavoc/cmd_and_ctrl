@@ -14,7 +14,7 @@ import (
 // gapB125PumpTrample gives one battlefield creature +p/+t and trample until
 // end of turn: the shared body of Quickbeam, Mirkwood Channeler and Wose
 // Pathfinder.
-func gapB125PumpTrample(ctx *Context, target uuid.UUID, p, t int, label string) error {
+func GapB125PumpTrample(ctx *Context, target uuid.UUID, p, t int, label string) error {
 	if target == uuid.Nil {
 		return nil
 	}
@@ -30,9 +30,9 @@ func gapB125PumpTrample(ctx *Context, target uuid.UUID, p, t int, label string) 
 // you control attack a player": a creature the source's controller controls,
 // with the subtype read through the source's text, was declared attacking a
 // player (not a planeswalker or battle).
-func gapB125TribeAttackAPlayer(tribe string) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func GapB125TribeAttackAPlayer(tribe string) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		if !b16YouAttackedAPlayer(ev, source, g) {
+		if !B16YouAttackedAPlayer(ev, source, g) {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
@@ -43,15 +43,15 @@ func gapB125TribeAttackAPlayer(tribe string) func(ev game.Event, source *game.Ca
 // gapB125ThisOrAnotherTreefolkEntered is "whenever this creature or another
 // Treefolk you control enters" (the source's own entry, or another Treefolk
 // entering under its controller's control).
-func gapB125ThisOrAnotherTreefolkEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func GapB125ThisOrAnotherTreefolkEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.CardID == source.InstanceID ||
-		b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Treefolk"))
+		B10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Treefolk"))
 }
 
 // gapB125TwoOrMoreCreaturesDied is "as long as two or more creatures died
 // under your control this turn": the turn tally's creature-death count
 // for the source's controller.
-func gapB125TwoOrMoreCreaturesDied(g *game.Game, you uuid.UUID) bool {
+func GapB125TwoOrMoreCreaturesDied(g *game.Game, you uuid.UUID) bool {
 	return you != uuid.Nil && g.TurnTallyFor(you).CreaturesDied >= 2
 }
 
@@ -59,7 +59,7 @@ func gapB125TwoOrMoreCreaturesDied(g *game.Game, you uuid.UUID) bool {
 // share a creature type with a creature you control": a creature card
 // none of whose creature types (a changeling's are all of them) appears on
 // a creature `you` control now (CR 205.3m, CR 702.73a).
-func gapB125NoSharedCreatureType() CardPredicate {
+func GapB125NoSharedCreatureType() CardPredicate {
 	return func(g *game.Game, you uuid.UUID, c game.Card) bool {
 		if !c.IsCreature() {
 			return false
@@ -81,7 +81,7 @@ func gapB125NoSharedCreatureType() CardPredicate {
 // ability an opponent controls": the event names the creature and the
 // targeting spell or ability's controller (its Actor), who is someone
 // else.
-func gapB125CounteredCreatureTargetedByOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func GapB125CounteredCreatureTargetedByOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventBecomesTarget || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}

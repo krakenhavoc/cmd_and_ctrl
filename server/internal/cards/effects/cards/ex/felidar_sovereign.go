@@ -1,8 +1,6 @@
 package cardsex
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -41,29 +39,8 @@ func init() {
 		PrintedKeywords: []string{"vigilance", "lifelink"},
 		Triggered: []game.TriggeredAbility{
 			effects.On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor == source.Controller && lifeAtLeast(g, source.Controller, 40)
-			}, "Felidar Sovereign — if you have 40 or more life, you win the game", winIfLifeAtLeast(40)),
+				return ev.Actor == source.Controller && effects.R40LifeAtLeast(g, source.Controller, 40)
+			}, "Felidar Sovereign — if you have 40 or more life, you win the game", effects.R40WinIfLifeAtLeast(40)),
 		},
 	})
-}
-
-// lifeAtLeast reports whether `player` is still in the game with at
-// least `n` life — the intervening-if of the "at the beginning of your
-// upkeep, if you have N or more life, you win the game" family (Felidar
-// Sovereign's 40, Test of Endurance's 50).
-func lifeAtLeast(g *game.Game, player uuid.UUID, n int) bool {
-	p := g.PlayerByIDForEffect(player)
-	return p != nil && !p.Eliminated && p.Life >= n
-}
-
-// winIfLifeAtLeast is that family's effect: the intervening-if checked
-// again on resolution (CR 603.4), then WinTheGame. Captures only the
-// threshold, so it survives Clone and undo.
-func winIfLifeAtLeast(n int) effects.Effect {
-	return func(g *game.Game, item *game.StackItem) error {
-		if !lifeAtLeast(g, item.Controller, n) {
-			return nil
-		}
-		return effects.WinTheGame{Player: item.Controller}.Apply(effects.NewContext(g, item))
-	}
 }
