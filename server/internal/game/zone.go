@@ -613,6 +613,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 // amendment (#3769).
 func stampGraveyardArrival(c *Card, from, to ZoneKind) {
 	c.Surveilled = false
+	c.Milled = false
 	if to == ZoneGraveyard {
 		c.PutInGraveyardFrom = from
 		c.PutInGraveyardThisTurn = true

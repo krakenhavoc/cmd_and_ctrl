@@ -17,8 +17,6 @@ import (
 const (
 	pipb1AlmostPerfectOracle          = "617eae63-b5f8-4014-8269-7c66f4388ac7"
 	pipb1IntelligenceBobbleheadOracle = "16e6bd4b-fbf1-4bbe-9271-a74f59320e0d"
-	pipb1StrengthBobbleheadOracle     = "bd0e22d1-4789-406d-9293-3ade30365b32"
-	pipb1CharismaBobbleheadOracle     = "77897962-7d67-4fa8-858f-2f35a322d7c6"
 	pipb1SuperMutantScavengerOracle   = "2972b9c8-d9b3-4bb3-b9c5-9aa70fb1ac71"
 	pipb1PaladinDanseOracle           = "ac830812-2f33-4f9e-ba3a-ea665989011c"
 	pipb1AtomizeOracle                = "4b457bc2-2d8c-42cb-9a63-bb4c459d14e3"
@@ -34,21 +32,21 @@ const (
 
 func TestPipb1CardsAreRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
-		pipb1AlmostPerfectOracle:          "Almost Perfect",
-		pipb1IntelligenceBobbleheadOracle: "Intelligence Bobblehead",
-		pipb1StrengthBobbleheadOracle:     "Strength Bobblehead",
-		pipb1CharismaBobbleheadOracle:     "Charisma Bobblehead",
-		pipb1SuperMutantScavengerOracle:   "Super Mutant Scavenger",
-		pipb1PaladinDanseOracle:           "Paladin Danse, Steel Maverick",
-		pipb1AtomizeOracle:                "Atomize",
-		pipb1RadstormOracle:               "Radstorm",
-		pipb1BreakDownOracle:              "Break Down",
-		pipb1PowderGangerOracle:           "Powder Ganger",
-		pipb1WastelandRaiderOracle:        "Wasteland Raider",
-		pipb1SecuritronSquadronOracle:     "Securitron Squadron",
-		pipb1JunktownOracle:               "Junktown",
-		pipb1BighornerRancherOracle:       "Bighorner Rancher",
-		pipb1Vault75Oracle:                "Vault 75: Middle School",
+		pipb1AlmostPerfectOracle:                  "Almost Perfect",
+		pipb1IntelligenceBobbleheadOracle:         "Intelligence Bobblehead",
+		effectstest.Pipb1StrengthBobbleheadOracle: "Strength Bobblehead",
+		effectstest.Pipb1CharismaBobbleheadOracle: "Charisma Bobblehead",
+		pipb1SuperMutantScavengerOracle:           "Super Mutant Scavenger",
+		pipb1PaladinDanseOracle:                   "Paladin Danse, Steel Maverick",
+		pipb1AtomizeOracle:                        "Atomize",
+		pipb1RadstormOracle:                       "Radstorm",
+		pipb1BreakDownOracle:                      "Break Down",
+		pipb1PowderGangerOracle:                   "Powder Ganger",
+		pipb1WastelandRaiderOracle:                "Wasteland Raider",
+		pipb1SecuritronSquadronOracle:             "Securitron Squadron",
+		pipb1JunktownOracle:                       "Junktown",
+		pipb1BighornerRancherOracle:               "Bighorner Rancher",
+		pipb1Vault75Oracle:                        "Vault 75: Middle School",
 	} {
 		def, ok := effects.Lookup(oracle)
 		if !ok {
@@ -58,24 +56,6 @@ func TestPipb1CardsAreRegisteredFull(t *testing.T) {
 		if def.Name != name || def.Completeness != effects.CompletenessFull || len(def.Caveats) != 0 {
 			t.Errorf("%s: name %q, completeness %v, caveats %v", name, def.Name, def.Completeness, def.Caveats)
 		}
-	}
-}
-
-// pipb1Bobblehead puts a catalog Bobblehead onto the battlefield.
-func pipb1Bobblehead(g *game.Game, owner uuid.UUID, name, oracle string) uuid.UUID {
-	return effectstest.PushCatalogPermanent(g, owner, name, "Artifact — Bobblehead", oracle, false)
-}
-
-// pipb1Activate activates a catalog permanent's own ability with the
-// mana gate on.
-func pipb1Activate(t *testing.T, g *game.Game, p *game.Player, id uuid.UUID, index int, mana string, params game.ActivateAbilityParams) {
-	t.Helper()
-	if mana != "" {
-		effectstest.FloatMana(t, g, p, mana)
-	}
-	params.Strict = true
-	if err := g.ActivateCatalogAbility(p.ID, id, index, params); err != nil {
-		t.Fatalf("activate: %v", err)
 	}
 }
 
@@ -109,12 +89,12 @@ func TestPipb1IntelligenceBobbleheadDrawsOnePerBobblehead(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
 	effectstest.AdvanceToMain(t, g)
-	bob := pipb1Bobblehead(g, me.ID, "Intelligence Bobblehead", pipb1IntelligenceBobbleheadOracle)
-	pipb1Bobblehead(g, me.ID, "Charisma Bobblehead", pipb1CharismaBobbleheadOracle)
+	bob := effectstest.Pipb1Bobblehead(g, me.ID, "Intelligence Bobblehead", pipb1IntelligenceBobbleheadOracle)
+	effectstest.Pipb1Bobblehead(g, me.ID, "Charisma Bobblehead", effectstest.Pipb1CharismaBobbleheadOracle)
 	effectstest.B12Permanent(g, me.ID, "Mind Stone", "Artifact")
-	pipb1Bobblehead(g, g.Seats[1].ID, "Strength Bobblehead", pipb1StrengthBobbleheadOracle)
+	effectstest.Pipb1Bobblehead(g, g.Seats[1].ID, "Strength Bobblehead", effectstest.Pipb1StrengthBobbleheadOracle)
 	hand := me.Hand.Size()
-	pipb1Activate(t, g, me, bob, 0, "{C}{C}{C}{C}{C}", game.ActivateAbilityParams{})
+	effectstest.Pipb1Activate(t, g, me, bob, 0, "{C}{C}{C}{C}{C}", game.ActivateAbilityParams{})
 	effectstest.PassPriorityAroundTable(t, g)
 	if got := me.Hand.Size() - hand; got != 2 {
 		t.Errorf("drew %d cards with two Bobbleheads (and a non-Bobblehead artifact, and an opponent's), want 2", got)
@@ -124,8 +104,8 @@ func TestPipb1IntelligenceBobbleheadDrawsOnePerBobblehead(t *testing.T) {
 func TestPipb1StrengthBobbleheadPutsXCountersAsASorcery(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
-	bob := pipb1Bobblehead(g, me.ID, "Strength Bobblehead", pipb1StrengthBobbleheadOracle)
-	pipb1Bobblehead(g, me.ID, "Intelligence Bobblehead", pipb1IntelligenceBobbleheadOracle)
+	bob := effectstest.Pipb1Bobblehead(g, me.ID, "Strength Bobblehead", effectstest.Pipb1StrengthBobbleheadOracle)
+	effectstest.Pipb1Bobblehead(g, me.ID, "Intelligence Bobblehead", pipb1IntelligenceBobbleheadOracle)
 	bear := effectstest.B12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 
 	// The draw step is not a main phase: activate only as a sorcery.
@@ -135,7 +115,7 @@ func TestPipb1StrengthBobbleheadPutsXCountersAsASorcery(t *testing.T) {
 	}
 
 	effectstest.AdvanceToMain(t, g)
-	pipb1Activate(t, g, me, bob, 0, "{C}{C}{C}", game.ActivateAbilityParams{Targets: effectstest.CardRefs(bear)})
+	effectstest.Pipb1Activate(t, g, me, bob, 0, "{C}{C}{C}", game.ActivateAbilityParams{Targets: effectstest.CardRefs(bear)})
 	effectstest.PassPriorityAroundTable(t, g)
 	if n := effectstest.CountersOn(g, bear, game.CounterPlusOne); n != 2 {
 		t.Errorf("the target has %d +1/+1 counters with two Bobbleheads, want 2", n)
@@ -146,10 +126,10 @@ func TestPipb1CharismaBobbleheadMakesASoldierPerBobblehead(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
 	effectstest.AdvanceToMain(t, g)
-	bob := pipb1Bobblehead(g, me.ID, "Charisma Bobblehead", pipb1CharismaBobbleheadOracle)
-	pipb1Bobblehead(g, me.ID, "Strength Bobblehead", pipb1StrengthBobbleheadOracle)
-	pipb1Bobblehead(g, me.ID, "Intelligence Bobblehead", pipb1IntelligenceBobbleheadOracle)
-	pipb1Activate(t, g, me, bob, 0, "{C}{C}{C}{C}", game.ActivateAbilityParams{})
+	bob := effectstest.Pipb1Bobblehead(g, me.ID, "Charisma Bobblehead", effectstest.Pipb1CharismaBobbleheadOracle)
+	effectstest.Pipb1Bobblehead(g, me.ID, "Strength Bobblehead", effectstest.Pipb1StrengthBobbleheadOracle)
+	effectstest.Pipb1Bobblehead(g, me.ID, "Intelligence Bobblehead", pipb1IntelligenceBobbleheadOracle)
+	effectstest.Pipb1Activate(t, g, me, bob, 0, "{C}{C}{C}{C}", game.ActivateAbilityParams{})
 	effectstest.PassPriorityAroundTable(t, g)
 	if n := effectstest.B28TokensNamed(g, me.ID, "Soldier"); n != 3 {
 		t.Errorf("%d Soldier tokens with three Bobbleheads, want 3", n)
@@ -211,7 +191,7 @@ func TestPipb1PaladinDanseExilesItselfToProtectArtifactsAndHumans(t *testing.T) 
 	rock := effectstest.B12Permanent(g, me.ID, "My Rock", "Artifact")
 	theirHuman := effectstest.B12Creature(g, opp.ID, "Their Human", "Creature — Human Soldier", 2, 2)
 
-	pipb1Activate(t, g, me, danse, 0, "", game.ActivateAbilityParams{})
+	effectstest.Pipb1Activate(t, g, me, danse, 0, "", game.ActivateAbilityParams{})
 	if g.Battlefield.Contains(danse) || !g.Exile.Contains(danse) {
 		t.Fatal("Paladin Danse was not exiled as the cost")
 	}
@@ -420,7 +400,7 @@ func TestPipb1JunktownSacrificesForThreeJunk(t *testing.T) {
 	me := g.Seats[0]
 	effectstest.AdvanceToMain(t, g)
 	town := effectstest.PushCatalogPermanent(g, me.ID, "Junktown", "Land", pipb1JunktownOracle, false)
-	pipb1Activate(t, g, me, town, 0, "{R}{C}{C}{C}{C}", game.ActivateAbilityParams{})
+	effectstest.Pipb1Activate(t, g, me, town, 0, "{R}{C}{C}{C}{C}", game.ActivateAbilityParams{})
 	if g.Battlefield.Contains(town) {
 		t.Fatal("Junktown was not sacrificed as the cost")
 	}
@@ -449,7 +429,7 @@ func TestPipb1BighornerRancherTapsForGreatestPowerAndSacrificesForGreatestToughn
 	}
 
 	life := me.Life
-	pipb1Activate(t, g, me, rancher, 0, "", game.ActivateAbilityParams{})
+	effectstest.Pipb1Activate(t, g, me, rancher, 0, "", game.ActivateAbilityParams{})
 	if g.Battlefield.Contains(rancher) {
 		t.Fatal("the Rancher was not sacrificed as the cost")
 	}

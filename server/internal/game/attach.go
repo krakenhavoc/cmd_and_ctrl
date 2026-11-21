@@ -672,6 +672,11 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// CR 301.5c — an Equipment can only be attached to a
 		// creature. Effective, not printed: a creature that stopped
 		// being a creature drops its sword.
+		// CR 301.6: a Fortification attaches to a land instead, and
+		// falls off a permanent that stops being one (CR 704.5n).
+		if isFortificationAttachment(c) {
+			return g.Battlefield.Cards[idx].IsLand()
+		}
 		if !g.Battlefield.Cards[idx].IsCreature() {
 			return false
 		}
@@ -867,6 +872,13 @@ func (g *Game) AttachedToSourceOKForEffect(spec *TargetSpec, sourceID, candidate
 	}
 	c := findBattlefieldCard(g, candidate)
 	return c != nil && c.IsAttachedTo(sourceID)
+}
+
+// isFortificationAttachment reports whether the permanent attaches as a
+// Fortification (CR 301.6): a Fortification by its effective subtypes, not
+// an Aura and not also an Equipment.
+func isFortificationAttachment(c *Card) bool {
+	return c.HasSubtype("Fortification") && !c.IsAura() && !c.HasSubtype("Equipment")
 }
 
 // isEquipmentAttachment reports whether the permanent attaches as an

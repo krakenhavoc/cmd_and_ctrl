@@ -97,7 +97,7 @@ var (
 	DrawOneBody     = game.SimpleDelayedBody("draw/one-card", B27DrawOne)
 	PortentDrawBody = game.SimpleDelayedBody("portent/draw", portentDraw)
 
-	necropotenceDeliverBody = game.SimpleDelayedBody("necropotence/deliver-exiled", necropotenceDeliverExiled)
+	necropotenceDeliverBody = game.SimpleDelayedBody("necropotence/deliver-exiled", NecropotenceDeliverExiled)
 	pheliaReturnBody        = game.SimpleDelayedBody("phelia/return", pheliaReturn)
 	teferiUntapLandsBody    = game.SimpleDelayedBody("teferi-hero/untap-two-lands", teferiHeroUntapTwoLands)
 

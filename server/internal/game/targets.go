@@ -1013,6 +1013,16 @@ type TargetSpec struct {
 	// everywhere. See SacrificeCostBounds.
 	Min, Max int
 
+	// MaxFrom is "up to X targets, where X is <a number read as the ability
+	// is activated>" (Endurance Bobblehead: X is the number of Bobbleheads
+	// you control as you activate this ability). A registered amount rule
+	// (RegisterDivideAmount), read once at announce by
+	// bindDivideAmountsLocked (CR 601.2b, 602.2b), which writes the answer
+	// into the announced clause's Max with a Min of 0; the catalog's clause
+	// is never touched. Data, not a func, for the reason AmountKey is. The
+	// zero value is no rule.
+	MaxFrom DivideAmount
+
 	// CountFromX makes the clause's target count the announced X
 	// rather than a printed constant — "Exile X target creatures you
 	// control" (Waterbender's Restoration), where X is defined by the

@@ -36,25 +36,6 @@ func TestSeam5682CardsAreRegisteredFull(t *testing.T) {
 	}
 }
 
-// s5682Rolls lists the dice announced after the first `from` events, and
-// fails on one that is not a d<sides> from `source` by `roller`.
-func s5682Rolls(t *testing.T, g *game.Game, from int, roller, source uuid.UUID, sides int) []int {
-	t.Helper()
-	var out []int
-	g.WithWriteLock(func() {
-		for _, ev := range g.Events[from:] {
-			if ev.Kind != game.EventRollDie {
-				continue
-			}
-			if ev.Actor != roller || ev.Source != source || ev.Sides != sides || ev.Amount < 1 || ev.Amount > sides {
-				t.Errorf("roll %+v, want a d%d by the roller from the source", ev, sides)
-			}
-			out = append(out, ev.Amount)
-		}
-	})
-	return out
-}
-
 // s5682Shield is Squid Fire Knight's "the next time <roller> would roll
 // one or more dice this turn, instead they roll that many dice plus one,
 // then you choose one of those rolls to ignore", with `chooser` as you.
@@ -98,7 +79,7 @@ func TestClayGolemRollsAD8AsACostAndBerserkDestroysAPermanent(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, golem, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	rolls := s5682Rolls(t, g, from, me.ID, golem, 8)
+	rolls := effectstest.S5682Rolls(t, g, from, me.ID, golem, 8)
 	if len(rolls) != 1 {
 		t.Fatalf("rolled %v as the ability was activated, want one d8", rolls)
 	}
@@ -116,7 +97,7 @@ func TestClayGolemRollsAD8AsACostAndBerserkDestroysAPermanent(t *testing.T) {
 	if got := effectstest.BecameMonstrousEvents(g, golem); !effectstest.SameInts(got, []int{x}) {
 		t.Errorf("became monstrous with X %v, want [%d]", got, x)
 	}
-	if len(s5682Rolls(t, g, from, me.ID, golem, 8)) != 1 {
+	if len(effectstest.S5682Rolls(t, g, from, me.ID, golem, 8)) != 1 {
 		t.Error("the resolution rolled again")
 	}
 	p := effectstest.LatestPickTarget(g, me.ID)
@@ -146,7 +127,7 @@ func TestClayGolemActivatedInResponseRollsAgainForNothing(t *testing.T) {
 			t.Fatalf("activate: %v", err)
 		}
 	}
-	rolls := s5682Rolls(t, g, from, me.ID, golem, 8)
+	rolls := effectstest.S5682Rolls(t, g, from, me.ID, golem, 8)
 	if len(rolls) != 2 {
 		t.Fatalf("rolled %v, want one d8 per activation", rolls)
 	}
@@ -174,7 +155,7 @@ func TestClayGolemCostRollIsReplaceableAndWaitsForTheIgnoredRoll(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, golem, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if got := s5682Rolls(t, g, from, me.ID, golem, 8); len(got) != 0 {
+	if got := effectstest.S5682Rolls(t, g, from, me.ID, golem, 8); len(got) != 0 {
 		t.Fatalf("a roll was announced before one was ignored: %v", got)
 	}
 	if got := s5682GolemItem(t, g, golem).Paid.Rolled; len(got) != 0 {
@@ -198,7 +179,7 @@ func TestClayGolemCostRollIsReplaceableAndWaitsForTheIgnoredRoll(t *testing.T) {
 		t.Fatalf("the restored question: %+v, want dice %v", rc, dice)
 	}
 	effectstest.SfkAnswer(t, restored, rc, opp.ID, 0)
-	if got := s5682Rolls(t, restored, from, me.ID, golem, 8); !effectstest.SameInts(got, dice[1:]) {
+	if got := effectstest.S5682Rolls(t, restored, from, me.ID, golem, 8); !effectstest.SameInts(got, dice[1:]) {
 		t.Fatalf("announced %v, want the kept roll %v", got, dice[1:])
 	}
 	if got := s5682GolemItem(t, restored, golem).Paid.Rolled; !effectstest.SameInts(got, dice[1:]) {
@@ -244,11 +225,11 @@ func TestNeverwinterHydraRollsXD6AndEntersWithTheirTotal(t *testing.T) {
 	me := g.Seats[g.Turn.ActiveSeat]
 	from := len(g.Events)
 	hydra := s5682CastHydra(t, g, 3)
-	if got := s5682Rolls(t, g, from, me.ID, hydra, 6); len(got) != 0 {
+	if got := effectstest.S5682Rolls(t, g, from, me.ID, hydra, 6); len(got) != 0 {
 		t.Fatalf("rolled %v while the spell was on the stack", got)
 	}
 	effectstest.PassPriorityAroundTable(t, g)
-	rolls := s5682Rolls(t, g, from, me.ID, hydra, 6)
+	rolls := effectstest.S5682Rolls(t, g, from, me.ID, hydra, 6)
 	if len(rolls) != 3 {
 		t.Fatalf("rolled %v, want three d6", rolls)
 	}
@@ -290,7 +271,7 @@ func TestNeverwinterHydraCastForZeroRollsNothing(t *testing.T) {
 		}
 	})
 	effectstest.PassPriorityAroundTable(t, g)
-	if got := s5682Rolls(t, g, from, me.ID, hydra, 6); len(got) != 0 {
+	if got := effectstest.S5682Rolls(t, g, from, me.ID, hydra, 6); len(got) != 0 {
 		t.Errorf("rolled %v for X=0", got)
 	}
 	if g.Battlefield.Contains(hydra) || !me.Graveyard.Contains(hydra) {
@@ -318,7 +299,7 @@ func TestNeverwinterHydraPutOntoTheBattlefieldRollsNothing(t *testing.T) {
 		t.Fatalf("put onto the battlefield: %v", err)
 	}
 	g.RunStateChecksForTest()
-	if got := s5682Rolls(t, g, from, me.ID, hydra, 6); len(got) != 0 {
+	if got := effectstest.S5682Rolls(t, g, from, me.ID, hydra, 6); len(got) != 0 {
 		t.Errorf("rolled %v for a Hydra that was not cast", got)
 	}
 	if g.Battlefield.Contains(hydra) {
@@ -348,7 +329,7 @@ func TestNeverwinterHydraEntryRollWaitsForTheIgnoredRollAcrossARestore(t *testin
 	if g.Battlefield.Contains(hydra) {
 		t.Fatal("the Hydra entered before its dice were settled")
 	}
-	if got := s5682Rolls(t, g, from, me.ID, hydra, 6); len(got) != 0 {
+	if got := effectstest.S5682Rolls(t, g, from, me.ID, hydra, 6); len(got) != 0 {
 		t.Fatalf("a roll was announced before one was ignored: %v", got)
 	}
 
@@ -360,7 +341,7 @@ func TestNeverwinterHydraEntryRollWaitsForTheIgnoredRollAcrossARestore(t *testin
 	effectstest.SfkAnswer(t, restored, rc, opp.ID, 1)
 	restored.SettleResolution()
 	kept := []int{dice[0], dice[2]}
-	if got := s5682Rolls(t, restored, from, me.ID, hydra, 6); !effectstest.SameInts(got, kept) {
+	if got := effectstest.S5682Rolls(t, restored, from, me.ID, hydra, 6); !effectstest.SameInts(got, kept) {
 		t.Fatalf("announced %v, want the kept rolls %v", got, kept)
 	}
 	if !restored.Battlefield.Contains(hydra) {

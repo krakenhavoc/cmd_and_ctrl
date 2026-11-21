@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -49,23 +47,6 @@ func TestEnergyResolutionCardsAreFull(t *testing.T) {
 	}
 }
 
-// attackAndAnswerEnergy attacks with `attacker`, resolves its attack
-// trigger, and answers the energy prompt with `pay`.
-func attackAndAnswerEnergy(t *testing.T, g *game.Game, attacker uuid.UUID, pay bool) {
-	t.Helper()
-	me, opp := g.Seats[0], g.Seats[1]
-	effectstest.DeclareAttack(t, g, opp.ID, attacker)
-	effectstest.PassPriorityAroundTable(t, g)
-	c := effectstest.EnergyPrompt(g, me.ID)
-	if c == nil {
-		t.Fatal("no energy prompt after the attack trigger resolved")
-	}
-	if err := g.ResolvePayUnless(c.ID, me.ID, pay); err != nil {
-		t.Fatalf("answer: %v", err)
-	}
-	effectstest.PassPriorityAroundTable(t, g)
-}
-
 // The Thriving cycle: paid, the counter lands on the attacker and the
 // energy comes off; declined, nothing changes.
 func TestThrivingRhinoPaysForACounter(t *testing.T) {
@@ -74,7 +55,7 @@ func TestThrivingRhinoPaysForACounter(t *testing.T) {
 		me := g.Seats[0]
 		rhino := effectstest.PushDiesCreatureForTest(g, me.ID, "Thriving Rhino", effectstest.ErThrivingRhino, "Creature — Rhino", 2, 3)
 		effectstest.SetEnergy(t, g, me, 3)
-		attackAndAnswerEnergy(t, g, rhino, pay)
+		effectstest.AttackAndAnswerEnergy(t, g, rhino, pay)
 		c := effectstest.ApaLive(g, rhino)
 		wantCounters, wantEnergy := 0, 3
 		if pay {
@@ -96,7 +77,7 @@ func TestThrivingRhinoShortPaysNothing(t *testing.T) {
 	me := g.Seats[0]
 	rhino := effectstest.PushDiesCreatureForTest(g, me.ID, "Thriving Rhino", effectstest.ErThrivingRhino, "Creature — Rhino", 2, 3)
 	effectstest.SetEnergy(t, g, me, 1)
-	attackAndAnswerEnergy(t, g, rhino, true)
+	effectstest.AttackAndAnswerEnergy(t, g, rhino, true)
 	if got := effectstest.ApaLive(g, rhino).Counters[game.CounterPlusOne]; got != 0 {
 		t.Errorf("+1/+1 counters = %d, want 0", got)
 	}
@@ -129,7 +110,7 @@ func TestAetherChaserPaysForAServo(t *testing.T) {
 	me := g.Seats[0]
 	chaser := effectstest.PushDiesCreatureForTest(g, me.ID, "Aether Chaser", effectstest.ErAetherChaser, "Creature — Human Artificer", 2, 1)
 	effectstest.SetEnergy(t, g, me, 2)
-	attackAndAnswerEnergy(t, g, chaser, true)
+	effectstest.AttackAndAnswerEnergy(t, g, chaser, true)
 	servos := 0
 	for _, c := range g.Battlefield.Cards {
 		if c.Name == "Servo" && c.Controller == me.ID {
@@ -147,7 +128,7 @@ func TestEnergyAttackPumps(t *testing.T) {
 	me := g.Seats[0]
 	tiger := effectstest.PushDiesCreatureForTest(g, me.ID, "Riparian Tiger", effectstest.ErRiparianTiger, "Creature — Cat", 4, 4)
 	effectstest.SetEnergy(t, g, me, 2)
-	attackAndAnswerEnergy(t, g, tiger, true)
+	effectstest.AttackAndAnswerEnergy(t, g, tiger, true)
 	if c := effectstest.ApaLive(g, tiger); c.CurrentPower() != 6 || c.CurrentToughness() != 6 {
 		t.Errorf("Tiger is %d/%d, want 6/6", c.CurrentPower(), c.CurrentToughness())
 	}
@@ -156,7 +137,7 @@ func TestEnergyAttackPumps(t *testing.T) {
 	me = g.Seats[0]
 	brawler := effectstest.PushDiesCreatureForTest(g, me.ID, "Voltaic Brawler", effectstest.ErVoltaicBrawler, "Creature — Human Warrior", 3, 2)
 	effectstest.SetEnergy(t, g, me, 1)
-	attackAndAnswerEnergy(t, g, brawler, true)
+	effectstest.AttackAndAnswerEnergy(t, g, brawler, true)
 	c := effectstest.ApaLive(g, brawler)
 	if c.CurrentPower() != 4 || c.CurrentToughness() != 3 || !game.HasKeyword(c, "trample") {
 		t.Errorf("Brawler is %d/%d trample=%v, want 4/3 with trample", c.CurrentPower(), c.CurrentToughness(), game.HasKeyword(c, "trample"))
