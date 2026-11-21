@@ -210,6 +210,7 @@ body gastal-blockbuster/destroy
 body gaze-of-pain/damage-equal-to-its-power
 body general-traag-heart-of-stone/strike
 body generous-plunderer/gift
+body giant-caterpillar/butterfly
 body gift-of-immortality/return-aura
 body gilgamesh/attach-equipment
 body glacial-dragonhunt/damage
