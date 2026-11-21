@@ -242,6 +242,7 @@ body immortal-coil/exile-per-prevented
 body incandescent-soulstoke/sacrifice
 body incinerator-of-the-guilty/damage
 body indulge-excess/citizen-tapped-and-attacking
+body infernal-captor/steal
 body inferno-of-the-star-mounts/damage
 body initiative/take
 body initiative/venture
@@ -781,6 +782,8 @@ choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/founding-the-third-path-cast
 choose choose-cards/gandalf-party-guest-cast
+choose choose-cards/gap-b53-party-thrasher-exile-two
+choose choose-cards/gap-b53-party-thrasher-play
 choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gerrards-verdict-life
 choose choose-cards/gert-and-old-lace-search
@@ -2245,6 +2248,7 @@ payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/forage-only
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
+payunless pay-unless/gap-b53-conduit-goblin-pump-haste
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-dirigible-untap
@@ -2543,6 +2547,7 @@ run prompt-run/eumidian-wastewaker-sacrifice
 run prompt-run/exploit-diver-skaab
 run prompt-run/exploit-fell-stinger
 run prompt-run/exploit-graf-reaver
+run prompt-run/exploit-infernal-captor
 run prompt-run/exploit-mindleech-ghoul
 run prompt-run/exploit-overcharged-amalgam
 run prompt-run/exploit-qarsi-sadist
@@ -3288,6 +3293,7 @@ tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
 tail gandalf-shadows-foe/return-lands-tapped
 tail gap-b49/emperor-of-bones-entered
+tail gap-b53-party-thrasher/choose-exiled
 tail gardens-of-tranquil-repose/its-controller-scries
 tail garruk-apex-predator/gain-life
 tail gemstone-mine/sacrifice-if-empty
@@ -3664,6 +3670,7 @@ tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-diver-skaab
 tail sacrificed-one/prompt-run/exploit-fell-stinger
 tail sacrificed-one/prompt-run/exploit-graf-reaver
+tail sacrificed-one/prompt-run/exploit-infernal-captor
 tail sacrificed-one/prompt-run/exploit-mindleech-ghoul
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
 tail sacrificed-one/prompt-run/exploit-qarsi-sadist
