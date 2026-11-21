@@ -2216,6 +2216,7 @@ payunless pay-unless/endless-ranks-of-hydra-return
 payunless pay-unless/energy-create-servo
 payunless pay-unless/energy-plus-one-counter-on-this
 payunless pay-unless/energy-sacrifice-this
+payunless pay-unless/equilibrium-bounce
 payunless pay-unless/era-of-innovation-get-energy
 payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
