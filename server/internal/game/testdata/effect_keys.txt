@@ -1949,6 +1949,7 @@ number number/plunge-into-darkness-look-at-that-many
 number number/rampaging-aetherhood-plus-one-counters-on-this
 number number/render-inert-remove-counters
 number number/resourceful-defense-move-counters
+number number/s82-gap-b153-scrounging-bandar-move
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
