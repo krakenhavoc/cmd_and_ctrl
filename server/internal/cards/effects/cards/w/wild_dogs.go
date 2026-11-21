@@ -1,6 +1,10 @@
-package effects
+package cardsw
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Wild Dogs — Creature — Dog {G}, 2/1 (Dominaria Remastered, #5948):
 //
@@ -18,21 +22,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "711cda97-bf57-4b22-b9c1-854ef448d27a",
 		Name:         "Wild Dogs",
-		Completeness: CompletenessFull,
-		Activated:    []ActivatedAbility{Cycling("{2}")},
+		Completeness: effects.CompletenessFull,
+		Activated:    []effects.ActivatedAbility{effects.Cycling("{2}")},
 		Triggered: []game.TriggeredAbility{
-			InterveningIf(gapB137LifeLeaderCondition(), On(game.EventBeginUpkeep,
-				AllOf(ByYou, gapB137ALifeLeaderExists),
+			effects.InterveningIf(effects.GapB137LifeLeaderCondition(), effects.On(game.EventBeginUpkeep,
+				effects.AllOf(effects.ByYou, effects.GapB137ALifeLeaderExists),
 				"Wild Dogs — the player with the most life gains control of this creature",
-				Do(Instruction(func(ctx *Context) error {
-					leader, ok := gapB137LifeLeader(ctx.Game)
+				effects.Do(effects.Instruction(func(ctx *effects.Context) error {
+					leader, ok := effects.GapB137LifeLeader(ctx.Game)
 					if !ok {
 						return nil
 					}
-					return GainControl{
+					return effects.GainControl{
 						Target:     ctx.Source(),
 						Controller: leader,
 						Duration:   game.IndefiniteDuration(),

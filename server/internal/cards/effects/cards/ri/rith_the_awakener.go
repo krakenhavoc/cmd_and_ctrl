@@ -1,6 +1,10 @@
-package effects
+package cardsri
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Rith, the Awakener — Legendary Creature — Dragon {3}{R}{G}{W}, 6/6
 // (Dominaria Remastered, #5948):
@@ -18,34 +22,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:        "97e5d788-2dd3-4c8e-9ab6-f4ea9c7a9a3d",
 		Name:            "Rith, the Awakener",
-		Completeness:    CompletenessFull,
+		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDealDamage, ThisDealtCombatDamageToAPlayer,
+			effects.On(game.EventDealDamage, effects.ThisDealtCombatDamageToAPlayer,
 				"Rith, the Awakener — you may pay {2}{G}; if you do, choose a color and create a Saproling for each permanent of that color",
 				func(g *game.Game, item *game.StackItem) error {
-					return MayPay{
+					return effects.MayPay{
 						Chooser:  item.Controller,
 						Cost:     "{2}{G}",
 						Question: "Rith, the Awakener — pay {2}{G}?",
 						Then:     rithPaid,
-					}.Apply(NewContext(g, item))
+					}.Apply(effects.NewContext(g, item))
 				}),
 		},
 	})
 }
 
-var rithPaid = PayUnlessBranches("pay-unless/rith-the-awakener-saprolings",
-	func(ctx *Context, _ game.PayUnlessAnswer) error {
-		ChooseColorTail(game.ColorForBenefit, ctx.Game, ctx.Controller(), ctx.Source(),
+var rithPaid = effects.PayUnlessBranches("pay-unless/rith-the-awakener-saprolings",
+	func(ctx *effects.Context, _ game.PayUnlessAnswer) error {
+		effects.ChooseColorTail(game.ColorForBenefit, ctx.Game, ctx.Controller(), ctx.Source(),
 			"Rith, the Awakener — choose a color", ctx.ItemTail(rithSaprolings))
 		return nil
 	}, nil)
 
-var rithSaprolings = CardTail("then/rith-the-awakener-saprolings", func(ctx *Context, o game.TailOutcome) error {
+var rithSaprolings = effects.CardTail("then/rith-the-awakener-saprolings", func(ctx *effects.Context, o game.TailOutcome) error {
 	color := o.Tail.Word
 	if color == "" {
 		return nil
@@ -59,5 +63,5 @@ var rithSaprolings = CardTail("then/rith-the-awakener-saprolings", func(ctx *Con
 	if n <= 0 {
 		return nil
 	}
-	return CreateToken{Template: TokenCard("1/1 green Saproling"), N: n}.Apply(ctx)
+	return effects.CreateToken{Template: effects.TokenCard("1/1 green Saproling"), N: n}.Apply(ctx)
 })

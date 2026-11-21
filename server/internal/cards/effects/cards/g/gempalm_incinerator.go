@@ -1,6 +1,10 @@
-package effects
+package cardsg
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Gempalm Incinerator — Creature — Goblin {2}{R}, 2/1 (Dominaria
 // Remastered, #5948):
@@ -17,28 +21,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "467ea3e3-7767-405a-9d1a-8fa5de696376",
 		Name:         "Gempalm Incinerator",
-		Completeness: CompletenessFull,
-		Activated:    []ActivatedAbility{Cycling("{1}{R}")},
+		Completeness: effects.CompletenessFull,
+		Activated:    []effects.ActivatedAbility{effects.Cycling("{1}{R}")},
 		Triggered: []game.TriggeredAbility{
-			Targeting(
-				InGraveyard(On(game.EventCycle, Self,
+			effects.Targeting(
+				effects.InGraveyard(effects.On(game.EventCycle, effects.Self,
 					"Gempalm Incinerator — you may have it deal X damage to target creature, where X is the number of Goblins on the battlefield",
 					func(g *game.Game, item *game.StackItem) error {
-						return MayChoice{
+						return effects.MayChoice{
 							Question: "Gempalm Incinerator — deal damage to the target creature equal to the number of Goblins on the battlefield?",
 							Then:     gempalmIncineratorDamage,
-						}.Apply(NewContext(g, item))
+						}.Apply(effects.NewContext(g, item))
 					})),
-				TargetCreature("target creature"),
+				effects.TargetCreature("target creature"),
 			),
 		},
 	})
 }
 
-var gempalmIncineratorDamage = MayYes("may/gempalm-incinerator-damage", func(ctx *Context, _ game.ConfirmAnswer) error {
+var gempalmIncineratorDamage = effects.MayYes("may/gempalm-incinerator-damage", func(ctx *effects.Context, _ game.ConfirmAnswer) error {
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
 		return nil
@@ -50,5 +54,5 @@ var gempalmIncineratorDamage = MayYes("may/gempalm-incinerator-damage", func(ctx
 			n++
 		}
 	}
-	return DealDamage{Source: ctx.Item.SourceCardID, Target: ts[0].ID, Amount: n}.Apply(ctx)
+	return effects.DealDamage{Source: ctx.Item.SourceCardID, Target: ts[0].ID, Amount: n}.Apply(ctx)
 })

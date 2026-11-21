@@ -1,8 +1,9 @@
-package effects
+package cardsap
 
 import (
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -25,13 +26,13 @@ import (
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:        "8ead94c5-8447-4f20-87ec-efdccde689fc",
 		Name:            "Arcades Sabboth",
-		Completeness:    CompletenessFull,
+		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			UpkeepSacrificeUnlessYouPay("Arcades Sabboth", "{G}{W}{U}"),
+			effects.UpkeepSacrificeUnlessYouPay("Arcades Sabboth", "{G}{W}{U}"),
 		},
 		Static: []game.StaticAbility{{
 			Label:                    "Each untapped creature you control gets +0/+2 as long as it's not attacking.",
@@ -46,13 +47,13 @@ func init() {
 				c.Toughness += 2
 			},
 		}},
-		Activated: []ActivatedAbility{{
+		Activated: []effects.ActivatedAbility{{
 			Label:   "{W}: This creature gets +0/+1 until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Toughness: 1}},
-			Cost:    ManaCost("{W}"),
+			Cost:    effects.ManaCost("{W}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				return BoostUntilEOT{Target: ctx.Source(), Toughness: 1, Label: "Arcades Sabboth — +0/+1"}.Apply(ctx)
+				ctx := effects.NewContext(g, item)
+				return effects.BoostUntilEOT{Target: ctx.Source(), Toughness: 1, Label: "Arcades Sabboth — +0/+1"}.Apply(ctx)
 			},
 		}},
 	})

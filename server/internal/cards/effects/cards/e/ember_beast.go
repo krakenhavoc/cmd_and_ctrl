@@ -1,6 +1,10 @@
-package effects
+package cardse
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Ember Beast — Creature — Beast {2}{R}, 3/4 (Dominaria Remastered, #5948):
 //
@@ -12,11 +16,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "58edb282-a124-47bc-b123-1c34b6804f48",
 		Name:         "Ember Beast",
-		Completeness: CompletenessFull,
-		AttackLimits: []game.AttackLimit{CantAttackAlone()},
-		BlockRules:   []game.BlockRule{CantBlockAlone()},
+		Completeness: effects.CompletenessFull,
+		AttackLimits: []game.AttackLimit{effects.CantAttackAlone()},
+		BlockRules:   []game.BlockRule{effects.CantBlockAlone()},
 	})
 }
