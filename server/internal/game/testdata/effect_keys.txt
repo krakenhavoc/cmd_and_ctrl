@@ -933,6 +933,7 @@ choose choose-cards/living-wish-take
 choose choose-cards/lluwen-imperfect-naturalist-top
 choose choose-cards/loamcrafter-faun-discard
 choose choose-cards/london-mulligan-bottom
+choose choose-cards/lord-of-the-void-creature
 choose choose-cards/lord-windgrace-draw
 choose choose-cards/lost-monarch-of-ifnir-return-creature
 choose choose-cards/ludevic-olag-copy
@@ -1726,6 +1727,7 @@ confirm confirm/stromgald-spy-reveal-hand
 confirm confirm/sunfire-torch-sacrifice
 confirm confirm/superior-foes-exile-top
 confirm confirm/sword-of-light-and-shadow-return
+confirm confirm/sword-of-the-paruns-tap-or-untap
 confirm confirm/sylvan-library-pay-or-top
 confirm confirm/synth-eradicator-energy-or-play
 confirm confirm/tainted-pact-take
@@ -3797,6 +3799,7 @@ tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
 tail tail/anzrags-rampage-exiled
 tail tail/boreas-charger-put
+tail tail/bottled-cloister-draw
 tail tail/break-out-entered
 tail tail/deadly-cover-up-after-sweep
 tail tail/deadly-cover-up-draw
@@ -3807,6 +3810,7 @@ tail tail/hide-in-plain-sight-rest
 tail tail/intrude-on-the-mind-rest
 tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
+tail tail/lord-of-the-void-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
 tail tail/pumpkin-bombs-after-fuse
@@ -3820,6 +3824,8 @@ tail tail/s82-mom-b21-zimone-repeat
 tail tail/s82-neo-b18-behold-the-unspeakable-draw-two
 tail tail/s82-neo-b18-kirin-orochi-counter
 tail tail/s82-neo-b18-kirin-orochi-spirit
+tail tail/seal-of-the-guildpact-first-color
+tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile

@@ -40,6 +40,7 @@ var colorPromptBuilders = map[string]bool{
 	"ChooseColorOtherThanAsEnters": true,
 	"ChooseColorTail":              true,
 	"ChooseColorOrColorlessTail":   true,
+	"ChooseColorOtherThanTail":     true,
 }
 
 // colorPurposeNames is the declared vocabulary, by the identifier a

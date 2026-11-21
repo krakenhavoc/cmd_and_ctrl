@@ -227,6 +227,9 @@ var reviewedNotAWipe = map[string]string{
 	"Azorius Skyguard": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 	// S82 MBS batch 1 (#5576).
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
+
+	// S82 GAP batch 69 (#5948).
+	"Bottled Cloister": "exiles only its controller's own hand face down on an opponent's upkeep and returns it on theirs: no permanent leaves the battlefield",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
