@@ -13,12 +13,12 @@ import (
 // still the object it was (Tendril of the Mycotyrant's Fungus, Cosmium
 // Confluence's Elemental): awaken's counters-then-animate, with the creature
 // type named (game.AnimateLandWithCountersForEffect).
-func animateLandWithCounters(ctx *Context, land uuid.UUID, n int, subtype string) error {
+func AnimateLandWithCounters(ctx *Context, land uuid.UUID, n int, subtype string) error {
 	return ctx.Game.AnimateLandWithCountersForEffect(ctx.Controller(), ctx.Source(), land, n, subtype)
 }
 
 // cavesYouControl is the battlefield Caves the controller has.
-func cavesYouControl(ctx *Context) []uuid.UUID {
+func CavesYouControl(ctx *Context) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range MatchingBattlefield(ctx, And(HasSubtype("Cave"), YouControl())) {
 		out = append(out, c.InstanceID)
@@ -30,13 +30,13 @@ func cavesYouControl(ctx *Context) []uuid.UUID {
 // Cave you control. It becomes a 0/0 Elemental creature with haste. It's
 // still a land.": the controller names the Cave as the mode resolves (it
 // does not target), re-checked as it is answered.
-var cosmiumConfluenceAnimate = askedPick("choose-cards/cosmium-confluence-animate-cave", func(ctx *Context, r game.CardsChosen) error {
+var CosmiumConfluenceAnimate = AskedPick("choose-cards/cosmium-confluence-animate-cave", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
 		return nil
 	}
-	for _, id := range cavesYouControl(ctx) {
+	for _, id := range CavesYouControl(ctx) {
 		if id == r.Picked[0] {
-			return animateLandWithCounters(ctx, id, 3, "Elemental")
+			return AnimateLandWithCounters(ctx, id, 3, "Elemental")
 		}
 	}
 	return nil

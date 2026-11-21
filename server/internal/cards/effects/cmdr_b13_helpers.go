@@ -11,7 +11,7 @@ import (
 // cmdrB13CastSpellPower is "that spell's power" for a trigger that watched
 // a spell being cast: the power it has where it is now (on the stack, or in
 // the graveyard if it was countered).
-func cmdrB13CastSpellPower(ctx *Context) int {
+func CmdrB13CastSpellPower(ctx *Context) int {
 	if ctx.Item == nil || ctx.Item.Trigger == nil {
 		return 0
 	}
@@ -25,8 +25,8 @@ func cmdrB13CastSpellPower(ctx *Context) int {
 // cmdrB13CreatureFromGraveyard is "a creature you control entered from a
 // graveyard or was cast from a graveyard" for one entering creature
 // (Celes, Rune Knight's reading, the source itself included).
-func cmdrB13CreatureFromGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func CmdrB13CreatureFromGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	if !ok || !c.IsCreature() {
 		return false
 	}
@@ -39,7 +39,7 @@ func cmdrB13CreatureFromGraveyard(ev game.Event, source *game.Card, _ game.Chara
 // (CR 601.2c), so the item already carries them. A card target counts only
 // while it is on the battlefield, which at the cast is what makes it a
 // permanent rather than a card in a graveyard or a spell.
-func cmdrB13SpellTargetsPermanentOrPlayer(g *game.Game, spellID uuid.UUID) bool {
+func CmdrB13SpellTargetsPermanentOrPlayer(g *game.Game, spellID uuid.UUID) bool {
 	item := g.StackItemForEffect(spellID)
 	if item == nil {
 		return false
@@ -59,7 +59,7 @@ func cmdrB13SpellTargetsPermanentOrPlayer(g *game.Game, spellID uuid.UUID) bool 
 
 // cmdrB13TotalPowerAtMost is "with total power n or less", the set rule
 // TotalManaValueAtMost is for mana value (Reunion of the House).
-func cmdrB13TotalPowerAtMost(n int) *game.TargetTotal {
+func CmdrB13TotalPowerAtMost(n int) *game.TargetTotal {
 	return &game.TargetTotal{
 		Label: "have total power " + strconv.Itoa(n) + " or less",
 		Stat:  game.TargetTotalPower,
@@ -72,13 +72,13 @@ func cmdrB13TotalPowerAtMost(n int) *game.TargetTotal {
 // one "up to one" clause for the caster's own graveyard, then one per
 // possible opponent, each bound to the n-th seat after the caster's. A seat
 // that is not at the table, or is eliminated, offers nothing.
-func cmdrB13PerPlayerGraveyardClauses(noun string, what ...CardPredicate) *game.TargetSpec {
+func CmdrB13PerPlayerGraveyardClauses(noun string, what ...CardPredicate) *game.TargetSpec {
 	own := TargetCardInGraveyard("up to one target "+noun+" card in your graveyard",
 		append([]CardPredicate{YouOwn()}, what...)...).WithCount(0, 1)
 	var rest []*game.TargetSpec
 	for n := 1; n <= game.MaxPlayers-1; n++ {
-		rest = append(rest, TargetCardInGraveyard("up to one target "+noun+" card in the "+nthOpponentWords[n]+" opponent's graveyard",
-			append([]CardPredicate{trekB36OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
+		rest = append(rest, TargetCardInGraveyard("up to one target "+noun+" card in the "+NthOpponentWords[n]+" opponent's graveyard",
+			append([]CardPredicate{TrekB36OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
 	}
 	return Clauses(own, rest...)
 }
@@ -86,7 +86,7 @@ func cmdrB13PerPlayerGraveyardClauses(noun string, what ...CardPredicate) *game.
 // cmdrB13GreatestManaValueYouControl is the greatest mana value among
 // permanents `player` controls, zero with none ({X} in a cost is 0 on the
 // battlefield, CR 202.3e).
-func cmdrB13GreatestManaValueYouControl(g *game.Game, player uuid.UUID) int {
+func CmdrB13GreatestManaValueYouControl(g *game.Game, player uuid.UUID) int {
 	best := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player {
@@ -102,8 +102,8 @@ func cmdrB13GreatestManaValueYouControl(g *game.Game, player uuid.UUID) int {
 // the battlefield (the raw power, so a negative one is not clamped), or as it
 // last existed there once it has left (CR 608.2h). ok is false when nothing
 // is known of it.
-func cmdrB13PowerAndToughness(g *game.Game, id uuid.UUID) (power, toughness int, ok bool) {
-	if onBattlefield(g, id) {
+func CmdrB13PowerAndToughness(g *game.Game, id uuid.UUID) (power, toughness int, ok bool) {
+	if OnBattlefield(g, id) {
 		g.RecomputeLayersIfStaleLocked()
 		if c, found := g.LookupCardForEffect(id); found {
 			return c.PowerForComparison(), c.CurrentToughness(), true
@@ -118,8 +118,8 @@ func cmdrB13PowerAndToughness(g *game.Game, id uuid.UUID) (power, toughness int,
 // cmdrB13DragonCombatDamageToPlayer reports whether ev is combat damage dealt
 // to a player by a Dragon controlled by `controller`. "Dragon" is a word of the
 // reader's text (CR 612.2), so a text-changing effect on it is honoured.
-func cmdrB13DragonCombatDamageToPlayer(ev game.Event, reader *game.Card, g *game.Game, controller uuid.UUID) bool {
-	if !combatDamageToPlayerBy(ev, controller, g) {
+func CmdrB13DragonCombatDamageToPlayer(ev game.Event, reader *game.Card, g *game.Game, controller uuid.UUID) bool {
+	if !CombatDamageToPlayerBy(ev, controller, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
@@ -133,7 +133,7 @@ func cmdrB13DragonCombatDamageToPlayer(ev game.Event, reader *game.Card, g *game
 // nothing, while the entering permanent's controller controls a Dragon. The
 // Dragon is a word of the land's text (CR 612.2), read off the battlefield
 // through the layers.
-func cmdrB13EntersTappedUnlessRevealOrControlDragon(name string) game.ReplacementEffect {
+func CmdrB13EntersTappedUnlessRevealOrControlDragon(name string) game.ReplacementEffect {
 	r := EntersTappedUnlessYouRevealFromHand(name, "a Dragon card", func(c game.Card) bool {
 		return c.HasSubtypeWord("Dragon")
 	})
@@ -163,7 +163,7 @@ func cmdrB13EntersTappedUnlessRevealOrControlDragon(name string) game.Replacemen
 // have defender" (Ghalta the Immovable, Felothar the Steadfast): the affected
 // creatures lose the keyword while the static applies, which is observably the
 // same thing (a creature with defender still blocks).
-func loseDefenderApply(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+func LoseDefenderApply(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 	kept := c.Abilities[:0:0]
 	for _, a := range c.Abilities {
 		if a != "defender" {

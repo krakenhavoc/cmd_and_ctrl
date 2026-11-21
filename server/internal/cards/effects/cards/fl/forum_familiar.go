@@ -1,0 +1,71 @@
+package cardsfl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Forum Familiar — 1/1 Cat for {W}:
+//
+//	"Disguise {1}{W}. When this creature is turned face up, return
+//	 another target permanent you control to its owner's hand and put
+//	 a +1/+1 counter on this creature."
+//
+// The disguise card in the catalog, and the one that exercises the
+// whole of #1194 end to end rather than a corner of it:
+//
+//   - cast face down for {3} it is a nameless 2/2 — with WARD {2}
+//     (CR 702.168a), which is the one ability a CR 708.2 object has and
+//     the only thing separating disguise from morph. It is not a
+//     keyword on the card; it comes from the face-down STATE, so it is
+//     there for as long as the permanent is face down and gone the
+//     instant it is not (ADR 0082 decision 8).
+//   - {1}{W} at any time turns it face up (CR 708.6), and
+//   - the CR 708.8 trigger fires off the real card, which the engine
+//     can only read because the state was cleared BEFORE the event was
+//     emitted.
+//
+// The bounce is a blink enabler in the printed card — return your own
+// ETB creature, replay it — and the counter is the compensation for
+// spending {3} plus {1}{W} on a 1/1.
+//
+// "ANOTHER target permanent you control": the Familiar cannot bounce
+// itself, which would take the trigger's own source off the
+// battlefield before the counter it is about to place.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "7ea0012b-b90b-43d6-bb5b-e4e92452bea7",
+		Name:         "Forum Familiar",
+		Completeness: effects.CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{
+			effects.Disguise("{1}{W}"),
+		},
+		Triggered: []game.TriggeredAbility{
+			forumFamiliarTurnedFaceUp(),
+		},
+	})
+}
+
+// forumFamiliarTurnedFaceUp is the CR 708.8 trigger, with its target
+// clause built per source so "another" can name the Familiar itself.
+func forumFamiliarTurnedFaceUp() game.TriggeredAbility {
+	t := effects.WhenThisIsTurnedFaceUp("Forum Familiar — bounce a permanent you control", forumFamiliarBounceEffect)
+	t.Targets = effects.TargetPermanent("another target permanent you control", effects.YouControl())
+	return t
+}
+
+// forumFamiliarBounceEffect is the trigger's resolution: bounce the
+// chosen permanent (unless it is the Familiar itself, which the
+// target clause already excludes), then place the counter whether or
+// not the bounce happened (CR 608.2: not conditional on the target
+// still being legal).
+func forumFamiliarBounceEffect(g *game.Game, item *game.StackItem) error {
+	self := item.SourceCardID
+	if len(item.Targets) > 0 && item.Targets[0].ID != self {
+		if err := g.BounceToHandForEffect(item.Targets[0].ID); err != nil {
+			return err
+		}
+	}
+	return g.AddCounterForEffect(self, "+1/+1", 1)
+}

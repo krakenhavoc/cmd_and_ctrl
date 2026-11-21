@@ -102,7 +102,7 @@ func DuringYourTurnBeforeAttackersAreDeclared() ActivationCondition {
 
 // countControlled counts the battlefield permanents `player` controls
 // that match.
-func countControlled(g *game.Game, player uuid.UUID, match func(game.Card) bool) int {
+func CountControlled(g *game.Game, player uuid.UUID, match func(game.Card) bool) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && match(c) {
@@ -114,7 +114,7 @@ func countControlled(g *game.Game, player uuid.UUID, match func(game.Card) bool)
 
 // eachOpponent calls fn for every seated, non-eliminated player other
 // than `controller`, and reports whether fn returned true for any.
-func eachOpponent(g *game.Game, controller uuid.UUID, fn func(opponent uuid.UUID) bool) bool {
+func EachOpponent(g *game.Game, controller uuid.UUID, fn func(opponent uuid.UUID) bool) bool {
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller || p.Eliminated {
 			continue
@@ -135,8 +135,8 @@ func OpponentControlsAtLeast(n int, match func(game.Card) bool) ActivationCondit
 		// The match's words are the source's text (CR 612.2, #3872).
 		reader := g.TextReaderOfForEffect(source)
 		lent := func(c game.Card) bool { return match(game.ThroughTextOf(reader, c)) }
-		return eachOpponent(g, controller, func(opp uuid.UUID) bool {
-			return countControlled(g, opp, lent) >= n
+		return EachOpponent(g, controller, func(opp uuid.UUID) bool {
+			return CountControlled(g, opp, lent) >= n
 		})
 	}
 }
@@ -147,8 +147,8 @@ func OpponentControlsAtLeast(n int, match func(game.Card) bool) ActivationCondit
 // activator's own count.
 func OpponentControlsMore(match func(game.Card) bool) ActivationCondition {
 	return func(g *game.Game, controller, _ uuid.UUID) bool {
-		return eachOpponent(g, controller, func(opp uuid.UUID) bool {
-			return b11OpponentControlsMoreThanYou(g, controller, opp, match)
+		return EachOpponent(g, controller, func(opp uuid.UUID) bool {
+			return B11OpponentControlsMoreThanYou(g, controller, opp, match)
 		})
 	}
 }
@@ -364,7 +364,7 @@ func OnlyAsAnInstant() ActivationCondition {
 // last-known battlefield characteristics (b11CreaturesDiedThisTurn).
 func ACreatureDiedThisTurn() ActivationCondition {
 	return func(g *game.Game, _, _ uuid.UUID) bool {
-		return b11CreaturesDiedThisTurn(g) > 0
+		return B11CreaturesDiedThisTurn(g) > 0
 	}
 }
 

@@ -37,15 +37,15 @@ import (
 
 // b29SacrificeALand is Hammer of Purphoros's "Sacrifice a land" —
 // any land the activator controls, post-layer types.
-func b29SacrificeALand() *game.TargetSpec {
-	return sacrificeSpec("a land", Land())
+func B29SacrificeALand() *game.TargetSpec {
+	return SacrificeSpec("a land", Land())
 }
 
 // --- statics -----------------------------------------------------
 
 // b29AllCreatures is "all creatures" — every player's, the source
 // included when it is one (Mass Hysteria).
-func b29AllCreatures(target *game.Card, _ *game.Game, _ *game.Card) bool {
+func B29AllCreatures(target *game.Card, _ *game.Game, _ *game.Card) bool {
 	return target.IsCreature()
 }
 
@@ -54,7 +54,7 @@ func b29AllCreatures(target *game.Card, _ *game.Game, _ *game.Card) bool {
 // flying is whatever layer 6 left on the creature — a printed
 // keyword, a lord's grant or an until-end-of-turn grant all count,
 // as printed.
-func b29OtherCreaturesYouControlWithFlying(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B29OtherCreaturesYouControlWithFlying(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.InstanceID != source.InstanceID &&
 		target.Controller == source.Controller &&
 		target.IsCreature() && game.HasKeyword(target, "flying")
@@ -64,7 +64,7 @@ func b29OtherCreaturesYouControlWithFlying(target *game.Card, _ *game.Game, sour
 // "Squirrels you control get +1/+1 for each acorn counter on this
 // artifact": the scaling lord shape, read off the source's counters
 // on every recompute — a counter change bumps the layer version.
-func b29SquirrelsYouControlPerAcornCounter() game.StaticAbility {
+func B29SquirrelsYouControlPerAcornCounter() game.StaticAbility {
 	return TribalScalingAnthem(
 		TribeFilter{Tribes: []string{"Squirrel"}, YoursOnly: true},
 		func(source *game.Card, _ *game.Game) int { return source.Counters["acorn"] },
@@ -76,14 +76,14 @@ func b29SquirrelsYouControlPerAcornCounter() game.StaticAbility {
 // enchantments, creatures you control …". Counted per recompute,
 // post-layer types, the Haunting itself included.
 func b29CreaturesYouControlWithSevenEnchantments(target *game.Card, g *game.Game, source *game.Card) bool {
-	return b16CreaturesYouControl(target, g, source) && b29EnchantmentsControlled(g, source.Controller) >= 7
+	return B16CreaturesYouControl(target, g, source) && B29EnchantmentsControlled(g, source.Controller) >= 7
 }
 
 // --- state reads ---------------------------------------------------
 
 // b29EnchantmentsControlled counts the enchantments `controller`
 // controls, post-layer types.
-func b29EnchantmentsControlled(g *game.Game, controller uuid.UUID) int {
+func B29EnchantmentsControlled(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsEnchantment() {
@@ -98,7 +98,7 @@ func b29EnchantmentsControlled(g *game.Game, controller uuid.UUID) int {
 // count. `spirit` is the creature type as the counting object's text
 // now reads it (TextSubtype, CR 612.2, #3984).
 func b29SpiritsControlled(g *game.Game, controller uuid.UUID, spirit string) int {
-	return b26PermanentsOfSubtypeControlled(g, controller, spirit)
+	return B26PermanentsOfSubtypeControlled(g, controller, spirit)
 }
 
 // b29LastKnownToughnessOffBattlefield is the toughness a card had
@@ -108,7 +108,7 @@ func b29SpiritsControlled(g *game.Game, controller uuid.UUID, spirit string) int
 // (#1664) — b17LastKnownPowerOffBattlefield's other half. A static
 // bonus from another permanent is not in it; declared on the card
 // that reads this.
-func b29LastKnownToughnessOffBattlefield(g *game.Game, cardID uuid.UUID) int {
+func B29LastKnownToughnessOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 	if info, ok := g.LastKnownPermanentForEffect(cardID); ok {
 		return info.Toughness
 	}
@@ -136,7 +136,7 @@ func b29AuraNamesControlled(g *game.Game, controller uuid.UUID) map[string]bool 
 // b29ArtifactSpellCastByYou is Vedalken Archmage's condition — Sai's
 // shape, named. The spell is read off the stack, where its type
 // line is intact.
-func b29ArtifactSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B29ArtifactSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -148,8 +148,8 @@ func b29ArtifactSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) b
 // condition: another legendary creature entered under the source's
 // controller's control. Effective supertypes, so a token copy of a
 // legend counts.
-func b29AnotherLegendaryCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B29AnotherLegendaryCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsCreature() && c.IsLegendary()
 }
 
@@ -158,9 +158,9 @@ func b29AnotherLegendaryCreatureYouControlEntered(ev game.Event, source *game.Ca
 // most recent move onto the battlefield came from the stack
 // (b16EnteredFromStack). Returns the Aura as it now sits, for its
 // mana value.
-func b29AuraYouCastEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
-	if !ok || !c.IsAura() || !b16EnteredFromStack(g, c.InstanceID) {
+func B29AuraYouCastEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
+	if !ok || !c.IsAura() || !B16EnteredFromStack(g, c.InstanceID) {
 		return game.Card{}, false
 	}
 	return c, true
@@ -168,8 +168,8 @@ func b29AuraYouCastEntered(ev game.Event, source *game.Card, g *game.Game) (game
 
 // b29SpellCastOffTurn is Scytheclaw Raptor's condition: a player
 // cast a spell, and it is not that player's turn.
-func b29SpellCastOffTurn(ev game.Event, g *game.Game) bool {
-	return ev.Kind == game.EventCast && ev.Actor != uuid.Nil && !isActivePlayer(g, ev.Actor)
+func B29SpellCastOffTurn(ev game.Event, g *game.Game) bool {
+	return ev.Kind == game.EventCast && ev.Actor != uuid.Nil && !IsActivePlayer(g, ev.Actor)
 }
 
 // b29CreatureWithMinusCounterDied is Blowfly Infestation's
@@ -177,8 +177,8 @@ func b29SpellCastOffTurn(ev game.Event, g *game.Game) bool {
 // when it left — read back off the log, because MoveCard cleared
 // its counters on the way out (the departure record,
 // Game.LastKnownPermanentForEffect).
-func b29CreatureWithMinusCounterDied(ev game.Event, g *game.Game) bool {
-	if _, ok := diedCreature(ev, g); !ok {
+func B29CreatureWithMinusCounterDied(ev game.Event, g *game.Game) bool {
+	if _, ok := DiedCreature(ev, g); !ok {
 		return false
 	}
 	info, ok := g.LastKnownPermanentForEffect(ev.CardID)
@@ -195,13 +195,13 @@ func b29CreatureWithMinusCounterDied(ev game.Event, g *game.Game) bool {
 // its counters cleared — which is why the second branch exists. A
 // anthem's or an Equipment's bonus is in it, because the departure record
 // holds the post-layer power (CR 608.2h).
-func b29PowerAsItLastStood(g *game.Game, cardID uuid.UUID) int {
-	if onBattlefield(g, cardID) {
+func B29PowerAsItLastStood(g *game.Game, cardID uuid.UUID) int {
+	if OnBattlefield(g, cardID) {
 		if c, ok := g.LookupCardForEffect(cardID); ok {
 			return c.CurrentPower()
 		}
 	}
-	return b17LastKnownPowerOffBattlefield(g, cardID)
+	return B17LastKnownPowerOffBattlefield(g, cardID)
 }
 
 // --- effect bodies -----------------------------------------------
@@ -211,7 +211,7 @@ func b29PowerAsItLastStood(g *game.Game, cardID uuid.UUID) int {
 // total, rounded down. Every amount is read before any is dealt —
 // the damage is simultaneous — and a player at 1 or less takes
 // nothing.
-func b29DamageEachPlayerHalfTheirLife(g *game.Game, item *game.StackItem) error {
+func B29DamageEachPlayerHalfTheirLife(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	type hit struct {
 		player uuid.UUID
@@ -244,12 +244,12 @@ func b29DamageEachPlayerHalfTheirLife(g *game.Game, item *game.StackItem) error 
 // `exiled` is what LANDED in exile (#866), and the clause runs from
 // the sweep's continuation, so it may run an action later than the
 // sweep — see the card's file.
-func b29ExileAttackersThenTheyFetchBasics(ctx *Context, player uuid.UUID) error {
+func B29ExileAttackersThenTheyFetchBasics(ctx *Context, player uuid.UUID) error {
 	return ExileAllMatching{
 		Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 			return c.Controller == player && c.IsCreature() && c.AttackingTarget != uuid.Nil
 		},
-		ThenTail: withCarry(ctx.ItemTail(b29TheyFetchBasics), player),
+		ThenTail: WithCarry(ctx.ItemTail(b29TheyFetchBasics), player),
 	}.Apply(ctx)
 }
 
@@ -276,11 +276,11 @@ var b29TheyFetchBasics = MassTailOf("mass/settle-the-wreckage-fetch-basics", fun
 // before anything moves, returns to the battlefield as one entry,
 // tapped as it enters (#1867); then every Human is destroyed, once
 // that entry has finished.
-func b29ReturnZombieCardsTappedThenDestroyHumans(ctx *Context) error {
+func B29ReturnZombieCardsTappedThenDestroyHumans(ctx *Context) error {
 	// "Zombie" is a word of the spell's text (CR 612.2, #3984).
 	zombie := ctx.TextSubtype("Zombie")
 	return ReturnFromGraveyardTogether{
-		Targets: graveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
+		Targets: GraveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
 			return c.IsCreature() && c.HasSubtype(zombie)
 		}),
 		Tapped:   true,
@@ -296,7 +296,7 @@ var zombieApocalypseDestroyHumans = TogetherTail("zombie-apocalypse/destroy-huma
 	})
 
 // b29LightPawsLabel is the stack label of Light-Paws' Aura trigger.
-const b29LightPawsLabel = "Light-Paws, Emperor's Voice — search for an Aura to attach to it"
+const B29LightPawsLabel = "Light-Paws, Emperor's Voice — search for an Aura to attach to it"
 
 // b29SearchAuraAttachedToSource is Light-Paws' declared Effect: an
 // Aura card with mana value at most the entering Aura's — carried on
@@ -311,8 +311,8 @@ const b29LightPawsLabel = "Light-Paws, Emperor's Voice — search for an Aura to
 // SearchLibrary.EntersAttachedTo): one that can't legally enchant it
 // stays in the library (CR 303.4i), and the library is shuffled either
 // way.
-func b29SearchAuraAttachedToSource(g *game.Game, item *game.StackItem) error {
-	if !onBattlefield(g, item.SourceCardID) {
+func B29SearchAuraAttachedToSource(g *game.Game, item *game.StackItem) error {
+	if !OnBattlefield(g, item.SourceCardID) {
 		return nil
 	}
 	maxMV := item.Params.Amount
@@ -332,7 +332,7 @@ func b29SearchAuraAttachedToSource(g *game.Game, item *game.StackItem) error {
 
 // b29ZiatoraSacrificeLabel is the stack label of Ziatora's end-step
 // trigger.
-const b29ZiatoraSacrificeLabel = "Ziatora, the Incinerator — sacrifice another creature"
+const B29ZiatoraSacrificeLabel = "Ziatora, the Incinerator — sacrifice another creature"
 
 // b29SacrificeChosenCreature is Ziatora's end-step body: "you may
 // sacrifice another creature", asked as the trigger resolves
@@ -343,8 +343,8 @@ const b29ZiatoraSacrificeLabel = "Ziatora, the Incinerator — sacrifice another
 //
 // Nothing follows when nothing was sacrificed: "when you do" is
 // conditional on the doing.
-func b29SacrificeChosenCreature(g *game.Game, item *game.StackItem) error {
-	return maySacrificeOne(g, item, "Ziatora, the Incinerator — sacrifice another creature to deal damage equal to its power and make three Treasures?", Creature(), true, ziatoraSacrificed)
+func B29SacrificeChosenCreature(g *game.Game, item *game.StackItem) error {
+	return MaySacrificeOne(g, item, "Ziatora, the Incinerator — sacrifice another creature to deal damage equal to its power and make three Treasures?", Creature(), true, ziatoraSacrificed)
 }
 
 // ziatoraSacrificed raises the reflexive trigger once the creature has
@@ -366,7 +366,7 @@ func b29ZiatoraFling(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	power := 0
 	if sacrificed := ctx.PayloadCards(); len(sacrificed) > 0 {
-		power = b29PowerAsItLastStood(g, sacrificed[0])
+		power = B29PowerAsItLastStood(g, sacrificed[0])
 	}
 	if ts := ctx.LegalTargets(); len(ts) > 0 {
 		if err := (DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: power}).Apply(ctx); err != nil {
@@ -381,14 +381,14 @@ func b29ZiatoraFling(g *game.Game, item *game.StackItem) error {
 // artifact". The token is chosen as the trigger resolves (maySacrificeOne),
 // and the counter follows only a token that really went, and only while
 // the Chitterspitter is still in play.
-func b29SacrificeChosenTokenThenAcorn(g *game.Game, item *game.StackItem) error {
-	return maySacrificeOne(g, item, "Chitterspitter — sacrifice a token to put an acorn counter on it?", IsTokenPredicate(), false, chitterspitterAcorn)
+func B29SacrificeChosenTokenThenAcorn(g *game.Game, item *game.StackItem) error {
+	return MaySacrificeOne(g, item, "Chitterspitter — sacrifice a token to put an acorn counter on it?", IsTokenPredicate(), false, chitterspitterAcorn)
 }
 
 // chitterspitterAcorn is the acorn counter once a token has really gone,
 // keyed (#4290): only while the Chitterspitter is still in play.
 var chitterspitterAcorn = RegisterSacrificedOne("prompt-run/chitterspitter-acorn", func(ctx *Context, _ uuid.UUID) error {
-	if !onBattlefield(ctx.Game, ctx.Source()) {
+	if !OnBattlefield(ctx.Game, ctx.Source()) {
 		return nil
 	}
 	return AddCounter{Target: ctx.Source(), Kind: "acorn", N: 1}.Apply(ctx)
@@ -398,9 +398,9 @@ var chitterspitterAcorn = RegisterSacrificedOne("prompt-run/chitterspitter-acorn
 // Food, or two if the creature sacrificed to pay had toughness 4 or
 // greater as it last stood — post-layer toughness with its counters
 // (b29LastKnownToughnessOffBattlefield).
-func b29FoodForSacrificedCreature(g *game.Game, item *game.StackItem) error {
+func B29FoodForSacrificedCreature(g *game.Game, item *game.StackItem) error {
 	n := 1
-	if sacrificed, ok := b17PermanentSacrificedToPay(g, item); ok && b29LastKnownToughnessOffBattlefield(g, sacrificed) >= 4 {
+	if sacrificed, ok := B17PermanentSacrificedToPay(g, item); ok && B29LastKnownToughnessOffBattlefield(g, sacrificed) >= 4 {
 		n = 2
 	}
 	return CreateToken{Controller: item.Controller, Template: FoodToken(), N: n}.Apply(NewContext(g, item))
@@ -418,7 +418,7 @@ func b29FoodForSacrificedCreature(g *game.Game, item *game.StackItem) error {
 // the run's continuation is what makes it the printed one. A target
 // with no creature is never asked and the Wizard still comes, which
 // is the continuation running with nothing sacrificed.
-func b29TargetOpponentSacrificesACreatureThenWizard(_ *game.StackItem, ctx *Context) error {
+func B29TargetOpponentSacrificesACreatureThenWizard(_ *game.StackItem, ctx *Context) error {
 	var victims []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
@@ -427,7 +427,7 @@ func b29TargetOpponentSacrificesACreatureThenWizard(_ *game.StackItem, ctx *Cont
 		}
 	}
 	return ctx.PlayersSacrificeThen(victims,
-		sacrificeSpec("a creature", Creature()),
+		SacrificeSpec("a creature", Creature()),
 		"Cornered by Black Mages — sacrifice a creature",
 		corneredByBlackMagesWizard, ctx.RunData(nil))
 }
@@ -441,7 +441,7 @@ var corneredByBlackMagesWizard = RunThen("prompt-run/cornered-by-black-mages-wiz
 // b29TapAllCreaturesControlledBy taps every untapped creature
 // `player` controls — Naya Charm's third mode. Snapshot then tap, so
 // the tap events don't disturb the walk.
-func b29TapAllCreaturesControlledBy(ctx *Context, player uuid.UUID) error {
+func B29TapAllCreaturesControlledBy(ctx *Context, player uuid.UUID) error {
 	var ids []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() && !c.Tapped {
@@ -449,7 +449,7 @@ func b29TapAllCreaturesControlledBy(ctx *Context, player uuid.UUID) error {
 		}
 	}
 	for _, id := range ids {
-		if err := (TapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (TapTarget{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

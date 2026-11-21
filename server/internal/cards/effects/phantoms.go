@@ -20,12 +20,12 @@ import (
 
 // phantomReplacements is a Phantom's two replacements: it enters with `n`
 // +1/+1 counters, and its prevention static.
-func phantomReplacements(name string, n int) []game.ReplacementEffect {
+func PhantomReplacements(name string, n int) []game.ReplacementEffect {
 	return []game.ReplacementEffect{
-		b10EntersWithCounters(game.CounterPlusOne, n, fmt.Sprintf("%s: enters with %d +1/+1 counters", name, n)),
+		B10EntersWithCounters(game.CounterPlusOne, n, fmt.Sprintf("%s: enters with %d +1/+1 counters", name, n)),
 		PreventDamageDealtTo(PreventionStatic{
 			To:    ToThisCreature,
-			Then:  removeACounterFromThisBody,
+			Then:  RemoveACounterFromThisBody,
 			Label: name + " — prevent damage to it and remove a +1/+1 counter",
 		}),
 	}

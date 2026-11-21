@@ -15,8 +15,8 @@ import (
 // whenCardsLeaveYourGraveyard, so a card cast from it counts too): cards
 // that leave as one event make one Spirit, cards that leave as separate
 // events make one each (the 2021-04-16 ruling).
-func socB11SpiritWhenCardsLeaveYourGraveyard(name string) game.TriggeredAbility {
-	return OncePerBatch(OnAny(leftGraveyardEvents, whenCardsLeaveYourGraveyard,
+func SocB11SpiritWhenCardsLeaveYourGraveyard(name string) game.TriggeredAbility {
+	return OncePerBatch(OnAny(LeftGraveyardEvents, WhenCardsLeaveYourGraveyard,
 		name+" — create a 3/2 red and white Spirit creature token",
 		Do(CreateToken{Template: TokenCard("3/2 red and white Spirit"), N: 1})))
 }
@@ -30,7 +30,7 @@ var (
 	socB11QuintoriusMill = game.RegisterDrawThen("draw-then/quintorius-history-chaser-mill", func(g *game.Game, d game.DrawThen) error {
 		return g.MillNForEffect(d.Player, 1)
 	})
-	socB11QuintoriusDiscardDraw = discardDraw{then: game.RegisterDiscardThen("choose-cards/quintorius-history-chaser-draw-two-mill-one",
+	SocB11QuintoriusDiscardDraw = discardDraw{Then: game.RegisterDiscardThen("choose-cards/quintorius-history-chaser-draw-two-mill-one",
 		func(g *game.Game, r game.DiscardsDone) error {
 			if r.Discarded.Count() == 0 {
 				return nil

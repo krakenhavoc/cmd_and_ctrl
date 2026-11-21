@@ -9,7 +9,7 @@ import (
 // hinderingLightTargetsYouOrYourPermanent is Hindering Light's clause:
 // the candidate spell has at least one target that is the caster or a
 // permanent the caster controls on the battlefield.
-func hinderingLightTargetsYouOrYourPermanent(g *game.Game, caster uuid.UUID, c game.Card) bool {
+func HinderingLightTargetsYouOrYourPermanent(g *game.Game, caster uuid.UUID, c game.Card) bool {
 	item := g.StackItemForEffect(c.InstanceID)
 	if item == nil || item.Kind != game.StackItemSpell {
 		return false
@@ -37,14 +37,14 @@ func hinderingLightTargetsYouOrYourPermanent(g *game.Game, caster uuid.UUID, c g
 // cards that share a color were milled this way, repeat this process":
 // the repeat is recursion through the mill's continuation. The guard
 // is carried by value and bounds a pass chain that never ends.
-func grindstoneMillPass(ctx *Context, victim uuid.UUID, guard int) error {
+func GrindstoneMillPass(ctx *Context, victim uuid.UUID, guard int) error {
 	if guard >= 200 {
 		return nil
 	}
 	return MillToZone{
 		Player:   victim,
 		N:        2,
-		ThenTail: withN(withCarry(ctx.ItemTail(grindstoneAfterMill), victim), guard),
+		ThenTail: WithN(WithCarry(ctx.ItemTail(grindstoneAfterMill), victim), guard),
 	}.Apply(ctx)
 }
 
@@ -57,7 +57,7 @@ func init() {
 		if !s82BNSb02TwoCardsShareAColor(ctx.Game, o.IDs) {
 			return nil
 		}
-		return grindstoneMillPass(ctx, tailCarry0(o), o.Tail.N+1)
+		return GrindstoneMillPass(ctx, TailCarry0(o), o.Tail.N+1)
 	})
 }
 
@@ -85,8 +85,8 @@ func s82BNSb02TwoCardsShareAColor(g *game.Game, milled []uuid.UUID) bool {
 // Human Rogue token with haste and "When this creature enters the
 // battlefield, it deals 1 damage to any target." The slug is an on-disk
 // identity.
-func printedBnsHumanRogueToken() tokenTemplate {
-	return tokenTemplate{
+func PrintedBnsHumanRogueToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "human-rogue-haste-enters-ping",
 		Card: game.Card{
 			Name:      "Human Rogue",
@@ -98,7 +98,7 @@ func printedBnsHumanRogueToken() tokenTemplate {
 		},
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(Targeting(WhenThisEnters("Human Rogue — 1 damage to any target",
-				sourceDealsDamageToEachLegalTarget(1)), TargetAny()), ForTargets(DamageToTarget(0, 1))),
+				SourceDealsDamageToEachLegalTarget(1)), TargetAny()), ForTargets(DamageToTarget(0, 1))),
 		},
 		Text: "Haste\nWhen this creature enters the battlefield, it deals 1 damage to any target.",
 	}

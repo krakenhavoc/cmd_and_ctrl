@@ -15,8 +15,8 @@ import (
 // assignsNoCombatDamageThisTurn is "this creature assigns no combat damage
 // this turn": the resolving ability's source, pinned as the object it is
 // now, so a creature that left and came back is not marked (CR 400.7).
-func assignsNoCombatDamageThisTurn(ctx *Context, label string) {
-	if ctx.isNewSourceObjectAsThis(ctx.Source()) {
+func AssignsNoCombatDamageThisTurn(ctx *Context, label string) {
+	if ctx.IsNewSourceObjectAsThis(ctx.Source()) {
 		return
 	}
 	ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), ctx.Source(), label)
@@ -27,8 +27,8 @@ func assignsNoCombatDamageThisTurn(ctx *Context, label string) {
 // this turn". `do` gets the ability's first legal card target (uuid.Nil
 // for an ability with none) and runs only on "yes". The caller adds the
 // target clause (Targeting, or TargetsFrom for "defending player controls").
-func unblockedAttackerMay(card, question, key string, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
-	return unblockedAttackerMayDraw(card, question, 0, key, do)
+func UnblockedAttackerMay(card, question, key string, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
+	return UnblockedAttackerMayDraw(card, question, 0, key, do)
 }
 
 // unblockedAttackerMayDraw is unblockedAttackerMay for a "yes" that is a
@@ -38,18 +38,18 @@ func unblockedAttackerMay(card, question, key string, do func(ctx *Context, targ
 // `key` registers the "yes" as a keyed answer, "confirm/<key>" (#4291): an
 // on-disk identity, never renamed, never reused. This is called once per
 // card, from its init.
-func unblockedAttackerMayDraw(card, question string, draws int, key string, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
+func UnblockedAttackerMayDraw(card, question string, draws int, key string, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
 	label := card + " — " + question
 	then := MayYes("confirm/"+key, func(ctx *Context, r game.ConfirmAnswer) error {
-		if err := do(ctx, carryAt(r, 0)); err != nil {
+		if err := do(ctx, CarryAt(r, 0)); err != nil {
 			return err
 		}
-		assignsNoCombatDamageThisTurn(ctx, card+" — assigns no combat damage this turn")
+		AssignsNoCombatDamageThisTurn(ctx, card+" — assigns no combat damage this turn")
 		return nil
 	})
 	return WhenAttacksAndIsNotBlockedEffect(label, func(g *game.Game, item *game.StackItem, _ uuid.UUID) error {
 		ctx := NewContext(g, item)
-		target := firstLegalCardTarget(ctx)
+		target := FirstLegalCardTarget(ctx)
 		return MayChoice{
 			Question: label + "?",
 			Draws:    draws,
@@ -64,14 +64,14 @@ func unblockedAttackerMayDraw(card, question string, draws int, key string, do f
 // creature assigns no combat damage this turn" (the Laccolith creatures).
 // The target is chosen as the trigger goes on the stack and "you may" is
 // asked as it resolves.
-func laccolithBlocked(card string) game.TriggeredAbility {
+func LaccolithBlocked(card string) game.TriggeredAbility {
 	label := card + " — you may have it deal damage equal to its power to target creature"
 	return Targeting(On(game.EventBecomesBlocked, Self, label, func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		target := firstLegalCardTarget(ctx)
+		target := FirstLegalCardTarget(ctx)
 		return MayChoice{
 			Question: label + "? (it then assigns no combat damage this turn)",
-			Then:     mayLaccolithDamage,
+			Then:     MayLaccolithDamage,
 			Word:     card,
 			Carry:    []uuid.UUID{target},
 		}.Apply(ctx)
@@ -82,7 +82,7 @@ func laccolithBlocked(card string) game.TriggeredAbility {
 // enchanted creature attacks and isn't blocked" (CR 509.3): `ev` is the
 // completed block declaration of the player the enchanted creature attacks,
 // and nothing blocks it. See attacksAndIsNotBlocked.
-func enchantedCreatureAttacksAndIsNotBlocked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func EnchantedCreatureAttacksAndIsNotBlocked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventBlockersDeclared || source == nil || source.AttachedTo.Kind != game.TargetCard {
 		return false
 	}
@@ -99,7 +99,7 @@ func enchantedCreatureAttacksAndIsNotBlocked(ev game.Event, source *game.Card, _
 
 // enchantedCreatureOf is the creature the resolving Aura's source is
 // attached to, or uuid.Nil if the Aura has left or is unattached.
-func enchantedCreatureOf(ctx *Context) uuid.UUID {
+func EnchantedCreatureOf(ctx *Context) uuid.UUID {
 	aura, ok := ctx.Game.LookupCardForEffect(ctx.Source())
 	if !ok || aura.AttachedTo.Kind != game.TargetCard {
 		return uuid.Nil
@@ -109,13 +109,13 @@ func enchantedCreatureOf(ctx *Context) uuid.UUID {
 
 // enchantedAssignsNoCombatDamage is "<the enchanted creature> assigns no
 // combat damage this turn" for an Aura's ability.
-func enchantedAssignsNoCombatDamage(ctx *Context, host uuid.UUID, label string) {
+func EnchantedAssignsNoCombatDamage(ctx *Context, host uuid.UUID, label string) {
 	ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), host, label)
 }
 
 // firstLegalCardTarget is the first still-legal card target of the
 // resolving ability, in any zone, or uuid.Nil.
-func firstLegalCardTarget(ctx *Context) uuid.UUID {
+func FirstLegalCardTarget(ctx *Context) uuid.UUID {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard && t.ID != uuid.Nil {
 			return t.ID
@@ -126,17 +126,17 @@ func firstLegalCardTarget(ctx *Context) uuid.UUID {
 
 // sourcePowerNow is "its power" for the resolving ability's source: its
 // current power on the battlefield, else its last known power (CR 608.2h).
-func sourcePowerNow(ctx *Context) int {
+func SourcePowerNow(ctx *Context) int {
 	id := ctx.Source()
-	if onBattlefield(ctx.Game, id) {
-		return b31CurrentPowerOf(ctx.Game, id)
+	if OnBattlefield(ctx.Game, id) {
+		return B31CurrentPowerOf(ctx.Game, id)
 	}
-	return b17LastKnownPowerOffBattlefield(ctx.Game, id)
+	return B17LastKnownPowerOffBattlefield(ctx.Game, id)
 }
 
 // withTargetsFrom gives a trigger a TargetsFrom clause (chosen as the
 // ability goes on the stack, from the board as it is then).
-func withTargetsFrom(t game.TriggeredAbility, f func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec) game.TriggeredAbility {
+func WithTargetsFrom(t game.TriggeredAbility, f func(game.TriggerContext, *game.Card, *game.Game) *game.TargetSpec) game.TriggeredAbility {
 	t.TargetsFrom = f
 	return t
 }
@@ -166,10 +166,10 @@ func TargetOfDefendingPlayer(mode, label string, pred CardPredicate) func(game.T
 // mayLaccolithDamage is the Laccolith creatures' "yes": it deals damage
 // equal to its power to the target, then assigns no combat damage this turn
 // (Word is the card's name). Keyed (#4291).
-var mayLaccolithDamage = MayYes("confirm/laccolith-blocked-damage", func(ctx *Context, r game.ConfirmAnswer) error {
-	if err := (DealDamage{Source: ctx.Source(), Target: carryAt(r, 0), Amount: sourcePowerNow(ctx)}).Apply(ctx); err != nil {
+var MayLaccolithDamage = MayYes("confirm/laccolith-blocked-damage", func(ctx *Context, r game.ConfirmAnswer) error {
+	if err := (DealDamage{Source: ctx.Source(), Target: CarryAt(r, 0), Amount: SourcePowerNow(ctx)}).Apply(ctx); err != nil {
 		return err
 	}
-	assignsNoCombatDamageThisTurn(ctx, r.Word+" — assigns no combat damage this turn")
+	AssignsNoCombatDamageThisTurn(ctx, r.Word+" — assigns no combat damage this turn")
 	return nil
 })

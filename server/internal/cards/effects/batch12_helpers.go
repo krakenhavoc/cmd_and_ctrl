@@ -34,8 +34,8 @@ import (
 // clause, built through the same spec the other sac-outlet costs use
 // so the client opens the same picker. Effective subtypes, so a
 // changeling counts; the Prospector itself qualifies, as printed.
-func b12SacrificeAGoblin() *game.TargetSpec {
-	return sacrificeSpec("a Goblin", Subtype("Goblin"))
+func B12SacrificeAGoblin() *game.TargetSpec {
+	return SacrificeSpec("a Goblin", Subtype("Goblin"))
 }
 
 // --- trigger dedup -----------------------------------------------
@@ -50,7 +50,7 @@ func b12SacrificeAGoblin() *game.TargetSpec {
 // — and "your" library / graveyard is an ownership question, so the
 // card's Owner is what is compared. A flashed-back spell is exiled
 // from the STACK and does not count, as printed.
-func b12CardExiledFromYourLibraryOrGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
+func B12CardExiledFromYourLibraryOrGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneExile {
 		return false
 	}
@@ -66,8 +66,8 @@ func b12CardExiledFromYourLibraryOrGraveyard(ev game.Event, source *game.Card, g
 // controller's control. Effective subtypes, so a land Urborg-style
 // effects have made a Mountain counts, as does a Dryad Arbor made
 // one.
-func b12MountainYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func B12MountainYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	// "Mountain" is a word of the source's text (CR 612.2).
 	return ok && c.HasSubtype(source.TextSubtype("Mountain"))
 }
@@ -78,7 +78,7 @@ func b12MountainYouControlEntered(ev game.Event, source *game.Card, g *game.Game
 // `mountain` is the land type as the counting object's text now reads
 // it (TextSubtype, CR 612.2): Valakut under a Magical Hack counts
 // Islands.
-func b12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID, mountain string) int {
+func B12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID, mountain string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID == except || c.Controller != controller {
@@ -93,7 +93,7 @@ func b12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID, mou
 
 // creatureSpellCastByYou is Lifecrafter's Bestiary's second
 // condition.
-func creatureSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func CreatureSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -104,7 +104,7 @@ func creatureSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool
 // b12YouSacrificedAnArtifact is Crime Novelist's condition. The
 // sacrifice event fires BEFORE the zone move, so the permanent is
 // still on the battlefield to be read — the Mirkwood Bats shape.
-func b12YouSacrificedAnArtifact(ev game.Event, source *game.Card, g *game.Game) bool {
+func B12YouSacrificedAnArtifact(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller {
 		return false
 	}
@@ -127,7 +127,7 @@ func b12YouSacrificedAnArtifact(ev game.Event, source *game.Card, g *game.Game) 
 //
 // Weaker, never stronger: a spell that has since left every tracked
 // zone is not counted.
-func b12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell uuid.UUID) int {
+func B12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell uuid.UUID) int {
 	n := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventCast || ev.Actor != controller || ev.CardID == spell {
@@ -169,7 +169,7 @@ func b12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell u
 // PERMANENT" needs no batching: Cathars' Crusade putting a counter
 // on each of five creatures is five placements and five triggers,
 // which is the printed outcome.
-func b12CountersPlacedByYou(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
+func B12CountersPlacedByYou(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
 	return b12CountersPlacedBy(ev, source.Controller, g, true)
 }
 
@@ -190,7 +190,7 @@ func b12CountersPlacedBy(ev game.Event, me uuid.UUID, g *game.Game, requireBattl
 			return 0, false
 		}
 	}
-	before := b12CounterTotalBefore(ev, g)
+	before := B12CounterTotalBefore(ev, g)
 	delta := ev.Amount - before
 	if delta <= 0 {
 		return 0, false
@@ -203,7 +203,7 @@ func b12CountersPlacedBy(ev game.Event, me uuid.UUID, g *game.Game, requireBattl
 // starts again at zero when the card last moved to a zone other than
 // the battlefield (CR 400.7) and counts the "enters with" counters
 // logged before its arrival (#4865).
-func b12CounterTotalBefore(ev game.Event, g *game.Game) int {
+func B12CounterTotalBefore(ev game.Event, g *game.Game) int {
 	return g.CounterCountBeforeForEffect(ev)
 }
 
@@ -214,7 +214,7 @@ func b12CounterTotalBefore(ev game.Event, g *game.Game) int {
 // planeswalker an opponent controls" — a player who is not the
 // caster, or a battlefield creature / planeswalker the caster does
 // not control.
-func b12TargetOpponentOrTheirCreatureOrPlaneswalker() *game.TargetSpec {
+func B12TargetOpponentOrTheirCreatureOrPlaneswalker() *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:    "any",
 		Label:   "target opponent, creature an opponent controls, or planeswalker an opponent controls",
@@ -234,9 +234,9 @@ func b12TargetOpponentOrTheirCreatureOrPlaneswalker() *game.TargetSpec {
 
 // b12EachOpponentMills is Altar of the Brood's body: every opponent
 // of the item's controller mills n.
-func b12EachOpponentMills(g *game.Game, item *game.StackItem, n int) error {
+func B12EachOpponentMills(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
-	return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(n), game.KeyedTail{})
+	return MillEachPlayerInTurn(ctx, ctx.Opponents(), ConstantMill(n), game.KeyedTail{})
 }
 
 // b12ImpulseExileForTurn is "exile the top N cards of your library.
@@ -250,7 +250,7 @@ func b12EachOpponentMills(g *game.Game, item *game.StackItem, n int) error {
 // with a rider that reads what came off — Bonehoard Dracosaur's "if
 // you exiled a land card this way" — wants
 // b12ImpulseExileForTurnThen instead.
-func b12ImpulseExileForTurn(g *game.Game, item *game.StackItem, n int) ([]uuid.UUID, error) {
+func B12ImpulseExileForTurn(g *game.Game, item *game.StackItem, n int) ([]uuid.UUID, error) {
 	return g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, n, game.CastPermission{})
 }
 
@@ -262,14 +262,14 @@ func b12ImpulseExileForTurn(g *game.Game, item *game.StackItem, n int) ([]uuid.U
 //
 // #4253 slice 10a: `then` is a registered tail, run against the asking item
 // (ItemTail), told the cards that landed.
-func b12ImpulseExileForTurnThen(g *game.Game, item *game.StackItem, n int, then game.TailRef) error {
+func B12ImpulseExileForTurnThen(g *game.Game, item *game.StackItem, n int, then game.TailRef) error {
 	return g.ExileTopWithPermissionKeyedForEffect(item.Controller, item.Controller, n, game.CastPermission{},
 		NewContext(g, item).ItemTail(then))
 }
 
 // b12Victim pairs a permanent Terastodon is about to destroy with
 // the player who controlled it at that moment.
-type b12Victim struct {
+type B12Victim struct {
 	ID         uuid.UUID
 	Controller uuid.UUID
 }
@@ -284,7 +284,7 @@ type b12Victim struct {
 // went to the command zone instead earns nothing, as printed ("put
 // into a graveyard this way"). Announce order, so the tokens are
 // made in a deterministic order.
-func b12ElephantsForTheDestroyed(ctx *Context, victims []b12Victim) error {
+func B12ElephantsForTheDestroyed(ctx *Context, victims []B12Victim) error {
 	for _, v := range victims {
 		z := ctx.Game.FindCardZoneForEffect(v.ID)
 		if z == nil || z.Kind != game.ZoneGraveyard {

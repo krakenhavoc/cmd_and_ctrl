@@ -13,7 +13,7 @@ import (
 
 // ikoBoostTheTargetUntilEOT is "target creature gets +P/+T until end of
 // turn" as one step of a spell's resolution.
-func ikoBoostTheTargetUntilEOT(power, toughness int, label string) Instruction {
+func IkoBoostTheTargetUntilEOT(power, toughness int, label string) Instruction {
 	return OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {
 		return BoostUntilEOT{Target: id, Power: power, Toughness: toughness, Label: label}.Apply(ctx)
 	})
@@ -23,14 +23,14 @@ func ikoBoostTheTargetUntilEOT(power, toughness int, label string) Instruction {
 // creature") as one step: Fully Grown's trample counter, Unexpected
 // Fangs' two counters. A keyword counter gives its keyword for as long as
 // it stays (CR 122.1b).
-func ikoCounterOnTheTarget(kind string) Instruction {
+func IkoCounterOnTheTarget(kind string) Instruction {
 	return OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {
 		return AddCounter{Target: id, Kind: kind, N: 1}.Apply(ctx)
 	})
 }
 
 // ikoUntapTheTarget is "Untap it." as the last step (Sudden Spinnerets).
-func ikoUntapTheTarget() Instruction {
+func IkoUntapTheTarget() Instruction {
 	return OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {
 		return UntapTarget{Target: id}.Apply(ctx)
 	})
@@ -38,7 +38,7 @@ func ikoUntapTheTarget() Instruction {
 
 // ikoTargetGainsUntilEOT is the whole OnResolve of "Target creature gains
 // <keyword> until end of turn." (Raking Claws); the grant ends at cleanup.
-func ikoTargetGainsUntilEOT(keyword, label string) func(*game.StackItem, *Context) error {
+func IkoTargetGainsUntilEOT(keyword, label string) func(*game.StackItem, *Context) error {
 	return ResolveSteps(OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {
 		return GrantKeywordUntilEOT{Target: id, Keywords: []string{keyword}, Label: label}.Apply(ctx)
 	}))
@@ -47,7 +47,7 @@ func ikoTargetGainsUntilEOT(keyword, label string) func(*game.StackItem, *Contex
 // ikoSearchForABasicLandToHand is "you may search your library for a
 // basic land card, reveal it, put it into your hand, then shuffle" as a
 // trigger's effect (Farfinder): finding nothing is allowed (CR 701.23b).
-func ikoSearchForABasicLandToHand(reason string) Effect {
+func IkoSearchForABasicLandToHand(reason string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{
 			Player:    item.Controller,
@@ -68,11 +68,11 @@ func ikoSearchForABasicLandToHand(reason string) Effect {
 // and goes on the stack above the cycling ability, so the counter is put
 // on before the draw; with no creature to target it is removed (CR
 // 603.3d).
-func ikoCycledCounterOnYourCreature(name, kind, keyword string) game.TriggeredAbility {
+func IkoCycledCounterOnYourCreature(name, kind, keyword string) game.TriggeredAbility {
 	return Targeting(
 		InGraveyard(On(game.EventCycle, Self,
 			name+" — cycled: put a "+keyword+" counter on target creature you control",
-			putACounterOnTheTarget(kind))),
+			PutACounterOnTheTarget(kind))),
 		TargetCreature("target creature you control", YouControl()),
 	)
 }

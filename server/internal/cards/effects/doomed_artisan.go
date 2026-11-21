@@ -49,13 +49,13 @@ func init() {
 // creature token with "This token's power and toughness are each equal to
 // the number of Sculptures you control."
 func c19DoomedArtisanSculptureToken() game.Card {
-	return tokenFromCatalog(printedDoomedArtisanSculptureToken)
+	return TokenFromCatalog(printedDoomedArtisanSculptureToken)
 }
 
 // printedDoomedArtisanSculptureToken is the Sculpture as printed. Its slug
 // is an on-disk identity: never renamed, never reused.
-func printedDoomedArtisanSculptureToken() tokenTemplate {
-	return tokenTemplate{
+func printedDoomedArtisanSculptureToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "doomed-artisan-sculpture",
 		Card: game.Card{
 			Name:              "Sculpture",
@@ -66,9 +66,9 @@ func printedDoomedArtisanSculptureToken() tokenTemplate {
 			Label:     "This token's power and toughness are each equal to the number of Sculptures you control.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,
-			AppliesTo: selfOnly,
+			AppliesTo: SelfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := b26PermanentsOfSubtypeControlled(g, source.Controller, source.TextSubtype("Sculpture"))
+				n := B26PermanentsOfSubtypeControlled(g, source.Controller, source.TextSubtype("Sculpture"))
 				c.Power, c.Toughness = n, n
 			},
 		}},

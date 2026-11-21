@@ -1,0 +1,68 @@
+package cardsb
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Baleful Mastery — Instant {3}{B}:
+//
+//	"You may pay {1}{B} rather than pay this spell's mana cost.
+//	 If the {1}{B} cost was paid, an opponent draws a card.
+//	 Exile target creature or planeswalker."
+//
+// Snuff Out's shape (CR 118.9's alternative cost) with a mana
+// component instead of a life one and no condition gating the
+// offer — declared directly as a bare game.AlternativeCost rather
+// than through one of alternative_cost.go's keyword constructors,
+// because this isn't a keyword: the card prints no reminder-text
+// name for it, so there is no bundled rewrite (no cleared targets, no
+// sacrifice trigger, no zone change) for a constructor to own.
+//
+// "AN opponent draws a card" is a resolution-time choice with no
+// target word, exactly the clause effects.ChoosePlayer exists for
+// (#929) — Slithermuse's "choose an opponent" is the same primitive.
+// The draw happens BEFORE the exile, matching the printed order, and
+// runs only when the discount was actually taken.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "adfcdadd-ddda-477b-8e72-0cae2430fb63",
+		Name:         "Baleful Mastery",
+		Completeness: effects.CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{
+			{
+				Key:      "baleful-mastery",
+				Label:    "Pay {1}{B} rather than pay this spell's mana cost",
+				ManaCost: "{1}{B}",
+			},
+		},
+		Targets: effects.TargetPermanent("target creature or planeswalker", effects.Or(effects.Creature(), effects.Planeswalker())),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if !ctx.PaidAltCost("baleful-mastery") {
+				return effects.ExileTheFirstTargetIfLegal(ctx)
+			}
+			return effects.ChoosePlayer{
+				Among:    effects.Opponents,
+				Question: "Baleful Mastery — an opponent draws a card",
+				ThenKey:  balefulMasteryDrawThenExile,
+			}.Apply(ctx)
+		},
+	})
+}
+
+// balefulMasteryDrawThenExile is the opponent chosen, keyed (#4253): it
+// reads only the Context it is handed (rebuilt from the asking item, so
+// ctx.Item.Targets are the spell's own), so a restore across the prompt
+// resolves it against the restored game.
+var balefulMasteryDrawThenExile = effects.ChoosePlayerThen("option-pick/baleful-mastery-opponent-draws", func(ctx *effects.Context, p uuid.UUID, _ []uuid.UUID) error {
+	if p != uuid.Nil {
+		if err := (effects.DrawCards{Player: p, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return effects.ExileTheFirstTargetIfLegal(ctx)
+})

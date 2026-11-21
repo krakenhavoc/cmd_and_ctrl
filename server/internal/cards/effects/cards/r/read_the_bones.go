@@ -1,0 +1,39 @@
+package cardsr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Read the Bones — Sorcery {2}{B} (EDHREC rank 663):
+//
+//	"Scry 2, then draw two cards. You lose 2 life."
+//
+// The draw rides Scry's Then, never the next statement — the ordering
+// rule every scry-then card follows (Preordain): Scry only queues a
+// prompt, and a draw written as a separate primitive would happen
+// before the caster has decided what to keep on top, taking one of
+// the still-undecided cards and leaving the prompt unanswerable. The
+// life loss has no such ordering dependency and runs unconditionally
+// once the spell resolves, matching the printed comma splice ("Scry
+// 2, then draw two cards." is one sentence; "You lose 2 life." is a
+// separate one with no "then").
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "5bf4d8d9-a2b2-4dba-ac05-9d4470a89db2",
+		Name:         "Read the Bones",
+		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Draws: 2, Scry: 2},
+		OnResolve: effects.ResolveSteps(
+			// The life loss waits for the scry's answer, and for the draw after it
+			// (CR 608.2c, #4155).
+			effects.Instruction(func(ctx *effects.Context) error {
+				return effects.Scry{Player: ctx.Controller(), N: 2, ThenTail: ctx.TailN(effects.ThenDrawCards, 2)}.Apply(ctx)
+			}),
+			effects.GainLife{Amount: -2},
+		),
+	})
+}

@@ -1,0 +1,21 @@
+package cardsv
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Vassal Soul — Creature — Spirit {1}{W/U}{W/U}, 2/2 (Return to Ravnica, #5566):
+//
+//	"Flying"
+//
+// The printed keywords ride PrintedKeywords; the engine enforces them.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "ae2329a1-e37b-44aa-8766-077910fa1197",
+		Name:            "Vassal Soul",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+	})
+}

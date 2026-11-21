@@ -32,16 +32,16 @@ func init() {
 			Cost:  ManaCost("{1}{W}"),
 			// Removes a permanent with no target (ADR 0142's AnswerRemove).
 			Purpose: game.Purpose{Answers: game.AnswerRemove},
-			Effect:  exileEnchantedCreature,
+			Effect:  ExileEnchantedCreature,
 		}},
 	})
 }
 
 // exileEnchantedCreature is "exile enchanted creature" for an Aura's own
 // ability.
-func exileEnchantedCreature(g *game.Game, item *game.StackItem) error {
+func ExileEnchantedCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	host, ok := enchantedCreatureAsItResolves(ctx)
+	host, ok := EnchantedCreatureAsItResolves(ctx)
 	if !ok {
 		return nil
 	}

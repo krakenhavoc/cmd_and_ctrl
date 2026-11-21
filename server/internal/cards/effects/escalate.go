@@ -51,7 +51,7 @@ func EscalateTapCreature() *game.EscalateCost {
 // can pay: mana, discards and creature taps, once each per extra mode.
 // It also keeps TapCreatures out of every other slot, since only
 // escalate reads it.
-func checkEscalate(spec Spec) {
+func CheckEscalate(spec Spec) {
 	if ac := spec.AdditionalCost; ac != nil && ac.TapCreatures != 0 {
 		panic(fmt.Sprintf("effects.Register: %q puts TapCreatures in the mandatory additional cost — it is an escalate component (#2126)", spec.Name))
 	}

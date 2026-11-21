@@ -22,8 +22,8 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{
-				Match:    And(Creature(), tappedPermanent()),
-				ThenTail: ctx.Tail(massGainTwoLifeForEach),
+				Match:    And(Creature(), TappedPermanent()),
+				ThenTail: ctx.Tail(MassGainTwoLifeForEach),
 			}.Apply(ctx)
 		},
 	})
@@ -31,7 +31,7 @@ func init() {
 
 // massGainTwoLifeForEach is "you gain 2 life for each <permanent> <verb>
 // this way" (Righteous Fury).
-var massGainTwoLifeForEach = MassTail("mass/gain-two-life-for-each", func(ctx *Context, _ []game.Card, moved int) error {
+var MassGainTwoLifeForEach = MassTail("mass/gain-two-life-for-each", func(ctx *Context, _ []game.Card, moved int) error {
 	if moved <= 0 {
 		return nil
 	}

@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // thisGetsUntilEndOfTurn is "This creature gets +power/+toughness until
 // end of turn" (CR 611.2c, ending at CR 514.2). Negative values are the
 // shrink ("gets -1/-1", "gets -2/-0").
-func thisGetsUntilEndOfTurn(power, toughness int, label string) func(g *game.Game, item *game.StackItem) error {
+func ThisGetsUntilEndOfTurn(power, toughness int, label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		return BoostUntilEOT{
 			Target:    item.SourceCardID,
@@ -37,9 +37,9 @@ func thisGetsUntilEndOfTurn(power, toughness int, label string) func(g *game.Gam
 // timestamp (CR 613.1f), so a grant of the keyword with a LATER
 // timestamp puts it back, and an earlier one (or the printed keyword)
 // does not.
-func thisLosesKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, item *game.StackItem) error {
+func ThisLosesKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		return untilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label,
+		return UntilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label,
 			game.RemoveKeywordsMod(keyword))
 	}
 }
@@ -48,9 +48,9 @@ func thisLosesKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, it
 // until end of turn": a layer-6 grant pinned to the source (Endling's
 // three {B} abilities). A cumulative keyword (undying, prowess) granted
 // twice is two instances.
-func thisGainsKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, item *game.StackItem) error {
+func ThisGainsKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		return untilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label,
+		return UntilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label,
 			game.AddKeywordsMod(keyword))
 	}
 }
@@ -62,7 +62,7 @@ func thisGainsKeywordUntilEndOfTurn(keyword, label string) func(g *game.Game, it
 // text with a later timestamp is a different row and still applies.
 func thisLosesOwnReplacementUntilEndOfTurn(row int, label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		return untilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label,
+		return UntilEndOfTurn(NewContext(g, item), item.SourceCardID, nil, label,
 			game.LoseOwnAbilityMod(game.AbilitySlotReplacement, row))
 	}
 }
@@ -74,8 +74,8 @@ func thisLosesOwnReplacementUntilEndOfTurn(row int, label string) func(g *game.G
 // included. `name` heads the effect's label. A trade that lowers one
 // side (Yavimaya Ancients' +1/-2) declares the pump without an amount,
 // since a declared amount is never negative.
-func thisGetsRow(cost string, power, toughness int, name string) ActivatedAbility {
-	pt := signedPT(power, toughness)
+func ThisGetsRow(cost string, power, toughness int, name string) ActivatedAbility {
+	pt := SignedPT(power, toughness)
 	purpose := game.Purpose{Answers: game.AnswerPump}
 	if power >= 0 && toughness >= 0 {
 		purpose.Pump = &game.Pump{Power: power, Toughness: toughness}
@@ -84,6 +84,6 @@ func thisGetsRow(cost string, power, toughness int, name string) ActivatedAbilit
 		Label:   cost + ": This creature gets " + pt + " until end of turn.",
 		Purpose: purpose,
 		Cost:    ManaCost(cost),
-		Effect:  thisGetsUntilEndOfTurn(power, toughness, name+" — "+pt+" until end of turn"),
+		Effect:  ThisGetsUntilEndOfTurn(power, toughness, name+" — "+pt+" until end of turn"),
 	}
 }

@@ -33,7 +33,7 @@ func init() {
 			AtYourEndStep("Mog, Moogle Warrior — each player may discard a card and draw a card",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					return mogAsk(ctx, tablePlayers(ctx))
+					return mogAsk(ctx, TablePlayers(ctx))
 				}),
 		},
 	})
@@ -74,7 +74,7 @@ func mogAsk(ctx *Context, players []uuid.UUID) error {
 	}.Apply(ctx)
 }
 
-func boolToInt(b bool) int {
+func BoolToInt(b bool) int {
 	if b {
 		return 1
 	}
@@ -110,7 +110,7 @@ var mogFinish = RegisterThenSteps("then-steps/mog-moogle-warrior-finish",
 			}
 		}
 		for _, id := range moogles {
-			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 				return err
 			}
 		}
@@ -164,7 +164,7 @@ func mogDiscard(c *Context, r game.ConfirmAnswer) error {
 // mogDiscarded is a player's discard landed, keyed (#4253): the table's
 // running tally is filed, the draw follows and the next player is asked.
 var mogDiscarded = game.RegisterDiscardThen("choose-cards/mog-moogle-warrior-discarded", func(g *game.Game, r game.DiscardsDone) error {
-	next, rest := askedContext(g, r.Item, r.Player, r.Source, r.Carry)
+	next, rest := AskedContext(g, r.Item, r.Player, r.Source, r.Carry)
 	discarded := r.Discarded.Cards()
 	creature, other := mogDanceFlags(next)
 	for _, id := range discarded {
@@ -176,7 +176,7 @@ var mogDiscarded = game.RegisterDiscardThen("choose-cards/mog-moogle-warrior-dis
 			}
 		}
 	}
-	next.RecordStep(mogDanceRecord, nil, boolToInt(creature), boolToInt(other))
+	next.RecordStep(mogDanceRecord, nil, BoolToInt(creature), BoolToInt(other))
 	next.RecordStep(mogSeatRecord, []uuid.UUID{r.Player}, len(discarded))
 	next.RecordStep(mogRestRecord, rest)
 	return mogDrawThenAsk.Run(next)

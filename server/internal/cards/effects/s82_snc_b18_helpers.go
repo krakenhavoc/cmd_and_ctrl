@@ -9,12 +9,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Sacrifice this token: Counter target noncreature spell unless its controller
 // pays {1}." The ability is printed on the token, so it is a token template
 // (ADR 0083), not a tokens_table.go row.
-func MagesAttendantWizardToken() game.Card { return tokenFromCatalog(printedS82SncB18WizardToken) }
+func MagesAttendantWizardToken() game.Card { return TokenFromCatalog(printedS82SncB18WizardToken) }
 
 // printedS82SncB18WizardToken is that Wizard as PRINTED.
-func printedS82SncB18WizardToken() tokenTemplate {
+func printedS82SncB18WizardToken() TokenTemplate {
 	const text = "{1}, Sacrifice this token: Counter target noncreature spell unless its controller pays {1}."
-	return tokenTemplate{
+	return TokenTemplate{
 		Slug: "wizard-sacrifice-counter",
 		Card: game.Card{
 			Name:      "Wizard",
@@ -28,7 +28,7 @@ func printedS82SncB18WizardToken() tokenTemplate {
 			Label:   text,
 			Cost:    Plus(ManaCost("{1}"), SacrificeThis()),
 			Targets: TargetSpell("target noncreature spell", Noncreature()),
-			Effect:  counterTheTargetSpellUnlessPaid("Wizard", "{1}"),
+			Effect:  CounterTheTargetSpellUnlessPaid("Wizard", "{1}"),
 		}},
 	}
 }

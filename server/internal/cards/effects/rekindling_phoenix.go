@@ -42,10 +42,10 @@ func init() {
 // "At the beginning of your upkeep, sacrifice this token and return target
 // card named Rekindling Phoenix from your graveyard to the battlefield. It
 // gains haste until end of turn."
-func RekindlingElementalToken() game.Card { return tokenFromCatalog(printedRekindlingElementalToken) }
+func RekindlingElementalToken() game.Card { return TokenFromCatalog(printedRekindlingElementalToken) }
 
-func printedRekindlingElementalToken() tokenTemplate {
-	return tokenTemplate{
+func printedRekindlingElementalToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "rekindling-elemental",
 		Card: game.Card{
 			Name:      "Elemental",
@@ -69,12 +69,12 @@ func printedRekindlingElementalToken() tokenTemplate {
 // it is on the battlefield, gives it haste.
 func rprB23RekindleThePhoenix(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if onBattlefield(g, item.SourceCardID) && !g.AbilitySourceIsNewObjectForEffect(item) {
+	if OnBattlefield(g, item.SourceCardID) && !g.AbilitySourceIsNewObjectForEffect(item) {
 		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
 			return err
 		}
 	}
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -86,7 +86,7 @@ func rprB23RekindleThePhoenix(g *game.Game, item *game.StackItem) error {
 
 // rprB23PhoenixHaste is "it gains haste until end of turn". An on-disk key.
 var rprB23PhoenixHaste = EnteredTail("rekindling-phoenix/haste", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
-	if entered == uuid.Nil || !onBattlefield(ctx.Game, entered) {
+	if entered == uuid.Nil || !OnBattlefield(ctx.Game, entered) {
 		return nil
 	}
 	return GrantKeywordUntilEOT{Target: entered, Keywords: []string{"haste"}, Label: "Rekindling Phoenix — haste until end of turn"}.Apply(ctx)

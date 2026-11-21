@@ -33,7 +33,7 @@ func init() {
 			ModeWithPurpose(ModeDoing("Return one or two target creature and/or planeswalker cards from your graveyard to your hand.",
 				TargetCardInGraveyard("one or two target creature and/or planeswalker cards from your graveyard",
 					YouOwn(), Or(Creature(), Planeswalker())).WithCount(1, 2),
-				eoeABCharmReturn), game.Purpose{Answers: game.AnswerValue}),
+				EoeABCharmReturn), game.Purpose{Answers: game.AnswerValue}),
 			ModeWithPurpose(ModeDoing("Put two +1/+1 counters on target creature you control. It gains lifelink until end of turn.",
 				TargetCreature("target creature you control", YouControl()),
 				eoeABCharmCounters), game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant}),
@@ -43,7 +43,7 @@ func init() {
 
 // eoeABCharmReturn returns each still-legal graveyard pick of the bullet
 // to its owner's hand.
-func eoeABCharmReturn(_ *game.StackItem, ctx *Context, occ int) error {
+func EoeABCharmReturn(_ *game.StackItem, ctx *Context, occ int) error {
 	for _, t := range ctx.ModeTargets(occ) {
 		if t.Kind != game.TargetCard || !ctx.IsTargetLegal(t) {
 			continue

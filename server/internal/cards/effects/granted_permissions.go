@@ -214,6 +214,6 @@ func (e OfferGraveyardCast) Apply(ctx *Context) error {
 		SourceName:              e.SourceName,
 		Label:                   e.SourceName + " — cast " + c.Name + " from your graveyard",
 	}, []game.Card{c})
-	offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), e.SourceName, game.MayCastKeywordPaidCast, declineLeaveInGraveyard, c.InstanceID)
+	OfferResolutionCastOver(g, ctx.Controller(), ctx.Source(), e.SourceName, game.MayCastKeywordPaidCast, DeclineLeaveInGraveyard, c.InstanceID)
 	return nil
 }

@@ -93,7 +93,7 @@ func edenSacrificeThenReturn(ctx *Context) error {
 	source := ctx.Source()
 	// #1432: an Eden that left and came back is not "it": nothing is
 	// sacrificed, so there is no "when you do".
-	if source == uuid.Nil || ctx.isNewSourceObjectAsThis(source) {
+	if source == uuid.Nil || ctx.IsNewSourceObjectAsThis(source) {
 		return nil
 	}
 	if err := ctx.Game.SacrificePermanentForEffect(source); err != nil {
@@ -111,7 +111,7 @@ func edenSacrificeThenReturn(ctx *Context) error {
 //
 // Caller holds g.mu.
 func edenReturnChosenFromGraveyard(g *game.Game, item *game.StackItem) error {
-	return b34ReturnChosenGraveyardCardToHand(NewContext(g, item))
+	return B34ReturnChosenGraveyardCardToHand(NewContext(g, item))
 }
 
 // edenAnswer is the "yes": sacrifice Eden, then return a permanent card.

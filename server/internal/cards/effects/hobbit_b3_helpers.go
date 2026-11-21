@@ -9,13 +9,13 @@ import (
 // Shared predicates for The Hobbit cards, half B, batch 3 (#4454).
 
 // hobB3TappedCreature is "a tapped creature" (Magnificent End).
-func hobB3TappedCreature() CardPredicate {
+func HobB3TappedCreature() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCreature() && c.Tapped }
 }
 
 // hobB3AttackingNontokenCreature is "an attacking nontoken creature"
 // (Uneasy Partings): declared as an attacker and not a token.
-func hobB3AttackingNontokenCreature() CardPredicate {
+func HobB3AttackingNontokenCreature() CardPredicate {
 	return func(g *game.Game, caster uuid.UUID, c game.Card) bool {
 		return AttackingCreature()(g, caster, c) && !c.IsToken()
 	}
@@ -27,7 +27,7 @@ func hobB3AttackingNontokenCreature() CardPredicate {
 // on the stack), so a `*/*` spell such as Tarmogoyf counts what its text
 // says, not the importer's 0 stand-in (#4483); the same rule PowerGE
 // applies. Anything else reads its current power and toughness.
-func hobB3PowerOrToughnessAtMost(n int) CardPredicate {
+func HobB3PowerOrToughnessAtMost(n int) CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		if g != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
 			return g.PowerAnywhereForEffect(c) <= n || g.ToughnessAnywhereForEffect(c) <= n

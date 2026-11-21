@@ -40,7 +40,7 @@ func init() {
 // dawnhandEulogistMilled is the clause after the mill: the drain, when an
 // Elf card is in the controller's graveyard. An on-disk key.
 var dawnhandEulogistMilled = CardTail("dawnhand-eulogist/after-mill", func(ctx *Context, _ game.TailOutcome) error {
-	if !dawnhandEulogistElfInGraveyard(ctx) {
+	if !DawnhandEulogistElfInGraveyard(ctx) {
 		return nil
 	}
 	if err := (EachOpponentLosesLife{N: 2}).Apply(ctx); err != nil {
@@ -52,7 +52,7 @@ var dawnhandEulogistMilled = CardTail("dawnhand-eulogist/after-mill", func(ctx *
 // dawnhandEulogistElfInGraveyard reports whether the controller's
 // graveyard holds an Elf card, the word read through the Eulogist's text
 // (CR 612.2).
-func dawnhandEulogistElfInGraveyard(ctx *Context) bool {
+func DawnhandEulogistElfInGraveyard(ctx *Context) bool {
 	p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
 	if p == nil {
 		return false

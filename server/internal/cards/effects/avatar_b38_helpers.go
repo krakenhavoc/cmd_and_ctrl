@@ -12,7 +12,7 @@ import (
 // avB38LandCreaturesYouControl is "land creature you control" read
 // through the layers: a land an earthbend animated counts while it is a
 // creature.
-func avB38LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func AvB38LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.IsLand() && target.IsCreature()
 }
 
@@ -21,7 +21,7 @@ func avB38LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.
 // controls as it resolves, snapshotted first, each get two +1/+1
 // counters as one placement (a CR 616 prompt over any of them is a
 // restore point).
-func avB38TwoCountersOnEachLandCreatureYouControl(g *game.Game, item *game.StackItem) error {
+func AvB38TwoCountersOnEachLandCreatureYouControl(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	g.RecomputeLayersIfStaleLocked()
 	var ids []uuid.UUID
@@ -30,5 +30,5 @@ func avB38TwoCountersOnEachLandCreatureYouControl(g *game.Game, item *game.Stack
 			ids = append(ids, c.InstanceID)
 		}
 	}
-	return avB24PutCountersOnEachThen(ctx, ids, game.CounterPlusOne, 2, game.KeyedTail{})
+	return AvB24PutCountersOnEachThen(ctx, ids, game.CounterPlusOne, 2, game.KeyedTail{})
 }

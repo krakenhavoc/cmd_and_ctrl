@@ -28,7 +28,7 @@ func init() {
 	const clause = "Rex has all activated abilities of all cards in exile with brain counters on them."
 	borrow := HasActivatedAbilitiesOf(game.AbilityBorrow{
 		Label:   clause,
-		Lenders: ExileLenders(LenderWithCounter(rexBrainCounter)),
+		Lenders: ExileLenders(LenderWithCounter(RexBrainCounter)),
 	})
 	borrow.DependsOnExile = true
 	Register(Spec{
@@ -44,12 +44,12 @@ func init() {
 			Cost:         PayEnergy(2),
 			SorcerySpeed: true,
 			Targets:      TargetCardInGraveyard("target creature card in a graveyard", Creature()),
-			Effect:       exileTargetWithCounter(rexBrainCounter),
+			Effect:       exileTargetWithCounter(RexBrainCounter),
 		}},
 	})
 }
 
-const rexBrainCounter = "brain"
+const RexBrainCounter = "brain"
 
 // rexMillAndEnergy is the combat-damage trigger: the damaged player mills
 // two, then Rex's controller gets two energy.
@@ -73,7 +73,7 @@ func exileTargetWithCounter(kind string) Effect {
 			if t.Kind != game.TargetCard {
 				continue
 			}
-			return exileCardWithCounter(ctx, t.ID, kind)
+			return ExileCardWithCounter(ctx, t.ID, kind)
 		}
 		return nil
 	}
@@ -81,13 +81,13 @@ func exileTargetWithCounter(kind string) Effect {
 
 // exileCardWithCounter exiles one card and, once it is in exile, puts one
 // `kind` counter on it.
-func exileCardWithCounter(ctx *Context, id uuid.UUID, kind string) error {
-	return ExileTarget{Target: id, ThenTail: withWord(withCarry(ctx.ItemTail(rexCyberHoundExiled), id), kind)}.Apply(ctx)
+func ExileCardWithCounter(ctx *Context, id uuid.UUID, kind string) error {
+	return ExileTarget{Target: id, ThenTail: WithWord(WithCarry(ctx.ItemTail(rexCyberHoundExiled), id), kind)}.Apply(ctx)
 }
 
 // rexCyberHoundExiled is the clause after the exile (#4253 slice 9).
 var rexCyberHoundExiled = CardTail("rex-cyber-hound/after-exile", func(ctx *Context, o game.TailOutcome) error {
-	id, kind := tailCarry0(o), o.Tail.Word
+	id, kind := TailCarry0(o), o.Tail.Word
 	exiled := len(o.IDs) == 1
 
 	if !exiled {

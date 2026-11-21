@@ -41,7 +41,7 @@ func init() {
 	enters.Modes = ChooseN("Choose two", 2, 2,
 		ModeDoing("Destroy target artifact or enchantment.",
 			TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment())),
-			titanOfIndustryDestroy),
+			TitanOfIndustryDestroy),
 		ModeWithPurpose(ModeDoing("Target player gains 5 life.",
 			TargetPlayer("target player"),
 			titanOfIndustryGainLife), ForTargets(game.TargetPurpose{Slot: 0, LifeGain: 5})),
@@ -83,7 +83,7 @@ var titanOfIndustryChosen = RegisterPermanentsPick("prompt-run/titan-of-industry
 
 // titanOfIndustryDestroy is the first bullet: destroy the target artifact
 // or enchantment, if it is still a legal target (CR 608.2b).
-func titanOfIndustryDestroy(_ *game.StackItem, ctx *Context, occ int) error {
+func TitanOfIndustryDestroy(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetCard {
 		return nil

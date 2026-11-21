@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Aura's controller are both read when the layer pass runs, so a stolen
 // Eriette protects its new controller, and an Aura that changes hands or
 // falls off changes which creatures are bound.
-func socB5EnchantedByYourAuraCantAttackYou() game.StaticAbility {
+func SocB5EnchantedByYourAuraCantAttackYou() game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.",
 		Layer: game.Layer6Ability,

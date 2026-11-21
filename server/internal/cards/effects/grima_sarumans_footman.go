@@ -31,13 +31,13 @@ func init() {
 		Static:       []game.StaticAbility{RestrictSelf(game.CantBeBlocked)},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisDealsCombatDamageToAPlayer("Gríma, Saruman's Footman — that player exiles cards from the top of their library until an instant or sorcery card; you may cast it without paying its mana cost",
-				grimaSarumansFootmanExile),
+				GrimaSarumansFootmanExile),
 		},
 	})
 }
 
 // grimaSarumansFootmanExile is the trigger's body.
-func grimaSarumansFootmanExile(g *game.Game, item *game.StackItem) error {
+func GrimaSarumansFootmanExile(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}

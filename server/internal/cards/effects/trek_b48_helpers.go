@@ -14,15 +14,15 @@ import (
 // two, which is the count of distinct powers among creatures you
 // control reaching three (rfCreatureCDifferentPowers reads the layered
 // power).
-func trekB48Coven(g *game.Game, controller, source uuid.UUID) bool {
-	return rfCreatureCDifferentPowers(g, controller, source) >= 3
+func TrekB48Coven(g *game.Game, controller, source uuid.UUID) bool {
+	return RfCreatureCDifferentPowers(g, controller, source) >= 3
 }
 
 // trekB48PlaneswalkersLoyaltyAbilitiesCantBeActivated is The Immortal
 // Sun's "Players can't activate planeswalkers' loyalty abilities"
 // (CR 606.1): every player, the Sun's controller included, and only a
 // loyalty ability whose source is a planeswalker as it stands now.
-func trekB48PlaneswalkersLoyaltyAbilitiesCantBeActivated(label string) game.ActivationRestriction {
+func TrekB48PlaneswalkersLoyaltyAbilitiesCantBeActivated(label string) game.ActivationRestriction {
 	return game.ActivationRestriction{
 		Label: label,
 		Forbids: func(q game.ActivationQuery) bool {

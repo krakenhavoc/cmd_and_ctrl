@@ -9,10 +9,10 @@ import (
 // cmdr2S51WolfToken is Garruk, Cursed Huntsman's 2/2 black and green Wolf
 // with "When this creature dies, put a loyalty counter on each Garruk you
 // control." Its slug is an on-disk identity: never renamed, never reused.
-func cmdr2S51WolfToken() game.Card { return tokenFromCatalog(printedCmdr2S51WolfToken) }
+func Cmdr2S51WolfToken() game.Card { return TokenFromCatalog(printedCmdr2S51WolfToken) }
 
-func printedCmdr2S51WolfToken() tokenTemplate {
-	return tokenTemplate{
+func printedCmdr2S51WolfToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "wolf-garruk-loyalty",
 		Card: game.Card{
 			Name:      "Wolf",
@@ -39,7 +39,7 @@ func cmdr2S51GarrukLoyalty(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	for _, c := range ids {
-		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterLoyalty, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterLoyalty, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -49,10 +49,10 @@ func cmdr2S51GarrukLoyalty(g *game.Game, item *game.StackItem) error {
 // cmdr2S51TreefolkToken is Wrenn and Seven's green Treefolk with reach and
 // "This creature's power and toughness are each equal to the number of
 // lands you control."
-func cmdr2S51TreefolkToken() game.Card { return tokenFromCatalog(printedCmdr2S51TreefolkToken) }
+func Cmdr2S51TreefolkToken() game.Card { return TokenFromCatalog(printedCmdr2S51TreefolkToken) }
 
-func printedCmdr2S51TreefolkToken() tokenTemplate {
-	return tokenTemplate{
+func printedCmdr2S51TreefolkToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "treefolk-lands",
 		Card: game.Card{
 			Name:     "Treefolk",
@@ -64,7 +64,7 @@ func printedCmdr2S51TreefolkToken() tokenTemplate {
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,
 			Label:     "This creature's power and toughness are each equal to the number of lands you control.",
-			AppliesTo: selfOnly,
+			AppliesTo: SelfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				n := 0
 				for _, p := range g.BattlefieldCardsForEffect() {
@@ -83,7 +83,7 @@ func printedCmdr2S51TreefolkToken() tokenTemplate {
 // modifier's controller activates, of an artifact on the battlefield (any
 // controller's). Mana abilities count as activated abilities, and the
 // engine prices them through the same pass.
-func cmdr2S51ArtifactAbilityYouActivate() CostPredicate {
+func Cmdr2S51ArtifactAbilityYouActivate() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.Controller == q.Source.Controller &&
 			q.FromZone == game.ZoneBattlefield &&
@@ -96,7 +96,7 @@ func cmdr2S51ArtifactAbilityYouActivate() CostPredicate {
 // Flesh). Reads Game.ArtifactActivationsThisTurn, written when an
 // activation is announced (a countered one still counts, a refused one
 // never does), and counted per activator across every artifact.
-func cmdr2S51FirstArtifactActivationThisTurn() CostPredicate {
+func Cmdr2S51FirstArtifactActivationThisTurn() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.Game != nil && q.Game.ArtifactActivationsThisTurn(q.Controller) == 0
 	}
@@ -106,7 +106,7 @@ func cmdr2S51FirstArtifactActivationThisTurn() CostPredicate {
 // for the source's controller: a tap event, or an attack that left the
 // attacker tapped (an attack taps without a tap event; a vigilant attacker
 // did not become tapped).
-func cmdr2S51ArtifactBecameTapped(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Cmdr2S51ArtifactBecameTapped(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventTapCard, game.EventAttack:
 	default:

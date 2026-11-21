@@ -7,6 +7,6 @@ package effects
 // otjRDrawThenTreasure is "Draw a card and create a Treasure token" in
 // the printed order (Reckless Lackey, Redrock Sentinel): the Treasure
 // waits for any prompt the draw asks (CR 608.2c, #4155).
-func otjRDrawThenTreasure() Effect {
+func OtjRDrawThenTreasure() Effect {
 	return Do(DrawCards{N: 1}, CreateToken{Template: TreasureToken(), N: 1})
 }

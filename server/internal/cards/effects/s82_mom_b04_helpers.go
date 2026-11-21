@@ -13,7 +13,7 @@ import (
 // once (Conclave Sledge-Captain: "Backup 1, backup 1, backup 1"). Each
 // instance is its own triggered ability (CR 702.165, 702.165f), so each row
 // carries its own Key, which a restore reads to name the row.
-func s82MomB04NthBackup(name string, n, idx int, grantKey string, keywords ...string) game.TriggeredAbility {
+func S82MomB04NthBackup(name string, n, idx int, grantKey string, keywords ...string) game.TriggeredAbility {
 	t := Backup(name, n, grantKey, keywords...)
 	t.Key += " (" + strconv.Itoa(idx) + ")"
 	return t
@@ -23,7 +23,7 @@ func s82MomB04NthBackup(name string, n, idx int, grantKey string, keywords ...st
 // damage to a player" for an ability whose effect reads "that many": the
 // damage the event carried is captured on the item (Barrowgoyf's shape), a
 // fact about the damage dealt, not about the board as the ability resolves.
-func s82MomB04ThisDealtCombatDamage(when When, label string, effect Effect) game.TriggeredAbility {
+func S82MomB04ThisDealtCombatDamage(when When, label string, effect Effect) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches:   []game.EventKind{game.EventDealDamage},
 		AppliesTo: when,

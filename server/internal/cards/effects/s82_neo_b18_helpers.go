@@ -11,7 +11,7 @@ import (
 
 // s82NeoB18ArtifactsAndEnchantments is "the number of artifacts and/or
 // enchantments `player` controls": a permanent that is both counts once.
-func s82NeoB18ArtifactsAndEnchantments(g *game.Game, player uuid.UUID) int {
+func S82NeoB18ArtifactsAndEnchantments(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && (c.IsArtifact() || c.IsEnchantment()) {
@@ -23,7 +23,7 @@ func s82NeoB18ArtifactsAndEnchantments(g *game.Game, player uuid.UUID) int {
 
 // s82NeoB18SelfPT is a layer 7c "this creature gets +n/+n" static whose n
 // is read off the board each time the layers run.
-func s82NeoB18SelfPT(label string, n func(g *game.Game, source *game.Card) int) game.StaticAbility {
+func S82NeoB18SelfPT(label string, n func(g *game.Game, source *game.Card) int) game.StaticAbility {
 	return game.StaticAbility{
 		Label:    label,
 		Layer:    game.Layer7PT,

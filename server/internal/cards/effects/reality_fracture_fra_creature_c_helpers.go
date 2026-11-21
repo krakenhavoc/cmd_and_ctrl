@@ -14,8 +14,8 @@ import (
 // printedLotusToken is Kwia Vigorbloom's Lotus: a colourless artifact
 // token with "{T}, Sacrifice this token: Add three mana of any one
 // color." The three mana are ONE colour pick, the Gilded Lotus shape.
-func printedLotusToken() tokenTemplate {
-	return tokenTemplate{
+func printedLotusToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "lotus",
 		Card: game.Card{
 			Name:     "Lotus",
@@ -32,10 +32,10 @@ func printedLotusToken() tokenTemplate {
 }
 
 // LotusToken is Kwia Vigorbloom's Lotus token.
-func LotusToken() game.Card { return tokenFromCatalog(printedLotusToken) }
+func LotusToken() game.Card { return TokenFromCatalog(printedLotusToken) }
 
 // rfCreatureCEnteredThisTurn is "creature that entered this turn".
-func rfCreatureCEnteredThisTurn() CardPredicate {
+func RfCreatureCEnteredThisTurn() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool { return g.EnteredThisTurn(c.InstanceID) }
 }
 
@@ -43,9 +43,9 @@ func rfCreatureCEnteredThisTurn() CardPredicate {
 // this creature. If you do, put a +1/+1 counter on each other creature
 // you control." The set is snapshotted first, so a creature a counter
 // trigger makes mid-loop gets none.
-func rfCreatureCGuidingHydraEffect(g *game.Game, item *game.StackItem) error {
+func RfCreatureCGuidingHydraEffect(g *game.Game, item *game.StackItem) error {
 	self, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || !onBattlefield(g, self.InstanceID) || self.Counters[game.CounterPlusOne] < 1 {
+	if !ok || !OnBattlefield(g, self.InstanceID) || self.Counters[game.CounterPlusOne] < 1 {
 		return nil
 	}
 	ctx := NewContext(g, item)
@@ -59,10 +59,10 @@ func rfCreatureCGuidingHydraEffect(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	for _, id := range ids {
-		if !onBattlefield(g, id) {
+		if !OnBattlefield(g, id) {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -71,7 +71,7 @@ func rfCreatureCGuidingHydraEffect(g *game.Game, item *game.StackItem) error {
 
 // rfCreatureCGreatestManaValueInGraveyard is "the greatest mana value
 // among cards in your graveyard".
-func rfCreatureCGreatestManaValueInGraveyard(g *game.Game, player uuid.UUID) int {
+func RfCreatureCGreatestManaValueInGraveyard(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
@@ -88,9 +88,9 @@ func rfCreatureCGreatestManaValueInGraveyard(g *game.Game, player uuid.UUID) int
 // rfCreatureCHapatraFangEffect puts X -1/-1 counters on each still-legal
 // pick, X being the greatest mana value in the controller's graveyard,
 // read as the ability resolves.
-func rfCreatureCHapatraFangEffect(g *game.Game, item *game.StackItem) error {
+func RfCreatureCHapatraFangEffect(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	x := rfCreatureCGreatestManaValueInGraveyard(g, item.Controller)
+	x := RfCreatureCGreatestManaValueInGraveyard(g, item.Controller)
 	if x <= 0 {
 		return nil
 	}
@@ -107,7 +107,7 @@ func rfCreatureCHapatraFangEffect(g *game.Game, item *game.StackItem) error {
 
 // rfCreatureCHapatraFrostEffect taps each still-legal pick and puts a
 // stun counter on it.
-func rfCreatureCHapatraFrostEffect(g *game.Game, item *game.StackItem) error {
+func RfCreatureCHapatraFrostEffect(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -128,14 +128,14 @@ func rfCreatureCHapatraFrostEffect(g *game.Game, item *game.StackItem) error {
 // card; the controller puts it onto the battlefield under their control
 // and loses life equal to its mana value; the opponent puts the rest on
 // the bottom of their library in a random order.
-func rfCreatureCJhoiraEffect(g *game.Game, item *game.StackItem) error {
+func RfCreatureCJhoiraEffect(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	opp, ok := firstLegalPlayerTarget(ctx)
+	opp, ok := FirstLegalPlayerTarget(ctx)
 	if !ok {
 		return nil
 	}
-	run, hit := revealUntil(ctx, opp, func(c game.Card) bool {
-		return isPermanentCard(c) && b09IsHistoric(c)
+	run, hit := RevealUntil(ctx, opp, func(c game.Card) bool {
+		return IsPermanentCard(c) && B09IsHistoric(c)
 	}, "Jhoira, Weatherlight Corsair — revealed until a historic permanent card")
 	// The opponent rides the tail first, then the revealed cards (the rest).
 	tail := ctx.Tail(rfCreatureCJhoiraRest)
@@ -167,14 +167,14 @@ var rfCreatureCJhoiraRest = CardTail("jhoira-weatherlight-corsair/lose-life-then
 			}
 		}
 	}
-	return g.PutOnBottomInRandomOrderForEffect(opp, game.ZoneLibrary, cardsStillInALibrary(g, run))
+	return g.PutOnBottomInRandomOrderForEffect(opp, game.ZoneLibrary, CardsStillInALibrary(g, run))
 })
 
 // rfCreatureCAttacksAPlayerAlone is "whenever a creature you control
 // attacks a player alone": one declared attacker, aimed at a player
 // rather than a planeswalker or battle.
-func rfCreatureCAttacksAPlayerAlone(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return attackDeclaredByYou(ev, source.Controller) &&
+func RfCreatureCAttacksAPlayerAlone(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return AttackDeclaredByYou(ev, source.Controller) &&
 		game.AttackedAlone(g) &&
 		g.PlayerByIDForEffect(ev.Target) != nil
 }
@@ -183,7 +183,7 @@ func rfCreatureCAttacksAPlayerAlone(ev game.Event, source *game.Card, _ game.Cha
 // put a +1/+1 counter on that creature for each card you've discarded
 // this turn." The discard is the controller's choice; everything after
 // it waits for the answer.
-func rfCreatureCJiangAloneEffect(g *game.Game, item *game.StackItem) error {
+func RfCreatureCJiangAloneEffect(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
@@ -203,7 +203,7 @@ var rfCreatureCJiangAloneRest = game.RegisterDiscardThen("choose-cards/jiang-yan
 		return err
 	}
 	n := g.TurnTallyFor(r.Player).CardsDiscarded
-	if n <= 0 || len(r.Carry) == 0 || !onBattlefield(g, r.Carry[0]) {
+	if n <= 0 || len(r.Carry) == 0 || !OnBattlefield(g, r.Carry[0]) {
 		return nil
 	}
 	return g.AddCounterForEffect(r.Carry[0], game.CounterPlusOne, n)
@@ -211,7 +211,7 @@ var rfCreatureCJiangAloneRest = game.RegisterDiscardThen("choose-cards/jiang-yan
 
 // rfCreatureCKarnDrawEffect is "draw a card for each color among other
 // artifacts you control".
-func rfCreatureCKarnDrawEffect(g *game.Game, item *game.StackItem) error {
+func RfCreatureCKarnDrawEffect(g *game.Game, item *game.StackItem) error {
 	seen := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != item.Controller || !c.IsArtifact() || c.InstanceID == item.SourceCardID {
@@ -229,7 +229,7 @@ func rfCreatureCKarnDrawEffect(g *game.Game, item *game.StackItem) error {
 
 // rfCreatureCEnteredLandHasSubtype reads the land that triggered a
 // landfall ability, which may have left the battlefield by resolution.
-func rfCreatureCEnteredLandHasSubtype(g *game.Game, item *game.StackItem, subtype string) bool {
+func RfCreatureCEnteredLandHasSubtype(g *game.Game, item *game.StackItem, subtype string) bool {
 	if item.Trigger == nil {
 		return false
 	}
@@ -239,7 +239,7 @@ func rfCreatureCEnteredLandHasSubtype(g *game.Game, item *game.StackItem, subtyp
 
 // rfCreatureCDifferentPowers is "each different power among creatures
 // you control".
-func rfCreatureCDifferentPowers(g *game.Game, controller, _ uuid.UUID) int {
+func RfCreatureCDifferentPowers(g *game.Game, controller, _ uuid.UUID) int {
 	seen := map[int]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() {
@@ -251,7 +251,7 @@ func rfCreatureCDifferentPowers(g *game.Game, controller, _ uuid.UUID) int {
 
 // rfCreatureCPutCounterOnEachAngel is Lyra, Archangel of Dawn's "put a
 // +1/+1 counter on each Angel you control", the set snapshotted first.
-func rfCreatureCPutCounterOnEachAngel(g *game.Game, item *game.StackItem) error {
+func RfCreatureCPutCounterOnEachAngel(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	// "Angel" is a word of the source's text (CR 612.2, #3984).
 	angel := ctx.TextSubtype("Angel")
@@ -262,10 +262,10 @@ func rfCreatureCPutCounterOnEachAngel(g *game.Game, item *game.StackItem) error 
 		}
 	}
 	for _, id := range ids {
-		if !onBattlefield(g, id) {
+		if !OnBattlefield(g, id) {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -274,7 +274,7 @@ func rfCreatureCPutCounterOnEachAngel(g *game.Game, item *game.StackItem) error 
 
 // rfCreatureCDrewThreeOrMore is Lyra, Tolarian Archangel's intervening
 // "if you've drawn three or more cards this turn".
-func rfCreatureCDrewThreeOrMore(g *game.Game, player uuid.UUID) bool {
+func RfCreatureCDrewThreeOrMore(g *game.Game, player uuid.UUID) bool {
 	return g.TurnTallyFor(player).CardsDrawn >= 3
 }
 
@@ -282,11 +282,11 @@ func rfCreatureCDrewThreeOrMore(g *game.Game, player uuid.UUID) bool {
 // Lyra deals combat damage to a player, draw two cards." CR 603.7b
 // repeating delayed trigger, keyed on the ability's source.
 var (
-	rfCreatureCLyraCombatDamageCondition = game.DelayedCondition("fra-creature-c/lyra-combat-damage-to-a-player",
+	RfCreatureCLyraCombatDamageCondition = game.DelayedCondition("fra-creature-c/lyra-combat-damage-to-a-player",
 		func(ev game.Event, dt *game.DelayedTrigger, g *game.Game, _ game.EffectParams) bool {
-			return ev.Source == dt.SourceCardID && combatDamageToPlayerBy(ev, dt.Controller, g)
+			return ev.Source == dt.SourceCardID && CombatDamageToPlayerBy(ev, dt.Controller, g)
 		})
-	rfCreatureCLyraDrawTwoBody = game.SimpleDelayedBody("fra-creature-c/lyra-draw-two",
+	RfCreatureCLyraDrawTwoBody = game.SimpleDelayedBody("fra-creature-c/lyra-draw-two",
 		func(g *game.Game, item *game.StackItem) error {
 			return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 		})

@@ -20,18 +20,18 @@ func init() {
 		AlternativeCosts: []game.AlternativeCost{Blitz("{3}{G}")},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Caldaia Strongarm — two +1/+1 counters on target creature",
-				twoPlusOneCountersOnFirstLegalTarget), TargetCreature("target creature")),
+				TwoPlusOneCountersOnFirstLegalTarget), TargetCreature("target creature")),
 		},
 	})
 }
 
 // twoPlusOneCountersOnFirstLegalTarget puts two +1/+1 counters on the
 // trigger's target if it is still legal (CR 608.2b).
-func twoPlusOneCountersOnFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func TwoPlusOneCountersOnFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
-			return nothingIfGone(AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx))
+			return NothingIfGone(AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx))
 		}
 	}
 	return nil

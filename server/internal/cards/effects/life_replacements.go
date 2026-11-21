@@ -128,7 +128,7 @@ func OpponentsLoseTwiceThatMuchLifeDuringYourTurn(label string) game.Replacement
 			if src == nil || src.Controller == uuid.Nil || ev.LifePlayer == src.Controller {
 				return false
 			}
-			return isActivePlayer(g, src.Controller)
+			return IsActivePlayer(g, src.Controller)
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.LifeDelta = timesTwo(ev.LifeDelta)

@@ -19,9 +19,9 @@ import (
 // already returned by something else is not in a graveyard to be
 // found. The counters are a map literal handed to the entry event, not
 // a captured *Card, so undo can re-run the Effect against a clone.
-func ojerDiesReturnTransformed(name string, counters map[string]int) game.TriggeredAbility {
+func OjerDiesReturnTransformed(name string, counters map[string]int) game.TriggeredAbility {
 	return On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return cardDied(ev, source)
+		return CardDied(ev, source)
 	}, name+" — return it to the battlefield tapped and transformed",
 		func(g *game.Game, item *game.StackItem) error {
 			return ReturnFromGraveyard{

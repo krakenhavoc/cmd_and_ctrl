@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Charm's and Gix's Command's first bullets share it, each followed by their
 // own "it gains <keyword> until end of turn" step, which waits for a prompt
 // the counters ask (a CR 616 order; CR 608.2c, #4155).
-func putCountersOnTheModesTargetStep(kind string, n int) func(ctx *Context) error {
+func PutCountersOnTheModesTargetStep(kind string, n int) func(ctx *Context) error {
 	return func(ctx *Context) error {
 		t, ok := ModeTarget(ctx, ctx.Occurrence())
 		if !ok || t.Kind != game.TargetCard {

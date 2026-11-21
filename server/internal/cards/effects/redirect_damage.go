@@ -146,7 +146,7 @@ func (r RedirectDamage) Apply(ctx *Context) error {
 	r.Queries = queriesThroughText(ctx, r.Queries, false)
 	label := r.Label
 	if label == "" {
-		label = shieldSourceName(ctx)
+		label = ShieldSourceName(ctx)
 	}
 	red := game.DamageRedirection{
 		EffectSource:      ctx.Source(),
@@ -186,23 +186,23 @@ func (r RedirectDamage) Apply(ctx *Context) error {
 			red.ProtectPlayer = ctx.Controller()
 		}
 	}
-	if !r.To.resolve(ctx, &red) {
+	if !r.To.Resolve(ctx, &red) {
 		return nil
 	}
 	pick := shieldSourcePick{Choose: r.Choose, FromThis: r.FromThis, From: r.From, Queries: r.Queries, Question: r.Question}
-	return pick.resolve(ctx, game.SourceShield{Redirect: &red})
+	return pick.Resolve(ctx, game.SourceShield{Redirect: &red})
 }
 
 // resolve writes the destination onto the redirection, and reports
 // whether there is one to write: a "this creature" that has left, or a
 // target that is no longer legal, is nowhere to redirect to.
-func (t RedirectTo) resolve(ctx *Context, red *game.DamageRedirection) bool {
+func (t RedirectTo) Resolve(ctx *Context, red *game.DamageRedirection) bool {
 	switch t.kind {
 	case redirectToNone:
 		return red.Then != (game.BodyRef{})
 	case redirectToThis:
 		src := ctx.Source()
-		if src == uuid.Nil || ctx.isNewSourceObjectAsThis(src) {
+		if src == uuid.Nil || ctx.IsNewSourceObjectAsThis(src) {
 			return false
 		}
 		red.To = src
@@ -210,7 +210,7 @@ func (t RedirectTo) resolve(ctx *Context, red *game.DamageRedirection) bool {
 		red.To = ctx.Controller()
 	case redirectToSourceOwner:
 		src := ctx.Source()
-		if src == uuid.Nil || ctx.isNewSourceObjectAsThis(src) {
+		if src == uuid.Nil || ctx.IsNewSourceObjectAsThis(src) {
 			return false
 		}
 		card, ok := ctx.Game.LookupCardForEffect(src)
@@ -240,13 +240,13 @@ func (t RedirectTo) resolve(ctx *Context, red *game.DamageRedirection) bool {
 
 // redirectRow is an activated ability whose whole effect is a
 // redirection.
-func redirectRow(label string, cost game.AbilityCost, targets *game.TargetSpec, r RedirectDamage) ActivatedAbility {
-	return nextDamageShieldRow(label, cost, targets, r)
+func RedirectRow(label string, cost game.AbilityCost, targets *game.TargetSpec, r RedirectDamage) ActivatedAbility {
+	return NextDamageShieldRow(label, cost, targets, r)
 }
 
 // redirectSpell is an instant's OnResolve whose whole effect is a
 // redirection.
-func redirectSpell(r RedirectDamage) func(*game.StackItem, *Context) error {
+func RedirectSpell(r RedirectDamage) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return r.Apply(ctx)
 	}
@@ -256,8 +256,8 @@ func redirectSpell(r RedirectDamage) func(*game.StackItem, *Context) error {
 // dealt to this creature this turn is dealt to target creature you
 // control instead." It can redirect to itself, which does nothing (the
 // rulings).
-func enKorRow() ActivatedAbility {
-	return redirectRow("{0}: The next 1 damage that would be dealt to this creature this turn is dealt to target creature you control instead.",
+func EnKorRow() ActivatedAbility {
+	return RedirectRow("{0}: The next 1 damage that would be dealt to this creature this turn is dealt to target creature you control instead.",
 		ManaCost("{0}"), TargetCreature("target creature you control", YouControl()),
 		RedirectDamage{Protect: ShieldThis, Amount: 1, To: RedirectToClause(0)})
 }
@@ -267,9 +267,9 @@ func enKorRow() ActivatedAbility {
 // redirectWhere names a static redirection's two halves, judged as the
 // damage would be dealt: whether it applies (`applies`, with the
 // permanent whose static it is) and where the damage goes (`to`).
-type redirectWhere struct {
-	applies func(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool
-	to      func(g *game.Game, src *game.Card, ev *game.ReplacementEvent) (uuid.UUID, bool)
+type RedirectWhere struct {
+	Applies func(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool
+	To      func(g *game.Game, src *game.Card, ev *game.ReplacementEvent) (uuid.UUID, bool)
 }
 
 // staticRedirection is a static "… is dealt to <something> instead"
@@ -280,19 +280,19 @@ type redirectWhere struct {
 // them are two different modifications — each writes its own object into
 // the event — so the affected player orders them (the Pariah and
 // Protector of the Crown rulings).
-func staticRedirection(label string, w redirectWhere) game.ReplacementEffect {
+func StaticRedirection(label string, w RedirectWhere) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:         []game.EventKind{game.EventDealDamage},
 		RedirectsDamage: true,
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-			if src == nil || ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || !w.applies(g, src, ev) {
+			if src == nil || ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || !w.Applies(g, src, ev) {
 				return false
 			}
-			to, ok := w.to(g, src, ev)
+			to, ok := w.To(g, src, ev)
 			return ok && g.CanRedirectDamageForEffect(ev, to)
 		},
 		Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
-			if to, ok := w.to(g, src, ev); ok {
+			if to, ok := w.To(g, src, ev); ok {
 				g.RedirectDamageEventForEffect(ev, to)
 			}
 			return nil
@@ -307,12 +307,12 @@ func staticRedirection(label string, w redirectWhere) game.ReplacementEffect {
 
 // damageToYou is "damage that would be dealt to you": the static's
 // controller.
-func damageToYou(_ *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
+func DamageToYou(_ *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
 	return ev.DamageTarget == src.Controller
 }
 
 // toThisPermanent is "is dealt to this creature instead".
-func toThisPermanent(_ *game.Game, src *game.Card, _ *game.ReplacementEvent) (uuid.UUID, bool) {
+func ToThisPermanent(_ *game.Game, src *game.Card, _ *game.ReplacementEvent) (uuid.UUID, bool) {
 	return src.InstanceID, true
 }
 
@@ -330,27 +330,27 @@ func toAttachedHost(g *game.Game, src *game.Card, _ *game.ReplacementEvent) (uui
 // redirectYourDamageToAttached is Pariah's "All damage that would be dealt
 // to you is dealt to enchanted creature instead" (and Pariah's Shield's
 // "equipped creature").
-func redirectYourDamageToAttached(label string) game.ReplacementEffect {
-	return staticRedirection(label, redirectWhere{applies: damageToYou, to: toAttachedHost})
+func RedirectYourDamageToAttached(label string) game.ReplacementEffect {
+	return StaticRedirection(label, RedirectWhere{Applies: DamageToYou, To: toAttachedHost})
 }
 
 // redirectYourDamageToThis is "All damage that would be dealt to you is
 // dealt to this creature instead" (Empyrial Archangel, Protector of the
 // Crown).
-func redirectYourDamageToThis(label string) game.ReplacementEffect {
-	return staticRedirection(label, redirectWhere{applies: damageToYou, to: toThisPermanent})
+func RedirectYourDamageToThis(label string) game.ReplacementEffect {
+	return StaticRedirection(label, RedirectWhere{Applies: DamageToYou, To: ToThisPermanent})
 }
 
 // damageToYouOrYourOtherPermanents is "damage that would be dealt to you
 // and other permanents you control" (Palisade Giant).
-func damageToYouOrYourOtherPermanents(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
+func DamageToYouOrYourOtherPermanents(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
 	if ev.DamageTarget == src.Controller {
 		return true
 	}
 	if ev.DamageTarget == src.InstanceID {
 		return false
 	}
-	if !onBattlefield(g, ev.DamageTarget) {
+	if !OnBattlefield(g, ev.DamageTarget) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.DamageTarget)
@@ -359,7 +359,7 @@ func damageToYouOrYourOtherPermanents(g *game.Game, src *game.Card, ev *game.Rep
 
 // untappedAnd is "as long as this creature is untapped, …" around a
 // static redirection's test.
-func untappedAnd(applies func(*game.Game, *game.Card, *game.ReplacementEvent) bool) func(*game.Game, *game.Card, *game.ReplacementEvent) bool {
+func UntappedAnd(applies func(*game.Game, *game.Card, *game.ReplacementEvent) bool) func(*game.Game, *game.Card, *game.ReplacementEvent) bool {
 	return func(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
 		return !src.Tapped && applies(g, src, ev)
 	}
@@ -367,25 +367,25 @@ func untappedAnd(applies func(*game.Game, *game.Card, *game.ReplacementEvent) bo
 
 // damageToYouFromAnUnblockedCreature is "damage that would be dealt to you
 // by unblocked creatures" (CR 509.1h) — with combat, "combat damage".
-func damageToYouFromAnUnblockedCreature(combat bool) func(*game.Game, *game.Card, *game.ReplacementEvent) bool {
+func DamageToYouFromAnUnblockedCreature(combat bool) func(*game.Game, *game.Card, *game.ReplacementEvent) bool {
 	return func(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
-		if !damageToYou(g, src, ev) || (combat && !ev.IsCombatDamage) {
+		if !DamageToYou(g, src, ev) || (combat && !ev.IsCombatDamage) {
 			return false
 		}
-		return ev.SourceLKI != nil && lkiHasType(ev.SourceLKI, "Creature") && g.UnblockedAttackerForEffect(ev.DamageSource)
+		return ev.SourceLKI != nil && LkiHasType(ev.SourceLKI, "Creature") && g.UnblockedAttackerForEffect(ev.DamageSource)
 	}
 }
 
 // damageToTheAttachedHost is "damage that would be dealt to enchanted
 // creature".
-func damageToTheAttachedHost(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
+func DamageToTheAttachedHost(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
 	host := g.AttachedHostOf(src)
 	return host != nil && ev.DamageTarget == host.InstanceID
 }
 
 // toTheAttachedHostsController is "is dealt to its controller instead",
 // "it" being the enchanted creature.
-func toTheAttachedHostsController(g *game.Game, src *game.Card, _ *game.ReplacementEvent) (uuid.UUID, bool) {
+func ToTheAttachedHostsController(g *game.Game, src *game.Card, _ *game.ReplacementEvent) (uuid.UUID, bool) {
 	host := g.AttachedHostOf(src)
 	if host == nil || host.Controller == uuid.Nil {
 		return uuid.Nil, false
@@ -396,12 +396,12 @@ func toTheAttachedHostsController(g *game.Game, src *game.Card, _ *game.Replacem
 // damageToYouFromAnInstantOrSorceryOfTheChosenColor is Harsh Judgment's
 // "if an instant or sorcery spell of the chosen color would deal damage to
 // you", judged as the spell is when it would deal the damage.
-func damageToYouFromAnInstantOrSorceryOfTheChosenColor(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
+func DamageToYouFromAnInstantOrSorceryOfTheChosenColor(g *game.Game, src *game.Card, ev *game.ReplacementEvent) bool {
 	ch := ev.SourceLKI
-	if !damageToYou(g, src, ev) || src.ChosenColor == "" || ch == nil {
+	if !DamageToYou(g, src, ev) || src.ChosenColor == "" || ch == nil {
 		return false
 	}
-	if !lkiHasType(ch, "Instant") && !lkiHasType(ch, "Sorcery") {
+	if !LkiHasType(ch, "Instant") && !LkiHasType(ch, "Sorcery") {
 		return false
 	}
 	return slices.Contains(ch.Colors, src.ChosenColor)
@@ -409,7 +409,7 @@ func damageToYouFromAnInstantOrSorceryOfTheChosenColor(g *game.Game, src *game.C
 
 // toTheSourcesController is "it deals that damage to its controller
 // instead", the source as it is when the damage would be dealt.
-func toTheSourcesController(_ *game.Game, _ *game.Card, ev *game.ReplacementEvent) (uuid.UUID, bool) {
+func ToTheSourcesController(_ *game.Game, _ *game.Card, ev *game.ReplacementEvent) (uuid.UUID, bool) {
 	if ev.SourceLKI == nil || ev.SourceLKI.Controller == uuid.Nil {
 		return uuid.Nil, false
 	}
@@ -418,13 +418,13 @@ func toTheSourcesController(_ *game.Game, _ *game.Card, ev *game.ReplacementEven
 
 // lkiHasType reports whether a source's characteristics have the card
 // type t.
-func lkiHasType(ch *game.Characteristic, t string) bool {
+func LkiHasType(ch *game.Characteristic, t string) bool {
 	return slices.ContainsFunc(ch.Types, func(have string) bool { return strings.EqualFold(have, t) })
 }
 
 // targetCreaturePlaneswalkerOrPlayer is "target creature, planeswalker, or
 // player" (Captain's Maneuver): any target but a battle.
-func targetCreaturePlaneswalkerOrPlayer(label string) *game.TargetSpec {
+func TargetCreaturePlaneswalkerOrPlayer(label string) *game.TargetSpec {
 	spec := TargetAny()
 	spec.Label = label
 	spec.CardOK = func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
@@ -436,7 +436,7 @@ func targetCreaturePlaneswalkerOrPlayer(label string) *game.TargetSpec {
 // korRedirection is Kor Chant and Kor Dirge: "All damage that would be
 // dealt this turn to target creature you control by a source of your
 // choice is dealt to another target creature instead."
-func korRedirection(oracleID, name string) Spec {
+func KorRedirection(oracleID, name string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -445,7 +445,7 @@ func korRedirection(oracleID, name string) Spec {
 			TargetCreature("target creature you control", YouControl()),
 			Distinct(TargetCreature("another target creature")),
 		),
-		OnResolve: redirectSpell(RedirectDamage{Choose: true, Protect: ShieldClause(0), To: RedirectToClause(1)}),
+		OnResolve: RedirectSpell(RedirectDamage{Choose: true, Protect: ShieldClause(0), To: RedirectToClause(1)}),
 	}
 }
 
@@ -453,7 +453,7 @@ func korRedirection(oracleID, name string) Spec {
 // for an Eye deals that much damage to that source's controller" — that
 // much being the damage the source dealt you (the handed event's Amount),
 // the controller being the source's as it dealt it (the params' Player).
-var thatMuchToTheSourcesControllerBody = game.DelayedBody("redirection/that-much-to-the-sources-controller", thatMuchToTheSourcesController)
+var ThatMuchToTheSourcesControllerBody = game.DelayedBody("redirection/that-much-to-the-sources-controller", thatMuchToTheSourcesController)
 
 func thatMuchToTheSourcesController(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	if item == nil || item.Trigger == nil || p.Player == uuid.Nil {

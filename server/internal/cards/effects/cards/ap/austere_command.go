@@ -1,0 +1,57 @@
+package cardsap
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Austere Command — Sorcery {4}{W}{W}:
+//
+//	"Choose two —
+//	 • Destroy all artifacts.
+//	 • Destroy all enchantments.
+//	 • Destroy all creatures with mana value 3 or less.
+//	 • Destroy all creatures with mana value 4 or greater."
+//
+// S20 sub-PR 4's "choose N" example: four untargeted options, Min =
+// Max = 2. The modes resolve in printed order (CR 608.2c), and each
+// sweep re-snapshots the battlefield, so a card destroyed by an
+// earlier option is no longer there for a later one and an artifact
+// creature is destroyed once rather than twice.
+//
+// The mana-value split is why this gets played over a flat wrath:
+// "3 or less" plus "4 or greater" together is every creature, but
+// either alone is a wipe that spares half a board — usually yours.
+// Both halves come from the S20 predicate library, so the sweep's
+// filter is the same object a targeting clause would use.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "09cc8709-fe10-472a-b05c-e89f3523018d",
+		Name:         "Austere Command",
+		Completeness: effects.CompletenessFull,
+		Modes: effects.ChooseN("Choose two", 2, 2,
+			effects.ModeWithPurpose(effects.Mode("Destroy all artifacts."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifacts, How: game.SweepDestroy}}),
+			effects.ModeWithPurpose(effects.Mode("Destroy all enchantments."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepEnchantments, How: game.SweepDestroy}}),
+			effects.ModeWithPurpose(effects.Mode("Destroy all creatures with mana value 3 or less."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreaturesManaValue3OrLess, How: game.SweepDestroy}}),
+			effects.ModeWithPurpose(effects.Mode("Destroy all creatures with mana value 4 or greater."), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreaturesManaValue4OrMore, How: game.SweepDestroy}}),
+		),
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			sweeps := []effects.CardPredicate{
+				effects.Artifact(),
+				effects.Enchantment(),
+				effects.And(effects.Creature(), effects.ManaValueLE(3)),
+				effects.And(effects.Creature(), effects.ManaValueGE(4)),
+			}
+			for i, match := range sweeps {
+				if !ctx.HasMode(i) {
+					continue
+				}
+				if err := (effects.DestroyAllMatching{Match: match}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
+}

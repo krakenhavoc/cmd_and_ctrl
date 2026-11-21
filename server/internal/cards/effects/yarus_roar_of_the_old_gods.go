@@ -41,7 +41,7 @@ func init() {
 			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(
 				func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.FaceDownIsPermanent() },
 				"Yarus — draw a card", Do(DrawCards{N: 1})),
-			On(game.EventLTB, yarusFaceDownCreatureDied,
+			On(game.EventLTB, YarusFaceDownCreatureDied,
 				"Yarus — return it to the battlefield face down under its owner's control, then turn it face up",
 				yarusReturn),
 		},
@@ -51,7 +51,7 @@ func init() {
 // yarusFaceDownCreatureDied is "a face-down creature you control dies": a
 // creature put into a graveyard from the battlefield that was face down, and
 // under the source's controller, as it last existed.
-func yarusFaceDownCreatureDied(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func YarusFaceDownCreatureDied(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return false
 	}

@@ -16,27 +16,27 @@ import (
 // Lesson is a spell subtype (CR 205.3k), so the subtype gets a condition
 // of its own rather than a filter. An on-disk key: never renamed, never
 // reused.
-var avB12YouNextCastALessonCondition = game.DelayedCondition("cast/you-next-cast-a-lesson",
+var AvB12YouNextCastALessonCondition = game.DelayedCondition("cast/you-next-cast-a-lesson",
 	func(ev game.Event, dt *game.DelayedTrigger, g *game.Game, _ game.EffectParams) bool {
 		if ev.Kind != game.EventCast || ev.Actor != dt.Controller {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && isLessonCard(c)
+		return ok && IsLessonCard(c)
 	})
 
 // avB12DragonOrLessonCardsInGraveyard counts the Dragon and/or Lesson
 // cards in a player's graveyard (Ran and Shaw): a card that is both
 // counts once. `dragon` is the creature type as the card's text reads
 // it (CR 612.2).
-func avB12DragonOrLessonCardsInGraveyard(g *game.Game, player uuid.UUID, dragon string) int {
+func AvB12DragonOrLessonCardsInGraveyard(g *game.Game, player uuid.UUID, dragon string) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
 	}
 	n := 0
 	for _, c := range p.Graveyard.Cards {
-		if c.HasSubtype(dragon) || isLessonCard(c) {
+		if c.HasSubtype(dragon) || IsLessonCard(c) {
 			n++
 		}
 	}
@@ -49,8 +49,8 @@ func avB12DragonOrLessonCardsInGraveyard(g *game.Game, player uuid.UUID, dragon 
 // Disassembled's land mode, Price of Freedom). The controller is read
 // before the destroy, since the permanent is gone afterwards; a target
 // that is no longer on the battlefield does nothing.
-func destroyThenItsControllerMaySearchForATappedBasic(ctx *Context, target uuid.UUID, reason string) error {
-	victim, ok := controllerOfTarget(ctx, target)
+func DestroyThenItsControllerMaySearchForATappedBasic(ctx *Context, target uuid.UUID, reason string) error {
+	victim, ok := ControllerOfTarget(ctx, target)
 	if !ok {
 		return nil
 	}

@@ -22,14 +22,14 @@ import (
 // the trigger resolves, through the layers, so a changeling counts and
 // losing the other Warrior in response stops the effect. "Warrior" is a
 // word of the source's text (CR 612.2).
-func bbdWheneverAttacksWithAnotherWarrior(label string, effect Effect) game.TriggeredAbility {
+func BbdWheneverAttacksWithAnotherWarrior(label string, effect Effect) game.TriggeredAbility {
 	return InterveningIf(CondBoard{
 		Name: "your team controls another Warrior",
 		Test: func(ctx *Context) bool {
-			return mshB4ControlsAnotherHero(ctx.Game, ctx.Controller(), ctx.Source(), ctx.TextSubtype("Warrior"))
+			return MshB4ControlsAnotherHero(ctx.Game, ctx.Controller(), ctx.Source(), ctx.TextSubtype("Warrior"))
 		},
 	}, On(game.EventAttack, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-		return ThisAttacked(ev, source, lki, g) && mshB4ControlsAnotherHero(g, source.Controller, source.InstanceID, source.TextSubtype("Warrior"))
+		return ThisAttacked(ev, source, lki, g) && MshB4ControlsAnotherHero(g, source.Controller, source.InstanceID, source.TextSubtype("Warrior"))
 	}, label, effect))
 }
 
@@ -37,8 +37,8 @@ func bbdWheneverAttacksWithAnotherWarrior(label string, effect Effect) game.Trig
 // creature with a +1/+1 counter on it attacks one of your opponents": any
 // player's creature, judged as it is declared, attacking a player (not a
 // planeswalker or battle) other than the source's controller.
-func bbdCounteredCreatureAttacksAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	opp := attackedPlayer(g, ev)
+func BbdCounteredCreatureAttacksAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	opp := AttackedPlayer(g, ev)
 	if opp == uuid.Nil || opp == source.Controller {
 		return false
 	}
@@ -48,7 +48,7 @@ func bbdCounteredCreatureAttacksAnOpponent(ev game.Event, source *game.Card, _ g
 
 // bbdAnotherNontokenCreatureEntered is Bramble Sovereign's "another
 // nontoken creature enters": anyone's, not only the source controller's.
-func bbdAnotherNontokenCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func BbdAnotherNontokenCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventETB || ev.CardID == uuid.Nil || ev.CardID == source.InstanceID {
 		return false
 	}
@@ -60,7 +60,7 @@ func bbdAnotherNontokenCreatureEntered(ev game.Event, source *game.Card, _ game.
 // Eye of Chaos; Zndrsplt, Eye of Wisdom): YouWonACoinFlip for any flipper.
 // Only the player who flips a coin wins it (CR 705.2), and a face-only flip
 // carries Won false and never matches.
-func bbdAPlayerWonACoinFlip(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func BbdAPlayerWonACoinFlip(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventFlipCoin && ev.Won && ev.Actor != uuid.Nil
 }
 
@@ -70,7 +70,7 @@ func bbdAPlayerWonACoinFlip(ev game.Event, _ *game.Card, _ game.Characteristic, 
 // does is whatever triggers on the EventFlipCoin each flip emits. The
 // question rides the call as its one word so the chain keeps the card's
 // name.
-func bbdFlipUntilYouLose(question string) Effect {
+func BbdFlipUntilYouLose(question string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if item.Controller == uuid.Nil {
 			return nil
@@ -98,10 +98,10 @@ var bbdFlipChained game.CoinFlipThen
 
 func init() {
 	bbdFlipChained = CoinFlipThen("coin-flip/bbd-flip-until-you-lose", func(ctx *Context, r game.CoinFlipped) error {
-		if !wonFirstFlip(r) {
+		if !WonFirstFlip(r) {
 			return nil
 		}
-		bbdFlipAgain(ctx.Game, r.Flipper, r.Source, carriedWord(r.Words, 0), r.Wins+1)
+		bbdFlipAgain(ctx.Game, r.Flipper, r.Source, CarriedWord(r.Words, 0), r.Wins+1)
 		return nil
 	})
 }
@@ -111,7 +111,7 @@ func init() {
 // included, is refused a spell with the card type the Archon's answer
 // names, read off the spell as it is announced. Unanswered, nothing is
 // refused.
-func bbdCastBanOfTheChosenType(label string) game.CastRestriction {
+func BbdCastBanOfTheChosenType(label string) game.CastRestriction {
 	return game.CastRestriction{
 		Label: label,
 		Forbids: func(q game.CastQuery) bool {

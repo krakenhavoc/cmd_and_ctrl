@@ -34,15 +34,15 @@ import (
 // chosen.
 //
 // No simplification.
-const tetzinGnomeChampionOracleID = "e12b38e5-621b-4b2c-8c04-c15c41d4fc70"
+const TetzinGnomeChampionOracleID = "e12b38e5-621b-4b2c-8c04-c15c41d4fc70"
 
 func init() {
 	Register(Spec{
-		OracleID:     tetzinGnomeChampionOracleID,
+		OracleID:     TetzinGnomeChampionOracleID,
 		Name:         "Tetzin, Gnome Champion",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, tetzinDoubleFacedArtifactEntered,
+			On(game.EventETB, TetzinDoubleFacedArtifactEntered,
 				"Tetzin, Gnome Champion — mill three cards, you may put an artifact card from among them into your hand",
 				tetzinMill),
 		},
@@ -52,27 +52,27 @@ func init() {
 	})
 
 	Register(Spec{
-		OracleID:        tetzinGnomeChampionOracleID + "#1",
+		OracleID:        TetzinGnomeChampionOracleID + "#1",
 		Name:            "The Golden-Gear Colossus",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance", "trample"},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEntersOrAttacks("The Golden-Gear Colossus — transform up to one other double-faced artifact, create two Gnomes", goldenGearColossus),
-				Another(PermanentYouControl("up to one other target double-faced artifact you control", Artifact(), doubleFaced())).WithCount(0, 1),
+				Another(PermanentYouControl("up to one other target double-faced artifact you control", Artifact(), DoubleFaced())).WithCount(0, 1),
 			),
 		},
 	})
 }
 
 // doubleFaced matches a double-faced card or permanent (CR 712.1).
-func doubleFaced() CardPredicate {
+func DoubleFaced() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return game.IsDoubleFacedForEffect(c) }
 }
 
 // tetzinDoubleFacedArtifactEntered is "Tetzin or another double-faced
 // artifact you control enters".
-func tetzinDoubleFacedArtifactEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func TetzinDoubleFacedArtifactEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return true
 	}
@@ -106,6 +106,6 @@ func goldenGearColossus(g *game.Game, item *game.StackItem) error {
 var tetzinGnomeChampionMilled = CardTail("tetzin-gnome-champion/after-mill", func(ctx *Context, o game.TailOutcome) error {
 	milled := o.IDs
 
-	return mayTakeOneFromAmongThem(ctx, milled, Artifact(),
+	return MayTakeOneFromAmongThem(ctx, milled, Artifact(),
 		"Tetzin, Gnome Champion — you may put an artifact card from among them into your hand")
 })

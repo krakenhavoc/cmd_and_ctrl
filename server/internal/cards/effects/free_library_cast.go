@@ -57,7 +57,7 @@ type freeLibraryCastOffer struct {
 // captures only `name`, a constant of the card's text. A pick that ended
 // unanswered (the looker left the game) does nothing: their library left
 // with them.
-func registerFreeLibraryCastOffer(key, name string) freeLibraryCastOffer {
+func RegisterFreeLibraryCastOffer(key, name string) freeLibraryCastOffer {
 	return freeLibraryCastOffer{
 		name: name,
 		then: game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
@@ -81,14 +81,14 @@ func registerFreeLibraryCastOffer(key, name string) freeLibraryCastOffer {
 // cap; anySpell for none), carried by the permission and judged on the
 // face being cast (#4509); the cards with no spell it admits still go to
 // the bottom.
-func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer freeLibraryCastOffer, n int, spell freeCastSpell) error {
+func LookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer freeLibraryCastOffer, n int, spell FreeCastSpell) error {
 	name := offer.name
 	looked := g.LookAtTopOfLibraryForEffect(controller, n)
 	if len(looked) == 0 {
 		return nil
 	}
-	perm := spell.on(g.FreeCastFromLibraryPermission(controller, source, name))
-	eligible := freeCastCandidates(g, &perm, looked)
+	perm := spell.On(g.FreeCastFromLibraryPermission(controller, source, name))
+	eligible := FreeCastCandidates(g, &perm, looked)
 	if len(eligible) == 0 {
 		return finishFreeCastFromLooked(g, controller, source, name, looked, uuid.Nil)
 	}
@@ -104,7 +104,7 @@ func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer
 		Keyword:      game.MayCastKeywordFreeCast,
 		AcceptLabel:  "Cast it free",
 		DeclineLabel: "Put them on the bottom",
-		Then:         lookedAtRestToBottom,
+		Then:         LookedAtRestToBottom,
 		Carry:        looked,
 	}) {
 		return nil
@@ -140,7 +140,7 @@ func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer
 func finishFreeCastFromLooked(g *game.Game, controller, source uuid.UUID, name string, looked []uuid.UUID, chosen uuid.UUID) error {
 	var rest []uuid.UUID
 	stillThere := false
-	for _, id := range cardsStillInALibrary(g, looked) {
+	for _, id := range CardsStillInALibrary(g, looked) {
 		if id == chosen {
 			stillThere = true
 			continue
@@ -161,7 +161,7 @@ func finishFreeCastFromLooked(g *game.Game, controller, source uuid.UUID, name s
 // (the prompt's Carry) still in a library goes to the bottom in a random
 // order. The card cast is on the stack, so it is not among them. An
 // on-disk key, never renamed.
-var lookedAtRestToBottom = game.RegisterChooseCardsThen("resolution-cast/looked-at-rest-to-bottom",
+var LookedAtRestToBottom = game.RegisterChooseCardsThen("resolution-cast/looked-at-rest-to-bottom",
 	func(g *game.Game, r game.CardsChosen) error {
-		return g.PutOnBottomInRandomOrderForEffect(r.Chooser, game.ZoneLibrary, cardsStillInALibrary(g, r.Carry))
+		return g.PutOnBottomInRandomOrderForEffect(r.Chooser, game.ZoneLibrary, CardsStillInALibrary(g, r.Carry))
 	})

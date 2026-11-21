@@ -28,7 +28,7 @@ func init() {
 		Purpose:      game.Purpose{Tokens: 1},
 		Targets:      TargetPermanent("target artifact", Artifact()),
 		Triggered: []game.TriggeredAbility{
-			WhenYouCastThisSpell("Echo Storm — copy it for each time you've cast your commander from the command zone", echoStormCopies),
+			WhenYouCastThisSpell("Echo Storm — copy it for each time you've cast your commander from the command zone", EchoStormCopies),
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
@@ -44,8 +44,8 @@ func init() {
 
 // echoStormCopies copies the spell once per commander cast from the command
 // zone, counted as the trigger resolves.
-func echoStormCopies(g *game.Game, item *game.StackItem) error {
-	n := socB3CommanderCastsFromCommandZone(g, item.Controller)
+func EchoStormCopies(g *game.Game, item *game.StackItem) error {
+	n := SocB3CommanderCastsFromCommandZone(g, item.Controller)
 	if n <= 0 {
 		return nil
 	}

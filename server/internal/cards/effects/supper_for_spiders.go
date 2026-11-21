@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	supperForSpidersOracle = "4d891515-39da-492e-ac19-1aa524245449"
-	supperForSpidersFood   = "supper-for-spiders/food"
+	SupperForSpidersOracle = "4d891515-39da-492e-ac19-1aa524245449"
+	SupperForSpidersFood   = "supper-for-spiders/food"
 )
 
 // Supper for Spiders — Instant {1}{B} (The Hobbit, #4454, #4506):
@@ -43,11 +43,11 @@ const (
 
 func init() {
 	Register(Spec{
-		OracleID:     supperForSpidersOracle,
+		OracleID:     SupperForSpidersOracle,
 		Name:         "Supper for Spiders",
 		Completeness: CompletenessFull,
 		Grants: []AbilityGrant{{
-			Key: supperForSpidersFood,
+			Key: SupperForSpidersFood,
 			Activated: []ActivatedAbility{{
 				Label:   "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
 				Purpose: game.Purpose{Answers: game.AnswerValue},
@@ -61,8 +61,8 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var ids []uuid.UUID
 			for _, opp := range ctx.Opponents() {
-				ids = append(ids, graveyardCardIDs(ctx, opp, func(c game.Card) bool {
-					return !c.IsToken() && c.IsCreature() && putIntoGraveyardFromBattlefieldThisTurn(ctx.Game, c.InstanceID)
+				ids = append(ids, GraveyardCardIDs(ctx, opp, func(c game.Card) bool {
+					return !c.IsToken() && c.IsCreature() && PutIntoGraveyardFromBattlefieldThisTurn(ctx.Game, c.InstanceID)
 				})...)
 			}
 			if len(ids) == 0 {
@@ -74,7 +74,7 @@ func init() {
 				EntersAs: &game.EntersAs{
 					Types:    []string{"Artifact"},
 					Subtypes: []string{"Food"},
-					Grants:   []string{supperForSpidersFood},
+					Grants:   []string{SupperForSpidersFood},
 					Label:    "Supper for Spiders — a Food artifact",
 				},
 			}.Apply(ctx)

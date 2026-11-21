@@ -38,7 +38,7 @@ func init() {
 }
 
 func goblinSpymasterToken(g *game.Game, item *game.StackItem) error {
-	player := triggeringActor(item)
+	player := TriggeringActor(item)
 	if player == uuid.Nil {
 		return nil
 	}
@@ -47,10 +47,10 @@ func goblinSpymasterToken(g *game.Game, item *game.StackItem) error {
 
 // SpymasterGoblinToken is Goblin Spymaster's 1/1 red Goblin with
 // "Creatures you control attack each combat if able."
-func SpymasterGoblinToken() game.Card { return tokenFromCatalog(printedSpymasterGoblinToken) }
+func SpymasterGoblinToken() game.Card { return TokenFromCatalog(printedSpymasterGoblinToken) }
 
-func printedSpymasterGoblinToken() tokenTemplate {
-	return tokenTemplate{
+func printedSpymasterGoblinToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "goblin-creatures-attack-each-combat",
 		Card: game.Card{
 			Name:      "Goblin",

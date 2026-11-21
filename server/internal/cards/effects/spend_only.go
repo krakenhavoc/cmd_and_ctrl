@@ -91,7 +91,7 @@ const SpendOnlyManaFromTreasures = game.ManaSourceTreasure
 //
 // Whether the spell's printed cost HAS an {X} is checked against the
 // Scryfall dump by the card's own test (a Spec carries no mana cost).
-func checkSpellSpendOnly(spec Spec) {
+func CheckSpellSpendOnly(spec Spec) {
 	fail := func(why string) {
 		panic(fmt.Sprintf("effects.Register: %q declares a spend-only clause on the spell %s", spec.Name, why))
 	}
@@ -177,7 +177,7 @@ func ProducedChosenColorAmount(n int) func(*game.Game, uuid.UUID, uuid.UUID) gam
 //     generic (CR 701.67b), and which part of a restricted cost a tap
 //     covers is a question no printed card asks. Refused rather than
 //     guessed.
-func checkSpendOnlyClause(name string, i int, c game.AbilityCost) {
+func CheckSpendOnlyClause(name string, i int, c game.AbilityCost) {
 	s := c.SpendOnly
 	if s == nil {
 		return

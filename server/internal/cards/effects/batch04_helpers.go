@@ -33,7 +33,7 @@ import (
 // choice before the resolution-time picker existed. The land is
 // always a candidate while it is still on the battlefield, and
 // returning itself is a normal, sometimes correct, line.
-func b04BounceLand(oracleID, name, produced string) Spec {
+func B04BounceLand(oracleID, name, produced string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -57,14 +57,14 @@ func b04BounceLand(oracleID, name, produced string) Spec {
 // b04NontokenCreature is "a nontoken creature" — Accursed Marauder's
 // edict clause, the one word that separates it from Fleshbag
 // Marauder: a Treasure deck's Zombie tokens cannot be fed to it.
-func b04NontokenCreature(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func B04NontokenCreature(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 	return c.IsCreature() && !IsToken(c)
 }
 
 // b04LandNamesControlled counts the lands `controller` controls
 // with DIFFERENT names — Field of the Dead's seven. Reads the printed
 // name; two copies of the same land count once, as printed.
-func b04LandNamesControlled(g *game.Game, controller uuid.UUID) int {
+func B04LandNamesControlled(g *game.Game, controller uuid.UUID) int {
 	seen := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsLand() {
@@ -79,7 +79,7 @@ func b04LandNamesControlled(g *game.Game, controller uuid.UUID) int {
 // power. Counts Adeline herself, as printed ("creatures you
 // control", not "other"). Walks the live slice: it runs inside a
 // layer recompute.
-func b04CreaturesControlled(g *game.Game, controller uuid.UUID) int {
+func B04CreaturesControlled(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
@@ -93,7 +93,7 @@ func b04CreaturesControlled(g *game.Game, controller uuid.UUID) int {
 // b04CreatureIDsControlledBy snapshots the instance IDs of the
 // creatures `controller` controls, for effects that mutate the
 // battlefield while iterating it (Cathars' Crusade's counters).
-func b04CreatureIDsControlledBy(g *game.Game, controller uuid.UUID) []uuid.UUID {
+func B04CreatureIDsControlledBy(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() {
@@ -115,7 +115,7 @@ func b04CreatureIDsControlledBy(g *game.Game, controller uuid.UUID) []uuid.UUID 
 // A damage event counts the life it COST (game.Event.DamageLifeLoss,
 // #2105), not the damage: infect damage, and damage to a player whose
 // life total can't change, is dealt without any life being lost.
-func b04OpponentLostLife(ev game.Event, controller uuid.UUID, g *game.Game) (int, bool) {
+func B04OpponentLostLife(ev game.Event, controller uuid.UUID, g *game.Game) (int, bool) {
 	if ev.Target == uuid.Nil || ev.Target == controller || g.PlayerByIDForEffect(ev.Target) == nil {
 		return 0, false
 	}

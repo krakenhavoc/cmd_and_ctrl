@@ -49,14 +49,14 @@ func saheeliSunsBrillianceCopy(g *game.Game, item *game.StackItem) error {
 	return CreateTokenCopiesTogether{
 		Controller: item.Controller,
 		Copies:     []uuid.UUID{copyOf},
-		Except:     tokenCopyIsAlsoAnArtifact,
+		Except:     TokenCopyIsAlsoAnArtifact,
 		Then:       ctx.ItemTail(saheeliSunsBrillianceRest),
 	}.Apply(ctx)
 }
 
 // tokenCopyIsAlsoAnArtifact is "except it's an artifact in addition to
 // its other types" (CR 707.9b).
-func tokenCopyIsAlsoAnArtifact(t *game.Card) {
+func TokenCopyIsAlsoAnArtifact(t *game.Card) {
 	v := game.PrintedValues{TypeLine: t.TypeLine}
 	v.AddCardType("Artifact")
 	t.TypeLine = v.TypeLine
@@ -80,6 +80,6 @@ var saheeliSunsBrillianceRest = CardTail("saheeli-the-suns-brilliance/haste-and-
 		Controller: ctx.Item.Controller,
 		Label:      "Saheeli, the Sun's Brilliance — sacrifice the token",
 		Cards:      o.IDs,
-		Body:       sacrificeListedCardsBody,
+		Body:       SacrificeListedCardsBody,
 	}.Apply(ctx)
 })

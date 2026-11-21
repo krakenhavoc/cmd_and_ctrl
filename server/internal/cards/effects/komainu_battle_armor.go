@@ -28,13 +28,13 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, ThisOrEquippedCreatureDealsCombatDamageToAPlayer,
-				"Komainu Battle Armor — goad each creature that player controls", komainuBattleArmorGoad),
+				"Komainu Battle Armor — goad each creature that player controls", KomainuBattleArmorGoad),
 		},
 		Activated: Reconfigure("{4}"),
 	})
 }
 
-func komainuBattleArmorGoad(g *game.Game, item *game.StackItem) error {
+func KomainuBattleArmorGoad(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	player := ctx.Trigger().Event.Target
 	return GoadAllMatching(ctx, func(_ *game.Game, c game.Card) bool {

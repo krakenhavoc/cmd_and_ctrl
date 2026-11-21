@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // bringerAlternativeCost is the five-colour price. The key rides
 // cast_spell as `alternative_cost` and lands on StackItem.AltCost.
-func bringerAlternativeCost() game.AlternativeCost {
+func BringerAlternativeCost() game.AlternativeCost {
 	return game.AlternativeCost{
 		Key:      "bringer-wubrg",
 		Label:    "Pay {W}{U}{B}{R}{G} rather than pay this spell's mana cost",

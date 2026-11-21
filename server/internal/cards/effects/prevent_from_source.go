@@ -126,7 +126,7 @@ func queriesThroughText(ctx *Context, qs []game.PermanentQuery, chosen bool) []g
 	if chosen {
 		return qs
 	}
-	return game.PermanentQueriesThroughTextOf(qs, ctx.textReader())
+	return game.PermanentQueriesThroughTextOf(qs, ctx.TextReader())
 }
 
 // recipientsThroughText is a recipient set's printed queries (#2045) as
@@ -139,7 +139,7 @@ func recipientsThroughText(ctx *Context, f game.DamageRecipientFilter) game.Dama
 	if len(f.Match) == 0 {
 		return f
 	}
-	f.Match = game.PermanentQueriesThroughTextOf(f.Match, ctx.textReader())
+	f.Match = game.PermanentQueriesThroughTextOf(f.Match, ctx.TextReader())
 	return f
 }
 
@@ -224,7 +224,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 	p.Queries = queriesThroughText(ctx, p.Queries, p.ChosenQueries)
 	label := p.Label
 	if label == "" {
-		label = shieldSourceName(ctx) + " — prevent damage from a source this turn"
+		label = ShieldSourceName(ctx) + " — prevent damage from a source this turn"
 	}
 	lasts, ok := p.Lasts.duration(ctx)
 	if !ok || (p.Lasts != ShieldThisTurn && p.UntilYourNextTurn) {
@@ -299,7 +299,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		}
 	}
 	pick := shieldSourcePick{Choose: p.Choose, FromThis: p.FromThis, From: p.From, Queries: p.Queries, Question: p.Question}
-	return pick.resolve(ctx, game.SourceShield{Prevent: &shield})
+	return pick.Resolve(ctx, game.SourceShield{Prevent: &shield})
 }
 
 // filter is the shield's Filter with the objects pinned as it resolves
@@ -337,7 +337,7 @@ func (p PreventDamageFromSource) filter(ctx *Context) (game.DamageSourceFilter, 
 
 // sourceShieldSpell is an instant's OnResolve whose whole effect is a
 // source shield.
-func sourceShieldSpell(shield PreventDamageFromSource) func(*game.StackItem, *Context) error {
+func SourceShieldSpell(shield PreventDamageFromSource) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return shield.Apply(ctx)
 	}
@@ -345,8 +345,8 @@ func sourceShieldSpell(shield PreventDamageFromSource) func(*game.StackItem, *Co
 
 // sourceShieldRow is an activated ability whose whole effect is a source
 // shield (the shared row, next_damage_shield_cards.go).
-func sourceShieldRow(label string, cost game.AbilityCost, targets *game.TargetSpec, shield PreventDamageFromSource) ActivatedAbility {
-	return nextDamageShieldRow(label, cost, targets, shield)
+func SourceShieldRow(label string, cost game.AbilityCost, targets *game.TargetSpec, shield PreventDamageFromSource) ActivatedAbility {
+	return NextDamageShieldRow(label, cost, targets, shield)
 }
 
 // --- the follow-ups (CR 615.5) ----------------------------------------
@@ -357,7 +357,7 @@ var (
 	// triggered ability (CR 615.13: once each time the shield is applied
 	// to simultaneous damage and prevents some of it), so it goes on the
 	// stack, New Way Forward's reflexive shape.
-	preventedBlackOrRedTriggerBody = game.DelayedBody("prevention/black-or-red-gain-life-trigger", preventedBlackOrRedTrigger)
+	PreventedBlackOrRedTriggerBody = game.DelayedBody("prevention/black-or-red-gain-life-trigger", preventedBlackOrRedTrigger)
 	preventedGainLifeTriggerBody   = game.DelayedBody("prevention/gain-life-trigger", preventedGainLife)
 )
 
@@ -369,7 +369,7 @@ func preventedBlackOrRedTrigger(g *game.Game, item *game.StackItem, p game.Effec
 	if !slices.Contains(colors, "B") && !slices.Contains(colors, "R") {
 		return nil
 	}
-	t := WhenYouDo(shieldSourceName(NewContext(g, item))+" — you gain the prevented damage as life", preventedGainLifeTriggerBody)
+	t := WhenYouDo(ShieldSourceName(NewContext(g, item))+" — you gain the prevented damage as life", preventedGainLifeTriggerBody)
 	t.Params = game.EffectParams{Amount: p.Amount}
 	return t.Apply(NewContext(g, item))
 }

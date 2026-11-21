@@ -105,7 +105,7 @@ func EntersTappedUnlessYouPayLife(name string, life int) game.ReplacementEffect 
 // shocklandLifeCost is the payment every member of the cycle asks
 // for. Named rather than inlined so the prompt copy and the cost can
 // never drift apart.
-const shocklandLifeCost = 2
+const ShocklandLifeCost = 2
 
 func init() {
 	for _, t := range []struct {
@@ -133,9 +133,9 @@ func init() {
 			Name:         name,
 			Completeness: CompletenessFull,
 			Replacements: []game.ReplacementEffect{
-				EntersTappedUnlessYouPayLife(name, shocklandLifeCost),
+				EntersTappedUnlessYouPayLife(name, ShocklandLifeCost),
 			},
-			ManaAbilities: []ManaAbility{dualManaAbility(t.a, t.b)},
+			ManaAbilities: []ManaAbility{DualManaAbility(t.a, t.b)},
 		})
 	}
 }

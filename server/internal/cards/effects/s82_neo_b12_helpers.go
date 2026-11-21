@@ -18,11 +18,11 @@ import (
 // neoB12CantBlockWhenCreature is "As long as enchanted permanent is a
 // creature, it can't block" (Clawing Torment): a restriction bit (CR 509.1b)
 // that holds only while the host is a creature.
-func neoB12CantBlockWhenCreature() game.StaticAbility {
+func NeoB12CantBlockWhenCreature() game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "As long as enchanted permanent is a creature, it can't block.",
 		Layer:     game.Layer6Ability,
-		AppliesTo: cmdr2B19AttachedIsCreature,
+		AppliesTo: Cmdr2B19AttachedIsCreature,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= game.CantBlock
 		},
@@ -32,15 +32,15 @@ func neoB12CantBlockWhenCreature() game.StaticAbility {
 // neoB12LosesKeywordWhenCreature is "As long as enchanted permanent is a
 // creature, it ... loses <keyword>" (Short Circuit), layer 6. Like every
 // plain "loses X" it strips what the layers have granted so far (CR 613.7).
-func neoB12LosesKeywordWhenCreature(keyword string) game.StaticAbility {
+func NeoB12LosesKeywordWhenCreature(keyword string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "As long as enchanted permanent is a creature, it loses " + keyword + ".",
 		Layer:     game.Layer6Ability,
-		AppliesTo: cmdr2B19AttachedIsCreature,
+		AppliesTo: Cmdr2B19AttachedIsCreature,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			kept := c.Abilities[:0]
 			for _, a := range c.Abilities {
-				if !equalFoldASCIIEffects(a, keyword) {
+				if !EqualFoldASCIIEffects(a, keyword) {
 					kept = append(kept, a)
 				}
 			}
@@ -52,12 +52,12 @@ func neoB12LosesKeywordWhenCreature(keyword string) game.StaticAbility {
 // neoB12BasePTWhenCreature is "As long as enchanted permanent is a creature,
 // it has base power and toughness P/T" (Awakened Awareness): a layer 7b set,
 // so the +1/+1 counters the Aura puts on the host still count (CR 613.4b).
-func neoB12BasePTWhenCreature(power, toughness int) game.StaticAbility {
+func NeoB12BasePTWhenCreature(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "As long as enchanted permanent is a creature, it has base power and toughness 1/1.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7B_Set,
-		AppliesTo: cmdr2B19AttachedIsCreature,
+		AppliesTo: Cmdr2B19AttachedIsCreature,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Power = power
 			c.Toughness = toughness
@@ -68,7 +68,7 @@ func neoB12BasePTWhenCreature(power, toughness int) game.StaticAbility {
 // neoB12HostHasGreatestPower is Historian's Wisdom's condition: the
 // permanent `host` is a creature with the greatest power among creatures on
 // the battlefield (a tie for greatest counts), read through the layers.
-func neoB12HostHasGreatestPower(g *game.Game, host uuid.UUID) bool {
+func NeoB12HostHasGreatestPower(g *game.Game, host uuid.UUID) bool {
 	var hostPower int
 	found := false
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -91,11 +91,11 @@ func neoB12HostHasGreatestPower(g *game.Game, host uuid.UUID) bool {
 // (CR 603.4) as a CondBoard: it reads the permanent the Aura enchants as the
 // ability resolves, or the one it last enchanted (CR 608.2h), and the
 // creatures on the battlefield through the layers.
-var neoB12EnchantedHasGreatestPower = CondBoard{
+var NeoB12EnchantedHasGreatestPower = CondBoard{
 	Name: "enchanted permanent is a creature with the greatest power among creatures on the battlefield",
 	Test: func(ctx *Context) bool {
-		host, ok := enchantedCreatureAsItResolves(ctx)
-		return ok && neoB12HostHasGreatestPower(ctx.Game, host)
+		host, ok := EnchantedCreatureAsItResolves(ctx)
+		return ok && NeoB12HostHasGreatestPower(ctx.Game, host)
 	},
 }
 
@@ -106,18 +106,18 @@ var neoB12EnchantedHasGreatestPower = CondBoard{
 // through the pass (CR 613.6). Layer 4 ADDS the creature type and Spirit
 // (the land keeps being a land), layer 5 sets the color, layer 6 grants the
 // keywords, and layer 7b sets the base power and toughness.
-func neoB12AnimateAttachedLand(color string, power, toughness int, keywords ...string) []game.StaticAbility {
+func NeoB12AnimateAttachedLand(color string, power, toughness int, keywords ...string) []game.StaticAbility {
 	color4 := game.StaticAbility{
 		Label:                 "Enchanted land is a Spirit creature. It's still a land.",
 		Layer:                 game.Layer4Type,
 		ContinuesAfterRemoval: true,
 		AppliesTo:             AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			if !typeListHasEffects(c.Types, "Creature") {
+			if !TypeListHasEffects(c.Types, "Creature") {
 				c.Types = append(c.Types, "Creature")
 			}
 			for _, s := range source.TextSubtypes("Spirit") {
-				if !typeListHasEffects(c.Subtypes, s) {
+				if !TypeListHasEffects(c.Subtypes, s) {
 					c.Subtypes = append(c.Subtypes, s)
 				}
 			}
@@ -133,7 +133,7 @@ func neoB12AnimateAttachedLand(color string, power, toughness int, keywords ...s
 	}
 }
 
-func typeListHasEffects(list []string, want string) bool {
+func TypeListHasEffects(list []string, want string) bool {
 	for _, s := range list {
 		if s == want {
 			return true
@@ -151,7 +151,7 @@ func typeListHasEffects(list []string, want string) bool {
 // have destroyed it does not. The land's controller orders it against another
 // replacement of the same destruction (CR 616.1), and two Auras are two
 // replacements, so it acts on its own source.
-func neoB12EmergenceReplacement() game.ReplacementEffect {
+func NeoB12EmergenceReplacement() game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {

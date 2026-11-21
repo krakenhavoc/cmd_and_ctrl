@@ -16,7 +16,7 @@ import "github.com/google/uuid"
 // the last moment the card is certainly findable where the effect found
 // it (CR 202.3e makes the number the same in either zone). An empty
 // library reveals nothing and returns uuid.Nil.
-func revealTopReadingManaValue(ctx *Context, reason string) (card uuid.UUID, manaValue int, err error) {
+func RevealTopReadingManaValue(ctx *Context, reason string) (card uuid.UUID, manaValue int, err error) {
 	var revealed []uuid.UUID
 	if err := (RevealTopOfLibrary{
 		Player:   ctx.Controller(),

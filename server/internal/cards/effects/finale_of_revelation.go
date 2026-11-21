@@ -53,7 +53,7 @@ func init() {
 			Instruction(func(ctx *Context) error {
 				x := ctx.X()
 				if x >= 10 {
-					if err := finaleShuffleGraveyardIntoLibrary(ctx, ctx.Controller()); err != nil {
+					if err := FinaleShuffleGraveyardIntoLibrary(ctx, ctx.Controller()); err != nil {
 						return err
 					}
 				}
@@ -99,12 +99,12 @@ func finaleUntapLands(ctx *Context) error {
 
 // finaleLandsChosen untaps each land picked that is still on the battlefield
 // and runs the rest, keyed (#4253).
-var finaleLandsChosen = itemChoice("choose-cards/finale-of-revelation-untap-lands", func(ctx *Context, r game.CardsChosen) error {
+var finaleLandsChosen = ItemChoice("choose-cards/finale-of-revelation-untap-lands", func(ctx *Context, r game.CardsChosen) error {
 	for _, id := range r.Picked {
-		if !onBattlefield(ctx.Game, id) {
+		if !OnBattlefield(ctx.Game, id) {
 			continue
 		}
-		if err := (UntapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (UntapTarget{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -129,7 +129,7 @@ func finaleAfterUntap(ctx *Context) error {
 // The graveyard is snapshotted into an ID slice before anything
 // moves — the same reason every mass primitive in mass.go does: the
 // zone's slice shifts under a move made while walking it.
-func finaleShuffleGraveyardIntoLibrary(ctx *Context, controller uuid.UUID) error {
+func FinaleShuffleGraveyardIntoLibrary(ctx *Context, controller uuid.UUID) error {
 	p := ctx.Game.PlayerByIDForEffect(controller)
 	if p != nil && p.Graveyard != nil {
 		ids := make([]uuid.UUID, 0, len(p.Graveyard.Cards))

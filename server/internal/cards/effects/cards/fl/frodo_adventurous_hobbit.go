@@ -1,0 +1,70 @@
+package cardsfl
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Frodo, Adventurous Hobbit — Legendary Creature — Halfling Scout
+// {W}{B}, 1/3:
+//
+//	"Partner with Sam, Loyal Attendant
+//	 Vigilance
+//	 Whenever Frodo attacks, if you gained 3 or more life this turn,
+//	 the Ring tempts you. Then if Frodo is your Ring-bearer and the Ring
+//	 has tempted you two or more times this game, draw a card."
+//
+// The printing carries no reminder text, but the keyword is the whole
+// of CR 702.124j: the commander pairing with Sam (internal/deck) and
+// the entry search for a card named Sam (PartnerWith, #2142).
+//
+// The attack trigger's "if" is an intervening if (CR 603.4): checked
+// when Frodo attacks and again on resolution. The draw is checked
+// after the tempt, so the tempt that makes Frodo the Ring-bearer, and
+// the one that brings the count to two, both count.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "58ee8c10-7be8-4889-944d-13cae0a4166d",
+		Name:            "Frodo, Adventurous Hobbit",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"vigilance"},
+		Triggered: []game.TriggeredAbility{
+			effects.PartnerWith("Frodo, Adventurous Hobbit", "Sam, Loyal Attendant"),
+			effects.On(game.EventAttack, effects.AllOf(effects.ThisAttacked, youGainedLifeThisTurnAtLeast(3)),
+				"Frodo, Adventurous Hobbit — the Ring tempts you, then draw if Frodo is your Ring-bearer",
+				func(g *game.Game, item *game.StackItem) error {
+					if effects.B15LifeGainedThisTurn(g, item.Controller) < 3 {
+						return nil
+					}
+					// Keyed (#4253 slice 10b): the draw is the tempt's tail.
+					ctx := effects.NewContext(g, item)
+					return effects.TheRingTemptsYou{ThenTail: ctx.ItemTail(frodoAdventurousDrawTail)}.Apply(ctx)
+				}),
+		},
+	})
+}
+
+// youGainedLifeThisTurnAtLeast is an intervening-if trigger condition:
+// the source's controller gained n or more life this turn.
+func youGainedLifeThisTurnAtLeast(n int) effects.When {
+	return func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		return effects.B15LifeGainedThisTurn(g, source.Controller) >= n
+	}
+}
+
+// frodoAdventurousDraw is "Then if Frodo is your Ring-bearer and the
+// Ring has tempted you two or more times this game, draw a card."
+// An on-disk key: never renamed, never reused.
+var frodoAdventurousDrawTail = effects.RingTail("then/frodo-adventurous-hobbit-draw", frodoAdventurousDraw)
+
+func frodoAdventurousDraw(ctx *effects.Context, _ uuid.UUID) error {
+	you := ctx.Controller()
+	if game.RingBearerOf(ctx.Game, you) != ctx.Source() || game.RingTemptCount(ctx.Game, you) < 2 {
+		return nil
+	}
+	return effects.DrawCards{Player: you, N: 1}.Apply(ctx)
+}

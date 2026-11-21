@@ -38,7 +38,7 @@ func EntersExchangingTextBoxes(
 		Controller: EnteringPermanentChooser,
 		CopySelector: &game.CopySelector{
 			Candidates: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) []uuid.UUID {
-				controller, self := copyChooserAndSelf(ev, src)
+				controller, self := CopyChooserAndSelf(ev, src)
 				return candidates(g, controller, self)
 			},
 			ExchangeText: true,
@@ -48,8 +48,8 @@ func EntersExchangingTextBoxes(
 
 // anotherCreatureOnBattlefield is "another creature": any creature on
 // the battlefield but the entering permanent, whoever controls it.
-func anotherCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
-	return copyCandidates(g, self, func(c game.Card) bool { return c.IsCreature() })
+func AnotherCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
+	return CopyCandidates(g, self, func(c game.Card) bool { return c.IsCreature() })
 }
 
 // ExchangeTargetTextBoxesWhileSourceRemains is the resolution of "choose

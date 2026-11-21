@@ -34,7 +34,7 @@ func init() {
 					oneDamageToTargetOpponentAndGainOne),
 				TargetPlayer("target opponent", Opponent()),
 			),
-			On(game.EventDealDamage, anOpponentWasDealtNoncombatDamage,
+			On(game.EventDealDamage, AnOpponentWasDealtNoncombatDamage,
 				"Massacre Girl, Most Wanted — put a +1/+1 counter on Massacre Girl",
 				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
@@ -53,16 +53,16 @@ func anotherCreatureOrPlaneswalkerYouControlDied(ev game.Event, source *game.Car
 	if !ok {
 		return false
 	}
-	if !leftAsType(ev, c, "creature") && !leftAsType(ev, c, "planeswalker") {
+	if !LeftAsType(ev, c, "creature") && !LeftAsType(ev, c, "planeswalker") {
 		return false
 	}
-	return leftUnderControlOf(ev, c) == source.Controller
+	return LeftUnderControlOf(ev, c) == source.Controller
 }
 
 // anOpponentWasDealtNoncombatDamage is "whenever an opponent is dealt
 // noncombat damage": a damage event that is not combat damage, to a
 // player other than the source's controller.
-func anOpponentWasDealtNoncombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func AnOpponentWasDealtNoncombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || ev.Combat || ev.Amount <= 0 || ev.Target == uuid.Nil || ev.Target == source.Controller {
 		return false
 	}

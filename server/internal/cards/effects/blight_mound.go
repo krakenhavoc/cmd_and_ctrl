@@ -27,13 +27,13 @@ func init() {
 		Name:         "Blight Mound",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			blightMoundAttackingPests(attackingCreaturesYouControlGetPower(1), "Attacking Pests you control get +1/+0."),
-			blightMoundAttackingPests(AttackingCreaturesHave("", nil, "menace"), "Attacking Pests you control have menace."),
+			BlightMoundAttackingPests(AttackingCreaturesYouControlGetPower(1), "Attacking Pests you control get +1/+0."),
+			BlightMoundAttackingPests(AttackingCreaturesHave("", nil, "menace"), "Attacking Pests you control have menace."),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				dead, ok := diedCreature(ev, g)
-				return ok && leftUnderControlOf(ev, dead) == source.Controller && !IsToken(dead)
+				dead, ok := DiedCreature(ev, g)
+				return ok && LeftUnderControlOf(ev, dead) == source.Controller && !IsToken(dead)
 			}, "Blight Mound — create a Pest", Do(CreateToken{Template: PestToken(), N: 1})),
 		},
 	})
@@ -41,7 +41,7 @@ func init() {
 
 // blightMoundAttackingPests narrows an attacking-creatures static to
 // Pests, labelled with the printed half it is.
-func blightMoundAttackingPests(s game.StaticAbility, label string) game.StaticAbility {
+func BlightMoundAttackingPests(s game.StaticAbility, label string) game.StaticAbility {
 	s.Label = label
 	base := s.AppliesTo
 	s.AppliesTo = func(target *game.Card, g *game.Game, source *game.Card) bool {

@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     theLegendOfRokuOracleID,
+		OracleID:     TheLegendOfRokuOracleID,
 		Name:         "The Legend of Roku",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -46,4 +46,4 @@ func init() {
 
 // theLegendOfRokuOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const theLegendOfRokuOracleID = "2f26f270-26d9-46d3-957f-19f52d51eb03"
+const TheLegendOfRokuOracleID = "2f26f270-26d9-46d3-957f-19f52d51eb03"

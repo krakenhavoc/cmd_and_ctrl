@@ -23,7 +23,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDealDamage, deathtouchCreatureYouControlHitAPlayer, "Black Widow, Deadly Hunter — draw a card and lose 1 life",
+			On(game.EventDealDamage, DeathtouchCreatureYouControlHitAPlayer, "Black Widow, Deadly Hunter — draw a card and lose 1 life",
 				Do(DrawCards{N: 1}, GainLife{Amount: -1})),
 		},
 	})
@@ -34,8 +34,8 @@ func init() {
 // (Black Widow, Deadly Hunter; White Widow, Yelena Belova): one event per
 // creature, with deathtouch read as the dealer has it now (game.HasKeyword),
 // so a granted deathtouch counts.
-func deathtouchCreatureYouControlHitAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func DeathtouchCreatureYouControlHitAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)

@@ -19,7 +19,7 @@ const (
 // demandingDragonAsk is "it deals 5 damage to target opponent unless that
 // player sacrifices a creature of their choice": the opponent decides, and
 // with no creature to sacrifice the damage is simply dealt.
-func demandingDragonAsk(g *game.Game, item *game.StackItem) error {
+func DemandingDragonAsk(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 || ts[0].Kind != game.TargetPlayer {
@@ -30,7 +30,7 @@ func demandingDragonAsk(g *game.Game, item *game.StackItem) error {
 	if p == nil || p.Eliminated {
 		return nil
 	}
-	if len(creaturesControlledByPlayer(g, victim)) == 0 {
+	if len(CreaturesControlledByPlayer(g, victim)) == 0 {
 		return demandingDragonDamage(ctx, victim)
 	}
 	return PickOption{
@@ -55,7 +55,7 @@ var demandingDragonAnswer = OptionPickThen("option-pick/demanding-dragon-answer"
 	if r.Option != nil && r.Option.Label == demandingDragonSacLabel {
 		return SacrificeChoice{
 			Player:     victim,
-			Candidates: creaturesControlledByPlayer(ctx.Game, victim),
+			Candidates: CreaturesControlledByPlayer(ctx.Game, victim),
 			Question:   demandingDragonName + " — sacrifice a creature",
 		}.Apply(ctx)
 	}
@@ -69,7 +69,7 @@ var demandingDragonAnswer = OptionPickThen("option-pick/demanding-dragon-answer"
 // controller so the effect is theirs. One declaration is one "is attacked"
 // (CR 506.3), so it is batched per attacker: two creatures from the same
 // player still earn one. Curse of Opulence and Curse of Verbosity.
-func eachAttackingOpponentDoesTheSame(label string, effect Effect) game.TriggeredAbility {
+func EachAttackingOpponentDoesTheSame(label string, effect Effect) game.TriggeredAbility {
 	t := game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventAttack},
 		Key:     label,
@@ -97,12 +97,12 @@ func eachAttackingOpponentDoesTheSame(label string, effect Effect) game.Triggere
 
 // curseOfVerbosityTriggers is the Curse's two abilities, batched per
 // declaration exactly as Curse of Opulence's are.
-func curseOfVerbosityTriggers() []game.TriggeredAbility {
+func CurseOfVerbosityTriggers() []game.TriggeredAbility {
 	mine := OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 		return source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == ev.Target
 	}, "Curse of Verbosity — you draw a card", Do(DrawCards{N: 1})))
 	return []game.TriggeredAbility{
 		mine,
-		eachAttackingOpponentDoesTheSame("Curse of Verbosity — the attacking opponent draws a card", Do(DrawCards{N: 1})),
+		EachAttackingOpponentDoesTheSame("Curse of Verbosity — the attacking opponent draws a card", Do(DrawCards{N: 1})),
 	}
 }

@@ -60,7 +60,7 @@ func charmedPendantAddMana(g *game.Game, item *game.StackItem) error {
 		if !ok {
 			continue
 		}
-		sb.WriteString(coloredSymbolsAsProduced(c.ManaCost))
+		sb.WriteString(ColoredSymbolsAsProduced(c.ManaCost))
 	}
 	return AddMana{Produced: sb.String()}.Apply(ctx)
 }
@@ -68,7 +68,7 @@ func charmedPendantAddMana(g *game.Game, item *game.StackItem) error {
 // coloredSymbolsAsProduced rewrites a printed mana cost as the mana a
 // "for each colored mana symbol" ability adds: one slot per coloured
 // symbol, a pipe-separated pick for a symbol of two colours.
-func coloredSymbolsAsProduced(cost string) string {
+func ColoredSymbolsAsProduced(cost string) string {
 	var out strings.Builder
 	for _, raw := range strings.Split(cost, "{") {
 		sym := strings.TrimSuffix(raw, "}")

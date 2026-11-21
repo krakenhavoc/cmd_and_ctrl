@@ -70,7 +70,7 @@ func b64GlissaTrigger() game.TriggeredAbility {
 			TargetPermanent("target enchantment", Enchantment()),
 			DestroyTheModesTarget),
 		ModeDoing("Remove up to three counters from target permanent.",
-			TargetPermanent("target permanent", b64HasAnyCounter()),
+			TargetPermanent("target permanent", B64HasAnyCounter()),
 			func(item *game.StackItem, ctx *Context, occ int) error {
 				t, ok := ModeTarget(ctx, occ)
 				if !ok {
@@ -87,7 +87,7 @@ func b64GlissaTrigger() game.TriggeredAbility {
 // offered — and the trigger would sit on the stack — pointed at
 // something it cannot touch, which is the "Yes that silently does
 // nothing" shape ADR 0019 §6 already removed from optional triggers.
-func b64HasAnyCounter() CardPredicate {
+func B64HasAnyCounter() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		for _, n := range c.Counters {
 			if n > 0 {
@@ -102,13 +102,13 @@ func b64HasAnyCounter() CardPredicate {
 // permanent": the controller chooses how many of each kind, then they are
 // removed through the ordinary counter primitive.
 func b64ChooseAndRemoveCounters(ctx *Context, target uuid.UUID, n int) error {
-	return glissaSunslayerRemoves.choose(ctx, target, nil, n, "Glissa Sunslayer — remove up to three counters")
+	return GlissaSunslayerRemoves.Choose(ctx, target, nil, n, "Glissa Sunslayer — remove up to three counters")
 }
 
 // glissaSunslayerRemoves is Glissa Sunslayer's clause (#4294): the bot
 // removes -1/-1 counters from its own permanent and everything else from
 // another's, and the counts chosen come off the permanent.
-var glissaSunslayerRemoves = registerCounterChoice("number/glissa-sunslayer-remove-counters",
+var GlissaSunslayerRemoves = RegisterCounterChoice("number/glissa-sunslayer-remove-counters",
 	func(ctx *Context, target uuid.UUID, kind string, most int) int {
 		mine := false
 		if c, ok := ctx.Game.LookupCardForEffect(target); ok {

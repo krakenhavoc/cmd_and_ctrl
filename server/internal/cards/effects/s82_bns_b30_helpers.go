@@ -8,7 +8,7 @@ import (
 
 // s82B30ControlsArtifactOrEnchantment is "you control an artifact or
 // enchantment" (Flutterfox), read after the layers.
-func s82B30ControlsArtifactOrEnchantment(g *game.Game, controller uuid.UUID) bool {
+func S82B30ControlsArtifactOrEnchantment(g *game.Game, controller uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && (c.IsArtifact() || c.IsEnchantment()) {
 			return true

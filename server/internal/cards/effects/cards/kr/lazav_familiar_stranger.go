@@ -1,0 +1,170 @@
+package cardskr
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Lazav, Familiar Stranger — Legendary Creature — Shapeshifter
+// {1}{U}{B}, 1/4:
+//
+//	"Whenever you commit a crime, put a +1/+1 counter on Lazav. Then
+//	 you may exile a card from a graveyard. If a creature card was
+//	 exiled this way, you may have Lazav become a copy of that card
+//	 until end of turn. This ability triggers only once each turn.
+//	 (Targeting opponents, anything they control, and/or cards in
+//	 their graveyards is a crime.)"
+//
+// "Commit a crime" reuses Magda, the Hoardmaster's reading of it
+// (YouCommittedCrime, CrimeCommitted annotation) and the
+// once-per-turn tally (b11TriggeredThisTurn) her ability already
+// exercises.
+//
+// # The exile does not target
+//
+// The printed clause is "exile A card from A graveyard" — no "target"
+// — so it is a resolution-time CHOICE (CR 601.2c does not apply to
+// it), not a target clause: hexproof and shroud are irrelevant, and
+// the pick spans every graveyard at the table, the controller's own
+// included. That candidate set crosses more than one player's zone,
+// so it cannot use the single-owner Zone re-check
+// (game.ChooseCardsPrompt.Zone / FromPlayer, the shape Skullwinder and
+// Ripples of Undeath use for a pick over ONE player's graveyard).
+// Instead the prompt leaves Zone unset — "no zone re-check; the
+// frame's `then` owns the validation" (chained_choice.go) — and
+// re-validates through ExileTarget's own existence handling, which
+// already does nothing rather than erroring when the chosen card has
+// moved by the time the pick is submitted.
+//
+// # The copy is a SECOND "may", not the trigger's OptionalPrompt
+//
+// The trigger's own OptionalPrompt (game.TriggerOptionalPrompt)
+// decides whether to BUILD the ability at all, before anything has
+// happened. This ability has already committed to the counter and the
+// exile by the time the copy is offered, so "you may have Lazav become
+// a copy" is a plain mid-resolution yes/no — game.ConfirmPrompt, the
+// same shape Ponder's "you may shuffle" uses — asked only when a
+// creature card was actually exiled (CR 608.2c: a "may" that isn't
+// reached is simply not asked).
+//
+// The copy itself is a duration copy (#1593, become_copy.go), UNTIL
+// END OF TURN: the printed sentence has no "except" clause and grants
+// nothing back, unlike Lazav, Dimir Mastermind's and Dimir
+// Doppelganger's indefinite copies, so there is no ability to keep
+// alive across the copy and no grant to declare.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "ca60623a-1a98-4153-a0ee-2f34981de5cb",
+		Name:         "Lazav, Familiar Stranger",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventBecomesTarget, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.YouCommittedCrime(ev, source) &&
+					!effects.B11TriggeredThisTurn(g, source.InstanceID, lazavFamiliarStrangerLabel)
+			}, lazavFamiliarStrangerLabel, lazavFamiliarStrangerEffect),
+		},
+	})
+}
+
+const lazavFamiliarStrangerLabel = "Lazav, Familiar Stranger — a +1/+1 counter, then exile a card from a graveyard"
+
+// lazavFamiliarStrangerEffect is the trigger's whole body: the
+// counter, then the exile choice, then — only if a creature card came
+// of it — the copy offer.
+func lazavFamiliarStrangerEffect(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	self := ctx.Source()
+	if err := (effects.AddCounter{Target: self, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+		return err
+	}
+
+	var candidates []uuid.UUID
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		candidates = append(candidates, effects.GraveyardCardsOfPlayer(g, p.ID)...)
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  ctx.Controller(),
+		Source:   self,
+		Question: "Lazav, Familiar Stranger — you may exile a card from a graveyard",
+		Cards:    candidates,
+		Min:      0,
+		Max:      1,
+		// No live-zone re-check: the candidates span every seat's
+		// graveyard, not one player's, so there is no single owner to
+		// re-check against. ExileTarget does its own existence handling
+		// for a card that has moved by the time this is answered. Keyed
+		// (#4301), so a table waiting on the pick is a restore point.
+		ThenKey: LazavFamiliarStrangerExile,
+	})
+	return nil
+}
+
+// lazavFamiliarStrangerExile is the answer to "you may exile a card from a
+// graveyard" (#4301): the chooser is the controller and the source Lazav, so
+// the exile and the copy offer after it run against a stand-in for the
+// trigger, as the offer's answer does. An on-disk key.
+var LazavFamiliarStrangerExile = game.RegisterChooseCardsThen("choose-cards/lazav-familiar-stranger-exile", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	card := r.Picked[0]
+	return effects.ExileTarget{Target: card, ThenTail: game.KeyedTail{Ref: lazavFamiliarStrangerExiled, Player: r.Chooser, Source: r.Source, Carry: []uuid.UUID{card}}}.Apply(effects.KeyedContext(g, r.Chooser, r.Source))
+})
+
+// lazavFamiliarStrangerOfferCopy is "if a creature card was exiled
+// this way, you may have Lazav become a copy of that card until end
+// of turn" — asked only when the exile actually produced a creature
+// card, per CR 608.2c.
+func lazavFamiliarStrangerOfferCopy(ctx *effects.Context, card uuid.UUID) error {
+	c, ok := ctx.Game.LookupCardForEffect(card)
+	if !ok || !c.IsCreature() {
+		return nil
+	}
+	return effects.MayChoice{
+		Question: "Lazav, Familiar Stranger — have Lazav become a copy of " + c.Name + " until end of turn?",
+		YesLabel: "Become a copy",
+		NoLabel:  "Decline",
+		Then:     LazavFamiliarStrangerCopy,
+		Carry:    []uuid.UUID{card},
+	}.Apply(ctx)
+}
+
+// lazavFamiliarStrangerCopy is "you may have Lazav become a copy of that
+// card until end of turn" (#4298: keyed; the exiled card is the prompt's
+// carried ID and its printed values are read again from it).
+var LazavFamiliarStrangerCopy = effects.MayYes("confirm/lazav-familiar-stranger-copy", func(ctx *effects.Context, r game.ConfirmAnswer) error {
+	card := effects.CarryAt(r, 0)
+	c, ok := ctx.Game.LookupCardForEffect(card)
+	if !ok {
+		return nil
+	}
+	own := game.OwnPrintedValues(c)
+	return effects.BecomeCopy{
+		Targets: []uuid.UUID{r.Source},
+		Of:      card,
+		Values:  &own,
+		Label:   "Lazav, Familiar Stranger — becomes a copy until end of turn",
+	}.Apply(ctx)
+})
+
+// lazavFamiliarStrangerExiled is the clause after the exile (#4253 slice 9).
+var lazavFamiliarStrangerExiled = effects.CardTail("lazav-familiar-stranger/after-exile", func(ctx *effects.Context, o game.TailOutcome) error {
+	card := effects.TailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return lazavFamiliarStrangerOfferCopy(ctx, card)
+})

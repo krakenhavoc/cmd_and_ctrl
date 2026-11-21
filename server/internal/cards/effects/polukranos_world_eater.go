@@ -46,7 +46,7 @@ func init() {
 }
 
 func polukranosTrigger() game.TriggeredAbility {
-	t := WhenBecomesMonstrous("Polukranos — X damage divided among opponents' creatures", polukranosBites)
+	t := WhenBecomesMonstrous("Polukranos — X damage divided among opponents' creatures", PolukranosBites)
 	t.TargetsFrom = polukranosTargets
 	return t
 }
@@ -63,7 +63,7 @@ func polukranosTargets(tc game.TriggerContext, _ *game.Card, _ *game.Game) *game
 		Dividing(Divide(x))
 }
 
-func polukranosBites(g *game.Game, item *game.StackItem) error {
+func PolukranosBites(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if err := DealDividedDamage(ctx); err != nil {
 		return err

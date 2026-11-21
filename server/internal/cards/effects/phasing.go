@@ -50,7 +50,7 @@ type PhaseOut struct {
 }
 
 func (p PhaseOut) Apply(ctx *Context) error {
-	targets := ctx.withoutNewSourceObject(p.Targets) // #1432
+	targets := ctx.WithoutNewSourceObject(p.Targets) // #1432
 	if len(targets) == 0 {
 		return nil
 	}
@@ -79,8 +79,8 @@ func (p PhaseOutUntilLeaves) Apply(ctx *Context) error {
 	// #1432: "until THIS leaves the battlefield" with a source that
 	// already left and came back is over before it starts (CR 611.2b)
 	// — the new object is not the one the duration names.
-	targets := ctx.withoutNewSourceObject(p.Targets)
-	if len(targets) == 0 || p.Until == uuid.Nil || ctx.isNewSourceObjectAsThis(p.Until) {
+	targets := ctx.WithoutNewSourceObject(p.Targets)
+	if len(targets) == 0 || p.Until == uuid.Nil || ctx.IsNewSourceObjectAsThis(p.Until) {
 		return nil
 	}
 	return ctx.Game.PhaseOutUntilLeavesForEffect(
@@ -106,7 +106,7 @@ type CantPhaseInWhileYouControl struct {
 func (p CantPhaseInWhileYouControl) Apply(ctx *Context) error {
 	// A Source that left and came back is a new object, which is not
 	// the one the sentence names (CR 400.7).
-	if len(p.Targets) == 0 || p.Source == uuid.Nil || ctx.isNewSourceObjectAsThis(p.Source) {
+	if len(p.Targets) == 0 || p.Source == uuid.Nil || ctx.IsNewSourceObjectAsThis(p.Source) {
 		return nil
 	}
 	ctx.Game.CantPhaseInWhileControlledForEffect(p.Source, ctx.Controller(), p.Targets...)
@@ -122,7 +122,7 @@ func (p CantPhaseInWhileYouControl) Apply(ctx *Context) error {
 // rule is simultaneous: collecting first and phasing once is what
 // keeps an Equipment named beside the creature it is attached to from
 // being pulled out twice.
-func legalTargetCards(item *game.StackItem, g *game.Game) []uuid.UUID {
+func LegalTargetCards(item *game.StackItem, g *game.Game) []uuid.UUID {
 	var out []uuid.UUID
 	for _, t := range item.Targets {
 		if t.Kind != game.TargetCard || !g.TargetStillLegalForEffect(item, t) {

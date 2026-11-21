@@ -13,7 +13,7 @@ import (
 // sacrifice event (CR 701.21) of a land its controller sacrificed. The
 // event fires while the land is still on the battlefield, so it reads
 // as a land (and a land token counts, as the printed text says "a land").
-func cmdrB9YouSacrificedLand(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func CmdrB9YouSacrificedLand(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller {
 		return false
 	}
@@ -23,7 +23,7 @@ func cmdrB9YouSacrificedLand(ev game.Event, source *game.Card, _ game.Characteri
 
 // cmdrB9YouSacrificedAnotherNontoken is "whenever you sacrifice another
 // nontoken permanent".
-func cmdrB9YouSacrificedAnotherNontoken(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func CmdrB9YouSacrificedAnotherNontoken(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller || ev.CardID == source.InstanceID {
 		return false
 	}
@@ -33,7 +33,7 @@ func cmdrB9YouSacrificedAnotherNontoken(ev game.Event, source *game.Card, _ game
 
 // cmdrB9YouSacrificedNontoken is "whenever you sacrifice a nontoken
 // permanent" (the source itself included).
-func cmdrB9YouSacrificedNontoken(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func CmdrB9YouSacrificedNontoken(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller {
 		return false
 	}
@@ -44,7 +44,7 @@ func cmdrB9YouSacrificedNontoken(ev game.Event, source *game.Card, _ game.Charac
 // cmdrB9SacrificedNontokenThisTurn is "as long as you've sacrificed a
 // nontoken permanent this turn" (TurnTally.SacrificedCardTypes, kept at
 // the sacrifice itself).
-func cmdrB9SacrificedNontokenThisTurn(g *game.Game, you uuid.UUID) bool {
+func CmdrB9SacrificedNontokenThisTurn(g *game.Game, you uuid.UUID) bool {
 	return g.SacrificedWithCardTypeThisTurn(you, game.SacrificedNontokenKey) > 0
 }
 
@@ -55,13 +55,13 @@ var cmdrB9ThenProliferate = CardTail("cmdr-b9/then-proliferate", func(ctx *Conte
 })
 
 // cmdrB9BasicLandCard is "basic land card": a land with the Basic supertype.
-func cmdrB9BasicLandCard() CardPredicate {
+func CmdrB9BasicLandCard() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return IsBasicLand(c) }
 }
 
 // cmdrB9AuguryTake is Experimental Augury's look: one into your hand, the
 // rest on the bottom in any order, then proliferate.
-var cmdrB9AuguryTake = RegisterTake("choose-cards/experimental-augury-take",
+var CmdrB9AuguryTake = RegisterTake("choose-cards/experimental-augury-take",
 	TakeDef{Then: cmdrB9AuguryBottomThenProliferate})
 
 // cmdrB9AuguryBottomThenProliferate puts the rest on the bottom (the
@@ -73,13 +73,13 @@ func cmdrB9AuguryBottomThenProliferate(g *game.Game, res TakeFromLibraryResult) 
 		Cards:     res.Rest,
 		From:      game.ZoneLibrary,
 		Placement: game.LibraryPlaceBottom,
-		Reason:    libraryOrderLabel(g, res.Source, "put the rest on the bottom of your library in any order"),
+		Reason:    LibraryOrderLabel(g, res.Source, "put the rest on the bottom of your library in any order"),
 		ThenTail:  game.KeyedTail{Ref: cmdrB9ThenProliferate, Player: res.Player, Source: res.Source},
 	})
 }
 
 // cmdrB9LandsOnly is a discard's set rule: every card chosen is a land card.
-func cmdrB9LandsOnly(picked []game.Card) bool {
+func CmdrB9LandsOnly(picked []game.Card) bool {
 	for _, c := range picked {
 		if !c.IsLand() {
 			return false
@@ -89,7 +89,7 @@ func cmdrB9LandsOnly(picked []game.Card) bool {
 }
 
 // cmdrB9PermanentCard is "permanent card": a card with a permanent type.
-func cmdrB9PermanentCard() CardPredicate {
+func CmdrB9PermanentCard() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsPermanent()
 	}
