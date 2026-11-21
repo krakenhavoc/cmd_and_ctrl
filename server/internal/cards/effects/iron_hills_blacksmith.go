@@ -44,6 +44,6 @@ func printedAxeEquipmentToken() TokenTemplate {
 		},
 		Text:      "Equipped creature gets +1/+0.\nEquip {2}",
 		Static:    []game.StaticAbility{PumpAttached(1, 0)},
-		Activated: activatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
+		Activated: ActivatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
 	}
 }

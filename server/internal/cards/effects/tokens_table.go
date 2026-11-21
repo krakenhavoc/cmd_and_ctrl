@@ -236,6 +236,7 @@ var TokenTable = map[string]game.Card{
 	"1/2 white Moogle with lifelink":                                   {Name: "Moogle", TypeLine: "Token Creature — Moogle", Power: 1, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"10/10 colorless Eldrazi":                                          {Name: "Eldrazi", TypeLine: "Token Creature — Eldrazi", Power: 10, Toughness: 10},
 	"3/1 red Elemental":                                                {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}},
+	"3/1 red Elemental with haste":                                     {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}}, // Rakka Mar
 	"3/1 red Knight":                                                   {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 3, Toughness: 1, Colors: []string{"R"}},
 	"3/1 black Mindless-One":                                           {Name: "Mindless-One", TypeLine: "Token Creature — Mindless-One", Power: 3, Toughness: 1, Colors: []string{"B"}},
 	"2/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
@@ -552,6 +553,12 @@ var TokenTable = map[string]game.Card{
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
 	"3/1 red Construct artifact with haste":     {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 
+	// S82 GAP batch 109: Heliod, God of the Sun's Cleric.
+	"2/1 white Cleric enchantment creature": {Name: "Cleric", TypeLine: "Token Enchantment Creature — Cleric", Power: 2, Toughness: 1, Colors: []string{"W"}},
+
+	// S82 GAP batch 110: Battle at the Helvault's Avacyn.
+	"8/8 white Legendary Angel named Avacyn with flying, vigilance, and indestructible": {Name: "Avacyn", TypeLine: "Token Legendary Creature — Angel", Power: 8, Toughness: 8, Colors: []string{"W"}, Keywords: []string{"flying", "vigilance", "indestructible"}},
+
 	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
 	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	// S82 BNS batch 54: Giant Opportunity's Giant.
@@ -597,6 +604,9 @@ var TokenTable = map[string]game.Card{
 	// Doctor Who (#5948): Iraxxa, Empress of Mars; Vrestin, Menoptra Leader.
 	"2/2 red Alien Warrior":                        {Name: "Alien Warrior", TypeLine: "Token Creature — Alien Warrior", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"1/1 green and white Alien Insect with flying": {Name: "Alien Insect", TypeLine: "Token Creature — Alien Insect", Power: 1, Toughness: 1, Colors: []string{"G", "W"}, Keywords: []string{"flying"}},
+	// S82 GAP batch 101: Sek'Kuar, Deathkeeper's Graveborn.
+	"3/1 black and red Graveborn with haste": {Name: "Graveborn", TypeLine: "Token Creature — Graveborn", Power: 3, Toughness: 1, Colors: []string{"B", "R"}, Keywords: []string{"haste"}},
+
 	// S82 GAP batch 49: Wurmcoil Larva's two Phyrexian Wurms.
 	"1/2 black Phyrexian Wurm artifact with deathtouch": {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 1, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"2/1 black Phyrexian Wurm artifact with lifelink":   {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},

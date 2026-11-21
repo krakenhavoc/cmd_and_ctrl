@@ -42,7 +42,7 @@ func FileDef(key string, d *game.CardDef) {
 // engine's shapes. Shared by buildDef and by buildGrantDef, because
 // a CR 707.9a granted activated ability is declared exactly as a
 // card's own is (ability_grant.go). Nil in, nil out.
-func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
+func ActivatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 	if len(in) == 0 {
 		return nil
 	}
@@ -418,7 +418,7 @@ func BuildDef(spec Spec) *game.CardDef {
 	if asAttached := spec.AsAttached; asAttached != nil {
 		d.AsAttached = liveCardHook(asAttached)
 	}
-	d.Activated = activatedShapes(spec.Activated)
+	d.Activated = ActivatedShapes(spec.Activated)
 	d.ManaAbilities = manaShapes(spec.ManaAbilities)
 	// #4928 / CR 605.1b: a damage trigger printed beside a mana ability
 	// is an ordinary triggered ability, grown here as a Triggered row and

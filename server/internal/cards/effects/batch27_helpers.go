@@ -282,7 +282,7 @@ func b27ExiledWithRecord(g *game.Game, source uuid.UUID, label string, stillInEx
 // order, so the last linked creature card is the one exiled most
 // recently; a Duplicant that left and came back is a new object with no
 // link (CR 400.7).
-func b27LastCreatureCardExiledWith(g *game.Game, source *game.Card) (game.Card, bool) {
+func B27LastCreatureCardExiledWith(g *game.Game, source *game.Card) (game.Card, bool) {
 	if source == nil {
 		return game.Card{}, false
 	}
@@ -604,7 +604,7 @@ func B27DuplicantStatics() []game.StaticAbility {
 			// layers are re-read when one does (#3172).
 			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				if exiled, ok := b27LastCreatureCardExiledWith(g, source); ok {
+				if exiled, ok := B27LastCreatureCardExiledWith(g, source); ok {
 					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled, source.TextSubtype("Shapeshifter")))
 				}
 			},
@@ -617,7 +617,7 @@ func B27DuplicantStatics() []game.StaticAbility {
 			// As above.
 			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				if exiled, ok := b27LastCreatureCardExiledWith(g, source); ok {
+				if exiled, ok := B27LastCreatureCardExiledWith(g, source); ok {
 					c.Power = exiled.Power
 					c.Toughness = exiled.Toughness
 				}

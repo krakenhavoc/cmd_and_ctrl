@@ -230,6 +230,12 @@ var reviewedNotAWipe = map[string]string{
 	// S82 MBS batch 1 (#5576).
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
 
+	// S82 GAP batch 107 (#5948).
+	"Faerie Artisans": "exiles only the tokens it created itself (\"all other tokens created with this creature\"), never another permanent: not a board",
+
+	// S82 GAP batch 114.
+	"Day's Undoing": "shuffles hands and graveyards into libraries and ends the turn: it exiles the stack, not permanents",
+
 	// S82 GAP batch 64 (#5948).
 	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
 }
