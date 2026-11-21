@@ -20,13 +20,7 @@ func init() {
 		Name:         "Fear of Lost Teeth",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(Targeting(WhenThisDies("Fear of Lost Teeth — 1 damage to any target and you gain 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := sourceDealsDamageToEachLegalTarget(1)(g, item); err != nil {
-						return err
-					}
-					return GainLife{Amount: 1}.Apply(NewContext(g, item))
-				}), TargetAny()), ForTargets(DamageToTarget(0, 1))),
+			TriggerWithPurpose(Targeting(WhenThisDies("Fear of Lost Teeth — 1 damage to any target and you gain 1 life", gapB106OneDamageAndOneLife), TargetAny()), ForTargets(DamageToTarget(0, 1))),
 		},
 	})
 }
