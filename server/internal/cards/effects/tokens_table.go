@@ -646,4 +646,6 @@ var TokenTable = map[string]game.Card{
 	"1/1 blue Tyranid Gargoyle with flying": {Name: "Tyranid Gargoyle", TypeLine: "Token Creature — Tyranid Gargoyle", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	// S82 GAP batch 194: Magnus the Red's Spawn.
 	"3/3 red Spawn": {Name: "Spawn", TypeLine: "Token Creature — Spawn", Power: 3, Toughness: 3, Colors: []string{"R"}},
+	// S82 GAP batch 195: Belisarius Cawl's Astartes Warrior.
+	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 }

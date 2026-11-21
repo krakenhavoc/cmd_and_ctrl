@@ -805,6 +805,7 @@ choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/emperor-of-bones-reanimate
 choose choose-cards/end-blaze-epiphany-play
 choose choose-cards/ensign-pavel-chekov-picked
+choose choose-cards/epistolary-librarian-cast
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
 choose choose-cards/eumidian-wastewaker-discard
