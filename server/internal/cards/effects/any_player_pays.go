@@ -327,6 +327,10 @@ type AnyPlayerPaysForEach struct {
 	// on any seat's pick is a restore point. Required.
 	Then  game.AnyPlayerEachThen
 	Carry []uuid.UUID
+	// OwnObjectsOnly is "its controller ... unless they pay": each player
+	// is offered only the objects they control (Killing Wave), where false
+	// lets any player pay for any object (Cleansing).
+	OwnObjectsOnly bool
 }
 
 // AnyPlayerEachConsequence registers a keyed per-object offer's
@@ -363,6 +367,8 @@ func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
 		Then:       a.Then,
 		Carry:      a.Carry,
 		Asked:      game.NewAskedItem(item),
+
+		OwnObjectsOnly: a.OwnObjectsOnly,
 	})
 }
 

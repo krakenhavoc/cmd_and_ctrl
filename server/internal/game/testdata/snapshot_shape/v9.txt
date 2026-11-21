@@ -2077,6 +2077,7 @@ followUpParks[].then.paid.offer.objects[].id	custom(uuid.UUID)
 followUpParks[].then.paid.offer.opponents	bool
 followUpParks[].then.paid.offer.order	array
 followUpParks[].then.paid.offer.order[]	custom(uuid.UUID)
+followUpParks[].then.paid.offer.ownObjectsOnly	bool
 followUpParks[].then.paid.offer.picks	array
 followUpParks[].then.paid.offer.picks[]	object
 followUpParks[].then.paid.offer.picks[].cards	array
@@ -2755,6 +2756,7 @@ frozenEntries[].event.counterTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.paid.offer.opponents	bool
 frozenEntries[].event.counterTail.then.paid.offer.order	array
 frozenEntries[].event.counterTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.counterTail.then.paid.offer.picks	array
 frozenEntries[].event.counterTail.then.paid.offer.picks[]	object
 frozenEntries[].event.counterTail.then.paid.offer.picks[].cards	array
@@ -3411,6 +3413,7 @@ frozenEntries[].event.damageTail.each.each.paid.offer.objects[].id	custom(uuid.U
 frozenEntries[].event.damageTail.each.each.paid.offer.opponents	bool
 frozenEntries[].event.damageTail.each.each.paid.offer.order	array
 frozenEntries[].event.damageTail.each.each.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.damageTail.each.each.paid.offer.picks	array
 frozenEntries[].event.damageTail.each.each.paid.offer.picks[]	object
 frozenEntries[].event.damageTail.each.each.paid.offer.picks[].cards	array
@@ -4058,6 +4061,7 @@ frozenEntries[].event.damageTail.each.then.paid.offer.objects[].id	custom(uuid.U
 frozenEntries[].event.damageTail.each.then.paid.offer.opponents	bool
 frozenEntries[].event.damageTail.each.then.paid.offer.order	array
 frozenEntries[].event.damageTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.damageTail.each.then.paid.offer.picks	array
 frozenEntries[].event.damageTail.each.then.paid.offer.picks[]	object
 frozenEntries[].event.damageTail.each.then.paid.offer.picks[].cards	array
@@ -4891,6 +4895,7 @@ frozenEntries[].event.damageTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.paid.offer.opponents	bool
 frozenEntries[].event.damageTail.then.paid.offer.order	array
 frozenEntries[].event.damageTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.damageTail.then.paid.offer.picks	array
 frozenEntries[].event.damageTail.then.paid.offer.picks[]	object
 frozenEntries[].event.damageTail.then.paid.offer.picks[].cards	array
@@ -5661,6 +5666,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.objects[].id	
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.order	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks[].cards	array
@@ -6384,6 +6390,7 @@ frozenEntries[].event.entryTail.batch.then.paid.offer.objects[].id	custom(uuid.U
 frozenEntries[].event.entryTail.batch.then.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.batch.then.paid.offer.order	array
 frozenEntries[].event.entryTail.batch.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.batch.then.paid.offer.picks	array
 frozenEntries[].event.entryTail.batch.then.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.batch.then.paid.offer.picks[].cards	array
@@ -7031,6 +7038,7 @@ frozenEntries[].event.entryTail.keyed.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.keyed.paid.offer.order	array
 frozenEntries[].event.entryTail.keyed.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.keyed.paid.offer.picks	array
 frozenEntries[].event.entryTail.keyed.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.keyed.paid.offer.picks[].cards	array
@@ -7711,6 +7719,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.objects[].id	cus
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.order	array
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks	array
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks[].cards	array
@@ -8379,6 +8388,7 @@ frozenEntries[].event.entryTail.tokens.then.paid.offer.objects[].id	custom(uuid.
 frozenEntries[].event.entryTail.tokens.then.paid.offer.opponents	bool
 frozenEntries[].event.entryTail.tokens.then.paid.offer.order	array
 frozenEntries[].event.entryTail.tokens.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.entryTail.tokens.then.paid.offer.picks	array
 frozenEntries[].event.entryTail.tokens.then.paid.offer.picks[]	object
 frozenEntries[].event.entryTail.tokens.then.paid.offer.picks[].cards	array
@@ -9477,6 +9487,7 @@ frozenEntries[].event.keywordActionTail.then.paid.offer.objects[].id	custom(uuid
 frozenEntries[].event.keywordActionTail.then.paid.offer.opponents	bool
 frozenEntries[].event.keywordActionTail.then.paid.offer.order	array
 frozenEntries[].event.keywordActionTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.keywordActionTail.then.paid.offer.picks	array
 frozenEntries[].event.keywordActionTail.then.paid.offer.picks[]	object
 frozenEntries[].event.keywordActionTail.then.paid.offer.picks[].cards	array
@@ -10148,6 +10159,7 @@ frozenEntries[].event.lifeTail.each.then.paid.offer.objects[].id	custom(uuid.UUI
 frozenEntries[].event.lifeTail.each.then.paid.offer.opponents	bool
 frozenEntries[].event.lifeTail.each.then.paid.offer.order	array
 frozenEntries[].event.lifeTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.lifeTail.each.then.paid.offer.picks	array
 frozenEntries[].event.lifeTail.each.then.paid.offer.picks[]	object
 frozenEntries[].event.lifeTail.each.then.paid.offer.picks[].cards	array
@@ -10798,6 +10810,7 @@ frozenEntries[].event.lifeTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.paid.offer.opponents	bool
 frozenEntries[].event.lifeTail.then.paid.offer.order	array
 frozenEntries[].event.lifeTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.lifeTail.then.paid.offer.picks	array
 frozenEntries[].event.lifeTail.then.paid.offer.picks[]	object
 frozenEntries[].event.lifeTail.then.paid.offer.picks[].cards	array
@@ -12306,6 +12319,7 @@ frozenEntries[].event.millTail.run.then.paid.offer.objects[].id	custom(uuid.UUID
 frozenEntries[].event.millTail.run.then.paid.offer.opponents	bool
 frozenEntries[].event.millTail.run.then.paid.offer.order	array
 frozenEntries[].event.millTail.run.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.millTail.run.then.paid.offer.picks	array
 frozenEntries[].event.millTail.run.then.paid.offer.picks[]	object
 frozenEntries[].event.millTail.run.then.paid.offer.picks[].cards	array
@@ -12951,6 +12965,7 @@ frozenEntries[].event.millTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.paid.offer.opponents	bool
 frozenEntries[].event.millTail.then.paid.offer.order	array
 frozenEntries[].event.millTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.millTail.then.paid.offer.picks	array
 frozenEntries[].event.millTail.then.paid.offer.picks[]	object
 frozenEntries[].event.millTail.then.paid.offer.picks[].cards	array
@@ -14615,6 +14630,7 @@ frozenEntries[].event.tokenTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.paid.offer.opponents	bool
 frozenEntries[].event.tokenTail.then.paid.offer.order	array
 frozenEntries[].event.tokenTail.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.tokenTail.then.paid.offer.picks	array
 frozenEntries[].event.tokenTail.then.paid.offer.picks[]	object
 frozenEntries[].event.tokenTail.then.paid.offer.picks[].cards	array
@@ -16578,6 +16594,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.objects[].id	cust
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.order	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards	array
@@ -17258,6 +17275,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.objects[].i
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.order	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].cards	array
@@ -17903,6 +17921,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.objects[].id	custom(uu
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.order	array
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks[].cards	array
@@ -18568,6 +18587,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.objects[].id	custom(
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.order	array
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks[].cards	array
@@ -19302,6 +19322,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.objects[].id	custom
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.opponents	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.order	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.order[]	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.ownObjectsOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks[]	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks[].cards	array
@@ -23278,6 +23299,7 @@ movesAwaitingTokens[].counterTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].counterTail.then.paid.offer.order	array
 movesAwaitingTokens[].counterTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].counterTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].counterTail.then.paid.offer.picks	array
 movesAwaitingTokens[].counterTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].counterTail.then.paid.offer.picks[].cards	array
@@ -23934,6 +23956,7 @@ movesAwaitingTokens[].damageTail.each.each.paid.offer.objects[].id	custom(uuid.U
 movesAwaitingTokens[].damageTail.each.each.paid.offer.opponents	bool
 movesAwaitingTokens[].damageTail.each.each.paid.offer.order	array
 movesAwaitingTokens[].damageTail.each.each.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.each.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].damageTail.each.each.paid.offer.picks	array
 movesAwaitingTokens[].damageTail.each.each.paid.offer.picks[]	object
 movesAwaitingTokens[].damageTail.each.each.paid.offer.picks[].cards	array
@@ -24581,6 +24604,7 @@ movesAwaitingTokens[].damageTail.each.then.paid.offer.objects[].id	custom(uuid.U
 movesAwaitingTokens[].damageTail.each.then.paid.offer.opponents	bool
 movesAwaitingTokens[].damageTail.each.then.paid.offer.order	array
 movesAwaitingTokens[].damageTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].damageTail.each.then.paid.offer.picks	array
 movesAwaitingTokens[].damageTail.each.then.paid.offer.picks[]	object
 movesAwaitingTokens[].damageTail.each.then.paid.offer.picks[].cards	array
@@ -25414,6 +25438,7 @@ movesAwaitingTokens[].damageTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].damageTail.then.paid.offer.order	array
 movesAwaitingTokens[].damageTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].damageTail.then.paid.offer.picks	array
 movesAwaitingTokens[].damageTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].damageTail.then.paid.offer.picks[].cards	array
@@ -26184,6 +26209,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.objects[].id	
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.order	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks[].cards	array
@@ -26907,6 +26933,7 @@ movesAwaitingTokens[].entryTail.batch.then.paid.offer.objects[].id	custom(uuid.U
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.order	array
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks[].cards	array
@@ -27554,6 +27581,7 @@ movesAwaitingTokens[].entryTail.keyed.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.keyed.paid.offer.order	array
 movesAwaitingTokens[].entryTail.keyed.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.keyed.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.keyed.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.keyed.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.keyed.paid.offer.picks[].cards	array
@@ -28234,6 +28262,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.objects[].id	cus
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.order	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks[].cards	array
@@ -28902,6 +28931,7 @@ movesAwaitingTokens[].entryTail.tokens.then.paid.offer.objects[].id	custom(uuid.
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.opponents	bool
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.order	array
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks	array
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks[]	object
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks[].cards	array
@@ -30000,6 +30030,7 @@ movesAwaitingTokens[].keywordActionTail.then.paid.offer.objects[].id	custom(uuid
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.order	array
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks	array
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks[].cards	array
@@ -30671,6 +30702,7 @@ movesAwaitingTokens[].lifeTail.each.then.paid.offer.objects[].id	custom(uuid.UUI
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.opponents	bool
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.order	array
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.each.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks	array
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks[]	object
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks[].cards	array
@@ -31321,6 +31353,7 @@ movesAwaitingTokens[].lifeTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].lifeTail.then.paid.offer.order	array
 movesAwaitingTokens[].lifeTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].lifeTail.then.paid.offer.picks	array
 movesAwaitingTokens[].lifeTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].lifeTail.then.paid.offer.picks[].cards	array
@@ -32829,6 +32862,7 @@ movesAwaitingTokens[].millTail.run.then.paid.offer.objects[].id	custom(uuid.UUID
 movesAwaitingTokens[].millTail.run.then.paid.offer.opponents	bool
 movesAwaitingTokens[].millTail.run.then.paid.offer.order	array
 movesAwaitingTokens[].millTail.run.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].millTail.run.then.paid.offer.picks	array
 movesAwaitingTokens[].millTail.run.then.paid.offer.picks[]	object
 movesAwaitingTokens[].millTail.run.then.paid.offer.picks[].cards	array
@@ -33474,6 +33508,7 @@ movesAwaitingTokens[].millTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].millTail.then.paid.offer.order	array
 movesAwaitingTokens[].millTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].millTail.then.paid.offer.picks	array
 movesAwaitingTokens[].millTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].millTail.then.paid.offer.picks[].cards	array
@@ -35138,6 +35173,7 @@ movesAwaitingTokens[].tokenTail.then.paid.offer.objects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.paid.offer.opponents	bool
 movesAwaitingTokens[].tokenTail.then.paid.offer.order	array
 movesAwaitingTokens[].tokenTail.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].tokenTail.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].tokenTail.then.paid.offer.picks	array
 movesAwaitingTokens[].tokenTail.then.paid.offer.picks[]	object
 movesAwaitingTokens[].tokenTail.then.paid.offer.picks[].cards	array
@@ -37101,6 +37137,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.objects[].id	cust
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards	array
@@ -37781,6 +37818,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.objects[].i
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].cards	array
@@ -38426,6 +38464,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.objects[].id	custom(uu
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks[].cards	array
@@ -39091,6 +39130,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.objects[].id	custom(
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks[].cards	array
@@ -39825,6 +39865,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.objects[].id	custom
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.opponents	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.order	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.order[]	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.ownObjectsOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks[]	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks[].cards	array
@@ -41820,6 +41861,7 @@ pendingChoices[].anyPlayerOffer.objects[].id	custom(uuid.UUID)
 pendingChoices[].anyPlayerOffer.opponents	bool
 pendingChoices[].anyPlayerOffer.order	array
 pendingChoices[].anyPlayerOffer.order[]	custom(uuid.UUID)
+pendingChoices[].anyPlayerOffer.ownObjectsOnly	bool
 pendingChoices[].anyPlayerOffer.picks	array
 pendingChoices[].anyPlayerOffer.picks[]	object
 pendingChoices[].anyPlayerOffer.picks[].cards	array
@@ -43315,6 +43357,7 @@ pendingChoices[].attackSplit.tail.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.paid.offer.opponents	bool
 pendingChoices[].attackSplit.tail.paid.offer.order	array
 pendingChoices[].attackSplit.tail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].attackSplit.tail.paid.offer.picks	array
 pendingChoices[].attackSplit.tail.paid.offer.picks[]	object
 pendingChoices[].attackSplit.tail.paid.offer.picks[].cards	array
@@ -45479,6 +45522,7 @@ pendingChoices[].diceRoll.then.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.paid.offer.opponents	bool
 pendingChoices[].diceRoll.then.paid.offer.order	array
 pendingChoices[].diceRoll.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].diceRoll.then.paid.offer.picks	array
 pendingChoices[].diceRoll.then.paid.offer.picks[]	object
 pendingChoices[].diceRoll.then.paid.offer.picks[].cards	array
@@ -46533,6 +46577,7 @@ pendingChoices[].divideShield.walk.each.paid.offer.objects[].id	custom(uuid.UUID
 pendingChoices[].divideShield.walk.each.paid.offer.opponents	bool
 pendingChoices[].divideShield.walk.each.paid.offer.order	array
 pendingChoices[].divideShield.walk.each.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.paid.offer.ownObjectsOnly	bool
 pendingChoices[].divideShield.walk.each.paid.offer.picks	array
 pendingChoices[].divideShield.walk.each.paid.offer.picks[]	object
 pendingChoices[].divideShield.walk.each.paid.offer.picks[].cards	array
@@ -47180,6 +47225,7 @@ pendingChoices[].divideShield.walk.then.paid.offer.objects[].id	custom(uuid.UUID
 pendingChoices[].divideShield.walk.then.paid.offer.opponents	bool
 pendingChoices[].divideShield.walk.then.paid.offer.order	array
 pendingChoices[].divideShield.walk.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].divideShield.walk.then.paid.offer.picks	array
 pendingChoices[].divideShield.walk.then.paid.offer.picks[]	object
 pendingChoices[].divideShield.walk.then.paid.offer.picks[].cards	array
@@ -47833,6 +47879,7 @@ pendingChoices[].libraryOrder.then.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.paid.offer.opponents	bool
 pendingChoices[].libraryOrder.then.paid.offer.order	array
 pendingChoices[].libraryOrder.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].libraryOrder.then.paid.offer.picks	array
 pendingChoices[].libraryOrder.then.paid.offer.picks[]	object
 pendingChoices[].libraryOrder.then.paid.offer.picks[].cards	array
@@ -48540,6 +48587,7 @@ pendingChoices[].nameThen.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].nameThen.paid.offer.opponents	bool
 pendingChoices[].nameThen.paid.offer.order	array
 pendingChoices[].nameThen.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].nameThen.paid.offer.ownObjectsOnly	bool
 pendingChoices[].nameThen.paid.offer.picks	array
 pendingChoices[].nameThen.paid.offer.picks[]	object
 pendingChoices[].nameThen.paid.offer.picks[].cards	array
@@ -49687,6 +49735,7 @@ pendingChoices[].pickTail.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].pickTail.paid.offer.opponents	bool
 pendingChoices[].pickTail.paid.offer.order	array
 pendingChoices[].pickTail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].pickTail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].pickTail.paid.offer.picks	array
 pendingChoices[].pickTail.paid.offer.picks[]	object
 pendingChoices[].pickTail.paid.offer.picks[].cards	array
@@ -50379,6 +50428,7 @@ pendingChoices[].replacementResume.event.counterTail.then.paid.offer.objects[].i
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks[].cards	array
@@ -51035,6 +51085,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.objects
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.order	array
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks	array
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks[].cards	array
@@ -51682,6 +51733,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.objects
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks[].cards	array
@@ -52515,6 +52567,7 @@ pendingChoices[].replacementResume.event.damageTail.then.paid.offer.objects[].id
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks[].cards	array
@@ -53285,6 +53338,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.picks[].cards	array
@@ -54008,6 +54062,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.objects
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks[].cards	array
@@ -54655,6 +54710,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.objects[].id
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks[].cards	array
@@ -55335,6 +55391,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.off
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.picks[].cards	array
@@ -56003,6 +56060,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks[].cards	array
@@ -57101,6 +57159,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.objec
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks[].cards	array
@@ -57772,6 +57831,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.objects[]
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks[].cards	array
@@ -58422,6 +58482,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.objects[].id	c
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks[].cards	array
@@ -59930,6 +59991,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.objects[].
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks[].cards	array
@@ -60575,6 +60637,7 @@ pendingChoices[].replacementResume.event.millTail.then.paid.offer.objects[].id	c
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks[].cards	array
@@ -62239,6 +62302,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.objects[].id	
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks[].cards	array
@@ -64202,6 +64266,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offe
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards	array
@@ -64882,6 +64947,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.pai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].cards	array
@@ -65527,6 +65593,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.obj
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.picks[].cards	array
@@ -66192,6 +66259,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.o
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.picks[].cards	array
@@ -66926,6 +66994,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.opponents	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.order	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.ownObjectsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.picks	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.picks[]	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.picks[].cards	array
@@ -68030,6 +68099,7 @@ pendingChoices[].scryThen.paid.offer.objects[].id	custom(uuid.UUID)
 pendingChoices[].scryThen.paid.offer.opponents	bool
 pendingChoices[].scryThen.paid.offer.order	array
 pendingChoices[].scryThen.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].scryThen.paid.offer.ownObjectsOnly	bool
 pendingChoices[].scryThen.paid.offer.picks	array
 pendingChoices[].scryThen.paid.offer.picks[]	object
 pendingChoices[].scryThen.paid.offer.picks[].cards	array
@@ -68723,6 +68793,7 @@ pendingChoices[].searchPrompt.spec.thenTail.paid.offer.objects[].id	custom(uuid.
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.opponents	bool
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.order	array
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.order[]	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.paid.offer.ownObjectsOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks	array
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks[]	object
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks[].cards	array
