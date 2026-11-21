@@ -3204,6 +3204,7 @@ tail evelyn-the-covetous/collect
 tail evelyn-the-covetous/exile-step
 tail evolving-door/cast
 tail exile-from-hand-and-plot/plot
+tail exile-then-token-copy/anikthea-hand-of-erebos
 tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god

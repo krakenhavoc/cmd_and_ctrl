@@ -585,4 +585,6 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Centaur enchantment":            {Name: "Centaur", TypeLine: "Token Enchantment Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 white Soldier enchantment":            {Name: "Soldier", TypeLine: "Token Enchantment Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"3/1 red Elemental enchantment with haste": {Name: "Elemental", TypeLine: "Token Enchantment Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+	// S82 GAP batch 101: Sek'Kuar, Deathkeeper's Graveborn.
+	"3/1 black and red Graveborn with haste": {Name: "Graveborn", TypeLine: "Token Creature — Graveborn", Power: 3, Toughness: 1, Colors: []string{"B", "R"}, Keywords: []string{"haste"}},
 }
