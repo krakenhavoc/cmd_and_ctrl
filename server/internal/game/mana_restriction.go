@@ -166,6 +166,13 @@ const (
 	// the Paruns' and Obsidian Obelisk's "spend this mana only to cast
 	// a multicolored spell" (#1600).
 	ManaRestrictMulticolored = "multicolored"
+
+	// ManaRestrictDevoid permits the token only to cast a spell that has
+	// devoid (CR 702.114a, #5948): Corrupted Crossroads' "Spend this mana
+	// only to cast a spell with devoid". Cast only: an ability is not a
+	// spell. It reads the spell's printed devoid keyword (ManaSpendContext.
+	// HasDevoid), the same fact that makes the spell colourless.
+	ManaRestrictDevoid = "devoid"
 	// ManaRestrictNoGeneric is a SYMBOL-level negative clause — "this
 	// mana can't be spent to pay generic mana costs" (Jegantha, the
 	// Wellspring, #2170). Every other tag asks what the mana pays FOR;
@@ -409,6 +416,10 @@ type ManaSpendContext struct {
 	// Empty means colorless, which is what ManaRestrictColorless
 	// tests for.
 	Colors []string
+
+	// HasDevoid is set for a cast of a spell that has devoid (CR 702.114a):
+	// what ManaRestrictDevoid reads. False for every other payment.
+	HasDevoid bool
 
 	// AllCreatureTypes marks an object that is every creature type
 	// (CR 702.73a) — a changeling spell, or a permanent under a
@@ -735,6 +746,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		Supertypes:       ch.Supertypes,
 		Colors:           c.EffectiveColors(),
 		AllCreatureTypes: HasAllCreatureTypes(&c),
+		HasDevoid:        c.printsDevoid(),
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
@@ -869,6 +881,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		// either — refuse rather than read "no colours" as
 		// "colorless".
 		return ctx.hasPaidForObject() && len(ctx.Colors) == 0
+	case ManaRestrictDevoid:
+		return ctx.Purpose == SpendPurposeCast && ctx.HasDevoid
 	case ManaRestrictMonocolored:
 		// #1600, CR 105.2a. The same unknown-purpose refusal as
 		// colorless: no object, no colour count.

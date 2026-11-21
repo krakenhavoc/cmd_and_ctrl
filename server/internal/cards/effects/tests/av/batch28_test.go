@@ -78,13 +78,9 @@ func TestBatch28CardsAreRegistered(t *testing.T) {
 	// LibraryOwner parameter; it is registered now (bribery.go) and
 	// dropped from this list. Hall of the Bandit Lord was the seventh
 	// until #1547 gave mana spend riders (hall_of_the_bandit_lord.go).
-	for _, skipped := range []string{
-		effectstest.B28RampagingYaoGuaiSkipOracle, // an enters trigger cannot read the spell's X
-	} {
-		if _, ok := effects.Lookup(skipped); ok {
-			t.Errorf("%s is a declared skip and must not be registered", skipped)
-		}
-	}
+	// Rampaging Yao Guai was the last of them and came off with the GAP
+	// batch 63 (#5948): an XFromCast enters trigger's "any number of
+	// targets with total mana value X or less" (rampaging_yao_guai.go).
 }
 
 // --- lands and vanilla ---------------------------------------------

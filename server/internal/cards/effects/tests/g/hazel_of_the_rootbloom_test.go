@@ -38,14 +38,6 @@ func hazelSquirrel(t *testing.T, g *game.Game, owner uuid.UUID) uuid.UUID {
 	return ids[0]
 }
 
-func hazelPoolTotal(p *game.Player) int {
-	total := 0
-	for _, tok := range p.ManaPool {
-		total += tok.N()
-	}
-	return total
-}
-
 // X is the number of tokens tapped: two tokens are two mana, each its own
 // colour pick, for 2 life and Hazel's own tap.
 func TestHazelAddsOneManaPerTokenTapped(t *testing.T) {
@@ -74,7 +66,7 @@ func TestHazelAddsOneManaPerTokenTapped(t *testing.T) {
 	}
 	effectstest.AssertTapped(t, g, true, hazel, tokens[0], tokens[1])
 	effectstest.AssertTapped(t, g, false, tokens[2], bear)
-	if got := hazelPoolTotal(me); got != 2 {
+	if got := effectstest.HazelPoolTotal(me); got != 2 {
 		t.Errorf("mana produced %d (%v), want 2", got, me.ManaPool)
 	}
 	if me.Life != life-2 {
@@ -101,7 +93,7 @@ func TestHazelTokenCostIsNotTheTapSymbol(t *testing.T) {
 	if got := effectstest.B10ResolveAllManaPicks(t, g, me.ID, "R"); got != 1 {
 		t.Fatalf("%d colour picks, want 1", got)
 	}
-	if got := hazelPoolTotal(me); got != 1 {
+	if got := effectstest.HazelPoolTotal(me); got != 1 {
 		t.Errorf("mana produced %d, want 1", got)
 	}
 
@@ -111,7 +103,7 @@ func TestHazelTokenCostIsNotTheTapSymbol(t *testing.T) {
 	g2.WithWriteLock(func() { me2.ManaPool = nil })
 	life := me2.Life
 	effectstest.ActivateManaFor(t, g2, me2.ID, hazel2, 0, game.ManaAbilityParams{})
-	if got := hazelPoolTotal(me2); got != 0 || me2.Life != life-2 {
+	if got := effectstest.HazelPoolTotal(me2); got != 0 || me2.Life != life-2 {
 		t.Errorf("X=0: mana %d (want 0), life %d → %d (want 2 paid)", got, life, me2.Life)
 	}
 }

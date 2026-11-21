@@ -19,20 +19,11 @@ func TestFireglassMentorIsRegisteredFull(t *testing.T) {
 	}
 }
 
-func fireglassLands(me *game.Player, n int) []uuid.UUID {
-	ids := make([]uuid.UUID, n)
-	for i := n - 1; i >= 0; i-- {
-		ids[i] = uuid.New()
-		me.Library.PushTop(game.Card{InstanceID: ids[i], Name: "Swamp", TypeLine: "Basic Land — Swamp", Owner: me.ID, Controller: me.ID})
-	}
-	return ids
-}
-
 func TestFireglassMentorExilesTwoAndLetsYouPlayTheChosenOne(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	effectstest.DskB1Creature(g, me.ID, "Fireglass Mentor", "Creature — Lizard Warlock", fireglassMentorOracle, 2, 1)
-	ids := fireglassLands(me, 3)
+	ids := effectstest.FireglassLands(me, 3)
 	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, opp.ID, -1) })
 	effectstest.AdvanceTo(t, g, game.StepPostcombatMain)
 	effectstest.PassPriorityAroundTable(t, g)
@@ -58,7 +49,7 @@ func TestFireglassMentorNeedsAnOpponentToHaveLostLife(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
 	effectstest.DskB1Creature(g, me.ID, "Fireglass Mentor", "Creature — Lizard Warlock", fireglassMentorOracle, 2, 1)
-	ids := fireglassLands(me, 3)
+	ids := effectstest.FireglassLands(me, 3)
 	// Losing life yourself does not count.
 	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, -1) })
 	effectstest.AdvanceTo(t, g, game.StepPostcombatMain)

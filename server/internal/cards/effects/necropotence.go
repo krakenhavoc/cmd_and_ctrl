@@ -150,7 +150,7 @@ func necropotenceExileDiscarded(g *game.Game, item *game.StackItem, controller, 
 // sweep, another Necropotence-shaped effect moving it on — and the
 // instruction does nothing rather than reaching into a zone it was
 // never pointed at.
-func necropotenceDeliverExiled(g *game.Game, item *game.StackItem) error {
+func NecropotenceDeliverExiled(g *game.Game, item *game.StackItem) error {
 	for _, ref := range item.Targets {
 		if ref.Kind != game.TargetCard || ref.ID == uuid.Nil {
 			continue
