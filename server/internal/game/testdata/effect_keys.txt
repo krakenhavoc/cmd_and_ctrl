@@ -408,6 +408,7 @@ body ruthless-lawbringer/destroy
 body s82-bns-b02/back-for-more-fight
 body s82-bns-b05/mistbind-clique-tap-lands
 body s82-bns-b27/dinosaur-spell-gains-fight
+body s82-gap-b145/dutiful-replicator-copy
 body s82-mid-b14/lynde-return-curse
 body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
@@ -2217,6 +2218,7 @@ payunless pay-unless/divert-change-target
 payunless pay-unless/divert-disaster-lander
 payunless pay-unless/dont-make-a-sound-surveil
 payunless pay-unless/draw-a-card
+payunless pay-unless/dutiful-replicator-copy
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
 payunless pay-unless/edgars-awakening-return
@@ -2224,6 +2226,7 @@ payunless pay-unless/eirdu-transform
 payunless pay-unless/electro-assaulting-battery-damage
 payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
+payunless pay-unless/elven-bow-token-and-attach
 payunless pay-unless/emiel-the-blessed-counters
 payunless pay-unless/endless-ranks-of-hydra-return
 payunless pay-unless/energy-create-servo
@@ -2992,6 +2995,7 @@ tail cmdr2-s40/time-counters
 tail cmdr2-s43/epic-experiment-offer
 tail cmdr2-s43/stolen-goods-grant
 tail coalstoke-gearhulk/entered
+tail cogwork-assembler/haste-and-exile-copy
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
 tail condemn/gain-life
@@ -3853,6 +3857,7 @@ tail taster-of-wares/grant-cast-of-exiled-spell
 tail tawnos-solemn-survivor/mill-two
 tail tazri-stalwart-survivor/after-mill
 tail tchaka/after-mill
+tail teferis-puzzle-box/draw-that-many
 tail tempestra-dame-of-games/haste-and-sacrifice-copy
 tail tempt-with-discovery/caster-search
 tail tempt-with-discovery/next-offer
