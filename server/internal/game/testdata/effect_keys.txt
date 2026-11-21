@@ -310,6 +310,7 @@ body mindleech-ghoul/exile
 body miracle/granted-offer
 body miracle/offer
 body modular/move-counters
+body monarch/become
 body monarch/crown
 body monarch/draw
 body msc-m5/origin-of-thor-counter
@@ -792,6 +793,7 @@ choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/fear-of-missing-out-draw
+choose choose-cards/fell-beasts-shriek-pick
 choose choose-cards/feral-encounter
 choose choose-cards/fiend-of-the-shadows-exile
 choose choose-cards/finale-of-revelation-untap-lands
@@ -1537,6 +1539,7 @@ condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-dealt-combat-damage
 condition combat/that-creature-hit-a-player
 condition combat/the-wrath-of-khan-next-beginning-of-combat
+condition combat/your-creature-hit-a-player
 condition combat/your-creature-hit-a-player-or-planeswalker
 condition combat/your-creature-hit-the-player
 condition damage/a-creature-combat-to-you
@@ -4210,6 +4213,7 @@ tail then/shuffle-then-draw-n
 tail then/silver-bolt-destroy-werewolf
 tail then/skrelv-defector-mite-color-chosen
 tail then/sorcerers-strongbox-draw
+tail then/sorcerous-squall-cast
 tail then/sorin-lord-of-innistrad-return
 tail then/spawn-of-mayhem-counter
 tail then/sphinx-of-clear-skies-take
