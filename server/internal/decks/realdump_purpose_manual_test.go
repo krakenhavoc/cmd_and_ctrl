@@ -256,6 +256,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 156 (#5948).
 	"Ib Halfheart, Goblin Tactician": "4 damage only to the creatures blocking the Goblin it sacrifices: a blocked attacker's blockers, not a board",
+
+	// S82 GAP batch 212 (#5948).
+	"Elder Brain": "exiles only the attacked player's hand, then they draw that many: it touches no permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

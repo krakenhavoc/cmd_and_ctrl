@@ -48,6 +48,7 @@ body ajani-nacatl-avenger/damage
 body all-out-assault/untap-each-creature-you-control
 body ambulatory-edifice/shrink
 body ancestral-katana/attach
+body ancient-brass-dragon/reanimate
 body angel-of-suffering/mill-twice
 body annihilator/sacrifice
 body ant-man-colony-commander/counter
@@ -3296,6 +3297,7 @@ tail demonlord-belzenlok/put-into-hand
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table
+tail dice/ancient-brass-dragon-rolled
 tail dice/ancient-copper-dragon-treasures
 tail dice/ancient-gold-dragon-tokens
 tail dice/ancient-silver-dragon-draw
@@ -3322,6 +3324,7 @@ tail dice/goblin-morningstar-table
 tail dice/grave-endeavor-rolled
 tail dice/herald-of-hadar-table
 tail dice/hoarding-ogre-treasures
+tail dice/iron-mastiff-rolled
 tail dice/lightfoot-rogue-table
 tail dice/loathsome-troll-rolled
 tail dice/luck-bobblehead-results
@@ -4260,6 +4263,7 @@ tail then/dream-eater-reflexive-bounce
 tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
+tail then/elder-brain-draw
 tail then/elesh-norn-argent-etchings-flicker
 tail then/elven-farsight-after-scry
 tail then/empty-the-laboratory-reveal
@@ -4283,6 +4287,7 @@ tail then/gap-b07-soul-separator-tokens
 tail then/gap-b56-charitable-levy
 tail then/gap-b92-shuffle-then-investigate
 tail then/get-energy
+tail then/ghastly-death-tyrant-lose-life
 tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
 tail then/goblin-recruiter-order
