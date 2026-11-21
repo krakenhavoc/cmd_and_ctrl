@@ -31,16 +31,7 @@ func init() {
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: selfCreature,
-			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := 0
-				for _, a := range g.BattlefieldCardsForEffect() {
-					if a.IsAttachedTo(source.InstanceID) && (a.IsAura() || a.HasSubtype("Equipment")) {
-						n++
-					}
-				}
-				c.Power += n
-				c.Toughness += n
-			},
+			Apply:     r34PlusOnePerAuraAndEquipmentOnSource,
 		}},
 		Triggered: []game.TriggeredAbility{
 			gapB62DiesAttached("Gunner Conscript — it was enchanted: create a Junk token", true, junk),

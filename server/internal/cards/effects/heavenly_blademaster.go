@@ -46,16 +46,7 @@ func init() {
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller && target.InstanceID != source.InstanceID
 			},
-			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := 0
-				for _, a := range g.BattlefieldCardsForEffect() {
-					if a.IsAttachedTo(source.InstanceID) && (a.IsAura() || a.HasSubtype("Equipment")) {
-						n++
-					}
-				}
-				c.Power += n
-				c.Toughness += n
-			},
+			Apply: r34PlusOnePerAuraAndEquipmentOnSource,
 		}},
 	})
 }

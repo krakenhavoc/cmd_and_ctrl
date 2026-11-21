@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -43,15 +41,9 @@ func init() {
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error {
 				return ChoosePermanents{
-					Question: "Finality — you may put two +1/+1 counters on a creature you control",
-					Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-						ids := permanentsControlledByMatching(g, of, Creature())
-						if len(ids) == 0 {
-							return nil, 0, 0
-						}
-						return ids, 0, 1
-					},
-					Keyed: finalityChosen,
+					Question:   "Finality — you may put two +1/+1 counters on a creature you control",
+					Candidates: r34UpToOneCreatureYouControl,
+					Keyed:      finalityChosen,
 				}.Apply(ctx)
 			}),
 			Instruction(func(ctx *Context) error {

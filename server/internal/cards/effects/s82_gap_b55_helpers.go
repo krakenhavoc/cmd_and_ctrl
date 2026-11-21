@@ -73,15 +73,9 @@ func gapB55BirthingRitualLook(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	looked := g.LookAtTopOfLibraryForEffect(ctx.Controller(), 7)
 	return ChoosePermanents{
-		Question: "Birthing Ritual — you may sacrifice a creature",
-		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-			ids := permanentsControlledByMatching(g, of, Creature())
-			if len(ids) == 0 {
-				return nil, 0, 0
-			}
-			return ids, 0, 1
-		},
-		Keyed: gapB55BirthingRitualPick,
-		Carry: looked,
+		Question:   "Birthing Ritual — you may sacrifice a creature",
+		Candidates: r34UpToOneCreatureYouControl,
+		Keyed:      gapB55BirthingRitualPick,
+		Carry:      looked,
 	}.Apply(ctx)
 }
