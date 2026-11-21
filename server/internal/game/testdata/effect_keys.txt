@@ -2796,6 +2796,7 @@ run prompt-run/way-of-the-deathbringer-beast
 run prompt-run/wedding-security-counter-draw
 run prompt-run/west-wind-avatar-gain-3
 run prompt-run/white-plume-adventurer-untap
+run prompt-run/wicked-guardian-damage
 run prompt-run/wilhelt-the-rotcleaver-draw
 run prompt-run/will-of-the-abzan-lose-life
 run prompt-run/winnowing-sacrifice-unshared
