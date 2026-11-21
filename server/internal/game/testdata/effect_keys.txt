@@ -3186,6 +3186,7 @@ tail dose-of-dawnglow/blight
 tail dragonhawk-fates-tempest/schedule-damage
 tail drain/gain-the-life-lost
 tail drake-familiar/after-bounce
+tail dread-slaver/black-zombie
 tail dread-summons/zombie-per-creature-milled
 tail dream-harvest/after-exile
 tail dream-harvest/exile-step
