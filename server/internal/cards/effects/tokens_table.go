@@ -585,4 +585,8 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Centaur enchantment":            {Name: "Centaur", TypeLine: "Token Enchantment Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 white Soldier enchantment":            {Name: "Soldier", TypeLine: "Token Enchantment Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"3/1 red Elemental enchantment with haste": {Name: "Elemental", TypeLine: "Token Enchantment Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+
+	// Doctor Who (#5948): Iraxxa, Empress of Mars; Vrestin, Menoptra Leader.
+	"2/2 red Alien Warrior":                        {Name: "Alien Warrior", TypeLine: "Token Creature — Alien Warrior", Power: 2, Toughness: 2, Colors: []string{"R"}},
+	"1/1 green and white Alien Insect with flying": {Name: "Alien Insect", TypeLine: "Token Creature — Alien Insect", Power: 1, Toughness: 1, Colors: []string{"G", "W"}, Keywords: []string{"flying"}},
 }
