@@ -12,5 +12,5 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 //
 // No simplification.
 func init() {
-	effects.GapB183RegisterTappedDual("f0367926-4380-4d22-8cb8-46c2076f102a", "Coastal Tower", "W", "U")
+	effects.R42RegisterTappedDual("f0367926-4380-4d22-8cb8-46c2076f102a", "Coastal Tower", "W", "U")
 }

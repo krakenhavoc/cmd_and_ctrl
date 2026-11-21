@@ -95,30 +95,6 @@ func GapB193ACreatureWithACounterYouControlDied(ev game.Event, source *game.Card
 	return false
 }
 
-// GapB193RavenousDraw is the draw half of ravenous (CR 702.173 in the
-// Warhammer 40,000 rules text): "If X is 5 or more, draw a card when this
-// creature enters." X is the value announced for the spell, read off the
-// permanent as the trigger is built.
-func GapB193RavenousDraw(name string) game.TriggeredAbility {
-	label := name + " — ravenous: draw a card"
-	return game.TriggeredAbility{
-		Watches:   []game.EventKind{game.EventETB},
-		AppliesTo: Self,
-		Key:       label,
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			item.Params.Amount = source.CastX()
-			return item
-		},
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			if item.Params.Amount < 5 {
-				return nil
-			}
-			return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-		},
-	}
-}
-
 // GapB193DestroyedArtifactControllerDraws is the tail of "destroy up to one
 // target artifact. If an artifact is destroyed this way, its controller draws
 // a card": the controller is the first carried id, and the draw happens only

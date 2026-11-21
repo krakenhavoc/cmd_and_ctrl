@@ -12,5 +12,5 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 //
 // No simplification.
 func init() {
-	effects.GapB183RegisterTappedDual("9b64c0f4-b917-4a0d-b033-30ab71aab807", "Shivan Oasis", "R", "G")
+	effects.R42RegisterTappedDual("9b64c0f4-b917-4a0d-b033-30ab71aab807", "Shivan Oasis", "R", "G")
 }

@@ -49,29 +49,6 @@ func GapB194GrantNextNoncreatureSpellCascade(g *game.Game, item *game.StackItem)
 	}.Apply(NewContext(g, item))
 }
 
-// GapB194RavenousDraw is the draw half of ravenous (Exocrine): "If X is 5 or
-// more, draw a card when this creature enters." X is the value announced for
-// the spell, read off the permanent as the trigger is built.
-func GapB194RavenousDraw(name string) game.TriggeredAbility {
-	label := name + " — ravenous: draw a card"
-	return game.TriggeredAbility{
-		Watches:   []game.EventKind{game.EventETB},
-		AppliesTo: Self,
-		Key:       label,
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			item.Params.Amount = source.CastX()
-			return item
-		},
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			if item.Params.Amount < 5 {
-				return nil
-			}
-			return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-		},
-	}
-}
-
 // GapB194ExocrineEnters is "When this creature enters, it deals X damage to
 // each player and each other creature." X is the value announced for the
 // spell (CR 107.3m), carried on the item, so it is exact even if the Exocrine

@@ -30,7 +30,7 @@ func init() {
 		XMatters:                   true,
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{effects.XCounters(game.CounterPlusOne)},
 		Triggered: []game.TriggeredAbility{
-			effects.GapB195RavenousDraw("Zoanthrope"),
+			effects.R42RavenousDraw("Zoanthrope"),
 			effects.Ward(effects.WardMana("{2}"), "Zoanthrope — ward {2}"),
 			effects.EtbDealsCastXDamage("Zoanthrope — it deals X damage to any target", effects.TargetAny()),
 		},

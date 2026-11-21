@@ -12,5 +12,5 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 //
 // No simplification.
 func init() {
-	effects.GapB182RegisterTappedDual("6a40823f-130c-4416-a987-75e205d3e1dd", "Salt Marsh", "U", "B")
+	effects.R42RegisterTappedDual("6a40823f-130c-4416-a987-75e205d3e1dd", "Salt Marsh", "U", "B")
 }

@@ -12,5 +12,5 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 //
 // No simplification.
 func init() {
-	effects.GapB182RegisterTappedDual("018129dd-f578-4fc9-b6f8-b13ed0c75a8d", "Urborg Volcano", "B", "R")
+	effects.R42RegisterTappedDual("018129dd-f578-4fc9-b6f8-b13ed0c75a8d", "Urborg Volcano", "B", "R")
 }

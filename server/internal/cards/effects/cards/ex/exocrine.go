@@ -31,7 +31,7 @@ func init() {
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{effects.XCounters(game.CounterPlusOne)},
 		Purpose:                    game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true, Partial: true}},
 		Triggered: []game.TriggeredAbility{
-			effects.GapB194RavenousDraw("Exocrine"),
+			effects.R42RavenousDraw("Exocrine"),
 			effects.GapB194ExocrineEnters("Exocrine — it deals X damage to each player and each other creature"),
 		},
 	})

@@ -12,29 +12,6 @@ import (
 // puts on creatures. Counter kinds are free-form strings (game/counter_types.go).
 const GapB195InfectionCounter = "infection"
 
-// GapB195RavenousDraw is the draw half of ravenous (Zoanthrope): "If X is 5 or
-// more, draw a card when this creature enters." X is the value announced for
-// the spell, read off the permanent as the trigger is built.
-func GapB195RavenousDraw(name string) game.TriggeredAbility {
-	label := name + " — ravenous: draw a card"
-	return game.TriggeredAbility{
-		Watches:   []game.EventKind{game.EventETB},
-		AppliesTo: Self,
-		Key:       label,
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			item.Params.Amount = source.CastX()
-			return item
-		},
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			if item.Params.Amount < 5 {
-				return nil
-			}
-			return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-		},
-	}
-}
-
 // GapB195CopyTheNextInstantOrSorcery is Tzaangor Shaman's effect: "copy the
 // next instant or sorcery spell you cast this turn when you cast it. You may
 // choose new targets for the copy." It is Doublecast's delayed trigger.

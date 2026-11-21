@@ -32,7 +32,7 @@ func init() {
 		XMatters:                   true,
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{effects.XCounters(game.CounterPlusOne)},
 		Triggered: []game.TriggeredAbility{
-			effects.GapB193RavenousDraw("Ravener"),
+			effects.R42RavenousDraw("Ravener"),
 			effects.Targeting(effects.WhenThisEnters("Ravener — target creature attacks target opponent this turn if able", effects.GapB193TargetCreatureAttacksTargetOpponent),
 				effects.Clauses(effects.TargetCreature("target creature"), effects.TargetPlayer("target opponent", effects.Opponent()))),
 		},

@@ -12,5 +12,5 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 //
 // No simplification.
 func init() {
-	effects.GapB183RegisterTappedDual("cade8b94-2998-4d23-87bb-9fbdddd19dea", "Elfhame Palace", "G", "W")
+	effects.R42RegisterTappedDual("cade8b94-2998-4d23-87bb-9fbdddd19dea", "Elfhame Palace", "G", "W")
 }
