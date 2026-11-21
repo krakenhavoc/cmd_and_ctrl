@@ -59,12 +59,7 @@ func init() {
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				_, died := diedCreature(ev, g)
 				return died && ev.CardID != source.InstanceID && dealtDamageByThisTurn(g, source.InstanceID, ev.CardID)
-			}, "Zurgo Helmsmasher — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
-				if !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Zurgo Helmsmasher — put a +1/+1 counter on it", gapB99CounterOnThis),
 		},
 		Static: []game.StaticAbility{
 			AttacksEachCombat(),

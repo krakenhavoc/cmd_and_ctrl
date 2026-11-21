@@ -2974,6 +2974,7 @@ tail carrion-locust/lose-life
 tail cease/gain-and-draw
 tail cemetery-desecrator/exiled
 tail cemetery-tampering/offer-the-exiled-card
+tail chainer-dementia-master/black-nightmares
 tail chandra-dressed-to-kill/cast-if-red
 tail chandra-dressed-to-kill/ultimate
 tail chandra-flameshaper/choose-exiled
