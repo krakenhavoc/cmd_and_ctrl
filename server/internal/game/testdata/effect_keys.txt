@@ -3040,6 +3040,7 @@ tail deliver-from-chaos/after-exile
 tail demilich/copy-exiled
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
+tail demonlord-belzenlok/put-into-hand
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail dice/aberrant-mind-sorcerer-table
 tail dice/ancient-copper-dragon-treasures
