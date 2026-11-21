@@ -87,6 +87,7 @@ body cait-sith/boost
 body campsite-cuisine/boost-attackers
 body cascade/bottom-if-not-cast
 body cascade/the-spell-just-cast
+body cascade/the-spell-you-just-cast
 body casey-jones-vigilante/discard-three-at-random
 body casualty/copy
 body catalog/activated
@@ -110,6 +111,7 @@ body copy/the-ability-you-just-activated
 body copy/the-spell-per-commander-cast
 body copy/the-spell-you-just-cast
 body copy/the-spell-you-just-cast-twice
+body copy/the-x-spell-or-ability-you-just-used
 body copy/token-copy-of-the-payload
 body cornered-crook/damage
 body counter/plus-one-and-haste-for-the-payload
@@ -220,6 +222,8 @@ body forgehammer-centurion/cant-block
 body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
+body gap-b186/return-to-battlefield
+body gap-b187/return-died-tapped
 body gap-b55-voltstorm-angel/modes
 body gap-b82/land-damages-creature
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
@@ -305,6 +309,7 @@ body loamcrafter-faun/return-to-hand
 body lockjaw/unblockable
 body long-river-lurker/flicker-that-creature
 body ltb/sacrifice-the-source
+body lucius-the-eternal/return-from-exile
 body madness/graveyard-if-not-cast
 body madness/offer
 body magma-pummeler/remove-counters
@@ -595,6 +600,7 @@ castfollowup kyloxs-voltstrider-bottom-instead-of-graveyard
 castfollowup maralen-fae-ascendant-once-each-turn
 castfollowup msc6/helmut-zemo-mastermind-counter
 castfollowup share-the-spoils-played
+castfollowup soundwave/convert-if-cast
 castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
 choose any-player-each/cleansing-destroy
@@ -818,6 +824,7 @@ choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/emperor-of-bones-reanimate
 choose choose-cards/end-blaze-epiphany-play
 choose choose-cards/ensign-pavel-chekov-picked
+choose choose-cards/epistolary-librarian-cast
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
 choose choose-cards/eumidian-wastewaker-discard
@@ -1223,6 +1230,7 @@ choose choose-cards/neo-invoke-calamity-exile
 choose choose-cards/neo-invoke-calamity-picked
 choose choose-cards/next-of-kin-creature
 choose choose-cards/nexus-of-becoming-exile
+choose choose-cards/neyam-shai-murad-pick
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
 choose choose-cards/nicol-bolas-dragon-god-exile
@@ -1246,6 +1254,7 @@ choose choose-cards/organ-hoarder-take
 choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/otc-gonti-lord-of-luxury-exile
+choose choose-cards/out-of-the-tombs-return
 choose choose-cards/ovinomancer-return-three-basic-lands
 choose choose-cards/pack-guardian-discard-land
 choose choose-cards/paladin-elizabeth-taggerdy-put
@@ -1440,6 +1449,7 @@ choose choose-cards/tangle-wire-tap
 choose choose-cards/tasigur-the-golden-fang-return
 choose choose-cards/taster-of-wares-exile
 choose choose-cards/taster-of-wares-reveal
+choose choose-cards/technomancer-return
 choose choose-cards/teferi-akosa-discard-the-one
 choose choose-cards/teferi-akosa-discard-two-or-creature
 choose choose-cards/teferi-akosa-tap-any-number
@@ -1590,6 +1600,7 @@ coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
 coinflip coin-flip/krark-the-thumbless
 coinflip coin-flip/mana-crypt-damage
+coinflip coin-flip/mutalith-vortex-beast-warp-vortex
 coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
@@ -1620,8 +1631,10 @@ condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
 condition cast/you-next-cast
 condition cast/you-next-cast-a-lesson
+condition cast/you-next-cast-a-noncreature-spell
 condition cast/you-next-cast-at-most-mv
 condition cast/you-next-cast-from-hand
+condition cast/you-next-cast-or-activate-x
 condition cast/you-next-cast-x-in-mana-cost
 condition caveat-h2/vizkopa-guildmage-you-gain-life
 condition clone-saga/named-creature-combat-damage-to-player
@@ -1785,6 +1798,7 @@ confirm confirm/illuna-apex-of-wishes-put
 confirm confirm/imposing-grandeur-may-wheel
 confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/innocuous-researcher-untap
+confirm confirm/inquisitor-eisenhorn-reveal
 confirm confirm/invocation-of-the-founders-copy
 confirm confirm/iroh-tea-master-give
 confirm confirm/isolated-watchtower-reveal
@@ -1973,6 +1987,7 @@ drawinstead forbidden-crypt
 drawinstead hullbreacher-treasure
 drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
+drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
@@ -2302,11 +2317,13 @@ option option-pick/thrull-wizard-pay
 option option-pick/time-travel
 option option-pick/tireless-provisioner-token
 option option-pick/toils-of-night-and-day-tap-or-untap
+option option-pick/tomb-blade-lose-or-sacrifice
 option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
 option option-pick/torment-of-scarabs-answer
 option option-pick/tresserhorns-lord-returned-choice
+option option-pick/triarch-stalker-opponent
 option option-pick/trigger-opponent-chooser
 option option-pick/turnabout-type-and-direction
 option option-pick/turtles-forever-opponent
@@ -2529,6 +2546,7 @@ payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
 payunless pay-unless/monstrosity-of-the-lake-stun
+payunless pay-unless/mortarion-warriors
 payunless pay-unless/mtenda-lion-prevent-combat-damage
 payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
@@ -2742,6 +2760,7 @@ run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/cataclysmic-gearhulk-keep
+run prompt-run/chaos-defiler-destroy
 run prompt-run/chitterspitter-acorn
 run prompt-run/choking-miasma-counter
 run prompt-run/cmdr2-b09-foul-rebirth-token
@@ -2770,6 +2789,7 @@ run prompt-run/disciple-of-caelus-nin-phase-out
 run prompt-run/disciple-of-freyalise-payout
 run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
+run prompt-run/dredge-the-mire-chosen
 run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
 run prompt-run/duneblast-destroy-the-rest
@@ -3531,6 +3551,7 @@ tail evelyn-the-covetous/collect
 tail evelyn-the-covetous/exile-step
 tail evolving-door/cast
 tail exile-from-hand-and-plot/plot
+tail exile-pile/praesidium-protectiva-back-on-top
 tail exile-then-token-copy/anikthea-hand-of-erebos
 tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/lazotep-quarry
@@ -3635,6 +3656,7 @@ tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
 tail graveyard-exile/hour-of-eternity-zombie-copies
+tail graveyard-exile/malanthrope-counters
 tail graveyard-exile/suffer-the-past-drain
 tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
@@ -3691,6 +3713,7 @@ tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
+tail if-it-went/aspiring-champion-ruinous-ascension
 tail ilharg-the-raze-boar/return-at-end-step
 tail illuna-apex-of-wishes/after-exile
 tail immortal-obligation/duty-rules
@@ -3701,6 +3724,7 @@ tail incubate/next-round
 tail incubate/transform-all-incubators
 tail indoctrination-attendant/mite
 tail infernal-vessel/demon
+tail inquisitorial-rosette/menace
 tail insidious-roots/counter-on-each-plant
 tail instrument-of-the-bards/treasure-if-legendary
 tail interpret-the-signs/reveal-and-draw
@@ -3749,11 +3773,13 @@ tail lieutenant-nyota-uhura/after-exile
 tail life-exchange/second-half
 tail life/gain-equal-to-lost
 tail liliana-deaths-majesty/black-zombies
+tail liliana-untouched-by-death/after-mill
 tail living-death/return-exiled
 tail living-death/sacrifice-creatures
 tail loafing-giant/after-mill
 tail london-mulligan/cards-down
 tail lrell-fierce-visionary/sacrifice-at-end
+tail lucius-the-eternal/exiled
 tail lulu-loyal-hollyphant/untap
 tail make-your-own-luck/plot-then-rest
 tail makeshift-mannequin/grant-while-counter
@@ -3857,6 +3883,8 @@ tail nantuko-cultivator/discarded
 tail narset-enlightened-exile/copy-exiled
 tail nashi-moons-legacy/copy-exiled
 tail necromantic-selection/black-zombie-then-exile
+tail necron-deathmark/after-mill
+tail necron-monolith/after-mill
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
 tail neo-b15/discover-the-impossible-cast
@@ -3920,6 +3948,7 @@ tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
 tail push-the-limit/sacrifice-animate-haste
+tail put-from-library/aspiring-champion-shuffle-then-demon-damage
 tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/divergent-transformations-shuffle
 tail put-from-library/hei-bai-forest-guardian-shuffle
@@ -4144,6 +4173,7 @@ tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
 tail sothera-the-supervoid/put-exiled-creature
 tail soul-shackled-zombie/drain-if-creature
+tail soundwave/copy-exiled
 tail spare-dagger/sacrificed
 tail spark-of-creativity/exiled
 tail sparring-dummy/after-mill
@@ -4184,6 +4214,7 @@ tail sword-of-once-and-future/after-surveil
 tail sword-of-the-meek/attach
 tail synthesis-pod/exiled
 tail systems-override/schedule-charge-removal
+tail szarekh-the-silent-king/after-mill
 tail tablet-of-discovery/after-mill
 tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
@@ -4263,6 +4294,7 @@ tail the-war-games/exiled
 tail the-wrath-of-khan/draw-if-exiled
 tail then/aangs-iceberg-scry
 tail then/abdel-adrian-exiled-one
+tail then/acolyte-hybrid-controller-draws
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
 tail then/ancient-vendetta-named
@@ -4477,6 +4509,7 @@ tail then/prize-pig-ribbon-check
 tail then/proliferate-again
 tail then/promise-of-bunrei-spirits
 tail then/protection-from-chosen-color-until-eot
+tail then/provoke-the-trolls-pump
 tail then/pucas-eye-color-chosen
 tail then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield
 tail then/put-found-lands-onto-battlefield-tapped

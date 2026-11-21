@@ -28,7 +28,7 @@ func init() {
 		Targets:      effects.EnchantCreature(effects.YouControl()),
 		Triggered: []game.TriggeredAbility{
 			effects.WhenThisEnters("Stark's Ingenuity — you may pay {X}; if you do, draw X cards", starksIngenuityEnters),
-			effects.WheneverYouDraw("Stark's Ingenuity — put a +1/+1 counter on enchanted creature", starksIngenuityCounter),
+			effects.WheneverYouDraw("Stark's Ingenuity — put a +1/+1 counter on enchanted creature", effects.PlusOneCounterOnEnchantedCreature),
 		},
 	})
 }
@@ -49,12 +49,3 @@ var starksIngenuityPaid = effects.PayUnlessBranches("pay-unless/starks-ingenuity
 	func(ctx *effects.Context, r game.PayUnlessAnswer) error {
 		return effects.DrawCards{N: r.Number}.Apply(ctx)
 	}, nil)
-
-func starksIngenuityCounter(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	host, ok := effects.EnchantedCreatureAsItResolves(ctx)
-	if !ok {
-		return nil
-	}
-	return effects.AddCounter{Target: host, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-}
