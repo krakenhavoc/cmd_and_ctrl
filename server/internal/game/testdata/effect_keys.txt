@@ -774,6 +774,7 @@ choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/founding-the-third-path-cast
 choose choose-cards/gandalf-party-guest-cast
+choose choose-cards/gap-b98-exile-chosen-permanents
 choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gerrards-verdict-life
 choose choose-cards/gert-and-old-lace-search
@@ -1616,6 +1617,7 @@ confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
 confirm confirm/gain-life
 confirm confirm/galadriel-reveal
+confirm confirm/gap-b98-matter-reshaper
 confirm confirm/gathering-stone-take
 confirm confirm/gathering-stone-to-graveyard
 confirm confirm/gaze-of-pain-damage
@@ -2202,6 +2204,7 @@ payunless pay-unless/divert-change-target
 payunless pay-unless/divert-disaster-lander
 payunless pay-unless/dont-make-a-sound-surveil
 payunless pay-unless/draw-a-card
+payunless pay-unless/dwarven-hammer-dwarf-and-attach
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
 payunless pay-unless/edgars-awakening-return
