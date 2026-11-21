@@ -313,6 +313,12 @@ type PermissionFilter struct {
 	// set it directly.
 	CreatureType string `json:"creatureType,omitempty"`
 
+	// ArtifactOrSubtype is "an artifact or <subtype> spell" (Arcade Gannon's
+	// "artifact or Human spell"): a qualifying card is an artifact, or has
+	// this subtype read through Card.HasSubtype. Empty constrains nothing.
+	// Additive within a snapshot version.
+	ArtifactOrSubtype string `json:"artifactOrSubtype,omitempty"`
+
 	// CreatureTypesAny is Deeproot Historian's "MERFOLK AND DRUID cards
 	// in your graveyard have retrace" (#2550): a card qualifies when it
 	// has AT LEAST ONE of the named creature types — "X and Y cards" is
@@ -539,6 +545,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.Subtype != "" && !c.HasSubtype(f.Subtype) {
+		return false
+	}
+	if f.ArtifactOrSubtype != "" && !c.IsArtifact() && !c.HasSubtype(f.ArtifactOrSubtype) {
 		return false
 	}
 	if f.NotSubtype != "" && c.HasSubtype(f.NotSubtype) {
@@ -1152,6 +1161,13 @@ type CastPermission struct {
 	// MaxSpellManaValue, so the cap is the count as the spell is cast.
 	// Empty is no such cap. Additive.
 	MaxSpellManaValueCountOf []string `json:"maxSpellManaValueCountOf,omitempty"`
+	// MaxSpellManaValueCountersOnSource is a MaxSpellManaValue that is the
+	// number of counters of this kind on the permission's source: "a spell
+	// with mana value less than or equal to the number of quest counters on
+	// Arcade Gannon". Only a STANDING permission reads it, derived like
+	// MaxSpellManaValueCountOf, so the cap is the count as the spell is
+	// cast. Empty is no such cap. Additive.
+	MaxSpellManaValueCountersOnSource string `json:"maxSpellManaValueCountersOnSource,omitempty"`
 
 	// MinSpellManaValue is the floor of the same test: the SPELL this
 	// permission lets a player cast must have at least this mana value
@@ -2848,6 +2864,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
+					g.fillDerivedSourceLiveLocked(&stamped, c)
 					out = append(out, stamped)
 				}
 			}
@@ -2868,6 +2885,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			if stamped, ok := stampStandingPermissionLocked(gp.Permission, p, c); ok {
 				g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 				g.fillDerivedLiveLocked(&stamped, p.ID)
+				g.fillDerivedSourceLiveLocked(&stamped, c)
 				out = append(out, stamped)
 			}
 		}
@@ -2891,6 +2909,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
+					g.fillDerivedSourceLiveLocked(&stamped, c)
 					out = append(out, stamped)
 				}
 			}
