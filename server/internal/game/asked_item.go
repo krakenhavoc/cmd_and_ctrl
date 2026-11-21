@@ -55,6 +55,10 @@ type AskedItem struct {
 	// the answers before it, as Gluntch, the Bestower's "a second player"
 	// does.
 	Payload []TargetRef `json:"payload,omitempty"`
+	// Distribution is the split a "divided as you choose" clause announced
+	// (target ID → share): a keyed branch that runs the damage after an
+	// "if you do" (Kuldotha Flamefiend) reads it back.
+	Distribution map[uuid.UUID]int `json:"distribution,omitempty"`
 }
 
 // NewAskedItem is the data of `item` that a keyed prompt carries. Nil for
@@ -78,7 +82,20 @@ func NewAskedItem(item *StackItem) *AskedItem {
 		XValue:          item.XValue,
 		Modes:           copyInts(item.Modes),
 		Payload:         copyTargetRefs(item.Payload),
+		Distribution:    copyDistribution(item.Distribution),
 	}
+}
+
+// copyDistribution is a copy of a divided clause's split, nil for none.
+func copyDistribution(in map[uuid.UUID]int) map[uuid.UUID]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
 }
 
 // StackItem is the item a keyed branch runs against: a fresh copy each
@@ -103,6 +120,7 @@ func (a *AskedItem) StackItem() *StackItem {
 		XValue:          a.XValue,
 		Modes:           copyInts(a.Modes),
 		Payload:         copyTargetRefs(a.Payload),
+		Distribution:    copyDistribution(a.Distribution),
 	}
 }
 
@@ -117,6 +135,7 @@ func copyAskedItem(a *AskedItem) *AskedItem {
 		out.SourceObject = &o
 	}
 	out.Targets = copyTargetRefs(a.Targets)
+	out.Distribution = copyDistribution(a.Distribution)
 	out.Trigger = cloneTriggerContext(a.Trigger)
 	out.Modes = copyInts(a.Modes)
 	out.Payload = copyTargetRefs(a.Payload)

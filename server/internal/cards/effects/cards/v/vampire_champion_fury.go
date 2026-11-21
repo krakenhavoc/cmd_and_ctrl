@@ -1,8 +1,6 @@
 package cardsv
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -38,7 +36,7 @@ func init() {
 					Layer:    game.Layer7PT,
 					SubLayer: game.SubLayer7C_Modify,
 					AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-						return source != nil && target.InstanceID == source.InstanceID && stickerHandSize(g, source.Controller) == 0
+						return source != nil && target.InstanceID == source.InstanceID && effects.R35StickerHandSize(g, source.Controller) == 0
 					},
 					Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 						c.Power += 3
@@ -68,15 +66,4 @@ func init() {
 			{Grant: vampireChampionFuryDamage},
 		}},
 	})
-}
-
-// stickerHandSize is the number of cards in `you`'s hand, walking the seats
-// directly because a layer pass may hold only the read lock.
-func stickerHandSize(g *game.Game, you uuid.UUID) int {
-	for _, p := range g.Seats {
-		if p != nil && p.ID == you && p.Hand != nil {
-			return p.Hand.Size()
-		}
-	}
-	return 0
 }

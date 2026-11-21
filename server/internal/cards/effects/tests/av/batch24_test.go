@@ -70,11 +70,10 @@ func TestBatch24CardsAreRegistered(t *testing.T) {
 	// The remaining declared skips must NOT be registered —
 	// each needs a trigger mode, a cost or a gate the engine cannot
 	// express, and a spec would ship the card stronger than printed.
-	// Linvala and Cursed Totem came off this list with #1210's
+	// Dread Presence came off with the modal trigger (#5948). Linvala and Cursed Totem came off this list with #1210's
 	// activation gate and are in `want` above, and Vat of Rebirth came
 	// off with the remove-counters cost (#2952).
 	for _, skipped := range []string{
-		"1690a782-9e54-4231-9a72-abae5ed7050c", // Dread Presence — modal trigger
 		"451e8ece-7389-4d52-8bc9-450cb5e53e6a", // Ascend from Avernus — a spell exiling itself as it resolves
 		"be6155de-c5b2-415c-ad83-142f9926462a", // Khalni Heart Expedition — remove-counters cost
 	} {

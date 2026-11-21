@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
-	cardsa "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/cards/a"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -302,7 +301,7 @@ func TestLegendaryTypeLine(t *testing.T) {
 		"Legendary Token Artifact": "Legendary Token Artifact",
 		"":                         "Legendary",
 	} {
-		if got := cardsa.LegendaryTypeLine(in); got != want {
+		if got := effects.LegendaryTypeLine(in); got != want {
 			t.Errorf("legendaryTypeLine(%q) = %q, want %q", in, got, want)
 		}
 	}

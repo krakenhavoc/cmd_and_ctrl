@@ -42,7 +42,7 @@ func (g *Game) lifeChangePreviewLocked(player, source uuid.UUID, delta int) int 
 		LifePlayer: player,
 		LifeDelta:  delta,
 	}
-	if g.lifeGainForbiddenLocked(ev) {
+	if g.lifeChangeForbiddenLocked(ev) {
 		return 0
 	}
 	// ev.ID stays zero, so the gather reads a nil applied map and re-offers

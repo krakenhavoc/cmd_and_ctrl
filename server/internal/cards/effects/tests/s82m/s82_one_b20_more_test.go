@@ -322,7 +322,7 @@ func TestS82NahiriLootsOnThePlusOne(t *testing.T) {
 	hand := me.Hand.Size()
 	effectstest.S82Activate(t, g, me.ID, nahiri, 1, game.ActivateAbilityParams{})
 	effectstest.PassPriorityAroundTable(t, g)
-	answerChooseCardsOrDiscard(t, g, me)
+	effectstest.AnswerChooseCardsOrDiscard(t, g, me)
 	effectstest.PassPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand {
 		t.Errorf("hand %d -> %d, want the same size after discarding and drawing", hand, me.Hand.Size())
@@ -581,33 +581,4 @@ func TestS82ViralSpawningMakesABeastAndFlashbackNeedsCorrupted(t *testing.T) {
 	if me.Graveyard.Contains(id) || !g.Exile.Contains(id) {
 		t.Error("the flashed-back card was not exiled")
 	}
-}
-
-// answerChooseCardsOrDiscard answers the open hand-discard prompt with the
-// first card offered.
-func answerChooseCardsOrDiscard(t *testing.T, g *game.Game, p *game.Player) {
-	t.Helper()
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Chooser == p.ID {
-			t.Logf("prompt kind %v", c.Kind)
-			opts := c.DiscardOptions
-			if len(opts) == 0 {
-				opts = c.ChooseCards
-			}
-			if len(opts) == 0 {
-				opts = []uuid.UUID{p.Hand.Cards[0].InstanceID}
-			}
-			if c.Kind == game.PendingChoiceChooseCards {
-				if err := g.ResolveChooseCards(c.ID, p.ID, opts[:1]); err != nil {
-					t.Fatalf("discard: %v", err)
-				}
-				return
-			}
-			if err := g.ResolvePendingChoice(c.ID, p.ID, opts[:1]); err != nil {
-				t.Fatalf("discard: %v", err)
-			}
-			return
-		}
-	}
-	t.Fatal("no discard prompt is open")
 }

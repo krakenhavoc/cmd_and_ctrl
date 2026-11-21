@@ -55,7 +55,7 @@ func init() {
 				}
 			}
 			if len(pool) == 0 {
-				return msc18DoomsdayLoseHalfOfYourLife(ctx, you)
+				return effects.R35Msc18DoomsdayLoseHalfOfYourLife(ctx, you)
 			}
 			n := min(5, len(pool))
 			ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
@@ -116,13 +116,5 @@ var msc18DoomsdayPlace = game.RegisterTail("then/doomsday-put-on-top", func(g *g
 
 // msc18DoomsdayLose is "you lose half your life, rounded up". An on-disk key.
 var msc18DoomsdayLose = effects.CardTail("then/doomsday-lose-half-your-life", func(ctx *effects.Context, o game.TailOutcome) error {
-	return msc18DoomsdayLoseHalfOfYourLife(ctx, o.Tail.Player)
+	return effects.R35Msc18DoomsdayLoseHalfOfYourLife(ctx, o.Tail.Player)
 })
-
-func msc18DoomsdayLoseHalfOfYourLife(ctx *effects.Context, who uuid.UUID) error {
-	p := ctx.PlayerByID(who)
-	if p == nil || p.Eliminated || p.Life <= 0 {
-		return nil
-	}
-	return effects.GainLife{Player: who, Amount: -((p.Life + 1) / 2)}.Apply(ctx)
-}

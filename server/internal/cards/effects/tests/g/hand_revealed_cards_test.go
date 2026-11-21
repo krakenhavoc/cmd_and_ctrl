@@ -19,12 +19,6 @@ const (
 	hrRevelation   = "251ff4e4-3be4-424e-8dd7-eb4ede7b415c"
 )
 
-func hrRevealed(g *game.Game, player uuid.UUID) []string {
-	var out []string
-	g.ReadSnapshot(func() { out = g.HandRevealedLocked(player) })
-	return out
-}
-
 // Stromgald Spy: yes reveals the defending player's hand and the Spy deals
 // no combat damage; no does neither. Only the defender's hand is revealed.
 func TestStromgaldSpyRevealsTheDefendersHandInsteadOfDealingDamage(t *testing.T) {
@@ -33,7 +27,7 @@ func TestStromgaldSpyRevealsTheDefendersHandInsteadOfDealingDamage(t *testing.T)
 		spy := effectstest.NcdAttacker(g, "Stromgald Spy", hrStromgaldSpy, 2, 4)
 		life := g.Seats[1].Life
 		effectstest.NcdPlay(t, g, spy, yes)
-		got, lost := hrRevealed(g, g.Seats[1].ID), effectstest.NcdLifeLost(g, life)
+		got, lost := effectstest.HrRevealed(g, g.Seats[1].ID), effectstest.NcdLifeLost(g, life)
 		if yes && (!slices.Equal(got, []string{"Stromgald Spy"}) || lost != 0 || !effectstest.NcdMarked(g, spy)) {
 			t.Errorf("yes: revealed by %v (want [Stromgald Spy]), life lost %d (want 0), marked %v", got, lost, effectstest.NcdMarked(g, spy))
 		}
@@ -41,7 +35,7 @@ func TestStromgaldSpyRevealsTheDefendersHandInsteadOfDealingDamage(t *testing.T)
 			t.Errorf("no: revealed by %v (want none), life lost %d (want 2), marked %v", got, lost, effectstest.NcdMarked(g, spy))
 		}
 		for _, seat := range []int{0, 2, 3} {
-			if r := hrRevealed(g, g.Seats[seat].ID); len(r) != 0 {
+			if r := effectstest.HrRevealed(g, g.Seats[seat].ID); len(r) != 0 {
 				t.Errorf("seat %d is not the defender and its hand is revealed by %v", seat, r)
 			}
 		}
@@ -56,7 +50,7 @@ func TestStromgaldSpyRevealLastsWhileItRemains(t *testing.T) {
 	defender := g.Seats[1].ID
 	effectstest.NcdPlay(t, g, spy, true)
 	effectstest.EndTurn(t, g)
-	if got := hrRevealed(g, defender); len(got) == 0 {
+	if got := effectstest.HrRevealed(g, defender); len(got) == 0 {
 		t.Fatal("the reveal ended with the turn; it lasts while the Spy remains")
 	}
 	g.WithWriteLock(func() {
@@ -64,7 +58,7 @@ func TestStromgaldSpyRevealLastsWhileItRemains(t *testing.T) {
 			t.Fatalf("destroy: %v", err)
 		}
 	})
-	if got := hrRevealed(g, defender); len(got) != 0 {
+	if got := effectstest.HrRevealed(g, defender); len(got) != 0 {
 		t.Errorf("the Spy left and the hand is still revealed by %v", got)
 	}
 }
@@ -112,7 +106,7 @@ func TestStromgaldSpyThatLeftRevealsNothing(t *testing.T) {
 	if !asked {
 		t.Fatal("the trigger never asked; the test did not reach the case")
 	}
-	if got := hrRevealed(g, defender); len(got) != 0 {
+	if got := effectstest.HrRevealed(g, defender); len(got) != 0 {
 		t.Errorf("a Spy that had left revealed the hand: %v", got)
 	}
 }
@@ -124,11 +118,11 @@ func TestHandRevealedGrantEndsWithItsDuration(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.GrantHandRevealedForEffect(defender, "test", uuid.Nil, g.UntilEndOfTurnDuration())
 	})
-	if got := hrRevealed(g, defender); !slices.Equal(got, []string{"test"}) {
+	if got := effectstest.HrRevealed(g, defender); !slices.Equal(got, []string{"test"}) {
 		t.Fatalf("the grant reads %v", got)
 	}
 	effectstest.EndTurn(t, g)
-	if got := hrRevealed(g, defender); len(got) != 0 {
+	if got := effectstest.HrRevealed(g, defender); len(got) != 0 {
 		t.Errorf("an until-end-of-turn grant outlived its turn: %v", got)
 	}
 }
@@ -138,11 +132,11 @@ func TestTelepathyRevealsEachOpponentsHand(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
 	effectstest.ApaPush(g, me.ID, me.ID, game.Card{Name: "Telepathy", TypeLine: "Enchantment", OracleID: hrTelepathy})
-	if got := hrRevealed(g, me.ID); len(got) != 0 {
+	if got := effectstest.HrRevealed(g, me.ID); len(got) != 0 {
 		t.Errorf("Telepathy revealed its controller's hand: %v", got)
 	}
 	for _, p := range g.Seats[1:] {
-		if got := hrRevealed(g, p.ID); !slices.Equal(got, []string{"Telepathy"}) {
+		if got := effectstest.HrRevealed(g, p.ID); !slices.Equal(got, []string{"Telepathy"}) {
 			t.Errorf("opponent %s: revealed by %v, want [Telepathy]", p.Name, got)
 		}
 	}
@@ -155,7 +149,7 @@ func TestRevelationRevealsEveryHand(t *testing.T) {
 	me := g.Seats[0]
 	rev := effectstest.ApaPush(g, me.ID, me.ID, game.Card{Name: "Revelation", TypeLine: "World Enchantment", OracleID: hrRevelation})
 	for _, p := range g.Seats {
-		if got := hrRevealed(g, p.ID); !slices.Equal(got, []string{"Revelation"}) {
+		if got := effectstest.HrRevealed(g, p.ID); !slices.Equal(got, []string{"Revelation"}) {
 			t.Errorf("%s: revealed by %v, want [Revelation]", p.Name, got)
 		}
 	}
@@ -165,7 +159,7 @@ func TestRevelationRevealsEveryHand(t *testing.T) {
 		g.RecomputeLayersIfStaleLocked()
 	})
 	for _, p := range g.Seats {
-		if got := hrRevealed(g, p.ID); len(got) != 0 {
+		if got := effectstest.HrRevealed(g, p.ID); len(got) != 0 {
 			t.Errorf("%s: a Revelation with no abilities still reveals: %v", p.Name, got)
 		}
 	}
