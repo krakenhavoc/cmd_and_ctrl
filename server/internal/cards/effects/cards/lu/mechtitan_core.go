@@ -77,24 +77,13 @@ func mechtitanCoreCreate(g *game.Game, item *game.StackItem) error {
 var (
 	// "When that token leaves the battlefield": the one object CondParams.
 	// Object names, whichever way it left.
-	mechtitanLeftCondition = game.DelayedEachCondition("ltb/mechtitan-token", mechtitanLeft)
+	mechtitanLeftCondition = game.DelayedEachCondition("ltb/mechtitan-token", effects.MechtitanLeft)
 
 	// "Return all cards exiled with this Vehicle except this card to the
 	// battlefield tapped under their owners' control." The cards ride on the
 	// trigger's Cards. An on-disk key.
 	mechtitanReturnBody = game.SimpleDelayedBody("mechtitan-core/return-exiled", mechtitanReturn)
 )
-
-func mechtitanLeft(ev game.Event, _ *game.DelayedTrigger, g *game.Game, p game.EffectParams) []uuid.UUID {
-	if p.Object.ID == uuid.Nil || ev.Kind != game.EventLTB || ev.CardID != p.Object.ID {
-		return nil
-	}
-	ref, ok := g.PermanentRefForEffect(ev.CardID)
-	if !ok || ref.Epoch != p.Object.Epoch {
-		return nil
-	}
-	return []uuid.UUID{ev.CardID}
-}
 
 // mechtitanTail is the creation's continuation with the cards the cost
 // exiled carried as data: a tail's item copy does not keep the payment.

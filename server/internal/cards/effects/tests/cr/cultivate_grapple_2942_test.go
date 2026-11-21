@@ -42,8 +42,8 @@ func TestCultivateAndKodamasReachTakeZeroOneOrTwo(t *testing.T) {
 
 				effectstest.CastCatalogSpell(t, g, card.name, card.typeLine, card.oracle, nil)
 				effectstest.PassPriorityAroundTable(t, g)
-				answerOrDecline(t, g, me.ID, tc.bf, forests)
-				answerOrDecline(t, g, me.ID, tc.hand, forests)
+				effectstest.AnswerOrDecline(t, g, me.ID, tc.bf, forests)
+				effectstest.AnswerOrDecline(t, g, me.ID, tc.hand, forests)
 
 				onField, inHand := 0, 0
 				for _, id := range forests {
@@ -69,17 +69,6 @@ func TestCultivateAndKodamasReachTakeZeroOneOrTwo(t *testing.T) {
 			})
 		}
 	}
-}
-
-// answerOrDecline answers the open search prompt with forests[idx], or
-// takes nothing for idx < 0.
-func answerOrDecline(t *testing.T, g *game.Game, chooser uuid.UUID, idx int, forests []uuid.UUID) {
-	t.Helper()
-	if idx < 0 {
-		effectstest.AnswerSearchFailToFind(t, g, chooser)
-		return
-	}
-	effectstest.AnswerSearchByID(t, g, chooser, forests[idx])
 }
 
 // #2942: with exactly two basics the second used to be taken without

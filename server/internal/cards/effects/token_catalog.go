@@ -118,6 +118,13 @@ type TokenTemplate struct {
 	Triggered []game.TriggeredAbility
 	Static    []game.StaticAbility
 
+	// Enchant is an Aura token's printed "enchant <what>" clause, when it
+	// is not the implicit "enchant creature" a Role has: Preston Garvey's
+	// Settlement is "Enchant land". Judged as the state-based action
+	// that checks an Aura's host does (CR 704.5m, game.auraEnchantSpecOf),
+	// filed as the token key's target spec. Nil for every other token.
+	Enchant *game.TargetSpec
+
 	// Replacements are the token's printed replacement effects (CR 614),
 	// written exactly as Spec.Replacements are and filed under the same
 	// token key — Selenia's Curse's "If enchanted player would lose life,
@@ -526,6 +533,22 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
 	// (Commander Masters, S82 GAP batch 104, #5948).
 	printedGapB104SatyrCantBlockToken,
+
+	// S82 GAP batch 45: Tarmogoyf Nest's Tarmogoyf.
+	printedGapB45TarmogoyfToken,
+	// S82 GAP batch 56: Ral and the Implicit Maze's Spellgorger Weird.
+	printedGapB56SpellgorgerWeirdToken,
+
+	// The Prydwen, Steel Flagship's Human Knight (Fallout, #5948): 2/2 white,
+	// +2/+2 while an artifact entered under its controller's control this turn.
+	printedGapB61HumanKnightToken,
+
+	// Preston Garvey, Minuteman's Settlement (Fallout, #5948): a green Aura
+	// token with enchant land that gives the land a mana ability.
+	printedGapB63SettlementToken,
+
+	// Moira Brown, Guide Author's Wasteland Survival Guide (Fallout, #5948).
+	printedGapB64SurvivalGuideToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
@@ -542,6 +565,7 @@ func BuildTokenDef(t TokenTemplate) *game.CardDef {
 		Activated:     t.Activated,
 		Triggered:     t.Triggered,
 		Static:        t.Static,
+		Targets:       t.Enchant,
 		Replacements:  t.Replacements,
 		CostModifiers: t.CostModifiers,
 		BlockRules:    t.BlockRules,

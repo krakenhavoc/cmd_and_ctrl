@@ -13,47 +13,6 @@ import (
 // energy_resolution_cards_b_test.go — ADR 0129 PR 3, the follow-up card
 // batch on energy-resolution-payments.
 
-// erPlay is how a test answers whatever the table asks `me` while it
-// settles: the target to pick, whether to pay a fixed energy amount,
-// the amount for a pay_amount and the option for an option pick.
-type erPlay struct {
-	target uuid.UUID
-	pay    bool
-	amount int
-	option int
-}
-
-// settleEnergy passes priority until the table is quiet, answering each
-// prompt owed by `me` from `play`. It returns how many energy prompts
-// (either kind) it answered.
-func settleEnergy(t *testing.T, g *game.Game, me uuid.UUID, play erPlay) int {
-	t.Helper()
-	answered := 0
-	for i := 0; i < 20; i++ {
-		effectstest.PassPriorityAroundTable(t, g)
-		switch {
-		case effectstest.LatestPickTarget(g, me) != nil:
-			effectstest.AnswerTriggerTargets(t, g, me, play.target)
-		case effectstest.EnergyPrompt(g, me) != nil:
-			if err := g.ResolvePayUnless(effectstest.EnergyPrompt(g, me).ID, me, play.pay); err != nil {
-				t.Fatalf("answer energy: %v", err)
-			}
-			answered++
-		case effectstest.PayAmountPrompt(g, me) != nil:
-			if err := g.ResolvePayAmount(effectstest.PayAmountPrompt(g, me).ID, me, play.amount); err != nil {
-				t.Fatalf("answer amount: %v", err)
-			}
-			answered++
-		case effectstest.LatestOptionPickFor(g, me) != nil:
-			effectstest.AnswerOptionPick(t, g, me, play.option)
-		default:
-			return answered
-		}
-	}
-	t.Fatal("the table did not settle")
-	return answered
-}
-
 var erBatchB = []string{
 	"c1a3eeef-7ea5-4d58-9e6f-91bbf1c2cc8c", // Consul's Shieldguard
 	"748729bf-bfa0-4cbf-b643-ed5d7d007081", // Eddytrail Hawk
@@ -104,7 +63,7 @@ func TestAetherRefinery(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, ref, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	settleEnergy(t, g, me.ID, erPlay{amount: 5})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Amount: 5})
 	found := false
 	for _, c := range g.Battlefield.Cards {
 		if c.Name == "Aetherborn" && c.CurrentPower() == 5 && c.CurrentToughness() == 5 {
@@ -174,7 +133,7 @@ func TestT45PowerArmor(t *testing.T) {
 	if !effectstest.ApaLive(g, bear).Tapped {
 		t.Fatal("the equipped creature untapped in its untap step")
 	}
-	settleEnergy(t, g, me.ID, erPlay{pay: true, option: 2})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Pay: true, Option: 2})
 	c := effectstest.ApaLive(g, bear)
 	if c.Tapped || c.Counters[game.CounterLifelink] != 1 {
 		t.Errorf("tapped %v, lifelink counters %d; want untapped with one", c.Tapped, c.Counters[game.CounterLifelink])
@@ -207,7 +166,7 @@ func TestConsulsShieldguardGrantsIndestructible(t *testing.T) {
 	bear := effectstest.PushVanillaCreature(g, me.ID, "Bear", 2, 2)
 	effectstest.SetEnergy(t, g, me, 1)
 	effectstest.DeclareAttack(t, g, opp.ID, guard, bear)
-	if n := settleEnergy(t, g, me.ID, erPlay{target: bear, pay: true}); n != 1 {
+	if n := effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Target: bear, Pay: true}); n != 1 {
 		t.Fatalf("energy prompts answered = %d, want 1", n)
 	}
 	if !game.HasKeyword(effectstest.ApaLive(g, bear), "indestructible") {
@@ -229,7 +188,7 @@ func TestMaulfistDoorbusterStopsABlocker(t *testing.T) {
 	wall := effectstest.PushVanillaCreature(g, opp.ID, "Wall", 0, 5)
 	effectstest.SetEnergy(t, g, me, 1)
 	effectstest.DeclareAttack(t, g, opp.ID, door)
-	settleEnergy(t, g, me.ID, erPlay{target: wall, pay: true})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Target: wall, Pay: true})
 	effectstest.AdvanceTo(t, g, game.StepDeclareBlockers)
 	if err := g.DeclareBlocker(wall, door); err == nil {
 		t.Error("the Wall blocked after the Doorbuster's energy was paid")
@@ -244,7 +203,7 @@ func TestElectrozoaTapsUnlessPaid(t *testing.T) {
 		zoa := effectstest.PushDiesCreatureForTest(g, me.ID, "Electrozoa", "202091b2-9e08-47c1-9099-628b21d8ac12", "Creature — Jellyfish", 3, 1)
 		effectstest.SetEnergy(t, g, me, 1)
 		effectstest.AdvanceTo(t, g, game.StepPrecombatMain)
-		settleEnergy(t, g, me.ID, erPlay{pay: pay})
+		effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Pay: pay})
 		if got := effectstest.ApaLive(g, zoa).Tapped; got == pay {
 			t.Errorf("pay=%v: tapped = %v", pay, got)
 		}
@@ -258,7 +217,7 @@ func TestStaticPrison(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	victim := effectstest.PushVanillaCreature(g, opp.ID, "Victim", 3, 3)
 	effectstest.CastCatalogSpell(t, g, "Static Prison", "Enchantment", "b1bc8e58-ea4f-46a9-b833-d780cf6758b3", nil)
-	settleEnergy(t, g, me.ID, erPlay{target: victim})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Target: victim})
 	if effectstest.FindBattlefieldCardByID(g, victim) != nil {
 		t.Fatal("the target was not exiled")
 	}
@@ -274,7 +233,7 @@ func TestStaticPrison(t *testing.T) {
 			break
 		}
 	}
-	if n := settleEnergy(t, g, me.ID, erPlay{pay: false}); n != 1 {
+	if n := effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Pay: false}); n != 1 {
 		t.Fatalf("energy prompts at the first main phase = %d, want 1 (turn %d seat %d step %s)", n, g.Turn.Seq, g.Turn.ActiveSeat, g.Turn.Step)
 	}
 	prisons, victims := 0, 0
@@ -301,7 +260,7 @@ func TestCyclopsSuperconductorDiesAndShoots(t *testing.T) {
 	effectstest.SetEnergy(t, g, me, 3)
 	effectstest.AdvanceTo(t, g, game.StepPrecombatMain)
 	effectstest.KillCreature(t, g, me.ID, cyclops)
-	settleEnergy(t, g, me.ID, erPlay{target: victim, pay: true})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Target: victim, Pay: true})
 	if effectstest.FindBattlefieldCardByID(g, victim) != nil {
 		t.Error("the 2/2 survived two damage")
 	}
@@ -320,7 +279,7 @@ func TestBehemothOfVault0DestroysForItsManaValue(t *testing.T) {
 	effectstest.SetEnergy(t, g, me, 3)
 	effectstest.AdvanceTo(t, g, game.StepPrecombatMain)
 	effectstest.KillCreature(t, g, me.ID, behemoth)
-	settleEnergy(t, g, me.ID, erPlay{target: relic, pay: true})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Target: relic, Pay: true})
 	if effectstest.FindBattlefieldCardByID(g, relic) != nil {
 		t.Error("the {3} artifact was not destroyed")
 	}
@@ -336,7 +295,7 @@ func TestTerritorialAetherkiteSweeps(t *testing.T) {
 	victim := effectstest.PushVanillaCreature(g, opp.ID, "Victim", 2, 2)
 	survivor := effectstest.PushVanillaCreature(g, opp.ID, "Survivor", 3, 3)
 	kite := effectstest.CastAndResolveCreature(t, g, "Territorial Aetherkite", "Creature — Cat Dragon", "4f63d306-cc14-405c-8424-d8990c670c74")
-	settleEnergy(t, g, me.ID, erPlay{amount: 2})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Amount: 2})
 	if effectstest.FindBattlefieldCardByID(g, victim) != nil {
 		t.Error("the 2/2 survived")
 	}
@@ -366,7 +325,7 @@ func TestRampagingAetherhoodGrows(t *testing.T) {
 	if c == nil || c.PayAmount.Max != 4 || c.PayAmount.Goal != 4 {
 		t.Fatalf("prompt = %+v, want max 4 goal 4", c)
 	}
-	settleEnergy(t, g, me.ID, erPlay{amount: 3})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Amount: 3})
 	if got := effectstest.ApaLive(g, hydra).Counters[game.CounterPlusOne]; got != 3 {
 		t.Errorf("+1/+1 counters = %d, want 3", got)
 	}
@@ -385,7 +344,7 @@ func TestLocalizedDestruction(t *testing.T) {
 	theirs2 := effectstest.PushVanillaCreature(g, opp.ID, "Theirs Two", 2, 2)
 	effectstest.SetEnergy(t, g, me, 1)
 	effectstest.CastCatalogSpell(t, g, "Localized Destruction", "Sorcery", "810e1371-e028-47e7-b97e-a627a35932e0", nil)
-	settleEnergy(t, g, me.ID, erPlay{amount: 2})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Amount: 2})
 	if effectstest.FindBattlefieldCardByID(g, mine2) == nil {
 		t.Error("my power-2 creature died")
 	}
@@ -413,7 +372,7 @@ func TestWrathOfTheSkies(t *testing.T) {
 	if c == nil || c.PayAmount.Max != 3 {
 		t.Fatalf("prompt = %+v, want max 3", c)
 	}
-	settleEnergy(t, g, me.ID, erPlay{amount: 2})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Amount: 2})
 	if effectstest.FindBattlefieldCardByID(g, cheap) != nil {
 		t.Error("the mana value 2 artifact survived")
 	}
@@ -429,7 +388,7 @@ func TestConfiscationCoup(t *testing.T) {
 	relic := effectstest.PushTypedCard(g, opp.ID, "Relic", "Artifact", "{4}")
 	effectstest.CastCatalogSpell(t, g, "Confiscation Coup", "Sorcery", "c246cdb4-2fd8-487e-944e-3e52fbd1bbaa",
 		[]game.TargetRef{{Kind: game.TargetCard, ID: relic}})
-	settleEnergy(t, g, me.ID, erPlay{pay: true})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Pay: true})
 	if c := effectstest.FindBattlefieldCardByID(g, relic); c == nil || c.Controller != me.ID {
 		t.Errorf("relic = %+v, want it under my control", c)
 	}
@@ -443,7 +402,7 @@ func TestJoltedAwakeWithNoTarget(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
 	effectstest.CastCatalogSpell(t, g, "Jolted Awake", "Sorcery", "4306a9e5-6845-4fd4-96ad-8888147612aa", nil)
-	if n := settleEnergy(t, g, me.ID, erPlay{}); n != 0 {
+	if n := effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{}); n != 0 {
 		t.Errorf("energy prompts = %d, want 0", n)
 	}
 	if effectstest.EnergyOf(me) != 2 {
@@ -463,7 +422,7 @@ func TestRushOfInspirationDiscardsUnlessPaid(t *testing.T) {
 		effectstest.SetEnergy(t, g, me, tc.energy)
 		effectstest.CastCatalogSpell(t, g, "Rush of Inspiration", "Instant", "bbd569cc-bc21-46df-b8eb-5b5bcd8fe762", nil)
 		hand := me.Hand.Size()
-		settleEnergy(t, g, me.ID, erPlay{pay: tc.pay})
+		effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Pay: tc.pay})
 		if got := me.Hand.Size() - hand; got != tc.delta {
 			t.Errorf("pay=%v: hand delta %d, want %d", tc.pay, got, tc.delta)
 		}
@@ -478,7 +437,7 @@ func TestAssaultronDominatorChoosesACounter(t *testing.T) {
 	dom := effectstest.PushDiesCreatureForTest(g, me.ID, "Assaultron Dominator", "2c7818f4-a818-4603-9af1-05aee2d56ec8", "Artifact Creature — Robot", 2, 2)
 	effectstest.SetEnergy(t, g, me, 1)
 	effectstest.DeclareAttack(t, g, opp.ID, dom)
-	settleEnergy(t, g, me.ID, erPlay{pay: true, option: 2})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Pay: true, Option: 2})
 	if got := effectstest.ApaLive(g, dom).Counters[game.CounterTrample]; got != 1 {
 		t.Errorf("trample counters = %d, want 1", got)
 	}
@@ -492,7 +451,7 @@ func TestGuideOfSoulsMakesAnAngel(t *testing.T) {
 	bear := effectstest.PushVanillaCreature(g, me.ID, "Bear", 2, 2)
 	effectstest.SetEnergy(t, g, me, 3)
 	effectstest.DeclareAttack(t, g, opp.ID, bear)
-	settleEnergy(t, g, me.ID, erPlay{target: bear, pay: true})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Target: bear, Pay: true})
 	c := effectstest.ApaLive(g, bear)
 	if c.Counters[game.CounterPlusOne] != 2 || c.Counters[game.CounterFlying] != 1 {
 		t.Errorf("counters = %v, want two +1/+1 and a flying", c.Counters)

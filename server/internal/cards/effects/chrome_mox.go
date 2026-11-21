@@ -97,7 +97,7 @@ func ChromeMoxImprint(g *game.Game, item *game.StackItem) error {
 		Min:      0,
 		Max:      1,
 		LiveZone: game.ZoneHand,
-		ThenKey:  chromeMoxExileThePick,
+		ThenKey:  ChromeMoxExileThePick,
 	})
 	return nil
 }
@@ -107,7 +107,7 @@ func ChromeMoxImprint(g *game.Game, item *game.StackItem) error {
 // imprint: the pick holds no closure, so a table waiting on it is a restore
 // point. The hand is re-checked on submit. An on-disk key: never renamed,
 // never reused.
-var chromeMoxExileThePick = game.RegisterChooseCardsThen("choose-cards/imprint-exile-from-hand", func(g *game.Game, r game.CardsChosen) error {
+var ChromeMoxExileThePick = game.RegisterChooseCardsThen("choose-cards/imprint-exile-from-hand", func(g *game.Game, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
 		return nil
 	}

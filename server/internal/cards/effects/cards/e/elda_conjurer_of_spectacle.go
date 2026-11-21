@@ -43,12 +43,7 @@ func init() {
 					tally := g.CastTallyFor(source.Controller)
 					return tally.Total-tally.Noncreature-tally.LegendaryCreature == 1
 				}),
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, label+" — demonstrate")
-					item.Controller, item.Owner = ev.Actor, ev.Actor
-					item.Params.Object = game.ObjectRef{ID: ev.CardID}
-					return item
-				},
+				Build: effects.GapB45DemonstrateBuild(label),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return demonstrateSpell(effects.NewContext(g, item), item.Params.Object.ID)
 				},

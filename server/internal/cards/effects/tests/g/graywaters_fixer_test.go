@@ -24,38 +24,6 @@ func gfBoard(t *testing.T) (*game.Game, *game.Player, uuid.UUID) {
 	return g, me, fixer
 }
 
-// gfDead puts an uncatalogued card into p's graveyard by a real move (a
-// discard's zone change), so the zone grant sees it arrive.
-func gfDead(t *testing.T, g *game.Game, p *game.Player, name, typeLine, cost string) uuid.UUID {
-	t.Helper()
-	id := uuid.New()
-	g.WithWriteLock(func() {
-		p.Hand.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: typeLine, ManaCost: cost,
-			Power: 2, Toughness: 2, Owner: p.ID, Controller: p.ID})
-	})
-	if err := g.MoveCardByID(game.ZoneRef{Kind: game.ZoneHand, Owner: p.ID},
-		game.ZoneRef{Kind: game.ZoneGraveyard, Owner: p.ID}, id); err != nil {
-		t.Fatalf("move %s to the graveyard: %v", name, err)
-	}
-	return id
-}
-
-// gfEncoreCost is the mana of the one activated row the card has, or
-// ok=false when it has none.
-func gfEncoreCost(g *game.Game, id uuid.UUID) (cost string, ok bool) {
-	g.ReadSnapshot(func() {
-		c, found := g.LookupCardForEffect(id)
-		if !found {
-			return
-		}
-		rows := game.ActivatedAbilitiesForCard(c)
-		if len(rows) == 1 {
-			cost, ok = rows[0].Cost.Mana, true
-		}
-	})
-	return cost, ok
-}
-
 func gfTokens(g *game.Game, name string, controller uuid.UUID) int {
 	n := 0
 	g.ReadSnapshot(func() {
@@ -82,8 +50,8 @@ func TestGraywatersFixerGrantsEncorePricedByEachCardsManaValue(t *testing.T) {
 		{"X Warlock", "Creature — Human Warlock", "{X}{B}{B}", "{2}"},
 		{"Free Mercenary", "Artifact Creature — Construct Mercenary", "{0}", "{0}"},
 	} {
-		id := gfDead(t, g, me, tc.name, tc.typeLine, tc.cost)
-		if got, ok := gfEncoreCost(g, id); !ok || got != tc.want {
+		id := effectstest.GfDead(t, g, me, tc.name, tc.typeLine, tc.cost)
+		if got, ok := effectstest.GfEncoreCost(g, id); !ok || got != tc.want {
 			t.Errorf("%s (%s): encore cost %q (has a row: %v), want %q", tc.name, tc.cost, got, ok, tc.want)
 		}
 	}
@@ -93,13 +61,13 @@ func TestGraywatersFixerGrantsEncorePricedByEachCardsManaValue(t *testing.T) {
 		{"Pirate's Pillage", "Sorcery"},
 		{"Kindred Rogue Spell", "Kindred Instant — Rogue"},
 	} {
-		id := gfDead(t, g, me, tc.Name, tc.TypeLine, "{2}")
-		if _, ok := gfEncoreCost(g, id); ok {
+		id := effectstest.GfDead(t, g, me, tc.Name, tc.TypeLine, "{2}")
+		if _, ok := effectstest.GfEncoreCost(g, id); ok {
 			t.Errorf("%s (%s) was given encore; it is not an outlaw creature card", tc.Name, tc.TypeLine)
 		}
 	}
-	theirs := gfDead(t, g, opp, "Their Rogue", "Creature — Human Rogue", "{B}")
-	if _, ok := gfEncoreCost(g, theirs); ok {
+	theirs := effectstest.GfDead(t, g, opp, "Their Rogue", "Creature — Human Rogue", "{B}")
+	if _, ok := effectstest.GfEncoreCost(g, theirs); ok {
 		t.Error("an outlaw in another player's graveyard was given encore")
 	}
 }
@@ -108,7 +76,7 @@ func TestGraywatersFixerGrantsEncorePricedByEachCardsManaValue(t *testing.T) {
 // the exile, and it makes one hasty token copy per opponent.
 func TestGraywatersFixerGrantedEncoreCostsTheManaValueAndMakesATokenPerOpponent(t *testing.T) {
 	g, me, _ := gfBoard(t)
-	rogue := gfDead(t, g, me, "Dead Rogue", "Creature — Human Rogue", "{1}{B}{B}")
+	rogue := effectstest.GfDead(t, g, me, "Dead Rogue", "Creature — Human Rogue", "{1}{B}{B}")
 
 	// Two mana cannot pay encore {3}.
 	effectstest.FloatForTest(g, me, "CC")
@@ -180,7 +148,7 @@ func TestGraywatersFixerGrantedEncoreCostsTheManaValueAndMakesATokenPerOpponent(
 func TestGraywatersFixerGrantedEncoreIsSorcerySpeedAndTheOwners(t *testing.T) {
 	g, me, _ := gfBoard(t)
 	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
-	rogue := gfDead(t, g, me, "Dead Rogue", "Creature — Human Rogue", "{B}")
+	rogue := effectstest.GfDead(t, g, me, "Dead Rogue", "Creature — Human Rogue", "{B}")
 	effectstest.FloatForTest(g, opp, "C")
 	if err := g.ActivateCatalogAbility(opp.ID, rogue, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Fatal("an opponent activated encore on a card in my graveyard")
@@ -199,19 +167,19 @@ func TestGraywatersFixerGrantedEncoreIsSorcerySpeedAndTheOwners(t *testing.T) {
 // resolves (CR 113.7a).
 func TestGraywatersFixerGrantEndsWhenItLeavesButAnActivatedEncoreResolves(t *testing.T) {
 	g, me, fixer := gfBoard(t)
-	first := gfDead(t, g, me, "First Rogue", "Creature — Human Rogue", "{B}")
-	second := gfDead(t, g, me, "Second Rogue", "Creature — Human Rogue", "{B}")
+	first := effectstest.GfDead(t, g, me, "First Rogue", "Creature — Human Rogue", "{B}")
+	second := effectstest.GfDead(t, g, me, "Second Rogue", "Creature — Human Rogue", "{B}")
 	effectstest.FloatForTest(g, me, "C")
 	if err := g.ActivateCatalogAbility(me.ID, first, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("encore: %v", err)
 	}
 	effectstest.KillCreature(t, g, me.ID, fixer)
-	if _, ok := gfEncoreCost(g, second); ok {
+	if _, ok := effectstest.GfEncoreCost(g, second); ok {
 		t.Fatal("a card still has encore after the Fixer left the battlefield")
 	}
 	// The Fixer is a Mercenary, but in the graveyard it grants nothing,
 	// itself included.
-	if _, ok := gfEncoreCost(g, fixer); ok {
+	if _, ok := effectstest.GfEncoreCost(g, fixer); ok {
 		t.Fatal("the Fixer's own card has encore in the graveyard")
 	}
 	effectstest.PassPriorityAroundTable(t, g)

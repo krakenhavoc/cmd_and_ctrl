@@ -45,7 +45,6 @@ const (
 	B28StromkirkCaptainOracle      = "599c3fd6-3309-4b5d-adec-9c4062848ad5"
 	B28LifebloodHydraOracle        = "b14d05c0-fe10-4079-a90e-0aea1a8fd375"
 	B28SpawnbedProtectorOracle     = "256a7f54-0e8e-4d22-a0f7-ff2830e8884e"
-	B28RampagingYaoGuaiSkipOracle  = "d37e8f75-c7cb-4270-bb2f-0125e972ed15"
 	B28HoldoutSettlementFullOracle = "e6b77545-de5c-4f4a-b7ea-83498fb33ba8"
 	B28FertilidOracle              = "21f1c6d7-8289-44b2-b88f-c09e202be200"
 )

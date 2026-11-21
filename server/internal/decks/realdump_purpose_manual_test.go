@@ -235,6 +235,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 114.
 	"Day's Undoing": "shuffles hands and graveyards into libraries and ends the turn: it exiles the stack, not permanents",
+
+	// S82 GAP batch 64 (#5948).
+	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

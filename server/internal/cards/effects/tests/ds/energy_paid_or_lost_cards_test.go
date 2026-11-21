@@ -101,7 +101,7 @@ func TestFabricationModuleCountersOnGettingEnergy(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, mod, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	settleEnergy(t, g, me.ID, erPlay{target: bear})
+	effectstest.SettleEnergy(t, g, me.ID, effectstest.ErPlay{Target: bear})
 	if effectstest.EnergyOf(me) != 1 {
 		t.Errorf("energy = %d, want 1", effectstest.EnergyOf(me))
 	}
