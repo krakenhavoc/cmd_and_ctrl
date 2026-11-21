@@ -81,17 +81,17 @@ func TestS82GapB19SengirVampireGrowsWhenAWoundedCreatureDies(t *testing.T) {
 	})
 	killCreature(t, g, opp.ID, bystander)
 	passPriorityAroundTable(t, g)
-	if got := gapCountersOf(t, g, sv); got != 0 {
+	if got := r33GapCountersOf(t, g, sv); got != 0 {
 		t.Errorf("a creature this never damaged died: counters = %d, want 0", got)
 	}
 	killCreature(t, g, opp.ID, victim)
 	passPriorityAroundTable(t, g)
-	if got := gapCountersOf(t, g, sv); got != 1 {
+	if got := r33GapCountersOf(t, g, sv); got != 1 {
 		t.Errorf("counters = %d, want 1", got)
 	}
 }
 
-func gapCountersOf(t *testing.T, g *game.Game, id uuid.UUID) int {
+func r33GapCountersOf(t *testing.T, g *game.Game, id uuid.UUID) int {
 	t.Helper()
 	c, ok := battlefieldCard(g, id)
 	if !ok {
