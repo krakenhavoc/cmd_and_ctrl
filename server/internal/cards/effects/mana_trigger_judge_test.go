@@ -90,6 +90,10 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 		// mana" (Roxanne, Starfall Savant).
 		treasure := game.Card{InstanceID: uuid.New(), Name: "Treasure", TypeLine: "Token Artifact — Treasure", Owner: p.ID, Controller: p.ID}
 		pushBattlefieldCardWithTimestamp(g, treasure)
+		// A land creature, for "whenever you tap a land creature for
+		// mana" (Autumn Willow, Harmony).
+		dryad := game.Card{InstanceID: uuid.New(), Name: "Forest Dryad", TypeLine: "Token Land Creature — Forest Dryad", Power: 1, Toughness: 1, Owner: p.ID, Controller: p.ID}
+		pushBattlefieldCardWithTimestamp(g, dryad)
 
 		probes = append(probes,
 			judgeProbe{"Forest {G}", forest, p.ID, []string{"G"}},
@@ -106,6 +110,7 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 			judgeProbe{"Sol Ring {C}{C}", ring, p.ID, []string{"C", "C"}},
 			judgeProbe{"Llanowar Elves {G}", elf, p.ID, []string{"G"}},
 			judgeProbe{"Treasure token {R}", treasure, p.ID, []string{"R"}},
+			judgeProbe{"Forest Dryad {G}", dryad, p.ID, []string{"G"}},
 		)
 
 		// The card under test, on this seat: an Aura on this seat's Forest.
@@ -116,6 +121,10 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 			AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: forest.InstanceID},
 			// Barbflare Gremlin's trigger needs "this creature is tapped".
 			Tapped: oracle == c2BarbflareOracle,
+		}
+		// Rikala, Homarid King's extra {U} needs three tide counters.
+		if oracle == "45284633-8aab-4078-ae5c-7b0d75efe2f5" {
+			c.Counters = map[string]int{"tide": 3}
 		}
 		pushBattlefieldCardWithTimestamp(g, c)
 		triggerSources = append(triggerSources, id)
