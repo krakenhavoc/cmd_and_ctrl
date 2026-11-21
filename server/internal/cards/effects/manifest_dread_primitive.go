@@ -84,7 +84,7 @@ func ManifestDreadWhenItDiesThisTurn(ctx *Context, id uuid.UUID, label string) {
 		SourceCardID: ctx.Source(),
 		Label:        label,
 		On:           []game.EventKind{game.EventLTB},
-		Condition:    theListedObjectDiedCondition,
+		Condition:    TheListedObjectDiedCondition,
 		Cards:        []uuid.UUID{id},
 		Duration:     &d,
 		Body:         manifestDreadAfterItDiedBody,

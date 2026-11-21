@@ -28,11 +28,11 @@ func init() {
 		Name:          "Thunderous Debut",
 		Completeness:  CompletenessFull,
 		Purpose:       game.Purpose{Tutors: 2},
-		OptionalCosts: []game.AdditionalCost{g2Bargain()},
+		OptionalCosts: []game.AdditionalCost{G2Bargain()},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			player := ctx.Controller()
 			look := ctx.Game.LookAtTopOfLibraryForEffect(player, 20)
-			if g2WasBargained(ctx) {
+			if G2WasBargained(ctx) {
 				return PutFromLibraryOntoBattlefield{
 					Player:   player,
 					Cards:    look,
@@ -49,7 +49,7 @@ func init() {
 				Max:      2,
 				Optional: true,
 				Label:    "Thunderous Debut — you may reveal up to two creature cards from among them and put them into your hand",
-				Key:      takeRevealThenShuffle,
+				Key:      TakeRevealThenShuffle,
 			}.Apply(ctx)
 		},
 	})
@@ -57,7 +57,7 @@ func init() {
 
 // takeRevealThenShuffle is "…reveal … and put it into your hand. Then
 // shuffle." (Thunderous Debut's unbargained half). An on-disk key.
-var takeRevealThenShuffle = RegisterTake("choose-cards/take-reveal-then-shuffle",
+var TakeRevealThenShuffle = RegisterTake("choose-cards/take-reveal-then-shuffle",
 	TakeDef{Reveal: true, Then: func(g *game.Game, res TakeFromLibraryResult) error {
 		return g.ShuffleLibraryForEffect(res.Player)
 	}})

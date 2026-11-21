@@ -39,13 +39,13 @@ func init() {
 			Targeting(
 				AtBeginningOfYourCombat("Ardenn, Intrepid Archaeologist — attach any number of Auras and Equipment you control to target permanent or player",
 					ardennAttach),
-				ardennTargetPermanentOrPlayer()),
+				ArdennTargetPermanentOrPlayer()),
 		},
 	})
 }
 
 // ardennTargetPermanentOrPlayer is "target permanent or player".
-func ardennTargetPermanentOrPlayer() *game.TargetSpec {
+func ArdennTargetPermanentOrPlayer() *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:    "any",
 		Label:   "target permanent or player",
@@ -103,7 +103,7 @@ func ardennAttach(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      len(candidates),
-		ThenKey:  ardennAttachPick,
+		ThenKey:  ArdennAttachPick,
 		LiveZone: game.ZoneBattlefield,
 		// The host the pick attaches to: its ID is the carry and its kind
 		// ("permanent" or "player") the word.
@@ -115,7 +115,7 @@ func ardennAttach(g *game.Game, item *game.StackItem) error {
 
 // ardennAttachPick is the picked Auras and Equipment being attached to the
 // host, keyed (#4253): the host is plain data on the prompt.
-var ardennAttachPick = game.RegisterChooseCardsThen("choose-cards/ardenn-intrepid-archaeologist-attach", func(g *game.Game, r game.CardsChosen) error {
+var ArdennAttachPick = game.RegisterChooseCardsThen("choose-cards/ardenn-intrepid-archaeologist-attach", func(g *game.Game, r game.CardsChosen) error {
 	if len(r.Carry) == 0 {
 		return nil
 	}

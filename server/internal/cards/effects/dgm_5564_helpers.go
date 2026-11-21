@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature made two colours by an effect gets the keyword, and one made
 // monocolored loses it (CR 105.2b). The source counts when it is itself
 // multicolored.
-func dgmMulticoloredCreaturesHave(keyword string) game.StaticAbility {
+func DgmMulticoloredCreaturesHave(keyword string) game.StaticAbility {
 	return Labelled(KeywordGrant(dgmMulticoloredCreatureYouControl, keyword),
 		"Multicolored creatures you control have "+keyword+".")
 }

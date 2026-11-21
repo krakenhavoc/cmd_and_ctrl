@@ -41,15 +41,15 @@ func init() {
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor != uuid.Nil && tokkaAndRahzarSpentLessThanManaValue(g, ev.CardID)
+				return ev.Actor != uuid.Nil && TokkaAndRahzarSpentLessThanManaValue(g, ev.CardID)
 			}, "Tokka & Rahzar, Terrible Twos — 3 damage to a player who spent less mana than the spell's mana value",
 				func(g *game.Game, item *game.StackItem) error {
-					p := triggeringActor(item)
+					p := TriggeringActor(item)
 					if p == uuid.Nil {
 						return nil
 					}
 					spell := item.Trigger.Event.CardID
-					if g.Stack != nil && g.Stack.Contains(spell) && !tokkaAndRahzarSpentLessThanManaValue(g, spell) {
+					if g.Stack != nil && g.Stack.Contains(spell) && !TokkaAndRahzarSpentLessThanManaValue(g, spell) {
 						return nil
 					}
 					return DealDamage{Source: item.SourceCardID, Target: p, Amount: 3}.Apply(NewContext(g, item))
@@ -61,7 +61,7 @@ func init() {
 // tokkaAndRahzarSpentLessThanManaValue is the intervening if for a spell
 // on the stack: the mana spent to cast it is less than its mana value. A
 // spell whose cost cannot be read has no mana value to fall short of.
-func tokkaAndRahzarSpentLessThanManaValue(g *game.Game, spellID uuid.UUID) bool {
+func TokkaAndRahzarSpentLessThanManaValue(g *game.Game, spellID uuid.UUID) bool {
 	mv, ok := g.LastKnownSpellManaValueForEffect(spellID)
 	if !ok {
 		return false

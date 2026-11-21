@@ -49,15 +49,15 @@ func init() {
 
 // reefWormFishToken is the 3/3 blue Fish with "When this token dies,
 // create a 6/6 blue Whale creature token with …".
-func reefWormFishToken() game.Card { return tokenFromCatalog(printedReefWormFishToken) }
+func reefWormFishToken() game.Card { return TokenFromCatalog(printedReefWormFishToken) }
 
 // reefWormWhaleToken is the 6/6 blue Whale with "When this token
 // dies, create a 9/9 blue Kraken creature token."
-func reefWormWhaleToken() game.Card { return tokenFromCatalog(printedReefWormWhaleToken) }
+func reefWormWhaleToken() game.Card { return TokenFromCatalog(printedReefWormWhaleToken) }
 
 // printedReefWormFishToken is the Fish as PRINTED.
-func printedReefWormFishToken() tokenTemplate {
-	return tokenTemplate{
+func printedReefWormFishToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "fish",
 		Card: game.Card{
 			Name:      "Fish",
@@ -76,8 +76,8 @@ func printedReefWormFishToken() tokenTemplate {
 }
 
 // printedReefWormWhaleToken is the Whale as PRINTED.
-func printedReefWormWhaleToken() tokenTemplate {
-	return tokenTemplate{
+func printedReefWormWhaleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "whale",
 		Card: game.Card{
 			Name:      "Whale",

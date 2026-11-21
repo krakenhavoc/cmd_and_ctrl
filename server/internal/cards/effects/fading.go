@@ -55,7 +55,7 @@ const fadingUpkeepLabel = "Fading — remove a fade counter from it; if you can'
 //	Replacements: []game.ReplacementEffect{Fading(3)},
 //	Triggered:    []game.TriggeredAbility{FadingUpkeep()},
 func Fading(n int) game.ReplacementEffect {
-	r := b10EntersWithCounters(game.CounterFade, n, "Fading: enters with fade counters on it")
+	r := B10EntersWithCounters(game.CounterFade, n, "Fading: enters with fade counters on it")
 	r.RowLabel = fmt.Sprintf("Fading %d", n)
 	return r
 }
@@ -92,7 +92,7 @@ func FadingUpkeep() game.TriggeredAbility {
 // remove.
 func fadingRemoveOrSacrifice(g *game.Game, item *game.StackItem) error {
 	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+	if !ok || !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 		return nil
 	}
 	if c.Counters[game.CounterFade] > 0 {

@@ -24,7 +24,7 @@ func init() {
 		Name:         "Daxos the Returned",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(Enchantment(), "Daxos the Returned — you get an experience counter", youGetAnExperienceCounter),
+			WheneverYouCast(Enchantment(), "Daxos the Returned — you get an experience counter", YouGetAnExperienceCounter),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}{B}: Create a white and black Spirit enchantment creature token. It has \"This creature's power and toughness are each equal to the number of experience counters you have.\"",
@@ -39,9 +39,9 @@ func init() {
 // enchantment creature token, a */* whose power and toughness are its
 // controller's experience counters. Its slug is an on-disk identity: never
 // renamed, never reused.
-func printedC15DaxosSpiritToken() tokenTemplate {
+func printedC15DaxosSpiritToken() TokenTemplate {
 	const text = "This creature's power and toughness are each equal to the number of experience counters you have."
-	return tokenTemplate{
+	return TokenTemplate{
 		Slug: "spirit-experience",
 		Card: game.Card{
 			Name:              "Spirit",
@@ -53,9 +53,9 @@ func printedC15DaxosSpiritToken() tokenTemplate {
 			Label:     text,
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,
-			AppliesTo: selfOnly,
+			AppliesTo: SelfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := experienceCounters(g, source.Controller)
+				n := ExperienceCounters(g, source.Controller)
 				c.Power, c.Toughness = n, n
 			},
 		}},
@@ -64,4 +64,4 @@ func printedC15DaxosSpiritToken() tokenTemplate {
 }
 
 // C15DaxosSpiritToken is that Spirit's card value for CreateToken.
-func C15DaxosSpiritToken() game.Card { return tokenFromCatalog(printedC15DaxosSpiritToken) }
+func C15DaxosSpiritToken() game.Card { return TokenFromCatalog(printedC15DaxosSpiritToken) }

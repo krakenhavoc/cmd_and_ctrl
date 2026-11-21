@@ -36,16 +36,16 @@ func init() {
 			GrantToAttached(game.KeywordInfect),
 		},
 		Triggered: []game.TriggeredAbility{
-			AtYourUpkeep("Glistening Oil — put a -1/-1 counter on enchanted creature", glisteningOilCounter),
+			AtYourUpkeep("Glistening Oil — put a -1/-1 counter on enchanted creature", GlisteningOilCounter),
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return cardDied(ev, source)
-			}, "Glistening Oil — return it to its owner's hand", returnSelfFromGraveyardToHand),
+				return CardDied(ev, source)
+			}, "Glistening Oil — return it to its owner's hand", ReturnSelfFromGraveyardToHand),
 		},
 	})
 }
 
-func glisteningOilCounter(g *game.Game, item *game.StackItem) error {
-	host := attachedHostFor(g, item.SourceCardID)
+func GlisteningOilCounter(g *game.Game, item *game.StackItem) error {
+	host := AttachedHostFor(g, item.SourceCardID)
 	if host == nil {
 		return nil
 	}

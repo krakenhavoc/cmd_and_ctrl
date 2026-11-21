@@ -67,7 +67,7 @@ type ReturnFromGraveyardTogether struct {
 }
 
 func (r ReturnFromGraveyardTogether) Apply(ctx *Context) error {
-	return putCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, r.Targets,
+	return PutCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, r.Targets,
 		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo, AuraHostsCreaturesOnly: r.AuraHostsCreaturesOnly, EntersAs: r.EntersAs}, r.ThenTail, r.ThenN)
 }
 
@@ -87,7 +87,7 @@ func TogetherTail(key string, body func(ctx *Context, entered []uuid.UUID, n int
 // legalTargetCardIDs is the spell's or ability's still-legal card
 // targets (CR 608.2b), in announce order — the list a "return up to N
 // target cards" hands to ReturnFromGraveyardTogether.
-func legalTargetCardIDs(ctx *Context) []uuid.UUID {
+func LegalTargetCardIDs(ctx *Context) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -100,7 +100,7 @@ func legalTargetCardIDs(ctx *Context) []uuid.UUID {
 // graveyardCardIDs is the cards in `player`'s graveyard that match, read
 // once before anything moves — "return all land cards from your
 // graveyard". Nil when the player or graveyard is gone.
-func graveyardCardIDs(ctx *Context, player uuid.UUID, match func(game.Card) bool) []uuid.UUID {
+func GraveyardCardIDs(ctx *Context, player uuid.UUID, match func(game.Card) bool) []uuid.UUID {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Graveyard == nil {
 		return nil
@@ -116,13 +116,13 @@ func graveyardCardIDs(ctx *Context, player uuid.UUID, match func(game.Card) bool
 
 // allGraveyardsCardIDs is graveyardCardIDs over every seat, in seat
 // order — "all creature cards from all graveyards".
-func allGraveyardsCardIDs(ctx *Context, match func(game.Card) bool) []uuid.UUID {
+func AllGraveyardsCardIDs(ctx *Context, match func(game.Card) bool) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, p := range ctx.Game.Seats {
 		if p == nil {
 			continue
 		}
-		ids = append(ids, graveyardCardIDs(ctx, p.ID, match)...)
+		ids = append(ids, GraveyardCardIDs(ctx, p.ID, match)...)
 	}
 	return ids
 }
@@ -164,7 +164,7 @@ type ReturnFromExileTogether struct {
 }
 
 func (r ReturnFromExileTogether) Apply(ctx *Context) error {
-	return putCardsFromZoneTogetherWith(ctx, game.ZoneExile, r.Targets, game.ZoneEntryOptions{
+	return PutCardsFromZoneTogetherWith(ctx, game.ZoneExile, r.Targets, game.ZoneEntryOptions{
 		Controller:               r.Controller,
 		Tapped:                   r.Tapped,
 		EntersWithCountersIfType: r.CountersIfType,
@@ -178,13 +178,13 @@ func (r ReturnFromExileTogether) Apply(ctx *Context) error {
 // onto the battlefield as one entry through the engine's batch door.
 //
 //nolint:unparam // "tapped" is the printed "return ... tapped" option; the cards so far return untapped.
-func putCardsFromZoneTogether(ctx *Context, from game.ZoneKind, targets []uuid.UUID, controller uuid.UUID, tapped bool) error {
-	return putCardsFromZoneTogetherWith(ctx, from, targets, game.ZoneEntryOptions{Controller: controller, Tapped: tapped}, game.TailRef{}, 0)
+func PutCardsFromZoneTogether(ctx *Context, from game.ZoneKind, targets []uuid.UUID, controller uuid.UUID, tapped bool) error {
+	return PutCardsFromZoneTogetherWith(ctx, from, targets, game.ZoneEntryOptions{Controller: controller, Tapped: tapped}, game.TailRef{}, 0)
 }
 
 // putCardsFromZoneTogetherWith is putCardsFromZoneTogether with the whole
 // set of entry options.
-func putCardsFromZoneTogetherWith(ctx *Context, from game.ZoneKind, targets []uuid.UUID, opts game.ZoneEntryOptions,
+func PutCardsFromZoneTogetherWith(ctx *Context, from game.ZoneKind, targets []uuid.UUID, opts game.ZoneEntryOptions,
 	tail game.TailRef, tailN int) error {
 	entries := make([]game.BatchEntry, 0, len(targets))
 	for _, id := range targets {
@@ -200,7 +200,7 @@ func putCardsFromZoneTogetherWith(ctx *Context, from game.ZoneKind, targets []uu
 	}
 	var then game.KeyedTail
 	if tail.Key() != "" {
-		then = withN(ctx.ItemTail(tail), tailN)
+		then = WithN(ctx.ItemTail(tail), tailN)
 	}
 	return ctx.Game.PutOntoBattlefieldTogetherKeyedForEffect(entries, opts, then)
 }
@@ -269,7 +269,7 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	var candidates []uuid.UUID
-	for _, id := range graveyardCardIDs(ctx, player, func(c game.Card) bool {
+	for _, id := range GraveyardCardIDs(ctx, player, func(c game.Card) bool {
 		return (r.ToHand || c.IsPermanent()) && !c.IsToken() && (r.Match == nil || r.Match(c))
 	}) {
 		if id != r.Except {
@@ -298,9 +298,9 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 		Min:         r.Min,
 		Max:         r.Max,
 		Destination: dest,
-		ThenKey:     returnChosenFromGraveyardThen,
+		ThenKey:     ReturnChosenFromGraveyardThen,
 		LiveZone:    game.ZoneGraveyard,
-		CarryNums:   []int{boolToInt(r.Tapped), boolToInt(toHand)},
+		CarryNums:   []int{BoolToInt(r.Tapped), BoolToInt(toHand)},
 		Asked:       game.NewAskedItem(ctx.Item),
 	})
 	return nil
@@ -311,12 +311,12 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 // numbers are Tapped and ToHand. A card that left the graveyard while the
 // question was open is skipped by the entry itself, and a prompt whose
 // candidates all left is withdrawn with nothing picked.
-var returnChosenFromGraveyardThen = game.RegisterChooseCardsThen("choose-cards/return-chosen-from-graveyard",
+var ReturnChosenFromGraveyardThen = game.RegisterChooseCardsThen("choose-cards/return-chosen-from-graveyard",
 	func(g *game.Game, r game.CardsChosen) error {
 		if !r.Answered || len(r.Picked) == 0 {
 			return nil
 		}
-		ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+		ctx, _ := AskedContext(g, r.Asked, r.Chooser, r.Source, nil)
 		tapped, toHand := len(r.Nums) > 0 && r.Nums[0] != 0, len(r.Nums) > 1 && r.Nums[1] != 0
 		if toHand {
 			for _, id := range r.Picked {

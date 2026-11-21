@@ -12,7 +12,7 @@ import (
 // cmdrB3OtherNontokenCreaturesYouControl is "other nontoken creatures you
 // control" (Thraben Watcher): object identity for "other", the token flag
 // for "nontoken".
-func cmdrB3OtherNontokenCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func CmdrB3OtherNontokenCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.InstanceID != source.InstanceID && target.IsCreature() &&
 		target.Controller == source.Controller && !IsToken(*target)
 }
@@ -20,7 +20,7 @@ func cmdrB3OtherNontokenCreaturesYouControl(target *game.Card, _ *game.Game, sou
 // cmdrB3ZombiesYouControl counts the Zombies the effect's controller controls
 // now (effective subtypes, so a changeling counts), read at resolution
 // (Graveborn Muse). "Zombie" is a word of the source's text (CR 612.2).
-func cmdrB3ZombiesYouControl(ctx *Context) int {
+func CmdrB3ZombiesYouControl(ctx *Context) int {
 	word := "Zombie"
 	if src, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
 		word = src.TextSubtype("Zombie")
@@ -37,7 +37,7 @@ func cmdrB3ZombiesYouControl(ctx *Context) int {
 
 // cmdrB3OtherArtifactsYouControl counts the artifacts the activator controls
 // other than the ability's source (Tamiyo's Logbook).
-func cmdrB3OtherArtifactsYouControl(q game.CostQuery) int {
+func CmdrB3OtherArtifactsYouControl(q game.CostQuery) int {
 	if q.Game == nil || q.Game.Battlefield == nil {
 		return 0
 	}
@@ -55,7 +55,7 @@ func cmdrB3OtherArtifactsYouControl(q game.CostQuery) int {
 // Transmogrant): the card enters under the activator's control with the
 // counter as it enters (CR 122.6, 614.1c), and a card that left the
 // graveyard in response stays where it is (CR 400.7).
-func cmdrB3ReturnThisFromGraveyardWithCounter(kind string) Effect {
+func CmdrB3ReturnThisFromGraveyardWithCounter(kind string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
 			return nil
@@ -68,7 +68,7 @@ func cmdrB3ReturnThisFromGraveyardWithCounter(kind string) Effect {
 // cmdrB3AnOpponentControlsNonbasicLands is the cost condition "an opponent
 // controls N or more nonbasic lands": some single opponent of the
 // activator does (Razorlash Transmogrant).
-func cmdrB3AnOpponentControlsNonbasicLands(n int) CostPredicate {
+func CmdrB3AnOpponentControlsNonbasicLands(n int) CostPredicate {
 	return func(q game.CostQuery) bool {
 		if q.Game == nil || q.Game.Battlefield == nil {
 			return false
@@ -93,7 +93,7 @@ func cmdrB3AnOpponentControlsNonbasicLands(n int) CostPredicate {
 // Params.Player by value (Hissing Miasma, Marchesa's Decree): the loss lands
 // on the right player even after the attacker has left, and not on a player
 // who has left the game.
-func cmdrB3AttackersControllerLosesOne(g *game.Game, item *game.StackItem) error {
+func CmdrB3AttackersControllerLosesOne(g *game.Game, item *game.StackItem) error {
 	victim := item.Params.Player
 	if p := g.PlayerByIDForEffect(victim); p == nil || p.Eliminated {
 		return nil

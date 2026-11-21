@@ -35,20 +35,20 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, SagaChapterLabel("The Measure of a Man", 1, "exile up to one target nontoken artifact or creature"),
 				TargetPermanent("up to one target nontoken artifact or creature", Or(Artifact(), Creature()), Not(IsTokenPredicate())).WithCount(0, 1),
-				measureOfAManExile),
+				MeasureOfAManExile),
 			ChapterTrigger(2, SagaChapterLabel("The Measure of a Man", 2, "investigate"),
 				Do(Investigate{N: 1})),
 			ChapterTrigger(3, SagaChapterLabel("The Measure of a Man", 3, "return the exiled card to the battlefield under its owner's control; you gain 2 life"),
-				Do(Instruction(measureOfAManReturn), GainLife{Amount: 2})),
+				Do(Instruction(MeasureOfAManReturn), GainLife{Amount: 2})),
 		},
 	})
 }
 
 // measureOfAManExile is chapter I: the target, if still legal, exiled
 // and linked to this Saga.
-func measureOfAManExile(g *game.Game, item *game.StackItem) error {
+func MeasureOfAManExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -57,7 +57,7 @@ func measureOfAManExile(g *game.Game, item *game.StackItem) error {
 
 // measureOfAManReturn is chapter III's return: every card in exile
 // linked to this Saga object (at most one), under its owner's control.
-func measureOfAManReturn(ctx *Context) error {
+func MeasureOfAManReturn(ctx *Context) error {
 	ref, ok := ctx.Game.SourceObjectForEffect(ctx.Item)
 	if !ok {
 		return nil

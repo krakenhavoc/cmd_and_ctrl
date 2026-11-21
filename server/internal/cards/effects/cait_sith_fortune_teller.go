@@ -37,7 +37,7 @@ func init() {
 // caitSithImpulseExile is "then exile the top card of your library; you may
 // play it this turn", and the reflexive boost it earns. An on-disk key.
 var caitSithImpulseExile = CardTail("cait-sith-fortune-teller/impulse-exile", func(ctx *Context, _ game.TailOutcome) error {
-	return b12ImpulseExileForTurnThen(ctx.Game, ctx.Item, 1, caitSithExiled)
+	return B12ImpulseExileForTurnThen(ctx.Game, ctx.Item, 1, caitSithExiled)
 })
 
 // caitSithExiled is the reflexive boost the exiled card earns, keyed
@@ -62,7 +62,7 @@ var caitSithExiled = CardTail("then/cait-sith-fortune-teller-boost", func(ctx *C
 // +X/+0, X the exiled card's mana value (Params.Amount).
 func caitSithBoost(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	ctx := NewContext(g, item)
-	target, ok := b16FirstLegalTargetCard(ctx)
+	target, ok := B16FirstLegalTargetCard(ctx)
 	if !ok || p.Amount <= 0 {
 		return nil
 	}

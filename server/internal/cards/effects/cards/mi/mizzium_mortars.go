@@ -1,0 +1,49 @@
+package cardsmi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Mizzium Mortars — Sorcery {1}{R} (EDHREC rank 3003):
+//
+//	"Mizzium Mortars deals 4 damage to target creature you don't
+//	 control.
+//	 Overload {3}{R}{R}{R} (You may cast this spell for its overload
+//	 cost. If you do, change "target" in its text to "each.")"
+//
+// Red's one-sided sweeper. Vandalblast's shape: the overload
+// machinery carries both halves — the {3}{R}{R}{R} paid instead of
+// {1}{R}, and the deletion of the target clause, which turns "target
+// creature you don't control" into "each creature you don't
+// control". The predicate — And(Creature(), OpponentControls()) — is
+// the target clause in one mode and the sweep's filter in the other,
+// applied at resolution to whatever is on the battlefield then, and
+// the damage is the spell's in both. Your own creatures are never a
+// legal target and never in the sweep.
+//
+// No simplification.
+func init() {
+	creatureYouDontControl := effects.And(effects.Creature(), effects.OpponentControls())
+	effects.Register(effects.Spec{
+		OracleID:     "48ddba1e-2ad7-463f-9307-d2379a800e51",
+		Name:         "Mizzium Mortars",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetCreature("target creature you don't control", effects.OpponentControls()),
+		Purpose:      effects.ForTargets(effects.DamageToTarget(0, 4)),
+		AlternativeCosts: []game.AlternativeCost{
+			effects.CostWithPurpose(effects.Overload("{3}{R}{R}{R}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 4, OpponentsOnly: true}}),
+		},
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			if ctx.PaidAltCost("overload") {
+				return effects.DamageEachMatching(ctx, creatureYouDontControl, 4)
+			}
+			id, ok := effects.B16FirstLegalTargetCard(ctx)
+			if !ok {
+				return nil
+			}
+			return effects.DealDamage{Source: ctx.Source(), Target: id, Amount: 4}.Apply(ctx)
+		},
+	})
+}

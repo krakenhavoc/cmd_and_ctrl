@@ -39,19 +39,19 @@ func init() {
 				Label:   "{2}, {T}: Copy target activated or triggered ability you control",
 				Cost:    Plus(ManaCost("{2}"), TapCost()),
 				Targets: AbilityOnStack("target activated or triggered ability you control", AnAbilityYouControl()),
-				Effect:  copyTargetedAbility,
+				Effect:  CopyTargetedAbility,
 			},
 			{
 				Label:   "{3}, {T}: Copy target instant or sorcery spell you control",
 				Cost:    Plus(ManaCost("{3}"), TapCost()),
-				Targets: instantOrSorcerySpell("target instant or sorcery spell you control", YouControl()),
-				Effect:  copyTargetedSpell,
+				Targets: TargetInstantOrSorcerySpell("target instant or sorcery spell you control", YouControl()),
+				Effect:  CopyTargetedSpell,
 			},
 			{
 				Label:   "{4}, {T}: Copy target permanent spell you control",
 				Cost:    Plus(ManaCost("{4}"), TapCost()),
 				Targets: TargetSpell("target permanent spell you control", Permanent(), YouControl()),
-				Effect:  copyTargetedSpell,
+				Effect:  CopyTargetedSpell,
 			},
 		},
 	})
@@ -66,9 +66,9 @@ func init() {
 // as it resolves and a permanent-spell copy becomes a token, and CR
 // 608.3f settles that inside the engine off the copied spell's own
 // types rather than off which ability made the copy.
-func copyTargetedSpell(g *game.Game, item *game.StackItem) error {
+func CopyTargetedSpell(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

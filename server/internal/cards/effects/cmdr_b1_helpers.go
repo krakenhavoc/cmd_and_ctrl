@@ -11,12 +11,12 @@ import (
 
 // cmdrB1NontokenCreaturesYouControl selects Always Watching's
 // subjects: nontoken creatures under the source's controller.
-func cmdrB1NontokenCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func CmdrB1NontokenCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && !target.IsToken() && target.Controller == source.Controller
 }
 
 // cmdrB1Labeled sets a static's printed clause as its label.
-func cmdrB1Labeled(s game.StaticAbility, label string) game.StaticAbility {
+func CmdrB1Labeled(s game.StaticAbility, label string) game.StaticAbility {
 	s.Label = label
 	return s
 }
@@ -24,19 +24,19 @@ func cmdrB1Labeled(s game.StaticAbility, label string) game.StaticAbility {
 // cmdrB1CluesYouControl selects the Clues the source's controller
 // controls: Clue is an artifact subtype, so a Clue that is not a token
 // counts (CR 205.3g).
-func cmdrB1CluesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func CmdrB1CluesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.HasSubtype("Clue")
 }
 
 // cmdrB1Investigate is "investigate" as one Do step (CR 701.16a).
-func cmdrB1Investigate() Applier {
+func CmdrB1Investigate() Applier {
 	return Investigate{N: 1}
 }
 
 // cmdrB1GainThatMuchDamage is "you gain that much life" for a
 // "whenever this creature is dealt damage" trigger settled with
 // ThatMuchDamage: the item's event Amount is the total dealt.
-func cmdrB1GainThatMuchDamage(g *game.Game, item *game.StackItem) error {
+func CmdrB1GainThatMuchDamage(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil || item.Trigger.Event.Amount <= 0 {
 		return nil
 	}
@@ -47,7 +47,7 @@ func cmdrB1GainThatMuchDamage(g *game.Game, item *game.StackItem) error {
 // condition: one creature was declared as an attacker at the source's
 // controller or at a planeswalker they control. An attack at a battle
 // is not (CR 508.3e).
-func cmdrB1CreatureAttacksYouOrYourPlaneswalker(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func CmdrB1CreatureAttacksYouOrYourPlaneswalker(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventAttack || ev.CardID == uuid.Nil {
 		return false
 	}
@@ -64,7 +64,7 @@ func cmdrB1CreatureAttacksYouOrYourPlaneswalker(ev game.Event, source *game.Card
 
 // cmdrB1IsYourFirstThreeTurns reports that it is `player`'s own turn
 // and one of the first three they have begun.
-func cmdrB1IsYourFirstThreeTurns(g *game.Game, player uuid.UUID) bool {
+func CmdrB1IsYourFirstThreeTurns(g *game.Game, player uuid.UUID) bool {
 	mine := g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) &&
 		g.Seats[g.Turn.ActiveSeat].ID == player
 	return mine && g.TurnsBegunFor(player) <= 3
@@ -101,7 +101,7 @@ func cmdrB1GraspExileNext(ctx *Context, picks []uuid.UUID) error {
 
 // cmdrB1GraspExileEach is Grasp of Fate's enters effect: every pick
 // still legal as it resolves (CR 608.2b), one per opponent.
-func cmdrB1GraspExileEach(g *game.Game, item *game.StackItem) error {
+func CmdrB1GraspExileEach(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var picks []uuid.UUID
 	for _, t := range ctx.LegalTargets() {

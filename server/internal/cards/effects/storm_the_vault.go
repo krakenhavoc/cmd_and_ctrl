@@ -32,7 +32,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it, and becomes a land in the same instant.
 func init() {
 	Register(Spec{
-		OracleID:     stormTheVaultOracleID,
+		OracleID:     StormTheVaultOracleID,
 		Name:         "Storm the Vault",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -45,7 +45,7 @@ func init() {
 					// CR 603.4's second check. The first one lives in
 					// the AppliesTo above; this is the one that
 					// notices a Treasure spent in response.
-					if countControlled(g, item.Controller, MatchArtifact) < 5 {
+					if CountControlled(g, item.Controller, MatchArtifact) < 5 {
 						return nil
 					}
 					return TransformThis{}.Apply(NewContext(g, item))
@@ -59,11 +59,11 @@ func init() {
 // trigger at all unless its controller already has the artifacts.
 func stormTheVaultHasFiveArtifacts(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.Actor == source.Controller &&
-		countControlled(g, source.Controller, MatchArtifact) >= 5
+		CountControlled(g, source.Controller, MatchArtifact) >= 5
 }
 
 // stormTheVaultOracleID is shared with the back face, which registers
 // under it plus "#1" (game.CatalogKey). One constant so the two files
 // cannot drift apart — the same shape invasion_of_karsus.go and
 // refraction_elemental.go use.
-const stormTheVaultOracleID = "72205fac-a94a-45cc-94c6-40ece2fdce0e"
+const StormTheVaultOracleID = "72205fac-a94a-45cc-94c6-40ece2fdce0e"

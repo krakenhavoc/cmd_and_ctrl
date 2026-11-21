@@ -26,17 +26,17 @@ import (
 // No simplification.
 func init() {
 	const label = "Fear of the Dark — gains menace and deathtouch until end of turn"
-	gains := thisCreatureUntilEOT(label, 0, 0, "menace", "deathtouch")
+	gains := ThisCreatureUntilEOT(label, 0, 0, "menace", "deathtouch")
 	Register(Spec{
 		OracleID:     "9285cdf1-ad25-4aee-a865-1bf0cc905183",
 		Name:         "Fear of the Dark",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclared(ev, source) &&
-					!controlsAGlimmerCreature(g, defendingPlayerOfAttack(g, ev), source.TextSubtype("Glimmer"))
+				return AttackDeclared(ev, source) &&
+					!ControlsAGlimmerCreature(g, DefendingPlayerOfAttack(g, ev), source.TextSubtype("Glimmer"))
 			}, label, func(g *game.Game, item *game.StackItem) error {
-				if controlsAGlimmerCreature(g, defendingPlayerOfAttack(g, item.Trigger.Event), NewContext(g, item).TextSubtype("Glimmer")) {
+				if ControlsAGlimmerCreature(g, DefendingPlayerOfAttack(g, item.Trigger.Event), NewContext(g, item).TextSubtype("Glimmer")) {
 					return nil
 				}
 				return gains(g, item)
@@ -47,6 +47,6 @@ func init() {
 
 // controlsAGlimmerCreature reports whether `player` controls a creature
 // of the given type (Glimmer, as the card's text reads it).
-func controlsAGlimmerCreature(g *game.Game, player uuid.UUID, glimmer string) bool {
-	return player != uuid.Nil && b43CreaturesOfSubtypeControlled(g, player, glimmer) > 0
+func ControlsAGlimmerCreature(g *game.Game, player uuid.UUID, glimmer string) bool {
+	return player != uuid.Nil && B43CreaturesOfSubtypeControlled(g, player, glimmer) > 0
 }

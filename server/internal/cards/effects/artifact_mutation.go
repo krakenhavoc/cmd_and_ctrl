@@ -25,7 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      TargetPermanent("target artifact", Artifact()),
-		OnResolve:    destroyTargetThenSaprolingsForItsManaValue(true),
+		OnResolve:    DestroyTargetThenSaprolingsForItsManaValue(true),
 	})
 }
 
@@ -36,9 +36,9 @@ func init() {
 // is destroyed; the tokens are the caster's and are made whether or not
 // the destruction happened. With the target gone or illegal, nothing
 // happens. noRegen is the printed "It can't be regenerated."
-func destroyTargetThenSaprolingsForItsManaValue(noRegen bool) func(*game.StackItem, *Context) error {
+func DestroyTargetThenSaprolingsForItsManaValue(noRegen bool) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}

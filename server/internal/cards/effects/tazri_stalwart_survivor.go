@@ -52,7 +52,7 @@ func init() {
 			Mana: []ManaAbility{{
 				Cost:         ManaAbilityCost{Tap: true},
 				Label:        "{T}: Add one mana of any of this creature's colors. Spend this mana only to activate an ability of a creature.",
-				ProducedFunc: tazriProduced,
+				ProducedFunc: TazriProduced,
 				Restrictions: []string{game.ManaRestrictAnyOf(
 					[]string{game.ManaRestrictActivate, game.ManaRestrictType("Creature")},
 				)},
@@ -78,7 +78,7 @@ func init() {
 
 // tazriProduced is "one mana of any of this creature's colors": a pipe of
 // the colours the creature has now, or nothing when it is colourless.
-func tazriProduced(g *game.Game, _, source uuid.UUID) string {
+func TazriProduced(g *game.Game, _, source uuid.UUID) string {
 	c, ok := g.LookupCardForEffect(source)
 	if !ok {
 		return ""
@@ -113,7 +113,7 @@ func tazriHasAnotherActivatedAbility(g *game.Game, _, source uuid.UUID) bool {
 // tazriMilled puts every milled creature card with a non-mana activated
 // ability into its owner's hand.
 var tazriMilled = CardTail("tazri-stalwart-survivor/after-mill", func(ctx *Context, o game.TailOutcome) error {
-	return hobA11AllMilledToHand(ctx, o, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+	return HobA11AllMilledToHand(ctx, o, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsCreature() && len(game.ActivatedAbilitiesForCard(c)) > 0
 	})
 })

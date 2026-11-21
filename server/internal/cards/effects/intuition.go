@@ -153,14 +153,14 @@ func revealPickSettle(ctx *Context, picked, left []uuid.UUID, toHandFirst bool) 
 		}
 	}
 	// The shuffle is the move's keyed tail (#4253 slice 10a).
-	return ctx.Game.BounceCardsToHandKeyedForEffect(liveCards(ctx.Game, toHand), ctx.Tail(thenShuffle))
+	return ctx.Game.BounceCardsToHandKeyedForEffect(LiveCards(ctx.Game, toHand), ctx.Tail(ThenShuffle))
 }
 
 // liveCards drops the IDs that are no longer in any zone, so a batch
 // exit is asked only about cards that are still somewhere.
 //
 // Caller holds g.mu.
-func liveCards(g *game.Game, ids []uuid.UUID) []uuid.UUID {
+func LiveCards(g *game.Game, ids []uuid.UUID) []uuid.UUID {
 	out := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
 		if g.FindCardZoneForEffect(id) != nil {

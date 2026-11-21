@@ -20,14 +20,14 @@ import (
 // Added in S14 sub-PR 3; collapsed in #622.
 
 func init() {
-	game.CatalogLookup = lookupDef
+	game.CatalogLookup = LookupDef
 }
 
 // selfOnly is the AppliesTo predicate for a static that applies only to
 // the card itself, not to any other battlefield card. Separated here so
 // the closure inside the hook is a bare reference rather than an inline
 // func literal per call.
-func selfOnly(target *game.Card, g *game.Game, source *game.Card) bool {
+func SelfOnly(target *game.Card, g *game.Game, source *game.Card) bool {
 	return target.InstanceID == source.InstanceID
 }
 
@@ -36,7 +36,7 @@ func selfOnly(target *game.Card, g *game.Game, source *game.Card) bool {
 // that already has printed islandwalk from its own
 // `PrintedKeywords`). Named to avoid colliding with the
 // `containsString` helper in test files in this package.
-func keywordSliceContains(xs []string, s string) bool {
+func KeywordSliceContains(xs []string, s string) bool {
 	for _, x := range xs {
 		if x == s {
 			return true
@@ -52,9 +52,9 @@ func keywordSliceContains(xs []string, s string) bool {
 // caller. The membership check is the load-bearing half: a permanent that already
 // has the keyword must not end up with it twice, because the wire
 // renders the badge list verbatim.
-func appendKeywordsTo(c *game.Characteristic, keywords []string) {
+func AppendKeywordsTo(c *game.Characteristic, keywords []string) {
 	for _, kw := range keywords {
-		if !keywordSliceContains(c.Abilities, kw) {
+		if !KeywordSliceContains(c.Abilities, kw) {
 			c.Abilities = append(c.Abilities, kw)
 		}
 	}

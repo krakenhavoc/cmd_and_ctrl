@@ -30,7 +30,7 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return CreateToken{
 				Controller: ctx.Controller(),
-				Template:   tokenFromCatalog(printedValorsReachWarriorToken),
+				Template:   TokenFromCatalog(PrintedValorsReachWarriorToken),
 				N:          2,
 			}.Apply(ctx)
 		},
@@ -39,8 +39,8 @@ func init() {
 
 // printedValorsReachWarriorToken is the 3/2 red and white Warrior as
 // printed, trigger included.
-func printedValorsReachWarriorToken() tokenTemplate {
-	return tokenTemplate{
+func PrintedValorsReachWarriorToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "warrior-valors-reach",
 		Card: game.Card{
 			Name:      "Warrior",
@@ -51,7 +51,7 @@ func printedValorsReachWarriorToken() tokenTemplate {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclared(ev, source) && otherAttackingCreatureTokens(g, source) >= 1
+				return AttackDeclared(ev, source) && otherAttackingCreatureTokens(g, source) >= 1
 			}, "Warrior — put a +1/+1 counter on this token", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 		Text: "Whenever this token and at least one other creature token attack, put a +1/+1 counter on this token.",

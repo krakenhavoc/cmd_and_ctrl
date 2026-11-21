@@ -30,13 +30,13 @@ func init() {
 
 // AxeEquipmentToken is the Axe as PRINTED: a colorless Equipment artifact
 // token named Axe, "Equipped creature gets +1/+0", equip {2}.
-func AxeEquipmentToken() game.Card { return tokenFromCatalog(printedAxeEquipmentToken) }
+func AxeEquipmentToken() game.Card { return TokenFromCatalog(printedAxeEquipmentToken) }
 
 // printedAxeEquipmentToken is the Axe as PRINTED, abilities included. It is
 // the catalog's entry for this token (token_catalog.go). Its slug is an
 // on-disk identity and is never renamed.
-func printedAxeEquipmentToken() tokenTemplate {
-	return tokenTemplate{
+func printedAxeEquipmentToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "axe-equipment",
 		Card: game.Card{
 			Name:     "Axe",

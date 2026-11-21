@@ -22,15 +22,15 @@ func anyPlayerControlsColor(g *game.Game, color string) bool {
 // <hexColor>; this creature gets +1/+0 as long as any player controls a
 // <otherColor> permanent" (Knight of Grace, Knight of Malice). The two
 // cards share the one body, so this is the one helper.
-func registerHexproofKnight(oracleID, name, hexColor, otherColor, otherWord string) {
+func RegisterHexproofKnight(oracleID, name, hexColor, otherColor, otherWord string) {
 	pump := game.StaticAbility{
 		Label:    "Gets +1/+0 as long as any player controls a " + otherWord + " permanent.",
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return selfCreature(target, g, source) && anyPlayerControlsColor(g, otherColor)
+			return SelfCreature(target, g, source) && anyPlayerControlsColor(g, otherColor)
 		},
-		Apply: pumpBy(1, 0),
+		Apply: PumpBy(1, 0),
 	}
 	Register(Spec{
 		OracleID:        oracleID,
@@ -45,7 +45,7 @@ func registerHexproofKnight(oracleID, name, hexColor, otherColor, otherWord stri
 // creature gains 'When this creature dies, return it to the battlefield
 // tapped under its owner's control with a +1/+1 counter on it'" (Feign
 // Death, Undying Malice): one instant, one duration grant under `key`.
-func registerReturnWithCounterSpell(oracleID, name, key string) {
+func RegisterReturnWithCounterSpell(oracleID, name, key string) {
 	Register(Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -55,12 +55,12 @@ func registerReturnWithCounterSpell(oracleID, name, key string) {
 			Key: key,
 			Triggered: []game.TriggeredAbility{
 				WhenThisDies(name+" — return it with a +1/+1 counter",
-					returnThisCreatureFromGraveyard(map[string]int{game.CounterPlusOne: 1}, nil)),
+					ReturnThisCreatureFromGraveyard(map[string]int{game.CounterPlusOne: 1}, nil)),
 			},
 			Text: "When this creature dies, return it to the battlefield tapped under its owner's control with a +1/+1 counter on it.",
 		}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			target, ok := b16FirstLegalTargetCard(ctx)
+			target, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}
@@ -78,13 +78,13 @@ func registerReturnWithCounterSpell(oracleID, name, key string) {
 // Vapors, Tribute to Hunger): the target player is the first legal player
 // target, and the life waits for the sacrifice (consumingVaporsGain).
 // The carry is the caster, then the victim.
-func edictGainToughness(ctx *Context, name string) error {
-	victim, ok := firstLegalPlayerTarget(ctx)
+func EdictGainToughness(ctx *Context, name string) error {
+	victim, ok := FirstLegalPlayerTarget(ctx)
 	if !ok {
 		return nil
 	}
 	return ctx.Game.PlayerSacrificesThenKeyedForEffect(ctx.Source(), victim,
-		sacrificeSpec("a creature", Creature()),
+		SacrificeSpec("a creature", Creature()),
 		name+" — sacrifice a creature", 1,
-		consumingVaporsGain, []uuid.UUID{ctx.Controller(), victim})
+		ConsumingVaporsGain, []uuid.UUID{ctx.Controller(), victim})
 }

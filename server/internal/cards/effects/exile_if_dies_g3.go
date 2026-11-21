@@ -19,7 +19,7 @@ import (
 // this occurrence's own target. The replacement is the spell's, so it
 // is registered whether or not the damage was dealt (ADR 0108 §1
 // decision 3, the Disintegrate ruling).
-func damageModesTargetExileIfItDies(n int) func(item *game.StackItem, ctx *Context, occ int) error {
+func DamageModesTargetExileIfItDies(n int) func(item *game.StackItem, ctx *Context, occ int) error {
 	return func(_ *game.StackItem, ctx *Context, occ int) error {
 		t, ok := ModeTarget(ctx, occ)
 		if !ok {
@@ -37,7 +37,7 @@ func damageModesTargetExileIfItDies(n int) func(item *game.StackItem, ctx *Conte
 // is returned from the stack without being countered (ReturnSpellToHand,
 // Venser's verb), a permanent is bounced. Reads only this occurrence's
 // own target, re-checked as it resolves (CR 608.2b).
-func returnModesSpellOrPermanentToHand(item *game.StackItem, ctx *Context, occ int) error {
+func ReturnModesSpellOrPermanentToHand(item *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok {
 		return nil
@@ -52,7 +52,7 @@ func returnModesSpellOrPermanentToHand(item *game.StackItem, ctx *Context, occ i
 // ability's Effect, so an ability that says what a spell says (Jaya
 // Ballard's Incinerate, Nine-Ringed Bo's Lava Coil) uses the same
 // shared body as the spell.
-func abilityBody(body func(item *game.StackItem, ctx *Context) error) Effect {
+func AbilityBody(body func(item *game.StackItem, ctx *Context) error) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return body(item, NewContext(g, item))
 	}
@@ -60,7 +60,7 @@ func abilityBody(body func(item *game.StackItem, ctx *Context) error) Effect {
 
 // damageStep is one "N damage to <recipient>" of a sentence that deals
 // different amounts to different recipients (Serpentine Spike).
-type damageStep struct {
+type DamageStep struct {
 	Target uuid.UUID
 	Amount int
 }
@@ -70,7 +70,7 @@ type damageStep struct {
 // each recipient and what it was dealt — DealDamageToEachThen for a
 // sentence whose amounts differ. A recipient that has gone is skipped
 // and the rest are still dealt their damage.
-func dealDamageStepsThen(ctx *Context, steps []damageStep, then RecipientThen) error {
+func DealDamageStepsThen(ctx *Context, steps []DamageStep, then RecipientThen) error {
 	// One printed sentence is one damage instance (CR 615.8, ADR 0108
 	// PR 0): every step joins the scope opened here.
 	return ctx.Game.DamageInstanceForEffect(func() error {
@@ -83,13 +83,13 @@ func dealDamageStepsThen(ctx *Context, steps []damageStep, then RecipientThen) e
 // data (#4253): the rest of the steps ride damageStepsNext's tail, their
 // recipients as its Carry and their amounts as its Nums, and the
 // per-recipient rider as its Next.
-func dealDamageStepChain(ctx *Context, steps []damageStep, then RecipientThen) error {
+func dealDamageStepChain(ctx *Context, steps []DamageStep, then RecipientThen) error {
 	return dealDamageStepsFrom(ctx.Game, ctx.Tail(damageStepsNext), steps, then)
 }
 
 // dealDamageStepsFrom deals the head of `steps` with `step`, carrying the
 // rest, as its total's tail.
-func dealDamageStepsFrom(g *game.Game, step game.KeyedTail, steps []damageStep, then RecipientThen) error {
+func dealDamageStepsFrom(g *game.Game, step game.KeyedTail, steps []DamageStep, then RecipientThen) error {
 	if len(steps) == 0 {
 		return nil
 	}
@@ -110,10 +110,10 @@ func dealDamageStepsFrom(g *game.Game, step game.KeyedTail, steps []damageStep, 
 // total once its damage has settled: the next step is dealt. An on-disk
 // key.
 var damageStepsNext = game.RegisterTail("damage-steps/next", func(g *game.Game, o game.TailOutcome) error {
-	var steps []damageStep
+	var steps []DamageStep
 	for i, id := range o.Tail.Carry {
 		if i < len(o.Tail.Nums) {
-			steps = append(steps, damageStep{Target: id, Amount: o.Tail.Nums[i]})
+			steps = append(steps, DamageStep{Target: id, Amount: o.Tail.Nums[i]})
 		}
 	}
 	var then RecipientThen
@@ -129,7 +129,7 @@ var damageStepsNext = game.RegisterTail("damage-steps/next", func(g *game.Game, 
 // battlefield order, then every player still in the game in seat
 // order; one batch, so each is dealt its damage after the one before
 // has settled.
-func damageEachMatchingAndEachPlayerThen(ctx *Context, match CardPredicate, n int, then RecipientThen) error {
+func DamageEachMatchingAndEachPlayerThen(ctx *Context, match CardPredicate, n int, then RecipientThen) error {
 	var ids []uuid.UUID
 	for _, c := range MatchingBattlefield(ctx, match) {
 		ids = append(ids, c.InstanceID)

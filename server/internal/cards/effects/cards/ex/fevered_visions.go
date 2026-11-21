@@ -1,0 +1,72 @@
+package cardsex
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Fevered Visions — Enchantment for {1}{U}{R} (EDHREC rank 4439):
+//
+//	"At the beginning of each player's end step, that player draws a
+//	 card. If the player is your opponent and has four or more cards
+//	 in hand, this enchantment deals 2 damage to that player."
+//
+// A symmetric Howling Mine with an asymmetric bill: everyone draws,
+// but only opponents who hoard take the two. The card is a clock that
+// punishes the exact behaviour drawing extra cards encourages, and in
+// a four-player game it ticks three times a round. Roadmap batch 42
+// (#449), "no new machinery".
+//
+// "EACH player's end step" is the whole table's, so the trigger
+// watches every end step rather than only its controller's — and the
+// player in question is the one whose step it is, read off the event's
+// actor when the trigger is built. Writing it as the controller would
+// make the enchantment draw its owner a card on every opponent's turn
+// and never draw the opponents anything, which is not this card.
+//
+// The DRAW is unconditional and includes you; the DAMAGE is
+// conditional on two things checked when the trigger RESOLVES, after
+// the draw has happened: the player is an opponent, and their hand is
+// four or more. So a player at exactly three cards who draws to four
+// takes the two — the draw is part of the same ability and happens
+// first, as printed.
+//
+// DAMAGE from the enchantment, not life loss: it is preventable, and
+// it is the enchantment that dealt it, which matters for anything
+// that cares who the source was.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "70763549-4b4e-4cb8-8c02-0639ba18bb1a",
+		Name:         "Fevered Visions",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventBeginEndStep},
+			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Kind == game.EventBeginEndStep
+			},
+			Key: "Fevered Visions — that player draws, and takes 2 with four or more in hand",
+			Effect: effects.Do(
+				// The damage waits for a prompt the draw asks (CR 608.2c, #4155). The hand
+				// is counted again for it, after the draw.
+				effects.Instruction(func(ctx *effects.Context) error {
+					return effects.DrawCards{Player: ctx.Item.Trigger.Event.Actor, N: 1}.Apply(ctx)
+				}),
+				effects.Instruction(func(ctx *effects.Context) error {
+					item := ctx.Item
+					who := item.Trigger.Event.Actor
+					if who == item.Controller {
+						return nil
+					}
+					p := ctx.Game.PlayerByIDForEffect(who)
+					if p == nil || len(p.Hand.Cards) < 4 {
+						return nil
+					}
+					return effects.DealDamage{Source: item.SourceCardID, Target: who, Amount: 2}.Apply(ctx)
+				}),
+			),
+		}},
+	})
+}

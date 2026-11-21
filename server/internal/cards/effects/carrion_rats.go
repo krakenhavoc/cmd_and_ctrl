@@ -28,7 +28,7 @@ func init() {
 		OracleID:     "1aa6b31b-cd30-4741-abc6-2ef72e445630",
 		Name:         "Carrion Rats",
 		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{carrionTrigger("Carrion Rats", 1)},
+		Triggered:    []game.TriggeredAbility{CarrionTrigger("Carrion Rats", 1)},
 	})
 }
 
@@ -36,10 +36,10 @@ func init() {
 // any player may exile <n> cards from their graveyard. If a player does,
 // this creature assigns no combat damage this turn" of Carrion Rats and
 // Carrion Wurm.
-func carrionTrigger(name string, n int) game.TriggeredAbility {
+func CarrionTrigger(name string, n int) game.TriggeredAbility {
 	words := "a card"
 	if n != 1 {
-		words = numberWord(n) + " cards"
+		words = NumberWord(n) + " cards"
 	}
 	// "If a player does" is keyed (#4264), one key per card, so a table
 	// waiting on any player's answer is a restore point. The Rats must
@@ -47,14 +47,14 @@ func carrionTrigger(name string, n int) game.TriggeredAbility {
 	// item carries its object.
 	noDamage := AnyPlayerConsequences("any-player/"+strings.ReplaceAll(strings.ToLower(name), " ", "-")+"-no-combat-damage",
 		func(ctx *Context, _ game.AnyPlayerAnswer) error {
-			if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			if !SourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 				return nil
 			}
 			ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), ctx.Item.SourceCardID, name+" — assigns no combat damage this turn")
 			return nil
 		}, nil, nil)
 	return OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return attackDeclared(ev, source) || selfBlocksOnce(ev, source)
+		return AttackDeclared(ev, source) || SelfBlocksOnce(ev, source)
 	}, name+" — any player may exile "+words+" from their graveyard to stop its combat damage",
 		func(g *game.Game, item *game.StackItem) error {
 			return AnyPlayerPays{

@@ -66,7 +66,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, source.TextSubtype("Sphinx"))
+				return AttackDeclaredByYou(ev, source.Controller) && AttackerHasSubtype(g, ev, source.TextSubtype("Sphinx"))
 			}, urSphinxTriggerLabel, urSphinxSteps)),
 		},
 	})
@@ -79,7 +79,7 @@ const urSphinxTriggerLabel = "The Ur-Sphinx — each player mills that many card
 // CR 702.73a). The Ur-Sphinx's Sphinxes and The Ur-Dragon's Dragons.
 // `subtype` is judged as given: a caller reads its printed word through
 // its own text first (TextSubtype, CR 612.2, #3984).
-func attackerHasSubtype(g *game.Game, ev game.Event, subtype string) bool {
+func AttackerHasSubtype(g *game.Game, ev game.Event, subtype string) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && c.IsCreature() && c.HasSubtype(subtype)
 }
@@ -91,14 +91,14 @@ func attackerHasSubtype(g *game.Game, ev game.Event, subtype string) bool {
 // combat before the trigger resolved still counts.
 //
 // Caller must hold g.mu.
-func attackersOfSubtypeInTheSameBatch(g *game.Game, ev game.Event, you uuid.UUID, subtype string) int {
+func AttackersOfSubtypeInTheSameBatch(g *game.Game, ev game.Event, you uuid.UUID, subtype string) int {
 	n := 0
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		e := g.Events[i]
 		if e.Batch < ev.Batch {
 			break
 		}
-		if e.Batch == ev.Batch && attackDeclaredByYou(e, you) && attackerHasSubtype(g, e, subtype) {
+		if e.Batch == ev.Batch && AttackDeclaredByYou(e, you) && AttackerHasSubtype(g, e, subtype) {
 			n++
 		}
 	}
@@ -137,8 +137,8 @@ func urSphinxCount(ctx *Context) error {
 		return nil
 	}
 	g := ctx.Game
-	n := attackersOfSubtypeInTheSameBatch(g, item.Trigger.Event, item.Controller, g.TextReaderForEffect(item).TextSubtype("Sphinx"))
-	ctx.RecordStep(urSphinxRecord, nil, int(b25LastEventSeq(g)), n)
+	n := AttackersOfSubtypeInTheSameBatch(g, item.Trigger.Event, item.Controller, g.TextReaderForEffect(item).TextSubtype("Sphinx"))
+	ctx.RecordStep(urSphinxRecord, nil, int(B25LastEventSeq(g)), n)
 	return nil
 }
 
@@ -146,7 +146,7 @@ func urSphinxCount(ctx *Context) error {
 // first.
 func urSphinxMill(i int) func(ctx *Context) error {
 	return func(ctx *Context) error {
-		players := tablePlayers(ctx)
+		players := TablePlayers(ctx)
 		r := ctx.StepRecord(urSphinxRecord)
 		if i >= len(players) || len(r.Ns) < 2 || r.Ns[1] <= 0 {
 			return nil
@@ -188,7 +188,7 @@ func urSphinxMilledThisWay(g *game.Game, player uuid.UUID, cursor uint64) []uuid
 // is a registered key, so the table waiting on it is a restore point.
 func urSphinxOffer(i int) func(ctx *Context) error {
 	return func(ctx *Context) error {
-		players := tablePlayers(ctx)
+		players := TablePlayers(ctx)
 		r := ctx.StepRecord(urSphinxRecord)
 		if i >= len(players) || len(r.Ns) < 2 || r.Ns[1] <= 0 {
 			return nil

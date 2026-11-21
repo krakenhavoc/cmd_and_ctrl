@@ -9,7 +9,7 @@ import (
 // cardObjectStillInGraveyard is "this card" in the graveyard: the very
 // object that triggered, not a card of the same name that left and came
 // back (CR 400.7).
-func cardObjectStillInGraveyard(g *game.Game, item *game.StackItem) bool {
+func CardObjectStillInGraveyard(g *game.Game, item *game.StackItem) bool {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
 	if z == nil || z.Kind != game.ZoneGraveyard {
 		return false
@@ -28,19 +28,19 @@ func cardObjectStillInGraveyard(g *game.Game, item *game.StackItem) bool {
 
 // mayPayForGraveyardReturn offers a resolution-time payment only for the
 // same graveyard object, and checks it again when the payment finishes.
-func mayPayForGraveyardReturn(g *game.Game, item *game.StackItem, cost, question string) error {
-	return mayPayForGraveyardReturnThen(g, item, cost, question, graveyardReturnPaid)
+func MayPayForGraveyardReturn(g *game.Game, item *game.StackItem, cost, question string) error {
+	return MayPayForGraveyardReturnThen(g, item, cost, question, graveyardReturnPaid)
 }
 
 // mayPayForGraveyardReturnToHand is the same offer for a card that comes back
 // to its owner's hand (Silvan Reveler's "you may pay {1}{G}{U}. If you do,
 // return this card from your graveyard to your hand").
-func mayPayForGraveyardReturnToHand(g *game.Game, item *game.StackItem, cost, question string) error {
-	return mayPayForGraveyardReturnThen(g, item, cost, question, graveyardReturnToHandPaid)
+func MayPayForGraveyardReturnToHand(g *game.Game, item *game.StackItem, cost, question string) error {
+	return MayPayForGraveyardReturnThen(g, item, cost, question, graveyardReturnToHandPaid)
 }
 
-func mayPayForGraveyardReturnThen(g *game.Game, item *game.StackItem, cost, question string, then game.PayUnlessElse) error {
-	if !cardObjectStillInGraveyard(g, item) {
+func MayPayForGraveyardReturnThen(g *game.Game, item *game.StackItem, cost, question string, then game.PayUnlessElse) error {
+	if !CardObjectStillInGraveyard(g, item) {
 		return nil
 	}
 	return MayPay{
@@ -54,10 +54,10 @@ func mayPayForGraveyardReturnThen(g *game.Game, item *game.StackItem, cost, ques
 // graveyardReturnPaid is the paid half of mayPayForGraveyardReturn, keyed (#4264). The asking item carries the card's object, so a card that left the graveyard and came back is a new object (CR 400.7).
 var graveyardReturnPaid = PayUnlessBranches("pay-unless/graveyard-return-this-card-to-battlefield",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
-		if !cardObjectStillInGraveyard(ctx.Game, ctx.Item) {
+		if !CardObjectStillInGraveyard(ctx.Game, ctx.Item) {
 			return nil
 		}
-		return returnThisCardFromYourGraveyard(ctx.Game, ctx.Item)
+		return ReturnThisCardFromYourGraveyard(ctx.Game, ctx.Item)
 	}, nil)
 
 // graveyardReturnToHandPaid is graveyardReturnPaid's hand twin, keyed the same
@@ -65,8 +65,8 @@ var graveyardReturnPaid = PayUnlessBranches("pay-unless/graveyard-return-this-ca
 // that left the graveyard and came back is a new object (CR 400.7).
 var graveyardReturnToHandPaid = PayUnlessBranches("pay-unless/graveyard-return-this-card-to-hand",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
-		if !cardObjectStillInGraveyard(ctx.Game, ctx.Item) {
+		if !CardObjectStillInGraveyard(ctx.Game, ctx.Item) {
 			return nil
 		}
-		return returnThisCardFromYourGraveyardToHand(ctx.Game, ctx.Item)
+		return ReturnThisCardFromYourGraveyardToHand(ctx.Game, ctx.Item)
 	}, nil)

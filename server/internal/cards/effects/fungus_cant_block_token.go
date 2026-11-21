@@ -12,8 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // printedFungusCantBlockToken is the Fungus as printed, its static
 // included. Its slug is an on-disk identity: never renamed, never reused.
-func printedFungusCantBlockToken() tokenTemplate {
-	return tokenTemplate{
+func printedFungusCantBlockToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "fungus-cant-block",
 		Card: game.Card{
 			Name:      "Fungus",
@@ -28,4 +28,4 @@ func printedFungusCantBlockToken() tokenTemplate {
 }
 
 // FungusCantBlockToken is the Fungus's card value for CreateToken.
-func FungusCantBlockToken() game.Card { return tokenFromCatalog(printedFungusCantBlockToken) }
+func FungusCantBlockToken() game.Card { return TokenFromCatalog(printedFungusCantBlockToken) }

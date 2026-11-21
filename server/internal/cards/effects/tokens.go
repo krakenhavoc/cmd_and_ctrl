@@ -34,15 +34,15 @@ func FaerieRogueToken() game.Card { return TokenCard("1/1 black Faerie Rogue wit
 // {C}". Added in S19 sub-PR 5; the mana ability went live in S21
 // sub-PR 1 (no tap in the cost — a Spawn can be cracked the turn it
 // arrives).
-func EldraziSpawnToken() game.Card { return tokenFromCatalog(printedEldraziSpawnToken) }
+func EldraziSpawnToken() game.Card { return TokenFromCatalog(printedEldraziSpawnToken) }
 
 // printedEldraziSpawnToken is the Eldrazi Spawn as PRINTED — the abilities
 // included. It is the catalog's entry for this token
 // (token_catalog.go): the abilities are registered from here at boot,
 // and the template that reaches the battlefield carries the key that
 // finds them rather than the closures themselves.
-func printedEldraziSpawnToken() tokenTemplate {
-	return tokenTemplate{
+func printedEldraziSpawnToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "eldrazi-spawn",
 		Card: game.Card{
 			Name:      "Eldrazi Spawn",
@@ -97,15 +97,15 @@ func PhyrexianWurmLifelinkToken() game.Card {
 // The five-colour pipe offers all five colours, the commander's
 // identity listed first, so cracking a Treasure in a mono-red deck
 // offers {R} first and the other four after it, as printed.
-func TreasureToken() game.Card { return tokenFromCatalog(printedTreasureToken) }
+func TreasureToken() game.Card { return TokenFromCatalog(printedTreasureToken) }
 
 // printedTreasureToken is the Treasure as PRINTED — the abilities
 // included. It is the catalog's entry for this token
 // (token_catalog.go): the abilities are registered from here at boot,
 // and the template that reaches the battlefield carries the key that
 // finds them rather than the closures themselves.
-func printedTreasureToken() tokenTemplate {
-	return tokenTemplate{
+func printedTreasureToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "treasure",
 		Card: game.Card{
 			Name:     "Treasure",
@@ -133,15 +133,15 @@ func printedTreasureToken() tokenTemplate {
 // Cheaper than a Treasure by a tap: the printed cost is the sacrifice
 // alone, so a Gold made this turn is spendable this turn and a tapped
 // Gold is still spendable. Both fall out of leaving TapCost false.
-func GoldToken() game.Card { return tokenFromCatalog(printedGoldToken) }
+func GoldToken() game.Card { return TokenFromCatalog(printedGoldToken) }
 
 // printedGoldToken is the Gold as PRINTED — the abilities
 // included. It is the catalog's entry for this token
 // (token_catalog.go): the abilities are registered from here at boot,
 // and the template that reaches the battlefield carries the key that
 // finds them rather than the closures themselves.
-func printedGoldToken() tokenTemplate {
-	return tokenTemplate{
+func printedGoldToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "gold",
 		Card: game.Card{
 			Name:     "Gold",
@@ -157,15 +157,15 @@ func printedGoldToken() tokenTemplate {
 }
 
 // FoodToken — "{2}, {T}, Sacrifice this artifact: You gain 3 life."
-func FoodToken() game.Card { return tokenFromCatalog(printedFoodToken) }
+func FoodToken() game.Card { return TokenFromCatalog(printedFoodToken) }
 
 // printedFoodToken is the Food as PRINTED — the abilities
 // included. It is the catalog's entry for this token
 // (token_catalog.go): the abilities are registered from here at boot,
 // and the template that reaches the battlefield carries the key that
 // finds them rather than the closures themselves.
-func printedFoodToken() tokenTemplate {
-	return tokenTemplate{
+func printedFoodToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "food",
 		Card: game.Card{
 			Name:     "Food",
@@ -189,15 +189,15 @@ func printedFoodToken() tokenTemplate {
 
 // ClueToken — "{2}, Sacrifice this artifact: Draw a card." No tap in
 // the cost, so a Clue can be cracked the turn it's made.
-func ClueToken() game.Card { return tokenFromCatalog(printedClueToken) }
+func ClueToken() game.Card { return TokenFromCatalog(printedClueToken) }
 
 // printedClueToken is the Clue as PRINTED — the abilities
 // included. It is the catalog's entry for this token
 // (token_catalog.go): the abilities are registered from here at boot,
 // and the template that reaches the battlefield carries the key that
 // finds them rather than the closures themselves.
-func printedClueToken() tokenTemplate {
-	return tokenTemplate{
+func printedClueToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "clue",
 		Card: game.Card{
 			Name:     "Clue",
@@ -225,12 +225,12 @@ func printedClueToken() tokenTemplate {
 // The draw is the scry's ThenTail: the scry only queues a prompt, so a
 // draw written after it would take the card the player is still
 // deciding about (see Preordain).
-func ShardToken() game.Card { return tokenFromCatalog(printedShardToken) }
+func ShardToken() game.Card { return TokenFromCatalog(printedShardToken) }
 
 // printedShardToken is the Shard as PRINTED — the abilities included.
 // It is the catalog's entry for this token (token_catalog.go).
-func printedShardToken() tokenTemplate {
-	return tokenTemplate{
+func printedShardToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "shard",
 		Card: game.Card{
 			Name:     "Shard",
@@ -246,7 +246,7 @@ func printedShardToken() tokenTemplate {
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				c := item.Controller
-				return Scry{Player: c, N: 1, ThenTail: game.KeyedTail{Ref: thenDrawACard, Player: c}}.Apply(NewContext(g, item))
+				return Scry{Player: c, N: 1, ThenTail: game.KeyedTail{Ref: ThenDrawACard, Player: c}}.Apply(NewContext(g, item))
 			},
 		}},
 	}
@@ -256,12 +256,12 @@ func printedShardToken() tokenTemplate {
 // token with “{T}, Sacrifice this token: Exile the top card of your
 // library. You may play that card this turn. Activate only as a
 // sorcery.”"
-func JunkToken() game.Card { return tokenFromCatalog(printedJunkToken) }
+func JunkToken() game.Card { return TokenFromCatalog(printedJunkToken) }
 
 // printedJunkToken is the Junk as PRINTED — the abilities included. It
 // is the catalog's entry for this token (token_catalog.go).
-func printedJunkToken() tokenTemplate {
-	return tokenTemplate{
+func printedJunkToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "junk",
 		Card: game.Card{
 			Name:     "Junk",
@@ -276,7 +276,7 @@ func printedJunkToken() tokenTemplate {
 			},
 			SorcerySpeed: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				_, err := b12ImpulseExileForTurn(g, item, 1)
+				_, err := B12ImpulseExileForTurn(g, item, 1)
 				return err
 			},
 		}},
@@ -291,15 +291,15 @@ func printedJunkToken() tokenTemplate {
 // the same card-choice plumbing a sacrifice cost has. Until then
 // the Blood token loots for free, which is strictly better than
 // printed. Noted rather than silently wrong.
-func BloodToken() game.Card { return tokenFromCatalog(printedBloodToken) }
+func BloodToken() game.Card { return TokenFromCatalog(printedBloodToken) }
 
 // printedBloodToken is the Blood as PRINTED — the abilities
 // included. It is the catalog's entry for this token
 // (token_catalog.go): the abilities are registered from here at boot,
 // and the template that reaches the battlefield carries the key that
 // finds them rather than the closures themselves.
-func printedBloodToken() tokenTemplate {
-	return tokenTemplate{
+func printedBloodToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "blood",
 		Card: game.Card{
 			Name:     "Blood",
@@ -329,15 +329,15 @@ func printedBloodToken() tokenTemplate {
 // ability, and is refused for every other spell. Restricted mana is
 // invisible to the auto-tapper (autotap.go), so a Powerstone is tapped
 // by hand — weaker than printed, never stronger.
-func PowerstoneToken() game.Card { return tokenFromCatalog(printedPowerstoneToken) }
+func PowerstoneToken() game.Card { return TokenFromCatalog(printedPowerstoneToken) }
 
 // printedPowerstoneToken is the Powerstone as PRINTED — the abilities
 // included. It is the catalog's entry for this token
 // (token_catalog.go): the abilities are registered from here at boot,
 // and the template that reaches the battlefield carries the key that
 // finds them rather than the closures themselves.
-func printedPowerstoneToken() tokenTemplate {
-	return tokenTemplate{
+func printedPowerstoneToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "powerstone",
 		Card: game.Card{
 			Name:     "Powerstone",
@@ -357,10 +357,10 @@ func printedPowerstoneToken() tokenTemplate {
 // Reality Fracture ("{T}: Add {R} or {G}."). Both colours are offered;
 // unlike a Signet-style source it is not narrowed to a commander's
 // identity because the printed text does not say so.
-func HeartwoodToken() game.Card { return tokenFromCatalog(printedHeartwoodToken) }
+func HeartwoodToken() game.Card { return TokenFromCatalog(printedHeartwoodToken) }
 
-func printedHeartwoodToken() tokenTemplate {
-	return tokenTemplate{
+func printedHeartwoodToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "heartwood",
 		Card: game.Card{
 			Name:     "Heartwood",
@@ -438,7 +438,7 @@ func ColorlessShapeshifterToken() game.Card {
 // example the "Triggered and static abilities on non-copy tokens" row
 // of docs/engine-seams.md was written around, and the first token in
 // the catalog to carry a triggered ability.
-func PestToken() game.Card { return tokenFromCatalog(printedPestToken) }
+func PestToken() game.Card { return TokenFromCatalog(printedPestToken) }
 
 // printedPestToken is the Pest as PRINTED — the trigger included. It
 // is the catalog's entry for this token (token_catalog.go): the
@@ -451,8 +451,8 @@ func PestToken() game.Card { return tokenFromCatalog(printedPestToken) }
 // printed ability and uses the stack like any other (CR 603.3). It is
 // emphatically not the controller of whatever created the token: a
 // Pest that changes hands gains life for its new controller.
-func printedPestToken() tokenTemplate {
-	return tokenTemplate{
+func printedPestToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "pest",
 		Card: game.Card{
 			Name:      "Pest",
@@ -479,12 +479,12 @@ func printedPestToken() tokenTemplate {
 // nothing for it to carry the trigger on behalf of — the card file
 // said exactly that before this shipped.
 func NoncreatureCastWizardToken() game.Card {
-	return tokenFromCatalog(printedNoncreatureCastWizardToken)
+	return TokenFromCatalog(printedNoncreatureCastWizardToken)
 }
 
 // printedNoncreatureCastWizardToken is that Wizard as PRINTED.
-func printedNoncreatureCastWizardToken() tokenTemplate {
-	return tokenTemplate{
+func printedNoncreatureCastWizardToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "wizard",
 		Card: game.Card{
 			Name:      "Wizard",
@@ -496,7 +496,7 @@ func printedNoncreatureCastWizardToken() tokenTemplate {
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(Noncreature(), "Wizard — 1 damage to each opponent",
 				func(g *game.Game, item *game.StackItem) error {
-					return damageToEachOpponent(g, item, 1)
+					return DamageToEachOpponent(g, item, 1)
 				}),
 		},
 		Text: "Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.",
@@ -506,13 +506,13 @@ func printedNoncreatureCastWizardToken() tokenTemplate {
 // SmaugToken is There and Back Again's chapter III token: Smaug, a
 // legendary 6/6 red Dragon with flying, haste, and "When Smaug dies,
 // create fourteen Treasure tokens."
-func SmaugToken() game.Card { return tokenFromCatalog(printedSmaugToken) }
+func SmaugToken() game.Card { return TokenFromCatalog(printedSmaugToken) }
 
 // printedSmaugToken is Smaug as PRINTED. Its trigger looks back (CR
 // 603.10a): the Treasures are its controller's as it died, which is
 // item.Controller.
-func printedSmaugToken() tokenTemplate {
-	return tokenTemplate{
+func printedSmaugToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "smaug",
 		Card: game.Card{
 			Name:      "Smaug",
@@ -539,15 +539,15 @@ func printedSmaugToken() tokenTemplate {
 // new controller. "Leaves the battlefield" is any exit, so a sacrifice,
 // a bounce and a destroy all fire it, and the 2 damage is dealt BY the
 // token (a colorless source), which is item.SourceCardID.
-func MunitionsToken() game.Card { return tokenFromCatalog(printedMunitionsToken) }
+func MunitionsToken() game.Card { return TokenFromCatalog(printedMunitionsToken) }
 
 // printedMunitionsToken is the Munitions as PRINTED.
-func printedMunitionsToken() tokenTemplate {
-	return tokenTemplate{
+func printedMunitionsToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "munitions",
 		Card: game.Card{Name: "Munitions", TypeLine: "Token Artifact"},
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisLeaves("Munitions — 2 damage to any target", sourceDealsDamageToEachLegalTarget(2)),
+			Targeting(WhenThisLeaves("Munitions — 2 damage to any target", SourceDealsDamageToEachLegalTarget(2)),
 				TargetAny()),
 		},
 		Text: "When this token leaves the battlefield, it deals 2 damage to any target.",
@@ -559,7 +559,7 @@ func printedMunitionsToken() tokenTemplate {
 // that Cloudspire Coordinator, Defend the Rider, Valor's Flagship, Back
 // on Track, Roadside Assistance and the Roads make (ADR 0186 §5, #2705).
 // Its power stays 1: only the crew and saddle payment counts it as 3.
-func PilotToken() game.Card { return tokenFromCatalog(printedPilotToken) }
+func PilotToken() game.Card { return TokenFromCatalog(printedPilotToken) }
 
 // printedPilotToken is that Pilot as PRINTED. The ability is a layer 6
 // self-only static registered under the token key, so it survives a
@@ -568,8 +568,8 @@ func PilotToken() game.Card { return tokenFromCatalog(printedPilotToken) }
 //
 // The slug is an on-disk identity (a snapshot carries the token key) and
 // is never renamed.
-func printedPilotToken() tokenTemplate {
-	return tokenTemplate{
+func printedPilotToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "pilot-saddles-and-crews",
 		Card: game.Card{
 			Name:      "Pilot",
@@ -588,12 +588,12 @@ func printedPilotToken() tokenTemplate {
 // Prodigy's Prototype and Born to Drive make a 1/1 colorless Pilot with
 // "This token crews Vehicles as though its power were 2 greater." It
 // does not count extra for a Mount, so a saddle cost counts it as 1.
-func CrewPilotToken() game.Card { return tokenFromCatalog(printedCrewPilotToken) }
+func CrewPilotToken() game.Card { return TokenFromCatalog(printedCrewPilotToken) }
 
 // printedCrewPilotToken is that Pilot as PRINTED. Its slug is an on-disk
 // identity and is never renamed.
-func printedCrewPilotToken() tokenTemplate {
-	return tokenTemplate{
+func printedCrewPilotToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "pilot-crews",
 		Card: game.Card{
 			Name:      "Pilot",
@@ -630,12 +630,12 @@ func crewTokenAbility(name string, n int) game.ActivatedAbilityShape {
 // legendary 3/3 colorless Vehicle artifact token with flying and crew 2.
 // Legendary, so a second Setzer's Blackjack puts its controller to the
 // legend rule (CR 704.5j).
-func BlackjackToken() game.Card { return tokenFromCatalog(printedBlackjackToken) }
+func BlackjackToken() game.Card { return TokenFromCatalog(printedBlackjackToken) }
 
 // printedBlackjackToken is The Blackjack as PRINTED. Its slug is an
 // on-disk identity and is never renamed.
-func printedBlackjackToken() tokenTemplate {
-	return tokenTemplate{
+func printedBlackjackToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "the-blackjack",
 		Card: game.Card{
 			Name:      "The Blackjack",
@@ -651,12 +651,12 @@ func printedBlackjackToken() tokenTemplate {
 
 // VehicleCrew1Token is Mu Yanling, Wind Rider's 3/2 colorless Vehicle
 // artifact token with crew 1.
-func VehicleCrew1Token() game.Card { return tokenFromCatalog(printedVehicleCrew1Token) }
+func VehicleCrew1Token() game.Card { return TokenFromCatalog(printedVehicleCrew1Token) }
 
 // printedVehicleCrew1Token is that Vehicle as PRINTED. Its slug is an
 // on-disk identity and is never renamed.
-func printedVehicleCrew1Token() tokenTemplate {
-	return tokenTemplate{
+func printedVehicleCrew1Token() TokenTemplate {
+	return TokenTemplate{
 		Slug: "vehicle-crew-1",
 		Card: game.Card{
 			Name:      "Vehicle",

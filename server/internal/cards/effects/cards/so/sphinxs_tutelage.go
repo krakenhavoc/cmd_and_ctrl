@@ -1,0 +1,51 @@
+package cardsso
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Sphinx's Tutelage — Enchantment {2}{U} (EDHREC rank 3654):
+//
+//	"Whenever you draw a card, target opponent mills two cards. If
+//	 two nonland cards that share a color were milled this way,
+//	 repeat this process.
+//	 {5}{U}: Draw a card, then discard a card."
+//
+// The mono-blue mill engine. The draw trigger is Niv-Mizzet's shape
+// — EventDrawCard fires once per card with the drawer in Actor, so a
+// draw-three is three triggers, each with its own "target opponent"
+// pick as it goes on the stack — and the body is the printed loop:
+// the chosen opponent mills two; if both cards are nonland and share
+// a colour (printed colours — Scryfall's stamped list, or the mana
+// cost for a fixture), they mill two more, and so on until a pair
+// fails the test or the library runs out. A pass against a library
+// of fewer than two mills what is left, and a mill never loses a
+// player the game (CR 701.17b). The loot is a CR 602 activation
+// with a mana cost, and the drawn card fires the trigger again, as
+// printed.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "158db438-52ba-4c30-b7bf-d1c4f76da917",
+		Name:         "Sphinx's Tutelage",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{5}{U}: Draw a card, then discard a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    effects.ManaCost("{5}{U}"),
+			Effect:  effects.B35LootOne,
+		}},
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventDrawCard},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.Actor == source.Controller
+			},
+			Targets: effects.TargetPlayer("target opponent", effects.Opponent()),
+			Key:     effects.B35TutelageLabel,
+			Effect:  effects.B35TutelageMill,
+		}},
+	})
+}

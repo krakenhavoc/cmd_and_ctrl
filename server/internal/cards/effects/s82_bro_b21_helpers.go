@@ -7,8 +7,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // set as it is created, Vulshok Factory's way). When haste is set the token
 // gains haste until end of turn (Rootwire Amalgam). A size below zero is
 // zero, and the token then dies as a state-based action (CR 704.5f).
-func s82BroB21XGolem(ctx *Context, x int, haste bool) error {
-	tmpl := s82OneB12Token("Golem", "Token Artifact Creature — Golem", x, x, nil, nil)
+func S82BroB21XGolem(ctx *Context, x int, haste bool) error {
+	tmpl := S82OneB12Token("Golem", "Token Artifact Creature — Golem", x, x, nil, nil)
 	ids, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(tmpl), 1, game.TokenEntryOptions{})
 	if err != nil || !haste {
 		return err
@@ -32,7 +32,7 @@ func s82BroB21WasCast(_ game.Event, source *game.Card, _ game.Characteristic, _ 
 // s82BroB21EntersIfCast is a "When this creature enters, if you cast it, ..."
 // trigger: ETB of this permanent, with the intervening if checked both as it
 // triggers and as it resolves.
-func s82BroB21EntersIfCast(label string, effect func(ctx *Context) error) game.TriggeredAbility {
+func S82BroB21EntersIfCast(label string, effect func(ctx *Context) error) game.TriggeredAbility {
 	return On(game.EventETB, AllOf(Self, s82BroB21WasCast), label,
 		func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)

@@ -21,7 +21,7 @@ func init() {
 		Name:         "Wrath of God",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
-		OnResolve:    wrathDestroyAllCreaturesNoRegen,
+		OnResolve:    WrathDestroyAllCreaturesNoRegen,
 	})
 }
 
@@ -37,13 +37,13 @@ func init() {
 // changed: the regeneration rider is now a real difference between
 // Wrath of God and Day of Judgment, and a shared helper could not
 // express it.
-func wrathDestroyAllCreatures(_ *game.StackItem, ctx *Context) error {
+func WrathDestroyAllCreatures(_ *game.StackItem, ctx *Context) error {
 	return DestroyAllMatching{Match: Creature()}.Apply(ctx)
 }
 
 // wrathDestroyAllCreaturesNoRegen is the same sweep for the printings
 // that DO print "They can't be regenerated" — Wrath of God and
 // Damnation (CR 701.19c).
-func wrathDestroyAllCreaturesNoRegen(_ *game.StackItem, ctx *Context) error {
+func WrathDestroyAllCreaturesNoRegen(_ *game.StackItem, ctx *Context) error {
 	return DestroyAllMatching{Match: Creature(), CantBeRegenerated: true}.Apply(ctx)
 }

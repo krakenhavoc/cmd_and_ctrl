@@ -44,7 +44,7 @@ import (
 // HasSubtype anyway.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfTarkirOracleID,
+		OracleID:     InvasionOfTarkirOracleID,
 		Name:         "Invasion of Tarkir",
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -60,7 +60,7 @@ func init() {
 
 // invasionOfTarkirOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfTarkirOracleID = "5c7f02ad-1daf-4d1a-bef0-0b2064f9b67e"
+const InvasionOfTarkirOracleID = "5c7f02ad-1daf-4d1a-bef0-0b2064f9b67e"
 
 // tarkirAnyOtherTarget is TargetAny with the card's own label.
 //
@@ -69,7 +69,7 @@ const invasionOfTarkirOracleID = "5c7f02ad-1daf-4d1a-bef0-0b2064f9b67e"
 // target spec is built once per card and cannot name the instance it
 // hangs off. A Siege chosen as its own target is skipped rather than
 // damaged.
-func tarkirAnyOtherTarget() *game.TargetSpec {
+func TarkirAnyOtherTarget() *game.TargetSpec {
 	spec := TargetAny()
 	spec.Label = "any other target"
 	return spec
@@ -115,7 +115,7 @@ func invasionOfTarkirReveal(g *game.Game, item *game.StackItem) error {
 
 // invasionOfTarkirRevealed is the Dragons revealed, then the damage queued,
 // keyed (#4253): the asking item rides the prompt as data.
-var invasionOfTarkirRevealed = askedPick("choose-cards/invasion-of-tarkir-reveal", func(ctx *Context, r game.CardsChosen) error {
+var invasionOfTarkirRevealed = AskedPick("choose-cards/invasion-of-tarkir-reveal", func(ctx *Context, r game.CardsChosen) error {
 	return invasionOfTarkirQueueDamage(ctx.Game, ctx.Item, r.Picked)
 })
 

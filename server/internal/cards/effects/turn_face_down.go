@@ -43,7 +43,7 @@ type TurnFaceDown struct {
 }
 
 func (t TurnFaceDown) Apply(ctx *Context) error {
-	targets := ctx.withoutNewSourceObject(t.Targets) // #1432
+	targets := ctx.WithoutNewSourceObject(t.Targets) // #1432
 	if len(targets) == 0 {
 		return nil
 	}
@@ -81,13 +81,13 @@ func ForestLandBody() *game.FaceDownListing {
 // … face down" card: read the one target, turn it over. Shared by
 // Backslide as an OnResolve and by Master of the Veil as a trigger
 // Effect, which is why it takes the item rather than the Context.
-func turnSingleTargetFaceDown(g *game.Game, item *game.StackItem) error {
-	return turnSingleTargetFaceDownAs(nil)(g, item)
+func TurnSingleTargetFaceDown(g *game.Game, item *game.StackItem) error {
+	return TurnSingleTargetFaceDownAs(nil)(g, item)
 }
 
 // turnSingleTargetFaceDownAs is turnSingleTargetFaceDown with a listed
 // body — Cyber Conversion's. nil is the CR 708.2a default.
-func turnSingleTargetFaceDownAs(listed func() *game.FaceDownListing) func(g *game.Game, item *game.StackItem) error {
+func TurnSingleTargetFaceDownAs(listed func() *game.FaceDownListing) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		if item == nil || len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 			return nil
@@ -116,7 +116,7 @@ func turnSingleTargetFaceDownAs(listed func() *game.FaceDownListing) func(g *gam
 // entry: a creature entering at the same time as Ixidron enters face up
 // (its ruling), so a permanent arriving in the same entry is left out
 // (game.ArrivingForEffect, #3862).
-func otherNontokenCreaturesOnBattlefield(g *game.Game, self uuid.UUID) []uuid.UUID {
+func OtherNontokenCreaturesOnBattlefield(g *game.Game, self uuid.UUID) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID == self || c.IsToken() || !c.IsCreature() || g.ArrivingForEffect(c.InstanceID) {
@@ -137,7 +137,7 @@ func otherNontokenCreaturesOnBattlefield(g *game.Game, self uuid.UUID) []uuid.UU
 // IsCreature as well, because "face-down creatures" is what Ixidron
 // says and an effect could in principle have made one of them
 // something else.
-func faceDownCreaturesOnBattlefield(g *game.Game) int {
+func FaceDownCreaturesOnBattlefield(g *game.Game) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.FaceDownIsPermanent() && c.IsCreature() {

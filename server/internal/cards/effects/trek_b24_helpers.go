@@ -12,7 +12,7 @@ import (
 // trekB24TriggeringSpellIsSaga reports whether a cast trigger's spell is a
 // Saga spell: its snapshot on the trigger as it was cast, else the card
 // wherever it is now.
-func trekB24TriggeringSpellIsSaga(g *game.Game, item *game.StackItem) bool {
+func TrekB24TriggeringSpellIsSaga(g *game.Game, item *game.StackItem) bool {
 	if item.Trigger == nil {
 		return false
 	}

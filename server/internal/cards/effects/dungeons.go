@@ -71,7 +71,7 @@ func roomAbilityLabel(dungeon, room string) string { return dungeon + " — " + 
 // its room abilities in the catalog.
 func registerDungeon(d DungeonSpec) {
 	key := game.DungeonKey(d.Key)
-	if _, ok := defs[key]; ok {
+	if _, ok := Defs[key]; ok {
 		panic(fmt.Sprintf("effects.registerDungeon: duplicate dungeon %q", d.Key))
 	}
 	rooms := make([]game.DungeonRoom, len(d.Rooms))
@@ -87,7 +87,7 @@ func registerDungeon(d DungeonSpec) {
 	}
 	game.RegisterDungeon(game.DungeonDef{Key: d.Key, Name: d.Name, Rooms: rooms, VentureIntoOnly: d.VentureIntoOnly})
 	checkTriggerZones(d.Name, "room ability", triggers)
-	fileDef(key, &game.CardDef{Triggered: triggers})
+	FileDef(key, &game.CardDef{Triggered: triggers})
 }
 
 // enteredRoom is a room ability's trigger condition: the venture marker

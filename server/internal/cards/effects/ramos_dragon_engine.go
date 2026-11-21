@@ -62,7 +62,7 @@ func init() {
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source,
 					"Ramos, Dragon Engine — a +1/+1 counter for each of that spell's colors")
-				item.Params.Amount = spellColorCount(g, ev.CardID)
+				item.Params.Amount = SpellColorCount(g, ev.CardID)
 				return item
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
@@ -92,7 +92,7 @@ func init() {
 // spell and for one that is no longer findable — a spell countered in
 // response to the trigger is last-known information (CR 608.2h), and
 // the count was taken when the trigger was built.
-func spellColorCount(g *game.Game, spellID uuid.UUID) int {
+func SpellColorCount(g *game.Game, spellID uuid.UUID) int {
 	c, ok := g.LookupCardForEffect(spellID)
 	if !ok {
 		return 0

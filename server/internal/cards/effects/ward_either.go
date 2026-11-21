@@ -77,7 +77,7 @@ func wardEitherAction(cost WardCost) *game.PayAction {
 func wardEitherOrCounter(g *game.Game, source, payer uuid.UUID, cost WardCost, targetingItem uuid.UUID) error {
 	action := wardEitherAction(cost)
 	if !g.PayActionCanPayForEffect(payer, action) {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	phrases := make([]string, 0, len(action.Either))
 	for _, b := range action.Either {

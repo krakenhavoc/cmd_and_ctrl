@@ -44,5 +44,5 @@ func init() {
 // overchargedAmalgamCounter counters the target the reflexive trigger
 // chose as it went on the stack.
 func overchargedAmalgamCounter(g *game.Game, item *game.StackItem) error {
-	return counterTheTargetSpell(item, NewContext(g, item))
+	return CounterTheTargetSpell(item, NewContext(g, item))
 }

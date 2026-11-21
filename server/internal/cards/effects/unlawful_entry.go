@@ -28,7 +28,7 @@ func init() {
 		Targets:      TargetCreature("target creature"),
 		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 0, "flying")),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
+			id, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}
@@ -39,9 +39,9 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			InGraveyard(Optional(
-				On(game.EventStickerPlaced, youPutAStickerOfKindOnACreature(game.StickerArt),
+				On(game.EventStickerPlaced, YouPutAStickerOfKindOnACreature(game.StickerArt),
 					"Unlawful Entry — return this card from your graveyard to your hand",
-					returnThisFromYourGraveyardToHand),
+					ReturnThisFromYourGraveyardToHand),
 				"Return Unlawful Entry from your graveyard to your hand?")),
 		},
 	})
@@ -50,7 +50,7 @@ func init() {
 // youPutAStickerOfKindOnACreature is the When of "whenever you put a <kind>
 // sticker on a creature": the card's controller (its owner, in a graveyard)
 // put a sticker of that kind on an object that is a creature.
-func youPutAStickerOfKindOnACreature(kind game.StickerKind) When {
+func YouPutAStickerOfKindOnACreature(kind game.StickerKind) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		if ev.Actor != source.Controller || !strings.HasPrefix(ev.Label, string(kind)+":") {
 			return false
@@ -58,13 +58,13 @@ func youPutAStickerOfKindOnACreature(kind game.StickerKind) When {
 		// A creature is a permanent: a creature CARD in a graveyard that
 		// got a sticker (Scampire) is not "a creature".
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && onBattlefield(g, ev.CardID) && c.IsCreature()
+		return ok && OnBattlefield(g, ev.CardID) && c.IsCreature()
 	}
 }
 
 // returnThisFromYourGraveyardToHand is "return this card from your
 // graveyard to your hand": nothing if the card has moved on.
-func returnThisFromYourGraveyardToHand(g *game.Game, item *game.StackItem) error {
+func ReturnThisFromYourGraveyardToHand(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	if zone := g.FindCardZoneForEffect(id); zone == nil || zone.Kind != game.ZoneGraveyard {
 		return nil

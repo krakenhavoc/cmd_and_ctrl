@@ -34,7 +34,7 @@ func init() {
 			ModeDoing("Continue the Pilgrimage — Sacrifice a creature. If you do, draw a card, then you may put a creature card and/or a land card from your hand onto the battlefield.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
 					return ctx.PlayersSacrificeThen([]uuid.UUID{item.Controller},
-						sacrificeSpec("a creature", Creature()), "Yuna's Decision — sacrifice a creature",
+						SacrificeSpec("a creature", Creature()), "Yuna's Decision — sacrifice a creature",
 						yunasDecisionSacrificed, ctx.RunData(nil))
 				}),
 			ModeDoing("Find Another Way — Return one or two target permanent cards from your graveyard to your hand.",
@@ -52,14 +52,14 @@ var yunasDecisionPutRef = game.RegisterDrawThen("yunas-decision/put", func(g *ga
 		Match:    Or(Creature(), Land()),
 		Optional: true,
 		Max:      2,
-		Rule:     yunasDecisionPick,
+		Rule:     YunasDecisionPick,
 		Label:    "Yuna's Decision — you may put a creature card and/or a land card from your hand onto the battlefield",
 	}.Apply(NewContext(g, &game.StackItem{Controller: d.Player, SourceCardID: d.Source}))
 })
 
 // yunasDecisionPick is the put's continuation with its set rule, keyed
 // (#4361 S7b).
-var yunasDecisionPick = PutFromHandRule("choose-cards/yunas-decision-put", aCreatureAndALand)
+var YunasDecisionPick = PutFromHandRule("choose-cards/yunas-decision-put", aCreatureAndALand)
 
 // aCreatureAndALand is the set rule for "a creature card and/or a land
 // card": at most one of each, a card that is both filling either slot.

@@ -22,7 +22,7 @@ func init() {
 		Name:         "Roiling Regrowth",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return sacrificeALandThenFetchTwoTapped(ctx, "Roiling Regrowth", roilingRegrowthFetch)
+			return SacrificeALandThenFetchTwoTapped(ctx, "Roiling Regrowth", roilingRegrowthFetch)
 		},
 	})
 }
@@ -30,9 +30,9 @@ func init() {
 // sacrificeALandThenFetchTwoTapped is "Sacrifice a land. Search your
 // library for up to two basic land cards, put them onto the battlefield
 // tapped, then shuffle." (Roiling Regrowth, Cycle of Renewal).
-func sacrificeALandThenFetchTwoTapped(ctx *Context, name string, then game.PromptRunThen) error {
+func SacrificeALandThenFetchTwoTapped(ctx *Context, name string, then game.PromptRunThen) error {
 	return ctx.SacrificeThen(ctx.Controller(),
-		sacrificeSpec("a land", Land()),
+		SacrificeSpec("a land", Land()),
 		name+" — sacrifice a land",
 		1, then)
 }
@@ -41,7 +41,7 @@ func sacrificeALandThenFetchTwoTapped(ctx *Context, name string, then game.Promp
 // has gone, keyed (#4290): one key per card, because the prompt names it.
 var (
 	roilingRegrowthFetch = fetchTwoBasicsTapped("prompt-run/roiling-regrowth-fetch", "Roiling Regrowth")
-	cycleOfRenewalFetch  = fetchTwoBasicsTapped("prompt-run/cycle-of-renewal-fetch", "Cycle of Renewal")
+	CycleOfRenewalFetch  = fetchTwoBasicsTapped("prompt-run/cycle-of-renewal-fetch", "Cycle of Renewal")
 )
 
 // fetchTwoBasicsTapped registers "search your library for up to two basic

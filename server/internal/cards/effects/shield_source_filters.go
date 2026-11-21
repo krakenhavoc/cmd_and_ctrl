@@ -27,28 +27,28 @@ import (
 
 // creatureSources is the query "a creature": the positive half of every
 // "creatures …" shield.
-func creatureSources() []game.PermanentQuery {
+func CreatureSources() []game.PermanentQuery {
 	return []game.PermanentQuery{QueryTypes("creature")}
 }
 
 // combatShieldAgainstCreatures is "Prevent all combat damage that would
 // be dealt this turn by creatures <filter>": combat damage only, to
 // anything, from a creature passing the filter.
-func combatShieldAgainstCreatures(f game.DamageSourceFilter) PreventDamageFromSource {
-	return PreventDamageFromSource{CombatOnly: true, Protect: ShieldAnything, Queries: creatureSources(), Filter: f}
+func CombatShieldAgainstCreatures(f game.DamageSourceFilter) PreventDamageFromSource {
+	return PreventDamageFromSource{CombatOnly: true, Protect: ShieldAnything, Queries: CreatureSources(), Filter: f}
 }
 
 // exceptSubtypes is "non-<subtype>" or "other than <subtypes>": a source
 // with any of the subtypes is left alone. A changeling has every creature
 // type, so it is never "non-Spider" (CR 702.73a).
-func exceptSubtypes(subtypes ...string) game.DamageSourceFilter {
+func ExceptSubtypes(subtypes ...string) game.DamageSourceFilter {
 	return game.DamageSourceFilter{Except: []game.PermanentQuery{{Subtypes: subtypes}}}
 }
 
 // creaturesAttackingPlayer counts the creatures attacking `player`
 // itself — not their planeswalkers or battles: Arachnogenesis' "the
 // number of creatures attacking you", read as it resolves.
-func creaturesAttackingPlayer(g *game.Game, player uuid.UUID) int {
+func CreaturesAttackingPlayer(g *game.Game, player uuid.UUID) int {
 	if player == uuid.Nil {
 		return 0
 	}
@@ -63,7 +63,7 @@ func creaturesAttackingPlayer(g *game.Game, player uuid.UUID) int {
 
 // attackedThisStepLabel is Deep Wood's and Heavy Fog's cast restriction
 // as printed.
-const attackedThisStepLabel = "Cast this spell only during the declare attackers step and only if you've been attacked this step."
+const AttackedThisStepLabel = "Cast this spell only during the declare attackers step and only if you've been attacked this step."
 
 // youWereAttackedThisStep is that restriction: the declare attackers
 // step, in which a creature was declared attacking you — you, not a
@@ -71,7 +71,7 @@ const attackedThisStepLabel = "Cast this spell only during the declare attackers
 // from combat since was still declared, so you have still been attacked;
 // the record is the turn's attack declarations in this combat phase
 // (TurnTally.Attacks, CR 508.1).
-func youWereAttackedThisStep(g *game.Game, controller uuid.UUID, _ game.Card) bool {
+func YouWereAttackedThisStep(g *game.Game, controller uuid.UUID, _ game.Card) bool {
 	if g.Turn.Step != game.StepDeclareAttackers || controller == uuid.Nil {
 		return false
 	}
@@ -85,8 +85,8 @@ func youWereAttackedThisStep(g *game.Game, controller uuid.UUID, _ game.Card) bo
 
 // damageToYouFromAttackers is "Prevent all damage that would be dealt to
 // you this turn by attacking creatures" (Heavy Fog, Deep Wood).
-func damageToYouFromAttackers() PreventDamageFromSource {
-	return PreventDamageFromSource{Protect: ShieldYou, Queries: creatureSources(),
+func DamageToYouFromAttackers() PreventDamageFromSource {
+	return PreventDamageFromSource{Protect: ShieldYou, Queries: CreatureSources(),
 		Filter: game.DamageSourceFilter{Combat: game.SourceCombatAttacking}}
 }
 
@@ -102,14 +102,14 @@ var (
 	// deals that much damage to that creature. If damage from a
 	// noncreature source is prevented this way, <this> deals that much
 	// damage to the source's controller" (Comeuppance).
-	preventedBackAtTheSourceBody = game.DelayedBody("prevention/back-at-the-creature-or-its-controller", preventedBackAtTheSource)
+	PreventedBackAtTheSourceBody = game.DelayedBody("prevention/back-at-the-creature-or-its-controller", preventedBackAtTheSource)
 
 	// "Whenever damage from a creature is prevented this way, each
 	// commander creature you control deals damage equal to its power to
 	// that creature" (Judgment of Alexander): a triggered ability, so it
 	// goes on the stack (Samite Ministration's shape), with the creature
 	// as its payload.
-	preventedCommandersStrikeTriggerBody = game.DelayedBody("prevention/commanders-strike-that-creature-trigger", preventedCommandersStrikeTrigger)
+	PreventedCommandersStrikeTriggerBody = game.DelayedBody("prevention/commanders-strike-that-creature-trigger", preventedCommandersStrikeTrigger)
 	commandersStrikeThatCreatureBody     = game.DelayedBody("prevention/commanders-strike-that-creature", commandersStrikeThatCreature)
 )
 
@@ -136,7 +136,7 @@ func preventedBackAtTheSource(g *game.Game, item *game.StackItem, p game.EffectP
 	}
 	// "That creature": the source, while it is still on the battlefield.
 	src := item.Trigger.Event.Source
-	if !onBattlefield(g, src) {
+	if !OnBattlefield(g, src) {
 		return nil
 	}
 	return g.DealDamageToCreatureForEffect(item.SourceCardID, src, p.Amount)
@@ -148,7 +148,7 @@ func preventedCommandersStrikeTrigger(g *game.Game, item *game.StackItem, p game
 	}
 	ctx := NewContext(g, item)
 	t := ReflexiveTrigger{
-		Label: shieldSourceName(ctx) + " — each commander creature you control deals damage equal to its power to that creature",
+		Label: ShieldSourceName(ctx) + " — each commander creature you control deals damage equal to its power to that creature",
 		Body:  commandersStrikeThatCreatureBody,
 		Cards: []uuid.UUID{item.Trigger.Event.Source},
 	}
@@ -167,7 +167,7 @@ func commandersStrikeThatCreature(g *game.Game, item *game.StackItem, _ game.Eff
 		return nil
 	}
 	victim := targets[0]
-	if !onBattlefield(g, victim) {
+	if !OnBattlefield(g, victim) {
 		return nil
 	}
 	type hit struct {

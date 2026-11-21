@@ -17,7 +17,7 @@ import (
 // event, which is the board read the resolution compares against to know
 // "it" is still the same object (CR 400.7) — a card that left and came
 // back is not.
-func eventCardTriggerItem(label string) func(game.Event, *game.Card, game.Characteristic, *game.Game) *game.StackItem {
+func EventCardTriggerItem(label string) func(game.Event, *game.Card, game.Characteristic, *game.Game) *game.StackItem {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 		item := game.NewTriggeredItem(source, label)
 		epoch := -1
@@ -33,7 +33,7 @@ func eventCardTriggerItem(label string) func(game.Event, *game.Card, game.Charac
 // named is still the object that died and is still in a graveyard, and
 // returns its ID. A token (CR 111.7) and a card moved on in response
 // answer false.
-func deadCardInGraveyard(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
+func DeadCardInGraveyard(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
 	dead := item.Params.Object
 	c, ok := g.LookupCardForEffect(dead.ID)
 	if !ok || c.ObjectEpoch != dead.Epoch {

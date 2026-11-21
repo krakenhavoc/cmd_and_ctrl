@@ -29,7 +29,7 @@ import (
 // b20GolemToken is one of Triplicate Titan's three 3/3 colorless
 // Golem artifact creatures, each carrying exactly one of the Titan's
 // keywords.
-func b20GolemToken(keyword string) game.Card {
+func B20GolemToken(keyword string) game.Card {
 	return game.Card{
 		Name:      "Golem",
 		TypeLine:  "Token Artifact Creature — Golem",
@@ -52,7 +52,7 @@ func b20GolemToken(keyword string) game.Card {
 // zone-origin guess and no land-drop-tally arithmetic needed any
 // more; both are gone along with the ambiguity they could not always
 // resolve (Horn of Greed's and Prosper's caveats).
-func b20LandPlayed(ev game.Event, g *game.Game) bool {
+func B20LandPlayed(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneBattlefield || !ev.Played {
 		return false
 	}
@@ -64,24 +64,24 @@ func b20LandPlayed(ev game.Event, g *game.Game) bool {
 // controller cast a spell from exile (EventCast stamps the origin in
 // OldZone, the Appa shape) or played a land from exile
 // (b20LandPlayed with an exile origin).
-func b20PlayedACardFromExile(ev game.Event, source *game.Card, g *game.Game) bool {
-	return ev.Actor == source.Controller && aCardWasPlayedFromExile(ev, g)
+func B20PlayedACardFromExile(ev game.Event, source *game.Card, g *game.Game) bool {
+	return ev.Actor == source.Controller && ACardWasPlayedFromExile(ev, g)
 }
 
 // aCardWasPlayedFromExile is the same read for ANY player — Rocco,
 // Street Chef's "whenever a player plays a land from exile or casts a
 // spell from exile" (#2559).
-func aCardWasPlayedFromExile(ev game.Event, g *game.Game) bool {
+func ACardWasPlayedFromExile(ev game.Event, g *game.Game) bool {
 	if ev.OldZone != game.ZoneExile {
 		return false
 	}
-	return ev.Kind == game.EventCast || b20LandPlayed(ev, g)
+	return ev.Kind == game.EventCast || B20LandPlayed(ev, g)
 }
 
 // b20ArtifactEntered is Grinding Station's "whenever an artifact
 // enters" — any artifact, under anyone's control, the Station itself
 // included.
-func b20ArtifactEntered(ev game.Event, g *game.Game) bool {
+func B20ArtifactEntered(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
 		return false
 	}
@@ -95,7 +95,7 @@ func b20ArtifactEntered(ev game.Event, g *game.Game) bool {
 // is a land that is now tapped. The tapped check is what "taps ...
 // for mana" adds over "activates a mana ability of" — a land whose
 // mana ability has no tap cost is not one.
-func b20LandTappedForMana(ev game.Event, g *game.Game) bool {
+func B20LandTappedForMana(ev game.Event, g *game.Game) bool {
 	if ev.Kind != game.EventManaAbilityActivated || ev.Source == uuid.Nil || ev.Actor == uuid.Nil {
 		return false
 	}
@@ -111,10 +111,10 @@ func b20LandTappedForMana(ev game.Event, g *game.Game) bool {
 // and the layer 6 grant — sharing one condition, read live on every
 // recompute so the third creature entering (or the seventh leaving)
 // moves the line at once. Jetmir counts himself, as printed.
-func b20JetmirClause(threshold int, keyword string) []game.StaticAbility {
+func B20JetmirClause(threshold int, keyword string) []game.StaticAbility {
 	applies := func(target *game.Card, g *game.Game, source *game.Card) bool {
 		return target.IsCreature() && target.Controller == source.Controller &&
-			b04CreaturesControlled(g, source.Controller) >= threshold
+			B04CreaturesControlled(g, source.Controller) >= threshold
 	}
 	return []game.StaticAbility{
 		{
@@ -147,7 +147,7 @@ func b20JetmirClause(threshold int, keyword string) []game.StaticAbility {
 // put it into your hand, then shuffle" — for Fierce Empath and
 // Tribute Mage. "You may" is the search prompt's decline; the pick is
 // revealed and goes to hand.
-func b20TutorOnETB(label, reason string, pred func(game.Card) bool) game.TriggeredAbility {
+func B20TutorOnETB(label, reason string, pred func(game.Card) bool) game.TriggeredAbility {
 	return WhenThisEnters(label, func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{
 			Player:    item.Controller,
@@ -171,7 +171,7 @@ func b20TutorOnETB(label, reason string, pred func(game.Card) bool) game.Trigger
 // than on the shared round number. Every card that uses it exiles ONE
 // card (Prosper, Cori Mountain Monastery, Gila Courser, Gundabad
 // Opportunist), so it is an Effect as it stands.
-func b20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem) error {
+func B20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
 	_, err := g.ExileTopWithPermissionForEffect(controller, controller, 1, game.CastPermission{
 		Duration: g.UntilEndOfYourNextTurnDuration(controller),
@@ -185,11 +185,11 @@ func b20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem) error {
 // skipped; each yes draws at once, and the life comes after the last
 // answer. A player with no library may say yes (and loses to it,
 // CR 704.5b) but did not draw a card, so gains nothing.
-func b20EachPlayerDrawsAndGainsOne(g *game.Game, item *game.StackItem) error {
-	return b20KwainAsk(NewContext(g, item), apnapPlayers(g), nil)
+func B20EachPlayerDrawsAndGainsOne(g *game.Game, item *game.StackItem) error {
+	return B20KwainAsk(NewContext(g, item), ApnapPlayers(g), nil)
 }
 
-func b20KwainAsk(ctx *Context, order, drew []uuid.UUID) error {
+func B20KwainAsk(ctx *Context, order, drew []uuid.UUID) error {
 	if len(order) == 0 {
 		for _, id := range drew {
 			if err := (GainLife{Player: id, Amount: 1}).Apply(ctx); err != nil {
@@ -200,13 +200,13 @@ func b20KwainAsk(ctx *Context, order, drew []uuid.UUID) error {
 	}
 	who, rest := order[0], order[1:]
 	if p := ctx.Game.PlayerByIDForEffect(who); p == nil || p.Eliminated {
-		return b20KwainAsk(ctx, rest, drew)
+		return B20KwainAsk(ctx, rest, drew)
 	}
 	return MayChoice{
 		Player:   who,
 		Question: "Kwain, Itinerant Meddler — draw a card?",
 		Draws:    1,
-		Then:     b20KwainAnswer,
+		Then:     B20KwainAnswer,
 		// The players who have drawn so far, then the ones still to ask.
 		Carry: append(append([]uuid.UUID(nil), drew...), rest...),
 		Word:  strconv.Itoa(len(drew)),
@@ -218,17 +218,17 @@ func b20KwainAsk(ctx *Context, order, drew []uuid.UUID) error {
 // asked. The prompt carries the players who have drawn (the first Word of
 // them) and the ones still to ask. Registered in init because the answer
 // asks the next player through b20KwainAsk, which names it. Keyed (#4291).
-var b20KwainAnswer game.ConfirmThen
+var B20KwainAnswer game.ConfirmThen
 
 func init() {
-	b20KwainAnswer = MayAnswer("confirm/kwain-draw", func(ctx *Context, r game.ConfirmAnswer) error {
-		n := wordInt(r)
+	B20KwainAnswer = MayAnswer("confirm/kwain-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+		n := WordInt(r)
 		if n > len(r.Carry) {
 			n = len(r.Carry)
 		}
 		drew, rest := append([]uuid.UUID(nil), r.Carry[:n]...), r.Carry[n:]
 		if !r.Accepted {
-			return b20KwainAsk(ctx, rest, drew)
+			return B20KwainAsk(ctx, rest, drew)
 		}
 		who := r.Chooser
 		p := ctx.Game.PlayerByIDForEffect(who)
@@ -239,6 +239,6 @@ func init() {
 		if got {
 			drew = append(drew, who)
 		}
-		return b20KwainAsk(ctx, rest, drew)
+		return B20KwainAsk(ctx, rest, drew)
 	})
 }

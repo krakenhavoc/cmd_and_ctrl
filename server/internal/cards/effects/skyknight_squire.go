@@ -34,10 +34,10 @@ func init() {
 			{
 				Label:            "As long as this creature has three or more +1/+1 counters on it, it is a Knight in addition to its other types.",
 				Layer:            game.Layer4Type,
-				AppliesTo:        skyknightSquireHasThreeCounters,
-				StartsAtCounters: skyknightSquireThirdCounter,
+				AppliesTo:        SkyknightSquireHasThreeCounters,
+				StartsAtCounters: SkyknightSquireThirdCounter,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-					if !hasFold(c.Subtypes, "Knight") {
+					if !HasFold(c.Subtypes, "Knight") {
 						c.Subtypes = append(c.Subtypes, "Knight")
 					}
 				},
@@ -45,8 +45,8 @@ func init() {
 			{
 				Label:            "As long as this creature has three or more +1/+1 counters on it, it has flying.",
 				Layer:            game.Layer6Ability,
-				AppliesTo:        skyknightSquireHasThreeCounters,
-				StartsAtCounters: skyknightSquireThirdCounter,
+				AppliesTo:        SkyknightSquireHasThreeCounters,
+				StartsAtCounters: SkyknightSquireThirdCounter,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Abilities = game.AppendKeywordAbility(c.Abilities, "flying")
 				},
@@ -56,10 +56,10 @@ func init() {
 }
 
 // skyknightSquireThirdCounter is the moment the statics' effect begins.
-var skyknightSquireThirdCounter = game.CounterThreshold{Kind: game.CounterPlusOne, AtLeast: 3}
+var SkyknightSquireThirdCounter = game.CounterThreshold{Kind: game.CounterPlusOne, AtLeast: 3}
 
 // skyknightSquireHasThreeCounters is the statics' condition: the Squire
 // itself, with three or more +1/+1 counters.
-func skyknightSquireHasThreeCounters(target *game.Card, _ *game.Game, source *game.Card) bool {
+func SkyknightSquireHasThreeCounters(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.InstanceID == source.InstanceID && target.Counters[game.CounterPlusOne] >= 3
 }

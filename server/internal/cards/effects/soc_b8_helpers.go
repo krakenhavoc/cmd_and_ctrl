@@ -19,16 +19,16 @@ import (
 //
 // `key` names the step record that carries the event cursor and N across
 // a pause: an on-disk identity.
-func socB8FractalWithCounters(key string, count func(ctx *Context) int) Effect {
-	return Do(socB8FractalWithCountersSteps(key, count)...)
+func SocB8FractalWithCounters(key string, count func(ctx *Context) int) Effect {
+	return Do(SocB8FractalWithCountersSteps(key, count)...)
 }
 
 // socB8FractalWithCountersSteps are the two steps of socB8FractalWithCounters,
 // for a spell that writes its OnResolve with ResolveSteps (Fractal Anomaly).
-func socB8FractalWithCountersSteps(key string, count func(ctx *Context) int) []Applier {
+func SocB8FractalWithCountersSteps(key string, count func(ctx *Context) int) []Applier {
 	return []Applier{
 		Instruction(func(ctx *Context) error {
-			ctx.RecordStep(key, nil, int(b25LastEventSeq(ctx.Game)), count(ctx))
+			ctx.RecordStep(key, nil, int(B25LastEventSeq(ctx.Game)), count(ctx))
 			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 green and blue Fractal")), 1, game.TokenEntryOptions{})
 			return err
 		}),
@@ -45,11 +45,11 @@ func socB8PutCountersOnNewFractals(key string) Instruction {
 		if len(rec.Ns) < 2 || rec.Ns[1] <= 0 {
 			return nil
 		}
-		for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
-			if !onBattlefield(ctx.Game, id) || !socB8IsFractal(ctx.Game, id) {
+		for _, id := range B27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
+			if !OnBattlefield(ctx.Game, id) || !socB8IsFractal(ctx.Game, id) {
 				continue
 			}
-			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: rec.Ns[1]}).Apply(ctx.asGroupMember()); err != nil {
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: rec.Ns[1]}).Apply(ctx.AsGroupMember()); err != nil {
 				return err
 			}
 		}
@@ -68,7 +68,7 @@ func socB8IsFractal(g *game.Game, id uuid.UUID) bool {
 // socB8ExileTokensAtNextEndStep is a token creation's keyed tail that
 // schedules "exile that token at the beginning of the next end step" over
 // the tokens that landed (CR 603.7). An on-disk key.
-func socB8ExileTokensAtNextEndStep(key, label string) game.TailRef {
+func SocB8ExileTokensAtNextEndStep(key, label string) game.TailRef {
 	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
 		if len(o.IDs) == 0 {
 			return nil
@@ -78,7 +78,7 @@ func socB8ExileTokensAtNextEndStep(key, label string) game.TailRef {
 			Controller: ctx.Controller(),
 			Label:      label,
 			Cards:      append([]uuid.UUID(nil), o.IDs...),
-			Body:       exileListedCardsBody,
+			Body:       ExileListedCardsBody,
 		}.Apply(ctx)
 	})
 }
@@ -86,9 +86,9 @@ func socB8ExileTokensAtNextEndStep(key, label string) game.TailRef {
 // socB8AttackingAnOpponentOf reports whether the creature is attacking a
 // player who is an opponent of `player` — the player, not a planeswalker
 // or battle that player controls or protects (CR 508.1b).
-func socB8AttackingAnOpponentOf(g *game.Game, player uuid.UUID, c game.Card) bool {
+func SocB8AttackingAnOpponentOf(g *game.Game, player uuid.UUID, c game.Card) bool {
 	if c.AttackingTarget == uuid.Nil || c.AttackingTarget == player {
 		return false
 	}
-	return eachOpponent(g, player, func(opp uuid.UUID) bool { return opp == c.AttackingTarget })
+	return EachOpponent(g, player, func(opp uuid.UUID) bool { return opp == c.AttackingTarget })
 }

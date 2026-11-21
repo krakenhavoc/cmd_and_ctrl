@@ -46,7 +46,7 @@ func Tokens() TokenLibrary { return TokenLibrary{} }
 // its printing is already the token. The Role tokens (111.10j–r) have
 // no template here, so a printing of one stays a printing, and the
 // table is told the engine does not run its text.
-var predefinedTokens = map[string]func() game.Card{
+var PredefinedTokens = map[string]func() game.Card{
 	"Treasure":   TreasureToken,   // CR 111.10a
 	"Food":       FoodToken,       // CR 111.10b
 	"Gold":       GoldToken,       // CR 111.10c
@@ -57,7 +57,7 @@ var predefinedTokens = map[string]func() game.Card{
 	"Incubator":  IncubatorToken,  // CR 111.10i
 	"Map":        MapToken,        // CR 111.10s
 	"Junk":       JunkToken,       // CR 111.10t
-	"Lander":     b16LanderToken,  // CR 111.10u
+	"Lander":     B16LanderToken,  // CR 111.10u
 	"Mutagen":    MutagenToken,    // CR 111.10v
 	"Vibranium":  VibraniumToken,  // CR 111.10w
 	"Heartwood":  HeartwoodToken,  // CR 111.10x
@@ -70,7 +70,7 @@ var predefinedTokens = map[string]func() game.Card{
 // Keyed in the table's stat-first style, because a player identifies
 // them by their body. A key here must not collide with a tokenTable or
 // a predefinedTokens key; TestSpawnableTokenKeysAreUnique holds that.
-var behaviourTokens = map[string]func() game.Card{
+var BehaviourTokens = map[string]func() game.Card{
 	"0/1 colorless Eldrazi Spawn":                           EldraziSpawnToken,
 	"2/2 blue Shapeshifter with changeling":                 BlueShapeshifterToken,
 	"2/2 colorless Shapeshifter with changeling":            ColorlessShapeshifterToken,
@@ -80,14 +80,14 @@ var behaviourTokens = map[string]func() game.Card{
 
 // TokenKeys lists every spawnable template key, sorted.
 func (TokenLibrary) TokenKeys() []string {
-	keys := make([]string, 0, len(tokenTable)+len(predefinedTokens)+len(behaviourTokens))
-	for k := range tokenTable {
+	keys := make([]string, 0, len(TokenTable)+len(PredefinedTokens)+len(BehaviourTokens))
+	for k := range TokenTable {
 		keys = append(keys, k)
 	}
-	for k := range predefinedTokens {
+	for k := range PredefinedTokens {
 		keys = append(keys, k)
 	}
-	for k := range behaviourTokens {
+	for k := range BehaviourTokens {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -105,10 +105,10 @@ func (l TokenLibrary) TokenTemplate(key string) (game.Card, bool) {
 	if t, ok := l.PredefinedToken(key); ok {
 		return t, true
 	}
-	if build, ok := behaviourTokens[key]; ok {
+	if build, ok := BehaviourTokens[key]; ok {
 		return build(), true
 	}
-	if _, ok := tokenTable[key]; ok {
+	if _, ok := TokenTable[key]; ok {
 		return TokenCard(key), true
 	}
 	return game.Card{}, false
@@ -119,7 +119,7 @@ func (l TokenLibrary) TokenTemplate(key string) (game.Card, bool) {
 // is not one the catalog has a template for. The name is the token's
 // own, as a Scryfall printing of it spells it: "Treasure", "Incubator".
 func (TokenLibrary) PredefinedToken(name string) (game.Card, bool) {
-	build, ok := predefinedTokens[name]
+	build, ok := PredefinedTokens[name]
 	if !ok {
 		return game.Card{}, false
 	}

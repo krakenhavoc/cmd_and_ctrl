@@ -48,14 +48,14 @@ func init() {
 			CostModifiers: []game.CostModifier{ChannelDiscountPerLegendaryCreature()},
 			Targets: TargetPermanent("target artifact, creature, enchantment, or planeswalker",
 				Or(Artifact(), Creature(), Enchantment(), Planeswalker())),
-			Effect: otawaraChannel,
+			Effect: OtawaraChannel,
 		}},
 	})
 }
 
 // otawaraChannel returns the chosen permanent to its owner's hand. A
 // target that has gone is not an error (CR 608.2b).
-func otawaraChannel(g *game.Game, item *game.StackItem) error {
+func OtawaraChannel(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {

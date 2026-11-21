@@ -44,7 +44,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				Magecraft("Extus, Oriq Overlord — return target nonlegendary creature card from your graveyard to your hand (magecraft)",
-					returnTargetCardToHand),
+					ReturnTargetCardToHand),
 				TargetCardInGraveyard("target nonlegendary creature card in your graveyard", YouOwn(), Creature(), Not(Legendary())),
 			),
 		},
@@ -80,12 +80,12 @@ const extusOracleID = "0b299983-9f0f-404a-acd1-8f142572b1f1"
 // BloodAvatarToken is Awaken the Blood Avatar's 3/6 black and red Avatar
 // with haste and "Whenever this token attacks, it deals 3 damage to each
 // opponent."
-func BloodAvatarToken() game.Card { return tokenFromCatalog(printedBloodAvatarToken) }
+func BloodAvatarToken() game.Card { return TokenFromCatalog(printedBloodAvatarToken) }
 
 // printedBloodAvatarToken is that Avatar as PRINTED. The slug is
 // qualified because other cards make Avatars that differ from it.
-func printedBloodAvatarToken() tokenTemplate {
-	return tokenTemplate{
+func printedBloodAvatarToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "avatar-blood",
 		Card: game.Card{
 			Name:      "Avatar",

@@ -23,7 +23,7 @@ func init() {
 		PrintedKeywords: []string{"flying", game.KeywordAscend},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, AllOf(ThisAttacked, YouHaveTheCitysBlessingNow),
-				"Resplendent Griffin — put a +1/+1 counter on it", blessedSelfCounter),
+				"Resplendent Griffin — put a +1/+1 counter on it", BlessedSelfCounter),
 		},
 	})
 }
@@ -35,7 +35,7 @@ func init() {
 //
 // CounterOnThis puts nothing on a source that has left the battlefield
 // or come back as a new object (CR 400.7).
-var blessedSelfCounter = Do(If{
+var BlessedSelfCounter = Do(If{
 	Cond: CondCitysBlessing{},
 	Then: []Applier{CounterOnThis{Kind: game.CounterPlusOne, N: 1}},
 })

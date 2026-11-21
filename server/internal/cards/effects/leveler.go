@@ -75,13 +75,13 @@ type LevelBand struct {
 
 // holds reports whether a permanent with n level counters is in the
 // band.
-func (b LevelBand) holds(n int) bool {
+func (b LevelBand) Holds(n int) bool {
 	return n >= b.From && (b.To == 0 || n <= b.To)
 }
 
 // symbol is the level symbol as a player reads it: "Level 2-3",
 // "Level 4+".
-func (b LevelBand) symbol() string {
+func (b LevelBand) Symbol() string {
 	if b.To == 0 {
 		return fmt.Sprintf("Level %d+", b.From)
 	}
@@ -95,13 +95,13 @@ func LevelBands(bands ...LevelBand) []game.StaticAbility {
 	for _, b := range bands {
 		b := b
 		inBand := func(source *game.Card) bool {
-			return source != nil && b.holds(source.Counters[game.CounterLevel])
+			return source != nil && b.Holds(source.Counters[game.CounterLevel])
 		}
 		self := func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return selfOnly(target, g, source) && inBand(source)
+			return SelfOnly(target, g, source) && inBand(source)
 		}
 		out = append(out, game.StaticAbility{
-			Label:     fmt.Sprintf("%s: this creature has base power and toughness %d/%d.", b.symbol(), b.Power, b.Toughness),
+			Label:     fmt.Sprintf("%s: this creature has base power and toughness %d/%d.", b.Symbol(), b.Power, b.Toughness),
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7B_Set,
 			AppliesTo: self,
@@ -110,7 +110,7 @@ func LevelBands(bands ...LevelBand) []game.StaticAbility {
 			},
 		})
 		for _, kw := range b.Keywords {
-			out = append(out, Labelled(KeywordGrant(self, kw), fmt.Sprintf("%s: this creature has %s.", b.symbol(), kw)))
+			out = append(out, Labelled(KeywordGrant(self, kw), fmt.Sprintf("%s: this creature has %s.", b.Symbol(), kw)))
 		}
 		for _, s := range b.Statics {
 			inner := s.AppliesTo
@@ -118,7 +118,7 @@ func LevelBands(bands ...LevelBand) []game.StaticAbility {
 				return inBand(source) && inner(target, g, source)
 			}
 			if s.Label != "" {
-				s.Label = b.symbol() + ": " + s.Label
+				s.Label = b.Symbol() + ": " + s.Label
 			}
 			out = append(out, s)
 		}

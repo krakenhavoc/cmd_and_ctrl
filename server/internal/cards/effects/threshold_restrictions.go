@@ -14,12 +14,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the creature itself that sets CantBlock while the threshold holds, read
 // live as blockers are declared (CR 509.1b), so the restriction comes and
 // goes with the seventh card. The creature can still attack.
-func thresholdSelfCantBlock() game.StaticAbility {
+func ThresholdSelfCantBlock() game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Can't block while there are seven or more cards in your graveyard.",
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return selfOnly(target, g, source) && fraThresholdMet(g, source.Controller)
+			return SelfOnly(target, g, source) && FraThresholdMet(g, source.Controller)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= game.CantBlock

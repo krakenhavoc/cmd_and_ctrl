@@ -17,7 +17,7 @@ import (
 // b03TriMana is the "{T}: Add {A}, {B}, or {C}" every tri-land
 // prints — a three-option pipe, the same shape the Temple cycle's
 // two-option pipe and Birds of Paradise's five-option one take.
-func b03TriMana(a, b, c string) ManaAbility {
+func B03TriMana(a, b, c string) ManaAbility {
 	return ManaAbility{
 		Cost:     ManaAbilityCost{Tap: true},
 		Produced: "{" + a + "|" + b + "|" + c + "}",
@@ -32,7 +32,7 @@ func b03TriMana(a, b, c string) ManaAbility {
 // cast with X=1 is mana value 2 and not a legal target, and a {X}
 // spell cast with X=1 is mana value 1 and is. A card whose cost the
 // engine can't read never passes.
-func b03ManaValueIs(n int) CardPredicate {
+func B03ManaValueIs(n int) CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		mv, ok := g.ManaValueForEffect(c)
 		return ok && mv == n
@@ -41,7 +41,7 @@ func b03ManaValueIs(n int) CardPredicate {
 
 // b03Nonbasic passes for a land without the basic supertype —
 // Demolition Field's "target nonbasic land".
-func b03Nonbasic() CardPredicate {
+func B03Nonbasic() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return !IsBasicLand(c)
 	}
@@ -49,14 +49,14 @@ func b03Nonbasic() CardPredicate {
 
 // b03IsLandCard / b03IsArtifactCard are SearchLibrary predicates
 // (which take a bare game.Card rather than a CardPredicate).
-func b03IsLandCard(c game.Card) bool     { return c.IsLand() }
-func b03IsArtifactCard(c game.Card) bool { return c.IsArtifact() }
+func B03IsLandCard(c game.Card) bool     { return c.IsLand() }
+func B03IsArtifactCard(c game.Card) bool { return c.IsArtifact() }
 
 // b03ArtifactsControlled counts the artifacts `player` controls —
 // Dispatch's metalcraft check, evaluated at resolution. IsArtifact
 // reads post-layer types since #354, so an animated artifact and a
 // Mycosynth Lattice board both count.
-func b03ArtifactsControlled(g *game.Game, player uuid.UUID) int {
+func B03ArtifactsControlled(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsArtifact() {
@@ -68,7 +68,7 @@ func b03ArtifactsControlled(g *game.Game, player uuid.UUID) int {
 
 // b03LandsControlled counts the lands `player` controls (post-layer
 // types, like every Is* read since #354).
-func b03LandsControlled(g *game.Game, player uuid.UUID) int {
+func B03LandsControlled(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsLand() {
@@ -81,13 +81,13 @@ func b03LandsControlled(g *game.Game, player uuid.UUID) int {
 // b03OpponentControlsMoreLands is Land Tax's intervening-if: "if an
 // opponent controls more lands than you". Eliminated seats are not
 // opponents.
-func b03OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
-	mine := b03LandsControlled(g, controller)
+func B03OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
+	mine := B03LandsControlled(g, controller)
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.ID == controller {
 			continue
 		}
-		if b03LandsControlled(g, p.ID) > mine {
+		if B03LandsControlled(g, p.ID) > mine {
 			return true
 		}
 	}
@@ -120,13 +120,13 @@ var magecraftEvents = []game.EventKind{game.EventCast, game.EventSpellCopied}
 // a target (Extus, Oriq Overlord).
 func Magecraft(label string, effect Effect) game.TriggeredAbility {
 	return OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return instantOrSorceryCastOrCopiedByYou(ev, source, g)
+		return InstantOrSorceryCastOrCopiedByYou(ev, source, g)
 	}, label, effect)
 }
 
 // instantOrSorceryCastOrCopiedByYou is magecraft's trigger condition:
 // the controller cast or copied an instant or sorcery spell.
-func instantOrSorceryCastOrCopiedByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func InstantOrSorceryCastOrCopiedByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if (ev.Kind != game.EventCast && ev.Kind != game.EventSpellCopied) || ev.Actor != source.Controller {
 		return false
 	}
@@ -137,7 +137,7 @@ func instantOrSorceryCastOrCopiedByYou(ev game.Event, source *game.Card, g *game
 // instantOrSorceryCastByYou is Guttersnipe's condition: the controller
 // CAST an instant or sorcery. A copy does not satisfy it (CR 707.10);
 // "cast or copy" is Magecraft above.
-func instantOrSorceryCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func InstantOrSorceryCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}

@@ -22,21 +22,21 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Cyclops Electromancer — deals X damage to target creature an opponent controls, X the number of instant and sorcery cards in your graveyard",
-					cyclopsElectromancerBlast),
+					CyclopsElectromancerBlast),
 				TargetCreature("target creature an opponent controls", OpponentControls())),
 		},
 	})
 }
 
-func cyclopsElectromancerBlast(g *game.Game, item *game.StackItem) error {
+func CyclopsElectromancerBlast(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	target, ok := b16FirstLegalTargetCard(ctx)
+	target, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
 	return DealDamage{
 		Source: item.SourceCardID,
 		Target: target,
-		Amount: cmdrB17InstantSorceryCardsInGraveyard(g, item.Controller),
+		Amount: CmdrB17InstantSorceryCardsInGraveyard(g, item.Controller),
 	}.Apply(ctx)
 }

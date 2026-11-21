@@ -48,7 +48,7 @@ type counterChoice struct {
 // (nil: as many as it may), `final` what the clause does with the counts
 // (kind to count, zero counts dropped) once every kind has been asked.
 // Both capture nothing; the card's own IDs ride as `extra`.
-func registerCounterChoice(key string, goal counterGoal, final func(ctx *Context, perm uuid.UUID, extra []uuid.UUID, picked map[string]int) error) *counterChoice {
+func RegisterCounterChoice(key string, goal counterGoal, final func(ctx *Context, perm uuid.UUID, extra []uuid.UUID, picked map[string]int) error) *counterChoice {
 	cc := &counterChoice{goal: goal, final: final}
 	cc.then = NumberThen(key, func(ctx *Context, r game.NumberAnswer) error {
 		s, ok := counterAskOf(r)
@@ -62,7 +62,7 @@ func registerCounterChoice(key string, goal counterGoal, final func(ctx *Context
 			}
 		}
 		s.idx++
-		return cc.ask(ctx, s)
+		return cc.Ask(ctx, s)
 	})
 	return cc
 }
@@ -139,13 +139,13 @@ func counterAskOf(r game.NumberAnswer) (counterAsk, bool) {
 // most `ceiling` in all, or any number when ceiling is 0 — and runs the
 // clause's final step once with the counts. Nothing to choose from runs
 // it with an empty map.
-func (cc *counterChoice) choose(ctx *Context, perm uuid.UUID, extra []uuid.UUID, ceiling int, question string) error {
+func (cc *counterChoice) Choose(ctx *Context, perm uuid.UUID, extra []uuid.UUID, ceiling int, question string) error {
 	return cc.chooseTotal(ctx, perm, extra, ceiling, false, question)
 }
 
 // chooseExactly is choose for "remove X counters": the player must reach
 // the total, or take every counter the permanent has when it has fewer.
-func (cc *counterChoice) chooseExactly(ctx *Context, perm uuid.UUID, extra []uuid.UUID, total int, question string) error {
+func (cc *counterChoice) ChooseExactly(ctx *Context, perm uuid.UUID, extra []uuid.UUID, total int, question string) error {
 	return cc.chooseTotal(ctx, perm, extra, total, true, question)
 }
 
@@ -165,13 +165,13 @@ func (cc *counterChoice) chooseTotal(ctx *Context, perm uuid.UUID, extra []uuid.
 	for i, kind := range kinds {
 		have[i] = c.Counters[kind]
 	}
-	return cc.ask(ctx, counterAsk{
+	return cc.Ask(ctx, counterAsk{
 		perm: perm, extra: extra, question: question, kinds: kinds, have: have,
 		picked: make([]int, len(kinds)), left: ceiling, limited: ceiling > 0, exact: exact && ceiling > 0,
 	})
 }
 
-func (cc *counterChoice) ask(ctx *Context, s counterAsk) error {
+func (cc *counterChoice) Ask(ctx *Context, s counterAsk) error {
 	for ; s.idx < len(s.kinds); s.idx++ {
 		kind, most := s.kinds[s.idx], s.have[s.idx]
 		if s.limited && most > s.left {

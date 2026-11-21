@@ -41,12 +41,12 @@ func init() {
 			Key:          "web_slinging",
 			Label:        "Web-slinging {W}",
 			ManaCost:     "{W}",
-			ReturnToHand: PermanentYouControl("a tapped creature you control", Creature(), b751Tapped()),
+			ReturnToHand: PermanentYouControl("a tapped creature you control", Creature(), B751Tapped()),
 			PayLabel:     "a tapped creature you control",
 		}},
 		AsEnters: arachneAsEnters,
 		CostModifiers: []game.CostModifier{
-			CostsMore(1, "Spells of the chosen type cost {1} more to cast.", arachneChosenTypeSpell()),
+			CostsMore(1, "Spells of the chosen type cost {1} more to cast.", ArachneChosenTypeSpell()),
 		},
 	})
 }
@@ -60,7 +60,7 @@ const arachneName = "Arachne, Psionic Weaver"
 func arachneAsEnters(card *game.Card, ctx *Context) error {
 	if ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
 		Chooser:  card.Controller,
-		Among:    Opponents.seats(ctx, card.Controller),
+		Among:    Opponents.Seats(ctx, card.Controller),
 		Source:   card.InstanceID,
 		Question: arachneName + " — look at an opponent's hand",
 		ThenKey:  arachneLooked,
@@ -98,7 +98,7 @@ func arachneChooseType(g *game.Game, chooser, source uuid.UUID) {
 
 // arachneChosenTypeSpell matches a spell of the type Arachne's
 // controller chose.
-func arachneChosenTypeSpell() CostPredicate {
+func ArachneChosenTypeSpell() CostPredicate {
 	return func(q game.CostQuery) bool {
 		chosen := ChosenOptionOf(q.Game, q.Source.InstanceID)
 		return chosen != "" && q.Card.HasCardType(chosen)

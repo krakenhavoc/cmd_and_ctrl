@@ -31,7 +31,7 @@ func ChooseOrRevealCost(cardType, label string) *game.AdditionalCost {
 // battlefield as it is now, or as it last existed there once it has left
 // (CR 608.2h), or the revealed card's printed power. Clamped at zero, since
 // a creature with negative power deals no damage (CR 120.3).
-func b25ChosenPower(ctx *Context) (int, bool) {
+func B25ChosenPower(ctx *Context) (int, bool) {
 	n, ok := ctx.Game.ChosenPowerForEffect(ctx.Item)
 	return max(n, 0), ok
 }

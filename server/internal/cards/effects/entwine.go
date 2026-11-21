@@ -53,7 +53,7 @@ func EntwineSacrifice(n int, label string, preds ...CardPredicate) game.Addition
 	return game.AdditionalCost{
 		Optional:  true,
 		Key:       game.EntwineKey,
-		Sacrifice: sacrificeSpec(label, preds...).WithCount(n, n),
+		Sacrifice: SacrificeSpec(label, preds...).WithCount(n, n),
 		Label:     "Entwine—Sacrifice " + label,
 	}
 }

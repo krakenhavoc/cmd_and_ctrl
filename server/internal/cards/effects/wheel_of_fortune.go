@@ -16,25 +16,25 @@ func init() {
 		OracleID:     "a8abd966-de7b-46a3-8ac7-8747ab35653a",
 		Name:         "Wheel of Fortune",
 		Completeness: CompletenessFull,
-		OnResolve:    wheelOfFortuneResolve,
+		OnResolve:    WheelOfFortuneResolve,
 	})
 }
 
 // wheelOfFortuneResolve is the printed spell: every discard before any
 // draw. Shared with Naktamun Lorespinner's prepare spell, which is this
 // card.
-var wheelOfFortuneResolve = ResolveSteps(
+var WheelOfFortuneResolve = ResolveSteps(
 	// The draws wait for a prompt a discard asks (CR 608.2c, #4155).
 	Instruction(func(ctx *Context) error {
-		for _, id := range tablePlayers(ctx) {
-			if _, err := discardWholeHand(ctx.Game, id); err != nil {
+		for _, id := range TablePlayers(ctx) {
+			if _, err := DiscardWholeHand(ctx.Game, id); err != nil {
 				return err
 			}
 		}
 		return nil
 	}),
 	Instruction(func(ctx *Context) error {
-		for _, id := range tablePlayers(ctx) {
+		for _, id := range TablePlayers(ctx) {
 			if err := (DrawCards{Player: id, N: 7}).Apply(ctx); err != nil {
 				return err
 			}

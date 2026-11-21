@@ -103,11 +103,11 @@ func uldarosTheorixWasCast(_ game.Event, source *game.Card, _ game.Characteristi
 // qualifies for each of its types and the player picks the slot.
 func uldarosSlot(cardType string) *game.TargetSpec {
 	return TargetCardInGraveyard("up to one target nonland "+cardType+" card from your graveyard",
-		YouOwn(), Nonland(), ofCardType(cardType)).WithCount(0, 1)
+		YouOwn(), Nonland(), OfCardType(cardType)).WithCount(0, 1)
 }
 
 // ofCardType passes for a card that has the lower-case card type.
-func ofCardType(cardType string) CardPredicate {
+func OfCardType(cardType string) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasCardType(cardType) }
 }
 

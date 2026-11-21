@@ -48,7 +48,7 @@ func AsEntersChoosePermanents(name, question string, choice *game.EntryCardChoic
 }
 
 // cardsStillHere looks the candidates up, in order, skipping any that are gone.
-func cardsStillHere(g *game.Game, ids []uuid.UUID) []game.Card {
+func CardsStillHere(g *game.Game, ids []uuid.UUID) []game.Card {
 	out := make([]game.Card, 0, len(ids))
 	for _, id := range ids {
 		if c, ok := g.LookupCardForEffect(id); ok {

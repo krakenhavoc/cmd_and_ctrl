@@ -27,7 +27,7 @@ func init() {
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID &&
-					anOpponentHasGraveyardOfAtLeast(g, source.Controller, 8)
+					AnOpponentHasGraveyardOfAtLeast(g, source.Controller, 8)
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power += 3
@@ -38,7 +38,7 @@ func init() {
 
 // anOpponentHasGraveyardOfAtLeast is "an opponent has n or more cards in
 // their graveyard": one opponent's own graveyard, not the sum.
-func anOpponentHasGraveyardOfAtLeast(g *game.Game, controller uuid.UUID, n int) bool {
+func AnOpponentHasGraveyardOfAtLeast(g *game.Game, controller uuid.UUID, n int) bool {
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.ID == controller || p.Graveyard == nil {
 			continue

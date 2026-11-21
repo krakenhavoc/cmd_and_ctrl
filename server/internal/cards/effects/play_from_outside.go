@@ -46,7 +46,7 @@ type PlayFromOutside struct {
 
 // outsidePlay is one card's keyed cast-from-outside pick.
 type outsidePlay struct {
-	pick game.OutsidePick
+	Pick game.OutsidePick
 	name string
 }
 
@@ -56,10 +56,10 @@ type outsidePlay struct {
 // the key rather than read off the source when the answer comes in,
 // freeHandCastOffer's reason: the source may be gone by then. Call it
 // once, from a package-level var.
-func registerPlayFromOutside(key, name string, match game.OutsideMatchFunc) outsidePlay {
+func RegisterPlayFromOutside(key, name string, match game.OutsideMatchFunc) outsidePlay {
 	return outsidePlay{
 		name: name,
-		pick: game.RegisterOutsidePick(key, match, func(g *game.Game, r game.CardsChosen) error {
+		Pick: game.RegisterOutsidePick(key, match, func(g *game.Game, r game.CardsChosen) error {
 			if !r.Answered {
 				return nil
 			}
@@ -84,7 +84,7 @@ func (t PlayFromOutside) Apply(ctx *Context) error {
 		Min:         0,
 		Max:         game.OutsideAnyNumber,
 		Destination: game.ChooseCastFreeFromOutside,
-		Keyed:       t.Pick.pick,
+		Keyed:       t.Pick.Pick,
 		MatchArg:    t.Word,
 	})
 	return nil

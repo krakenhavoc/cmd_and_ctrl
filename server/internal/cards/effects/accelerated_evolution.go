@@ -29,16 +29,16 @@ func init() {
 			PumpAttached(2, 2),
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Accelerated Evolution — enchanted creature gains hexproof until end of turn", acceleratedEvolutionEnters),
+			WhenThisEnters("Accelerated Evolution — enchanted creature gains hexproof until end of turn", AcceleratedEvolutionEnters),
 		},
 	})
 }
 
 // acceleratedEvolutionEnters gives the enchanted creature hexproof until
 // end of turn, or does nothing if the host is no longer there.
-func acceleratedEvolutionEnters(g *game.Game, item *game.StackItem) error {
+func AcceleratedEvolutionEnters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	host, ok := enchantedCreatureAsItResolves(ctx)
+	host, ok := EnchantedCreatureAsItResolves(ctx)
 	if !ok {
 		return nil
 	}

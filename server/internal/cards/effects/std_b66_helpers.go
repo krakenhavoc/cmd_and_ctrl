@@ -15,9 +15,9 @@ import (
 // play that card." The power is the creature's as it last existed on the
 // battlefield (CR 608.2h), read from the object the trigger was created
 // about. A creature with no power, or an empty library, exiles nothing.
-var stdB66EndBlazeBody = game.SimpleDelayedBody("end-blaze-epiphany/exile-and-choose", func(g *game.Game, item *game.StackItem) error {
+var StdB66EndBlazeBody = game.SimpleDelayedBody("end-blaze-epiphany/exile-and-choose", func(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	obj, ok := payloadObject(ctx)
+	obj, ok := PayloadObject(ctx)
 	if !ok {
 		return nil
 	}
@@ -68,9 +68,9 @@ var stdB66EndBlazeGrant = game.RegisterChooseCardsThen("choose-cards/end-blaze-e
 // creature it put onto the battlefield, but only if it is still that object
 // and still under the controller's control (the ruling, CR 603.7c): a
 // creature that left and came back is a new object and is not sacrificed.
-var stdB66MeekAttackSacrifice = game.DelayedBody("meek-attack/sacrifice", func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+var StdB66MeekAttackSacrifice = game.DelayedBody("meek-attack/sacrifice", func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	c, ok := g.LookupCardForEffect(p.Object.ID)
-	if !ok || !onBattlefield(g, p.Object.ID) || c.ObjectEpoch != p.Object.Epoch || c.Controller != item.Controller {
+	if !ok || !OnBattlefield(g, p.Object.ID) || c.ObjectEpoch != p.Object.Epoch || c.Controller != item.Controller {
 		return nil
 	}
 	return SacrificePermanent{Target: p.Object.ID}.Apply(NewContext(g, item))
@@ -79,7 +79,7 @@ var stdB66MeekAttackSacrifice = game.DelayedBody("meek-attack/sacrifice", func(g
 // stdB66DamageSourceHasType is "a source of the chosen type": the damage
 // source as it is (or last was), a permanent, spell or other object with that
 // creature type, a changeling being every type (CR 702.73a).
-func stdB66DamageSourceHasType(ch game.Characteristic, tribe string) bool {
+func StdB66DamageSourceHasType(ch game.Characteristic, tribe string) bool {
 	if tribe == "" {
 		return false
 	}

@@ -38,7 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Case of the Filched Falcon — investigate", Do(Investigate{N: 1})),
-			ToSolve("Case of the Filched Falcon — to solve: you control three or more artifacts", youControlThreeOrMoreArtifacts),
+			ToSolve("Case of the Filched Falcon — to solve: you control three or more artifacts", YouControlThreeOrMoreArtifacts),
 		},
 		Activated: []ActivatedAbility{{
 			Label:      "{2}{U}, Sacrifice this Case: Put four +1/+1 counters on target noncreature artifact. It becomes a 0/0 Bird creature with flying in addition to its other types.",
@@ -80,7 +80,7 @@ func caseOfTheFilchedFalconBecomesABird(ctx *Context) error {
 }
 
 // youControlThreeOrMoreArtifacts is the Case's solve condition.
-func youControlThreeOrMoreArtifacts(g *game.Game, controller, _ uuid.UUID) bool {
+func YouControlThreeOrMoreArtifacts(g *game.Game, controller, _ uuid.UUID) bool {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsArtifact() {

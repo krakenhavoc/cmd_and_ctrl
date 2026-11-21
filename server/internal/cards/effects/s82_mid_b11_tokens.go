@@ -7,8 +7,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // printedBirdBlocksOnlyFliersToken is Ominous Roost's Bird: a 1/1 blue Bird
 // with flying and "This creature can block only creatures with flying."
-func printedBirdBlocksOnlyFliersToken() tokenTemplate {
-	return tokenTemplate{
+func printedBirdBlocksOnlyFliersToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "bird-blocks-only-fliers",
 		Card: game.Card{
 			Name:      "Bird",
@@ -26,16 +26,16 @@ func printedBirdBlocksOnlyFliersToken() tokenTemplate {
 }
 
 // s82MidB11BirdToken is the Bird's card value for CreateToken.
-func s82MidB11BirdToken() game.Card { return tokenFromCatalog(printedBirdBlocksOnlyFliersToken) }
+func S82MidB11BirdToken() game.Card { return TokenFromCatalog(printedBirdBlocksOnlyFliersToken) }
 
 // printedSeizeTheStormElementalToken is Seize the Storm's Elemental: a red
 // */* Elemental with trample whose power and toughness are each the number
 // of instant and sorcery cards in its controller's graveyard plus the number
 // of cards with flashback they own in exile. A layer 7a static of the
 // token's own, so it keeps counting whatever happens to the spell.
-func printedSeizeTheStormElementalToken() tokenTemplate {
+func PrintedSeizeTheStormElementalToken() TokenTemplate {
 	const text = "Trample\nThis creature's power and toughness are each equal to the number of instant and sorcery cards in your graveyard plus the number of cards with flashback you own in exile."
-	return tokenTemplate{
+	return TokenTemplate{
 		Slug: "elemental-seize-the-storm",
 		Card: game.Card{
 			Name:              "Elemental",

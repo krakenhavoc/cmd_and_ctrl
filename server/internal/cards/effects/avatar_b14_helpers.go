@@ -11,7 +11,7 @@ import (
 // first still-legal target land (CR 608.2b) is earthbent with the
 // count `count` reads as the ability resolves. The trigger's target
 // clause is EarthbendTargets(); pair them with avB14EarthbendTrigger.
-func avB14Earthbend(count func(*Context) int) Effect {
+func AvB14Earthbend(count func(*Context) int) Effect {
 	body := EarthbendFirstTarget(count)
 	return func(g *game.Game, item *game.StackItem) error {
 		return body(item, NewContext(g, item))
@@ -22,6 +22,6 @@ func avB14Earthbend(count func(*Context) int) Effect {
 // (Badgermole Cub, Earth Kingdom General): the keyword's own "target
 // land you control", chosen as the trigger is put on the stack
 // (CR 603.3d).
-func avB14WhenEntersEarthbend(label string, n int) game.TriggeredAbility {
-	return Targeting(WhenThisEnters(label, avB14Earthbend(EarthbendCount(n))), EarthbendTargets())
+func AvB14WhenEntersEarthbend(label string, n int) game.TriggeredAbility {
+	return Targeting(WhenThisEnters(label, AvB14Earthbend(EarthbendCount(n))), EarthbendTargets())
 }

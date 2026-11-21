@@ -77,7 +77,7 @@ func theWrathOfKhanChapterOne(g *game.Game, item *game.StackItem) error {
 	return DelayedOnEvent{
 		Label:     "The Wrath of Khan — gain control of that creature until end of turn, untap it, it gains haste",
 		On:        []game.EventKind{game.EventStepBegan},
-		Condition: theWrathOfKhanNextCombatCondition,
+		Condition: TheWrathOfKhanNextCombatCondition,
 		Cards:     []uuid.UUID{target},
 		Body:      theWrathOfKhanTakeThatCreatureBody,
 		Params:    game.EffectParams{Objects: []game.ObjectRef{ref}},
@@ -88,7 +88,7 @@ var (
 	// "At the beginning of the next combat this turn": a beginning of
 	// combat step began. The trigger fires on the first one (CR 603.7b)
 	// and expires with the turn. An on-disk key.
-	theWrathOfKhanNextCombatCondition = game.DelayedCondition("combat/the-wrath-of-khan-next-beginning-of-combat",
+	TheWrathOfKhanNextCombatCondition = game.DelayedCondition("combat/the-wrath-of-khan-next-beginning-of-combat",
 		func(ev game.Event, _ *game.DelayedTrigger, _ *game.Game, _ game.EffectParams) bool {
 			return ev.Kind == game.EventStepBegan && ev.Step == game.StepBeginCombat
 		})
@@ -100,11 +100,11 @@ var (
 	theWrathOfKhanTakeThatCreatureBody = game.DelayedBody("the-wrath-of-khan/gain-control-of-that-creature",
 		func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 			for _, ref := range p.Objects {
-				c, ok := battlefieldCardForEffect(g, ref.ID)
+				c, ok := BattlefieldCardForEffect(g, ref.ID)
 				if !ok || c.ObjectEpoch != ref.Epoch {
 					continue
 				}
-				if err := threatenAndGrant(NewContext(g, item), ref.ID, "The Wrath of Khan", "haste"); err != nil {
+				if err := ThreatenAndGrant(NewContext(g, item), ref.ID, "The Wrath of Khan", "haste"); err != nil {
 					return err
 				}
 			}
@@ -155,7 +155,7 @@ var (
 	// on-disk key.
 	theWrathOfKhanDrawIfExiled = game.RegisterTail("the-wrath-of-khan/draw-if-exiled",
 		func(g *game.Game, o game.TailOutcome) error {
-			if !oneWentThisWay(o) {
+			if !OneWentThisWay(o) {
 				return nil
 			}
 			return g.DrawNForEffect(o.Tail.Player, 1)

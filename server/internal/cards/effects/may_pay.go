@@ -94,7 +94,7 @@ func (p MayPay) Apply(ctx *Context) error {
 // Lifecrafter's Bestiary, Mentor of the Meek, Mind's Eye, Seer's Sundial),
 // keyed (#4264): the controller rides the asking item, so a table waiting
 // on the payer is a restore point.
-var mayPayDrawACard = PayUnlessBranches("pay-unless/draw-a-card",
+var MayPayDrawACard = PayUnlessBranches("pay-unless/draw-a-card",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 	}, nil)
@@ -119,7 +119,7 @@ func DiscardNonlandPayment(n int) UpkeepPayment {
 	p.Action.Nonland = true
 	p.Words = "Discard a nonland card"
 	if n != 1 {
-		p.Words = "Discard " + numberWord(n) + " nonland cards"
+		p.Words = "Discard " + NumberWord(n) + " nonland cards"
 	}
 	return p
 }

@@ -36,7 +36,7 @@ func init() {
 					ids = append(ids, t.ID)
 				}
 			}
-			return mayTapOrUntapEachInTurn(ctx, "Hidden Strings", hiddenStringsAnswer, ids)
+			return MayTapOrUntapEachInTurn(ctx, "Hidden Strings", hiddenStringsAnswer, ids)
 		},
 	})
 }
@@ -46,12 +46,12 @@ func init() {
 // asks about the first of `ids`, and `then` (the card's own keyed answer)
 // applies that answer and asks about the rest with tapOrUntapEachAnswered.
 // Hidden Strings and Toils of Night and Day share it.
-func mayTapOrUntapEachInTurn(ctx *Context, card string, then game.OptionPickThen, ids []uuid.UUID) error {
+func MayTapOrUntapEachInTurn(ctx *Context, card string, then game.OptionPickThen, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
 	target := ids[0]
-	name := cardNameFor(ctx.Game, target)
+	name := CardNameFor(ctx.Game, target)
 	return PickOption{
 		Question: card + " — you may tap or untap " + name,
 		Options: []game.ChoiceOption{
@@ -66,7 +66,7 @@ func mayTapOrUntapEachInTurn(ctx *Context, card string, then game.OptionPickThen
 
 // tapOrUntapEachAnswered applies the answer about the first carried
 // target, then asks about the rest under the same card name and key.
-func tapOrUntapEachAnswered(ctx *Context, r game.OptionPicked, card string, then game.OptionPickThen) error {
+func TapOrUntapEachAnswered(ctx *Context, r game.OptionPicked, card string, then game.OptionPickThen) error {
 	if len(r.Carry) == 0 {
 		return nil
 	}
@@ -81,7 +81,7 @@ func tapOrUntapEachAnswered(ctx *Context, r game.OptionPicked, card string, then
 	if err != nil {
 		return err
 	}
-	return mayTapOrUntapEachInTurn(ctx, card, then, rest)
+	return MayTapOrUntapEachInTurn(ctx, card, then, rest)
 }
 
 // hiddenStringsAnswer is the answer about the first target, then the next
@@ -99,5 +99,5 @@ func init() {
 }
 
 func hiddenStringsAnswered(ctx *Context, r game.OptionPicked) error {
-	return tapOrUntapEachAnswered(ctx, r, "Hidden Strings", hiddenStringsAnswer)
+	return TapOrUntapEachAnswered(ctx, r, "Hidden Strings", hiddenStringsAnswer)
 }

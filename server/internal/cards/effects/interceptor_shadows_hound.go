@@ -45,7 +45,7 @@ func init() {
 			TribalKeywordGrant(TribeFilter{Tribes: []string{"Assassin"}, YoursOnly: true}, "menace"),
 		},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(InGraveyard(On(game.EventAttack, attackedWithALegendaryCreature,
+			OncePerBatch(InGraveyard(On(game.EventAttack, AttackedWithALegendaryCreature,
 				"Interceptor, Shadow's Hound — you may pay {2}{B}: return it from your graveyard tapped and attacking",
 				interceptorMayReturn))),
 		},
@@ -55,8 +55,8 @@ func init() {
 // attackedWithALegendaryCreature is "whenever you attack with one or
 // more legendary creatures", read per attacker: the attacker is
 // declared by you and is a legendary creature.
-func attackedWithALegendaryCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || !attackDeclaredByYou(ev, source.Controller) {
+func AttackedWithALegendaryCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if source == nil || !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -81,5 +81,5 @@ func interceptorMayReturn(g *game.Game, item *game.StackItem) error {
 // interceptorPaid is the paid half, keyed (#4264).
 var interceptorPaid = PayUnlessBranches("pay-unless/interceptor-shadows-hound-return",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
-		return putAttackingYourChoice(ctx, ctx.Source(), game.ZoneGraveyard, "Interceptor, Shadow's Hound")
+		return PutAttackingYourChoice(ctx, ctx.Source(), game.ZoneGraveyard, "Interceptor, Shadow's Hound")
 	}, nil)

@@ -36,7 +36,7 @@ func init() {
 		Name:         "Bazaar of Wonders",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Bazaar of Wonders — exile all graveyards", b02ExileAllGraveyards),
+			WhenThisEnters("Bazaar of Wonders — exile all graveyards", B02ExileAllGraveyards),
 			On(game.EventCast, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.CardID != uuid.Nil
 			}, "Bazaar of Wonders — counter it if a card or nontoken permanent shares its name", bazaarOfWondersCounter),
@@ -72,7 +72,7 @@ func bazaarNameIsTaken(g *game.Game, name string) bool {
 		}
 	}
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if !c.IsToken() && !c.FaceDownIsPermanent() && sameFaceUpName(c, name) {
+		if !c.IsToken() && !c.FaceDownIsPermanent() && SameFaceUpName(c, name) {
 			return true
 		}
 	}
@@ -81,7 +81,7 @@ func bazaarNameIsTaken(g *game.Game, name string) bool {
 
 // sameFaceUpName reports whether a permanent's face-up name is `name`
 // (CR 201.2), case- and space-insensitively.
-func sameFaceUpName(c game.Card, name string) bool {
+func SameFaceUpName(c game.Card, name string) bool {
 	want := strings.TrimSpace(name)
 	return want != "" && strings.EqualFold(strings.TrimSpace(c.Name), want)
 }
