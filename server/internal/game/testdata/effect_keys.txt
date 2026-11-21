@@ -170,6 +170,7 @@ body evoke/sacrifice
 body evolve/grow
 body exalted/pump
 body exile-top/play-until-end-of-your-next-turn
+body exile/glimpse-the-impossible-bin
 body exile/listed-cards
 body explosion-of-riches/damage
 body extra-combat/untap-all-you-control
@@ -1792,6 +1793,7 @@ confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
+confirm confirm/wheel-of-potential-exile-hand
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
@@ -1920,6 +1922,7 @@ number number/suppression-ray-stun-counters
 number number/temporary-truce-draw-up-to-two
 number number/territorial-aetherkite-damage-each-other-creature
 number number/volcano-hellion-damage-to-you-and-target
+number number/wheel-of-potential-paid
 number number/wrath-of-the-skies-destroy-up-to-that-value
 number token/attack-split
 number token/settled-split
@@ -2224,6 +2227,7 @@ payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/curious-forager-return
 payunless pay-unless/cyclops-superconductor-damage
 payunless pay-unless/death-priest-of-myrkul-skeleton
+payunless pay-unless/decree-of-justice-soldiers
 payunless pay-unless/descendant-of-storms-endure
 payunless pay-unless/digsite-conservator-discover
 payunless pay-unless/digsite-engineer-construct
@@ -3326,6 +3330,7 @@ tail gilgamesh-master-at-arms/rest-then-attach-trigger
 tail gisa/decayed
 tail glamdring-foe-hammer/gleam-of-death-after-mill
 tail glimmer-of-genius/then
+tail glimpse-the-impossible/spawn-per-card
 tail glissas-retriever/exiled
 tail glorious-purpose/after-exile
 tail go-nuts/fight
@@ -4258,6 +4263,7 @@ tail wakanda-forever/hand-then-graveyard
 tail wake-to-slaughter/entered
 tail wanderwine-farewell/merfolk-tokens
 tail waste-management/rogue-per-creature
+tail wheel-of-potential/exiled-hand
 tail whiskervale-forerunner/after-put
 tail white-suns-twilight/destroy-all-other-creatures
 tail widespread-brutality/sweep
