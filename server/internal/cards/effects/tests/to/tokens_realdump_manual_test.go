@@ -89,6 +89,13 @@ var knownUnmatchedTokens = map[string]string{
 	// template follows the oracle text.
 	"2/2 black Zombie with haste named Tombspawn": "no token card was ever printed for Tombstone Stairwell's Tombspawn",
 
+	// Nested Ghoul (Mirrodin, 2003) creates "a 2/2 black Phyrexian
+	// Zombie creature token". It predates token cards, and the dump has
+	// no 2/2 black Phyrexian Zombie token card (the Phyrexian subtype
+	// came with the 2021 oracle pass). The template follows the oracle
+	// text.
+	"2/2 black Phyrexian Zombie": "no Phyrexian Zombie token card was ever printed for Nested Ghoul",
+
 	// Wurmcoil Engine's current oracle says "3/3 colorless Phyrexian
 	// Wurm artifact creature token"; the printed token card, from
 	// 2010, is named "Wurm" — it predates the 2021 Phyrexian subtype
