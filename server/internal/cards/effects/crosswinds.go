@@ -17,13 +17,13 @@ func init() {
 		Name:         "Crosswinds",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			b16Anthem(crosswindsCreaturesWithFlying, -2, 0),
+			B16Anthem(CrosswindsCreaturesWithFlying, -2, 0),
 		},
 	})
 }
 
 // crosswindsCreaturesWithFlying is "creatures with flying", every
 // player's, read off what layer 6 left on the creature.
-func crosswindsCreaturesWithFlying(target *game.Card, _ *game.Game, _ *game.Card) bool {
+func CrosswindsCreaturesWithFlying(target *game.Card, _ *game.Game, _ *game.Card) bool {
 	return target.IsCreature() && game.HasKeyword(target, "flying")
 }

@@ -12,7 +12,7 @@ import (
 // the game other than the source's controller, and the draw is not the first
 // one of their own draw step (a draw expanded by another replacement keeps its
 // first card exempt).
-func s82GapB24OpponentDrawsExceptTheFirst(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+func S82GapB24OpponentDrawsExceptTheFirst(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if ev.Kind != game.RepEventDraw || ev.DrawPlayer == src.Controller {
 		return false
 	}
@@ -27,7 +27,7 @@ func s82GapB24OpponentDrawsExceptTheFirst(ev *game.ReplacementEvent, g *game.Gam
 // rest of the draw instruction goes on. `source` is read for its controller
 // wherever it now is: a Hullbreacher that left in response still names the
 // player who controlled it. A registered body (an on-disk key).
-func s82GapB24TreasureInstead(g *game.Game, _, source uuid.UUID, done game.DrawDone) error {
+func S82GapB24TreasureInstead(g *game.Game, _, source uuid.UUID, done game.DrawDone) error {
 	if c, ok := g.LookupCardForEffect(source); ok && c.Controller != uuid.Nil {
 		if err := g.CreateTokenForEffect(c.Controller, c.TokenThroughText(TreasureToken()), 1); err != nil {
 			return err

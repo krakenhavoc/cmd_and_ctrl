@@ -139,7 +139,7 @@ func (w landManaWalk) step(ctx *Context) error {
 			_ = ctx.Game.ActivateLandManaForEffect(w.player, opts[0])
 			continue
 		}
-		return w.ask(ctx, land, opts, nil)
+		return w.Ask(ctx, land, opts, nil)
 	}
 }
 
@@ -149,7 +149,7 @@ func (w landManaWalk) step(ctx *Context) error {
 // whether this is the second pass; Words holds the card, the tail's key and
 // the labels of options already refused. A refused activation (the board
 // moved under it) asks again without that option.
-func (w landManaWalk) ask(ctx *Context, land uuid.UUID, opts []game.LandManaOption, refused []string) error {
+func (w landManaWalk) Ask(ctx *Context, land uuid.UUID, opts []game.LandManaOption, refused []string) error {
 	choices := make([]game.ChoiceOption, len(opts))
 	for i, o := range opts {
 		choices[i] = game.ChoiceOption{Label: o.Label}
@@ -239,7 +239,7 @@ func landManaAnswer(ctx *Context, r game.OptionPicked) error {
 		case 1:
 			_ = ctx.Game.ActivateLandManaForEffect(w.player, rest[0])
 		default:
-			return w.ask(ctx, land, rest, refusedNow)
+			return w.Ask(ctx, land, rest, refusedNow)
 		}
 	}
 	return w.step(ctx)
@@ -258,7 +258,7 @@ func (w landManaWalk) finish(ctx *Context) error {
 // colours, as new mana this effect makes (Drain Power's "you add the mana
 // lost this way"). Restrictions and spend riders belonged to the ability
 // that first made the mana and do not come with it.
-func addManaLike(ctx *Context, player uuid.UUID, tokens []game.ManaToken) error {
+func AddManaLike(ctx *Context, player uuid.UUID, tokens []game.ManaToken) error {
 	counts := map[string]int{}
 	var order []string
 	for _, t := range tokens {

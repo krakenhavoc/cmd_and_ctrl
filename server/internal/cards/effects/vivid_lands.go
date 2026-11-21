@@ -39,7 +39,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // vividLand is one member of the cycle: its printed colour, and the
 // any-colour fixer that spends a charge counter.
-func vividLand(oracleID, name, color string) Spec {
+func VividLand(oracleID, name, color string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -66,6 +66,6 @@ func vividLand(oracleID, name, color string) Spec {
 }
 
 func init() {
-	Register(vividLand("2da7c49f-cc1e-45d9-9cbf-067e92b0daef", "Vivid Creek", "U"))
-	Register(vividLand("b7a68899-c0d3-49e0-854b-19268ae9b89d", "Vivid Grove", "G"))
+	Register(VividLand("2da7c49f-cc1e-45d9-9cbf-067e92b0daef", "Vivid Creek", "U"))
+	Register(VividLand("b7a68899-c0d3-49e0-854b-19268ae9b89d", "Vivid Grove", "G"))
 }

@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // through the layers. A red-and-green creature counts for both clauses, so
 // it is two counters. Ulasht is still the stack object, so it is never
 // counted itself.
-func rprB26OnePerOtherRedAndGreenCreature(g *game.Game, src *game.Card) int {
+func RprB26OnePerOtherRedAndGreenCreature(g *game.Game, src *game.Card) int {
 	red, green := src.TextColor("R"), src.TextColor("G")
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {

@@ -13,7 +13,7 @@ import (
 // from a permanent, sacrifice that permanent" (Stitcher's Graft): the host named
 // by the unattach event, or the host the Equipment last had when it left the
 // battlefield while attached, sacrificed if it is still on the battlefield.
-func gapB07SacrificeTheFormerHost(g *game.Game, item *game.StackItem) error {
+func GapB07SacrificeTheFormerHost(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var host uuid.UUID
 	if tc := ctx.Trigger(); tc.Event.Kind == game.EventUnattach {

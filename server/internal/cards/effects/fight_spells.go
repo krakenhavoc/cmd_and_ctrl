@@ -2,7 +2,7 @@ package effects
 
 // fightTargetClauses is a fight between the still-legal picks of the
 // first two target clauses, shared by targeted fight spells (#4380).
-func fightTargetClauses(ctx *Context) error {
+func FightTargetClauses(ctx *Context) error {
 	mine, ok := ctx.ClauseTarget(0)
 	if !ok {
 		return nil
@@ -11,5 +11,5 @@ func fightTargetClauses(ctx *Context) error {
 	if !ok {
 		return nil
 	}
-	return b10Fight(ctx, mine.ID, theirs.ID)
+	return B10Fight(ctx, mine.ID, theirs.ID)
 }

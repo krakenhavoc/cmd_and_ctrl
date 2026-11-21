@@ -1,0 +1,84 @@
+package cardsmi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Mystic Remora — Enchantment for {U}:
+//
+//	"Cumulative upkeep {1} (At the beginning of your upkeep, put an
+//	 age counter on this permanent, then sacrifice it unless you pay
+//	 its upkeep cost for each age counter on it.)
+//	 Whenever an opponent casts a noncreature spell, you may draw a
+//	 card unless that player pays {4}."
+//
+// #567. The card that #74 deferred in S22: its Rhystic half has been
+// expressible since Rhystic Study (S19), and the age-counter cost was
+// the entire remaining job.
+//
+// Both halves are triggers and both are ordinary. The first is
+// CumulativeUpkeep (cumulative_upkeep.go), which is the whole keyword
+// in one constructor; the second is Rhystic Study's clause with a
+// noncreature filter and a bigger tax, and the two prompts are the
+// same pay_unless kind asked of different players — which is exactly
+// why one of them blocks the table and the other does not (ADR 0018
+// §6; the upkeep half goes through effects.UpkeepPayUnless and the
+// Rhystic half through PayUnless).
+//
+// The controller's "you may draw" is a real question (MayChoice, as on
+// Rhystic Study), asked only after the caster declines to pay, so a
+// Remora controller with an empty library can decline and stay alive.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "8a52f3c0-2552-4425-b2e3-5496eb2232a7",
+		Name:         "Mystic Remora",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.CumulativeUpkeep("Mystic Remora — cumulative upkeep {1}", "{1}"),
+			{
+				Watches: []game.EventKind{game.EventCast},
+				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+					if ev.Actor == source.Controller {
+						return false
+					}
+					c, ok := g.LookupCardForEffect(ev.CardID)
+					return ok && !c.IsCreature()
+				},
+				Key: "Mystic Remora — draw unless caster pays {4}",
+				// What a decline gives the Remora's controller (ADR 0126
+				// §6): the card a tax-paying bot weighs (ADR 0136,
+				// 2026-10-09).
+				Purpose: game.Purpose{Draws: 1},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return effects.PayUnless{
+						Chooser:  item.Trigger.Event.Actor,
+						Cost:     "{4}",
+						Question: "Mystic Remora — pay {4}?",
+						Else:     mysticRemoraDecline,
+					}.Apply(effects.NewContext(g, item))
+				},
+			},
+		},
+	})
+}
+
+// mysticRemoraDecline is "you may draw a card" once the tax is not paid,
+// keyed (#4256): a table waiting on the payer is a restore point.
+var mysticRemoraDecline = effects.PayUnlessElse("pay-unless/mystic-remora-may-draw", func(ctx *effects.Context, _ game.PayUnlessAnswer) error {
+	return effects.MayChoice{
+		Question: "Mystic Remora — draw a card?",
+		Draws:    1,
+		Then:     MysticRemoraDraw,
+	}.Apply(ctx)
+})
+
+// mysticRemoraDraw is the Remora's controller's answer to "draw a
+// card?", keyed (#4264): a table waiting on it is a restore point.
+var MysticRemoraDraw = effects.MayAnswer("confirm/mystic-remora-draw", func(ctx *effects.Context, r game.ConfirmAnswer) error {
+	if !r.Accepted {
+		return nil
+	}
+	return effects.DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

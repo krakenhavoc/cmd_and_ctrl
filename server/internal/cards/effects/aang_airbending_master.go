@@ -64,10 +64,10 @@ func init() {
 				Effect: AirbendOtherTarget,
 			},
 			OncePerBatch(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return creatureYouControlLeftWithoutDying(ev, source, g)
-			}, expLabel, youGetAnExperienceCounter)),
+				return CreatureYouControlLeftWithoutDying(ev, source, g)
+			}, expLabel, YouGetAnExperienceCounter)),
 			AtYourUpkeep(upkeepLabel, func(g *game.Game, item *game.StackItem) error {
-				n := experienceCounters(g, item.Controller)
+				n := ExperienceCounters(g, item.Controller)
 				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Ally"), N: n}.
 					Apply(NewContext(g, item))
 			}),
@@ -80,13 +80,13 @@ func init() {
 // that player (CR 122.1, ADR 0056 Decision 5).
 //
 // Caller holds g.mu.
-func youGetAnExperienceCounter(g *game.Game, item *game.StackItem) error {
+func YouGetAnExperienceCounter(g *game.Game, item *game.StackItem) error {
 	return g.AddPlayerCounterByForEffect(item.Controller, item.Controller, game.CounterExperience, 1)
 }
 
 // experienceCounters is how many experience counters a player has
 // right now — zero for a player who has none or has left the game.
-func experienceCounters(g *game.Game, player uuid.UUID) int {
+func ExperienceCounters(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil {
 		return 0

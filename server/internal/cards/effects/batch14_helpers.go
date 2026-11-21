@@ -31,7 +31,7 @@ import (
 // b14RedDragonToken is the red Dragon with flying two cards in this
 // batch make at different sizes: Utvara Hellkite's 6/6 and
 // Dragonmaster Outcast's 5/5.
-func b14RedDragonToken(size int) game.Card {
+func B14RedDragonToken(size int) game.Card {
 	return game.Card{
 		Name:      "Dragon",
 		TypeLine:  "Token Creature — Dragon",
@@ -48,15 +48,15 @@ func b14RedDragonToken(size int) game.Card {
 // does, because a token has no oracle ID for the catalog to key one
 // on. "Any color" is the printed text, so the pipe keeps its five
 // options rather than narrowing to the commander's identity.
-func b14ReplicatedRingToken() game.Card { return tokenFromCatalog(printedB14ReplicatedRingToken) }
+func B14ReplicatedRingToken() game.Card { return TokenFromCatalog(printedB14ReplicatedRingToken) }
 
 // printedB14ReplicatedRingToken is the Replicated Ring as PRINTED —
 // the ability included. It is the catalog's entry for this token
 // (token_catalog.go, #521): the ability is registered from here at
 // boot, and the template that reaches the battlefield carries the
 // key that finds it rather than the closure itself.
-func printedB14ReplicatedRingToken() tokenTemplate {
-	return tokenTemplate{
+func printedB14ReplicatedRingToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "replicated-ring",
 		Card: game.Card{
 			Name:     "Replicated Ring",
@@ -79,8 +79,8 @@ func printedB14ReplicatedRingToken() tokenTemplate {
 // printed text is "a Dragon you control", not "another". Effective
 // subtypes, so a changeling counts. "Dragon" is a word of the source's
 // text (CR 612.2, #3984), here and in Ganax's condition below.
-func b14DragonYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
+func B14DragonYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -90,21 +90,21 @@ func b14DragonYouControlAttacked(ev game.Event, source *game.Card, g *game.Game)
 // b14SelfOrDragonYouControlEntered is Ganax's condition: the source
 // itself entered, or another Dragon entered under the source's
 // controller's control.
-func b14SelfOrDragonYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+func B14SelfOrDragonYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventETB {
 		return false
 	}
 	if ev.CardID == source.InstanceID {
 		return true
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.HasSubtype(source.TextSubtype("Dragon"))
 }
 
 // b14OpponentsEndStepBegan is "at the beginning of each opponent's
 // end step" — Archfiend of Depravity. The event's Actor is the
 // active player, whose end step it is.
-func b14OpponentsEndStepBegan(ev game.Event, source *game.Card) bool {
+func B14OpponentsEndStepBegan(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventBeginEndStep && ev.Actor != uuid.Nil && ev.Actor != source.Controller
 }
 
@@ -117,12 +117,12 @@ func b14OpponentsEndStepBegan(ev game.Event, source *game.Card) bool {
 // counters on it" is the CR 603.10 record the
 // engine writes as the permanent leaves (LastKnownCountersForEffect),
 // the reading The Ozolith's condition makes.
-func b14PermanentYouControlLeft(ev game.Event, source *game.Card, g *game.Game) bool {
+func B14PermanentYouControlLeft(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.CardID == uuid.Nil || ev.CardID == source.InstanceID {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || leftUnderControlOf(ev, c) != source.Controller {
+	if !ok || LeftUnderControlOf(ev, c) != source.Controller {
 		return false
 	}
 	return len(g.LastKnownCountersForEffect(ev.CardID)) > 0
@@ -139,7 +139,7 @@ func b14PermanentYouControlLeft(ev game.Event, source *game.Card, g *game.Game) 
 // that targets the caster (a player) does not qualify — the printed
 // clause is "a permanent", and Rebuff cannot save you from a burn
 // spell to the face.
-func b14SpellTargetsAPermanentYouControl() CardPredicate {
+func B14SpellTargetsAPermanentYouControl() CardPredicate {
 	return func(g *game.Game, caster uuid.UUID, c game.Card) bool {
 		item := g.StackItemForEffect(c.InstanceID)
 		if item == nil {
@@ -164,8 +164,8 @@ func b14SpellTargetsAPermanentYouControl() CardPredicate {
 // b14Historic is b09IsHistoric as a target / sweep predicate —
 // Desynchronization's "permanent that's not historic" is
 // Not(b14Historic()).
-func b14Historic() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return b09IsHistoric(c) }
+func B14Historic() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return B09IsHistoric(c) }
 }
 
 // --- board reads -------------------------------------------------
@@ -175,7 +175,7 @@ func b14Historic() CardPredicate {
 // phase". Read at resolution rather than recorded at announce, which
 // is the same answer: the stack has to be empty for a step to end,
 // so a spell resolves in the step it was cast in.
-func b14InYourMainPhase(g *game.Game, player uuid.UUID) bool {
+func B14InYourMainPhase(g *game.Game, player uuid.UUID) bool {
 	if g.Turn.Step != game.StepPrecombatMain && g.Turn.Step != game.StepPostcombatMain {
 		return false
 	}
@@ -187,7 +187,7 @@ func b14InYourMainPhase(g *game.Game, player uuid.UUID) bool {
 }
 
 // b14CreaturesControlled counts the creatures `player` controls.
-func b14CreaturesControlled(g *game.Game, player uuid.UUID) int {
+func B14CreaturesControlled(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() {
@@ -204,7 +204,7 @@ func b14CreaturesControlled(g *game.Game, player uuid.UUID) int {
 // eliminated player's graveyard still counts: they are still an
 // opponent as far as the printed text goes, and their cards are
 // still in it.
-func b14CardsInOpponentsGraveyards(g *game.Game, controller uuid.UUID) int {
+func B14CardsInOpponentsGraveyards(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller || p.Graveyard == nil {
@@ -217,7 +217,7 @@ func b14CardsInOpponentsGraveyards(g *game.Game, controller uuid.UUID) int {
 
 // b14HandSize is the number of cards in `player`'s hand, or zero
 // for a player who is not seated.
-func b14HandSize(g *game.Game, player uuid.UUID) int {
+func B14HandSize(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Hand == nil {
 		return 0
@@ -242,12 +242,12 @@ func b14HandSize(g *game.Game, player uuid.UUID) int {
 // the read-back happens before the prompt is answered, and that
 // opponent counts as having taken nothing. Same bug #793 fixed on the
 // life side, same shape of fix.
-func b14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int) error {
+func B14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int) error {
 	if n <= 0 {
 		return nil
 	}
 	ctx := NewContext(g, item)
-	return g.DealDamageEachKeyedForEffect(ctx.Source(), ctx.Opponents(), n, ctx.Tail(gainLifeEqualToDamageDealt))
+	return g.DealDamageEachKeyedForEffect(ctx.Source(), ctx.Opponents(), n, ctx.Tail(GainLifeEqualToDamageDealt))
 }
 
 // gainLifeEqualToDamageDealt is "you gain life equal to the damage dealt
@@ -255,7 +255,7 @@ func b14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int
 // it, from its Source. Shared by every "deals N damage …, you gain life
 // equal to the damage dealt this way" (Creeping Bloodsucker, Rite of
 // Consumption). An on-disk key.
-var gainLifeEqualToDamageDealt = game.RegisterTail("then/gain-life-equal-to-damage-dealt", func(g *game.Game, o game.TailOutcome) error {
+var GainLifeEqualToDamageDealt = game.RegisterTail("then/gain-life-equal-to-damage-dealt", func(g *game.Game, o game.TailOutcome) error {
 	if o.Amount <= 0 {
 		return nil
 	}
@@ -270,17 +270,17 @@ var gainLifeEqualToDamageDealt = game.RegisterTail("then/gain-life-equal-to-dama
 // their run nor re-mills the card it is waiting on; an opponent whose
 // library holds no land mills the whole thing, as printed (and takes
 // the empty-library loss only if they then have to draw).
-func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
+func B14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	// One opponent at a time in APNAP order (CR 101.4, #4268): each run starts
 	// from the previous one's continuation, so at most one prompt is open. The
 	// chain is keyed (#4253).
-	return eachPlayerInTurn(g, ctx.ItemTail(b14MillUntilLandStep), ctx.Opponents(), nil, game.KeyedTail{}, b14MillUntilLandAct)
+	return EachPlayerInTurn(g, ctx.ItemTail(b14MillUntilLandStep), ctx.Opponents(), nil, game.KeyedTail{}, b14MillUntilLandAct)
 }
 
 // b14MillUntilLandStep is one opponent's step of Consuming Aberration's
 // chain. An on-disk key.
-var b14MillUntilLandStep = registerEachPlayerStep("each-player/mill-until-land-step", b14MillUntilLandAct)
+var b14MillUntilLandStep = RegisterEachPlayerStep("each-player/mill-until-land-step", b14MillUntilLandAct)
 
 // b14MillUntilLandAct is one opponent's reveal-and-mill.
 func b14MillUntilLandAct(ctx *Context, opp uuid.UUID, _ int, step game.KeyedTail) error {
@@ -376,13 +376,13 @@ func b14MoveChosenCounters(ctx *Context, from, to uuid.UUID) error {
 	if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}
-	return resourcefulDefenseMoves.choose(ctx, from, []uuid.UUID{to}, 0, "Resourceful Defense — move any number of counters")
+	return resourcefulDefenseMoves.Choose(ctx, from, []uuid.UUID{to}, 0, "Resourceful Defense — move any number of counters")
 }
 
 // resourcefulDefenseMoves is Resourceful Defense's clause (#4294): the
 // counts chosen on `from` move onto `to`, which rides the prompts as the
 // clause's extra ID.
-var resourcefulDefenseMoves = registerCounterChoice("number/resourceful-defense-move-counters", nil,
+var resourcefulDefenseMoves = RegisterCounterChoice("number/resourceful-defense-move-counters", nil,
 	func(ctx *Context, from uuid.UUID, extra []uuid.UUID, picked map[string]int) error {
 		if len(extra) == 0 {
 			return nil
@@ -421,7 +421,7 @@ var resourcefulDefenseMoves = registerCounterChoice("number/resourceful-defense-
 // b14PutCounters puts a set of counters, keyed by kind, on a
 // battlefield permanent — Resourceful Defense's trigger. Kinds are
 // applied in sorted order so the events are deterministic.
-func b14PutCounters(ctx *Context, target uuid.UUID, counters map[string]int) error {
+func B14PutCounters(ctx *Context, target uuid.UUID, counters map[string]int) error {
 	if z := ctx.Game.FindCardZoneForEffect(target); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}

@@ -51,28 +51,28 @@ func witchKingImpulse(g *game.Game, item *game.StackItem) error {
 		if ev.Kind != game.EventAttack || ev.Batch != batch || ev.Actor != item.Controller {
 			continue
 		}
-		if c, ok := battlefieldCardForEffect(g, ev.CardID); ok {
+		if c, ok := BattlefieldCardForEffect(g, ev.CardID); ok {
 			if c.HasSubtype(wraith) && c.PowerForComparison() > 0 {
 				total += c.PowerForComparison()
 			}
 			continue
 		}
 		if info, ok := g.LastKnownPermanentForEffect(ev.CardID); ok && info.Power > 0 &&
-			(info.Characteristic.AllCreatureTypes || hasFold(info.Characteristic.Subtypes, wraith)) {
+			(info.Characteristic.AllCreatureTypes || HasFold(info.Characteristic.Subtypes, wraith)) {
 			total += info.Power
 		}
 	}
 	if total <= 0 {
 		return nil
 	}
-	_, err := b12ImpulseExileForTurn(g, item, total)
+	_, err := B12ImpulseExileForTurn(g, item, total)
 	return err
 }
 
 // battlefieldCardForEffect is the permanent with this ID, when it is on
 // the battlefield.
-func battlefieldCardForEffect(g *game.Game, id uuid.UUID) (game.Card, bool) {
-	if !onBattlefield(g, id) {
+func BattlefieldCardForEffect(g *game.Game, id uuid.UUID) (game.Card, bool) {
+	if !OnBattlefield(g, id) {
 		return game.Card{}, false
 	}
 	return g.LookupCardForEffect(id)

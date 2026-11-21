@@ -1,0 +1,48 @@
+package cardsw
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Wakening Sun's Avatar — Creature — Dinosaur Avatar {5}{W}{W}{W},
+// 7/7 (EDHREC rank 3233):
+//
+//	"When this creature enters, if you cast it from your hand,
+//	 destroy all non-Dinosaur creatures."
+//
+// The Dinosaur deck's one-sided wrath on an 8-drop body. The entry
+// trigger carries an intervening-if (CR 603.4): "you cast it from
+// your hand" is read off the event log — the entry came from the
+// stack, and the cast that put it there left the caster's hand
+// (b30CastFromHand) — when the trigger fires and again as it
+// resolves. A reanimated, blinked, cheated-in or commander-zone
+// Avatar enters quietly, as printed. The wipe is the shared
+// DestroyAllMatching over every creature at the table without the
+// Dinosaur subtype — the Avatar is a Dinosaur and survives its own
+// trigger.
+//
+// No simplifications. The one this used to declare — the mass-destroy
+// path bypassing indestructible (#446), so an indestructible
+// non-Dinosaur died where printed it would survive — was an engine
+// gap, closed for every "destroy all" card at once in S30 (#470).
+func init() {
+	effects.Register(effects.Spec{
+		OracleID: "3c2aec69-ffd9-4a34-888c-58adbbb99bb5",
+		Name:     "Wakening Sun's Avatar",
+		// ADR 0126 §6: Dinosaurs stay, and only when cast from your hand.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+				return effects.B06SelfETB(ev, source, lki, g) && effects.B30CastFromHand(g, source.InstanceID)
+			}, "Wakening Sun's Avatar — destroy all non-Dinosaur creatures", func(g *game.Game, item *game.StackItem) error {
+				if !effects.B30CastFromHand(g, item.SourceCardID) {
+					return nil
+				}
+				return effects.DestroyAllMatching{Match: effects.And(effects.Creature(), effects.Not(effects.HasSubtype("Dinosaur")))}.Apply(effects.NewContext(g, item))
+			}),
+		},
+	})
+}

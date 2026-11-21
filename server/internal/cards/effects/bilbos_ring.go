@@ -50,11 +50,11 @@ func init() {
 		Name:         "Bilbo's Ring",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			GrantToAttachedWhile(duringSourceControllersTurn, "hexproof"),
-			RestrictAttachedWhile(duringSourceControllersTurn, game.CantBeBlocked),
+			GrantToAttachedWhile(DuringSourceControllersTurn, "hexproof"),
+			RestrictAttachedWhile(DuringSourceControllersTurn, game.CantBeBlocked),
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, attachedCreatureAttackedAlone,
+			On(game.EventAttack, AttachedCreatureAttackedAlone,
 				"Bilbo's Ring — draw a card, lose 1 life",
 				Do(DrawCards{N: 1}, GainLife{Amount: -1})),
 		},
@@ -70,7 +70,7 @@ func init() {
 // GrantToAttachedWhile / RestrictAttachedWhile condition — read fresh
 // on every layer recompute against g.Turn, exactly as the
 // activation-side IsYourTurn is.
-func duringSourceControllersTurn(_ *game.Card, g *game.Game, source *game.Card) bool {
+func DuringSourceControllersTurn(_ *game.Card, g *game.Game, source *game.Card) bool {
 	return IsYourTurn(g, source.Controller)
 }
 
@@ -85,8 +85,8 @@ func duringSourceControllersTurn(_ *game.Card, g *game.Game, source *game.Card) 
 // AttackingTarget by the time any one of their EventAttack events is
 // evaluated here, and a lone declaration is genuinely alone rather
 // than "alone so far".
-func attachedCreatureAttackedAlone(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !attachedCreatureAttacked(ev, source) {
+func AttachedCreatureAttackedAlone(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !AttachedCreatureAttacked(ev, source) {
 		return false
 	}
 	n := 0

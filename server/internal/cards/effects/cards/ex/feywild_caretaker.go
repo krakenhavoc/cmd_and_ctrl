@@ -1,0 +1,30 @@
+package cardsex
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Feywild Caretaker — Creature — Orc Wizard {4}{U}, 3/4:
+//
+//	"When this creature enters, you take the initiative.
+//	 At the beginning of your end step, if you have the initiative,
+//	 create a 1/1 blue Faerie Dragon creature token with flying."
+//
+// The ETB is TakeTheInitiative (ADR 0203, #4096); the end-step clause
+// is an intervening "if" (CR 603.4), IfYouHaveTheInitiative.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "f319b671-0388-48e8-ba98-04161a3e7f1a",
+		Name:         "Feywild Caretaker",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEntersYouTakeTheInitiative("Feywild Caretaker"),
+			effects.IfYouHaveTheInitiative(effects.AtYourEndStep("Feywild Caretaker — create a 1/1 blue Faerie Dragon with flying",
+				effects.Do(effects.CreateToken{Template: effects.TokenCard("1/1 blue Faerie Dragon with flying"), N: 1}))),
+		},
+	})
+}

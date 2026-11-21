@@ -22,7 +22,7 @@ func dmuB17SoleTargetPermanent(g *game.Game, spellID uuid.UUID) (game.Card, bool
 // dmuB17CastSpellTargetsOnly is the condition shared by Ivy, Gleeful Spellthief
 // and Vesuvan Duplimancy: a spell was cast (by `byYou` only, or by any player)
 // that targets only a single permanent passing `match`.
-func dmuB17CastSpellTargetsOnly(byYou bool, match func(target game.Card, source *game.Card) bool) When {
+func DmuB17CastSpellTargetsOnly(byYou bool, match func(target game.Card, source *game.Card) bool) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		if ev.Kind != game.EventCast || ev.CardID == uuid.Nil || source == nil {
 			return false

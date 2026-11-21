@@ -9,7 +9,7 @@ import (
 // (CR 702.173a) paid with a bounce instead of mana. It keeps the
 // "freerunning" key and the Assassin-or-commander gate of Freerunning, and
 // adds the return component Daze's alternative cost uses.
-func gapB41FreerunningReturn(label string, from *game.TargetSpec, payLabel string) game.AlternativeCost {
+func GapB41FreerunningReturn(label string, from *game.TargetSpec, payLabel string) game.AlternativeCost {
 	alt := Freerunning("", "Assassin")
 	alt.Label = label
 	alt.ReturnToHand = from
@@ -24,7 +24,7 @@ var (
 	// "Assassin" read through its text, CR 612.2) as it attacks (layered
 	// subtypes).
 	// Without OncePerBatch it fires once for each Assassin (CR 603.2c).
-	gapB41AssassinYouControlAttacks = game.DelayedCondition("attack/an-assassin-you-control-attacks",
+	GapB41AssassinYouControlAttacks = game.DelayedCondition("attack/an-assassin-you-control-attacks",
 		func(ev game.Event, dt *game.DelayedTrigger, g *game.Game, p game.EffectParams) bool {
 			if ev.Kind != game.EventAttack || ev.Actor != dt.Controller || p.Name == "" {
 				return false
@@ -35,7 +35,7 @@ var (
 
 	// gapB41AssassinAttackingBody is Origin of the Hidden Ones' delayed
 	// trigger: a 1/1 black Assassin with menace, tapped and attacking.
-	gapB41AssassinAttackingBody = game.SimpleDelayedBody("origin-of-the-hidden-ones/assassin-tapped-and-attacking", gapB41AssassinAttacking)
+	GapB41AssassinAttackingBody = game.SimpleDelayedBody("origin-of-the-hidden-ones/assassin-tapped-and-attacking", gapB41AssassinAttacking)
 )
 
 // gapB41AssassinAttacking creates one tapped and attacking Assassin. Its
@@ -50,7 +50,7 @@ func gapB41AssassinAttacking(g *game.Game, item *game.StackItem) error {
 		Template: TokenCard("1/1 black Assassin with menace"),
 		N:        1,
 		Tapped:   true,
-		Prefer:   triggerAttackTarget(item),
+		Prefer:   TriggerAttackTarget(item),
 		Label:    "Origin of the Hidden Ones",
 	}.Apply(NewContext(g, item))
 }

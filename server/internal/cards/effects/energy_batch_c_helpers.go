@@ -16,7 +16,7 @@ import (
 // power stays a parameter so each call site reads as its printed text.
 //
 //nolint:unparam // the printed boost, kept at the call site
-func pumpAndGrantFirstTarget(power, toughness int, label string, keywords ...string) func(g *game.Game, item *game.StackItem) error {
+func PumpAndGrantFirstTarget(power, toughness int, label string, keywords ...string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		target := FirstLegalBattlefieldTarget(ctx)
@@ -34,7 +34,7 @@ func pumpAndGrantFirstTarget(power, toughness int, label string, keywords ...str
 // graveyard target onto the battlefield tapped: under the activator's
 // control when underYourControl is set, its owner's otherwise (CR
 // 608.2b: nothing if it left).
-func returnFirstGraveyardTargetTapped(underYourControl bool) func(g *game.Game, item *game.StackItem) error {
+func ReturnFirstGraveyardTargetTapped(underYourControl bool) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {

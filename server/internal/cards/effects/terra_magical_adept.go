@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     terraMagicalAdeptOracleID,
+		OracleID:     TerraMagicalAdeptOracleID,
 		Name:         "Terra, Magical Adept",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -47,4 +47,4 @@ func init() {
 
 // terraMagicalAdeptOracleID is shared with the back face, which registers
 // under it plus "#1" (game.CatalogKey).
-const terraMagicalAdeptOracleID = "54ca5904-9099-497a-9684-101656025487"
+const TerraMagicalAdeptOracleID = "54ca5904-9099-497a-9684-101656025487"

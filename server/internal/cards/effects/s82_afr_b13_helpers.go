@@ -13,7 +13,7 @@ import (
 // step begins and again as the trigger resolves (CR 603.4).
 func AtYourEndStepIfAnyCreatureDied(label string, effect Effect) game.TriggeredAbility {
 	return InterveningIf(CondAnyCreatureDied{},
-		On(game.EventBeginEndStep, AllOf(ByYou, s82AfrB07AnyCreatureDiedWhen), label, effect))
+		On(game.EventBeginEndStep, AllOf(ByYou, S82AfrB07AnyCreatureDiedWhen), label, effect))
 }
 
 // BlocksAttackerThisCombat is "<Blocker> blocks <Attacker> this combat if

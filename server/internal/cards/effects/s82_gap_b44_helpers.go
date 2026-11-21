@@ -12,11 +12,11 @@ import (
 // it last existed on the battlefield (CR 603.10a) and under that player's
 // control as it left (CR 700.4), read off this turn's event log. A token
 // that died is not counted, whatever it was.
-func gapB44NontokenCreaturesDiedUnder(g *game.Game, player uuid.UUID) int {
+func GapB44NontokenCreaturesDiedUnder(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, ev := range g.EventsThisTurn() {
-		dead, ok := diedCreature(ev, g)
-		if !ok || IsToken(dead) || leftUnderControlOf(ev, dead) != player {
+		dead, ok := DiedCreature(ev, g)
+		if !ok || IsToken(dead) || LeftUnderControlOf(ev, dead) != player {
 			continue
 		}
 		n++
@@ -31,7 +31,7 @@ func gapB44NontokenCreaturesDiedUnder(g *game.Game, player uuid.UUID) int {
 // legal target of the spell's clause as it stands
 // (game.SpellCouldTargetInsteadForEffect: hexproof, protection and a target
 // clause that excludes it rule one out).
-func gapB44MagmarchCandidates(g *game.Game, spell, caster, from uuid.UUID) []uuid.UUID {
+func GapB44MagmarchCandidates(g *game.Game, spell, caster, from uuid.UUID) []uuid.UUID {
 	orig, ok := g.LookupCardForEffect(from)
 	if !ok {
 		return nil
@@ -51,7 +51,7 @@ func gapB44MagmarchCandidates(g *game.Game, spell, caster, from uuid.UUID) []uui
 // gapB44MagmarchSoleTarget is the one nonland permanent an opponent of
 // `caster` controls that `spell` targets and nothing else: "targets only a
 // single nonland permanent an opponent controls".
-func gapB44MagmarchSoleTarget(g *game.Game, spell, caster uuid.UUID) (uuid.UUID, bool) {
+func GapB44MagmarchSoleTarget(g *game.Game, spell, caster uuid.UUID) (uuid.UUID, bool) {
 	sole, ok := g.StackItemSoleTargetForEffect(spell)
 	if !ok || sole.Kind != game.TargetCard {
 		return uuid.Nil, false
@@ -67,8 +67,8 @@ func gapB44MagmarchSoleTarget(g *game.Game, spell, caster uuid.UUID) (uuid.UUID,
 // activated ability's effect (Sage of the Maze, Honor-Worn Shaku): the source
 // is untapped only while it is still the permanent that was activated
 // (CR 400.7).
-func untapThisPermanentEffect(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+func UntapThisPermanentEffect(g *game.Game, item *game.StackItem) error {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))

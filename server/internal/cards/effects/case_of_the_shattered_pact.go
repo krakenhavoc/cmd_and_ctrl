@@ -57,7 +57,7 @@ func init() {
 					}.Apply(NewContext(g, item))
 				}),
 			ToSolve("Case of the Shattered Pact — to solve: five colors among permanents you control",
-				fiveColorsAmongYourPermanents),
+				FiveColorsAmongYourPermanents),
 			WhenSolved(Targeting(
 				On(game.EventStepBegan, StepBegan(game.StepBeginCombat, true),
 					"Case of the Shattered Pact — solved: target creature gains flying, double strike and vigilance",
@@ -93,7 +93,7 @@ func init() {
 // rather than "five colours are printed".
 //
 // Runs under g.mu: read-only, *ForEffect accessors only.
-func fiveColorsAmongYourPermanents(g *game.Game, controller, _ uuid.UUID) bool {
+func FiveColorsAmongYourPermanents(g *game.Game, controller, _ uuid.UUID) bool {
 	seen := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller {

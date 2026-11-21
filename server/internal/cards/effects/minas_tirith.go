@@ -28,7 +28,7 @@ func init() {
 		OracleID:     "7b0d7e62-0287-454a-8702-b0bfa7b41245",
 		Name:         "Minas Tirith",
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(b08ControlsLegendaryCreature)},
+		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(B08ControlsLegendaryCreature)},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W}",
@@ -38,18 +38,18 @@ func init() {
 			Label:     "{1}{W}, {T}: Draw a card. Activate only if you attacked with two or more creatures this turn.",
 			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{1}{W}"), TapCost()),
-			Condition: minasTirithAttackedWithTwo,
-			Effect:    b36DrawOne,
+			Condition: MinasTirithAttackedWithTwo,
+			Effect:    B36DrawOne,
 		}},
 	})
 }
 
 // minasTirithAttackedWithTwo is Minas Tirith's condition: at least two
 // distinct creatures `controller` declared as attackers this turn.
-func minasTirithAttackedWithTwo(g *game.Game, controller, _ uuid.UUID) bool {
+func MinasTirithAttackedWithTwo(g *game.Game, controller, _ uuid.UUID) bool {
 	seen := map[uuid.UUID]bool{}
 	for _, ev := range g.EventsThisTurn() {
-		if !attackDeclaredByYou(ev, controller) || ev.CardID == uuid.Nil {
+		if !AttackDeclaredByYou(ev, controller) || ev.CardID == uuid.Nil {
 			continue
 		}
 		seen[ev.CardID] = true

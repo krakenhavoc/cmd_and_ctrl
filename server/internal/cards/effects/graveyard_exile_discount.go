@@ -75,7 +75,7 @@ func (ReturnRandomCardExiledWithThis) Apply(ctx *Context) error {
 	for _, c := range ctx.Game.ExiledWithForEffect(game.PermissionCardRef(ref)) {
 		ids = append(ids, c.InstanceID)
 	}
-	pick := ctx.Game.ChooseAtRandomForEffect(randomDraw(ctx), ids, 1)
+	pick := ctx.Game.ChooseAtRandomForEffect(RandomDraw(ctx), ids, 1)
 	if len(pick) == 0 {
 		return nil
 	}

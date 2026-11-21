@@ -55,8 +55,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters(etbLabel, celesRuneKnightLoot),
-			OncePerBatch(On(game.EventETB, celesOtherCreatureFromGraveyard,
-				counterLabel, b11PutCounterOnEachCreatureYouControl)),
+			OncePerBatch(On(game.EventETB, CelesOtherCreatureFromGraveyard,
+				counterLabel, B11PutCounterOnEachCreatureYouControl)),
 		},
 	})
 }
@@ -69,17 +69,17 @@ func celesRuneKnightLoot(g *game.Game, item *game.StackItem) error {
 	if p := g.PlayerByIDForEffect(item.Controller); p != nil && p.Hand != nil {
 		hand = p.Hand.Size()
 	}
-	return b39MayDiscardThenDraw(hand, false,
+	return B39MayDiscardThenDraw(hand, false,
 		"Celes, Rune Knight — discard any number of cards, then draw that many plus one",
-		drawOneMoreThanDiscarded)(ctx)
+		DrawOneMoreThanDiscarded)(ctx)
 }
 
 // celesOtherCreatureFromGraveyard is the second ability's trigger and
 // its intervening if in one: another creature the source's controller
 // controls entered, and it either came out of a graveyard or was cast
 // from one.
-func celesOtherCreatureFromGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func CelesOtherCreatureFromGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	if !ok || !c.IsCreature() {
 		return false
 	}

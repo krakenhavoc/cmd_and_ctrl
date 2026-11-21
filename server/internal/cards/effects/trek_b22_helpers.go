@@ -13,8 +13,8 @@ import (
 // trekB22CreateTappedNewPlanet is "create a tapped Planet land token named
 // New Planet" (batch 16's template, trek_b16_helpers.go) as one Do step,
 // so a trigger that does only this declares its footprint.
-func trekB22CreateTappedNewPlanet() CreateTokenAdvanced {
-	return CreateTokenAdvanced{Spec: Token(trekB16NewPlanetToken()).EntersTapped(), N: 1}
+func TrekB22CreateTappedNewPlanet() CreateTokenAdvanced {
+	return CreateTokenAdvanced{Spec: Token(TrekB16NewPlanetToken()).EntersTapped(), N: 1}
 }
 
 // trekB22AbilitiesFromOpponentsArtifactSourcesCantTargetThis is Species
@@ -28,7 +28,7 @@ func trekB22CreateTappedNewPlanet() CreateTokenAdvanced {
 // the battlefield (CR 608.2h, stackItemSourceLocked). "Your opponents" is
 // read off the creature's controller, as hexproof's is (CR 702.11b), so the
 // creature's own controller may target it with an artifact's ability.
-func trekB22AbilitiesFromOpponentsArtifactSourcesCantTargetThis(label string) game.TargetingRestriction {
+func TrekB22AbilitiesFromOpponentsArtifactSourcesCantTargetThis(label string) game.TargetingRestriction {
 	return game.TargetingRestriction{
 		Label: label,
 		Zones: []game.ZoneKind{game.ZoneBattlefield},
@@ -54,7 +54,7 @@ func trekB22AbilitiesFromOpponentsArtifactSourcesCantTargetThis(label string) ga
 }
 
 // trekB22AnyCard matches every card ("a card from your graveyard").
-func trekB22AnyCard(game.Card) bool { return true }
+func TrekB22AnyCard(game.Card) bool { return true }
 
 // TwoPlusOneCountersOnTheTarget is "put two +1/+1 counters on (up to one)
 // target creature" (Syndicate Liquidators, Oko, the Trickster's +1): two counters on the item's first card target still legal as

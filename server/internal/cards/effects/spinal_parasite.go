@@ -52,7 +52,7 @@ func init() {
 // one kind on it. The kinds are offered in name order.
 func removeACounterOfYourChoice(ctx *Context, target uuid.UUID) error {
 	c, ok := ctx.Game.LookupCardForEffect(target)
-	if !ok || !onBattlefield(ctx.Game, target) {
+	if !ok || !OnBattlefield(ctx.Game, target) {
 		return nil
 	}
 	var kinds []string
@@ -70,7 +70,7 @@ func removeACounterOfYourChoice(ctx *Context, target uuid.UUID) error {
 	}
 	options := make([]game.ChoiceOption, len(kinds))
 	for i, kind := range kinds {
-		options[i] = game.ChoiceOption{Label: removeACounterPrefix + kind + removeACounterSuffix}
+		options[i] = game.ChoiceOption{Label: RemoveACounterPrefix + kind + RemoveACounterSuffix}
 	}
 	return PickOption{
 		Question: "Remove which counter from " + c.Name + "?",
@@ -83,8 +83,8 @@ func removeACounterOfYourChoice(ctx *Context, target uuid.UUID) error {
 // removeACounterPrefix and removeACounterSuffix wrap the counter kind in each
 // option label, so the answer names the kind it was shown.
 const (
-	removeACounterPrefix = "Remove a "
-	removeACounterSuffix = " counter"
+	RemoveACounterPrefix = "Remove a "
+	RemoveACounterSuffix = " counter"
 )
 
 // removeACounterAnswer is the counter kind chosen to be removed, keyed
@@ -94,10 +94,10 @@ var removeACounterAnswer = OptionPickThen("option-pick/remove-a-counter-of-your-
 	if r.Option == nil || len(r.Carry) == 0 {
 		return nil
 	}
-	kind, ok := strings.CutPrefix(r.Option.Label, removeACounterPrefix)
+	kind, ok := strings.CutPrefix(r.Option.Label, RemoveACounterPrefix)
 	if !ok {
 		return nil
 	}
-	kind = strings.TrimSuffix(kind, removeACounterSuffix)
+	kind = strings.TrimSuffix(kind, RemoveACounterSuffix)
 	return AddCounter{Target: r.Carry[0], Kind: kind, N: -1}.Apply(ctx)
 })

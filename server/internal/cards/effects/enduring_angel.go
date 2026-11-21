@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-const enduringAngelOracleID = "93d1e21b-7326-4aad-9f6e-e0e391845a18"
+const EnduringAngelOracleID = "93d1e21b-7326-4aad-9f6e-e0e391845a18"
 
 // Enduring Angel — Creature — Angel {2}{W}{W}{W}, 3/3:
 //
@@ -40,7 +40,7 @@ const enduringAngelOracleID = "93d1e21b-7326-4aad-9f6e-e0e391845a18"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:        enduringAngelOracleID,
+		OracleID:        EnduringAngelOracleID,
 		Name:            "Enduring Angel",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "double strike"},
@@ -48,7 +48,7 @@ func init() {
 		Replacements:    []game.ReplacementEffect{enduringAngelLifeInstead()},
 	})
 	Register(Spec{
-		OracleID:        enduringAngelOracleID + "#1",
+		OracleID:        EnduringAngelOracleID + "#1",
 		Name:            "Angelic Enforcer",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
@@ -57,7 +57,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Angelic Enforcer — double your life total",
 				func(g *game.Game, item *game.StackItem) error {
-					return doubleLifeTotal(g, item.SourceCardID, item.Controller)
+					return DoubleLifeTotal(g, item.SourceCardID, item.Controller)
 				}),
 		},
 	})
@@ -139,10 +139,10 @@ func powerAndToughnessEqualToYourLifeTotal() game.StaticAbility {
 		Label:              "Power and toughness are each equal to your life total.",
 		Layer:              game.Layer7PT,
 		SubLayer:           game.SubLayer7A_CDA,
-		AppliesTo:          selfOnly,
+		AppliesTo:          SelfOnly,
 		DependsOnLifeTotal: true,
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			n := yourLifeTotal(g, source)
+			n := YourLifeTotal(g, source)
 			c.Power, c.Toughness = n, n
 		},
 	}

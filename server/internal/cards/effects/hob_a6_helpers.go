@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // two basic-colour letters ("BG"), `tribes` the creature types the
 // target may have ("Bear", "Spider", "Wolf") and `noun` the printed
 // clause around them ("Bear, Spider, or Wolf").
-func hobA6CounterLand(oracleID, name, colors, noun string, tribes ...string) Spec {
+func HobA6CounterLand(oracleID, name, colors, noun string, tribes ...string) Spec {
 	first, second := "{"+colors[:1]+"}", "{"+colors[1:]+"}"
 	cost := "{2}" + first + second
 	preds := make([]CardPredicate, 0, len(tribes))

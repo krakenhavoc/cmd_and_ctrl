@@ -1,0 +1,60 @@
+package cardsdi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Divert — Instant {U}:
+//
+//	"Change the target of target spell with a single target unless
+//	 that spell's controller pays {2}."
+//
+// The reason this card waited for #2365: the "unless" is a CR 118.12
+// tax on a spell that is STILL ON THE STACK. Written with a plain
+// PayUnless the targeted spell resolves while its controller is still
+// being asked, so the redirect arrives after the spell has already
+// done its work. GuardedPayUnless is the shape that stops the table
+// until the payer answers (the engine derives the halt from the
+// guarded object, as it does for Spell Pierce and ward).
+//
+// Pay {2} and nothing changes. Decline — or answer "pay" without the
+// mana — and Divert's controller is offered the CR 115.7b change
+// (mandatory, exactly one slot) through the same ChangeTargets
+// primitive Misdirection and Bolt Bend use; a target with nowhere
+// else legal to go is unchanged, per CR 115.7a. The new target is
+// chosen by Divert's controller, not by the payer.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "561aed01-322b-4699-b7b0-f4416075aa9b",
+		Name:         "Divert",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetSpell("target spell with a single target", effects.HasASingleTarget()),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+				return nil
+			}
+			return effects.GuardedPayUnless{
+				StackID:  item.Targets[0].ID,
+				Cost:     "{2}",
+				Question: "Divert — pay {2} or the target of your spell is changed",
+				Else:     DivertChangeTarget,
+			}.Apply(ctx)
+		},
+	})
+}
+
+// divertChangeTarget is Divert's "or else", keyed (#4264): the guarded
+// spell rides the prompt (game.PayUnlessAnswer.Guards), so a table
+// waiting on the payer is a restore point.
+var DivertChangeTarget = effects.PayUnlessElse("pay-unless/divert-change-target",
+	func(ctx *effects.Context, r game.PayUnlessAnswer) error {
+		return effects.ChangeTargets{
+			StackID: r.Guards,
+			Policy:  game.RetargetChangeOne,
+			Reason:  "Divert — change the target",
+		}.Apply(ctx)
+	})

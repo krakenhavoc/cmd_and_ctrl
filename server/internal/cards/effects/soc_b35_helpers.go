@@ -19,10 +19,10 @@ import (
 //
 // `key` names the step record carrying the event cursor and X across a
 // pause: an on-disk identity.
-func socB35FractalsWithCountersSteps(key string, tokens int, count func(ctx *Context) int) []Applier {
+func SocB35FractalsWithCountersSteps(key string, tokens int, count func(ctx *Context) int) []Applier {
 	return []Applier{
 		Instruction(func(ctx *Context) error {
-			ctx.RecordStep(key, nil, int(b25LastEventSeq(ctx.Game)), count(ctx))
+			ctx.RecordStep(key, nil, int(B25LastEventSeq(ctx.Game)), count(ctx))
 			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 green and blue Fractal")), tokens, game.TokenEntryOptions{})
 			return err
 		}),
@@ -33,7 +33,7 @@ func socB35FractalsWithCountersSteps(key string, tokens int, count func(ctx *Con
 // socB35ControlsACreature is "you control a creature": a battlefield
 // permanent that is a creature right now (a land animated until end of turn
 // counts) under the player's control.
-func socB35ControlsACreature(g *game.Game, player uuid.UUID) bool {
+func SocB35ControlsACreature(g *game.Game, player uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() {
 			return true

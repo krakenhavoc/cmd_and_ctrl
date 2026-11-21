@@ -65,7 +65,7 @@ func DomainPT(label string, powerPer, toughnessPer int) game.StaticAbility {
 		Label:     label,
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7A_CDA,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 			n := DomainCount(g, source.Controller)
 			if powerPer != 0 {

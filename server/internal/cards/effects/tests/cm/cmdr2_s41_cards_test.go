@@ -1,0 +1,736 @@
+package testscm
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// cmdr2_s41_cards_test.go — cmdr2 batch 41, spellslinger: storm, cascade and
+// spell copies (#5368). Each test plays the real catalog entry through the
+// engine and asserts what the printed text says.
+
+const (
+	cmdr2S41ErisOracle        = "918991a6-7321-419d-8f3d-150fe32d02d2"
+	cmdr2S41StellaOracle      = "8d0da2f9-0e05-4a94-8d42-fd57d06b09ba"
+	cmdr2S41StagecoachOracle  = "83f87884-f0f9-482e-887e-35a8a5c20eb0"
+	cmdr2S41SlingerOracle     = "ed7ba558-5341-4c7b-a9c5-b382dee88a13"
+	cmdr2S41OctaviaOracle     = "65681a2a-8395-4390-845f-9be974994dcb"
+	cmdr2S41FoundryOracle     = "118da256-d1ea-44e8-9026-317e49694d29"
+	cmdr2S41ArchmageOracle    = "f1ecb3d7-5ea0-45b2-b1b0-d7ae304db2a1"
+	cmdr2S41FeatherOracle     = "957413ae-e756-4afe-886a-b57bf59d5f8d"
+	cmdr2S41MurmurationOracle = "84e7be36-b8cd-4111-a91b-3628f421d5d5"
+	cmdr2S41WildsearOracle    = "9ceac4c6-e62e-4445-852c-b2c621e4a83b"
+	cmdr2S41CaseOracle        = "409697d5-ce3c-46aa-a97d-969d143a2a65"
+)
+
+func TestCmdr2S41EveryCardIsRegisteredFull(t *testing.T) {
+	want := map[string]string{
+		cmdr2S41ErisOracle:        "Eris, Roar of the Storm",
+		cmdr2S41StellaOracle:      "Stella Lee, Wild Card",
+		cmdr2S41StagecoachOracle:  "Smoldering Stagecoach",
+		cmdr2S41SlingerOracle:     "Crackling Spellslinger",
+		cmdr2S41OctaviaOracle:     "Octavia, Living Thesis",
+		cmdr2S41FoundryOracle:     "Forger's Foundry",
+		cmdr2S41ArchmageOracle:    "Archmage of Echoes",
+		cmdr2S41FeatherOracle:     "Feather, Radiant Arbiter",
+		cmdr2S41MurmurationOracle: "Murmuration",
+		cmdr2S41WildsearOracle:    "Wildsear, Scouring Maw",
+		cmdr2S41CaseOracle:        "Case of the Shifting Visage",
+	}
+	for oracle, name := range want {
+		spec, ok := effects.Lookup(oracle)
+		if !ok {
+			t.Errorf("%s is not registered", name)
+			continue
+		}
+		if spec.Name != name || spec.Completeness != effects.CompletenessFull || len(spec.Caveats) != 0 {
+			t.Errorf("%s: name %q, completeness %s, caveats %v", name, spec.Name, spec.Completeness, spec.Caveats)
+		}
+	}
+}
+
+// --- Wildsear, Scouring Maw ----------------------------------------------------
+
+func TestCmdr2S41WildsearCascadesEnchantmentsCastFromHandOnly(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.SeedCheapLibrary(g, me, 8)
+	effectstest.PushCatalogPermanent(g, me.ID, "Wildsear, Scouring Maw", "Legendary Creature — Elemental Wolf", cmdr2S41WildsearOracle, false)
+
+	effectstest.CastWithCost(t, g, "A Sorcery", "Sorcery", "{3}{G}", "")
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountMayCastPrompts(g); got != 0 {
+		t.Errorf("a sorcery got %d cascade offers, want 0", got)
+	}
+
+	effectstest.CastWithCost(t, g, "An Enchantment", "Enchantment", "{3}{G}", "")
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountMayCastPrompts(g); got != 1 {
+		t.Fatalf("an enchantment cast from hand got %d cascade offers, want 1", got)
+	}
+	effectstest.AnswerAllMayCast(t, g, me.ID, false)
+}
+
+func TestCmdr2S41WildsearDoesNotCascadeAnEnchantmentCastFromExile(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.SeedCheapLibrary(g, me, 8)
+	effectstest.PushCatalogPermanent(g, me.ID, "Wildsear, Scouring Maw", "Legendary Creature — Elemental Wolf", cmdr2S41WildsearOracle, false)
+	effectstest.AdvanceToMain(t, g)
+	id := uuid.New()
+	g.Exile.PushTop(game.Card{InstanceID: id, Name: "Exiled Enchantment", TypeLine: "Enchantment", ManaCost: "{3}{G}",
+		Owner: me.ID, Controller: me.ID})
+	g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{Player: me.ID, Zone: game.ZoneExile,
+		Duration: game.WhileInZoneDuration(), Source: uuid.New()})
+	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+	effectstest.FloatForTest(g, me, "GGGG")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: string(game.ZoneExile)}); err != nil {
+		t.Fatalf("cast from exile: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountMayCastPrompts(g); got != 0 {
+		t.Errorf("an enchantment cast from exile got %d cascade offers, want 0", got)
+	}
+}
+
+// --- Crackling Spellslinger ----------------------------------------------------
+
+func TestCmdr2S41SpellslingerStormsTheNextInstantOrSorceryOnly(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.StormFiller(t, g) // one spell before the Spellslinger
+
+	effectstest.CastCatalogSpell(t, g, "Crackling Spellslinger", "Creature — Human Wizard", cmdr2S41SlingerOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	// A creature spell neither storms nor uses the watch up.
+	effectstest.CastCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	before := effectstest.LifeOf(g, opp.ID)
+	effectstest.CastCatalogSpell(t, g, "Lightning Bolt", "Instant", effectstest.LightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	// Three spells came before it this turn (the filler, the Spellslinger, the Bear).
+	effectstest.AnswerCopyPrompts(t, g, me.ID, opp.ID, 3)
+	if got := effectstest.LifeOf(g, opp.ID); got != before-12 {
+		t.Errorf("life %d -> %d, want -12 (the spell and three copies, 3 each)", before, got)
+	}
+
+	// The watch was used up: the next one does not storm.
+	effectstest.CastCatalogSpell(t, g, "Lightning Bolt", "Instant", effectstest.LightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	before = effectstest.LifeOf(g, opp.ID)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.LifeOf(g, opp.ID); got != before-3 {
+		t.Errorf("the second spell dealt %d, want 3: it does not have storm", before-got)
+	}
+}
+
+func TestCmdr2S41SpellslingerDoesNothingIfItWasNotCast(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.AdvanceToMain(t, g)
+	effectstest.PushCatalogPermanent(g, me.ID, "Crackling Spellslinger", "Creature — Human Wizard", cmdr2S41SlingerOracle, false)
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.StormFiller(t, g)
+	before := effectstest.LifeOf(g, opp.ID)
+	effectstest.CastCatalogSpell(t, g, "Lightning Bolt", "Instant", effectstest.LightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.LifeOf(g, opp.ID); got != before-3 {
+		t.Errorf("a Spellslinger that was not cast gave storm: dealt %d, want 3", before-got)
+	}
+}
+
+// --- Smoldering Stagecoach -----------------------------------------------------
+
+func TestCmdr2S41StagecoachPowerCountsYourInstantsAndSorceries(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.PushGraveyardCardTyped(me, "Old Instant", "Instant")
+	effectstest.PushGraveyardCardTyped(me, "Old Sorcery", "Sorcery")
+	effectstest.PushGraveyardPermanent(me, "Dead Bear", "Creature — Bear", "{1}{G}")
+	effectstest.PushGraveyardCardTyped(opp, "Their Sorcery", "Sorcery")
+	coach := effectstest.B12Push(g, me.ID, "Smoldering Stagecoach", "Artifact Creature — Vehicle", cmdr2S41StagecoachOracle, 0, 5)
+	if p, tough := effectstest.PtOf(t, g, coach); p != 2 || tough != 5 {
+		t.Errorf("Smoldering Stagecoach is %d/%d, want 2/5", p, tough)
+	}
+}
+
+func TestCmdr2S41StagecoachGivesTheNextInstantAndTheNextSorceryCascade(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.SeedCheapLibrary(g, me, 12)
+	coach := effectstest.B12Push(g, me.ID, "Smoldering Stagecoach", "Artifact Creature — Vehicle", cmdr2S41StagecoachOracle, 0, 5)
+
+	effectstest.AttackWith(t, g, opp.ID, coach)
+	effectstest.LockInAttacks(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	// A creature spell is neither: no cascade.
+	effectstest.CastWithCost(t, g, "Bear", "Creature — Bear", "{3}{G}", "")
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountMayCastPrompts(g); got != 0 {
+		t.Fatalf("a creature spell got %d cascade offers, want 0", got)
+	}
+
+	effectstest.CastWithCost(t, g, "First Instant", "Instant", "{3}{R}", "")
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountMayCastPrompts(g); got != 1 {
+		t.Fatalf("the next instant got %d cascade offers, want 1", got)
+	}
+	effectstest.AnswerAllMayCast(t, g, me.ID, false)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	effectstest.CastWithCost(t, g, "Second Instant", "Instant", "{3}{R}", "")
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountMayCastPrompts(g); got != 0 {
+		t.Errorf("a second instant got %d cascade offers, want 0 (the instant watch is used up)", got)
+	}
+
+	effectstest.CastWithCost(t, g, "A Sorcery", "Sorcery", "{3}{R}", "")
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountMayCastPrompts(g); got != 1 {
+		t.Fatalf("the next sorcery got %d cascade offers, want 1", got)
+	}
+	effectstest.AnswerAllMayCast(t, g, me.ID, false)
+}
+
+// --- Eris, Roar of the Storm ---------------------------------------------------
+
+func TestCmdr2S41ErisCostsTwoLessPerDifferentManaValueAmongInstantsAndSorceries(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	g.WithWriteLock(func() { me.Graveyard.Cards = nil })
+	const typeLine = "Legendary Creature — Elemental Warlock"
+	if got := effectstest.SelfPricedMV(t, g, me, cmdr2S41ErisOracle, typeLine, "{8}{U}{R}"); got != 10 {
+		t.Errorf("with an empty graveyard it costs mana value %d, want 10", got)
+	}
+	effectstest.PushGraveyardPermanent(me, "Opt", "Instant", "{U}")
+	effectstest.PushGraveyardPermanent(me, "Shock", "Instant", "{R}")
+	effectstest.PushGraveyardPermanent(me, "Burn", "Sorcery", "{1}{R}")
+	effectstest.PushGraveyardPermanent(me, "Counterspell", "Instant", "{U}{U}")
+	effectstest.PushGraveyardPermanent(me, "A Bear", "Creature — Bear", "{4}{G}")
+	if got := effectstest.SelfPricedMV(t, g, me, cmdr2S41ErisOracle, typeLine, "{8}{U}{R}"); got != 6 {
+		t.Errorf("with mana values 1 and 2 among instants and sorceries it costs %d, want 6", got)
+	}
+	effectstest.PushGraveyardPermanent(me, "Big Spell", "Sorcery", "{6}{U}{R}")
+	if got := effectstest.SelfPricedMV(t, g, me, cmdr2S41ErisOracle, typeLine, "{8}{U}{R}"); got != 4 {
+		t.Errorf("with a third different mana value it costs %d, want 4", got)
+	}
+	for _, mv := range []string{"{3}", "{4}", "{5}", "{6}", "{7}"} {
+		effectstest.PushGraveyardPermanent(me, "Spell "+mv, "Instant", mv)
+	}
+	if got := effectstest.SelfPricedMV(t, g, me, cmdr2S41ErisOracle, typeLine, "{8}{U}{R}"); got != 2 {
+		t.Errorf("the coloured {U}{R} is never reduced: it costs %d, want 2", got)
+	}
+}
+
+func TestCmdr2S41ErisMakesADragonElementalOnTheSecondSpellOnly(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.PushCatalogPermanent(g, me.ID, "Eris, Roar of the Storm", "Legendary Creature — Elemental Warlock", cmdr2S41ErisOracle, false)
+	effectstest.StormFiller(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Dragon Elemental"); got != 0 {
+		t.Fatalf("%d Dragon Elementals after one spell, want 0", got)
+	}
+	effectstest.StormFiller(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Dragon Elemental"); got != 1 {
+		t.Fatalf("%d Dragon Elementals after two spells, want 1", got)
+	}
+	id := effectstest.BattlefieldIDsNamed(g, "Dragon Elemental")[0]
+	if p, tough := effectstest.PtOf(t, g, id); p != 4 || tough != 4 {
+		t.Errorf("the Dragon Elemental is %d/%d, want 4/4", p, tough)
+	}
+	if !effectstest.HasEffectiveKeyword(t, g, id, "flying") || !effectstest.HasEffectiveKeyword(t, g, id, "prowess") {
+		t.Error("the Dragon Elemental lacks flying or prowess")
+	}
+	effectstest.StormFiller(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Dragon Elemental"); got != 1 {
+		t.Errorf("%d Dragon Elementals after three spells, want still 1", got)
+	}
+}
+
+// --- Octavia, Living Thesis ----------------------------------------------------
+
+func TestCmdr2S41OctaviaCostsEightLessWithEightInstantsAndSorceries(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	g.WithWriteLock(func() { me.Graveyard.Cards = nil })
+	const typeLine = "Legendary Creature — Elemental Octopus"
+	for i := 0; i < 7; i++ {
+		effectstest.PushGraveyardPermanent(me, "Spell", "Instant", "{U}")
+	}
+	effectstest.PushGraveyardPermanent(me, "A Bear", "Creature — Bear", "{1}{G}")
+	if got := effectstest.SelfPricedMV(t, g, me, cmdr2S41OctaviaOracle, typeLine, "{8}{U}{U}"); got != 10 {
+		t.Errorf("with seven instants and sorceries it costs %d, want 10", got)
+	}
+	effectstest.PushGraveyardPermanent(me, "Eighth", "Sorcery", "{1}{R}")
+	if got := effectstest.SelfPricedMV(t, g, me, cmdr2S41OctaviaOracle, typeLine, "{8}{U}{U}"); got != 2 {
+		t.Errorf("with eight it costs %d, want 2 ({U}{U})", got)
+	}
+}
+
+func TestCmdr2S41OctaviaMagecraftSetsAnyCreatureToBaseEightEight(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.PushCatalogPermanent(g, me.ID, "Octavia, Living Thesis", "Legendary Creature — Elemental Octopus", cmdr2S41OctaviaOracle, false)
+	bear := effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	effectstest.AdvanceToMain(t, g)
+	effectstest.CastCatalogSpell(t, g, "Opt", "Instant", "", nil)
+	if p := effectstest.LatestPickTarget(g, me.ID); p != nil {
+		if err := g.ResolvePickTarget(p.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: bear}); err != nil {
+			t.Fatalf("ResolvePickTarget: %v", err)
+		}
+	} else {
+		t.Fatal("the magecraft trigger asked for no target")
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	if p, tough := effectstest.PtOf(t, g, bear); p != 8 || tough != 8 {
+		t.Errorf("the targeted bear is %d/%d, want 8/8", p, tough)
+	}
+	// Until end of turn only.
+	for g.Turn.Step != game.StepEnd {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatalf("AdvanceStep: %v", err)
+	}
+	if p, tough := effectstest.PtOf(t, g, bear); p != 2 || tough != 2 {
+		t.Errorf("after the turn the bear is %d/%d, want 2/2", p, tough)
+	}
+}
+
+func TestCmdr2S41OctaviaHasWardEight(t *testing.T) {
+	var ward bool
+	for _, tr := range game.CatalogTriggers(cmdr2S41OctaviaOracle) {
+		if tr.Keyword == "ward" || tr.Key == "Octavia, Living Thesis — ward {8}" {
+			ward = true
+		}
+	}
+	if !ward {
+		t.Error("Octavia has no ward trigger")
+	}
+}
+
+// --- Stella Lee, Wild Card -----------------------------------------------------
+
+func TestCmdr2S41StellaExilesTheTopCardOnTheSecondSpellAndYouMayPlayIt(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.PushCatalogPermanent(g, me.ID, "Stella Lee, Wild Card", "Legendary Creature — Human Rogue", cmdr2S41StellaOracle, false)
+	top := effectstest.SeedLibrary(me, "Top Card", "Second")
+	effectstest.StormFiller(t, g)
+	if !me.Library.Contains(top[0]) {
+		t.Fatal("the first spell exiled a card")
+	}
+	effectstest.StormFiller(t, g)
+	var exiled bool
+	for _, c := range g.Exile.Cards {
+		if c.InstanceID == top[0] {
+			exiled = true
+		}
+	}
+	if !exiled {
+		t.Fatal("the second spell did not exile the top card of the library")
+	}
+	if !effectstest.B12ExiledPlayableBy(t, g, top[0], me.ID) {
+		t.Error("the exiled card has no play permission for its exiler")
+	}
+	effectstest.StormFiller(t, g)
+	if !me.Library.Contains(top[1]) {
+		t.Error("a third spell exiled the next card too")
+	}
+	// "Until the end of your next turn": still playable on my next turn,
+	// gone once it has ended.
+	seat := g.Turn.ActiveSeat
+	effectstest.EndTurn(t, g)
+	effectstest.AdvanceToPrecombatMainOf(t, g, seat)
+	if !effectstest.B12ExiledPlayableBy(t, g, top[0], me.ID) {
+		t.Error("the card should still be playable during my next turn")
+	}
+	effectstest.EndTurn(t, g)
+	if effectstest.B12ExiledPlayableBy(t, g, top[0], me.ID) {
+		t.Error("the permission should have ended with my next turn")
+	}
+}
+
+func TestCmdr2S41StellaCopiesASpellOnlyAfterThreeSpells(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	stella := effectstest.PushCatalogPermanent(g, me.ID, "Stella Lee, Wild Card", "Legendary Creature — Human Rogue", cmdr2S41StellaOracle, false)
+	effectstest.SeedLibrary(me, "A", "B", "C", "D", "E", "F", "G", "H")
+	effectstest.StormFiller(t, g)
+	hand := me.Hand.Size()
+	spell := effectstest.CastCatalogSpell(t, g, "Divination", "Sorcery", effectstest.DivinationOracle, nil)
+	params := game.ActivateAbilityParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: spell}}}
+	if err := g.ActivateCatalogAbility(me.ID, stella, 0, params); err == nil {
+		t.Fatal("the copy activated after only two spells")
+	}
+	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+	// A third spell, then the ability copies the Divination beneath it.
+	effectstest.CastCatalogSpell(t, g, "Third", "Instant", "", nil)
+	effectstest.B16Activate(t, g, me.ID, stella, 0, params)
+	for i := 0; i < 6; i++ {
+		effectstest.PassPriorityAroundTable(t, g)
+	}
+	if got := me.Hand.Size(); got != hand+4 {
+		t.Errorf("hand %d, want %d: Divination and its copy draw two each", got, hand+4)
+	}
+}
+
+// --- Archmage of Echoes --------------------------------------------------------
+
+func TestCmdr2S41ArchmageCopiesFaerieAndWizardPermanentSpellsOnly(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.PushCatalogPermanent(g, me.ID, "Archmage of Echoes", "Creature — Faerie Wizard", cmdr2S41ArchmageOracle, false)
+
+	effectstest.CastHoldCreature(t, g, "Sprite", "Creature — Faerie Rogue", "", 1, 1)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Sprite"); got != 2 {
+		t.Errorf("%d Sprites after casting a Faerie, want 2 (the card and its token copy)", got)
+	}
+	if n, _ := effectstest.CountTokensNamed(g, me.ID, "Sprite"); n != 1 {
+		t.Errorf("%d Sprite tokens, want 1: the copy becomes a token", n)
+	}
+
+	effectstest.CastHoldCreature(t, g, "Mage", "Creature — Human Wizard", "", 1, 1)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Mage"); got != 2 {
+		t.Errorf("%d Mages after casting a Wizard, want 2", got)
+	}
+
+	effectstest.CastHoldCreature(t, g, "Bear", "Creature — Bear", "", 2, 2)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Bear"); got != 1 {
+		t.Errorf("%d Bears after casting a Bear, want 1", got)
+	}
+	// The copies were not cast, so they did not copy themselves.
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Sprite"); got != 2 {
+		t.Errorf("%d Sprites at the end, want 2: a copy is not cast", got)
+	}
+}
+
+func TestCmdr2S41ArchmageIgnoresAnInstant(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.PushCatalogPermanent(g, me.ID, "Archmage of Echoes", "Creature — Faerie Wizard", cmdr2S41ArchmageOracle, false)
+	effectstest.CastCatalogSpell(t, g, "Wizard Trick", "Instant", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if len(g.StackMeta) != 0 || g.Stack.Size() != 0 {
+		t.Error("the stack did not empty")
+	}
+}
+
+// --- Case of the Shifting Visage -----------------------------------------------
+
+func TestCmdr2S41CaseCopiesNonlegendaryCreatureSpellsOnlyOnceSolved(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := effectstest.PushClass(g, me.ID, "Case of the Shifting Visage", effectstest.MkmAC2CaseTypeLine, cmdr2S41CaseOracle)
+
+	effectstest.CastHoldCreature(t, g, "Early Bear", "Creature — Bear", "", 2, 2)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Early Bear"); got != 1 {
+		t.Fatalf("an unsolved Case copied a spell: %d Early Bears", got)
+	}
+
+	effectstest.MkmAC2Solve(t, g, id)
+	effectstest.CastHoldCreature(t, g, "Late Bear", "Creature — Bear", "", 2, 2)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Late Bear"); got != 2 {
+		t.Errorf("%d Late Bears once solved, want 2 (the card and its token copy)", got)
+	}
+	effectstest.CastHoldCreature(t, g, "Legend", "Legendary Creature — Human", "", 2, 2)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Legend"); got != 1 {
+		t.Errorf("%d Legends, want 1: the Case copies only nonlegendary creature spells", got)
+	}
+	effectstest.CastCatalogSpell(t, g, "Any Bolt", "Instant", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Late Bear"); got != 2 {
+		t.Errorf("%d Late Bears after an instant, want still 2", got)
+	}
+}
+
+func TestCmdr2S41CaseSolvesAtTheEndStepWithFifteenCardsInYourGraveyard(t *testing.T) {
+	for _, tc := range []struct {
+		cards  int
+		solved bool
+	}{{14, false}, {15, true}} {
+		g := effectstest.NewCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		g.WithWriteLock(func() { me.Graveyard.Cards = nil })
+		id := effectstest.PushClass(g, me.ID, "Case of the Shifting Visage", effectstest.MkmAC2CaseTypeLine, cmdr2S41CaseOracle)
+		for i := 0; i < tc.cards; i++ {
+			effectstest.PushGraveyardCardTyped(me, "Filler", "Instant")
+		}
+		if got := effectstest.MkmAC2EndStepSolves(t, g, id); got != tc.solved {
+			t.Errorf("with %d cards in the graveyard solved = %v, want %v", tc.cards, got, tc.solved)
+		}
+	}
+}
+
+func TestCmdr2S41CaseSurveilsAtTheBeginningOfYourUpkeep(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.SeedLibrary(me, "A", "B", "C")
+	effectstest.PushClass(g, me.ID, "Case of the Shifting Visage", effectstest.MkmAC2CaseTypeLine, cmdr2S41CaseOracle)
+	effectstest.EndTurn(t, g)
+	for g.Turn.ActiveSeat != 0 {
+		effectstest.EndTurn(t, g)
+	}
+	effectstest.AdvanceTo(t, g, game.StepUpkeep)
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.SurveilChoiceFor(g, me.ID) == nil {
+		t.Fatal("the upkeep trigger asked for no surveil")
+	}
+}
+
+// --- Murmuration ---------------------------------------------------------------
+
+func TestCmdr2S41MurmurationMakesAStormCrowForEachSpellAtYourEndStep(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.PushCatalogPermanent(g, me.ID, "Murmuration", "Enchantment", cmdr2S41MurmurationOracle, false)
+	effectstest.StormFiller(t, g)
+	effectstest.StormFiller(t, g)
+	effectstest.StormFiller(t, g)
+	effectstest.AdvanceTo(t, g, game.StepEnd)
+	effectstest.PassPriorityAroundTable(t, g)
+	n, _ := effectstest.CountTokensNamed(g, me.ID, "Storm Crow")
+	if n != 3 {
+		t.Fatalf("%d Storm Crows after three spells, want 3", n)
+	}
+	crow := effectstest.BattlefieldIDsNamed(g, "Storm Crow")[0]
+	if p, tough := effectstest.PtOf(t, g, crow); p != 2 || tough != 3 {
+		t.Errorf("a Storm Crow is %d/%d, want 2/3 (1/2 and +1/+1)", p, tough)
+	}
+	for _, kw := range []string{"flying", "vigilance"} {
+		if !effectstest.HasEffectiveKeyword(t, g, crow, kw) {
+			t.Errorf("a Storm Crow lacks %s", kw)
+		}
+	}
+	if got := effectstest.CountBattlefieldNamed(g, me.ID, "Murmuration"); got != 1 {
+		t.Errorf("%d Murmurations, want 1", got)
+	}
+}
+
+func TestCmdr2S41MurmurationMakesNothingWithoutASpellAndPumpsOnlyYourBirds(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.PushCatalogPermanent(g, me.ID, "Murmuration", "Enchantment", cmdr2S41MurmurationOracle, false)
+	mine := effectstest.B12Creature(g, me.ID, "My Bird", "Creature — Bird", 1, 1)
+	theirs := effectstest.B12Creature(g, opp.ID, "Their Bird", "Creature — Bird", 1, 1)
+	bear := effectstest.B12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	if p, tough := effectstest.PtOf(t, g, mine); p != 2 || tough != 2 {
+		t.Errorf("my Bird is %d/%d, want 2/2", p, tough)
+	}
+	if p, tough := effectstest.PtOf(t, g, theirs); p != 1 || tough != 1 {
+		t.Errorf("their Bird is %d/%d, want 1/1", p, tough)
+	}
+	if p, _ := effectstest.PtOf(t, g, bear); p != 2 {
+		t.Errorf("my Bear has power %d, want 2", p)
+	}
+	if !effectstest.HasEffectiveKeyword(t, g, mine, "vigilance") || effectstest.HasEffectiveKeyword(t, g, theirs, "vigilance") {
+		t.Error("vigilance went to the wrong Birds")
+	}
+	effectstest.AdvanceTo(t, g, game.StepEnd)
+	effectstest.PassPriorityAroundTable(t, g)
+	if n, _ := effectstest.CountTokensNamed(g, me.ID, "Storm Crow"); n != 0 {
+		t.Errorf("%d Storm Crows with no spell cast, want 0", n)
+	}
+}
+
+// --- Forger's Foundry ----------------------------------------------------------
+
+// cmdr2S41CastWithFoundryMana taps the Foundry for {U} and casts a one-mana
+// spell with it, strictly.
+func cmdr2S41CastWithFoundryMana(t *testing.T, g *game.Game, me *game.Player, foundry uuid.UUID, typeLine, cost string) uuid.UUID {
+	t.Helper()
+	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+	effectstest.ActivateManaFor(t, g, me.ID, foundry, 0, game.ManaAbilityParams{})
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Cheap Spell", TypeLine: typeLine, ManaCost: cost,
+		Owner: me.ID, Controller: me.ID})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast with the Foundry's mana: %v", err)
+	}
+	return id
+}
+
+func TestCmdr2S41FoundryExilesACheapSpellItPaidForAndLinksIt(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.AdvanceToMain(t, g)
+	foundry := effectstest.PushCatalogPermanent(g, me.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	spell := cmdr2S41CastWithFoundryMana(t, g, me, foundry, "Instant", "{U}")
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerMayChoice(t, g, me.ID, true)
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.Cmdr2S41InExile(g, spell)
+	if c == nil {
+		t.Fatal("the spell was not exiled as it resolved")
+	}
+	if c.ExiledWith.ID != foundry {
+		t.Errorf("the exiled spell is linked to %v, want the Foundry", c.ExiledWith.ID)
+	}
+}
+
+func TestCmdr2S41FoundryDeclinedOrOverThreeOrASorceryOfCreatureGoesToTheGraveyard(t *testing.T) {
+	// Declined.
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.AdvanceToMain(t, g)
+	foundry := effectstest.PushCatalogPermanent(g, me.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	spell := cmdr2S41CastWithFoundryMana(t, g, me, foundry, "Instant", "{U}")
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerMayChoice(t, g, me.ID, false)
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.Cmdr2S41InExile(g, spell) != nil || !me.Graveyard.Contains(spell) {
+		t.Error("a declined exile still exiled the spell")
+	}
+	// A creature spell asks nothing.
+	g2 := effectstest.NewCatalogGame(t)
+	me2 := g2.Seats[g2.Turn.ActiveSeat]
+	effectstest.AdvanceToMain(t, g2)
+	f2 := effectstest.PushCatalogPermanent(g2, me2.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	cmdr2S41CastWithFoundryMana(t, g2, me2, f2, "Creature — Bear", "{U}")
+	effectstest.PassPriorityAroundTable(t, g2)
+	if effectstest.LatestConfirmFor(g2, me2.ID) != nil {
+		t.Error("a creature spell paid with the Foundry's mana asked about exiling")
+	}
+	// Mana value 4 is too much; the Foundry's mana pays only one of it.
+	g3 := effectstest.NewCatalogGame(t)
+	me3 := g3.Seats[g3.Turn.ActiveSeat]
+	effectstest.AdvanceToMain(t, g3)
+	f3 := effectstest.PushCatalogPermanent(g3, me3.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	g3.WithWriteLock(func() { me3.ManaPool.EmptyPool() })
+	effectstest.ActivateManaFor(t, g3, me3.ID, f3, 0, game.ManaAbilityParams{})
+	effectstest.FloatForTest(g3, me3, "CCC")
+	big := uuid.New()
+	me3.Hand.PushTop(game.Card{InstanceID: big, Name: "Big Spell", TypeLine: "Sorcery", ManaCost: "{3}{U}",
+		Owner: me3.ID, Controller: me3.ID})
+	if err := g3.CastSpell(me3.ID, big, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g3)
+	if effectstest.LatestConfirmFor(g3, me3.ID) != nil {
+		t.Error("a mana value 4 spell asked about exiling")
+	}
+}
+
+func TestCmdr2S41FoundryCastsTheExiledSpellsFreeAtSorcerySpeed(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	effectstest.AdvanceToMain(t, g)
+	foundry := effectstest.PushCatalogPermanent(g, me.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	spell := cmdr2S41CastWithFoundryMana(t, g, me, foundry, "Instant", "{U}")
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerMayChoice(t, g, me.ID, true)
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.Cmdr2S41InExile(g, spell) == nil {
+		t.Fatal("setup: the spell was not exiled")
+	}
+	effectstest.UntapForTest(g, foundry)
+	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+	effectstest.FloatForTest(g, me, "UUUUU")
+	before := effectstest.LifeOf(g, opp.ID)
+	effectstest.B16Activate(t, g, me.ID, foundry, 0, game.ActivateAbilityParams{})
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.CountMayCastPrompts(g); got != 1 {
+		t.Fatalf("%d free-cast offers, want 1", got)
+	}
+	effectstest.AnswerAllMayCast(t, g, me.ID, true)
+	effectstest.PassPriorityAroundTable(t, g)
+	_ = before
+	if effectstest.Cmdr2S41InExile(g, spell) != nil {
+		t.Error("the spell is still in exile after it was cast")
+	}
+}
+
+func TestCmdr2S41FoundryLosesItsLinkWhenItLeaves(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.AdvanceToMain(t, g)
+	foundry := effectstest.PushCatalogPermanent(g, me.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	spell := cmdr2S41CastWithFoundryMana(t, g, me, foundry, "Instant", "{U}")
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerMayChoice(t, g, me.ID, true)
+	// The Foundry leaves before the spell resolves: it goes to the graveyard.
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == foundry {
+				g.Battlefield.Cards[i].ObjectEpoch++
+			}
+		}
+	})
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.Cmdr2S41InExile(g, spell) != nil {
+		t.Error("a spell whose Foundry is a different object was exiled")
+	}
+}
+
+// --- Feather, Radiant Arbiter --------------------------------------------------
+
+func TestCmdr2S41FeatherCopiesTheSpellForEachCreaturePaidFor(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.AdvanceToMain(t, g)
+	feather := effectstest.B12Push(g, me.ID, "Feather, Radiant Arbiter", "Legendary Creature — Angel", cmdr2S41FeatherOracle, 4, 3)
+	a := effectstest.B12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	theirs := effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	effectstest.CastCatalogSpell(t, g, "Giant Growth", "Instant", effectstest.SocB8GiantGrowthOracle, effectstest.CardTarget(feather))
+	effectstest.FloatForTest(g, me, "CCCC")
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.PayAmountPrompt(g, me.ID)
+	if c == nil {
+		t.Fatal("no pay prompt for the Feather trigger")
+	}
+	if err := g.ResolvePayAmount(c.ID, me.ID, 2); err != nil {
+		t.Fatalf("ResolvePayAmount: %v", err)
+	}
+	effectstest.AnswerPayUnless(t, g, me.ID, true)
+	for i := 0; i < 8 && len(g.Stack.Cards) > 0; i++ {
+		effectstest.PassPriorityAroundTable(t, g)
+	}
+	for _, id := range []uuid.UUID{feather, a, theirs} {
+		if p := effectstest.EffectivePower(t, g, id); p < 5 {
+			t.Errorf("creature %v has power %d, want it pumped by Giant Growth", id, p)
+		}
+	}
+}
+
+func TestCmdr2S41FeatherPayingNothingCopiesNothingAndAnotherTargetDoesNotTrigger(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.AdvanceToMain(t, g)
+	feather := effectstest.B12Push(g, me.ID, "Feather, Radiant Arbiter", "Legendary Creature — Angel", cmdr2S41FeatherOracle, 4, 3)
+	a := effectstest.B12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	effectstest.CastCatalogSpell(t, g, "Giant Growth", "Instant", effectstest.SocB8GiantGrowthOracle, effectstest.CardTarget(a))
+	if n := effectstest.TriggersOnStackFrom(g, feather); n != 0 {
+		t.Errorf("a spell targeting another creature triggered Feather %d times", n)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.CastCatalogSpell(t, g, "Giant Growth", "Instant", effectstest.SocB8GiantGrowthOracle, effectstest.CardTarget(feather))
+	effectstest.PassPriorityAroundTable(t, g)
+	if c := effectstest.PayAmountPrompt(g, me.ID); c != nil {
+		if err := g.ResolvePayAmount(c.ID, me.ID, 0); err != nil {
+			t.Fatalf("ResolvePayAmount: %v", err)
+		}
+	}
+	for i := 0; i < 8 && len(g.Stack.Cards) > 0; i++ {
+		effectstest.PassPriorityAroundTable(t, g)
+	}
+	if p := effectstest.EffectivePower(t, g, a); p != 5 {
+		t.Errorf("Bear A has power %d, want 5 (one Giant Growth, no copies)", p)
+	}
+}

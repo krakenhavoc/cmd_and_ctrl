@@ -32,5 +32,5 @@ func ForMirrodin(cardName string) game.TriggeredAbility {
 // forMirrodinCreateRebelAndAttach is the resolution. A package-level
 // func, like living weapon's: it captures nothing.
 func forMirrodinCreateRebelAndAttach(g *game.Game, item *game.StackItem) error {
-	return createTokenAndAttachSource(g, item, forMirrodinRebelToken, false)
+	return CreateTokenAndAttachSource(g, item, forMirrodinRebelToken, false)
 }

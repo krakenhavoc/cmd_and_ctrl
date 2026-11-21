@@ -1,0 +1,29 @@
+package cardsb
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Beast Whisperer — 2/3 Creature — Elf Druid for {2}{G}{G}:
+//
+//	"Whenever you cast a creature spell, draw a card."
+//
+// S19 sub-PR 6: the simplest cast trigger — your own creature
+// spells only. AppliesTo looks the cast card up on the stack
+// (EventCast.CardID) to read its type; the Whisperer itself
+// doesn't trigger on its own cast because it's not on the
+// battlefield yet when its EventCast fires. Mandatory; the draw
+// happens when the trigger resolves, so it resolves BEFORE the
+// creature spell that caused it (LIFO), as in paper.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "5da7eea8-bb9e-47ce-a554-8a1ee058bd7a",
+		Name:         "Beast Whisperer",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventCast, effects.YouCastACreatureSpell, "Beast Whisperer — draw a card", effects.Do(effects.DrawCards{N: 1})),
+		},
+	})
+}

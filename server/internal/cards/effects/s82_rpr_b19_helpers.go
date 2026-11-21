@@ -12,7 +12,7 @@ import (
 // each of their draw steps" — the draw half of Orcish Bowmasters'
 // condition. Only the first completed draw of an opponent's own draw
 // step is exempt.
-func rprB19OpponentDrewNotFirstInDrawStep(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
+func RprB19OpponentDrewNotFirstInDrawStep(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 	return ev.Kind == game.EventDrawCard && ByAnOpponent(ev, source, ch, g) &&
 		!g.FirstCompletedDrawInOwnDrawStepForEffect(ev.Actor)
 }
@@ -26,11 +26,11 @@ const rprB19XHydraKey = "zaxara-the-exemplary/hydra"
 // announced value of the spell that triggered it, read from the spell on
 // the stack or its last-known information (CR 608.2h); the counters go on
 // the Hydra the creation step made (Fractal Anomaly's two steps).
-func rprB19HydraWithXCountersSteps() []Applier {
+func RprB19HydraWithXCountersSteps() []Applier {
 	return []Applier{
 		Instruction(func(ctx *Context) error {
 			x, _ := ctx.Game.SpellXValueForEffect(ctx.Trigger().Event.CardID)
-			ctx.RecordStep(rprB19XHydraKey, nil, int(b25LastEventSeq(ctx.Game)), x)
+			ctx.RecordStep(rprB19XHydraKey, nil, int(B25LastEventSeq(ctx.Game)), x)
 			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 green Hydra")), 1, game.TokenEntryOptions{})
 			return err
 		}),
@@ -39,12 +39,12 @@ func rprB19HydraWithXCountersSteps() []Applier {
 			if len(rec.Ns) < 2 || rec.Ns[1] <= 0 {
 				return nil
 			}
-			for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
+			for _, id := range B27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
 				c, ok := ctx.Game.LookupCardForEffect(id)
-				if !ok || !onBattlefield(ctx.Game, id) || !c.IsToken() || c.Name != "Hydra" {
+				if !ok || !OnBattlefield(ctx.Game, id) || !c.IsToken() || c.Name != "Hydra" {
 					continue
 				}
-				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: rec.Ns[1]}).Apply(ctx.asGroupMember()); err != nil {
+				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: rec.Ns[1]}).Apply(ctx.AsGroupMember()); err != nil {
 					return err
 				}
 			}

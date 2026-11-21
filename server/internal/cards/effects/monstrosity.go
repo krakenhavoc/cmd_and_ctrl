@@ -79,7 +79,7 @@ func monstrosityAbility(cost game.AbilityCost, n string, amount func(*game.Stack
 			// #1432: a creature that left and came back is a new
 			// object; the monstrosity ability of the old one does
 			// not make the new one monstrous.
-			if sourceIsNewObject(g, item) {
+			if SourceIsNewObject(g, item) {
 				return nil
 			}
 			return g.MonstrosityForEffect(item.SourceCardID, amount(item))
@@ -127,9 +127,9 @@ func MonstrousKeywords(keywords ...string) game.StaticAbility {
 		Label:      "Has " + joinWords(keywords) + " while monstrous.",
 		Layer:      game.Layer6Ability,
 		ActiveWhen: Monstrous(),
-		AppliesTo:  selfOnly,
+		AppliesTo:  SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			appendKeywordsTo(c, kws)
+			AppendKeywordsTo(c, kws)
 		},
 	}
 }
@@ -143,7 +143,7 @@ func MonstrosityXWhere(cost game.AbilityCost, label string, x func(g *game.Game,
 	a := monstrosityAbility(cost, "X", func(*game.StackItem) int { return 0 })
 	a.Label = label
 	a.Effect = func(g *game.Game, item *game.StackItem) error {
-		if sourceIsNewObject(g, item) {
+		if SourceIsNewObject(g, item) {
 			return nil
 		}
 		return g.MonstrosityForEffect(item.SourceCardID, x(g, item))

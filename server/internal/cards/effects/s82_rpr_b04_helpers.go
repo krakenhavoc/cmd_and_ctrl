@@ -4,7 +4,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // rprB04Outlast is "Outlast {cost}" (CR 702.107a): "{cost}, {T}: Put a +1/+1
 // counter on this creature. Activate only as a sorcery."
-func rprB04Outlast(cost string) ActivatedAbility {
+func RprB04Outlast(cost string) ActivatedAbility {
 	return ActivatedAbility{
 		Label:        "Outlast " + cost + " (" + cost + ", {T}: Put a +1/+1 counter on this creature. Outlast only as a sorcery.)",
 		Cost:         Plus(ManaCost(cost), TapCost()),
@@ -19,11 +19,11 @@ func rprB04Outlast(cost string) ActivatedAbility {
 // rprB04AnotherCreatureOfTheChosenTypeEntered is "another creature you
 // control of the chosen type enters": the entering object is read through
 // the layered view, so a changeling is every type (CR 702.73a).
-func rprB04AnotherCreatureOfTheChosenTypeEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RprB04AnotherCreatureOfTheChosenTypeEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if source.NamedTribe == "" {
 		return false
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	if !ok {
 		return false
 	}
@@ -35,7 +35,7 @@ func rprB04AnotherCreatureOfTheChosenTypeEntered(ev game.Event, source *game.Car
 // target still legal gets its own shield for the share announced for it
 // (CR 601.2d, 615.7). A target that has gone takes no shield and its share
 // is not moved to another (CR 608.2b).
-func rprB04PreventDividedDamage(label string) Effect {
+func RprB04PreventDividedDamage(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {

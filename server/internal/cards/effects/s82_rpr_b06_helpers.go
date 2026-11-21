@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // beginning of the next end step." for the token copies a creation made,
 // as the body of a keyed tail: the haste is an indefinite grant on each
 // token and the removal is one delayed trigger naming them (CR 603.7).
-func rprB06HasteAndEndStepTail(ctx *Context, o game.TailOutcome, label string, body game.BodyRef) error {
+func RprB06HasteAndEndStepTail(ctx *Context, o game.TailOutcome, label string, body game.BodyRef) error {
 	if len(o.IDs) == 0 {
 		return nil
 	}

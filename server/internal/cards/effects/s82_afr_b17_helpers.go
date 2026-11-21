@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // lands, this land enters tapped.": the slowland condition read the other
 // way round. EntersTappedUnless taps the land when its condition is false,
 // so the condition passed is "fewer than two other lands".
-func afrB17EntersTappedWithTwoOtherLands() game.ReplacementEffect {
+func AfrB17EntersTappedWithTwoOtherLands() game.ReplacementEffect {
 	return EntersTappedUnless(func(g *game.Game, src *game.Card) bool {
 		return countOtherLandsControlled(g, src) < 2
 	})
@@ -27,8 +27,8 @@ func afrB17EntersTappedWithTwoOtherLands() game.ReplacementEffect {
 //
 // grantKey, when set, names an AbilityGrant on the card (a quoted ability
 // the land has while it is a creature: ADR 0093).
-func afrB17Manland(g *game.Game, item *game.StackItem, name, subtype, color string, power, toughness int, keywords []string, grantKey string) error {
-	if !sourceIsStillThisPermanent(g, item) {
+func AfrB17Manland(g *game.Game, item *game.StackItem, name, subtype, color string, power, toughness int, keywords []string, grantKey string) error {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	ctx := NewContext(g, item)
@@ -59,7 +59,7 @@ func afrB17Manland(g *game.Game, item *game.StackItem, name, subtype, color stri
 }
 
 // afrB17TapForMana is the land's "{T}: Add {X}".
-func afrB17TapForMana(symbol string) []ManaAbility {
+func AfrB17TapForMana(symbol string) []ManaAbility {
 	return []ManaAbility{{
 		Cost:     ManaAbilityCost{Tap: true},
 		Produced: "{" + symbol + "}",

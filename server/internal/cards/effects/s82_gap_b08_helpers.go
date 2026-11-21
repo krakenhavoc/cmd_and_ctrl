@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // gapB08APlayerHasNoCardsInHand is "a player has no cards in hand": any player
 // still in the game whose hand is empty (Lupine Prototype).
-func gapB08APlayerHasNoCardsInHand(g *game.Game) bool {
+func GapB08APlayerHasNoCardsInHand(g *game.Game) bool {
 	for _, p := range g.Seats {
 		if p != nil && !p.Eliminated && p.Hand != nil && p.Hand.Size() == 0 {
 			return true
@@ -21,6 +21,11 @@ func gapB08APlayerHasNoCardsInHand(g *game.Game) bool {
 // read as the trigger goes on the stack and again as it resolves (CR 603.4). It
 // declares no footprint, so its row keeps the trigger-order prompt.
 type gapB08CondEachPlayerHasAtMostLife struct{ n int }
+
+// GapB08EachPlayerHasAtMostLife is that Condition for N.
+func GapB08EachPlayerHasAtMostLife(n int) Condition {
+	return gapB08CondEachPlayerHasAtMostLife{n: n}
+}
 
 func (c gapB08CondEachPlayerHasAtMostLife) Holds(ctx *Context) bool {
 	any := false
@@ -36,6 +41,6 @@ func (c gapB08CondEachPlayerHasAtMostLife) Holds(ctx *Context) bool {
 	return any
 }
 
-func (gapB08CondEachPlayerHasAtMostLife) condition() (game.FootprintStep, bool) {
+func (gapB08CondEachPlayerHasAtMostLife) Condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }

@@ -51,7 +51,7 @@ func (c ConniveEach) Apply(ctx *Context) error {
 }
 
 func conniveChain(g *game.Game, _ *game.StackItem, controller uuid.UUID, ids []uuid.UUID) error {
-	return conniveNext(g, controller, ids)
+	return ConniveNext(g, controller, ids)
 }
 
 // conniveNext makes the first of `ids` connive and, from the discard's
@@ -61,7 +61,7 @@ func conniveChain(g *game.Game, _ *game.StackItem, controller uuid.UUID, ids []u
 // creatures still to go ride the tail's Carry and then the discard's (#4253),
 // so a table waiting on the window or the discard is a restore point. The
 // creature conniving is the prompt's source.
-func conniveNext(g *game.Game, controller uuid.UUID, ids []uuid.UUID) error {
+func ConniveNext(g *game.Game, controller uuid.UUID, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -88,10 +88,10 @@ func init() {
 			return nil
 		}
 		if o.Tail.N <= 0 {
-			return conniveNext(g, o.Tail.Player, carry[1:])
+			return ConniveNext(g, o.Tail.Player, carry[1:])
 		}
-		return conniveDrawAndDiscard(g, o.Tail.Player, carry[0], o.Amount, o.Tail.N,
-			"Connive: discard a card", conniveDiscarded, carry[1:])
+		return ConniveDrawAndDiscard(g, o.Tail.Player, carry[0], o.Amount, o.Tail.N,
+			"Connive: discard a card", ConniveDiscarded, carry[1:])
 	})
 }
 
@@ -100,7 +100,7 @@ func init() {
 // ("instead you draw a card, then that creature connives"), the connive's own
 // `n` cards, and then the discard of `n`, whose continuation puts the counters
 // on and says the creature has connived. Shared by every conniving card.
-func conniveDrawAndDiscard(g *game.Game, controller, creature uuid.UUID, extraDraws, n int, question string, then game.DiscardThen, carry []uuid.UUID) error {
+func ConniveDrawAndDiscard(g *game.Game, controller, creature uuid.UUID, extraDraws, n int, question string, then game.DiscardThen, carry []uuid.UUID) error {
 	for range extraDraws {
 		if err := g.DrawNForEffect(controller, 1); err != nil {
 			return err
@@ -122,13 +122,13 @@ func conniveDrawAndDiscard(g *game.Game, controller, creature uuid.UUID, extraDr
 //
 // Registered in init, not at package level: the answer connives the next
 // creature, so it refers to itself.
-var conniveDiscarded game.DiscardThen
+var ConniveDiscarded game.DiscardThen
 
 func init() {
-	conniveDiscarded = game.RegisterDiscardThen("choose-cards/connive-discarded", func(g *game.Game, r game.DiscardsDone) error {
+	ConniveDiscarded = game.RegisterDiscardThen("choose-cards/connive-discarded", func(g *game.Game, r game.DiscardsDone) error {
 		creature := r.Source
 		if discarded := r.Discarded.By(r.Player); len(discarded) > 0 {
-			if card, ok := g.LookupCardForEffect(discarded[0]); ok && !card.IsLand() && onBattlefield(g, creature) {
+			if card, ok := g.LookupCardForEffect(discarded[0]); ok && !card.IsLand() && OnBattlefield(g, creature) {
 				if err := g.AddCounterForEffect(creature, game.CounterPlusOne, 1); err != nil {
 					return err
 				}
@@ -138,7 +138,7 @@ func init() {
 		// of it was possible. After the counter lands and before the next
 		// creature draws, so each creature's event comes in turn.
 		g.ConnivedForEffect(creature, r.Player)
-		return conniveNext(g, r.Player, r.Carry)
+		return ConniveNext(g, r.Player, r.Carry)
 	})
 }
 
@@ -178,13 +178,13 @@ var conniveXTail = game.RegisterTail("connive/x", func(g *game.Game, o game.Tail
 	if o.Tail.N <= 0 || len(o.Tail.Carry) == 0 {
 		return nil
 	}
-	return conniveDrawAndDiscard(g, o.Tail.Player, o.Tail.Carry[0], o.Amount, o.Tail.N,
-		"Connive: discard cards", conniveXDiscarded, []uuid.UUID{o.Tail.Carry[0]})
+	return ConniveDrawAndDiscard(g, o.Tail.Player, o.Tail.Carry[0], o.Amount, o.Tail.N,
+		"Connive: discard cards", ConniveXDiscarded, []uuid.UUID{o.Tail.Carry[0]})
 })
 
 // conniveXDiscarded puts a +1/+1 counter on the creature for each nonland
 // card discarded. An on-disk key: never renamed, never reused.
-var conniveXDiscarded = game.RegisterDiscardThen("choose-cards/connive-x-discarded", func(g *game.Game, r game.DiscardsDone) error {
+var ConniveXDiscarded = game.RegisterDiscardThen("choose-cards/connive-x-discarded", func(g *game.Game, r game.DiscardsDone) error {
 	if len(r.Carry) == 0 {
 		return nil
 	}
@@ -195,7 +195,7 @@ var conniveXDiscarded = game.RegisterDiscardThen("choose-cards/connive-x-discard
 			nonland++
 		}
 	}
-	if nonland > 0 && onBattlefield(g, creature) {
+	if nonland > 0 && OnBattlefield(g, creature) {
 		if err := g.AddCounterForEffect(creature, game.CounterPlusOne, nonland); err != nil {
 			return err
 		}
@@ -208,7 +208,7 @@ var conniveXDiscarded = game.RegisterDiscardThen("choose-cards/connive-x-discard
 // creature the ability targeted connives for its controller (Valentina,
 // Leader, Super-Genius). A target gone by now has no entry and nothing
 // connives (CR 608.2b).
-func theTargetCreatureConnives(g *game.Game, item *game.StackItem) error {
+func TheTargetCreatureConnives(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -222,7 +222,7 @@ func theTargetCreatureConnives(g *game.Game, item *game.StackItem) error {
 // (A.I.M. Scientists, Red Room Recruit): ConniveEach for the one creature
 // that entered (sourceConnives, shared with Atlantean Skirmisher).
 func WhenThisEntersItConnives(label string) game.TriggeredAbility {
-	return WhenThisEnters(label, Do(Instruction(sourceConnives)))
+	return WhenThisEnters(label, Do(Instruction(SourceConnives)))
 }
 
 // ACreatureYouControlConnived is the When of "whenever a creature you

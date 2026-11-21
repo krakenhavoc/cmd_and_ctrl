@@ -18,7 +18,7 @@ import (
 // with that much to give, CR 119.4), exactly as PayUnless's does. Carry is
 // the plain data the branch is handed after the asking controller, so a
 // table waiting on the payer is a restore point.
-type b23PayLifeUnless struct {
+type B23PayLifeUnless struct {
 	Chooser  uuid.UUID
 	Life     int
 	Question string
@@ -26,7 +26,7 @@ type b23PayLifeUnless struct {
 	Carry    []uuid.UUID
 }
 
-func (p b23PayLifeUnless) Apply(ctx *Context) error {
+func (p B23PayLifeUnless) Apply(ctx *Context) error {
 	pay := LifePayment(p.Life)
 	return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
 		Chooser: p.Chooser, Source: ctx.Source(), Cost: pay.Words, Question: p.Question, Action: pay.Action,

@@ -9,8 +9,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // chosen as the ability is activated (CR 602.2b) and checked again as
 // it resolves (CR 608.2b). Its slug is an on-disk identity: never
 // renamed, never reused.
-func printedFeatherToken() tokenTemplate {
-	return tokenTemplate{
+func printedFeatherToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "feather",
 		Card: game.Card{
 			Name:     "Feather",
@@ -25,10 +25,10 @@ func printedFeatherToken() tokenTemplate {
 				Mana:          "{1}",
 			},
 			Targets: TargetCardInGraveyard("target Phoenix card from your graveyard", Subtype("Phoenix"), YouOwn()),
-			Effect:  returnFirstLegalGraveyardTargetToBattlefieldTapped,
+			Effect:  ReturnFirstLegalGraveyardTargetToBattlefieldTapped,
 		}},
 	}
 }
 
 // FeatherToken is the Feather's card value for CreateToken.
-func FeatherToken() game.Card { return tokenFromCatalog(printedFeatherToken) }
+func FeatherToken() game.Card { return TokenFromCatalog(printedFeatherToken) }

@@ -51,7 +51,7 @@ func YouHaveMaxSpeed(g *game.Game, player uuid.UUID) bool {
 // on the battlefield, its owner anywhere else (CR 108.4a; the glossary's
 // "Max Speed": "that permanent's controller (or that card's owner, if
 // it isn't on the battlefield)").
-func speedPlayerOf(c *game.Card) uuid.UUID {
+func SpeedPlayerOf(c *game.Card) uuid.UUID {
 	if c == nil {
 		return uuid.Nil
 	}
@@ -112,7 +112,7 @@ func MaxSpeedMana(m ManaAbility) ManaAbility {
 func MaxSpeedStatic(s game.StaticAbility) game.StaticAbility {
 	applies := s.AppliesTo
 	s.AppliesTo = func(target *game.Card, g *game.Game, source *game.Card) bool {
-		if !YouHaveMaxSpeed(g, speedPlayerOf(source)) {
+		if !YouHaveMaxSpeed(g, SpeedPlayerOf(source)) {
 			return false
 		}
 		return applies == nil || applies(target, g, source)
@@ -124,10 +124,10 @@ func MaxSpeedStatic(s game.StaticAbility) game.StaticAbility {
 // Raider, Nesting Bot, Walking Sarcophagus).
 func MaxSpeedSelfPump(power, toughness int) game.StaticAbility {
 	return MaxSpeedStatic(game.StaticAbility{
-		Label:     "Gets " + signedPT(power, toughness) + " at max speed.",
+		Label:     "Gets " + SignedPT(power, toughness) + " at max speed.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
-		AppliesTo: thisPermanent,
+		AppliesTo: ThisPermanent,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Power += power
 			c.Toughness += toughness
@@ -141,13 +141,13 @@ func MaxSpeedSelfPump(power, toughness int) game.StaticAbility {
 func MaxSpeedSelfKeywords(keywords ...string) []game.StaticAbility {
 	out := make([]game.StaticAbility, 0, len(keywords))
 	for _, kw := range keywords {
-		out = append(out, MaxSpeedStatic(KeywordGrant(thisPermanent, kw)))
+		out = append(out, MaxSpeedStatic(KeywordGrant(ThisPermanent, kw)))
 	}
 	return out
 }
 
 // thisPermanent is the "this creature" scope of a self static.
-func thisPermanent(target *game.Card, _ *game.Game, source *game.Card) bool {
+func ThisPermanent(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target != nil && source != nil && target.InstanceID == source.InstanceID
 }
 
@@ -158,7 +158,7 @@ func thisPermanent(target *game.Card, _ *game.Game, source *game.Card) bool {
 func MaxSpeedTrigger(t game.TriggeredAbility) game.TriggeredAbility {
 	applies := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-		if !YouHaveMaxSpeed(g, speedPlayerOf(source)) {
+		if !YouHaveMaxSpeed(g, SpeedPlayerOf(source)) {
 			return false
 		}
 		return applies == nil || applies(ev, source, lki, g)
@@ -171,7 +171,7 @@ func MaxSpeedTrigger(t game.TriggeredAbility) game.TriggeredAbility {
 func MaxSpeedReplacement(r game.ReplacementEffect) game.ReplacementEffect {
 	applies := r.AppliesTo
 	r.AppliesTo = func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-		if !YouHaveMaxSpeed(g, speedPlayerOf(src)) {
+		if !YouHaveMaxSpeed(g, SpeedPlayerOf(src)) {
 			return false
 		}
 		return applies == nil || applies(ev, g, src)
@@ -186,7 +186,7 @@ func MaxSpeedCostModifier(m game.CostModifier) game.CostModifier {
 	applies := m.AppliesTo
 	m.AppliesTo = func(q game.CostQuery) bool {
 		src := q.Source
-		if !YouHaveMaxSpeed(q.Game, speedPlayerOf(&src)) {
+		if !YouHaveMaxSpeed(q.Game, SpeedPlayerOf(&src)) {
 			return false
 		}
 		return applies == nil || applies(q)

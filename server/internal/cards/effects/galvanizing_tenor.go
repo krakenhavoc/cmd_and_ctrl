@@ -27,9 +27,9 @@ import (
 //
 // No simplification.
 func init() {
-	attack := WheneverThisAttacks("Galvanizing Tenor — goad up to X target creatures", galvanizingTenorGoad)
+	attack := WheneverThisAttacks("Galvanizing Tenor — goad up to X target creatures", GalvanizingTenorGoad)
 	attack.TargetsFrom = func(_ game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
-		x := trekB37OpponentsAttackedThisTurn(g, source.Controller)
+		x := TrekB37OpponentsAttackedThisTurn(g, source.Controller)
 		if x <= 0 {
 			return nil
 		}
@@ -46,7 +46,7 @@ func init() {
 
 // galvanizingTenorGoad goads every target still legal as the ability
 // resolves.
-func galvanizingTenorGoad(g *game.Game, item *game.StackItem) error {
+func GalvanizingTenorGoad(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
@@ -57,5 +57,5 @@ func galvanizingTenorGoad(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return goadAndScheduleClear(ctx, ids)
+	return GoadAndScheduleClear(ctx, ids)
 }

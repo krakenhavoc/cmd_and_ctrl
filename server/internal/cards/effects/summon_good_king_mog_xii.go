@@ -31,7 +31,7 @@ func init() {
 		return DelayedOnEvent{
 			Label:     name + " — create a token that's a copy of a non-Saga token you control",
 			On:        []game.EventKind{game.EventCast},
-			Condition: mogNoncreatureCastCondition,
+			Condition: MogNoncreatureCastCondition,
 			Body:      mogCopyTokenBody,
 			Repeats:   true,
 		}.Apply(NewContext(g, item))
@@ -48,7 +48,7 @@ func init() {
 			ChapterTrigger(3, SagaChapterLabel(name, 3, "whenever you cast a noncreature spell this turn, create a token that's a copy of a non-Saga token you control"), copyBoth),
 			ChapterTrigger(4, SagaChapterLabel(name, 4, "put two +1/+1 counters on each other Moogle you control"),
 				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item).asGroupMember()
+					ctx := NewContext(g, item).AsGroupMember()
 					// "Moogle" is a word of the source's text (CR 612.2, #3984).
 					moogle := ctx.TextSubtype("Moogle")
 					for _, c := range g.BattlefieldCardsForEffect() {
@@ -68,7 +68,7 @@ func init() {
 var (
 	// "Whenever you cast a noncreature spell": an EventCast by the
 	// delayed trigger's controller of a spell that is not a creature.
-	mogNoncreatureCastCondition = game.DelayedCondition("good-king-mog/you-cast-a-noncreature-spell", mogNoncreatureCast)
+	MogNoncreatureCastCondition = game.DelayedCondition("good-king-mog/you-cast-a-noncreature-spell", mogNoncreatureCast)
 
 	// "Create a token that's a copy of a non-Saga token you control."
 	mogCopyTokenBody = game.SimpleDelayedBody("good-king-mog/copy-a-non-saga-token", mogCopyToken)

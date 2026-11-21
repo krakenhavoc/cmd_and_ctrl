@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfTherosOracleID,
+		OracleID:     InvasionOfTherosOracleID,
 		Name:         "Invasion of Theros",
 		Purpose:      game.Purpose{Tutors: 1},
 		Completeness: CompletenessFull,
@@ -50,4 +50,4 @@ func init() {
 
 // invasionOfTherosOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfTherosOracleID = "ba5f7f37-352a-4b9c-b648-0ba5c8d842fc"
+const InvasionOfTherosOracleID = "ba5f7f37-352a-4b9c-b648-0ba5c8d842fc"

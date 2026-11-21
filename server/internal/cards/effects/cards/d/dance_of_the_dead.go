@@ -1,0 +1,51 @@
+package cardsd
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Dance of the Dead — Enchantment — Aura {1}{B}:
+//
+//	"Enchant creature card in a graveyard
+//	 When this Aura enters, if it's on the battlefield, it loses
+//	 "enchant creature card in a graveyard" and gains "enchant creature
+//	 put onto the battlefield with this Aura." Put enchanted creature
+//	 card onto the battlefield tapped under your control and attach this
+//	 Aura to it. When this Aura leaves the battlefield, that creature's
+//	 controller sacrifices it.
+//	 Enchanted creature gets +1/+1 and doesn't untap during its
+//	 controller's untap step.
+//	 At the beginning of the upkeep of enchanted creature's controller,
+//	 that player may pay {1}{B}. If the player does, untap that
+//	 creature."
+//
+// ADR 0154 (#1780): Animate Dead's seam with the return tapped
+// (AnimateEnchantedCard{Tapped: true}). The upkeep trigger watches the
+// upkeep of whoever controls the enchanted creature now, and that player
+// is asked to pay, through the ordinary "you may pay" prompt. With two
+// on one creature each gives +1/+1 and each upkeep cost may be paid
+// (2004-10-04 ruling), which the per-Aura statics and triggers give.
+//
+// Put onto the battlefield without being cast, it chooses a creature card
+// in a graveyard to enchant as it enters (CR 303.4f, #3158), and its
+// enters trigger returns that card, as Animate Dead's does.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:              "15d5b198-edbe-40f3-87e2-d72f7f0c58ab",
+		Name:                  "Dance of the Dead",
+		Completeness:          effects.CompletenessFull,
+		Targets:               effects.EnchantCreatureCardInGraveyard(),
+		Purpose:               effects.ForTargets(effects.Reanimates(0)),
+		Static:                []game.StaticAbility{effects.PumpAttached(1, 1)},
+		UntapStepRestrictions: []game.UntapStepRestriction{effects.EnchantedDoesntUntap()},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Dance of the Dead — put enchanted creature card onto the battlefield tapped under your control",
+				effects.Do(effects.AnimateEnchantedCard{Tapped: true})),
+			effects.On(game.EventBeginUpkeep, effects.UpkeepOfEnchantedCreaturesController,
+				"Dance of the Dead — that player may pay {1}{B} to untap that creature",
+				effects.MayPayToUntapEnchantedCreature("Dance of the Dead", "{1}{B}")),
+		},
+	})
+}

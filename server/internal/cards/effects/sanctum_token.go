@@ -5,10 +5,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // SanctumToken is Zagorka, Mother of Sanctum's token (S82 GAP batch 3,
 // #5948): a land token named Sanctum with "{T}: Add one mana of any
 // color." It has no land type, no colour and is not a creature.
-func SanctumToken() game.Card { return tokenFromCatalog(printedSanctumToken) }
+func SanctumToken() game.Card { return TokenFromCatalog(printedSanctumToken) }
 
-func printedSanctumToken() tokenTemplate {
-	return tokenTemplate{
+func printedSanctumToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "sanctum",
 		Card: game.Card{
 			Name:     "Sanctum",

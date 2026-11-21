@@ -1,0 +1,35 @@
+package cardss
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Sazh's Chocobo — Creature — Bird {G}, 0/1 (EDHREC rank 3052):
+//
+//	"Landfall — Whenever a land you control enters, put a +1/+1
+//	 counter on this creature."
+//
+// The one-drop landfall body. Tireless Provisioner's condition
+// (b13LandYouControlEntered — a land entering under the
+// controller's control, played, fetched or reanimated alike); the
+// counter goes on the Chocobo if it is still on the battlefield
+// when the trigger resolves.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "c2b082b4-5d9c-4125-b353-d1cf4f334720",
+		Name:         "Sazh's Chocobo",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.LandfallPaying("Sazh's Chocobo — landfall: put a +1/+1 counter on it", game.LandfallPayoff{Counters: 1}, func(g *game.Game, item *game.StackItem) error {
+				if !effects.OnBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return effects.AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(effects.NewContext(g, item))
+			}),
+		},
+	})
+}

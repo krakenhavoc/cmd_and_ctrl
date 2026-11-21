@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ability resolves, the stack waits for the answer (#951), and a "pay"
 // they can't fund is a decline. A spell that has left the stack by then
 // makes the ability do nothing (CR 608.2b).
-func counterTheTargetSpellUnlessPaid(name, cost string) Effect {
+func CounterTheTargetSpellUnlessPaid(name, cost string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		targets := ctx.LegalTargets()

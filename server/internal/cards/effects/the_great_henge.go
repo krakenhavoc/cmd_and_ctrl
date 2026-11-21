@@ -51,7 +51,7 @@ func init() {
 		Name:         "The Great Henge",
 		Completeness: CompletenessFull,
 		SelfCostModifiers: []game.CostModifier{
-			CostsLessEach(greatestPowerAmongCreaturesYouControl(),
+			CostsLessEach(GreatestPowerAmongCreaturesYouControl(),
 				"This spell costs {X} less to cast, where X is the greatest power among creatures you control."),
 		},
 		ManaAbilities: []ManaAbility{{
@@ -62,13 +62,13 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: nontokenCreatureEnteredUnderYourControl,
+			AppliesTo: NontokenCreatureEnteredUnderYourControl,
 			Key:       "The Great Henge — put a +1/+1 counter on it and draw a card",
 			Effect: Do(
 				// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
 				Instruction(func(ctx *Context) error {
 					entered := ctx.Item.Trigger.Event.CardID
-					if !onBattlefield(ctx.Game, entered) {
+					if !OnBattlefield(ctx.Game, entered) {
 						return nil
 					}
 					return AddCounter{Target: entered, Kind: "+1/+1", N: 1}.Apply(ctx)
@@ -84,7 +84,7 @@ func init() {
 // being one (it is on the stack). A board with no creatures reduces
 // nothing, and a negative power is floored at zero rather than
 // charging extra.
-func greatestPowerAmongCreaturesYouControl() func(q game.CostQuery) int {
+func GreatestPowerAmongCreaturesYouControl() func(q game.CostQuery) int {
 	return func(q game.CostQuery) int {
 		if q.Game == nil || q.Game.Battlefield == nil {
 			return 0
@@ -106,7 +106,7 @@ func greatestPowerAmongCreaturesYouControl() func(q game.CostQuery) int {
 // creature you control enters" — the Henge's clause and Ohran
 // Frostfang's. The Henge itself is not a creature, so no "another" is
 // needed.
-func nontokenCreatureEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func NontokenCreatureEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsCreature() && !c.IsToken()
 }

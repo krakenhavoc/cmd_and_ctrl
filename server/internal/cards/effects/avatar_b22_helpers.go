@@ -16,7 +16,7 @@ import (
 // control" (EarthbendTargets) becomes the 0/0 haste land creature with N
 // counters. Pair it with Targeting(..., EarthbendTargets()) on a trigger
 // or Targets: EarthbendTargets() on an activated ability.
-func avatarB22Earthbend(n int) Effect {
+func AvatarB22Earthbend(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return EarthbendFirstTarget(EarthbendCount(n))(item, NewContext(g, item))
 	}
@@ -28,7 +28,7 @@ func avatarB22Earthbend(n int) Effect {
 // ("multicolor" and "colorless" are not colours — Earthen Ally's
 // ruling). The caller reads the subtype through its own text
 // (source.TextSubtype, CR 612.2).
-func avatarB22ColorsAmongSubtypeYouControl(g *game.Game, controller uuid.UUID, subtype string) int {
+func AvatarB22ColorsAmongSubtypeYouControl(g *game.Game, controller uuid.UUID, subtype string) int {
 	seen := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || !c.HasSubtype(subtype) {

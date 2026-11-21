@@ -27,15 +27,15 @@ func init() {
 		Name:         "Heroic Return",
 		Completeness: CompletenessFull,
 		SelfCostModifiers: []game.CostModifier{
-			CostsLess(2, "This spell costs {2} less to cast if a creature is attacking you.", aCreatureIsAttackingYou()),
+			CostsLess(2, "This spell costs {2} less to cast if a creature is attacking you.", ACreatureIsAttackingYou()),
 		},
-		Targets:   targetCreatureInYourGraveyard(),
+		Targets:   TargetCreatureInYourGraveyard(),
 		OnResolve: heroicReturnResolve,
 	})
 }
 
 // aCreatureIsAttackingYou passes when a creature is attacking the caster.
-func aCreatureIsAttackingYou() CostPredicate {
+func ACreatureIsAttackingYou() CostPredicate {
 	return func(q game.CostQuery) bool {
 		if q.Game == nil || q.Game.Battlefield == nil {
 			return false
@@ -50,7 +50,7 @@ func aCreatureIsAttackingYou() CostPredicate {
 }
 
 func heroicReturnResolve(_ *game.StackItem, ctx *Context) error {
-	return returnTargetCardGivingHeroesCounters(ctx, 2)
+	return ReturnTargetCardGivingHeroesCounters(ctx, 2)
 }
 
 // returnTargetCardGivingHeroesCounters is "return target creature card from
@@ -59,7 +59,7 @@ func heroicReturnResolve(_ *game.StackItem, ctx *Context) error {
 // first legal card target comes back, and the counters are the entry's own,
 // given when the card is a Hero as it would exist on the battlefield
 // (CR 614.12), not as it sits in the graveyard.
-func returnTargetCardGivingHeroesCounters(ctx *Context, n int) error {
+func ReturnTargetCardGivingHeroesCounters(ctx *Context, n int) error {
 	var id uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -79,5 +79,5 @@ func returnTargetCardGivingHeroesCounters(ctx *Context, n int) error {
 			{Subtype: ctx.TextSubtype("Hero"), Counter: game.CounterPlusOne, N: n},
 		},
 	}
-	return putCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, []uuid.UUID{id}, opts, game.TailRef{}, 0)
+	return PutCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, []uuid.UUID{id}, opts, game.TailRef{}, 0)
 }

@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // sets power only, so a card with a printed toughness keeps it.
 // DependsOnHandSize drops the layer cache whenever a hand changes while the
 // permanent is on the battlefield.
-func powerIsCardsInYourHand() game.StaticAbility {
+func PowerIsCardsInYourHand() game.StaticAbility {
 	return game.StaticAbility{
 		Layer:             game.Layer7PT,
 		SubLayer:          game.SubLayer7A_CDA,

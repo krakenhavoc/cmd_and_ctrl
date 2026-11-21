@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (Primal Command, The Unicomplex): the target goes on top of its owner's
 // library, and a bullet whose target is no longer legal does nothing (CR
 // 608.2b).
-func tuckTheModesTargetOnTopOfItsOwnersLibrary(_ *game.StackItem, ctx *Context, occ int) error {
+func TuckTheModesTargetOnTopOfItsOwnersLibrary(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetCard {
 		return nil

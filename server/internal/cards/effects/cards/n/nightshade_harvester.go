@@ -1,0 +1,78 @@
+package cardsn
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Nightshade Harvester — Creature — Elf Shaman {3}{B}, 2/2 (EDHREC
+// rank 4506):
+//
+//	"Whenever a land an opponent controls enters, that player loses 1
+//	 life. Put a +1/+1 counter on this creature."
+//
+// A four-mana body that punishes the thing every Commander deck does
+// every turn. In a four-player game it triggers three times a turn
+// cycle off ordinary land drops alone, and once per fetch, once per
+// Cultivate, once per Rampant Growth — the Harvester grows itself out
+// of removal range while draining the table.
+//
+// "That player" is the land's controller, read off the entering
+// permanent rather than chosen, so there is no target and nothing to
+// redirect: a Simic player ramping drains themselves, not whoever the
+// Harvester's controller would prefer. Land TOKENS and lands put onto
+// the battlefield by a search count — the clause is "enters", not "is
+// played" (CR 401.4 is about playing a land; this is a zone change).
+//
+// The counter is unconditional in the printed text, but AddCounter on
+// a permanent that has left the battlefield does nothing, so a
+// Harvester killed in response drains and gets no counter. The drain
+// is life LOSS, not damage, so no prevention shield stops it.
+//
+// Batching gap: the engine emits one EventETB per land, so
+// two lands entering simultaneously under one opponent trigger twice.
+// The printed card says "a land", singular, so twice is correct here.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "875c3db1-2752-48e7-9664-bbb12120c032",
+		Name:         "Nightshade Harvester",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventETB},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				_, ok := effects.B43ALandAnOpponentControlsEntered(ev, source, g)
+				return ok
+			},
+			Key: "Nightshade Harvester — that player loses 1 life, a +1/+1 counter on this creature",
+			// "That player" is the land's controller as it entered —
+			// a fact about that moment (ADR 0041 P9's fill-in Build),
+			// since the land may have left the battlefield again by
+			// the time this resolves.
+			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+				victim, _ := effects.B43ALandAnOpponentControlsEntered(ev, source, g)
+				item := game.NewTriggeredItem(source, "Nightshade Harvester — that player loses 1 life, a +1/+1 counter on this creature")
+				item.Params.Player = victim
+				return item
+			},
+			Effect: effects.Do(
+				// The counter waits for a prompt the life loss asks (CR 608.2c, #4155).
+				effects.Instruction(func(ctx *effects.Context) error {
+					victim := ctx.Item.Params.Player
+					if ctx.Game.PlayerByIDForEffect(victim) != nil {
+						return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, victim, -1)
+					}
+					return nil
+				}),
+				effects.Instruction(func(ctx *effects.Context) error {
+					if !effects.B09SourceStillOnBattlefield(ctx.Game, ctx.Item) {
+						return nil
+					}
+					return effects.AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+				}),
+			),
+		}},
+	})
+}

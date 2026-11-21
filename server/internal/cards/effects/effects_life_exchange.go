@@ -42,8 +42,8 @@ import (
 // happen.
 //
 // Caller holds g.mu, as every effect body does.
-func exchangeLifeTotals(ctx *Context, a, b uuid.UUID) error {
-	return exchangeLifeTotalsThen(ctx, a, b, game.KeyedTail{})
+func ExchangeLifeTotals(ctx *Context, a, b uuid.UUID) error {
+	return ExchangeLifeTotalsThen(ctx, a, b, game.KeyedTail{})
 }
 
 // exchangeLifeTotalsThen is exchangeLifeTotals with a continuation
@@ -62,7 +62,7 @@ func exchangeLifeTotals(ctx *Context, a, b uuid.UUID) error {
 // resolution that never finishes. It is a registered tail (#4253 slice
 // 7), told the applied delta as TailOutcome.Amount, so a CR 616 ordering
 // prompt over either half is a restore point.
-func exchangeLifeTotalsThen(ctx *Context, a, b uuid.UUID, then game.KeyedTail) error {
+func ExchangeLifeTotalsThen(ctx *Context, a, b uuid.UUID, then game.KeyedTail) error {
 	// Nothing moved: the tail is told zero.
 	finish := func(g *game.Game) error {
 		return then.RunTold(g, nil, 0)

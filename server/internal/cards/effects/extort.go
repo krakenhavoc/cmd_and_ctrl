@@ -49,7 +49,7 @@ func extortPayToDrain(name string) Effect {
 			Chooser:  item.Controller,
 			Cost:     "{W/B}",
 			Question: name + " — extort: pay {W/B} to have each opponent lose 1 life and gain that much?",
-			Then:     extortDrain,
+			Then:     ExtortDrain,
 		}.Apply(NewContext(g, item))
 	}
 }
@@ -57,7 +57,7 @@ func extortPayToDrain(name string) Effect {
 // extortDrain is extort's paid half, keyed (#4264): the extorting
 // permanent is the prompt's source and its controller the stand-in's, so
 // a table waiting on the payer is a restore point.
-var extortDrain = PayUnlessBranches("pay-unless/extort-drain",
+var ExtortDrain = PayUnlessBranches("pay-unless/extort-drain",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
-		return b21DrainEachOpponentAndGainTheTotal(ctx.Game, ctx.Item, 1)
+		return B21DrainEachOpponentAndGainTheTotal(ctx.Game, ctx.Item, 1)
 	}, nil)

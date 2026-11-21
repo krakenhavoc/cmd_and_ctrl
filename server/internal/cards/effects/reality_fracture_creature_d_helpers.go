@@ -11,6 +11,6 @@ import (
 
 // rfCreatureDTapped is the predicate "tapped" (Ob Nixilis, the
 // Ascended's "all tapped creatures your opponents control").
-func rfCreatureDTapped() CardPredicate {
+func RfCreatureDTapped() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.Tapped }
 }

@@ -26,7 +26,7 @@ import (
 // two permanents". The cap is scoped to the active player's own untap
 // step by the engine (ADR 0070 Decision 4), so the predicate never has
 // to ask whose step it is.
-func cantUntapMoreThan(label string, n int, match CardPredicate) game.UntapCap {
+func CantUntapMoreThan(label string, n int, match CardPredicate) game.UntapCap {
 	out := game.UntapCap{Label: label, Max: n}
 	if match != nil {
 		out.Counts = func(g *game.Game, _ *game.Card, target *game.Card) bool {
@@ -45,8 +45,8 @@ func cantUntapMoreThan(label string, n int, match CardPredicate) game.UntapCap {
 // in UntapStepPermission.AppliesTo rather than latched. Tapping the orb
 // in response is not possible (the untap step grants no priority), but
 // tapping it on the previous turn is exactly how the card is played.
-func cantUntapMoreThanWhileSourceUntapped(label string, n int, match CardPredicate) game.UntapCap {
-	out := cantUntapMoreThan(label, n, match)
+func CantUntapMoreThanWhileSourceUntapped(label string, n int, match CardPredicate) game.UntapCap {
+	out := CantUntapMoreThan(label, n, match)
 	out.Applies = func(_ *game.Game, source *game.Card, _ uuid.UUID) bool {
 		return source != nil && !source.Tapped
 	}
@@ -56,7 +56,7 @@ func cantUntapMoreThanWhileSourceUntapped(label string, n int, match CardPredica
 // mayChooseNotToUntapSelf builds "you may choose not to untap this
 // <permanent> during your untap step" — Rust Tick, Amber Prison, and
 // the other 43 cards in the family, every one of which is self-only.
-func mayChooseNotToUntapSelf(label string) game.UntapOptOut {
+func MayChooseNotToUntapSelf(label string) game.UntapOptOut {
 	return game.UntapOptOut{
 		Label: label,
 		Optional: func(target *game.Card, _ *game.Game, source *game.Card) bool {
@@ -70,8 +70,8 @@ func mayChooseNotToUntapSelf(label string) game.UntapOptOut {
 // The cap binds only an untap step whose active player is not the
 // source's controller; for an emblem the source is the emblem, so "your"
 // is its owner (CR 114.2), who never changes.
-func opponentsCantUntapMoreThan(label string, n int, match CardPredicate) game.UntapCap {
-	out := cantUntapMoreThan(label, n, match)
+func OpponentsCantUntapMoreThan(label string, n int, match CardPredicate) game.UntapCap {
+	out := CantUntapMoreThan(label, n, match)
 	out.Applies = func(_ *game.Game, source *game.Card, activePlayer uuid.UUID) bool {
 		return source != nil && source.Controller != activePlayer
 	}

@@ -19,8 +19,8 @@ func init() {
 		Completeness:          CompletenessFull,
 		Targets:               EnchantCreature(),
 		Purpose:               game.Purpose{Aura: game.AuraHarm},
-		UntapStepRestrictions: []game.UntapStepRestriction{enchantedDoesntUntap()},
-		Triggered:             []game.TriggeredAbility{WhenThisEnters("Claustrophobia — tap enchanted creature", tapEnchantedCreatureOnEntry)},
+		UntapStepRestrictions: []game.UntapStepRestriction{EnchantedDoesntUntap()},
+		Triggered:             []game.TriggeredAbility{WhenThisEnters("Claustrophobia — tap enchanted creature", TapEnchantedCreatureOnEntry)},
 	})
 }
 
@@ -29,7 +29,7 @@ func init() {
 // the Aura's attachment when the trigger resolves: the creature it
 // enchants now, and — if the Aura has left the battlefield in response —
 // the creature it last enchanted (CR 608.2h, #1379).
-func tapEnchantedCreatureOnEntry(g *game.Game, item *game.StackItem) error {
+func TapEnchantedCreatureOnEntry(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	aura, ok := ctx.TriggeringPermanent()
 	if !ok || aura.AttachedTo.Kind != game.TargetCard {

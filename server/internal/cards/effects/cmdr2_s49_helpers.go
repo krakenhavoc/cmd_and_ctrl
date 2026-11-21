@@ -22,7 +22,7 @@ type cmdr2S49Tempting struct {
 }
 
 // newCmdr2S49Tempting registers the keyed answer. Call it from init.
-func newCmdr2S49Tempting(key, question string, do func(ctx *Context, player uuid.UUID) error) *cmdr2S49Tempting {
+func NewCmdr2S49Tempting(key, question string, do func(ctx *Context, player uuid.UUID) error) *cmdr2S49Tempting {
 	t := &cmdr2S49Tempting{question: question, do: do}
 	t.answer = MayAnswer(key, func(ctx *Context, r game.ConfirmAnswer) error {
 		if r.Accepted {
@@ -39,7 +39,7 @@ func newCmdr2S49Tempting(key, question string, do func(ctx *Context, player uuid
 }
 
 // resolve runs the caster's own half, then offers it to each opponent.
-func (t *cmdr2S49Tempting) resolve(ctx *Context) error {
+func (t *cmdr2S49Tempting) Resolve(ctx *Context) error {
 	if err := t.do(ctx, ctx.Controller()); err != nil {
 		return err
 	}
@@ -67,8 +67,8 @@ func (t *cmdr2S49Tempting) offer(ctx *Context, opponents []uuid.UUID) error {
 // `reward` runs between the reveals and the draws, so the printed word
 // order ("for each nonland card revealed this way ... Then each player
 // draws") holds; K'Ehleyr's reward comes after the draws, as printed there.
-func cmdr2S49Parley(g *game.Game, source uuid.UUID, label string, reward func(nonland int) error) error {
-	players := apnapPlayers(g)
+func Cmdr2S49Parley(g *game.Game, source uuid.UUID, label string, reward func(nonland int) error) error {
+	players := ApnapPlayers(g)
 	nonland := 0
 	for _, p := range players {
 		for _, id := range g.RevealTopOfLibraryForEffect(p, source, 1, label) {

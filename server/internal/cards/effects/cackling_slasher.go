@@ -37,7 +37,7 @@ func cacklingSlasherEntry() game.ReplacementEffect {
 			return ev.Kind == game.RepEventMove &&
 				ev.NewZone == game.ZoneBattlefield &&
 				src != nil && ev.CardID == src.InstanceID &&
-				b11CreaturesDiedThisTurn(g) > 0
+				B11CreaturesDiedThisTurn(g) > 0
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.AddCounterAtETB(game.CounterPlusOne, 1)

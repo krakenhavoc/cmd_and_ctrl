@@ -32,7 +32,7 @@ func init() {
 				Do(Amass{Subtype: "Zombie", N: 2})),
 		},
 		Static: []game.StaticAbility{
-			KeywordGrant(zombieTokenYouControl, "flying"),
+			KeywordGrant(ZombieTokenYouControl, "flying"),
 		},
 	})
 }
@@ -43,7 +43,7 @@ func init() {
 //
 // Not a TribeFilter: that one has no "token" dimension, and adding one
 // for a single caller would put a field on a struct sixteen lords read.
-func zombieTokenYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func ZombieTokenYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.IsToken() &&
 		target.Controller == source.Controller && target.HasSubtype(source.TextSubtype("Zombie")) // a word of the source's text (CR 612.2, #3984)
 }

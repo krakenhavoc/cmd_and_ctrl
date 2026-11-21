@@ -42,12 +42,12 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:         goldbugOracleID,
+		OracleID:         GoldbugOracleID,
 		Name:             "Goldbug, Humanity's Ally",
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{MoreThanMeetsTheEye("{W}{U}")},
 		Replacements: []game.ReplacementEffect{
-			preventCombatDamageToYourAttackers(
+			PreventCombatDamageToYourAttackers(
 				"Goldbug, Humanity's Ally: prevent all combat damage that would be dealt to attacking Humans you control",
 				func(c game.Card) bool { return c.HasSubtypeWord("Human") }),
 		},
@@ -57,7 +57,7 @@ func init() {
 		},
 	})
 	Register(Spec{
-		OracleID:     goldbugOracleID + "#1",
+		OracleID:     GoldbugOracleID + "#1",
 		Name:         "Goldbug, Scrappy Scout",
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{LivingMetal()},
@@ -72,7 +72,7 @@ func init() {
 	})
 }
 
-const goldbugOracleID = "d1960749-c11e-4ac4-97cb-f37d7875d479"
+const GoldbugOracleID = "d1960749-c11e-4ac4-97cb-f37d7875d479"
 
 // goldbugAndAHumanAttack is "Whenever Goldbug and at least one Human
 // attack": this permanent's own attack, while a Human you control is
@@ -100,7 +100,7 @@ func goldbugAndAHumanAttack(ev game.Event, source *game.Card, ch game.Characteri
 // attacking creature, lent the source's text so a kind that names a
 // word through HasSubtypeWord reads it as that text now says it
 // (CR 612.2, #3984).
-func preventCombatDamageToYourAttackers(label string, kind func(game.Card) bool) game.ReplacementEffect {
+func PreventCombatDamageToYourAttackers(label string, kind func(game.Card) bool) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:    []game.EventKind{game.EventDealDamage},
 		Prevention: true, // CR 615.1a

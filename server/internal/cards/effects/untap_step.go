@@ -26,7 +26,7 @@ import (
 // permanents already untap during their own untap step by CR 502.3,
 // so a permission that also fired there would be dead weight on
 // every one of their turns.
-func eachOtherPlayersUntapStep(_ *game.Game, source *game.Card, activePlayer uuid.UUID) bool {
+func EachOtherPlayersUntapStep(_ *game.Game, source *game.Card, activePlayer uuid.UUID) bool {
 	return activePlayer != uuid.Nil && activePlayer != source.Controller
 }
 
@@ -39,10 +39,10 @@ func eachOtherPlayersUntapStep(_ *game.Game, source *game.Card, activePlayer uui
 // type predicates (IsArtifact, IsCreature): Unwinding Clock says
 // "artifacts you control", and a land animated into an artifact is
 // one for as long as it is one.
-func untapDuringEachOtherPlayersUntapStep(label string, match func(game.Card) bool) game.UntapStepPermission {
+func UntapDuringEachOtherPlayersUntapStep(label string, match func(game.Card) bool) game.UntapStepPermission {
 	return game.UntapStepPermission{
 		Label:     label,
-		AppliesTo: eachOtherPlayersUntapStep,
+		AppliesTo: EachOtherPlayersUntapStep,
 		Untaps: func(_ *game.Game, source, target *game.Card) bool {
 			if target.Controller != source.Controller {
 				return false
@@ -57,10 +57,10 @@ func untapDuringEachOtherPlayersUntapStep(label string, match func(game.Card) bo
 // during each other player's untap step", which is how a mana rock
 // is made to pay for something on every turn of the table rather
 // than one.
-func untapSelfDuringEachOtherPlayersUntapStep(label string) game.UntapStepPermission {
+func UntapSelfDuringEachOtherPlayersUntapStep(label string) game.UntapStepPermission {
 	return game.UntapStepPermission{
 		Label:     label,
-		AppliesTo: eachOtherPlayersUntapStep,
+		AppliesTo: EachOtherPlayersUntapStep,
 		Untaps: func(_ *game.Game, source, target *game.Card) bool {
 			return target.InstanceID == source.InstanceID
 		},

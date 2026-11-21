@@ -1,0 +1,89 @@
+package cardsso
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Solitude — Creature — Elemental Incarnation {3}{W}{W}, 3/2:
+//
+//	"Flash
+//	 Lifelink
+//	 When this creature enters, exile up to one other target creature.
+//	 That creature's controller gains life equal to its power.
+//	 Evoke—Exile a white card from your hand."
+//
+// Evoke with a CARD rather than mana, which is the Modern Horizons 2
+// incarnation cycle's whole design: a five-drop that costs one other
+// white card at instant speed.
+//
+// The evoke sacrifice is the part that makes the card work and the
+// part a hand-written AlternativeCost would forget. CR 702.74a makes
+// it a TRIGGERED ability, so the sequence is: Solitude enters → its
+// own ETB trigger goes on the stack → the sacrifice trigger goes on
+// the stack → the creature is exiled and its controller gains life →
+// only then does Solitude die. Sacrificing inside the resolution
+// would kill it before its own trigger resolved.
+//
+// "Up to one other target creature" is a zero-or-one clause, so an
+// evoked Solitude with no legal target still enters and still dies —
+// which is a real, if sad, play.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "dcb9c2a7-ae54-4ddc-a567-640bf4bf4366",
+		Name:            "Solitude",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flash", "lifelink"},
+		AlternativeCosts: []game.AlternativeCost{
+			effects.EvokePitch(
+				effects.CardInYourHand("a white card from your hand", effects.OfColor("W")),
+				"a white card from your hand",
+			),
+		},
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventETB},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return ev.CardID == source.InstanceID
+			},
+			// "OTHER target creature": the clause is built per source so
+			// Solitude itself is never a legal pick (a static Targets
+			// clause is not handed the source).
+			TargetsFrom: func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
+				return effects.TargetCreature("up to one other target creature", effects.NotSelf(source.InstanceID)).WithCount(0, 1)
+			},
+			Key: "Solitude — exile a creature, its controller gains life",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				victim := item.Targets[0].ID
+				if victim == item.SourceCardID {
+					// "OTHER target creature" — the clause
+					// already excludes Solitude; this is a
+					// belt-and-braces guard.
+					return nil
+				}
+				ctx := effects.NewContext(g, item)
+				// Power is read BEFORE the exile: once the
+				// card leaves the battlefield its layered
+				// characteristics are gone, and "life equal
+				// to its power" means its power as it last
+				// existed (CR 608.2h / LKI).
+				card, ok := g.LookupCardForEffect(victim)
+				if !ok {
+					return nil
+				}
+				power := card.CurrentPower()
+				controller := card.Controller
+				if err := (effects.ExileTarget{Target: victim}).Apply(ctx); err != nil {
+					return err
+				}
+				if power <= 0 {
+					return nil
+				}
+				return effects.GainLife{Player: controller, Amount: power}.Apply(ctx)
+			},
+		}},
+	})
+}

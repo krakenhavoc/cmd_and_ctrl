@@ -12,9 +12,9 @@ import (
 // The delayed "return it at the beginning of the next end step" bodies
 // with one counter each (Parting Gust's +1/+1, Salvation Swan's flying).
 var (
-	returnExiledWithPlusOneCreatureBody = game.SimpleDelayedBody(
+	ReturnExiledWithPlusOneCreatureBody = game.SimpleDelayedBody(
 		"flicker/return-exiled-with-plus-one-counter", returnExiledCardsWithPlusOneCounter)
-	returnExiledWithFlyingCounterBody = game.SimpleDelayedBody(
+	ReturnExiledWithFlyingCounterBody = game.SimpleDelayedBody(
 		"flicker/return-exiled-with-flying-counter", returnExiledCardsWithFlyingCounter)
 )
 
@@ -70,7 +70,7 @@ var splashPortalDrawIfTribe = EnteredTail("blb/splash-portal-draw-if-tribe", fun
 
 // splashPortalReturn returns the exiled card under its owner's control
 // and then asks the tribe question of it. An on-disk key.
-var splashPortalReturn = CardTail("blb/splash-portal-return", func(ctx *Context, o game.TailOutcome) error {
+var SplashPortalReturn = CardTail("blb/splash-portal-return", func(ctx *Context, o game.TailOutcome) error {
 	if len(o.IDs) != 1 {
 		return nil
 	}
@@ -81,7 +81,7 @@ var splashPortalReturn = CardTail("blb/splash-portal-return", func(ctx *Context,
 // +1/+1 counter on this creature": N carries the answer, read off the
 // creature before it was exiled (CR 608.2h), and it runs only when the
 // creature was exiled this way. An on-disk key.
-var driftgloomCoyoteCounter = CardTail("blb/driftgloom-coyote-counter", func(ctx *Context, o game.TailOutcome) error {
+var DriftgloomCoyoteCounter = CardTail("blb/driftgloom-coyote-counter", func(ctx *Context, o game.TailOutcome) error {
 	if o.Tail.N != 1 {
 		return nil
 	}
@@ -95,7 +95,7 @@ var driftgloomCoyoteCounter = CardTail("blb/driftgloom-coyote-counter", func(ctx
 // that creature isn't legendary, create a token that's a copy of that
 // creature, except it's 1/1": N is 1 when the gift was promised, and the
 // question is asked of the creature that actually came back. An on-disk key.
-var coilingRebirthCopy = EnteredTail("blb/coiling-rebirth-copy", func(ctx *Context, entered uuid.UUID, o game.TailOutcome) error {
+var CoilingRebirthCopy = EnteredTail("blb/coiling-rebirth-copy", func(ctx *Context, entered uuid.UUID, o game.TailOutcome) error {
 	if entered == uuid.Nil || o.Tail.N != 1 {
 		return nil
 	}

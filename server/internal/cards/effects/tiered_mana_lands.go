@@ -16,9 +16,9 @@ package effects
 // tieredManaLand is the three rows of one land in the cycle: `one` is
 // the colour the {1} row adds, `a` and `b` the pair the {2} row picks
 // between, each a single colour letter.
-func tieredManaLand(one, a, b string) []ManaAbility {
+func TieredManaLand(one, a, b string) []ManaAbility {
 	return []ManaAbility{
-		colorlessTapRow(),
+		ColorlessTapRow(),
 		{
 			Cost:     ManaAbilityCost{Tap: true, Mana: "{1}"},
 			Produced: "{" + one + "}",

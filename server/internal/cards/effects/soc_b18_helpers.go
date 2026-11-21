@@ -39,7 +39,7 @@ func CastAnInstantOrSorceryFromHandFreeOnceEachOfYourTurns() game.GrantedAlterna
 // object asking (a changed creature-type word follows). "Each Fractal you
 // control" is judged as the effect applies (CR 608.2h), so a Fractal the
 // same spell just made is among them.
-func socB18EachFractalYouControl(ctx *Context) []uuid.UUID {
+func SocB18EachFractalYouControl(ctx *Context) []uuid.UUID {
 	fractal := ctx.TextSubtype("Fractal")
 	var ids []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {

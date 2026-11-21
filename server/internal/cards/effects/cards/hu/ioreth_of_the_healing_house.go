@@ -1,0 +1,44 @@
+package cardshu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Ioreth of the Healing House — Legendary Creature — Human Cleric
+// {2}{U}, 1/4 (EDHREC rank 2430):
+//
+//	"{T}: Untap another target permanent.
+//	 {T}: Untap two other target legendary creatures."
+//
+// Kiora's Follower with a second, wider mode. Two CR 602 activated
+// abilities sharing the tap (so one activation per untap of Ioreth);
+// the first untaps any one other permanent, anyone's; the second is
+// a two-slot target clause over other legendary creatures — the
+// legend-heavy deck's double untap. "Another / other" is object
+// identity (effects.Another, CR 109.1), so an opponent's Ioreth is a
+// legal pick. Both slots of the second ability must be filled; with
+// one legendary creature on the battlefield it cannot be activated.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "af6e4c3e-0276-4f72-9a70-25868fe8bba5",
+		Name:         "Ioreth of the Healing House",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{
+			{
+				Label:   "{T}: Untap another target permanent.",
+				Cost:    effects.TapCost(),
+				Targets: effects.Another(effects.TargetPermanent("another target permanent")),
+				Effect:  effects.B22UntapEachLegalTarget,
+			},
+			{
+				Label: "{T}: Untap two other target legendary creatures.",
+				Cost:  effects.TapCost(),
+				Targets: effects.Another(effects.TargetCreature("two other target legendary creatures",
+					effects.B05Legendary())).WithCount(2, 2),
+				Effect: effects.B22UntapEachLegalTarget,
+			},
+		},
+	})
+}

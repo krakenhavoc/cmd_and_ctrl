@@ -33,7 +33,7 @@ func init() {
 			Targeting(
 				OncePerBatchPerPlayer(On(game.EventAttack, twoOrMoreOfYourCreaturesAttackThatPlayer,
 					"Landroval, Horizon Witness — target attacking creature without flying gains flying until end of turn",
-					firstTargetGainsUntilEndOfTurn(0, "Landroval, Horizon Witness — flying until end of turn", "flying"))),
+					FirstTargetGainsUntilEndOfTurn(0, "Landroval, Horizon Witness — flying until end of turn", "flying"))),
 				TargetCreature("target attacking creature without flying", AttackingCreature(), WithoutKeyword("flying"))),
 		},
 	})
@@ -51,7 +51,7 @@ func twoOrMoreOfYourCreaturesAttackThatPlayer(ev game.Event, source *game.Card, 
 	if ev.Actor != source.Controller {
 		return false
 	}
-	player := attackedPlayer(g, ev)
+	player := AttackedPlayer(g, ev)
 	if player == uuid.Nil {
 		return false
 	}

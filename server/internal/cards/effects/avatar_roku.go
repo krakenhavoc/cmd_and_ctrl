@@ -29,31 +29,31 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // same way.
 func init() {
 	Register(Spec{
-		OracleID:     theLegendOfRokuOracleID + "#1",
+		OracleID:     TheLegendOfRokuOracleID + "#1",
 		Name:         "Avatar Roku",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Avatar Roku — firebending 4", Do(firebending(4))),
+			WheneverThisAttacks("Avatar Roku — firebending 4", Do(NewFirebending(4))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{8}: Create a 4/4 red Dragon creature token with flying and firebending 4.",
 			Cost:    ManaCost("{8}"),
 			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
-			Effect:  Do(CreateToken{Template: firebendingDragonToken(), N: 1}),
+			Effect:  Do(CreateToken{Template: FirebendingDragonToken(), N: 1}),
 		}},
 	})
 }
 
 // firebendingDragonToken is Avatar Roku's 4/4 red Dragon with flying
 // and firebending 4.
-func firebendingDragonToken() game.Card { return tokenFromCatalog(printedFirebendingDragonToken) }
+func FirebendingDragonToken() game.Card { return TokenFromCatalog(printedFirebendingDragonToken) }
 
 // printedFirebendingDragonToken is that Dragon as PRINTED. Flying is
 // a printed keyword and rides the Card as plain data; firebending is
 // a triggered ability and rides the catalog slot, which is the whole
 // distinction ADR 0083 draws.
-func printedFirebendingDragonToken() tokenTemplate {
-	return tokenTemplate{
+func printedFirebendingDragonToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "dragon-firebending",
 		Card: game.Card{
 			Name:      "Dragon",
@@ -64,7 +64,7 @@ func printedFirebendingDragonToken() tokenTemplate {
 			Keywords:  []string{"flying"},
 		},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Dragon — firebending 4", Do(firebending(4))),
+			WheneverThisAttacks("Dragon — firebending 4", Do(NewFirebending(4))),
 		},
 		Text: "Flying\nFirebending 4 (Whenever this creature attacks, add {R}{R}{R}{R}. " +
 			"This mana lasts until end of combat.)",
@@ -81,7 +81,7 @@ func printedFirebendingDragonToken() tokenTemplate {
 // Only a firebending ability's effect: red mana kept until end of combat
 // that is not firebending (Avatar Roku, Firebender; Fire Lord Ozai) is
 // redUntilEndOfCombat.
-func firebending(n int) Firebending { return Firebending{N: n} }
+func NewFirebending(n int) Firebending { return Firebending{N: n} }
 
 // Firebending is firebending's Applier.
 type Firebending struct{ N int }
@@ -89,7 +89,7 @@ type Firebending struct{ N int }
 // Apply adds the mana, then announces the firebend.
 func (f Firebending) Apply(ctx *Context) error {
 	if f.N > 0 {
-		if err := redUntilEndOfCombat(f.N).Apply(ctx); err != nil {
+		if err := RedUntilEndOfCombat(f.N).Apply(ctx); err != nil {
 			return err
 		}
 	}
@@ -100,7 +100,7 @@ func (f Firebending) Apply(ctx *Context) error {
 // redUntilEndOfCombat is "add N {R}. Until end of combat, you don't lose
 // this mana as steps end", the mana half of firebending, for an effect
 // that is not a firebending ability.
-func redUntilEndOfCombat(n int) AddMana {
+func RedUntilEndOfCombat(n int) AddMana {
 	return AddMana{
 		Produced: game.RepeatMana("{R}", n),
 		Riders:   []game.ManaSpendRider{KeepManaUntilEndOfCombat()},

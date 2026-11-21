@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // jmpB9AFlierAttacked is "whenever a creature with flying attacks": a
 // creature, under anyone's control, declared as an attacker while it has
 // flying (Windreader Sphinx). One event per attacking creature.
-func jmpB9AFlierAttacked(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+func JmpB9AFlierAttacked(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventAttack {
 		return false
 	}
@@ -20,8 +20,8 @@ func jmpB9AFlierAttacked(ev game.Event, _ *game.Card, _ game.Characteristic, g *
 // attack with two or more creatures with flying" (Tide Skimmer): a
 // creature with flying the source's controller declared as an attacker.
 // The count of two is the ability's AtBatchEnd condition.
-func jmpB9YouAttackedWithAFlier(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || !attackDeclaredByYou(ev, source.Controller) {
+func JmpB9YouAttackedWithAFlier(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if source == nil || !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -36,7 +36,7 @@ func jmpB9YouAttackedWithAFlier(ev game.Event, source *game.Card, _ game.Charact
 // (ExileInsteadOnlyInstantOrSorcery, #4505). An artifact spell cast this
 // way that is countered goes to the graveyard, as printed (Scholar of the
 // Lost Trove).
-func jmpB9FreeCastTargetExilingInstantsAndSorceries(sourceName string) Effect {
+func JmpB9FreeCastTargetExilingInstantsAndSorceries(sourceName string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -66,7 +66,7 @@ func jmpB9FreeCastTargetExilingInstantsAndSorceries(sourceName string) Effect {
 				Label:       sourceName + " — cast " + c.Name + " without paying its mana cost",
 			}, []game.Card{c})
 			// #4250: cast during the resolution (CR 608.2g).
-			offerResolutionCastOver(g, item.Controller, item.SourceCardID, sourceName, game.MayCastKeywordFreeCast, declineLeaveInGraveyard, c.InstanceID)
+			OfferResolutionCastOver(g, item.Controller, item.SourceCardID, sourceName, game.MayCastKeywordFreeCast, DeclineLeaveInGraveyard, c.InstanceID)
 			return nil
 		}
 		return nil

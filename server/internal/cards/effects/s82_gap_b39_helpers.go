@@ -14,7 +14,7 @@ import (
 // (CR 707.9b): base power and toughness 0/2 (printed values, not a `*`
 // stand-in), the artifact and creature types and the Thopter subtype added to
 // the copied ones, and flying added to its abilities.
-func gapB39ThopterCopyException(thopter string) func(tok *game.Card) {
+func GapB39ThopterCopyException(thopter string) func(tok *game.Card) {
 	return func(tok *game.Card) {
 		tok.Power, tok.Toughness = 0, 2
 		tok.VariableToughness = false

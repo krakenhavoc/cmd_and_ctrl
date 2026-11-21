@@ -35,19 +35,19 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, preacherAttackedTheLifeLeader,
+			On(game.EventAttack, PreacherAttackedTheLifeLeader,
 				"Preacher of the Schism — create a 1/1 white Vampire creature token with lifelink",
-				Do(CreateToken{Template: b36WhiteVampireLifelinkToken(), N: 1})),
+				Do(CreateToken{Template: B36WhiteVampireLifelinkToken(), N: 1})),
 			On(game.EventAttack, preacherAttackedWhileYouLead,
 				"Preacher of the Schism — you draw a card and you lose 1 life",
-				b36DrawAndLoseOne),
+				B36DrawAndLoseOne),
 		},
 	})
 }
 
 // playerHasTheMostLife is "has the most life or is tied for most life"
 // among the players still in the game.
-func playerHasTheMostLife(g *game.Game, id uuid.UUID) bool {
+func PlayerHasTheMostLife(g *game.Game, id uuid.UUID) bool {
 	var mine int
 	found := false
 	for _, p := range g.Seats {
@@ -68,14 +68,14 @@ func playerHasTheMostLife(g *game.Game, id uuid.UUID) bool {
 
 // preacherAttackedTheLifeLeader: this creature was declared attacking a
 // player who has the most life or is tied for it.
-func preacherAttackedTheLifeLeader(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return attackDeclared(ev, source) &&
+func PreacherAttackedTheLifeLeader(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return AttackDeclared(ev, source) &&
 		g.ClassifyAttackTargetForEffect(ev.Target) == game.AttackTargetPlayer &&
-		playerHasTheMostLife(g, ev.Target)
+		PlayerHasTheMostLife(g, ev.Target)
 }
 
 // preacherAttackedWhileYouLead: this creature was declared attacking
 // while its controller has the most life or is tied for it.
 func preacherAttackedWhileYouLead(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return attackDeclared(ev, source) && playerHasTheMostLife(g, source.Controller)
+	return AttackDeclared(ev, source) && PlayerHasTheMostLife(g, source.Controller)
 }

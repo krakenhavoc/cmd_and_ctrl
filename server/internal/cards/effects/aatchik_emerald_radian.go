@@ -32,7 +32,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Aatchik — create a 1/1 green Insect for each artifact and/or creature card in your graveyard",
 				Do(Instruction(func(ctx *Context) error {
-					n := dftABArtifactOrCreatureCardsInGraveyard(ctx.Game, ctx.Controller())
+					n := DftABArtifactOrCreatureCardsInGraveyard(ctx.Game, ctx.Controller())
 					if n == 0 {
 						return nil
 					}
@@ -47,7 +47,7 @@ func init() {
 
 // dftABArtifactOrCreatureCardsInGraveyard counts the artifact and/or
 // creature cards in a player's graveyard.
-func dftABArtifactOrCreatureCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+func DftABArtifactOrCreatureCardsInGraveyard(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
@@ -69,5 +69,5 @@ func dftABAnotherInsectYouControlDied(ev game.Event, source *game.Card, _ game.C
 		return false
 	}
 	dead, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Insect"))
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Insect"))
 }

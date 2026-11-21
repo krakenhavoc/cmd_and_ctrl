@@ -44,7 +44,7 @@ func init() {
 				Cost:         Plus(ManaCost("{3}"), TapCost(), SacrificeThis()),
 				Targets:      TargetPermanent("target Room you control", HasSubtype("Room"), YouControl()),
 				SorcerySpeed: true,
-				Effect:       lockOrUnlockTargetRoom,
+				Effect:       LockOrUnlockTargetRoom,
 			},
 		},
 	})
@@ -52,7 +52,7 @@ func init() {
 
 // lockOrUnlockTargetRoom is "lock or unlock a door of target Room you
 // control" — Keys to the House, Marina Vendrell.
-func lockOrUnlockTargetRoom(g *game.Game, item *game.StackItem) error {
+func LockOrUnlockTargetRoom(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		return LockOrUnlockADoor{Room: t.ID, Player: item.Controller}.Apply(ctx)

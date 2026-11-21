@@ -8,8 +8,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Elf. The engine emits one attack event per attacker, so the card wraps
 // it in OncePerBatch. "Elf" is a word of the source's text (CR 612.2,
 // #3984) and subtypes are read effective, so a changeling is an Elf.
-func hobB6AttackWithAnElf(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
+func HobB6AttackWithAnElf(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)

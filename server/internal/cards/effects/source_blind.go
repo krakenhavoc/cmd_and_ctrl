@@ -54,7 +54,7 @@ var doClosurePC = reflect.ValueOf(Do()).Pointer()
 // doStepsOf returns the primitives e sequences when e is a Do closure.
 // It calls e only after checking that it is one, and then only with the
 // probe, which Do answers without touching the game.
-func doStepsOf(e Effect) ([]Applier, bool) {
+func DoStepsOf(e Effect) ([]Applier, bool) {
 	if e == nil || reflect.ValueOf(e).Pointer() != doClosurePC {
 		return nil, false
 	}
@@ -97,11 +97,11 @@ func sourceBlindStep(a Applier) bool {
 // Build (which could fill in Params, a payload or a label per source),
 // no target or mode clause, and an Effect that is a non-empty Do of
 // source-blind primitives.
-func sourceBlindRow(t game.TriggeredAbility) bool {
+func SourceBlindRow(t game.TriggeredAbility) bool {
 	if t.Build != nil || t.Targets != nil || t.TargetsFrom != nil || t.Modes != nil || t.TargetsFromReadsBoard {
 		return false
 	}
-	steps, ok := doStepsOf(t.Effect)
+	steps, ok := DoStepsOf(t.Effect)
 	if !ok || len(steps) == 0 {
 		return false
 	}
@@ -121,6 +121,6 @@ func classifySourceBlind(d *game.CardDef) {
 		return
 	}
 	for i := range d.Triggered {
-		d.Triggered[i].SourceBlind = sourceBlindRow(d.Triggered[i])
+		d.Triggered[i].SourceBlind = SourceBlindRow(d.Triggered[i])
 	}
 }

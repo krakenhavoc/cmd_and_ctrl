@@ -38,7 +38,7 @@ func IsBasicLandWithSubtype(subtype string) func(game.Card) bool {
 		// A word of the searching object's text, read through the lens
 		// SearchLibrary lends (CR 612.2, #3872). containsFoldASCII wants
 		// its needle lower-case.
-		return b30IsBasicLandCard(c) && containsFoldASCII(c.TypeLine, strings.ToLower(c.LentSubtype(subtype)))
+		return B30IsBasicLandCard(c) && ContainsFoldASCII(c.TypeLine, strings.ToLower(c.LentSubtype(subtype)))
 	}
 }
 
@@ -46,7 +46,7 @@ func IsBasicLandWithSubtype(subtype string) func(game.Card) bool {
 // "Whenever you cast a spell during an opponent's turn" (Brineborn
 // Cutthroat) fires when this is false for the caster — the flash
 // deck's core payoff shape.
-func isActivePlayer(g *game.Game, playerID uuid.UUID) bool {
+func IsActivePlayer(g *game.Game, playerID uuid.UUID) bool {
 	if g == nil || g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
 		return false
 	}
@@ -59,7 +59,7 @@ func isActivePlayer(g *game.Game, playerID uuid.UUID) bool {
 // intervening-if (CR 603.4), which is checked both when the trigger
 // would go on the stack and again on resolution — so a land dropped
 // in response correctly fizzles the fetch.
-func anOpponentHasMoreLands(g *game.Game, controller uuid.UUID) bool {
+func AnOpponentHasMoreLands(g *game.Game, controller uuid.UUID) bool {
 	if g == nil {
 		return false
 	}

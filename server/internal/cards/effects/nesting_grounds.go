@@ -44,7 +44,7 @@ func init() {
 				Distinct(TargetPermanent("a second target permanent")),
 			),
 			SorcerySpeed: true,
-			Effect:       nestingGroundsMove,
+			Effect:       NestingGroundsMove,
 		}},
 	})
 }
@@ -59,7 +59,7 @@ var nestingGroundsRemove = game.RegisterTail("nesting-grounds/remove", func(g *g
 	return g.AddCounterForEffect(o.Tail.Carry[0], o.Tail.Word, -1)
 })
 
-func nestingGroundsMove(g *game.Game, item *game.StackItem) error {
+func NestingGroundsMove(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	from, ok := ctx.ClauseTarget(0)
 	if !ok {

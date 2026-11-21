@@ -60,7 +60,7 @@ func ModeDoing(label string, targets *game.TargetSpec, effect func(item *game.St
 // free-spell cycle's controlsACommander registered by name, so "control
 // a commander" reads the same in both places: a commander PERMANENT
 // the chooser controls, anybody's.
-var YouControlACommander = game.ModeCondition("you-control-a-commander", controlsACommander)
+var YouControlACommander = game.ModeCondition("you-control-a-commander", ControlsACommander)
 
 // YouControlAWizard is Flame of Anor's — "If you control a Wizard as
 // you cast this spell, you may choose two instead". ControlsA reads
@@ -82,7 +82,7 @@ var WasKicked = game.ModeConditionOnAnnouncement("was-kicked", func(_ *game.Game
 // cards in your graveyard, choose both instead" (Prophetic Titan) —
 // delirium, read for the chooser as the modes are chosen (#1655).
 var DeliriumForModes = game.ModeCondition("delirium", func(g *game.Game, chooser uuid.UUID) bool {
-	return b16CardTypesInGraveyard(g, chooser) >= 4
+	return B16CardTypesInGraveyard(g, chooser) >= 4
 })
 
 // YouDiscardedACardThisTurn is "If you discarded a card this turn, you choose
@@ -425,7 +425,7 @@ func FightTheModesTargets(_ *game.StackItem, ctx *Context, occ int) error {
 	if !haveMine || !haveTheirs {
 		return nil
 	}
-	return b10Fight(ctx, mine.ID, theirs.ID)
+	return B10Fight(ctx, mine.ID, theirs.ID)
 }
 
 // ThisFightsTheModesTarget is "this creature fights target <creature>" as
@@ -438,7 +438,7 @@ func ThisFightsTheModesTarget(item *game.StackItem, ctx *Context, occ int) error
 	if !ok {
 		return nil
 	}
-	return b10Fight(ctx, item.SourceCardID, target.ID)
+	return B10Fight(ctx, item.SourceCardID, target.ID)
 }
 
 // BoostTheModesTarget is "target creature gets +P/+T until end of

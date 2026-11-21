@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the controller adds the mana and then draws, in the printed order.
 // "Activate only as an instant" is every activated ability's default
 // timing.
-func odyEggRow(mana string) ActivatedAbility {
+func OdyEggRow(mana string) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   "{2}, {T}, Sacrifice this artifact: Add " + mana + ". Draw a card.",
 		Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
@@ -39,7 +39,7 @@ func odyEggRow(mana string) ActivatedAbility {
 // rows are mana abilities (CR 605.1a): the second sacrifices the land as
 // part of its cost, like Lotus Petal, and the colour is picked as the
 // mana is made.
-func odySacrificeLand(oracle, name, color string) Spec {
+func OdySacrificeLand(oracle, name, color string) Spec {
 	return Spec{
 		OracleID:     oracle,
 		Name:         name,
@@ -68,7 +68,7 @@ func odySacrificeLand(oracle, name, color string) Spec {
 // Threshold is the second row's activation condition (CR 602.1b),
 // seven or more cards of any kind. `row` carries the clause's targets,
 // purpose and effect; its label and cost are filled in here.
-func odyThresholdLand(oracle, name, color, clause string, row ActivatedAbility) Spec {
+func OdyThresholdLand(oracle, name, color, clause string, row ActivatedAbility) Spec {
 	row.Label = "Threshold — " + color + ", {T}, Sacrifice this land: " + clause +
 		" Activate only if there are seven or more cards in your graveyard."
 	row.Cost = Plus(ManaCost(color), TapCost(), SacrificeThis())
@@ -91,7 +91,7 @@ func odyThresholdLand(oracle, name, color, clause string, row ActivatedAbility) 
 // discards <n> cards." (Cephalid Looter, Cephalid Broker). The target,
 // if still legal (CR 608.2b), draws first and then chooses the discards
 // from the hand those draws made (drawThenDiscard).
-func odyTargetPlayerLoots(label string, n int) ActivatedAbility {
+func OdyTargetPlayerLoots(label string, n int) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    TapCost(),
@@ -102,7 +102,7 @@ func odyTargetPlayerLoots(label string, n int) ActivatedAbility {
 				if t.Kind != game.TargetPlayer {
 					continue
 				}
-				if err := drawThenDiscard(g, t.ID, item.SourceCardID, n, n, ""); err != nil {
+				if err := DrawThenDiscard(g, t.ID, item.SourceCardID, n, n, ""); err != nil {
 					return err
 				}
 			}
@@ -113,7 +113,7 @@ func odyTargetPlayerLoots(label string, n int) ActivatedAbility {
 
 // odyProtectionFromEachColor is "protection from each color": five
 // separate protection abilities, one per colour (CR 702.16h).
-func odyProtectionFromEachColor() []string {
+func OdyProtectionFromEachColor() []string {
 	out := make([]string, 0, len(game.AllColors))
 	for _, c := range game.AllColors {
 		out = append(out, game.ProtectionFromColor(c))

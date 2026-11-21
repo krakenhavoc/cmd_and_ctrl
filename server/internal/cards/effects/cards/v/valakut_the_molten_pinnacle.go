@@ -1,0 +1,63 @@
+package cardsv
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Valakut, the Molten Pinnacle — Land (EDHREC rank 1323):
+//
+//	"This land enters tapped.
+//	 Whenever a Mountain you control enters, if you control at least
+//	 five other Mountains, you may have this land deal 3 damage to
+//	 any target.
+//	 {T}: Add {R}."
+//
+// The land that turns a mono-red ramp deck's late land drops into
+// Lightning Bolts, and the reason Scapeshift is a win condition.
+// Three clauses, all live: the tapped entry is the real CR 614
+// self-replacement, the mana is an ordinary tap ability, and the
+// trigger watches every battlefield entry for a permanent with the
+// Mountain subtype under Valakut's controller — effective subtypes,
+// so a land Urborg-style effects have made a Mountain counts, and a
+// fetched, Cultivated or reanimated Mountain all count, as printed.
+//
+// "Five OTHER Mountains" excludes the one that just entered, and the
+// intervening-if (CR 603.4) is checked BOTH when the trigger is put
+// on the stack and again on resolution: an opponent who Wastelands a
+// Mountain in response to the trigger leaves you at four others and
+// the damage does not happen. The target is picked as the trigger goes
+// on the stack; the second check is declared (InterveningIf), so it
+// comes before the "you may" and a failed one asks nothing (#3907).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "1bc44216-4e06-4f66-89b7-5c327004604e",
+		Name:         "Valakut, the Molten Pinnacle",
+		Completeness: effects.CompletenessFull,
+		Replacements: []game.ReplacementEffect{effects.SelfEntersTapped()},
+		ManaAbilities: []effects.ManaAbility{{
+			Cost:     effects.ManaAbilityCost{Tap: true},
+			Produced: "{R}",
+			Label:    "Add {R}",
+		}},
+		Triggered: []game.TriggeredAbility{effects.InterveningIf(effects.CondBoard{
+			Name: "you control at least five other Mountains",
+			Test: func(ctx *effects.Context) bool {
+				return effects.B12OtherMountainsControlled(ctx.Game, ctx.Controller(), ctx.Item.Trigger.Event.CardID, ctx.TextSubtype("Mountain")) >= 5
+			},
+		}, game.TriggeredAbility{
+			Watches: []game.EventKind{game.EventETB},
+			Key:     "Valakut, the Molten Pinnacle — 3 damage to any target",
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.B12MountainYouControlEntered(ev, source, g) &&
+					effects.B12OtherMountainsControlled(g, source.Controller, ev.CardID, source.TextSubtype("Mountain")) >= 5
+			},
+			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Valakut, the Molten Pinnacle — deal 3 damage to any target?"},
+			Targets:        effects.TargetAny(),
+			Effect:         effects.DamageToFirstTarget(3),
+		})},
+	})
+}
