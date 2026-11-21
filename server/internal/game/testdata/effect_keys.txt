@@ -2491,6 +2491,7 @@ payunless pay-unless/papercraft-decoy-draw
 payunless pay-unless/passenger-ferry-unblockable
 payunless pay-unless/persistent-marshstalker-return
 payunless pay-unless/phoenix-chick-return
+payunless pay-unless/phyrexian-tyranny-lose-two
 payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
