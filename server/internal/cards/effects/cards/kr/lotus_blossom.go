@@ -1,8 +1,9 @@
-package effects
+package cardskr
 
 import (
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -23,16 +24,16 @@ import (
 // No simplification.
 func init() {
 	const petal = "petal"
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "32e66ea0-5f35-4df8-8d00-580403c51bb5",
 		Name:         "Lotus Blossom",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(AtYourUpkeep("Lotus Blossom — put a petal counter on this artifact", putACounterOnThis(petal)),
+			effects.Optional(effects.AtYourUpkeep("Lotus Blossom — put a petal counter on this artifact", effects.PutACounterOnThis(petal)),
 				"Lotus Blossom — put a petal counter on it?"),
 		},
-		ManaAbilities: []ManaAbility{{
-			Cost: ManaAbilityCost{Tap: true, Sacrifice: true},
+		ManaAbilities: []effects.ManaAbility{{
+			Cost: effects.ManaAbilityCost{Tap: true, Sacrifice: true},
 			ProducedForPaid: func(g *game.Game, _, source uuid.UUID, _ game.PaidCost) game.ManaOutput {
 				return game.ManaOutput{Amount: game.ManaAmount{Options: game.AllColors, N: lotusBlossomPetals(g, source), OneColor: true}}
 			},
@@ -44,7 +45,7 @@ func init() {
 // lotusBlossomPetals is the number of petal counters on the Blossom: live
 // while it is on the battlefield, last-known once its cost sacrificed it.
 func lotusBlossomPetals(g *game.Game, source uuid.UUID) int {
-	if c, ok := g.LookupCardForEffect(source); ok && onBattlefield(g, source) {
+	if c, ok := g.LookupCardForEffect(source); ok && effects.OnBattlefield(g, source) {
 		return c.Counters["petal"]
 	}
 	if info, ok := g.LastKnownPermanentForEffect(source); ok {

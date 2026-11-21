@@ -1,4 +1,8 @@
-package effects
+package cardshu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Icy Manipulator — Artifact {4} (Dominaria Remastered):
 //
@@ -10,15 +14,15 @@ package effects
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "3608f1f7-8dc5-4dd1-ae91-c830e1de9529",
 		Name:         "Icy Manipulator",
-		Completeness: CompletenessFull,
-		Activated: []ActivatedAbility{{
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}, {T}: Tap target artifact, creature, or land.",
-			Cost:    Plus(ManaCost("{1}"), TapCost()),
-			Targets: TargetPermanent("target artifact, creature, or land", Or(Artifact(), Creature(), Land())),
-			Effect:  tapChosenPermanent,
+			Cost:    effects.Plus(effects.ManaCost("{1}"), effects.TapCost()),
+			Targets: effects.TargetPermanent("target artifact, creature, or land", effects.Or(effects.Artifact(), effects.Creature(), effects.Land())),
+			Effect:  effects.TapChosenPermanent,
 		}},
 	})
 }

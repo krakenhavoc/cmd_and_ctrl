@@ -1,6 +1,10 @@
-package effects
+package cardse
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Evil Eye of Orms-by-Gore — Creature — Eye {4}{B}, 3/6 (Dominaria
 // Remastered):
@@ -16,23 +20,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "3f79780a-accd-4782-94a8-a6e71fb3ada7",
 		Name:         "Evil Eye of Orms-by-Gore",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Static: []game.StaticAbility{{
 			Label: "Non-Eye creatures you control can't attack.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller &&
-					!HasSubtype("Eye")(g, source.Controller, *target)
+					!effects.HasSubtype("Eye")(g, source.Controller, *target)
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Restrictions |= game.CantAttack
 			},
 		}},
 		BlockRules: []game.BlockRule{
-			CantBeBlockedExceptBy(OnSelf(), OfCreatureType("Wall"), "Walls"),
+			effects.CantBeBlockedExceptBy(effects.OnSelf(), effects.OfCreatureType("Wall"), "Walls"),
 		},
 	})
 }

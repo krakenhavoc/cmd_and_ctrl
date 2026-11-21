@@ -1,6 +1,7 @@
-package effects
+package cardsbl
 
 import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -26,26 +27,26 @@ import (
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "e04688e0-672b-407f-a2c9-fd7292926483",
 		Name:         "Body Snatcher",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Body Snatcher — exile it unless you discard a creature card", bodySnatcherEnters),
-			Targeting(
-				WhenThisDies("Body Snatcher — exile it and return target creature card from your graveyard to the battlefield",
+			effects.WhenThisEnters("Body Snatcher — exile it unless you discard a creature card", bodySnatcherEnters),
+			effects.Targeting(
+				effects.WhenThisDies("Body Snatcher — exile it and return target creature card from your graveyard to the battlefield",
 					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if !diedCardStillInGraveyard(ctx, item.Trigger.Event.CardID) {
+						ctx := effects.NewContext(g, item)
+						if !effects.DiedCardStillInGraveyard(ctx, item.Trigger.Event.CardID) {
 							bodySnatcherReturn(ctx)
 							return nil
 						}
-						return ExileTarget{
+						return effects.ExileTarget{
 							Target:   item.Trigger.Event.CardID,
 							ThenTail: ctx.ItemTail(bodySnatcherExiled),
 						}.Apply(ctx)
 					}),
-				TargetCardInGraveyard("target creature card from your graveyard", Creature(), YouOwn()),
+				effects.TargetCardInGraveyard("target creature card from your graveyard", effects.Creature(), effects.YouOwn()),
 			),
 		},
 	})
@@ -53,21 +54,21 @@ func init() {
 
 // bodySnatcherExiled is the clause after the exile: the return, whether or
 // not the exile happened. An on-disk key.
-var bodySnatcherExiled = CardTail("body-snatcher/exiled", func(ctx *Context, _ game.TailOutcome) error {
+var bodySnatcherExiled = effects.CardTail("body-snatcher/exiled", func(ctx *effects.Context, _ game.TailOutcome) error {
 	bodySnatcherReturn(ctx)
 	return nil
 })
 
 // bodySnatcherReturn returns the targeted creature card from your graveyard
 // to the battlefield under your control.
-func bodySnatcherReturn(ctx *Context) {
-	_, _ = reanimateSingleTarget(ctx, ctx.Controller())
+func bodySnatcherReturn(ctx *effects.Context) {
+	_, _ = effects.ReanimateSingleTarget(ctx, ctx.Controller())
 }
 
 // bodySnatcherEnters asks for the discard, or exiles the Snatcher at once
 // when there is no creature card to discard.
 func bodySnatcherEnters(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+	if !effects.SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	p := g.PlayerByIDForEffect(item.Controller)
@@ -83,7 +84,7 @@ func bodySnatcherEnters(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	if !hasCreature {
-		return ExileTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
+		return effects.ExileTarget{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
 	}
 	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   item.Controller,
@@ -105,8 +106,8 @@ var bodySnatcherDiscarded = game.RegisterDiscardThenRule("choose-cards/body-snat
 		if r.Item == nil || len(r.Discarded.Cards()) > 0 {
 			return nil
 		}
-		if !sourceIsStillThisPermanent(g, r.Item) {
+		if !effects.SourceIsStillThisPermanent(g, r.Item) {
 			return nil
 		}
-		return ExileTarget{Target: r.Item.SourceCardID}.Apply(NewContext(g, r.Item))
+		return effects.ExileTarget{Target: r.Item.SourceCardID}.Apply(effects.NewContext(g, r.Item))
 	})

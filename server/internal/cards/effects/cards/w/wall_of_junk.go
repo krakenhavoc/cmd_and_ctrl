@@ -1,6 +1,10 @@
-package effects
+package cardsw
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Wall of Junk — Artifact Creature — Wall {2}, 0/7 (Dominaria Remastered):
 //
@@ -16,21 +20,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:        "22b0de2d-47a8-4269-ba21-4bc2b4b10b40",
 		Name:            "Wall of Junk",
-		Completeness:    CompletenessFull,
+		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"defender"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return selfBlocksOnce(ev, source)
+			effects.On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return effects.SelfBlocksOnce(ev, source)
 			}, "Wall of Junk — return it to its owner's hand at end of combat",
 				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					return ScheduleDelayedTrigger{
+					ctx := effects.NewContext(g, item)
+					return effects.ScheduleDelayedTrigger{
 						At:     game.StepEndCombat,
 						Label:  "Wall of Junk — return it to its owner's hand",
-						Body:   s82GapB134ReturnSourceToHandBody,
+						Body:   effects.S82GapB134ReturnSourceToHandBody,
 						Params: game.EffectParams{Object: game.ObjectRef{ID: item.SourceCardID, Epoch: g.ObjectEpochForEffect(item.SourceCardID)}},
 					}.Apply(ctx)
 				}),

@@ -1,6 +1,10 @@
-package effects
+package cardsg
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Gauntlet of Power — Artifact {5} (Dominaria Remastered):
 //
@@ -20,16 +24,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "1182591d-8660-4a2e-8d77-2fc544b02b66",
 		Name:         "Gauntlet of Power",
-		Completeness: CompletenessFull,
-		AsEnters:     ChooseColorAsEnters(game.ColorForBenefit, "Gauntlet of Power"),
+		Completeness: effects.CompletenessFull,
+		AsEnters:     effects.ChooseColorAsEnters(game.ColorForBenefit, "Gauntlet of Power"),
 		Static:       []game.StaticAbility{gauntletOfPowerAnthem()},
 		ManaTriggers: []game.ManaTrigger{{
 			Label: "Gauntlet of Power — add an additional one mana of the chosen color",
 			AppliesTo: func(prod game.ManaProduced, source *game.Card, g *game.Game) bool {
-				if !IsBasicLand(prod.Source) {
+				if !effects.IsBasicLand(prod.Source) {
 					return false
 				}
 				chosen := g.ChosenColorOf(source.InstanceID)
@@ -43,7 +47,7 @@ func init() {
 				}
 				return false
 			},
-			Produced: AddsOneManaOfTheChosenColor(),
+			Produced: effects.AddsOneManaOfTheChosenColor(),
 		}},
 	})
 }

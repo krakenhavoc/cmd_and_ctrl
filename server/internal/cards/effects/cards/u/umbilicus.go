@@ -1,8 +1,9 @@
-package effects
+package cardsu
 
 import (
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -22,24 +23,24 @@ import (
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "c9132e72-d016-4cb7-8662-a16b7d932bef",
 		Name:         "Umbilicus",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			AtEachUpkeep("Umbilicus — that player may pay 2 life; if they don't, they return a permanent they control to its owner's hand", umbilicusUpkeep),
+			effects.AtEachUpkeep("Umbilicus — that player may pay 2 life; if they don't, they return a permanent they control to its owner's hand", umbilicusUpkeep),
 		},
 	})
 }
 
 func umbilicusUpkeep(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
+	ctx := effects.NewContext(g, item)
 	player := ctx.Trigger().Event.Actor
 	if player == uuid.Nil {
 		return nil
 	}
-	cost, action := LifePayment(2).prompt()
-	return UpkeepPayUnless{
+	cost, action := effects.LifePayment(2).Prompt()
+	return effects.UpkeepPayUnless{
 		Chooser:  player,
 		Cost:     cost,
 		Action:   action,
@@ -50,9 +51,9 @@ func umbilicusUpkeep(g *game.Game, item *game.StackItem) error {
 
 // umbilicusDeclined is the decline: the player who was asked returns a
 // permanent they control. An on-disk key: never renamed, never reused.
-var umbilicusDeclined = PayUnlessElse("pay-unless/umbilicus-decline",
-	func(ctx *Context, r game.PayUnlessAnswer) error {
-		return ChoosePermanents{
+var umbilicusDeclined = effects.PayUnlessElse("pay-unless/umbilicus-decline",
+	func(ctx *effects.Context, r game.PayUnlessAnswer) error {
+		return effects.ChoosePermanents{
 			Player:   r.Chooser,
 			Question: "Umbilicus — return a permanent you control to its owner's hand",
 			Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
@@ -64,6 +65,6 @@ var umbilicusDeclined = PayUnlessElse("pay-unless/umbilicus-decline",
 				}
 				return out, 1, 1
 			},
-			Keyed: bouncedChosen,
+			Keyed: effects.BouncedChosen,
 		}.Apply(ctx)
 	})

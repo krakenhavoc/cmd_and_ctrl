@@ -1,6 +1,10 @@
-package effects
+package cardsj
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Jester's Cap — Artifact {4} (Dominaria Remastered):
 //
@@ -15,21 +19,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "8783a94a-d0b2-4291-a550-dbcf8e16bf4b",
 		Name:         "Jester's Cap",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerValue},
-		Activated: []ActivatedAbility{{
+		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice this artifact: Search target player's library for three cards and exile them. Then that player shuffles.",
-			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
-			Targets: TargetPlayer("target player"),
+			Cost:    effects.Plus(effects.ManaCost("{2}"), effects.TapCost(), effects.SacrificeThis()),
+			Targets: effects.TargetPlayer("target player"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 					return nil
 				}
-				ctx := NewContext(g, item)
-				return SearchLibrary{
+				ctx := effects.NewContext(g, item)
+				return effects.SearchLibrary{
 					Player:       ctx.Controller(),
 					LibraryOwner: item.Targets[0].ID,
 					Dest:         game.ZoneExile,

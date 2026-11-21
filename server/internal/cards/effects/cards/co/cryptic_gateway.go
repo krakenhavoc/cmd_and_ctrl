@@ -1,8 +1,9 @@
-package effects
+package cardsco
 
 import (
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -23,25 +24,25 @@ import (
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "abdc1c92-1434-47d3-abaa-debe047903b9",
 		Name:         "Cryptic Gateway",
-		Completeness: CompletenessFull,
-		Activated: []ActivatedAbility{{
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Label:   "Tap two untapped creatures you control: You may put a creature card from your hand that shares a creature type with each creature tapped this way onto the battlefield.",
 			Cost: game.AbilityCost{TapOthers: &game.TapOthersCost{
 				Count:  2,
-				Filter: TargetCreature("two untapped creatures you control"),
+				Filter: effects.TargetCreature("two untapped creatures you control"),
 				Label:  "two untapped creatures you control",
 			}},
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
+				ctx := effects.NewContext(g, item)
 				tapped := ctx.TappedToPay()
 				if len(tapped) == 0 {
 					return nil
 				}
-				return PutFromHandOntoBattlefield{
+				return effects.PutFromHandOntoBattlefield{
 					Match: func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 						return c.IsCreature() && crypticGatewaySharesWithEach(g, tapped, c)
 					},
@@ -58,14 +59,14 @@ func init() {
 // has left the battlefield, as it last existed.
 func crypticGatewaySharesWithEach(g *game.Game, tapped []game.ObjectRef, c game.Card) bool {
 	for _, ref := range tapped {
-		if live, ok := g.LookupCardForEffect(ref.ID); ok && onBattlefield(g, ref.ID) && g.ObjectEpochForEffect(ref.ID) == ref.Epoch {
+		if live, ok := g.LookupCardForEffect(ref.ID); ok && effects.OnBattlefield(g, ref.ID) && g.ObjectEpochForEffect(ref.ID) == ref.Epoch {
 			if !game.SharesCreatureType(&live, &c) {
 				return false
 			}
 			continue
 		}
 		info, ok := g.LastKnownPermanentForEffect(ref.ID)
-		if !ok || !sharesACreatureTypeWith(info, c) {
+		if !ok || !effects.SharesACreatureTypeWith(info, c) {
 			return false
 		}
 	}

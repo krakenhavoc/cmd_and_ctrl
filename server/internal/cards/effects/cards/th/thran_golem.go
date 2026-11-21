@@ -1,6 +1,10 @@
-package effects
+package cardsth
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Thran Golem — Artifact Creature — Golem {5}, 3/3 (Dominaria Remastered):
 //
@@ -14,12 +18,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	enchanted := func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return selfOnly(target, g, source) && cmdr2B19AurasAttachedTo(g, source.InstanceID) > 0
+		return effects.SelfOnly(target, g, source) && effects.Cmdr2B19AurasAttachedTo(g, source.InstanceID) > 0
 	}
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "fe55f366-2996-4a4f-9b30-fc494cc80f87",
 		Name:         "Thran Golem",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Static: []game.StaticAbility{
 			{
 				Label:     "As long as this creature is enchanted, it gets +2/+2.",
