@@ -499,7 +499,13 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 		return nil
 	}
 	// CR 202.3e: a spell on the stack counts its announced X.
-	return SourceCharacteristicsX(&c, g.announcedXOnStackLocked(c.InstanceID))
+	ch := SourceCharacteristicsX(&c, g.announcedXOnStackLocked(c.InstanceID))
+	if ch != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
+		if item := g.StackMeta[c.InstanceID]; item != nil && item.Kind == StackItemSpell {
+			ch.SourceIsSpell = true
+		}
+	}
+	return ch
 }
 
 // damageTailFromFrame builds a combat damage tail from a queued

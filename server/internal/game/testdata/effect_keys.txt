@@ -1534,6 +1534,7 @@ choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
 choose resolution-cast/portent-of-calamity-rest-to-hand
 choose resolution-cast/ryan-sinclair-rest
+choose resolution-cast/s82-gap-b200-ripple-bottom
 choose resolution-cast/s82-mom-b21-rashmi-after
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/smugglers-buggy-after-cast
@@ -1813,6 +1814,7 @@ confirm confirm/rotisserie-elemental-sacrifice
 confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
+confirm confirm/s82-gap-b200-ripple-reveal
 confirm confirm/s82-mom-b12-guerrilla-exile
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
@@ -2475,6 +2477,7 @@ payunless pay-unless/neo-go-shintai-lost-wisdom
 payunless pay-unless/neo-go-shintai-shared-purpose
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nihil-spellbomb-draw
+payunless pay-unless/nim-deathmantle-return-and-attach
 payunless pay-unless/nothing
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/overencumbered-no-attack
@@ -3537,6 +3540,7 @@ tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
 tail graveyard-exile/hour-of-eternity-zombie-copies
 tail graveyard-exile/suffer-the-past-drain
+tail graveyard/nim-deathmantle-attach
 tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill

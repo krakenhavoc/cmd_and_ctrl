@@ -4695,6 +4695,7 @@ frozenEntries[].event.damageTail.sourceLki.RemovedOwnAbilities[].row	number:int
 frozenEntries[].event.damageTail.sourceLki.RemovedOwnAbilities[].slot	string
 frozenEntries[].event.damageTail.sourceLki.Restrictions	number:uint8
 frozenEntries[].event.damageTail.sourceLki.SourceIsPermanent	bool
+frozenEntries[].event.damageTail.sourceLki.SourceIsSpell	bool
 frozenEntries[].event.damageTail.sourceLki.SourceManaValue	number:int
 frozenEntries[].event.damageTail.sourceLki.SourceManaValueKnown	bool
 frozenEntries[].event.damageTail.sourceLki.SourceRingBearer	bool
@@ -13731,6 +13732,7 @@ frozenEntries[].event.sourceLki.RemovedOwnAbilities[].row	number:int
 frozenEntries[].event.sourceLki.RemovedOwnAbilities[].slot	string
 frozenEntries[].event.sourceLki.Restrictions	number:uint8
 frozenEntries[].event.sourceLki.SourceIsPermanent	bool
+frozenEntries[].event.sourceLki.SourceIsSpell	bool
 frozenEntries[].event.sourceLki.SourceManaValue	number:int
 frozenEntries[].event.sourceLki.SourceManaValueKnown	bool
 frozenEntries[].event.sourceLki.SourceRingBearer	bool
@@ -20578,6 +20580,7 @@ heldCombatDamage.answers[].frame.SourceLKI.RemovedOwnAbilities[].row	number:int
 heldCombatDamage.answers[].frame.SourceLKI.RemovedOwnAbilities[].slot	string
 heldCombatDamage.answers[].frame.SourceLKI.Restrictions	number:uint8
 heldCombatDamage.answers[].frame.SourceLKI.SourceIsPermanent	bool
+heldCombatDamage.answers[].frame.SourceLKI.SourceIsSpell	bool
 heldCombatDamage.answers[].frame.SourceLKI.SourceManaValue	number:int
 heldCombatDamage.answers[].frame.SourceLKI.SourceManaValueKnown	bool
 heldCombatDamage.answers[].frame.SourceLKI.SourceRingBearer	bool
@@ -20770,6 +20773,7 @@ lastKnownBattlefield{}.RemovedOwnAbilities[].row	number:int
 lastKnownBattlefield{}.RemovedOwnAbilities[].slot	string
 lastKnownBattlefield{}.Restrictions	number:uint8
 lastKnownBattlefield{}.SourceIsPermanent	bool
+lastKnownBattlefield{}.SourceIsSpell	bool
 lastKnownBattlefield{}.SourceManaValue	number:int
 lastKnownBattlefield{}.SourceManaValueKnown	bool
 lastKnownBattlefield{}.SourceRingBearer	bool
@@ -20966,6 +20970,7 @@ lastKnownPermanents{}[].characteristic.RemovedOwnAbilities[].row	number:int
 lastKnownPermanents{}[].characteristic.RemovedOwnAbilities[].slot	string
 lastKnownPermanents{}[].characteristic.Restrictions	number:uint8
 lastKnownPermanents{}[].characteristic.SourceIsPermanent	bool
+lastKnownPermanents{}[].characteristic.SourceIsSpell	bool
 lastKnownPermanents{}[].characteristic.SourceManaValue	number:int
 lastKnownPermanents{}[].characteristic.SourceManaValueKnown	bool
 lastKnownPermanents{}[].characteristic.SourceRingBearer	bool
@@ -25466,6 +25471,7 @@ movesAwaitingTokens[].damageTail.sourceLki.RemovedOwnAbilities[].row	number:int
 movesAwaitingTokens[].damageTail.sourceLki.RemovedOwnAbilities[].slot	string
 movesAwaitingTokens[].damageTail.sourceLki.Restrictions	number:uint8
 movesAwaitingTokens[].damageTail.sourceLki.SourceIsPermanent	bool
+movesAwaitingTokens[].damageTail.sourceLki.SourceIsSpell	bool
 movesAwaitingTokens[].damageTail.sourceLki.SourceManaValue	number:int
 movesAwaitingTokens[].damageTail.sourceLki.SourceManaValueKnown	bool
 movesAwaitingTokens[].damageTail.sourceLki.SourceRingBearer	bool
@@ -34502,6 +34508,7 @@ movesAwaitingTokens[].sourceLki.RemovedOwnAbilities[].row	number:int
 movesAwaitingTokens[].sourceLki.RemovedOwnAbilities[].slot	string
 movesAwaitingTokens[].sourceLki.Restrictions	number:uint8
 movesAwaitingTokens[].sourceLki.SourceIsPermanent	bool
+movesAwaitingTokens[].sourceLki.SourceIsSpell	bool
 movesAwaitingTokens[].sourceLki.SourceManaValue	number:int
 movesAwaitingTokens[].sourceLki.SourceManaValueKnown	bool
 movesAwaitingTokens[].sourceLki.SourceRingBearer	bool
@@ -45764,6 +45771,7 @@ pendingChoices[].damageAssignment.SourceLKI.RemovedOwnAbilities[].row	number:int
 pendingChoices[].damageAssignment.SourceLKI.RemovedOwnAbilities[].slot	string
 pendingChoices[].damageAssignment.SourceLKI.Restrictions	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.SourceIsPermanent	bool
+pendingChoices[].damageAssignment.SourceLKI.SourceIsSpell	bool
 pendingChoices[].damageAssignment.SourceLKI.SourceManaValue	number:int
 pendingChoices[].damageAssignment.SourceLKI.SourceManaValueKnown	bool
 pendingChoices[].damageAssignment.SourceLKI.SourceRingBearer	bool
@@ -46667,6 +46675,7 @@ pendingChoices[].divideShield.staged[].lki.RemovedOwnAbilities[].row	number:int
 pendingChoices[].divideShield.staged[].lki.RemovedOwnAbilities[].slot	string
 pendingChoices[].divideShield.staged[].lki.Restrictions	number:uint8
 pendingChoices[].divideShield.staged[].lki.SourceIsPermanent	bool
+pendingChoices[].divideShield.staged[].lki.SourceIsSpell	bool
 pendingChoices[].divideShield.staged[].lki.SourceManaValue	number:int
 pendingChoices[].divideShield.staged[].lki.SourceManaValueKnown	bool
 pendingChoices[].divideShield.staged[].lki.SourceRingBearer	bool
@@ -46848,6 +46857,7 @@ pendingChoices[].divideShield.staged[].sourceLki.RemovedOwnAbilities[].row	numbe
 pendingChoices[].divideShield.staged[].sourceLki.RemovedOwnAbilities[].slot	string
 pendingChoices[].divideShield.staged[].sourceLki.Restrictions	number:uint8
 pendingChoices[].divideShield.staged[].sourceLki.SourceIsPermanent	bool
+pendingChoices[].divideShield.staged[].sourceLki.SourceIsSpell	bool
 pendingChoices[].divideShield.staged[].sourceLki.SourceManaValue	number:int
 pendingChoices[].divideShield.staged[].sourceLki.SourceManaValueKnown	bool
 pendingChoices[].divideShield.staged[].sourceLki.SourceRingBearer	bool
@@ -52927,6 +52937,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.RemovedOwnAbilitie
 pendingChoices[].replacementResume.event.damageTail.sourceLki.RemovedOwnAbilities[].slot	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Restrictions	number:uint8
 pendingChoices[].replacementResume.event.damageTail.sourceLki.SourceIsPermanent	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.SourceIsSpell	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.SourceManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.SourceManaValueKnown	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.SourceRingBearer	bool
@@ -61963,6 +61974,7 @@ pendingChoices[].replacementResume.event.sourceLki.RemovedOwnAbilities[].row	num
 pendingChoices[].replacementResume.event.sourceLki.RemovedOwnAbilities[].slot	string
 pendingChoices[].replacementResume.event.sourceLki.Restrictions	number:uint8
 pendingChoices[].replacementResume.event.sourceLki.SourceIsPermanent	bool
+pendingChoices[].replacementResume.event.sourceLki.SourceIsSpell	bool
 pendingChoices[].replacementResume.event.sourceLki.SourceManaValue	number:int
 pendingChoices[].replacementResume.event.sourceLki.SourceManaValueKnown	bool
 pendingChoices[].replacementResume.event.sourceLki.SourceRingBearer	bool
@@ -70449,6 +70461,7 @@ pendingChoices[].targetWalk.frame.lki.RemovedOwnAbilities[].row	number:int
 pendingChoices[].targetWalk.frame.lki.RemovedOwnAbilities[].slot	string
 pendingChoices[].targetWalk.frame.lki.Restrictions	number:uint8
 pendingChoices[].targetWalk.frame.lki.SourceIsPermanent	bool
+pendingChoices[].targetWalk.frame.lki.SourceIsSpell	bool
 pendingChoices[].targetWalk.frame.lki.SourceManaValue	number:int
 pendingChoices[].targetWalk.frame.lki.SourceManaValueKnown	bool
 pendingChoices[].targetWalk.frame.lki.SourceRingBearer	bool
@@ -71252,6 +71265,7 @@ pendingChoices[].triggerFrame.lki.RemovedOwnAbilities[].row	number:int
 pendingChoices[].triggerFrame.lki.RemovedOwnAbilities[].slot	string
 pendingChoices[].triggerFrame.lki.Restrictions	number:uint8
 pendingChoices[].triggerFrame.lki.SourceIsPermanent	bool
+pendingChoices[].triggerFrame.lki.SourceIsSpell	bool
 pendingChoices[].triggerFrame.lki.SourceManaValue	number:int
 pendingChoices[].triggerFrame.lki.SourceManaValueKnown	bool
 pendingChoices[].triggerFrame.lki.SourceRingBearer	bool
