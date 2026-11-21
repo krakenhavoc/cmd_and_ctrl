@@ -609,4 +609,9 @@ var TokenTable = map[string]game.Card{
 	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
 	// S82 GAP batch 62: Mr. House, President and CEO's Robot.
 	"3/3 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 3, Toughness: 3},
+
+	// S82 GAP batch 197: Warhammer 40,000 Commander's Astartes Warrior (Birth of the Imperium,
+	// Defenders of Humanity) and the 3/3 red Spawn (The Lost and the Damned).
+	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
+	"3/3 red Spawn": {Name: "Spawn", TypeLine: "Token Creature — Spawn", Power: 3, Toughness: 3, Colors: []string{"R"}},
 }

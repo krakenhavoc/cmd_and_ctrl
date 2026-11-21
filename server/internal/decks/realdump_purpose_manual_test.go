@@ -238,6 +238,10 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 64 (#5948).
 	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
+
+	// S82 GAP batch 197 (#5948).
+	"Bile Blight":      "targets one creature and shrinks it and the creatures sharing its name: a name-bound removal, not a board",
+	"The Horus Heresy": "chapter III destroys only the creatures each player chose, one per player: at most four, never a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
