@@ -317,6 +317,14 @@ const (
 	// every zone move and discard into Player's graveyard, a token
 	// excepted (a token is not a card). Reads Player. Scope ScopeGame.
 	ModExileInsteadOfYourGraveyard ModKind = "exileInsteadOfYourGraveyard"
+	// ModShuffleInsteadOfEnteringFromExile is "until end of turn, if one or
+	// more creatures would enter from exile or after being cast from exile,
+	// their owners shuffle them into their libraries instead" (Don't Blink,
+	// CR 614.1a): a CR 614 replacement on a creature card's move onto the
+	// battlefield from exile, or as a creature spell cast from exile
+	// resolves (StackItem.CastFromZone). A token never (it comes from
+	// nowhere, CR 111.1). Reads nothing. Scope ScopeGame.
+	ModShuffleInsteadOfEnteringFromExile ModKind = "shuffleInsteadOfEnteringFromExile"
 )
 
 // The rules kinds (ADR 0107 §5, #1853, #1880). Not layer operations and
@@ -1203,6 +1211,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModLandManaIsColor: {reader: readerReplacement},
 	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
+	// Don't Blink: creatures entering from exile are shuffled into their
+	// owners' libraries instead.
+	ModShuffleInsteadOfEnteringFromExile: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
