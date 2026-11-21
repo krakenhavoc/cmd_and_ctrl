@@ -9395,6 +9395,9 @@ func intrinsicLandManaAbilities(c *Card) []ManaAbilityShape {
 	if !hasCardType(c, "land") {
 		return nil
 	}
+	if c.effective != nil && c.effective.IntrinsicLandManaRemoved {
+		return nil
+	}
 	var subtypes []string
 	switch {
 	case c.effective != nil:
