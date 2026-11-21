@@ -14,7 +14,7 @@ import (
 //
 // One trigger on the equipped creature's attack declaration, with a target
 // chosen as it goes on the stack: up to one creature controlled by the player
-// that creature attacks (CR 506.3d), none being fine. The counter goes on the
+// that creature attacks (CR 506.2a), none being fine. The counter goes on the
 // attacker named by the event, so it is put even with no target; a target
 // that has become illegal is not tapped (CR 608.2b).
 //

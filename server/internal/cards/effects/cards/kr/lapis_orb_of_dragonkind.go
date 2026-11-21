@@ -13,7 +13,7 @@ import (
 //
 // A mana ability with a spend rider (Scaled Nurturer's shape): the {U} is
 // tagged to trigger once when it pays for a Dragon creature spell, and the
-// trigger scries 2 as an ability of its own (CR 106.12a). Mana that pays for
+// trigger scries 2 as an ability of its own. Mana that pays for
 // anything else triggers nothing.
 //
 // No simplification.
