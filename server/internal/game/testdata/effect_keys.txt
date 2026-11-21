@@ -726,6 +726,7 @@ choose choose-cards/discard-two-unless-creature-identity
 choose choose-cards/discard-two-unless-enchantment
 choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/dokuchi-silencer-destroy
+choose choose-cards/domri-rade-take
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
 choose choose-cards/dormant-volcano-return-an-untapped-mountain
@@ -820,6 +821,7 @@ choose choose-cards/imprint-exile-from-hand
 choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/industrial-advancement-sacrifice
+choose choose-cards/infernal-tutor-reveal
 choose choose-cards/inscribed-tablet-take
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
@@ -1132,6 +1134,7 @@ choose choose-cards/next-of-kin-creature
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
+choose choose-cards/nicol-bolas-dragon-god-exile
 choose choose-cards/nicol-bolas-god-pharaoh-exile-two
 choose choose-cards/nihiloor-tap-for-opponent
 choose choose-cards/ninjas-blades-loot
@@ -3939,6 +3942,7 @@ tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others
 tail then/congregation-at-dawn-order
 tail then/created-gain-keyword-until-eot
+tail then/creeping-chill-drain
 tail then/crippling-fear-type-chosen
 tail then/crystal-spray-draw
 tail then/curse-of-silence-draw

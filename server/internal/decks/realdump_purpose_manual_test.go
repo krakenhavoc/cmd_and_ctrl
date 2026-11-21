@@ -232,6 +232,8 @@ var reviewedNotAWipe = map[string]string{
 	"Ravages of War": "destroys lands, which no sweep class holds alone (Armageddon's reading)",
 	// S82 GAP batch 69 (#5948).
 	"Bottled Cloister": "exiles only its controller's own hand face down on an opponent's upkeep and returns it on theirs: no permanent leaves the battlefield",
+	// S82 GAP batch 80.
+	"Ghostway": "exiles only the creatures its caster controls and returns them at the next end step: a blink of the caster's own board, not a wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
