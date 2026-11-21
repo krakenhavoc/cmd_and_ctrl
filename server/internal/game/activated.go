@@ -39,6 +39,11 @@ type AbilityCost struct {
 	// Tap requires the source to be untapped, taps it, and — for a
 	// creature source — enforces summoning sickness (CR 302.6).
 	Tap bool
+	// UntapSelf is the untap symbol {Q} (CR 107.6): "Untap this
+	// permanent" as a cost. The source must be tapped (an untapped
+	// permanent can't be untapped again), able to become untapped,
+	// and, for a creature, past summoning sickness (CR 302.6).
+	UntapSelf bool
 
 	// TapOthers taps OTHER untapped permanents the activator
 	// controls — Earthcraft's "tap an untapped creature you
@@ -1921,6 +1926,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return ErrSummoningSick
 		}
 	}
+	if ab.Cost.UntapSelf {
+		if !source.Tapped || g.CantBecomeUntappedLocked(source) {
+			return ErrNotTapped
+		}
+		if g.ActivationSummoningSickLocked(source, playerID) {
+			return ErrSummoningSick
+		}
+	}
 	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, ab.Cost, params.SacrificeIDs, params.XValue)
 	if err != nil {
 		return err
@@ -2443,6 +2456,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		}
 		source.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	// CR 107.6: the untap symbol untaps the source as a cost.
+	if ab.Cost.UntapSelf {
+		g.untapPermanentLocked(source)
 	}
 	// ADR 0130 §4: "Exert this creature", beside the {T} and while the
 	// source is certainly on the battlefield (CR 701.43c), keyed to the
