@@ -1902,6 +1902,7 @@ drawinstead pavel-chekov-first-posting
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
 drawthen alpharael-discard-two-unless-artifact
+drawthen aminatou-the-fateshifter-put-back
 drawthen arm-mounted-anchor-discard-two-unless-pirate
 drawthen bonny-pall-clearcutter/put-land
 drawthen brainstorm-put-back
@@ -2011,6 +2012,7 @@ option option-pick/abstract-performance-pile
 option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/agents-toolkit-move
+option option-pick/aminatou-the-fateshifter-rotate
 option option-pick/animal-magnetism-opponent
 option option-pick/anointed-peacekeeper-look
 option option-pick/apocalypse-demon-sacrifice-or-tap
@@ -3747,6 +3749,7 @@ tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
 tail push-the-limit/sacrifice-animate-haste
+tail put-from-library/aethermages-touch-grant-and-bottom
 tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/divergent-transformations-shuffle
 tail put-from-library/hei-bai-forest-guardian-shuffle
