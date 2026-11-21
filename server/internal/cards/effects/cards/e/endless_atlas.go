@@ -1,8 +1,6 @@
 package cardse
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -28,23 +26,8 @@ func init() {
 			Label:     "{2}, {T}: Draw a card. Activate only if you control three or more lands with the same name.",
 			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      effects.Plus(effects.ManaCost("{2}"), effects.TapCost()),
-			Condition: endlessAtlasThreeLandsSharingAName,
+			Condition: effects.GapB186ThreeLandsSharingAName,
 			Effect:    effects.B36DrawOne,
 		}},
 	})
-}
-
-// endlessAtlasThreeLandsSharingAName is the Atlas's condition.
-func endlessAtlasThreeLandsSharingAName(g *game.Game, controller, _ uuid.UUID) bool {
-	byName := map[string]int{}
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != controller || !c.IsLand() {
-			continue
-		}
-		byName[c.Name]++
-		if byName[c.Name] >= 3 {
-			return true
-		}
-	}
-	return false
 }

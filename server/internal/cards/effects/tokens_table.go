@@ -629,4 +629,7 @@ var TokenTable = map[string]game.Card{
 	// S82 GAP batch 185: Soundwave, Superior Captain's Ravage and Laserbeak.
 	"3/3 black Legendary Robot artifact named Ravage with menace and deathtouch": {Name: "Ravage", TypeLine: "Token Legendary Artifact Creature — Robot", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"menace", "deathtouch"}},
 	"2/2 blue Legendary Robot artifact named Laserbeak with flying and hexproof": {Name: "Laserbeak", TypeLine: "Token Legendary Artifact Creature — Robot", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying", "hexproof"}},
+	// S82 GAP batch 186: Warhammer 40,000 Commander's Necron Warrior and Astartes Warrior.
+	"2/2 black Necron Warrior artifact":         {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 }
