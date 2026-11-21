@@ -25,7 +25,7 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisDies("Archon of Justice — exile target permanent", gapB91ExileTheChosenTarget), TargetPermanent("target permanent")),
+			effects.Targeting(effects.WhenThisDies("Archon of Justice — exile target permanent", effects.GapB91ExileTheChosenTarget), effects.TargetPermanent("target permanent")),
 		},
 	})
 }

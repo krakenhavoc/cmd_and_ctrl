@@ -42,25 +42,25 @@ var gapDoctorsCompanionCards = map[string]bool{
 }
 
 // gapIsDoctorCard is "a Doctor card": a card with the Doctor subtype.
-func gapIsDoctorCard(c game.Card) bool { return c.HasSubtypeWord("Doctor") }
+func GapIsDoctorCard(c game.Card) bool { return c.HasSubtypeWord("Doctor") }
 
 // gapHasDoctorsCompanion is "a card with doctor's companion".
-func gapHasDoctorsCompanion(c game.Card) bool { return gapDoctorsCompanionCards[c.OracleID] }
+func GapHasDoctorsCompanion(c game.Card) bool { return gapDoctorsCompanionCards[c.OracleID] }
 
 // gapDoctorSpell is a Doctor spell, the cost-reduction predicate of the
 // Human token of The Eleventh Hour.
 func gapDoctorSpell() CostPredicate {
-	return func(q game.CostQuery) bool { return gapIsDoctorCard(q.Card) }
+	return func(q game.CostQuery) bool { return GapIsDoctorCard(q.Card) }
 }
 
 // gapDoctorHumanToken is the 1/1 white Human creature token of The Eleventh
 // Hour: "Doctor spells you cast cost {1} less to cast."
-func gapDoctorHumanToken() game.Card { return tokenFromCatalog(printedGapDoctorHumanToken) }
+func GapDoctorHumanToken() game.Card { return TokenFromCatalog(printedGapDoctorHumanToken) }
 
 // printedGapDoctorHumanToken is that Human as PRINTED. Its slug is an
 // on-disk identity and is never renamed.
-func printedGapDoctorHumanToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapDoctorHumanToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "human-doctor-spells-cost-less",
 		Card: game.Card{
 			Name:      "Human",

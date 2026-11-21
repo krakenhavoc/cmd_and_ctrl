@@ -8,10 +8,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // on-disk identities: never renamed, never reused.
 
 // gapB92WardedHumanToken is "a 1/1 white Human creature token with ward {2}".
-func gapB92WardedHumanToken() game.Card { return tokenFromCatalog(printedGapB92WardedHumanToken) }
+func GapB92WardedHumanToken() game.Card { return TokenFromCatalog(printedGapB92WardedHumanToken) }
 
-func printedGapB92WardedHumanToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB92WardedHumanToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "human-ward-2",
 		Card: game.Card{
 			Name:      "Human",
@@ -26,10 +26,10 @@ func printedGapB92WardedHumanToken() tokenTemplate {
 }
 
 // gapB92AlienRhinoToken is "a 4/4 white Alien Rhino creature token".
-func gapB92AlienRhinoToken() game.Card { return tokenFromCatalog(printedGapB92AlienRhinoToken) }
+func GapB92AlienRhinoToken() game.Card { return TokenFromCatalog(printedGapB92AlienRhinoToken) }
 
-func printedGapB92AlienRhinoToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB92AlienRhinoToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "alien-rhino",
 		Card: game.Card{
 			Name:      "Alien Rhino",

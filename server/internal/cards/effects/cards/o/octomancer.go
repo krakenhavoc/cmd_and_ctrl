@@ -34,9 +34,9 @@ func init() {
 			effects.Targeting(
 				effects.AtEachStep(game.StepEnd,
 					"Octomancer — create a token that's a copy of target creature token that entered this turn",
-					gapB92CopyTheChosenToken),
-				TargetCreature("target creature token that entered the battlefield this turn",
-					IsTokenPredicate(), rfCreatureCEnteredThisTurn())),
+					effects.GapB92CopyTheChosenToken),
+				effects.TargetCreature("target creature token that entered the battlefield this turn",
+					effects.IsTokenPredicate(), effects.RfCreatureCEnteredThisTurn())),
 		},
 	})
 }

@@ -5,7 +5,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // gapB86HistoricPlayedFromYourLibrary is The Fourth Doctor's "when you do": its
 // controller cast a historic spell from their library, or played (CR 305.4) a
 // historic land from it.
-func gapB86HistoricPlayedFromYourLibrary(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func GapB86HistoricPlayedFromYourLibrary(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventCast:
 		if ev.Actor != source.Controller || ev.OldZone != game.ZoneLibrary {
@@ -19,5 +19,5 @@ func gapB86HistoricPlayedFromYourLibrary(ev game.Event, source *game.Card, _ gam
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && b09IsHistoric(c)
+	return ok && B09IsHistoric(c)
 }

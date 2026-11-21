@@ -17,7 +17,7 @@ func gapB95IsTimeLord(c game.Card) bool {
 
 // gapB95YouControlATimeLord is the activation condition "Activate only if you
 // control a Time Lord".
-func gapB95YouControlATimeLord(g *game.Game, controller, _ uuid.UUID) bool {
+func GapB95YouControlATimeLord(g *game.Game, controller, _ uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && gapB95IsTimeLord(c) {
 			return true
@@ -30,7 +30,7 @@ func gapB95YouControlATimeLord(g *game.Game, controller, _ uuid.UUID) bool {
 // controller loses N life.": the creature's controller is read before the
 // destroy, so the life loss still lands when the creature is indestructible,
 // and the spell does nothing when its target is gone (CR 608.2b).
-func gapB95DestroyItsControllerLosesLife(n int) func(*game.StackItem, *Context) error {
+func GapB95DestroyItsControllerLosesLife(n int) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		for _, t := range ctx.LegalTargets() {
 			c, ok := ctx.Game.LookupCardForEffect(t.ID)

@@ -11,15 +11,15 @@ import (
 // cast no other historic spell this turn. The turn's cast events are read, so
 // a historic spell that was countered or has resolved still counts, and the
 // spell being priced is not counted against itself.
-func gapB91FirstHistoricSpellThisTurn(g *game.Game, caster uuid.UUID, spell game.Card) bool {
-	if !b09IsHistoric(spell) {
+func GapB91FirstHistoricSpellThisTurn(g *game.Game, caster uuid.UUID, spell game.Card) bool {
+	if !B09IsHistoric(spell) {
 		return false
 	}
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventCast || ev.Actor != caster || ev.CardID == spell.InstanceID {
 			continue
 		}
-		if c, ok := g.LookupCardForEffect(ev.CardID); ok && b09IsHistoric(c) {
+		if c, ok := g.LookupCardForEffect(ev.CardID); ok && B09IsHistoric(c) {
 			return false
 		}
 	}
@@ -29,9 +29,9 @@ func gapB91FirstHistoricSpellThisTurn(g *game.Game, caster uuid.UUID, spell game
 // gapB91ExileTheChosenTarget is "exile target <thing>" as a whole trigger body
 // (Atraxi Warden's entry, Archon of Justice's death): the first target still
 // legal as the ability resolves is exiled (CR 608.2b).
-func gapB91ExileTheChosenTarget(g *game.Game, item *game.StackItem) error {
+func GapB91ExileTheChosenTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

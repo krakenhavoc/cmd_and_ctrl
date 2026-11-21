@@ -108,13 +108,13 @@ func (t TimeTravel) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	return askTimeTravel(ctx, player, timeTravelObjects(ctx.Game, player), max(t.Times, 1)-1)
+	return askTimeTravel(ctx, player, TimeTravelObjects(ctx.Game, player), max(t.Times, 1)-1)
 }
 
 // timeTravelObjects lists what `player` may time travel: the permanents they
 // control with a time counter, then the suspended cards they own in exile
 // (CR 702.62b: in exile, with suspend, with a time counter).
-func timeTravelObjects(g *game.Game, player uuid.UUID) []uuid.UUID {
+func TimeTravelObjects(g *game.Game, player uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.Counters[game.CounterTime] > 0 {
@@ -177,7 +177,7 @@ func askTimeTravel(ctx *Context, player uuid.UUID, ids []uuid.UUID, again int) e
 		}.Apply(ctx)
 	}
 	if again > 0 {
-		return askTimeTravel(ctx, player, timeTravelObjects(ctx.Game, player), again-1)
+		return askTimeTravel(ctx, player, TimeTravelObjects(ctx.Game, player), again-1)
 	}
 	return nil
 }

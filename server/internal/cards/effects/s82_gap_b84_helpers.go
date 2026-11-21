@@ -14,7 +14,7 @@ import (
 // is tallied (CR 601.2b): the spell is a nonlegendary artifact and the caster
 // has cast no nonlegendary artifact spell yet this turn (a legendary artifact
 // spell cast earlier does not count).
-func gapB84FirstNonlegendaryArtifactSpell(g *game.Game, caster uuid.UUID, spell game.Card) bool {
+func GapB84FirstNonlegendaryArtifactSpell(g *game.Game, caster uuid.UUID, spell game.Card) bool {
 	if !spell.IsArtifact() || spell.IsLegendary() {
 		return false
 	}

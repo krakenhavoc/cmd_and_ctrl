@@ -60,10 +60,10 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				_, died := diedCreature(ev, g)
-				return died && ev.CardID != source.InstanceID && dealtDamageByThisTurn(g, source.InstanceID, ev.CardID)
-			}, "Zurgo Helmsmasher — put a +1/+1 counter on it", gapB99CounterOnThis),
+			effects.On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				_, died := effects.DiedCreature(ev, g)
+				return died && ev.CardID != source.InstanceID && effects.DealtDamageByThisTurn(g, source.InstanceID, ev.CardID)
+			}, "Zurgo Helmsmasher — put a +1/+1 counter on it", effects.GapB99CounterOnThis),
 		},
 		Static: []game.StaticAbility{
 			effects.AttacksEachCombat(),

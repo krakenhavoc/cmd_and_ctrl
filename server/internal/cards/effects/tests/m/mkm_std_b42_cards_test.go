@@ -527,7 +527,7 @@ func TestStdB42KyloxSacrificesForPowerExilesThatManyAndCastsOnlyInstantsAndSorce
 			me.Library.PushBottom(c)
 		}
 	})
-	stdB42Attack(t, g, opp.ID, kylox)
+	effectstest.StdB42Attack(t, g, opp.ID, kylox)
 	effectstest.PassPriorityAroundTable(t, g)
 	effectstest.AnswerOwnPermanents(t, g, me.ID, two, three)
 	for _, id := range []uuid.UUID{two, three} {
@@ -561,7 +561,7 @@ func TestStdB42KyloxMaySacrificeNothingAndExileNothing(t *testing.T) {
 	kylox := effectstest.PushDiesCreatureForTest(g, me.ID, "Kylox, Visionary Inventor", stdB42KyloxOracle, "Legendary Creature — Lizard Artificer", 4, 4)
 	bear := effectstest.PushVanillaCreature(g, me.ID, "Bear", 2, 2)
 	library := me.Library.Size()
-	stdB42Attack(t, g, opp.ID, kylox)
+	effectstest.StdB42Attack(t, g, opp.ID, kylox)
 	effectstest.PassPriorityAroundTable(t, g)
 	effectstest.AnswerOwnPermanents(t, g, me.ID)
 	effectstest.PassPriorityAroundTable(t, g)
@@ -571,15 +571,4 @@ func TestStdB42KyloxMaySacrificeNothingAndExileNothing(t *testing.T) {
 	if me.Library.Size() != library {
 		t.Errorf("library %d -> %d: cards were exiled for total power 0", library, me.Library.Size())
 	}
-}
-
-// stdB42Attack declares one attacker and locks the declaration in, leaving
-// the attack trigger's prompt open.
-func stdB42Attack(t *testing.T, g *game.Game, defender, attacker uuid.UUID) {
-	t.Helper()
-	effectstest.AdvanceTo(t, g, game.StepDeclareAttackers)
-	if err := g.DeclareAttacker(attacker, defender); err != nil {
-		t.Fatalf("DeclareAttacker: %v", err)
-	}
-	effectstest.LockInAttacks(t, g)
 }

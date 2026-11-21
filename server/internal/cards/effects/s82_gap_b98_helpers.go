@@ -14,7 +14,7 @@ import (
 // ability is still from that colorless artifact, CR 608.2h), has no color.
 // A source that is a card in another zone (a cycling ability) is read as the
 // card. A source that can be found nowhere fails the clause.
-func gapB98AbilityFromColorlessSource() AbilityPredicate {
+func GapB98AbilityFromColorlessSource() AbilityPredicate {
 	return func(g *game.Game, chooser uuid.UUID, item *game.StackItem) bool {
 		if item.Controller != chooser {
 			return false
@@ -32,4 +32,4 @@ func gapB98AbilityFromColorlessSource() AbilityPredicate {
 // gapB98ExileChosen is the registered answer to Bane of Bala Ged's pick: the
 // defending player exiles each permanent they chose. An on-disk key: never
 // renamed, never reused.
-var gapB98ExileChosen = game.RegisterChooseCardsThen("choose-cards/gap-b98-exile-chosen-permanents", exileEachChosenCard)
+var GapB98ExileChosen = game.RegisterChooseCardsThen("choose-cards/gap-b98-exile-chosen-permanents", ExileEachChosenCard)

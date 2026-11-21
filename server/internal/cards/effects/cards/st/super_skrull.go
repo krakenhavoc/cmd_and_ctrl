@@ -43,9 +43,9 @@ func init() {
 			},
 			{
 				Label:   "{4}{R}: Super-Skrull deals 4 damage to target creature.",
-				Cost:    ManaCost("{4}{R}"),
-				Targets: TargetCreature("target creature"),
-				Effect:  gapB92FourDamageToTheChosenCreature,
+				Cost:    effects.ManaCost("{4}{R}"),
+				Targets: effects.TargetCreature("target creature"),
+				Effect:  effects.GapB92FourDamageToTheChosenCreature,
 			},
 			{
 				Label:   "{5}{U}: Target player draws four cards.",

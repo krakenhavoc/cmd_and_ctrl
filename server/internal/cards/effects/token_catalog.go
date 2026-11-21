@@ -498,8 +498,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 93: The Eleventh Hour's Human (Doctor spells cost {1} less).
 	printedGapDoctorHumanToken,
 	// S82 GAP batch 94: The Girl in the Fireplace's Human Noble and Horse.
-	printedGapHumanNobleToken,
-	printedGapHorseToken,
+	PrintedGapHumanNobleToken,
+	PrintedGapHorseToken,
 	// ADR 0223 (#5910): Everquill Phoenix's Feather.
 	printedFeatherToken,
 	// S82 BNS batch 02: Outlaws' Merriment's Human Rogue.

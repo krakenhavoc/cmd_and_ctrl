@@ -9,16 +9,16 @@ import (
 // gapB87YouCastFromOutsideYourHand is the Paradox condition (Doctor Who): the
 // source's controller cast a spell from anywhere other than their hand, read off
 // the zone the spell left.
-func gapB87YouCastFromOutsideYourHand(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func GapB87YouCastFromOutsideYourHand(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventCast && ev.Actor == source.Controller &&
 		ev.OldZone != "" && ev.OldZone != game.ZoneHand
 }
 
 // gapB87UntapCreaturesWithACounter is "untap each creature you control with a
 // counter on it": a counter of any kind, read as the ability resolves.
-func gapB87UntapCreaturesWithACounter(g *game.Game, item *game.StackItem) error {
+func GapB87UntapCreaturesWithACounter(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	return b16UntapAllYouControlMatching(ctx, item.Controller, func(c game.Card) bool {
+	return B16UntapAllYouControlMatching(ctx, item.Controller, func(c game.Card) bool {
 		if !c.IsCreature() {
 			return false
 		}
@@ -33,10 +33,10 @@ func gapB87UntapCreaturesWithACounter(g *game.Game, item *game.StackItem) error 
 
 // gapB87HistoricPermanentsYouControl counts the historic permanents (artifacts,
 // legendaries, Sagas) a player controls now.
-func gapB87HistoricPermanentsYouControl(g *game.Game, player uuid.UUID) int {
+func GapB87HistoricPermanentsYouControl(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == player && b09IsHistoric(c) {
+		if c.Controller == player && B09IsHistoric(c) {
 			n++
 		}
 	}
@@ -47,7 +47,7 @@ func gapB87HistoricPermanentsYouControl(g *game.Game, player uuid.UUID) int {
 // layer-4 type addition: the source's controller's artifacts that are neither
 // creatures nor Equipment, read post-layer (the addition runs before any later
 // layer, so an artifact that is already an Equipment is left alone).
-func gapB87NoncreatureNonEquipmentArtifactsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func GapB87NoncreatureNonEquipmentArtifactsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.HasCardType("artifact") && !target.IsCreature() &&
 		!target.HasSubtype("Equipment")
 }
@@ -57,7 +57,7 @@ func gapB87NoncreatureNonEquipmentArtifactsYouControl(target *game.Card, _ *game
 // (CR 613.6), so an artifact Dan Lewis himself made an Equipment in layer 4 must
 // still receive the grants: "non-Equipment" is judged on the object as it was
 // before that addition, here its printed subtypes.
-func gapB87DanLewisGrantSet(target *game.Card, _ *game.Game, source *game.Card) bool {
+func GapB87DanLewisGrantSet(target *game.Card, _ *game.Game, source *game.Card) bool {
 	if target.Controller != source.Controller || !target.HasCardType("artifact") || target.IsCreature() {
 		return false
 	}
