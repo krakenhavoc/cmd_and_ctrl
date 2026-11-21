@@ -43,7 +43,7 @@ func (g *Game) recordChosenLocked(playerID, castID, id uuid.UUID) {
 	if p := g.playerByIDLocked(playerID); p != nil && p.Hand != nil {
 		for i := range p.Hand.Cards {
 			if c := &p.Hand.Cards[i]; c.InstanceID == id {
-				item.Paid.Chosen = append(item.Paid.Chosen, PaidTap{ID: id, Epoch: c.ObjectEpoch, Power: c.PowerForComparison(), Left: true})
+				item.Paid.Chosen = append(item.Paid.Chosen, PaidTap{ID: id, Epoch: c.ObjectEpoch, Power: c.PowerForComparison(), Left: true, ManaValue: c.ManaValue()})
 				return
 			}
 		}
@@ -66,4 +66,15 @@ func (g *Game) ChosenPowerForEffect(item *StackItem) (int, bool) {
 		return 0, false
 	}
 	return g.PaidTapPowerForEffect(item.Paid.Chosen[0]), true
+}
+
+// ChosenManaValueForEffect is the mana value of the first card a Chosen
+// reveal recorded on `item`, as it was when revealed from the hand, and
+// whether one was (Calamity of the Titans, "the revealed card's mana
+// value").
+func (g *Game) ChosenManaValueForEffect(item *StackItem) (int, bool) {
+	if item == nil || len(item.Paid.Chosen) == 0 {
+		return 0, false
+	}
+	return item.Paid.Chosen[0].ManaValue, true
 }

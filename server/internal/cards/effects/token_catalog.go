@@ -469,6 +469,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedAfrB15DogIllusionToken,
 	printedAfrB15IllusionToken,
 
+	// Nahiri, the Lithomancer's Stoneforged Blade (Commander Masters,
+	// #5948): an indestructible Equipment token, +5/+5 and double strike,
+	// equip {0}.
+	printedStoneforgedBladeToken,
+
 	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
 	printedReliquaryDragonToken,
 	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):

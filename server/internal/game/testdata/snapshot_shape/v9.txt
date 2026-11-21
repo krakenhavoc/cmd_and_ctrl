@@ -13668,6 +13668,7 @@ frozenEntries[].event.stackItem.paid.chosen[]	object
 frozenEntries[].event.stackItem.paid.chosen[].epoch	number:int
 frozenEntries[].event.stackItem.paid.chosen[].id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.chosen[].left	bool
+frozenEntries[].event.stackItem.paid.chosen[].manaValue	number:int
 frozenEntries[].event.stackItem.paid.chosen[].power	number:int
 frozenEntries[].event.stackItem.paid.chosen[].stationAnyPower	number:int
 frozenEntries[].event.stackItem.paid.chosen[].stationPower	number:int
@@ -13706,6 +13707,7 @@ frozenEntries[].event.stackItem.paid.tappedOthers[]	object
 frozenEntries[].event.stackItem.paid.tappedOthers[].epoch	number:int
 frozenEntries[].event.stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.tappedOthers[].left	bool
+frozenEntries[].event.stackItem.paid.tappedOthers[].manaValue	number:int
 frozenEntries[].event.stackItem.paid.tappedOthers[].power	number:int
 frozenEntries[].event.stackItem.paid.tappedOthers[].stationAnyPower	number:int
 frozenEntries[].event.stackItem.paid.tappedOthers[].stationPower	number:int
@@ -21332,6 +21334,7 @@ lastKnownStack[].item.paid.chosen[]	object
 lastKnownStack[].item.paid.chosen[].epoch	number:int
 lastKnownStack[].item.paid.chosen[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.chosen[].left	bool
+lastKnownStack[].item.paid.chosen[].manaValue	number:int
 lastKnownStack[].item.paid.chosen[].power	number:int
 lastKnownStack[].item.paid.chosen[].stationAnyPower	number:int
 lastKnownStack[].item.paid.chosen[].stationPower	number:int
@@ -21370,6 +21373,7 @@ lastKnownStack[].item.paid.tappedOthers[]	object
 lastKnownStack[].item.paid.tappedOthers[].epoch	number:int
 lastKnownStack[].item.paid.tappedOthers[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.tappedOthers[].left	bool
+lastKnownStack[].item.paid.tappedOthers[].manaValue	number:int
 lastKnownStack[].item.paid.tappedOthers[].power	number:int
 lastKnownStack[].item.paid.tappedOthers[].stationAnyPower	number:int
 lastKnownStack[].item.paid.tappedOthers[].stationPower	number:int
@@ -34191,6 +34195,7 @@ movesAwaitingTokens[].stackItem.paid.chosen[]	object
 movesAwaitingTokens[].stackItem.paid.chosen[].epoch	number:int
 movesAwaitingTokens[].stackItem.paid.chosen[].id	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.chosen[].left	bool
+movesAwaitingTokens[].stackItem.paid.chosen[].manaValue	number:int
 movesAwaitingTokens[].stackItem.paid.chosen[].power	number:int
 movesAwaitingTokens[].stackItem.paid.chosen[].stationAnyPower	number:int
 movesAwaitingTokens[].stackItem.paid.chosen[].stationPower	number:int
@@ -34229,6 +34234,7 @@ movesAwaitingTokens[].stackItem.paid.tappedOthers[]	object
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].epoch	number:int
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].left	bool
+movesAwaitingTokens[].stackItem.paid.tappedOthers[].manaValue	number:int
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].power	number:int
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].stationAnyPower	number:int
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].stationPower	number:int
@@ -40812,6 +40818,7 @@ pausedModeWalk.item.paid.chosen[]	object
 pausedModeWalk.item.paid.chosen[].epoch	number:int
 pausedModeWalk.item.paid.chosen[].id	custom(uuid.UUID)
 pausedModeWalk.item.paid.chosen[].left	bool
+pausedModeWalk.item.paid.chosen[].manaValue	number:int
 pausedModeWalk.item.paid.chosen[].power	number:int
 pausedModeWalk.item.paid.chosen[].stationAnyPower	number:int
 pausedModeWalk.item.paid.chosen[].stationPower	number:int
@@ -40850,6 +40857,7 @@ pausedModeWalk.item.paid.tappedOthers[]	object
 pausedModeWalk.item.paid.tappedOthers[].epoch	number:int
 pausedModeWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedModeWalk.item.paid.tappedOthers[].left	bool
+pausedModeWalk.item.paid.tappedOthers[].manaValue	number:int
 pausedModeWalk.item.paid.tappedOthers[].power	number:int
 pausedModeWalk.item.paid.tappedOthers[].stationAnyPower	number:int
 pausedModeWalk.item.paid.tappedOthers[].stationPower	number:int
@@ -41178,6 +41186,7 @@ pausedResolutionTail.item.paid.chosen[]	object
 pausedResolutionTail.item.paid.chosen[].epoch	number:int
 pausedResolutionTail.item.paid.chosen[].id	custom(uuid.UUID)
 pausedResolutionTail.item.paid.chosen[].left	bool
+pausedResolutionTail.item.paid.chosen[].manaValue	number:int
 pausedResolutionTail.item.paid.chosen[].power	number:int
 pausedResolutionTail.item.paid.chosen[].stationAnyPower	number:int
 pausedResolutionTail.item.paid.chosen[].stationPower	number:int
@@ -41216,6 +41225,7 @@ pausedResolutionTail.item.paid.tappedOthers[]	object
 pausedResolutionTail.item.paid.tappedOthers[].epoch	number:int
 pausedResolutionTail.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedResolutionTail.item.paid.tappedOthers[].left	bool
+pausedResolutionTail.item.paid.tappedOthers[].manaValue	number:int
 pausedResolutionTail.item.paid.tappedOthers[].power	number:int
 pausedResolutionTail.item.paid.tappedOthers[].stationAnyPower	number:int
 pausedResolutionTail.item.paid.tappedOthers[].stationPower	number:int
@@ -41538,6 +41548,7 @@ pausedStepWalk.item.paid.chosen[]	object
 pausedStepWalk.item.paid.chosen[].epoch	number:int
 pausedStepWalk.item.paid.chosen[].id	custom(uuid.UUID)
 pausedStepWalk.item.paid.chosen[].left	bool
+pausedStepWalk.item.paid.chosen[].manaValue	number:int
 pausedStepWalk.item.paid.chosen[].power	number:int
 pausedStepWalk.item.paid.chosen[].stationAnyPower	number:int
 pausedStepWalk.item.paid.chosen[].stationPower	number:int
@@ -41576,6 +41587,7 @@ pausedStepWalk.item.paid.tappedOthers[]	object
 pausedStepWalk.item.paid.tappedOthers[].epoch	number:int
 pausedStepWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedStepWalk.item.paid.tappedOthers[].left	bool
+pausedStepWalk.item.paid.tappedOthers[].manaValue	number:int
 pausedStepWalk.item.paid.tappedOthers[].power	number:int
 pausedStepWalk.item.paid.tappedOthers[].stationAnyPower	number:int
 pausedStepWalk.item.paid.tappedOthers[].stationPower	number:int
@@ -44287,6 +44299,7 @@ pendingChoices[].copyWalk.item.paid.chosen[]	object
 pendingChoices[].copyWalk.item.paid.chosen[].epoch	number:int
 pendingChoices[].copyWalk.item.paid.chosen[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.chosen[].left	bool
+pendingChoices[].copyWalk.item.paid.chosen[].manaValue	number:int
 pendingChoices[].copyWalk.item.paid.chosen[].power	number:int
 pendingChoices[].copyWalk.item.paid.chosen[].stationAnyPower	number:int
 pendingChoices[].copyWalk.item.paid.chosen[].stationPower	number:int
@@ -44325,6 +44338,7 @@ pendingChoices[].copyWalk.item.paid.tappedOthers[]	object
 pendingChoices[].copyWalk.item.paid.tappedOthers[].epoch	number:int
 pendingChoices[].copyWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.tappedOthers[].left	bool
+pendingChoices[].copyWalk.item.paid.tappedOthers[].manaValue	number:int
 pendingChoices[].copyWalk.item.paid.tappedOthers[].power	number:int
 pendingChoices[].copyWalk.item.paid.tappedOthers[].stationAnyPower	number:int
 pendingChoices[].copyWalk.item.paid.tappedOthers[].stationPower	number:int
@@ -61292,6 +61306,7 @@ pendingChoices[].replacementResume.event.stackItem.paid.chosen[]	object
 pendingChoices[].replacementResume.event.stackItem.paid.chosen[].epoch	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.chosen[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.chosen[].left	bool
+pendingChoices[].replacementResume.event.stackItem.paid.chosen[].manaValue	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.chosen[].power	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.chosen[].stationAnyPower	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.chosen[].stationPower	number:int
@@ -61330,6 +61345,7 @@ pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[]	object
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].epoch	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].left	bool
+pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].manaValue	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].power	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].stationAnyPower	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].stationPower	number:int
@@ -71097,6 +71113,7 @@ pendingTriggers[].paid.chosen[]	object
 pendingTriggers[].paid.chosen[].epoch	number:int
 pendingTriggers[].paid.chosen[].id	custom(uuid.UUID)
 pendingTriggers[].paid.chosen[].left	bool
+pendingTriggers[].paid.chosen[].manaValue	number:int
 pendingTriggers[].paid.chosen[].power	number:int
 pendingTriggers[].paid.chosen[].stationAnyPower	number:int
 pendingTriggers[].paid.chosen[].stationPower	number:int
@@ -71135,6 +71152,7 @@ pendingTriggers[].paid.tappedOthers[]	object
 pendingTriggers[].paid.tappedOthers[].epoch	number:int
 pendingTriggers[].paid.tappedOthers[].id	custom(uuid.UUID)
 pendingTriggers[].paid.tappedOthers[].left	bool
+pendingTriggers[].paid.tappedOthers[].manaValue	number:int
 pendingTriggers[].paid.tappedOthers[].power	number:int
 pendingTriggers[].paid.tappedOthers[].stationAnyPower	number:int
 pendingTriggers[].paid.tappedOthers[].stationPower	number:int
@@ -73668,6 +73686,7 @@ resolving.item.paid.chosen[]	object
 resolving.item.paid.chosen[].epoch	number:int
 resolving.item.paid.chosen[].id	custom(uuid.UUID)
 resolving.item.paid.chosen[].left	bool
+resolving.item.paid.chosen[].manaValue	number:int
 resolving.item.paid.chosen[].power	number:int
 resolving.item.paid.chosen[].stationAnyPower	number:int
 resolving.item.paid.chosen[].stationPower	number:int
@@ -73706,6 +73725,7 @@ resolving.item.paid.tappedOthers[]	object
 resolving.item.paid.tappedOthers[].epoch	number:int
 resolving.item.paid.tappedOthers[].id	custom(uuid.UUID)
 resolving.item.paid.tappedOthers[].left	bool
+resolving.item.paid.tappedOthers[].manaValue	number:int
 resolving.item.paid.tappedOthers[].power	number:int
 resolving.item.paid.tappedOthers[].stationAnyPower	number:int
 resolving.item.paid.tappedOthers[].stationPower	number:int
@@ -79329,6 +79349,7 @@ stackMeta[].paid.chosen[]	object
 stackMeta[].paid.chosen[].epoch	number:int
 stackMeta[].paid.chosen[].id	custom(uuid.UUID)
 stackMeta[].paid.chosen[].left	bool
+stackMeta[].paid.chosen[].manaValue	number:int
 stackMeta[].paid.chosen[].power	number:int
 stackMeta[].paid.chosen[].stationAnyPower	number:int
 stackMeta[].paid.chosen[].stationPower	number:int
@@ -79367,6 +79388,7 @@ stackMeta[].paid.tappedOthers[]	object
 stackMeta[].paid.tappedOthers[].epoch	number:int
 stackMeta[].paid.tappedOthers[].id	custom(uuid.UUID)
 stackMeta[].paid.tappedOthers[].left	bool
+stackMeta[].paid.tappedOthers[].manaValue	number:int
 stackMeta[].paid.tappedOthers[].power	number:int
 stackMeta[].paid.tappedOthers[].stationAnyPower	number:int
 stackMeta[].paid.tappedOthers[].stationPower	number:int
