@@ -229,6 +229,8 @@ var reviewedNotAWipe = map[string]string{
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
 	// S82 GAP batch 15.
 	"Summary Dismissal": "exiles the other spells and counters the abilities on the stack: it touches no permanent",
+	// S82 GAP batch 41.
+	"Abstergo Entertainment": "its last ability returns a historic card then exiles the cards in every graveyard: it touches no permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -42198,6 +42198,7 @@ pendingChoices[].assist.spend.Controller	custom(uuid.UUID)
 pendingChoices[].assist.spend.CostHasX	bool
 pendingChoices[].assist.spend.Equip	bool
 pendingChoices[].assist.spend.FaceDownSpell	bool
+pendingChoices[].assist.spend.FreerunningSpell	bool
 pendingChoices[].assist.spend.KickedSpell	bool
 pendingChoices[].assist.spend.ManaCostHasX	bool
 pendingChoices[].assist.spend.ManaValue	number:int
