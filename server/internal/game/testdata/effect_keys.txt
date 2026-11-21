@@ -1165,6 +1165,7 @@ choose choose-cards/populate
 choose choose-cards/port-of-karfell-return
 choose choose-cards/portent-of-calamity-card-type
 choose choose-cards/precursor-golem-copy-order
+choose choose-cards/press-the-enemy-cast
 choose choose-cards/professor-onyx-discard-or-lose
 choose choose-cards/professor-onyx-take
 choose choose-cards/proliferate
@@ -3930,6 +3931,7 @@ tail then/cmdr2-s43-tectonic-giant-choose
 tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others
 tail then/congregation-at-dawn-order
+tail then/councils-deliberation-draw
 tail then/created-gain-keyword-until-eot
 tail then/crippling-fear-type-chosen
 tail then/crystal-spray-draw
