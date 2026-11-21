@@ -630,4 +630,7 @@ var TokenTable = map[string]game.Card{
 	// Defenders of Humanity) and the 3/3 red Spawn (The Lost and the Damned).
 	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"3/3 red Spawn": {Name: "Spawn", TypeLine: "Token Creature — Spawn", Power: 3, Toughness: 3, Colors: []string{"R"}},
+	// S82 GAP batch 198: Warhammer 40,000 Commander's Necron Warrior (Their Number Is Legion) and Tyranid Warrior (Tyranid Invasion).
+	"2/2 black Necron Warrior artifact":      {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	"3/3 green Tyranid Warrior with trample": {Name: "Tyranid Warrior", TypeLine: "Token Creature — Tyranid Warrior", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"trample"}},
 }

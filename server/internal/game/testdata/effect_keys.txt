@@ -1439,6 +1439,7 @@ choose choose-cards/thousand-moons-smithy-tap-five
 choose choose-cards/threats-undetected-settle
 choose choose-cards/tidal-terror-tap-two
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
+choose choose-cards/tomb-fortress-return
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
@@ -4140,6 +4141,7 @@ tail then/abdel-adrian-exiled-one
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
 tail then/ancient-vendetta-named
+tail then/and-they-shall-know-no-fear-type-chosen
 tail then/angelic-intervention-protection-then-counter
 tail then/another-round-return
 tail then/arcum-dagsson-search
@@ -4448,6 +4450,7 @@ tail thunderbolts-conspiracy/hero
 tail thunderous-debut/shuffle-after-put
 tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
+tail tomb-fortress/after-mill
 tail tombstone-stairwell/next-players-tombspawn
 tail toph-hardheaded-teacher/lesson-counter
 tail town-greeter/after-mill
