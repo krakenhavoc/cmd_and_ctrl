@@ -80,6 +80,8 @@ linters:
         - maybelle
         # Mathemagics (Secrets of Strixhaven) is a printed card name.
         - mathemagics
+        # Primaris Eliminator (Warhammer 40,000 Commander) is a printed card name.
+        - primaris
   exclusions:
     # v1's defaults, written out by `migrate`: lax generated-file
     # detection and the three conventional directories. No preset is

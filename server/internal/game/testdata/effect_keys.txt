@@ -2369,6 +2369,7 @@ payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
+payunless pay-unless/mortarion-warriors
 payunless pay-unless/mtenda-lion-prevent-combat-damage
 payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
@@ -3609,6 +3610,7 @@ tail nantuko-cultivator/discarded
 tail narset-enlightened-exile/copy-exiled
 tail nashi-moons-legacy/copy-exiled
 tail necromantic-selection/black-zombie-then-exile
+tail necron-deathmark/after-mill
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
 tail neo-b15/discover-the-impossible-cast
