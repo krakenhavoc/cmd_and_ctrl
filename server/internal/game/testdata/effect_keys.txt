@@ -4203,6 +4203,7 @@ tail waste-management/rogue-per-creature
 tail whiskervale-forerunner/after-put
 tail white-suns-twilight/destroy-all-other-creatures
 tail widespread-brutality/sweep
+tail wilfred-mott/rest-to-bottom
 tail will-of-the-sultai/after-mill
 tail will-of-the-sultai/counters-and-trample
 tail will-riker/rest-on-bottom-then-sacrifice-those-lands

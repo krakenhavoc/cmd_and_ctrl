@@ -21,14 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisDies("Archon of Justice — exile target permanent", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return ExileTarget{Target: id}.Apply(ctx)
-			}), TargetPermanent("target permanent")),
+			Targeting(WhenThisDies("Archon of Justice — exile target permanent", gapB91ExileTheChosenTarget), TargetPermanent("target permanent")),
 		},
 	})
 }
