@@ -208,6 +208,7 @@ body general-traag-heart-of-stone/strike
 body generous-plunderer/gift
 body gift-of-immortality/return-aura
 body gilgamesh/attach-equipment
+body girl-in-the-fireplace/time-travel
 body glacial-dragonhunt/damage
 body glissas-retriever/return-to-hand
 body gloom-surgeon/exile-that-many
@@ -489,6 +490,7 @@ body the-mindskinner/each-opponent-mills
 body the-restoration-of-eiganjo/return-tapped
 body the-ring/sacrifice-blocker-at-end-of-combat
 body the-thing/double-counters
+body the-war-games/exile-all-warriors
 body the-wrath-of-khan/gain-control-of-that-creature
 body thorin-mountain-king/damage
 body thousand-moons-crackshot/tap
@@ -1528,6 +1530,7 @@ condition etb/each-creature-or-enchantment-you-control
 condition etb/each-creature-you-control
 condition etb/each-nontoken-creature-an-opponent-controls
 condition fra-creature-c/lyra-combat-damage-to-a-player
+condition girl-in-the-fireplace/creature-combat-damage-to-player
 condition good-king-mog/you-cast-a-noncreature-spell
 condition havengul-lich/you-cast-it
 condition loki-laufeyson/next-cast
@@ -1948,6 +1951,7 @@ option option-pick/choose-option-as-enters
 option option-pick/choose-player-as-enters
 option option-pick/choose-second-player-as-enters
 option option-pick/cloak-and-dagger-entwined-choice
+option option-pick/clockspinning-counter
 option option-pick/cmdr2-s18-arthur-marigold-knight-attack
 option option-pick/coin-of-fate-opponent
 option option-pick/contractual-safeguard-kind
@@ -1991,6 +1995,7 @@ option option-pick/fact-or-fiction-splitter
 option option-pick/fandaniel-telophoroi-ascian-sacrifice-or-lose-life
 option option-pick/fateful-handoff-opponent
 option option-pick/flicker-return-under-an-opponent
+option option-pick/gap-caves-of-androzani-counter
 option option-pick/ghostly-dancers-return-or-unlock
 option option-pick/gideon-blackblade-keyword
 option option-pick/gluntch-the-bestower-first
@@ -2101,6 +2106,7 @@ option option-pick/the-black-gate-most-life
 option option-pick/the-cloning-of-shredder-copy
 option option-pick/the-master-gallifreys-end-opponent
 option option-pick/the-third-doctor-token
+option option-pick/the-night-of-the-doctor-counter
 option option-pick/thornplate-intimidator-punisher
 option option-pick/threats-undetected-opponent
 option option-pick/thrull-wizard-pay
@@ -2692,6 +2698,7 @@ run prompt-run/the-legend-of-yangchen-exile
 run prompt-run/the-master-formed-anew-body-thief
 run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
+run prompt-run/the-war-games-exile
 run prompt-run/thomil-the-destroyer-add-bbb
 run prompt-run/throne-of-the-grim-captain-put
 run prompt-run/tiger-tribe-hunter-sacrifice
@@ -3886,6 +3893,7 @@ tail the-master-transcendent/green-mutant
 tail the-parting-of-the-ways/time-counters
 tail the-ring/tempts-you-next
 tail the-rise-of-sozin/named
+tail the-war-games/exiled
 tail the-wrath-of-khan/draw-if-exiled
 tail then/aangs-iceberg-scry
 tail then/abdel-adrian-exiled-one
