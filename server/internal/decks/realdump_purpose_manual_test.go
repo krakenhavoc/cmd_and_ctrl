@@ -259,6 +259,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 212 (#5948).
 	"Elder Brain": "exiles only the attacked player's hand, then they draw that many: it touches no permanent",
+
+	// S82 GAP batch 222 (#5948).
+	"Sea Hag // Aquatic Ingress": "-4/-0 to the opponents' creatures until end of turn kills nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
