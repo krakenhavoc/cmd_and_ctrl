@@ -1353,6 +1353,8 @@ choose choose-cards/the-restoration-of-eiganjo-return
 choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-seventh-doctor-chosen
 choose choose-cards/the-ur-sphinx-cast
+choose choose-cards/the-wedding-of-river-song-opponent
+choose choose-cards/the-wedding-of-river-song-you
 choose choose-cards/the-world-spell-take
 choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
@@ -1734,6 +1736,7 @@ confirm confirm/spare-dagger-sacrifice
 confirm confirm/spm-cheering-crowd
 confirm confirm/staff-room-face-up-or-counter
 confirm confirm/star-athlete-sacrifice-or-damage
+confirm confirm/start-the-tardis-planeswalk
 confirm confirm/stensia-uprising-sacrifice
 confirm confirm/stromgald-spy-reveal-hand
 confirm confirm/sunfire-torch-sacrifice
