@@ -287,6 +287,7 @@ body loamcrafter-faun/return-to-hand
 body lockjaw/unblockable
 body long-river-lurker/flicker-that-creature
 body ltb/sacrifice-the-source
+body lucius-the-eternal/return-from-exile
 body madness/graveyard-if-not-cast
 body madness/offer
 body magma-pummeler/remove-counters
@@ -1683,6 +1684,7 @@ confirm confirm/illuna-apex-of-wishes-put
 confirm confirm/imposing-grandeur-may-wheel
 confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/innocuous-researcher-untap
+confirm confirm/inquisitor-eisenhorn-reveal
 confirm confirm/invocation-of-the-founders-copy
 confirm confirm/iroh-tea-master-give
 confirm confirm/isolated-watchtower-reveal
@@ -2164,6 +2166,7 @@ option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
 option option-pick/torment-of-scarabs-answer
 option option-pick/tresserhorns-lord-returned-choice
+option option-pick/triarch-stalker-opponent
 option option-pick/trigger-opponent-chooser
 option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
@@ -2567,6 +2570,7 @@ run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/cataclysmic-gearhulk-keep
+run prompt-run/chaos-defiler-destroy
 run prompt-run/chitterspitter-acorn
 run prompt-run/choking-miasma-counter
 run prompt-run/cmdr2-b09-foul-rebirth-token
@@ -3509,6 +3513,7 @@ tail living-death/sacrifice-creatures
 tail loafing-giant/after-mill
 tail london-mulligan/cards-down
 tail lrell-fierce-visionary/sacrifice-at-end
+tail lucius-the-eternal/exiled
 tail make-your-own-luck/plot-then-rest
 tail makeshift-mannequin/grant-while-counter
 tail malcolm/draw-after-counter

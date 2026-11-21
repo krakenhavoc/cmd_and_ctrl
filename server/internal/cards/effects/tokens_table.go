@@ -609,4 +609,9 @@ var TokenTable = map[string]game.Card{
 	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
 	// S82 GAP batch 62: Mr. House, President and CEO's Robot.
 	"3/3 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 3, Toughness: 3},
+
+	// #5948: Warhammer 40,000 Commander's Cherubael (Inquisitor Eisenhorn) and
+	// Astartes Warrior (Marneus Calgar).
+	"4/4 black Legendary Demon with flying named Cherubael": {Name: "Cherubael", TypeLine: "Token Legendary Creature — Demon", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"flying"}},
+	"2/2 white Astartes Warrior with vigilance":             {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 }
