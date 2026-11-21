@@ -40,6 +40,7 @@ anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/wild-might-extra
 anyplayer any-player/worms-of-the-earth-destroy
 body aang-at-the-crossroads/transform
+body ace-fearless-rebel/counter-and-fight
 body activation-count/sacrifice-this-creature
 body agathas-soul-cauldron/counter
 body all-out-assault/untap-each-creature-you-control
@@ -2453,6 +2454,7 @@ run braids-frightful-return/edict
 run dalek-intensive-care/exile
 run engine/explore-each-pick
 run giant-opportunity/sacrifice-two-foods
+run prompt-run/ace-fearless-rebel-sacrifice
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
 run prompt-run/altar-of-the-wretched-payout
@@ -2669,6 +2671,7 @@ run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-goose-mother-sacrifice-draw
 run prompt-run/the-huntsmans-redemption-sacrificed
 run prompt-run/the-legend-of-yangchen-exile
+run prompt-run/the-master-formed-anew-body-thief
 run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
 run prompt-run/thomil-the-destroyer-add-bbb
@@ -3620,6 +3623,7 @@ tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
+tail sacrificed-one/prompt-run/ace-fearless-rebel-sacrifice
 tail sacrificed-one/prompt-run/ashnod-flesh-mechanist-powerstone
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
