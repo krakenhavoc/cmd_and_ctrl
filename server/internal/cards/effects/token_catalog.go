@@ -286,6 +286,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// each combat (Commander 2016, #5537).
 	printedSpymasterGoblinToken,
 
+	// Pursued Whale's Pirate (S82 GAP batch 222, #5948).
+	printedS82GapB222PursuedPirateToken,
+
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
 	printedCursedRoleToken,

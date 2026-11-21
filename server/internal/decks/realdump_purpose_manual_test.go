@@ -248,6 +248,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 64 (#5948).
 	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
+
+	// S82 GAP batch 222 (#5948).
+	"Sea Hag // Aquatic Ingress": "-4/-0 to the opponents' creatures until end of turn kills nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
