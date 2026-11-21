@@ -2631,6 +2631,7 @@ payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/weakstones-subjugation-tap
 payunless pay-unless/weapons-vendor-attach
 payunless pay-unless/well-of-lost-dreams-draw
+payunless pay-unless/wharf-infiltrator-eldrazi-horror
 payunless pay-unless/widespread-thieving-play
 payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/wolfbat-return

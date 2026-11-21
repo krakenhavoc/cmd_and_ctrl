@@ -20,6 +20,14 @@ var FinB9PartyTypes = [4]string{"Cleric", "Rogue", "Warrior", "Wizard"}
 // (HasSubtype reads CR 702.73a), and the types are read through the layers.
 func FinB9PartySize(g *game.Game, player uuid.UUID) int {
 	g.RecomputeLayersIfStaleLocked()
+	return FinB9PartySizeOnBoard(g, player)
+}
+
+// FinB9PartySizeOnBoard is FinB9PartySize over the board as it stands, with no
+// layer recompute: a characteristic-defining ability that counts the party
+// (Archpriest of Iona's power) runs inside a layer pass, where asking for a
+// recompute would recurse.
+func FinB9PartySizeOnBoard(g *game.Game, player uuid.UUID) int {
 	var fits [][4]bool
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != player || !c.IsCreature() {
