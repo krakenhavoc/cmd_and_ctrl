@@ -233,17 +233,6 @@ func TestGapB123BalrogDurinsBaneDestroysATargetWhenItDies(t *testing.T) {
 	}
 }
 
-// answerPendingTargetIfAny picks `pick` for an open target prompt of `who`,
-// if the engine asked (it does not when only one target is legal).
-func answerPendingTargetIfAny(t *testing.T, g *game.Game, who, pick uuid.UUID) {
-	t.Helper()
-	if p := effectstest.LatestPickTarget(g, who); p != nil {
-		if err := g.ResolvePickTarget(p.ID, who, game.TargetRef{Kind: game.TargetCard, ID: pick}); err != nil {
-			t.Fatalf("ResolvePickTarget: %v", err)
-		}
-	}
-}
-
 func TestGapB123LobeliaExilesAnOpponentsCreatureThatDiedThisTurnForTreasures(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]

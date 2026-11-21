@@ -293,17 +293,6 @@ func TestGapB124LegolasGrowsWhenTargetedAndShootsWhenYouTargetAnOpponentsCreatur
 
 func effectsBattlefieldHas(g *game.Game, id uuid.UUID) bool { return effectstest.BattlefieldHas(g, id) }
 
-// answerPendingTargetIfAny picks `pick` for an open target prompt of `who`, if
-// the engine asked.
-func answerPendingTargetIfAny(t *testing.T, g *game.Game, who, pick uuid.UUID) {
-	t.Helper()
-	if p := effectstest.LatestPickTarget(g, who); p != nil {
-		if err := g.ResolvePickTarget(p.ID, who, game.TargetRef{Kind: game.TargetCard, ID: pick}); err != nil {
-			t.Fatalf("ResolvePickTarget: %v", err)
-		}
-	}
-}
-
 func TestGapB124GaladrielChoosesAModeWhenItEnters(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
