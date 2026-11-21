@@ -338,6 +338,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// unpreventable_damage_test.go and cant_gain_life_test.go.
 		ModDamageCantBePrevented: true, ModDamageCantBeRedirected: true,
 		ModCantGainLife: true, ModGainNoLife: true,
+		// Everybody Lives!: the loss twin of "can't gain life", read by the
+		// life gate, the damage tail and the pay-life check. Its cases are
+		// in the effects package's S82 GAP batch 95 tests.
+		ModCantLoseLife: true,
 		// #4307: Squid Fire Knight's dice replacement, read by no layer.
 		// Its cases are in dice_roll_test.go and cards/effects.
 		ModRollExtraDieIgnoreOne: true,
