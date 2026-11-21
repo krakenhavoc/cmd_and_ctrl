@@ -1138,6 +1138,7 @@ choose choose-cards/moorland-rescuer-total-power-97
 choose choose-cards/moorland-rescuer-total-power-98
 choose choose-cards/moorland-rescuer-total-power-99
 choose choose-cards/moorland-rescuer-total-power-unbounded
+choose choose-cards/mordor-on-the-march-exile
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
@@ -1290,6 +1291,7 @@ choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
+choose choose-cards/seasons-past-different-mana-values
 choose choose-cards/seed-of-hope-permanent
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/serum-core-chimera-discarded
@@ -2160,6 +2162,7 @@ option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
 option option-pick/ultra-magnus-tactician-attacks
 option option-pick/unlock-a-locked-door-of-a-room-you-control
+option option-pick/urborg-loses
 option option-pick/vial-smasher-the-fierce-recipient
 option option-pick/villainous-damocles-base
 option option-pick/villainous-davros-dalek-creator
@@ -3572,6 +3575,7 @@ tail model-of-unity/ask-next
 tail moldgraf-monstrosity/after-exile
 tail mole-module/after-mill
 tail molten-duplication/haste-and-sacrifice-copy
+tail mordor-on-the-march/copy
 tail morningtides-light/schedule-return-prevent-exile-self
 tail msc6/daredevil-fearless-fighter-exiled
 tail msh-a3/black-widow-after-exile
@@ -4251,6 +4255,7 @@ tail thunderous-debut/shuffle-after-put
 tail tinybones-bauble-burglar/after-exile
 tail token-and-attach-source/attach
 tail tombstone-stairwell/next-players-tombspawn
+tail too-greedily-too-deep/damage
 tail toph-hardheaded-teacher/lesson-counter
 tail town-greeter/after-mill
 tail transwarp-hub/after-mill

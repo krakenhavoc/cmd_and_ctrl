@@ -175,6 +175,14 @@ type PlayerStatic struct {
 	// (life_floor.go).
 	LifeFloorOne bool `json:"lifeFloorOne,omitempty"`
 
+	// LifeLossLocked is "you can't lose life" for a duration (Courageous
+	// Resolve's fateful hour, S82 GAP batch 120; CR 119.8). Another
+	// payload-told kind of entry, like LifeTotalLocked, with no Keyword:
+	// where that lock stops every life change, this one stops only a LOSS,
+	// so the player can still gain life. Its READER is
+	// playerLifeLossLockedLocked (life_lock.go).
+	LifeLossLocked bool `json:"lifeLossLocked,omitempty"`
+
 	// CreaturesEnterWithCounters is "each creature you control enters with
 	// N additional <kind> counters on it" for a duration (Arlinn, the
 	// Pack's Hope's +1, #3172). Another payload-told kind of entry; its
