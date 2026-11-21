@@ -84,6 +84,7 @@ var permissionFilterDerived = map[string]string{
 	"rattlechains.go":                 "standing cast timing (castTimingVerdictLocked)",
 	"hunting_velociraptor.go":         "granted prowl (grantedAlternativeCostsLocked)",
 	"quick_sliver.go":                 "standing cast timing (castTimingVerdictLocked)",
+	"korlessa_scale_singer.go":        "standing cast permission (stampStandingPermissionLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {
