@@ -142,17 +142,22 @@ func (g *Game) PlayerCantGainLifeLocked(p *Player) bool {
 	return g.playerCantGainLifeLocked(p)
 }
 
-// lifeGainForbiddenLocked is the gate changeLifeThroughReplacementsLocked
+// lifeChangeForbiddenLocked is the gate changeLifeThroughReplacementsLocked
 // asks before the CR 614 window: is this a life GAIN for a player who
-// can't gain life? A loss, and a change of zero (CR 119.10), are never
+// can't gain life, or a life LOSS for a player who can't lose life
+// (ModCantLoseLife, CR 119.8)? A change of zero (CR 119.10) is never
 // stopped here.
 //
 // Caller must hold g.mu.
-func (g *Game) lifeGainForbiddenLocked(ev *ReplacementEvent) bool {
-	if ev == nil || ev.Kind != RepEventLife || ev.LifeDelta <= 0 {
+func (g *Game) lifeChangeForbiddenLocked(ev *ReplacementEvent) bool {
+	if ev == nil || ev.Kind != RepEventLife || ev.LifeDelta == 0 {
 		return false
 	}
-	return g.playerCantGainLifeLocked(g.playerByIDLocked(ev.LifePlayer))
+	p := g.playerByIDLocked(ev.LifePlayer)
+	if ev.LifeDelta < 0 {
+		return g.playerCantLoseLifeLocked(p)
+	}
+	return g.playerCantGainLifeLocked(p)
 }
 
 // PlayersCantGainLifeForEffect registers "<players> can't gain life"

@@ -268,6 +268,12 @@ type PermissionFilter struct {
 	// because a land is never cast and a colorless land is not a spell.
 	ArtifactOrColorlessOnly bool `json:"artifactOrColorlessOnly,omitempty"`
 
+	// ColorlessOnly is Darksteel Monolith's "a colorless spell": the card
+	// has no colour (CR 105.2c), read from its effective characteristics,
+	// so a coloured artifact fails it and an Eldrazi passes. Pair it with
+	// NonLandOnly where lands could reach the filter. Additive.
+	ColorlessOnly bool `json:"colorlessOnly,omitempty"`
+
 	// AuraOrEquipmentOnly is Sigarda's Aid's "Aura and Equipment
 	// spells" (#3918): an OR of two subtypes, read from the card's
 	// effective subtypes, so an Aura and an Equipment each qualify and
@@ -556,6 +562,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {
+		return false
+	}
+	if f.ColorlessOnly && !c.IsColorless() {
 		return false
 	}
 	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {

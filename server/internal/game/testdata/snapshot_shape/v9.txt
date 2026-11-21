@@ -2164,6 +2164,7 @@ followUpParks[].then.permission.filter.cardInZone	bool
 followUpParks[].then.permission.filter.cardType	string
 followUpParks[].then.permission.filter.cardTypesAny	string
 followUpParks[].then.permission.filter.colorCountExactly	number:int
+followUpParks[].then.permission.filter.colorlessOnly	bool
 followUpParks[].then.permission.filter.colorsAny	string
 followUpParks[].then.permission.filter.creatureOnly	bool
 followUpParks[].then.permission.filter.creatureType	string
@@ -2852,6 +2853,7 @@ frozenEntries[].event.counterTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.counterTail.then.permission.filter.cardType	string
 frozenEntries[].event.counterTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.counterTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.counterTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.counterTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.creatureType	string
@@ -3518,6 +3520,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.cardType	string
 frozenEntries[].event.damageTail.each.each.permission.filter.cardTypesAny	string
 frozenEntries[].event.damageTail.each.each.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.damageTail.each.each.permission.filter.colorlessOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureType	string
@@ -4175,6 +4178,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.cardType	string
 frozenEntries[].event.damageTail.each.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.damageTail.each.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.damageTail.each.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureType	string
@@ -5018,6 +5022,7 @@ frozenEntries[].event.damageTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.then.permission.filter.cardType	string
 frozenEntries[].event.damageTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.damageTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.damageTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.creatureType	string
@@ -5798,6 +5803,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardIn
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardType	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureType	string
@@ -6531,6 +6537,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.cardType	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.batch.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureType	string
@@ -7188,6 +7195,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.cardType	string
 frozenEntries[].event.entryTail.keyed.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.keyed.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.keyed.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureType	string
@@ -7878,6 +7886,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardInZon
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardType	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureType	string
@@ -8556,6 +8565,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.cardType	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureType	string
@@ -9665,6 +9675,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.cardType	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.keywordActionTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureType	string
@@ -10346,6 +10357,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.cardInZone	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.cardType	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.lifeTail.each.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.colorsAny	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureType	string
@@ -11006,6 +11018,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.lifeTail.then.permission.filter.cardType	string
 frozenEntries[].event.lifeTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.lifeTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.lifeTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.lifeTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.creatureType	string
@@ -12526,6 +12539,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.cardInZone	bool
 frozenEntries[].event.millTail.run.then.permission.filter.cardType	string
 frozenEntries[].event.millTail.run.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.millTail.run.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.millTail.run.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.colorsAny	string
 frozenEntries[].event.millTail.run.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.creatureType	string
@@ -13181,6 +13195,7 @@ frozenEntries[].event.millTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.millTail.then.permission.filter.cardType	string
 frozenEntries[].event.millTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.millTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.millTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.millTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.creatureType	string
@@ -14864,6 +14879,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.tokenTail.then.permission.filter.cardType	string
 frozenEntries[].event.tokenTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.tokenTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.tokenTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.tokenTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.creatureType	string
@@ -16840,6 +16856,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardInZone
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
@@ -17530,6 +17547,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.card
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
@@ -18185,6 +18203,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardInZone	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureType	string
@@ -18860,6 +18879,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardInZone	bo
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureType	string
@@ -19604,6 +19624,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardInZone	b
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
@@ -23603,6 +23624,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].counterTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].counterTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].counterTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].counterTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.creatureType	string
@@ -24269,6 +24291,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.cardType	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].damageTail.each.each.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.colorsAny	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.creatureType	string
@@ -24926,6 +24949,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.cardType	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].damageTail.each.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.creatureType	string
@@ -25769,6 +25793,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].damageTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].damageTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].damageTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].damageTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.creatureType	string
@@ -26549,6 +26574,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.cardIn
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.creatureType	string
@@ -27282,6 +27308,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.creatureType	string
@@ -27939,6 +27966,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.keyed.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.creatureType	string
@@ -28629,6 +28657,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.cardInZon
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.creatureType	string
@@ -29307,6 +29336,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.creatureType	string
@@ -30416,6 +30446,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.creatureType	string
@@ -31097,6 +31128,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.cardType	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.creatureType	string
@@ -31757,6 +31789,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].lifeTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.creatureType	string
@@ -33277,6 +33310,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.cardType	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].millTail.run.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.creatureType	string
@@ -33932,6 +33966,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].millTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].millTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].millTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].millTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].millTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.creatureType	string
@@ -35615,6 +35650,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].tokenTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.creatureType	string
@@ -37591,6 +37627,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.cardInZone
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
@@ -38281,6 +38318,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.card
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
@@ -38936,6 +38974,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.creatureType	string
@@ -39611,6 +39650,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.cardInZone	bo
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.creatureType	string
@@ -40355,6 +40395,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.cardInZone	b
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
@@ -43889,6 +43930,7 @@ pendingChoices[].attackSplit.tail.permission.filter.cardInZone	bool
 pendingChoices[].attackSplit.tail.permission.filter.cardType	string
 pendingChoices[].attackSplit.tail.permission.filter.cardTypesAny	string
 pendingChoices[].attackSplit.tail.permission.filter.colorCountExactly	number:int
+pendingChoices[].attackSplit.tail.permission.filter.colorlessOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.colorsAny	string
 pendingChoices[].attackSplit.tail.permission.filter.creatureOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.creatureType	string
@@ -46073,6 +46115,7 @@ pendingChoices[].diceRoll.then.permission.filter.cardInZone	bool
 pendingChoices[].diceRoll.then.permission.filter.cardType	string
 pendingChoices[].diceRoll.then.permission.filter.cardTypesAny	string
 pendingChoices[].diceRoll.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].diceRoll.then.permission.filter.colorlessOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.colorsAny	string
 pendingChoices[].diceRoll.then.permission.filter.creatureOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.creatureType	string
@@ -47137,6 +47180,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.cardInZone	bool
 pendingChoices[].divideShield.walk.each.permission.filter.cardType	string
 pendingChoices[].divideShield.walk.each.permission.filter.cardTypesAny	string
 pendingChoices[].divideShield.walk.each.permission.filter.colorCountExactly	number:int
+pendingChoices[].divideShield.walk.each.permission.filter.colorlessOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.colorsAny	string
 pendingChoices[].divideShield.walk.each.permission.filter.creatureOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.creatureType	string
@@ -47794,6 +47838,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.cardInZone	bool
 pendingChoices[].divideShield.walk.then.permission.filter.cardType	string
 pendingChoices[].divideShield.walk.then.permission.filter.cardTypesAny	string
 pendingChoices[].divideShield.walk.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].divideShield.walk.then.permission.filter.colorlessOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.colorsAny	string
 pendingChoices[].divideShield.walk.then.permission.filter.creatureOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.creatureType	string
@@ -48457,6 +48502,7 @@ pendingChoices[].libraryOrder.then.permission.filter.cardInZone	bool
 pendingChoices[].libraryOrder.then.permission.filter.cardType	string
 pendingChoices[].libraryOrder.then.permission.filter.cardTypesAny	string
 pendingChoices[].libraryOrder.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].libraryOrder.then.permission.filter.colorlessOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.colorsAny	string
 pendingChoices[].libraryOrder.then.permission.filter.creatureOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.creatureType	string
@@ -49174,6 +49220,7 @@ pendingChoices[].nameThen.permission.filter.cardInZone	bool
 pendingChoices[].nameThen.permission.filter.cardType	string
 pendingChoices[].nameThen.permission.filter.cardTypesAny	string
 pendingChoices[].nameThen.permission.filter.colorCountExactly	number:int
+pendingChoices[].nameThen.permission.filter.colorlessOnly	bool
 pendingChoices[].nameThen.permission.filter.colorsAny	string
 pendingChoices[].nameThen.permission.filter.creatureOnly	bool
 pendingChoices[].nameThen.permission.filter.creatureType	string
@@ -50335,6 +50382,7 @@ pendingChoices[].pickTail.permission.filter.cardInZone	bool
 pendingChoices[].pickTail.permission.filter.cardType	string
 pendingChoices[].pickTail.permission.filter.cardTypesAny	string
 pendingChoices[].pickTail.permission.filter.colorCountExactly	number:int
+pendingChoices[].pickTail.permission.filter.colorlessOnly	bool
 pendingChoices[].pickTail.permission.filter.colorsAny	string
 pendingChoices[].pickTail.permission.filter.creatureOnly	bool
 pendingChoices[].pickTail.permission.filter.creatureType	string
@@ -51037,6 +51085,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.card
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureType	string
@@ -51703,6 +51752,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureType	string
@@ -52360,6 +52410,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureType	string
@@ -53203,6 +53254,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardI
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureType	string
@@ -53983,6 +54035,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureType	string
@@ -54716,6 +54769,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureType	string
@@ -55373,6 +55427,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardI
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureType	string
@@ -56063,6 +56118,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureType	string
@@ -56741,6 +56797,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureType	string
@@ -57850,6 +57907,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureType	string
@@ -58531,6 +58589,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ca
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureType	string
@@ -59191,6 +59250,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardInZ
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureType	string
@@ -60711,6 +60771,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.car
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureType	string
@@ -61366,6 +61427,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardInZ
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureType	string
@@ -63049,6 +63111,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardIn
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureType	string
@@ -65025,6 +65088,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
@@ -65715,6 +65779,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
@@ -66370,6 +66435,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureType	string
@@ -67045,6 +67111,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureType	string
@@ -67789,6 +67856,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
@@ -68904,6 +68972,7 @@ pendingChoices[].scryThen.permission.filter.cardInZone	bool
 pendingChoices[].scryThen.permission.filter.cardType	string
 pendingChoices[].scryThen.permission.filter.cardTypesAny	string
 pendingChoices[].scryThen.permission.filter.colorCountExactly	number:int
+pendingChoices[].scryThen.permission.filter.colorlessOnly	bool
 pendingChoices[].scryThen.permission.filter.colorsAny	string
 pendingChoices[].scryThen.permission.filter.creatureOnly	bool
 pendingChoices[].scryThen.permission.filter.creatureType	string
@@ -69607,6 +69676,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardInZone	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardType	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardTypesAny	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.colorCountExactly	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.colorlessOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.colorsAny	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureType	string
@@ -75541,6 +75611,7 @@ seats[].castPermissions[].filter.cardInZone	bool
 seats[].castPermissions[].filter.cardType	string
 seats[].castPermissions[].filter.cardTypesAny	string
 seats[].castPermissions[].filter.colorCountExactly	number:int
+seats[].castPermissions[].filter.colorlessOnly	bool
 seats[].castPermissions[].filter.colorsAny	string
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
@@ -79305,6 +79376,7 @@ seats[].statics[].cantBeCountered.filter.cardInZone	bool
 seats[].statics[].cantBeCountered.filter.cardType	string
 seats[].statics[].cantBeCountered.filter.cardTypesAny	string
 seats[].statics[].cantBeCountered.filter.colorCountExactly	number:int
+seats[].statics[].cantBeCountered.filter.colorlessOnly	bool
 seats[].statics[].cantBeCountered.filter.colorsAny	string
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
@@ -79359,6 +79431,7 @@ seats[].statics[].castBan.filter.cardInZone	bool
 seats[].statics[].castBan.filter.cardType	string
 seats[].statics[].castBan.filter.cardTypesAny	string
 seats[].statics[].castBan.filter.colorCountExactly	number:int
+seats[].statics[].castBan.filter.colorlessOnly	bool
 seats[].statics[].castBan.filter.colorsAny	string
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
@@ -79469,6 +79542,7 @@ seats[].statics[].nextSpell.filter.cardInZone	bool
 seats[].statics[].nextSpell.filter.cardType	string
 seats[].statics[].nextSpell.filter.cardTypesAny	string
 seats[].statics[].nextSpell.filter.colorCountExactly	number:int
+seats[].statics[].nextSpell.filter.colorlessOnly	bool
 seats[].statics[].nextSpell.filter.colorsAny	string
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
@@ -79531,6 +79605,7 @@ seats[].statics[].timing.filter.cardInZone	bool
 seats[].statics[].timing.filter.cardType	string
 seats[].statics[].timing.filter.cardTypesAny	string
 seats[].statics[].timing.filter.colorCountExactly	number:int
+seats[].statics[].timing.filter.colorlessOnly	bool
 seats[].statics[].timing.filter.colorsAny	string
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
