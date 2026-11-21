@@ -1,8 +1,9 @@
-package effects
+package cardsg
 
 import (
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -23,19 +24,19 @@ import (
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "4563ae4b-6226-4cc9-abde-582d0ab83433",
 		Name:         "Gandalf, Westward Voyager",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(ManaValueGE(5), "Gandalf, Westward Voyager — each opponent reveals the top card of their library; if any shares a card type with the spell, copy it and each opponent draws a card, otherwise you draw a card",
+			effects.WheneverYouCast(effects.ManaValueGE(5), "Gandalf, Westward Voyager — each opponent reveals the top card of their library; if any shares a card type with the spell, copy it and each opponent draws a card, otherwise you draw a card",
 				s82GapB117GandalfVoyager),
 		},
 	})
 }
 
 func s82GapB117GandalfVoyager(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
+	ctx := effects.NewContext(g, item)
 	spellID := ctx.Trigger().Event.CardID
 	if spellID == uuid.Nil {
 		return nil
@@ -44,23 +45,23 @@ func s82GapB117GandalfVoyager(g *game.Game, item *game.StackItem) error {
 	shared := false
 	for _, opp := range ctx.Opponents() {
 		var revealed []uuid.UUID
-		if err := (RevealTopOfLibrary{Player: opp, N: 1, Reason: "Gandalf, Westward Voyager", Revealed: &revealed}).Apply(ctx); err != nil {
+		if err := (effects.RevealTopOfLibrary{Player: opp, N: 1, Reason: "Gandalf, Westward Voyager", Revealed: &revealed}).Apply(ctx); err != nil {
 			return err
 		}
 		for _, id := range revealed {
-			if c, ok := g.LookupCardForEffect(id); ok && spellOK && vowB16SharesATypeWithAny(c, []*game.Card{&spell}) {
+			if c, ok := g.LookupCardForEffect(id); ok && spellOK && effects.VowB16SharesATypeWithAny(c, []*game.Card{&spell}) {
 				shared = true
 			}
 		}
 	}
 	if !shared {
-		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+		return effects.DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 	}
-	if err := (CopySpell{StackID: spellID, Controller: item.Controller, ChooseNewTargets: true, FromLastKnown: true}).Apply(ctx); err != nil {
+	if err := (effects.CopySpell{StackID: spellID, Controller: item.Controller, ChooseNewTargets: true, FromLastKnown: true}).Apply(ctx); err != nil {
 		return err
 	}
 	for _, opp := range ctx.Opponents() {
-		if err := (DrawCards{Player: opp, N: 1}).Apply(ctx); err != nil {
+		if err := (effects.DrawCards{Player: opp, N: 1}).Apply(ctx); err != nil {
 			return err
 		}
 	}

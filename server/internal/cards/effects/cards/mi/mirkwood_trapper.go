@@ -1,8 +1,9 @@
-package effects
+package cardsmi
 
 import (
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -27,26 +28,26 @@ import (
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "debbbdb2-2fa8-413f-b394-977212915c65",
 		Name:         "Mirkwood Trapper",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(OncePerBatchPerPlayer(On(game.EventAttack, msc18APlayerAttacksYou,
+			effects.Targeting(effects.OncePerBatchPerPlayer(effects.On(game.EventAttack, effects.APlayerAttacksYou,
 				"Mirkwood Trapper — target attacking creature gets -2/-0 until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
+					ctx := effects.NewContext(g, item)
 					ts := ctx.LegalTargets()
 					if len(ts) == 0 {
 						return nil
 					}
-					return BoostUntilEOT{Target: ts[0].ID, Power: -2, Label: "Mirkwood Trapper — -2/-0"}.Apply(ctx)
+					return effects.BoostUntilEOT{Target: ts[0].ID, Power: -2, Label: "Mirkwood Trapper — -2/-0"}.Apply(ctx)
 				})),
-				TargetCreature("target attacking creature", AttackingCreature())),
-			InterveningIf(s82GapB117TrapperNotAttackedCond,
-				OncePerBatch(On(game.EventAttack, s82GapB117TrapperAttackerNotAttackingYou,
+				effects.TargetCreature("target attacking creature", effects.AttackingCreature())),
+			effects.InterveningIf(s82GapB117TrapperNotAttackedCond,
+				effects.OncePerBatch(effects.On(game.EventAttack, s82GapB117TrapperAttackerNotAttackingYou,
 					"Mirkwood Trapper — that player chooses an attacking creature; it gets +2/+0 until end of turn",
-					Do(Instruction(s82GapB117TrapperChoose))))),
+					effects.Do(effects.Instruction(s82GapB117TrapperChoose))))),
 		},
 	})
 }
@@ -70,29 +71,29 @@ func s82GapB117TrapperAttackerNotAttackingYou(ev game.Event, source *game.Card, 
 	return !s82GapB117AttackingYou(g, ev.Actor, source.Controller)
 }
 
-var s82GapB117TrapperNotAttackedCond = CondBoard{
+var s82GapB117TrapperNotAttackedCond = effects.CondBoard{
 	Name: "the attacking player isn't attacking you",
-	Test: func(ctx *Context) bool {
+	Test: func(ctx *effects.Context) bool {
 		attacker := ctx.Trigger().Event.Actor
 		return attacker != uuid.Nil && !s82GapB117AttackingYou(ctx.Game, attacker, ctx.Controller())
 	},
 }
 
-func s82GapB117TrapperChoose(ctx *Context) error {
-	return ChoosePermanents{
+func s82GapB117TrapperChoose(ctx *effects.Context) error {
+	return effects.ChoosePermanents{
 		Player:   ctx.Trigger().Event.Actor,
 		Question: "Mirkwood Trapper — choose an attacking creature; it gets +2/+0 until end of turn",
 		Candidates: func(g *game.Game, _ uuid.UUID) ([]uuid.UUID, int, int) {
-			return AttackingCreatures(g), 1, 1
+			return effects.AttackingCreatures(g), 1, 1
 		},
 		Keyed: s82GapB117TrapperPump,
 	}.Apply(ctx)
 }
 
-var s82GapB117TrapperPump = RegisterPermanentsPick("prompt-run/mirkwood-trapper-pump", PermanentsDef{
-	Then: func(ctx *Context, picked game.PromptedPicks) error {
+var s82GapB117TrapperPump = effects.RegisterPermanentsPick("prompt-run/mirkwood-trapper-pump", effects.PermanentsDef{
+	Then: func(ctx *effects.Context, picked game.PromptedPicks) error {
 		for _, id := range picked.Cards() {
-			if err := (BoostUntilEOT{Target: id, Power: 2, Label: "Mirkwood Trapper — +2/+0"}).Apply(ctx); err != nil {
+			if err := (effects.BoostUntilEOT{Target: id, Power: 2, Label: "Mirkwood Trapper — +2/+0"}).Apply(ctx); err != nil {
 				return err
 			}
 		}

@@ -1,6 +1,10 @@
-package effects
+package cardsb
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Banquet Guests — Creature — Halfling Citizen {X}{G}{W}, 0/0 (Tales of
 // Middle-earth Commander):
@@ -20,29 +24,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:        "7f2579ef-0422-4cb1-a0f8-6ad0d942515b",
 		Name:            "Banquet Guests",
-		Completeness:    CompletenessFull,
+		Completeness:    effects.CompletenessFull,
 		XMatters:        true,
 		PrintedKeywords: []string{"trample"},
 		SelfCostModifiers: []game.CostModifier{
-			AffinityFor("Affinity for Foods", HasSubtype("Food")),
+			effects.AffinityFor("Affinity for Foods", effects.HasSubtype("Food")),
 		},
-		EntersWithCountersFromCast: []game.EntryCountersFromCast{s82GapB117TwiceXCounters(game.CounterPlusOne)},
-		Activated: []ActivatedAbility{{
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{effects.S82GapB117TwiceXCounters(game.CounterPlusOne)},
+		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}, Sacrifice a Food: This creature gains indestructible until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerProtect},
-			Cost:    Plus(ManaCost("{2}"), game.AbilityCost{SacrificeOther: sacrificeSpec("a Food", HasSubtype("Food"))}),
+			Cost:    effects.Plus(effects.ManaCost("{2}"), game.AbilityCost{SacrificeOther: effects.SacrificeSpec("a Food", effects.HasSubtype("Food"))}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !sourceIsStillThisPermanent(g, item) {
+				if !effects.SourceIsStillThisPermanent(g, item) {
 					return nil
 				}
-				return GrantKeywordUntilEOT{
+				return effects.GrantKeywordUntilEOT{
 					Target:   item.SourceCardID,
 					Keywords: []string{"indestructible"},
 					Label:    "Banquet Guests — indestructible",
-				}.Apply(NewContext(g, item))
+				}.Apply(effects.NewContext(g, item))
 			},
 		}},
 	})

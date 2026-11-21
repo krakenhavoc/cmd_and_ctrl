@@ -40,7 +40,7 @@ func init() {
 	)
 	drain := effects.OncePerBatchPerPlayer(effects.On(game.EventAttack, msc18YouAttackTheEnchantedPlayer, drainLabel,
 		effects.Do(effects.Instruction(msc18TheAttackedPlayerLoses2), effects.DrawCards{N: 1}, effects.GainLife{Amount: 2})))
-	move := effects.OncePerBatchPerPlayer(effects.Optional(effects.On(game.EventAttack, msc18APlayerAttacksYou, moveLabel,
+	move := effects.OncePerBatchPerPlayer(effects.Optional(effects.On(game.EventAttack, effects.APlayerAttacksYou, moveLabel,
 		effects.Do(effects.Instruction(msc18AttachToTheAttacker))),
 		"Archnemesis — attach this Aura to the attacking player?"))
 	effects.Register(effects.Spec{
@@ -58,14 +58,6 @@ func msc18YouAttackTheEnchantedPlayer(ev game.Event, source *game.Card, _ game.C
 		return false
 	}
 	return source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == effects.AttackedPlayer(g, ev)
-}
-
-// msc18APlayerAttacksYou is "whenever a player attacks you".
-func msc18APlayerAttacksYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || ev.Kind != game.EventAttack || ev.Actor == source.Controller {
-		return false
-	}
-	return effects.AttackedPlayer(g, ev) == source.Controller
 }
 
 // msc18TheAttackedPlayerLoses2 is "that player loses 2 life": the player the

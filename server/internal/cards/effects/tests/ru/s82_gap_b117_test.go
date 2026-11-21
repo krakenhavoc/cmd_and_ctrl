@@ -1,10 +1,12 @@
-package effects
+package testsru
 
 import (
 	"testing"
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -59,59 +61,59 @@ func TestGapB117Registered(t *testing.T) {
 		gapKnollspine: gapKnollspineN, gapGandalfSF: "Gandalf of the Secret Fire",
 		gapTrapper: "Mirkwood Trapper",
 	} {
-		stdRegisteredFull(t, oracle, name)
+		effectstest.StdRegisteredFull(t, oracle, name)
 	}
 }
 
 func TestGapB117DenethorCrownsTheTargetPlayerAndDealsThree(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp, other := blbB1Seats(g)
-	id := pushCatalogPermanent(g, me.ID, "Denethor, Stone Seer", "Legendary Creature — Human Noble", gapDenethor, false)
-	advanceToMain(t, g)
+	g := effectstest.NewCatalogGame(t)
+	me, opp, other := effectstest.BlbB1Seats(g)
+	id := effectstest.PushCatalogPermanent(g, me.ID, "Denethor, Stone Seer", "Legendary Creature — Human Noble", gapDenethor, false)
+	effectstest.AdvanceToMain(t, g)
 	// Strict: a pool that can't pay {3}{R} is refused.
 	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true,
 		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetPlayer, ID: other.ID, Slot: 1}}}); err == nil {
 		t.Fatal("activated without paying {3}{R}")
 	}
-	b06AddMana(me, "R", "G", "G", "G")
-	before := lifeOf(g, other.ID)
+	effectstest.B06AddMana(me, "R", "G", "G", "G")
+	before := effectstest.LifeOf(g, other.ID)
 	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true,
 		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetPlayer, ID: other.ID, Slot: 1}}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(id) {
 		t.Error("Denethor was not sacrificed")
 	}
 	if g.Monarch != opp.ID {
 		t.Errorf("monarch = %v, want the targeted player", g.Monarch)
 	}
-	if got := lifeOf(g, other.ID); got != before-3 {
+	if got := effectstest.LifeOf(g, other.ID); got != before-3 {
 		t.Errorf("life %d -> %d, want -3", before, got)
 	}
 }
 
 func TestGapB117DenethorEntersAndScrysTwo(t *testing.T) {
-	g := newCatalogGame(t)
-	me, _, _ := blbB1Seats(g)
-	seedLibrary(me, "A", "B", "C")
-	if _, err := blbHCastWithMana(t, g, "Denethor, Stone Seer", "Legendary Creature — Human Noble", gapDenethor, "{1}{U}", 1, 3, "U", "U"); err != nil {
+	g := effectstest.NewCatalogGame(t)
+	me, _, _ := effectstest.BlbB1Seats(g)
+	effectstest.SeedLibrary(me, "A", "B", "C")
+	if _, err := effectstest.BlbHCastWithMana(t, g, "Denethor, Stone Seer", "Legendary Creature — Human Noble", gapDenethor, "{1}{U}", 1, 3, "U", "U"); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	passPriorityAroundTable(t, g)
-	c := scryChoiceFor(g, me.ID)
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.ScryChoiceFor(g, me.ID)
 	if c == nil || len(c.ScryCards) != 2 {
 		t.Fatalf("want a scry-2 prompt, got %+v", c)
 	}
 }
 
 func TestGapB117TreebeardMakesFoodAndPutsCountersEqualToLifeGained(t *testing.T) {
-	g := newCatalogGame(t)
-	me, _, _ := blbB1Seats(g)
-	if _, err := blbHCastWithMana(t, g, "Treebeard, Gracious Host", "Legendary Creature — Treefolk", gapTreebeard, "{2}{G}{W}", 0, 5, "G", "W", "G", "G"); err != nil {
+	g := effectstest.NewCatalogGame(t)
+	me, _, _ := effectstest.BlbB1Seats(g)
+	if _, err := effectstest.BlbHCastWithMana(t, g, "Treebeard, Gracious Host", "Legendary Creature — Treefolk", gapTreebeard, "{2}{G}{W}", 0, 5, "G", "W", "G", "G"); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if n := gapB117Count(g, me.ID, "Food"); n != 2 {
 		t.Fatalf("%d Food tokens, want 2", n)
 	}
@@ -123,18 +125,18 @@ func TestGapB117TreebeardMakesFoodAndPutsCountersEqualToLifeGained(t *testing.T)
 			}
 		}
 	})
-	if !p1g2HasKeyword(g, tree, "trample") {
+	if !effectstest.P1g2HasKeyword(g, tree, "trample") {
 		t.Error("Treebeard lacks trample")
 	}
-	gainLifeNow(t, g, tree, me, 3)
-	assistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetCard, ID: tree}, true)
+	effectstest.GainLifeNow(t, g, tree, me, 3)
+	effectstest.AssistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetCard, ID: tree}, true)
 	if got := gapB117Counters(g, tree); got != 3 {
 		t.Errorf("%d +1/+1 counters, want 3", got)
 	}
 	// A non-Halfling, non-Treefolk is not a legal target.
-	bear := blbB1Push(g, me.ID, "Bear", "Creature — Bear", "", 2, 2)
-	gainLifeNow(t, g, tree, me, 1)
-	if p := latestPickTarget(g, me.ID); p != nil {
+	bear := effectstest.BlbB1Push(g, me.ID, "Bear", "Creature — Bear", "", 2, 2)
+	effectstest.GainLifeNow(t, g, tree, me, 1)
+	if p := effectstest.LatestPickTarget(g, me.ID); p != nil {
 		if err := g.ResolvePickTarget(p.ID, p.Chooser, game.TargetRef{Kind: game.TargetCard, ID: bear}); err == nil {
 			t.Error("a Bear was accepted as 'target Halfling or Treefolk'")
 		}
@@ -142,78 +144,78 @@ func TestGapB117TreebeardMakesFoodAndPutsCountersEqualToLifeGained(t *testing.T)
 }
 
 func TestGapB117RidersOfRohanMakesTwoKnightsAndDashes(t *testing.T) {
-	g := newCatalogGame(t)
-	me, _, _ := blbB1Seats(g)
-	if _, err := blbHCastWithMana(t, g, "Riders of Rohan", "Creature — Human Knight", gapRiders, "{3}{R}{W}", 4, 4, "R", "W"); err == nil {
+	g := effectstest.NewCatalogGame(t)
+	me, _, _ := effectstest.BlbB1Seats(g)
+	if _, err := effectstest.BlbHCastWithMana(t, g, "Riders of Rohan", "Creature — Human Knight", gapRiders, "{3}{R}{W}", 4, 4, "R", "W"); err == nil {
 		t.Fatal("cast for {3}{R}{W} with two mana")
 	}
-	g2 := newCatalogGame(t)
-	me2, _, _ := blbB1Seats(g2)
-	if _, err := blbHCastWithMana(t, g2, "Riders of Rohan", "Creature — Human Knight", gapRiders, "{3}{R}{W}", 4, 4, "R", "W", "G", "G", "G"); err != nil {
+	g2 := effectstest.NewCatalogGame(t)
+	me2, _, _ := effectstest.BlbB1Seats(g2)
+	if _, err := effectstest.BlbHCastWithMana(t, g2, "Riders of Rohan", "Creature — Human Knight", gapRiders, "{3}{R}{W}", 4, 4, "R", "W", "G", "G", "G"); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	passPriorityAroundTable(t, g2)
+	effectstest.PassPriorityAroundTable(t, g2)
 	if n := gapB117Count(g2, me2.ID, "Human Knight"); n != 2 {
 		t.Fatalf("%d Knight tokens, want 2", n)
 	}
 	_ = me
 	// Dash: {4}{R}{W}, returns to hand at the end step.
-	g3 := newCatalogGame(t)
-	me3, _, _ := blbB1Seats(g3)
+	g3 := effectstest.NewCatalogGame(t)
+	me3, _, _ := effectstest.BlbB1Seats(g3)
 	id := uuid.New()
 	me3.Hand.PushTop(game.Card{InstanceID: id, Name: "Riders of Rohan", TypeLine: "Creature — Human Knight", OracleID: gapRiders,
 		ManaCost: "{3}{R}{W}", Power: 4, Toughness: 4, Owner: me3.ID, Controller: me3.ID})
-	advanceToMain(t, g3)
-	b06AddMana(me3, "R", "W", "G", "G", "G", "G")
+	effectstest.AdvanceToMain(t, g3)
+	effectstest.B06AddMana(me3, "R", "W", "G", "G", "G", "G")
 	if err := g3.CastSpell(me3.ID, id, game.CastSpellParams{Strict: true, AlternativeCost: "dash"}); err != nil {
 		t.Fatalf("dash cast: %v", err)
 	}
-	passPriorityAroundTable(t, g3)
-	if !p1g2HasKeyword(g3, id, "haste") {
+	effectstest.PassPriorityAroundTable(t, g3)
+	if !effectstest.P1g2HasKeyword(g3, id, "haste") {
 		t.Error("dashed Riders lack haste")
 	}
 	if n := gapB117Count(g3, me3.ID, "Human Knight"); n != 2 {
 		t.Errorf("dashed cast made %d Knights, want 2", n)
 	}
-	advanceTo(t, g3, game.StepEnd)
-	passPriorityAroundTable(t, g3)
+	effectstest.AdvanceTo(t, g3, game.StepEnd)
+	effectstest.PassPriorityAroundTable(t, g3)
 	if !me3.Hand.Contains(id) {
 		t.Error("the dashed Riders did not return to hand")
 	}
 }
 
 func TestGapB117BanquetGuestsAffinityCountersAndIndestructible(t *testing.T) {
-	g := newCatalogGame(t)
-	me, _, _ := blbB1Seats(g)
+	g := effectstest.NewCatalogGame(t)
+	me, _, _ := effectstest.BlbB1Seats(g)
 	// Two Foods make {X}{G}{W} cost {X}{G}{W} - 2 generic when X = 2.
-	f1 := blbB1Push(g, me.ID, "Food", "Token Artifact — Food", "", 0, 0)
-	f2 := blbB1Push(g, me.ID, "Food", "Token Artifact — Food", "", 0, 0)
+	f1 := effectstest.BlbB1Push(g, me.ID, "Food", "Token Artifact — Food", "", 0, 0)
+	f2 := effectstest.BlbB1Push(g, me.ID, "Food", "Token Artifact — Food", "", 0, 0)
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Banquet Guests", TypeLine: "Creature — Halfling Citizen", OracleID: gapBanquet,
 		ManaCost: "{X}{G}{W}", Owner: me.ID, Controller: me.ID})
-	advanceToMain(t, g)
+	effectstest.AdvanceToMain(t, g)
 	// X = 2 costs {2}{G}{W} before affinity; two Foods leave just {G}{W}.
-	b06AddMana(me, "G", "W")
+	effectstest.B06AddMana(me, "G", "W")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, XValue: 2}); err != nil {
 		t.Fatalf("cast X=2 with two Foods: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if got := gapB117Counters(g, id); got != 4 {
 		t.Errorf("%d +1/+1 counters, want twice X = 4", got)
 	}
-	if !p1g2HasKeyword(g, id, "trample") {
+	if !effectstest.P1g2HasKeyword(g, id, "trample") {
 		t.Error("lacks trample")
 	}
 	// {2}, Sacrifice a Food: indestructible.
-	b06AddMana(me, "G", "G")
+	effectstest.B06AddMana(me, "G", "G")
 	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{f1}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(f1) {
 		t.Error("the Food was not sacrificed")
 	}
-	if !p1g2HasKeyword(g, id, "indestructible") {
+	if !effectstest.P1g2HasKeyword(g, id, "indestructible") {
 		t.Error("Banquet Guests did not gain indestructible")
 	}
 	_ = f2
@@ -224,32 +226,32 @@ func TestGapB117BanquetGuestsAffinityCountersAndIndestructible(t *testing.T) {
 }
 
 func TestGapB117MerrySoldiersOncePerTurnAndPartnerWith(t *testing.T) {
-	g := newCatalogGame(t)
-	me, _, _ := blbB1Seats(g)
-	merry, _ := Lookup(gapMerry)
+	g := effectstest.NewCatalogGame(t)
+	me, _, _ := effectstest.BlbB1Seats(g)
+	merry, _ := effects.Lookup(gapMerry)
 	if len(merry.Triggered) != 2 {
 		t.Fatalf("want the partner trigger and the artifact trigger, got %d", len(merry.Triggered))
 	}
-	blbB1Push(g, me.ID, "Merry, Warden of Isengard", "Legendary Creature — Halfling Advisor", gapMerry, 1, 4)
-	castCatalogSpell(t, g, "Rock", "Artifact", "", nil)
-	passPriorityAroundTable(t, g)
+	effectstest.BlbB1Push(g, me.ID, "Merry, Warden of Isengard", "Legendary Creature — Halfling Advisor", gapMerry, 1, 4)
+	effectstest.CastCatalogSpell(t, g, "Rock", "Artifact", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
 	if n := gapB117Count(g, me.ID, "Soldier"); n != 1 {
 		t.Fatalf("%d Soldiers after the first artifact, want 1", n)
 	}
-	castCatalogSpell(t, g, "Rock", "Artifact", "", nil)
-	passPriorityAroundTable(t, g)
+	effectstest.CastCatalogSpell(t, g, "Rock", "Artifact", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
 	if n := gapB117Count(g, me.ID, "Soldier"); n != 1 {
 		t.Errorf("%d Soldiers after a second artifact the same turn, want still 1", n)
 	}
 }
 
 func TestGapB117AragornCrownsOnEntry(t *testing.T) {
-	g := newCatalogGame(t)
-	me, _, _ := blbB1Seats(g)
-	if _, err := blbHCastWithMana(t, g, "Aragorn, King of Gondor", "Legendary Creature — Human Noble", gapAragorn, "{1}{U}{R}{W}", 4, 4, "U", "R", "W", "G"); err != nil {
+	g := effectstest.NewCatalogGame(t)
+	me, _, _ := effectstest.BlbB1Seats(g)
+	if _, err := effectstest.BlbHCastWithMana(t, g, "Aragorn, King of Gondor", "Legendary Creature — Human Noble", gapAragorn, "{1}{U}{R}{W}", 4, 4, "U", "R", "W", "G"); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if g.Monarch != me.ID {
 		t.Errorf("monarch = %v, want the caster", g.Monarch)
 	}
@@ -257,33 +259,33 @@ func TestGapB117AragornCrownsOnEntry(t *testing.T) {
 
 func TestGapB117AragornAttackStopsOneBlockerAndTheMonarchStopsAll(t *testing.T) {
 	for _, monarch := range []bool{false, true} {
-		g := newCatalogGame(t)
-		me, opp, _ := blbB1Seats(g)
-		id := blbB1Push(g, me.ID, "Aragorn, King of Gondor", "Legendary Creature — Human Noble", gapAragorn, 4, 4)
+		g := effectstest.NewCatalogGame(t)
+		me, opp, _ := effectstest.BlbB1Seats(g)
+		id := effectstest.BlbB1Push(g, me.ID, "Aragorn, King of Gondor", "Legendary Creature — Human Noble", gapAragorn, 4, 4)
 		for _, kw := range []string{"vigilance", "lifelink"} {
-			if !p1g2HasKeyword(g, id, kw) {
+			if !effectstest.P1g2HasKeyword(g, id, kw) {
 				t.Errorf("lacks %s", kw)
 			}
 		}
 		if monarch {
 			g.WithWriteLock(func() { g.Monarch = me.ID })
 		}
-		target := blbB1Push(g, opp.ID, "Wall", "Creature — Wall", "", 0, 4)
-		other := blbB1Push(g, opp.ID, "Wall Two", "Creature — Wall", "", 0, 4)
-		declareAttack(t, g, opp.ID, id)
-		assistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetCard, ID: target}, true)
-		if auraRestrictions(t, g, target)&game.CantBlock == 0 {
+		target := effectstest.BlbB1Push(g, opp.ID, "Wall", "Creature — Wall", "", 0, 4)
+		other := effectstest.BlbB1Push(g, opp.ID, "Wall Two", "Creature — Wall", "", 0, 4)
+		effectstest.DeclareAttack(t, g, opp.ID, id)
+		effectstest.AssistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetCard, ID: target}, true)
+		if effectstest.AuraRestrictions(t, g, target)&game.CantBlock == 0 {
 			t.Errorf("monarch=%v: the target can still block", monarch)
 		}
-		if got := auraRestrictions(t, g, other)&game.CantBlock != 0; got != monarch {
+		if got := effectstest.AuraRestrictions(t, g, other)&game.CantBlock != 0; got != monarch {
 			t.Errorf("monarch=%v: other creature can't block = %v", monarch, got)
 		}
 	}
 }
 
 func TestGapB117KnollspineDiscardsAndDrawsTheDamageDealt(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp, _ := blbB1Seats(g)
+	g := effectstest.NewCatalogGame(t)
+	me, opp, _ := effectstest.BlbB1Seats(g)
 	g.WithWriteLock(func() {
 		if err := g.DealDamageToPlayerForEffect(uuid.New(), opp.ID, 4); err != nil {
 			t.Fatal(err)
@@ -293,38 +295,38 @@ func TestGapB117KnollspineDiscardsAndDrawsTheDamageDealt(t *testing.T) {
 	if handBefore == 0 {
 		t.Fatal("no hand to discard")
 	}
-	if _, err := blbHCastWithMana(t, g, "Knollspine Dragon", "Creature — Dragon", gapKnollspine, "{5}{R}{R}", 7, 5, "R", "R", "G", "G", "G", "G", "G"); err != nil {
+	if _, err := effectstest.BlbHCastWithMana(t, g, "Knollspine Dragon", "Creature — Dragon", gapKnollspine, "{5}{R}{R}", 7, 5, "R", "R", "G", "G", "G", "G", "G"); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	passPriorityAroundTable(t, g)
-	assistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}, true)
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AssistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}, true)
 	if got := me.Hand.Size(); got != 4 {
 		t.Errorf("hand = %d, want 4 (discarded the hand, drew the 4 damage dealt)", got)
 	}
 }
 
 func TestGapB117KnollspineDeclinedKeepsTheHand(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp, _ := blbB1Seats(g)
+	g := effectstest.NewCatalogGame(t)
+	me, opp, _ := effectstest.BlbB1Seats(g)
 	before := me.Hand.Size()
-	if _, err := blbHCastWithMana(t, g, "Knollspine Dragon", "Creature — Dragon", gapKnollspine, "{5}{R}{R}", 7, 5, "R", "R", "G", "G", "G", "G", "G"); err != nil {
+	if _, err := effectstest.BlbHCastWithMana(t, g, "Knollspine Dragon", "Creature — Dragon", gapKnollspine, "{5}{R}{R}", 7, 5, "R", "R", "G", "G", "G", "G", "G"); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	passPriorityAroundTable(t, g)
-	assistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}, false)
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AssistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}, false)
 	if got := me.Hand.Size(); got != before {
 		t.Errorf("hand = %d, want %d unchanged", got, before)
 	}
 }
 
 func TestGapB117MirkwoodTrapperShrinksAnAttackerOnYouAndPumpsOthers(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp, other := blbB1Seats(g)
+	g := effectstest.NewCatalogGame(t)
+	me, opp, other := effectstest.BlbB1Seats(g)
 	// The Trapper belongs to a defender: seat 1; seat 0 (active) attacks.
-	trapper := blbB1Push(g, opp.ID, "Mirkwood Trapper", "Creature — Elf Scout", gapTrapper, 1, 4)
-	atk := blbB1Push(g, me.ID, "Attacker", "Creature — Bear", "", 3, 3)
-	declareAttack(t, g, opp.ID, atk)
-	assistCardSettle(t, g, opp.ID, &game.TargetRef{Kind: game.TargetCard, ID: atk}, true)
+	trapper := effectstest.BlbB1Push(g, opp.ID, "Mirkwood Trapper", "Creature — Elf Scout", gapTrapper, 1, 4)
+	atk := effectstest.BlbB1Push(g, me.ID, "Attacker", "Creature — Bear", "", 3, 3)
+	effectstest.DeclareAttack(t, g, opp.ID, atk)
+	effectstest.AssistCardSettle(t, g, opp.ID, &game.TargetRef{Kind: game.TargetCard, ID: atk}, true)
 	var p int
 	g.ReadSnapshot(func() { c, _ := g.LookupCardForEffect(atk); p = c.PowerForComparison() })
 	if p != 1 {
@@ -335,16 +337,16 @@ func TestGapB117MirkwoodTrapperShrinksAnAttackerOnYouAndPumpsOthers(t *testing.T
 }
 
 func TestGapB117MirkwoodTrapperLetsTheAttackerPumpWhenNotAttackingYou(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp, other := blbB1Seats(g)
+	g := effectstest.NewCatalogGame(t)
+	me, opp, other := effectstest.BlbB1Seats(g)
 	// The Trapper is seat 1's; the active player attacks seat 2.
-	blbB1Push(g, opp.ID, "Mirkwood Trapper", "Creature — Elf Scout", gapTrapper, 1, 4)
-	atk := blbB1Push(g, me.ID, "Attacker", "Creature — Bear", "", 3, 3)
-	declareAttack(t, g, other.ID, atk)
-	passPriorityAroundTable(t, g)
+	effectstest.BlbB1Push(g, opp.ID, "Mirkwood Trapper", "Creature — Elf Scout", gapTrapper, 1, 4)
+	atk := effectstest.BlbB1Push(g, me.ID, "Attacker", "Creature — Bear", "", 3, 3)
+	effectstest.DeclareAttack(t, g, other.ID, atk)
+	effectstest.PassPriorityAroundTable(t, g)
 	// The attacking player (not the Trapper's controller) chooses the creature.
 	answerPermanentsPick(t, g, me.ID, atk)
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	var p int
 	g.ReadSnapshot(func() { c, _ := g.LookupCardForEffect(atk); p = c.PowerForComparison() })
 	if p != 5 {
@@ -353,70 +355,70 @@ func TestGapB117MirkwoodTrapperLetsTheAttackerPumpWhenNotAttackingYou(t *testing
 }
 
 func TestGapB117RadagastGrantsWardAndMakesATokenOnABigSpell(t *testing.T) {
-	g := newCatalogGame(t)
-	me, _, _ := blbB1Seats(g)
-	spec, _ := Lookup(gapRadagast)
+	g := effectstest.NewCatalogGame(t)
+	me, _, _ := effectstest.BlbB1Seats(g)
+	spec, _ := effects.Lookup(gapRadagast)
 	if len(spec.Triggered) != 3 {
 		t.Fatalf("want ward, granted ward and the cast trigger, got %d", len(spec.Triggered))
 	}
-	blbB1Push(g, me.ID, "Radagast, Wizard of Wilds", "Legendary Creature — Avatar Wizard", gapRadagast, 3, 5)
+	effectstest.BlbB1Push(g, me.ID, "Radagast, Wizard of Wilds", "Legendary Creature — Avatar Wizard", gapRadagast, 3, 5)
 	// A 5-mana spell: choose the Bird mode.
 	big := game.Card{InstanceID: uuid.New(), Name: "Big Sorcery", TypeLine: "Sorcery", ManaCost: "{4}{G}", Owner: me.ID, Controller: me.ID}
 	me.Hand.PushTop(big)
-	advanceToMain(t, g)
-	b06AddMana(me, "G", "G", "G", "G", "G")
+	effectstest.AdvanceToMain(t, g)
+	effectstest.B06AddMana(me, "G", "G", "G", "G", "G")
 	if err := g.CastSpell(me.ID, big.InstanceID, game.CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	c := modePickChoiceFor(g, me.ID)
+	c := effectstest.ModePickChoiceFor(g, me.ID)
 	if c == nil {
-		passPriorityAroundTable(t, g)
-		c = modePickChoiceFor(g, me.ID)
+		effectstest.PassPriorityAroundTable(t, g)
+		c = effectstest.ModePickChoiceFor(g, me.ID)
 	}
 	if c == nil {
 		t.Fatal("no mode prompt for the cast trigger")
 	}
-	answerMode(t, g, c, me.ID, 1)
-	passPriorityAroundTable(t, g)
+	effectstest.AnswerMode(t, g, c, me.ID, 1)
+	effectstest.PassPriorityAroundTable(t, g)
 	if n := gapB117Count(g, me.ID, "Bird"); n != 1 {
 		t.Errorf("%d Birds, want 1 (mode 2)", n)
 	}
 	// A 4-mana spell does not trigger it.
 	small := game.Card{InstanceID: uuid.New(), Name: "Small Sorcery", TypeLine: "Sorcery", ManaCost: "{3}{G}", Owner: me.ID, Controller: me.ID}
 	me.Hand.PushTop(small)
-	b06AddMana(me, "G", "G", "G", "G")
+	effectstest.B06AddMana(me, "G", "G", "G", "G")
 	if err := g.CastSpell(me.ID, small.InstanceID, game.CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if n := gapB117Count(g, me.ID, "Bird") + gapB117Count(g, me.ID, "Beast"); n != 1 {
 		t.Errorf("%d tokens after a 4-mana spell, want still 1", n)
 	}
 }
 
 func TestGapB117RadagastGrantsWardToBeastsAndBirdsOnly(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp, _ := blbB1Seats(g)
-	blbB1Push(g, me.ID, "Radagast, Wizard of Wilds", "Legendary Creature — Avatar Wizard", gapRadagast, 3, 5)
-	beast := blbB1Push(g, me.ID, "Beast", "Creature — Beast", "", 3, 3)
-	bear := blbB1Push(g, me.ID, "Bear", "Creature — Bear", "", 2, 2)
-	advanceToMain(t, g)
+	g := effectstest.NewCatalogGame(t)
+	me, opp, _ := effectstest.BlbB1Seats(g)
+	effectstest.BlbB1Push(g, me.ID, "Radagast, Wizard of Wilds", "Legendary Creature — Avatar Wizard", gapRadagast, 3, 5)
+	beast := effectstest.BlbB1Push(g, me.ID, "Beast", "Creature — Beast", "", 3, 3)
+	bear := effectstest.BlbB1Push(g, me.ID, "Bear", "Creature — Bear", "", 2, 2)
+	effectstest.AdvanceToMain(t, g)
 	if err := g.PassPriority(); err != nil {
 		t.Fatalf("PassPriority: %v", err)
 	}
 	warded := func(victim uuid.UUID) bool {
-		castAtWardedCreature(t, g, opp, victim)
-		for i := 0; i < 8 && !hasPayUnlessFor(g, opp.ID); i++ {
-			if stackFullyEmpty(g) {
+		effectstest.CastAtWardedCreature(t, g, opp, victim)
+		for i := 0; i < 8 && !effectstest.HasPayUnlessFor(g, opp.ID); i++ {
+			if effectstest.StackFullyEmpty(g) {
 				return false
 			}
 			if err := g.PassPriority(); err != nil {
 				t.Fatalf("PassPriority: %v", err)
 			}
 		}
-		if hasPayUnlessFor(g, opp.ID) {
-			answerPayUnless(t, g, opp.ID, false)
-			passPriorityAroundTable(t, g)
+		if effectstest.HasPayUnlessFor(g, opp.ID) {
+			effectstest.AnswerPayUnless(t, g, opp.ID, false)
+			effectstest.PassPriorityAroundTable(t, g)
 			return true
 		}
 		return false
@@ -424,7 +426,7 @@ func TestGapB117RadagastGrantsWardToBeastsAndBirdsOnly(t *testing.T) {
 	if warded(bear) {
 		t.Error("a Bear got ward from Radagast")
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if !warded(beast) {
 		t.Error("a Beast you control did not get ward {1}")
 	}
@@ -432,9 +434,9 @@ func TestGapB117RadagastGrantsWardToBeastsAndBirdsOnly(t *testing.T) {
 
 func TestGapB117GandalfWestwardVoyagerCopiesOnASharedTypeOtherwiseDraws(t *testing.T) {
 	for _, match := range []bool{true, false} {
-		g := newCatalogGame(t)
-		me, opp, other := blbB1Seats(g)
-		blbB1Push(g, me.ID, "Gandalf, Westward Voyager", "Legendary Creature — Avatar Wizard", gapGandalfWV, 5, 5)
+		g := effectstest.NewCatalogGame(t)
+		me, opp, other := effectstest.BlbB1Seats(g)
+		effectstest.BlbB1Push(g, me.ID, "Gandalf, Westward Voyager", "Legendary Creature — Avatar Wizard", gapGandalfWV, 5, 5)
 		// Each opponent's top card: a Sorcery for a match, a Land otherwise.
 		typ := "Land"
 		if match {
@@ -444,15 +446,15 @@ func TestGapB117GandalfWestwardVoyagerCopiesOnASharedTypeOtherwiseDraws(t *testi
 			o.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: typ, Owner: o.ID, Controller: o.ID})
 		}
 		myHand, oppHand := me.Hand.Size(), opp.Hand.Size()
-		life := lifeOf(g, opp.ID)
+		life := effectstest.LifeOf(g, opp.ID)
 		big := game.Card{InstanceID: uuid.New(), Name: "Big Burn", TypeLine: "Sorcery", ManaCost: "{4}{R}", OracleID: "", Owner: me.ID, Controller: me.ID}
 		me.Hand.PushTop(big)
-		advanceToMain(t, g)
-		b06AddMana(me, "R", "R", "R", "R", "R")
+		effectstest.AdvanceToMain(t, g)
+		effectstest.B06AddMana(me, "R", "R", "R", "R", "R")
 		if err := g.CastSpell(me.ID, big.InstanceID, game.CastSpellParams{Strict: true}); err != nil {
 			t.Fatalf("cast: %v", err)
 		}
-		assistCardSettle(t, g, me.ID, nil, true)
+		effectstest.AssistCardSettle(t, g, me.ID, nil, true)
 		if match {
 			if got := opp.Hand.Size(); got != oppHand+1 {
 				t.Errorf("match: opponent hand %d -> %d, want one more", oppHand, got)
@@ -475,26 +477,26 @@ func TestGapB117GandalfWestwardVoyagerCopiesOnASharedTypeOtherwiseDraws(t *testi
 func TestGapB117GandalfOfTheSecretFireSuspendsAnOpponentsTurnSpell(t *testing.T) {
 	// Negative first: a spell cast from hand on your own turn goes to the
 	// graveyard as usual.
-	g := newCatalogGame(t)
-	me, _, _ := blbB1Seats(g)
-	blbB1Push(g, me.ID, "Gandalf of the Secret Fire", "Legendary Creature — Avatar Wizard", gapGandalfSF, 3, 4)
-	own := castCatalogSpell(t, g, "Own Sorcery", "Sorcery", "", nil)
-	passPriorityAroundTable(t, g)
+	g := effectstest.NewCatalogGame(t)
+	me, _, _ := effectstest.BlbB1Seats(g)
+	effectstest.BlbB1Push(g, me.ID, "Gandalf of the Secret Fire", "Legendary Creature — Avatar Wizard", gapGandalfSF, 3, 4)
+	own := effectstest.CastCatalogSpell(t, g, "Own Sorcery", "Sorcery", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
 	if !me.Graveyard.Contains(own) || g.Exile.Contains(own) {
 		t.Fatal("a spell cast on your own turn was exiled")
 	}
 
 	// On an opponent's turn the instant is exiled with three time counters.
-	g = newCatalogGame(t)
+	g = effectstest.NewCatalogGame(t)
 	me = g.Seats[0]
-	blbB1Push(g, me.ID, "Gandalf of the Secret Fire", "Legendary Creature — Avatar Wizard", gapGandalfSF, 3, 4)
-	advanceToMainOf(t, g, 1)
+	effectstest.BlbB1Push(g, me.ID, "Gandalf of the Secret Fire", "Legendary Creature — Avatar Wizard", gapGandalfSF, 3, 4)
+	effectstest.AdvanceToMainOf(t, g, 1)
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Test Instant", TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
 		t.Fatalf("cast on the opponent's turn: %v", err)
 	}
-	passPriorityAroundTable(t, g)
+	effectstest.PassPriorityAroundTable(t, g)
 	if me.Graveyard.Contains(id) {
 		t.Fatal("the instant went to the graveyard")
 	}

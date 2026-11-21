@@ -1,8 +1,9 @@
-package effects
+package cardsg
 
 import (
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -25,10 +26,10 @@ import (
 //
 // No simplification.
 func init() {
-	mark := WheneverYouCast(Or(Instant(), Sorcery()),
+	mark := effects.WheneverYouCast(effects.Or(effects.Instant(), effects.Sorcery()),
 		"Gandalf of the Secret Fire — exile that card with three time counters on it instead of putting it into your graveyard as it resolves; it gains suspend",
 		func(g *game.Game, item *game.StackItem) error {
-			ev := NewContext(g, item).Trigger().Event
+			ev := effects.NewContext(g, item).Trigger().Event
 			if ev.OldZone != game.ZoneHand || ev.CardID == uuid.Nil {
 				return nil
 			}
@@ -37,12 +38,12 @@ func init() {
 		})
 	inner := mark.AppliesTo
 	mark.AppliesTo = func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
-		return ev.OldZone == game.ZoneHand && !isActivePlayer(g, source.Controller) && inner(ev, source, ch, g)
+		return ev.OldZone == game.ZoneHand && !effects.IsActivePlayer(g, source.Controller) && inner(ev, source, ch, g)
 	}
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "cbad35cd-9026-43ea-8333-94f3b34459e3",
 		Name:         "Gandalf of the Secret Fire",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Triggered:    []game.TriggeredAbility{mark},
 	})
 }

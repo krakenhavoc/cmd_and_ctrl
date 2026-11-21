@@ -1,6 +1,10 @@
-package effects
+package cardsri
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Riders of Rohan — Creature — Human Knight {3}{R}{W}, 4/4 (Tales of
 // Middle-earth Commander):
@@ -16,14 +20,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:         "688a559d-249f-4d03-98e6-581843e7ddc3",
 		Name:             "Riders of Rohan",
-		Completeness:     CompletenessFull,
-		AlternativeCosts: []game.AlternativeCost{Dash("{4}{R}{W}")},
+		Completeness:     effects.CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{effects.Dash("{4}{R}{W}")},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Riders of Rohan — create two 2/2 red Human Knight tokens with trample and haste",
-				Do(CreateToken{Template: TokenCard("2/2 red Human Knight with trample and haste"), N: 2})),
+			effects.WhenThisEnters("Riders of Rohan — create two 2/2 red Human Knight tokens with trample and haste",
+				effects.Do(effects.CreateToken{Template: effects.TokenCard("2/2 red Human Knight with trample and haste"), N: 2})),
 		},
 	})
 }

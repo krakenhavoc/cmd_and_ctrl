@@ -1,6 +1,10 @@
-package effects
+package cardsd
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Denethor, Stone Seer — Legendary Creature — Human Noble {1}{U}, 1/3
 // (Tales of Middle-earth Commander):
@@ -16,28 +20,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "6669a19e-7944-44c9-ac37-a92016783375",
 		Name:         "Denethor, Stone Seer",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Scry: 2},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Denethor, Stone Seer — scry 2", Do(Scry{N: 2})),
+			effects.WhenThisEnters("Denethor, Stone Seer — scry 2", effects.Do(effects.Scry{N: 2})),
 		},
-		Activated: []ActivatedAbility{{
+		Activated: []effects.ActivatedAbility{{
 			Label:   "{3}{R}, {T}, Sacrifice Denethor: Target player becomes the monarch. Denethor deals 3 damage to any target.",
 			Purpose: game.Purpose{Answers: game.AnswerRemove},
-			Cost:    Plus(ManaCost("{3}{R}"), TapCost(), SacrificeThis()),
-			Targets: TargetPlayer("target player").Then(TargetAny()),
+			Cost:    effects.Plus(effects.ManaCost("{3}{R}"), effects.TapCost(), effects.SacrificeThis()),
+			Targets: effects.TargetPlayer("target player").Then(effects.TargetAny()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
+				ctx := effects.NewContext(g, item)
 				if t, ok := ctx.ClauseTarget(0); ok {
-					if err := (BecomeTheMonarch{Player: t.ID}).Apply(ctx); err != nil {
+					if err := (effects.BecomeTheMonarch{Player: t.ID}).Apply(ctx); err != nil {
 						return err
 					}
 				}
 				if t, ok := ctx.ClauseTarget(1); ok {
-					return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 3}.Apply(ctx)
+					return effects.DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 3}.Apply(ctx)
 				}
 				return nil
 			},
