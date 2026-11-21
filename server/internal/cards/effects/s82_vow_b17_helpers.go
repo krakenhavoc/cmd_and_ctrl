@@ -21,7 +21,7 @@ func VowB17SpiritCopyException(withFlying bool) func(t *game.Card) {
 		v := game.PrintedValues{TypeLine: t.TypeLine}
 		v.AddSubtype("Spirit")
 		t.TypeLine = v.TypeLine
-		if withFlying && !hasKeywordWord(t.Keywords, "flying") {
+		if withFlying && !HasKeywordWord(t.Keywords, "flying") {
 			t.Keywords = append(t.Keywords, "flying")
 		}
 	}

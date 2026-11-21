@@ -39,7 +39,7 @@ func init() {
 				}
 			}
 			dwarf := ctx.TextSubtype("Dwarf")
-			dwarves := armedAndArmoredPermanents(ctx.Game, you, func(c game.Card) bool { return c.IsCreature() && c.HasSubtype(dwarf) })
+			dwarves := effects.ArmedAndArmoredPermanents(ctx.Game, you, func(c game.Card) bool { return c.IsCreature() && c.HasSubtype(dwarf) })
 			if len(dwarves) == 0 {
 				return nil
 			}
@@ -66,7 +66,7 @@ var armedAndArmoredDwarfChosen = game.RegisterChooseCardsThen("choose-cards/arme
 	if len(r.Picked) == 0 {
 		return nil
 	}
-	equipment := armedAndArmoredPermanents(g, r.Chooser, func(c game.Card) bool { return c.HasSubtype("Equipment") })
+	equipment := effects.ArmedAndArmoredPermanents(g, r.Chooser, func(c game.Card) bool { return c.HasSubtype("Equipment") })
 	if len(equipment) == 0 {
 		return nil
 	}
@@ -106,15 +106,3 @@ var armedAndArmoredEquipmentChosen = game.RegisterChooseCardsThen("choose-cards/
 	}
 	return nil
 })
-
-// armedAndArmoredPermanents lists the battlefield permanents a player
-// controls that match.
-func armedAndArmoredPermanents(g *game.Game, controller uuid.UUID, match func(game.Card) bool) []uuid.UUID {
-	var out []uuid.UUID
-	for _, c := range g.Battlefield.Cards {
-		if c.Controller == controller && match(c) {
-			out = append(out, c.InstanceID)
-		}
-	}
-	return out
-}

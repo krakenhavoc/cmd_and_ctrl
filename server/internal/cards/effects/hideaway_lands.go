@@ -59,7 +59,7 @@ var hideawayLands = []hideawayLand{
 		oracle:    "690c7f8e-fea2-4920-afa7-02ff120701a1",
 		name:      "Spinerock Knoll",
 		color:     "R",
-		condition: anOpponentWasDealtAtLeastThisTurn(7),
+		condition: AnOpponentWasDealtAtLeastThisTurn(7),
 		clause:    "if an opponent was dealt 7 or more damage this turn",
 	},
 }
@@ -139,7 +139,7 @@ func AttackedWithAtLeastThisTurn(n int) func(*game.Game, uuid.UUID) bool {
 // totals N. Damage dealt, not life lost: a Spinerock Knoll does not
 // care about a drain, and a prevented point was never dealt (no
 // EventDealDamage is emitted for it).
-func anOpponentWasDealtAtLeastThisTurn(n int) func(*game.Game, uuid.UUID) bool {
+func AnOpponentWasDealtAtLeastThisTurn(n int) func(*game.Game, uuid.UUID) bool {
 	return func(g *game.Game, controller uuid.UUID) bool {
 		dealt := map[uuid.UUID]int{}
 		for _, ev := range g.EventsThisTurn() {

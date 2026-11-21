@@ -63,28 +63,6 @@ func ravB3Seats(g *game.Game) (me, opp *game.Player) {
 	return g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
 }
 
-// ravB3LibraryTop is the top n cards of a library, top-first.
-func ravB3LibraryTop(p *game.Player, n int) []uuid.UUID {
-	out := make([]uuid.UUID, 0, n)
-	for i := len(p.Library.Cards) - 1; i >= 0 && len(out) < n; i-- {
-		out = append(out, p.Library.Cards[i].InstanceID)
-	}
-	return out
-}
-
-// ravB3SameOrder reports whether two ID lists match in order.
-func ravB3SameOrder(got, want []uuid.UUID) bool {
-	if len(got) != len(want) {
-		return false
-	}
-	for i := range got {
-		if got[i] != want[i] {
-			return false
-		}
-	}
-	return true
-}
-
 // --- Coalhauler Swine, Dromad Purebred ------------------------------------------
 
 func TestRavB3CoalhaulerSwineDealsWhatItIsDealtToEachPlayer(t *testing.T) {
@@ -198,7 +176,7 @@ func TestRavB3CongregationAtDawnPutsThreeOnTopInTheChosenOrder(t *testing.T) {
 	if err := g.ResolvePutInLibrary(order.ID, me.ID, nil, want); err != nil {
 		t.Fatalf("ResolvePutInLibrary: %v", err)
 	}
-	if got := ravB3LibraryTop(me, 3); !ravB3SameOrder(got, want) {
+	if got := effectstest.RavB3LibraryTop(me, 3); !effectstest.RavB3SameOrder(got, want) {
 		t.Fatalf("library top %v, want %v", got, want)
 	}
 	for _, card := range me.Library.Cards[len(me.Library.Cards)-3:] {
@@ -365,7 +343,7 @@ func TestRavB3DimirMachinationsExilesOneAndOrdersTheRest(t *testing.T) {
 	if err := g.ResolvePutInLibrary(order.ID, me.ID, nil, want[:2]); err != nil {
 		t.Fatalf("ResolvePutInLibrary: %v", err)
 	}
-	if got := ravB3LibraryTop(opp, 3); !ravB3SameOrder(got, want) {
+	if got := effectstest.RavB3LibraryTop(opp, 3); !effectstest.RavB3SameOrder(got, want) {
 		t.Errorf("library top %v, want %v", got, want)
 	}
 }
@@ -387,7 +365,7 @@ func TestRavB3DimirMachinationsMayExileNone(t *testing.T) {
 	if err := g.ResolvePutInLibrary(order.ID, me.ID, nil, want); err != nil {
 		t.Fatalf("ResolvePutInLibrary: %v", err)
 	}
-	if got := ravB3LibraryTop(opp, 3); !ravB3SameOrder(got, want) {
+	if got := effectstest.RavB3LibraryTop(opp, 3); !effectstest.RavB3SameOrder(got, want) {
 		t.Errorf("library top %v, want %v", got, want)
 	}
 }
@@ -405,7 +383,7 @@ func TestRavB3DimirMachinationsMayExileAllThree(t *testing.T) {
 	if effectstest.LatestChoiceOfKindFor(g, game.PendingChoicePutInLibrary, me.ID) != nil {
 		t.Error("asked to order an empty pile")
 	}
-	if got := ravB3LibraryTop(opp, 1); got[0] != top[3] {
+	if got := effectstest.RavB3LibraryTop(opp, 1); got[0] != top[3] {
 		t.Error("the fourth card is not on top")
 	}
 }
