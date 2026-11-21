@@ -2049,8 +2049,8 @@ option option-pick/abstract-performance-pile
 option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/agents-toolkit-move
-option option-pick/amy-pond-suspended
 option option-pick/aminatou-the-fateshifter-rotate
+option option-pick/amy-pond-suspended
 option option-pick/animal-magnetism-opponent
 option option-pick/anointed-peacekeeper-look
 option option-pick/apocalypse-demon-sacrifice-or-tap
@@ -2373,9 +2373,9 @@ payunless pay-unless/divert-change-target
 payunless pay-unless/divert-disaster-lander
 payunless pay-unless/dont-make-a-sound-surveil
 payunless pay-unless/draw-a-card
+payunless pay-unless/dreamshaper-shaman-sacrifice
 payunless pay-unless/dutiful-replicator-copy
 payunless pay-unless/dwarven-hammer-dwarf-and-attach
-payunless pay-unless/dreamshaper-shaman-sacrifice
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
 payunless pay-unless/edgars-awakening-return
@@ -2761,9 +2761,9 @@ run prompt-run/first-responder-return
 run prompt-run/foreboding-steamboat-exile
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
+run prompt-run/fraying-line-rope
 run prompt-run/fugitive-of-the-judoon-exile
 run prompt-run/fugitive-of-the-judoon-human
-run prompt-run/fraying-line-rope
 run prompt-run/gap-b55-the-hunger-tide-rises-sacrifice
 run prompt-run/gap-b56-ajani-fells-the-godsire-counter
 run prompt-run/garruk-the-veil-cursed-tutor
@@ -4112,8 +4112,8 @@ tail tail/deadly-cover-up-draw
 tail tail/deadly-cover-up-exiled
 tail tail/eagles-are-coming-birds
 tail tail/fugitive-codebreaker-draw
-tail tail/gap-b82-savage-order-indestructible
 tail tail/gap-b213-intellect-devourer-hold
+tail tail/gap-b82-savage-order-indestructible
 tail tail/hide-in-plain-sight-rest
 tail tail/intrude-on-the-mind-rest
 tail tail/king-narfis-betrayal-after-mill
