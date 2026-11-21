@@ -107,6 +107,7 @@ body copy/the-ability-you-just-activated
 body copy/the-spell-per-commander-cast
 body copy/the-spell-you-just-cast
 body copy/the-spell-you-just-cast-twice
+body copy/the-x-spell-or-ability-you-just-used
 body copy/token-copy-of-the-payload
 body cornered-crook/damage
 body counter/plus-one-and-haste-for-the-payload
@@ -1527,6 +1528,7 @@ condition cast/you-next-cast
 condition cast/you-next-cast-a-lesson
 condition cast/you-next-cast-at-most-mv
 condition cast/you-next-cast-from-hand
+condition cast/you-next-cast-or-activate-x
 condition cast/you-next-cast-x-in-mana-cost
 condition caveat-h2/vizkopa-guildmage-you-gain-life
 condition clone-saga/named-creature-combat-damage-to-player
@@ -3399,6 +3401,7 @@ tail graveyard-auras/attach-and-schedule-sacrifice
 tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
 tail graveyard-exile/hour-of-eternity-zombie-copies
+tail graveyard-exile/malanthrope-counters
 tail graveyard-exile/suffer-the-past-drain
 tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
@@ -3452,6 +3455,7 @@ tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
+tail if-it-went/aspiring-champion-ruinous-ascension
 tail illuna-apex-of-wishes/after-exile
 tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
@@ -3670,6 +3674,7 @@ tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
 tail push-the-limit/sacrifice-animate-haste
+tail put-from-library/aspiring-champion-shuffle-then-demon-damage
 tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/divergent-transformations-shuffle
 tail put-from-library/hei-bai-forest-guardian-shuffle
@@ -3980,6 +3985,7 @@ tail the-rise-of-sozin/named
 tail the-wrath-of-khan/draw-if-exiled
 tail then/aangs-iceberg-scry
 tail then/abdel-adrian-exiled-one
+tail then/acolyte-hybrid-controller-draws
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
 tail then/ancient-vendetta-named

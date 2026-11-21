@@ -609,4 +609,6 @@ var TokenTable = map[string]game.Card{
 	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
 	// S82 GAP batch 62: Mr. House, President and CEO's Robot.
 	"3/3 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 3, Toughness: 3},
+	// S82 GAP batch 193: Tyranid Gargoyle (Gargoyle Flock, Tyranid Harridan).
+	"1/1 blue Tyranid Gargoyle with flying": {Name: "Tyranid Gargoyle", TypeLine: "Token Creature — Tyranid Gargoyle", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 }
