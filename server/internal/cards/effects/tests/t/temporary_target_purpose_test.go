@@ -230,6 +230,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// The target creature is copied, not changed: its copies are the lands it
 	// does not target, until end of turn.
 	"March from Velis Vel": "the target is copied, not changed",
+
+	// "+4/-4 until end of turn" (S82 GAP): the same trade as Spatial
+	// Contortion's, the power a benefit and the toughness a harm.
+	"Auger Spree": "partly a benefit and partly a harm",
 }
 
 var targetWord = regexp.MustCompile(`(?i)\btarget\b`)

@@ -288,6 +288,7 @@ body kravens-last-hunt/damage
 body kroxa-and-kunoros/return
 body labyrinth-adversary/cant-block
 body leatherhead-swamp-stalker/destroy
+body legions-initiative/return-with-haste
 body leyline-tyrant/damage
 body library-of-lat-nam/draw-three
 body lichs-relic/destroy
@@ -3651,6 +3652,8 @@ tail lady-loki/spell-exiled
 tail lantern-of-the-lost/draw
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
+tail legions-initiative/haste-for-the-returned
+tail legions-initiative/schedule-return-at-next-combat
 tail leonardo-da-vinci/after-exile
 tail level-up/then-draw-if-power-10
 tail leyline-dowser/after-mill
