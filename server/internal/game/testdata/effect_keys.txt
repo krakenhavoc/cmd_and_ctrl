@@ -84,6 +84,7 @@ body cait-sith/boost
 body campsite-cuisine/boost-attackers
 body cascade/bottom-if-not-cast
 body cascade/the-spell-just-cast
+body cascade/the-spell-you-just-cast
 body casey-jones-vigilante/discard-three-at-random
 body casualty/copy
 body catalog/activated
@@ -1498,6 +1499,7 @@ coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
 coinflip coin-flip/krark-the-thumbless
 coinflip coin-flip/mana-crypt-damage
+coinflip coin-flip/mutalith-vortex-beast-warp-vortex
 coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
@@ -1525,6 +1527,7 @@ condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
 condition cast/you-next-cast
 condition cast/you-next-cast-a-lesson
+condition cast/you-next-cast-a-noncreature-spell
 condition cast/you-next-cast-at-most-mv
 condition cast/you-next-cast-from-hand
 condition cast/you-next-cast-x-in-mana-cost

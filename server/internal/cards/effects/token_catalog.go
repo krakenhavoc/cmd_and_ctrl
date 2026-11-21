@@ -536,6 +536,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// S82 GAP batch 45: Tarmogoyf Nest's Tarmogoyf.
 	printedGapB45TarmogoyfToken,
+	// S82 GAP batch 194: Pink Horror's Blue Horror.
+	printedGapB194BlueHorrorToken,
 	// S82 GAP batch 56: Ral and the Implicit Maze's Spellgorger Weird.
 	printedGapB56SpellgorgerWeirdToken,
 
