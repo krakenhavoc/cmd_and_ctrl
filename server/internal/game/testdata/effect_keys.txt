@@ -2380,6 +2380,7 @@ payunless pay-unless/phoenix-chick-return
 payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
+payunless pay-unless/pyre-zombie-return
 payunless pay-unless/pyrewild-shaman-return
 payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
