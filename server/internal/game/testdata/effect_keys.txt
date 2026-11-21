@@ -202,6 +202,7 @@ body forgehammer-centurion/cant-block
 body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
+body gap-b55-voltstorm-angel/modes
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
 body gastal-blockbuster/destroy
 body gaze-of-pain/damage-equal-to-its-power
@@ -1234,6 +1235,7 @@ choose choose-cards/riverwheel-sweep-play
 choose choose-cards/roads-go-ever-ever-on-put-in-hand
 choose choose-cards/rooms-b-return-chosen-creature
 choose choose-cards/rooms-d-take-up-to-from-milled
+choose choose-cards/rosecot-knight-take
 choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/rowans-grim-search-pick
 choose choose-cards/rpr-primal-empathy-counter
@@ -2250,6 +2252,7 @@ payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
 payunless pay-unless/gap-b53-conduit-goblin-pump-haste
 payunless pay-unless/gap-b54-volatile-stormdrake-sacrifice
+payunless pay-unless/gap-b55-voltstorm-angel
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-dirigible-untap
@@ -2473,6 +2476,7 @@ run braids-frightful-return/each-opponent-discards
 run braids-frightful-return/edict
 run dalek-intensive-care/exile
 run engine/explore-each-pick
+run gap-b55-birthing-ritual/sacrifice
 run giant-opportunity/sacrifice-two-foods
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
@@ -2571,6 +2575,7 @@ run prompt-run/first-responder-return
 run prompt-run/foreboding-steamboat-exile
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
+run prompt-run/gap-b55-the-hunger-tide-rises-sacrifice
 run prompt-run/garruk-the-veil-cursed-tutor
 run prompt-run/garruk-veiled-butcher-beast
 run prompt-run/garruk-veiled-butcher-draws
@@ -3295,6 +3300,8 @@ tail furygale-flocking/bind-tagged-tokens
 tail gandalf-shadows-foe/return-lands-tapped
 tail gap-b49/emperor-of-bones-entered
 tail gap-b53-party-thrasher/choose-exiled
+tail gap-b55-birthing-ritual/rest
+tail gap-b55-birthing-ritual/sacrificed
 tail gardens-of-tranquil-repose/its-controller-scries
 tail garruk-apex-predator/gain-life
 tail gemstone-mine/sacrifice-if-empty
