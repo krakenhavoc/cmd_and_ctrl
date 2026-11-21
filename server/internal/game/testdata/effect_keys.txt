@@ -4254,6 +4254,7 @@ tail then/the-falcon-when-you-do
 tail then/the-fantasticar-constructs
 tail then/the-key-to-the-vault-bottom-then-cast
 tail then/the-misty-mountains-cold-dragon
+tail then/the-mouth-of-sauron-milled
 tail then/the-neutrinos-return-attacking
 tail then/the-ring-goes-south-reveal
 tail then/the-stone-brain-draw
