@@ -55,6 +55,6 @@ func printedIcingdeathFrostTongueToken() TokenTemplate {
 			Key:         "Icingdeath, Frost Tongue — tap target creature defending player controls",
 			Effect:      B36TapChosenCreature,
 		}},
-		Activated: activatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
+		Activated: ActivatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
 	}
 }

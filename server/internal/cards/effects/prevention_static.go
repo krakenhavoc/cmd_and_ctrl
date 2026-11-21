@@ -63,6 +63,10 @@ const (
 	// ToCreaturesYouControl without the permanent that has the static
 	// (Vigor, #2038).
 	ToAnotherCreatureYouControl
+	// ToOtherPermanentsYouControl is "to other permanents you control":
+	// any permanent on the battlefield the static's controller controls
+	// except the one with the static (The Wanderer, #5948).
+	ToOtherPermanentsYouControl
 )
 
 // StaticDamage narrows which damage a prevention static sees.
@@ -247,6 +251,9 @@ func staticProtects(to StaticRecipient, target uuid.UUID, g *game.Game, src *gam
 		return ok && c.IsCreature() && c.Controller == src.Controller && g.Battlefield.Contains(target)
 	case ToAnotherCreatureYouControl:
 		return target != src.InstanceID && staticProtects(ToCreaturesYouControl, target, g, src)
+	case ToOtherPermanentsYouControl:
+		c, ok := g.LookupCardForEffect(target)
+		return ok && target != src.InstanceID && c.Controller == src.Controller && g.Battlefield.Contains(target)
 	}
 	return false
 }
