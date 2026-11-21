@@ -648,6 +648,11 @@ type TurnTally struct {
 	// snapshots and undoes with the rest of the tally. Read through
 	// Game.WasDealtNoncombatDamageLastTurn.
 	PrevNoncombatVictims []uuid.UUID `json:"prevNoncombatVictims,omitempty"`
+	// PrevLifeLosers are the players who lost life during the PREVIOUS
+	// turn (Feast on the Fallen's "if an opponent lost life last turn").
+	// Stamped in resetTurnTallyLocked from the turn that is ending, like
+	// PrevNoncombatVictims. Read through Game.LostLifeLastTurnForEffect.
+	PrevLifeLosers []uuid.UUID `json:"prevLifeLosers,omitempty"`
 	// ModesChosen is "choose one that hasn't been chosen this turn"
 	// (ADR 0097, #1749): the option indexes each modal ability has
 	// chosen this turn, ascending, keyed by ObjectTallyKey(source,
@@ -2119,7 +2124,8 @@ func (g *Game) resetTurnTallyLocked() {
 			prevVictims = append(prevVictims, r.Victim)
 		}
 	}
-	g.TurnTally = TurnTally{FirstEvent: len(g.Events), MonarchAtStart: g.Monarch, PrevNoncombatVictims: prevVictims}
+	g.TurnTally = TurnTally{FirstEvent: len(g.Events), MonarchAtStart: g.Monarch, PrevNoncombatVictims: prevVictims,
+		PrevLifeLosers: g.lifeLosersThisTurnLocked(g.TurnTally)}
 	// #628: the loop notice is a claim about THIS turn's resolutions,
 	// so it dies with the counts it was derived from. A table that
 	// stepped its way past a loop by hand starts the next turn with
@@ -2138,6 +2144,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
 	out.PrevNoncombatVictims = append([]uuid.UUID(nil), t.PrevNoncombatVictims...)
+	out.PrevLifeLosers = append([]uuid.UUID(nil), t.PrevLifeLosers...)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)

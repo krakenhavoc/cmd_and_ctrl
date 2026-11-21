@@ -80246,6 +80246,8 @@ turnTally.players{}.tokensCreated	number:int
 turnTally.players{}.waterbends	number:int
 turnTally.plusOneCountersPut	map:string
 turnTally.plusOneCountersPut{}	number:int
+turnTally.prevLifeLosers	array
+turnTally.prevLifeLosers[]	custom(uuid.UUID)
 turnTally.prevNoncombatVictims	array
 turnTally.prevNoncombatVictims[]	custom(uuid.UUID)
 turnTally.replacementsApplied	map:string
