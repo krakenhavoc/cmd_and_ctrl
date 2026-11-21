@@ -505,6 +505,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedC15DaxosSpiritToken,
 	// S82 GAP batch 56: Ral and the Implicit Maze's Spellgorger Weird.
 	printedGapB56SpellgorgerWeirdToken,
+
+	// The Prydwen, Steel Flagship's Human Knight (Fallout, #5948): 2/2 white,
+	// +2/+2 while an artifact entered under its controller's control this turn.
+	printedGapB61HumanKnightToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
