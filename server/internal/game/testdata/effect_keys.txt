@@ -422,6 +422,7 @@ body ruthless-lawbringer/destroy
 body s82-bns-b02/back-for-more-fight
 body s82-bns-b05/mistbind-clique-tap-lands
 body s82-bns-b27/dinosaur-spell-gains-fight
+body s82-gap-b141/spinal-embrace-sacrifice
 body s82-mid-b14/lynde-return-curse
 body s82-mid/spirit-1-1-flying
 body s82-mom-b12/flitting-guerrilla-top
@@ -3762,6 +3763,8 @@ tail s82-bns-b05/mistbind-clique-championed
 tail s82-bns-b27/cavalier-of-gales-shuffle-scry
 tail s82-bro-b11/tawnoss-tinkering-after
 tail s82-dmu/slimefoots-survey-look
+tail s82-gap-b141/recoil-discard
+tail s82-gap-b141/spinal-embrace-life
 tail s82-gap-b21/anax-kynaios-land-then-draw
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
