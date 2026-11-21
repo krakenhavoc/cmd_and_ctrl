@@ -295,6 +295,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 green Ooze":                                                   {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"2/2 green Ooze":                                                   {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"0/0 green Ooze with trample":                                      {Name: "Ooze", TypeLine: "Token Creature — Ooze", Power: 0, Toughness: 0, Colors: []string{"G"}, Keywords: []string{"trample"}, PrintedPTKnown: true},
+	"1/1 white Pegasus with flying":                                    {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Pegasus with flying":                                    {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Soldier with vigilance":                                 {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/1 black Skeleton":                                               {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 2, Toughness: 1, Colors: []string{"B"}},
