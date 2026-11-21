@@ -220,6 +220,7 @@ body generous-plunderer/gift
 body gift-of-immortality/return-aura
 body gilgamesh/attach-equipment
 body gilraen-dunedain-protector/return-with-counters
+body gimli-mournful-avenger/fight
 body glacial-dragonhunt/damage
 body glissas-retriever/return-to-hand
 body gloom-surgeon/exile-that-many
