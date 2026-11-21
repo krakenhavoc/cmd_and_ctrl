@@ -15,10 +15,10 @@ import (
 //
 // No simplification.
 func init() {
-	effects.Register(effects.GapB143LairSpec("7b2c7758-2b89-49ff-8838-8dc9880c7209", "Treva's Ruins", "G|W|U", trevasRuinsReturn))
+	effects.Register(effects.GapLairSpec("7b2c7758-2b89-49ff-8838-8dc9880c7209", "Treva's Ruins", "G|W|U", trevasRuinsReturn))
 }
 
 var trevasRuinsReturn = effects.NewReturnLandsOrSacrifice(
 	"Treva's Ruins — return a non-Lair land you control to its owner's hand (or sacrifice Treva's Ruins)", 1,
 	"choose-cards/s82-gap-b143-trevas-ruins-return", "vis/s82-gap-b143-trevas-ruins-after-return",
-	effects.GapB143NonLairLand)
+	effects.GapNonLairLand)
