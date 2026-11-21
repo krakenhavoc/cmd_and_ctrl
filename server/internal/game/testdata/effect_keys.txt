@@ -837,6 +837,7 @@ choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/founding-the-third-path-cast
 choose choose-cards/gandalf-party-guest-cast
+choose choose-cards/gap-b213-intellect-devourer-exile
 choose choose-cards/gap-b53-party-thrasher-exile-two
 choose choose-cards/gap-b53-party-thrasher-play
 choose choose-cards/gap-b56-ral-exile-two
@@ -2406,6 +2407,7 @@ payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
 payunless pay-unless/furyblade-vampire-pump
+payunless pay-unless/gap-b213-sivriss-return
 payunless pay-unless/gap-b53-conduit-goblin-pump-haste
 payunless pay-unless/gap-b54-volatile-stormdrake-sacrifice
 payunless pay-unless/gap-b55-voltstorm-angel
@@ -3318,6 +3320,7 @@ tail dice/loathsome-troll-rolled
 tail dice/luck-bobblehead-results
 tail dice/maddening-hex-burn-and-move
 tail dice/netherese-puzzle-ward-scry
+tail dice/nothic-table
 tail dice/power-of-persuasion-rolled
 tail dice/reckless-endeavor-rolled
 tail dice/revivify-result
@@ -4104,6 +4107,7 @@ tail tail/deadly-cover-up-exiled
 tail tail/eagles-are-coming-birds
 tail tail/fugitive-codebreaker-draw
 tail tail/gap-b82-savage-order-indestructible
+tail tail/gap-b213-intellect-devourer-hold
 tail tail/hide-in-plain-sight-rest
 tail tail/intrude-on-the-mind-rest
 tail tail/king-narfis-betrayal-after-mill
