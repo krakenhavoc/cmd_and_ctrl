@@ -2640,6 +2640,7 @@ run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
 run prompt-run/shrapnel-slinger-sacrifice
 run prompt-run/sidequest-play-blitzball-attach
+run prompt-run/single-combat-sacrifice
 run prompt-run/skull-storm-half-life
 run prompt-run/skyfisher-spider-sacrifice
 run prompt-run/slaughter-the-strong-keep
@@ -3041,6 +3042,7 @@ tail demilich/copy-exiled
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail devastating-onslaught/haste-and-sacrifice-copies
+tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table
 tail dice/ancient-copper-dragon-treasures
 tail dice/ancient-gold-dragon-tokens
