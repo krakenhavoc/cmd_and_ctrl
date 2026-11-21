@@ -14,24 +14,6 @@ func gapB87YouCastFromOutsideYourHand(ev game.Event, source *game.Card, _ game.C
 		ev.OldZone != "" && ev.OldZone != game.ZoneHand
 }
 
-// gapB87ETBWithCastX is "When this enters, <effect with X>" for a permanent cast
-// with X (CR 107.3m): X is read off the permanent as the trigger is built and
-// carried on the item as Params.Amount. A copy or a cheat onto the battlefield has
-// X = 0.
-func gapB87ETBWithCastX(label string, effect Effect) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Watches:   []game.EventKind{game.EventETB},
-		AppliesTo: Self,
-		Key:       label,
-		Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			item.Params.Amount = source.CastX()
-			return item
-		},
-		Effect: effect,
-	}
-}
-
 // gapB87UntapCreaturesWithACounter is "untap each creature you control with a
 // counter on it": a counter of any kind, read as the ability resolves.
 func gapB87UntapCreaturesWithACounter(g *game.Game, item *game.StackItem) error {

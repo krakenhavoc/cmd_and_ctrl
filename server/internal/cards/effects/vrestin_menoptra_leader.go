@@ -29,7 +29,7 @@ func init() {
 		XMatters:                   true,
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
 		Triggered: []game.TriggeredAbility{
-			gapB87ETBWithCastX("Vrestin — create X 1/1 green and white Alien Insect creature tokens with flying",
+			WhenThisEntersWithCastX("Vrestin — create X 1/1 green and white Alien Insect creature tokens with flying",
 				func(g *game.Game, item *game.StackItem) error {
 					x := item.Params.Amount
 					if x <= 0 {

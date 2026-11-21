@@ -36,7 +36,7 @@ func init() {
 			b16Anthem(b27OtherArtifactCreaturesYouControl, 1, 1),
 		},
 		Triggered: []game.TriggeredAbility{
-			gapB85ETBWithCastX("The Cyber-Controller — each opponent mills X cards; put all creature cards milled this way onto the battlefield face down as Cybermen",
+			WhenThisEntersWithCastX("The Cyber-Controller — each opponent mills X cards; put all creature cards milled this way onto the battlefield face down as Cybermen",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					x := item.Params.Amount
