@@ -1,6 +1,10 @@
-package effects
+package cardsb
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
 
 // Banish from Edoras — Sorcery {4}{W} (The Lord of the Rings: Tales of
 // Middle-earth):
@@ -15,18 +19,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
+	effects.Register(effects.Spec{
 		OracleID:     "e4508afd-7cc3-4176-8291-cfc2c155ac11",
 		Name:         "Banish from Edoras",
-		Completeness: CompletenessFull,
+		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
-		Targets:      TargetCreature("target creature"),
+		Targets:      effects.TargetCreature("target creature"),
 		SelfCostModifiers: []game.CostModifier{
-			CostsLessIfItTargets(2, "This spell costs {2} less to cast if it targets a tapped creature.",
-				And(Creature(), tappedPermanent())),
+			effects.CostsLessIfItTargets(2, "This spell costs {2} less to cast if it targets a tapped creature.",
+				effects.And(effects.Creature(), effects.TappedPermanent())),
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return exileFirstLegalCardTarget(ctx.Game, item)
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			return effects.ExileFirstLegalCardTarget(ctx.Game, item)
 		},
 	})
 }
