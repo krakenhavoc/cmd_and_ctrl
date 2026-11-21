@@ -1289,6 +1289,7 @@ choose choose-cards/s82-gap-b142-darigaazs-caldera-return
 choose choose-cards/s82-gap-b142-dromars-cavern-return
 choose choose-cards/s82-gap-b142-riths-grove-return
 choose choose-cards/s82-gap-b143-trevas-ruins-return
+choose choose-cards/s82-gap-b144-planar-atlas-place
 choose choose-cards/s82-mid-b03-take-reveal-rest-graveyard
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
@@ -3771,6 +3772,7 @@ tail s82-dmu/slimefoots-survey-look
 tail s82-gap-b141/recoil-discard
 tail s82-gap-b141/spinal-embrace-life
 tail s82-gap-b142/orims-thunder-damage
+tail s82-gap-b144/monkey-cage-tokens
 tail s82-gap-b21/anax-kynaios-land-then-draw
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-one-b08/expand-the-sphere-rest
