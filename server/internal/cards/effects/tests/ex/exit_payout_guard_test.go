@@ -163,6 +163,12 @@ var exitPayoutAllowlist = map[string]string{
 		"happening, so an indestructible target still costs the life, and `if toughness <= 0` only skips " +
 		"a life change of nothing. The value is read before the destroy because that is the last moment " +
 		"the permanent is guaranteed findable (CR 608.2h).",
+	"cellar_door.go:46": "Cellar Door's `isCreature` is Death Mutation's read: \"If it's a creature card, you " +
+		"create a 2/2 black Zombie creature token\" asks what the card IS, which no replacement of the " +
+		"move to the graveyard changes, not whether it arrived there, so a card sent elsewhere " +
+		"still makes the token. The type is read before the move because that is the last moment " +
+		"the card is guaranteed findable in the library (CR 608.2h); the graveyard has no " +
+		"continuation form to gate it on.",
 }
 
 // exitVerb names one pausable exit and the continuation form a card
