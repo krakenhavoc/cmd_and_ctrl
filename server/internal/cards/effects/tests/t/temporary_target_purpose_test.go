@@ -101,6 +101,13 @@ var untilEndOfTurnExempt = map[string]string{
 	// The target is the opponent given an emblem; the "until end of turn" is
 	// the emblem's, about the creatures that attack them.
 	"Garruk, Apex Predator": "the target is an opponent given an emblem",
+
+	// Tales of Middle-earth Commander's lands (S82 GAP batch 120): each takes
+	// an ability away from its target until end of turn. The pattern reads
+	// "loses" as neither a harm nor a benefit and expects a benefit, but
+	// removing swampwalk, first strike or a landwalk is a harm to the target.
+	"Urborg":     "removes an ability from its target; the check reads 'loses' as a benefit",
+	"Hammerheim": "removes an ability from its target; the check reads 'loses' as a benefit",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog

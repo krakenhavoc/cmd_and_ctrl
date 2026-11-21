@@ -585,6 +585,16 @@ type StackItem struct {
 	// graveyard. Set by MarkSpellExilesAndPlotsForEffect; never on a copy.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
 
+	// ExileAndSuspend, when positive, is Gandalf of the Secret Fire's
+	// "exile that card with three time counters on it instead of putting
+	// it into your graveyard as it resolves. Then if the exiled card
+	// doesn't have suspend, it gains suspend" as a fact about this stack
+	// object: the number of time counters. Resolution only, like
+	// ExileWithCounter: a countered or fizzled spell goes to the
+	// graveyard. Set by MarkSpellExilesAndSuspendsForEffect; never on a
+	// copy.
+	ExileAndSuspend int `json:"exileAndSuspend,omitempty"`
+
 	// ExileInsteadOfGraveyard is "If that spell would be put into your
 	// graveyard, exile it instead" as a fact about this stack object
 	// (Torrential Gearhulk, Emet-Selch of the Third Seat; #3863). The

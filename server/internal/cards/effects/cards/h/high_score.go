@@ -51,35 +51,10 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.AtYourEndStep("High Score — draw a card if you control a creature with the greatest power", effects.Do(effects.If{
 				Cond: effects.CondBoard{Name: "a creature with the greatest power among creatures on the battlefield", Test: func(ctx *effects.Context) bool {
-					return highScoreControlsGreatestPower(ctx.Game, ctx.Controller())
+					return effects.ControlsGreatestPowerAmongCreatures(ctx.Game, ctx.Controller())
 				}},
 				Then: []effects.Applier{effects.DrawCards{N: 1}},
 			})),
 		},
 	})
-}
-
-// highScoreControlsGreatestPower reports whether `controller` controls a
-// creature whose power is the greatest, or tied for the greatest, among
-// every creature on the battlefield.
-func highScoreControlsGreatestPower(g *game.Game, controller uuid.UUID) bool {
-	if g.Battlefield == nil {
-		return false
-	}
-	g.RecomputeLayersIfStaleLocked()
-	best, found, mine := 0, false, false
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if !c.IsCreature() {
-			continue
-		}
-		p := c.PowerForComparison()
-		switch {
-		case !found || p > best:
-			best, found, mine = p, true, c.Controller == controller
-		case p == best && c.Controller == controller:
-			mine = true
-		}
-	}
-	return mine
 }

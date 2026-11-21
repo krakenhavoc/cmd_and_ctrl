@@ -261,6 +261,11 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Falcon, Winged Wonder's Redwing (#4455).
 	printedMshA3RedwingToken,
 
+	// Gwaihir, Greatest of the Eagles' Bird (S82 GAP batch 118, #5948).
+	PrintedS82GapB118GwaihirBird,
+	// Wake the Dragon's Dragon (S82 GAP batch 120, #5948).
+	PrintedS82GapB120Dragon,
+
 	// Mole Man, Moloid Master's Moloid (#4455).
 	printedMshB6MoloidToken,
 
