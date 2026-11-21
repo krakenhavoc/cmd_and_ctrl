@@ -229,6 +229,11 @@ var reviewedNotAWipe = map[string]string{
 	"Azorius Skyguard": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 	// S82 MBS batch 1 (#5576).
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
+
+	// S82 GAP batch 138 (#5948).
+	"Denizen of the Deep": "returns only its controller's own other creatures to hand, a cost to itself, not a board",
+	"Worldgorger Dragon":  "exiles only its controller's own other permanents and brings them back when it leaves, not a board",
+	"Floodgate":           "its leaves trigger deals half the Islands its controller controls to each nonblue creature without flying: no fixed amount or X for a sweep to declare",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
