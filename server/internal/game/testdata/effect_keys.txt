@@ -1601,6 +1601,7 @@ confirm confirm/delifs-cone-gain-life
 confirm confirm/delina-roll-again
 confirm confirm/dire-blunderbuss-sacrifice
 confirm confirm/disorienting-choice-exile
+confirm confirm/doors-of-durin-reveal
 confirm confirm/dragons-approach-exile
 confirm confirm/draw-cards
 confirm confirm/dwarven-vigilantes-damage
@@ -1968,6 +1969,7 @@ option option-pick/devouring-sugarmaw-sacrifice-or-tap
 option option-pick/dinas-guidance-placed
 option option-pick/discerning-financier-chosen
 option option-pick/done-for-the-day-reward
+option option-pick/doors-of-durin-attacks
 option option-pick/dramatists-puppet-put-or-remove
 option option-pick/dwarven-armorer-counter
 option option-pick/elemental-teachings-opponent
@@ -3952,6 +3954,8 @@ tail then/do-or-die-destroy-pile
 tail then/doomsday-excruciator-next-exile
 tail then/doomsday-lose-half-your-life
 tail then/doomsday-put-on-top
+tail then/doors-of-durin-entered
+tail then/doors-of-durin-scried
 tail then/dragons-approach-search
 tail then/drain-power-add-lost-mana
 tail then/draw-a-card
