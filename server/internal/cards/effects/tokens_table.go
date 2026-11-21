@@ -654,6 +654,8 @@ var TokenTable = map[string]game.Card{
 	"1/1 blue Tyranid Gargoyle with flying": {Name: "Tyranid Gargoyle", TypeLine: "Token Creature — Tyranid Gargoyle", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	// S82 GAP batch 194: Magnus the Red's Spawn.
 	"3/3 red Spawn": {Name: "Spawn", TypeLine: "Token Creature — Spawn", Power: 3, Toughness: 3, Colors: []string{"R"}},
+	// S82 GAP batch 175: Kasmina, Enigmatic Mentor's Wizard.
+	"2/2 blue Wizard": {Name: "Wizard", TypeLine: "Token Creature — Wizard", Power: 2, Toughness: 2, Colors: []string{"U"}},
 	// S82 GAP batch 136: Penumbra Bobcat's Cat.
 	"2/1 black Cat": {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 1, Colors: []string{"B"}},
 }

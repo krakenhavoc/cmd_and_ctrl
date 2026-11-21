@@ -571,6 +571,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Moira Brown, Guide Author's Wasteland Survival Guide (Fallout, #5948).
 	printedGapB64SurvivalGuideToken,
+
+	// Wolf's Quarry's Boar (S82 GAP batch 176, #5948).
+	printedBoarFoodToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
