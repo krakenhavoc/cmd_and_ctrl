@@ -238,6 +238,11 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 64 (#5948).
 	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
+
+	// S82 GAP batch 138 (#5948).
+	"Denizen of the Deep": "returns only its controller's own other creatures to hand, a cost to itself, not a board",
+	"Worldgorger Dragon":  "exiles only its controller's own other permanents and brings them back when it leaves, not a board",
+	"Floodgate":           "its leaves trigger deals half the Islands its controller controls to each nonblue creature without flying: no fixed amount or X for a sweep to declare",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

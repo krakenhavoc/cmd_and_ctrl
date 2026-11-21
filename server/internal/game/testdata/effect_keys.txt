@@ -1285,6 +1285,7 @@ choose choose-cards/s82-bns-b05-wanderwine-prophets-champion
 choose choose-cards/s82-bro-b13-play
 choose choose-cards/s82-dmu-b10-keep-one-on-top
 choose choose-cards/s82-dmu-shadow-prophecy-take
+choose choose-cards/s82-gap-b138-wormfang-drake-exile
 choose choose-cards/s82-mid-b03-take-reveal-rest-graveyard
 choose choose-cards/s82-mom-b12-skaab-top
 choose choose-cards/s82-mom-b12-warcrafting-exile
@@ -1852,6 +1853,7 @@ confirm may/jecht-reluctant-guardian-transform
 confirm may/radha-heir-to-keld-add-mana
 confirm may/shakedown-heavy-draw
 confirm may/soulbright-flamekin-add-mana
+confirm may/tiana-ships-caretaker-return
 confirm s82-bns-b28/draugr-to-graveyard
 confirm s82-bro-b07/sarinth-take-land
 confirm s82-bro-b07/sarinth-to-graveyard
