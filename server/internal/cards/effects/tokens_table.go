@@ -648,4 +648,7 @@ var TokenTable = map[string]game.Card{
 	"3/3 red Spawn": {Name: "Spawn", TypeLine: "Token Creature — Spawn", Power: 3, Toughness: 3, Colors: []string{"R"}},
 	// S82 GAP batch 195: Belisarius Cawl's Astartes Warrior.
 	"2/2 white Astartes Warrior with vigilance": {Name: "Astartes Warrior", TypeLine: "Token Creature — Astartes Warrior", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
+	// S82 GAP batch 196: Biotransference's Necron Warrior and Nurgle's Rot's Plaguebearer of Nurgle.
+	"2/2 black Necron Warrior artifact":            {Name: "Necron Warrior", TypeLine: "Token Artifact Creature — Necron Warrior", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	"1/3 black Demon named Plaguebearer of Nurgle": {Name: "Plaguebearer of Nurgle", TypeLine: "Token Creature — Demon", Power: 1, Toughness: 3, Colors: []string{"B"}},
 }
