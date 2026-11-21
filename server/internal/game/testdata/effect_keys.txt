@@ -2152,6 +2152,7 @@ option option-pick/invasion-of-arcavios-zones
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/kinscaer-sentry-attacks
 option option-pick/land-mana-each
+option option-pick/lantern-of-revealing-bottom
 option option-pick/leatherhead-remove-a-counter
 option option-pick/leori-sparktouched-hunter-planeswalker-type
 option option-pick/liliana-of-the-dark-realms-pump
@@ -2401,6 +2402,7 @@ payunless pay-unless/flameblast-dragon-x-damage
 payunless pay-unless/flameshadow-conjuring-copy
 payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/forage-only
+payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
 payunless pay-unless/furyblade-vampire-pump
@@ -2756,6 +2758,7 @@ run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
 run prompt-run/fugitive-of-the-judoon-exile
 run prompt-run/fugitive-of-the-judoon-human
+run prompt-run/fraying-line-rope
 run prompt-run/gap-b55-the-hunger-tide-rises-sacrifice
 run prompt-run/gap-b56-ajani-fells-the-godsire-counter
 run prompt-run/garruk-the-veil-cursed-tutor
@@ -3769,6 +3772,7 @@ tail nahiris-resolve/schedule-return-at-next-upkeep
 tail nantuko-cultivator/discarded
 tail narset-enlightened-exile/copy-exiled
 tail nashi-moons-legacy/copy-exiled
+tail navigation-orb/land-to-hand
 tail necromantic-selection/black-zombie-then-exile
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
@@ -3835,6 +3839,7 @@ tail put-from-library/aethermages-touch-grant-and-bottom
 tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/divergent-transformations-shuffle
 tail put-from-library/hei-bai-forest-guardian-shuffle
+tail put-from-library/lantern-of-revealing-after-put
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-any-order
@@ -4331,6 +4336,7 @@ tail then/memories-returning-taken
 tail then/metamorphosis-color-chosen
 tail then/midnight-clock-after-tuck
 tail then/mindbreak-trap-exile-rest
+tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
 tail then/mystery-key-draw-three
