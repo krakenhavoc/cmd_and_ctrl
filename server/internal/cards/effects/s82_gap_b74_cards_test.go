@@ -56,9 +56,9 @@ func gapPower(t *testing.T, g *game.Game, id uuid.UUID) int {
 	return p
 }
 
-// gapCastCreature casts a creature card with the given base power and
+// r35GapCastCreature casts a creature card with the given base power and
 // toughness for free from the active seat's hand in a main phase.
-func gapCastCreature(t *testing.T, g *game.Game, name, typeLine, oracle string, power, toughness int) uuid.UUID {
+func r35GapCastCreature(t *testing.T, g *game.Game, name, typeLine, oracle string, power, toughness int) uuid.UUID {
 	t.Helper()
 	active := g.Seats[g.Turn.ActiveSeat]
 	id := uuid.New()
@@ -234,7 +234,7 @@ func TestGapB74CracklingDrakeDrawsWhenItEnters(t *testing.T) {
 	me := g.Seats[g.Turn.ActiveSeat]
 	advanceToMain(t, g)
 	before := me.Hand.Size()
-	drake := gapCastCreature(t, g, "Crackling Drake", "Creature — Drake", gapCracklingDrakeOracle, 0, 4)
+	drake := r35GapCastCreature(t, g, "Crackling Drake", "Creature — Drake", gapCracklingDrakeOracle, 0, 4)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(drake) {
 		t.Fatal("the Drake did not enter")
