@@ -3441,9 +3441,9 @@ tail greenhouse-rickety-gazebo/after-mill
 tail grey-host-reinforcements/counters-per-creature
 tail grime-gorger/counter-per-exiled-card
 tail grip-of-phyresis/attach
+tail grishnakh-brash-instigator/steal
 tail grist-the-plague-swarm/deathtouch-counter
 tail grist-the-plague-swarm/mill-two
-tail grishnakh-brash-instigator/steal
 tail grizzled-angler/after-mill
 tail grolnok/croak-counter
 tail grubs-command/after-mill
