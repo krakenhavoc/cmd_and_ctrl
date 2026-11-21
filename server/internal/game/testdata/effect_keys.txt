@@ -2959,6 +2959,7 @@ tail burn-down-the-house/haste
 tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
+tail campfire/shuffle-graveyard
 tail cant-stay-away/entered
 tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy
