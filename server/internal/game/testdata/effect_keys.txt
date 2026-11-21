@@ -849,6 +849,7 @@ choose choose-cards/green-suns-twilight-picked
 choose choose-cards/green-suns-twilight-placed
 choose choose-cards/green-suns-twilight-take
 choose choose-cards/grime-gorger-exile
+choose choose-cards/guided-passage-picked
 choose choose-cards/gurmag-nightwatch-rest
 choose choose-cards/gyruda-reanimate
 choose choose-cards/heart-shaped-herb-sacrifice
@@ -2074,6 +2075,7 @@ option option-pick/gideon-blackblade-keyword
 option option-pick/gluntch-the-bestower-first
 option option-pick/gluntch-the-bestower-second
 option option-pick/gluntch-the-bestower-third
+option option-pick/guided-passage-opponent
 option option-pick/hand-of-vecna-creature
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/highway-robbery-cost
@@ -4148,6 +4150,7 @@ tail then/grave-endeavor-drain
 tail then/grist-the-hunger-tide-mill
 tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
+tail then/guided-passage-shuffle
 tail then/gyrus-waker-of-corpses-copy
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
