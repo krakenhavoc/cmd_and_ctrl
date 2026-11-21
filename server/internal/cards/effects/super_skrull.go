@@ -41,14 +41,7 @@ func init() {
 				Label:   "{4}{R}: Super-Skrull deals 4 damage to target creature.",
 				Cost:    ManaCost("{4}{R}"),
 				Targets: TargetCreature("target creature"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return DealDamage{Source: item.SourceCardID, Target: id, Amount: 4}.Apply(ctx)
-				},
+				Effect:  gapB92FourDamageToTheChosenCreature,
 			},
 			{
 				Label:   "{5}{U}: Target player draws four cards.",

@@ -2544,6 +2544,8 @@ run prompt-run/first-responder-return
 run prompt-run/foreboding-steamboat-exile
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
+run prompt-run/fugitive-of-the-judoon-exile
+run prompt-run/fugitive-of-the-judoon-human
 run prompt-run/garruk-the-veil-cursed-tutor
 run prompt-run/garruk-veiled-butcher-beast
 run prompt-run/garruk-veiled-butcher-draws
@@ -3955,6 +3957,7 @@ tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
+tail then/gap-b92-shuffle-then-investigate
 tail then/get-energy
 tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
