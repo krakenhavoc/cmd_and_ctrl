@@ -1834,6 +1834,7 @@ confirm s82-bro-b07/sarinth-to-graveyard
 confirm s82-dmu-b16/ajani-bottom
 confirm s82-rpr-b04/aid-from-the-cowl-bottom
 confirm s82-rpr-b04/aid-from-the-cowl-put
+confirm spark-of-creativity/damage-or-play
 confirm std-b9/traveling-botanist-take-land
 drawinstead asmodeus-the-archfiend
 drawinstead dredge-1
@@ -3859,6 +3860,7 @@ tail sorin-vengeful-bloodlord/vampires
 tail sothera-the-supervoid/put-exiled-creature
 tail soul-shackled-zombie/drain-if-creature
 tail spare-dagger/sacrificed
+tail spark-of-creativity/exiled
 tail sparring-dummy/after-mill
 tail speak-secrets/after-mill
 tail specter-of-mortality/after-exile
