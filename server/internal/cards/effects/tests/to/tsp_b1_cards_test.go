@@ -111,15 +111,6 @@ func TestTspB1CardsAreRegisteredFull(t *testing.T) {
 
 // --- helpers -----------------------------------------------------------------
 
-// tspB1Sliver seeds a non-catalog Sliver creature that has been under its
-// controller's control since the turn began.
-func tspB1Sliver(g *game.Game, owner uuid.UUID, name string, power, toughness int) uuid.UUID {
-	return effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: name, TypeLine: "Creature — Sliver",
-		Power: power, Toughness: toughness, Owner: owner, Controller: owner,
-	})
-}
-
 // tspB1Suspend suspends a card from the active seat's hand with `mana`
 // floating, then leaves it one time counter from its free cast.
 func tspB1Suspend(t *testing.T, g *game.Game, name, typeLine, oracle, mana string, n int) uuid.UUID {
@@ -181,8 +172,8 @@ func TestTspB1SliverAnthemsReachEverySliverCreature(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := effectstest.NewCatalogGame(t)
 			me, opp := g.Seats[0], g.Seats[1]
-			mine := tspB1Sliver(g, me.ID, "My Sliver", 1, 1)
-			theirs := tspB1Sliver(g, opp.ID, "Their Sliver", 1, 1)
+			mine := effectstest.TspB1Sliver(g, me.ID, "My Sliver", 1, 1)
+			theirs := effectstest.TspB1Sliver(g, opp.ID, "Their Sliver", 1, 1)
 			bear := effectstest.B12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 			effectstest.B12Push(g, me.ID, tc.name, "Creature — Sliver", tc.oracle, 2, 2)
 			for _, id := range []uuid.UUID{mine, theirs} {
@@ -209,7 +200,7 @@ func TestTspB1SliverKeywordGrantsReachEverySliverCreature(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := effectstest.NewCatalogGame(t)
 			me, opp := g.Seats[0], g.Seats[1]
-			theirs := tspB1Sliver(g, opp.ID, "Their Sliver", 1, 1)
+			theirs := effectstest.TspB1Sliver(g, opp.ID, "Their Sliver", 1, 1)
 			bear := effectstest.B12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 			lord := effectstest.B12Push(g, me.ID, tc.name, "Creature — Sliver", tc.oracle, 1, 1)
 			if !effectstest.HasKeywordOf(g, theirs, tc.keyword) || !effectstest.HasKeywordOf(g, lord, tc.keyword) {
@@ -227,7 +218,7 @@ func TestTspB1SliverKeywordGrantsReachEverySliverCreature(t *testing.T) {
 func TestTspB1SidewinderSliverFlankingShrinksTheBlocker(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	attacker := tspB1Sliver(g, me.ID, "My Sliver", 2, 2)
+	attacker := effectstest.TspB1Sliver(g, me.ID, "My Sliver", 2, 2)
 	effectstest.B12Push(g, opp.ID, "Sidewinder Sliver", "Creature — Sliver", tspB1SidewinderSliverOracle, 1, 1)
 	blocker := effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 3)
 	effectstest.AdvanceTo(t, g, game.StepDeclareAttackers)
@@ -252,8 +243,8 @@ func TestTspB1SidewinderSliverFlankingShrinksTheBlocker(t *testing.T) {
 func TestTspB1FirewakeSliverSacrificesASliverToPumpAnother(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
-	fodder := tspB1Sliver(g, me.ID, "Fodder Sliver", 1, 1)
-	other := tspB1Sliver(g, me.ID, "Other Sliver", 1, 1)
+	fodder := effectstest.TspB1Sliver(g, me.ID, "Fodder Sliver", 1, 1)
+	other := effectstest.TspB1Sliver(g, me.ID, "Other Sliver", 1, 1)
 	effectstest.B12Push(g, me.ID, "Firewake Sliver", "Creature — Sliver", tspB1FirewakeSliverOracle, 1, 1)
 	effectstest.AdvanceToMain(t, g)
 	effectstest.FloatMana(t, g, me, "{C}")
@@ -269,7 +260,7 @@ func TestTspB1FirewakeSliverSacrificesASliverToPumpAnother(t *testing.T) {
 func TestTspB1TelekineticSliverTapsATargetPermanent(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	sliver := tspB1Sliver(g, me.ID, "My Sliver", 1, 1)
+	sliver := effectstest.TspB1Sliver(g, me.ID, "My Sliver", 1, 1)
 	effectstest.B12Push(g, me.ID, "Telekinetic Sliver", "Creature — Sliver", tspB1TelekineticSliverOracle, 2, 2)
 	rock := effectstest.B12Permanent(g, opp.ID, "Their Rock", "Artifact")
 	effectstest.AdvanceToMain(t, g)
@@ -282,7 +273,7 @@ func TestTspB1TelekineticSliverTapsATargetPermanent(t *testing.T) {
 func TestTspB1ScreechingSliverMillsTheTargetPlayer(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	sliver := tspB1Sliver(g, me.ID, "My Sliver", 1, 1)
+	sliver := effectstest.TspB1Sliver(g, me.ID, "My Sliver", 1, 1)
 	effectstest.B12Push(g, me.ID, "Screeching Sliver", "Creature — Sliver", tspB1ScreechingSliverOracle, 1, 1)
 	effectstest.AdvanceToMain(t, g)
 	before := opp.Graveyard.Size()
@@ -295,8 +286,8 @@ func TestTspB1ScreechingSliverMillsTheTargetPlayer(t *testing.T) {
 func TestTspB1PsionicSliverHitsTheTargetAndItself(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	big := tspB1Sliver(g, me.ID, "Big Sliver", 4, 4)
-	small := tspB1Sliver(g, me.ID, "Small Sliver", 1, 1)
+	big := effectstest.TspB1Sliver(g, me.ID, "Big Sliver", 4, 4)
+	small := effectstest.TspB1Sliver(g, me.ID, "Small Sliver", 1, 1)
 	effectstest.B12Push(g, me.ID, "Psionic Sliver", "Creature — Sliver", tspB1PsionicSliverOracle, 2, 2)
 	effectstest.AdvanceToMain(t, g)
 	before := opp.Life
@@ -340,7 +331,7 @@ func TestTspB1QuilledSliverPingsOnlyACreatureInCombat(t *testing.T) {
 func TestTspB1MindlashSliverMakesEachPlayerDiscard(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
-	sliver := tspB1Sliver(g, me.ID, "My Sliver", 1, 1)
+	sliver := effectstest.TspB1Sliver(g, me.ID, "My Sliver", 1, 1)
 	effectstest.B12Push(g, me.ID, "Mindlash Sliver", "Creature — Sliver", tspB1MindlashSliverOracle, 1, 1)
 	effectstest.AdvanceToMain(t, g)
 	effectstest.FloatMana(t, g, me, "{C}")
@@ -384,8 +375,8 @@ func TestTspB1MindlashSliverMakesEachPlayerDiscard(t *testing.T) {
 func TestTspB1BasalSliverSacrificesASliverForBlackMana(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	mine := tspB1Sliver(g, me.ID, "My Sliver", 1, 1)
-	theirs := tspB1Sliver(g, opp.ID, "Their Sliver", 1, 1)
+	mine := effectstest.TspB1Sliver(g, me.ID, "My Sliver", 1, 1)
+	theirs := effectstest.TspB1Sliver(g, opp.ID, "Their Sliver", 1, 1)
 	effectstest.B12Push(g, me.ID, "Basal Sliver", "Creature — Sliver", tspB1BasalSliverOracle, 2, 2)
 	if effectstest.GrantedManaRowsOf(g, theirs) != 1 {
 		t.Error("an opponent's Sliver has no granted mana ability")
@@ -404,9 +395,9 @@ func TestTspB1BasalSliverSacrificesASliverForBlackMana(t *testing.T) {
 func TestTspB1PlagueSliverHurtsEachSliversControllerInTheirUpkeep(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	owner, other := g.Seats[1], g.Seats[2]
-	tspB1Sliver(g, owner.ID, "Owner's Sliver", 1, 1)
+	effectstest.TspB1Sliver(g, owner.ID, "Owner's Sliver", 1, 1)
 	effectstest.B12Push(g, owner.ID, "Plague Sliver", "Creature — Sliver", tspB1PlagueSliverOracle, 5, 5)
-	tspB1Sliver(g, other.ID, "Other's Sliver", 1, 1)
+	effectstest.TspB1Sliver(g, other.ID, "Other's Sliver", 1, 1)
 	before, otherBefore := owner.Life, other.Life
 	effectstest.AdvanceToUpkeepOf(t, g, 1)
 	effectstest.PassPriorityAroundTable(t, g)

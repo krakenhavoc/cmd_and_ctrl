@@ -38,7 +38,7 @@ import (
 // stack item's own SourceObject names for a death — so the resolution
 // can tell it from a card that left the graveyard and came back.
 func WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn(label string) game.TriggeredAbility {
-	t := WhenThisIsPutIntoAGraveyardFromAnywhere(label, shuffleThisCardIntoItsOwnersLibrary)
+	t := WhenThisIsPutIntoAGraveyardFromAnywhere(label, ShuffleThisCardIntoItsOwnersLibrary)
 	// A fill-in Build (ADR 0041 P9): it records the graveyard object and
 	// leaves the Effect to the row.
 	t.Build = func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
@@ -55,7 +55,7 @@ func WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn(label string) game.Trigg
 // shuffled whether or not it did (CR 701.24c). The move is the ordinary
 // tuck, so a commander's owner is offered the command zone (CR 903.9b),
 // and the shuffle is its continuation, so it waits for that answer.
-func shuffleThisCardIntoItsOwnersLibrary(g *game.Game, item *game.StackItem) error {
+func ShuffleThisCardIntoItsOwnersLibrary(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	owner := item.Controller
 	if c, ok := g.LookupCardForEffect(id); ok && c.Owner != uuid.Nil {

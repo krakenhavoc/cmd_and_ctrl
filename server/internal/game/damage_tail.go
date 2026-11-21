@@ -834,7 +834,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// Angel's Grace (#3172): the damage stays whole and only the life it
 	// costs is capped at the floor of 1, after the window (ADR 0169 §3).
 	lifeLoss = g.capLifeLossByFloorLocked(p, lifeLoss)
-	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
+	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p) && !g.playerCantLoseLifeLocked(p)
 	lost := 0
 	if loseLife {
 		lost = lifeLoss

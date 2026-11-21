@@ -1851,6 +1851,8 @@ followUpParks[].target	custom(uuid.UUID)
 followUpParks[].then	object
 followUpParks[].then.asked	object
 followUpParks[].then.asked.controller	custom(uuid.UUID)
+followUpParks[].then.asked.distribution	map:array
+followUpParks[].then.asked.distribution{}	number:int
 followUpParks[].then.asked.id	custom(uuid.UUID)
 followUpParks[].then.asked.kind	string
 followUpParks[].then.asked.label	string
@@ -2162,6 +2164,7 @@ followUpParks[].then.permission.filter.cardInZone	bool
 followUpParks[].then.permission.filter.cardType	string
 followUpParks[].then.permission.filter.cardTypesAny	string
 followUpParks[].then.permission.filter.colorCountExactly	number:int
+followUpParks[].then.permission.filter.colorlessOnly	bool
 followUpParks[].then.permission.filter.colorsAny	string
 followUpParks[].then.permission.filter.creatureOnly	bool
 followUpParks[].then.permission.filter.creatureType	string
@@ -2197,6 +2200,7 @@ followUpParks[].then.permission.filter.powerCapped	bool
 followUpParks[].then.permission.filter.powerOrToughnessAtMost	number:int
 followUpParks[].then.permission.filter.powerOrToughnessCapped	bool
 followUpParks[].then.permission.filter.putInGraveyardThisTurn	bool
+followUpParks[].then.permission.filter.snowOnly	bool
 followUpParks[].then.permission.filter.sorceryOnly	bool
 followUpParks[].then.permission.filter.subtype	string
 followUpParks[].then.permission.filter.surveilledThisTurn	bool
@@ -2536,6 +2540,8 @@ frozenEntries[].event.counterTail	object
 frozenEntries[].event.counterTail.then	object
 frozenEntries[].event.counterTail.then.asked	object
 frozenEntries[].event.counterTail.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.asked.distribution	map:array
+frozenEntries[].event.counterTail.then.asked.distribution{}	number:int
 frozenEntries[].event.counterTail.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.kind	string
 frozenEntries[].event.counterTail.then.asked.label	string
@@ -2847,6 +2853,7 @@ frozenEntries[].event.counterTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.counterTail.then.permission.filter.cardType	string
 frozenEntries[].event.counterTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.counterTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.counterTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.counterTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.creatureType	string
@@ -2882,6 +2889,7 @@ frozenEntries[].event.counterTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.counterTail.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.counterTail.then.permission.filter.snowOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.subtype	string
 frozenEntries[].event.counterTail.then.permission.filter.surveilledThisTurn	bool
@@ -3199,6 +3207,8 @@ frozenEntries[].event.damageTail.each.dealt	number:int
 frozenEntries[].event.damageTail.each.each	object
 frozenEntries[].event.damageTail.each.each.asked	object
 frozenEntries[].event.damageTail.each.each.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.asked.distribution	map:array
+frozenEntries[].event.damageTail.each.each.asked.distribution{}	number:int
 frozenEntries[].event.damageTail.each.each.asked.id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.kind	string
 frozenEntries[].event.damageTail.each.each.asked.label	string
@@ -3510,6 +3520,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.cardType	string
 frozenEntries[].event.damageTail.each.each.permission.filter.cardTypesAny	string
 frozenEntries[].event.damageTail.each.each.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.damageTail.each.each.permission.filter.colorlessOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.creatureType	string
@@ -3545,6 +3556,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.powerCapped	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.snowOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.sorceryOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.subtype	string
 frozenEntries[].event.damageTail.each.each.permission.filter.surveilledThisTurn	bool
@@ -3853,6 +3865,8 @@ frozenEntries[].event.damageTail.each.source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then	object
 frozenEntries[].event.damageTail.each.then.asked	object
 frozenEntries[].event.damageTail.each.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.asked.distribution	map:array
+frozenEntries[].event.damageTail.each.then.asked.distribution{}	number:int
 frozenEntries[].event.damageTail.each.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.kind	string
 frozenEntries[].event.damageTail.each.then.asked.label	string
@@ -4164,6 +4178,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.cardType	string
 frozenEntries[].event.damageTail.each.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.damageTail.each.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.damageTail.each.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.creatureType	string
@@ -4199,6 +4214,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.powerCapped	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.snowOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.subtype	string
 frozenEntries[].event.damageTail.each.then.permission.filter.surveilledThisTurn	bool
@@ -4693,6 +4709,8 @@ frozenEntries[].event.damageTail.sourceUnpreventable	bool
 frozenEntries[].event.damageTail.then	object
 frozenEntries[].event.damageTail.then.asked	object
 frozenEntries[].event.damageTail.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.asked.distribution	map:array
+frozenEntries[].event.damageTail.then.asked.distribution{}	number:int
 frozenEntries[].event.damageTail.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.kind	string
 frozenEntries[].event.damageTail.then.asked.label	string
@@ -5004,6 +5022,7 @@ frozenEntries[].event.damageTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.damageTail.then.permission.filter.cardType	string
 frozenEntries[].event.damageTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.damageTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.damageTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.damageTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.creatureType	string
@@ -5039,6 +5058,7 @@ frozenEntries[].event.damageTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.damageTail.then.permission.filter.snowOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.subtype	string
 frozenEntries[].event.damageTail.then.permission.filter.surveilledThisTurn	bool
@@ -5470,6 +5490,8 @@ frozenEntries[].event.entryTail.batch.discard.legs.source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.distribution	map:array
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.distribution{}	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.kind	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.label	string
@@ -5781,6 +5803,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardIn
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardType	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.creatureType	string
@@ -5816,6 +5839,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerC
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.snowOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.subtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.surveilledThisTurn	bool
@@ -6200,6 +6224,8 @@ frozenEntries[].event.entryTail.batch.source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then	object
 frozenEntries[].event.entryTail.batch.then.asked	object
 frozenEntries[].event.entryTail.batch.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.asked.distribution	map:array
+frozenEntries[].event.entryTail.batch.then.asked.distribution{}	number:int
 frozenEntries[].event.entryTail.batch.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.kind	string
 frozenEntries[].event.entryTail.batch.then.asked.label	string
@@ -6511,6 +6537,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.cardType	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.batch.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.creatureType	string
@@ -6546,6 +6573,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.powerCapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.snowOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.subtype	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.surveilledThisTurn	bool
@@ -6854,6 +6882,8 @@ frozenEntries[].event.entryTail.craftedWith[].id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed	object
 frozenEntries[].event.entryTail.keyed.asked	object
 frozenEntries[].event.entryTail.keyed.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.asked.distribution	map:array
+frozenEntries[].event.entryTail.keyed.asked.distribution{}	number:int
 frozenEntries[].event.entryTail.keyed.asked.id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.kind	string
 frozenEntries[].event.entryTail.keyed.asked.label	string
@@ -7165,6 +7195,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.cardType	string
 frozenEntries[].event.entryTail.keyed.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.keyed.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.keyed.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.creatureType	string
@@ -7200,6 +7231,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.powerCapped	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.snowOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.subtype	string
 frozenEntries[].event.entryTail.keyed.permission.filter.surveilledThisTurn	bool
@@ -7541,6 +7573,8 @@ frozenEntries[].event.entryTail.search.spec.tappedOnEntry	bool
 frozenEntries[].event.entryTail.search.spec.thenTail	object
 frozenEntries[].event.entryTail.search.spec.thenTail.asked	object
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.distribution	map:array
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.distribution{}	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.kind	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.label	string
@@ -7852,6 +7886,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardInZon
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardType	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.creatureType	string
@@ -7887,6 +7922,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerCapp
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.snowOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.subtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.surveilledThisTurn	bool
@@ -8216,6 +8252,8 @@ frozenEntries[].event.entryTail.tokens.source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then	object
 frozenEntries[].event.entryTail.tokens.then.asked	object
 frozenEntries[].event.entryTail.tokens.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.asked.distribution	map:array
+frozenEntries[].event.entryTail.tokens.then.asked.distribution{}	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.kind	string
 frozenEntries[].event.entryTail.tokens.then.asked.label	string
@@ -8527,6 +8565,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.cardInZone	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.cardType	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.colorsAny	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.creatureType	string
@@ -8562,6 +8601,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.powerCapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.snowOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.subtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.surveilledThisTurn	bool
@@ -9322,6 +9362,8 @@ frozenEntries[].event.keywordActionTail.players[]	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then	object
 frozenEntries[].event.keywordActionTail.then.asked	object
 frozenEntries[].event.keywordActionTail.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.asked.distribution	map:array
+frozenEntries[].event.keywordActionTail.then.asked.distribution{}	number:int
 frozenEntries[].event.keywordActionTail.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.kind	string
 frozenEntries[].event.keywordActionTail.then.asked.label	string
@@ -9633,6 +9675,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.cardType	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.keywordActionTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.creatureType	string
@@ -9668,6 +9711,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.snowOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.subtype	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.surveilledThisTurn	bool
@@ -10000,6 +10044,8 @@ frozenEntries[].event.lifeTail.each.source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then	object
 frozenEntries[].event.lifeTail.each.then.asked	object
 frozenEntries[].event.lifeTail.each.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.asked.distribution	map:array
+frozenEntries[].event.lifeTail.each.then.asked.distribution{}	number:int
 frozenEntries[].event.lifeTail.each.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.kind	string
 frozenEntries[].event.lifeTail.each.then.asked.label	string
@@ -10311,6 +10357,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.cardInZone	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.cardType	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.lifeTail.each.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.colorsAny	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.creatureType	string
@@ -10346,6 +10393,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.powerCapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.snowOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.subtype	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.surveilledThisTurn	bool
@@ -10657,6 +10705,8 @@ frozenEntries[].event.lifeTail.move.remaining[].source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then	object
 frozenEntries[].event.lifeTail.then.asked	object
 frozenEntries[].event.lifeTail.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.asked.distribution	map:array
+frozenEntries[].event.lifeTail.then.asked.distribution{}	number:int
 frozenEntries[].event.lifeTail.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.kind	string
 frozenEntries[].event.lifeTail.then.asked.label	string
@@ -10968,6 +11018,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.lifeTail.then.permission.filter.cardType	string
 frozenEntries[].event.lifeTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.lifeTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.lifeTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.lifeTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.creatureType	string
@@ -11003,6 +11054,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.lifeTail.then.permission.filter.snowOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.subtype	string
 frozenEntries[].event.lifeTail.then.permission.filter.surveilledThisTurn	bool
@@ -12174,6 +12226,8 @@ frozenEntries[].event.millTail.run.seen[].warpText	number:uint8
 frozenEntries[].event.millTail.run.then	object
 frozenEntries[].event.millTail.run.then.asked	object
 frozenEntries[].event.millTail.run.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.asked.distribution	map:array
+frozenEntries[].event.millTail.run.then.asked.distribution{}	number:int
 frozenEntries[].event.millTail.run.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.kind	string
 frozenEntries[].event.millTail.run.then.asked.label	string
@@ -12485,6 +12539,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.cardInZone	bool
 frozenEntries[].event.millTail.run.then.permission.filter.cardType	string
 frozenEntries[].event.millTail.run.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.millTail.run.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.millTail.run.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.colorsAny	string
 frozenEntries[].event.millTail.run.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.creatureType	string
@@ -12520,6 +12575,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.powerCapped	bool
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.millTail.run.then.permission.filter.snowOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.subtype	string
 frozenEntries[].event.millTail.run.then.permission.filter.surveilledThisTurn	bool
@@ -12826,6 +12882,8 @@ frozenEntries[].event.millTail.sequenced	bool
 frozenEntries[].event.millTail.then	object
 frozenEntries[].event.millTail.then.asked	object
 frozenEntries[].event.millTail.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.asked.distribution	map:array
+frozenEntries[].event.millTail.then.asked.distribution{}	number:int
 frozenEntries[].event.millTail.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.kind	string
 frozenEntries[].event.millTail.then.asked.label	string
@@ -13137,6 +13195,7 @@ frozenEntries[].event.millTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.millTail.then.permission.filter.cardType	string
 frozenEntries[].event.millTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.millTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.millTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.millTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.creatureType	string
@@ -13172,6 +13231,7 @@ frozenEntries[].event.millTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.millTail.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.millTail.then.permission.filter.snowOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.subtype	string
 frozenEntries[].event.millTail.then.permission.filter.surveilledThisTurn	bool
@@ -14506,6 +14566,8 @@ frozenEntries[].event.tokenTail	object
 frozenEntries[].event.tokenTail.then	object
 frozenEntries[].event.tokenTail.then.asked	object
 frozenEntries[].event.tokenTail.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.asked.distribution	map:array
+frozenEntries[].event.tokenTail.then.asked.distribution{}	number:int
 frozenEntries[].event.tokenTail.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.kind	string
 frozenEntries[].event.tokenTail.then.asked.label	string
@@ -14817,6 +14879,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.cardInZone	bool
 frozenEntries[].event.tokenTail.then.permission.filter.cardType	string
 frozenEntries[].event.tokenTail.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.tokenTail.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.tokenTail.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.colorsAny	string
 frozenEntries[].event.tokenTail.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.creatureType	string
@@ -14852,6 +14915,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.tokenTail.then.permission.filter.snowOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.subtype	string
 frozenEntries[].event.tokenTail.then.permission.filter.surveilledThisTurn	bool
@@ -16479,6 +16543,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].warpText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.then	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.distribution	map:array
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.distribution{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.label	string
@@ -16790,6 +16856,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardInZone
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
@@ -16825,6 +16892,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerCappe
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.snowOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.surveilledThisTurn	bool
@@ -17166,6 +17234,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.tappedOnEntry	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.distribution	map:array
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.distribution{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.label	string
@@ -17477,6 +17547,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.card
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
@@ -17512,6 +17583,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powe
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.snowOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.surveilledThisTurn	bool
@@ -17818,6 +17890,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.upTo	bool
 frozenEntries[].event.zoneRoute.batchLegs.then	object
 frozenEntries[].event.zoneRoute.batchLegs.then.asked	object
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.distribution	map:array
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.distribution{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.label	string
@@ -18129,6 +18203,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardInZone	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.creatureType	string
@@ -18164,6 +18239,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerCapped	boo
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.snowOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.subtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.surveilledThisTurn	bool
@@ -18490,6 +18566,8 @@ frozenEntries[].event.zoneRoute.discardLegs.source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then	object
 frozenEntries[].event.zoneRoute.discardLegs.then.asked	object
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.distribution	map:array
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.distribution{}	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.kind	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.label	string
@@ -18801,6 +18879,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardInZone	bo
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.creatureType	string
@@ -18836,6 +18915,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerCapped	b
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.snowOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.subtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.surveilledThisTurn	bool
@@ -19231,6 +19311,8 @@ frozenEntries[].event.zoneRoute.faceDownLegs.rest[]	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.distribution	map:array
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.distribution{}	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.kind	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.label	string
@@ -19542,6 +19624,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardInZone	b
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardType	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.cardTypesAny	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.colorCountExactly	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.colorlessOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.colorsAny	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
@@ -19577,6 +19660,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerCapped	
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.snowOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.subtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.surveilledThisTurn	bool
@@ -23227,6 +23311,8 @@ movesAwaitingTokens[].counterTail	object
 movesAwaitingTokens[].counterTail.then	object
 movesAwaitingTokens[].counterTail.then.asked	object
 movesAwaitingTokens[].counterTail.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].counterTail.then.asked.distribution	map:array
+movesAwaitingTokens[].counterTail.then.asked.distribution{}	number:int
 movesAwaitingTokens[].counterTail.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.kind	string
 movesAwaitingTokens[].counterTail.then.asked.label	string
@@ -23538,6 +23624,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].counterTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].counterTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].counterTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].counterTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.creatureType	string
@@ -23573,6 +23660,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.subtype	string
 movesAwaitingTokens[].counterTail.then.permission.filter.surveilledThisTurn	bool
@@ -23890,6 +23978,8 @@ movesAwaitingTokens[].damageTail.each.dealt	number:int
 movesAwaitingTokens[].damageTail.each.each	object
 movesAwaitingTokens[].damageTail.each.each.asked	object
 movesAwaitingTokens[].damageTail.each.each.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.each.asked.distribution	map:array
+movesAwaitingTokens[].damageTail.each.each.asked.distribution{}	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.kind	string
 movesAwaitingTokens[].damageTail.each.each.asked.label	string
@@ -24201,6 +24291,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.cardType	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].damageTail.each.each.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.colorsAny	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.creatureType	string
@@ -24236,6 +24327,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.powerCapped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.snowOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.subtype	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.surveilledThisTurn	bool
@@ -24544,6 +24636,8 @@ movesAwaitingTokens[].damageTail.each.source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then	object
 movesAwaitingTokens[].damageTail.each.then.asked	object
 movesAwaitingTokens[].damageTail.each.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.then.asked.distribution	map:array
+movesAwaitingTokens[].damageTail.each.then.asked.distribution{}	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.kind	string
 movesAwaitingTokens[].damageTail.each.then.asked.label	string
@@ -24855,6 +24949,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.cardType	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].damageTail.each.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.creatureType	string
@@ -24890,6 +24985,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.subtype	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.surveilledThisTurn	bool
@@ -25384,6 +25480,8 @@ movesAwaitingTokens[].damageTail.sourceUnpreventable	bool
 movesAwaitingTokens[].damageTail.then	object
 movesAwaitingTokens[].damageTail.then.asked	object
 movesAwaitingTokens[].damageTail.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.then.asked.distribution	map:array
+movesAwaitingTokens[].damageTail.then.asked.distribution{}	number:int
 movesAwaitingTokens[].damageTail.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.kind	string
 movesAwaitingTokens[].damageTail.then.asked.label	string
@@ -25695,6 +25793,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].damageTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].damageTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].damageTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].damageTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.creatureType	string
@@ -25730,6 +25829,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.subtype	string
 movesAwaitingTokens[].damageTail.then.permission.filter.surveilledThisTurn	bool
@@ -26161,6 +26261,8 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.distribution	map:array
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.distribution{}	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.kind	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.label	string
@@ -26472,6 +26574,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.cardIn
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.creatureType	string
@@ -26507,6 +26610,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerC
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.subtype	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.surveilledThisTurn	bool
@@ -26891,6 +26995,8 @@ movesAwaitingTokens[].entryTail.batch.source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then	object
 movesAwaitingTokens[].entryTail.batch.then.asked	object
 movesAwaitingTokens[].entryTail.batch.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.then.asked.distribution	map:array
+movesAwaitingTokens[].entryTail.batch.then.asked.distribution{}	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.kind	string
 movesAwaitingTokens[].entryTail.batch.then.asked.label	string
@@ -27202,6 +27308,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.creatureType	string
@@ -27237,6 +27344,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.subtype	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.surveilledThisTurn	bool
@@ -27545,6 +27653,8 @@ movesAwaitingTokens[].entryTail.craftedWith[].id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed	object
 movesAwaitingTokens[].entryTail.keyed.asked	object
 movesAwaitingTokens[].entryTail.keyed.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.keyed.asked.distribution	map:array
+movesAwaitingTokens[].entryTail.keyed.asked.distribution{}	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.kind	string
 movesAwaitingTokens[].entryTail.keyed.asked.label	string
@@ -27856,6 +27966,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.keyed.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.creatureType	string
@@ -27891,6 +28002,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.powerCapped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.snowOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.subtype	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.surveilledThisTurn	bool
@@ -28232,6 +28344,8 @@ movesAwaitingTokens[].entryTail.search.spec.tappedOnEntry	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.distribution	map:array
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.distribution{}	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.kind	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.label	string
@@ -28543,6 +28657,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.cardInZon
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.creatureType	string
@@ -28578,6 +28693,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerCapp
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.snowOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.subtype	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.surveilledThisTurn	bool
@@ -28907,6 +29023,8 @@ movesAwaitingTokens[].entryTail.tokens.source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then	object
 movesAwaitingTokens[].entryTail.tokens.then.asked	object
 movesAwaitingTokens[].entryTail.tokens.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.then.asked.distribution	map:array
+movesAwaitingTokens[].entryTail.tokens.then.asked.distribution{}	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.kind	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.label	string
@@ -29218,6 +29336,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.cardType	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.creatureType	string
@@ -29253,6 +29372,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.subtype	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.surveilledThisTurn	bool
@@ -30013,6 +30133,8 @@ movesAwaitingTokens[].keywordActionTail.players[]	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then	object
 movesAwaitingTokens[].keywordActionTail.then.asked	object
 movesAwaitingTokens[].keywordActionTail.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.then.asked.distribution	map:array
+movesAwaitingTokens[].keywordActionTail.then.asked.distribution{}	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.kind	string
 movesAwaitingTokens[].keywordActionTail.then.asked.label	string
@@ -30324,6 +30446,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.creatureType	string
@@ -30359,6 +30482,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.subtype	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.surveilledThisTurn	bool
@@ -30691,6 +30815,8 @@ movesAwaitingTokens[].lifeTail.each.source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then	object
 movesAwaitingTokens[].lifeTail.each.then.asked	object
 movesAwaitingTokens[].lifeTail.each.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.each.then.asked.distribution	map:array
+movesAwaitingTokens[].lifeTail.each.then.asked.distribution{}	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.kind	string
 movesAwaitingTokens[].lifeTail.each.then.asked.label	string
@@ -31002,6 +31128,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.cardType	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.creatureType	string
@@ -31037,6 +31164,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.subtype	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.surveilledThisTurn	bool
@@ -31348,6 +31476,8 @@ movesAwaitingTokens[].lifeTail.move.remaining[].source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then	object
 movesAwaitingTokens[].lifeTail.then.asked	object
 movesAwaitingTokens[].lifeTail.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.then.asked.distribution	map:array
+movesAwaitingTokens[].lifeTail.then.asked.distribution{}	number:int
 movesAwaitingTokens[].lifeTail.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.kind	string
 movesAwaitingTokens[].lifeTail.then.asked.label	string
@@ -31659,6 +31789,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].lifeTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.creatureType	string
@@ -31694,6 +31825,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.subtype	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.surveilledThisTurn	bool
@@ -32865,6 +32997,8 @@ movesAwaitingTokens[].millTail.run.seen[].warpText	number:uint8
 movesAwaitingTokens[].millTail.run.then	object
 movesAwaitingTokens[].millTail.run.then.asked	object
 movesAwaitingTokens[].millTail.run.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.then.asked.distribution	map:array
+movesAwaitingTokens[].millTail.run.then.asked.distribution{}	number:int
 movesAwaitingTokens[].millTail.run.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.kind	string
 movesAwaitingTokens[].millTail.run.then.asked.label	string
@@ -33176,6 +33310,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.cardType	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].millTail.run.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.creatureType	string
@@ -33211,6 +33346,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.subtype	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.surveilledThisTurn	bool
@@ -33517,6 +33653,8 @@ movesAwaitingTokens[].millTail.sequenced	bool
 movesAwaitingTokens[].millTail.then	object
 movesAwaitingTokens[].millTail.then.asked	object
 movesAwaitingTokens[].millTail.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.then.asked.distribution	map:array
+movesAwaitingTokens[].millTail.then.asked.distribution{}	number:int
 movesAwaitingTokens[].millTail.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.kind	string
 movesAwaitingTokens[].millTail.then.asked.label	string
@@ -33828,6 +33966,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].millTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].millTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].millTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].millTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].millTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.creatureType	string
@@ -33863,6 +34002,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].millTail.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].millTail.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.subtype	string
 movesAwaitingTokens[].millTail.then.permission.filter.surveilledThisTurn	bool
@@ -35197,6 +35337,8 @@ movesAwaitingTokens[].tokenTail	object
 movesAwaitingTokens[].tokenTail.then	object
 movesAwaitingTokens[].tokenTail.then.asked	object
 movesAwaitingTokens[].tokenTail.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].tokenTail.then.asked.distribution	map:array
+movesAwaitingTokens[].tokenTail.then.asked.distribution{}	number:int
 movesAwaitingTokens[].tokenTail.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.kind	string
 movesAwaitingTokens[].tokenTail.then.asked.label	string
@@ -35508,6 +35650,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.cardType	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].tokenTail.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.creatureType	string
@@ -35543,6 +35686,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.subtype	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.surveilledThisTurn	bool
@@ -37170,6 +37314,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].warpText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.distribution	map:array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.distribution{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.label	string
@@ -37481,6 +37627,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.cardInZone
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
@@ -37516,6 +37663,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerCappe
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.subtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.surveilledThisTurn	bool
@@ -37857,6 +38005,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.tappedOnEntry	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.distribution	map:array
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.distribution{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.label	string
@@ -38168,6 +38318,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.card
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
@@ -38203,6 +38354,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powe
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.snowOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.subtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.surveilledThisTurn	bool
@@ -38509,6 +38661,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.upTo	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.distribution	map:array
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.distribution{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.label	string
@@ -38820,6 +38974,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.cardInZone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.creatureType	string
@@ -38855,6 +39010,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerCapped	boo
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.subtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.surveilledThisTurn	bool
@@ -39181,6 +39337,8 @@ movesAwaitingTokens[].zoneRoute.discardLegs.source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.distribution	map:array
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.distribution{}	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.kind	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.label	string
@@ -39492,6 +39650,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.cardInZone	bo
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.creatureType	string
@@ -39527,6 +39686,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerCapped	b
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.subtype	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.surveilledThisTurn	bool
@@ -39922,6 +40082,8 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.rest[]	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.distribution	map:array
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.distribution{}	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.kind	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.label	string
@@ -40233,6 +40395,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.cardInZone	b
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.cardType	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.cardTypesAny	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.colorCountExactly	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.colorlessOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.colorsAny	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.creatureOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
@@ -40268,6 +40431,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerCapped	
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.snowOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.subtype	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.surveilledThisTurn	bool
@@ -42188,6 +42352,8 @@ pendingChoices[].anyPlayerOffer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].anyPlayerOffer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].asked	object
 pendingChoices[].asked.controller	custom(uuid.UUID)
+pendingChoices[].asked.distribution	map:array
+pendingChoices[].asked.distribution{}	number:int
 pendingChoices[].asked.id	custom(uuid.UUID)
 pendingChoices[].asked.kind	string
 pendingChoices[].asked.label	string
@@ -43451,6 +43617,8 @@ pendingChoices[].attackSplit.source	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail	object
 pendingChoices[].attackSplit.tail.asked	object
 pendingChoices[].attackSplit.tail.asked.controller	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.asked.distribution	map:array
+pendingChoices[].attackSplit.tail.asked.distribution{}	number:int
 pendingChoices[].attackSplit.tail.asked.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.kind	string
 pendingChoices[].attackSplit.tail.asked.label	string
@@ -43762,6 +43930,7 @@ pendingChoices[].attackSplit.tail.permission.filter.cardInZone	bool
 pendingChoices[].attackSplit.tail.permission.filter.cardType	string
 pendingChoices[].attackSplit.tail.permission.filter.cardTypesAny	string
 pendingChoices[].attackSplit.tail.permission.filter.colorCountExactly	number:int
+pendingChoices[].attackSplit.tail.permission.filter.colorlessOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.colorsAny	string
 pendingChoices[].attackSplit.tail.permission.filter.creatureOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.creatureType	string
@@ -43797,6 +43966,7 @@ pendingChoices[].attackSplit.tail.permission.filter.powerCapped	bool
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].attackSplit.tail.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].attackSplit.tail.permission.filter.snowOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.sorceryOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.subtype	string
 pendingChoices[].attackSplit.tail.permission.filter.surveilledThisTurn	bool
@@ -45632,6 +45802,8 @@ pendingChoices[].diceRoll.source	custom(uuid.UUID)
 pendingChoices[].diceRoll.then	object
 pendingChoices[].diceRoll.then.asked	object
 pendingChoices[].diceRoll.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.asked.distribution	map:array
+pendingChoices[].diceRoll.then.asked.distribution{}	number:int
 pendingChoices[].diceRoll.then.asked.id	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.kind	string
 pendingChoices[].diceRoll.then.asked.label	string
@@ -45943,6 +46115,7 @@ pendingChoices[].diceRoll.then.permission.filter.cardInZone	bool
 pendingChoices[].diceRoll.then.permission.filter.cardType	string
 pendingChoices[].diceRoll.then.permission.filter.cardTypesAny	string
 pendingChoices[].diceRoll.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].diceRoll.then.permission.filter.colorlessOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.colorsAny	string
 pendingChoices[].diceRoll.then.permission.filter.creatureOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.creatureType	string
@@ -45978,6 +46151,7 @@ pendingChoices[].diceRoll.then.permission.filter.powerCapped	bool
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].diceRoll.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].diceRoll.then.permission.filter.snowOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.sorceryOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.subtype	string
 pendingChoices[].diceRoll.then.permission.filter.surveilledThisTurn	bool
@@ -46693,6 +46867,8 @@ pendingChoices[].divideShield.walk.dealt	number:int
 pendingChoices[].divideShield.walk.each	object
 pendingChoices[].divideShield.walk.each.asked	object
 pendingChoices[].divideShield.walk.each.asked.controller	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.asked.distribution	map:array
+pendingChoices[].divideShield.walk.each.asked.distribution{}	number:int
 pendingChoices[].divideShield.walk.each.asked.id	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.kind	string
 pendingChoices[].divideShield.walk.each.asked.label	string
@@ -47004,6 +47180,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.cardInZone	bool
 pendingChoices[].divideShield.walk.each.permission.filter.cardType	string
 pendingChoices[].divideShield.walk.each.permission.filter.cardTypesAny	string
 pendingChoices[].divideShield.walk.each.permission.filter.colorCountExactly	number:int
+pendingChoices[].divideShield.walk.each.permission.filter.colorlessOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.colorsAny	string
 pendingChoices[].divideShield.walk.each.permission.filter.creatureOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.creatureType	string
@@ -47039,6 +47216,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.powerCapped	bool
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].divideShield.walk.each.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].divideShield.walk.each.permission.filter.snowOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.sorceryOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.subtype	string
 pendingChoices[].divideShield.walk.each.permission.filter.surveilledThisTurn	bool
@@ -47347,6 +47525,8 @@ pendingChoices[].divideShield.walk.source	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then	object
 pendingChoices[].divideShield.walk.then.asked	object
 pendingChoices[].divideShield.walk.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.asked.distribution	map:array
+pendingChoices[].divideShield.walk.then.asked.distribution{}	number:int
 pendingChoices[].divideShield.walk.then.asked.id	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.kind	string
 pendingChoices[].divideShield.walk.then.asked.label	string
@@ -47658,6 +47838,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.cardInZone	bool
 pendingChoices[].divideShield.walk.then.permission.filter.cardType	string
 pendingChoices[].divideShield.walk.then.permission.filter.cardTypesAny	string
 pendingChoices[].divideShield.walk.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].divideShield.walk.then.permission.filter.colorlessOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.colorsAny	string
 pendingChoices[].divideShield.walk.then.permission.filter.creatureOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.creatureType	string
@@ -47693,6 +47874,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.powerCapped	bool
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].divideShield.walk.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].divideShield.walk.then.permission.filter.snowOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.sorceryOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.subtype	string
 pendingChoices[].divideShield.walk.then.permission.filter.surveilledThisTurn	bool
@@ -48007,6 +48189,8 @@ pendingChoices[].libraryOrder.from	string
 pendingChoices[].libraryOrder.then	object
 pendingChoices[].libraryOrder.then.asked	object
 pendingChoices[].libraryOrder.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.asked.distribution	map:array
+pendingChoices[].libraryOrder.then.asked.distribution{}	number:int
 pendingChoices[].libraryOrder.then.asked.id	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.kind	string
 pendingChoices[].libraryOrder.then.asked.label	string
@@ -48318,6 +48502,7 @@ pendingChoices[].libraryOrder.then.permission.filter.cardInZone	bool
 pendingChoices[].libraryOrder.then.permission.filter.cardType	string
 pendingChoices[].libraryOrder.then.permission.filter.cardTypesAny	string
 pendingChoices[].libraryOrder.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].libraryOrder.then.permission.filter.colorlessOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.colorsAny	string
 pendingChoices[].libraryOrder.then.permission.filter.creatureOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.creatureType	string
@@ -48353,6 +48538,7 @@ pendingChoices[].libraryOrder.then.permission.filter.powerCapped	bool
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].libraryOrder.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].libraryOrder.then.permission.filter.snowOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.sorceryOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.subtype	string
 pendingChoices[].libraryOrder.then.permission.filter.surveilledThisTurn	bool
@@ -48721,6 +48907,8 @@ pendingChoices[].modeUsedLabel[]	string
 pendingChoices[].nameThen	object
 pendingChoices[].nameThen.asked	object
 pendingChoices[].nameThen.asked.controller	custom(uuid.UUID)
+pendingChoices[].nameThen.asked.distribution	map:array
+pendingChoices[].nameThen.asked.distribution{}	number:int
 pendingChoices[].nameThen.asked.id	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.kind	string
 pendingChoices[].nameThen.asked.label	string
@@ -49032,6 +49220,7 @@ pendingChoices[].nameThen.permission.filter.cardInZone	bool
 pendingChoices[].nameThen.permission.filter.cardType	string
 pendingChoices[].nameThen.permission.filter.cardTypesAny	string
 pendingChoices[].nameThen.permission.filter.colorCountExactly	number:int
+pendingChoices[].nameThen.permission.filter.colorlessOnly	bool
 pendingChoices[].nameThen.permission.filter.colorsAny	string
 pendingChoices[].nameThen.permission.filter.creatureOnly	bool
 pendingChoices[].nameThen.permission.filter.creatureType	string
@@ -49067,6 +49256,7 @@ pendingChoices[].nameThen.permission.filter.powerCapped	bool
 pendingChoices[].nameThen.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].nameThen.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].nameThen.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].nameThen.permission.filter.snowOnly	bool
 pendingChoices[].nameThen.permission.filter.sorceryOnly	bool
 pendingChoices[].nameThen.permission.filter.subtype	string
 pendingChoices[].nameThen.permission.filter.surveilledThisTurn	bool
@@ -49382,6 +49572,8 @@ pendingChoices[].optionalTradeFor	custom(uuid.UUID)
 pendingChoices[].ordered	object
 pendingChoices[].ordered.asked	object
 pendingChoices[].ordered.asked.controller	custom(uuid.UUID)
+pendingChoices[].ordered.asked.distribution	map:array
+pendingChoices[].ordered.asked.distribution{}	number:int
 pendingChoices[].ordered.asked.id	custom(uuid.UUID)
 pendingChoices[].ordered.asked.kind	string
 pendingChoices[].ordered.asked.label	string
@@ -49877,6 +50069,8 @@ pendingChoices[].pickOptions[].Room	string
 pendingChoices[].pickTail	object
 pendingChoices[].pickTail.asked	object
 pendingChoices[].pickTail.asked.controller	custom(uuid.UUID)
+pendingChoices[].pickTail.asked.distribution	map:array
+pendingChoices[].pickTail.asked.distribution{}	number:int
 pendingChoices[].pickTail.asked.id	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.kind	string
 pendingChoices[].pickTail.asked.label	string
@@ -50188,6 +50382,7 @@ pendingChoices[].pickTail.permission.filter.cardInZone	bool
 pendingChoices[].pickTail.permission.filter.cardType	string
 pendingChoices[].pickTail.permission.filter.cardTypesAny	string
 pendingChoices[].pickTail.permission.filter.colorCountExactly	number:int
+pendingChoices[].pickTail.permission.filter.colorlessOnly	bool
 pendingChoices[].pickTail.permission.filter.colorsAny	string
 pendingChoices[].pickTail.permission.filter.creatureOnly	bool
 pendingChoices[].pickTail.permission.filter.creatureType	string
@@ -50223,6 +50418,7 @@ pendingChoices[].pickTail.permission.filter.powerCapped	bool
 pendingChoices[].pickTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].pickTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].pickTail.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].pickTail.permission.filter.snowOnly	bool
 pendingChoices[].pickTail.permission.filter.sorceryOnly	bool
 pendingChoices[].pickTail.permission.filter.subtype	string
 pendingChoices[].pickTail.permission.filter.surveilledThisTurn	bool
@@ -50576,6 +50772,8 @@ pendingChoices[].replacementResume.event.counterTail	object
 pendingChoices[].replacementResume.event.counterTail.then	object
 pendingChoices[].replacementResume.event.counterTail.then.asked	object
 pendingChoices[].replacementResume.event.counterTail.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.counterTail.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.kind	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.label	string
@@ -50887,6 +51085,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.card
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.creatureType	string
@@ -50922,6 +51121,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powe
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.surveilledThisTurn	bool
@@ -51239,6 +51439,8 @@ pendingChoices[].replacementResume.event.damageTail.each.dealt	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each	object
 pendingChoices[].replacementResume.event.damageTail.each.each.asked	object
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.distribution	map:array
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.kind	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.label	string
@@ -51550,6 +51752,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.creatureType	string
@@ -51585,6 +51788,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.surveilledThisTurn	bool
@@ -51893,6 +52097,8 @@ pendingChoices[].replacementResume.event.damageTail.each.source	custom(uuid.UUID
 pendingChoices[].replacementResume.event.damageTail.each.then	object
 pendingChoices[].replacementResume.event.damageTail.each.then.asked	object
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.kind	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.label	string
@@ -52204,6 +52410,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.creatureType	string
@@ -52239,6 +52446,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.surveilledThisTurn	bool
@@ -52733,6 +52941,8 @@ pendingChoices[].replacementResume.event.damageTail.sourceUnpreventable	bool
 pendingChoices[].replacementResume.event.damageTail.then	object
 pendingChoices[].replacementResume.event.damageTail.then.asked	object
 pendingChoices[].replacementResume.event.damageTail.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.damageTail.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.kind	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.label	string
@@ -53044,6 +53254,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardI
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.creatureType	string
@@ -53079,6 +53290,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.power
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.surveilledThisTurn	bool
@@ -53510,6 +53722,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.source	cus
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.label	string
@@ -53821,6 +54035,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.creatureType	string
@@ -53856,6 +54071,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.surveilledThisTurn	bool
@@ -54240,6 +54456,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.source	custom(uuid.UUID
 pendingChoices[].replacementResume.event.entryTail.batch.then	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.label	string
@@ -54551,6 +54769,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.creatureType	string
@@ -54586,6 +54805,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.surveilledThisTurn	bool
@@ -54894,6 +55114,8 @@ pendingChoices[].replacementResume.event.entryTail.craftedWith[].id	custom(uuid.
 pendingChoices[].replacementResume.event.entryTail.keyed	object
 pendingChoices[].replacementResume.event.entryTail.keyed.asked	object
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.distribution	map:array
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.kind	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.label	string
@@ -55205,6 +55427,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardI
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.creatureType	string
@@ -55240,6 +55463,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.power
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.surveilledThisTurn	bool
@@ -55581,6 +55805,8 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.tappedOnEntry	boo
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.distribution	map:array
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.kind	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.label	string
@@ -55892,6 +56118,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.creatureType	string
@@ -55927,6 +56154,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.surveilledThisTurn	bool
@@ -56256,6 +56484,8 @@ pendingChoices[].replacementResume.event.entryTail.tokens.source	custom(uuid.UUI
 pendingChoices[].replacementResume.event.entryTail.tokens.then	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.kind	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.label	string
@@ -56567,6 +56797,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.creatureType	string
@@ -56602,6 +56833,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.surveilledThisTurn	bool
@@ -57362,6 +57594,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.players[]	custom(uuid
 pendingChoices[].replacementResume.event.keywordActionTail.then	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.kind	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.label	string
@@ -57673,6 +57907,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.creatureType	string
@@ -57708,6 +57943,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.surveilledThisTurn	bool
@@ -58040,6 +58276,8 @@ pendingChoices[].replacementResume.event.lifeTail.each.source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.kind	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.label	string
@@ -58351,6 +58589,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ca
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.creatureType	string
@@ -58386,6 +58625,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.po
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.surveilledThisTurn	bool
@@ -58697,6 +58937,8 @@ pendingChoices[].replacementResume.event.lifeTail.move.remaining[].source	custom
 pendingChoices[].replacementResume.event.lifeTail.then	object
 pendingChoices[].replacementResume.event.lifeTail.then.asked	object
 pendingChoices[].replacementResume.event.lifeTail.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.lifeTail.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.kind	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.label	string
@@ -59008,6 +59250,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardInZ
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.creatureType	string
@@ -59043,6 +59286,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerCa
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.surveilledThisTurn	bool
@@ -60214,6 +60458,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].warpText	number:uin
 pendingChoices[].replacementResume.event.millTail.run.then	object
 pendingChoices[].replacementResume.event.millTail.run.then.asked	object
 pendingChoices[].replacementResume.event.millTail.run.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.millTail.run.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.kind	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.label	string
@@ -60525,6 +60771,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.car
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.creatureType	string
@@ -60560,6 +60807,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.pow
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.surveilledThisTurn	bool
@@ -60866,6 +61114,8 @@ pendingChoices[].replacementResume.event.millTail.sequenced	bool
 pendingChoices[].replacementResume.event.millTail.then	object
 pendingChoices[].replacementResume.event.millTail.then.asked	object
 pendingChoices[].replacementResume.event.millTail.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.millTail.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.kind	string
 pendingChoices[].replacementResume.event.millTail.then.asked.label	string
@@ -61177,6 +61427,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardInZ
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.creatureType	string
@@ -61212,6 +61463,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerCa
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.surveilledThisTurn	bool
@@ -62546,6 +62798,8 @@ pendingChoices[].replacementResume.event.tokenTail	object
 pendingChoices[].replacementResume.event.tokenTail.then	object
 pendingChoices[].replacementResume.event.tokenTail.then.asked	object
 pendingChoices[].replacementResume.event.tokenTail.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.tokenTail.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.kind	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.label	string
@@ -62857,6 +63111,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardIn
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.creatureType	string
@@ -62892,6 +63147,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerC
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.surveilledThisTurn	bool
@@ -64519,6 +64775,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].warpTex
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.label	string
@@ -64830,6 +65088,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.creatureType	string
@@ -64865,6 +65124,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.surveilledThisTurn	bool
@@ -65206,6 +65466,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.tappedOnEntr
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.distribution	map:array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.label	string
@@ -65517,6 +65779,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.creatureType	string
@@ -65552,6 +65815,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.surveilledThisTurn	bool
@@ -65858,6 +66122,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.upTo	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.label	string
@@ -66169,6 +66435,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.creatureType	string
@@ -66204,6 +66471,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.surveilledThisTurn	bool
@@ -66530,6 +66798,8 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.source	custom(uui
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.label	string
@@ -66841,6 +67111,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.creatureType	string
@@ -66876,6 +67147,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.surveilledThisTurn	bool
@@ -67271,6 +67543,8 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.rest[]	custom(uu
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.distribution	map:array
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.distribution{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.label	string
@@ -67582,6 +67856,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.cardType	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.cardTypesAny	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.colorCountExactly	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.colorlessOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.colorsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.creatureType	string
@@ -67617,6 +67892,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.snowOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.subtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.surveilledThisTurn	bool
@@ -68383,6 +68659,8 @@ pendingChoices[].scryCards[]	custom(uuid.UUID)
 pendingChoices[].scryThen	object
 pendingChoices[].scryThen.asked	object
 pendingChoices[].scryThen.asked.controller	custom(uuid.UUID)
+pendingChoices[].scryThen.asked.distribution	map:array
+pendingChoices[].scryThen.asked.distribution{}	number:int
 pendingChoices[].scryThen.asked.id	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.kind	string
 pendingChoices[].scryThen.asked.label	string
@@ -68694,6 +68972,7 @@ pendingChoices[].scryThen.permission.filter.cardInZone	bool
 pendingChoices[].scryThen.permission.filter.cardType	string
 pendingChoices[].scryThen.permission.filter.cardTypesAny	string
 pendingChoices[].scryThen.permission.filter.colorCountExactly	number:int
+pendingChoices[].scryThen.permission.filter.colorlessOnly	bool
 pendingChoices[].scryThen.permission.filter.colorsAny	string
 pendingChoices[].scryThen.permission.filter.creatureOnly	bool
 pendingChoices[].scryThen.permission.filter.creatureType	string
@@ -68729,6 +69008,7 @@ pendingChoices[].scryThen.permission.filter.powerCapped	bool
 pendingChoices[].scryThen.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].scryThen.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].scryThen.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].scryThen.permission.filter.snowOnly	bool
 pendingChoices[].scryThen.permission.filter.sorceryOnly	bool
 pendingChoices[].scryThen.permission.filter.subtype	string
 pendingChoices[].scryThen.permission.filter.surveilledThisTurn	bool
@@ -69083,6 +69363,8 @@ pendingChoices[].searchPrompt.spec.tappedOnEntry	bool
 pendingChoices[].searchPrompt.spec.thenTail	object
 pendingChoices[].searchPrompt.spec.thenTail.asked	object
 pendingChoices[].searchPrompt.spec.thenTail.asked.controller	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.asked.distribution	map:array
+pendingChoices[].searchPrompt.spec.thenTail.asked.distribution{}	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.id	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.kind	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.label	string
@@ -69394,6 +69676,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardInZone	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardType	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.cardTypesAny	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.colorCountExactly	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.colorlessOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.colorsAny	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.creatureType	string
@@ -69429,6 +69712,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerCapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.snowOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.sorceryOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.subtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.surveilledThisTurn	bool
@@ -73556,6 +73840,8 @@ promptRuns	array
 promptRuns[]	object
 promptRuns[].asked	object
 promptRuns[].asked.controller	custom(uuid.UUID)
+promptRuns[].asked.distribution	map:array
+promptRuns[].asked.distribution{}	number:int
 promptRuns[].asked.id	custom(uuid.UUID)
 promptRuns[].asked.kind	string
 promptRuns[].asked.label	string
@@ -75325,6 +75611,7 @@ seats[].castPermissions[].filter.cardInZone	bool
 seats[].castPermissions[].filter.cardType	string
 seats[].castPermissions[].filter.cardTypesAny	string
 seats[].castPermissions[].filter.colorCountExactly	number:int
+seats[].castPermissions[].filter.colorlessOnly	bool
 seats[].castPermissions[].filter.colorsAny	string
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
@@ -75360,6 +75647,7 @@ seats[].castPermissions[].filter.powerCapped	bool
 seats[].castPermissions[].filter.powerOrToughnessAtMost	number:int
 seats[].castPermissions[].filter.powerOrToughnessCapped	bool
 seats[].castPermissions[].filter.putInGraveyardThisTurn	bool
+seats[].castPermissions[].filter.snowOnly	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
 seats[].castPermissions[].filter.subtype	string
 seats[].castPermissions[].filter.surveilledThisTurn	bool
@@ -79088,6 +79376,7 @@ seats[].statics[].cantBeCountered.filter.cardInZone	bool
 seats[].statics[].cantBeCountered.filter.cardType	string
 seats[].statics[].cantBeCountered.filter.cardTypesAny	string
 seats[].statics[].cantBeCountered.filter.colorCountExactly	number:int
+seats[].statics[].cantBeCountered.filter.colorlessOnly	bool
 seats[].statics[].cantBeCountered.filter.colorsAny	string
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
@@ -79123,6 +79412,7 @@ seats[].statics[].cantBeCountered.filter.powerCapped	bool
 seats[].statics[].cantBeCountered.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].cantBeCountered.filter.powerOrToughnessCapped	bool
 seats[].statics[].cantBeCountered.filter.putInGraveyardThisTurn	bool
+seats[].statics[].cantBeCountered.filter.snowOnly	bool
 seats[].statics[].cantBeCountered.filter.sorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.subtype	string
 seats[].statics[].cantBeCountered.filter.surveilledThisTurn	bool
@@ -79141,6 +79431,7 @@ seats[].statics[].castBan.filter.cardInZone	bool
 seats[].statics[].castBan.filter.cardType	string
 seats[].statics[].castBan.filter.cardTypesAny	string
 seats[].statics[].castBan.filter.colorCountExactly	number:int
+seats[].statics[].castBan.filter.colorlessOnly	bool
 seats[].statics[].castBan.filter.colorsAny	string
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
@@ -79176,6 +79467,7 @@ seats[].statics[].castBan.filter.powerCapped	bool
 seats[].statics[].castBan.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].castBan.filter.powerOrToughnessCapped	bool
 seats[].statics[].castBan.filter.putInGraveyardThisTurn	bool
+seats[].statics[].castBan.filter.snowOnly	bool
 seats[].statics[].castBan.filter.sorceryOnly	bool
 seats[].statics[].castBan.filter.subtype	string
 seats[].statics[].castBan.filter.surveilledThisTurn	bool
@@ -79250,6 +79542,7 @@ seats[].statics[].nextSpell.filter.cardInZone	bool
 seats[].statics[].nextSpell.filter.cardType	string
 seats[].statics[].nextSpell.filter.cardTypesAny	string
 seats[].statics[].nextSpell.filter.colorCountExactly	number:int
+seats[].statics[].nextSpell.filter.colorlessOnly	bool
 seats[].statics[].nextSpell.filter.colorsAny	string
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
@@ -79285,6 +79578,7 @@ seats[].statics[].nextSpell.filter.powerCapped	bool
 seats[].statics[].nextSpell.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].nextSpell.filter.powerOrToughnessCapped	bool
 seats[].statics[].nextSpell.filter.putInGraveyardThisTurn	bool
+seats[].statics[].nextSpell.filter.snowOnly	bool
 seats[].statics[].nextSpell.filter.sorceryOnly	bool
 seats[].statics[].nextSpell.filter.subtype	string
 seats[].statics[].nextSpell.filter.surveilledThisTurn	bool
@@ -79311,6 +79605,7 @@ seats[].statics[].timing.filter.cardInZone	bool
 seats[].statics[].timing.filter.cardType	string
 seats[].statics[].timing.filter.cardTypesAny	string
 seats[].statics[].timing.filter.colorCountExactly	number:int
+seats[].statics[].timing.filter.colorlessOnly	bool
 seats[].statics[].timing.filter.colorsAny	string
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
@@ -79346,6 +79641,7 @@ seats[].statics[].timing.filter.powerCapped	bool
 seats[].statics[].timing.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].timing.filter.powerOrToughnessCapped	bool
 seats[].statics[].timing.filter.putInGraveyardThisTurn	bool
+seats[].statics[].timing.filter.snowOnly	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
 seats[].statics[].timing.filter.subtype	string
 seats[].statics[].timing.filter.surveilledThisTurn	bool

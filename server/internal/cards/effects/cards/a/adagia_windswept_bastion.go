@@ -1,8 +1,6 @@
 package cardsa
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -72,24 +70,9 @@ func adagiaLegendaryCopy(g *game.Game, item *game.StackItem) error {
 			Copy:       t.ID,
 			N:          1,
 			Except: func(tok *game.Card) {
-				tok.TypeLine = LegendaryTypeLine(tok.TypeLine)
+				tok.TypeLine = effects.LegendaryTypeLine(tok.TypeLine)
 			},
 		}.Apply(ctx)
 	}
 	return nil
-}
-
-// legendaryTypeLine adds the Legendary supertype to a type line that
-// does not already carry it — "except it's legendary". Supertypes
-// lead the line, so it is prepended.
-func LegendaryTypeLine(tl string) string {
-	for _, w := range strings.Fields(tl) {
-		if w == "Legendary" {
-			return tl
-		}
-	}
-	if tl == "" {
-		return "Legendary"
-	}
-	return "Legendary " + tl
 }

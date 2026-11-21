@@ -64,18 +64,6 @@ func TestCoalHillSchoolChaosReturnsAHistoricCard(t *testing.T) {
 	}
 }
 
-// toNextUpkeep passes the turn and walks the next player's turn to its
-// upkeep, where that player is the planar controller (CR 901.6). It
-// returns the new active player.
-func toNextUpkeep(t *testing.T, g *game.Game) *game.Player {
-	t.Helper()
-	effectstest.EndTurn(t, g)
-	if g.Turn.Step != game.StepUpkeep {
-		effectstest.AdvanceTo(t, g, game.StepUpkeep)
-	}
-	return g.Seats[g.Turn.ActiveSeat]
-}
-
 // advanceAnsweringPlayerTargets walks to `step`, answering every open
 // player-target prompt with `target` and resolving what it put on the
 // stack, and reports how many it answered.
@@ -113,7 +101,7 @@ func TestAntarcticResearchBaseInvestigatesOnPlaneswalkAndUpkeep(t *testing.T) {
 	if n := effectstest.CountBattlefieldByName(g, "Clue"); n != 1 {
 		t.Fatalf("%d Clues after planeswalking to the plane, want 1", n)
 	}
-	next := toNextUpkeep(t, g)
+	next := effectstest.ToNextUpkeep(t, g)
 	effectstest.PassPriorityAroundTable(t, g)
 	clues := 0
 	for _, c := range g.Battlefield.Cards {
@@ -179,7 +167,7 @@ func TestDalekIntensiveCareExilesANonDalekForAHastyDalek(t *testing.T) {
 	}
 
 	// The next upkeep: only the Dalek, so nothing is exiled and no Dalek made.
-	_ = toNextUpkeep(t, g)
+	_ = effectstest.ToNextUpkeep(t, g)
 	effectstest.PassPriorityAroundTable(t, g)
 	if n := effectstest.CountBattlefieldByName(g, "Dalek"); n != 1 {
 		t.Errorf("%d Daleks after an upkeep with no non-Dalek creature, want 1", n)
@@ -572,7 +560,7 @@ func TestHotelOfFearsExilesTheTopAndCostsItsManaValue(t *testing.T) {
 	top := game.Card{InstanceID: uuid.New(), Name: "Top Spell", TypeLine: "Sorcery", ManaCost: "{2}{B}", Owner: next.ID, Controller: next.ID}
 	next.Library.PushTop(top)
 	life := next.Life
-	if got := toNextUpkeep(t, g); got.ID != next.ID {
+	if got := effectstest.ToNextUpkeep(t, g); got.ID != next.ID {
 		t.Fatalf("the next turn is %s's", got.Name)
 	}
 	effectstest.PassPriorityAroundTable(t, g)
@@ -678,13 +666,13 @@ func TestBadWolfBayChaosStopsReturnsFromExileThenPlaneswalks(t *testing.T) {
 func TestAplanMortariumExposureBuildsAcrossUpkeeps(t *testing.T) {
 	requirePlaneRegisteredFull(t, effectstest.PlaneAplanMortarium)
 	g, plane := effectstest.NewPlaneGame(t, effectstest.PlaneAplanMortarium)
-	first := toNextUpkeep(t, g)
+	first := effectstest.ToNextUpkeep(t, g)
 	life := first.Life
 	effectstest.PassPriorityAroundTable(t, g)
 	if got := life - first.Life; got != 1 {
 		t.Fatalf("the first upkeep cost %d life, want 1", got)
 	}
-	second := toNextUpkeep(t, g)
+	second := effectstest.ToNextUpkeep(t, g)
 	life = second.Life
 	effectstest.PassPriorityAroundTable(t, g)
 	if got := life - second.Life; got != 2 {
@@ -782,7 +770,7 @@ func TestAmysHomeSuspendsACardFromHandForItsManaValue(t *testing.T) {
 		t.Errorf("the exiled card has %d time counters (suspend %v), want 3 and suspend", c.Counters[game.CounterTime], game.CardHasSuspend(c))
 	}
 	// "You may": choosing nothing exiles nothing.
-	next := toNextUpkeep(t, g)
+	next := effectstest.ToNextUpkeep(t, g)
 	effectstest.PassPriorityAroundTable(t, g)
 	if ch := effectstest.ChooseCardsChoiceFor(g, next.ID); ch != nil {
 		hand := next.Hand.Size()

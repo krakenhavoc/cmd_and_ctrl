@@ -27,17 +27,6 @@ func rsOptionalCosts(g *game.Game, p *game.Player, id uuid.UUID) (out []game.Add
 	return out
 }
 
-// rsConspireTriggers counts the conspire triggers of `spell` on the stack.
-func rsConspireTriggers(g *game.Game, spell uuid.UUID) int {
-	n := 0
-	for _, item := range g.StackMeta {
-		if item != nil && item.Kind == game.StackItemTriggered && item.SourceCardID == spell {
-			n++
-		}
-	}
-	return n
-}
-
 // New Blood taps a Vampire for its own cost and, under Raiding Schemes,
 // two more black creatures for conspire: three creatures tapped, the
 // Vampire alone on the spell's own payment record, and a conspire trigger.
@@ -74,7 +63,7 @@ func TestNewBloodIsConspiredBesideItsOwnTapCost(t *testing.T) {
 	if got := game.GrantedOptionalTimesPaid(item.Paid, game.ConspireKey); got != 1 {
 		t.Errorf("conspire recorded as paid %d times, want 1", got)
 	}
-	if n := rsConspireTriggers(g, blood); n != 1 {
+	if n := effectstest.RsConspireTriggers(g, blood); n != 1 {
 		t.Errorf("%d conspire triggers, want 1", n)
 	}
 }
@@ -130,7 +119,7 @@ func TestOneCreatureCannotPayNewBloodAndConspire(t *testing.T) {
 	if err := effectstest.TacCast(g, me, blood, effectstest.CardRefs(goblin), vamp); err != nil {
 		t.Fatalf("New Blood without conspire under Raiding Schemes: %v", err)
 	}
-	if rsConspireTriggers(g, blood) != 0 || effectstest.TappedForTest(t, g, a) {
+	if effectstest.RsConspireTriggers(g, blood) != 0 || effectstest.TappedForTest(t, g, a) {
 		t.Error("an unconspired cast tapped a creature for conspire or made a trigger")
 	}
 }
@@ -284,7 +273,7 @@ func TestConspireBesideATapCostIsEnumerated(t *testing.T) {
 	if !effectstest.TappedForTest(t, g, vamp) || !effectstest.TappedForTest(t, g, a) || !effectstest.TappedForTest(t, g, b) {
 		t.Error("the enumerated cast did not tap all three creatures")
 	}
-	if rsConspireTriggers(g, blood) != 1 {
+	if effectstest.RsConspireTriggers(g, blood) != 1 {
 		t.Error("no conspire trigger for the enumerated cast")
 	}
 }
@@ -341,7 +330,7 @@ func TestTwoRaidingSchemesGiveTwoConspireCosts(t *testing.T) {
 			if tapped != tc.taps {
 				t.Errorf("%d creatures tapped, want %d", tapped, tc.taps)
 			}
-			if n := rsConspireTriggers(g, bolt); n != len(tc.announce) {
+			if n := effectstest.RsConspireTriggers(g, bolt); n != len(tc.announce) {
 				t.Errorf("%d conspire triggers, want one per cost paid (%d)", n, len(tc.announce))
 			}
 			effectstest.SqResolveAll(t, g, me)

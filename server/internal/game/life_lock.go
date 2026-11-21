@@ -210,7 +210,7 @@ func (g *Game) CanPayLifeLocked(p *Player, amount int) bool {
 	if p == nil || p.Life < amount {
 		return false
 	}
-	return !g.playerLifeTotalCantChangeLocked(p)
+	return !g.playerLifeTotalCantChangeLocked(p) && !g.playerCantLoseLifeLocked(p)
 }
 
 // lifeChangeIsLockedLocked is the built-in's AppliesTo: is this a life

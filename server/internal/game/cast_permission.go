@@ -255,12 +255,24 @@ type PermissionFilter struct {
 	// colors".
 	LegendaryOnly bool `json:"legendaryOnly,omitempty"`
 
+	// SnowOnly is Isu the Abominable's "snow lands and snow spells": the
+	// card must have the snow supertype (CR 205.4), read from its effective
+	// characteristics. It judges a land to be played and a spell to be cast
+	// alike.
+	SnowOnly bool `json:"snowOnly,omitempty"`
+
 	// ArtifactOrColorlessOnly is Mystic Forge's "artifact spells and
 	// colorless spells": an OR of two properties read from the card's
 	// effective characteristics, so a colored artifact and a colorless
 	// non-artifact (an Eldrazi) both qualify. Pair it with NonLandOnly,
 	// because a land is never cast and a colorless land is not a spell.
 	ArtifactOrColorlessOnly bool `json:"artifactOrColorlessOnly,omitempty"`
+
+	// ColorlessOnly is Darksteel Monolith's "a colorless spell": the card
+	// has no colour (CR 105.2c), read from its effective characteristics,
+	// so a coloured artifact fails it and an Eldrazi passes. Pair it with
+	// NonLandOnly where lands could reach the filter. Additive.
+	ColorlessOnly bool `json:"colorlessOnly,omitempty"`
 
 	// AuraOrEquipmentOnly is Sigarda's Aid's "Aura and Equipment
 	// spells" (#3918): an OR of two subtypes, read from the card's
@@ -546,7 +558,13 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.LegendaryOnly && !c.IsLegendary() {
 		return false
 	}
+	if f.SnowOnly && !c.HasSupertype("Snow") {
+		return false
+	}
 	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {
+		return false
+	}
+	if f.ColorlessOnly && !c.IsColorless() {
 		return false
 	}
 	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {
