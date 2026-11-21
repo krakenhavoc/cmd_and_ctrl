@@ -1552,6 +1552,7 @@ choose choose-cards/zenos-yae-galvus-first-friend
 choose choose-cards/zero-point-ballad-return
 choose choose-cards/zimones-experiment-reveal
 choose choose-cards/zndrsplts-judgment-creature
+choose choose-cards/zoological-study-take
 choose choose-cards/zurgo-and-ojutai-return
 choose choose-source/desperate-gambit
 choose choose-source/shield
@@ -1700,6 +1701,7 @@ confirm confirm/armor-wars-draw
 confirm confirm/ashcoat-mill-four
 confirm confirm/astonishing-spider-man-discard-hand
 confirm confirm/awaken-the-sleeper-destroy-equipment
+confirm confirm/barroom-brawl-copy
 confirm confirm/barrowgoyf-mill
 confirm confirm/bebop-and-rocksteady-discard-or-sacrifice
 confirm confirm/bebop-skull-and-crossbones-draw-lose
@@ -1741,6 +1743,7 @@ confirm confirm/disorienting-choice-exile
 confirm confirm/doors-of-durin-reveal
 confirm confirm/dragons-approach-exile
 confirm confirm/draw-cards
+confirm confirm/druidic-ritual-mill
 confirm confirm/dwarven-vigilantes-damage
 confirm confirm/eager-construct-scry
 confirm confirm/ebony-fly-becomes
@@ -1886,6 +1889,7 @@ confirm confirm/star-athlete-sacrifice-or-damage
 confirm confirm/start-the-tardis-planeswalk
 confirm confirm/stensia-uprising-sacrifice
 confirm confirm/stromgald-spy-reveal-hand
+confirm confirm/summon-undead-mill
 confirm confirm/sunfire-torch-sacrifice
 confirm confirm/superior-foes-exile-top
 confirm confirm/sword-of-light-and-shadow-return
@@ -2212,6 +2216,7 @@ option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
 option option-pick/morgul-knife-wound-pay-or-exile
 option option-pick/multiform-wonder-keyword
 option option-pick/mutinous-massacre-parity
+option option-pick/myrkuls-edict-chosen
 option option-pick/narset-of-the-ancient-way-mana
 option option-pick/nazgul-battle-mace-pay-or-take
 option option-pick/neo-invoke-the-ancients-counter
@@ -2870,6 +2875,7 @@ run prompt-run/minsc-and-boo-sacrifice
 run prompt-run/mirkwood-trapper-pump
 run prompt-run/momentum-breaker-discard
 run prompt-run/mukotai-soulripper-grow
+run prompt-run/myrkuls-edict-done
 run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
@@ -3387,6 +3393,7 @@ tail dice/lightfoot-rogue-table
 tail dice/loathsome-troll-rolled
 tail dice/luck-bobblehead-results
 tail dice/maddening-hex-burn-and-move
+tail dice/myrkuls-edict-rolled
 tail dice/netherese-puzzle-ward-scry
 tail dice/power-of-persuasion-rolled
 tail dice/reckless-endeavor-rolled
@@ -4348,6 +4355,7 @@ tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
 tail then/elder-brain-draw
 tail then/elesh-norn-argent-etchings-flicker
+tail then/elminster-exiled
 tail then/elven-farsight-after-scry
 tail then/empty-the-laboratory-reveal
 tail then/end-blaze-epiphany-choose
@@ -4577,6 +4585,7 @@ tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
 tail then/winds-of-change-shuffled
 tail then/xenagos-the-reveler-exiled
+tail then/zoological-study-milled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
 tail thrasios-triton-hero/reveal-top
