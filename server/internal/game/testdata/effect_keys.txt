@@ -226,6 +226,7 @@ body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
 body grim-javelineer/surveil-1
 body grim-reaper-lethal-legionnaire/return
+body grishnakh-brash-instigator/steal-body
 body grist-the-hunger-tide/destroy
 body guide-of-souls/angel
 body halo-forager/cast
@@ -1268,6 +1269,7 @@ choose choose-cards/serum-core-chimera-discarded
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-kin-exile
 choose choose-cards/shadow-mysterious-assassin-sacrifice
+choose choose-cards/shadowfax-lord-of-horses-put
 choose choose-cards/show-and-tell-pick
 choose choose-cards/sigardas-vanguard-double-strike
 choose choose-cards/sigardian-zealot-pump
@@ -2078,6 +2080,7 @@ option option-pick/saurons-ransom-splitter
 option option-pick/season-of-gathering-type
 option option-pick/secret-choice
 option option-pick/seize-the-spotlight-answer
+option option-pick/shadowfax-lord-of-horses-attacks
 option option-pick/shah-of-naar-isle-draw
 option option-pick/shifting-ceratops-keyword
 option option-pick/skullwinder-opponent
@@ -3314,6 +3317,7 @@ tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
 tail grime-gorger/counter-per-exiled-card
 tail grip-of-phyresis/attach
+tail grishnakh-brash-instigator/steal
 tail grizzled-angler/after-mill
 tail grolnok/croak-counter
 tail grubs-command/after-mill
@@ -3614,6 +3618,7 @@ tail reno-and-rude/exiled
 tail replicating-ring/check
 tail rex-cyber-hound/after-exile
 tail rhino-terrible-trampler/counters-and-trample
+tail riders-of-the-mark/human-soldiers
 tail rionya-fire-dancer/exile-the-copies
 tail ripples-of-undeath/after-mill
 tail risen-reef/rest-into-hand
@@ -3746,6 +3751,7 @@ tail seek-thrills/after-mill
 tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
 tail shadow-kin/after-exile
+tail shadowfax-lord-of-horses/entered
 tail sheoldred-the-true-scriptures/flicker-this
 tail shifting-shadow/attach-then-bottom
 tail shiko-paragon-of-the-way/copy-exiled
