@@ -244,6 +244,7 @@ body incandescent-soulstoke/sacrifice
 body incinerator-of-the-guilty/damage
 body indulge-excess/citizen-tapped-and-attacking
 body inferno-of-the-star-mounts/damage
+body infested-thrinax/saprolings-equal-to-power
 body initiative/take
 body initiative/venture
 body inkshield/inklings
@@ -771,6 +772,7 @@ choose choose-cards/explore-the-vastlands-take
 choose choose-cards/expose-the-culprit-exile
 choose choose-cards/expressive-iteration-bottom
 choose choose-cards/expressive-iteration-take
+choose choose-cards/exterminator-magmarch-copy
 choose choose-cards/extract-brain-chosen
 choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
@@ -1215,6 +1217,7 @@ choose choose-cards/quintorius-history-chaser-draw-two-mill-one
 choose choose-cards/raff-weatherlight-stalwart-tap-two
 choose choose-cards/rakdos-patron-of-chaos-sacrifice
 choose choose-cards/rambling-possum-return-saddlers
+choose choose-cards/rampant-frogantua-lands
 choose choose-cards/read-the-runes-discarded
 choose choose-cards/reality-fracture-hand-card-on-bottom
 choose choose-cards/realmbreaker-steal-land
@@ -1380,6 +1383,7 @@ choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-diviner-copy
 choose choose-cards/twilight-prophet-take
+choose choose-cards/ulamogs-nullifier-picked
 choose choose-cards/ultimate-green-goblin-treasure
 choose choose-cards/ultimate-magic-meteor-walk
 choose choose-cards/ultimecia-exile
@@ -1707,6 +1711,7 @@ confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
 confirm confirm/pygmy-hippo-lose-mana
 confirm confirm/rakdos-patron-of-chaos-sacrifice
+confirm confirm/rampant-frogantua-mill
 confirm confirm/raphaels-technique-may-wheel
 confirm confirm/ratchet-field-medic-convert
 confirm confirm/reactor-raid-sacrifice
@@ -1763,6 +1768,7 @@ confirm confirm/tricksters-talisman-sacrifice
 confirm confirm/turtles-in-time-ask
 confirm confirm/tymna-the-weaver-pay-and-draw
 confirm confirm/ugins-binding-exile
+confirm confirm/ulamogs-nullifier-put
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/urza-assembles-the-titans-reveal
 confirm confirm/uss-enterprise-c-discard-hand
@@ -2396,6 +2402,7 @@ payunless pay-unless/trail-of-crumbs-look-at-top-two
 payunless pay-unless/tranquil-frillback-pay-g
 payunless pay-unless/trudge-garden-fungus-beast
 payunless pay-unless/ty-lee-artful-acrobat
+payunless pay-unless/ulalek-copy-everything
 payunless pay-unless/ultimecia-exile
 payunless pay-unless/ultron-artificial-malevolence-copy
 payunless pay-unless/ultron-unlimited-robot-villain
@@ -2406,6 +2413,7 @@ payunless pay-unless/urzas-sylex-search
 payunless pay-unless/valkyries-sword-angel-and-attach
 payunless pay-unless/vanille-cheerful-lcie-meld
 payunless pay-unless/veinwitch-coven-return
+payunless pay-unless/vile-redeemer-scions
 payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/vivis-persistence-return
 payunless pay-unless/voltaic-brawler-pump
@@ -2585,6 +2593,7 @@ run prompt-run/geothermal-kami-return
 run prompt-run/ghouls-night-out-return
 run prompt-run/gideons-sacrifice-redirect
 run prompt-run/glorifier-of-suffering-sacrifice
+run prompt-run/gluttonous-hellkite-sacrificed
 run prompt-run/god-eternal-bontu-sacrifice
 run prompt-run/god-pharaohs-gift-exile
 run prompt-run/grab-the-reins-damage
@@ -3608,6 +3617,7 @@ tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
 tail ragnarok-divine-deliverance/return
+tail rampant-frogantua/after-mill
 tail random-encounter/entered
 tail random-encounter/milled
 tail rapid-rescue/after-mill
@@ -4125,6 +4135,7 @@ tail then/shuffle-each-carried
 tail then/shuffle-if-it-went
 tail then/shuffle-then-draw-n
 tail then/silver-bolt-destroy-werewolf
+tail then/sire-of-stagnation-draw
 tail then/skrelv-defector-mite-color-chosen
 tail then/sorcerers-strongbox-draw
 tail then/sorin-lord-of-innistrad-return
@@ -4168,6 +4179,7 @@ tail then/torment-of-hailfire-punisher-sacrificed
 tail then/transforming-flourish-cast
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
+tail then/ulamogs-nullifier-counter
 tail then/unwind-history-surveil
 tail then/urza-assembles-the-titans-may-reveal
 tail then/valakut-exploration-damage
