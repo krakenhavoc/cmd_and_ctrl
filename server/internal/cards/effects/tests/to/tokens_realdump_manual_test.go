@@ -151,6 +151,11 @@ var knownUnmatchedTokens = map[string]string{
 	// Worzel, the Protector (Mystery Booster Commander) creates "ten Scryb Sprites tokens". Scryb Sprites
 	// is printed only as a card ("Creature — Faerie"), never as a token card; the template follows the oracle text.
 	"1/1 green Faerie with flying named Scryb Sprites": "Scryb Sprites was never printed as a token card; Worzel's oracle text says a green 1/1 Faerie with flying",
+
+	// Monkey Cage (Jumpstart 2022, Mercadian Masques) creates "X 2/2 green Monkey
+	// creature tokens". No Monkey token card was printed for it; the template follows
+	// the oracle text.
+	"2/2 green Monkey": "no Monkey token card was printed for Monkey Cage",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
