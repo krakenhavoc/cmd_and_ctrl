@@ -27,14 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Kind == game.EventCast && ev.Actor == source.Controller && castAPreparedSpell(g, ev.CardID)
-			}, label, func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				return CopySpell{
-					StackID:          ctx.Trigger().Event.CardID,
-					Controller:       item.Controller,
-					ChooseNewTargets: true,
-				}.Apply(ctx)
-			}),
+			}, label, gapB106CopyTheCastSpell),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{W}{U}{B}{R}{G}, {T}: Each creature you control becomes prepared.",

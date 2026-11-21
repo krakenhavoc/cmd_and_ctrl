@@ -452,6 +452,7 @@ body stensia-uprising/damage
 body stitched-assistant/scry-draw
 body stolen-uniform/unattach-the-equipment
 body storm/the-spell-just-cast
+body subira-tulzidi-caravanner/draw
 body summon-kujata/fire-damage
 body sunburst/that-spell-gains
 body sunfire-torch/damage
@@ -1486,6 +1487,7 @@ condition cast/you-next-cast-x-in-mana-cost
 condition caveat-h2/vizkopa-guildmage-you-gain-life
 condition clone-saga/named-creature-combat-damage-to-player
 condition combat-damage/dovin-grand-arbiter-creature-connects
+condition combat-damage/subira-small-creature-connects
 condition combat/each-attacker-not-blocked
 condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-dealt-combat-damage
@@ -2454,6 +2456,7 @@ run engine/explore-each-pick
 run giant-opportunity/sacrifice-two-foods
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
+run prompt-run/akiri-fearless-voyager-unattach
 run prompt-run/altar-of-the-wretched-payout
 run prompt-run/ambrosia-whiteheart-return
 run prompt-run/annihilator-sacrifice
