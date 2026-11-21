@@ -706,6 +706,7 @@ choose choose-cards/deepfathom-echo-copy
 choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
+choose choose-cards/desecrate-reality-return
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
@@ -3274,6 +3275,7 @@ tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
 tail gandalf-shadows-foe/return-lands-tapped
+tail gap-b111/wake-the-dead-sacrifice
 tail gardens-of-tranquil-repose/its-controller-scries
 tail gemstone-mine/sacrifice-if-empty
 tail georgiou-terran-emperor/draw-then-officers
@@ -3960,6 +3962,7 @@ tail then/fact-or-fiction-take
 tail then/fandaniel-telophoroi-ascian-next-opponent
 tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
+tail then/for-the-ancestors-type-chosen
 tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt

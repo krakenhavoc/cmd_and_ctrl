@@ -220,6 +220,9 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// a benefit, the toughness a harm, and it is cast as often to kill an
 	// X/2 as to pump an attacker.
 	"Lash of Malice": "partly a benefit and partly a harm",
+	// "+3/-3 until end of turn" (S82 GAP): the same trade as Eldrazi
+	// Confluence's first mode.
+	"Spatial Contortion": "partly a benefit and partly a harm",
 }
 
 // spellText is a catalog card's printed text, from the coverage package's
