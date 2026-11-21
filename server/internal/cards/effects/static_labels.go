@@ -139,7 +139,11 @@ func queryNoun(q game.PermanentQuery) string {
 	if len(words) == 0 {
 		return ""
 	}
-	return strings.Join(words, " or ")
+	noun := strings.Join(words, " or ")
+	if q.HasExactPT {
+		noun = fmt.Sprintf("%d/%d %s", q.ExactPower, q.ExactToughness, noun)
+	}
+	return noun
 }
 
 func queriesNoun(qs []game.PermanentQuery) string {
@@ -181,6 +185,11 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 		return "Can't attack unless you have the city's blessing."
 	case r.ControllerHandAtLeast > 0:
 		return fmt.Sprintf("Can't attack unless you have %d or more cards in hand.", r.ControllerHandAtLeast)
+	case len(r.ControllerMustControl) > 0:
+		if n := queriesNoun(r.ControllerMustControl); n != "" {
+			return "Can't attack unless you control " + articleFor(strings.ToLower(n)) + " " + n + "."
+		}
+		return "Can't attack unless you control a certain permanent."
 	case r.NotAlreadyAttackedThisTurn:
 		return "Can't attack a player it already attacked this turn."
 	case r.PlayerMustHaveActedLastTurn:
