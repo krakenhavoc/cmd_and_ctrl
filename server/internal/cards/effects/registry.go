@@ -2119,11 +2119,13 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d sums a total over a clause that can pick a player", name, i))
 	case c.Different != nil || c.Same != nil || len(c.EachOf) > 0:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule beside another set rule — no reader searches for a set under both", name, i))
-	case r.MaxIsX && (!c.CountFromX || !c.UpToX):
+	case r.MaxIsX && c.CountFromX && !c.UpToX:
 		// #5898: "up to X target … with total mana value X or less"
-		// (Orcus, Prince of Undeath) is the one printed form, its count
-		// and its ceiling the same X.
-		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total of X on a clause not counted \"up to X\" — build it as Orcus, Prince of Undeath's", name, i))
+		// (Orcus, Prince of Undeath) counts its targets by the same X, "up
+		// to"; "any number of target … with total mana value X or less"
+		// (Rampaging Yao Guai) counts none by X. A count of exactly X has no
+		// printed card.
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total of X on a clause counted exactly X — build it as Orcus, Prince of Undeath's (up to X) or leave the count open", name, i))
 	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule and an X — no printed card has both yet", name, i))
 	}

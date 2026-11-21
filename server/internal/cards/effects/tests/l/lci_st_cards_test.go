@@ -56,23 +56,6 @@ func TestLciSTEveryCardIsRegisteredFull(t *testing.T) {
 
 // --- fixtures ------------------------------------------------------------------
 
-// lciSTActivateFromHand seeds a catalog card into the active seat's hand
-// in its main phase, floats `mana`, and activates the hand ability at
-// `index`, returning the card's id.
-func lciSTActivateFromHand(t *testing.T, g *game.Game, name, typeLine, oracle, mana string, index int) uuid.UUID {
-	t.Helper()
-	me := g.Seats[g.Turn.ActiveSeat]
-	effectstest.AdvanceToMain(t, g)
-	id := effectstest.PushCatalogHandCard(me, name, typeLine, oracle)
-	if err := g.AddManaForEffect(me.ID, uuid.Nil, mana); err != nil {
-		t.Fatalf("AddManaForEffect: %v", err)
-	}
-	if err := g.ActivateCatalogAbility(me.ID, id, index, game.ActivateAbilityParams{}); err != nil {
-		t.Fatalf("%s: activate hand ability %d: %v", name, index, err)
-	}
-	return id
-}
-
 // lciSTPermanentCardsInGraveyard puts n permanent cards into p's graveyard.
 func lciSTPermanentCardsInGraveyard(p *game.Player, n int) {
 	for i := 0; i < n; i++ {
@@ -176,7 +159,7 @@ func TestLciSTSoaringSandwingPlainscyclesForAPlainsCard(t *testing.T) {
 		effectstest.SearchTestLand("Island", "Basic Land — Island"),
 		game.Card{Name: "Bear", TypeLine: "Creature — Bear"},
 	)
-	id := lciSTActivateFromHand(t, g, "Soaring Sandwing", "Creature — Dinosaur", lciSTSandwingOracle, "{C}{C}", 0)
+	id := effectstest.LciSTActivateFromHand(t, g, "Soaring Sandwing", "Creature — Dinosaur", lciSTSandwingOracle, "{C}{C}", 0)
 	if !me.Graveyard.Contains(id) {
 		t.Fatal("the cycled Sandwing is not in the graveyard")
 	}
@@ -235,7 +218,7 @@ func TestLciSTSeismicMonstrosaurMountaincyclesForAMountainCard(t *testing.T) {
 		effectstest.SearchTestLand("Forest", "Basic Land — Forest"),
 	)
 	// The draw is the first printed ability; mountaincycling the second.
-	lciSTActivateFromHand(t, g, "Seismic Monstrosaur", "Creature — Dinosaur", lciSTMonstrosaurOracle, "{C}{C}", 1)
+	effectstest.LciSTActivateFromHand(t, g, "Seismic Monstrosaur", "Creature — Dinosaur", lciSTMonstrosaurOracle, "{C}{C}", 1)
 	effectstest.PassPriorityAroundTable(t, g)
 	c := effectstest.SearchChoiceFor(g, me.ID)
 	if c == nil {

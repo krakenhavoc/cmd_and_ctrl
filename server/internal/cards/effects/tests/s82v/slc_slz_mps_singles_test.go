@@ -237,14 +237,14 @@ func TestS3ClownCarRollsXD6IntoRobotsAndCounters(t *testing.T) {
 		me := g.Seats[g.Turn.ActiveSeat]
 		from := len(g.Events)
 		car := s3CastClownCar(t, g, x)
-		if got := s5682Rolls(t, g, from, me.ID, car, 6); len(got) != 0 {
+		if got := effectstest.S5682Rolls(t, g, from, me.ID, car, 6); len(got) != 0 {
 			t.Fatalf("X=%d: rolled %v while the spell was on the stack", x, got)
 		}
 		effectstest.PassPriorityAroundTable(t, g)
 		if !g.Battlefield.Contains(car) {
 			t.Fatalf("X=%d: Clown Car is not on the battlefield", x)
 		}
-		rolls := s5682Rolls(t, g, from, me.ID, car, 6)
+		rolls := effectstest.S5682Rolls(t, g, from, me.ID, car, 6)
 		if len(rolls) != x {
 			t.Fatalf("X=%d: rolled %v, want %d d6", x, rolls, x)
 		}
@@ -294,7 +294,7 @@ func TestS3ClownCarCastForZeroRollsNothing(t *testing.T) {
 	if !g.Battlefield.Contains(car) {
 		t.Fatal("Clown Car is not on the battlefield")
 	}
-	if got := s5682Rolls(t, g, from, me.ID, car, 6); len(got) != 0 {
+	if got := effectstest.S5682Rolls(t, g, from, me.ID, car, 6); len(got) != 0 {
 		t.Errorf("rolled %v for X=0", got)
 	}
 	if n := s3ClownRobots(t, g, me.ID); n != 0 {

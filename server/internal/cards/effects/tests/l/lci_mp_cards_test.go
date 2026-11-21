@@ -181,7 +181,7 @@ func TestLciMPMaraudingBrinefangIslandcyclesForAnIslandCard(t *testing.T) {
 		effectstest.SearchTestLand("Swamp", "Basic Land — Swamp"),
 		game.Card{Name: "Bear", TypeLine: "Creature — Bear"},
 	)
-	id := lciSTActivateFromHand(t, g, "Marauding Brinefang", "Creature — Dinosaur", lciMPBrinefangOracle, "{C}{C}", 0)
+	id := effectstest.LciSTActivateFromHand(t, g, "Marauding Brinefang", "Creature — Dinosaur", lciMPBrinefangOracle, "{C}{C}", 0)
 	if !me.Graveyard.Contains(id) {
 		t.Fatal("the cycled Brinefang is not in the graveyard")
 	}
@@ -351,7 +351,7 @@ func TestLciMPNurturingBristlebackForestcyclesForAForestCard(t *testing.T) {
 		effectstest.SearchTestLand("Temple Garden", "Land — Forest Plains"),
 		effectstest.SearchTestLand("Mountain", "Basic Land — Mountain"),
 	)
-	lciSTActivateFromHand(t, g, "Nurturing Bristleback", "Creature — Dinosaur", lciMPBristlebackOracle, "{C}{C}", 0)
+	effectstest.LciSTActivateFromHand(t, g, "Nurturing Bristleback", "Creature — Dinosaur", lciMPBristlebackOracle, "{C}{C}", 0)
 	effectstest.PassPriorityAroundTable(t, g)
 	c := effectstest.SearchChoiceFor(g, me.ID)
 	if c == nil {

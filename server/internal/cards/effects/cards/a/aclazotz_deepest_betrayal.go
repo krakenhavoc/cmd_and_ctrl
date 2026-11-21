@@ -38,7 +38,7 @@ func init() {
 		Purpose:         game.Purpose{Tokens: 1, CreatureTokens: 1},
 		PrintedKeywords: []string{"flying", "lifelink"},
 		Triggered: []game.TriggeredAbility{
-			effects.WheneverThisAttacks("Aclazotz — each opponent discards a card; for each who can't, you draw a card", aclazotzAttack),
+			effects.WheneverThisAttacks("Aclazotz — each opponent discards a card; for each who can't, you draw a card", effects.AclazotzAttack),
 			effects.On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor == source.Controller || ev.Actor == uuid.Nil {
 					return false
@@ -79,36 +79,3 @@ func aPlayerHasOneOrFewerCardsInHand(g *game.Game, _, _ uuid.UUID) bool {
 	}
 	return false
 }
-
-// aclazotzAttack makes each opponent discard a card of their choice, as one
-// run, then draws a card for each opponent who didn't (aclazotzDraw).
-func aclazotzAttack(g *game.Game, item *game.StackItem) error {
-	return g.EachPlayerDiscardsThenKeyedForEffect(item.Controller,
-		game.DiscardPrompt{Source: item.SourceCardID, N: 1},
-		aclazotzDraw, []uuid.UUID{item.Controller})
-}
-
-// aclazotzDraw is "for each opponent who can't, you draw a card", run once
-// after the last opponent's discard has landed: an opponent who discarded
-// no card, because they had none to discard, is one. The controller is the
-// carry. An on-disk key: never renamed, never reused.
-var aclazotzDraw = game.RegisterPromptRunThen("prompt-run/aclazotz-draw", func(g *game.Game, r game.RunDone) error {
-	if len(r.Carry) == 0 {
-		return nil
-	}
-	you := r.Carry[0]
-	discards := r.Discards()
-	cant := 0
-	for _, p := range g.Seats {
-		if p == nil || p.Eliminated || p.ID == you {
-			continue
-		}
-		if len(discards.By(p.ID)) == 0 {
-			cant++
-		}
-	}
-	if cant == 0 {
-		return nil
-	}
-	return g.DrawNForEffect(you, cant)
-})

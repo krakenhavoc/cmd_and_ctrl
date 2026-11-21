@@ -28,13 +28,7 @@ func init() {
 		PrintedKeywords: []string{"first strike", "vigilance", "lifelink"},
 		CostModifiers: []game.CostModifier{
 			effects.CostsLess(1, "Aura and Equipment spells you cast cost {1} less to cast.",
-				effects.YourSpell(), auraOrEquipmentSpell()),
+				effects.YourSpell(), effects.AuraOrEquipmentSpell()),
 		},
 	})
-}
-
-func auraOrEquipmentSpell() effects.CostPredicate {
-	return func(q game.CostQuery) bool {
-		return q.Card.HasSubtype("Aura") || q.Card.HasSubtype("Equipment")
-	}
 }

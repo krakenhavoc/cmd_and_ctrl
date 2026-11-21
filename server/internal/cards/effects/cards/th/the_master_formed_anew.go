@@ -34,15 +34,9 @@ func init() {
 			effects.WhenYouCastThisSpell("Body Thief — you may exile a creature you control and put a takeover counter on it",
 				func(g *game.Game, item *game.StackItem) error {
 					return effects.ChoosePermanents{
-						Question: "The Master — exile a creature you control and put a takeover counter on it?",
-						Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-							ids := effects.PermanentsControlledByMatching(g, of, effects.Creature())
-							if len(ids) == 0 {
-								return nil, 0, 0
-							}
-							return ids, 0, 1
-						},
-						Keyed: theMasterBodyThiefChosen,
+						Question:   "The Master — exile a creature you control and put a takeover counter on it?",
+						Candidates: effects.R34UpToOneCreatureYouControl,
+						Keyed:      theMasterBodyThiefChosen,
 					}.Apply(effects.NewContext(g, item))
 				}),
 		},
