@@ -269,6 +269,8 @@ var TokenTable = map[string]game.Card{
 	"3/1 green Dog with vigilance":                                     {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 3, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"vigilance"}},
 	"2/2 colorless Spawn artifact":                                     {Name: "Spawn", TypeLine: "Token Artifact Creature — Spawn", Power: 2, Toughness: 2},
 	"2/2 white Alien":                                                  {Name: "Alien", TypeLine: "Token Creature — Alien", Power: 2, Toughness: 2, Colors: []string{"W"}},
+	"4/4 green Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 4, Toughness: 4, Colors: []string{"G"}},                                         // GAP b230: Contraband Livestock
+	"2/2 red and green Satyr with haste":                               {Name: "Satyr", TypeLine: "Token Creature — Satyr", Power: 2, Toughness: 2, Colors: []string{"R", "G"}, Keywords: []string{"haste"}}, // GAP b230: Xenagos, the Reveler
 	"2/4 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 4, Colors: []string{"W"}},
 	"2/2 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Soldier":                                                {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}}, // Signaling Roar (#5175)

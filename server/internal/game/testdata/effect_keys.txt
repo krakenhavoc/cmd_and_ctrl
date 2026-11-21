@@ -1497,6 +1497,7 @@ choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/worldsouls-rage-lands
+choose choose-cards/xenagos-the-reveler-put
 choose choose-cards/yggdrasil-return
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yotia-declares-war-tap
@@ -3277,6 +3278,7 @@ tail dice/chaos-dragon-each-player-rolls
 tail dice/clown-car-results
 tail dice/component-pouch-counters
 tail dice/contact-other-plane-table
+tail dice/contraband-livestock-rolled
 tail dice/danse-macabre-result
 tail dice/delina-rolled
 tail dice/diviners-portent-result
@@ -3289,6 +3291,7 @@ tail dice/goblin-morningstar-table
 tail dice/grave-endeavor-rolled
 tail dice/herald-of-hadar-table
 tail dice/hoarding-ogre-treasures
+tail dice/laezels-acrobatics-rolled
 tail dice/lightfoot-rogue-table
 tail dice/loathsome-troll-rolled
 tail dice/luck-bobblehead-results
@@ -4284,6 +4287,8 @@ tail then/kindred-judgment-type-chosen
 tail then/kindred-summons-type-chosen
 tail then/king-solomons-frogs-exiled-one
 tail then/kogla-and-yidaro-shuffle-draw
+tail then/laezels-acrobatics-exiled
+tail then/laezels-acrobatics-returned
 tail then/lagrella-the-magpie-exiled-one
 tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
@@ -4436,6 +4441,7 @@ tail then/volcanic-offering-damage
 tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
 tail then/winds-of-change-shuffled
+tail then/xenagos-the-reveler-exiled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
 tail thrasios-triton-hero/reveal-top
