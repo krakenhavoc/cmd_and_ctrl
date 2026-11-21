@@ -1391,6 +1391,13 @@ The engine stamps it on `StackItem.CastValues` after every cost is paid and befo
 
 ### Granting an ability to another permanent (ADR 0093, #754)
 
+A bundle may also carry replacement effects, `AbilityGrant.Replacements`
+(Master Chef's "This creature enters with an additional +1/+1 counter on it"):
+the recipient has them while it has the grant, as its own, so `src` in each
+`AppliesTo` and `Replace` is the recipient and "you" is its controller. They
+merge into the composite definition's `Replacements` (`game.CardDef.
+GrantedReplacements`, `game/copy_grants.go`).
+
 "Creatures you control have '{T}: Add one mana of any color.'" is a
 layer-6 grant of a catalog BUNDLE, never a closure on the recipient.
 Declare the bundle in `Spec.Grants` (the #665 `AbilityGrant`, now with

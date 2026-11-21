@@ -904,6 +904,7 @@ choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jaya-fiery-negotiator-play
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
+choose choose-cards/journey-to-the-lost-city-land
 choose choose-cards/jungle-basin-return-an-untapped-forest
 choose choose-cards/kaalia-of-the-vast-put
 choose choose-cards/kaito-dancing-shadow-return
@@ -3642,6 +3643,8 @@ tail jacob-frye/copy-and-cast
 tail janice-rand-essential-aide/reveal-until-land
 tail jaya-fiery-negotiator/choose-exiled
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
+tail journey-to-the-lost-city/exiled
+tail journey-to-the-lost-city/table
 tail kaervek-the-punisher/copy-exiled
 tail kaito-bane-of-nightmares/draw-per-opponent-who-lost-life
 tail kami-of-industry/entered
@@ -4137,6 +4140,7 @@ tail take/each-moved
 tail take/moved
 tail tashas-hideous-laughter/exile-step
 tail taster-of-wares/grant-cast-of-exiled-spell
+tail tavern-brawler/pump
 tail tawnos-solemn-survivor/mill-two
 tail tazri-stalwart-survivor/after-mill
 tail tchaka/after-mill
