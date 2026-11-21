@@ -185,6 +185,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 red Survivor":                                                 {Name: "Survivor", TypeLine: "Token Creature — Survivor", Power: 1, Toughness: 1, Colors: []string{"R"}}, // Varchild, Betrayer of Kjeldor
 	"1/1 red and white Soldier with haste":                             {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"R", "W"}, Keywords: []string{"haste"}},
 	"1/1 blue Bird with flying":                                        {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"1/1 white Cat Bird with flying":                                   {Name: "Cat Bird", TypeLine: "Token Creature — Cat Bird", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 white Bird Soldier with flying":                               {Name: "Bird Soldier", TypeLine: "Token Creature — Bird Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}}, // #5586: Flurry of Wings
 	"3/3 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
