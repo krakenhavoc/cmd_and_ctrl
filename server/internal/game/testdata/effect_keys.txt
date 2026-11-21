@@ -219,6 +219,7 @@ body forgehammer-centurion/cant-block
 body fortune-loyal-steed/end-of-combat
 body forum-filibuster/return-attached
 body fra-creature-c/lyra-draw-two
+body gap-b220-swashbuckler-extraordinaire/double-strike
 body gap-b55-voltstorm-angel/modes
 body gap-b82/land-damages-creature
 body garruk-curse-breaker/attacker-gets-plus-two-and-trample
@@ -2805,6 +2806,7 @@ run prompt-run/frantic-scapegoat-suspect
 run prompt-run/fugitive-of-the-judoon-exile
 run prompt-run/fugitive-of-the-judoon-human
 run prompt-run/gap-b219-gut-true-soul-zealot-sacrifice
+run prompt-run/gap-b220-swashbuckler-extraordinaire-sacrifice
 run prompt-run/gap-b55-the-hunger-tide-rises-sacrifice
 run prompt-run/gap-b56-ajani-fells-the-godsire-counter
 run prompt-run/garruk-the-veil-cursed-tutor
