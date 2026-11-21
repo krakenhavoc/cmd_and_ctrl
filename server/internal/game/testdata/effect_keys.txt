@@ -3090,6 +3090,7 @@ tail dice/treasure-chest-found
 tail dice/treasure-chest-rolled
 tail dice/underdark-rift-rolled
 tail dice/valiant-endeavor-rolled
+tail dice/velukan-dragon-plus-result-minus-one
 tail dice/wild-endeavor-rolled
 tail dice/wizards-spellbook-exiled
 tail dice/wizards-spellbook-rolled
@@ -3962,6 +3963,7 @@ tail then/gap-b07-soul-separator-tokens
 tail then/get-energy
 tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
+tail then/goblin-recruiter-order
 tail then/god-pharaohs-gift-copy
 tail then/god-pharaohs-gift-haste
 tail then/grasp-of-fate-exiled-one
