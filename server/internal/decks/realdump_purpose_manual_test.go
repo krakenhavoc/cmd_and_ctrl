@@ -256,6 +256,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 156 (#5948).
 	"Ib Halfheart, Goblin Tactician": "4 damage only to the creatures blocking the Goblin it sacrifices: a blocked attacker's blockers, not a board",
+	// S82 GAP batch 197 (#5948).
+	"Bile Blight":      "targets one creature and shrinks it and the creatures sharing its name: a name-bound removal, not a board",
+	"The Horus Heresy": "chapter III destroys only the creatures each player chose, one per player: at most four, never a board",
 
 	// S82 GAP batch 212 (#5948).
 	"Elder Brain": "exiles only the attacked player's hand, then they draw that many: it touches no permanent",

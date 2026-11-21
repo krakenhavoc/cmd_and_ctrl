@@ -88,6 +88,10 @@ type Characteristic struct {
 	// (or was, for a last-known source) rather than a spell: "protection
 	// from noncreature permanents" reads it (#4307).
 	SourceIsPermanent bool
+	// SourceIsSpell says the source is a spell (on the stack, being cast, or
+	// a copy of one) rather than an ability or a permanent: "protection from
+	// spells that are one or more colors" reads it (Emrakul, the Aeons Torn).
+	SourceIsSpell bool
 
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless

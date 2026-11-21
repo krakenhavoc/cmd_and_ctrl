@@ -91,6 +91,10 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 	// beginning-of-combat event plus a modal trigger", shipped once both
 	// existed (S79, #4834; shadrix_silverquill.go).
 	//
+	// Murkfiend Liege came off this list too (#5948): its untap clause is
+	// Seedborn Muse's UntapStep permission, which the engine has built since
+	// (murkfiend_liege.go).
+	//
 	// Two cards came off this list since it was written, each closing
 	// a different seam. Cloudstone Curio, with #1223: "a
 	// resolution-time choice constrained by the triggering permanent"
@@ -102,7 +106,6 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 	// ordinary primitives — see currency_converter.go — with no new
 	// engine seam needed.
 	for oracle, name := range map[string]string{
-		"61d28182-498f-4bbc-bb7a-c5e1ef872dda": "Murkfiend Liege",
 		"5b3b5f6a-375e-4479-9384-a942eda83f9b": "Gandalf the White",
 	} {
 		if _, ok := effects.Lookup(oracle); ok {

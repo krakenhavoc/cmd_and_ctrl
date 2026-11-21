@@ -429,6 +429,16 @@ type PermissionFilter struct {
 	// came back. Read off Card.SurveilledThisTurn, pure card data.
 	SurveilledThisTurn bool `json:"surveilledThisTurn,omitempty"`
 
+	// FromLibraryToGraveyardThisTurn is Kagha, Shadow Archdruid's "cards in
+	// your graveyard that were put there from your library this turn": the
+	// card arrived in the graveyard during the current turn from a library,
+	// by a mill, a surveil, a discard-from-the-top effect or any other move
+	// out of the library (Card.PutInGraveyardFrom). A card that came from a
+	// hand, the battlefield or the stack does not qualify, and neither does
+	// one that left the graveyard and came back (CR 400.7). Read off
+	// Card.PutInGraveyardFromLibraryThisTurn, pure card data. Additive.
+	FromLibraryToGraveyardThisTurn bool `json:"fromLibraryToGraveyardThisTurn,omitempty"`
+
 	// MilledThisTurn is Raul, Trouble Shooter's "cards in your graveyard that
 	// were milled this turn": the card arrived in the graveyard during the
 	// current turn as a mill's graveyard leg (CR 701.17a). A card discarded,
@@ -612,6 +622,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.MilledThisTurn && !c.MilledThisTurn() {
 		return false
 	}
+	if f.FromLibraryToGraveyardThisTurn && !c.PutInGraveyardFromLibraryThisTurn() {
+		return false
+	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
@@ -645,6 +658,7 @@ func (f PermissionFilter) faceBlind() bool {
 	f.PutInGraveyardThisTurn = false
 	f.SurveilledThisTurn = false
 	f.MilledThisTurn = false
+	f.FromLibraryToGraveyardThisTurn = false
 	f.FromChosenType = false
 	return f == PermissionFilter{}
 }
