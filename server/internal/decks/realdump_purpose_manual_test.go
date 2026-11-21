@@ -236,6 +236,8 @@ var reviewedNotAWipe = map[string]string{
 	"Bottled Cloister": "exiles only its controller's own hand face down on an opponent's upkeep and returns it on theirs: no permanent leaves the battlefield",
 	// S82 GAP batch 80.
 	"Ghostway": "exiles only the creatures its caster controls and returns them at the next end step: a blink of the caster's own board, not a wipe",
+	// S82 GAP batch 64 (#5948).
+	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -77,7 +77,7 @@ func RalZarekDiscard(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// ralZarekReanimate puts the still-legal target onto the battlefield
+// RalZarekReanimate puts the still-legal target onto the battlefield
 // under its owner's control (it is in your graveyard, so that is you).
 func RalZarekReanimate(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

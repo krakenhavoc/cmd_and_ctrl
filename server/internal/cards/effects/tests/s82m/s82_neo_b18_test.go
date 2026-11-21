@@ -162,7 +162,7 @@ func TestBoseijuReachesSkyward(t *testing.T) {
 		t.Fatalf("hand grew by %d after chapter I, want the two Forests", got)
 	}
 	for _, id := range forests[:2] {
-		if !handHas(me, id) {
+		if !effectstest.HandHas(me, id) {
 			t.Errorf("Forest %s is not in hand", id)
 		}
 	}
@@ -385,15 +385,6 @@ func TestVisionOfTheUnspeakableCountsHand(t *testing.T) {
 	if p, tough := neoB18PT(g, v); p != n || tough != n {
 		t.Errorf("Vision is %d/%d with %d cards in hand, want %d/%d", p, tough, n, n, n)
 	}
-}
-
-func handHas(p *game.Player, id uuid.UUID) bool {
-	for _, c := range p.Hand.Cards {
-		if c.InstanceID == id {
-			return true
-		}
-	}
-	return false
 }
 
 func TestTheLongReachOfNight(t *testing.T) {

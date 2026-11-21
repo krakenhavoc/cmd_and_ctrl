@@ -522,6 +522,9 @@ var cardFields = plan(
 	// #5429: carried — a restore that dropped it would close Eye of
 	// Duskmantle's permission on the cards this turn's surveil opened.
 	"Surveilled", carried, "",
+	// Raul, Trouble Shooter: carried — a restore that dropped it would close
+	// his permission on the cards this turn's mills opened.
+	"Milled", carried, "",
 	// #4455: carried — a restore that dropped it would leave a card Kang
 	// Prime gave suspend counting down with no upkeep trigger and no free cast.
 	"SuspendGranted", carried, "",

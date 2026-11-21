@@ -189,7 +189,7 @@ func TestRprB37PetrifiedFieldReturnsALandCard(t *testing.T) {
 		t.Error("the Field is sacrificed as a cost")
 	}
 	effectstest.PassPriorityAroundTable(t, g)
-	if !handHas(me, land) {
+	if !effectstest.HandHas(me, land) {
 		t.Error("the land card was not returned to hand")
 	}
 	if !effectstest.GraveyardHas(me, bear) {

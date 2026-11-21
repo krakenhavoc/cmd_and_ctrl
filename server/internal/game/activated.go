@@ -2578,10 +2578,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// before the stack item is built so the leaves-triggers it queues
 	// are drained ABOVE the ability by the closing state-check pass
 	// (CR 603.3b).
+	returnedRefs := g.sacrificeRefsLocked(params.ReturnIDs) // #5948: which, named before they move
 	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs, params.commanderAnswers)
 	if err != nil {
 		return err
 	}
+	paid.ReturnedObjects = returnedRefs
 	// #1227: what the returned permanent was attacking, read by the
 	// payer BEFORE the bounce because the exit clears it and LKI
 	// carries no combat state. Ninjutsu's entry reads it back through

@@ -417,6 +417,14 @@ type PermissionFilter struct {
 	// came back. Read off Card.SurveilledThisTurn, pure card data.
 	SurveilledThisTurn bool `json:"surveilledThisTurn,omitempty"`
 
+	// MilledThisTurn is Raul, Trouble Shooter's "cards in your graveyard that
+	// were milled this turn": the card arrived in the graveyard during the
+	// current turn as a mill's graveyard leg (CR 701.17a). A card discarded,
+	// surveilled, searched for or put there any other way does not qualify,
+	// and neither does one that left the graveyard and came back. Read off
+	// Card.MilledThisTurn, pure card data. Additive.
+	MilledThisTurn bool `json:"milledThisTurn,omitempty"`
+
 	// Named is "spells with the same name as that creature" (Reflector
 	// Mage, ADR 0066's 2026-10-19 amendment): a qualifying card's name
 	// is exactly this. Empty constrains nothing. Read by a granted cast
@@ -583,6 +591,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.SurveilledThisTurn && !c.SurveilledThisTurn() {
 		return false
 	}
+	if f.MilledThisTurn && !c.MilledThisTurn() {
+		return false
+	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
@@ -615,6 +626,7 @@ func (f PermissionFilter) faceBlind() bool {
 	f.ExiledWithSourceThisTurn, f.ExiledOnTurn = false, 0
 	f.PutInGraveyardThisTurn = false
 	f.SurveilledThisTurn = false
+	f.MilledThisTurn = false
 	f.FromChosenType = false
 	return f == PermissionFilter{}
 }
@@ -974,6 +986,14 @@ type CastPermission struct {
 	// Swamps. It implies AnyColor; a permission setting both is read
 	// as this one. ADR 0066's 2026-09-24 amendment (#1573).
 	AnyType bool `json:"anyType,omitempty"`
+
+	// AnyColorFrom narrows the "spend mana as though it were mana of any
+	// color" clause to one kind of mana: "you may spend colorless mana as
+	// though it were mana of any color to cast that spell" (Abstruse
+	// Appropriation, #5948) sets "C". Each colored symbol then also
+	// admits that mana (widenFromColors), and other mana pays as printed.
+	// Ignored when AnyColor or AnyType is set.
+	AnyColorFrom string `json:"anyColorFrom,omitempty"`
 
 	// --- the window ------------------------------------------------
 
@@ -3542,6 +3562,8 @@ func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
 		return asAnyTypeCost(cost)
 	case grant.AnyColor:
 		return asAnyColorCost(cost)
+	case grant.AnyColorFrom != "":
+		return widenFromColors(cost, []string{grant.AnyColorFrom})
 	}
 	return cost
 }

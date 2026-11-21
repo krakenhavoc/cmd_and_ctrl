@@ -52,19 +52,6 @@ func bfKeyFor(t *testing.T, id uuid.UUID, high bool) byte {
 	return bfKeyWhere(t, id, func(kept int) bool { return (kept >= 15) == high })
 }
 
-// rollEventsOf lists the EventRollDie events in the log.
-func rollEventsOf(g *game.Game) []game.Event {
-	var out []game.Event
-	g.ReadSnapshot(func() {
-		for _, ev := range g.Events {
-			if ev.Kind == game.EventRollDie {
-				out = append(out, ev)
-			}
-		}
-	})
-	return out
-}
-
 // 15-20: the caster chooses the blocks for the turn (a blockers-only
 // DeclarationControl), and only the kept roll was announced: one d20
 // event, not two (CR 706.6).
@@ -86,7 +73,7 @@ func TestBerserkersFrenzyHighRollTakesTheBlocksAndAnnouncesOneRoll(t *testing.T)
 	if effectstest.PendingOfKind(g, game.PendingChoiceOwnPermanents) != nil || effectstest.PendingOfKind(g, game.PendingChoiceTheirPermanents) != nil {
 		t.Error("the 15-20 row asked for creatures")
 	}
-	rolls := rollEventsOf(g)
+	rolls := effectstest.RollEventsOf(g)
 	if len(rolls) != 1 || rolls[0].Sides != 20 || rolls[0].Amount < 15 {
 		t.Fatalf("roll events = %+v, want one d20 of 15 or more (the ignored roll never happened)", rolls)
 	}
@@ -141,7 +128,7 @@ func TestBerserkersFrenzyLowRollMakesTheChosenCreaturesBlock(t *testing.T) {
 	if recs := effectstest.DeclarationRecords(g); len(recs) != 0 {
 		t.Fatalf("the 1-14 row took control of the blocks: %+v", recs)
 	}
-	if rolls := rollEventsOf(g); len(rolls) != 1 || rolls[0].Amount > 14 {
+	if rolls := effectstest.RollEventsOf(g); len(rolls) != 1 || rolls[0].Amount > 14 {
 		t.Fatalf("roll events = %+v, want one d20 of 14 or less", rolls)
 	}
 
@@ -246,7 +233,7 @@ func TestBerserkersFrenzyRowBoundary(t *testing.T) {
 			t.Fatalf("kept %d: cast: %v", tc.kept, err)
 		}
 		effectstest.PassPriorityAroundTable(t, g)
-		if rolls := rollEventsOf(g); len(rolls) != 1 || rolls[0].Amount != tc.kept {
+		if rolls := effectstest.RollEventsOf(g); len(rolls) != 1 || rolls[0].Amount != tc.kept {
 			t.Fatalf("kept %d: roll events = %+v", tc.kept, rolls)
 		}
 		if got := len(effectstest.DeclarationRecords(g)) == 1; got != tc.takeOver {

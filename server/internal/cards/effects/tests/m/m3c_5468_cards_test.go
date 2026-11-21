@@ -55,18 +55,13 @@ func TestM3cb1CardsAreRegisteredFull(t *testing.T) {
 	}
 }
 
-// m3cb1Opponent is the seat after the active one.
-func m3cb1Opponent(g *game.Game) *game.Player {
-	return g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
-}
-
 // --- Trenchpost --------------------------------------------------------------
 
 func TestM3cb1TrenchpostMillsOneCardPerLocusYouControl(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	effectstest.AdvanceToMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	trench := effectstest.PushCatalogPermanent(g, me.ID, "Trenchpost", "Land — Locus", m3cb1TrenchpostOracle, false)
 	effectstest.M3cb1Push(g, me.ID, game.Card{Name: "Test Locus", TypeLine: "Land — Locus"})
 	effectstest.M3cb1Push(g, me.ID, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
@@ -334,7 +329,7 @@ func m3cb1HasProtectionFromEachColor(g *game.Game, id uuid.UUID) bool {
 func TestM3cb1EldritchImmunityProtectsTargetCreatureYouControl(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	mine := effectstest.B12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
 	other := effectstest.B12Creature(g, me.ID, "My Other Bear", "Creature — Bear", 2, 2)
 	theirs := effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
@@ -358,7 +353,7 @@ func TestM3cb1EldritchImmunityProtectsTargetCreatureYouControl(t *testing.T) {
 func TestM3cb1EldritchImmunityOverloadedProtectsEachCreatureYouControl(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	a := effectstest.B12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
 	b := effectstest.B12Creature(g, me.ID, "My Other Bear", "Creature — Bear", 2, 2)
 	theirs := effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
@@ -406,7 +401,7 @@ func TestM3cb1SiegeGangLieutenantSacrificesAGoblinToPing(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	effectstest.AdvanceToMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	lt := effectstest.B12Push(g, me.ID, "Siege-Gang Lieutenant", "Creature — Goblin", m3cb1SiegeGangOracle, 2, 2)
 	goblin := effectstest.B12Creature(g, me.ID, "My Goblin", "Creature — Goblin", 1, 1)
 	bear := effectstest.B12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
@@ -436,7 +431,7 @@ func TestM3cb1SiegeGangLieutenantSacrificesAGoblinToPing(t *testing.T) {
 func TestM3cb1EldraziConfluencePumpsAndMakesTwoScions(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	big := effectstest.B12Creature(g, opp.ID, "Their Wall", "Creature — Wall", 2, 4)
 	effectstest.CastModal(t, g, "Eldrazi Confluence", "Instant", m3cb1ConfluenceOracle,
 		[]int{0, 2, 2}, []game.TargetRef{effectstest.ModeRef(game.TargetCard, big, 0, 0)})
@@ -454,7 +449,7 @@ func TestM3cb1EldraziConfluencePumpsAndMakesTwoScions(t *testing.T) {
 func TestM3cb1EldraziConfluenceFlickersTappedToItsOwner(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	stolen := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Borrowed Rock",
 		TypeLine: "Artifact", Owner: opp.ID, Controller: me.ID})
 	ox := effectstest.B12Creature(g, opp.ID, "Their Ox", "Creature — Ox", 2, 3)
@@ -481,7 +476,7 @@ func TestM3cb1EldraziConfluenceFlickersTappedToItsOwner(t *testing.T) {
 
 func TestM3cb1EldraziConfluenceCannotFlickerALand(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	land := effectstest.M3cb1Push(g, opp.ID, game.Card{Name: "Their Forest", TypeLine: "Basic Land — Forest"})
 	active := g.Seats[g.Turn.ActiveSeat]
 	id := uuid.New()
@@ -527,7 +522,7 @@ func TestM3cb1PolygoyfCountsCardTypesAndMyriads(t *testing.T) {
 func TestM3cb1PyrogoyfAndEachLhurgoyfYouControlDealTheirPowerOnEntry(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	effectstest.PushGraveyardCardWithTypeLine(g, opp.ID, "Grizzly Bears", "Creature — Bear")
 	effectstest.PushGraveyardCardWithTypeLine(g, opp.ID, "Forest", "Basic Land — Forest")
 
@@ -617,7 +612,7 @@ func TestM3cb1HorizonOfProgressPaysLifeForAnyTypeYourLandsCouldMake(t *testing.T
 	g := effectstest.NewCatalogGame(t)
 	effectstest.AdvanceToMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
-	opp := m3cb1Opponent(g)
+	opp := effectstest.M3cb1Opponent(g)
 	horizon := effectstest.PushCatalogPermanent(g, me.ID, "Horizon of Progress", "Land", m3cb1HorizonOracle, false)
 	effectstest.SeedManaLand(g, me.ID, "Wastes", "Basic Land — Wastes", "C")
 	effectstest.SeedManaLand(g, me.ID, "Plains", "Basic Land — Plains", "W")

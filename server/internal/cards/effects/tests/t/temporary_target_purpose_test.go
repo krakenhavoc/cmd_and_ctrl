@@ -98,6 +98,9 @@ var untilEndOfTurnExempt = map[string]string{
 	// The target is a card in a graveyard, which a permanent direction
 	// cannot describe: it gains embalm until end of turn.
 	"Cursecloth Wrappings": "the target is a graveyard card, not a permanent",
+	// The target is the opponent given an emblem; the "until end of turn" is
+	// the emblem's, about the creatures that attack them.
+	"Garruk, Apex Predator": "the target is an opponent given an emblem",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
@@ -220,6 +223,9 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// a benefit, the toughness a harm, and it is cast as often to kill an
 	// X/2 as to pump an attacker.
 	"Lash of Malice": "partly a benefit and partly a harm",
+	// The target creature is copied, not changed: its copies are the lands it
+	// does not target, until end of turn.
+	"March from Velis Vel": "the target is copied, not changed",
 }
 
 var targetWord = regexp.MustCompile(`(?i)\btarget\b`)
