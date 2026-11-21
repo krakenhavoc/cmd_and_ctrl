@@ -13,7 +13,7 @@ import (
 // library. Put the rest into your graveyard" (Gutless Plunderer). A look,
 // so only the looker sees the cards; the pick is optional, and every card
 // not picked is put (not milled) into the graveyard.
-func stdB15LookKeepOneOnTopRestToGraveyard(ctx *Context, n int, label string) error {
+func StdB15LookKeepOneOnTopRestToGraveyard(ctx *Context, n int, label string) error {
 	player := ctx.Controller()
 	looked := ctx.Game.LookAtTopOfLibraryForEffect(player, n)
 	if len(looked) == 0 {
@@ -47,7 +47,7 @@ var stdB15KeepOneOnTop = game.RegisterChooseCardsThen("choose-cards/std-b15-keep
 				rest = append(rest, id)
 			}
 		}
-		return restIntoGraveyard(g, rest)
+		return RestIntoGraveyard(g, rest)
 	})
 
 // stdB15ExileTopTwoChooseOnePlay is "exile the top two cards of your
@@ -55,7 +55,7 @@ var stdB15KeepOneOnTop = game.RegisterChooseCardsThen("choose-cards/std-b15-keep
 // play that card" (Strongbox Raider): both cards are exiled face up, the
 // controller picks one, and only it gets the window; the other stays
 // exiled with nothing.
-func stdB15ExileTopTwoChooseOnePlay(ctx *Context) error {
+func StdB15ExileTopTwoChooseOnePlay(ctx *Context) error {
 	ids := ctx.Game.LookAtTopOfLibraryForEffect(ctx.Controller(), 2)
 	if len(ids) == 0 {
 		return nil
@@ -101,7 +101,7 @@ var stdB15ExilePlayGrant = game.RegisterChooseCardsThen("choose-cards/std-b15-st
 // the card is no longer in a graveyard (CR 608.2b); a token has no card to
 // return. The counters are entry counters (CR 614.1c), and `tail` runs
 // with the new object once it has landed.
-func stdB15ReturnDiedWithCounters(g *game.Game, item *game.StackItem, counters map[string]int, tail game.TailRef) error {
+func StdB15ReturnDiedWithCounters(g *game.Game, item *game.StackItem, counters map[string]int, tail game.TailRef) error {
 	id := item.Trigger.Event.CardID
 	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
@@ -117,8 +117,8 @@ func stdB15ReturnDiedWithCounters(g *game.Game, item *game.StackItem, counters m
 // stdB15LoyaltyCounterOnThis is "put a loyalty counter on <this planeswalker>"
 // as a trigger's body (Kaito, Cunning Infiltrator): only while it is still on
 // the battlefield.
-func stdB15LoyaltyCounterOnThis(g *game.Game, item *game.StackItem) error {
-	if !b09SourceStillOnBattlefield(g, item) {
+func StdB15LoyaltyCounterOnThis(g *game.Game, item *game.StackItem) error {
+	if !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: game.CounterLoyalty, N: 1}.Apply(NewContext(g, item))

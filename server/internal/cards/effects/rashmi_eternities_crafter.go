@@ -26,7 +26,7 @@ import (
 // (ADR 0066, ADR 0091).
 func init() {
 	const label = "Rashmi, Eternities Crafter — reveal the top card, cast it free if lesser or put it into your hand"
-	t := On(game.EventCast, rashmiFirstSpell, label,
+	t := On(game.EventCast, RashmiFirstSpell, label,
 		func(g *game.Game, item *game.StackItem) error {
 			return g.OfferFreePlayFromTopOrHandForEffect(game.FreePlayFromTop{
 				Player:       item.Controller,
@@ -38,7 +38,7 @@ func init() {
 		})
 	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 		item := game.NewTriggeredItem(source, label)
-		item.Params.Amount = spellManaValueForEffect(g, ev.CardID)
+		item.Params.Amount = SpellManaValueForEffect(g, ev.CardID)
 		return item
 	}
 	Register(Spec{
@@ -51,7 +51,7 @@ func init() {
 
 // rashmiFirstSpell is "whenever you cast your first spell each turn": the
 // engine's per-turn cast tally is bumped before EventCast fires.
-func rashmiFirstSpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RashmiFirstSpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.Kind == game.EventCast && ev.Actor == source.Controller &&
 		g.CastTallyFor(source.Controller).Total == 1
 }

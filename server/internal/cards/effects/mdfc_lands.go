@@ -79,7 +79,7 @@ type mdfcLandBack struct {
 // Bloomburrow backs tap for either of two, which is the same
 // "{A|B}" pipe the dual lands use so the client offers one picker
 // rather than two menu entries.
-func backManaAbility(colors []string) ManaAbility {
+func BackManaAbility(colors []string) ManaAbility {
 	switch len(colors) {
 	case 0:
 		return ManaAbility{}
@@ -90,7 +90,7 @@ func backManaAbility(colors []string) ManaAbility {
 			Label:    "Add {" + colors[0] + "}",
 		}
 	default:
-		return dualManaAbility(colors[0], colors[1])
+		return DualManaAbility(colors[0], colors[1])
 	}
 }
 
@@ -104,11 +104,11 @@ func backManaAbility(colors []string) ManaAbility {
 // the moment a second kind existed — a guard that grows a false
 // failure every time an unrelated card ships is worse than no guard.
 // The list is the cycle's own record of itself.
-var mdfcLandBackKeys []string
+var MdfcLandBackKeys []string
 
 func registerMDFCLandBacks(rows []mdfcLandBack, reps func(back string) []game.ReplacementEffect) {
 	for _, r := range rows {
-		mdfcLandBackKeys = append(mdfcLandBackKeys, game.CatalogKeyForFace(r.oracleID, 1))
+		MdfcLandBackKeys = append(MdfcLandBackKeys, game.CatalogKeyForFace(r.oracleID, 1))
 		// Capture per iteration — the closures inside the
 		// replacement outlive the loop body.
 		row := r
@@ -122,7 +122,7 @@ func registerMDFCLandBacks(rows []mdfcLandBack, reps func(back string) []game.Re
 			Name:          row.back,
 			Completeness:  CompletenessFull,
 			Replacements:  reps(row.back),
-			ManaAbilities: []ManaAbility{backManaAbility(row.colors)},
+			ManaAbilities: []ManaAbility{BackManaAbility(row.colors)},
 		})
 	}
 }

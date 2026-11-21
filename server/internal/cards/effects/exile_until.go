@@ -268,7 +268,7 @@ func exileUntilRecord(g *game.Game, o game.TailOutcome) {
 // trigger body: exile the card the pick stamped into the item, if it is
 // still a legal target (CR 608.2b), until this permanent leaves the
 // battlefield. `label` is the held card's line on the table.
-func exileChosenTargetUntilThisLeaves(label string) Effect {
+func ExileChosenTargetUntilThisLeaves(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -287,8 +287,8 @@ func exileChosenTargetUntilThisLeaves(label string) Effect {
 // The life follows the exile whether or not anything was exiled; a
 // trigger whose chosen target is gone by resolution has no legal target
 // and does not resolve at all.
-func exileChosenTargetUntilThisLeavesThenGainLife(label string, life int) Effect {
-	untilLeaves := exileChosenTargetUntilThisLeaves(label)
+func ExileChosenTargetUntilThisLeavesThenGainLife(label string, life int) Effect {
+	untilLeaves := ExileChosenTargetUntilThisLeaves(label)
 	return func(g *game.Game, item *game.StackItem) error {
 		if err := untilLeaves(g, item); err != nil {
 			return err
@@ -307,12 +307,12 @@ func exileChosenTargetUntilThisLeavesThenGainLife(label string, life int) Effect
 // never reaches the stack. The row keeps its label, so a restored card
 // does not count it as an ability lost (AGENTS.md §5).
 func UntilThisLeavesLegacyReturn(returnLabel, exileLabel string) game.TriggeredAbility {
-	t := On(game.EventLTB, Self, returnLabel, b41ReturnCardsExiledWithToTheBattlefield(exileLabel))
+	t := On(game.EventLTB, Self, returnLabel, B41ReturnCardsExiledWithToTheBattlefield(exileLabel))
 	t.AppliesTo = func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 		if !Self(ev, source, ch, g) {
 			return false
 		}
-		for _, id := range b27ExiledWith(g, source.InstanceID, exileLabel) {
+		for _, id := range B27ExiledWith(g, source.InstanceID, exileLabel) {
 			if !g.UntilReturnPendingForEffect(id) {
 				return true
 			}

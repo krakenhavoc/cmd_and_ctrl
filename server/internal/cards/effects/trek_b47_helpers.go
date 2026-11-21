@@ -21,7 +21,7 @@ import (
 // from the entering permanent only when it affects only that permanent).
 // A count of zero adds nothing. "Faeries" is the subtype, so a kindred
 // Faerie permanent counts as well as a creature.
-func trekB47FaeriesEnterWithTypeCounters(label string) game.ReplacementEffect {
+func TrekB47FaeriesEnterWithTypeCounters(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -32,7 +32,7 @@ func trekB47FaeriesEnterWithTypeCounters(label string) game.ReplacementEffect {
 			return ok && entering.Controller == src.Controller && entering.HasSubtype(src.TextSubtype("Faerie"))
 		},
 		Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
-			if n := trekB4CreatureTypesAmongNonBorg(g, src.Controller, src.TextSubtype("Borg")); n > 0 {
+			if n := TrekB4CreatureTypesAmongNonBorg(g, src.Controller, src.TextSubtype("Borg")); n > 0 {
 				ev.AddCounterAtETB(game.CounterPlusOne, n)
 			}
 			return nil
@@ -47,12 +47,12 @@ func trekB47FaeriesEnterWithTypeCounters(label string) game.ReplacementEffect {
 // trekB47OpponentDrewDuringYourTurn is Troi, Winging It's "whenever an
 // opponent draws a card during your turn": one trigger per card an
 // opponent draws while the source's controller is the active player.
-func trekB47OpponentDrewDuringYourTurn(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
+func TrekB47OpponentDrewDuringYourTurn(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 	return ByAnOpponent(ev, source, ch, g) && IsYourTurn(g, source.Controller)
 }
 
 // trekB47ArtifactCreaturesYouControl is "artifact creatures you control",
 // read on post-layer types, the source included when it is one.
-func trekB47ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func TrekB47ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsArtifact() && target.IsCreature() && target.Controller == source.Controller
 }

@@ -23,7 +23,7 @@ const (
 
 // bellowingMaulerPlayers lists the living players in seat order starting
 // with the effect's controller.
-func bellowingMaulerPlayers(ctx *Context) []uuid.UUID {
+func BellowingMaulerPlayers(ctx *Context) []uuid.UUID {
 	me := ctx.Controller()
 	n := len(ctx.Game.Seats)
 	start := 0
@@ -59,7 +59,7 @@ func bellowingMaulerCandidates(g *game.Game, player uuid.UUID) []uuid.UUID {
 // nontoken creature just loses the life, with no question.
 //
 // Caller holds g.mu.
-func bellowingMaulerStep(ctx *Context, remaining []uuid.UUID) error {
+func BellowingMaulerStep(ctx *Context, remaining []uuid.UUID) error {
 	for len(remaining) > 0 {
 		victim, rest := remaining[0], remaining[1:]
 		pl := ctx.Game.PlayerByIDForEffect(victim)
@@ -100,7 +100,7 @@ var bellowingMaulerAnswered game.OptionPickThen
 // initialisation: the step and the answers refer to each other.
 func init() {
 	bellowingMaulerSacrificed = CardTail("then/bellowing-mauler-sacrificed", func(ctx *Context, o game.TailOutcome) error {
-		return bellowingMaulerStep(ctx, o.Tail.Carry)
+		return BellowingMaulerStep(ctx, o.Tail.Carry)
 	})
 	bellowingMaulerAnswered = OptionPickThen("option-pick/bellowing-mauler-lose-or-sacrifice", bellowingMaulerAnswer)
 }
@@ -108,27 +108,27 @@ func init() {
 func bellowingMaulerAnswer(ctx *Context, r game.OptionPicked) error {
 	victim, rest := r.Chooser, r.Carry
 	if r.Option == nil {
-		return bellowingMaulerStep(ctx, rest)
+		return BellowingMaulerStep(ctx, rest)
 	}
 	if r.Option.Label == bellowingMaulerSacText {
 		return SacrificeChoice{
 			Player:     victim,
 			Candidates: bellowingMaulerCandidates(ctx.Game, victim),
 			Question:   bellowingMaulerName + " — sacrifice a nontoken creature",
-			ThenTail:   withCarry(ctx.Tail(bellowingMaulerSacrificed), rest...),
+			ThenTail:   WithCarry(ctx.Tail(bellowingMaulerSacrificed), rest...),
 		}.Apply(ctx)
 	}
 	if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -bellowingMaulerLife); err != nil {
 		return err
 	}
-	return bellowingMaulerStep(ctx, rest)
+	return BellowingMaulerStep(ctx, rest)
 }
 
 // sncB13YouSacrificedAnotherCreature is "you sacrifice another creature":
 // the sacrifice event (it fires before the zone move, so the permanent is
 // still a creature to read) was made by the source's controller and is not
 // the source itself. Body Dropper and Forge Boss read it.
-func sncB13YouSacrificedAnotherCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SncB13YouSacrificedAnotherCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Actor != source.Controller || ev.CardID == source.InstanceID {
 		return false
 	}

@@ -17,7 +17,7 @@ import (
 // happens and again as the trigger resolves for an intervening "if" (CR 603.4).
 
 // playerIsCorrupted is "<player> has three or more poison counters".
-func playerIsCorrupted(g *game.Game, player uuid.UUID) bool {
+func PlayerIsCorrupted(g *game.Game, player uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(player)
 	return p != nil && p.Poison >= 3
 }
@@ -29,32 +29,32 @@ func playerIsCorrupted(g *game.Game, player uuid.UUID) bool {
 type CondCorrupted struct{}
 
 func (CondCorrupted) Holds(ctx *Context) bool {
-	return seedcoreCorrupted(ctx.Game, ctx.Controller(), uuid.Nil)
+	return SeedcoreCorrupted(ctx.Game, ctx.Controller(), uuid.Nil)
 }
 
-func (CondCorrupted) condition() (game.FootprintStep, bool) { return game.FootprintStep{}, false }
+func (CondCorrupted) Condition() (game.FootprintStep, bool) { return game.FootprintStep{}, false }
 
 // YouAreCorrupted is the When for "if an opponent has three or more poison
 // counters", read for the source's controller as the event happens, for
 // composing with AllOf.
 func YouAreCorrupted(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return seedcoreCorrupted(g, source.Controller, uuid.Nil)
+	return SeedcoreCorrupted(g, source.Controller, uuid.Nil)
 }
 
 // SelfKeywordWhileCorrupted is "Corrupted — As long as an opponent has three
 // or more poison counters, this creature has <keyword>": a layer 6 grant on
 // the source alone (CR 613.1f), re-answered on every recompute.
 func SelfKeywordWhileCorrupted(keyword string) game.StaticAbility {
-	ab := KeywordGrant(whileYouHave(func(g *game.Game, you uuid.UUID) bool {
-		return seedcoreCorrupted(g, you, uuid.Nil)
-	}, selfCreature), keyword)
+	ab := KeywordGrant(WhileYouHave(func(g *game.Game, you uuid.UUID) bool {
+		return SeedcoreCorrupted(g, you, uuid.Nil)
+	}, SelfCreature), keyword)
 	ab.Label = "Corrupted — has " + keyword + " as long as an opponent has three or more poison counters."
 	return ab
 }
 
 // corruptedAnd is an activation condition: corrupted, and `also` when set.
-func corruptedAnd(also ActivationCondition) ActivationCondition {
+func CorruptedAnd(also ActivationCondition) ActivationCondition {
 	return func(g *game.Game, controller, source uuid.UUID) bool {
-		return seedcoreCorrupted(g, controller, source) && (also == nil || also(g, controller, source))
+		return SeedcoreCorrupted(g, controller, source) && (also == nil || also(g, controller, source))
 	}
 }

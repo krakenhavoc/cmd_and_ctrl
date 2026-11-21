@@ -28,7 +28,7 @@ func init() {
 		Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2}),
 		OnResolve: ResolveSteps(
 			Instruction(costOfBrillianceDrawAndLose),
-			Instruction(costOfBrillianceCounter),
+			Instruction(CostOfBrillianceCounter),
 		),
 	})
 }
@@ -48,7 +48,7 @@ func costOfBrillianceDrawAndLose(ctx *Context) error {
 
 // costOfBrillianceCounter is "put a +1/+1 counter on up to one target
 // creature".
-func costOfBrillianceCounter(ctx *Context) error {
+func CostOfBrillianceCounter(ctx *Context) error {
 	t, ok := ctx.ClauseTarget(1)
 	if !ok || t.Kind != game.TargetCard {
 		return nil

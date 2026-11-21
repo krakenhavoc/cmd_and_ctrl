@@ -17,19 +17,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // enters".
 func zenB2AllyEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.CardID == source.InstanceID ||
-		b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Ally"))
+		B10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Ally"))
 }
 
 // zenB2AllyTrigger is the optional Ally trigger with its body.
-func zenB2AllyTrigger(label, question string, effect Effect) game.TriggeredAbility {
+func ZenB2AllyTrigger(label, question string, effect Effect) game.TriggeredAbility {
 	return Optional(On(game.EventETB, zenB2AllyEntered, label, effect), question)
 }
 
 // zenB2AllyCounter is "…, you may put a +1/+1 counter on this
 // creature." The counter goes on the creature only while it is still
 // the same object on the battlefield (CR 400.7).
-func zenB2AllyCounter(name string) game.TriggeredAbility {
-	return zenB2AllyTrigger(name+" — you may put a +1/+1 counter on it",
+func ZenB2AllyCounter(name string) game.TriggeredAbility {
+	return ZenB2AllyTrigger(name+" — you may put a +1/+1 counter on it",
 		"Put a +1/+1 counter on "+name+"?",
 		Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}))
 }
@@ -37,8 +37,8 @@ func zenB2AllyCounter(name string) game.TriggeredAbility {
 // zenB2AllyGrant is "…, you may have Ally creatures you control gain
 // <keyword> until end of turn." The set is locked as the ability
 // resolves (CR 611.2c): an Ally that enters afterwards does not gain it.
-func zenB2AllyGrant(name, keyword string) game.TriggeredAbility {
-	return zenB2AllyTrigger(name+" — Ally creatures you control gain "+keyword+" until end of turn",
+func ZenB2AllyGrant(name, keyword string) game.TriggeredAbility {
+	return ZenB2AllyTrigger(name+" — Ally creatures you control gain "+keyword+" until end of turn",
 		"Have Ally creatures you control gain "+keyword+" until end of turn?",
 		func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
@@ -53,7 +53,7 @@ func zenB2AllyGrant(name, keyword string) game.TriggeredAbility {
 // zenB2AlliesYouControl counts the Allies (any permanent with the
 // subtype, not only creatures) the ability's controller controls as it
 // resolves.
-func zenB2AlliesYouControl(ctx *Context) int {
+func ZenB2AlliesYouControl(ctx *Context) int {
 	ally := ctx.TextSubtype("Ally")
 	n := 0
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {

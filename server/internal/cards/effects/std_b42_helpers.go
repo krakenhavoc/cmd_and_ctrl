@@ -19,8 +19,8 @@ func (CondFaceDownEnteredThisTurn) Holds(ctx *Context) bool {
 	return ctx.Game.PermanentEnteredFaceDownThisTurn(ctx.Controller())
 }
 
-func (CondFaceDownEnteredThisTurn) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondFaceDownEntered, 0), true
+func (CondFaceDownEnteredThisTurn) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondFaceDownEntered, 0), true
 }
 
 // YouHadAFaceDownEntryThisTurn is the When for the same fact, read for the
@@ -34,10 +34,10 @@ func YouHadAFaceDownEntryThisTurn(_ game.Event, source *game.Card, _ game.Charac
 // dies, it deals 2 damage to each opponent." The trigger is the token's
 // own (ADR 0083): the token's controller is "you", and the damage is
 // dealt by the token as it last existed (CR 608.2h).
-func ImpDamageToken() game.Card { return tokenFromCatalog(printedImpDamageToken) }
+func ImpDamageToken() game.Card { return TokenFromCatalog(printedImpDamageToken) }
 
-func printedImpDamageToken() tokenTemplate {
-	return tokenTemplate{
+func printedImpDamageToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "imp-dies-damage",
 		Card: game.Card{
 			Name:      "Imp",

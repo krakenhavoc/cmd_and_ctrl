@@ -12,17 +12,17 @@ import (
 // scryThenGetEnergy is "Scry N, then you get M {E}" (Glassblower's
 // Puzzleknot, on its enters trigger and on its activated row). The
 // energy comes after the scry prompt is answered, as "then" says.
-func scryThenGetEnergy(scry, energy int) Effect {
+func ScryThenGetEnergy(scry, energy int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		controller := item.Controller
 		ctx := NewContext(g, item)
-		return Scry{Player: controller, N: scry, ThenTail: ctx.TailN(thenGetEnergy, energy)}.Apply(ctx)
+		return Scry{Player: controller, N: scry, ThenTail: ctx.TailN(ThenGetEnergy, energy)}.Apply(ctx)
 	}
 }
 
 // gainLifeAndGetEnergy is "you gain N life and get M {E}" (Woodweaver's
 // Puzzleknot, Reservoir Walker).
-func gainLifeAndGetEnergy(life, energy int) Effect {
+func GainLifeAndGetEnergy(life, energy int) Effect {
 	return Do(GainLife{Amount: life}, GetEnergy{N: energy})
 }
 
@@ -30,9 +30,9 @@ func gainLifeAndGetEnergy(life, energy int) Effect {
 // that may enchant a noncreature (Aether Meltdown's "Enchant creature or
 // Vehicle"): the change applies only while the host is a creature, which
 // is what "enchanted creature" names.
-func pumpEnchantedCreature(power, toughness int) game.StaticAbility {
+func PumpEnchantedCreature(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Enchanted creature gets " + signedPT(power, toughness) + ".",
+		Label:     "Enchanted creature gets " + SignedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: AttachedToSource,

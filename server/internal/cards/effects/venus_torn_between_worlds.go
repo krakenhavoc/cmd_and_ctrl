@@ -26,19 +26,19 @@ func init() {
 			{
 				Watches: []game.EventKind{game.EventDealDamage},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return b35SelfWasDealtDamage(ev, source)
+					return B35SelfWasDealtDamage(ev, source)
 				},
 				Key:        "Venus — put that many +1/+1 counters on her",
 				AtBatchEnd: ThatMuchDamage(),
 				Effect:     strengthOfWillCounters,
 			},
-			On(game.EventDealDamage, yourCreatureWithACounterDealtCombatDamageToAPlayer,
+			On(game.EventDealDamage, YourCreatureWithACounterDealtCombatDamageToAPlayer,
 				"Venus — you may pay {U} to draw a card", func(g *game.Game, item *game.StackItem) error {
 					return MayPay{
 						Chooser:  item.Controller,
 						Cost:     "{U}",
 						Question: "Venus, Torn Between Worlds — pay {U} to draw a card?",
-						Then:     mayPayDrawACard,
+						Then:     MayPayDrawACard,
 					}.Apply(NewContext(g, item))
 				}),
 		},
@@ -48,7 +48,7 @@ func init() {
 // yourCreatureWithACounterDealtCombatDamageToAPlayer is "whenever a
 // creature you control with a counter on it deals combat damage to a
 // player", the dealer's counters read as the damage is dealt.
-func yourCreatureWithACounterDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func YourCreatureWithACounterDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	dealer, ok := g.LookupCardForEffect(ev.Source)
-	return ok && combatDamageToPlayerBy(ev, source.Controller, g) && b41HasACounter()(g, source.Controller, dealer)
+	return ok && CombatDamageToPlayerBy(ev, source.Controller, g) && B41HasACounter()(g, source.Controller, dealer)
 }

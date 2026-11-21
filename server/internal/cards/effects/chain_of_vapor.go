@@ -73,7 +73,7 @@ func chainOfVaporBounce(ctx *Context) error {
 	}
 	return BounceToHand{
 		Target:   t.ID,
-		ThenTail: withCarry(ctx.ItemTail(chainOfVaporBounced), controller),
+		ThenTail: WithCarry(ctx.ItemTail(chainOfVaporBounced), controller),
 	}.Apply(ctx)
 }
 
@@ -81,7 +81,7 @@ func chainOfVaporBounce(ctx *Context) error {
 // (#4253): the spell rides the tail as data and the bounced permanent's
 // controller its Carry. An on-disk key: never renamed, never reused.
 var chainOfVaporBounced = CardTail("then/chain-of-vapor-offer-chain", func(ctx *Context, o game.TailOutcome) error {
-	return chainSacrificeALandToCopy(ctx, tailCarry0(o), "Chain of Vapor")
+	return ChainSacrificeALandToCopy(ctx, TailCarry0(o), "Chain of Vapor")
 })
 
 // chainSacrificeALandToCopy is the chain's first question, put to the
@@ -91,11 +91,11 @@ var chainOfVaporBounced = CardTail("then/chain-of-vapor-offer-chain", func(ctx *
 // that copy." Chain of Silence (ADR 0108 PR 7b, #1904) prints the same
 // sentences about the shielded creature's controller; `name` is the card
 // asking.
-func chainSacrificeALandToCopy(ctx *Context, controller uuid.UUID, name string) error {
+func ChainSacrificeALandToCopy(ctx *Context, controller uuid.UUID, name string) error {
 	if controller == uuid.Nil {
 		return nil
 	}
-	lands := landsControlledByPlayer(ctx.Game, controller)
+	lands := LandsControlledByPlayer(ctx.Game, controller)
 	if len(lands) == 0 {
 		// "May sacrifice a land" with no land is not a question.
 		return nil
@@ -117,7 +117,7 @@ func chainSacrificeALandToCopy(ctx *Context, controller uuid.UUID, name string) 
 // clause is "then", not "if you do".
 func chainSacrificeLand(ctx *Context, player uuid.UUID, name string) error {
 	var lands []uuid.UUID
-	for _, id := range landsControlledByPlayer(ctx.Game, player) {
+	for _, id := range LandsControlledByPlayer(ctx.Game, player) {
 		// #3275, CR 101.2: a permanent that can't be sacrificed is not a
 		// legal choice.
 		if !ctx.Game.CantBeSacrificedForEffect(id) {
@@ -125,7 +125,7 @@ func chainSacrificeLand(ctx *Context, player uuid.UUID, name string) error {
 		}
 	}
 	if len(lands) == 0 {
-		return chainOfferCopy(ctx.Game, ctx.Item, player, name)
+		return ChainOfferCopy(ctx.Game, ctx.Item, player, name)
 	}
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    player,
@@ -135,7 +135,7 @@ func chainSacrificeLand(ctx *Context, player uuid.UUID, name string) error {
 		Cards:      lands,
 		Min:        1,
 		Max:        1,
-		ThenKey:    chainLandPicked,
+		ThenKey:    ChainLandPicked,
 		LiveZone:   game.ZoneBattlefield,
 		CarryWord:  name,
 		Carry:      []uuid.UUID{player},
@@ -146,7 +146,7 @@ func chainSacrificeLand(ctx *Context, player uuid.UUID, name string) error {
 
 // chainLandPicked sacrifices the pick and, once it has gone, offers the
 // copy. An on-disk key: never renamed, never reused.
-var chainLandPicked = game.RegisterChooseCardsThen("choose-cards/chain-sacrifice-a-land", func(g *game.Game, r game.CardsChosen) error {
+var ChainLandPicked = game.RegisterChooseCardsThen("choose-cards/chain-sacrifice-a-land", func(g *game.Game, r game.CardsChosen) error {
 	if len(r.Carry) == 0 || r.Asked == nil {
 		return nil
 	}
@@ -165,16 +165,16 @@ var chainSacrificed = game.RegisterTail("then/chain-sacrificed-offer-copy", func
 	if item == nil || len(o.Tail.Carry) == 0 {
 		return nil
 	}
-	return chainOfferCopy(g, item, o.Tail.Carry[0], o.Tail.Word)
+	return ChainOfferCopy(g, item, o.Tail.Carry[0], o.Tail.Word)
 })
 
 // chainOfferCopy is "they may copy this spell and may choose a new target
 // for that copy" (CR 707.10, 707.10b).
-func chainOfferCopy(g *game.Game, item *game.StackItem, player uuid.UUID, name string) error {
+func ChainOfferCopy(g *game.Game, item *game.StackItem, player uuid.UUID, name string) error {
 	return MayChoice{
 		Player:   player,
 		Question: name + " — copy it? (you may choose a new target for the copy)",
-		Then:     mayCopyThisSpell,
+		Then:     MayCopyThisSpell,
 	}.Apply(NewContext(g, item))
 }
 
@@ -202,7 +202,7 @@ func copyThisSpellFor(player uuid.UUID) func(ctx *Context) error {
 // their choice".
 //
 // Caller must hold g.mu — it is an effect-time read.
-func landsControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+func LandsControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 	if playerID == uuid.Nil {
 		return nil
 	}

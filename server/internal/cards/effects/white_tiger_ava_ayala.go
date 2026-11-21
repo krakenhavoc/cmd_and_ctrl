@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	ab := PowerUp("{5}{G}: Put a +1/+1 counter on White Tiger and create The Tiger God, a legendary 4/4 green Cat God creature token with \"The Tiger God can't be blocked by more than one creature.\"",
 		ManaCost("{5}{G}"), func(g *game.Game, item *game.StackItem) error {
-			if err := plusOneCountersOnThis(1)(g, item); err != nil {
+			if err := PlusOneCountersOnThis(1)(g, item); err != nil {
 				return err
 			}
 			return CreateToken{Template: tigerGodToken(), N: 1}.Apply(NewContext(g, item))
@@ -36,12 +36,12 @@ func init() {
 }
 
 // tigerGodToken is White Tiger's The Tiger God.
-func tigerGodToken() game.Card { return tokenFromCatalog(printedTigerGodToken) }
+func tigerGodToken() game.Card { return TokenFromCatalog(printedTigerGodToken) }
 
 // printedTigerGodToken is The Tiger God as PRINTED. Its slug is an on-disk
 // identity and is never renamed.
-func printedTigerGodToken() tokenTemplate {
-	return tokenTemplate{
+func printedTigerGodToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "the-tiger-god",
 		Card: game.Card{
 			Name:      "The Tiger God",

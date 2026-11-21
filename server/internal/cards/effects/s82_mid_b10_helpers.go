@@ -27,8 +27,8 @@ func s82Mid10EachCreatureOrEnchantmentYouControlEntered(ev game.Event, dt *game.
 // Rite of Harmony's trigger condition and body. On-disk keys: never renamed,
 // never reused.
 var (
-	s82Mid10CreatureOrEnchantmentEntersCondition = game.DelayedEachCondition("etb/each-creature-or-enchantment-you-control", s82Mid10EachCreatureOrEnchantmentYouControlEntered)
-	s82Mid10DrawACardBody                        = game.SimpleDelayedBody("rite-of-harmony/draw-a-card", Do(DrawCards{N: 1}))
+	S82Mid10CreatureOrEnchantmentEntersCondition = game.DelayedEachCondition("etb/each-creature-or-enchantment-you-control", s82Mid10EachCreatureOrEnchantmentYouControlEntered)
+	S82Mid10DrawACardBody                        = game.SimpleDelayedBody("rite-of-harmony/draw-a-card", Do(DrawCards{N: 1}))
 )
 
 // s82Mid10ReturnedHasteAndExile is the tail of "return it to the battlefield
@@ -36,9 +36,9 @@ var (
 // end step" (Wake to Slaughter): the entered card, if it is still that
 // permanent on the battlefield, gains haste for as long as it stays and is
 // exiled at the next end step. An on-disk key: never renamed, never reused.
-var s82Mid10ReturnedHasteAndExile = EnteredTail("wake-to-slaughter/entered", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
+var S82Mid10ReturnedHasteAndExile = EnteredTail("wake-to-slaughter/entered", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
 	g := ctx.Game
-	if entered == uuid.Nil || !onBattlefield(g, entered) {
+	if entered == uuid.Nil || !OnBattlefield(g, entered) {
 		return nil
 	}
 	if err := (ScopedEffectFor{
@@ -52,15 +52,15 @@ var s82Mid10ReturnedHasteAndExile = EnteredTail("wake-to-slaughter/entered", fun
 	return ScheduleDelayedTrigger{
 		Label: "Wake to Slaughter — exile it",
 		Cards: []uuid.UUID{entered},
-		Body:  exileListedCardsBody,
+		Body:  ExileListedCardsBody,
 	}.Apply(ctx)
 })
 
 // s82Mid10ReturnedExileIfItWouldDie is the tail of Can't Stay Away's return:
 // the entered creature gains "If this creature would die, exile it instead"
 // for as long as it is that permanent. An on-disk key.
-var s82Mid10ReturnedExileIfItWouldDie = EnteredTail("cant-stay-away/entered", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
-	if entered == uuid.Nil || !onBattlefield(ctx.Game, entered) {
+var S82Mid10ReturnedExileIfItWouldDie = EnteredTail("cant-stay-away/entered", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
+	if entered == uuid.Nil || !OnBattlefield(ctx.Game, entered) {
 		return nil
 	}
 	ctx.Game.ExileIfItWouldDieForEffect(ctx.Source(), entered, ctx.Controller(),

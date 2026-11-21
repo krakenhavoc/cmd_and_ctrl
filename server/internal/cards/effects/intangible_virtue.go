@@ -26,7 +26,7 @@ func init() {
 				Label:     "Creature tokens you control get +1/+1.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7C_Modify,
-				AppliesTo: b05CreatureTokenYouControl,
+				AppliesTo: B05CreatureTokenYouControl,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Power++
 					c.Toughness++
@@ -35,9 +35,9 @@ func init() {
 			{
 				Label:     "Creature tokens you control have vigilance.",
 				Layer:     game.Layer6Ability,
-				AppliesTo: b05CreatureTokenYouControl,
+				AppliesTo: B05CreatureTokenYouControl,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-					if !eotHasAbility(c.Abilities, "vigilance") {
+					if !EotHasAbility(c.Abilities, "vigilance") {
 						c.Abilities = append(c.Abilities, "vigilance")
 					}
 				},
@@ -48,6 +48,6 @@ func init() {
 
 // b05CreatureTokenYouControl is Intangible Virtue's applies-to: a
 // creature token under the source's controller.
-func b05CreatureTokenYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B05CreatureTokenYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && IsToken(*target) && target.Controller == source.Controller
 }

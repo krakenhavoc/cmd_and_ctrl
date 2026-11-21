@@ -14,8 +14,8 @@ import (
 // Elemental named Lightning Rager, with trample, haste and "At the
 // beginning of the end step, sacrifice this creature." Its slug is an
 // on-disk identity: never renamed, never reused.
-func printedCmdr2S34LightningRagerToken() tokenTemplate {
-	return tokenTemplate{
+func printedCmdr2S34LightningRagerToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "lightning-rager",
 		Card: game.Card{
 			Name:      "Lightning Rager",
@@ -35,14 +35,14 @@ func printedCmdr2S34LightningRagerToken() tokenTemplate {
 }
 
 // cmdr2S34LightningRagerToken is the token's card value for CreateToken.
-func cmdr2S34LightningRagerToken() game.Card {
-	return tokenFromCatalog(printedCmdr2S34LightningRagerToken)
+func Cmdr2S34LightningRagerToken() game.Card {
+	return TokenFromCatalog(printedCmdr2S34LightningRagerToken)
 }
 
 // printedCmdr2S34PirateToken is Nettling Nuisance's 4/2 red Pirate with
 // "This token can't block." Its slug is an on-disk identity.
-func printedCmdr2S34PirateToken() tokenTemplate {
-	return tokenTemplate{
+func printedCmdr2S34PirateToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "pirate-cant-block",
 		Card: game.Card{
 			Name:      "Pirate",
@@ -57,7 +57,7 @@ func printedCmdr2S34PirateToken() tokenTemplate {
 }
 
 // cmdr2S34PirateToken is the Pirate's card value for CreateToken.
-func cmdr2S34PirateToken() game.Card { return tokenFromCatalog(printedCmdr2S34PirateToken) }
+func Cmdr2S34PirateToken() game.Card { return TokenFromCatalog(printedCmdr2S34PirateToken) }
 
 // cmdr2S34NamedCreaturesCantAttackYouOrYourPlaneswalkers is "Creatures
 // named <name> can't attack you or planeswalkers you control" (CR 508.1c):
@@ -65,7 +65,7 @@ func cmdr2S34PirateToken() game.Card { return tokenFromCatalog(printedCmdr2S34Pi
 // permanent as its source and binds only an attacker with that effective
 // name, judged at declaration. "You" is the printing permanent's
 // controller, read when the layer pass runs.
-func cmdr2S34NamedCreaturesCantAttackYouOrYourPlaneswalkers(label, name string) game.StaticAbility {
+func Cmdr2S34NamedCreaturesCantAttackYouOrYourPlaneswalkers(label, name string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: label,
 		Layer: game.Layer6Ability,
@@ -91,7 +91,7 @@ func cmdr2S34NamedCreaturesCantAttackYouOrYourPlaneswalkers(label, name string) 
 // goads each token the creation made on behalf of the tail's Player, the
 // effect's controller (CR 701.15a). A token that is already gone is skipped.
 // The key is an on-disk identity: never renamed, never reused.
-var cmdr2S34GoadTokensForRestOfGame = CardTail("cmdr2-s34/goad-tokens-for-rest-of-game", func(ctx *Context, o game.TailOutcome) error {
+var Cmdr2S34GoadTokensForRestOfGame = CardTail("cmdr2-s34/goad-tokens-for-rest-of-game", func(ctx *Context, o game.TailOutcome) error {
 	for _, id := range o.IDs {
 		ctx.Game.GoadForRestOfGameForEffect(id, o.Tail.Player)
 	}
@@ -106,8 +106,8 @@ var cmdr2S34GoadTokensForRestOfGame = CardTail("cmdr2-s34/goad-tokens-for-rest-o
 // through one chain of keyed tails, so a creation paused on a
 // replacement-ordering question is still a restore point and the goad
 // lands on the token it made.
-func cmdr2S34EachPlayerCreatesGoadedBird(ctx *Context) error {
-	return cmdr2S34BirdForNext(ctx, seatsFromActive(ctx.Game))
+func Cmdr2S34EachPlayerCreatesGoadedBird(ctx *Context) error {
+	return cmdr2S34BirdForNext(ctx, SeatsFromActive(ctx.Game))
 }
 
 func cmdr2S34BirdForNext(ctx *Context, players []uuid.UUID) error {
@@ -154,14 +154,14 @@ func init() {
 // runs. One keyed pick serves both cards, told which rider by its first
 // number.
 const (
-	cmdr2S34RiderGoad     = 0 // Agitator Ant: goad each creature that got counters
-	cmdr2S34RiderCantAtk  = 1 // Orzhov Advokist: that player's creatures can't attack you
+	Cmdr2S34RiderGoad     = 0 // Agitator Ant: goad each creature that got counters
+	Cmdr2S34RiderCantAtk  = 1 // Orzhov Advokist: that player's creatures can't attack you
 	cmdr2S34CounterAmount = 2
 )
 
 // cmdr2S34EachPlayerMayPutCounters starts the fan-out for `rider`.
-func cmdr2S34EachPlayerMayPutCounters(ctx *Context, rider int) error {
-	return cmdr2S34AskCounters(ctx, seatsFromActive(ctx.Game), nil, nil, rider)
+func Cmdr2S34EachPlayerMayPutCounters(ctx *Context, rider int) error {
+	return cmdr2S34AskCounters(ctx, SeatsFromActive(ctx.Game), nil, nil, rider)
 }
 
 // cmdr2S34AskCounters asks the first of `players`, then the rest; the carry
@@ -189,7 +189,7 @@ func cmdr2S34AskCounters(ctx *Context, players, chosen, choosers []uuid.UUID, ri
 			return ids, 0, 1
 		},
 		Keyed: cmdr2S34CountersPicked,
-		Carry: packIDLists(rest, chosen, choosers),
+		Carry: PackIDLists(rest, chosen, choosers),
 		Nums:  []int{rider},
 	}.Apply(ctx)
 }
@@ -203,7 +203,7 @@ var cmdr2S34CountersPicked PermanentsThen
 func init() {
 	cmdr2S34CountersPicked = RegisterPermanentsPick("prompt-run/cmdr2-s34-each-player-may-put-counters", PermanentsDef{
 		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
-			lists := unpackIDLists(r.Carry)
+			lists := UnpackIDLists(r.Carry)
 			var rest, chosen, choosers []uuid.UUID
 			if len(lists) > 0 {
 				rest = lists[0]
@@ -241,14 +241,14 @@ func cmdr2S34ApplyCounters(ctx *Context, chosen, choosers []uuid.UUID, rider int
 	g := ctx.Game
 	var got, gotBy []uuid.UUID
 	for i, id := range chosen {
-		if !onBattlefield(g, id) {
+		if !OnBattlefield(g, id) {
 			continue
 		}
-		before := counterCountOn(g, id, game.CounterPlusOne)
+		before := CounterCountOn(g, id, game.CounterPlusOne)
 		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: cmdr2S34CounterAmount}).Apply(ctx); err != nil {
 			return err
 		}
-		if counterCountOn(g, id, game.CounterPlusOne) > before {
+		if CounterCountOn(g, id, game.CounterPlusOne) > before {
 			got = append(got, id)
 			if i < len(choosers) {
 				gotBy = append(gotBy, choosers[i])
@@ -256,13 +256,13 @@ func cmdr2S34ApplyCounters(ctx *Context, chosen, choosers []uuid.UUID, rider int
 		}
 	}
 	switch rider {
-	case cmdr2S34RiderGoad:
+	case Cmdr2S34RiderGoad:
 		// "Goad each creature that had counters put on it this way."
 		if len(got) == 0 {
 			return nil
 		}
-		return goadAndScheduleClear(ctx, got)
-	case cmdr2S34RiderCantAtk:
+		return GoadAndScheduleClear(ctx, got)
+	case Cmdr2S34RiderCantAtk:
 		// "If a player does, creatures that player controls can't attack you
 		// or planeswalkers you control until your next turn."
 		you := ctx.Controller()

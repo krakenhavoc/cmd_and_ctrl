@@ -170,7 +170,7 @@ type WardSacrificeCost struct {
 }
 
 // count is the printed number, with zero reading as one.
-func (s WardSacrificeCost) count() int {
+func (s WardSacrificeCost) SacrificeCount() int {
 	if s.Count < 1 {
 		return 1
 	}
@@ -334,7 +334,7 @@ func (c WardCost) validate() {
 	}
 	if c.Sacrifice != nil {
 		// Register the cost's two keyed legs at boot (#4291).
-		wardSacrificeKeysFor(*c.Sacrifice)
+		WardSacrificeKeysFor(*c.Sacrifice)
 	}
 }
 
@@ -470,7 +470,7 @@ func WardGranted(cost WardCost, label string, grants func(target *game.Card, g *
 				return nil
 			}
 			ev := item.Trigger.Event
-			return wardPayOrCounter(g, item, ev.StackItemID, ev.Actor, cost)
+			return WardPayOrCounter(g, item, ev.StackItemID, ev.Actor, cost)
 		},
 	}
 }
@@ -490,7 +490,7 @@ func WardGranted(cost WardCost, label string, grants func(target *game.Card, g *
 // ErrCardNotOnStack and there is nothing to charge for either, so
 // the prompt is skipped entirely rather than asking a player to pay
 // for a spell that no longer exists.
-func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer uuid.UUID, cost WardCost) error {
+func WardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer uuid.UUID, cost WardCost) error {
 	if g.StackItemForEffect(targetingItem) == nil {
 		return nil
 	}
@@ -556,7 +556,7 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 
 // wardCounter is the ward's decline: counter the targeting spell or ability
 // if it is still on the stack, and do nothing if it is not.
-func wardCounter(g *game.Game, targetingItem uuid.UUID) error {
+func WardCounter(g *game.Game, targetingItem uuid.UUID) error {
 	if g.StackItemForEffect(targetingItem) == nil {
 		return nil
 	}
@@ -572,17 +572,17 @@ func wardCounter(g *game.Game, targetingItem uuid.UUID) error {
 
 // wardPayLifeAnswer is the payer's answer to "pay N life, or it is
 // countered". N is the life the prompt declares.
-var wardPayLifeAnswer = game.RegisterConfirmThen("confirm/ward-pay-life", func(g *game.Game, r game.ConfirmAnswer) error {
+var WardPayLifeAnswer = game.RegisterConfirmThen("confirm/ward-pay-life", func(g *game.Game, r game.ConfirmAnswer) error {
 	targetingItem := wardTargetingItem(r.Carry)
 	if !r.Accepted {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	if g.StackItemForEffect(targetingItem) == nil {
 		// Nothing left to pay for.
 		return nil
 	}
 	if p := g.PlayerByIDForEffect(r.Chooser); p == nil || p.Life < r.LifeCost {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	// Ward's "unless that player pays N life" is a COST (CR 118.3), so it
 	// goes through the cost path: the CR 614 window runs (CR 119.4 — paying
@@ -596,7 +596,7 @@ var wardPayLifeAnswer = game.RegisterConfirmThen("confirm/ward-pay-life", func(g
 var wardGetPoisonAnswer = game.RegisterConfirmThen("confirm/ward-get-poison", func(g *game.Game, r game.ConfirmAnswer) error {
 	targetingItem := wardTargetingItem(r.Carry)
 	if !r.Accepted {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	if g.StackItemForEffect(targetingItem) == nil {
 		// Nothing left to pay for.
@@ -608,7 +608,7 @@ var wardGetPoisonAnswer = game.RegisterConfirmThen("confirm/ward-get-poison", fu
 	// the next check, not here.
 	if err := g.AddPlayerCounterByForEffect(r.Chooser, r.Chooser, game.CounterPoison, r.PoisonCost); err != nil {
 		if errors.Is(err, game.ErrPlayerEliminated) {
-			return wardCounter(g, targetingItem)
+			return WardCounter(g, targetingItem)
 		}
 		return err
 	}
@@ -664,7 +664,7 @@ func wardTargetingItem(carry []uuid.UUID) uuid.UUID {
 // trusting the prompt-time total.
 func wardPayLifeOrCounter(g *game.Game, source, payer uuid.UUID, life int, targetingItem uuid.UUID) error {
 	if p := g.PlayerByIDForEffect(payer); p == nil || p.Life < life {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	_, err := g.QueueConfirmKeyedForEffect(game.ConfirmPrompt{
 		Chooser:      payer,
@@ -673,15 +673,15 @@ func wardPayLifeOrCounter(g *game.Game, source, payer uuid.UUID, life int, targe
 		AcceptLabel:  fmt.Sprintf("Pay %d life", life),
 		DeclineLabel: "Let it be countered",
 		LifeCost:     life,
-	}, wardPayLifeAnswer, []uuid.UUID{targetingItem})
+	}, WardPayLifeAnswer, []uuid.UUID{targetingItem})
 	return err
 }
 
 // wardSacrificeKeys are the two registered legs of one sacrifice ward cost:
 // the confirm, and the pick it chains.
 type wardSacrificeKeys struct {
-	confirm game.ConfirmThen
-	pick    game.ChooseCardsThen
+	Confirm game.ConfirmThen
+	Pick    game.ChooseCardsThen
 	count   int
 }
 
@@ -714,20 +714,20 @@ func wardSlug(label string) string {
 // printed noun phrase, and the legs close over this cost, a constant of the
 // card. A label therefore names one cost shape. Two costs with one label must
 // be the same cost, and one with a different count panics.
-func wardSacrificeKeysFor(sac WardSacrificeCost) wardSacrificeKeys {
+func WardSacrificeKeysFor(sac WardSacrificeCost) wardSacrificeKeys {
 	wardSacrificeMu.Lock()
 	defer wardSacrificeMu.Unlock()
 	slug := wardSlug(sac.Label)
 	if k, ok := wardSacrificeLegs[slug]; ok {
-		if k.count != sac.count() {
+		if k.count != sac.SacrificeCount() {
 			panic(fmt.Sprintf("effects: two ward sacrifice costs share the label %q with different counts", sac.Label))
 		}
 		return k
 	}
-	n := sac.count()
+	n := sac.SacrificeCount()
 	pick := game.RegisterChooseCardsThen("choose-cards/ward-sacrifice-"+slug, wardSacrificePickLeg(sac, n))
 	confirm := game.RegisterConfirmThen("confirm/ward-sacrifice-"+slug, wardSacrificeConfirmLeg(sac, n, pick))
-	k := wardSacrificeKeys{confirm: confirm, pick: pick, count: n}
+	k := wardSacrificeKeys{Confirm: confirm, Pick: pick, count: n}
 	wardSacrificeLegs[slug] = k
 	return k
 }
@@ -743,7 +743,7 @@ func wardSacrificePickLeg(sac WardSacrificeCost, n int) game.ChooseCardsFunc {
 			return nil
 		}
 		if !wardSacrificePickComplete(g, r.Chooser, sac, r.Picked, n) {
-			return wardCounter(g, targetingItem)
+			return WardCounter(g, targetingItem)
 		}
 		for _, id := range r.Picked {
 			if err := g.SacrificePermanentForEffect(id); err != nil {
@@ -760,14 +760,14 @@ func wardSacrificeConfirmLeg(sac WardSacrificeCost, n int, pick game.ChooseCards
 	return func(g *game.Game, r game.ConfirmAnswer) error {
 		targetingItem := wardTargetingItem(r.Carry)
 		if !r.Accepted {
-			return wardCounter(g, targetingItem)
+			return WardCounter(g, targetingItem)
 		}
 		if g.StackItemForEffect(targetingItem) == nil {
 			return nil
 		}
 		candidates := wardSacrificeCandidates(g, r.Chooser, sac)
 		if len(candidates) < n {
-			return wardCounter(g, targetingItem)
+			return WardCounter(g, targetingItem)
 		}
 		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 			Chooser:  r.Chooser,
@@ -809,8 +809,8 @@ func wardSacrificeConfirmLeg(sac WardSacrificeCost, n int, pick game.ChooseCards
 // all, so the spell is countered with no prompt rather than offering
 // a payment that cannot be completed.
 func wardSacrificeOrCounter(g *game.Game, source, payer uuid.UUID, sac WardSacrificeCost, targetingItem uuid.UUID) error {
-	if len(wardSacrificeCandidates(g, payer, sac)) < sac.count() {
-		return wardCounter(g, targetingItem)
+	if len(wardSacrificeCandidates(g, payer, sac)) < sac.SacrificeCount() {
+		return WardCounter(g, targetingItem)
 	}
 	_, err := g.QueueConfirmKeyedForEffect(game.ConfirmPrompt{
 		Chooser:      payer,
@@ -818,7 +818,7 @@ func wardSacrificeOrCounter(g *game.Game, source, payer uuid.UUID, sac WardSacri
 		Question:     "Ward — sacrifice " + sac.Label + ", or it is countered",
 		AcceptLabel:  "Sacrifice " + sac.Label,
 		DeclineLabel: "Let it be countered",
-	}, wardSacrificeKeysFor(sac).confirm, []uuid.UUID{targetingItem})
+	}, WardSacrificeKeysFor(sac).Confirm, []uuid.UUID{targetingItem})
 	return err
 }
 
@@ -853,10 +853,10 @@ func wardDiscardLabel(n int, atRandom bool, kind *WardDiscardKind) string {
 // wardDiscardAnswer is the payer's answer to "discard <N cards>, or it is
 // countered". The Word is the count, and "random" after it for a discard at
 // random.
-var wardDiscardAnswer = game.RegisterConfirmThen("confirm/ward-discard", func(g *game.Game, r game.ConfirmAnswer) error {
+var WardDiscardAnswer = game.RegisterConfirmThen("confirm/ward-discard", func(g *game.Game, r game.ConfirmAnswer) error {
 	targetingItem := wardTargetingItem(r.Carry)
 	if !r.Accepted {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	if g.StackItemForEffect(targetingItem) == nil {
 		return nil
@@ -871,7 +871,7 @@ var wardDiscardAnswer = game.RegisterConfirmThen("confirm/ward-discard", func(g 
 		wardDiscardKindsMu.Unlock()
 	}
 	if wardDiscardCardsInHand(g, r.Chooser, kind) < n {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	prompt := game.DiscardPrompt{
 		Player:   r.Chooser,
@@ -925,7 +925,7 @@ func wardDiscardCardsInHand(g *game.Game, payer uuid.UUID, kind *WardDiscardKind
 func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, cost WardCost, targetingItem uuid.UUID) error {
 	n, atRandom, kind := cost.Discard, cost.DiscardAtRandom, cost.DiscardKind
 	if wardDiscardCardsInHand(g, payer, kind) < n {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	label := wardDiscardLabel(n, atRandom, kind)
 	_, err := g.QueueConfirmKeyedForEffect(game.ConfirmPrompt{
@@ -935,7 +935,7 @@ func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, cost WardCost, 
 		AcceptLabel:  "Discard " + label,
 		DeclineLabel: "Let it be countered",
 		Word:         wardDiscardWord(n, atRandom, kind),
-	}, wardDiscardAnswer, []uuid.UUID{targetingItem})
+	}, WardDiscardAnswer, []uuid.UUID{targetingItem})
 	return err
 }
 
@@ -991,7 +991,7 @@ var wardBlightAfter = RegisterBlighted("blight/ward-blight", func(ctx *Context, 
 	if d.Did() || len(d.Carry) == 0 {
 		return nil
 	}
-	return wardCounter(ctx.Game, d.Carry[0])
+	return WardCounter(ctx.Game, d.Carry[0])
 })
 
 // wardBlightOrCounter is "counter it unless that player blights N": the
@@ -1000,7 +1000,7 @@ var wardBlightAfter = RegisterBlighted("blight/ward-blight", func(ctx *Context, 
 // countered at once.
 func wardBlightOrCounter(ctx *Context, payer uuid.UUID, n int, targetingItem uuid.UUID) error {
 	if len(ctx.Game.BlightOptionsForEffect(payer)) == 0 {
-		return wardCounter(ctx.Game, targetingItem)
+		return WardCounter(ctx.Game, targetingItem)
 	}
 	return Blight{
 		N:        n,

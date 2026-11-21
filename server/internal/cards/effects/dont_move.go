@@ -30,7 +30,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (DestroyAllMatching{Match: dontMoveTapped}).Apply(ctx); err != nil {
+			if err := (DestroyAllMatching{Match: DontMoveTapped}).Apply(ctx); err != nil {
 				return err
 			}
 			until := DurationUntilYourNextTurn(ctx, ctx.Controller())
@@ -50,7 +50,7 @@ func init() {
 }
 
 // dontMoveTapped is "tapped creatures".
-func dontMoveTapped(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func DontMoveTapped(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 	return c.IsCreature() && c.Tapped
 }
 

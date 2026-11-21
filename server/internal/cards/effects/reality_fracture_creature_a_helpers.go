@@ -12,9 +12,9 @@ import (
 // rfCreatureAArtifactsYouControl counts the artifacts a player controls, after
 // layers ("where X is the number of artifacts you control"). Caller
 // holds g.mu.
-func rfCreatureAArtifactsYouControl(g *game.Game, player uuid.UUID) int {
+func RfCreatureAArtifactsYouControl(g *game.Game, player uuid.UUID) int {
 	g.RecomputeLayersIfStaleLocked()
-	return b03ArtifactsControlled(g, player)
+	return B03ArtifactsControlled(g, player)
 }
 
 // rfCreatureACastSpellTargetsAny reports whether the spell a cast event names is on
@@ -22,7 +22,7 @@ func rfCreatureAArtifactsYouControl(g *game.Game, player uuid.UUID) int {
 // cast path announces targets before it emits EventCast (CR 601.2c, i),
 // so the stack item already carries them when a "whenever you cast a
 // spell that targets …" trigger looks. Caller holds g.mu.
-func rfCreatureACastSpellTargetsAny(g *game.Game, spellID uuid.UUID, match func(t game.TargetRef) bool) bool {
+func RfCreatureACastSpellTargetsAny(g *game.Game, spellID uuid.UUID, match func(t game.TargetRef) bool) bool {
 	item := g.StackItemForEffect(spellID)
 	if item == nil {
 		return false
@@ -37,7 +37,7 @@ func rfCreatureACastSpellTargetsAny(g *game.Game, spellID uuid.UUID, match func(
 
 // rfCreatureATargetIsCreatureOnBattlefield reports whether a card target is a
 // creature still on the battlefield, and returns it.
-func rfCreatureATargetIsCreatureOnBattlefield(g *game.Game, t game.TargetRef) (game.Card, bool) {
+func RfCreatureATargetIsCreatureOnBattlefield(g *game.Game, t game.TargetRef) (game.Card, bool) {
 	if t.Kind != game.TargetCard {
 		return game.Card{}, false
 	}

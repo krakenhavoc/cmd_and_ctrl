@@ -27,20 +27,20 @@ func (condCardPutIntoExileThisTurn) Holds(ctx *Context) bool {
 	return false
 }
 
-func (condCardPutIntoExileThisTurn) condition() (game.FootprintStep, bool) {
+func (condCardPutIntoExileThisTurn) Condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }
 
 // Std53NightmareToken is Ashiok, Wicked Manipulator's 1/1 black Nightmare
 // creature token with "At the beginning of combat on your turn, if a card
 // was put into exile this turn, put a +1/+1 counter on this creature."
-func Std53NightmareToken() game.Card { return tokenFromCatalog(printedStd53NightmareToken) }
+func Std53NightmareToken() game.Card { return TokenFromCatalog(printedStd53NightmareToken) }
 
 // printedStd53NightmareToken is that Nightmare as PRINTED. "You" is the
 // token's controller (item.Controller), and "this creature" the token.
 // The slug is an on-disk identity: never renamed.
-func printedStd53NightmareToken() tokenTemplate {
-	return tokenTemplate{
+func printedStd53NightmareToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "nightmare-exile-counter",
 		Card: game.Card{
 			Name:      "Nightmare",
@@ -68,7 +68,7 @@ func printedStd53NightmareToken() tokenTemplate {
 // the life is never split with the cards. The payment is replaced down to
 // no life change (still paid, CR 614.17b) and the cards are exiled as the
 // cost is paid, from the top, face up (an exile, not a mill, CR 701.17a).
-func youExileFromLibraryInsteadOfPayingLife(label string) game.ReplacementEffect {
+func YouExileFromLibraryInsteadOfPayingLife(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventChangeLife},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -94,7 +94,7 @@ func youExileFromLibraryInsteadOfPayingLife(label string) game.ReplacementEffect
 
 // ashiokTakeRestIntoExile is the continuation of Ashiok's +1: of the two
 // cards looked at, the one taken is in hand and the other is exiled.
-var ashiokTakeRestIntoExile = RegisterTake("choose-cards/ashiok-wicked-manipulator-take",
+var AshiokTakeRestIntoExile = RegisterTake("choose-cards/ashiok-wicked-manipulator-take",
 	TakeDef{Then: func(g *game.Game, res TakeFromLibraryResult) error {
 		var firstErr error
 		for _, id := range res.Rest {

@@ -203,9 +203,9 @@ func AttackingCreatures(g *game.Game) []uuid.UUID {
 
 // untapEach untaps each permanent named, one at a time. A permanent
 // that is already untapped does nothing (CR 701.26b).
-func untapEach(ctx *Context, ids []uuid.UUID) error {
+func UntapEach(ctx *Context, ids []uuid.UUID) error {
 	for _, id := range ids {
-		if err := (UntapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (UntapTarget{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -217,7 +217,7 @@ func untapEach(ctx *Context, ids []uuid.UUID) error {
 type UntapCreaturesThatAttackedThisTurn struct{}
 
 func (UntapCreaturesThatAttackedThisTurn) Apply(ctx *Context) error {
-	return untapEach(ctx, CreaturesThatAttackedThisTurn(ctx.Game))
+	return UntapEach(ctx, CreaturesThatAttackedThisTurn(ctx.Game))
 }
 
 // UntapAttackingCreatures is "untap all attacking creatures" (Karlach,
@@ -225,7 +225,7 @@ func (UntapCreaturesThatAttackedThisTurn) Apply(ctx *Context) error {
 type UntapAttackingCreatures struct{}
 
 func (UntapAttackingCreatures) Apply(ctx *Context) error {
-	return untapEach(ctx, AttackingCreatures(ctx.Game))
+	return UntapEach(ctx, AttackingCreatures(ctx.Game))
 }
 
 // UntapAllCreaturesYouControl is "untap all creatures you control"
@@ -233,7 +233,7 @@ func (UntapAttackingCreatures) Apply(ctx *Context) error {
 type UntapAllCreaturesYouControl struct{}
 
 func (UntapAllCreaturesYouControl) Apply(ctx *Context) error {
-	return b16UntapAllYouControlMatching(ctx, ctx.Controller(), func(c game.Card) bool { return c.IsCreature() })
+	return B16UntapAllYouControlMatching(ctx, ctx.Controller(), func(c game.Card) bool { return c.IsCreature() })
 }
 
 // untapCreaturesThatAttackedThisTurn is the delayed-trigger body form
@@ -254,12 +254,12 @@ func untapAllCreaturesYouControlAtThatCombat(g *game.Game, item *game.StackItem)
 // untapAllYouControlThenExtraCombat is "untap all creatures you
 // control. After this phase, there is an additional combat phase"
 // (Aurelia, the Warleader; Éomer, Marshal of Rohan).
-var untapAllYouControlThenExtraCombat = Do(UntapAllCreaturesYouControl{}, ExtraCombatAfterThisPhase())
+var UntapAllYouControlThenExtraCombat = Do(UntapAllCreaturesYouControl{}, ExtraCombatAfterThisPhase())
 
 // untapAttackersThenExtraCombat is "untap all attacking creatures and
 // after this phase, there is an additional combat phase" (Hellkite
 // Charger's paid half).
-func untapAttackersThenExtraCombat(ctx *Context) error {
+func UntapAttackersThenExtraCombat(ctx *Context) error {
 	if err := (UntapAttackingCreatures{}).Apply(ctx); err != nil {
 		return err
 	}

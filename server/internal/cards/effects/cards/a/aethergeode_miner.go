@@ -1,0 +1,42 @@
+package cardsa
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Aethergeode Miner — Creature — Dwarf Scout {1}{W}, 3/1:
+//
+//	"Whenever this creature attacks, you get {E}{E} (two energy counters).
+//	 Pay {E}{E}: Exile this creature, then return it to the battlefield
+//	 under its owner's control."
+//
+// ADR 0129 PR 1 (#1995). The blink is the Flicker primitive on the
+// source: it returns as a new object (CR 400.7), untapped and out of
+// combat, under its owner's control. A Miner that left and came back
+// before the ability resolves is a different object and is not
+// blinked.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "92045f6c-9ec2-4bf0-826c-e21ef253011c",
+		Name:         "Aethergeode Miner",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WheneverThisAttacks("Aethergeode Miner — you get {E}{E}", effects.EbYouGetEnergy(2)),
+		},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "Pay {E}{E}: Exile this creature, then return it to the battlefield under its owner's control.",
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
+			Cost:    effects.PayEnergy(2),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if !effects.SourceIsStillThisPermanent(g, item) {
+					return nil
+				}
+				return effects.Flicker{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}

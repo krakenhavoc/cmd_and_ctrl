@@ -37,15 +37,15 @@ func init() {
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessPerExiledFromHand("{2}", "This spell costs {2} less to cast for each card exiled this way"),
 		},
-		Targets: marchOfSwirlingMistTargets(),
+		Targets: MarchOfSwirlingMistTargets(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return PhaseOut{Targets: legalTargetCards(item, ctx.Game)}.Apply(ctx)
+			return PhaseOut{Targets: LegalTargetCards(item, ctx.Game)}.Apply(ctx)
 		},
 	})
 }
 
 // marchOfSwirlingMistTargets is "up to X target creatures".
-func marchOfSwirlingMistTargets() *game.TargetSpec {
+func MarchOfSwirlingMistTargets() *game.TargetSpec {
 	spec := TargetCreature("up to X target creatures")
 	spec.CountFromX = true
 	spec.UpToX = true

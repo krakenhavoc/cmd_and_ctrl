@@ -45,7 +45,7 @@ import (
 // untapped after the resolving ability was put on the stack (#4061): the
 // duration was broken before it began. False with no item (an AsEnters
 // hook), and for a spell.
-func sourceUntappedSinceActivation(ctx *Context) bool {
+func SourceUntappedSinceActivation(ctx *Context) bool {
 	return ctx != nil && ctx.Game != nil && ctx.Game.SourceUntappedSinceActivationForEffect(ctx.Item)
 }
 
@@ -53,7 +53,7 @@ func sourceUntappedSinceActivation(ctx *Context) bool {
 // about the resolving ability's source. False when the duration would
 // never start.
 func DurationWhileThisRemainsTapped(ctx *Context) (game.Duration, bool) {
-	if ctx.isNewSourceObjectAsThis(ctx.Source()) || sourceUntappedSinceActivation(ctx) { // #1432, #4061
+	if ctx.IsNewSourceObjectAsThis(ctx.Source()) || SourceUntappedSinceActivation(ctx) { // #1432, #4061
 		return game.Duration{}, false
 	}
 	return ctx.Game.ForAsLongAsSourceTappedDuration(ctx.Source())
@@ -64,7 +64,7 @@ func DurationWhileThisRemainsTapped(ctx *Context) (game.Duration, bool) {
 // controller. False when either half is already false, so the card
 // registers nothing (CR 611.2b).
 func WhileYouControlThisAndItRemainsTapped(ctx *Context) (game.Duration, bool) {
-	if ctx.isNewSourceObjectAsThis(ctx.Source()) || sourceUntappedSinceActivation(ctx) { // #1432, #4061
+	if ctx.IsNewSourceObjectAsThis(ctx.Source()) || SourceUntappedSinceActivation(ctx) { // #1432, #4061
 		return game.Duration{}, false
 	}
 	return ctx.Game.ForAsLongAsYouControlAndSourceTappedDuration(ctx.Source(), ctx.Controller())
@@ -96,7 +96,7 @@ func TargetGetsWhileThisRemainsTapped(label string, mods ...game.Mod) Effect {
 // Rust Tick's hold over the ability's still-legal targets.
 func TapTargetsAndHoldWhileThisRemainsTapped(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	return TapAndHoldWhileThisRemainsTapped(ctx, holdTargetIDs(ctx))
+	return TapAndHoldWhileThisRemainsTapped(ctx, HoldTargetIDs(ctx))
 }
 
 // GainControlOfTargetFor is the Effect of "gain control of target

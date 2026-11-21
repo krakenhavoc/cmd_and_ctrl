@@ -1,0 +1,53 @@
+package cardsgr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// guildgates.go — the Ravnica Guildgate cycle:
+//
+//	"This land enters tapped.
+//	 {T}: Add {A} or {B}."
+//
+// The budget dual with a Gate subtype, which is the whole reason a
+// deck plays one over a gain land: Gates count for Maze's End and
+// Gatecreeper Vine, and the printed type line is what carries that.
+// Two of the ten are in the roadmap's batch 14 (#307), two more in
+// batch 16 (#309), one in batch 17 (#310), two in batch 18 (#311),
+// two in batch 19 (#312) and the last (Gruul) in batch 20 (#313) —
+// all ten are here now. A card that belongs to an existing cycle
+// goes in the cycle's table, never in a new file.
+//
+// Enters-tapped is the self-replacement; the dual is the pipe every
+// two-colour land in the catalog uses.
+//
+// No simplification.
+func init() {
+	for _, land := range []struct{ oracleID, name, a, b string }{
+		{"e8705df9-6439-4930-91b6-229f818559af", "Simic Guildgate", "G", "U"},
+		{"fa2da325-6859-45bb-b185-35526b01bcc1", "Golgari Guildgate", "B", "G"},
+		// Roadmap batch 16 (#309).
+		{"bf75a3d1-f184-4b48-a913-21caee1db084", "Izzet Guildgate", "U", "R"},
+		{"52d14717-0cbc-4d7e-b546-54ea91580338", "Dimir Guildgate", "U", "B"},
+		// Roadmap batch 17 (#310).
+		{"73c423b7-cab8-4e69-8070-9edbf96a6c2c", "Boros Guildgate", "R", "W"},
+		// Roadmap batch 18 (#311).
+		{"57b37df5-fee4-4720-931f-f0cb0a8b338c", "Orzhov Guildgate", "W", "B"},
+		{"361f534b-39d1-4421-b5a8-d3813c62f86d", "Rakdos Guildgate", "B", "R"},
+		// Roadmap batch 19 (#312).
+		{"75b235d3-595a-4859-be45-9559d8445db5", "Selesnya Guildgate", "G", "W"},
+		{"ad1712d8-809f-410c-8b91-ffe6fb8a69a1", "Azorius Guildgate", "W", "U"},
+		// Roadmap batch 20 (#313).
+		{"d38476e9-2e47-4c0c-8129-483c0bd09ec0", "Gruul Guildgate", "R", "G"},
+	} {
+		effects.Register(effects.Spec{
+			OracleID:      land.oracleID,
+			Name:          land.name,
+			Completeness:  effects.CompletenessFull,
+			Replacements:  []game.ReplacementEffect{effects.SelfEntersTapped()},
+			ManaAbilities: []effects.ManaAbility{effects.DualManaAbility(land.a, land.b)},
+		})
+	}
+}

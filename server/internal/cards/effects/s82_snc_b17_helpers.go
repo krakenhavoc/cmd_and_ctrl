@@ -10,7 +10,7 @@ import (
 
 // snc17TwoMulticoloredPermanents is "you control two or more multicolored
 // permanents" (Scuttling Butler), read on the layered colours.
-var snc17TwoMulticoloredPermanents = CondBoard{
+var Snc17TwoMulticoloredPermanents = CondBoard{
 	Name: "two or more multicolored permanents you control",
 	Test: func(ctx *Context) bool {
 		return len(MatchingBattlefield(ctx, And(YouControl(), Multicolored()))) >= 2
@@ -19,7 +19,7 @@ var snc17TwoMulticoloredPermanents = CondBoard{
 
 // snc17NoDevilToken is "you don't control a Devil token" (Maestros
 // Diabolist), read on the layered subtypes.
-var snc17NoDevilToken = CondBoard{
+var Snc17NoDevilToken = CondBoard{
 	Name: "you don't control a Devil token",
 	Test: func(ctx *Context) bool {
 		return len(MatchingBattlefield(ctx, And(YouControl(), IsTokenPredicate(), OfSubtype("Devil")))) == 0
@@ -31,8 +31,8 @@ var snc17NoDevilToken = CondBoard{
 // their library, `reward` is handed how many were lands and how many were
 // not, then each player draws a card. A player with an empty library
 // reveals nothing.
-func snc17Parley(g *game.Game, source uuid.UUID, label string, reward func(lands, nonland int) error) error {
-	players := apnapPlayers(g)
+func Snc17Parley(g *game.Game, source uuid.UUID, label string, reward func(lands, nonland int) error) error {
+	players := ApnapPlayers(g)
 	lands, nonland := 0, 0
 	for _, p := range players {
 		for _, id := range g.RevealTopOfLibraryForEffect(p, source, 1, label) {
@@ -62,14 +62,14 @@ var (
 	// sncIndulgeAttackCondition is "whenever a creature you control attacks":
 	// an EventAttack declared by the delayed trigger's controller. Without
 	// OncePerBatch it fires once for each creature (CR 603.2c).
-	sncIndulgeAttackCondition = game.DelayedCondition("attack/a-creature-you-control-attacks",
+	SncIndulgeAttackCondition = game.DelayedCondition("attack/a-creature-you-control-attacks",
 		func(ev game.Event, dt *game.DelayedTrigger, _ *game.Game, _ game.EffectParams) bool {
 			return ev.Kind == game.EventAttack && ev.Actor == dt.Controller
 		})
 
 	// sncIndulgeCitizenBody is Indulge's delayed trigger: a 1/1 green and
 	// white Citizen, tapped and attacking.
-	sncIndulgeCitizenBody = game.SimpleDelayedBody("indulge-excess/citizen-tapped-and-attacking", sncIndulgeCitizen)
+	SncIndulgeCitizenBody = game.SimpleDelayedBody("indulge-excess/citizen-tapped-and-attacking", sncIndulgeCitizen)
 )
 
 // sncIndulgeCitizen creates one tapped and attacking Citizen. Its controller
@@ -84,7 +84,7 @@ func sncIndulgeCitizen(g *game.Game, item *game.StackItem) error {
 		Template: TokenCard("1/1 green and white Citizen"),
 		N:        1,
 		Tapped:   true,
-		Prefer:   triggerAttackTarget(item),
+		Prefer:   TriggerAttackTarget(item),
 		Label:    "Indulge",
 	}.Apply(NewContext(g, item))
 }
@@ -96,7 +96,7 @@ func sncIndulgeCitizen(g *game.Game, item *game.StackItem) error {
 // (CR 608.2h), so a creature that has died, left or changed hands still
 // counts for the player who controlled it then, and one creature that dealt
 // damage to two players, or in two combat damage steps, counts once.
-func sncCreaturesYouControlledThatDealtCombatDamageToAPlayer(g *game.Game, controller uuid.UUID) int {
+func SncCreaturesYouControlledThatDealtCombatDamageToAPlayer(g *game.Game, controller uuid.UUID) int {
 	seen := map[uuid.UUID]bool{}
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Actor != controller {

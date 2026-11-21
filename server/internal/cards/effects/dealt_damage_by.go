@@ -24,7 +24,7 @@ import (
 // most recently was (CR 400.7): either one leaving the battlefield and
 // coming back is a new object, and damage prevented to 0 was never
 // dealt. A victim that has just died is read as the object that died.
-func dealtDamageByThisTurn(g *game.Game, source, victim uuid.UUID) bool {
+func DealtDamageByThisTurn(g *game.Game, source, victim uuid.UUID) bool {
 	return g.PermanentDealtDamageToPermanentThisTurn(source, victim)
 }
 
@@ -70,7 +70,7 @@ func exileIfDealtDamageByWouldDie(label string, dealer func(g *game.Game, src *g
 				return false
 			}
 			d := dealer(g, src)
-			return d != uuid.Nil && dealtDamageByThisTurn(g, d, ev.CardID)
+			return d != uuid.Nil && DealtDamageByThisTurn(g, d, ev.CardID)
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.NewZone = game.ZoneExile

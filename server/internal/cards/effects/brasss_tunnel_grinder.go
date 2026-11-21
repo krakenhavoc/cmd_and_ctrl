@@ -41,14 +41,14 @@ import (
 // No simplification on this face; the back face carries the caveat.
 func init() {
 	Register(Spec{
-		OracleID:     brassTunnelGrinderOracleID,
+		OracleID:     BrassTunnelGrinderOracleID,
 		Name:         "Brass's Tunnel-Grinder",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Brass's Tunnel-Grinder — discard any number of cards, then draw that many plus one",
 				brassTunnelGrinderLoot),
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor == source.Controller && descendedThisTurn(g, source.Controller)
+				return ev.Actor == source.Controller && DescendedThisTurn(g, source.Controller)
 			}, "Brass's Tunnel-Grinder — put a bore counter on it; at three, transform it", brassTunnelGrinderBore),
 		},
 	})
@@ -56,7 +56,7 @@ func init() {
 
 // brassTunnelGrinderOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const brassTunnelGrinderOracleID = "af1553eb-4f9f-4335-9078-56649bd8d8fc"
+const BrassTunnelGrinderOracleID = "af1553eb-4f9f-4335-9078-56649bd8d8fc"
 
 // brassTunnelGrinderBoreCounter is the printed counter kind.
 const brassTunnelGrinderBoreCounter = "bore"
@@ -69,16 +69,16 @@ func brassTunnelGrinderLoot(g *game.Game, item *game.StackItem) error {
 	if p := g.PlayerByIDForEffect(item.Controller); p != nil && p.Hand != nil {
 		hand = p.Hand.Size()
 	}
-	return b39MayDiscardThenDraw(hand, false,
+	return B39MayDiscardThenDraw(hand, false,
 		"Brass's Tunnel-Grinder — discard any number of cards, then draw that many plus one",
-		drawOneMoreThanDiscarded)(ctx)
+		DrawOneMoreThanDiscarded)(ctx)
 }
 
 // brassTunnelGrinderBore is the end-step body, in printed order.
 func brassTunnelGrinderBore(g *game.Game, item *game.StackItem) error {
 	// CR 603.4's second check, and the source must still be this
 	// object on the battlefield to take a counter.
-	if !descendedThisTurn(g, item.Controller) || !b09SourceStillOnBattlefield(g, item) {
+	if !DescendedThisTurn(g, item.Controller) || !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	source := item.SourceCardID
@@ -91,7 +91,7 @@ func brassTunnelGrinderBore(g *game.Game, item *game.StackItem) error {
 // An on-disk key: never renamed, never reused.
 var brassTunnelGrinderCheckBore = CardTail("brass-tunnel-grinder/check-bore", func(ctx *Context, _ game.TailOutcome) error {
 	source := ctx.Item.SourceCardID
-	n := b39CountersOn(ctx.Game, source, brassTunnelGrinderBoreCounter)
+	n := B39CountersOn(ctx.Game, source, brassTunnelGrinderBoreCounter)
 	if n < 3 {
 		return nil
 	}

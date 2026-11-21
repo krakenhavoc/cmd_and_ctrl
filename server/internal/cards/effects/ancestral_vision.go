@@ -28,14 +28,14 @@ func init() {
 		SpecialActions: []game.SpecialAction{
 			Suspend(4, "{U}"),
 		},
-		OnResolve: targetPlayerDrawsThree,
+		OnResolve: TargetPlayerDrawsThree,
 	})
 }
 
 // targetPlayerDrawsThree is "target player draws three cards": Ancestral
 // Vision's body, shared with Ancestral Recall (the Emeritus of Ideation
 // prepare spell).
-func targetPlayerDrawsThree(item *game.StackItem, ctx *Context) error {
+func TargetPlayerDrawsThree(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}

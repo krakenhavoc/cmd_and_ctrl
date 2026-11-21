@@ -15,8 +15,8 @@ import (
 // and Exotic Pets make. A catalog template, not a tokens_table row, because
 // the clause is a static the token always prints (Reef Worm's Fish is a
 // different token). Its slug is an on-disk identity: never renamed.
-func printedS82SncB07FishToken() tokenTemplate {
-	return tokenTemplate{
+func printedS82SncB07FishToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "fish-cant-be-blocked",
 		Card: game.Card{
 			Name:      "Fish",
@@ -31,12 +31,12 @@ func printedS82SncB07FishToken() tokenTemplate {
 }
 
 // S82SncB07FishToken is that Fish's card value for CreateToken.
-func S82SncB07FishToken() game.Card { return tokenFromCatalog(printedS82SncB07FishToken) }
+func S82SncB07FishToken() game.Card { return TokenFromCatalog(printedS82SncB07FishToken) }
 
 // sncB07Kinds lists, sorted, the kinds of counter that at least one of the
 // cards has (CR 122.1: a kind is a counter's name; a keyword counter is its
 // own kind).
-func sncB07Kinds(cards []game.Card) []string {
+func SncB07Kinds(cards []game.Card) []string {
 	seen := map[string]bool{}
 	for _, c := range cards {
 		for kind, n := range c.Counters {
@@ -55,7 +55,7 @@ func sncB07Kinds(cards []game.Card) []string {
 
 // sncB07PermanentsYouControl is the battlefield cards a player controls,
 // the creatures only when creaturesOnly.
-func sncB07PermanentsYouControl(g *game.Game, player uuid.UUID, creaturesOnly bool) []game.Card {
+func SncB07PermanentsYouControl(g *game.Game, player uuid.UUID, creaturesOnly bool) []game.Card {
 	var out []game.Card
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != player || (creaturesOnly && !c.IsCreature()) {
@@ -68,21 +68,21 @@ func sncB07PermanentsYouControl(g *game.Game, player uuid.UUID, creaturesOnly bo
 
 // sncB07KindsAmongPermanentsYouControl is "each kind of counter among
 // permanents you control", read now.
-func sncB07KindsAmongPermanentsYouControl(g *game.Game, player uuid.UUID) []string {
-	return sncB07Kinds(sncB07PermanentsYouControl(g, player, false))
+func SncB07KindsAmongPermanentsYouControl(g *game.Game, player uuid.UUID) []string {
+	return SncB07Kinds(SncB07PermanentsYouControl(g, player, false))
 }
 
 // sncB07KindsAmongCreaturesYouControl is "each kind of counter among
 // creatures you control", read now.
-func sncB07KindsAmongCreaturesYouControl(g *game.Game, player uuid.UUID) []string {
-	return sncB07Kinds(sncB07PermanentsYouControl(g, player, true))
+func SncB07KindsAmongCreaturesYouControl(g *game.Game, player uuid.UUID) []string {
+	return SncB07Kinds(SncB07PermanentsYouControl(g, player, true))
 }
 
 // sncB07CreaturePairs lists every (creature, kind of counter on it) pair as an
 // option: the label names the kind and the creature, the carry holds the
 // creature, and the words hold the kind, in the same order.
-func sncB07CreaturePairs(g *game.Game, player uuid.UUID) (options []game.ChoiceOption, creatures []uuid.UUID, kinds []string) {
-	for _, c := range sncB07PermanentsYouControl(g, player, true) {
+func SncB07CreaturePairs(g *game.Game, player uuid.UUID) (options []game.ChoiceOption, creatures []uuid.UUID, kinds []string) {
+	for _, c := range SncB07PermanentsYouControl(g, player, true) {
 		var own []string
 		for kind, n := range c.Counters {
 			if n > 0 {
@@ -100,7 +100,7 @@ func sncB07CreaturePairs(g *game.Game, player uuid.UUID) (options []game.ChoiceO
 }
 
 // sncB07HasCounters reports whether any kind has a counter.
-func sncB07HasCounters(counters map[string]int) bool {
+func SncB07HasCounters(counters map[string]int) bool {
 	for _, n := range counters {
 		if n > 0 {
 			return true
@@ -111,9 +111,9 @@ func sncB07HasCounters(counters map[string]int) bool {
 
 // shieldCounterOnTarget is "put a shield counter on target <creature>" as an
 // ability's whole body: Perrie's entry trigger and Singer of Swift Rivers'.
-func shieldCounterOnTarget(g *game.Game, item *game.StackItem) error {
+func ShieldCounterOnTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

@@ -50,7 +50,7 @@ func init() {
 				Label:     "Creatures you control have base power and toughness 6/6.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7B_Set,
-				AppliesTo: b41CreatureYouControlStatic,
+				AppliesTo: B41CreatureYouControlStatic,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Power = 6
 					c.Toughness = 6
@@ -59,12 +59,12 @@ func init() {
 			{
 				Label:     "Creatures you control are Oozes in addition to their other types.",
 				Layer:     game.Layer4Type,
-				AppliesTo: b41CreatureYouControlStatic,
+				AppliesTo: B41CreatureYouControlStatic,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 					// "Ooze" is a word of the source's text (CR 612.2, #3984).
 					ooze := source.TextSubtype("Ooze")
 					for _, s := range c.Subtypes {
-						if equalFoldASCIIEffects(s, ooze) {
+						if EqualFoldASCIIEffects(s, ooze) {
 							return
 						}
 					}
@@ -74,7 +74,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor != source.Controller && b29SpellCastOffTurn(ev, g)
+				return ev.Actor != source.Controller && B29SpellCastOffTurn(ev, g)
 			}, "March of the World Ooze — create a 3/3 green Elephant",
 				Do(CreateToken{Template: TokenCard("3/3 green Elephant"), N: 1})),
 		},
@@ -89,6 +89,6 @@ func init() {
 // layer-4 pass that adds Ooze and the layer-7b pass that sets 6/6 both
 // ask this, and an artifact something animated in between is caught by
 // the later one.
-func b41CreatureYouControlStatic(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B41CreatureYouControlStatic(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.Controller == source.Controller
 }

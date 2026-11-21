@@ -16,19 +16,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // It is avatarB20CyclingTapland's shape with the set's cost: a CR 602
 // ability whose cost sacrifices the land, so the land is gone before the
 // card is drawn and a response can't save it.
-func sncCyclingTapland(oracleID, name, a, b string) Spec {
+func SncCyclingTapland(oracleID, name, a, b string) Spec {
 	cost := "{2}{" + a + "}{" + b + "}"
 	return Spec{
 		OracleID:      oracleID,
 		Name:          name,
 		Completeness:  CompletenessFull,
 		Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
-		ManaAbilities: []ManaAbility{dualManaAbility(a, b)},
+		ManaAbilities: []ManaAbility{DualManaAbility(a, b)},
 		Activated: []ActivatedAbility{{
 			Label:   cost + ", {T}, Sacrifice this land: Draw a card.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost(cost), TapCost(), SacrificeThis()),
-			Effect:  drawOneCardEffect,
+			Effect:  DrawOneCardEffect,
 		}},
 	}
 }

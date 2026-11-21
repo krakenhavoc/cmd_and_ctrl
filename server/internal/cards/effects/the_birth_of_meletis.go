@@ -29,7 +29,7 @@ func init() {
 func meletisFetchPlains(g *game.Game, item *game.StackItem) error {
 	return SearchLibrary{
 		Player:    item.Controller,
-		Predicate: isBasicPlains,
+		Predicate: IsBasicPlains,
 		Dest:      game.ZoneHand,
 		Limit:     1,
 		Reveal:    true,
@@ -43,7 +43,7 @@ func meletisFetchPlains(g *game.Game, item *game.StackItem) error {
 // Sacred Foundry is not a legal fetch even though it is a Plains. The
 // land type is a word of the Saga's text, read through the text the
 // search lends (CR 612.2).
-func isBasicPlains(c game.Card) bool {
+func IsBasicPlains(c game.Card) bool {
 	return IsBasicLand(c) && c.HasSubtypeWord("Plains")
 }
 

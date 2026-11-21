@@ -14,7 +14,7 @@ import (
 // Shining Shoal's alternative cost (#3175): X is announced (CR 107.3a,
 // 601.2b) and the pitched card's mana value must be exactly that X, so on
 // the stack X is the exiled card's mana value.
-func bokB1ShoalPitch(colourWord, colour string) game.AlternativeCost {
+func BokB1ShoalPitch(colourWord, colour string) game.AlternativeCost {
 	what := "a " + colourWord + " card with mana value X"
 	return Pitch(
 		"Exile "+what+" from your hand",
@@ -29,9 +29,9 @@ func bokB1ShoalPitch(colourWord, colour string) game.AlternativeCost {
 // the battlefield (CR 603.10a) and left it for a graveyard under the
 // source's controller's control. "Samurai" is a word of the source's
 // text (CR 612.2).
-func bokB1SamuraiYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	if !ok || leftUnderControlOf(ev, dead) != source.Controller {
+func BokB1SamuraiYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	if !ok || LeftUnderControlOf(ev, dead) != source.Controller {
 		return false
 	}
 	samurai := source.TextSubtype("Samurai")
@@ -47,7 +47,7 @@ func bokB1SamuraiYouControlDied(ev game.Event, source *game.Card, _ game.Charact
 // is an opponent of the source's controller. A token counts: it goes to
 // its owner's graveyard before it ceases to exist (CR 111.7). It returns
 // that owner.
-func bokB1PermanentPutIntoAnOpponentsGraveyard(ev game.Event, source *game.Card, g *game.Game) (uuid.UUID, bool) {
+func BokB1PermanentPutIntoAnOpponentsGraveyard(ev game.Event, source *game.Card, g *game.Game) (uuid.UUID, bool) {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return uuid.Nil, false
 	}

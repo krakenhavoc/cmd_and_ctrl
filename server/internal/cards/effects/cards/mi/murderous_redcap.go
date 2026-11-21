@@ -1,0 +1,71 @@
+package cardsmi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Murderous Redcap — Creature — Goblin Assassin {2}{B/R}{B/R}, 2/2
+// (EDHREC rank 4215):
+//
+//	"When this creature enters, it deals damage equal to its power to
+//	 any target.
+//	 Persist (When this creature dies, if it had no -1/-1 counters on
+//	 it, return it to the battlefield under its owner's control with a
+//	 -1/-1 counter on it.)"
+//
+// The combo creature: with a sacrifice outlet and any +1/+1 counter
+// effect it is an arbitrarily large amount of damage, and even
+// without one it is four mana for four damage spread over two bodies.
+//
+// The ETB works fully. "Damage equal to ITS power" is read at
+// RESOLUTION (CR 608.2h) off the Redcap's power, counters included —
+// not Effective().Power alone (#1281: that field excludes counters,
+// which is exactly what persist would put on this creature the moment
+// it existed) — so an anthem, a counter effect, or persist itself once
+// it lands all count. A Redcap that has left the battlefield before the
+// trigger resolves still deals the damage, equal to its last-known power
+// (#1379), and with the deathtouch and lifelink it had as it last
+// existed (#1396): a Redcap wearing a Basilisk Collar that is sacrificed
+// in response still pings with both. The damage names the Redcap by
+// OBJECT (DealDamage.SourceObject), so a Redcap that has already come
+// back (a blink in response, or persist once it exists) is a new object
+// whose keywords are not the departed one's (CR 400.7).
+//
+// "Any target" is the full CR 115.4 slot: a player, a creature, a
+// planeswalker or a battle.
+//
+// Persist is PrintedKeywords: the engine derives the dies trigger from
+// the ability list (game/undying_persist.go, #2075, ADR 0113 §4), so a
+// Redcap that dies with no -1/-1 counter returns with one, and its
+// enters trigger pings again for its new power. With a +1/+1 counter
+// effect the two counters annihilate (CR 704.5q) and it persists again.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "a498bc70-36e7-4454-bc44-906893df38b8",
+		Name:            "Murderous Redcap",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{game.KeywordPersist},
+		Triggered: []game.TriggeredAbility{
+			effects.Targeting(
+				effects.WhenThisEnters("Murderous Redcap — damage equal to its power to any target", func(g *game.Game, item *game.StackItem) error {
+					ctx := effects.NewContext(g, item)
+					redcap, ok := ctx.TriggeringPermanent()
+					if !ok || len(item.Targets) == 0 {
+						return nil
+					}
+					ref := ctx.Trigger().Object.Ref()
+					return effects.DealDamage{
+						SourceObject: &ref,
+						Target:       item.Targets[0].ID,
+						Amount:       redcap.Power,
+					}.Apply(ctx)
+				}),
+				effects.TargetAny(),
+			),
+		},
+	})
+}

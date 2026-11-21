@@ -17,14 +17,14 @@ func init() {
 		Name:         "Risky Research",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return Surveil{Player: item.Controller, N: 2, ThenTail: ctx.Tail(riskyResearchThen)}.Apply(ctx)
+			return Surveil{Player: item.Controller, N: 2, ThenTail: ctx.Tail(RiskyResearchThen)}.Apply(ctx)
 		},
 	})
 }
 
 // riskyResearchThen is "then draw two cards. You lose 2 life", keyed
 // (#4253): an on-disk tail the surveil prompt carries.
-var riskyResearchThen = game.RegisterTail("then/risky-research-draw-two-lose-two", func(g *game.Game, o game.TailOutcome) error {
+var RiskyResearchThen = game.RegisterTail("then/risky-research-draw-two-lose-two", func(g *game.Game, o game.TailOutcome) error {
 	if err := g.DrawNForEffect(o.Tail.Player, 2); err != nil {
 		return err
 	}

@@ -3,7 +3,7 @@ package effects
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // theRuinousWreckingCrewOracle is the card's catalog key.
-const theRuinousWreckingCrewOracle = "0ff9c0cc-4fb3-4117-9a8e-5b51f62306c4"
+const TheRuinousWreckingCrewOracle = "0ff9c0cc-4fb3-4117-9a8e-5b51f62306c4"
 
 // The Ruinous Wrecking Crew — Legendary Creature — Human Villain
 // {X}{B}{R}, 2/2 (Marvel Super Heroes, #4455):
@@ -34,7 +34,7 @@ func init() {
 	crew := WhenThisEnters("The Ruinous Wrecking Crew — choose up to X",
 		func(*game.Game, *game.StackItem) error { return nil })
 	crew.Modes = ChooseUpToX(
-		ModeWithPurpose(discardThenDrawBullet("Discard a card, then draw a card."), game.Purpose{Draws: 1, Discards: 1}),
+		ModeWithPurpose(DiscardThenDrawBullet("Discard a card, then draw a card."), game.Purpose{Draws: 1, Discards: 1}),
 		ModeDoing("Target opponent loses 2 life.", TargetPlayer("target opponent", Opponent()),
 			func(_ *game.StackItem, ctx *Context, occ int) error {
 				t, ok := ModeTarget(ctx, occ)
@@ -51,7 +51,7 @@ func init() {
 			}),
 	)
 	Register(Spec{
-		OracleID:                   theRuinousWreckingCrewOracle,
+		OracleID:                   TheRuinousWreckingCrewOracle,
 		Name:                       "The Ruinous Wrecking Crew",
 		Completeness:               CompletenessFull,
 		XMatters:                   true,
@@ -62,19 +62,19 @@ func init() {
 
 // theRuinousWreckingCrewDraw is the rummage's "then draw a card", keyed
 // (#4256): a table waiting on the discard is a restore point.
-var theRuinousWreckingCrewDraw = game.RegisterDiscardThen("choose-cards/the-ruinous-wrecking-crew-draw", func(g *game.Game, r game.DiscardsDone) error {
+var TheRuinousWreckingCrewDraw = game.RegisterDiscardThen("choose-cards/the-ruinous-wrecking-crew-draw", func(g *game.Game, r game.DiscardsDone) error {
 	return g.DrawNForEffect(r.Player, 1)
 })
 
 // discardThenDrawBullet is the modal bullet "Discard a card, then draw a
 // card." (The Ruinous Wrecking Crew, Hawkeye, Master Marksman): the
 // controller discards one (asked), then draws one even from an empty hand.
-func discardThenDrawBullet(label string) game.ModeOption {
+func DiscardThenDrawBullet(label string) game.ModeOption {
 	return ModeDoing(label, nil, func(item *game.StackItem, ctx *Context, _ int) error {
 		return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 			Player: item.Controller,
 			Source: item.SourceCardID,
 			N:      1,
-		}, theRuinousWreckingCrewDraw, nil)
+		}, TheRuinousWreckingCrewDraw, nil)
 	})
 }

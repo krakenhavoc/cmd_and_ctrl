@@ -14,7 +14,7 @@ import (
 // monocolored permanents you control": the union of the colors of every
 // permanent the controller controls that has exactly one color (CR 105.2a),
 // in WUBRG order. A multicolored or colorless permanent contributes nothing.
-func colorsAmongMonocoloredPermanentsYouControl(g *game.Game, controller uuid.UUID) []string {
+func ColorsAmongMonocoloredPermanentsYouControl(g *game.Game, controller uuid.UUID) []string {
 	seen := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller {

@@ -7,7 +7,7 @@ func init() {
 	Register(Spec{
 		OracleID: "7b428e94-8428-455f-b555-f648fcdd2127", Name: "Hunter's Edge", Completeness: CompletenessFull,
 		Targets: Clauses(TargetCreature("target creature you control", YouControl()), TargetCreature("target creature you don't control", Not(YouControl()))),
-		OnResolve: ResolveSteps(Instruction(counterOnFirstCreatureTarget), Instruction(func(ctx *Context) error {
+		OnResolve: ResolveSteps(Instruction(CounterOnFirstCreatureTarget), Instruction(func(ctx *Context) error {
 			mine, ok := ctx.ClauseTarget(0)
 			if !ok {
 				return nil
@@ -29,7 +29,7 @@ func init() {
 	})
 }
 
-func counterOnFirstCreatureTarget(ctx *Context) error {
+func CounterOnFirstCreatureTarget(ctx *Context) error {
 	t, ok := ctx.ClauseTarget(0)
 	if !ok {
 		return nil

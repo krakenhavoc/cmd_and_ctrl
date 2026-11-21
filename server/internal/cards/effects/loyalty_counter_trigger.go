@@ -39,7 +39,7 @@ func YouPutLoyaltyCountersOnAPlaneswalker(ev game.Event, source *game.Card, _ ga
 		return false
 	}
 	target, ok := g.LookupCardForEffect(ev.Target)
-	if !ok || !target.IsPlaneswalker() || !onBattlefield(g, ev.Target) {
+	if !ok || !target.IsPlaneswalker() || !OnBattlefield(g, ev.Target) {
 		return false
 	}
 	_, placed := b12CountersPlacedBy(ev, source.Controller, g, true)

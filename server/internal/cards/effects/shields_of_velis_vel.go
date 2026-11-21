@@ -40,7 +40,7 @@ func init() {
 				return nil
 			}
 			victim := item.Targets[0].ID
-			theirCreatures := And(Creature(), controlledBy(victim))
+			theirCreatures := And(Creature(), ControlledByPlayer(victim))
 			if err := (BoostUntilEOT{
 				Match:     theirCreatures,
 				Toughness: 1,
@@ -60,7 +60,7 @@ func init() {
 // the effect, as distinct from YouControl's "permanents the CASTER
 // controls". Shields of Velis Vel targets a player and then talks
 // about their creatures, so the caster is the wrong seat to ask.
-func controlledBy(player uuid.UUID) CardPredicate {
+func ControlledByPlayer(player uuid.UUID) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.Controller == player
 	}

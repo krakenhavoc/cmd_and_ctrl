@@ -25,12 +25,12 @@ import (
 
 // leftGraveyardEvents are the event kinds a "leaves a graveyard"
 // trigger watches.
-var leftGraveyardEvents = []game.EventKind{game.EventZoneMove, game.EventCast}
+var LeftGraveyardEvents = []game.EventKind{game.EventZoneMove, game.EventCast}
 
 // cardThatLeftAGraveyard is the card `ev` took out of a graveyard, read
 // where it went: any graveyard, any route above. A token is not a card
 // (CR 108.2), so one ceasing to exist in a graveyard is not counted.
-func cardThatLeftAGraveyard(ev game.Event, g *game.Game) (game.Card, bool) {
+func CardThatLeftAGraveyard(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventZoneMove && ev.Kind != game.EventCast {
 		return game.Card{}, false
 	}
@@ -46,11 +46,11 @@ func cardThatLeftAGraveyard(ev game.Event, g *game.Game) (game.Card, bool) {
 
 // cardThatLeftYourGraveyard is cardThatLeftAGraveyard for "your
 // graveyard": the one the source's controller OWNS.
-func cardThatLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
+func CardThatLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
 	if source == nil {
 		return game.Card{}, false
 	}
-	c, ok := cardThatLeftAGraveyard(ev, g)
+	c, ok := CardThatLeftAGraveyard(ev, g)
 	if !ok || c.Owner != source.Controller {
 		return game.Card{}, false
 	}
@@ -59,8 +59,8 @@ func cardThatLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) (
 
 // cardLeftYourGraveyard is "a card leaves your graveyard" (Tormod,
 // Quintorius, Teval's Judgment).
-func cardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
-	_, ok := cardThatLeftYourGraveyard(ev, source, g)
+func CardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
+	_, ok := CardThatLeftYourGraveyard(ev, source, g)
 	return ok
 }
 
@@ -68,9 +68,9 @@ func cardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool 
 // graveyard" (Desecrated Tomb, Syr Konrad), asked of the card as it was
 // in the graveyard (wasCardInAGraveyard): a spell cast from it can be
 // another face of the card.
-func creatureCardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := cardThatLeftYourGraveyard(ev, source, g)
-	return ok && wasCardInAGraveyard(c, game.Card.IsCreature)
+func CreatureCardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := CardThatLeftYourGraveyard(ev, source, g)
+	return ok && WasCardInAGraveyard(c, game.Card.IsCreature)
 }
 
 // wasCardInAGraveyard asks a type question of a card that has just LEFT
@@ -85,7 +85,7 @@ func creatureCardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Gam
 // characteristics (CR 712.8a, 715.4), or, for a split card, both halves'
 // together (CR 709.4), so those are what is asked here — never the half
 // it left as.
-func wasCardInAGraveyard(c game.Card, is func(game.Card) bool) bool {
+func WasCardInAGraveyard(c game.Card, is func(game.Card) bool) bool {
 	if !c.IsMultiFace() {
 		return is(c)
 	}
@@ -104,14 +104,14 @@ func wasCardInAGraveyard(c game.Card, is func(game.Card) bool) bool {
 // whenCardsLeaveYourGraveyard is cardLeftYourGraveyard as a trigger's
 // When: "whenever one or more cards leave your graveyard" under
 // OncePerBatch (Quintorius, Spirit of Resilience).
-func whenCardsLeaveYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return cardLeftYourGraveyard(ev, source, g)
+func WhenCardsLeaveYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return CardLeftYourGraveyard(ev, source, g)
 }
 
 // whenCardsLeaveYourGraveyardDuringYourTurn is whenCardsLeaveYourGraveyard
 // with "during your turn" as part of the trigger condition, so cards that
 // leave on an opponent's turn do nothing (Attuned Hunter, Kheru
 // Goldkeeper, Kishla Skimmer).
-func whenCardsLeaveYourGraveyardDuringYourTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-	return IsYourTurn(g, source.Controller) && whenCardsLeaveYourGraveyard(ev, source, lki, g)
+func WhenCardsLeaveYourGraveyardDuringYourTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	return IsYourTurn(g, source.Controller) && WhenCardsLeaveYourGraveyard(ev, source, lki, g)
 }

@@ -75,7 +75,7 @@ func init() {
 				if !ok {
 					return nil
 				}
-				return counterThenBite(ctx, mine.ID, theirs.ID)
+				return CounterThenBite(ctx, mine.ID, theirs.ID)
 			case ctx.HasMode(2):
 				if t, ok := ModeTarget(ctx, 0); ok {
 					return ExileTarget{Target: t.ID}.Apply(ctx)
@@ -91,7 +91,7 @@ func init() {
 // once both targets are read: the counter lands first and the bite is a
 // continuation that reads the power afterwards (Archdruid's Charm,
 // Colossal Collision).
-func counterThenBite(ctx *Context, mine, theirs uuid.UUID) error {
+func CounterThenBite(ctx *Context, mine, theirs uuid.UUID) error {
 	then := ctx.ItemTail(archdruidsCharmBite)
 	then.Carry = []uuid.UUID{mine, theirs}
 	return ctx.Game.AddCounterByKeyedForEffect(uuid.Nil, mine, game.CounterPlusOne, 1, then)

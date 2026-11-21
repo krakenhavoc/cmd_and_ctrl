@@ -51,7 +51,7 @@ func init() {
 // creature whose last-known power was 1 or less went from the
 // battlefield to the graveyard of Shirei's controller.
 func shireiSmallCreatureToYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
+	dead, ok := DiedCreature(ev, g)
 	if !ok || dead.Owner != source.Controller {
 		return false
 	}
@@ -74,7 +74,7 @@ func shireiScheduleReturn(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	shirei, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || !onBattlefield(g, item.SourceCardID) {
+	if !ok || !OnBattlefield(g, item.SourceCardID) {
 		return nil
 	}
 	return ScheduleDelayedTrigger{
@@ -94,7 +94,7 @@ func shireiScheduleReturn(g *game.Game, item *game.StackItem) error {
 // owner may return it.
 func shireiReturn(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	shirei, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || shirei.ObjectEpoch != p.Amount || !onBattlefield(g, item.SourceCardID) {
+	if !ok || shirei.ObjectEpoch != p.Amount || !OnBattlefield(g, item.SourceCardID) {
 		return nil
 	}
 	id := p.Object.ID
@@ -118,5 +118,5 @@ func shireiReturn(g *game.Game, item *game.StackItem, p game.EffectParams) error
 // shireiAnswer is the "yes": return the creature (the carried ID) to the
 // battlefield. Keyed (#4291).
 var shireiAnswer = MayYes("confirm/shirei-return", func(ctx *Context, r game.ConfirmAnswer) error {
-	return ReturnFromGraveyard{Target: carryAt(r, 0), Dest: game.ZoneBattlefield}.Apply(ctx)
+	return ReturnFromGraveyard{Target: CarryAt(r, 0), Dest: game.ZoneBattlefield}.Apply(ctx)
 })

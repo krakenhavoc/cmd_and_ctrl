@@ -17,7 +17,7 @@ import (
 // creature the doubler's controller controls (read from its last-known
 // characteristics) and whose target is a player; the ability belongs to a
 // permanent they control.
-func cmdr2S52CombatDamageToPlayerDoubler(name string) game.TriggerDoubler {
+func Cmdr2S52CombatDamageToPlayerDoubler(name string) game.TriggerDoubler {
 	return game.TriggerDoubler{
 		Label:    name,
 		RowLabel: "Abilities of your permanents that trigger when a creature you control deals combat damage to a player trigger an additional time.",
@@ -42,7 +42,7 @@ func cmdr2S52CombatDamageToPlayerDoubler(name string) game.TriggerDoubler {
 // (Anya, Merciless Angel). The table's starting total is read through
 // startingLifeOf; the comparison is life*2 < starting so an odd starting
 // total has no rounding.
-func cmdr2S52OpponentsBelowHalfStarting(g *game.Game, source *game.Card) int {
+func Cmdr2S52OpponentsBelowHalfStarting(g *game.Game, source *game.Card) int {
 	if g == nil || source == nil {
 		return 0
 	}
@@ -51,7 +51,7 @@ func cmdr2S52OpponentsBelowHalfStarting(g *game.Game, source *game.Card) int {
 		if p == nil || p.ID == source.Controller || p.Eliminated {
 			continue
 		}
-		if p.Life*2 < startingLifeOf(g) {
+		if p.Life*2 < StartingLifeOf(g) {
 			n++
 		}
 	}
@@ -62,7 +62,7 @@ func cmdr2S52OpponentsBelowHalfStarting(g *game.Game, source *game.Card) int {
 // permanents `player` sacrificed this turn (Korvold, Gleeful Glutton's cost
 // reduction), from TurnTally.SacrificedCardTypes: each sacrificed permanent
 // was tallied once per card type it had as it was sacrificed, tokens included.
-func cmdr2S52CardTypesSacrificedThisTurn(g *game.Game, player uuid.UUID) int {
+func Cmdr2S52CardTypesSacrificedThisTurn(g *game.Game, player uuid.UUID) int {
 	if g == nil {
 		return 0
 	}
@@ -78,9 +78,9 @@ func cmdr2S52CardTypesSacrificedThisTurn(g *game.Game, player uuid.UUID) int {
 // cmdr2S52KorvoldGrow is Korvold's combat-damage effect: X is the number of
 // permanent types among cards in your graveyard, read once as the trigger
 // resolves; put X +1/+1 counters on Korvold and draw X cards.
-func cmdr2S52KorvoldGrow(g *game.Game, item *game.StackItem) error {
+func Cmdr2S52KorvoldGrow(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	x := permanentTypesInGraveyard(g, item.Controller)
+	x := PermanentTypesInGraveyard(g, item.Controller)
 	if x <= 0 {
 		return nil
 	}
@@ -93,11 +93,11 @@ func cmdr2S52KorvoldGrow(g *game.Game, item *game.StackItem) error {
 // cmdr2S52DereviTapOrUntapCause is the shared condition of Derevi's one
 // trigger: "When Derevi enters and whenever a creature you control deals
 // combat damage to a player".
-func cmdr2S52DereviTapOrUntapCause(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func Cmdr2S52DereviTapOrUntapCause(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	if ev.Kind == game.EventETB {
 		return Self(ev, source, lki, g)
 	}
-	return combatDamageToPlayerBy(ev, source.Controller, g)
+	return CombatDamageToPlayerBy(ev, source.Controller, g)
 }
 
 // cmdr2S52PutThisFromCommandZone is Derevi's "Put Derevi onto the battlefield
@@ -106,7 +106,7 @@ func cmdr2S52DereviTapOrUntapCause(ev game.Event, source *game.Card, lki game.Ch
 // put onto the battlefield under its owner's control. Putting is not casting,
 // so the commander tax neither applies nor grows (CR 903.8); the commander
 // designation stays with the card.
-func cmdr2S52PutThisFromCommandZone(g *game.Game, item *game.StackItem) error {
+func Cmdr2S52PutThisFromCommandZone(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	z := g.FindCardZoneForEffect(id)
 	if z == nil || z.Owner != item.Controller || z.Kind != game.ZoneCommand {
@@ -125,18 +125,18 @@ func cmdr2S52PutThisFromCommandZone(g *game.Game, item *game.StackItem) error {
 // Optional prompt. Both are read as the permanent objects they are now; if
 // either has left the battlefield, or Grothama is no longer the grantor, the
 // fight does not happen (CR 701.14b).
-func cmdr2S52GrothamaFight(g *game.Game, item *game.StackItem) error {
+func Cmdr2S52GrothamaFight(g *game.Game, item *game.StackItem) error {
 	if item.GrantedBy == uuid.Nil {
 		return nil
 	}
-	return b10Fight(NewContext(g, item), item.SourceCardID, item.GrantedBy)
+	return B10Fight(NewContext(g, item), item.SourceCardID, item.GrantedBy)
 }
 
 // cmdr2S52GrothamaDraw is Grothama's leaves-the-battlefield effect: each
 // player, in APNAP order, draws cards equal to the damage dealt to Grothama
 // this turn by sources they controlled (TurnTally.DamagedObjects, read
 // through the object Grothama last was).
-func cmdr2S52GrothamaDraw(g *game.Game, item *game.StackItem) error {
+func Cmdr2S52GrothamaDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	n := len(g.Seats)
 	for i := 0; i < n; i++ {

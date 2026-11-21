@@ -38,15 +38,15 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "lifelink"},
 		Triggered: []game.TriggeredAbility{
-			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(outlaw(),
+			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(Outlaw(),
 				"Olivia, Opulent Outlaw — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{3}, Sacrifice two Treasures: Put two +1/+1 counters on each creature you control. Activate only as a sorcery.",
-			Cost:         Plus(ManaCost("{3}"), SacrificeN(2, "two Treasures", isTreasure)),
+			Cost:         Plus(ManaCost("{3}"), SacrificeN(2, "two Treasures", IsTreasure)),
 			SorcerySpeed: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return b11PutCountersOnEachCreatureYouControl(g, item, 2)
+				return B11PutCountersOnEachCreatureYouControl(g, item, 2)
 			},
 		}},
 	})
@@ -55,6 +55,6 @@ func init() {
 // outlaw is Outlaws of Thunder Junction's batching term (CR 700.12):
 // a creature that is an Assassin, a Mercenary, a Pirate, a Rogue or a
 // Warlock. Reads the effective subtypes.
-func outlaw() CardPredicate {
+func Outlaw() CardPredicate {
 	return AnySubtype("Assassin", "Mercenary", "Pirate", "Rogue", "Warlock")
 }

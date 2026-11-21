@@ -95,6 +95,6 @@ func (CondYouHaveTheInitiative) Holds(ctx *Context) bool {
 	return YouHaveTheInitiative(ctx.Game, ctx.Controller())
 }
 
-func (CondYouHaveTheInitiative) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondInitiative, 0), true
+func (CondYouHaveTheInitiative) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondInitiative, 0), true
 }

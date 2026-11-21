@@ -27,19 +27,19 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			ChapterTriggerTargeting(1, SagaChapterLabel("Love Song of Night and Day", 1, "you and target opponent each draw two cards"),
 				TargetPlayer("target opponent", Opponent()),
-				loveSongEachDrawTwo),
+				LoveSongEachDrawTwo),
 			ChapterTrigger(2, SagaChapterLabel("Love Song of Night and Day", 2, "create a 1/1 white Bird with flying"),
 				loveSongBird),
 			ChapterTriggerTargeting(3, SagaChapterLabel("Love Song of Night and Day", 3, "a +1/+1 counter on each of up to two creatures"),
 				TargetCreature("up to two target creatures").WithCount(0, 2),
-				plusOneCounterOnChosenTargets),
+				PlusOneCounterOnChosenTargets),
 		},
 	})
 }
 
 // loveSongEachDrawTwo is chapter I: two for the controller, then two
 // for the targeted opponent if it is still a legal target.
-func loveSongEachDrawTwo(g *game.Game, item *game.StackItem) error {
+func LoveSongEachDrawTwo(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
 		return err

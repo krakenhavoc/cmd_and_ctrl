@@ -15,7 +15,7 @@ import (
 // events count; a zone change of the card ends the object that was
 // targeted (CR 400.7). One spell naming the Cub twice emits two events
 // (CR 115.3) and the second is not the first time.
-func angelicCubTargetedFirstTime(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func AngelicCubTargetedFirstTime(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventBecomesTarget || source == nil || ev.CardID == uuid.Nil || ev.CardID != source.InstanceID {
 		return false
 	}
@@ -40,7 +40,7 @@ func angelicCubTargetedFirstTime(ev game.Event, source *game.Card, _ game.Charac
 // archfiendsVesselReturned is the trigger condition for Archfiend's Vessel:
 // the creature entered from its controller's graveyard, or its controller
 // cast it from their graveyard.
-func archfiendsVesselReturned(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func ArchfiendsVesselReturned(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	if !Self(ev, source, lki, g) {
 		return false
 	}

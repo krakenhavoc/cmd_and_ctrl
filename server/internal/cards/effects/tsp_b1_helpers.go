@@ -15,7 +15,7 @@ import (
 // has the ability is the source of both. The self-damage is dealt only
 // while that Sliver is still on the battlefield: a creature that has left
 // is no longer there to be dealt damage (CR 400.7).
-func tspB1PsionicPing(g *game.Game, item *game.StackItem) error {
+func TspB1PsionicPing(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	host := item.SourceCardID
 	legal := ctx.LegalTargets()
@@ -25,7 +25,7 @@ func tspB1PsionicPing(g *game.Game, item *game.StackItem) error {
 	if err := (DealDamage{Source: host, Target: legal[0].ID, Amount: 2}).Apply(ctx); err != nil {
 		return err
 	}
-	if !onBattlefield(g, host) {
+	if !OnBattlefield(g, host) {
 		return nil
 	}
 	return DealDamage{Source: host, Target: host, Amount: 3}.Apply(ctx)
@@ -34,7 +34,7 @@ func tspB1PsionicPing(g *game.Game, item *game.StackItem) error {
 // tspB1EachPlayerDiscardsACard is "Each player discards a card." as an
 // ability's whole body (Mindlash Sliver's granted ability): every player
 // still in the game, in APNAP order, picks one card of their own.
-func tspB1EachPlayerDiscardsACard(question string) Effect {
+func TspB1EachPlayerDiscardsACard(question string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		g.EachPlayerDiscardsForEffect(uuid.Nil, game.DiscardPrompt{
 			Source: item.SourceCardID, N: 1, Question: question,
@@ -47,7 +47,7 @@ func tspB1EachPlayerDiscardsACard(question string) Effect {
 // condition: an opponent of the card's owner cast a spell (CR 109.5,
 // "you" for a card in exile is its owner) while the card is suspended
 // (CR 702.62b), read as it triggers (CR 603.4).
-func tspB1OpponentCastWhileSuspended(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func TspB1OpponentCastWhileSuspended(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	if !game.CardIsSuspended(*source) {
 		return false
 	}
@@ -57,20 +57,20 @@ func tspB1OpponentCastWhileSuspended(ev game.Event, source *game.Card, lki game.
 // tspB1GainTwoPerCreatureTargetPlayerControls is Divine Congregation's
 // body: its controller gains 2 life for each creature the targeted
 // player controls, counted as it resolves.
-func tspB1GainTwoPerCreatureTargetPlayerControls(_ *game.StackItem, ctx *Context) error {
-	pid, ok := firstLegalPlayerTarget(ctx)
+func TspB1GainTwoPerCreatureTargetPlayerControls(_ *game.StackItem, ctx *Context) error {
+	pid, ok := FirstLegalPlayerTarget(ctx)
 	if !ok {
 		return nil
 	}
-	return GainLife{Amount: 2 * creaturesControlledBy(ctx.Game, pid)}.Apply(ctx)
+	return GainLife{Amount: 2 * CreaturesControlledBy(ctx.Game, pid)}.Apply(ctx)
 }
 
 // tspB1PumpAndGrantUntilEOT is "Target creature gets +P/+T and gains
 // <keyword> until end of turn." (Stonewood Invocation): the pump, then
 // the keyword, on the first target still legal (CR 608.2b).
-func tspB1PumpAndGrantUntilEOT(power, toughness int, keyword, name string) func(*game.StackItem, *Context) error {
+func TspB1PumpAndGrantUntilEOT(power, toughness int, keyword, name string) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -86,9 +86,9 @@ func tspB1PumpAndGrantUntilEOT(power, toughness int, keyword, name string) func(
 // tspB1UntapGainControlAndHaste is "Untap target permanent and gain
 // control of it until end of turn. It gains haste until end of turn."
 // (Word of Seizing), in printed order.
-func tspB1UntapGainControlAndHaste(name string) func(*game.StackItem, *Context) error {
+func TspB1UntapGainControlAndHaste(name string) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}

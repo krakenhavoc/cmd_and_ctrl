@@ -34,7 +34,7 @@ func FreerunningForSpellsYouCast(cost, creatureType string) game.GrantedAlternat
 }
 
 // gapB37PlayerPayload is the player a reflexive trigger was handed.
-func gapB37PlayerPayload(ctx *Context) (uuid.UUID, bool) {
+func GapB37PlayerPayload(ctx *Context) (uuid.UUID, bool) {
 	for _, t := range ctx.Payload() {
 		if t.Kind == game.TargetPlayer {
 			return t.ID, true
@@ -47,8 +47,8 @@ func gapB37PlayerPayload(ctx *Context) (uuid.UUID, bool) {
 // you control deals combat damage to a player" (Edward Kenway, Adéwalé):
 // one match per Vehicle that connects. Whether the dealer was a Vehicle is
 // read as it dealt the damage, so a Vehicle that was crewed still counts.
-func gapB37VehicleYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func GapB37VehicleYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	src, ok := g.LookupCardForEffect(ev.Source)

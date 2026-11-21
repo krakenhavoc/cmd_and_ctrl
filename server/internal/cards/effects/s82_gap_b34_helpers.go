@@ -10,7 +10,7 @@ import (
 // controller chooses, as the effect resolves, up to N of the tapped lands
 // they control (no target, CR 115.1). It is UntapUpToLands' prompt and keyed
 // answer narrowed to the controller's own lands.
-func gapB34UntapUpToYourLands(ctx *Context, n int, question string) error {
+func GapB34UntapUpToYourLands(ctx *Context, n int, question string) error {
 	var tapped []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.IsLand() && c.Tapped && c.Controller == ctx.Controller() {
@@ -36,7 +36,7 @@ func gapB34UntapUpToYourLands(ctx *Context, n int, question string) error {
 
 // gapB34DrawEvents counts the draws a player has made so far this game, as
 // the engine logged them (one EventDrawCard per card that arrived).
-func gapB34DrawEvents(g *game.Game, player uuid.UUID) int {
+func GapB34DrawEvents(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, ev := range g.Events {
 		if ev.Kind == game.EventDrawCard && ev.Actor == player {
@@ -48,7 +48,7 @@ func gapB34DrawEvents(g *game.Game, player uuid.UUID) int {
 
 // gapB34TableInTurnOrder is every player still in the game, the active
 // player first and then in turn order (APNAP, CR 101.4).
-func gapB34TableInTurnOrder(ctx *Context) []uuid.UUID {
+func GapB34TableInTurnOrder(ctx *Context) []uuid.UUID {
 	g := ctx.Game
 	var out []uuid.UUID
 	for i := range g.Seats {

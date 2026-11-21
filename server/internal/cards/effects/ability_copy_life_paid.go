@@ -42,7 +42,7 @@ var LifeWasPaidToActivateIt = CondBoard{
 // (CopyAbility).
 var MayPayThatLifeAgainToCopyIt Instruction = func(ctx *Context) error {
 	life := ctx.Trigger().Event.LifePaid
-	if life <= 0 || !canPayLifeNow(ctx, life) {
+	if life <= 0 || !CanPayLifeNow(ctx, life) {
 		return nil
 	}
 	question := "Pay " + strconv.Itoa(life) + " life again to copy that ability?"
@@ -62,7 +62,7 @@ var MayPayThatLifeAgainToCopyIt Instruction = func(ctx *Context) error {
 // when the answer arrives (CR 119.4), and only a payment that is made
 // copies the ability the triggering event named.
 var mayPayLifeCopyThatAbility = MayYes("confirm/pay-life-copy-that-ability", func(ctx *Context, r game.ConfirmAnswer) error {
-	if r.LifeCost <= 0 || !canPayLifeNow(ctx, r.LifeCost) {
+	if r.LifeCost <= 0 || !CanPayLifeNow(ctx, r.LifeCost) {
 		return nil
 	}
 	if err := ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), r.LifeCost); err != nil {
@@ -81,7 +81,7 @@ var mayPayLifeCopyThatAbility = MayYes("confirm/pay-life-copy-that-ability", fun
 // canPayLifeNow reports whether the resolving effect's controller can
 // pay `life` right now: enough life (CR 119.4) and no "can't pay life"
 // lock (CR 119.8).
-func canPayLifeNow(ctx *Context, life int) bool {
+func CanPayLifeNow(ctx *Context, life int) bool {
 	p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
 	return p != nil && !p.Eliminated && ctx.Game.CanPayLifeLocked(p, life)
 }

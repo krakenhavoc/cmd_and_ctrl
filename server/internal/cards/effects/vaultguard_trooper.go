@@ -25,9 +25,9 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			InterveningIf(CondBoard{
 				Name: "you control two or more tapped creatures",
-				Test: func(ctx *Context) bool { return b24TappedCreaturesControlled(ctx.Game, ctx.Controller()) >= 2 },
+				Test: func(ctx *Context) bool { return B24TappedCreaturesControlled(ctx.Game, ctx.Controller()) >= 2 },
 			}, On(game.EventBeginEndStep, AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b24TappedCreaturesControlled(g, source.Controller) >= 2
+				return B24TappedCreaturesControlled(g, source.Controller) >= 2
 			}), "Vaultguard Trooper — you may discard your hand; if you do, draw two cards",
 				func(g *game.Game, item *game.StackItem) error {
 					return MayChoice{
@@ -43,13 +43,13 @@ func init() {
 
 // vaultguardTrooperDiscardHand is the yes. An on-disk key: never renamed,
 // never reused.
-var vaultguardTrooperDiscardHand = MayYes("confirm/vaultguard-trooper-discard-hand", discardHandThenDrawTwo)
+var vaultguardTrooperDiscardHand = MayYes("confirm/vaultguard-trooper-discard-hand", DiscardHandThenDrawTwo)
 
 // discardHandThenDrawTwo is the yes to "you may discard your hand. If you
 // do, draw two cards" (Vaultguard Trooper, Byway Barterer). A hand with
 // no cards in it may still be discarded, so a yes always draws.
-func discardHandThenDrawTwo(ctx *Context, r game.ConfirmAnswer) error {
-	if _, err := discardWholeHand(ctx.Game, r.Chooser); err != nil {
+func DiscardHandThenDrawTwo(ctx *Context, r game.ConfirmAnswer) error {
+	if _, err := DiscardWholeHand(ctx.Game, r.Chooser); err != nil {
 		return err
 	}
 	return DrawCards{Player: r.Chooser, N: 2}.Apply(ctx)

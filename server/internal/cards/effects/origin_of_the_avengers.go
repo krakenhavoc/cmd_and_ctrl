@@ -33,7 +33,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, SagaChapterLabel("Origin of the Avengers", 1, "scry 2"), Do(Scry{N: 2})),
 			ChapterTrigger(2, SagaChapterLabel("Origin of the Avengers", 2, "put a Hero from your hand onto the battlefield or draw a card"), mshA6OriginChapterTwo),
-			ChapterTrigger(3, SagaChapterLabel("Origin of the Avengers", 3, "a +1/+1 counter on each creature you control"), b11PutCounterOnEachCreatureYouControl),
+			ChapterTrigger(3, SagaChapterLabel("Origin of the Avengers", 3, "a +1/+1 counter on each creature you control"), B11PutCounterOnEachCreatureYouControl),
 		},
 	})
 }
@@ -46,13 +46,13 @@ func mshA6OriginChapterTwo(g *game.Game, item *game.StackItem) error {
 		Match:    And(Creature(), Subtype("Hero"), ManaValueLE(3)),
 		Optional: true,
 		Label:    "Origin of the Avengers — you may put a Hero creature card with mana value 3 or less from your hand onto the battlefield",
-		ThenTail: mshA6OriginDrawIfNone,
+		ThenTail: MshA6OriginDrawIfNone,
 	}.Apply(ctx)
 }
 
 // mshA6OriginDrawIfNone is "If you don't, draw a card": the rider on the
 // put. An on-disk key: never renamed, never reused.
-var mshA6OriginDrawIfNone = PutFromHandTail("msh-a6/origin-of-the-avengers-draw", func(ctx *Context, res PutFromHandResult) error {
+var MshA6OriginDrawIfNone = PutFromHandTail("msh-a6/origin-of-the-avengers-draw", func(ctx *Context, res PutFromHandResult) error {
 	if res.Entered != uuid.Nil {
 		return nil
 	}

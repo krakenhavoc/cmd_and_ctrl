@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // keywords). Each sentence is a step of its own, so the grant waits for a
 // prompt the counter asks (CR 608.2c). A target that is no longer legal
 // gets neither (CR 608.2b).
-func tmtB6CounterThenGrant(label string, keywords ...string) func(*game.StackItem, *Context) error {
+func TmtB6CounterThenGrant(label string, keywords ...string) func(*game.StackItem, *Context) error {
 	return ResolveSteps(
 		Instruction(func(ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
@@ -36,7 +36,7 @@ func tmtB6CounterThenGrant(label string, keywords ...string) func(*game.StackIte
 // <self> damage to you" as an enters trigger's body (Spicy Oatmeal Pizza;
 // Daredevil's Billy Club's shape with other amounts). The source deals both
 // at once, as one damage instance.
-func tmtB6DamageAnyTargetAndYou(n, self int) Effect {
+func TmtB6DamageAnyTargetAndYou(n, self int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		return g.DamageInstanceForEffect(func() error {
@@ -52,7 +52,7 @@ func tmtB6DamageAnyTargetAndYou(n, self int) Effect {
 
 // tmtB6ModeTargetDraws is "target player draws <n> cards" as one step of a
 // modal bullet built with ModeSteps (Shredder's Revenge).
-func tmtB6ModeTargetDraws(n int) Applier {
+func TmtB6ModeTargetDraws(n int) Applier {
 	return Instruction(func(ctx *Context) error {
 		t, ok := ModeTarget(ctx, ctx.Occurrence())
 		if !ok || t.Kind != game.TargetPlayer {
@@ -65,7 +65,7 @@ func tmtB6ModeTargetDraws(n int) Applier {
 // tmtB6ModeTargetLosesLife is "and loses <n> life" as the next step of the
 // same bullet: a step of its own, so it waits for a prompt the draws ask
 // (CR 608.2c).
-func tmtB6ModeTargetLosesLife(n int) Applier {
+func TmtB6ModeTargetLosesLife(n int) Applier {
 	return Instruction(func(ctx *Context) error {
 		t, ok := ModeTarget(ctx, ctx.Occurrence())
 		if !ok || t.Kind != game.TargetPlayer {

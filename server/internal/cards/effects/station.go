@@ -68,7 +68,7 @@ func SpacecraftAt(n, power, toughness int) []game.StaticAbility {
 		{
 			Layer:      game.Layer4Type,
 			ActiveWhen: gate,
-			AppliesTo:  selfOnly,
+			AppliesTo:  SelfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				for _, t := range c.Types {
 					if t == "Creature" {
@@ -82,7 +82,7 @@ func SpacecraftAt(n, power, toughness int) []game.StaticAbility {
 			Layer:      game.Layer7PT,
 			SubLayer:   game.SubLayer7B_Set,
 			ActiveWhen: gate,
-			AppliesTo:  selfOnly,
+			AppliesTo:  SelfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power = power
 				c.Toughness = toughness
@@ -100,9 +100,9 @@ func ThresholdKeywords(n int, keywords ...string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:      game.Layer6Ability,
 		ActiveWhen: AtChargeCounters(n),
-		AppliesTo:  selfOnly,
+		AppliesTo:  SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			appendKeywordsTo(c, kws)
+			AppendKeywordsTo(c, kws)
 		},
 		// #2219: the printed keywords themselves, shown as keyword
 		// chips once the threshold is met.

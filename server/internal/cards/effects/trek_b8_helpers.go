@@ -79,7 +79,7 @@ func AttachedCantBeBeamedUp() game.StaticAbility {
 // trekB8DifferentlyNamedLands is "the number of differently named lands
 // `controller` controls": each land counted once, however many share its
 // name. Caller holds g.mu, as every *ForEffect read.
-func trekB8DifferentlyNamedLands(g *game.Game, controller uuid.UUID) int {
+func TrekB8DifferentlyNamedLands(g *game.Game, controller uuid.UUID) int {
 	names := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsLand() {

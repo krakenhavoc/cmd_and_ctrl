@@ -43,7 +43,7 @@ import (
 // now: its target first, then each other battlefield permanent `kind`
 // admits that shares a colour with the target as it is now. Nil when the
 // target is no longer legal.
-func radianceSet(ctx *Context, kind CardPredicate) []uuid.UUID {
+func RadianceSet(ctx *Context, kind CardPredicate) []uuid.UUID {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -54,7 +54,7 @@ func radianceSet(ctx *Context, kind CardPredicate) []uuid.UUID {
 		}
 		ids := []uuid.UUID{target.InstanceID}
 		for _, c := range MatchingBattlefield(ctx, kind) {
-			if c.InstanceID != target.InstanceID && sharesAColorNow(c, target) {
+			if c.InstanceID != target.InstanceID && SharesAColorNow(c, target) {
 				ids = append(ids, c.InstanceID)
 			}
 		}
@@ -67,11 +67,11 @@ func radianceSet(ctx *Context, kind CardPredicate) []uuid.UUID {
 // first. The others are members of a set the text names by group, so
 // they are acted on through asGroupMember (#1463): the source of a
 // radiance ability that is itself among them is acted on as printed.
-func eachRadiant(ctx *Context, ids []uuid.UUID, act func(c *Context, id uuid.UUID) error) error {
+func EachRadiant(ctx *Context, ids []uuid.UUID, act func(c *Context, id uuid.UUID) error) error {
 	for i, id := range ids {
 		c := ctx
 		if i > 0 {
-			c = ctx.asGroupMember()
+			c = ctx.AsGroupMember()
 		}
 		if err := act(c, id); err != nil {
 			return err
@@ -86,8 +86,8 @@ func eachRadiant(ctx *Context, ids []uuid.UUID, act func(c *Context, id uuid.UUI
 // with `then`, when set, told the total actually dealt after prevention
 // and replacement (Brightflame's "You gain life equal to the damage dealt
 // this way").
-func radianceDamage(ctx *Context, n int, then game.KeyedTail) error {
-	ids := radianceSet(ctx, Creature())
+func RadianceDamage(ctx *Context, n int, then game.KeyedTail) error {
+	ids := RadianceSet(ctx, Creature())
 	if len(ids) == 0 || n <= 0 {
 		return nil
 	}
@@ -99,13 +99,13 @@ func radianceDamage(ctx *Context, n int, then game.KeyedTail) error {
 // set, read as the spell resolved) gains protection from that colour
 // until end of turn. The card's name is the tail's first Word, the colour
 // its Word. An on-disk key.
-var radianceProtectionFromChosenColor = CardTail("then/radiance-protection-from-chosen-color-until-eot", func(ctx *Context, o game.TailOutcome) error {
+var RadianceProtectionFromChosenColor = CardTail("then/radiance-protection-from-chosen-color-until-eot", func(ctx *Context, o game.TailOutcome) error {
 	token := game.ProtectionFromColor(o.Tail.Word)
 	if token == "" || len(o.Tail.Carry) == 0 || len(o.Tail.Words) == 0 {
 		return nil
 	}
 	return GrantKeywordUntilEOT{
-		Match:    b10OneOf(o.Tail.Carry),
+		Match:    B10OneOf(o.Tail.Carry),
 		Keywords: []string{token},
 		Label:    o.Tail.Words[0] + " — " + token,
 	}.Apply(ctx)

@@ -25,7 +25,7 @@ import (
 
 // whenStateIfThisIsAnEnchantment is the trigger: `state` and the
 // intervening "if this permanent is an enchantment", then the effect.
-func whenStateIfThisIsAnEnchantment(label string, state StateCondition, effect Effect) game.TriggeredAbility {
+func WhenStateIfThisIsAnEnchantment(label string, state StateCondition, effect Effect) game.TriggeredAbility {
 	return WhenState(label, func(g *game.Game, source *game.Card, controller uuid.UUID) bool {
 		return source.HasCardType("enchantment") && state(g, source, controller)
 	}, effect)
@@ -36,10 +36,10 @@ func whenStateIfThisIsAnEnchantment(label string, state StateCondition, effect E
 // untouched. `with` is what the creature also gains, in the same effect
 // and timestamp (CR 613.6): Veiled Serpent's quoted "can't attack unless
 // defending player controls an Island" (#1879).
-func thisEnchantmentBecomesACreature(subtype string, power, toughness int, label string, with ...game.Mod) Effect {
+func ThisEnchantmentBecomesACreature(subtype string, power, toughness int, label string, with ...game.Mod) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		self := item.SourceCardID
-		if !onBattlefield(g, self) || sourceIsNewObject(g, item) {
+		if !OnBattlefield(g, self) || SourceIsNewObject(g, item) {
 			return nil
 		}
 		c, ok := g.LookupCardForEffect(self)
@@ -63,7 +63,7 @@ func thisEnchantmentBecomesACreature(subtype string, power, toughness int, label
 }
 
 // livePlayers are the players still in the game.
-func livePlayers(g *game.Game) []*game.Player {
+func LivePlayers(g *game.Game) []*game.Player {
 	out := make([]*game.Player, 0, len(g.Seats))
 	for _, p := range g.Seats {
 		if p != nil && !p.Eliminated {

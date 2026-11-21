@@ -30,7 +30,7 @@ import (
 // card, two for a split card, read off the object as it is now — a
 // permanent's copied name, a spell's cast half. A face-down permanent has
 // no name and shares a name with nothing (CR 708.2a, 201.2a).
-func extractionNames(c game.Card) []string {
+func ExtractionNames(c game.Card) []string {
 	if c.FaceDown {
 		return nil
 	}
@@ -40,7 +40,7 @@ func extractionNames(c game.Card) []string {
 
 // sharesANameWith is "with the same name as that card": at least one name
 // in common (CR 201.2a). No names match nothing.
-func sharesANameWith(names []string) func(game.Card) bool {
+func SharesANameWith(names []string) func(game.Card) bool {
 	return func(c game.Card) bool {
 		for _, n := range names {
 			if game.HasName(c, n) {
@@ -52,7 +52,7 @@ func sharesANameWith(names []string) func(game.Card) bool {
 }
 
 // notABasicLandCard is "card other than a basic land card".
-func notABasicLandCard() CardPredicate {
+func NotABasicLandCard() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return !IsBasicLand(c) }
 }
 
@@ -61,7 +61,7 @@ func notABasicLandCard() CardPredicate {
 // and library for cards sharing a name with `names`, exiles what is
 // found, and `victim` shuffles. `all` is "all cards", false is "any
 // number of cards". Victim uuid.Nil (nobody to search) does nothing.
-func extractionSearch(ctx *Context, card string, victim uuid.UUID, names []string, all bool) error {
+func ExtractionSearch(ctx *Context, card string, victim uuid.UUID, names []string, all bool) error {
 	if victim == uuid.Nil {
 		return nil
 	}
@@ -76,7 +76,7 @@ func extractionSearch(ctx *Context, card string, victim uuid.UUID, names []strin
 	return SearchLibrary{
 		Player:               ctx.Controller(),
 		LibraryOwner:         victim,
-		Predicate:            sharesANameWith(names),
+		Predicate:            SharesANameWith(names),
 		Dest:                 game.ZoneExile,
 		Unbounded:            !all,
 		TakeAll:              all,
@@ -92,9 +92,9 @@ func extractionSearch(ctx *Context, card string, victim uuid.UUID, names []strin
 // chosen, not exiled; it is found by the graveyard half of the search like
 // any other card with its name. A target that has left the graveyard
 // makes the spell do nothing (CR 608.2b).
-func extractFromGraveyardTarget(card string, all bool) func(*game.StackItem, *Context) error {
+func ExtractFromGraveyardTarget(card string, all bool) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		target, ok := b16FirstLegalTargetCard(ctx)
+		target, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -102,7 +102,7 @@ func extractFromGraveyardTarget(card string, all bool) func(*game.StackItem, *Co
 		if !ok {
 			return nil
 		}
-		return extractionSearch(ctx, card, c.Owner, extractionNames(c), all)
+		return ExtractionSearch(ctx, card, c.Owner, ExtractionNames(c), all)
 	}
 }
 
@@ -114,9 +114,9 @@ func extractFromGraveyardTarget(card string, all bool) func(*game.StackItem, *Co
 // happens whether or not the permanent reached exile (a replacement may
 // send it elsewhere); a target that is no longer legal makes the spell do
 // nothing (CR 608.2b).
-func exilePermanentThenExtract(card string) func(*game.StackItem, *Context) error {
+func ExilePermanentThenExtract(card string) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		target, ok := b16FirstLegalTargetCard(ctx)
+		target, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -124,10 +124,10 @@ func exilePermanentThenExtract(card string) func(*game.StackItem, *Context) erro
 		if !ok {
 			return nil
 		}
-		victim, names := c.Controller, extractionNames(c)
+		victim, names := c.Controller, ExtractionNames(c)
 		return ExileTarget{
 			Target:   target,
-			ThenTail: withWord(withCarry(ctx.ItemTail(extractionFamilyExiled), victim), strings.Join(append([]string{card}, names...), "\n")),
+			ThenTail: WithWord(WithCarry(ctx.ItemTail(extractionFamilyExiled), victim), strings.Join(append([]string{card}, names...), "\n")),
 		}.Apply(ctx)
 	}
 }
@@ -135,7 +135,7 @@ func exilePermanentThenExtract(card string) func(*game.StackItem, *Context) erro
 // extractionFamilyExiled is the clause after the exile (#4253 slice 9).
 var extractionFamilyExiled = CardTail("extraction-family/after-exile", func(ctx *Context, o game.TailOutcome) error {
 	parts := strings.Split(o.Tail.Word, "\n")
-	card, names, victim := parts[0], parts[1:], tailCarry0(o)
+	card, names, victim := parts[0], parts[1:], TailCarry0(o)
 
-	return extractionSearch(ctx, card, victim, names, true)
+	return ExtractionSearch(ctx, card, victim, names, true)
 })

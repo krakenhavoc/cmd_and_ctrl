@@ -1,0 +1,52 @@
+package cardsd
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Determined Iteration — Enchantment {1}{R}:
+//
+//	"At the beginning of combat on your turn, populate. The token
+//	 created this way gains haste. Sacrifice it at the beginning of
+//	 the next end step. (To populate, create a token that's a copy of
+//	 a creature token you control.)"
+//
+// Populate (populate.go) with the rest of the sentence as its
+// continuation: the copy is made with haste (TokenCopyGainsHaste, the
+// same clause Electroduplicate and Reflection of Kiki-Jiki use — a
+// token has no catalog key to hang a layer-6 grant off, so haste rides
+// its printed keywords) and a CR 603.7 delayed trigger sacrifices it at
+// the next end step. Both are keyed on the tokens the populate itself
+// created, so a copy the player did not make is never touched, and with
+// no creature token to copy (CR 701.36b) there is nothing to sacrifice
+// and no delayed trigger is scheduled.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "e4ed7935-0263-4cde-8118-ac18fffce3ef",
+		Name:         "Determined Iteration",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.AtBeginningOfYourCombat("Determined Iteration — populate", func(g *game.Game, item *game.StackItem) error {
+				ctx := effects.NewContext(g, item)
+				return effects.Populate{Haste: true, ThenTail: ctx.ItemTail(determinedIterationSacrificeAtEnd)}.Apply(ctx)
+			}),
+		},
+	})
+}
+
+// determinedIterationSacrificeAtEnd schedules the sacrifice of the
+// token(s) the populate made (the tail's IDs). An on-disk key.
+var determinedIterationSacrificeAtEnd = effects.CardTail("then/determined-iteration-sacrifice-at-end", func(ctx *effects.Context, o game.TailOutcome) error {
+	created := o.IDs
+	if len(created) == 0 {
+		return nil
+	}
+	return effects.ScheduleDelayedTrigger{
+		Label: "Determined Iteration — sacrifice the token",
+		Cards: created,
+		Body:  effects.SacrificeListedCardsBody,
+	}.Apply(ctx)
+})

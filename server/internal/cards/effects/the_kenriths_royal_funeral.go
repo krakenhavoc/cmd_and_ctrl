@@ -45,13 +45,13 @@ func init() {
 		CostModifiers: []game.CostModifier{
 			CostsLessEach(kenrithsFuneralDiscount,
 				"Legendary spells you cast cost {1} less to cast for each card exiled with The Kenriths' Royal Funeral.",
-				YourSpell(), legendarySpell()),
+				YourSpell(), LegendarySpell()),
 		},
 	})
 }
 
 // legendarySpell passes a spell that is legendary as it is cast.
-func legendarySpell() CostPredicate {
+func LegendarySpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.IsLegendary() }
 }
 

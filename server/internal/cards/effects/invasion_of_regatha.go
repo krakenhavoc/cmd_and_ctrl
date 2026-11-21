@@ -28,11 +28,11 @@ func init() {
 	const name = "Invasion of Regatha"
 	enters := WhenThisEnters(name+" — 4 damage to another target battle or opponent and 1 damage to up to one target creature",
 		func(g *game.Game, item *game.StackItem) error {
-			return damageEachClauseTarget(4, 1)(item, NewContext(g, item))
+			return DamageEachClauseTarget(4, 1)(item, NewContext(g, item))
 		})
 	enters.Targets = Clauses(targetBattleOrOpponent(), TargetCreature("up to one target creature").WithCount(0, 1))
 	Register(Spec{
-		OracleID:     invasionOfRegathaOracleID,
+		OracleID:     InvasionOfRegathaOracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -67,4 +67,4 @@ func targetBattleOrOpponent() *game.TargetSpec {
 
 // invasionOfRegathaOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfRegathaOracleID = "4f0bcfe5-7e52-4249-a26a-482619716f18"
+const InvasionOfRegathaOracleID = "4f0bcfe5-7e52-4249-a26a-482619716f18"

@@ -47,7 +47,7 @@ func EntersAsCopyOf(
 	except func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, source *game.Card),
 ) game.ReplacementEffect {
 	return entersAsCopy(name, func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) []uuid.UUID {
-		controller, self := copyChooserAndSelf(ev, src)
+		controller, self := CopyChooserAndSelf(ev, src)
 		return candidates(g, controller, self)
 	}, except)
 }
@@ -72,7 +72,7 @@ func EntersAsCopyOfFromCast(
 	except func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, source *game.Card),
 ) game.ReplacementEffect {
 	return entersAsCopy(name, func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) []uuid.UUID {
-		controller, self := copyChooserAndSelf(ev, src)
+		controller, self := CopyChooserAndSelf(ev, src)
 		return candidates(g, controller, self, g.EntryCastCountsForEffect(ev))
 	}, except)
 }
@@ -81,7 +81,7 @@ func EntersAsCopyOfFromCast(
 // which permanent is entering: the event's actor (the player the
 // permanent enters under) falling back to the source's controller,
 // and the entering card's own ID so it is never offered itself.
-func copyChooserAndSelf(ev *game.ReplacementEvent, src *game.Card) (controller, self uuid.UUID) {
+func CopyChooserAndSelf(ev *game.ReplacementEvent, src *game.Card) (controller, self uuid.UUID) {
 	if ev != nil {
 		controller = ev.Actor
 		self = ev.CardID
@@ -143,7 +143,7 @@ func EntersAsCopyOfUntilEndOfTurn(
 // is not on the battlefield yet when the prompt is built, but an
 // effect that re-copies an existing permanent would be, and copying
 // yourself is never a legal choice.
-func copyCandidates(
+func CopyCandidates(
 	g *game.Game,
 	self uuid.UUID,
 	ok func(c game.Card) bool,
@@ -166,8 +166,8 @@ func copyCandidates(
 // Impostor, Stunt Double. Any controller, any creature, never the
 // entering permanent itself. Not targeting, so hexproof, shroud and
 // protection do not narrow it (CR 115.10a).
-func anyCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
-	return copyCandidates(g, self, func(c game.Card) bool {
+func AnyCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.UUID {
+	return CopyCandidates(g, self, func(c game.Card) bool {
 		return c.IsCreature()
 	})
 }
@@ -176,8 +176,8 @@ func anyCreatureOnBattlefield(g *game.Game, _ uuid.UUID, self uuid.UUID) []uuid.
 // of a creature you control" (Glasspool Mimic, Visage Bandit): the
 // entering permanent's controller's own creatures. Not targeting, so
 // hexproof does not narrow it (CR 115.10a).
-func aCreatureYouControl(g *game.Game, controller uuid.UUID, self uuid.UUID) []uuid.UUID {
-	return copyCandidates(g, self, func(c game.Card) bool {
+func ACreatureYouControl(g *game.Game, controller uuid.UUID, self uuid.UUID) []uuid.UUID {
+	return CopyCandidates(g, self, func(c game.Card) bool {
 		return c.IsCreature() && c.Controller == controller
 	})
 }
@@ -185,7 +185,7 @@ func aCreatureYouControl(g *game.Game, controller uuid.UUID, self uuid.UUID) []u
 // alsoAShapeshifterRogue is the `except` argument for "except it's a
 // Shapeshifter Rogue in addition to its other types" (Glasspool Mimic,
 // Visage Bandit): both subtypes join the copied ones (CR 707.9b).
-func alsoAShapeshifterRogue(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
+func AlsoAShapeshifterRogue(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
 	v.AddSubtype("Shapeshifter")
 	v.AddSubtype("Rogue")
 }
@@ -197,7 +197,7 @@ func alsoAShapeshifterRogue(_ *game.ReplacementEvent, v *game.PrintedValues, _ *
 // so nothing that stops targeting narrows it (CR 115.10a). The engine
 // copies the pick's printed values (CR 707.2) and declines it if it has
 // left the graveyard by the time the answer arrives.
-func anyCreatureCardInAGraveyard(g *game.Game, _ uuid.UUID, _ uuid.UUID) []uuid.UUID {
+func AnyCreatureCardInAGraveyard(g *game.Game, _ uuid.UUID, _ uuid.UUID) []uuid.UUID {
 	if g == nil {
 		return nil
 	}

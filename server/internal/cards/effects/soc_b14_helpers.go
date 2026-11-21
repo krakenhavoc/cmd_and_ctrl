@@ -10,7 +10,7 @@ import (
 // batch 14 (#4834).
 
 // socB14AuraSpell passes on an Aura spell (Transcendent Envoy's discount).
-func socB14AuraSpell() CostPredicate {
+func SocB14AuraSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.HasSubtype("Aura") }
 }
 
@@ -21,7 +21,7 @@ func socB14AuraSpell() CostPredicate {
 // only.
 func socB14AttackersAtYouOrYourPlaneswalkers(g *game.Game, attacker, defender uuid.UUID) int {
 	n := 0
-	for _, id := range b13AttackingCreaturesYouControl(g, attacker) {
+	for _, id := range B13AttackingCreaturesYouControl(g, attacker) {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
@@ -40,7 +40,7 @@ func socB14AttackersAtYouOrYourPlaneswalkers(g *game.Game, attacker, defender uu
 // an opponent attacks with creatures, if two or more of those creatures are
 // attacking you and/or planeswalkers you control": an attack declaration by an
 // opponent of the source's controller.
-func socB14OpponentAttackedYouTwice(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SocB14OpponentAttackedYouTwice(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventAttack || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
@@ -50,7 +50,7 @@ func socB14OpponentAttackedYouTwice(ev game.Event, source *game.Card, _ game.Cha
 // socB14StillAttackedTwice is the CR 603.4 recheck as the trigger resolves:
 // the opponent who attacked still has two or more attackers at you and/or your
 // planeswalkers.
-var socB14StillAttackedTwice = CondBoard{
+var SocB14StillAttackedTwice = CondBoard{
 	Name: "two or more attackers still attack you and/or your planeswalkers",
 	Test: func(ctx *Context) bool {
 		who := ctx.Trigger().Event.Actor
@@ -61,7 +61,7 @@ var socB14StillAttackedTwice = CondBoard{
 // socB14ThatOpponentLoses3 is "that opponent loses 3 life": the player who
 // attacked, read off the triggering event. A player no longer seated loses
 // nothing.
-func socB14ThatOpponentLoses3(ctx *Context) error {
+func SocB14ThatOpponentLoses3(ctx *Context) error {
 	who := ctx.Trigger().Event.Actor
 	if p := ctx.Game.PlayerByIDForEffect(who); p == nil || p.Eliminated {
 		return nil
@@ -73,11 +73,11 @@ func socB14ThatOpponentLoses3(ctx *Context) error {
 // spell the event named once for each time the trigger's controller has cast a
 // commander from the command zone this game, new targets allowed. With none
 // cast it does nothing (CopySpell would read a count of zero as one).
-var socB14CopyPerCommanderCastBody = game.SimpleDelayedBody("copy/the-spell-per-commander-cast",
+var SocB14CopyPerCommanderCastBody = game.SimpleDelayedBody("copy/the-spell-per-commander-cast",
 	func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		cast := ctx.PayloadCards()
-		n := socB3CommanderCastsFromCommandZone(g, item.Controller)
+		n := SocB3CommanderCastsFromCommandZone(g, item.Controller)
 		if len(cast) == 0 || n <= 0 {
 			return nil
 		}
@@ -94,19 +94,19 @@ var socB14CopyPerCommanderCastBody = game.SimpleDelayedBody("copy/the-spell-per-
 // of "whenever a creature you control deals combat damage to a player this
 // turn" (Surge to Victory): a combat damage event, to a player, from a creature
 // controlled by the delayed trigger's controller (CR 603.7d) as it dealt it.
-var socB14YourCreatureDealtCombatDamageToAPlayerCondition = game.DelayedCondition("damage/your-creature-combat-damage-to-a-player",
+var SocB14YourCreatureDealtCombatDamageToAPlayerCondition = game.DelayedCondition("damage/your-creature-combat-damage-to-a-player",
 	func(ev game.Event, dt *game.DelayedTrigger, g *game.Game, _ game.EffectParams) bool {
 		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || g.PlayerByIDForEffect(ev.Target) == nil {
 			return false
 		}
 		src, ok := g.LookupCardForEffect(ev.Source)
-		return ok && src.IsCreature() && b17DamageSourceController(ev, g) == dt.Controller
+		return ok && src.IsCreature() && B17DamageSourceController(ev, g) == dt.Controller
 	})
 
 // socB14CopyTheExiledCardBody is "copy the exiled card. You may cast the copy
 // without paying its mana cost": the card the trigger carries, if it is still
 // in exile (a card that left is a new object, CR 400.7). An on-disk key.
-var socB14CopyTheExiledCardBody = game.SimpleDelayedBody("copy/surge-to-victory-exiled-card",
+var SocB14CopyTheExiledCardBody = game.SimpleDelayedBody("copy/surge-to-victory-exiled-card",
 	func(g *game.Game, item *game.StackItem) error {
 		var cards []uuid.UUID
 		for _, t := range item.Targets {
@@ -123,8 +123,8 @@ var socB14CopyTheExiledCardBody = game.SimpleDelayedBody("copy/surge-to-victory-
 // socB14YouCastAPermanentSpellWithX is the When of Unbound Flourishing's first
 // ability: the source's controller cast a permanent spell (anything but an
 // instant or a sorcery) with an {X} in its own printed mana cost.
-func socB14YouCastAPermanentSpellWithX(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller || !socB9HasXInManaCost(g, ev.CardID) {
+func SocB14YouCastAPermanentSpellWithX(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor != source.Controller || !SocB9HasXInManaCost(g, ev.CardID) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -133,7 +133,7 @@ func socB14YouCastAPermanentSpellWithX(ev game.Event, source *game.Card, _ game.
 
 // socB14DoubleTheSpellsX is "double the value of X": the spell the cast event
 // named, if it is still on the stack.
-func socB14DoubleTheSpellsX(ctx *Context) error {
+func SocB14DoubleTheSpellsX(ctx *Context) error {
 	ctx.Game.DoubleSpellXForEffect(ctx.Trigger().Event.CardID)
 	return nil
 }
@@ -142,14 +142,14 @@ func socB14DoubleTheSpellsX(ctx *Context) error {
 // ability: the source's controller cast an instant or sorcery spell whose
 // printed mana cost contains {X}, or activated an ability with an {X} mana
 // symbol in its activation cost.
-func socB14YouCastOrActivateAnXThing(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SocB14YouCastOrActivateAnXThing(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Actor != source.Controller {
 		return false
 	}
 	switch ev.Kind {
 	case game.EventCast:
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && (c.IsInstant() || c.IsSorcery()) && socB9HasXInManaCost(g, ev.CardID)
+		return ok && (c.IsInstant() || c.IsSorcery()) && SocB9HasXInManaCost(g, ev.CardID)
 	case game.EventActivateAbility:
 		return ev.XCost && ev.StackItemID != uuid.Nil
 	}
@@ -159,13 +159,13 @@ func socB14YouCastOrActivateAnXThing(ev game.Event, source *game.Card, _ game.Ch
 // socB14TheCostContainsX is the CR 603.4 recheck of the same "if" as the
 // trigger resolves. What it asks about is fixed when the spell is cast or the
 // ability activated, so it reads the triggering event, not the stack.
-var socB14TheCostContainsX = CondBoard{
+var SocB14TheCostContainsX = CondBoard{
 	Name: "that spell's mana cost or that ability's activation cost contains {X}",
 	Test: func(ctx *Context) bool {
 		ev := ctx.Trigger().Event
 		switch ev.Kind {
 		case game.EventCast:
-			return socB9HasXInManaCost(ctx.Game, ev.CardID)
+			return SocB9HasXInManaCost(ctx.Game, ev.CardID)
 		case game.EventActivateAbility:
 			return ev.XCost
 		}
@@ -177,7 +177,7 @@ var socB14TheCostContainsX = CondBoard{
 // new targets for the copy": the spell or the ability the event named, under
 // its controller's control as the trigger's controller (CR 707.10), from last
 // known information if the original has left the stack.
-func socB14CopyThatSpellOrAbility(ctx *Context) error {
+func SocB14CopyThatSpellOrAbility(ctx *Context) error {
 	ev := ctx.Trigger().Event
 	switch ev.Kind {
 	case game.EventCast:
@@ -202,13 +202,13 @@ func socB14CopyThatSpellOrAbility(ctx *Context) error {
 // toughness equal to the source's power and toughness until end of turn
 // (layer 7b). The source is read as the ability resolves, counters and pumps
 // included, as it last existed there if it has gone (CR 608.2h).
-func socB14OtherCreaturesBecomeTanazirsSize(g *game.Game, item *game.StackItem) error {
+func SocB14OtherCreaturesBecomeTanazirsSize(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	info, ok := ctx.SourcePermanent()
 	if !ok {
 		return nil
 	}
-	return untilEndOfTurn(ctx, uuid.Nil, And(Creature(), YouControl(), OtherThan(ctx.Source())),
+	return UntilEndOfTurn(ctx, uuid.Nil, And(Creature(), YouControl(), OtherThan(ctx.Source())),
 		"Tanazir Quandrix — base power and toughness equal to his",
 		game.SetBasePowerMod(info.Power), game.SetBaseToughnessMod(info.Toughness))
 }

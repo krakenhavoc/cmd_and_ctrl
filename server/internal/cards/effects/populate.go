@@ -85,7 +85,7 @@ func (p Populate) word() string {
 // prompt's tail is told what the copy made. An on-disk key: never renamed,
 // never reused.
 var populatePicked = game.RegisterChooseCardsThen("choose-cards/populate", func(g *game.Game, r game.CardsChosen) error {
-	ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+	ctx, _ := AskedContext(g, r.Asked, r.Chooser, r.Source, nil)
 	p := Populate{ThenTail: r.Tail, Haste: r.Word == populateHasteWord}
 	if len(r.Picked) == 0 {
 		return p.finish(ctx, nil)
@@ -102,7 +102,7 @@ func (p Populate) Apply(ctx *Context) error {
 	if match == nil {
 		match = And(Creature(), IsTokenPredicate())
 	}
-	candidates := permanentsControlledByMatching(ctx.Game, player, match)
+	candidates := PermanentsControlledByMatching(ctx.Game, player, match)
 	switch {
 	case len(candidates) == 0:
 		return p.finish(ctx, nil)
@@ -133,7 +133,7 @@ func (p Populate) Apply(ctx *Context) error {
 // made are reported: a replacement that doubles the token (Doubling
 // Season) yields two, and a replacement that prevents it yields none.
 func (p Populate) copyOne(ctx *Context, player, id uuid.UUID) error {
-	cursor := b25LastEventSeq(ctx.Game)
+	cursor := B25LastEventSeq(ctx.Game)
 	var except func(t *game.Card)
 	if p.Haste {
 		except = TokenCopyGainsHaste
@@ -146,7 +146,7 @@ func (p Populate) copyOne(ctx *Context, player, id uuid.UUID) error {
 	}).Apply(ctx); err != nil {
 		return err
 	}
-	return p.finish(ctx, b27TokensCreatedByAfter(ctx.Game, player, cursor))
+	return p.finish(ctx, B27TokensCreatedByAfter(ctx.Game, player, cursor))
 }
 
 func (p Populate) finish(ctx *Context, created []uuid.UUID) error {

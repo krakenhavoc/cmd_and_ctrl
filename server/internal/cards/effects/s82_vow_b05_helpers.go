@@ -13,8 +13,8 @@ import (
 // vowB05VampiresControlledBy counts the Vampire permanents `player`
 // controls, each read post-layer (a creature that is a Vampire as it is now).
 // `vampire` is the word as the asking card's text now says it.
-func vowB05VampiresControlledBy(g *game.Game, player uuid.UUID, vampire string) int {
-	return countControlled(g, player, func(c game.Card) bool { return c.HasSubtype(vampire) })
+func VowB05VampiresControlledBy(g *game.Game, player uuid.UUID, vampire string) int {
+	return CountControlled(g, player, func(c game.Card) bool { return c.HasSubtype(vampire) })
 }
 
 // vowB05OdricKeywords are the twelve abilities Odric, Blood-Cursed counts.
@@ -26,7 +26,7 @@ var vowB05OdricKeywords = []string{
 // vowB05ListedAbilitiesAmongCreatures is the number of Odric's listed
 // abilities that at least one creature `player` controls has, each counted
 // once (CR 702 keywords read through the layered view, HasKeyword).
-func vowB05ListedAbilitiesAmongCreatures(g *game.Game, player uuid.UUID) int {
+func VowB05ListedAbilitiesAmongCreatures(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, kw := range vowB05OdricKeywords {
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -40,6 +40,6 @@ func vowB05ListedAbilitiesAmongCreatures(g *game.Game, player uuid.UUID) int {
 }
 
 // vowB05BloodTokensControlledBy counts the Blood tokens `player` controls.
-func vowB05BloodTokensControlledBy(g *game.Game, player uuid.UUID) int {
-	return countControlled(g, player, func(c game.Card) bool { return IsToken(c) && c.HasSubtype("Blood") })
+func VowB05BloodTokensControlledBy(g *game.Game, player uuid.UUID) int {
+	return CountControlled(g, player, func(c game.Card) bool { return IsToken(c) && c.HasSubtype("Blood") })
 }

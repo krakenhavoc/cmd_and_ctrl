@@ -188,7 +188,7 @@ func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
 	p.Queries = queriesThroughText(ctx, p.Queries, p.ChosenQueries)
 	label := p.Label
 	if label == "" {
-		label = shieldSourceName(ctx) + " — prevent the next damage from a source"
+		label = ShieldSourceName(ctx) + " — prevent the next damage from a source"
 	}
 	shield := game.NextDamageShield{
 		EffectSource: ctx.Source(),
@@ -205,7 +205,7 @@ func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
 	if !p.protect(ctx, &shield) {
 		return nil
 	}
-	return p.pick().resolve(ctx, game.SourceShield{Next: &shield})
+	return p.pick().Resolve(ctx, game.SourceShield{Next: &shield})
 }
 
 // pick is the shield's "which source" half.
@@ -229,7 +229,7 @@ type shieldSourcePick struct {
 // once the controller has chosen: the shield rides the choose_source prompt
 // as data (#4253 slice 10c). A choice that finds no source (no legal
 // candidate, a chooser who left) makes no shield (CR 609.7a).
-func (s shieldSourcePick) resolve(ctx *Context, shield game.SourceShield) error {
+func (s shieldSourcePick) Resolve(ctx *Context, shield game.SourceShield) error {
 	g := ctx.Game
 	switch {
 	case s.FromThis:
@@ -249,7 +249,7 @@ func (s shieldSourcePick) resolve(ctx *Context, shield game.SourceShield) error 
 	case s.Choose:
 		question := s.Question
 		if question == "" {
-			question = shieldSourceName(ctx) + " — choose a source of damage"
+			question = ShieldSourceName(ctx) + " — choose a source of damage"
 		}
 		_, err := g.ChooseDamageSourceThenForEffect(game.ChooseSourcePrompt{
 			Chooser:  ctx.Controller(),
@@ -265,7 +265,7 @@ func (s shieldSourcePick) resolve(ctx *Context, shield game.SourceShield) error 
 }
 
 // shieldSourceName is the card making the shield, for its labels.
-func shieldSourceName(ctx *Context) string {
+func ShieldSourceName(ctx *Context) string {
 	if c, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok && c.Name != "" {
 		return c.Name
 	}
@@ -283,7 +283,7 @@ func (p PreventNextDamageFromSource) protect(ctx *Context, s *game.NextDamageShi
 			s.ProtectPlayer = id
 			return true
 		}
-		if ctx.isNewSourceObject(id) {
+		if ctx.IsNewSourceObject(id) {
 			return false
 		}
 		s.ProtectPermanent = id
@@ -327,7 +327,7 @@ func (p PreventNextDamageFromSource) protect(ctx *Context, s *game.NextDamageShi
 		return one(t.ID)
 	case shieldThisObject:
 		src := ctx.Source()
-		if src == uuid.Nil || ctx.isNewSourceObjectAsThis(src) {
+		if src == uuid.Nil || ctx.IsNewSourceObjectAsThis(src) {
 			return false
 		}
 		s.ProtectPermanent = src
@@ -360,23 +360,23 @@ func QueryTypes(types ...string) game.PermanentQuery {
 var (
 	// "You gain life equal to the damage prevented this way" (Reverse
 	// Damage, Awe Strike, Cho-Arrim Alchemist, Intervention Pact).
-	preventedGainLifeBody = game.DelayedBody("prevention/gain-life-equal", preventedGainLife)
+	PreventedGainLifeBody = game.DelayedBody("prevention/gain-life-equal", preventedGainLife)
 
 	// "<This> deals that much damage to that source's controller"
 	// (Deflecting Palm).
-	preventedDamageSourceControllerBody = game.DelayedBody("prevention/damage-source-controller", preventedDamageSourceController)
+	PreventedDamageSourceControllerBody = game.DelayedBody("prevention/damage-source-controller", preventedDamageSourceController)
 
 	// "If damage from a red source is prevented this way, <this> deals
 	// that much damage to the source's controller" (Honorable Passage).
-	preventedRedDamageSourceControllerBody = game.DelayedBody("prevention/red-damage-source-controller", preventedRedDamageSourceController)
+	PreventedRedDamageSourceControllerBody = game.DelayedBody("prevention/red-damage-source-controller", preventedRedDamageSourceController)
 
 	// "If damage from a black source is prevented this way, you gain
 	// that much life" (Shadowbane).
-	preventedBlackGainLifeBody = game.DelayedBody("prevention/black-gain-life", preventedBlackGainLife)
+	PreventedBlackGainLifeBody = game.DelayedBody("prevention/black-gain-life", preventedBlackGainLife)
 
 	// "Exile cards from the top of your library equal to the damage
 	// prevented this way" (Bone Mask).
-	preventedExileLibraryTopBody = game.DelayedBody("prevention/exile-library-top", preventedExileLibraryTop)
+	PreventedExileLibraryTopBody = game.DelayedBody("prevention/exile-library-top", PreventedExileLibraryTop)
 )
 
 func preventedGainLife(g *game.Game, item *game.StackItem, p game.EffectParams) error {
@@ -407,7 +407,7 @@ func preventedBlackGainLife(g *game.Game, item *game.StackItem, p game.EffectPar
 	return preventedGainLife(g, item, p)
 }
 
-func preventedExileLibraryTop(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+func PreventedExileLibraryTop(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	if p.Amount <= 0 {
 		return nil
 	}

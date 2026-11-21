@@ -14,7 +14,7 @@ import (
 // each matching permanent the activator controls, counted once per English
 // name, read off the live battlefield as the cost is determined (CR 602.2b,
 // 601.2f). Suus Mahna Practitioner's strange new worlds passes Land().
-func trekB9DifferentlyNamedPermanentsYouControl(match CardPredicate) func(q game.CostQuery) int {
+func TrekB9DifferentlyNamedPermanentsYouControl(match CardPredicate) func(q game.CostQuery) int {
 	return func(q game.CostQuery) int {
 		if q.Game == nil || q.Game.Battlefield == nil {
 			return 0
@@ -33,7 +33,7 @@ func trekB9DifferentlyNamedPermanentsYouControl(match CardPredicate) func(q game
 // creature. Put a stun counter on it." as a modal bullet's body (Subcommander
 // T'Pol): the bullet's target, if it chose one and it is still legal, is
 // tapped and gets one stun counter (CR 122.1d).
-func trekB9TapAndStunTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
+func TrekB9TapAndStunTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetCard {
 		return nil
@@ -50,7 +50,7 @@ func trekB9TapAndStunTheModesTarget(_ *game.StackItem, ctx *Context, occ int) er
 // owners' libraries in one move (a library is a CR 903.9 destination, so a
 // commander's owner is asked), then each of those owners shuffles. CR
 // 701.24c: the owners shuffle whether or not their card arrived.
-func trekB9ShuffleTargetsIntoOwnersLibraries(g *game.Game, item *game.StackItem) error {
+func TrekB9ShuffleTargetsIntoOwnersLibraries(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var ids, owners []uuid.UUID
 	seen := map[uuid.UUID]bool{}
@@ -72,5 +72,5 @@ func trekB9ShuffleTargetsIntoOwnersLibraries(g *game.Game, item *game.StackItem)
 		return nil
 	}
 	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{},
-		game.KeyedTail{Ref: thenShuffleEachCarried, Player: item.Controller, Source: item.SourceCardID, Carry: owners})
+		game.KeyedTail{Ref: ThenShuffleEachCarried, Player: item.Controller, Source: item.SourceCardID, Carry: owners})
 }

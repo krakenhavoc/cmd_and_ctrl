@@ -16,7 +16,7 @@ import (
 // optional choose-new-targets offer per other stack item that has a target,
 // the trigger's own item excluded. Each offer is its own prompt the
 // controller may decline, so "any number" is the number they answer.
-func cmdr2S38ChooseNewTargetsForOthers(g *game.Game, item *game.StackItem) error {
+func Cmdr2S38ChooseNewTargetsForOthers(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for id := range g.StackMeta {
@@ -42,15 +42,15 @@ func cmdr2S38ChooseNewTargetsForOthers(g *game.Game, item *game.StackItem) error
 // cmdr2S38PutCountersEqualToPower is Experiment Twelve's "put +1/+1
 // counters on that creature equal to its power": the creature that was
 // turned face up, its power read as the ability resolves.
-func cmdr2S38PutCountersEqualToPower(g *game.Game, item *game.StackItem) error {
+func Cmdr2S38PutCountersEqualToPower(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
 	id := item.Trigger.Event.CardID
-	if !onBattlefield(g, id) {
+	if !OnBattlefield(g, id) {
 		return nil
 	}
-	n := b31CurrentPowerOf(g, id)
+	n := B31CurrentPowerOf(g, id)
 	if n <= 0 {
 		return nil
 	}
@@ -61,8 +61,8 @@ func cmdr2S38PutCountersEqualToPower(g *game.Game, item *game.StackItem) error {
 // Ooze with trample that enters with a +1/+1 counter for each other
 // creature the controller controls. The token is not on the battlefield
 // yet, so every creature counted is "other" than it.
-func cmdr2S38OozeFromFaceUp(g *game.Game, item *game.StackItem) error {
-	x := b14CreaturesControlled(g, item.Controller)
+func Cmdr2S38OozeFromFaceUp(g *game.Game, item *game.StackItem) error {
+	x := B14CreaturesControlled(g, item.Controller)
 	ctx := NewContext(g, item)
 	_, err := g.CreateTokensForEffect(item.Controller,
 		ctx.TextToken(TokenCard("0/0 green Ooze with trample")), 1,
@@ -84,15 +84,15 @@ func cmdr2S38TurnedFaceUpThisTurn(g *game.Game, id uuid.UUID) bool {
 // cmdr2S38FaceUpCreatureDealtCombatDamageToAPlayer is Kaust's "whenever a
 // creature you control that was turned face up this turn deals combat
 // damage to a player".
-func cmdr2S38FaceUpCreatureDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return combatDamageToPlayerBy(ev, source.Controller, g) && cmdr2S38TurnedFaceUpThisTurn(g, ev.Source)
+func Cmdr2S38FaceUpCreatureDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return CombatDamageToPlayerBy(ev, source.Controller, g) && cmdr2S38TurnedFaceUpThisTurn(g, ev.Source)
 }
 
 // cmdr2S38SeatClauses are Unexplained Absence's "for each player, up to one
 // target nonland permanent that player controls": one clause per seat,
 // counted from the caster in turn order, so a table of any size up to four
 // is covered and a seat that is not there has nothing to pick.
-func cmdr2S38SeatClauses() *game.TargetSpec {
+func Cmdr2S38SeatClauses() *game.TargetSpec {
 	var clauses []*game.TargetSpec
 	for k := 0; k < game.MaxPlayers; k++ {
 		k := k
