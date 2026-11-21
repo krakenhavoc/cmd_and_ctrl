@@ -227,6 +227,9 @@ var reviewedNotAWipe = map[string]string{
 	"Azorius Skyguard": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 	// S82 MBS batch 1 (#5576).
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
+
+	// S82 GAP batch 64 (#5948).
+	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
