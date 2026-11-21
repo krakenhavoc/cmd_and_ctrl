@@ -3145,6 +3145,7 @@ tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
 tail echoing-assault/sacrifice-at-next-end-step
+tail ecstatic-beauty/play-and-time-counters
 tail eerie-gravestone/after-mill
 tail elemental-mastery/exile-the-elementals
 tail elemental-teachings/choose
@@ -4159,6 +4160,7 @@ tail then/tibalts-trickery-exile-until
 tail then/tinybones-joins-up-lose-life
 tail then/torment-of-hailfire-punisher-sacrificed
 tail then/transforming-flourish-cast
+tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
 tail then/unwind-history-surveil

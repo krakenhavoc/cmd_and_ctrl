@@ -352,6 +352,13 @@ const (
 	// ScopeOpponentsAndTheirCreatures is the record Controller's
 	// opponents (scopeCoversPlayer). Reads Player.
 	ModCantGainLife ModKind = "cantGainLife"
+	// ModCantLoseLife is "<players> can't lose life" for a duration (CR
+	// 119.8, Everybody Lives!): a rule gate asked before the life window
+	// (lifeChangeForbiddenLocked), by the damage that would cost the life
+	// (the damage is still dealt) and by the cost of paying life
+	// (CanPayLifeLocked). Scope ScopeGame with Player set is that one
+	// player, and with Player zero every player. Reads Player.
+	ModCantLoseLife ModKind = "cantLoseLife"
 	// ModCantGetPoisonCounters is "<player> can't get additional poison
 	// counters this turn" (Melira, the Living Cure; CR 101.2): a rule
 	// gate, not a replacement, asked before the counter window opens
@@ -1244,6 +1251,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
 	ModCantGainLife:           {reader: readerRule},
+	ModCantLoseLife:           {reader: readerRule},
 	ModCantGetPoisonCounters:  {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},
