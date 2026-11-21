@@ -440,6 +440,16 @@ type AbilityCost struct {
 	// reveal_hand_cost.go. An ACTIVATED ability only, like RevealCards.
 	RevealHand bool
 
+	// RevealThis is "Reveal this card from your hand" as a cost: Forecast
+	// (CR 702.57a), Sky Hussar's "Tap two untapped white and/or blue creatures
+	// you control, Reveal this card from your hand: Draw a card." The card
+	// shown is the ability's own source, in the hand it is activated from; it is
+	// shown to every player as the cost is paid (CR 601.2h), before anyone may
+	// respond, and a countered ability has still shown it. Revealing moves
+	// nothing (CR 701.20b). See payRevealThisCostLocked in reveal_this_cost.go.
+	// An ACTIVATED ability only, like RevealCards and RevealHand.
+	RevealThis bool
+
 	// RevealSecretChoice is "Reveal the creature type you chose" as a
 	// cost (A Killer Among Us, secret_choice.go): the word the source's
 	// controller secretly chose for it is shown to the table as the cost
@@ -2540,6 +2550,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #3250: and "Reveal your hand", the whole of it, at the same point.
 	if ab.Cost.RevealHand {
 		g.payRevealHandCostLocked(playerID, cardID)
+	}
+	// "Reveal this card from your hand", at the same point.
+	if ab.Cost.RevealThis {
+		g.payRevealThisCostLocked(playerID, cardID)
 	}
 	// And "Reveal the creature type you chose", while the source is still
 	// on the battlefield to be read.
