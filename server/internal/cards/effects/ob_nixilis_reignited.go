@@ -55,15 +55,7 @@ func init() {
 				Label:   "−8: Target opponent gets an emblem with \"Whenever a player draws a card, you lose 2 life.\"",
 				Cost:    LoyaltyCost(-8),
 				Targets: TargetPlayer("target opponent", Opponent()),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetPlayer {
-							return CreateEmblem{Player: t.ID}.Apply(ctx)
-						}
-					}
-					return nil
-				},
+				Effect:  targetOpponentGetsAnEmblem,
 			},
 		},
 	})

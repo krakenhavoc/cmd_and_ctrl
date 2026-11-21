@@ -500,6 +500,7 @@ body transformers/convert-this
 body transluminant/spirit-token
 body treasure/create-tapped
 body ty-lee-artful-acrobat/cant-block
+body ugin-the-ineffable/exiled-card-to-hand
 body ugins-binding/bounce-all
 body undead-butler/return-to-hand
 body undercity-eliminator/exile
@@ -1526,6 +1527,7 @@ condition havengul-lich/you-cast-it
 condition loki-laufeyson/next-cast
 condition ltb/mechtitan-token
 condition ltb/the-listed-object
+condition ltb/ugin-the-ineffable-spirit
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition pit-automaton/next-exhaust-activation
@@ -2548,6 +2550,7 @@ run prompt-run/fanatic-of-the-harrowing-draw
 run prompt-run/fatal-grudge-draw
 run prompt-run/felothar-sacrifice
 run prompt-run/final-showdown-indestructible
+run prompt-run/finality-counters
 run prompt-run/fire-lord-ozai-add-red
 run prompt-run/first-responder-return
 run prompt-run/foreboding-steamboat-exile
@@ -3276,6 +3279,7 @@ tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
 tail gandalf-shadows-foe/return-lands-tapped
 tail gardens-of-tranquil-repose/its-controller-scries
+tail garruk-apex-predator/gain-life
 tail gemstone-mine/sacrifice-if-empty
 tail georgiou-terran-emperor/draw-then-officers
 tail gerrard-weatherlight-hero/after-exile
@@ -4014,6 +4018,7 @@ tail then/make-an-example-chosen-pile
 tail then/manabond-discard-hand
 tail then/manhole-missile-draw-if-tucked
 tail then/manifest-dread
+tail then/march-from-velis-vel-type-chosen
 tail then/mazemind-tome-gain-life
 tail then/megatron-when-you-do
 tail then/memories-returning-bottomed
@@ -4178,6 +4183,7 @@ tail turtles-forever/library-found
 tail twinflame/exile-copies
 tail tymaret-chosen-from-death/gain-per-creature
 tail ugin-eye-of-the-storms/free-cast-permission
+tail ugin-the-ineffable/spirit-made
 tail uldaros-theorix/copy-exiled
 tail ultimecia/transform
 tail ultra-magnus-tactician/convert-at-end-of-combat
