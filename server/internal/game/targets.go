@@ -2142,7 +2142,15 @@ func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
 		return false
 	}
 	that := src.Trigger.Event.Target
-	return that != uuid.Nil && c.Controller == that
+	if that == uuid.Nil {
+		return false
+	}
+	// A card in a graveyard has no controller to speak of: "in that player's
+	// graveyard" is read from its owner (Neyam Shai Murad).
+	if len(s.Zones) == 1 && s.Zones[0] == ZoneGraveyard {
+		return c.Owner == that
+	}
+	return c.Controller == that
 }
 
 // attackingThatPlayerAdmits is AttackingThatPlayer's gate: true without the
