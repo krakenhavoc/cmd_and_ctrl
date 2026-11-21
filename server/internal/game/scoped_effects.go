@@ -1152,7 +1152,10 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAddColors:        {layer: Layer5Color},
 	ModAddKeywords:      {layer: Layer6Ability},
 	ModRemoveKeywords:   {layer: Layer6Ability},
-	ModLoseAllAbilities: {layer: Layer6Ability, removes: true},
+	// #5948: Shay Cormac's "lose protection and ward" (lose_keyword_families.go).
+	ModRemoveKeywordPrefixes: {layer: Layer6Ability},
+	ModSuppressWard:          {reader: readerRule},
+	ModLoseAllAbilities:      {layer: Layer6Ability, removes: true},
 	// #1859: one own row, not every ability, so it is not `removes`.
 	ModLoseOwnAbility:   {layer: Layer6Ability},
 	ModAddRestrictions:  {layer: Layer6Ability},
@@ -1837,6 +1840,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		if problem := hexproofModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := loseKeywordFamiliesModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := copyModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -2413,6 +2419,8 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		}
 	case ModLoseOwnAbility:
 		return loseOwnAbilityApply(m)
+	case ModRemoveKeywordPrefixes:
+		return removeKeywordPrefixesApply(copyStrings(m.Keywords))
 	case ModRemoveKeywords:
 		keywords := m.Keywords
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
