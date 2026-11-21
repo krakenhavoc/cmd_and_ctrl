@@ -819,6 +819,15 @@ type CastPermission struct {
 	// affinity, which is every permission written before this.
 	AffinityFor string `json:"affinityFor,omitempty"`
 
+	// Undaunted is "that spell has undaunted" (CR 702.125a; Durnan of the
+	// Yawning Portal): a spell cast through this permission costs {1} less
+	// for each opponent its caster has as it is cast (CR 702.125b: every
+	// other seat still in the game). It is CostLess counted off the table,
+	// taken off with it by the one pricer (grantReductionLocked) so the
+	// payment, the preview and the enumerator agree, and never below {0}.
+	// False is no undaunted, which is every permission written before this.
+	Undaunted bool `json:"undaunted,omitempty"`
+
 	// CostMore is "a spell cast this way costs {N} more to cast" (Zero,
 	// Incorporeal Sensate, #4973): generic mana added to the price of a
 	// spell cast through this permission. CostLess's twin, an INCREASE
@@ -3633,6 +3642,9 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 	}
 	// The affinity is counted as the spell is cast (CR 702.41a).
 	reduction := grant.CostLess + g.affinityCountLocked(playerID, grant.AffinityFor)
+	if grant.Undaunted {
+		reduction += g.undauntedCountLocked(playerID)
+	}
 	if reduction <= 0 {
 		return 0
 	}

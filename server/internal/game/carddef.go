@@ -414,6 +414,13 @@ type CardDef struct {
 	// through CatalogAbilityKey; see game.CatalogPlayerLifeFloorOne and
 	// life_floor.go (#5770).
 	PlayerLifeFloorOne bool
+	// PlayerLifeFloorOneIfCreature is Worship's "If you control a creature,
+	// damage that would reduce your life total to less than 1 reduces it to
+	// 1 instead": PlayerLifeFloorOne that applies only while its CONTROLLER
+	// controls a creature. Read from the battlefield through
+	// CatalogAbilityKey; see game.CatalogPlayerLifeFloorOneIfCreature and
+	// life_floor.go (S82 GAP batch 119).
+	PlayerLifeFloorOneIfCreature bool
 	// DamageStaysThroughCleanup is this permanent's printed "Damage
 	// isn't removed from this creature during cleanup steps" (CR 514.2 —
 	// Ancient Adamantoise). Read from the battlefield through
@@ -1188,6 +1195,10 @@ func init() {
 	CatalogPlayerLifeFloorOne = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeFloorOne
+	}
+	CatalogPlayerLifeFloorOneIfCreature = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.PlayerLifeFloorOneIfCreature
 	}
 	CatalogDamageStaysThroughCleanup = func(key string) bool {
 		d := catalogDef(key)

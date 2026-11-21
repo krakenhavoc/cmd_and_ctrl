@@ -119,6 +119,16 @@ type Characteristic struct {
 	// GrantedAbilities below, and every reader keeps that half.
 	AbilitiesRemoved bool
 
+	// IntrinsicLandManaRemoved records that a layer-6 effect took away the
+	// mana abilities a land's basic land types give it (CR 305.6), as
+	// Toxicrene's "all lands ... lose all other abilities" does to a Forest
+	// whose type it leaves alone (CR 613.1f). AbilitiesRemoved alone leaves
+	// them, because CR 305.7's own removal is the half of a land-type change
+	// that arrives with the new type's abilities; an effect that removes
+	// abilities without changing types sets this too, from its Apply. A
+	// layer-6 grant still survives it. Additive, S82 GAP batch 192 (#5948).
+	IntrinsicLandManaRemoved bool `json:",omitempty"`
+
 	// RemovedOwnAbilities are the individual catalog rows of this
 	// object's OWN definition that a layer-6 effect switched off, one
 	// at a time (CR 613.1f, ADR 0106 amendment of 2026-10-07, #1859):

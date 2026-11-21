@@ -1,6 +1,11 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // resolution_exits.go — the replacements of "put it into its owner's
 // graveyard as it resolves" (CR 608.2n), and CR 616.1's choice between
@@ -78,7 +83,26 @@ const (
 	resolutionExitOmen          = "omen"
 	resolutionExitExilePlot     = "exile-plot"
 	resolutionExitExileLinked   = "exile-linked"
+	// resolutionExitExileSuspend is Gandalf of the Secret Fire's exit. The
+	// number of time counters rides the kind itself, "exile-suspend:3", so
+	// it cannot collide with the exile-with-a-counter exit's Words[0].
+	resolutionExitExileSuspend = "exile-suspend"
 )
+
+// exileSuspendKind is the kind of an exile-and-suspend exit with n time
+// counters; exileSuspendCount reads n back, and is false for any other kind.
+func exileSuspendKind(n int) string {
+	return resolutionExitExileSuspend + ":" + strconv.Itoa(n)
+}
+
+func exileSuspendCount(kind string) (int, bool) {
+	rest, ok := strings.CutPrefix(kind, resolutionExitExileSuspend+":")
+	if !ok {
+		return 0, false
+	}
+	n, err := strconv.Atoi(rest)
+	return n, err == nil && n > 0
+}
 
 // apply rewrites the route the way this exit replaces it, and returns
 // what follows the move (zero for nothing) as a registered tail, which
@@ -86,6 +110,13 @@ const (
 // prompt on the exit is a restore point (#4361 S11b).
 func (e resolutionExit) apply(r *zoneRoute) KeyedTail {
 	cardID, controller := e.card, e.controller
+	if n, ok := exileSuspendCount(e.kind); ok {
+		// Gandalf of the Secret Fire: exile it with n time counters and, if
+		// it doesn't have suspend, it gains suspend, once the card is really
+		// in exile (suspend.go's GainSuspendForEffect).
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+		return KeyedTail{Ref: GainSuspendExileTail, Player: controller, N: n}
+	}
 	switch e.kind {
 	case resolutionExitExileInstead:
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, e.owner
@@ -234,6 +265,11 @@ func (g *Game) resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 	if item != nil && !item.IsCopy && item.ExileAndPlot {
 		// Lilah: exile it, and it becomes plotted once it is there.
 		out = append(out, exit("Exile it, and it becomes plotted", resolutionExitExilePlot))
+	}
+	if item != nil && !item.IsCopy && item.ExileAndSuspend > 0 {
+		// Gandalf of the Secret Fire: exile it with time counters, and it
+		// gains suspend if it has none.
+		out = append(out, exit("Exile it with "+strconv.Itoa(item.ExileAndSuspend)+" time counters on it, and it gains suspend", exileSuspendKind(item.ExileAndSuspend)))
 	}
 	if item != nil && !item.IsCopy && item.ExileLinkedTo != nil && g.exileLinkCurrentLocked(*item.ExileLinkedTo) {
 		// Forger's Foundry: exile it, linked to the artifact whose mana

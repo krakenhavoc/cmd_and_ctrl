@@ -261,6 +261,11 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Falcon, Winged Wonder's Redwing (#4455).
 	printedMshA3RedwingToken,
 
+	// Gwaihir, Greatest of the Eagles' Bird (S82 GAP batch 118, #5948).
+	PrintedS82GapB118GwaihirBird,
+	// Wake the Dragon's Dragon (S82 GAP batch 120, #5948).
+	PrintedS82GapB120Dragon,
+
 	// Mole Man, Moloid Master's Moloid (#4455).
 	printedMshB6MoloidToken,
 
@@ -285,6 +290,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Goblin Spymaster's Goblin, whose controller's creatures attack
 	// each combat (Commander 2016, #5537).
 	printedSpymasterGoblinToken,
+
+	// Pursued Whale's Pirate (S82 GAP batch 222, #5948).
+	printedS82GapB222PursuedPirateToken,
 
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
@@ -559,6 +567,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Moira Brown, Guide Author's Wasteland Survival Guide (Fallout, #5948).
 	printedGapB64SurvivalGuideToken,
+
+	// Wolf's Quarry's Boar (S82 GAP batch 176, #5948).
+	printedBoarFoodToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

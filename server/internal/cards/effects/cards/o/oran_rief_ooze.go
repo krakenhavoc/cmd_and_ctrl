@@ -27,14 +27,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(effects.WhenThisEnters("Oran-Rief Ooze — a +1/+1 counter on target creature you control",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					t, ok := effects.FirstLegalTarget(ctx)
-					if !ok {
-						return nil
-					}
-					return effects.AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-				}),
+				effects.PlusOneCounterOnFirstLegalTarget),
 				effects.TargetCreature("target creature you control", effects.YouControl())),
 			effects.WheneverThisAttacks("Oran-Rief Ooze — a +1/+1 counter on each attacking creature with a +1/+1 counter on it",
 				func(g *game.Game, item *game.StackItem) error {
