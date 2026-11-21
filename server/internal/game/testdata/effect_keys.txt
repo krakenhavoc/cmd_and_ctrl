@@ -384,6 +384,7 @@ body reckless-blaze/add-red
 body red-hulk/damage
 body redirection/that-much-to-the-sources-controller
 body rediscover-the-way/double-strike
+body regenerations-restored/extra-turn
 body remnant-of-the-rising-star/counters
 body renown/grow
 body repeated-reverberation/copy-twice
@@ -3286,6 +3287,7 @@ tail freestrider-lookout/rest-on-bottom
 tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
+tail gallifrey-stands/win-at-thirteen-doctors
 tail gandalf-shadows-foe/return-lands-tapped
 tail gap-b88/ryan-sinclair-exiled
 tail gap-b88/suspended-with-time-counters
@@ -3881,6 +3883,7 @@ tail the-grand-evolution/after-mill
 tail the-invincible-iron-man/attach-equipment
 tail the-kenriths-royal-funeral/draw-and-lose
 tail the-master-transcendent/green-mutant
+tail the-parting-of-the-ways/time-counters
 tail the-ring/tempts-you-next
 tail the-rise-of-sozin/named
 tail the-wrath-of-khan/draw-if-exiled
@@ -3999,6 +4002,7 @@ tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
 tail then/haunting-voyage-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
+tail then/heaven-sent-cast-permission
 tail then/heroes-hangout-choose
 tail then/hidetsugu-devouring-chaos-damage
 tail then/high-society-hunter-counter
