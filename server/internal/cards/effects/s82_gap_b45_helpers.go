@@ -24,17 +24,25 @@ func gapB45GrantsDemonstrate(label string, when func(spell game.Card, source *ga
 		Key:       label,
 		Watches:   []game.EventKind{game.EventCast},
 		AppliesTo: socB32YouCastASpellThat(when),
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label+" — demonstrate")
-			item.Controller, item.Owner = ev.Actor, ev.Actor
-			item.Params.Object = game.ObjectRef{ID: ev.CardID}
-			return item
-		},
+		Build:     gapB45DemonstrateBuild(label),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return gapB45DemonstrateSpell(g, item, item.Params.Object.ID)
 		},
 	}
 	return Optional(t, "Demonstrate — copy this spell? If you do, choose an opponent to also copy it.")
+}
+
+// gapB45DemonstrateBuild builds a granted demonstrate trigger's stack
+// item: the spell's caster controls it and the spell rides as
+// Params.Object. Silverquill Lecturer and Elda, Conjurer of Spectacle
+// share it.
+func gapB45DemonstrateBuild(label string) func(game.Event, *game.Card, game.Characteristic, *game.Game) *game.StackItem {
+	return func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+		item := game.NewTriggeredItem(source, label+" — demonstrate")
+		item.Controller, item.Owner = ev.Actor, ev.Actor
+		item.Params.Object = game.ObjectRef{ID: ev.CardID}
+		return item
+	}
 }
 
 // gapB45DemonstrateSpell is demonstrateEffect for a spell the item names
