@@ -14,8 +14,8 @@ import (
 
 // b02IsDesert is the sacrifice-cost predicate for "Sacrifice a
 // Desert" (Scavenger Grounds). Post-layer subtype, exact match.
-func b02IsDesert(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-	return hasSubtype(c, "Desert")
+func B02IsDesert(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+	return CardHasSubtype(c, "Desert")
 }
 
 // b02CreatureCardEnteredGraveyardNotFromBattlefield is Syr Konrad's
@@ -28,7 +28,7 @@ func b02IsDesert(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 // card twice. A death is EventLTB plus a ZoneMove FROM the
 // battlefield, which the OldZone check excludes; the dies clause
 // counts those.
-func b02CreatureCardEnteredGraveyardNotFromBattlefield(ev game.Event, g *game.Game) bool {
+func B02CreatureCardEnteredGraveyardNotFromBattlefield(ev game.Event, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventDiscardCard, game.EventMill, game.EventZoneMove:
 	default:
@@ -43,7 +43,7 @@ func b02CreatureCardEnteredGraveyardNotFromBattlefield(ev game.Event, g *game.Ga
 
 // b02CountLandsControlledBy counts the lands a player controls —
 // Avenger of Zendikar's "for each land you control".
-func b02CountLandsControlledBy(g *game.Game, controller uuid.UUID) int {
+func B02CountLandsControlledBy(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsLand() {
@@ -56,12 +56,12 @@ func b02CountLandsControlledBy(g *game.Game, controller uuid.UUID) int {
 // b02ExileAllGraveyards is "exile all graveyards" — every seat's,
 // the controller's included — through the same per-player helper
 // Bojuka Bog and Farewell use.
-func b02ExileAllGraveyards(g *game.Game, item *game.StackItem) error {
+func B02ExileAllGraveyards(g *game.Game, item *game.StackItem) error {
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
 		}
-		if err := exileGraveyardForEffect(g, item, p.ID); err != nil {
+		if err := ExileGraveyardForEffect(g, item, p.ID); err != nil {
 			return err
 		}
 	}
@@ -70,8 +70,8 @@ func b02ExileAllGraveyards(g *game.Game, item *game.StackItem) error {
 
 // b02EachPlayerMills is "each player mills a card" (Syr Konrad's
 // activated ability): every live seat, the controller included.
-func b02EachPlayerMills(g *game.Game, item *game.StackItem, n int) error {
-	return millEachPlayerInTurn(NewContext(g, item), apnapPlayers(g), constantMill(n), game.KeyedTail{})
+func B02EachPlayerMills(g *game.Game, item *game.StackItem, n int) error {
+	return MillEachPlayerInTurn(NewContext(g, item), ApnapPlayers(g), ConstantMill(n), game.KeyedTail{})
 }
 
 // b02PlantsYouControl lists the creatures with the Plant subtype
@@ -79,10 +79,10 @@ func b02EachPlayerMills(g *game.Game, item *game.StackItem, n int) error {
 // (not targeted: "each Plant creature you control"). `plant` is the
 // creature type as the resolving ability's text now reads it
 // (TextSubtype, CR 612.2, #3984).
-func b02PlantsYouControl(g *game.Game, controller uuid.UUID, plant string) []uuid.UUID {
+func B02PlantsYouControl(g *game.Game, controller uuid.UUID, plant string) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsCreature() && hasSubtype(c, plant) {
+		if c.Controller == controller && c.IsCreature() && CardHasSubtype(c, plant) {
 			out = append(out, c.InstanceID)
 		}
 	}

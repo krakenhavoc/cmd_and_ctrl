@@ -16,9 +16,9 @@ import (
 // as the ability resolves, which is also CR 603.4's second check for an
 // intervening "if". A source that left and came back is a new object
 // and flips nothing (#1432).
-func flipThisIf(cond func(g *game.Game, controller uuid.UUID) bool) Effect {
+func FlipThisIf(cond func(g *game.Game, controller uuid.UUID) bool) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if sourceIsNewObject(g, item) || !cond(g, item.Controller) {
+		if SourceIsNewObject(g, item) || !cond(g, item.Controller) {
 			return nil
 		}
 		return FlipThis{}.Apply(NewContext(g, item))
@@ -28,14 +28,14 @@ func flipThisIf(cond func(g *game.Game, controller uuid.UUID) bool) Effect {
 // flipThisWhen is the clause form: the same check, run from inside an
 // effect that has already done the rest of its text (Jushi Apprentice's
 // draw, Budoka Gardener's land). item is the resolving item.
-func flipThisWhen(g *game.Game, item *game.StackItem, cond func(g *game.Game, controller uuid.UUID) bool) error {
-	return flipThisIf(cond)(g, item)
+func FlipThisWhen(g *game.Game, item *game.StackItem, cond func(g *game.Game, controller uuid.UUID) bool) error {
+	return FlipThisIf(cond)(g, item)
 }
 
 // controlsAtLeast is "you control N or more <things>".
-func controlsAtLeast(n int, match func(game.Card) bool) func(g *game.Game, controller uuid.UUID) bool {
+func YouControlAtLeast(n int, match func(game.Card) bool) func(g *game.Game, controller uuid.UUID) bool {
 	return func(g *game.Game, controller uuid.UUID) bool {
-		return countControlled(g, controller, match) >= n
+		return CountControlled(g, controller, match) >= n
 	}
 }
 
@@ -53,16 +53,16 @@ func controlsAtLeast(n int, match func(game.Card) bool) func(g *game.Game, contr
 // "if" is checked as the end step begins and again as the ability
 // resolves (CR 603.4), and the "may" is asked as it resolves
 // (MayChoice), not as it triggers.
-func kiFlipTriggers(name string) []game.TriggeredAbility {
+func KiFlipTriggers(name string) []game.TriggeredAbility {
 	return []game.TriggeredAbility{
 		Optional(WheneverYouCast(Or(Subtype("Spirit"), Subtype("Arcane")),
-			name+" — put a ki counter on this creature", putACounterOnThis("ki")),
+			name+" — put a ki counter on this creature", PutACounterOnThis("ki")),
 			name+" — put a ki counter on it?"),
 		On(game.EventBeginEndStep, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return source.Counters["ki"] >= 2
 		}, name+" — you may flip it", func(g *game.Game, item *game.StackItem) error {
 			src, ok := g.LookupCardForEffect(item.SourceCardID)
-			if !ok || !onBattlefield(g, item.SourceCardID) || src.Counters["ki"] < 2 || sourceIsNewObject(g, item) {
+			if !ok || !OnBattlefield(g, item.SourceCardID) || src.Counters["ki"] < 2 || SourceIsNewObject(g, item) {
 				return nil
 			}
 			return MayChoice{Question: name + " — flip it?", Then: mayFlipThis}.Apply(NewContext(g, item))
@@ -71,7 +71,7 @@ func kiFlipTriggers(name string) []game.TriggeredAbility {
 }
 
 // removeAKiCounter is the cost "Remove a ki counter from <this>".
-func removeAKiCounter() game.AbilityCost { return RemoveCountersFromThis("ki", 1) }
+func RemoveAKiCounter() game.AbilityCost { return RemoveCountersFromThis("ki", 1) }
 
 // mayFlipThis is the ki cycle's "you may flip it". Keyed (#4291).
 var mayFlipThis = MayYes("confirm/flip-this", func(ctx *Context, _ game.ConfirmAnswer) error {

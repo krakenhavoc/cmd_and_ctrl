@@ -1,0 +1,36 @@
+package cardsx
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Youthful Valkyrie — Creature — Angel {1}{W}, 1/3 (EDHREC rank
+// 3056):
+//
+//	"Flying
+//	 Whenever another Angel you control enters, put a +1/+1 counter
+//	 on this creature."
+//
+// The two-drop Angel that grows with the tribe. Flying rides
+// PrintedKeywords; the trigger is Champion of the Perished's
+// condition for Angels (b10AnotherPermanentWithSubtypeEnteredUnderYourControl
+// — post-layer subtypes, so a token and a changeling both count),
+// and the counter goes on the Valkyrie if it is still on the
+// battlefield when the trigger resolves.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "6d37ba4b-ff56-4eec-9dc2-2d7f357dc9c9",
+		Name:            "Youthful Valkyrie",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.B10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Angel"))
+			}, "Youthful Valkyrie — put a +1/+1 counter on it", effects.Do(effects.CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
+		},
+	})
+}

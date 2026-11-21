@@ -21,7 +21,7 @@ func s82OneB04EachOpponentGetsPoison(ctx *Context) error {
 }
 
 // s82OneB04PoisonStep is the same clause as one step of a spell's body.
-func s82OneB04PoisonStep() Instruction {
+func S82OneB04PoisonStep() Instruction {
 	return func(ctx *Context) error { return s82OneB04EachOpponentGetsPoison(ctx) }
 }
 
@@ -29,7 +29,7 @@ func s82OneB04PoisonStep() Instruction {
 // dies, create a 1/1 colorless Phyrexian Mite artifact creature token with
 // toxic 1 and 'This token can't block.'" creature (Crawling Chorus,
 // Stinging Hivemaster).
-func s82OneB04ToxicDiesMite(oracleID, name string) Spec {
+func S82OneB04ToxicDiesMite(oracleID, name string) Spec {
 	return Spec{
 		OracleID:        oracleID,
 		Name:            name,
@@ -44,9 +44,9 @@ func s82OneB04ToxicDiesMite(oracleID, name string) Spec {
 
 // s82OneB04OpponentPoison is the poison counters your opponents have, summed,
 // read live on every layer pass (Vishgraz).
-func s82OneB04OpponentPoison(g *game.Game, controller uuid.UUID) int {
+func S82OneB04OpponentPoison(g *game.Game, controller uuid.UUID) int {
 	n := 0
-	eachOpponent(g, controller, func(opp uuid.UUID) bool {
+	EachOpponent(g, controller, func(opp uuid.UUID) bool {
 		if p := g.PlayerByIDForEffect(opp); p != nil {
 			n += p.Counters[game.CounterPoison]
 		}
@@ -57,7 +57,7 @@ func s82OneB04OpponentPoison(g *game.Game, controller uuid.UUID) int {
 
 // s82OneB04Edicted is the poison counter an edict hands out once every
 // opponent has sacrificed (Vraska's Fall), keyed.
-var s82OneB04Edicted = RegisterEdictThen("prompt-run/s82-one-b04-vraskas-fall-poison", func(ctx *Context, _ game.PromptedSacrifices) error {
+var S82OneB04Edicted = RegisterEdictThen("prompt-run/s82-one-b04-vraskas-fall-poison", func(ctx *Context, _ game.PromptedSacrifices) error {
 	return s82OneB04EachOpponentGetsPoison(ctx)
 })
 
@@ -66,7 +66,7 @@ var s82OneB04Edicted = RegisterEdictThen("prompt-run/s82-one-b04-vraskas-fall-po
 // source itself is never offered, and zero is a legal answer. Ambrosia
 // Whiteheart and Indoctrination Attendant share it; `keyed` is what runs on
 // the pick.
-func s82OneB04ReturnAnotherPermanent(g *game.Game, item *game.StackItem, question string, keyed PermanentsThen) error {
+func S82OneB04ReturnAnotherPermanent(g *game.Game, item *game.StackItem, question string, keyed PermanentsThen) error {
 	self := item.SourceCardID
 	return ChoosePermanents{
 		Question: question,

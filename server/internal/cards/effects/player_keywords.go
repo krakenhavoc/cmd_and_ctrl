@@ -74,7 +74,7 @@ func YouHaveWhile(keyword, label string, while func(g *game.Game, source game.Ca
 // changes control grants on its new controller's turns.
 func YouHaveDuringYourTurn(keyword string) game.PlayerKeywordIf {
 	return YouHaveWhile(keyword, "During your turn, you have "+keyword+".",
-		func(g *game.Game, source game.Card) bool { return isActivePlayer(g, source.Controller) })
+		func(g *game.Game, source game.Card) bool { return IsActivePlayer(g, source.Controller) })
 }
 
 // ThisHasDuringYourTurn is "This creature has <keyword> during your
@@ -84,7 +84,7 @@ func YouHaveDuringYourTurn(keyword string) game.PlayerKeywordIf {
 // the keyword is gone on an opponent's turn.
 func ThisHasDuringYourTurn(keyword string) game.StaticAbility {
 	ab := KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && isActivePlayer(g, source.Controller)
+		return target.InstanceID == source.InstanceID && IsActivePlayer(g, source.Controller)
 	}, keyword)
 	ab.Label = "Has " + keyword + " during your turn."
 	return ab

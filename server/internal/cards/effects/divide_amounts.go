@@ -23,7 +23,7 @@ import (
 // that point."
 var DivideLandsYouControl = game.RegisterDivideAmount("lands-you-control",
 	func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
-		return game.DivideSpec{Total: b02CountLandsControlledBy(g, a.Controller)}
+		return game.DivideSpec{Total: B02CountLandsControlledBy(g, a.Controller)}
 	})
 
 // DivideSourcePower is "damage equal to its power divided as you
@@ -35,7 +35,7 @@ var DivideLandsYouControl = game.RegisterDivideAmount("lands-you-control",
 var DivideSourcePower = game.RegisterDivideAmount("source-power",
 	func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
 		if a.SourceLKI != nil {
-			return game.DivideSpec{Total: b13LastKnownPower(g, a.Source, *a.SourceLKI)}
+			return game.DivideSpec{Total: B13LastKnownPower(g, a.Source, *a.SourceLKI)}
 		}
 		c, ok := g.LookupCardForEffect(a.Source)
 		if !ok {
@@ -52,7 +52,7 @@ var DivideSourcePower = game.RegisterDivideAmount("source-power",
 // counters will be distributed."
 var DivideLifeYouGainedThisTurn = game.RegisterDivideAmount("life-you-gained-this-turn",
 	func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
-		return game.DivideSpec{Total: b15LifeGainedThisTurn(g, a.Controller)}
+		return game.DivideSpec{Total: B15LifeGainedThisTurn(g, a.Controller)}
 	})
 
 // DivideUnattachedManaValue is "damage equal to that Equipment's mana

@@ -515,7 +515,7 @@ jobs:
       - name: Token templates — match against the real Scryfall dump
         if: ${{ !cancelled() }}
         working-directory: server
-        run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v
+        run: go test ./internal/cards/effects/tests/to/ -run RealDumpEveryTokenTemplate -v
 
       # The oracle-text fixture behind TestAbilitiesMatchOracleText
       # (#1276, ADR 0042 amendment). PR CI has no dump, so the check

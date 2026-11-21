@@ -187,7 +187,7 @@ func CountersOf(kind string) func(c game.Card) int {
 // creature counts by its effective types.
 func PermanentsYouControl(match CardPredicate) func(q game.CostQuery) int {
 	return func(q game.CostQuery) int {
-		return countBattlefield(q, func(c game.Card) bool {
+		return CountBattlefield(q, func(c game.Card) bool {
 			return c.Controller == q.Controller && (match == nil || match(q.Game, q.Controller, c))
 		})
 	}
@@ -198,7 +198,7 @@ func PermanentsYouControl(match CardPredicate) func(q game.CostQuery) int {
 // creature on the battlefield".
 func PermanentsOnBattlefield(match CardPredicate) func(q game.CostQuery) int {
 	return func(q game.CostQuery) int {
-		return countBattlefield(q, func(c game.Card) bool {
+		return CountBattlefield(q, func(c game.Card) bool {
 			return match == nil || match(q.Game, q.Controller, c)
 		})
 	}
@@ -301,7 +301,7 @@ func CountCardsInYourGraveyard(match CardPredicate) func(q game.CostQuery) int {
 // Reads the battlefield in place — the cast path holds the lock and
 // this runs once per modifier per cast — and skips the card being
 // cast, which is never a permanent while it is being cast.
-func countBattlefield(q game.CostQuery, keep func(game.Card) bool) int {
+func CountBattlefield(q game.CostQuery, keep func(game.Card) bool) int {
 	if q.Game == nil || q.Game.Battlefield == nil {
 		return 0
 	}
@@ -367,7 +367,7 @@ func YouGainedLifeThisTurn() CostPredicate {
 // type lines, as every graveyard read: a card there has no layers.
 func YouHaveDelirium() CostPredicate {
 	return func(q game.CostQuery) bool {
-		return q.Game != nil && b16CardTypesInGraveyard(q.Game, q.Controller) >= 4
+		return q.Game != nil && B16CardTypesInGraveyard(q.Game, q.Controller) >= 4
 	}
 }
 
@@ -444,7 +444,7 @@ func TotalManaValueOfHistoricPermanentsYouControl() func(q game.CostQuery) int {
 			if c.InstanceID == q.Card.InstanceID || c.Controller != q.Controller {
 				continue
 			}
-			if b09IsHistoric(c) {
+			if B09IsHistoric(c) {
 				total += c.ManaValue()
 			}
 		}

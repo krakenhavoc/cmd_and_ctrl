@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a planeswalker ability's effect: the first still-legal player target is
 // given the card's emblem (Ob Nixilis Reignited's −8, Garruk, Apex Predator's
 // −8). A target that is no longer legal gives nothing (CR 608.2b).
-func targetOpponentGetsAnEmblem(g *game.Game, item *game.StackItem) error {
+func TargetOpponentGetsAnEmblem(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
@@ -22,7 +22,7 @@ func targetOpponentGetsAnEmblem(g *game.Game, item *game.StackItem) error {
 // life equal to the creature's toughness (N), as it was before it was
 // destroyed (CR 608.2h). It is not conditional on the destruction, and the
 // destruction's continuation runs whatever the move did. An on-disk key.
-var garrukApexPredatorGainLife = CardTail("garruk-apex-predator/gain-life", func(ctx *Context, o game.TailOutcome) error {
+var GarrukApexPredatorGainLife = CardTail("garruk-apex-predator/gain-life", func(ctx *Context, o game.TailOutcome) error {
 	if o.Tail.N <= 0 {
 		return nil
 	}

@@ -1,0 +1,50 @@
+package cardsn
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Nest of Scarabs — Enchantment {2}{B} (EDHREC rank 3495):
+//
+//	"Whenever you put one or more -1/-1 counters on a creature, create
+//	 that many 1/1 black Insect creature tokens."
+//
+// The -1/-1 counters deck's payoff. The engine emits one
+// EventCounterPlaced per placement, carrying the post-change total,
+// so "one or more" is one event and "that many" is its delta — the
+// previous total read back off the log (b33CountersPlacedDelta), the
+// way b11CountersWerePlaced tells a placement from a removal. "You
+// put" is b11CounterPlacerOf: the placement's own actor, which every
+// placement names (ADR 0056 Decision 5, #3942). So an opponent's Black
+// Sun's Zenith on the controller's creature makes the opponent's
+// Nest's Insects, not this one's. Any creature — the controller's own,
+// an opponent's — counts, as printed.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "1f21cf59-6390-44b4-ab2e-ef290dfd8c85",
+		Name:         "Nest of Scarabs",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventCounterPlaced},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.B33YouPutMinusCountersOnACreature(ev, source, g)
+			},
+			Key: "Nest of Scarabs — create a 1/1 black Insect for each -1/-1 counter placed",
+			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+				item := game.NewTriggeredItem(source, "Nest of Scarabs — create a 1/1 black Insect for each -1/-1 counter placed")
+				item.Params.Amount = effects.B33CountersPlacedDelta(ev, game.CounterMinusOne, g)
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Params.Amount <= 0 {
+					return nil
+				}
+				return effects.CreateToken{Controller: item.Controller, Template: effects.TokenCard("1/1 black Insect"), N: item.Params.Amount}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}

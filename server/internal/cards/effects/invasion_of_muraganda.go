@@ -30,14 +30,14 @@ func init() {
 					return err
 				}
 			}
-			return fightTargetClauses(ctx)
+			return FightTargetClauses(ctx)
 		})
 	enters.Targets = Clauses(
 		TargetCreature("target creature you control", YouControl()),
 		TargetCreature("up to one target creature you don't control", OpponentControls()).WithCount(0, 1),
 	)
 	Register(Spec{
-		OracleID:     invasionOfMuragandaOracleID,
+		OracleID:     InvasionOfMuragandaOracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -53,4 +53,4 @@ func init() {
 
 // invasionOfMuragandaOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfMuragandaOracleID = "2e0d12dc-55fa-4363-b28f-612e7cfa12c6"
+const InvasionOfMuragandaOracleID = "2e0d12dc-55fa-4363-b28f-612e7cfa12c6"

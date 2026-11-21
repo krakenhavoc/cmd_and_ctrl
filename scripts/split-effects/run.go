@@ -198,6 +198,16 @@ func afterSplit(root string, tbl *rangeTable, tokenPkg *string) error {
           go test -race -cover -timeout 30m $SHARD_ARGS`); err != nil {
 		return err
 	}
+	// The client's signature catalog test reads card Specs from the effects
+	// directory; card files now sit in the shards below it, so read the tree
+	// (but not effectstest, whose helpers were lifted out of tests).
+	if err := replaceOnce(filepath.Join(root, "client", "src", "lib", "fx", "signatures.test.ts"),
+		`  const specs = readdirSync(effectsDir)
+    .filter((f) => f.endsWith(".go") && !f.endsWith("_test.go"))`,
+		`  const specs = readdirSync(effectsDir, { recursive: true, encoding: "utf8" })
+    .filter((f) => f.endsWith(".go") && !f.endsWith("_test.go") && !f.startsWith("effectstest"))`); err != nil {
+		return err
+	}
 	if tokenPkg != nil {
 		if *tokenPkg == "" {
 			return fmt.Errorf("no test package holds TestRealDumpEveryTokenTemplateMatchesAPrintedToken")

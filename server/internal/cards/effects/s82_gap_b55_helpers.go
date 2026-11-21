@@ -12,9 +12,9 @@ import (
 // from a graveyard onto the battlefield under your control" as an ability's
 // whole body: the announced card, if it is still a legal pick as the ability
 // resolves (CR 608.2b), enters under the activator's control.
-func gapB55PutTargetCreatureCardOntoTheBattlefield(g *game.Game, item *game.StackItem) error {
+func GapB55PutTargetCreatureCardOntoTheBattlefield(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	card, found := b16FirstLegalTargetCard(ctx)
+	card, found := B16FirstLegalTargetCard(ctx)
 	if !found {
 		return nil
 	}
@@ -34,7 +34,7 @@ var gapB55BirthingRitualSacrificed = CardTail("gap-b55-birthing-ritual/sacrifice
 	if len(o.IDs) == 0 {
 		return g.PutOnBottomInRandomOrderForEffect(player, game.ZoneLibrary, o.Tail.Carry)
 	}
-	x := 1 + departedManaValue(g, o.IDs[0])
+	x := 1 + DepartedManaValue(g, o.IDs[0])
 	return PutFromLibraryOntoBattlefield{
 		Player:   player,
 		Cards:    o.Tail.Carry,
@@ -69,12 +69,12 @@ var gapB55BirthingRitualPick = RegisterPermanentsPick("gap-b55-birthing-ritual/s
 
 // gapB55BirthingRitualLook is the trigger's body: look at the top seven
 // cards, then ask whether to sacrifice a creature.
-func gapB55BirthingRitualLook(g *game.Game, item *game.StackItem) error {
+func GapB55BirthingRitualLook(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	looked := g.LookAtTopOfLibraryForEffect(ctx.Controller(), 7)
 	return ChoosePermanents{
 		Question:   "Birthing Ritual — you may sacrifice a creature",
-		Candidates: r34UpToOneCreatureYouControl,
+		Candidates: R34UpToOneCreatureYouControl,
 		Keyed:      gapB55BirthingRitualPick,
 		Carry:      looked,
 	}.Apply(ctx)

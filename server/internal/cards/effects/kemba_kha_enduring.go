@@ -32,7 +32,7 @@ func init() {
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.Controller == source.Controller && isEquippedCreature(g, *target)
+				return target.Controller == source.Controller && IsEquippedCreature(g, *target)
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power++
@@ -40,7 +40,7 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			Targeting(On(game.EventETB, kembaOrAnotherCatEntered,
+			Targeting(On(game.EventETB, KembaOrAnotherCatEntered,
 				"Kemba, Kha Enduring — attach up to one target Equipment you control to that creature",
 				kembaAttachToEntered),
 				TargetPermanent("up to one target Equipment you control", HasSubtype("Equipment"), YouControl()).WithCount(0, 1)),
@@ -58,7 +58,7 @@ func init() {
 
 // kembaOrAnotherCatEntered is the trigger condition: Kemba, or another Cat
 // her controller controls, entered.
-func kembaOrAnotherCatEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func KembaOrAnotherCatEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return true
 	}

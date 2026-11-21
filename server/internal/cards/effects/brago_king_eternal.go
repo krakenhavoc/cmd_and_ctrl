@@ -35,7 +35,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				WheneverThisDealsCombatDamageToAPlayer("Brago, King Eternal — exile your permanents, then return them", bragoBlinkTargets),
+				WheneverThisDealsCombatDamageToAPlayer("Brago, King Eternal — exile your permanents, then return them", BragoBlinkTargets),
 				TargetPermanent("any number of target nonland permanents you control", Nonland(), YouControl()).WithCount(0, 0),
 			),
 		},
@@ -44,7 +44,7 @@ func init() {
 
 // bragoBlinkTargets exiles every still-legal target at once and returns
 // the cards that reached exile under their owners' control, together.
-func bragoBlinkTargets(g *game.Game, item *game.StackItem) error {
+func BragoBlinkTargets(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
@@ -55,11 +55,11 @@ func bragoBlinkTargets(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsKeyedForEffect(ids, ctx.ItemTail(bragoReturn))
+	return g.ExileCardsKeyedForEffect(ids, ctx.ItemTail(BragoReturn))
 }
 
 // bragoReturn returns the cards that reached exile, together (#4253 slice 9).
-var bragoReturn = CardTail("brago-king-eternal/return-exiled", func(ctx *Context, o game.TailOutcome) error {
+var BragoReturn = CardTail("brago-king-eternal/return-exiled", func(ctx *Context, o game.TailOutcome) error {
 	g, item, exiled := ctx.Game, ctx.Item, o.IDs
 
 	return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))

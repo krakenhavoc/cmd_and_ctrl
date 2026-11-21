@@ -37,7 +37,7 @@ func init() {
 					if err := (MillCards{N: 1}).Apply(ctx); err != nil {
 						return err
 					}
-					if creatureCardsInGraveyard(g, item.Controller) < 3 {
+					if CreatureCardsInGraveyard(g, item.Controller) < 3 {
 						return nil
 					}
 					return TransformThis{}.Apply(ctx)
@@ -56,7 +56,7 @@ func init() {
 }
 
 // creatureCardsInGraveyard counts the creature cards in a player's graveyard.
-func creatureCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+func CreatureCardsInGraveyard(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
@@ -100,7 +100,7 @@ func deathbonnetHulkAsk(g *game.Game, item *game.StackItem) error {
 
 // deathbonnetHulkExile exiles the pick and, if it was a creature card, puts
 // the counter on. An on-disk key: never renamed, never reused.
-var deathbonnetHulkExile = askedPick("choose-cards/deathbonnet-hulk-exile",
+var deathbonnetHulkExile = AskedPick("choose-cards/deathbonnet-hulk-exile",
 	func(ctx *Context, r game.CardsChosen) error {
 		for _, id := range r.Picked {
 			return ExileThenIfItWas{Target: id, Was: WasCreatureCard, Keyed: deathbonnetHulkCounter}.Apply(ctx)

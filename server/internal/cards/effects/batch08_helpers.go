@@ -29,7 +29,7 @@ import (
 // controller cast an enchantment spell. The card is read off the
 // stack, where its type line is intact. Shaped as a TriggeredAbility
 // AppliesTo so the two cards can name it directly.
-func enchantmentSpellCastByYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func EnchantmentSpellCastByYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -39,13 +39,13 @@ func enchantmentSpellCastByYou(ev game.Event, source *game.Card, _ game.Characte
 
 // b08IsInstantOrSorceryCard is the SearchLibrary predicate for "an
 // instant or sorcery card" (Solve the Equation).
-func b08IsInstantOrSorceryCard(c game.Card) bool { return c.IsInstant() || c.IsSorcery() }
+func B08IsInstantOrSorceryCard(c game.Card) bool { return c.IsInstant() || c.IsSorcery() }
 
 // b08ControlsLegendaryCreature is Mines of Moria's "unless you
 // control a legendary creature". Post-layer types and supertypes, so
 // an animated legendary artifact counts exactly as CR 205.4 would
 // have it.
-func b08ControlsLegendaryCreature(g *game.Game, controller uuid.UUID) bool {
+func B08ControlsLegendaryCreature(g *game.Game, controller uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.IsLegendary() {
 			return true
@@ -58,7 +58,7 @@ func b08ControlsLegendaryCreature(g *game.Game, controller uuid.UUID) bool {
 // controls that carry `subtype` — Emeria's "seven or more Plains".
 // Effective subtypes, so an Urborg-style type grant counts, which is
 // what the printed word means.
-func b08LandsWithSubtypeControlled(g *game.Game, controller uuid.UUID, subtype string) int {
+func B08LandsWithSubtypeControlled(g *game.Game, controller uuid.UUID, subtype string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsLand() && c.HasSubtype(subtype) {
@@ -71,13 +71,13 @@ func b08LandsWithSubtypeControlled(g *game.Game, controller uuid.UUID, subtype s
 // b08SacrificeALand is Zuran Orb's cost — "Sacrifice a land:". Built
 // through the same clause the sac-outlet costs use, so the client
 // opens the same picker.
-func b08SacrificeALand() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a land", Land())}
+func B08SacrificeALand() game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a land", Land())}
 }
 
 // b08SacrificeAToken is Fountainport's "Sacrifice a token:".
-func b08SacrificeAToken() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a token", IsTokenPredicate())}
+func B08SacrificeAToken() game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a token", IsTokenPredicate())}
 }
 
 // --- effect bodies -----------------------------------------------
@@ -87,7 +87,7 @@ func b08SacrificeAToken() game.AbilityCost {
 // actually drew comes back. "Drew a card this way" is read as "had a
 // card to draw": a player whose library is empty draws nothing (and
 // loses at the next check), so they do not earn the caster a card.
-func b08EachOpponentDraws(g *game.Game, item *game.StackItem) (int, error) {
+func B08EachOpponentDraws(g *game.Game, item *game.StackItem) (int, error) {
 	ctx := NewContext(g, item)
 	drew := 0
 	for _, opp := range ctx.Opponents() {
@@ -120,7 +120,7 @@ func b08EachOpponentDraws(g *game.Game, item *game.StackItem) (int, error) {
 // batch skips a permanent that has already left rather than routing
 // it, and a sacrificed commander answers CR 903.9 on its own time
 // without holding anything up.
-func b08SacrificeAllMatching(ctx *Context, match CardPredicate) error {
+func B08SacrificeAllMatching(ctx *Context, match CardPredicate) error {
 	matched := MatchingBattlefield(ctx, match)
 	doomed := make([]uuid.UUID, 0, len(matched))
 	for _, c := range matched {
@@ -135,8 +135,8 @@ func b08SacrificeAllMatching(ctx *Context, match CardPredicate) error {
 // +1/+1 counters on it as it already has. Snapshots the set and the
 // counts first, so a counter doubler (Doubling Season) that fires on
 // the first creature cannot change what the second receives.
-func b08DoubleCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem) error {
-	return doublePlusOneCountersOnEach(g, item, func(c game.Card) bool {
+func B08DoubleCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem) error {
+	return DoublePlusOneCountersOnEach(g, item, func(c game.Card) bool {
 		return c.Controller == item.Controller && c.IsCreature()
 	})
 }
@@ -144,7 +144,7 @@ func b08DoubleCountersOnEachCreatureYouControl(g *game.Game, item *game.StackIte
 // doublePlusOneCountersOnEach doubles the +1/+1 counters on each
 // battlefield card `match` accepts: the shared body of Bristly Bill's
 // "each creature you control" and Hulk's "each Gamma creature you control".
-func doublePlusOneCountersOnEach(g *game.Game, item *game.StackItem, match func(c game.Card) bool) error {
+func DoublePlusOneCountersOnEach(g *game.Game, item *game.StackItem, match func(c game.Card) bool) error {
 	ctx := NewContext(g, item)
 	type grow struct {
 		id uuid.UUID
@@ -160,7 +160,7 @@ func doublePlusOneCountersOnEach(g *game.Game, item *game.StackItem, match func(
 		}
 	}
 	for _, t := range todo {
-		if err := (AddCounter{Target: t.id, Kind: "+1/+1", N: t.n}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: t.id, Kind: "+1/+1", N: t.n}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -174,7 +174,7 @@ func doublePlusOneCountersOnEach(g *game.Game, item *game.StackItem, match func(
 // library unshuffled so the Plains search sees the same order; the
 // second shuffles once, as printed. Failing to find a Forest does not
 // forfeit the Plains.
-func b08KrosanVergeFetch(g *game.Game, item *game.StackItem) error {
+func B08KrosanVergeFetch(g *game.Game, item *game.StackItem) error {
 	controller, source := item.Controller, item.SourceCardID
 	return SearchLibrary{
 		Player:        controller,
@@ -221,7 +221,7 @@ var krosanVergePlainsSearch = game.RegisterTail("krosan-verge/plains-search", fu
 // condition is honoured in both directions — a land bounced in
 // response cannot be sacrificed, so no reflexive trigger is created
 // and nothing is searched.
-func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
+func B08OverlookLand(oracleID, name string, subtypes ...string) Spec {
 	pred := IsBasicLandOfAnySubtype(subtypes...)
 	reason := name + " — a basic " + subtypes[0]
 	for i := 1; i < len(subtypes); i++ {
@@ -237,14 +237,14 @@ func b08OverlookLand(oracleID, name string, subtypes ...string) Spec {
 	// this land's "when you do" waiting is a restore point. reason and
 	// pred are the land's own printed basics, fixed for the life of the
 	// binary; nothing per-game or per-instance is captured.
-	fetchBody := game.SimpleDelayedBody("overlook/"+b08OverlookSlug(name)+"-fetch", b08OverlookFetchFor(reason, pred))
+	fetchBody := game.SimpleDelayedBody("overlook/"+b08OverlookSlug(name)+"-fetch", B08OverlookFetchFor(reason, pred))
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, b06SelfETB, name+" — sacrifice it",
-				b08OverlookSacrifice(name+" — fetch a basic tapped, gain 1 life", fetchBody)),
+			On(game.EventETB, B06SelfETB, name+" — sacrifice it",
+				B08OverlookSacrifice(name+" — fetch a basic tapped, gain 1 life", fetchBody)),
 		},
 	}
 }
@@ -268,13 +268,13 @@ func b08OverlookSlug(name string) string {
 // `fetchBody` is a registered game.BodyRef, plain data captured by
 // value — no *Card, no *Game — so this closure survives Clone / undo
 // like any other catalog trigger's.
-func b08OverlookSacrifice(fetchLabel string, fetchBody game.BodyRef) Effect {
+func B08OverlookSacrifice(fetchLabel string, fetchBody game.BodyRef) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		// #1432: a land that left and came back is a new object — the
 		// sacrifice does nothing, so there is no "when you do" either.
 		if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield ||
-			ctx.isNewSourceObjectAsThis(item.SourceCardID) {
+			ctx.IsNewSourceObjectAsThis(item.SourceCardID) {
 			return nil
 		}
 		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
@@ -289,7 +289,7 @@ func b08OverlookSacrifice(fetchLabel string, fetchBody game.BodyRef) Effect {
 // gain 1 life. The land that made this trigger is in a graveyard by
 // now, which is fine — the life gain is attributed to it by ID and
 // nothing reads the permanent.
-func b08OverlookFetchFor(reason string, pred func(game.Card) bool) func(g *game.Game, item *game.StackItem) error {
+func B08OverlookFetchFor(reason string, pred func(game.Card) bool) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		source, controller := item.SourceCardID, item.Controller
 		return SearchLibrary{
@@ -302,7 +302,7 @@ func b08OverlookFetchFor(reason string, pred func(game.Card) bool) func(g *game.
 			TappedOnEntry: true,
 			Reason:        reason,
 			// #4253 slice 4: "you gain 1 life" is a registered tail.
-			ThenTail: game.KeyedTail{Ref: thenChangeLife, Player: controller, Source: source, N: 1},
+			ThenTail: game.KeyedTail{Ref: ThenChangeLife, Player: controller, Source: source, N: 1},
 		}.Apply(NewContext(g, item))
 	}
 }
@@ -319,13 +319,13 @@ func b08OverlookFetchFor(reason string, pred func(game.Card) bool) func(g *game.
 // reaches for it first; the filter half is planned (#2455) only when
 // nothing that owes no mana can pay, with its {A/B} funded by the
 // plan's other sources.
-func b08FilterLand(oracleID, name, a, b string) Spec {
+func B08FilterLand(oracleID, name, a, b string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
-			painlessColorless(),
+			PainlessColorless(),
 			{
 				Cost:     ManaAbilityCost{Tap: true, Mana: "{" + a + "/" + b + "}"},
 				Produced: "{" + a + "|" + b + "}{" + a + "|" + b + "}",

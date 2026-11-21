@@ -24,7 +24,7 @@ import (
 // the one counted immediately before it is the same move.
 //
 // Caller holds g.mu.
-func rfCardsMilledThisTurn(g *game.Game, owner uuid.UUID) int {
+func RfCardsMilledThisTurn(g *game.Game, owner uuid.UUID) int {
 	n := 0
 	var lastCounted uuid.UUID
 	var lastIdx = -2
@@ -67,16 +67,16 @@ type BecomeUnprepared struct {
 }
 
 func (b BecomeUnprepared) Apply(ctx *Context) error {
-	if ctx.isNewSourceObject(b.Target) { // #1432
+	if ctx.IsNewSourceObject(b.Target) { // #1432
 		return nil
 	}
-	return nothingIfGone(ctx.Game.UnprepareForEffect(b.Target))
+	return NothingIfGone(ctx.Game.UnprepareForEffect(b.Target))
 }
 
 // seedSutureResolve is Seed Suture, the prepare spell of both
 // Blossom-Blessed Angel and Emergency Phytomedic: "Put a +1/+1 counter
 // on target creature. You gain 1 life."
-func seedSutureResolve(_ *game.StackItem, ctx *Context) error {
+func SeedSutureResolve(_ *game.StackItem, ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
 			return err
@@ -87,7 +87,7 @@ func seedSutureResolve(_ *game.StackItem, ctx *Context) error {
 
 // soulTetherResolve is Soul Tether, the prepare spell of both Heartwood
 // Crafter and Konstrari Improviser: "Create a Heartwood token."
-func soulTetherResolve(_ *game.StackItem, ctx *Context) error {
+func SoulTetherResolve(_ *game.StackItem, ctx *Context) error {
 	return CreateToken{Template: HeartwoodToken(), N: 1}.Apply(ctx)
 }
 
@@ -95,7 +95,7 @@ func soulTetherResolve(_ *game.StackItem, ctx *Context) error {
 // "prepared spell": the copy of a prepare spell its controller cast out
 // of exile (CR 722.3c). Those are the only copies the cast path ever
 // puts on the stack, so a cast spell that is a copy is a prepared spell.
-func castAPreparedSpell(g *game.Game, spellID uuid.UUID) bool {
+func CastAPreparedSpell(g *game.Game, spellID uuid.UUID) bool {
 	if c, ok := g.LookupCardForEffect(spellID); ok && c.PrepareCopy {
 		return true
 	}
@@ -107,7 +107,7 @@ func castAPreparedSpell(g *game.Game, spellID uuid.UUID) bool {
 // from your graveyard to your hand": the first legal card target the
 // trigger or spell announced goes to its owner's hand. Evolution
 // Witness and Carnivorous Cultivator both end this way.
-func returnTargetGraveyardCardToHand(g *game.Game, item *game.StackItem) error {
+func ReturnTargetGraveyardCardToHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -119,14 +119,14 @@ func returnTargetGraveyardCardToHand(g *game.Game, item *game.StackItem) error {
 
 // frJaceSubtype is the planeswalker type "behold a Jace" and "Jace
 // planeswalkers" name.
-const frJaceSubtype = "Jace"
+const FrJaceSubtype = "Jace"
 
 // frYouControlAJace reports whether `player` controls a permanent with the
 // Jace subtype — a Jace planeswalker card or the Jace token. It is the
 // "choose a Jace you control" half of behold. Caller holds g.mu.
 func frYouControlAJace(g *game.Game, player uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == player && c.HasSubtype(frJaceSubtype) {
+		if c.Controller == player && c.HasSubtype(FrJaceSubtype) {
 			return true
 		}
 	}
@@ -140,9 +140,9 @@ func frYouControlAJace(g *game.Game, player uuid.UUID) bool {
 // better than the tapped alternative, so a controlled Jace makes the
 // replacement not apply at all (no prompt, enters untapped); otherwise
 // the reveal-from-hand prompt of the reveal-lands is asked.
-func frEntersTappedUnlessYouBeholdAJace(name string) game.ReplacementEffect {
+func FrEntersTappedUnlessYouBeholdAJace(name string) game.ReplacementEffect {
 	rep := EntersTappedUnlessYouRevealFromHand(name, "a Jace card",
-		func(c game.Card) bool { return c.HasSubtype(frJaceSubtype) })
+		func(c game.Card) bool { return c.HasSubtype(FrJaceSubtype) })
 	rep.RowLabel = "Enters tapped unless you control a Jace or reveal one from your hand."
 	applies := rep.AppliesTo
 	rep.AppliesTo = func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -158,7 +158,7 @@ func frEntersTappedUnlessYouBeholdAJace(name string) game.ReplacementEffect {
 // counter on each planeswalker you control" (Way of the Mentor, Way of
 // the Necromancer). The set is fixed when the trigger resolves, and the
 // walkers are the trigger controller's.
-func frPutLoyaltyCounterOnEachPlaneswalkerYouControl(g *game.Game, item *game.StackItem) error {
+func FrPutLoyaltyCounterOnEachPlaneswalkerYouControl(g *game.Game, item *game.StackItem) error {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == item.Controller && c.IsPlaneswalker() {
@@ -166,7 +166,7 @@ func frPutLoyaltyCounterOnEachPlaneswalkerYouControl(g *game.Game, item *game.St
 		}
 	}
 	for _, id := range ids {
-		if err := nothingIfGone(g.AddCounterForEffect(id, game.CounterLoyalty, 1)); err != nil {
+		if err := NothingIfGone(g.AddCounterForEffect(id, game.CounterLoyalty, 1)); err != nil {
 			return err
 		}
 	}
@@ -176,7 +176,7 @@ func frPutLoyaltyCounterOnEachPlaneswalkerYouControl(g *game.Game, item *game.St
 // frYouActivatedALoyaltyAbility is "whenever you activate a loyalty
 // ability": a loyalty ability (CR 606.2), printed or granted, announced
 // by the source's controller.
-func frYouActivatedALoyaltyAbility(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func FrYouActivatedALoyaltyAbility(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventActivateAbility && ev.Loyalty && ev.Actor == source.Controller
 }
 
@@ -186,7 +186,7 @@ func frYouActivatedALoyaltyAbility(ev game.Event, source *game.Card, _ game.Char
 // the planeswalker's current abilities by the event's label, because the
 // loyalty cost path records no counters-removed fact. A planeswalker that
 // has already left reads as false (weaker than printed, never stronger).
-func frLoyaltyAbilityRemovedAtLeast(ev game.Event, g *game.Game, n int) bool {
+func FrLoyaltyAbilityRemovedAtLeast(ev game.Event, g *game.Game, n int) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	if !ok {
 		return false
@@ -210,7 +210,7 @@ func frLoyaltyAbilityRemovedAtLeast(ev game.Event, g *game.Game, n int) bool {
 // planeswalker as it stands: the toughness less damage already marked for a
 // creature, the loyalty for a planeswalker, and the larger of the two for
 // something that is both (CR 120.4a).
-func frLethalDamage(c game.Card) int {
+func FrLethalDamage(c game.Card) int {
 	lethal := 0
 	if c.IsCreature() {
 		lethal = c.CurrentToughness() - c.DamageMarked
@@ -230,7 +230,7 @@ func frLethalDamage(c game.Card) int {
 // "unless you control a planeswalker". Read once as the land enters
 // (CR 614.12), against effective types so a planeswalker that is also
 // something else still counts.
-func youControlAPlaneswalker(g *game.Game, controller uuid.UUID) bool {
+func YouControlAPlaneswalker(g *game.Game, controller uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsPlaneswalker() {
 			return true
@@ -242,11 +242,11 @@ func youControlAPlaneswalker(g *game.Game, controller uuid.UUID) bool {
 // AjanisPridemateToken is Ajani Resolute's −4 token: a 2/2 white Cat
 // Soldier named Ajani's Pridemate with "Whenever you gain life, put a
 // +1/+1 counter on this token."
-func AjanisPridemateToken() game.Card { return tokenFromCatalog(printedAjanisPridemateToken) }
+func AjanisPridemateToken() game.Card { return TokenFromCatalog(printedAjanisPridemateToken) }
 
 // printedAjanisPridemateToken is that token as PRINTED, ability included.
-func printedAjanisPridemateToken() tokenTemplate {
-	return tokenTemplate{
+func printedAjanisPridemateToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "ajanis-pridemate",
 		Card: game.Card{
 			Name:      "Ajani's Pridemate",
@@ -256,7 +256,7 @@ func printedAjanisPridemateToken() tokenTemplate {
 			Colors:    []string{"W"},
 		},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouGainLife("Ajani's Pridemate — put a +1/+1 counter on it", putCounterOnSelf),
+			WheneverYouGainLife("Ajani's Pridemate — put a +1/+1 counter on it", PutCounterOnSelf),
 		},
 		Text: "Whenever you gain life, put a +1/+1 counter on this token.",
 	}
@@ -271,7 +271,7 @@ func printedAjanisPridemateToken() tokenTemplate {
 // player has answered: every card that is new in it was put there by the
 // surveil (nothing else moves a card into this graveyard while the
 // prompt is open), and each noncreature, nonland one is returned to hand.
-func surveilKeepNoncreatureNonland(g *game.Game, item *game.StackItem) error {
+func SurveilKeepNoncreatureNonland(g *game.Game, item *game.StackItem) error {
 	me := item.Controller
 	p := g.PlayerByIDForEffect(me)
 	if p == nil {
@@ -316,20 +316,20 @@ var surveilKeepNoncreatureNonlandTail = CardTail("reality-fracture/surveil-keep-
 
 // fraThresholdMet is threshold (ability word): seven or more cards in
 // the controller's graveyard.
-func fraThresholdMet(g *game.Game, controller uuid.UUID) bool {
-	return b31GraveyardSize(g, controller) >= 7
+func FraThresholdMet(g *game.Game, controller uuid.UUID) bool {
+	return B31GraveyardSize(g, controller) >= 7
 }
 
 // fraThresholdSelfPT is "Threshold — This creature gets +P/+T as long
 // as there are seven or more cards in your graveyard": a layer 7c
 // self-modifier read live on every recompute.
-func fraThresholdSelfPT(power, toughness int) game.StaticAbility {
+func FraThresholdSelfPT(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:    "Gets " + signedPT(power, toughness) + " while there are seven or more cards in your graveyard.",
+		Label:    "Gets " + SignedPT(power, toughness) + " while there are seven or more cards in your graveyard.",
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.InstanceID == source.InstanceID && fraThresholdMet(g, source.Controller)
+			return target.InstanceID == source.InstanceID && FraThresholdMet(g, source.Controller)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Power += power
@@ -340,9 +340,9 @@ func fraThresholdSelfPT(power, toughness int) game.StaticAbility {
 
 // fraThresholdSelfKeywords is "Threshold — This creature has <keywords>
 // as long as there are seven or more cards in your graveyard".
-func fraThresholdSelfKeywords(keywords ...string) game.StaticAbility {
-	s := b16GrantKeywords(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && fraThresholdMet(g, source.Controller)
+func FraThresholdSelfKeywords(keywords ...string) game.StaticAbility {
+	s := B16GrantKeywords(func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return target.InstanceID == source.InstanceID && FraThresholdMet(g, source.Controller)
 	}, keywords...)
 	s.Label = "Has " + joinWords(keywords) + " while there are seven or more cards in your graveyard."
 	return s
@@ -353,7 +353,7 @@ func fraThresholdSelfKeywords(keywords ...string) game.StaticAbility {
 // an intervening if (CR 603.4): checked when the upkeep begins, so a
 // creature that is already prepared never puts the ability on the
 // stack, and BecomePrepared re-checks as it resolves.
-func fraBecomesPreparedAtUpkeep(name string) game.TriggeredAbility {
+func FraBecomesPreparedAtUpkeep(name string) game.TriggeredAbility {
 	return On(game.EventBeginUpkeep,
 		func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 			return ByYou(ev, source, lki, g) && !g.IsPreparedForEffect(source.InstanceID)
@@ -366,7 +366,7 @@ func fraBecomesPreparedAtUpkeep(name string) game.TriggeredAbility {
 
 // omitVariablesResolve is Omit Variables, the prepare spell of Paradox
 // Shaper, Theorix Metamage and Void Extrapolator: "Mill three cards."
-func omitVariablesResolve(_ *game.StackItem, ctx *Context) error {
+func OmitVariablesResolve(_ *game.StackItem, ctx *Context) error {
 	return MillCards{N: 3}.Apply(ctx)
 }
 
@@ -374,7 +374,7 @@ func omitVariablesResolve(_ *game.StackItem, ctx *Context) error {
 // Fateseer and Semester Foreseer: "Create a 2/2 colorless Wizard Soldier
 // creature token named Cadet. Surveil 1." The surveil runs after the
 // token is made, in printed order.
-func peerReviewResolve(_ *game.StackItem, ctx *Context) error {
+func PeerReviewResolve(_ *game.StackItem, ctx *Context) error {
 	if err := (CreateToken{Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"), N: 1}).Apply(ctx); err != nil {
 		return err
 	}
@@ -384,7 +384,7 @@ func peerReviewResolve(_ *game.StackItem, ctx *Context) error {
 // viciousVerseResolve is Vicious Verse, the prepare spell of Stingerquill
 // Voxmancer and Whiplash Wordsmith: "Vicious Verse deals 1 damage to
 // target opponent."
-func viciousVerseResolve(item *game.StackItem, ctx *Context) error {
+func ViciousVerseResolve(item *game.StackItem, ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
 			return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
@@ -405,9 +405,9 @@ func viciousVerseResolve(item *game.StackItem, ctx *Context) error {
 // opens the CR 614 window, and a commander's owner may be asked about
 // the command zone first (CR 903.9). The reveal is not an "if you do" —
 // it happens even if the exile was replaced.
-func rfExileTargetThenRevealCreatureOrPlaneswalker(g *game.Game, item *game.StackItem) error {
+func RfExileTargetThenRevealCreatureOrPlaneswalker(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -421,9 +421,9 @@ func rfExileTargetThenRevealCreatureOrPlaneswalker(g *game.Game, item *game.Stac
 // of your library": the controller picks one card (the whole hand is the
 // pick when it holds one card; an empty hand is not asked), and it is
 // tucked on the bottom.
-func rfPutCardFromHandOnBottom(ctx *Context, question string) error {
+func RfPutCardFromHandOnBottom(ctx *Context, question string) error {
 	player := ctx.Controller()
-	hand := allHandCardIDs(ctx.Game, player)
+	hand := AllHandCardIDs(ctx.Game, player)
 	if len(hand) == 0 {
 		return nil
 	}
@@ -457,7 +457,7 @@ var rfHandCardOnBottom = game.RegisterChooseCardsThen("choose-cards/reality-frac
 // several kinds (a planeswalker with a stun counter) is the chooser's
 // call, as the rules make it. A permanent that has left the battlefield,
 // or has no counters left, ends the run.
-func rfRemoveUpToCounters(g *game.Game, chooser, source, target uuid.UUID, n int, question string) error {
+func RfRemoveUpToCounters(g *game.Game, chooser, source, target uuid.UUID, n int, question string) error {
 	if n <= 0 {
 		return nil
 	}
@@ -516,14 +516,14 @@ func init() {
 		if err := g.AddCounterForEffect(target, kinds[r.Index-1], -1); err != nil {
 			return err
 		}
-		return rfRemoveUpToCounters(g, r.Chooser, r.Source, target, n-1, question)
+		return RfRemoveUpToCounters(g, r.Chooser, r.Source, target, n-1, question)
 	})
 }
 
 // rfOpponentCreatureWouldDie is the AppliesTo of "if a creature an
 // opponent controls would die": a battlefield-to-graveyard move of a
 // creature whose controller is not the source's controller.
-func rfOpponentCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+func RfOpponentCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if ev.Kind != game.RepEventMove || ev.OldZone != game.ZoneBattlefield || ev.NewZone != game.ZoneGraveyard {
 		return false
 	}
@@ -534,8 +534,8 @@ func rfOpponentCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, src *ga
 // opponentNontokenCreatureWouldDie is rfOpponentCreatureWouldDie narrowed
 // to nontoken creatures: "if a nontoken creature an opponent controls
 // would die" (The Darkness Crystal, Kalitas, Traitor of Ghet).
-func opponentNontokenCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-	if !rfOpponentCreatureWouldDie(ev, g, src) {
+func OpponentNontokenCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+	if !RfOpponentCreatureWouldDie(ev, g, src) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -546,7 +546,7 @@ func opponentNontokenCreatureWouldDie(ev *game.ReplacementEvent, g *game.Game, s
 // activated ability's whole body: the still-legal first target takes the
 // damage from the ability's source, and a target that left in response
 // takes nothing.
-func rfDamageFirstLegalTarget(amount int) Effect {
+func RfDamageFirstLegalTarget(amount int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		legal := ctx.LegalTargets()

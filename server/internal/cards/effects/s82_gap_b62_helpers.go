@@ -14,7 +14,7 @@ import (
 // Human as it last existed (CR 603.10a). `human` is the word "Human" as the
 // source reads it (source.TextSubtype, CR 612.2). The turn's zone moves are the
 // record, so a token that has ceased to exist still counts.
-func anotherHumanDiedUnderYourControlThisTurn(g *game.Game, controller, self uuid.UUID, human string) bool {
+func AnotherHumanDiedUnderYourControlThisTurn(g *game.Game, controller, self uuid.UUID, human string) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.CardID == self {
 			continue
@@ -22,7 +22,7 @@ func anotherHumanDiedUnderYourControlThisTurn(g *game.Game, controller, self uui
 		// A token that has since ceased to exist is no longer found, but its
 		// departure event carries what it last was (CR 603.10a).
 		dead, _ := g.LookupCardForEffect(ev.CardID)
-		if leftAsType(ev, dead, "creature") && leftUnderControlOf(ev, dead) == controller && leftAsSubtype(ev, dead, human) {
+		if LeftAsType(ev, dead, "creature") && LeftUnderControlOf(ev, dead) == controller && LeftAsSubtype(ev, dead, human) {
 			return true
 		}
 	}
@@ -43,14 +43,14 @@ func gapB62AttachedTo(g *game.Game, id uuid.UUID, aura bool) bool {
 		want = "Aura"
 	}
 	for _, ref := range info.Attachments {
-		if c, live := g.LookupCardForEffect(ref.ID); live && c.ObjectEpoch == ref.Epoch && onBattlefield(g, ref.ID) {
+		if c, live := g.LookupCardForEffect(ref.ID); live && c.ObjectEpoch == ref.Epoch && OnBattlefield(g, ref.ID) {
 			if c.HasSubtype(want) {
 				return true
 			}
 			continue
 		}
 		if rec, found := g.LastKnownPermanentForEffect(ref.ID); found && rec.Epoch == ref.Epoch &&
-			keywordSliceContains(rec.Characteristic.Subtypes, want) {
+			KeywordSliceContains(rec.Characteristic.Subtypes, want) {
 			return true
 		}
 	}
@@ -62,7 +62,7 @@ func gapB62AttachedTo(g *game.Game, id uuid.UUID, aura bool) bool {
 // (CR 603.4) asked as the creature dies and again as the ability resolves,
 // both against the departure record (so it stays true once the Aura is in
 // the graveyard and the Equipment is unattached).
-func gapB62DiesAttached(label string, aura bool, effect Effect) game.TriggeredAbility {
+func GapB62DiesAttached(label string, aura bool, effect Effect) game.TriggeredAbility {
 	name := "it was equipped"
 	if aura {
 		name = "it was enchanted"
@@ -72,14 +72,14 @@ func gapB62DiesAttached(label string, aura bool, effect Effect) game.TriggeredAb
 		Test: func(ctx *Context) bool { return gapB62AttachedTo(ctx.Game, ctx.Item.SourceCardID, aura) },
 	}
 	return InterveningIf(cond, On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return cardDied(ev, source) && gapB62AttachedTo(g, ev.CardID, aura)
+		return CardDied(ev, source) && gapB62AttachedTo(g, ev.CardID, aura)
 	}, label, effect))
 }
 
 // gapB62RollTotal is the result of the roll instruction whose dice carry
 // `batch`: the total of its kept dice, each its natural result plus the
 // instruction's modifier (CR 706.2). A planar die has no number.
-func gapB62RollTotal(g *game.Game, batch uint64) int {
+func GapB62RollTotal(g *game.Game, batch uint64) int {
 	total := 0
 	for _, rolled := range g.Events {
 		if rolled.Kind == game.EventRollDie && rolled.BatchSeq == batch && rolled.PlanarFace == "" {

@@ -60,15 +60,15 @@ func init() {
 		Targets:          EarthbendTargets(),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{5}{G}")},
-		OnResolve:        EarthbendFirstTarget(rockalancheForests),
+		OnResolve:        EarthbendFirstTarget(RockalancheForests),
 	})
 }
 
 // rockalancheForests is "the number of Forests you control", counted
 // at resolution over the effective type line.
-func rockalancheForests(ctx *Context) int {
+func RockalancheForests(ctx *Context) int {
 	forest := ctx.TextSubtype("Forest")
-	return countControlled(ctx.Game, ctx.Controller(), func(c game.Card) bool {
+	return CountControlled(ctx.Game, ctx.Controller(), func(c game.Card) bool {
 		return c.HasSubtype(forest)
 	})
 }

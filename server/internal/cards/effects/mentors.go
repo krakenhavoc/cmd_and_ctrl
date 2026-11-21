@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // whatever a replacement then does with the counter.
 func mentorResolves(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

@@ -17,13 +17,13 @@ func init() {
 		Name:         "Mind Rot",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve:    mindRotOnResolve,
+		OnResolve:    MindRotOnResolve,
 	})
 }
 
 // mindRotOnResolve is the spell's body, shared with Waking Nightmare,
 // which prints the same text.
-func mindRotOnResolve(item *game.StackItem, ctx *Context) error {
+func MindRotOnResolve(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}

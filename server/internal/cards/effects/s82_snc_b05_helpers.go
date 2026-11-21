@@ -14,8 +14,8 @@ import (
 // casts, so the free-cast offer goes to them, not to the spell's
 // controller. Append-only.
 
-func audaciousSwapResolve(_ *game.StackItem, ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func AudaciousSwapResolve(_ *game.StackItem, ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -24,25 +24,25 @@ func audaciousSwapResolve(_ *game.StackItem, ctx *Context) error {
 		return nil
 	}
 	return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{},
-		withCarry(ctx.Tail(audaciousSwapShuffleThenExile), c.Owner))
+		WithCarry(ctx.Tail(audaciousSwapShuffleThenExile), c.Owner))
 }
 
 var audaciousSwapShuffleThenExile = game.RegisterTail("then/audacious-swap-shuffle-exile", func(g *game.Game, o game.TailOutcome) error {
-	owner := tailCarry0(o)
+	owner := TailCarry0(o)
 	if owner == uuid.Nil {
 		return nil
 	}
 	if err := g.ShuffleLibraryForEffect(owner); err != nil {
 		return err
 	}
-	ctx := tailContext(g, o.Tail)
+	ctx := TailContext(g, o.Tail)
 	tail := ctx.ItemTail(audaciousSwapExiled)
 	tail.Carry = []uuid.UUID{owner}
 	return g.MillToZoneKeyedForEffect(owner, 1, game.ZoneExile, game.MillUntil{}, tail)
 })
 
 var audaciousSwapExiled = CardTail("then/audacious-swap-exiled", func(ctx *Context, o game.TailOutcome) error {
-	owner := tailCarry0(o)
+	owner := TailCarry0(o)
 	if owner == uuid.Nil {
 		return nil
 	}
@@ -58,19 +58,19 @@ var audaciousSwapExiled = CardTail("then/audacious-swap-exiled", func(ctx *Conte
 			}
 			continue
 		}
-		perm := exileUntilNonlandFreeCastPermission(ctx, "Audacious Swap")
+		perm := ExileUntilNonlandFreeCastPermission(ctx, "Audacious Swap")
 		perm.Player = owner
 		perm.Zone = game.ZoneExile
 		ctx.Game.GrantCastPermissionToCardsForEffect(perm, []game.Card{c})
-		offerResolutionCastOver(ctx.Game, owner, perm.Source, perm.SourceName,
-			game.MayCastKeywordFreeCast, declineLeaveInExile, id)
+		OfferResolutionCastOver(ctx.Game, owner, perm.Source, perm.SourceName,
+			game.MayCastKeywordFreeCast, DeclineLeaveInExile, id)
 	}
 	return nil
 })
 
 // drawXStep and loseXStep are Cut of the Profits' "You draw X cards and you
 // lose X life", one step each.
-func drawXStep() Instruction {
+func DrawXStep() Instruction {
 	return func(ctx *Context) error {
 		if x := ctx.X(); x > 0 {
 			return DrawCards{Player: ctx.Controller(), N: x}.Apply(ctx)
@@ -79,7 +79,7 @@ func drawXStep() Instruction {
 	}
 }
 
-func loseXStep() Instruction {
+func LoseXStep() Instruction {
 	return func(ctx *Context) error {
 		if x := ctx.X(); x > 0 {
 			return GainLife{Player: ctx.Controller(), Amount: -x}.Apply(ctx)

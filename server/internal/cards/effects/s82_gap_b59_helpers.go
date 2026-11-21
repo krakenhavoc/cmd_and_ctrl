@@ -5,7 +5,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // costsLessPerCardDrawnThisTurn is "This spell costs {1} less to cast for
 // each card you've drawn this turn" (Deem Inferior), read at CR 601.2f off the
 // caster's per-turn tally of cards drawn.
-func costsLessPerCardDrawnThisTurn() game.CostModifier {
+func CostsLessPerCardDrawnThisTurn() game.CostModifier {
 	return CostsLessEach(cardsDrawnThisTurnByCaster, "This spell costs {1} less to cast for each card you've drawn this turn.")
 }
 

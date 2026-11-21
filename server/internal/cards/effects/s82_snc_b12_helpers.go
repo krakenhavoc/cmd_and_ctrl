@@ -19,7 +19,7 @@ const sncMVThreshold = 5
 // counts as 0. `skip` leaves out one card, the spell being cast, which a
 // self cost reduction must not count (it is still in its source zone while
 // the price is read). uuid.Nil skips nothing.
-func sncGraveyardMVs(g *game.Game, player, skip uuid.UUID) int {
+func SncGraveyardMVs(g *game.Game, player, skip uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
@@ -36,20 +36,20 @@ func sncGraveyardMVs(g *game.Game, player, skip uuid.UUID) int {
 
 // sncFiveMVs is "there are five or more mana values among cards in your
 // graveyard".
-func sncFiveMVs(g *game.Game, player uuid.UUID) bool {
-	return sncGraveyardMVs(g, player, uuid.Nil) >= sncMVThreshold
+func SncFiveMVs(g *game.Game, player uuid.UUID) bool {
+	return SncGraveyardMVs(g, player, uuid.Nil) >= sncMVThreshold
 }
 
 // sncSelfPT is "As long as there are five or more mana values among cards in
 // your graveyard, this creature gets +P/+T": a layer 7c self-modifier read
 // live on every recompute (CR 613.4c).
-func sncSelfPT(power, toughness int) game.StaticAbility {
+func SncSelfPT(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:    "Gets " + signedPT(power, toughness) + " as long as there are five or more mana values among cards in your graveyard.",
+		Label:    "Gets " + SignedPT(power, toughness) + " as long as there are five or more mana values among cards in your graveyard.",
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.InstanceID == source.InstanceID && sncFiveMVs(g, source.Controller)
+			return target.InstanceID == source.InstanceID && SncFiveMVs(g, source.Controller)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Power += power
@@ -60,9 +60,9 @@ func sncSelfPT(power, toughness int) game.StaticAbility {
 
 // sncSelfKeywords is "As long as there are five or more mana values among
 // cards in your graveyard, this creature has <keywords>": a layer 6 self-grant.
-func sncSelfKeywords(keywords ...string) game.StaticAbility {
-	s := b16GrantKeywords(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && sncFiveMVs(g, source.Controller)
+func SncSelfKeywords(keywords ...string) game.StaticAbility {
+	s := B16GrantKeywords(func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return target.InstanceID == source.InstanceID && SncFiveMVs(g, source.Controller)
 	}, keywords...)
 	s.Label = "Has " + joinWords(keywords) + " as long as there are five or more mana values among cards in your graveyard."
 	return s
@@ -74,33 +74,33 @@ func sncSelfKeywords(keywords ...string) game.StaticAbility {
 type CondSNCFiveManaValues struct{}
 
 func (CondSNCFiveManaValues) Holds(ctx *Context) bool {
-	return sncFiveMVs(ctx.Game, ctx.Controller())
+	return SncFiveMVs(ctx.Game, ctx.Controller())
 }
 
-func (CondSNCFiveManaValues) condition() (game.FootprintStep, bool) {
+func (CondSNCFiveManaValues) Condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }
 
 // sncFiveMVsWhen is the same threshold as a trigger When, read as the
 // trigger event fires (CR 603.4's first check).
-func sncFiveMVsWhen(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return sncFiveMVs(g, source.Controller)
+func SncFiveMVsWhen(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return SncFiveMVs(g, source.Controller)
 }
 
 // sncCostLessPerDifferentMV is "This spell costs {1} less to cast for each
 // different mana value among cards in your graveyard": the caster's graveyard,
 // the spell itself left out.
-func sncCostLessPerDifferentMV(q game.CostQuery) int {
+func SncCostLessPerDifferentMV(q game.CostQuery) int {
 	if q.Game == nil {
 		return 0
 	}
-	return sncGraveyardMVs(q.Game, q.Controller, q.Card.InstanceID)
+	return SncGraveyardMVs(q.Game, q.Controller, q.Card.InstanceID)
 }
 
 // sncCostLessThreeWithFive is "This ability costs {3} less to activate if
 // there are five or more mana values among cards in your graveyard".
-func sncCostLessThreeWithFive(q game.CostQuery) int {
-	if q.Game == nil || !sncFiveMVs(q.Game, q.Controller) {
+func SncCostLessThreeWithFive(q game.CostQuery) int {
+	if q.Game == nil || !SncFiveMVs(q.Game, q.Controller) {
 		return 0
 	}
 	return 3

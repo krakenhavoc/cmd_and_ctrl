@@ -1,0 +1,152 @@
+package cardsst
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Sword of Hearth and Home — Artifact — Equipment for {3}:
+//
+//	"Equipped creature gets +2/+2 and has protection from green and
+//	 from white.
+//	 Whenever equipped creature deals combat damage to a player, exile
+//	 up to one target creature you own, then search your library for a
+//	 basic land card. Put both cards onto the battlefield under your
+//	 control, then shuffle.
+//	 Equip {2}"
+//
+// "PUT BOTH CARDS ONTO THE BATTLEFIELD" is one event, and that is what
+// waited on #1324. The creature comes out of exile and the land out of
+// the library at the same time, so every permanent on the battlefield
+// — both newcomers included — is checked against that one event for
+// enters triggers (CR 603.6a). Doing the two entries one after the
+// other is visible on the deck this card is in: with Loyal Warhound
+// blinked, Warhound first would read the lands before the new basic
+// arrived (its intervening-if, CR 603.4, sees one land too few), and
+// land first would leave a landfall creature entering alongside it
+// blind to it. Game.PutOntoBattlefieldTogetherKeyedForEffect takes the
+// two cards from their two zones as one simultaneous entry
+// (server/internal/game/entry_batch.go).
+//
+// The sentence's parts, in the order the card prints them:
+//
+//   - the exile is its own event and can pause (a commander's owner is
+//     asked about the command zone, CR 903.9), so the search waits in
+//     its continuation, and only a card that really reached exile is
+//     put back. A token exiled this way ceases to exist (CR 111.8) and
+//     is left out, which also keeps it from refusing the land's entry.
+//   - the search finds the land and LEAVES it in the library (ToTop
+//     with no shuffle, the idiom Intuition uses), because the put is
+//     the next sentence and the shuffle the one after it. A player may
+//     always fail to find (CR 701.23b).
+//   - the exiled card returns as a new object (CR 400.7) under the
+//     Sword's controller — "under your control" — even when an
+//     opponent was controlling your creature.
+//   - the shuffle runs after the entry has finished, which is after
+//     any question a card of it asked (a fetched shockland's life).
+//
+// Protection from green and from white is ADR 0072's layer-6 grant,
+// as on the other Swords.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "913e6182-706a-4872-8c8a-e146b0ae0738",
+		Name:         "Sword of Hearth and Home",
+		Completeness: effects.CompletenessFull,
+		Static: []game.StaticAbility{
+			effects.PumpAttached(2, 2),
+			effects.GrantToAttached("protection from green", "protection from white"),
+		},
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventDealDamage},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.AttachedCreatureDealtCombatDamageToPlayer(ev, source, g)
+			},
+			Targets: effects.TargetCreature("up to one target creature you own", effects.YouOwn()).WithCount(0, 1),
+			Key:     "Sword of Hearth and Home — exile a creature you own, then put it and a basic land onto the battlefield",
+			Effect:  swordOfHearthAndHomeResolve,
+		}},
+		Activated: []effects.ActivatedAbility{
+			effects.EquipAbility("{2}"),
+		},
+	})
+}
+
+// swordOfHearthAndHomeResolve is the trigger's effect. Package-level,
+// and every continuation below captures only scalars, so an undo
+// across any of its prompts resolves it against the restored game.
+func swordOfHearthAndHomeResolve(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	you, source := item.Controller, item.SourceCardID
+	var targets []uuid.UUID
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard && t.ID != uuid.Nil {
+			targets = append(targets, t.ID)
+		}
+	}
+	return g.ExileCardsKeyedForEffect(targets, game.KeyedTail{Ref: swordOfHearthAndHomeSearch, Player: you, Source: source})
+}
+
+// swordOfHearthAndHomeSearch is the basic-land search after the exile
+// (#4253 slice 9): the exiled creatures ride the search's tail.
+var swordOfHearthAndHomeSearch = game.RegisterTail("sword-of-hearth-and-home/search-basic", func(g *game.Game, o game.TailOutcome) error {
+	you, source, exiled := o.Tail.Player, o.Tail.Source, o.IDs
+	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player: you,
+		Source: source,
+		Pred:   effects.IsBasicLand,
+		Dest:   game.ZoneLibrary,
+		Limit:  1,
+		// ToTop with no shuffle: the search reports what it found
+		// and leaves it in the library for the put. The shuffle is
+		// printed after the put, and runs from its continuation.
+		ToTop:  true,
+		Reason: "Sword of Hearth and Home — search for a basic land card",
+		// #4253 slice 4: the exiled card rides the tail.
+		ThenTail: game.KeyedTail{Ref: swordOfHearthAndHomePutBothTail, Player: you, Source: source, Carry: exiled},
+	})
+})
+
+// swordOfHearthAndHomePutBothTail runs swordOfHearthAndHomePutBoth: the
+// exiled cards ride Tail.Carry and the found land is the outcome. An
+// on-disk key.
+var swordOfHearthAndHomePutBothTail = game.RegisterTail("sword-of-hearth-and-home/put-both", func(g *game.Game, o game.TailOutcome) error {
+	return swordOfHearthAndHomePutBoth(g, o.Tail.Player, o.Tail.Carry, o.IDs)
+})
+
+// swordOfHearthAndHomePutBoth is "put both cards onto the battlefield
+// under your control, then shuffle": one simultaneous entry of the
+// exiled card and the found land, and the shuffle once it has finished.
+func swordOfHearthAndHomePutBoth(g *game.Game, you uuid.UUID, exiled, found []uuid.UUID) error {
+	var entries []game.BatchEntry
+	for _, id := range exiled {
+		c, ok := g.LookupCardForEffect(id)
+		if z := g.FindCardZoneForEffect(id); !ok || z == nil || z.Kind != game.ZoneExile || !effects.IsPermanentCard(c) {
+			continue
+		}
+		entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneExile})
+	}
+	for _, id := range found {
+		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneLibrary {
+			continue
+		}
+		entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneLibrary})
+	}
+	if len(entries) == 0 {
+		return g.ShuffleLibraryForEffect(you)
+	}
+	// The shuffle is a registered tail (#4253 slice 3), so a card of the
+	// entry that stops to ask (a Clone's copy) is a restore point.
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{Controller: you},
+		game.KeyedTail{Ref: swordOfHearthAndHomeShuffle, Player: you})
+}
+
+// swordOfHearthAndHomeShuffle is "then shuffle", once the entry is done.
+// An on-disk key: never renamed, never reused.
+var swordOfHearthAndHomeShuffle = game.RegisterTail("sword-of-hearth-and-home/shuffle",
+	func(g *game.Game, o game.TailOutcome) error {
+		return g.ShuffleLibraryForEffect(o.Tail.Player)
+	})

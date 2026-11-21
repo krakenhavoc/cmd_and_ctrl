@@ -29,15 +29,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // storageLand is the whole Spec of a one-colour storage land. `color`
 // is the mana symbol's letter ("B", "R", …). The labels and the
 // trigger's key carry the card's name, so each land's rows are its own.
-func storageLand(oracleID, name, color string) Spec {
+func StorageLand(oracleID, name, color string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
-		UntapOptOuts: []game.UntapOptOut{mayChooseNotToUntapSelf(name + " — you may choose not to untap this land")},
+		UntapOptOuts: []game.UntapOptOut{MayChooseNotToUntapSelf(name + " — you may choose not to untap this land")},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBeginUpkeep, AllOf(ByYou, thisPermanentIsTapped),
+			On(game.EventBeginUpkeep, AllOf(ByYou, ThisPermanentIsTapped),
 				name+" — if it is tapped, put a storage counter on it",
 				putStorageCounterOnThisIfTapped),
 		},
@@ -61,12 +61,12 @@ func putStorageCounterOnThisIfTapped(g *game.Game, item *game.StackItem) error {
 	if !ok || info.Left || !info.Tapped {
 		return nil
 	}
-	return putStorageCounterOnThis(g, item)
+	return PutStorageCounterOnThis(g, item)
 }
 
 // thisPermanentIsTapped is an intervening "if this permanent is
 // tapped" (CR 603.4) for a trigger's condition. The effect reads it
 // again as the ability resolves.
-func thisPermanentIsTapped(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func ThisPermanentIsTapped(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return source.Tapped
 }

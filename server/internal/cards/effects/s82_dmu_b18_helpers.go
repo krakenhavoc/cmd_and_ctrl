@@ -9,7 +9,7 @@ import (
 // youCastASpellThatTargetsThis is heroic (Rosnakht, Heir of Rohgahh):
 // "whenever you cast a spell that targets <this creature>". The spell's
 // targets are read off its stack item as it is cast (CR 601.2c).
-func youCastASpellThatTargetsThis(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func YouCastASpellThatTargetsThis(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -27,7 +27,7 @@ func youCastASpellThatTargetsThis(ev game.Event, source *game.Card, _ game.Chara
 
 // greatestPowerAmongYourWurms is Baru, Wurmspeaker's X: the greatest power
 // among Wurms the activator controls, 0 with none (CR 107.1b).
-func greatestPowerAmongYourWurms(q game.CostQuery) int {
+func GreatestPowerAmongYourWurms(q game.CostQuery) int {
 	if q.Game == nil || q.Game.Battlefield == nil {
 		return 0
 	}
@@ -47,14 +47,14 @@ func greatestPowerAmongYourWurms(q game.CostQuery) int {
 // battlefield-to-graveyard move of the turn, read off its last-known
 // information (CR 608.2h), so a creature that has since left the graveyard
 // still counts and Tobias, who died to put the trigger there, counts himself.
-func nontokenCreaturesYouControlledThatDiedThisTurn(g *game.Game, you uuid.UUID) int {
+func NontokenCreaturesYouControlledThatDiedThisTurn(g *game.Game, you uuid.UUID) int {
 	n := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 			continue
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		if !ok || c.IsToken() || !leftAsType(ev, c, "creature") || leftUnderControlOf(ev, c) != you {
+		if !ok || c.IsToken() || !LeftAsType(ev, c, "creature") || LeftUnderControlOf(ev, c) != you {
 			continue
 		}
 		n++

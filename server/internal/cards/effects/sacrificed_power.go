@@ -24,7 +24,7 @@ import (
 // Zero when the engine has no record of it as a permanent this turn.
 //
 // Caller holds g.mu in write mode.
-func departedCreaturePower(g *game.Game, cardID uuid.UUID) int {
+func DepartedCreaturePower(g *game.Game, cardID uuid.UUID) int {
 	ref, ok := g.PermanentRefForEffect(cardID)
 	if !ok {
 		return 0

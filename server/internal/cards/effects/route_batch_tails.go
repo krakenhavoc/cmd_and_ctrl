@@ -64,7 +64,7 @@ var manifestDreadAttachSource = ManifestDreadTail("manifest-dread/attach-source"
 // manifestDreadPutCounters is "put <counters> on that creature": the
 // counters are the tail's Word, "kind=n" pairs joined by ",".
 var manifestDreadPutCounters = ManifestDreadTail("manifest-dread/put-counters", func(ctx *Context, res game.ManifestDreadResult, o game.TailOutcome) error {
-	if res.Manifested == uuid.Nil || !b15OnBattlefield(ctx.Game, res.Manifested) {
+	if res.Manifested == uuid.Nil || !B15OnBattlefield(ctx.Game, res.Manifested) {
 		return nil
 	}
 	for _, c := range decodeCounterAmounts(o.Tail.Word) {
@@ -169,13 +169,13 @@ func UntilCreatureOrCount(n int) game.MillUntil {
 }
 
 // withCarry sets the IDs a tail's body reads.
-func withCarry(t game.KeyedTail, ids ...uuid.UUID) game.KeyedTail {
+func WithCarry(t game.KeyedTail, ids ...uuid.UUID) game.KeyedTail {
 	t.Carry = append([]uuid.UUID(nil), ids...)
 	return t
 }
 
 // tailCarry0 is the first carried ID, or uuid.Nil.
-func tailCarry0(o game.TailOutcome) uuid.UUID {
+func TailCarry0(o game.TailOutcome) uuid.UUID {
 	if len(o.Tail.Carry) == 0 {
 		return uuid.Nil
 	}

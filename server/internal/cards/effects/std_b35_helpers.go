@@ -12,12 +12,12 @@ import (
 // b35GolemToken is the 3/3 colorless Golem artifact creature token the Big Score
 // prints (Sandstorm Salvager, Legion Extruder). The tokens table's "3/3
 // colorless Golem artifact" row is an enchantment Golem, so it is not reused.
-func b35GolemToken() game.Card {
+func B35GolemToken() game.Card {
 	return game.Card{Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 3, Toughness: 3}
 }
 
 // b35CreatureTokensYouControl lists the creature tokens `controller` controls.
-func b35CreatureTokensYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
+func B35CreatureTokensYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.IsToken() {
@@ -28,7 +28,7 @@ func b35CreatureTokensYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID
 }
 
 // b35IDSet is a CardPredicate over a fixed set of instance ids.
-func b35IDSet(ids []uuid.UUID) CardPredicate {
+func B35IDSet(ids []uuid.UUID) CardPredicate {
 	set := make(map[uuid.UUID]bool, len(ids))
 	for _, id := range ids {
 		set[id] = true
@@ -40,27 +40,27 @@ func b35IDSet(ids []uuid.UUID) CardPredicate {
 // `life` life, and sacrifice `sac` creature(s)" (Greed's Gambit), in printed
 // order: the discard prompt is queued first, the life is lost, then the
 // sacrifice prompt is queued behind it.
-func b35YouDiscardLoseSacrifice(discard, life, sac int, label string) Effect {
+func B35YouDiscardLoseSacrifice(discard, life, sac int, label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		p := item.Controller
 		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: p, Source: item.SourceCardID, N: discard, Question: label + " — discard"})
 		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, p, -life); err != nil {
 			return err
 		}
-		g.PlayerSacrificesNForEffect(item.SourceCardID, p, sacrificeSpec("a creature", Creature()), label+" — sacrifice", sac)
+		g.PlayerSacrificesNForEffect(item.SourceCardID, p, SacrificeSpec("a creature", Creature()), label+" — sacrifice", sac)
 		return nil
 	}
 }
 
 // b35BatToken is the 2/1 black Bat creature token with flying (Greed's Gambit).
-func b35BatToken() game.Card {
+func B35BatToken() game.Card {
 	return game.Card{Name: "Bat", TypeLine: "Token Creature — Bat", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}}
 }
 
 // b35CopyTargetTokenModeBody is "create a token that's a copy of target
 // <artifact> token you control" as a mode's body (Oltec Matterweaver); the
 // target is read at resolution (CR 608.2b).
-func b35CopyTargetTokenModeBody(_ *game.StackItem, ctx *Context, occ int) error {
+func B35CopyTargetTokenModeBody(_ *game.StackItem, ctx *Context, occ int) error {
 	tr, ok := ModeTarget(ctx, occ)
 	if !ok || tr.Kind != game.TargetCard {
 		return nil
@@ -70,7 +70,7 @@ func b35CopyTargetTokenModeBody(_ *game.StackItem, ctx *Context, occ int) error 
 
 // b35ArtifactTokenYouControl is the clause "target artifact token you
 // control".
-func b35ArtifactTokenYouControl() *game.TargetSpec {
+func B35ArtifactTokenYouControl() *game.TargetSpec {
 	return TargetPermanent("target artifact token you control", Artifact(), IsTokenPredicate(), YouControl())
 }
 
@@ -79,7 +79,7 @@ func b35ArtifactTokenYouControl() *game.TargetSpec {
 // It reads the ability's chosen targets off its stack item as the
 // activation put it there (CR 602.2b); a mana ability never used the stack
 // and never raises the event.
-func b35YouActivatedAnAbilityTargetingACreatureOrPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func B35YouActivatedAnAbilityTargetingACreatureOrPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventActivateAbility || source == nil || ev.Actor != source.Controller || ev.StackItemID == uuid.Nil {
 		return false
 	}
@@ -105,7 +105,7 @@ func b35YouActivatedAnAbilityTargetingACreatureOrPlayer(ev game.Event, source *g
 // Jace Reawakened's second +1): a pick of up to one over the controller's
 // qualifying hand cards, whose exile hands the card to PlotExiled once it
 // has reached exile (CR 702.170c). With nothing to pick nobody is asked.
-func b35PlotFromHand(question string) Effect {
+func B35PlotFromHand(question string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		you := ctx.Controller()
@@ -139,7 +139,7 @@ func b35PlotFromHand(question string) Effect {
 
 // b35PlotFromHandPick exiles the picked card and plots it once it is in
 // exile. An on-disk key: never renamed, never reused.
-var b35PlotFromHandPick = askedPick("choose-cards/exile-from-hand-and-plot", func(ctx *Context, r game.CardsChosen) error {
+var b35PlotFromHandPick = AskedPick("choose-cards/exile-from-hand-and-plot", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
 		return nil
 	}
@@ -157,7 +157,7 @@ var b35PlotTheExiled = CardTail("exile-from-hand-and-plot/plot", func(ctx *Conte
 })
 
 // b35ElkToken is the 3/3 green Elk creature token (Oko, the Ringleader).
-func b35ElkToken() game.Card {
+func B35ElkToken() game.Card {
 	return game.Card{Name: "Elk", TypeLine: "Token Creature — Elk", Power: 3, Toughness: 3, Colors: []string{"G"}}
 }
 
@@ -165,7 +165,7 @@ func b35ElkToken() game.Card {
 // control, create a token that's a copy of that permanent" (Oko, the
 // Ringleader's −5): the permanents are fixed first (CR 608.2c) and each
 // copy takes the permanent's copiable values (CR 707.2).
-func b35TokenCopyOfEachOtherNonland(g *game.Game, item *game.StackItem) error {
+func B35TokenCopyOfEachOtherNonland(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var refs []game.ObjectRef
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -181,7 +181,7 @@ func b35TokenCopyOfEachOtherNonland(g *game.Game, item *game.StackItem) error {
 		if !ok {
 			continue
 		}
-		if err := createTokenCopies(ctx, item.Controller, tmpl, 1); err != nil {
+		if err := CreateTokenCopies(ctx, item.Controller, tmpl, 1); err != nil {
 			return err
 		}
 	}
@@ -190,7 +190,7 @@ func b35TokenCopyOfEachOtherNonland(g *game.Game, item *game.StackItem) error {
 
 // b35YourSpecialAction passes when the special action being priced is taken
 // by the modifier's controller ("you"): the actor is CostQuery.Controller.
-func b35YourSpecialAction() CostPredicate {
+func B35YourSpecialAction() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.Controller == q.Source.Controller
 	}
@@ -199,7 +199,7 @@ func b35YourSpecialAction() CostPredicate {
 // b35CardTypesAmongOtherNonlandPermanents counts the distinct nonland card
 // types among the permanents `controller` controls other than `except`
 // (Loot, the Key to Everything), read through the layered view.
-func b35CardTypesAmongOtherNonlandPermanents(g *game.Game, controller, except uuid.UUID) int {
+func B35CardTypesAmongOtherNonlandPermanents(g *game.Game, controller, except uuid.UUID) int {
 	seen := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || c.InstanceID == except || c.IsLand() {

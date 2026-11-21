@@ -38,7 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(YouControl()),
 		Static: []game.StaticAbility{
-			PumpAttachedPer(1, 1, aurasAndEquipmentOnTheHost),
+			PumpAttachedPer(1, 1, AurasAndEquipmentOnTheHost),
 		},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Mantle of the Ancients — return Auras and Equipment attached to enchanted creature",
@@ -53,15 +53,15 @@ func init() {
 // be attached to the enchanted creature, all of them as one entry
 // (#1867, CR 603.6a), and then attaches each one that arrived.
 func mantleOfTheAncientsReturn(g *game.Game, item *game.StackItem) error {
-	host := attachedHostFor(g, item.SourceCardID)
+	host := AttachedHostFor(g, item.SourceCardID)
 	if host == nil {
 		return nil
 	}
 	hostID := host.InstanceID
 	var ids []uuid.UUID
-	for _, id := range legalTargetCardIDs(NewContext(g, item)) {
+	for _, id := range LegalTargetCardIDs(NewContext(g, item)) {
 		card, ok := g.LookupCardForEffect(id)
-		if ok && canBeAttachedTo(g, item.Controller, card, hostID) {
+		if ok && CanBeAttachedTo(g, item.Controller, card, hostID) {
 			ids = append(ids, id)
 		}
 	}
@@ -83,7 +83,7 @@ func mantleOfTheAncientsReturn(g *game.Game, item *game.StackItem) error {
 // Read without the protection-style targeting gate: CR 303.4j asks
 // whether the Aura could enchant the object, not whether it could
 // target it. Caller must hold g.mu.
-func canBeAttachedTo(g *game.Game, controller uuid.UUID, attachment game.Card, host uuid.UUID) bool {
+func CanBeAttachedTo(g *game.Game, controller uuid.UUID, attachment game.Card, host uuid.UUID) bool {
 	hostCard, ok := g.LookupCardForEffect(host)
 	if !ok {
 		return false

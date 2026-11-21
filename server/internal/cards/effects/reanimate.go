@@ -34,9 +34,9 @@ func init() {
 		OracleID:     "a044474a-cd72-4e9d-bd8d-a08f2de9cdc0",
 		Name:         "Reanimate",
 		Completeness: CompletenessFull,
-		Targets:      targetCreatureInAnyGraveyard(),
+		Targets:      TargetCreatureInAnyGraveyard(),
 		Purpose:      ForTargets(Reanimates(0)),
-		OnResolve:    reanimateLosingItsManaValue,
+		OnResolve:    ReanimateLosingItsManaValue,
 	})
 }
 
@@ -44,8 +44,8 @@ func init() {
 // creature card from a graveyard onto the battlefield under your
 // control. You lose life equal to that card's mana value." Shared with
 // Grave Researcher's prepare spell, which prints the same words.
-func reanimateLosingItsManaValue(_ *game.StackItem, ctx *Context) error {
-	card, ok := reanimateSingleTarget(ctx, ctx.Controller())
+func ReanimateLosingItsManaValue(_ *game.StackItem, ctx *Context) error {
+	card, ok := ReanimateSingleTarget(ctx, ctx.Controller())
 	if !ok {
 		return nil
 	}

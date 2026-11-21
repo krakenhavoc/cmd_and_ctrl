@@ -29,7 +29,7 @@ import (
 // No simplification on this face; the back face carries the caveat.
 func init() {
 	Register(Spec{
-		OracleID:     primalAmuletOracleID,
+		OracleID:     PrimalAmuletOracleID,
 		Name:         "Primal Amulet",
 		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
@@ -46,11 +46,11 @@ func init() {
 
 // primalAmuletOracleID is shared with the back face, which registers
 // under it plus "#1" (game.CatalogKey).
-const primalAmuletOracleID = "8e4d0da0-c7d8-4a20-9bfd-02c1331a7a49"
+const PrimalAmuletOracleID = "8e4d0da0-c7d8-4a20-9bfd-02c1331a7a49"
 
 // primalAmuletCharge is the cast trigger, in printed order.
 func primalAmuletCharge(g *game.Game, item *game.StackItem) error {
-	if !b09SourceStillOnBattlefield(g, item) {
+	if !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	source := item.SourceCardID
@@ -61,7 +61,7 @@ func primalAmuletCharge(g *game.Game, item *game.StackItem) error {
 // once the charge counter has landed. An on-disk key: never renamed, never
 // reused.
 var primalAmuletAsk = CardTail("primal-amulet/ask", func(ctx *Context, _ game.TailOutcome) error {
-	if b39CountersOn(ctx.Game, ctx.Item.SourceCardID, game.CounterCharge) < 4 {
+	if B39CountersOn(ctx.Game, ctx.Item.SourceCardID, game.CounterCharge) < 4 {
 		return nil
 	}
 	return MayChoice{
@@ -78,7 +78,7 @@ var primalAmuletAnswer = MayYes("confirm/primal-amulet-transform", func(ctx *Con
 	item := ctx.Item
 	source := item.SourceCardID
 	// "Those counters": whatever it holds now.
-	n := b39CountersOn(ctx.Game, source, game.CounterCharge)
+	n := B39CountersOn(ctx.Game, source, game.CounterCharge)
 	if n <= 0 {
 		return nil
 	}

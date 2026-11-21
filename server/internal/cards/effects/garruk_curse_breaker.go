@@ -30,7 +30,7 @@ func init() {
 		Name:         "Garruk, Curse Breaker",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, garrukCurseBreakerBigEntered,
+			On(game.EventETB, GarrukCurseBreakerBigEntered,
 				"Garruk, Curse Breaker — draw a card",
 				Do(DrawCards{N: 1})),
 		},
@@ -39,7 +39,7 @@ func init() {
 				Label:   "+2: Untap up to two target lands.",
 				Cost:    LoyaltyCost(2),
 				Targets: TargetPermanent("up to two target lands", Land()).WithCount(0, 2),
-				Effect:  b22UntapEachLegalTarget,
+				Effect:  B22UntapEachLegalTarget,
 			},
 			{
 				Label:  "−3: Create a 4/4 green Beast creature token with trample.",
@@ -58,8 +58,8 @@ func init() {
 // garrukCurseBreakerBigEntered is "a creature you control with power 4
 // or greater enters": power is read as the creature stands on the
 // battlefield, counters and layers included.
-func garrukCurseBreakerBigEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func GarrukCurseBreakerBigEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsCreature() && c.CurrentPower() >= 4
 }
 

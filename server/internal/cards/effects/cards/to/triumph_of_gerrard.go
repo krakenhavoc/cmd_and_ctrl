@@ -1,0 +1,56 @@
+package cardsto
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Triumph of Gerrard — Enchantment — Saga for {1}{W}:
+//
+//	"I, II — Put a +1/+1 counter on target creature you control with
+//	         the greatest power.
+//	 III — Target creature you control with the greatest power gains
+//	       flying, first strike, and lifelink until end of turn."
+//
+// "With the greatest power" picks out a SET, not a card: on a tie
+// every tied creature is a legal target and the controller chooses.
+// GreatestPowerYouControl is written as a target
+// predicate for exactly that reason, and it is re-evaluated at
+// resolution like any other, so a pump in response can legally take
+// the chosen creature out of the set and fizzle the chapter.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "426a5f3f-f161-49b3-97d0-02cda554752b",
+		Name:         "Triumph of Gerrard",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.ChapterTriggerTargeting(1, "Triumph of Gerrard — I: +1/+1 counter on your biggest creature",
+				targetGreatestPowerYouControl(), effects.PlusOneCounterOnTheTarget),
+			effects.ChapterTriggerTargeting(2, "Triumph of Gerrard — II: +1/+1 counter on your biggest creature",
+				targetGreatestPowerYouControl(), effects.PlusOneCounterOnTheTarget),
+			effects.ChapterTriggerTargeting(3, "Triumph of Gerrard — III: flying, first strike and lifelink",
+				targetGreatestPowerYouControl(), gerrardKeywords),
+		},
+	})
+}
+
+// targetGreatestPowerYouControl builds a fresh spec per chapter.
+// Fresh, not shared: a TargetSpec is handed to the engine and stored
+// on the stack item, and three chapters sharing one pointer would
+// make any future per-item mutation of it leak across chapters.
+func targetGreatestPowerYouControl() *game.TargetSpec {
+	return effects.TargetCreature("target creature you control with the greatest power",
+		effects.GreatestPowerYouControl())
+}
+
+func gerrardKeywords(g *game.Game, item *game.StackItem) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return effects.GrantKeywordUntilEOT{
+		Target:   item.Targets[0].ID,
+		Keywords: []string{"flying", "first strike", "lifelink"},
+		Label:    "Triumph of Gerrard — flying, first strike, lifelink",
+	}.Apply(effects.NewContext(g, item))
+}

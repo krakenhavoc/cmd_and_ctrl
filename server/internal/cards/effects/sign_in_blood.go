@@ -15,13 +15,13 @@ func init() {
 		// Who draws and who loses the life is whoever it targets (ADR
 		// 0126's amendment of 2026-10-08), so both are the target's.
 		Purpose:   ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, LifeLoss: 2}),
-		OnResolve: signInBloodOnResolve,
+		OnResolve: SignInBloodOnResolve,
 	})
 }
 
 // signInBloodOnResolve is the spell's body, shared with Scheming
 // Silvertongue's prepare spell, which prints the same text.
-func signInBloodOnResolve(item *game.StackItem, ctx *Context) error {
+func SignInBloodOnResolve(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}

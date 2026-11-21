@@ -47,7 +47,7 @@ var (
 
 	// "It deals that much damage to each other opponent": the payload creature
 	// is the source, the damaged player is skipped.
-	thatMuchToEachOtherOpponentBody = game.SimpleDelayedBody("damage/that-much-to-each-other-opponent", thatMuchToEachOtherOpponent)
+	ThatMuchToEachOtherOpponentBody = game.SimpleDelayedBody("damage/that-much-to-each-other-opponent", thatMuchToEachOtherOpponent)
 )
 
 func thatCreatureCombatDamage(opponentOnly bool) game.EachConditionFunc {
@@ -71,8 +71,8 @@ func thatCreatureCombatDamage(opponentOnly bool) game.EachConditionFunc {
 // the object it is now, controlled by the resolving object's controller (CR
 // 603.7d). A creature no longer on the battlefield creates nothing: the
 // trigger could never fire.
-func whenThatCreatureHitsAPlayer(ctx *Context, creature uuid.UUID, label string, opponentOnly bool, until game.Duration, body game.BodyRef) error {
-	c, ok := battlefieldCardForEffect(ctx.Game, creature)
+func WhenThatCreatureHitsAPlayer(ctx *Context, creature uuid.UUID, label string, opponentOnly bool, until game.Duration, body game.BodyRef) error {
+	c, ok := BattlefieldCardForEffect(ctx.Game, creature)
 	if !ok || creature == uuid.Nil {
 		return nil
 	}
@@ -96,11 +96,11 @@ func whenThatCreatureHitsAPlayer(ctx *Context, creature uuid.UUID, label string,
 
 func plusOneCounterOnThePayload(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	obj, ok := payloadObject(ctx)
+	obj, ok := PayloadObject(ctx)
 	if !ok {
 		return nil
 	}
-	c, ok := battlefieldCardForEffect(g, obj.ID)
+	c, ok := BattlefieldCardForEffect(g, obj.ID)
 	if !ok || c.ObjectEpoch != obj.Epoch {
 		return nil
 	}
@@ -109,7 +109,7 @@ func plusOneCounterOnThePayload(g *game.Game, item *game.StackItem) error {
 
 func thatMuchToEachOtherOpponent(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	obj, ok := payloadObject(ctx)
+	obj, ok := PayloadObject(ctx)
 	if !ok {
 		return nil
 	}

@@ -102,7 +102,7 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	if e.TotalManaValueAtMost != nil || e.EachManaValueAtMost != nil {
 		return e.applyBudgeted(ctx, n)
 	}
-	perm := e.permission()
+	perm := e.Permission()
 	if e.FaceDown {
 		return ctx.Game.ExileTopFaceDownWithPermissionForEffect(e.From, e.grantee(), n, perm)
 	}
@@ -120,7 +120,7 @@ func (e ExileTopWithPermission) grantee() uuid.UUID {
 }
 
 // permission is the grant a plain (unbudgeted) ExileTopWithPermission stamps.
-func (e ExileTopWithPermission) permission() game.CastPermission {
+func (e ExileTopWithPermission) Permission() game.CastPermission {
 	perm := game.CastPermission{
 		CastOnly: e.CastOnly,
 		// AnyType implies AnyColor, and saying both keeps the grant
@@ -197,7 +197,7 @@ func (e ExileTopWithPermission) applyBudgeted(ctx *Context, n int) error {
 
 // impulseExileOfferCasts offers the free casts over the cards that landed.
 var impulseExileOfferCasts = game.RegisterTail("impulse-exile/offer-free-casts", func(g *game.Game, o game.TailOutcome) error {
-	offerResolutionCastOver(g, o.Tail.Player, o.Tail.Source, o.Tail.Word, game.MayCastKeywordFreeCast, declineLeaveInExile, o.IDs...)
+	OfferResolutionCastOver(g, o.Tail.Player, o.Tail.Source, o.Tail.Word, game.MayCastKeywordFreeCast, DeclineLeaveInExile, o.IDs...)
 	return nil
 })
 
@@ -253,7 +253,7 @@ func EachPlayerExilesTopAndMayPlay(ctx *Context, n int, d game.Duration, done ga
 			seats = append(seats, p.ID)
 		}
 	}
-	return exileTopEachPlayerInTurn(ctx, seats,
+	return ExileTopEachPlayerInTurn(ctx, seats,
 		ExileTopWithPermission{GrantToOwner: true, N: n, Window: &d}, done)
 }
 
@@ -269,8 +269,8 @@ func EachPlayerExilesTopAndMayPlay(ctx *Context, n int, d game.Duration, done ga
 // rather than once with two. Every card here does per-player work,
 // so the totals match; a card that read the batch size nonlinearly
 // would not.
-func damagedOpponent(ev game.Event, controller uuid.UUID, g *game.Game) uuid.UUID {
-	if !combatDamageToPlayerBy(ev, controller, g) {
+func DamagedOpponent(ev game.Event, controller uuid.UUID, g *game.Game) uuid.UUID {
+	if !CombatDamageToPlayerBy(ev, controller, g) {
 		return uuid.Nil
 	}
 	if ev.Target == controller {
@@ -285,8 +285,8 @@ func damagedOpponent(ev game.Event, controller uuid.UUID, g *game.Game) uuid.UUI
 // damage" with no "combat" qualifier. Ragavan's own trigger prints
 // "deals combat damage to a player" and keeps using damagedOpponent
 // above; this is an addition beside it, not a replacement.
-func damagedOpponentByAnyDamage(ev game.Event, controller uuid.UUID, g *game.Game) uuid.UUID {
-	if !damageToPlayerBy(ev, controller, g) {
+func DamagedOpponentByAnyDamage(ev game.Event, controller uuid.UUID, g *game.Game) uuid.UUID {
+	if !DamageToPlayerBy(ev, controller, g) {
 		return uuid.Nil
 	}
 	if ev.Target == controller {
@@ -299,6 +299,6 @@ func damagedOpponentByAnyDamage(ev game.Event, controller uuid.UUID, g *game.Gam
 // Pillager and Parapet Thrasher share: "Exile the top card of your
 // library. You may play it this turn." Play, not cast, so a land may be
 // played from exile; the grant's zero duration is "this turn".
-func exileTopCardYouMayPlayThisTurn(item *game.StackItem, ctx *Context, _ int) error {
+func ExileTopCardYouMayPlayThisTurn(item *game.StackItem, ctx *Context, _ int) error {
 	return ExileTopWithPermission{From: item.Controller, GrantTo: item.Controller, N: 1}.Apply(ctx)
 }

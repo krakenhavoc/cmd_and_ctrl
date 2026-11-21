@@ -20,9 +20,9 @@ import (
 // attacking creature and fires once per creature on its declaration, so
 // one Equipment on one creature is one trigger per combat. The search is
 // Optional, so the searcher may decline the land and the shuffle.
-func equippedCreatureAttacksSearchBasicLand(name string) game.TriggeredAbility {
+func EquippedCreatureAttacksSearchBasicLand(name string) game.TriggeredAbility {
 	return On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return attachedCreatureAttacked(ev, source)
+		return AttachedCreatureAttacked(ev, source)
 	}, name+" — search for a basic land", func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{
 			Player:        item.Controller,
@@ -41,7 +41,7 @@ func equippedCreatureAttacksSearchBasicLand(name string) game.TriggeredAbility {
 // 702.56a): the optional cost keyed game.ReplicateKey, mana only, paid
 // any number of times. `max` is the per-announcement cap the energy and
 // tapping forms carry (replicate.go); Register pairs it with Replicate().
-func replicateMana(mana string, max int) game.AdditionalCost {
+func ReplicateMana(mana string, max int) game.AdditionalCost {
 	if max < 1 {
 		max = 1
 	}
@@ -57,7 +57,7 @@ func replicateMana(mana string, max int) game.AdditionalCost {
 // tokensYouControlExcept lists the tokens `controller` controls on the
 // battlefield other than `except`, in battlefield order. Brudiclad's
 // "each other token you control". Caller holds g.mu.
-func tokensYouControlExcept(g *game.Game, controller, except uuid.UUID) []uuid.UUID {
+func TokensYouControlExcept(g *game.Game, controller, except uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
 		if c.Controller == controller && c.InstanceID != except && IsToken(c) {

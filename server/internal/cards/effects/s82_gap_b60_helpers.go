@@ -16,12 +16,12 @@ import (
 // battlefield, so it counts itself.
 var s82GapB60BobbleheadCount = game.RegisterDivideAmount("s82-gap-b60/bobbleheads-you-control",
 	func(g *game.Game, a game.DivideAmountArgs) game.DivideSpec {
-		return game.DivideSpec{Total: pipBobbleheadsYouControl(g, a.Controller)}
+		return game.DivideSpec{Total: PipBobbleheadsYouControl(g, a.Controller)}
 	})
 
 // s82GapB60UpToXCreatures is the clause "up to X target creatures you
 // control" with X the Bobbleheads count above.
-func s82GapB60UpToXCreatures() *game.TargetSpec {
+func S82GapB60UpToXCreatures() *game.TargetSpec {
 	t := TargetCreature("up to X target creatures you control, where X is the number of Bobbleheads you control as you activate this ability", YouControl()).WithCount(0, 0)
 	t.MaxFrom = s82GapB60BobbleheadCount
 	return t
@@ -31,7 +31,7 @@ func s82GapB60UpToXCreatures() *game.TargetSpec {
 // this Fortification to target land you control. Activate only as a
 // sorcery." Equip's twin for a land host; the attach is the same
 // AttachSourceToTarget.
-func s82GapB60FortifyAbility(cost string) ActivatedAbility {
+func S82GapB60FortifyAbility(cost string) ActivatedAbility {
 	return ActivatedAbility{
 		Label:        "Fortify " + cost,
 		Cost:         ManaCost(cost),
@@ -45,7 +45,7 @@ func s82GapB60FortifyAbility(cost string) ActivatedAbility {
 // `landID` added in its most recent mana ability, read off the event log: the
 // EventManaAdded events between the land's latest EventManaAbilityActivated
 // and the EventManaAbilityResolved with sequence `resolvedSeq`.
-func s82GapB60ManaColorsOfLastTap(g *game.Game, landID uuid.UUID, resolvedSeq uint64) []string {
+func S82GapB60ManaColorsOfLastTap(g *game.Game, landID uuid.UUID, resolvedSeq uint64) []string {
 	var colors []string
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		ev := g.Events[i]

@@ -50,7 +50,7 @@ func WheneverAPlayerCastsCounterUnlessPays(label string, match func(g *game.Game
 
 // payTheSpellsManaValue is "{X}, where X is its mana value" — the
 // spell's mana value on the stack, {X} included (CR 202.3e).
-func payTheSpellsManaValue(g *game.Game, spell game.Card) string {
+func PayTheSpellsManaValue(g *game.Game, spell game.Card) string {
 	mv, ok := g.ManaValueForEffect(spell)
 	if !ok || mv < 0 {
 		mv = 0

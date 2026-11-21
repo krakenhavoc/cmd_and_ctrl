@@ -87,7 +87,7 @@ func (c *Context) Source() uuid.UUID {
 //
 // An ability whose source has left the battlefield reads the words that
 // source last had (CR 608.2h, game.TextReaderForEffect, #3872).
-func (c *Context) textReader() *game.Card {
+func (c *Context) TextReader() *game.Card {
 	if c == nil || c.Game == nil || c.Item == nil {
 		return nil
 	}
@@ -98,22 +98,22 @@ func (c *Context) textReader() *game.Card {
 // the text of the object this effect is (textReader): Pyroblast's
 // "if it's blue" is card.HasColor(ctx.TextColor("U")). The printed
 // letter when nothing changed the text.
-func (c *Context) TextColor(letter string) string { return c.textReader().TextColor(letter) }
+func (c *Context) TextColor(letter string) string { return c.TextReader().TextColor(letter) }
 
 // TextSubtype is TextColor for a basic land type or creature type word.
-func (c *Context) TextSubtype(sub string) string { return c.textReader().TextSubtype(sub) }
+func (c *Context) TextSubtype(sub string) string { return c.TextReader().TextSubtype(sub) }
 
 // TextColors is TextColor over a colour-setting effect's printed colours,
 // each once (game.Card.TextColors): "becomes a white and blue Bird" is
 // game.SetColorsMod(ctx.TextColors("W", "U")...).
 func (c *Context) TextColors(letters ...string) []string {
-	return c.textReader().TextColors(letters...)
+	return c.TextReader().TextColors(letters...)
 }
 
 // TextSubtypes is TextSubtype over a type-setting effect's printed types,
 // each once: game.AddSubtypesMod(ctx.TextSubtypes("Bird")...).
 func (c *Context) TextSubtypes(subs ...string) []string {
-	return c.textReader().TextSubtypes(subs...)
+	return c.TextReader().TextSubtypes(subs...)
 }
 
 // TextToken is a token description in this effect's text as the text
@@ -125,7 +125,7 @@ func (c *Context) TextSubtypes(subs ...string) []string {
 // action defines (ruleDefinedToken). TestTokenDescriptionsReadThroughText
 // holds every card file to one of the three.
 func (c *Context) TextToken(tmpl game.Card) game.Card {
-	return c.textReader().TokenThroughText(tmpl)
+	return c.TextReader().TokenThroughText(tmpl)
 }
 
 // Grantor returns the object that granted the resolving ability, for

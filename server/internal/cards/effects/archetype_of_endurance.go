@@ -26,7 +26,7 @@ func init() {
 		OracleID:     "79254223-3fa6-4b7c-8163-1e48bf5cb708",
 		Name:         "Archetype of Endurance",
 		Completeness: CompletenessFull,
-		Static:       archetypeStatics("hexproof"),
+		Static:       ArchetypeStatics("hexproof"),
 	})
 }
 
@@ -34,10 +34,10 @@ func init() {
 // "Creatures you control have <kw>. Creatures your opponents control
 // lose <kw> and can't have or gain <kw>." (Aggression, Courage,
 // Endurance, Finality, Imagination.)
-func archetypeStatics(keyword string) []game.StaticAbility {
-	grant := b16GrantKeywords(b16CreaturesYouControl, keyword)
+func ArchetypeStatics(keyword string) []game.StaticAbility {
+	grant := B16GrantKeywords(B16CreaturesYouControl, keyword)
 	grant.Label = "Creatures you control have " + keyword + "."
-	strip := LoseAndCantHave(b27CreaturesOpponentsControl, keyword)
+	strip := LoseAndCantHave(B27CreaturesOpponentsControl, keyword)
 	strip.Label = "Creatures your opponents control lose " + keyword + " and can't have or gain it."
 	return []game.StaticAbility{grant, strip}
 }

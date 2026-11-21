@@ -12,7 +12,7 @@ import (
 // s82OpponentHasGraveyardCards is "an opponent has N or more cards in their
 // graveyard": any other player still in the game whose graveyard holds at
 // least n cards, read live.
-func s82OpponentHasGraveyardCards(g *game.Game, you uuid.UUID, n int) bool {
+func S82OpponentHasGraveyardCards(g *game.Game, you uuid.UUID, n int) bool {
 	for _, p := range g.Seats {
 		if p == nil || p.ID == you || p.Eliminated || p.Graveyard == nil {
 			continue
@@ -27,7 +27,7 @@ func s82OpponentHasGraveyardCards(g *game.Game, you uuid.UUID, n int) bool {
 // s82AnOpponentCastBlueOrBlackSpellThisTurn is "an opponent cast a blue and/or
 // black spell this turn", from the per-turn cast tally (a spell's colours as
 // it was cast, whatever became of it since).
-func s82AnOpponentCastBlueOrBlackSpellThisTurn(g *game.Game, you uuid.UUID) bool {
+func S82AnOpponentCastBlueOrBlackSpellThisTurn(g *game.Game, you uuid.UUID) bool {
 	for _, p := range g.Seats {
 		if p == nil || p.ID == you {
 			continue

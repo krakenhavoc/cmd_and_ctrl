@@ -38,7 +38,7 @@ func init() {
 		Name:         "Vincent Valentine",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, b33OpponentsCreatureDiedWhen,
+			On(game.EventLTB, B33OpponentsCreatureDiedWhen,
 				"Vincent Valentine — put +1/+1 counters equal to that creature's power on it",
 				vincentValentineGrowFromThePower),
 			Optional(
@@ -60,8 +60,8 @@ func init() {
 
 const vincentValentineOracleID = "f40e6bbf-1fed-4ec5-869d-18c2dd396d14"
 
-func b33OpponentsCreatureDiedWhen(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return b33OpponentsCreatureDied(ev, source, g)
+func B33OpponentsCreatureDiedWhen(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return B33OpponentsCreatureDied(ev, source, g)
 }
 
 // vincentValentineGrowFromThePower is the first trigger's body.
@@ -83,7 +83,7 @@ func vincentValentineGrowFromThePower(g *game.Game, item *game.StackItem) error 
 func vincentValentineTransform(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || !onBattlefield(g, item.SourceCardID) || c.ActiveFace != 0 || ctx.isNewSourceObject(item.SourceCardID) {
+	if !ok || !OnBattlefield(g, item.SourceCardID) || c.ActiveFace != 0 || ctx.IsNewSourceObject(item.SourceCardID) {
 		return nil
 	}
 	return TransformThis{}.Apply(ctx)

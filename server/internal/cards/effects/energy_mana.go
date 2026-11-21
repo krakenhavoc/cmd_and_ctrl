@@ -4,7 +4,7 @@ package effects
 // that pay energy (Aether Hub, Solar Transformer, Servant of the Conduit).
 
 // colorlessTapRow is "{T}: Add {C}."
-func colorlessTapRow() ManaAbility {
+func ColorlessTapRow() ManaAbility {
 	return ManaAbility{
 		Cost:     ManaAbilityCost{Tap: true},
 		Produced: "{C}",
@@ -13,7 +13,7 @@ func colorlessTapRow() ManaAbility {
 }
 
 // anyColorForEnergyRow is "{T}, Pay N {E}: Add one mana of any color."
-func anyColorForEnergyRow(energy int) ManaAbility {
+func AnyColorForEnergyRow(energy int) ManaAbility {
 	return ManaAbility{
 		Cost:     ManaAbilityCost{Tap: true, Energy: energy},
 		Produced: "{W|U|B|R|G}",
@@ -23,6 +23,6 @@ func anyColorForEnergyRow(energy int) ManaAbility {
 
 // anyColorForEnergyRows is the {C} row followed by the energy row, the
 // pair Aether Hub and Solar Transformer print.
-func anyColorForEnergyRows(energy int) []ManaAbility {
-	return []ManaAbility{colorlessTapRow(), anyColorForEnergyRow(energy)}
+func AnyColorForEnergyRows(energy int) []ManaAbility {
+	return []ManaAbility{ColorlessTapRow(), AnyColorForEnergyRow(energy)}
 }

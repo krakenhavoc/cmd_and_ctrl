@@ -36,8 +36,8 @@ import (
 // b27SacrificeAForest is Orcish Lumberjack's "Sacrifice a Forest" —
 // any permanent the activator controls with the Forest subtype,
 // effective subtypes so a Dryad Arbor or a Forest-typed dual counts.
-func b27SacrificeAForest() *game.TargetSpec {
-	return sacrificeSpec("a Forest", HasSubtype("Forest"))
+func B27SacrificeAForest() *game.TargetSpec {
+	return SacrificeSpec("a Forest", HasSubtype("Forest"))
 }
 
 // --- predicates --------------------------------------------------
@@ -55,7 +55,7 @@ func b27SacrificeAForest() *game.TargetSpec {
 // uncatalogued Llanowar-alike has no ability the engine could list. The
 // two are joined by "or": the catalog also covers what a granting
 // permanent gave the creature, which no text read can see.
-func b27HasTapAbility() CardPredicate {
+func B27HasTapAbility() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		if c.PrintedTapAbility() {
 			return true
@@ -80,23 +80,23 @@ func b27HasTapAbility() CardPredicate {
 // condition: the Rider itself died, or a NONTOKEN Zombie its
 // controller controlled did. b17SelfOrZombieYouControlDied without
 // the token half — the Rider's own 2/2 Zombies dying must not chain.
-func b27SelfOrNontokenZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	if cardDied(ev, source) {
+func B27SelfOrNontokenZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	if CardDied(ev, source) {
 		return true
 	}
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Zombie")) && !IsToken(dead)
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Zombie")) && !IsToken(dead)
 }
 
 // b27ColorlessSpellWithManaValueAtLeastCastByYou is Sanctum of
 // Ugin's condition: the controller cast a colorless spell whose mana
 // value is at least n. The spell is read off the stack, X included
 // (CR 202.3e), so a Walking Ballista cast with X=4 is mana value 8.
-func b27ColorlessSpellWithManaValueAtLeastCastByYou(ev game.Event, source *game.Card, g *game.Game, n int) bool {
-	if !b11ColorlessSpellCastByYou(ev, source, g) {
+func B27ColorlessSpellWithManaValueAtLeastCastByYou(ev game.Event, source *game.Card, g *game.Game, n int) bool {
+	if !B11ColorlessSpellCastByYou(ev, source, g) {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
@@ -110,8 +110,8 @@ func b27ColorlessSpellWithManaValueAtLeastCastByYou(ev game.Event, source *game.
 // b27AnotherElfYouControlEntered is Wolverine Riders' second
 // condition: another Elf entered under the source's controller's
 // control. Effective subtypes, so a changeling counts.
-func b27AnotherElfYouControlEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B27AnotherElfYouControlEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	if !ok || !c.IsCreature() || !c.HasSubtype(source.TextSubtype("Elf")) {
 		return game.Card{}, false
 	}
@@ -122,7 +122,7 @@ func b27AnotherElfYouControlEntered(ev game.Event, source *game.Card, g *game.Ga
 // enters untapped". The harvester runs with the source already on
 // the battlefield, its enters-tapped replacement applied, so the
 // tapped flag is the answer.
-func b27SelfEnteredUntapped(ev game.Event, source *game.Card) bool {
+func B27SelfEnteredUntapped(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventETB && ev.CardID == source.InstanceID && !source.Tapped
 }
 
@@ -131,7 +131,7 @@ func b27SelfEnteredUntapped(ev game.Event, source *game.Card) bool {
 // b27OtherOpponents is "each opponent other than defending player":
 // every seated, non-eliminated player who is neither `controller`
 // nor `except`, in seat order.
-func b27OtherOpponents(g *game.Game, controller, except uuid.UUID) []uuid.UUID {
+func B27OtherOpponents(g *game.Game, controller, except uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.ID == controller || p.ID == except {
@@ -147,7 +147,7 @@ func b27OtherOpponents(g *game.Game, controller, except uuid.UUID) []uuid.UUID {
 // player controls, zero with none. Post-layer types, so an
 // animated or artifact-ified permanent counts; printed mana cost,
 // which is what mana value reads off a permanent (CR 202.3).
-func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.UUID) int {
+func B27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.UUID) int {
 	best := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || !c.IsArtifact() {
@@ -203,7 +203,7 @@ func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.
 // re-entry says "new object, no memory" (CR 400.7); merely leaving,
 // or merely re-resolving the label, says nothing of the kind on its
 // own.
-func b27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
+func B27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
 	return b27ExiledWithRecord(g, source, label, true)
 }
 
@@ -216,7 +216,7 @@ func b27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
 // reader looks it up wherever it is now. The same re-entry boundary
 // applies (CR 400.7): an incarnation that left and came back remembers
 // nothing of the first.
-func b27EverExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
+func B27EverExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
 	return b27ExiledWithRecord(g, source, label, false)
 }
 
@@ -304,11 +304,11 @@ func b27CreatureTypesPlusShapeshifter(exiled game.Card, shapeshifter string) []s
 	_, _, subtypes := game.ParseTypeLine(exiled.TypeLine)
 	out := make([]string, 0, len(subtypes)+1)
 	for _, s := range subtypes {
-		if game.IsCreatureType(s) && !hasFold(out, s) {
+		if game.IsCreatureType(s) && !HasFold(out, s) {
 			out = append(out, s)
 		}
 	}
-	if !hasFold(out, shapeshifter) {
+	if !HasFold(out, shapeshifter) {
 		out = append(out, shapeshifter)
 	}
 	return out
@@ -317,7 +317,7 @@ func b27CreatureTypesPlusShapeshifter(exiled game.Card, shapeshifter string) []s
 // b27DamageDealtToAfter is the damage `target` actually took from
 // `source` in events logged after `after` — post-prevention, which
 // is what the event carries. Zero when nothing landed.
-func b27DamageDealtToAfter(g *game.Game, source, target uuid.UUID, after uint64) int {
+func B27DamageDealtToAfter(g *game.Game, source, target uuid.UUID, after uint64) int {
 	total := 0
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		ev := g.Events[i]
@@ -333,7 +333,7 @@ func b27DamageDealtToAfter(g *game.Game, source, target uuid.UUID, after uint64)
 
 // b27TokensCreatedByAfter lists the tokens `controller` created in
 // events logged after `after`, in creation order.
-func b27TokensCreatedByAfter(g *game.Game, controller uuid.UUID, after uint64) []uuid.UUID {
+func B27TokensCreatedByAfter(g *game.Game, controller uuid.UUID, after uint64) []uuid.UUID {
 	var out []uuid.UUID
 	for _, ev := range g.Events {
 		if ev.Seq > after && ev.Kind == game.EventTokenCreated && ev.Actor == controller {
@@ -348,7 +348,7 @@ func b27TokensCreatedByAfter(g *game.Game, controller uuid.UUID, after uint64) [
 // b27DrawOne is the delayed-trigger body Urza's Bauble schedules:
 // the item's controller draws a card. Package-level so the trigger
 // captures nothing.
-func b27DrawOne(g *game.Game, item *game.StackItem) error {
+func B27DrawOne(g *game.Game, item *game.StackItem) error {
 	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 }
 
@@ -356,7 +356,7 @@ func b27DrawOne(g *game.Game, item *game.StackItem) error {
 // in `player`'s hand, chosen by the engine's keyed random stream. "Look at" is
 // not "reveal": only the viewer learns the card. An empty hand shows
 // nothing.
-func b27LookAtRandomCardInHand(ctx *Context, viewer, player uuid.UUID) {
+func B27LookAtRandomCardInHand(ctx *Context, viewer, player uuid.UUID) {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
 		return
@@ -365,7 +365,7 @@ func b27LookAtRandomCardInHand(ctx *Context, viewer, player uuid.UUID) {
 	for _, c := range p.Hand.Cards {
 		ids = append(ids, c.InstanceID)
 	}
-	pick := randomPick(ctx, ids, 1)
+	pick := RandomPick(ctx, ids, 1)
 	if len(pick) == 0 {
 		return
 	}
@@ -383,7 +383,7 @@ func b27LookAtRandomCardInHand(ctx *Context, viewer, player uuid.UUID) {
 // damage the creature still needed to die (toughness less damage
 // already marked, floored at zero). Read after the damage lands so a
 // prevention shield reduces the excess along with the damage.
-func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, error) {
+func B27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, error) {
 	c, ok := ctx.Game.LookupCardForEffect(target)
 	if !ok || amount <= 0 {
 		return 0, nil
@@ -392,11 +392,11 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 	if lethal < 0 {
 		lethal = 0
 	}
-	cursor := b25LastEventSeq(ctx.Game)
+	cursor := B25LastEventSeq(ctx.Game)
 	if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: amount}).Apply(ctx); err != nil {
 		return 0, err
 	}
-	excess := b27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor) - lethal
+	excess := B27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor) - lethal
 	if excess < 0 {
 		excess = 0
 	}
@@ -424,7 +424,7 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 // reached exile, at once on a clean run and from the answer when a prompt paused
 // it. A player no longer in the game exiles nothing and `then` still runs. It
 // may be nil.
-func b27ExileTopUntilTotalManaValueThen(ctx *Context, player uuid.UUID, threshold int, then game.KeyedTail) error {
+func B27ExileTopUntilTotalManaValueThen(ctx *Context, player uuid.UUID, threshold int, then game.KeyedTail) error {
 	if ctx.PlayerByID(player) == nil {
 		return then.Run(ctx.Game, nil)
 	}
@@ -443,14 +443,14 @@ func b27ExileTopUntilTotalManaValueThen(ctx *Context, player uuid.UUID, threshol
 
 // b27GooseMotherAttackLabel is the stack label of The Goose Mother's
 // attack trigger.
-const b27GooseMotherAttackLabel = "The Goose Mother — sacrifice a Food to draw a card"
+const B27GooseMotherAttackLabel = "The Goose Mother — sacrifice a Food to draw a card"
 
 // b27SacrificeChosenThenDraw is The Goose Mother's "you may sacrifice
 // a Food. If you do, draw a card": the Food is chosen as the trigger
 // resolves (maySacrificeOne), and the draw follows only a Food that
 // really went.
-func b27SacrificeChosenThenDraw(g *game.Game, item *game.StackItem) error {
-	return maySacrificeOne(g, item, "The Goose Mother — sacrifice a Food to draw a card?", HasSubtype("Food"), false, gooseMotherDraw)
+func B27SacrificeChosenThenDraw(g *game.Game, item *game.StackItem) error {
+	return MaySacrificeOne(g, item, "The Goose Mother — sacrifice a Food to draw a card?", HasSubtype("Food"), false, gooseMotherDraw)
 }
 
 // gooseMotherDraw is the draw once a Food has really gone, keyed (#4290).
@@ -464,10 +464,10 @@ var gooseMotherDraw = RegisterSacrificedOne("prompt-run/the-goose-mother-sacrifi
 // shuffle" — the "may" was answered when the trigger fired; here the
 // Sanctum is sacrificed if it is still on the battlefield, and the
 // search happens only if it was.
-func b27SacrificeSelfThenTutorColorlessCreature(g *game.Game, item *game.StackItem) error {
+func B27SacrificeSelfThenTutorColorlessCreature(g *game.Game, item *game.StackItem) error {
 	// #1432: "if you do" — a Sanctum that left and came back is not
 	// sacrificed, so it tutors nothing.
-	if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+	if !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 		return nil
 	}
 	ctx := NewContext(g, item)
@@ -491,8 +491,8 @@ func b27SacrificeSelfThenTutorColorlessCreature(g *game.Game, item *game.StackIt
 // battlefield. The sacrifice was paid at announce and is read back
 // off the log; a token's mana value is zero, so a sacrificed
 // Treasure fetches a one-drop, as printed.
-func b27OswaldSearch(g *game.Game, item *game.StackItem) error {
-	sacrificed, ok := b17PermanentSacrificedToPay(g, item)
+func B27OswaldSearch(g *game.Game, item *game.StackItem) error {
+	sacrificed, ok := B17PermanentSacrificedToPay(g, item)
 	if !ok {
 		return nil
 	}
@@ -516,7 +516,7 @@ func b27OswaldSearch(g *game.Game, item *game.StackItem) error {
 // b27ReturnChosenGraveyardCardToHand is Memorial to Folly's
 // activation: the creature card chosen at announce returns to its
 // owner's hand if it is still in the graveyard.
-func b27ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) error {
+func B27ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -529,18 +529,18 @@ func b27ReturnChosenGraveyardCardToHand(g *game.Game, item *game.StackItem) erro
 
 // b27DuplicantLabel is the stack label of Duplicant's imprint
 // trigger — the "exiled with" record keys on it.
-const b27DuplicantLabel = "Duplicant — exile target nontoken creature"
+const B27DuplicantLabel = "Duplicant — exile target nontoken creature"
 
 // b27ExileChosenTarget exiles whatever the pick_target prompt
 // stamped into the item, if it is still legal.
-func b27ExileChosenTarget(g *game.Game, item *game.StackItem) error {
+func B27ExileChosenTarget(g *game.Game, item *game.StackItem) error {
 	return ExileChosenTarget{}.Apply(NewContext(g, item))
 }
 
 // b27LoseOneAndYouGainOne is Revenge of Ravens' drain: the attacker's
 // controller — stamped onto item.Params.Player by a fill-in Build —
 // loses 1 life and the item's controller gains 1, in that order.
-func b27LoseOneAndYouGainOne(g *game.Game, item *game.StackItem) error {
+func B27LoseOneAndYouGainOne(g *game.Game, item *game.StackItem) error {
 	victim := item.Params.Player
 	ctx := NewContext(g, item)
 	if p := g.PlayerByIDForEffect(victim); p != nil && !p.Eliminated {
@@ -557,10 +557,10 @@ func b27LoseOneAndYouGainOne(g *game.Game, item *game.StackItem) error {
 // other creature you control enters with an additional +1/+1 counter
 // on it" — Arwen's replacement (b17OtherCreaturesYouControlEnterWithCounters)
 // with a fixed one counter instead of the source's toughness.
-func b27OtherCreaturesYouControlEnterWithACounter(label string) game.ReplacementEffect {
+func B27OtherCreaturesYouControlEnterWithACounter(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:   []game.EventKind{game.EventZoneMove},
-		AppliesTo: bnsB13OtherCreatureYouControlEnters,
+		AppliesTo: BnsB13OtherCreatureYouControlEnters,
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.AddCounterAtETB("+1/+1", 1)
 			return nil
@@ -575,14 +575,14 @@ func b27OtherCreaturesYouControlEnterWithACounter(label string) game.Replacement
 // --- statics -----------------------------------------------------
 
 // b27CreaturesOpponentsControl is "creatures your opponents control".
-func b27CreaturesOpponentsControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B27CreaturesOpponentsControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.Controller != source.Controller
 }
 
 // b27OtherArtifactCreaturesYouControl is Chief of the Foundry's
 // "other artifact creatures you control" — post-layer types, so an
 // animated artifact counts.
-func b27OtherArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B27OtherArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.InstanceID != source.InstanceID &&
 		target.Controller == source.Controller &&
 		target.IsCreature() && target.IsArtifact()
@@ -594,12 +594,12 @@ func b27OtherArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source
 // 7b sets its power and toughness to that card's printed values.
 // Not a CDA — the ability is conditional (CR 604.3a) — so counters
 // and anthems still apply on top.
-func b27DuplicantStatics() []game.StaticAbility {
+func B27DuplicantStatics() []game.StaticAbility {
 	return []game.StaticAbility{
 		{
 			Label:     "This creature has the creature types of the last creature card exiled with it, and is still a Shapeshifter.",
 			Layer:     game.Layer4Type,
-			AppliesTo: selfOnly,
+			AppliesTo: SelfOnly,
 			// A card leaving exile ends "exiled with this creature"; the
 			// layers are re-read when one does (#3172).
 			DependsOnExile: true,
@@ -613,7 +613,7 @@ func b27DuplicantStatics() []game.StaticAbility {
 			Label:     "This creature has the power and toughness of the last creature card exiled with it.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7B_Set,
-			AppliesTo: selfOnly,
+			AppliesTo: SelfOnly,
 			// As above.
 			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {

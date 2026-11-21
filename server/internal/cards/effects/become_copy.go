@@ -143,7 +143,7 @@ func (b BecomeCopy) ApplyReports(ctx *Context) (bool, error) {
 	// names an object that no longer exists; the new one is left alone.
 	targets := make([]uuid.UUID, 0, len(b.Targets))
 	for _, t := range b.Targets {
-		if !ctx.isNewSourceObject(t) {
+		if !ctx.IsNewSourceObject(t) {
 			targets = append(targets, t)
 		}
 	}
@@ -197,13 +197,13 @@ func copyDurationFor(g *game.Game, kind CopyDuration, source, controller, of uui
 // Mirage Mirror, Shifting Woodland. The target clause is the ability's
 // only one, and the CR 608.2b re-check has already countered the
 // ability if it is illegal.
-func selfBecomesCopyOfTarget(label string) func(g *game.Game, item *game.StackItem) error {
-	return selfBecomesCopyOfTargetExcept(label, nil)
+func SelfBecomesCopyOfTarget(label string) func(g *game.Game, item *game.StackItem) error {
+	return SelfBecomesCopyOfTargetExcept(label, nil)
 }
 
 // selfBecomesCopyOfTargetExcept is selfBecomesCopyOfTarget with an "except"
 // clause on the copied values (Impossible Man: "except his name is ...").
-func selfBecomesCopyOfTargetExcept(label string, except func(v *game.PrintedValues)) func(g *game.Game, item *game.StackItem) error {
+func SelfBecomesCopyOfTargetExcept(label string, except func(v *game.PrintedValues)) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		targets := ctx.LegalTargets()

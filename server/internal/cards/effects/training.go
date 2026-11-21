@@ -47,7 +47,7 @@ func attacksWithGreaterPower(_ game.Event, source *game.Card, _ game.Characteris
 
 // trainingCounter puts the +1/+1 counter on the trainee.
 func trainingCounter(g *game.Game, item *game.StackItem) error {
-	if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+	if !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 		return nil
 	}
 	return g.AddCounterForEffect(item.SourceCardID, game.CounterPlusOne, 1)

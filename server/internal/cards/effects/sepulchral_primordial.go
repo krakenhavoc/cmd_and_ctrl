@@ -24,7 +24,7 @@ import (
 // No simplification.
 func init() {
 	enters := WhenThisEnters("Sepulchral Primordial — put up to one creature card from each opponent's graveyard onto the battlefield under your control",
-		sepulchralPrimordialEffect)
+		SepulchralPrimordialEffect)
 	// Like Molten Primordial the list reads only the seat list and the
 	// entering object's controller, neither of which can change while
 	// the trigger waits, so the row is a restore point.
@@ -61,7 +61,7 @@ func sepulchralPrimordialClauses(tc game.TriggerContext, source *game.Card, g *g
 
 // sepulchralPrimordialEffect puts every still-legal pick onto the
 // battlefield under the controller's control.
-func sepulchralPrimordialEffect(g *game.Game, item *game.StackItem) error {
+func SepulchralPrimordialEffect(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {

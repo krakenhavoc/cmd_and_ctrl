@@ -1,0 +1,60 @@
+package cardsbl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Bloomvine Regent // Claim Territory — Tarkir: Dragonstorm (#4463),
+// an omen card (CR 720, #5175):
+//
+//	Bloomvine Regent — Creature — Dragon {3}{G}{G}, 4/5
+//	  "Flying
+//	   Whenever this creature or another Dragon you control enters, you
+//	   gain 3 life."
+//	Claim Territory — Sorcery — Omen {2}{G}
+//	  "Search your library for up to two basic Forest cards, reveal them,
+//	   put one onto the battlefield tapped and the other into your hand,
+//	   then shuffle. (Also shuffle this card.)"
+//
+// Two keys, one card, as for an Adventure: the Dragon under the bare
+// oracle ID and the Omen under "<oracle>#1". What happens to the card
+// once the Omen resolves is the engine's (CR 720.3d, game/omen.go);
+// this file says nothing about it.
+//
+// The Regent's trigger is Ganax's condition (the source itself, or
+// another Dragon entering under your control). Claim Territory is
+// Cultivate's two searches with a basic Forest for a basic land.
+//
+// No simplification.
+
+const BloomvineRegentOracleID = "da1e019c-2ffb-412d-90d7-f2e5e5c44c4b"
+
+// claimTerritoryHandHalf is Claim Territory's second search: the other
+// basic Forest into your hand, then the shuffle. An on-disk key.
+var claimTerritoryHandHalf = effects.LandToHandTail("claim-territory/forest-to-hand", "Claim Territory",
+	"basic Forest", effects.IsBasicLandWithSubtype("forest"))
+
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        BloomvineRegentOracleID,
+		Name:            "Bloomvine Regent",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.B14SelfOrDragonYouControlEntered(ev, source, g)
+			}, "Bloomvine Regent — you gain 3 life", effects.Do(effects.GainLife{Amount: 3})),
+		},
+	})
+	effects.Register(effects.Spec{
+		OracleID:     BloomvineRegentOracleID + "#1",
+		Name:         "Claim Territory",
+		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Lands: 1, Tutors: 1},
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.TwoLandSearch(ctx, "Claim Territory", "basic Forest", effects.IsBasicLandWithSubtype("forest"), claimTerritoryHandHalf)
+		},
+	})
+}

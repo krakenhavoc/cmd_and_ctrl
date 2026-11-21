@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // on a single creature gets exactly one trigger per combat with no
 // batching guard — unlike Curse of Opulence, which watches the
 // DEFENDER and therefore sees one event per attacker.
-func attachedCreatureAttacked(ev game.Event, source *game.Card) bool {
+func AttachedCreatureAttacked(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventAttack && source.IsAttachedTo(ev.CardID)
 }
 
@@ -46,7 +46,7 @@ func attachedCreatureAttacked(ev game.Event, source *game.Card) bool {
 //   - "Opponent" is measured against the AURA's controller, which is
 //     who the "you" in "you may draw a card" refers to (CR 109.5).
 //     A stolen Curiosity draws for whoever holds the Aura now.
-func attachedCreatureDealtDamageToOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
+func AttachedCreatureDealtDamageToOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 {
 		return false
 	}
@@ -75,7 +75,7 @@ func attachedCreatureDealtDamageToOpponent(ev game.Event, source *game.Card, g *
 // for the full note.
 func PumpAttachedPer(power, toughness int, count func(g *game.Game, source *game.Card) int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Attached creature gets " + signedPT(power, toughness) + " for each one the card counts.",
+		Label:     "Attached creature gets " + SignedPT(power, toughness) + " for each one the card counts.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: AttachedToSource,
@@ -121,7 +121,7 @@ func GrantToAttachedWhile(cond func(host *game.Card, g *game.Game, source *game.
 // "You" is the ATTACHMENT's controller, not the host creature's. That
 // is CR 109.5 again and it is observable: a Blackblade Reforged whose
 // creature has been stolen still counts ITS controller's lands.
-func permanentsYouControl(g *game.Game, source *game.Card, match func(c *game.Card) bool) int {
+func CountPermanentsYouControl(g *game.Game, source *game.Card, match func(c *game.Card) bool) int {
 	if g == nil || g.Battlefield == nil {
 		return 0
 	}
@@ -147,8 +147,8 @@ func permanentsYouControl(g *game.Game, source *game.Card, match func(c *game.Ca
 // artifactsControlledBy does: an animated or type-changed permanent
 // counts, because by the time layer 7 runs layer 4 has already
 // written.
-func artifactOrEnchantmentsControlledBy(g *game.Game, source *game.Card) int {
-	return permanentsYouControl(g, source, func(c *game.Card) bool {
+func ArtifactOrEnchantmentsControlledBy(g *game.Game, source *game.Card) int {
+	return CountPermanentsYouControl(g, source, func(c *game.Card) bool {
 		for _, t := range c.Effective().Types {
 			if t == "Artifact" || t == "Enchantment" {
 				return true
@@ -159,8 +159,8 @@ func artifactOrEnchantmentsControlledBy(g *game.Game, source *game.Card) int {
 }
 
 // landsControlledBy counts "land you control" — Blackblade Reforged.
-func landsControlledBy(g *game.Game, source *game.Card) int {
-	return permanentsYouControl(g, source, func(c *game.Card) bool { return c.IsLand() })
+func LandsControlledBy(g *game.Game, source *game.Card) int {
+	return CountPermanentsYouControl(g, source, func(c *game.Card) bool { return c.IsLand() })
 }
 
 // forestsControlledBy counts "Forest you control" — Blanchwood Armor.
@@ -171,15 +171,15 @@ func landsControlledBy(g *game.Game, source *game.Card) int {
 //
 // "Forest" is a word of the source's text (CR 612.2), so a Magical Hack
 // on Blanchwood Armor counts Islands instead.
-func forestsControlledBy(g *game.Game, source *game.Card) int {
+func ForestsControlledBy(g *game.Game, source *game.Card) int {
 	forest := source.TextSubtype("Forest")
-	return permanentsYouControl(g, source, func(c *game.Card) bool { return c.HasSubtype(forest) })
+	return CountPermanentsYouControl(g, source, func(c *game.Card) bool { return c.HasSubtype(forest) })
 }
 
 // otherEnchantmentsOnTheBattlefield counts "each OTHER enchantment on
 // the battlefield" — Ancestral Mask, which is symmetrical and counts
 // every player's enchantments, itself excluded.
-func otherEnchantmentsOnTheBattlefield(g *game.Game, source *game.Card) int {
+func OtherEnchantmentsOnTheBattlefield(g *game.Game, source *game.Card) int {
 	if g == nil || g.Battlefield == nil {
 		return 0
 	}

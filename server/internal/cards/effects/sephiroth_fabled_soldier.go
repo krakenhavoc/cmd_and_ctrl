@@ -40,13 +40,13 @@ import (
 // card over (#1574).
 func init() {
 	Register(Spec{
-		OracleID:     sephirothOracleID,
+		OracleID:     SephirothOracleID,
 		Name:         "Sephiroth, Fabled SOLDIER",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersOrAttacks("Sephiroth, Fabled SOLDIER — you may sacrifice another creature to draw a card",
 				func(g *game.Game, item *game.StackItem) error {
-					return sephirothSacrificeOthersThenDraw(g, item, 1)
+					return SephirothSacrificeOthersThenDraw(g, item, 1)
 				}),
 			Targeting(On(game.EventLTB, AnotherCreatureDied, sephirothDrainLabel, sephirothDrainAndMaybeTransform),
 				TargetPlayer("target opponent", Opponent())),
@@ -55,7 +55,7 @@ func init() {
 }
 
 const (
-	sephirothOracleID   = "70113003-be5e-406a-9aec-cb480468c36d"
+	SephirothOracleID   = "70113003-be5e-406a-9aec-cb480468c36d"
 	sephirothDrainLabel = "Sephiroth, Fabled SOLDIER — target opponent loses 1 life and you gain 1 life"
 )
 
@@ -63,7 +63,7 @@ const (
 // other creatures. If you do, draw that many cards." max 0 is "any
 // number". Shared by both faces: the front's attack-or-enter trigger
 // (max 1) and the back's attack trigger (any number).
-func sephirothSacrificeOthersThenDraw(g *game.Game, item *game.StackItem, max int) error {
+func SephirothSacrificeOthersThenDraw(g *game.Game, item *game.StackItem, max int) error {
 	self := item.SourceCardID
 	return ChoosePermanents{
 		Question: "Sephiroth — you may sacrifice other creatures to draw that many cards",
@@ -85,7 +85,7 @@ func sephirothSacrificeOthersThenDraw(g *game.Game, item *game.StackItem, max in
 var sephirothSacrificed = RegisterPermanentsPick("prompt-run/sephiroth-sacrifice-draw", PermanentsDef{
 	Sacrifice: true,
 	Then: func(ctx *Context, picked game.PromptedPicks) error {
-		return drawOnePerPicked(ctx.Controller())(ctx, picked)
+		return DrawOnePerPicked(ctx.Controller())(ctx, picked)
 	},
 })
 
@@ -93,14 +93,14 @@ var sephirothSacrificed = RegisterPermanentsPick("prompt-run/sephiroth-sacrifice
 // the drain, then the fourth-resolution transform.
 func sephirothDrainAndMaybeTransform(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if err := drainTargetOpponentOne(g, item); err != nil {
+	if err := DrainTargetOpponentOne(g, item); err != nil {
 		return err
 	}
 	if g.ResolvedThisTurn(item.SourceCardID, sephirothDrainLabel) != 4 {
 		return nil
 	}
 	src, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || TransformedPermanent(src) || ctx.isNewSourceObject(item.SourceCardID) {
+	if !ok || TransformedPermanent(src) || ctx.IsNewSourceObject(item.SourceCardID) {
 		return nil
 	}
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {

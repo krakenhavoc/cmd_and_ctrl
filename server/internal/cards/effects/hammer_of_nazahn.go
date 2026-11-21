@@ -45,13 +45,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
+				c, ok := EnteredUnderYourControl(ev, source, g, false)
 				return ok && c.HasSubtype("Equipment")
 			},
 			Key:     "Hammer of Nazahn — attach that Equipment to target creature you control",
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return hammerOfNazahnAttachEnteringEquipment(g, item, item.Trigger.Event.CardID)
+				return HammerOfNazahnAttachEnteringEquipment(g, item, item.Trigger.Event.CardID)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{
 				Question: "Hammer of Nazahn — attach that Equipment to target creature you control?",
@@ -63,7 +63,7 @@ func init() {
 	})
 }
 
-func hammerOfNazahnAttachEnteringEquipment(g *game.Game, item *game.StackItem, entering uuid.UUID) error {
+func HammerOfNazahnAttachEnteringEquipment(g *game.Game, item *game.StackItem, entering uuid.UUID) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {

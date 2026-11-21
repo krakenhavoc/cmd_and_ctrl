@@ -56,7 +56,7 @@ func init() {
 			// controller, and the step's Actor is the active
 			// player.
 			AtYourUpkeep("Dark Confidant — reveal the top card of your library and put it into your hand", func(g *game.Game, item *game.StackItem) error {
-				return darkConfidantFlip(g, item)
+				return DarkConfidantFlip(g, item)
 			}),
 		},
 	})
@@ -64,7 +64,7 @@ func init() {
 
 // darkConfidantFlip is the whole trigger: reveal one off the top,
 // read what it costs, put it in hand, then pay.
-func darkConfidantFlip(g *game.Game, item *game.StackItem) error {
+func DarkConfidantFlip(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var revealed []uuid.UUID
 	if err := (RevealTopOfLibrary{

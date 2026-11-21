@@ -14,8 +14,8 @@ import (
 // the can't-block clause is a static it always has (the Fungus's shape), so
 // it is a catalog template rather than a tokens_table row. Its slug is an
 // on-disk identity: never renamed, never reused.
-func printedRavenManBirdToken() tokenTemplate {
-	return tokenTemplate{
+func printedRavenManBirdToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "bird-black-flying-cant-block",
 		Card: game.Card{
 			Name:      "Bird",
@@ -31,7 +31,7 @@ func printedRavenManBirdToken() tokenTemplate {
 }
 
 // RavenManBirdToken is that Bird's card value for CreateToken.
-func RavenManBirdToken() game.Card { return tokenFromCatalog(printedRavenManBirdToken) }
+func RavenManBirdToken() game.Card { return TokenFromCatalog(printedRavenManBirdToken) }
 
 // phoenixChickReturn puts `card`, still in its owner's graveyard, onto the
 // battlefield under its controller's control tapped and attacking with a
@@ -39,7 +39,7 @@ func RavenManBirdToken() game.Card { return tokenFromCatalog(printedRavenManBird
 // attacks when more than one player, planeswalker or battle could be. The
 // counter is an entry counter (CR 614.1c). It is putAttackingYourChoice's
 // shape with the counter this one card prints.
-func phoenixChickReturn(ctx *Context, card uuid.UUID) error {
+func PhoenixChickReturn(ctx *Context, card uuid.UUID) error {
 	me := ctx.Controller()
 	refs := ctx.Game.AttackTargetsForEffect(me)
 	if len(refs) == 0 {
@@ -51,7 +51,7 @@ func phoenixChickReturn(ctx *Context, card uuid.UUID) error {
 	options := make([]game.ChoiceOption, len(refs))
 	carry := []uuid.UUID{card}
 	for i, r := range refs {
-		options[i] = game.ChoiceOption{Label: "Attack " + attackTargetName(ctx.Game, r.ID)}
+		options[i] = game.ChoiceOption{Label: "Attack " + AttackTargetName(ctx.Game, r.ID)}
 		if r.Kind != game.AttackTargetPlayer {
 			options[i].Cards = []uuid.UUID{r.ID}
 		}

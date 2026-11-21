@@ -1,0 +1,41 @@
+package cardslu
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Lys Alana Dignitary — Creature — Elf Advisor {1}{G}, 2/3:
+//
+//	"As an additional cost to cast this spell, behold an Elf or pay {2}. (To behold an Elf, choose an Elf you control or reveal an Elf card from your hand.)
+//	 {T}: Add {G}{G}. Activate only if there is an Elf card in your graveyard."
+//
+// The additional cost is the either/or branch cost of ADR 0100 §2
+// with the behold branch added by its 2026-10-07 amendment
+// (BeholdOrPay): the caster announces the branch, names the
+// card on reveal_ids, and either shows it to the table or pays {2}
+// more.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:       "ce7582a2-e014-41fb-8753-00d29cffc81a",
+		Name:           "Lys Alana Dignitary",
+		Completeness:   effects.CompletenessFull,
+		AdditionalCost: effects.BeholdOrPay("an", "Elf", "{2}"),
+		ManaAbilities: []effects.ManaAbility{{
+			Cost:     effects.ManaAbilityCost{Tap: true},
+			Produced: "{G}{G}",
+			Label:    "Add {G}{G}",
+			// "Elf" in the condition is a word of the permanent's text
+			// (CR 612.2, #3984); the behold cost's is judged as the spell is
+			// cast, before anything can change it.
+			Condition: func(g *game.Game, controller, source uuid.UUID) bool {
+				elf := g.TextReaderOfForEffect(source).TextSubtype("Elf")
+				return effects.GraveyardAtLeast(1, func(c game.Card) bool { return c.HasSubtype(elf) })(g, controller, source)
+			},
+		}},
+	})
+}

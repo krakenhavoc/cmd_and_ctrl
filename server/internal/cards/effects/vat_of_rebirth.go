@@ -45,7 +45,7 @@ func init() {
 				RemoveCountersFromThis(vatOfRebirthCounter, 4)),
 			Targets:      TargetCardInGraveyard("target creature card from your graveyard", Creature(), YouOwn()),
 			SorcerySpeed: true,
-			Effect:       returnFirstLegalGraveyardTargetToBattlefield,
+			Effect:       ReturnFirstLegalGraveyardTargetToBattlefield,
 		}},
 	})
 }
@@ -62,5 +62,5 @@ func vatOfRebirthCondition(ev game.Event, source *game.Card, _ game.Characterist
 	if !ok {
 		return false
 	}
-	return (leftAsType(ev, c, "artifact") || leftAsType(ev, c, "creature")) && leftUnderControlOf(ev, c) == source.Controller
+	return (LeftAsType(ev, c, "artifact") || LeftAsType(ev, c, "creature")) && LeftUnderControlOf(ev, c) == source.Controller
 }

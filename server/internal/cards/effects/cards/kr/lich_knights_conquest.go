@@ -1,0 +1,96 @@
+package cardskr
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Lich-Knights' Conquest — Sorcery {4}{B} (EDHREC rank 2596):
+//
+//	"Sacrifice any number of artifacts, enchantments, and/or tokens.
+//	 Return that many creature cards from your graveyard to the
+//	 battlefield."
+//
+// Treasures and Clues into a mass reanimation. Both choices are made
+// as the spell resolves, in the printed order (#2863, ADR 0013
+// amendment of 2026-10-09):
+//
+//  1. "Sacrifice any number" is one own-permanents pick over your
+//     artifacts, enchantments and tokens with a floor of zero
+//     (ChoosePermanents, Scapeshift's shape), and the chosen ones are
+//     sacrificed together (SacrificeAllKeyedForEffect).
+//  2. "That many" is how many really left the battlefield, read off
+//     the sacrifice's answer rather than off the clicks (#1019's
+//     rule), so a permanent that could not be sacrificed buys nothing.
+//  3. "Return that many creature cards" is then one pick from the
+//     graveyard as it is NOW (ReturnChosenFromGraveyard): exactly that
+//     many, or every creature card there if there are fewer (CR
+//     608.2). An artifact creature card sacrificed in step 1 is in the
+//     graveyard by then and can come back; a sacrificed creature token
+//     has ceased to exist and cannot.
+//
+// Nothing is targeted, so the spell has no pick for opponents to see
+// at cast and cannot fizzle. The returned cards enter together
+// (#1867), so each sees the others enter.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "b0e533dd-baf2-482a-b9e1-872eb5e47439",
+		Name:         "Lich-Knights' Conquest",
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.ChoosePermanents{
+				Question:   "Lich-Knights' Conquest — sacrifice any number of artifacts, enchantments, and/or tokens",
+				Candidates: lichKnightsFodder,
+				Keyed:      lichKnightsChosen,
+			}.Apply(ctx)
+		},
+	})
+}
+
+// lichKnightsChosen is the chosen permanents sacrificed and that many
+// creature cards returned, keyed (#4290). Sacrificed in the body rather
+// than with Sacrifice: true, because "that many" is what LEFT, not what was
+// clicked.
+var lichKnightsChosen = effects.RegisterPermanentsPick("prompt-run/lich-knights-conquest-sacrifice", effects.PermanentsDef{
+	Then: func(ctx *effects.Context, picked game.PromptedPicks) error {
+		if picked.Count() == 0 {
+			return nil
+		}
+		return ctx.Game.SacrificeAllKeyedForEffect(ctx.Source(), picked.Cards(), ctx.ItemTail(lichKnightsReturn))
+	},
+})
+
+// lichKnightsReturn is "return that many creature cards", told what was
+// really sacrificed, keyed (#4253 slice 10a).
+var lichKnightsReturn = effects.CardTail("then/lich-knights-conquest-return", func(ctx *effects.Context, o game.TailOutcome) error {
+	n := len(o.IDs)
+	if n == 0 {
+		return nil
+	}
+	return effects.ReturnChosenFromGraveyard{
+		Question: "Lich-Knights' Conquest — return that many creature cards from your graveyard to the battlefield",
+		Match:    game.Card.IsCreature,
+		Min:      n,
+		Max:      n,
+	}.Apply(ctx)
+})
+
+// lichKnightsFodder is every artifact, enchantment and token the
+// chooser controls, with a floor of zero and no ceiling but the board —
+// "any number".
+//
+// Caller holds g.mu.
+func lichKnightsFodder(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+	match := effects.Or(effects.Artifact(), effects.Enchantment(), effects.IsTokenPredicate())
+	var out []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == of && match(g, of, c) {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out, 0, len(out)
+}

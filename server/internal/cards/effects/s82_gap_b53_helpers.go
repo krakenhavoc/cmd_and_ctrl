@@ -9,7 +9,7 @@ import (
 // gapB53YouSacrificedANontoken is "whenever you sacrifice a nontoken
 // permanent": the source's controller sacrificed it, the source itself
 // included.
-func gapB53YouSacrificedANontoken(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func GapB53YouSacrificedANontoken(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || source == nil || ev.Actor != source.Controller {
 		return false
 	}
@@ -21,10 +21,10 @@ func gapB53YouSacrificedANontoken(ev game.Event, source *game.Card, _ game.Chara
 // creature you control gets +1/+0 and gains haste until end of turn". The
 // target is read as the trigger resolves; one that is gone gets nothing
 // (CR 608.2b).
-var gapB53PumpAndHaste = energyPaid("pay-unless/gap-b53-conduit-goblin-pump-haste",
+var GapB53PumpAndHaste = EnergyPaid("pay-unless/gap-b53-conduit-goblin-pump-haste",
 	func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -37,14 +37,14 @@ var gapB53PumpAndHaste = energyPaid("pay-unless/gap-b53-conduit-goblin-pump-hast
 // gapB53ThisWasKicked is the AppliesTo of "if this creature was kicked,
 // it enters with … haste": the source itself, when it arrived by a
 // kicked spell (CR 702.33d, game.CardKickedTimes).
-func gapB53ThisWasKicked(target *game.Card, _ *game.Game, source *game.Card) bool {
+func GapB53ThisWasKicked(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target != nil && source != nil && target.InstanceID == source.InstanceID && game.CardKickedTimes(*source) > 0
 }
 
 // gapB53SelfBasePT is "this creature has base power and toughness P/T" as a
 // layer 7b set on the source itself, so +1/+1 counters and anthems still
 // count (CR 613.4b).
-func gapB53SelfBasePT(power, toughness int, label string) game.StaticAbility {
+func GapB53SelfBasePT(power, toughness int, label string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:    label,
 		Layer:    game.Layer7PT,
@@ -61,8 +61,8 @@ func gapB53SelfBasePT(power, toughness int, label string) game.StaticAbility {
 
 // gapB53SelfKeyword is "this creature has <keyword>" as a layer 6 grant on
 // the source itself.
-func gapB53SelfKeyword(keyword string) game.StaticAbility {
-	s := b16GrantKeywords(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+func GapB53SelfKeyword(keyword string) game.StaticAbility {
+	s := B16GrantKeywords(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target != nil && source != nil && target.InstanceID == source.InstanceID
 	}, keyword)
 	s.Label = "This creature has " + keyword + "."
@@ -73,12 +73,12 @@ func gapB53SelfKeyword(keyword string) game.StaticAbility {
 // discard a card. If you do, exile the top two cards of your library, then
 // choose one of them. You may play that card this turn": run once a card has
 // really been discarded (the run's count, not the hand's). An on-disk key.
-var gapB53ThrasherExileTwo = game.RegisterDiscardThen("choose-cards/gap-b53-party-thrasher-exile-two",
+var GapB53ThrasherExileTwo = game.RegisterDiscardThen("choose-cards/gap-b53-party-thrasher-exile-two",
 	func(g *game.Game, r game.DiscardsDone) error {
 		if r.Discarded.Count() == 0 {
 			return nil
 		}
-		return g.ExileTopKeyedForEffect(r.Player, r.Player, 2, keyedContext(g, r.Player, r.Source).Tail(gapB53ThrasherChoose))
+		return g.ExileTopKeyedForEffect(r.Player, r.Player, 2, KeyedContext(g, r.Player, r.Source).Tail(gapB53ThrasherChoose))
 	})
 
 // gapB53ThrasherChoose is "choose one of them" over the cards that reached
@@ -123,6 +123,6 @@ var gapB53ThrasherChosen = game.RegisterChooseCardsThen("choose-cards/gap-b53-pa
 
 // gapB53NoncreatureFromExile is Party Thrasher's convoke filter:
 // "noncreature spells you cast from exile".
-func gapB53NoncreatureFromExile(_ *game.Game, _ uuid.UUID, spell game.Card, from game.ZoneKind) bool {
+func GapB53NoncreatureFromExile(_ *game.Game, _ uuid.UUID, spell game.Card, from game.ZoneKind) bool {
 	return from == game.ZoneExile && !spell.IsCreature()
 }

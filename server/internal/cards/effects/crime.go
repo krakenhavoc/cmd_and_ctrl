@@ -19,7 +19,7 @@ func YouCommittedCrime(ev game.Event, source *game.Card) bool {
 // turn do not trigger it again.
 func WheneverYouCommitACrimeOnceEachTurn(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventBecomesTarget, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return YouCommittedCrime(ev, source) && !b11TriggeredThisTurn(g, source.InstanceID, label)
+		return YouCommittedCrime(ev, source) && !B11TriggeredThisTurn(g, source.InstanceID, label)
 	}, label, effect)
 }
 

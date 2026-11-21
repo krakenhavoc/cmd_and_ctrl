@@ -21,14 +21,14 @@ func init() {
 		OracleID:     "dc1c0e8c-d0c1-445c-968f-7dec91e5d5fc",
 		Name:         "Relentless Assault",
 		Completeness: CompletenessFull,
-		OnResolve:    untapAttackersThenCombatAndMain,
+		OnResolve:    UntapAttackersThenCombatAndMain,
 	})
 }
 
 // untapAttackersThenCombatAndMain is the whole of Relentless Assault,
 // and the same sentence other cards print (Fury of the Horde, Waves of
 // Aggression).
-func untapAttackersThenCombatAndMain(_ *game.StackItem, ctx *Context) error {
+func UntapAttackersThenCombatAndMain(_ *game.StackItem, ctx *Context) error {
 	if err := (UntapCreaturesThatAttackedThisTurn{}).Apply(ctx); err != nil {
 		return err
 	}

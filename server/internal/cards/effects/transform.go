@@ -43,7 +43,7 @@ type Transform struct {
 }
 
 func (t Transform) Apply(ctx *Context) error {
-	if t.Target == uuid.Nil || ctx.isNewSourceObject(t.Target) { // #1432
+	if t.Target == uuid.Nil || ctx.IsNewSourceObject(t.Target) { // #1432
 		return nil
 	}
 	// CR 701.27a transforms a permanent. A card that has left the
@@ -75,7 +75,7 @@ func (t Transform) Apply(ctx *Context) error {
 type TransformThis struct{}
 
 func (TransformThis) Apply(ctx *Context) error {
-	if sourceTurnedOverSince(ctx) {
+	if SourceTurnedOverSince(ctx) {
 		return nil
 	}
 	return Transform{Target: ctx.Source()}.Apply(ctx)
@@ -99,7 +99,7 @@ type ExileAndReturnTransformed struct {
 }
 
 func (e ExileAndReturnTransformed) Apply(ctx *Context) error {
-	if e.Target == uuid.Nil || ctx.isNewSourceObject(e.Target) { // #1432
+	if e.Target == uuid.Nil || ctx.IsNewSourceObject(e.Target) { // #1432
 		return nil
 	}
 	return ctx.Game.ExileAndReturnTransformedForEffect(e.Target, e.Controller)

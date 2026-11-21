@@ -48,7 +48,7 @@ import (
 // a card that appends to Keywords or Colors cannot leak into the next
 // caller's token.
 func TokenCard(key string) game.Card {
-	t, ok := tokenTable[key]
+	t, ok := TokenTable[key]
 	if !ok {
 		panic("effects.TokenCard: no token template named " + strconv.Quote(key))
 	}
@@ -60,15 +60,15 @@ func TokenCard(key string) game.Card {
 // TokenKeys lists every key in the table, sorted. For tests and the
 // catalogue page.
 func TokenKeys() []string {
-	keys := make([]string, 0, len(tokenTable))
-	for k := range tokenTable {
+	keys := make([]string, 0, len(TokenTable))
+	for k := range TokenTable {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	return keys
 }
 
-var tokenTable = map[string]game.Card{
+var TokenTable = map[string]game.Card{
 	"1/1 green and white Human Citizen":                             {Name: "Human Citizen", TypeLine: "Token Creature — Human Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Citizen":                                   {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Kithkin":                                   {Name: "Kithkin", TypeLine: "Token Creature — Kithkin", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},

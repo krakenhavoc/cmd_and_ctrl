@@ -45,7 +45,7 @@ func PutItsCountersOnTargetCreature(g *game.Game, item *game.StackItem) error {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		return b14PutCounters(ctx, t.ID, left.Counters)
+		return B14PutCounters(ctx, t.ID, left.Counters)
 	}
 	return nil
 }

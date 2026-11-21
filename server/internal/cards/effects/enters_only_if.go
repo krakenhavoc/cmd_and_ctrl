@@ -103,13 +103,13 @@ func EntersOnlyIfYouSacrifice(name string, n int, clause string, matches func(ga
 }
 
 // isLandCard is "a land card" over a card in hand.
-func isLandCard(c game.Card) bool { return c.IsLand() }
+func IsLandCard(c game.Card) bool { return c.IsLand() }
 
 // untappedLandWithSubtype is "an untapped <Mountain>" over a permanent.
-func untappedLandWithSubtype(subtype string) func(game.Card) bool {
+func UntappedLandWithSubtype(subtype string) func(game.Card) bool {
 	has := IsLandWithSubtype(subtype)
 	return func(c game.Card) bool { return !c.Tapped && has(c) }
 }
 
 // untappedLand is "an untapped land" over a permanent.
-func untappedLand(c game.Card) bool { return !c.Tapped && c.IsLand() }
+func UntappedLand(c game.Card) bool { return !c.Tapped && c.IsLand() }

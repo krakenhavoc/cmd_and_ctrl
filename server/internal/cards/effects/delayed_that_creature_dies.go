@@ -37,31 +37,31 @@ var (
 	// "When that creature dies this turn": the one creature named by
 	// CondParams.Object, put into a graveyard from the battlefield while
 	// it was that object and a creature (CR 700.4, 603.10a).
-	thatCreatureDiedCondition = game.DelayedEachCondition("dies/that-creature", thatCreatureDied)
+	ThatCreatureDiedCondition = game.DelayedEachCondition("dies/that-creature", ThatCreatureDied)
 
 	// "Put its counters on up to one target creature you control and draw
 	// a card" (Heroic Sacrifice, #2057).
-	heroicSacrificeDiesBody = game.TargetedDelayedBody("heroic-sacrifice/its-counters-and-draw",
-		simpleBody(heroicSacrificeDies),
-		constTargets(func() *game.TargetSpec {
+	HeroicSacrificeDiesBody = game.TargetedDelayedBody("heroic-sacrifice/its-counters-and-draw",
+		SimpleBody(heroicSacrificeDies),
+		ConstTargets(func() *game.TargetSpec {
 			return TargetCreature("up to one target creature you control", YouControl()).WithCount(0, 1)
 		}))
 
 	// "You earthbend 4" (Fatal Fissure, #2057): earthbend's own "target
 	// land you control".
-	fatalFissureDiesBody = game.TargetedDelayedBody("fatal-fissure/earthbend-4",
-		simpleBody(fatalFissureDies), constTargets(EarthbendTargets))
+	FatalFissureDiesBody = game.TargetedDelayedBody("fatal-fissure/earthbend-4",
+		SimpleBody(fatalFissureDies), ConstTargets(EarthbendTargets))
 )
 
 // thatCreatureDied matches the EventLTB of the creature CondParams.Object
 // names, to a graveyard, when the object that left is the one the
 // trigger was created about. The epoch of the object that left is its
 // last-known record's, written as it left.
-func thatCreatureDied(ev game.Event, _ *game.DelayedTrigger, g *game.Game, p game.EffectParams) []uuid.UUID {
+func ThatCreatureDied(ev game.Event, _ *game.DelayedTrigger, g *game.Game, p game.EffectParams) []uuid.UUID {
 	if p.Object.ID == uuid.Nil || ev.CardID != p.Object.ID {
 		return nil
 	}
-	if _, ok := diedCreature(ev, g); !ok {
+	if _, ok := DiedCreature(ev, g); !ok {
 		return nil
 	}
 	ref, ok := g.PermanentRefForEffect(ev.CardID)
@@ -76,18 +76,18 @@ func thatCreatureDied(ev game.Event, _ *game.DelayedTrigger, g *game.Game, p gam
 // resolving object's controller (CR 603.7d). A creature that is no
 // longer on the battlefield creates nothing: the trigger could never
 // fire.
-func whenThatCreatureDiesThisTurn(ctx *Context, creature uuid.UUID, label string, body game.BodyRef) error {
-	return whenThatCreatureDiesThisTurnIf(ctx, creature, label, thatCreatureDiedCondition, body)
+func WhenThatCreatureDiesThisTurn(ctx *Context, creature uuid.UUID, label string, body game.BodyRef) error {
+	return WhenThatCreatureDiesThisTurnIf(ctx, creature, label, ThatCreatureDiedCondition, body)
 }
 
 // whenThatCreatureDiesThisTurnIf is whenThatCreatureDiesThisTurn with an
 // intervening "if" folded into the registered condition (CR 603.4): a
 // condition built from thatCreatureDied that also tests the clause.
-func whenThatCreatureDiesThisTurnIf(ctx *Context, creature uuid.UUID, label string, cond game.ConditionRef, body game.BodyRef) error {
+func WhenThatCreatureDiesThisTurnIf(ctx *Context, creature uuid.UUID, label string, cond game.ConditionRef, body game.BodyRef) error {
 	if creature == uuid.Nil {
 		return nil
 	}
-	c, ok := battlefieldCardForEffect(ctx.Game, creature)
+	c, ok := BattlefieldCardForEffect(ctx.Game, creature)
 	if !ok {
 		return nil
 	}
@@ -117,9 +117,9 @@ func heroicSacrificeDies(g *game.Game, item *game.StackItem) error {
 	draw := func(g *game.Game) error {
 		return DrawCards{Player: controller, N: 1}.Apply(NewContext(g, item))
 	}
-	target := firstLegalCardTarget(ctx)
-	obj, ok := payloadObject(ctx)
-	if target == uuid.Nil || !ok || !onBattlefield(g, target) {
+	target := FirstLegalCardTarget(ctx)
+	obj, ok := PayloadObject(ctx)
+	if target == uuid.Nil || !ok || !OnBattlefield(g, target) {
 		return draw(g)
 	}
 	info, ok := g.PermanentForEffect(obj)

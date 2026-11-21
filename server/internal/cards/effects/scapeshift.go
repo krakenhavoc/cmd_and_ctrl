@@ -34,7 +34,7 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return ChoosePermanents{
 				Question:   "Scapeshift — sacrifice any number of lands",
-				Candidates: scapeshiftLands,
+				Candidates: ScapeshiftLands,
 				Keyed:      scapeshiftChosen,
 			}.Apply(ctx)
 		},
@@ -52,7 +52,7 @@ var scapeshiftChosen = RegisterPermanentsPick("prompt-run/scapeshift-sacrifice",
 // zero and no ceiling but the board — "any number".
 //
 // Caller holds g.mu.
-func scapeshiftLands(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+func ScapeshiftLands(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 	var out []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
 		if c.Controller == of && c.IsLand() {
@@ -82,7 +82,7 @@ func scapeshiftFetch(ctx *Context, picked game.PromptedPicks) error {
 	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
 		Player:        ctx.Controller(),
 		Source:        ctx.Source(),
-		Pred:          b03IsLandCard,
+		Pred:          B03IsLandCard,
 		Dest:          game.ZoneBattlefield,
 		Limit:         n,
 		Shuffle:       true,

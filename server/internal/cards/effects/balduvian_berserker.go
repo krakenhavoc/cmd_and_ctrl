@@ -27,14 +27,14 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordEnlist},
 		Triggered: []game.TriggeredAbility{
-			eerieDiesWithPower("Balduvian Berserker — it deals damage equal to its power to any target", TargetAny(), balduvianBerserkerDamage),
+			EerieDiesWithPower("Balduvian Berserker — it deals damage equal to its power to any target", TargetAny(), BalduvianBerserkerDamage),
 		},
 	})
 }
 
 // balduvianBerserkerDamage deals the Berserker's last-known power (the
 // item's Amount) to the trigger's target.
-func balduvianBerserkerDamage(g *game.Game, item *game.StackItem) error {
+func BalduvianBerserkerDamage(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
 	ts := ctx.LegalTargets()

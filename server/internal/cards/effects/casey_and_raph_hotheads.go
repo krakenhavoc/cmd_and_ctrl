@@ -35,7 +35,7 @@ func init() {
 			caseyAndRaphExileTop),
 		ModeDoing("Target player creates two Treasure tokens.",
 			Distinct(TargetPlayer("target player")),
-			caseyAndRaphTreasures),
+			CaseyAndRaphTreasures),
 	)
 	Register(Spec{
 		OracleID:     "f20a5297-31ba-4bbd-810e-be23175a116f",
@@ -58,7 +58,7 @@ func caseyAndRaphExileTop(_ *game.StackItem, ctx *Context, occ int) error {
 
 // caseyAndRaphTreasures is the second bullet: two Treasures for the target
 // player.
-func caseyAndRaphTreasures(_ *game.StackItem, ctx *Context, occ int) error {
+func CaseyAndRaphTreasures(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetPlayer {
 		return nil

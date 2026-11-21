@@ -30,15 +30,15 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisEnters("Red Guardian — destroy target creature an opponent controls that dealt damage this turn", destroyChosenPermanent),
-				TargetCreature("target creature an opponent controls that dealt damage this turn", OpponentControls(), mshA6DealtDamageThisTurn())),
+			Targeting(WhenThisEnters("Red Guardian — destroy target creature an opponent controls that dealt damage this turn", DestroyChosenPermanent),
+				TargetCreature("target creature an opponent controls that dealt damage this turn", OpponentControls(), MshA6DealtDamageThisTurn())),
 		},
 	})
 }
 
 // mshA6DealtDamageThisTurn passes for a permanent that has been the source
 // of damage this turn, to anything.
-func mshA6DealtDamageThisTurn() CardPredicate {
+func MshA6DealtDamageThisTurn() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		dealt := false
 		for _, ev := range g.EventsThisTurn() {

@@ -48,7 +48,7 @@ var (
 // combatDamageToPlayersShield is "Prevent all combat damage that would
 // be dealt to players this turn" (Commencement of Festivities, Defend
 // the Hearth).
-func combatDamageToPlayersShield() PreventDamageFromSource {
+func CombatDamageToPlayersShield() PreventDamageFromSource {
 	return PreventDamageFromSource{Protect: ShieldPlayers, CombatOnly: true}
 }
 

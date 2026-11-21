@@ -44,14 +44,14 @@ func init() {
 // ruthlessNegotiationExile asks the target opponent which card of their
 // hand to exile.
 func ruthlessNegotiationExile(ctx *Context) error {
-	return targetsExileACardFromTheirHand(ctx, "Ruthless Negotiation")
+	return TargetsExileACardFromTheirHand(ctx, "Ruthless Negotiation")
 }
 
 // targetsExileACardFromTheirHand is "target opponent exiles a card from
 // their hand" for the card named: the target picks their own card (a floor
 // of one) and it is exiled through the shared keyed answer. Skullcap Snail
 // shares it.
-func targetsExileACardFromTheirHand(ctx *Context, card string) error {
+func TargetsExileACardFromTheirHand(ctx *Context, card string) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
 			continue
@@ -72,7 +72,7 @@ func targetsExileACardFromTheirHand(ctx *Context, card string) error {
 			Cards:      cards,
 			Min:        1,
 			Max:        1,
-			ThenKey:    ruthlessNegotiationExiled,
+			ThenKey:    RuthlessNegotiationExiled,
 			LiveZone:   game.ZoneHand,
 		})
 	}
@@ -81,4 +81,4 @@ func targetsExileACardFromTheirHand(ctx *Context, card string) error {
 
 // ruthlessNegotiationExiled is the keyed answer (#4253). An on-disk key:
 // never renamed, never reused.
-var ruthlessNegotiationExiled = game.RegisterChooseCardsThen("choose-cards/ruthless-negotiation-exile", exileEachChosenCard)
+var RuthlessNegotiationExiled = game.RegisterChooseCardsThen("choose-cards/ruthless-negotiation-exile", ExileEachChosenCard)

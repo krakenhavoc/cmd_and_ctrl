@@ -23,7 +23,7 @@ import (
 // creatures with flying." (Air Bladder) with OnAttached. It is Cloud
 // Spirit's block rule, a restriction judged as blockers are declared
 // (CR 509.1b).
-func nemBlocksOnlyFlyers(scope BlockScope) []game.BlockRule {
+func NemBlocksOnlyFlyers(scope BlockScope) []game.BlockRule {
 	return []game.BlockRule{
 		CantBlockAttackers(scope, OnMatching(WithoutKeyword("flying")), "it can block only creatures with flying"),
 	}
@@ -33,7 +33,7 @@ func nemBlocksOnlyFlyers(scope BlockScope) []game.BlockRule {
 // Discard a card": the card is discarded as the ability is activated
 // (CR 602.2b), and the {T} is a creature's, so the Spellshaper waits out
 // summoning sickness (CR 302.6).
-func nemSpellshaperCost(mana string) game.AbilityCost {
+func NemSpellshaperCost(mana string) game.AbilityCost {
 	return Plus(ManaCost(mana), TapCost(), DiscardACard())
 }
 
@@ -45,12 +45,12 @@ func nemSpellshaperCost(mana string) game.AbilityCost {
 // Rathi Fiend, Rathi Intimidator). The search names a quality, so the
 // searcher may find nothing (CR 701.23b), and the library is shuffled
 // either way.
-func nemRecruiterRow(name, cost, article, subtype string, maxMV int) ActivatedAbility {
+func NemRecruiterRow(name, cost, article, subtype string, maxMV int) ActivatedAbility {
 	what := article + " " + subtype + " permanent card"
 	effect := nemSearchForASubtypePermanent(subtype, name+" — "+what+", onto the battlefield")
 	if maxMV >= 0 {
 		what += " with mana value " + strconv.Itoa(maxMV) + " or less"
-		effect = searchForASubtypePermanentWithManaValueAtMost(subtype, maxMV, name+" — "+what+", onto the battlefield")
+		effect = SearchForASubtypePermanentWithManaValueAtMost(subtype, maxMV, name+" — "+what+", onto the battlefield")
 	}
 	return ActivatedAbility{
 		Label:   cost + ", {T}: Search your library for " + what + ", put it onto the battlefield, then shuffle.",
@@ -69,7 +69,7 @@ func nemSearchForASubtypePermanent(subtype, reason string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{
 			Player:    item.Controller,
-			Predicate: func(c game.Card) bool { return isPermanentCard(c) && c.HasSubtypeWord(subtype) },
+			Predicate: func(c game.Card) bool { return IsPermanentCard(c) && c.HasSubtypeWord(subtype) },
 			Dest:      game.ZoneBattlefield,
 			Limit:     1,
 			Shuffle:   true,
@@ -84,7 +84,7 @@ func nemSearchForASubtypePermanent(subtype, reason string) Effect {
 // triggers once however many creatures block (CR 509.3c), and untapping
 // does not remove the creature from combat (CR 506.4 lists what does), so
 // it stays attacking and blocked.
-func nemUntapWhenBlocked(name string) game.TriggeredAbility {
+func NemUntapWhenBlocked(name string) game.TriggeredAbility {
 	return On(game.EventBecomesBlocked, Self, name+" — untap it",
 		func(g *game.Game, item *game.StackItem) error {
 			return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
@@ -97,7 +97,7 @@ func nemUntapWhenBlocked(name string) game.TriggeredAbility {
 // (CR 601.2b); the creature is sacrificed as a cost with the spell
 // already on the stack (CR 601.2h), so it stays dead if the spell is
 // countered.
-func nemSacrificeACreatureWithASwamp() game.AlternativeCost {
+func NemSacrificeACreatureWithASwamp() game.AlternativeCost {
 	alt := SacrificeInstead(1, "a creature", 0, Creature())
 	alt.Label = "Sacrifice a creature (you control a Swamp)"
 	alt.Condition = ControlsA("Swamp")
@@ -106,10 +106,10 @@ func nemSacrificeACreatureWithASwamp() game.AlternativeCost {
 
 // nemEachPlayerLoses is "each player loses N life": every live player,
 // the controller included, in seat order. Life loss, not damage.
-func nemEachPlayerLoses(n int) Effect {
+func NemEachPlayerLoses(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		for _, id := range tablePlayers(ctx) {
+		for _, id := range TablePlayers(ctx) {
 			if err := g.ChangePlayerLifeForEffect(ctx.Source(), id, -n); err != nil {
 				return err
 			}
@@ -123,14 +123,14 @@ func nemEachPlayerLoses(n int) Effect {
 // tap it, untap it or leave it as the ability resolves, through Tidal
 // Bore's and Rejoinder's prompt. A target that left is illegal (CR
 // 608.2b), and nothing is asked.
-func nemMayTapOrUntapTheTarget(name string) Effect {
+func NemMayTapOrUntapTheTarget(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
-		return socB23MayTapOrUntap(ctx, name, id)
+		return SocB23MayTapOrUntap(ctx, name, id)
 	}
 }
 
@@ -139,10 +139,10 @@ func nemMayTapOrUntapTheTarget(name string) Effect {
 // Balance's spell body goes through the same restriction) as an
 // activated ability's body: the restriction ends in the cleanup step
 // (CR 514.2).
-func nemTargetRestrictedThisTurn(r game.Restriction, label string) Effect {
+func NemTargetRestrictedThisTurn(r game.Restriction, label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -153,11 +153,11 @@ func nemTargetRestrictedThisTurn(r game.Restriction, label string) Effect {
 // tapAllOtherCreatures is "tap all other creatures" (Timbermare,
 // Shrieking Mogg): every creature on the battlefield but the source, as
 // the ability resolves.
-func tapAllOtherCreatures(g *game.Game, item *game.StackItem) error {
+func TapAllOtherCreatures(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, c := range MatchingBattlefield(ctx, And(Creature(), NotSelf(item.SourceCardID))) {
 		ids = append(ids, c.InstanceID)
 	}
-	return tapEach(ctx, ids)
+	return TapEach(ctx, ids)
 }

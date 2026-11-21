@@ -23,7 +23,7 @@ import (
 // caller that offers the same kind of card from another zone (Karn, the
 // Great Creator's exile) filters it the same way.
 type outsideTake struct {
-	pick  game.OutsidePick
+	Pick  game.OutsidePick
 	match game.OutsideMatchFunc
 }
 
@@ -33,12 +33,12 @@ type outsideTake struct {
 // chosen card to the table before it moves: every printed wish reveals,
 // Mastermind's Acquisition does not. Call it once, from a package-level
 // var.
-func registerOutsideTake(key string, match func(game.Card) bool, reveal bool) outsideTake {
+func RegisterOutsideTake(key string, match func(game.Card) bool, reveal bool) outsideTake {
 	var filter game.OutsideMatchFunc
 	if match != nil {
 		filter = func(c game.Card, _ string) bool { return match(c) }
 	}
-	return registerOutsideTakeOfWord(key, filter, reveal)
+	return RegisterOutsideTakeOfWord(key, filter, reveal)
 }
 
 // registerOutsideTakeOfWord is registerOutsideTake for a filter that
@@ -46,10 +46,10 @@ func registerOutsideTake(key string, match func(game.Card) bool, reveal bool) ou
 // changed (CR 612.2): Coax from the Blind Eternities' "Eldrazi". The
 // word rides on the prompt (TakeFromOutside.Word), so the restored
 // table's filter reads the same word.
-func registerOutsideTakeOfWord(key string, match game.OutsideMatchFunc, reveal bool) outsideTake {
+func RegisterOutsideTakeOfWord(key string, match game.OutsideMatchFunc, reveal bool) outsideTake {
 	return outsideTake{
 		match: match,
-		pick: game.RegisterOutsidePick(key, match, func(g *game.Game, r game.CardsChosen) error {
+		Pick: game.RegisterOutsidePick(key, match, func(g *game.Game, r game.CardsChosen) error {
 			if !r.Answered {
 				return nil
 			}
@@ -131,7 +131,7 @@ func takeFromOutside(g *game.Game, player, source uuid.UUID, t TakeFromOutside) 
 		Question: t.Question,
 		Min:      floor,
 		Max:      1,
-		Keyed:    t.Pick.pick,
+		Keyed:    t.Pick.Pick,
 		MatchArg: t.Word,
 	})
 }
@@ -143,7 +143,7 @@ type outsideShuffle struct{ pick game.OutsidePick }
 // registerOutsideShuffle registers a card's shuffle-from-outside pick
 // under `key`, with `match` narrowing the pool (nil offers every card).
 // Call it once, from a package-level var.
-func registerOutsideShuffle(key string, match func(game.Card) bool) outsideShuffle {
+func RegisterOutsideShuffle(key string, match func(game.Card) bool) outsideShuffle {
 	var filter game.OutsideMatchFunc
 	if match != nil {
 		filter = func(c game.Card, _ string) bool { return match(c) }

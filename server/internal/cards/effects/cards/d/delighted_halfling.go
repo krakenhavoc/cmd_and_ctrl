@@ -1,0 +1,76 @@
+package cardsd
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Delighted Halfling — Creature — Halfling Citizen {G}, 1/2:
+//
+//	"{T}: Add {C}."
+//	"{T}: Add one mana of any color. Spend this mana only to cast a
+//	 legendary spell, and that spell can't be countered."
+//
+// Rank 150, and the highest-ranked card in the restricted-mana group.
+// Two abilities: a painless colourless one anybody can use, and a
+// colour-fixing one whose mana is locked to legendary spells — which
+// in Commander means "your commander", every time.
+//
+// The restriction is the point of the card, and it is enforced at
+// SPEND time, not just stamped at production. `ManaRestrictSupertype`
+// puts "supertype:Legendary" on the token; the cast path builds a
+// ManaSpendContext from the spell being cast and the pool solver
+// refuses the token for anything that is not legendary. Without that
+// second half the ability would be a plain "{T}: Add one mana of any
+// color" on a one-drop — Birds of Paradise with an extra body — which
+// is the #259 direction and the reason both halves landed together in
+// #352.
+//
+// Auto-pay plans the second ability only for a legendary spell (#3874,
+// ADR 0040 amendment 2026-10-16), where the restriction is satisfied and
+// the rider fires, so it is preferred to other sources there. For a
+// nonlegendary spell, or a payment that is not a cast, the Halfling is a
+// colourless source to the planner.
+//
+// Summoning sickness applies to both abilities — ActivateManaAbility
+// has enforced CR 302.6 on creature tap abilities since #233.
+//
+// "And that spell can't be countered" is a spend rider (#1547) —
+// Cavern of Souls' shape exactly: the legendary spell the coloured mana
+// pays for is marked uncounterable on the stack.
+//
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:       "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
+		Name:           "Delighted Halfling",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   effects.CompletenessFull,
+		ManaAbilities: []effects.ManaAbility{
+			{
+				Cost:     effects.ManaAbilityCost{Tap: true},
+				Produced: "{C}",
+				Label:    "Add {C}",
+			},
+			{
+				Cost:     effects.ManaAbilityCost{Tap: true},
+				Produced: "{W|U|B|R|G}",
+				Label:    "Add one mana of any color (legendary spells only)",
+				// "one mana of any color" with no mention of the
+				// commander's identity, so all five colours are
+				// offered (NarrowToCommanderIdentity stays off) — the
+				// spend restriction is the only limit.
+				Restrictions: []string{
+					effects.ManaRestrictCast,
+					effects.ManaRestrictSupertype("Legendary"),
+				},
+				SpendRiders: []game.ManaSpendRider{effects.SpentSpellCantBeCountered(effects.ManaRestrictCast)},
+			},
+		},
+	})
+}

@@ -43,7 +43,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Undead Butler — mill three cards", Do(MillCards{N: 3})),
 			Optional(
-				WhenThisDies("Undead Butler — exile it", exileItThenRebuyACreatureCard("Undead Butler")),
+				WhenThisDies("Undead Butler — exile it", ExileItThenRebuyACreatureCard("Undead Butler")),
 				"Undead Butler — exile it to return a creature card from your graveyard to your hand?"),
 		},
 	})
@@ -59,15 +59,15 @@ func init() {
 // in the engine re-checks the condition, so the `if` is the card's. A
 // card already moved out of the graveyard in response is not exiled, and
 // the rebuy does not happen.
-func exileItThenRebuyACreatureCard(name string) Effect {
-	return exileItFromTheGraveyardThen(name+" — return target creature card from your graveyard to your hand", undeadButlerReturnBody)
+func ExileItThenRebuyACreatureCard(name string) Effect {
+	return ExileItFromTheGraveyardThen(name+" — return target creature card from your graveyard to your hand", UndeadButlerReturnBody)
 }
 
 // exileItFromTheGraveyardThen is "you may exile it. When you do, …" for a
 // dies trigger whose reflexive half is `body` (Undead Butler's return,
 // Paramecia Coloniex's tuck): the exile of the source out of the
 // graveyard, and the reflexive trigger only once it is really in exile.
-func exileItFromTheGraveyardThen(label string, body game.BodyRef) Effect {
+func ExileItFromTheGraveyardThen(label string, body game.BodyRef) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if err := (ExileTarget{Target: item.SourceCardID}).Apply(ctx); err != nil {

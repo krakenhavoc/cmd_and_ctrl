@@ -13,19 +13,19 @@ import (
 // "whenever a creature you control deals combat damage to a player": one
 // trigger per creature and per player it hit (CR 510.2, 603.2c), the
 // creature judged as it dealt the damage.
-func gapB63CreatureYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return combatDamageToPlayerBy(ev, source.Controller, g)
+func GapB63CreatureYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return CombatDamageToPlayerBy(ev, source.Controller, g)
 }
 
 // gapB63DamageDealer is the creature that dealt the damage the trigger
 // fired on, or false if it has left (a creature that dealt damage and then
 // died still did).
-func gapB63DamageDealer(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
+func GapB63DamageDealer(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
 	if item == nil || item.Trigger == nil || item.Trigger.Event.Source == uuid.Nil {
 		return uuid.Nil, false
 	}
 	id := item.Trigger.Event.Source
-	return id, onBattlefield(g, id)
+	return id, OnBattlefield(g, id)
 }
 
 // gapB63OpponentsAttackedThisTurn is how many opponents of `you` they
@@ -35,7 +35,7 @@ func gapB63DamageDealer(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
 // since left still counts (the attack records are history).
 //
 // Caller must hold g.mu.
-func gapB63OpponentsAttackedThisTurn(g *game.Game, you uuid.UUID) int {
+func GapB63OpponentsAttackedThisTurn(g *game.Game, you uuid.UUID) int {
 	seen := map[uuid.UUID]bool{}
 	for _, a := range g.TurnTally.Attacks {
 		if a.Defender == you || seen[a.Defender] || g.PlayerByIDForEffect(a.Defender) == nil {
@@ -51,7 +51,7 @@ func gapB63OpponentsAttackedThisTurn(g *game.Game, you uuid.UUID) int {
 // on every permanent on the battlefield, whoever controls it (Lumbering
 // Megasloth). A cost modifier's amount, read as the cost is determined
 // (CR 601.2f); the spell itself is on the stack and carries none.
-func gapB63CountersAmongPlayersAndPermanents(q game.CostQuery) int {
+func GapB63CountersAmongPlayersAndPermanents(q game.CostQuery) int {
 	if q.Game == nil {
 		return 0
 	}
@@ -86,8 +86,8 @@ const gapB63SettlementManaGrant = "settlement/any-color"
 // enchantment token with enchant land and "Enchanted land has '{T}: Add one
 // mana of any color.'" (Cryptolith Rite's grant, given to the enchanted land
 // by a layer 6 static). Its slug is an on-disk identity: never renamed.
-func printedGapB63SettlementToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB63SettlementToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "settlement",
 		Card: game.Card{
 			Name:     "Settlement",
@@ -106,12 +106,12 @@ func printedGapB63SettlementToken() tokenTemplate {
 }
 
 // GapB63SettlementToken is that Settlement's card value for CreateToken.
-func GapB63SettlementToken() game.Card { return tokenFromCatalog(printedGapB63SettlementToken) }
+func GapB63SettlementToken() game.Card { return TokenFromCatalog(printedGapB63SettlementToken) }
 
 // gapB63EachDifferentGraveyard is "from different graveyards": no two picks
 // share an owner, so a clause of one target per graveyard (Mysterious
 // Stranger) takes one card from each, never two from the same.
-func gapB63EachDifferentGraveyard() *game.TargetDifference {
+func GapB63EachDifferentGraveyard() *game.TargetDifference {
 	return &game.TargetDifference{
 		Label: "each come from a different graveyard",
 		Key: func(_ *game.Game, c game.Card, _ game.ZoneKind) (string, bool) {

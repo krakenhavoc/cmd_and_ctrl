@@ -1,0 +1,32 @@
+package cardsw
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Warden of the Woods — Creature — Treefolk {4}{G}{G}, 5/7 (Core Set 2021, #5511):
+//
+//	"Vigilance
+//	 Whenever this creature becomes the target of a spell or ability an
+//	 opponent controls, you may draw two cards."
+//
+// Cactarantula's trigger (blackBoltTargetedByAnOpponent: the event names
+// the Warden and its actor is someone else) drawing two, with the "may"
+// asked as the trigger resolves.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "c8c6924e-9af8-4212-be28-b0b4eaa4c7d8",
+		Name:            "Warden of the Woods",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"vigilance"},
+		Triggered: []game.TriggeredAbility{
+			effects.OptionalDraw(effects.On(game.EventBecomesTarget, effects.BlackBoltTargetedByAnOpponent,
+				"Warden of the Woods — you may draw two cards", effects.Do(effects.DrawCards{N: 2})),
+				"Warden of the Woods — draw two cards?", 2),
+		},
+	})
+}

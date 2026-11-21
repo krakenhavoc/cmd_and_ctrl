@@ -61,17 +61,17 @@ func shuffleThisCardIntoItsOwnersLibrary(g *game.Game, item *game.StackItem) err
 	if c, ok := g.LookupCardForEffect(id); ok && c.Owner != uuid.Nil {
 		owner = c.Owner
 	}
-	if !thisCardStillInTheGraveyard(g, item) {
+	if !ThisCardStillInTheGraveyard(g, item) {
 		return g.ShuffleLibraryForEffect(owner)
 	}
-	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, game.KeyedTail{Ref: ThenShuffle, Player: owner})
 }
 
 // thisCardStillInTheGraveyard reports whether the trigger's card is in a
 // graveyard as the object the trigger stamped (CR 400.7). An item with
 // no stamp (built by hand) keeps the plain "is it in a graveyard"
 // answer.
-func thisCardStillInTheGraveyard(g *game.Game, item *game.StackItem) bool {
+func ThisCardStillInTheGraveyard(g *game.Game, item *game.StackItem) bool {
 	id := item.SourceCardID
 	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
 		return false

@@ -14,7 +14,7 @@ import (
 // log is read whether or not the source was on the battlefield for the
 // earlier gain: it is the player's first gain of the turn, not the source's
 // first sight of one. The gain being asked about is itself excluded.
-func socB28FirstLifeGainThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+func SocB28FirstLifeGainThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
 	if !YouGainedLife(ev, source, game.Characteristic{}, g) {
 		return false
 	}

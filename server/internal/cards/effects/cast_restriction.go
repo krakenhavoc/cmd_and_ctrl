@@ -97,7 +97,7 @@ func YouCantCastUnless(label string, match CardPredicate, unless func(g *game.Ga
 			if q.Source.Controller != q.Controller {
 				return false
 			}
-			if !matchCastCard(q.Game, match, q.Controller, q.Card) {
+			if !MatchCastCard(q.Game, match, q.Controller, q.Card) {
 				return false
 			}
 			return unless == nil || !unless(q.Game, q.Controller)
@@ -115,7 +115,7 @@ func OpponentsCantCast(label string, match CardPredicate) game.CastRestriction {
 			if q.Source.Controller == q.Controller {
 				return false
 			}
-			return matchCastCard(q.Game, match, q.Controller, q.Card)
+			return MatchCastCard(q.Game, match, q.Controller, q.Card)
 		},
 	}
 }
@@ -147,7 +147,7 @@ func OpponentsWhoAttackedYouCantCast(label string) game.CastRestriction {
 //
 // The predicate's `caster` is the player casting, so a clause could
 // say "creature spells you control"; none does today.
-func matchCastCard(g *game.Game, pred CardPredicate, caster uuid.UUID, card game.Card) bool {
+func MatchCastCard(g *game.Game, pred CardPredicate, caster uuid.UUID, card game.Card) bool {
 	if pred == nil {
 		return true
 	}
@@ -201,10 +201,10 @@ func OpponentsCantCastDuringYourTurn(label string, match CardPredicate) game.Cas
 			if q.Source.Controller == q.Controller {
 				return false
 			}
-			if !isActivePlayer(q.Game, q.Source.Controller) {
+			if !IsActivePlayer(q.Game, q.Source.Controller) {
 				return false
 			}
-			return matchCastCard(q.Game, match, q.Controller, q.Card)
+			return MatchCastCard(q.Game, match, q.Controller, q.Card)
 		},
 	}
 }
@@ -218,7 +218,7 @@ func PlayersCantCast(label string, match CardPredicate) game.CastRestriction {
 	return game.CastRestriction{
 		Label: label,
 		Forbids: func(q game.CastQuery) bool {
-			return matchCastCard(q.Game, match, q.Controller, q.Card)
+			return MatchCastCard(q.Game, match, q.Controller, q.Card)
 		},
 	}
 }

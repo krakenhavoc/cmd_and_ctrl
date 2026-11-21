@@ -32,7 +32,7 @@ import (
 // may carry it (checkSacrificeAllCost).
 func SacrificeAllCost(label string, preds ...CardPredicate) *game.AdditionalCost {
 	return &game.AdditionalCost{
-		Sacrifice:    sacrificeSpec(label, preds...).WithCount(0, 0),
+		Sacrifice:    SacrificeSpec(label, preds...).WithCount(0, 0),
 		SacrificeAll: true,
 		Label:        "Sacrifice all " + label,
 	}
@@ -51,7 +51,7 @@ func SacrificeAllCost(label string, preds ...CardPredicate) *game.AdditionalCost
 //
 // checkVariableSacrificePlan already keeps any other sacrifice out of
 // the same plan, because the clause is a variable one.
-func checkSacrificeAllCost(spec Spec) {
+func CheckSacrificeAllCost(spec Spec) {
 	for _, oc := range spec.OptionalCosts {
 		if oc.SacrificeAll {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q sacrifices all — only a cast's mandatory additional cost prints that (SacrificeAllCost, #2097)", spec.Name, oc.Key))

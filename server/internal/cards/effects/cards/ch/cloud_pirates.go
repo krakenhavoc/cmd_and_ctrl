@@ -1,0 +1,29 @@
+package cardsch
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Cloud Pirates — Creature — Human Pirate {U}, 1/1 (Portal, #5630):
+//
+//	"Flying
+//	 This creature can block only creatures with flying."
+//
+// Flying is printed data (CR 702.9b). "Can block only creatures with
+// flying" is Stormbound Geist's block rule, a restriction checked when
+// blockers are declared (CR 509.1b).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "d334aa85-3470-4f5d-9cbc-b88bf991a5af",
+		Name:            "Cloud Pirates",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		BlockRules: []game.BlockRule{
+			effects.CantBlockAttackers(effects.OnSelf(), effects.OnMatching(effects.WithoutKeyword("flying")), "it can block only creatures with flying"),
+		},
+	})
+}

@@ -11,20 +11,20 @@ import (
 
 // s82_gap_b45_helpers.go — shared bodies for GAP batch 45 (#5948).
 
-// gapB45GrantsDemonstrate builds the trigger for a permanent that gives
+// GapB45GrantsDemonstrate builds the trigger for a permanent that gives
 // demonstrate to spells its controller casts (Silverquill Lecturer:
 // "Creature spells you cast have demonstrate"), the demonstrate sibling of
 // socB32GrantsStorm. A spell that has demonstrate gets the keyword's
 // trigger when it is cast (CR 702.144a), so the grant is a battlefield
 // trigger watching the cast; the item carries the spell as Params.Object
 // and the "you may" is asked as it resolves.
-func gapB45GrantsDemonstrate(label string, when func(spell game.Card, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
+func GapB45GrantsDemonstrate(label string, when func(spell game.Card, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
 	t := game.TriggeredAbility{
 		Keyword:   KeywordDemonstrate,
 		Key:       label,
 		Watches:   []game.EventKind{game.EventCast},
-		AppliesTo: socB32YouCastASpellThat(when),
-		Build:     gapB45DemonstrateBuild(label),
+		AppliesTo: SocB32YouCastASpellThat(when),
+		Build:     GapB45DemonstrateBuild(label),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return gapB45DemonstrateSpell(g, item, item.Params.Object.ID)
 		},
@@ -32,11 +32,11 @@ func gapB45GrantsDemonstrate(label string, when func(spell game.Card, source *ga
 	return Optional(t, "Demonstrate — copy this spell? If you do, choose an opponent to also copy it.")
 }
 
-// gapB45DemonstrateBuild builds a granted demonstrate trigger's stack
+// GapB45DemonstrateBuild builds a granted demonstrate trigger's stack
 // item: the spell's caster controls it and the spell rides as
 // Params.Object. Silverquill Lecturer and Elda, Conjurer of Spectacle
 // share it.
-func gapB45DemonstrateBuild(label string) func(game.Event, *game.Card, game.Characteristic, *game.Game) *game.StackItem {
+func GapB45DemonstrateBuild(label string) func(game.Event, *game.Card, game.Characteristic, *game.Game) *game.StackItem {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 		item := game.NewTriggeredItem(source, label+" — demonstrate")
 		item.Controller, item.Owner = ev.Actor, ev.Actor
@@ -55,15 +55,15 @@ func gapB45DemonstrateSpell(g *game.Game, item *game.StackItem, spell uuid.UUID)
 	return ChoosePlayer{
 		Among:    Opponents,
 		Question: "Demonstrate — choose an opponent to also copy the spell",
-		ThenKey:  demonstrateOpponentCopies,
+		ThenKey:  DemonstrateOpponentCopies,
 		Carry:    []uuid.UUID{spell},
 	}.Apply(ctx)
 }
 
-// gapB45ExcessDealtTo is the total excess damage (CR 120.10) dealt to the
+// GapB45ExcessDealtTo is the total excess damage (CR 120.10) dealt to the
 // permanent `id` so far this turn, summed over the turn's damage events.
 // Caller holds the game lock (a trigger's condition or effect).
-func gapB45ExcessDealtTo(g *game.Game, id uuid.UUID) int {
+func GapB45ExcessDealtTo(g *game.Game, id uuid.UUID) int {
 	total := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind == game.EventDealDamage && ev.Target == id {
@@ -73,17 +73,17 @@ func gapB45ExcessDealtTo(g *game.Game, id uuid.UUID) int {
 	return total
 }
 
-// gapB45TarmogoyfToken is the Tarmogoyf creature token Tarmogoyf Nest
+// GapB45TarmogoyfToken is the Tarmogoyf creature token Tarmogoyf Nest
 // makes: a green Lhurgoyf */1+* with the card's characteristic-defining
 // ability. The token has no oracle ID, so the ability is registered under
-// the token's key (token_catalog.go); it is appended to the catalog's list
-// from this file's init, which runs before token_catalog.go's own.
-func gapB45TarmogoyfToken() game.Card { return tokenFromCatalog(printedGapB45TarmogoyfToken) }
+// the token's key (token_catalog.go); it is a row of token_catalog.go's
+// TokenTemplates.
+func GapB45TarmogoyfToken() game.Card { return TokenFromCatalog(printedGapB45TarmogoyfToken) }
 
 // printedGapB45TarmogoyfToken is the token as PRINTED. Its slug is an
 // on-disk identity and is never renamed.
-func printedGapB45TarmogoyfToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB45TarmogoyfToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "tarmogoyf-lhurgoyf",
 		Card: game.Card{
 			Name:      "Tarmogoyf",
@@ -110,14 +110,10 @@ func printedGapB45TarmogoyfToken() tokenTemplate {
 	}
 }
 
-func init() {
-	tokenTemplates = append(tokenTemplates, printedGapB45TarmogoyfToken)
-}
-
-// gapB45DesertWarfareReturnBody is Desert Warfare's delayed body: each
+// GapB45DesertWarfareReturnBody is Desert Warfare's delayed body: each
 // listed card still in its owner's graveyard is put onto the battlefield
 // under the delayed trigger's controller's control.
-var gapB45DesertWarfareReturnBody = game.SimpleDelayedBody("desert-warfare/put-listed-onto-the-battlefield", gapB45PutListedOntoBattlefield)
+var GapB45DesertWarfareReturnBody = game.SimpleDelayedBody("desert-warfare/put-listed-onto-the-battlefield", gapB45PutListedOntoBattlefield)
 
 func gapB45PutListedOntoBattlefield(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
@@ -135,12 +131,12 @@ func gapB45PutListedOntoBattlefield(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// gapB45SatyaSacrificeBody is Satya's delayed trigger: "sacrifice that
+// GapB45SatyaSacrificeBody is Satya's delayed trigger: "sacrifice that
 // token unless you pay an amount of {E} equal to its mana value". The
 // token is the one listed target; the payment is asked as the delayed
 // trigger resolves (CR 118.12) and declining, or being short, sacrifices
 // it. A token that has gone, or one whose mana value is zero, asks nothing.
-var gapB45SatyaSacrificeBody = game.SimpleDelayedBody("satya-aetherflux-genius/sacrifice-unless-energy", gapB45SatyaSacrifice)
+var GapB45SatyaSacrificeBody = game.SimpleDelayedBody("satya-aetherflux-genius/sacrifice-unless-energy", gapB45SatyaSacrifice)
 
 func gapB45SatyaSacrifice(g *game.Game, item *game.StackItem) error {
 	for _, t := range item.Targets {
@@ -148,7 +144,7 @@ func gapB45SatyaSacrifice(g *game.Game, item *game.StackItem) error {
 			continue
 		}
 		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok || !onBattlefield(g, t.ID) || c.Controller != item.Controller {
+		if !ok || !OnBattlefield(g, t.ID) || c.Controller != item.Controller {
 			continue
 		}
 		mv := c.ManaValue()
@@ -169,14 +165,14 @@ func gapB45SatyaSacrifice(g *game.Game, item *game.StackItem) error {
 var gapB45SatyaSacrificeToken = PayUnlessBranches("pay-unless/satya-sacrifice-token", nil,
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		for _, t := range ctx.Item.Targets {
-			if t.Kind == game.TargetCard && onBattlefield(ctx.Game, t.ID) {
+			if t.Kind == game.TargetCard && OnBattlefield(ctx.Game, t.ID) {
 				return SacrificePermanent{Target: t.ID}.Apply(ctx)
 			}
 		}
 		return nil
 	})
 
-// gapB45ColorlessEldraziCopy applies Benthic Anomaly's copy exception to a
+// GapB45ColorlessEldraziCopy applies Benthic Anomaly's copy exception to a
 // token template: "except its power is equal to the total power of those
 // creatures, its toughness is equal to the total toughness of those
 // creatures, and it's a colorless Eldrazi creature" (CR 707.9b). The
@@ -184,7 +180,7 @@ var gapB45SatyaSacrificeToken = PayUnlessBranches("pay-unless/satya-sacrifice-to
 // and keeps the supertypes. A coloured mana cost would colour the token, so
 // the template's mana cost is rewritten as the same amount of generic mana:
 // the token is colourless, keeps its mana value, and has no coloured symbol.
-func gapB45ColorlessEldraziCopy(tok *game.Card, power, toughness int) {
+func GapB45ColorlessEldraziCopy(tok *game.Card, power, toughness int) {
 	super, _, _ := game.ParseTypeLine(tok.TypeLine)
 	head := append(append([]string(nil), super...), "Creature")
 	tok.TypeLine = strings.Join(head, " ") + " — Eldrazi"

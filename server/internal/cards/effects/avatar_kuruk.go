@@ -39,34 +39,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     theLegendOfKurukOracleID + "#1",
+		OracleID:     TheLegendOfKurukOracleID + "#1",
 		Name:         "Avatar Kuruk",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(nil, "Avatar Kuruk — create a 1/1 colorless Spirit",
-				Do(CreateToken{Template: kurukSpiritToken(), N: 1})),
+				Do(CreateToken{Template: KurukSpiritToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Exhaust — Waterbend {20}: Take an extra turn after this one.",
 			Purpose: game.Purpose{Answers: game.AnswerValue, ExtraTurns: 1},
 			Cost:    WaterbendCost("{20}"),
 			Exhaust: true,
-			Effect:  youTakeAnExtraTurnEffect,
+			Effect:  YouTakeAnExtraTurnEffect,
 		}},
 	})
 }
 
 // kurukSpiritToken is Avatar Kuruk's 1/1 colorless Spirit with "This
 // token can't block or be blocked by non-Spirit creatures."
-func kurukSpiritToken() game.Card { return tokenFromCatalog(printedKurukSpiritToken) }
+func KurukSpiritToken() game.Card { return TokenFromCatalog(printedKurukSpiritToken) }
 
 // printedKurukSpiritToken is the Spirit as PRINTED — its block rule
 // included. Not the plain "1/1 colorless Spirit" row Forbidden
 // Orchard makes: that one prints no text, and a row shared between
 // the two would hand Orchard's Spirits a restriction they don't have,
 // or strip Kuruk's of the one they do.
-func printedKurukSpiritToken() tokenTemplate {
-	return tokenTemplate{
+func printedKurukSpiritToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "spirit-only-spirits",
 		Card: game.Card{
 			Name:      "Spirit",

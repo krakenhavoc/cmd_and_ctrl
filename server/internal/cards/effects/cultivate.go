@@ -41,7 +41,7 @@ func init() {
 		Purpose:      game.Purpose{Lands: 1, Tutors: 1},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return cultivateSearch(ctx, "Cultivate")
+			return CultivateSearch(ctx, "Cultivate")
 		},
 	})
 }
@@ -49,15 +49,15 @@ func init() {
 // cultivateSearch is the shared "up to two basic land cards, one onto
 // the battlefield tapped and the other into your hand" resolution,
 // used by Cultivate and Kodama's Reach (#2942).
-func cultivateSearch(ctx *Context, name string) error {
-	return twoLandSearch(ctx, name, "basic land", IsBasicLand, cultivateHandHalf(name))
+func CultivateSearch(ctx *Context, name string) error {
+	return TwoLandSearch(ctx, name, "basic land", IsBasicLand, cultivateHandHalf(name))
 }
 
 // twoLandSearch is cultivateSearch over any land predicate: one `what`
 // onto the battlefield tapped, then the `hand` tail (a landToHandTail)
 // for the other and the shuffle. Claim Territory's "up to two basic
 // Forest cards" is the other caller.
-func twoLandSearch(ctx *Context, name, what string, pred func(game.Card) bool, hand game.TailRef) error {
+func TwoLandSearch(ctx *Context, name, what string, pred func(game.Card) bool, hand game.TailRef) error {
 	controller := ctx.Controller()
 	source := ctx.Source()
 	return SearchLibrary{
@@ -79,17 +79,17 @@ func twoLandSearch(ctx *Context, name, what string, pred func(game.Card) bool, h
 // The hand half of the two cards that share cultivateSearch: one key each,
 // since the prompt names the card. On-disk keys.
 var (
-	cultivateHandSearch    = cultivateHandTail("cultivate/basic-land-to-hand", "Cultivate")
-	kodamasReachHandSearch = cultivateHandTail("kodamas-reach/basic-land-to-hand", "Kodama's Reach")
+	cultivateHandSearch    = CultivateHandTail("cultivate/basic-land-to-hand", "Cultivate")
+	kodamasReachHandSearch = CultivateHandTail("kodamas-reach/basic-land-to-hand", "Kodama's Reach")
 )
 
-func cultivateHandTail(key, name string) game.TailRef {
-	return landToHandTail(key, name, "basic land", IsBasicLand)
+func CultivateHandTail(key, name string) game.TailRef {
+	return LandToHandTail(key, name, "basic land", IsBasicLand)
 }
 
 // landToHandTail registers the hand half of a two-land search under
 // `key`: one `what` into your hand, then the shuffle.
-func landToHandTail(key, name, what string, pred func(game.Card) bool) game.TailRef {
+func LandToHandTail(key, name, what string, pred func(game.Card) bool) game.TailRef {
 	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
 		return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
 			Player:  o.Tail.Player,

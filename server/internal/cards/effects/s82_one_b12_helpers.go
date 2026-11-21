@@ -10,13 +10,13 @@ import (
 // One oil cards of S82 batch 12 (#5479). Oil counters are plain named
 // counters ("oil"), as Vat of Rebirth and Mindsplice Apparatus use them.
 
-const s82OneB12Oil = "oil"
+const S82OneB12Oil = "oil"
 
 // s82OneB12EntersWithOil is "This <permanent> enters with N oil counters on
 // it" (CR 614.1c): a self-replacement on the card's own entry, so the
 // counters go through the counter window.
-func s82OneB12EntersWithOil(n int, label string) game.ReplacementEffect {
-	r := b10EntersWithCounters(s82OneB12Oil, n, label)
+func S82OneB12EntersWithOil(n int, label string) game.ReplacementEffect {
+	r := B10EntersWithCounters(S82OneB12Oil, n, label)
 	r.RowLabel = label
 	return r
 }
@@ -27,19 +27,19 @@ func s82OneB12EntersWithOil(n int, label string) game.ReplacementEffect {
 // trigger resolves, and "no oil counters" is read after that, so a creature
 // whose counters were spent in response still triggers its penalty. A source
 // that left, or left and came back as a new object, is untouched (CR 400.7).
-func s82OneB12OilUpkeep(label string, ifNone func(g *game.Game, item *game.StackItem) error) game.TriggeredAbility {
+func S82OneB12OilUpkeep(label string, ifNone func(g *game.Game, item *game.StackItem) error) game.TriggeredAbility {
 	return AtYourUpkeep(label, func(g *game.Game, item *game.StackItem) error {
 		c, ok := g.LookupCardForEffect(item.SourceCardID)
-		if !ok || !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+		if !ok || !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 			return nil
 		}
-		if c.Counters[s82OneB12Oil] > 0 {
-			if err := (AddCounter{Target: item.SourceCardID, Kind: s82OneB12Oil, N: -1}).Apply(NewContext(g, item)); err != nil {
+		if c.Counters[S82OneB12Oil] > 0 {
+			if err := (AddCounter{Target: item.SourceCardID, Kind: S82OneB12Oil, N: -1}).Apply(NewContext(g, item)); err != nil {
 				return err
 			}
 		}
 		now, ok := g.LookupCardForEffect(item.SourceCardID)
-		if !ok || !onBattlefield(g, item.SourceCardID) || now.Counters[s82OneB12Oil] > 0 {
+		if !ok || !OnBattlefield(g, item.SourceCardID) || now.Counters[S82OneB12Oil] > 0 {
 			return nil
 		}
 		return ifNone(g, item)
@@ -48,15 +48,15 @@ func s82OneB12OilUpkeep(label string, ifNone func(g *game.Game, item *game.Stack
 
 // s82OneB12GrantsWhileOil is a layer-6 keyword grant to the source "as long
 // as it has <cond> oil counters on it".
-func s82OneB12GrantsWhileOil(keyword, label string, cond func(oil int) bool) game.StaticAbility {
+func S82OneB12GrantsWhileOil(keyword, label string, cond func(oil int) bool) game.StaticAbility {
 	return game.StaticAbility{
 		Label: label,
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-			return target.InstanceID == source.InstanceID && cond(target.Counters[s82OneB12Oil])
+			return target.InstanceID == source.InstanceID && cond(target.Counters[S82OneB12Oil])
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			appendKeywordsTo(c, []string{keyword})
+			AppendKeywordsTo(c, []string{keyword})
 		},
 	}
 }
@@ -64,16 +64,16 @@ func s82OneB12GrantsWhileOil(keyword, label string, cond func(oil int) bool) gam
 // s82OneB12SourceOil is the oil on the ability's source as it last existed
 // (CR 608.2h): on the battlefield now, or its last-known information when a
 // cost sacrificed it.
-func s82OneB12SourceOil(ctx *Context) int {
+func S82OneB12SourceOil(ctx *Context) int {
 	if info, ok := ctx.SourcePermanent(); ok {
-		return info.Counters[s82OneB12Oil]
+		return info.Counters[S82OneB12Oil]
 	}
 	return 0
 }
 
 // s82OneB12SacrificeAtEnd schedules "Sacrifice it at the beginning of the
 // next end step" for the tokens just made.
-func s82OneB12SacrificeAtEnd(ctx *Context, label string, made []uuid.UUID) error {
+func S82OneB12SacrificeAtEnd(ctx *Context, label string, made []uuid.UUID) error {
 	if len(made) == 0 {
 		return nil
 	}
@@ -82,7 +82,7 @@ func s82OneB12SacrificeAtEnd(ctx *Context, label string, made []uuid.UUID) error
 		Controller: ctx.Controller(),
 		Label:      label,
 		Cards:      made,
-		Body:       sacrificeListedCardsBody,
+		Body:       SacrificeListedCardsBody,
 	}.Apply(ctx)
 }
 
@@ -97,11 +97,11 @@ func s82OneB12SacrificeAtEnd(ctx *Context, label string, made []uuid.UUID) error
 // a graveyard is an EventLTB to the graveyard; its oil is the last total the
 // log recorded for it before it left (counters cease to exist as it leaves,
 // CR 122.2, with no removal event).
-func s82OneB12OilEventsThisTurn(g *game.Game, controller uuid.UUID) bool {
+func S82OneB12OilEventsThisTurn(g *game.Game, controller uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
 		switch ev.Kind {
 		case game.EventCounterPlaced:
-			if ev.Label != s82OneB12Oil || g.CounterCountBeforeForEffect(ev) <= ev.Amount {
+			if ev.Label != S82OneB12Oil || g.CounterCountBeforeForEffect(ev) <= ev.Amount {
 				continue
 			}
 			if s82OneB12ControllerOf(g, ev.Target) == controller {
@@ -111,7 +111,7 @@ func s82OneB12OilEventsThisTurn(g *game.Game, controller uuid.UUID) bool {
 			if ev.NewZone != game.ZoneGraveyard {
 				continue
 			}
-			probe := game.Event{Kind: game.EventCounterPlaced, Target: ev.CardID, Label: s82OneB12Oil, Seq: s82OneB12DepartureSeq(g, ev)}
+			probe := game.Event{Kind: game.EventCounterPlaced, Target: ev.CardID, Label: S82OneB12Oil, Seq: s82OneB12DepartureSeq(g, ev)}
 			if g.CounterCountBeforeForEffect(probe) > 0 {
 				return true
 			}
@@ -142,19 +142,19 @@ func s82OneB12ControllerOf(g *game.Game, id uuid.UUID) uuid.UUID {
 	if !ok {
 		return uuid.Nil
 	}
-	if onBattlefield(g, id) {
+	if OnBattlefield(g, id) {
 		return c.Controller
 	}
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind == game.EventLTB && ev.CardID == id {
-			return leftUnderControlOf(ev, c)
+			return LeftUnderControlOf(ev, c)
 		}
 	}
 	return c.Controller
 }
 
 // s82OneB12Token builds an X-sized token template.
-func s82OneB12Token(name, typeLine string, power, toughness int, colors, keywords []string) game.Card {
+func S82OneB12Token(name, typeLine string, power, toughness int, colors, keywords []string) game.Card {
 	if power < 0 {
 		power = 0
 	}

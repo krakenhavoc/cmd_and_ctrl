@@ -59,25 +59,25 @@ func init() {
 			{
 				Watches: []game.EventKind{game.EventCounterPlaced},
 				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-					return counterPlacementBy(ev, g, src.Controller, true)
+					return CounterPlacementBy(ev, g, src.Controller, true)
 				},
 				Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 					ev.CounterDelta *= 2
 					return nil
 				},
-				Controller: vorinclexController,
+				Controller: VorinclexController,
 				Label:      "Vorinclex: double your counters",
 			},
 			{
 				Watches: []game.EventKind{game.EventCounterPlaced},
 				AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-					return counterPlacementBy(ev, g, src.Controller, false)
+					return CounterPlacementBy(ev, g, src.Controller, false)
 				},
 				Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 					ev.CounterDelta /= 2
 					return nil
 				},
-				Controller: vorinclexController,
+				Controller: VorinclexController,
 				Label:      "Vorinclex: halve opponents' counters",
 			},
 		},
@@ -105,7 +105,7 @@ func init() {
 // "remove three loyalty counters" is not one this card names. Halving
 // a removal would also round the wrong way in Go, where integer
 // division truncates toward zero.
-func counterPlacementBy(ev *game.ReplacementEvent, _ *game.Game, you uuid.UUID, mine bool) bool {
+func CounterPlacementBy(ev *game.ReplacementEvent, _ *game.Game, you uuid.UUID, mine bool) bool {
 	if ev.Kind != game.RepEventCounter || ev.CounterDelta <= 0 {
 		return false
 	}
@@ -131,7 +131,7 @@ func counterPlacementBy(ev *game.ReplacementEvent, _ *game.Game, you uuid.UUID, 
 // carries both (ADR 0056 Decision 5), so the card that says "permanent"
 // has to say so here. counter_placer_test.go holds every registered
 // counter replacement to that.
-func counterPlacementOn(ev *game.ReplacementEvent, g *game.Game, you uuid.UUID) bool {
+func CounterPlacementOn(ev *game.ReplacementEvent, g *game.Game, you uuid.UUID) bool {
 	if ev.Kind != game.RepEventCounter || ev.CounterDelta <= 0 {
 		return false
 	}
@@ -145,6 +145,6 @@ func counterPlacementOn(ev *game.ReplacementEvent, g *game.Game, you uuid.UUID) 
 	return target.Controller == you
 }
 
-func vorinclexController(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+func VorinclexController(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 	return src.Controller
 }

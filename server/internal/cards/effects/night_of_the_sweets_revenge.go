@@ -34,7 +34,7 @@ func init() {
 			}},
 		}},
 		Static: []game.StaticAbility{
-			GrantAbilities(foodsYouControl, grant),
+			GrantAbilities(FoodsYouControl, grant),
 		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Night of the Sweets' Revenge — create a Food", Do(CreateToken{Template: FoodToken(), N: 1})),
@@ -50,7 +50,7 @@ func init() {
 
 // foodsYouControl is "Foods you control" — Night of the Sweets'
 // Revenge.
-func foodsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func FoodsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.HasSubtype("Food")
 }
 
