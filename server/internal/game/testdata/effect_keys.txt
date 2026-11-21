@@ -2725,6 +2725,7 @@ run prompt-run/rise-of-the-witch-king-return
 run prompt-run/roiling-regrowth-fetch
 run prompt-run/ruthless-lawbringer-sacrifice
 run prompt-run/ruthless-technomancer-treasures
+run prompt-run/s82-gap-b156-kuldotha-flamefiend-sacrifice
 run prompt-run/s82-neo-b18-echo-of-deaths-wail
 run prompt-run/s82-neo-sokenzan-smelter-construct
 run prompt-run/s82-one-b04-vraskas-fall-poison
@@ -3808,6 +3809,7 @@ tail sacrificed-one/prompt-run/redcap-gutter-dweller-sacrificed
 tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
+tail sacrificed-one/prompt-run/s82-gap-b156-kuldotha-flamefiend-sacrifice
 tail sacrificed-one/prompt-run/s82-neo-b18-echo-of-deaths-wail
 tail sacrificed-one/prompt-run/s82-neo-sokenzan-smelter-construct
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
@@ -4201,6 +4203,7 @@ tail then/rottenmouth-viper-punisher-sacrificed
 tail then/s82-afr-b04-interrogate-choose-one
 tail then/s82-bro-b13-choose-one-play
 tail then/s82-bro-b13-exiled-to-hand
+tail then/s82-gap-b156-ib-halfheart-sacrificed
 tail then/s82-mid-scry-n
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched

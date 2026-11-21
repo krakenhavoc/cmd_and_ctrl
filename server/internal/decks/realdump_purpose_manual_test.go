@@ -238,6 +238,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 64 (#5948).
 	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
+
+	// S82 GAP batch 156 (#5948).
+	"Ib Halfheart, Goblin Tactician": "4 damage only to the creatures blocking the Goblin it sacrifices: a blocked attacker's blockers, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
