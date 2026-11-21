@@ -160,6 +160,7 @@ body eagles-are-coming/birds
 body earth-rumble/fight
 body earthbend/return-tapped
 body earthbender-ascension/grow
+body eastfarthing-farmer/pump
 body eden/return-from-graveyard
 body edgars-awakening/return-to-hand
 body electric-seaweed/one-damage-to-each-non-wall-creature
@@ -328,6 +329,7 @@ body new-way-forward/prevented
 body new-way-forward/strike-back
 body nightmares-and-daydreams/target-player-mills
 body nihiloor/steal
+body nimble-hobbit/tap
 body nine-lives-familiar/return
 body nine-lives/incarnation-counter
 body noctis/warp-strike-return
@@ -447,6 +449,7 @@ body serum-core-chimera/damage
 body seven-of-nine-tertiary-adjunct/charge
 body share-the-spoils/exile-their-top
 body shield-counter/remove
+body shire-shirriff/exile-body
 body shirei/return-if-still-on-the-battlefield
 body shrapnel-slinger/destroy
 body shriek-treblemaker/cant-block
@@ -2396,6 +2399,7 @@ payunless pay-unless/neo-go-shintai-lost-wisdom
 payunless pay-unless/neo-go-shintai-shared-purpose
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nihil-spellbomb-draw
+payunless pay-unless/nimble-hobbit-tap
 payunless pay-unless/nothing
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/pact-lose-the-game
@@ -2822,6 +2826,7 @@ run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
 run run/consuming-tide-return
 run run/krenkos-buzzcrusher-destroy
+run shire-shirriff/exile
 run soulbond/pair
 run the-city-on-the-edge-of-forever/gain-five
 run wanderwine-prophets/extra-turn
@@ -3852,6 +3857,7 @@ tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
 tail sacrificed-one/prompt-run/witherbloom-charm-sacrifice-draw
 tail sacrificed-one/prompt-run/yuma-proud-protector-sacrifice
 tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
+tail sacrificed-one/shire-shirriff/exile
 tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
 tail sacrificed-one/wanderwine-prophets/extra-turn
 tail saheeli-filigree-master/after-scry
