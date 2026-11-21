@@ -29,9 +29,9 @@ func init() {
 		Name:         "Codie, Ravenous Codex",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Kind == game.EventCast && ev.Actor == source.Controller && castAPreparedSpell(g, ev.CardID)
-			}, label, gapB106CopyTheCastSpell),
+			effects.On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return ev.Kind == game.EventCast && ev.Actor == source.Controller && effects.CastAPreparedSpell(g, ev.CardID)
+			}, label, effects.GapB106CopyTheCastSpell),
 		},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{W}{U}{B}{R}{G}, {T}: Each creature you control becomes prepared.",

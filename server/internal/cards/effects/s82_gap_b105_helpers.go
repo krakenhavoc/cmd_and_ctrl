@@ -6,7 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // gapB105AurasAndEquipmentAttached counts the Auras and Equipment attached to
 // the card, whoever controls them.
-func gapB105AurasAndEquipmentAttached(g *game.Game, host *game.Card) int {
+func GapB105AurasAndEquipmentAttached(g *game.Game, host *game.Card) int {
 	n := 0
 	for _, a := range g.BattlefieldCardsForEffect() {
 		if a.IsAttachedTo(host.InstanceID) && (a.IsAura() || a.HasSubtype("Equipment")) {

@@ -1,0 +1,27 @@
+package cardsw
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Winged Sliver — Creature — Sliver {1}{U}, 1/1 (Commander Legends: Battle
+// for Baldur's Gate):
+//
+//	"All Sliver creatures have flying."
+//
+// Firewake Sliver's haste grant with flying, to every Sliver creature at the
+// table in layer 6 (CR 613.1f), this one and an opponent's included.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "24e96682-14ca-4a62-a920-2d686c8a5dbf",
+		Name:         "Winged Sliver",
+		Completeness: effects.CompletenessFull,
+		Static: []game.StaticAbility{
+			effects.TribalKeywordGrant(effects.TribeFilter{Tribes: []string{"Sliver"}}, "flying"),
+		},
+	})
+}

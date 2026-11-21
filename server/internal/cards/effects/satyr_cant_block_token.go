@@ -9,8 +9,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // A catalog template and not a tokens_table row because the can't-block
 // clause is a static the token always prints (the Fungus's shape).
 // Its slug is an on-disk identity: never renamed, never reused.
-func printedGapB104SatyrCantBlockToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB104SatyrCantBlockToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "satyr-cant-block",
 		Card: game.Card{
 			Name:      "Satyr",
@@ -26,5 +26,5 @@ func printedGapB104SatyrCantBlockToken() tokenTemplate {
 
 // GapB104SatyrCantBlockToken is the Satyr's card value for CreateToken.
 func GapB104SatyrCantBlockToken() game.Card {
-	return tokenFromCatalog(printedGapB104SatyrCantBlockToken)
+	return TokenFromCatalog(printedGapB104SatyrCantBlockToken)
 }

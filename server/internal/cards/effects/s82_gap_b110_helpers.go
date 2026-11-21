@@ -14,7 +14,7 @@ import (
 // rule), so the numbering never shifts mid-game.
 func gap110ControlledByNthPlayer(n int) CardPredicate {
 	if n > 0 {
-		return controlledByNthOpponent(n)
+		return ControlledByNthOpponent(n)
 	}
 	return func(_ *game.Game, chooser uuid.UUID, c game.Card) bool {
 		return c.Controller == chooser
@@ -26,7 +26,7 @@ func gap110ControlledByNthPlayer(n int) CardPredicate {
 // for the chooser and the rest for the opponents in turn order. A clause for
 // a seat that does not exist offers nothing, so the ability always resolves
 // and takes what it can.
-func gap110PerPlayerClauses(noun string, what ...CardPredicate) *game.TargetSpec {
+func Gap110PerPlayerClauses(noun string, what ...CardPredicate) *game.TargetSpec {
 	words := [...]string{"your", "the first opponent's", "the second opponent's", "the third opponent's"}
 	var out []*game.TargetSpec
 	for n := 0; n < game.MaxPlayers; n++ {

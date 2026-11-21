@@ -24,7 +24,7 @@ func init() {
 		Name:         "Fear of Lost Teeth",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(Targeting(WhenThisDies("Fear of Lost Teeth — 1 damage to any target and you gain 1 life", gapB106OneDamageAndOneLife), TargetAny()), ForTargets(DamageToTarget(0, 1))),
+			effects.TriggerWithPurpose(effects.Targeting(effects.WhenThisDies("Fear of Lost Teeth — 1 damage to any target and you gain 1 life", effects.GapB106OneDamageAndOneLife), effects.TargetAny()), effects.ForTargets(effects.DamageToTarget(0, 1))),
 		},
 	})
 }
