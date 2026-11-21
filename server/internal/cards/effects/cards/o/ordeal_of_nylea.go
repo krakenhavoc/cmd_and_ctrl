@@ -35,21 +35,7 @@ func init() {
 		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Triggered: []game.TriggeredAbility{
 			effects.WheneverEnchantedCreatureAttacks(name+" — put a +1/+1 counter on it, then sacrifice this Aura if it has three or more",
-				func(g *game.Game, item *game.StackItem) error {
-					if item.Trigger == nil {
-						return nil
-					}
-					host := item.Trigger.Event.CardID
-					ctx := effects.NewContext(g, item)
-					if err := (effects.AddCounter{Target: host, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					c, ok := g.LookupCardForEffect(host)
-					if !ok || c.Counters[game.CounterPlusOne] < 3 {
-						return nil
-					}
-					return effects.SacrificePermanent{Target: item.SourceCardID}.Apply(ctx)
-				}),
+				effects.OrdealAttackCounterThenSacrifice),
 			{
 				Watches: []game.EventKind{game.EventSacrifice},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
