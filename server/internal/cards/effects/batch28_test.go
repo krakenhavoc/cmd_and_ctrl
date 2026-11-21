@@ -44,7 +44,6 @@ const (
 	b28StromkirkCaptainOracle      = "599c3fd6-3309-4b5d-adec-9c4062848ad5"
 	b28LifebloodHydraOracle        = "b14d05c0-fe10-4079-a90e-0aea1a8fd375"
 	b28SpawnbedProtectorOracle     = "256a7f54-0e8e-4d22-a0f7-ff2830e8884e"
-	b28RampagingYaoGuaiSkipOracle  = "d37e8f75-c7cb-4270-bb2f-0125e972ed15"
 	b28HoldoutSettlementFullOracle = "e6b77545-de5c-4f4a-b7ea-83498fb33ba8"
 	b28FertilidOracle              = "21f1c6d7-8289-44b2-b88f-c09e202be200"
 )
@@ -161,13 +160,9 @@ func TestBatch28CardsAreRegistered(t *testing.T) {
 	// LibraryOwner parameter; it is registered now (bribery.go) and
 	// dropped from this list. Hall of the Bandit Lord was the seventh
 	// until #1547 gave mana spend riders (hall_of_the_bandit_lord.go).
-	for _, skipped := range []string{
-		b28RampagingYaoGuaiSkipOracle, // an enters trigger cannot read the spell's X
-	} {
-		if _, ok := Lookup(skipped); ok {
-			t.Errorf("%s is a declared skip and must not be registered", skipped)
-		}
-	}
+	// Rampaging Yao Guai was the last of them and came off with the GAP
+	// batch 63 (#5948): an XFromCast enters trigger's "any number of
+	// targets with total mana value X or less" (rampaging_yao_guai.go).
 }
 
 // --- lands and vanilla ---------------------------------------------

@@ -118,6 +118,13 @@ type tokenTemplate struct {
 	Triggered []game.TriggeredAbility
 	Static    []game.StaticAbility
 
+	// Enchant is an Aura token's printed "enchant <what>" clause, when it
+	// is not the implicit "enchant creature" a Role has: Preston Garvey's
+	// Settlement is "Enchant land". Judged as the state-based action
+	// that checks an Aura's host does (CR 704.5m, game.auraEnchantSpecOf),
+	// filed as the token key's target spec. Nil for every other token.
+	Enchant *game.TargetSpec
+
 	// CostModifiers are the token's printed "spells you cast cost {N}
 	// less" clauses (Tamiyo's Notebook, S82 NEO batch 20), written exactly
 	// as Spec.CostModifiers are and filed under the same token key. The
@@ -509,6 +516,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// The Prydwen, Steel Flagship's Human Knight (Fallout, #5948): 2/2 white,
 	// +2/+2 while an artifact entered under its controller's control this turn.
 	printedGapB61HumanKnightToken,
+
+	// Preston Garvey, Minuteman's Settlement (Fallout, #5948): a green Aura
+	// token with enchant land that gives the land a mana ability.
+	printedGapB63SettlementToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
@@ -525,6 +536,7 @@ func buildTokenDef(t tokenTemplate) *game.CardDef {
 		Activated:     t.Activated,
 		Triggered:     t.Triggered,
 		Static:        t.Static,
+		Targets:       t.Enchant,
 		CostModifiers: t.CostModifiers,
 		BlockRules:    t.BlockRules,
 		AttackLimits:  t.AttackLimits,
