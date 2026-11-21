@@ -2763,6 +2763,7 @@ run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
 run prompt-run/fugitive-of-the-judoon-exile
 run prompt-run/fugitive-of-the-judoon-human
+run prompt-run/gap-b219-gut-true-soul-zealot-sacrifice
 run prompt-run/gap-b55-the-hunger-tide-rises-sacrifice
 run prompt-run/gap-b56-ajani-fells-the-godsire-counter
 run prompt-run/garruk-the-veil-cursed-tutor
@@ -3943,6 +3944,7 @@ tail sacrificed-one/prompt-run/exploit-stitched-assistant
 tail sacrificed-one/prompt-run/exploit-vulturous-aven
 tail sacrificed-one/prompt-run/felothar-sacrifice
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
+tail sacrificed-one/prompt-run/gap-b219-gut-true-soul-zealot-sacrifice
 tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
 tail sacrificed-one/prompt-run/gearbane-orangutan-sacrifice
 tail sacrificed-one/prompt-run/general-traag-sacrifice
