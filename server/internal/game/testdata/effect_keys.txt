@@ -475,6 +475,7 @@ body terror-of-towashi/return
 body tester-of-the-tangential/move
 body tether-technician/strike
 body the-ancient-one/mill
+body the-balrog-of-moria/exile
 body the-deck-of-many-things/owner-loses
 body the-falcon-airship-restored/return
 body the-fire-nation-drill/destroy
@@ -4035,6 +4036,7 @@ tail then/planetary-annihilation-damage
 tail then/play-with-fire-scry
 tail then/polygraph-orb-punisher-sacrificed
 tail then/prevent-damage-from-chosen-color
+tail then/prize-pig-ribbon-check
 tail then/proliferate-again
 tail then/promise-of-bunrei-spirits
 tail then/protection-from-chosen-color-until-eot
