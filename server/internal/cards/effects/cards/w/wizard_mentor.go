@@ -27,14 +27,14 @@ func init() {
 			Targets: effects.TargetCreature("target creature you control", effects.YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := effects.NewContext(g, item)
-				id, ok := effects.B16FirstLegalTargetCard(ctx)
-				if err := (effects.BounceToHand{Target: item.SourceCardID}).Apply(ctx); err != nil {
-					return err
+				// Both return at once; the target is read and returned
+				// first so no clause waits on the Mentor's own move.
+				if id, ok := effects.B16FirstLegalTargetCard(ctx); ok && id != item.SourceCardID {
+					if err := (effects.BounceToHand{Target: id}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-				if !ok || id == item.SourceCardID {
-					return nil
-				}
-				return effects.BounceToHand{Target: id}.Apply(ctx)
+				return effects.BounceToHand{Target: item.SourceCardID}.Apply(ctx)
 			},
 		}},
 	})

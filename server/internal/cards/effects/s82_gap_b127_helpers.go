@@ -9,17 +9,6 @@ import (
 // s82_gap_b127_helpers.go — S82 set GAP, batch 127 (#5948): the Lord of the
 // Rings white, blue and gold rows. Append-only.
 
-// gapB127ThisOrAnotherEntered is "whenever this creature or another
-// <subtype> you control enters": the source's own entry, or another
-// permanent of the subtype (read through the source's text) entering under
-// its controller's control.
-func GapB127ThisOrAnotherEntered(subtype string) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return ev.CardID == source.InstanceID ||
-			B10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype(subtype))
-	}
-}
-
 // gapB127ScryTargetsFromLookedAt is the target clause of "whenever you scry,
 // <do something> to up to X target <things>, where X is the number of cards
 // looked at while scrying this way": built from the scry event the trigger

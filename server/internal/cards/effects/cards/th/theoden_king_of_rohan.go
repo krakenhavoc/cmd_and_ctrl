@@ -26,7 +26,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			effects.TriggerWithPurpose(effects.Targeting(
-				effects.On(game.EventETB, effects.GapB127ThisOrAnotherEntered("Human"), theodenLabel,
+				effects.On(game.EventETB, effects.GapB126ThisOrAnotherEntered("Human"), theodenLabel,
 					func(g *game.Game, item *game.StackItem) error {
 						ctx := effects.NewContext(g, item)
 						id, ok := effects.B16FirstLegalTargetCard(ctx)
