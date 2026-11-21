@@ -30,7 +30,7 @@ func SocB5EnchantedByYourAuraCantAttackYou() game.StaticAbility {
 			return false
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			cmdr2B19BarAttackingSourcesController(c, source)
+			Cmdr2B19BarAttackingSourcesController(c, source)
 		},
 	}
 }

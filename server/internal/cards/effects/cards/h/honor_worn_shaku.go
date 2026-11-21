@@ -35,12 +35,7 @@ func init() {
 			Label:     "Tap an untapped legendary permanent you control: Untap this artifact.",
 			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      effects.TapAnUntapped("an untapped legendary permanent you control", effects.Legendary()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !effects.SourceIsStillThisPermanent(g, item) {
-					return nil
-				}
-				return effects.UntapTarget{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
-			},
+			Effect:    effects.UntapThisPermanentEffect,
 		}},
 	})
 }

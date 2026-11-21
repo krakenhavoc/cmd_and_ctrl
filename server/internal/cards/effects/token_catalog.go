@@ -414,6 +414,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedS82SncB07FishToken,
 	// The Raven Man's Bird: flying, can't block (Dominaria United, #5487).
 	printedRavenManBirdToken,
+	// Kibo, Uktabi Prince's Banana (Jumpstart 2022, #5948).
+	printedGapB154BananaToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.
@@ -512,6 +514,11 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedNeoB20KeimiToken,
 	printedNeoB20NotebookToken,
 	printedNeoB20NinjaToken,
+	// S82 GAP batch 93: The Eleventh Hour's Human (Doctor spells cost {1} less).
+	printedGapDoctorHumanToken,
+	// S82 GAP batch 94: The Girl in the Fireplace's Human Noble and Horse.
+	PrintedGapHumanNobleToken,
+	PrintedGapHorseToken,
 	// ADR 0223 (#5910): Everquill Phoenix's Feather.
 	printedFeatherToken,
 	// S82 BNS batch 02: Outlaws' Merriment's Human Rogue.
@@ -534,6 +541,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
 	// size is its controller's experience counters.
 	printedC15DaxosSpiritToken,
+	// S82 GAP batch 43: Disa the Restless' Tarmogoyf (Modern Horizons 3
+	// Commander), a */1+* Lhurgoyf with the card's characteristic-defining ability.
+	printedGapB43TarmogoyfToken,
 
 	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
 	// (Commander Masters, S82 GAP batch 104, #5948).

@@ -34,23 +34,15 @@ func init() {
 		Modes: effects.Spree(
 			effects.SpreeModeDoing("Return target creature card from your graveyard to the battlefield.", "{2}",
 				effects.TargetCardInGraveyard("target creature card in your graveyard", effects.YouOwn(), effects.Creature()),
-				oneLastJobReturn),
+				effects.R35OneLastJobReturn),
 			effects.SpreeModeDoing("Return target Mount or Vehicle card from your graveyard to the battlefield.", "{1}",
 				effects.TargetCardInGraveyard("target Mount or Vehicle card in your graveyard", effects.YouOwn(), effects.Or(effects.OfSubtype("Mount"), effects.OfSubtype("Vehicle"))),
-				oneLastJobReturn),
+				effects.R35OneLastJobReturn),
 			effects.SpreeModeDoing("Return target Aura or Equipment card from your graveyard to the battlefield attached to a creature you control.", "{1}",
 				effects.TargetCardInGraveyard("target Aura or Equipment card in your graveyard", effects.YouOwn(), effects.Or(effects.OfSubtype("Aura"), effects.OfSubtype("Equipment"))),
 				oneLastJobAttached),
 		),
 	})
-}
-
-func oneLastJobReturn(_ *game.StackItem, ctx *effects.Context, occ int) error {
-	t, ok := effects.ModeTarget(ctx, occ)
-	if !ok {
-		return nil
-	}
-	return effects.ReturnFromGraveyardTogether{Targets: []uuid.UUID{t.ID}, Controller: ctx.Controller()}.Apply(ctx)
 }
 
 func oneLastJobAttached(_ *game.StackItem, ctx *effects.Context, occ int) error {

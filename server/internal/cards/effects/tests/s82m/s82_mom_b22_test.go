@@ -422,7 +422,7 @@ func TestTheGreatWorkChapterTwoMakesThreeTreasures(t *testing.T) {
 	effectstest.AnswerTriggerTargets2(t, g, me.ID, opp.ID)
 	effectstest.PassPriorityAroundTable(t, g)
 	saga := effectstest.PraetorOnBattlefield(g, cardsu.UrabraskOracleID)
-	b22SetLore(g, saga, 1)
+	effectstest.B22SetLore(g, saga, 1)
 	effectstest.AdvanceToPrecombatMainOf(t, g, g.Turn.ActiveSeat)
 	effectstest.PassPriorityAroundTable(t, g)
 	if n := effectstest.CountNamed(g, "Treasure"); n != 3 {
@@ -442,7 +442,7 @@ func TestTheGreatWorkChapterThreeCastsFromAnyGraveyardAndExiles(t *testing.T) {
 	effectstest.AnswerTriggerTargets2(t, g, me.ID, opp.ID)
 	effectstest.PassPriorityAroundTable(t, g)
 	saga := effectstest.PraetorOnBattlefield(g, cardsu.UrabraskOracleID)
-	b22SetLore(g, saga, 2)
+	effectstest.B22SetLore(g, saga, 2)
 	effectstest.AdvanceToPrecombatMainOf(t, g, seat)
 	effectstest.PassPriorityAroundTable(t, g)
 
@@ -553,7 +553,7 @@ func TestTheGrandEvolutionChapterTwoDistributesSevenCounters(t *testing.T) {
 	}
 	effectstest.PassPriorityAroundTable(t, g)
 	saga := effectstest.PraetorOnBattlefield(g, cardsv.VorinclexOracleID)
-	b22SetLore(g, saga, 1)
+	effectstest.B22SetLore(g, saga, 1)
 	effectstest.AdvanceToPrecombatMainOf(t, g, seat)
 	pick := effectstest.LatestPickTarget(g, me.ID)
 	if pick == nil {
@@ -587,13 +587,13 @@ func TestTheGrandEvolutionChapterThreeGrantsTheFightAbilityAndFlickers(t *testin
 	}
 	effectstest.PassPriorityAroundTable(t, g)
 	saga := effectstest.PraetorOnBattlefield(g, cardsv.VorinclexOracleID)
-	b22SetLore(g, saga, 2)
+	effectstest.B22SetLore(g, saga, 2)
 	effectstest.AdvanceToPrecombatMainOf(t, g, seat)
 	if pick := effectstest.LatestPickTarget(g, me.ID); pick != nil {
 		_ = g.ResolvePickTargets(pick.ID, me.ID, nil)
 	}
 	effectstest.PassPriorityAroundTable(t, g)
-	b22SetLore(g, saga, 2)
+	effectstest.B22SetLore(g, saga, 2)
 	effectstest.PassPriorityAroundTable(t, g)
 
 	if c := effectstest.PraetorOnBattlefield(g, cardsv.VorinclexOracleID); c == nil || c.Name != "Vorinclex" {
@@ -634,13 +634,4 @@ func TestTheGrandEvolutionChapterThreeGrantsTheFightAbilityAndFlickers(t *testin
 	if b22Card(g, mine) != nil {
 		t.Errorf("the fighter survived the fight, it should have taken 2 damage")
 	}
-}
-
-func b22SetLore(g *game.Game, saga *game.Card, n int) {
-	g.WithWriteLock(func() {
-		if saga.Counters == nil {
-			saga.Counters = map[string]int{}
-		}
-		saga.Counters[game.CounterLore] = n
-	})
 }

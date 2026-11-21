@@ -120,29 +120,6 @@ func TestSncB17ButlerRechecksAsItResolves(t *testing.T) {
 	}
 }
 
-// sncSettle passes priority until the stack is empty, answering a target
-// pick addressed to chooser with `pick` when there is one.
-func sncSettle(t *testing.T, g *game.Game, chooser, pick uuid.UUID) {
-	t.Helper()
-	for i := 0; i < 12; i++ {
-		effectstest.AnswerOpenOrderingIfAny(t, g, chooser)
-		if pick != uuid.Nil && effectstest.LatestPickTarget(g, chooser) != nil {
-			effectstest.PickCard(t, g, chooser, pick)
-			continue
-		}
-		if c := effectstest.PayAmountPrompt(g, chooser); c != nil {
-			if err := g.ResolvePayAmount(c.ID, chooser, c.PayAmount.Goal); err != nil {
-				t.Fatalf("attack split: %v", err)
-			}
-			continue
-		}
-		if effectstest.StackFullyEmpty(g) {
-			return
-		}
-		effectstest.PassPriorityAroundTable(t, g)
-	}
-}
-
 func sncConfirm(t *testing.T, g *game.Game, chooser uuid.UUID, yes bool) {
 	t.Helper()
 	c := effectstest.LatestChoiceOfKindFor(g, game.PendingChoiceConfirm, chooser)
@@ -175,9 +152,9 @@ func TestSncB17BrawlersGiveBothCreaturesTheChosenKeyword(t *testing.T) {
 		bear := effectstest.B12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 		other := effectstest.B12Creature(g, me.ID, "Idle", "Creature — Bear", 2, 2)
 		effectstest.DeclareAttack(t, g, opp.ID, brawlers)
-		sncSettle(t, g, me.ID, bear)
+		effectstest.SncSettle(t, g, me.ID, bear)
 		effectstest.AnswerOptionPick(t, g, me.ID, idx)
-		sncSettle(t, g, me.ID, uuid.Nil)
+		effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 		for _, id := range []uuid.UUID{brawlers, bear} {
 			if !sncHasKeyword(t, g, id, kw) {
 				t.Errorf("%s: a creature lacks the chosen keyword", kw)
@@ -199,11 +176,11 @@ func TestSncB17BrawlersWorkWithNoSecondTarget(t *testing.T) {
 	brawlers := effectstest.B27Push(g, me.ID, "Ballroom Brawlers", "Creature — Human Warrior", sncBrawlersOracle, "{3}{W}{W}", 3, 5, "W")
 	effectstest.B12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
 	effectstest.DeclareAttack(t, g, opp.ID, brawlers)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if c := effectstest.LatestOptionPickFor(g, me.ID); c != nil {
 		effectstest.AnswerOptionPick(t, g, me.ID, 0)
 	}
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if !sncHasKeyword(t, g, brawlers, "first strike") {
 		t.Error("the Brawlers did not gain first strike with no other target")
 	}
@@ -229,7 +206,7 @@ func TestSncB17DiabolistMakesATappedAttackingDevilOnlyWithoutOne(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	dia := effectstest.B27Push(g, me.ID, "Maestros Diabolist", "Creature — Vampire Warrior", sncDiabolistOracle, "{U}{B}{R}", 1, 4, "U", "B", "R")
 	effectstest.DeclareAttack(t, g, opp.ID, dia)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if n := effectstest.B27CountNamed(g, me.ID, "Devil"); n != 1 {
 		t.Fatalf("%d Devils, want 1", n)
 	}
@@ -253,7 +230,7 @@ func TestSncB17DiabolistRechecksAsItResolves(t *testing.T) {
 	d1 := effectstest.B27Push(g, me.ID, "Maestros Diabolist", "Creature — Vampire Warrior", sncDiabolistOracle, "{U}{B}{R}", 1, 4, "U", "B", "R")
 	d2 := effectstest.B27Push(g, me.ID, "Maestros Diabolist", "Creature — Vampire Warrior", sncDiabolistOracle, "{U}{B}{R}", 1, 4, "U", "B", "R")
 	effectstest.DeclareAttack(t, g, opp.ID, d1, d2)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if n := effectstest.B27CountNamed(g, me.ID, "Devil"); n != 1 {
 		t.Errorf("two Diabolists made %d Devils, want 1 (the second trigger's condition fails as it resolves)", n)
 	}
@@ -265,7 +242,7 @@ func TestSncB17DiabolistIgnoresADevilCardThatIsNotAToken(t *testing.T) {
 	dia := effectstest.B27Push(g, me.ID, "Maestros Diabolist", "Creature — Vampire Warrior", sncDiabolistOracle, "{U}{B}{R}", 1, 4, "U", "B", "R")
 	effectstest.B12Creature(g, me.ID, "Real Devil", "Creature — Devil", 1, 1)
 	effectstest.DeclareAttack(t, g, opp.ID, dia)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if n := effectstest.B27CountNamed(g, me.ID, "Devil"); n != 1 {
 		t.Errorf("a Devil card stopped the trigger: %d Devil tokens", n)
 	}
@@ -276,7 +253,7 @@ func TestSncB17DiabolistsDevilPingsWhenItDies(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	dia := effectstest.B27Push(g, me.ID, "Maestros Diabolist", "Creature — Vampire Warrior", sncDiabolistOracle, "{U}{B}{R}", 1, 4, "U", "B", "R")
 	effectstest.DeclareAttack(t, g, opp.ID, dia)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	var devil uuid.UUID
 	for _, c := range g.Battlefield.Cards {
 		if c.Name == "Devil" {
@@ -290,7 +267,7 @@ func TestSncB17DiabolistsDevilPingsWhenItDies(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if opp.Life != life-1 {
 		t.Errorf("opponent life %d, want %d", opp.Life, life-1)
 	}
@@ -308,9 +285,9 @@ func TestSncB17HeavyDefenderAcceptsAndTheHeavyLeavesCombatUntapped(t *testing.T)
 	heavy := sncHeavy(g, me)
 	hand := me.Hand.Size()
 	effectstest.DeclareAttack(t, g, opp.ID, heavy)
-	sncSettle(t, g, opp.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, opp.ID, uuid.Nil)
 	sncConfirm(t, g, opp.ID, true)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("hand %d, want %d: its controller should draw a card", me.Hand.Size(), hand+1)
 	}
@@ -326,9 +303,9 @@ func TestSncB17HeavyDefenderDeclinesAndItStaysInCombat(t *testing.T) {
 	heavy := sncHeavy(g, me)
 	hand := me.Hand.Size()
 	effectstest.DeclareAttack(t, g, opp.ID, heavy)
-	sncSettle(t, g, opp.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, opp.ID, uuid.Nil)
 	sncConfirm(t, g, opp.ID, false)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if me.Hand.Size() != hand {
 		t.Errorf("hand %d, want %d: no draw on a decline", me.Hand.Size(), hand)
 	}
@@ -518,7 +495,7 @@ func TestSncB17IndulgeMakesACitizenPerAttackingCreatureThisTurn(t *testing.T) {
 		t.Fatal(err)
 	}
 	effectstest.LockInAttacks(t, g)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	n := 0
 	for _, c := range g.Battlefield.Cards {
 		if c.Name == "Citizen" && c.Controller == me.ID {
@@ -645,7 +622,7 @@ func TestSncB17KittTapsTwoToPumpGoadAndTrampleTheActivePlayersCreature(t *testin
 	effectstest.AdvanceToStepOf(t, g, 0, game.StepBeginCombat)
 	effectstest.PassPriorityAroundTable(t, g)
 	sncChoose(t, g, me.ID, a, b)
-	sncSettle(t, g, me.ID, kitt)
+	effectstest.SncSettle(t, g, me.ID, kitt)
 	if !effectstest.LayeredCard(t, g, a).Tapped || !effectstest.LayeredCard(t, g, b).Tapped {
 		t.Error("the two chosen creatures are not tapped")
 	}
@@ -673,7 +650,7 @@ func TestSncB17KittDeclinedAndUnderTwoDoNothing(t *testing.T) {
 	effectstest.AdvanceToStepOf(t, g, 0, game.StepBeginCombat)
 	effectstest.PassPriorityAroundTable(t, g)
 	sncChoose(t, g, me.ID) // none: "you may" declined
-	sncSettle(t, g, me.ID, kitt)
+	effectstest.SncSettle(t, g, me.ID, kitt)
 	if effectstest.LayeredCard(t, g, kitt).CurrentPower() != 3 {
 		t.Error("the pump was applied though the tap was declined")
 	}
@@ -690,7 +667,7 @@ func TestSncB17KittWorksOnAnOpponentsTurnAndTargetsTheirCreature(t *testing.T) {
 	effectstest.AdvanceToStepOf(t, g, 0, game.StepBeginCombat)
 	effectstest.PassPriorityAroundTable(t, g)
 	sncChoose(t, g, me.ID) // decline on my own turn
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	effectstest.AdvanceToStepOf(t, g, 1, game.StepBeginCombat)
 	effectstest.PassPriorityAroundTable(t, g)
 	sncChoose(t, g, me.ID, a, b)
@@ -699,7 +676,7 @@ func TestSncB17KittWorksOnAnOpponentsTurnAndTargetsTheirCreature(t *testing.T) {
 			t.Error("my own creature was accepted on the opponent's turn: it must be a creature that player controls")
 		}
 	}
-	sncSettle(t, g, me.ID, theirs)
+	effectstest.SncSettle(t, g, me.ID, theirs)
 	c := effectstest.LayeredCard(t, g, theirs)
 	if c.CurrentPower() != 4 || !c.IsGoadedBy(me.ID) || !sncHasKeyword(t, g, theirs, "trample") {
 		t.Errorf("their creature: %d/%d goaded=%v", c.CurrentPower(), c.CurrentToughness(), c.IsGoadedBy(me.ID))
@@ -796,7 +773,7 @@ func TestSncB17KamizMakesATargetUnblockableConnivesAndGivesALesserAttackerDouble
 	// A nonland card in hand to discard for the counter.
 	spell := effectstest.HandCardFull(me, "Spare", "Creature — Bear", "{1}", "", nil)
 	effectstest.DeclareAttack(t, g, opp.ID, big, small, equal)
-	sncSettle(t, g, me.ID, big)
+	effectstest.SncSettle(t, g, me.ID, big)
 	effectstest.AnswerDiscard(t, g, me.ID, spell)
 	// 3/3 + counter = 4/4: lesser power are Small (2) and not Equal (4) or Kamiz (not attacking).
 	c := effectstest.LatestChooseCardsFor(g, me.ID)
@@ -807,7 +784,7 @@ func TestSncB17KamizMakesATargetUnblockableConnivesAndGivesALesserAttackerDouble
 		t.Fatalf("candidates %v, want only the 2/2", c.ChooseCards)
 	}
 	sncChoose(t, g, me.ID, small)
-	sncSettle(t, g, me.ID, uuid.Nil)
+	effectstest.SncSettle(t, g, me.ID, uuid.Nil)
 	if !sncHasKeyword(t, g, small, "double strike") {
 		t.Error("the lesser attacker lacks double strike")
 	}
@@ -833,7 +810,7 @@ func TestSncB17KamizChoosesNothingWhenNoAttackerHasLesserPower(t *testing.T) {
 	solo := effectstest.B12Creature(g, me.ID, "Solo", "Creature — Bear", 3, 3)
 	land := effectstest.HandCardFull(me, "Mountain", "Basic Land — Mountain", "", "", nil)
 	effectstest.DeclareAttack(t, g, opp.ID, solo)
-	sncSettle(t, g, me.ID, solo)
+	effectstest.SncSettle(t, g, me.ID, solo)
 	effectstest.AnswerDiscard(t, g, me.ID, land)
 	if c := effectstest.LatestChooseCardsFor(g, me.ID); c != nil {
 		t.Errorf("asked to choose with no candidate: %+v", c.ChooseCards)

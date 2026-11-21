@@ -9,7 +9,7 @@ import (
 
 var t45PowerArmorPaid = effects.EnergyPaid("pay-unless/t-45-power-armor-untap-and-counter",
 	func(g *game.Game, item *game.StackItem) error {
-		equipped := equippedCreatureOf(g, item.SourceCardID)
+		equipped := effects.R35EquippedCreatureOf(g, item.SourceCardID)
 		if equipped == uuid.Nil {
 			return nil
 		}
@@ -55,14 +55,4 @@ func init() {
 		},
 		Activated: []effects.ActivatedAbility{effects.EquipAbility("{3}")},
 	})
-}
-
-// equippedCreatureOf is the creature the Equipment `source` is attached
-// to now, or uuid.Nil when it is unattached or gone.
-func equippedCreatureOf(g *game.Game, source uuid.UUID) uuid.UUID {
-	eq, ok := g.LookupCardForEffect(source)
-	if !ok || !effects.OnBattlefield(g, source) || eq.AttachedTo.Kind != game.TargetCard {
-		return uuid.Nil
-	}
-	return eq.AttachedTo.ID
 }

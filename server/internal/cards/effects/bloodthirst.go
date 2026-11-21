@@ -25,7 +25,7 @@ import (
 
 // Bloodthirst is "Bloodthirst N" on the card `name`.
 func Bloodthirst(n int, name string) game.ReplacementEffect {
-	dealt := anOpponentWasDealtAtLeastThisTurn(1)
+	dealt := AnOpponentWasDealtAtLeastThisTurn(1)
 	return game.ReplacementEffect{
 		Label:     name + " — bloodthirst " + strconv.Itoa(n),
 		RowLabel:  "Bloodthirst " + strconv.Itoa(n) + ": enters with " + counterCountPhrase(n, game.CounterPlusOne) + " on it if an opponent was dealt damage this turn.",

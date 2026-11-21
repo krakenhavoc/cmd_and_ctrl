@@ -229,7 +229,17 @@ var reviewedNotAWipe = map[string]string{
 	"Azorius Skyguard": "a static -1/-0 on opposing creatures: it removes no creature from the battlefield, so it is not a board wipe",
 	// S82 MBS batch 1 (#5576).
 	"Turn the Tide": "-2/-0 until end of turn to opposing creatures kills nothing",
+	// S82 GAP batch 15.
+	"Summary Dismissal": "exiles the other spells and counters the abilities on the stack: it touches no permanent",
+	// S82 GAP batch 41.
+	"Abstergo Entertainment": "its last ability returns a historic card then exiles the cards in every graveyard: it touches no permanent",
 
+	// S82 GAP batch 68 (#5948).
+	"Ravages of War": "destroys lands, which no sweep class holds alone (Armageddon's reading)",
+	// S82 GAP batch 69 (#5948).
+	"Bottled Cloister": "exiles only its controller's own hand face down on an opponent's upkeep and returns it on theirs: no permanent leaves the battlefield",
+	// S82 GAP batch 80.
+	"Ghostway": "exiles only the creatures its caster controls and returns them at the next end step: a blink of the caster's own board, not a wipe",
 	// S82 GAP batch 107 (#5948).
 	"Faerie Artisans": "exiles only the tokens it created itself (\"all other tokens created with this creature\"), never another permanent: not a board",
 
@@ -238,6 +248,14 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 64 (#5948).
 	"Shaun, Father of Synths": "its leaves trigger exiles only the Synth tokens its own controller controls: a cleanup of its own copies, not a board",
+
+	// S82 GAP batch 138 (#5948).
+	"Denizen of the Deep": "returns only its controller's own other creatures to hand, a cost to itself, not a board",
+	"Worldgorger Dragon":  "exiles only its controller's own other permanents and brings them back when it leaves, not a board",
+	"Floodgate":           "its leaves trigger deals half the Islands its controller controls to each nonblue creature without flying: no fixed amount or X for a sweep to declare",
+
+	// S82 GAP batch 156 (#5948).
+	"Ib Halfheart, Goblin Tactician": "4 damage only to the creatures blocking the Goblin it sacrifices: a blocked attacker's blockers, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

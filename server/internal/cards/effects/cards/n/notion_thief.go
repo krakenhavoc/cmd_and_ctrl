@@ -35,19 +35,8 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventDrawCard},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventDraw || ev.DrawPlayer == src.Controller {
-					return false
-				}
-				if g.PlayerByIDForEffect(ev.DrawPlayer) == nil {
-					return false
-				}
-				if g.FirstDrawInOwnDrawStepForEffect(ev.DrawPlayer) {
-					return false
-				}
-				return true
-			},
+			Watches:   []game.EventKind{game.EventDrawCard},
+			AppliesTo: effects.S82GapB24OpponentDrawsExceptTheFirst,
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) error {
 				ev.DrawPlayer = src.Controller
 				return nil

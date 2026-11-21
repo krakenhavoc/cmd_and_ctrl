@@ -71,6 +71,11 @@ type AnyPlayerPaysForEach struct {
 	// the closure form, OnUnsaved, is gone (#4361 S7b).
 	Then  AnyPlayerEachThen
 	Carry []uuid.UUID
+	// OwnObjectsOnly makes it "for each <object>, its controller <effect>
+	// unless they pay <N life>": a seat is asked about, and may pay for,
+	// only the objects it controls (Killing Wave). False is the any-player
+	// offer.
+	OwnObjectsOnly bool
 	// Asked is the asking stack item as data (NewAskedItem), handed to a
 	// keyed consequence as AnyPlayerEachAnswer.Item. Nil when it reads
 	// none.

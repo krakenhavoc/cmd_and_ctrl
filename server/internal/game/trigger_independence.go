@@ -1479,7 +1479,7 @@ func (g *Game) triggerOrderBoardOpaqueLocked() (card string, opaque bool) {
 var characteristicModKinds = map[ModKind]bool{
 	ModSetController: true, ModAddTypes: true, ModRemoveTypes: true,
 	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true,
-	ModAddKeywords: true, ModRemoveKeywords: true, ModLoseAllAbilities: true,
+	ModAddKeywords: true, ModRemoveKeywords: true, ModRemoveKeywordPrefixes: true, ModLoseAllAbilities: true,
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
 	ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModAttackPermanentIfAble: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,

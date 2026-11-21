@@ -35,23 +35,11 @@ func init() {
 		AdditionalCost:  effects.ExileCreatureYouControlCost(),
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(
-				effects.WhenThisEnters("Fear of Abduction — exile target creature an opponent controls", fearOfAbductionExile),
+				effects.WhenThisEnters("Fear of Abduction — exile target creature an opponent controls", effects.FearOfAbductionExile),
 				effects.TargetCreature("target creature an opponent controls", effects.OpponentControls()),
 			),
 			effects.WhenThisLeaves("Fear of Abduction — put each card exiled with it into its owner's hand",
 				effects.B36ReturnCardsExiledWithToOwnersHands),
 		},
 	})
-}
-
-// fearOfAbductionExile exiles the target creature, linked to the Fear.
-func fearOfAbductionExile(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		return effects.ExileTarget{Target: t.ID, Linked: true}.Apply(ctx)
-	}
-	return nil
 }

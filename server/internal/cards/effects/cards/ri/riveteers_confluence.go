@@ -28,13 +28,7 @@ func init() {
 		Name:         "Riveteers Confluence",
 		Completeness: effects.CompletenessFull,
 		Modes: effects.ChooseNRepeating("Choose three (you may choose the same mode more than once)", 3, 3,
-			effects.ModeWithPurpose(effects.ModeDoing("You draw a card and you lose 1 life.", nil,
-				func(item *game.StackItem, ctx *effects.Context, _ int) error {
-					if err := (effects.DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return ctx.Game.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1)
-				}), game.Purpose{Draws: 1, Answers: game.AnswerValue}),
+			effects.ModeWithPurpose(effects.ModeDoing("You draw a card and you lose 1 life.", nil, effects.DrawACardAndLoseOneLifeMode), game.Purpose{Draws: 1, Answers: game.AnswerValue}),
 			effects.ModeWithPurpose(effects.ModeDoing("Riveteers Confluence deals 1 damage to each creature and planeswalker you don't control.", nil,
 				func(_ *game.StackItem, ctx *effects.Context, _ int) error {
 					return effects.DamageEachMatching(ctx, effects.And(effects.Or(effects.Creature(), effects.Planeswalker()), effects.OpponentControls()), 1)

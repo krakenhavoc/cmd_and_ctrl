@@ -255,12 +255,24 @@ type PermissionFilter struct {
 	// colors".
 	LegendaryOnly bool `json:"legendaryOnly,omitempty"`
 
+	// SnowOnly is Isu the Abominable's "snow lands and snow spells": the
+	// card must have the snow supertype (CR 205.4), read from its effective
+	// characteristics. It judges a land to be played and a spell to be cast
+	// alike.
+	SnowOnly bool `json:"snowOnly,omitempty"`
+
 	// ArtifactOrColorlessOnly is Mystic Forge's "artifact spells and
 	// colorless spells": an OR of two properties read from the card's
 	// effective characteristics, so a colored artifact and a colorless
 	// non-artifact (an Eldrazi) both qualify. Pair it with NonLandOnly,
 	// because a land is never cast and a colorless land is not a spell.
 	ArtifactOrColorlessOnly bool `json:"artifactOrColorlessOnly,omitempty"`
+
+	// ColorlessOnly is Darksteel Monolith's "a colorless spell": the card
+	// has no colour (CR 105.2c), read from its effective characteristics,
+	// so a coloured artifact fails it and an Eldrazi passes. Pair it with
+	// NonLandOnly where lands could reach the filter. Additive.
+	ColorlessOnly bool `json:"colorlessOnly,omitempty"`
 
 	// AuraOrEquipmentOnly is Sigarda's Aid's "Aura and Equipment
 	// spells" (#3918): an OR of two subtypes, read from the card's
@@ -312,6 +324,12 @@ type PermissionFilter struct {
 	// by the derivation for FromChosenType; a catalog card may also
 	// set it directly.
 	CreatureType string `json:"creatureType,omitempty"`
+
+	// ArtifactOrSubtype is "an artifact or <subtype> spell" (Arcade Gannon's
+	// "artifact or Human spell"): a qualifying card is an artifact, or has
+	// this subtype read through Card.HasSubtype. Empty constrains nothing.
+	// Additive within a snapshot version.
+	ArtifactOrSubtype string `json:"artifactOrSubtype,omitempty"`
 
 	// CreatureTypesAny is Deeproot Historian's "MERFOLK AND DRUID cards
 	// in your graveyard have retrace" (#2550): a card qualifies when it
@@ -540,13 +558,22 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.LegendaryOnly && !c.IsLegendary() {
 		return false
 	}
+	if f.SnowOnly && !c.HasSupertype("Snow") {
+		return false
+	}
 	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {
+		return false
+	}
+	if f.ColorlessOnly && !c.IsColorless() {
 		return false
 	}
 	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {
 		return false
 	}
 	if f.Subtype != "" && !c.HasSubtype(f.Subtype) {
+		return false
+	}
+	if f.ArtifactOrSubtype != "" && !c.IsArtifact() && !c.HasSubtype(f.ArtifactOrSubtype) {
 		return false
 	}
 	if f.NotSubtype != "" && c.HasSubtype(f.NotSubtype) {
@@ -1172,6 +1199,13 @@ type CastPermission struct {
 	// MaxSpellManaValue, so the cap is the count as the spell is cast.
 	// Empty is no such cap. Additive.
 	MaxSpellManaValueCountOf []string `json:"maxSpellManaValueCountOf,omitempty"`
+	// MaxSpellManaValueCountersOnSource is a MaxSpellManaValue that is the
+	// number of counters of this kind on the permission's source: "a spell
+	// with mana value less than or equal to the number of quest counters on
+	// Arcade Gannon". Only a STANDING permission reads it, derived like
+	// MaxSpellManaValueCountOf, so the cap is the count as the spell is
+	// cast. Empty is no such cap. Additive.
+	MaxSpellManaValueCountersOnSource string `json:"maxSpellManaValueCountersOnSource,omitempty"`
 
 	// MinSpellManaValue is the floor of the same test: the SPELL this
 	// permission lets a player cast must have at least this mana value
@@ -2868,6 +2902,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
+					g.fillDerivedSourceLiveLocked(&stamped, c)
 					out = append(out, stamped)
 				}
 			}
@@ -2888,6 +2923,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			if stamped, ok := stampStandingPermissionLocked(gp.Permission, p, c); ok {
 				g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 				g.fillDerivedLiveLocked(&stamped, p.ID)
+				g.fillDerivedSourceLiveLocked(&stamped, c)
 				out = append(out, stamped)
 			}
 		}
@@ -2911,6 +2947,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
+					g.fillDerivedSourceLiveLocked(&stamped, c)
 					out = append(out, stamped)
 				}
 			}

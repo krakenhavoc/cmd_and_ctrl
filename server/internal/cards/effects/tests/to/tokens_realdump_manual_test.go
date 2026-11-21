@@ -89,6 +89,13 @@ var knownUnmatchedTokens = map[string]string{
 	// template follows the oracle text.
 	"2/2 black Zombie with haste named Tombspawn": "no token card was ever printed for Tombstone Stairwell's Tombspawn",
 
+	// Nested Ghoul (Mirrodin, 2003) creates "a 2/2 black Phyrexian
+	// Zombie creature token". It predates token cards, and the dump has
+	// no 2/2 black Phyrexian Zombie token card (the Phyrexian subtype
+	// came with the 2021 oracle pass). The template follows the oracle
+	// text.
+	"2/2 black Phyrexian Zombie": "no Phyrexian Zombie token card was ever printed for Nested Ghoul",
+
 	// Wurmcoil Engine's current oracle says "3/3 colorless Phyrexian
 	// Wurm artifact creature token"; the printed token card, from
 	// 2010, is named "Wurm" — it predates the 2021 Phyrexian subtype
@@ -122,6 +129,8 @@ var knownUnmatchedTokens = map[string]string{
 	"0/0 green Spirit": "the printed token card is */*; Kura, the Boundless Sky sets X/X as it creates it",
 	// Stitcher Geralf creates "an X/X blue Zombie creature token"; the printed token card is */*.
 	"0/0 blue Zombie": "the printed token card is */*; Stitcher Geralf sets X/X as it creates it",
+	// Soul Separator creates a black Zombie with power and toughness equal to the exiled card's; the printed token card is */*.
+	"0/0 black Zombie": "the printed token card is */*; Soul Separator sets its power and toughness as it creates it",
 	// Cynette, Jelly Drover creates "a 1/1 blue Jellyfish creature token with flying"; Scryfall lists no token card for her.
 	"1/1 blue Jellyfish with flying": "no Jellyfish token card was printed for Cynette, Jelly Drover",
 	// Psemilla, Meletian Poet (Foundations Jumpstart) creates "a 2/2 white Nymph

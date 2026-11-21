@@ -34,14 +34,7 @@ func init() {
 			effects.Targeting(
 				effects.AtEachStep(game.StepEnd,
 					"Octomancer — create a token that's a copy of target creature token that entered this turn",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := effects.NewContext(g, item)
-						id, ok := effects.B16FirstLegalTargetCard(ctx)
-						if !ok {
-							return nil
-						}
-						return effects.CreateTokenCopy{Controller: item.Controller, Copy: id, N: 1}.Apply(ctx)
-					}),
+					effects.GapB92CopyTheChosenToken),
 				effects.TargetCreature("target creature token that entered the battlefield this turn",
 					effects.IsTokenPredicate(), effects.RfCreatureCEnteredThisTurn())),
 		},
