@@ -1874,6 +1874,7 @@ drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
+drawthen faadiyah-seer/drew
 drawthen gap-b05-gustha-put-back
 drawthen glacial-dragonhunt/may-discard
 drawthen hidetsugu-and-kairi-put-back
@@ -3350,6 +3351,7 @@ tail freestrider-lookout/rest-on-bottom
 tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
+tail gamekeeper/exiled
 tail gandalf-shadows-foe/return-lands-tapped
 tail gap-b49/emperor-of-bones-entered
 tail gap-b53-party-thrasher/choose-exiled
