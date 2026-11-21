@@ -29,9 +29,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.On(game.EventCycle, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Kind == game.EventCycle && ev.Actor == source.Controller && ev.CardID != source.InstanceID
-			}, "Drannith Stinger — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return effects.DamageToEachOpponent(g, item, 1)
-			}),
+			}, "Drannith Stinger — 1 damage to each opponent",
+				effects.Do(effects.DamageEachOpponent{N: 1})),
 		},
 	})
 }
