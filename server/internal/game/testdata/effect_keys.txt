@@ -1752,6 +1752,7 @@ confirm confirm/the-falcon-sacrifice
 confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
 confirm confirm/titan-of-littjara-loot
+confirm confirm/tivash-gloom-summoner-demon
 confirm confirm/transcendent-archaic-draw
 confirm confirm/tricksters-talisman-sacrifice
 confirm confirm/turtles-in-time-ask
