@@ -61,17 +61,6 @@ func TestAcrb1CardsAreRegisteredFull(t *testing.T) {
 	}
 }
 
-// acrb1ConnectThenPostcombat attacks seat 1 with a creature of
-// `typeLine` under seat 0 and walks on to the postcombat main phase.
-func acrb1ConnectThenPostcombat(t *testing.T, g *game.Game, typeLine string) {
-	t.Helper()
-	me, opp := g.Seats[0], g.Seats[1]
-	dealer := effectstest.PushDiesCreatureForTest(g, me.ID, "Dealer", "", typeLine, 2, 2)
-	effectstest.AttackWith(t, g, opp.ID, dealer)
-	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AdvanceTo(t, g, game.StepPostcombatMain)
-}
-
 // --- Detained by Legionnaires -------------------------------------------------
 
 func TestAcrb1DetainedByLegionnairesStopsAttacksAndBlocks(t *testing.T) {
@@ -230,7 +219,7 @@ func TestAcrb1MisthiossFuryHitsTheControllerOnlyWithAnEquipment(t *testing.T) {
 func TestAcrb1BrotherhoodAmbushersFreerunsAfterAnAssassinConnects(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
-	acrb1ConnectThenPostcombat(t, g, "Creature — Human Assassin")
+	effectstest.Acrb1ConnectThenPostcombat(t, g, "Creature — Human Assassin")
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{
 		InstanceID: id, Name: "Brotherhood Ambushers", TypeLine: "Creature — Human Assassin", ManaCost: "{4}{B}",
@@ -256,7 +245,7 @@ func TestAcrb1EagleVisionFreerunsOnlyAfterAnAssassinConnects(t *testing.T) {
 	} {
 		g := effectstest.NewCatalogGame(t)
 		me := g.Seats[0]
-		acrb1ConnectThenPostcombat(t, g, tc.typeLine)
+		effectstest.Acrb1ConnectThenPostcombat(t, g, tc.typeLine)
 		spell := effectstest.HandCardFull(me, "Eagle Vision", "Sorcery", "{4}{U}", acrb1EagleVisionOracle, []string{"U"})
 		effectstest.FloatForTest(g, me, "CU")
 		before := me.Hand.Size()

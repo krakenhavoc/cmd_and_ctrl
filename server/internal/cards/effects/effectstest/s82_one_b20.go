@@ -33,3 +33,32 @@ func S82Activate(t *testing.T, g *game.Game, who, walker uuid.UUID, idx int, p g
 func S82TargetCard(id uuid.UUID) []game.TargetRef {
 	return []game.TargetRef{{Kind: game.TargetCard, ID: id}}
 }
+
+// AnswerChooseCardsOrDiscard answers the open hand-discard prompt with the
+// first card offered.
+func AnswerChooseCardsOrDiscard(t *testing.T, g *game.Game, p *game.Player) {
+	t.Helper()
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Chooser == p.ID {
+			t.Logf("prompt kind %v", c.Kind)
+			opts := c.DiscardOptions
+			if len(opts) == 0 {
+				opts = c.ChooseCards
+			}
+			if len(opts) == 0 {
+				opts = []uuid.UUID{p.Hand.Cards[0].InstanceID}
+			}
+			if c.Kind == game.PendingChoiceChooseCards {
+				if err := g.ResolveChooseCards(c.ID, p.ID, opts[:1]); err != nil {
+					t.Fatalf("discard: %v", err)
+				}
+				return
+			}
+			if err := g.ResolvePendingChoice(c.ID, p.ID, opts[:1]); err != nil {
+				t.Fatalf("discard: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatal("no discard prompt is open")
+}

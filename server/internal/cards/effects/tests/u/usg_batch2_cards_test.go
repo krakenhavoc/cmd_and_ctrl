@@ -25,7 +25,6 @@ const (
 	usgB2BloodVassalOracle      = "f792f40d-1d37-4854-98da-e4020c6a44d4"
 	usgB2BravadoOracle          = "69b5af09-b3e6-4abf-b62e-9199c4f43ba7"
 	usgB2BrilliantHaloOracle    = "8f68f6d5-1953-4ccd-8af0-7d0a69139556"
-	usgB2ClawsOfGixOracle       = "c4d384d7-f294-4b2d-9971-a4689c150255"
 	usgB2CloakOfMistsOracle     = "13358b1d-0a35-48ed-a7fb-70359fa3998f"
 	usgB2CrosswindsOracle       = "68d7fafd-15f4-46fe-8233-09c3c873d1a1"
 	usgB2CrystalChimesOracle    = "fbff7452-1da4-4cd0-8247-a625e4b4da2b"
@@ -34,21 +33,21 @@ const (
 
 func TestUsgB2EveryCardIsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
-		usgB2AbsoluteGraceOracle:  "Absolute Grace",
-		usgB2AbsoluteLawOracle:    "Absolute Law",
-		usgB2AcidicSoilOracle:     "Acidic Soil",
-		usgB2AngelicChorusOracle:  "Angelic Chorus",
-		usgB2ArcaneLabOracle:      "Arcane Laboratory",
-		usgB2ArgothianElderOracle: "Argothian Elder",
-		usgB2BarrinOracle:         "Barrin, Master Wizard",
-		usgB2BefoulOracle:         "Befoul",
-		usgB2BloodVassalOracle:    "Blood Vassal",
-		usgB2BravadoOracle:        "Bravado",
-		usgB2BrilliantHaloOracle:  "Brilliant Halo",
-		usgB2ClawsOfGixOracle:     "Claws of Gix",
-		usgB2CloakOfMistsOracle:   "Cloak of Mists",
-		usgB2CrosswindsOracle:     "Crosswinds",
-		usgB2CrystalChimesOracle:  "Crystal Chimes",
+		usgB2AbsoluteGraceOracle:          "Absolute Grace",
+		usgB2AbsoluteLawOracle:            "Absolute Law",
+		usgB2AcidicSoilOracle:             "Acidic Soil",
+		usgB2AngelicChorusOracle:          "Angelic Chorus",
+		usgB2ArcaneLabOracle:              "Arcane Laboratory",
+		usgB2ArgothianElderOracle:         "Argothian Elder",
+		usgB2BarrinOracle:                 "Barrin, Master Wizard",
+		usgB2BefoulOracle:                 "Befoul",
+		usgB2BloodVassalOracle:            "Blood Vassal",
+		usgB2BravadoOracle:                "Bravado",
+		usgB2BrilliantHaloOracle:          "Brilliant Halo",
+		effectstest.UsgB2ClawsOfGixOracle: "Claws of Gix",
+		usgB2CloakOfMistsOracle:           "Cloak of Mists",
+		usgB2CrosswindsOracle:             "Crosswinds",
+		usgB2CrystalChimesOracle:          "Crystal Chimes",
 	} {
 		spec, ok := effects.Lookup(oracle)
 		if !ok {
@@ -339,7 +338,7 @@ func TestUsgB2ClawsOfGixSacrificesAnyPermanentForOneLife(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	effectstest.AdvanceToMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
-	claws := effectstest.PushCatalogPermanent(g, me.ID, "Claws of Gix", "Artifact", usgB2ClawsOfGixOracle, false)
+	claws := effectstest.PushCatalogPermanent(g, me.ID, "Claws of Gix", "Artifact", effectstest.UsgB2ClawsOfGixOracle, false)
 	land := effectstest.B12Permanent(g, me.ID, "Forest", "Basic Land — Forest")
 	theirs := effectstest.B12Permanent(g, g.Seats[1].ID, "Their Forest", "Basic Land — Forest")
 	if err := effectstest.UsgB2Activate(t, g, me, claws, "C", nil, theirs); err == nil {
