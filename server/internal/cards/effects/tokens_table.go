@@ -248,6 +248,7 @@ var TokenTable = map[string]game.Card{
 	"2/2 black Rogue":                                                  {Name: "Rogue", TypeLine: "Token Creature — Rogue", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 colorless Wizard Soldier named Cadet":                         {Name: "Cadet", TypeLine: "Token Creature — Wizard Soldier", Power: 2, Toughness: 2},
 	"2/2 black Zombie":                                                 {Name: "Zombie", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	"2/2 black Phyrexian Zombie":                                       {Name: "Phyrexian Zombie", TypeLine: "Token Creature — Phyrexian Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 black Zombie with decayed":                                    {Name: "Zombie", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{game.KeywordDecayed}},
 	"2/2 black Zombie Druid":                                           {Name: "Zombie Druid", TypeLine: "Token Creature — Zombie Druid", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 black Zombie Mutant":                                          {Name: "Zombie Mutant", TypeLine: "Token Creature — Zombie Mutant", Power: 2, Toughness: 2, Colors: []string{"B"}},
