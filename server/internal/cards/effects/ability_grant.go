@@ -208,7 +208,7 @@ func BuildGrantDef(gr AbilityGrant) *game.CardDef {
 	return &game.CardDef{
 		Triggered:     gr.Triggered,
 		Static:        gr.Static,
-		Activated:     activatedShapes(gr.Activated),
+		Activated:     ActivatedShapes(gr.Activated),
 		ManaAbilities: manaShapes(gr.Mana),
 		GrantText:     gr.Text,
 

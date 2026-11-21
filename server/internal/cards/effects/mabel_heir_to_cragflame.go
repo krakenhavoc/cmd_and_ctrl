@@ -51,6 +51,6 @@ func printedCragflameToken() TokenTemplate {
 			PumpAttached(1, 1),
 			GrantToAttached("vigilance", "trample", "haste"),
 		},
-		Activated: activatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
+		Activated: ActivatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
 	}
 }

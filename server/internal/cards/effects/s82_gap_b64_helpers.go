@@ -39,7 +39,7 @@ func printedGapB64SurvivalGuideToken() TokenTemplate {
 		},
 		Text:      "Equipped creature gets +1/+1 for each quest counter among permanents you control.\nEquip {1}",
 		Static:    []game.StaticAbility{PumpAttachedPer(1, 1, gapB64QuestCountersAmongYourPermanents)},
-		Activated: activatedShapes([]ActivatedAbility{EquipAbility("{1}")}),
+		Activated: ActivatedShapes([]ActivatedAbility{EquipAbility("{1}")}),
 	}
 }
 

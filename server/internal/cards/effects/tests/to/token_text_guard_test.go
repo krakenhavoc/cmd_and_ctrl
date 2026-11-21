@@ -83,6 +83,7 @@ var permissionFilterDerived = map[string]string{
 	"breath_of_the_sleepless.go":      "standing cast timing (castTimingVerdictLocked)",
 	"rattlechains.go":                 "standing cast timing (castTimingVerdictLocked)",
 	"hunting_velociraptor.go":         "granted prowl (grantedAlternativeCostsLocked)",
+	"quick_sliver.go":                 "standing cast timing (castTimingVerdictLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {

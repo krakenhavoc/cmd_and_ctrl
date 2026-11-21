@@ -36,7 +36,7 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"first strike"},
 		Triggered: []game.TriggeredAbility{
-			effects.On(game.EventCast, emeritusOfConflictThirdSpell, "Emeritus of Conflict — becomes prepared",
+			effects.On(game.EventCast, effects.R37YouCastYourThirdSpellEachTurn, "Emeritus of Conflict — becomes prepared",
 				func(g *game.Game, item *game.StackItem) error {
 					return effects.BecomePrepared{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
 				}),
@@ -50,13 +50,4 @@ func init() {
 		Purpose:      effects.ForTargets(effects.DamageToTarget(0, 3)),
 		OnResolve:    effects.DamageToFirstTargetStep(3),
 	})
-}
-
-// emeritusOfConflictThirdSpell is "whenever you cast your third spell each
-// turn" (YouCastYourSecondSpellEachTurn's shape).
-func emeritusOfConflictThirdSpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-		return false
-	}
-	return g.CastTallyFor(ev.Actor).Total == 3
 }
