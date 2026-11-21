@@ -209,6 +209,7 @@ body flicker/return-exiled-with-additional-counters
 body flicker/return-exiled-with-flying-counter
 body flicker/return-exiled-with-plus-one-counter
 body flip/the-source
+body foe-razer-regent/two-counters
 body foray-of-orcs/damage
 body forgehammer-centurion/cant-block
 body fortune-loyal-steed/end-of-combat
@@ -2761,6 +2762,7 @@ run prompt-run/s82-neo-sokenzan-smelter-construct
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
+run prompt-run/scythe-specter-discarded
 run prompt-run/season-of-weaving-copy
 run prompt-run/seize-the-spotlight-gain-control
 run prompt-run/selfcraft-mechan-sacrificed
@@ -3450,6 +3452,7 @@ tail greasefang-okiba-boss/haste-and-return
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
 tail grime-gorger/counter-per-exiled-card
+tail grimoire-of-the-dead/black-zombies
 tail grip-of-phyresis/attach
 tail grist-the-plague-swarm/deathtouch-counter
 tail grist-the-plague-swarm/mill-two
