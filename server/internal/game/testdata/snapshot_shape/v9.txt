@@ -4672,6 +4672,7 @@ frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(u
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Key	string
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
+frozenEntries[].event.damageTail.sourceLki.IntrinsicLandManaRemoved	bool
 frozenEntries[].event.damageTail.sourceLki.ManaAbilityLifeTax	number:int
 frozenEntries[].event.damageTail.sourceLki.Name	string
 frozenEntries[].event.damageTail.sourceLki.PTDefined	bool
@@ -13675,6 +13676,7 @@ frozenEntries[].event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.GrantedAbilities[].Key	string
 frozenEntries[].event.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
+frozenEntries[].event.sourceLki.IntrinsicLandManaRemoved	bool
 frozenEntries[].event.sourceLki.ManaAbilityLifeTax	number:int
 frozenEntries[].event.sourceLki.Name	string
 frozenEntries[].event.sourceLki.PTDefined	bool
@@ -20504,6 +20506,7 @@ heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Activator	custom(u
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Key	string
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].UntilEndOfTurn	bool
+heldCombatDamage.answers[].frame.SourceLKI.IntrinsicLandManaRemoved	bool
 heldCombatDamage.answers[].frame.SourceLKI.ManaAbilityLifeTax	number:int
 heldCombatDamage.answers[].frame.SourceLKI.Name	string
 heldCombatDamage.answers[].frame.SourceLKI.PTDefined	bool
@@ -20696,6 +20699,7 @@ lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
 lastKnownBattlefield{}.GrantedAbilities[].Key	string
 lastKnownBattlefield{}.GrantedAbilities[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.GrantedAbilities[].UntilEndOfTurn	bool
+lastKnownBattlefield{}.IntrinsicLandManaRemoved	bool
 lastKnownBattlefield{}.ManaAbilityLifeTax	number:int
 lastKnownBattlefield{}.Name	string
 lastKnownBattlefield{}.PTDefined	bool
@@ -20892,6 +20896,7 @@ lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Key	string
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].UntilEndOfTurn	bool
+lastKnownPermanents{}[].characteristic.IntrinsicLandManaRemoved	bool
 lastKnownPermanents{}[].characteristic.ManaAbilityLifeTax	number:int
 lastKnownPermanents{}[].characteristic.Name	string
 lastKnownPermanents{}[].characteristic.PTDefined	bool
@@ -25383,6 +25388,7 @@ movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Activator	custom(u
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Key	string
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
+movesAwaitingTokens[].damageTail.sourceLki.IntrinsicLandManaRemoved	bool
 movesAwaitingTokens[].damageTail.sourceLki.ManaAbilityLifeTax	number:int
 movesAwaitingTokens[].damageTail.sourceLki.Name	string
 movesAwaitingTokens[].damageTail.sourceLki.PTDefined	bool
@@ -34386,6 +34392,7 @@ movesAwaitingTokens[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Key	string
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
+movesAwaitingTokens[].sourceLki.IntrinsicLandManaRemoved	bool
 movesAwaitingTokens[].sourceLki.ManaAbilityLifeTax	number:int
 movesAwaitingTokens[].sourceLki.Name	string
 movesAwaitingTokens[].sourceLki.PTDefined	bool
@@ -45625,6 +45632,7 @@ pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Key	string
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].UntilEndOfTurn	bool
+pendingChoices[].damageAssignment.SourceLKI.IntrinsicLandManaRemoved	bool
 pendingChoices[].damageAssignment.SourceLKI.ManaAbilityLifeTax	number:int
 pendingChoices[].damageAssignment.SourceLKI.Name	string
 pendingChoices[].damageAssignment.SourceLKI.PTDefined	bool
@@ -46525,6 +46533,7 @@ pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Activator	custom(u
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Key	string
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].UntilEndOfTurn	bool
+pendingChoices[].divideShield.staged[].lki.IntrinsicLandManaRemoved	bool
 pendingChoices[].divideShield.staged[].lki.ManaAbilityLifeTax	number:int
 pendingChoices[].divideShield.staged[].lki.Name	string
 pendingChoices[].divideShield.staged[].lki.PTDefined	bool
@@ -46706,6 +46715,7 @@ pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Activator	cu
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
+pendingChoices[].divideShield.staged[].sourceLki.IntrinsicLandManaRemoved	bool
 pendingChoices[].divideShield.staged[].sourceLki.ManaAbilityLifeTax	number:int
 pendingChoices[].divideShield.staged[].sourceLki.Name	string
 pendingChoices[].divideShield.staged[].sourceLki.PTDefined	bool
@@ -52759,6 +52769,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[]
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.IntrinsicLandManaRemoved	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.ManaAbilityLifeTax	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Name	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.PTDefined	bool
@@ -61762,6 +61773,7 @@ pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Activator	
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
+pendingChoices[].replacementResume.event.sourceLki.IntrinsicLandManaRemoved	bool
 pendingChoices[].replacementResume.event.sourceLki.ManaAbilityLifeTax	number:int
 pendingChoices[].replacementResume.event.sourceLki.Name	string
 pendingChoices[].replacementResume.event.sourceLki.PTDefined	bool
@@ -70224,6 +70236,7 @@ pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Activator	custom(uuid.U
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Key	string
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].UntilEndOfTurn	bool
+pendingChoices[].targetWalk.frame.lki.IntrinsicLandManaRemoved	bool
 pendingChoices[].targetWalk.frame.lki.ManaAbilityLifeTax	number:int
 pendingChoices[].targetWalk.frame.lki.Name	string
 pendingChoices[].targetWalk.frame.lki.PTDefined	bool
@@ -71027,6 +71040,7 @@ pendingChoices[].triggerFrame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Key	string
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].UntilEndOfTurn	bool
+pendingChoices[].triggerFrame.lki.IntrinsicLandManaRemoved	bool
 pendingChoices[].triggerFrame.lki.ManaAbilityLifeTax	number:int
 pendingChoices[].triggerFrame.lki.Name	string
 pendingChoices[].triggerFrame.lki.PTDefined	bool

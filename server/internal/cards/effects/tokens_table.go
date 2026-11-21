@@ -69,6 +69,10 @@ func TokenKeys() []string {
 }
 
 var TokenTable = map[string]game.Card{
+	// Warhammer 40,000 Commander Tyranids (#5948, S82 GAP batch 192).
+	"1/1 green Tyranid":                                             {Name: "Tyranid", TypeLine: "Token Creature — Tyranid", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"5/5 green Tyranid":                                             {Name: "Tyranid", TypeLine: "Token Creature — Tyranid", Power: 5, Toughness: 5, Colors: []string{"G"}},
+	"3/3 green Tyranid Warrior with trample":                        {Name: "Tyranid Warrior", TypeLine: "Token Creature — Tyranid Warrior", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"1/1 green and white Human Citizen":                             {Name: "Human Citizen", TypeLine: "Token Creature — Human Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Citizen":                                   {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Kithkin":                                   {Name: "Kithkin", TypeLine: "Token Creature — Kithkin", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},

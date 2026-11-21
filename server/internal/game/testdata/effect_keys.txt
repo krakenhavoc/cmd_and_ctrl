@@ -1210,6 +1210,7 @@ choose choose-cards/o-kagachi-made-manifest-pick
 choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
+choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
 choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
@@ -1793,6 +1794,7 @@ confirm confirm/phyrexian-dragon-engine-discard-hand
 confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
+confirm confirm/purestrain-genestealer-remove-counter
 confirm confirm/pygmy-hippo-lose-mana
 confirm confirm/rakdos-patron-of-chaos-sacrifice
 confirm confirm/ral-monsoon-mage-transform
