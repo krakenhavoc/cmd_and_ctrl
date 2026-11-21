@@ -503,6 +503,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
 	// size is its controller's experience counters.
 	printedC15DaxosSpiritToken,
+	// S82 GAP batch 56: Ral and the Implicit Maze's Spellgorger Weird.
+	printedGapB56SpellgorgerWeirdToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

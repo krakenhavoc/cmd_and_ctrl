@@ -469,6 +469,7 @@ body synthetic-destiny/reveal-that-many-creatures
 body systems-override/remove-ten-charge-counters
 body tainted-adversary/counters-and-zombies
 body talions-messenger/counter
+body tamiyo-meets-the-story-circle/attacker-gets-minus-two
 body tarkir/damage
 body teferi-akosa/shuffle-into-library
 body teferi-hero/untap-two-lands
@@ -785,6 +786,8 @@ choose choose-cards/founding-the-third-path-cast
 choose choose-cards/gandalf-party-guest-cast
 choose choose-cards/gap-b53-party-thrasher-exile-two
 choose choose-cards/gap-b53-party-thrasher-play
+choose choose-cards/gap-b56-ral-exile-two
+choose choose-cards/gap-b56-tamiyo-investigate-twice-each
 choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gerrards-verdict-life
 choose choose-cards/gert-and-old-lace-search
@@ -1631,6 +1634,7 @@ confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
 confirm confirm/gain-life
 confirm confirm/galadriel-reveal
+confirm confirm/gap-b56-powerbalance-reveal
 confirm confirm/gathering-stone-take
 confirm confirm/gathering-stone-to-graveyard
 confirm confirm/gaze-of-pain-damage
@@ -2576,6 +2580,7 @@ run prompt-run/foreboding-steamboat-exile
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
 run prompt-run/gap-b55-the-hunger-tide-rises-sacrifice
+run prompt-run/gap-b56-ajani-fells-the-godsire-counter
 run prompt-run/garruk-the-veil-cursed-tutor
 run prompt-run/garruk-veiled-butcher-beast
 run prompt-run/garruk-veiled-butcher-draws
@@ -3995,6 +4000,7 @@ tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
+tail then/gap-b56-charitable-levy
 tail then/get-energy
 tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
