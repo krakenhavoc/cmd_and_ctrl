@@ -2,7 +2,8 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// GapB201Dethrone is the dethrone triggered ability (CR 702.105a):
+// GapB201Dethrone is the dethrone triggered ability (CR 702.105a), for
+// Marchesa, the Black Rose and batch 204's Dack's Duplicate:
 // "Whenever this creature attacks the player with the most life or tied for
 // most life, put a +1/+1 counter on it." The defender is checked once, as
 // the attack is declared; an attack at a planeswalker or battle never

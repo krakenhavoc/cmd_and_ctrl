@@ -36,30 +36,3 @@ func GapB215GreatestPowerAmongCreaturesAndGraveyardCards(g *game.Game, player uu
 // GapB215WardXExperience is "ward {X}, where X is the number of experience
 // counters you have" (Minthara, Merciless Soul), as the ward's cost.
 func GapB215WardXExperience() WardCost { return WardCost{ManaFromExperience: true} }
-
-// GapB215LifeAtMostHalfStarting is "your life total is less than or equal to
-// half your starting life total" (Bane, Lord of Darkness): the source's
-// controller's life against the table's starting life, compared as life*2 <=
-// starting so an odd total has no rounding.
-func GapB215LifeAtMostHalfStarting(g *game.Game, source *game.Card) bool {
-	if g == nil || source == nil {
-		return false
-	}
-	for _, p := range g.Seats {
-		if p != nil && p.ID == source.Controller {
-			return p.Life*2 <= StartingLifeOf(g)
-		}
-	}
-	return false
-}
-
-// GapB215SelfIndestructibleAtHalfLife is "As long as your life total is less
-// than or equal to half your starting life total, <this> has indestructible":
-// a layer 6 keyword grant (CR 613.1f) that re-reads on every life change.
-func GapB215SelfIndestructibleAtHalfLife(name string) game.StaticAbility {
-	ab := LifeGatedKeyword(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && GapB215LifeAtMostHalfStarting(g, source)
-	}, "indestructible")
-	ab.Label = "As long as your life total is less than or equal to half your starting life total, " + name + " has indestructible."
-	return ab
-}

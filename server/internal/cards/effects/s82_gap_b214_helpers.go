@@ -22,8 +22,8 @@ func GapB214LifeAtMostHalfStarting(g *game.Game, source *game.Card) bool {
 
 // GapB214SelfIndestructibleAtHalfLife is "As long as your life total is less
 // than or equal to half your starting life total, <this> has indestructible"
-// (Bhaal and Myrkul, Lord of Bones): a layer 6 keyword grant (CR 613.1f) that
-// re-reads on every life change.
+// (Bhaal, Myrkul, Lord of Bones and batch 215's Bane, Lord of Darkness): a
+// layer 6 keyword grant (CR 613.1f) that re-reads on every life change.
 func GapB214SelfIndestructibleAtHalfLife(name string) game.StaticAbility {
 	ab := LifeGatedKeyword(func(target *game.Card, g *game.Game, source *game.Card) bool {
 		return target.InstanceID == source.InstanceID && GapB214LifeAtMostHalfStarting(g, source)

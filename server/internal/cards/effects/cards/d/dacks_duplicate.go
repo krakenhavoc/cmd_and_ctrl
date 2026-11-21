@@ -30,7 +30,7 @@ func init() {
 		Grants: []effects.AbilityGrant{{
 			Key:       dacksDuplicateDethroneGrant,
 			Text:      "Dethrone (Whenever this creature attacks the player with the most life or tied for most life, put a +1/+1 counter on it.)",
-			Triggered: []game.TriggeredAbility{effects.GapB204Dethrone("dethrone: put a +1/+1 counter on it")},
+			Triggered: []game.TriggeredAbility{effects.GapB201Dethrone("dethrone: put a +1/+1 counter on it")},
 		}},
 		Replacements: []game.ReplacementEffect{
 			effects.EntersAsCopyOf(

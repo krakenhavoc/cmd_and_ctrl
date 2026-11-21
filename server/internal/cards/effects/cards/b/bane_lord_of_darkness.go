@@ -25,7 +25,7 @@ func init() {
 		OracleID:     "ca507eea-1b04-4488-813e-ca970640e227",
 		Name:         "Bane, Lord of Darkness",
 		Completeness: effects.CompletenessFull,
-		Static:       []game.StaticAbility{effects.GapB215SelfIndestructibleAtHalfLife("Bane")},
+		Static:       []game.StaticAbility{effects.GapB214SelfIndestructibleAtHalfLife("Bane")},
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(
 				effects.On(game.EventLTB, effects.HofriGhostforgeAnotherNontokenCreatureDied,
