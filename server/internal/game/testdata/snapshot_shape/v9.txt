@@ -2178,6 +2178,7 @@ followUpParks[].then.permission.filter.exiledWith.id	custom(uuid.UUID)
 followUpParks[].then.permission.filter.exiledWithSource	bool
 followUpParks[].then.permission.filter.exiledWithSourceThisTurn	bool
 followUpParks[].then.permission.filter.fromChosenType	bool
+followUpParks[].then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 followUpParks[].then.permission.filter.historicOnly	bool
 followUpParks[].then.permission.filter.instantOrSorceryOnly	bool
 followUpParks[].then.permission.filter.keywordsAny	string
@@ -2867,6 +2868,7 @@ frozenEntries[].event.counterTail.then.permission.filter.exiledWith.id	custom(uu
 frozenEntries[].event.counterTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.counterTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.counterTail.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.counterTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.counterTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.keywordsAny	string
@@ -3534,6 +3536,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.exiledWith.id	custo
 frozenEntries[].event.damageTail.each.each.permission.filter.exiledWithSource	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.fromChosenType	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.historicOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.keywordsAny	string
@@ -4192,6 +4195,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.exiledWith.id	custo
 frozenEntries[].event.damageTail.each.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.historicOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.keywordsAny	string
@@ -5037,6 +5041,7 @@ frozenEntries[].event.damageTail.then.permission.filter.exiledWith.id	custom(uui
 frozenEntries[].event.damageTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.damageTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.damageTail.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.damageTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.damageTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.keywordsAny	string
@@ -5818,6 +5823,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiled
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
@@ -6552,6 +6558,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.exiledWith.id	custo
 frozenEntries[].event.entryTail.batch.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.keywordsAny	string
@@ -7210,6 +7217,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.exiledWith.id	custom(uui
 frozenEntries[].event.entryTail.keyed.permission.filter.exiledWithSource	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.fromChosenType	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.keywordsAny	string
@@ -7901,6 +7909,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledWit
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledWithSource	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.fromChosenType	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
@@ -8580,6 +8589,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledWith.id	cust
 frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.keywordsAny	string
@@ -9690,6 +9700,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.exiledWith.id	cus
 frozenEntries[].event.keywordActionTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.keywordsAny	string
@@ -10372,6 +10383,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.exiledWith.id	custom(
 frozenEntries[].event.lifeTail.each.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.historicOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.keywordsAny	string
@@ -11033,6 +11045,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.exiledWith.id	custom(uuid.
 frozenEntries[].event.lifeTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.lifeTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.lifeTail.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.lifeTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.lifeTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.keywordsAny	string
@@ -12554,6 +12567,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.exiledWith.id	custom(u
 frozenEntries[].event.millTail.run.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.millTail.run.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.millTail.run.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.millTail.run.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.millTail.run.then.permission.filter.historicOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.keywordsAny	string
@@ -13210,6 +13224,7 @@ frozenEntries[].event.millTail.then.permission.filter.exiledWith.id	custom(uuid.
 frozenEntries[].event.millTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.millTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.millTail.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.millTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.millTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.keywordsAny	string
@@ -14895,6 +14910,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.exiledWith.id	custom(uuid
 frozenEntries[].event.tokenTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.tokenTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.tokenTail.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.tokenTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.tokenTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.keywordsAny	string
@@ -16872,6 +16888,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWith
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
@@ -17563,6 +17580,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exil
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSource	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.fromChosenType	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
@@ -18219,6 +18237,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledWith.id	c
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
@@ -18895,6 +18914,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledWith.id
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
@@ -19640,6 +19660,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledWith.i
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.fromChosenType	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
@@ -23643,6 +23664,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.exiledWith.id	custom(uu
 movesAwaitingTokens[].counterTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.keywordsAny	string
@@ -24310,6 +24332,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledWith.id	custo
 movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.historicOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.keywordsAny	string
@@ -24968,6 +24991,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledWith.id	custo
 movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.keywordsAny	string
@@ -25813,6 +25837,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.exiledWith.id	custom(uui
 movesAwaitingTokens[].damageTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.keywordsAny	string
@@ -26594,6 +26619,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiled
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
@@ -27328,6 +27354,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledWith.id	custo
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.keywordsAny	string
@@ -27986,6 +28013,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledWith.id	custom(uui
 movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.keywordsAny	string
@@ -28677,6 +28705,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledWit
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
@@ -29356,6 +29385,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledWith.id	cust
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.keywordsAny	string
@@ -30466,6 +30496,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledWith.id	cus
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.keywordsAny	string
@@ -31148,6 +31179,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledWith.id	custom(
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.keywordsAny	string
@@ -31809,6 +31841,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.exiledWith.id	custom(uuid.
 movesAwaitingTokens[].lifeTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.keywordsAny	string
@@ -33330,6 +33363,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.exiledWith.id	custom(u
 movesAwaitingTokens[].millTail.run.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.keywordsAny	string
@@ -33986,6 +34020,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.exiledWith.id	custom(uuid.
 movesAwaitingTokens[].millTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].millTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].millTail.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].millTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].millTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.keywordsAny	string
@@ -35671,6 +35706,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.exiledWith.id	custom(uuid
 movesAwaitingTokens[].tokenTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.keywordsAny	string
@@ -37648,6 +37684,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledWith
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
@@ -38339,6 +38376,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exil
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
@@ -38995,6 +39033,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledWith.id	c
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
@@ -39671,6 +39710,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledWith.id
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
@@ -40416,6 +40456,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledWith.i
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.fromChosenType	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
@@ -43951,6 +43992,7 @@ pendingChoices[].attackSplit.tail.permission.filter.exiledWith.id	custom(uuid.UU
 pendingChoices[].attackSplit.tail.permission.filter.exiledWithSource	bool
 pendingChoices[].attackSplit.tail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].attackSplit.tail.permission.filter.fromChosenType	bool
+pendingChoices[].attackSplit.tail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].attackSplit.tail.permission.filter.historicOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.keywordsAny	string
@@ -46137,6 +46179,7 @@ pendingChoices[].diceRoll.then.permission.filter.exiledWith.id	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.filter.exiledWithSource	bool
 pendingChoices[].diceRoll.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].diceRoll.then.permission.filter.fromChosenType	bool
+pendingChoices[].diceRoll.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].diceRoll.then.permission.filter.historicOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.keywordsAny	string
@@ -47204,6 +47247,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.exiledWith.id	custom(u
 pendingChoices[].divideShield.walk.each.permission.filter.exiledWithSource	bool
 pendingChoices[].divideShield.walk.each.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].divideShield.walk.each.permission.filter.fromChosenType	bool
+pendingChoices[].divideShield.walk.each.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].divideShield.walk.each.permission.filter.historicOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.keywordsAny	string
@@ -47862,6 +47906,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.exiledWith.id	custom(u
 pendingChoices[].divideShield.walk.then.permission.filter.exiledWithSource	bool
 pendingChoices[].divideShield.walk.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].divideShield.walk.then.permission.filter.fromChosenType	bool
+pendingChoices[].divideShield.walk.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].divideShield.walk.then.permission.filter.historicOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.keywordsAny	string
@@ -48526,6 +48571,7 @@ pendingChoices[].libraryOrder.then.permission.filter.exiledWith.id	custom(uuid.U
 pendingChoices[].libraryOrder.then.permission.filter.exiledWithSource	bool
 pendingChoices[].libraryOrder.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].libraryOrder.then.permission.filter.fromChosenType	bool
+pendingChoices[].libraryOrder.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].libraryOrder.then.permission.filter.historicOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.keywordsAny	string
@@ -49244,6 +49290,7 @@ pendingChoices[].nameThen.permission.filter.exiledWith.id	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.filter.exiledWithSource	bool
 pendingChoices[].nameThen.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].nameThen.permission.filter.fromChosenType	bool
+pendingChoices[].nameThen.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].nameThen.permission.filter.historicOnly	bool
 pendingChoices[].nameThen.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].nameThen.permission.filter.keywordsAny	string
@@ -50406,6 +50453,7 @@ pendingChoices[].pickTail.permission.filter.exiledWith.id	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.filter.exiledWithSource	bool
 pendingChoices[].pickTail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].pickTail.permission.filter.fromChosenType	bool
+pendingChoices[].pickTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].pickTail.permission.filter.historicOnly	bool
 pendingChoices[].pickTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].pickTail.permission.filter.keywordsAny	string
@@ -51109,6 +51157,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exil
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.keywordsAny	string
@@ -51776,6 +51825,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.keywordsAny	string
@@ -52434,6 +52484,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.keywordsAny	string
@@ -53279,6 +53330,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exile
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.keywordsAny	string
@@ -54060,6 +54112,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
@@ -54794,6 +54847,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.keywordsAny	string
@@ -55452,6 +55506,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exile
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.keywordsAny	string
@@ -56143,6 +56198,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
@@ -56822,6 +56878,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.keywordsAny	string
@@ -57932,6 +57989,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.keywordsAny	string
@@ -58614,6 +58672,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ex
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.keywordsAny	string
@@ -59275,6 +59334,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledW
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.keywordsAny	string
@@ -60796,6 +60856,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exi
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.keywordsAny	string
@@ -61452,6 +61513,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledW
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.keywordsAny	string
@@ -63137,6 +63199,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiled
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.keywordsAny	string
@@ -65114,6 +65177,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
@@ -65805,6 +65869,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
@@ -66461,6 +66526,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
@@ -67137,6 +67203,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
@@ -67882,6 +67949,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.exiledWithSource	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.fromChosenType	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
@@ -68998,6 +69066,7 @@ pendingChoices[].scryThen.permission.filter.exiledWith.id	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.filter.exiledWithSource	bool
 pendingChoices[].scryThen.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].scryThen.permission.filter.fromChosenType	bool
+pendingChoices[].scryThen.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].scryThen.permission.filter.historicOnly	bool
 pendingChoices[].scryThen.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].scryThen.permission.filter.keywordsAny	string
@@ -69702,6 +69771,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledWith.id	cust
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledWithSource	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.fromChosenType	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.historicOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.keywordsAny	string
@@ -75639,6 +75709,7 @@ seats[].castPermissions[].filter.exiledWith.id	custom(uuid.UUID)
 seats[].castPermissions[].filter.exiledWithSource	bool
 seats[].castPermissions[].filter.exiledWithSourceThisTurn	bool
 seats[].castPermissions[].filter.fromChosenType	bool
+seats[].castPermissions[].filter.fromLibraryToGraveyardThisTurn	bool
 seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.keywordsAny	string
@@ -79404,6 +79475,7 @@ seats[].statics[].cantBeCountered.filter.exiledWith.id	custom(uuid.UUID)
 seats[].statics[].cantBeCountered.filter.exiledWithSource	bool
 seats[].statics[].cantBeCountered.filter.exiledWithSourceThisTurn	bool
 seats[].statics[].cantBeCountered.filter.fromChosenType	bool
+seats[].statics[].cantBeCountered.filter.fromLibraryToGraveyardThisTurn	bool
 seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.keywordsAny	string
@@ -79459,6 +79531,7 @@ seats[].statics[].castBan.filter.exiledWith.id	custom(uuid.UUID)
 seats[].statics[].castBan.filter.exiledWithSource	bool
 seats[].statics[].castBan.filter.exiledWithSourceThisTurn	bool
 seats[].statics[].castBan.filter.fromChosenType	bool
+seats[].statics[].castBan.filter.fromLibraryToGraveyardThisTurn	bool
 seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.keywordsAny	string
@@ -79570,6 +79643,7 @@ seats[].statics[].nextSpell.filter.exiledWith.id	custom(uuid.UUID)
 seats[].statics[].nextSpell.filter.exiledWithSource	bool
 seats[].statics[].nextSpell.filter.exiledWithSourceThisTurn	bool
 seats[].statics[].nextSpell.filter.fromChosenType	bool
+seats[].statics[].nextSpell.filter.fromLibraryToGraveyardThisTurn	bool
 seats[].statics[].nextSpell.filter.historicOnly	bool
 seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.keywordsAny	string
@@ -79633,6 +79707,7 @@ seats[].statics[].timing.filter.exiledWith.id	custom(uuid.UUID)
 seats[].statics[].timing.filter.exiledWithSource	bool
 seats[].statics[].timing.filter.exiledWithSourceThisTurn	bool
 seats[].statics[].timing.filter.fromChosenType	bool
+seats[].statics[].timing.filter.fromLibraryToGraveyardThisTurn	bool
 seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.keywordsAny	string

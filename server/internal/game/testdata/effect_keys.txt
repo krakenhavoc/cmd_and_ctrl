@@ -2588,6 +2588,7 @@ payunless pay-unless/well-of-lost-dreams-draw
 payunless pay-unless/widespread-thieving-play
 payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/wolfbat-return
+payunless pay-unless/zhentarim-bandit-treasure
 payunless pay-unless/zoraline-cosmos-caller-return
 payunless pay-unless/zoyowa-lava-tongue-damage
 payunless pheres-band-raiders/paid
@@ -3768,6 +3769,7 @@ tail msh-a9/ultron-robot-villain
 tail mutinous-massacre/steal-everything
 tail myr-custodian/ask-opponents
 tail myriad/exile-tokens-at-end-of-combat
+tail myrkul-lord-of-bones/copy
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
 tail mysterious-stranger/copy-one-at-random
 tail nahiri-forged-in-fury/free-equipment
@@ -3786,6 +3788,7 @@ tail nezumi-graverobber/after-exile
 tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nightmare-shepherd/copy
+tail nine-fingers-keene/rest
 tail nita-forum-conciliator/after-exile
 tail noctis/entered-unblockable
 tail now-for-wrath/vigilance-and-temptation
@@ -4131,6 +4134,7 @@ tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
 tail tail/the-moment-then-sacrifice
 tail tail/time-reaper-gain-life
+tail tail/uchuulon-copy
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
 tail tail/winter-cynical-opportunist-exiled

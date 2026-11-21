@@ -634,6 +634,13 @@ func stampGraveyardArrival(c *Card, from, to ZoneKind) {
 	c.PutInGraveyardThisTurn = false
 }
 
+// PutInGraveyardFromLibraryThisTurn reports whether the card sits in a
+// graveyard now, arrived during the current turn, and came from a library
+// (Kagha, Shadow Archdruid's "put there from your library this turn").
+func (c Card) PutInGraveyardFromLibraryThisTurn() bool {
+	return c.PutInGraveyardThisTurn && c.PutInGraveyardFrom == ZoneLibrary
+}
+
 // PutInGraveyardNotFromBattlefieldThisTurn is the clause "put into a
 // graveyard from anywhere other than the battlefield this turn": the
 // card sits in a graveyard now, arrived during the current turn, and did
