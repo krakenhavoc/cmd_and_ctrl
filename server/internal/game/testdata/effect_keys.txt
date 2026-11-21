@@ -1447,6 +1447,7 @@ choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/thornplate-intimidator-punisher-discarded
 choose choose-cards/thousand-moons-smithy-tap-five
 choose choose-cards/threats-undetected-settle
+choose choose-cards/thunderwave-spared
 choose choose-cards/tidal-terror-tap-two
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
@@ -2238,6 +2239,7 @@ option option-pick/slithermuse-opponent
 option option-pick/slumbering-walker-remove-a-counter
 option option-pick/sorcerous-spyglass-look
 option option-pick/sphinx-of-clear-skies-splitter
+option option-pick/split-the-spoils-chosen
 option option-pick/stadium-vendors-player
 option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
@@ -3325,6 +3327,7 @@ tail dice/loathsome-troll-rolled
 tail dice/luck-bobblehead-results
 tail dice/maddening-hex-burn-and-move
 tail dice/netherese-puzzle-ward-scry
+tail dice/overwhelming-encounter-rolled
 tail dice/power-of-persuasion-rolled
 tail dice/reckless-endeavor-rolled
 tail dice/revivify-result
@@ -3337,6 +3340,7 @@ tail dice/swarming-goblins-tokens
 tail dice/sword-of-hours-double
 tail dice/sylvan-shepherd-life
 tail dice/the-deck-of-many-things-result
+tail dice/thunderwave-rolled
 tail dice/treasure-chest-found
 tail dice/treasure-chest-rolled
 tail dice/underdark-rift-rolled
@@ -3822,6 +3826,7 @@ tail phelia-exuberant-shepherd/counter-if-yours
 tail phelia-exuberant-shepherd/schedule-return
 tail phthisis/controller-loses-life
 tail picklock-prankster/after-mill
+tail pile/split-the-spoils-settled
 tail pinnacle-starcage/record-returns
 tail pinnacle-starcage/robots-then-sacrifice
 tail planar-genesis/after-land
@@ -4426,6 +4431,7 @@ tail then/sorin-lord-of-innistrad-return
 tail then/spawn-of-mayhem-counter
 tail then/sphinx-of-clear-skies-take
 tail then/spiteful-repossession-step
+tail then/split-the-spoils-exiled
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed
@@ -4473,6 +4479,7 @@ tail then/valakut-exploration-damage
 tail then/valiant-endeavor-knights
 tail then/vanish-into-memory-exiled
 tail then/vengeful-villagers-stun
+tail then/venture-forth-exiled
 tail then/venture-into-the-dungeon
 tail then/viewpoint-synchronization-second
 tail then/viewpoint-synchronization-third
