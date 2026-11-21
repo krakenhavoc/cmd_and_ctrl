@@ -843,6 +843,7 @@ choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
 choose choose-cards/hellkite-courser-commander
 choose choose-cards/heroes-hangout-play
+choose choose-cards/hew-the-entwood-choose
 choose choose-cards/hide-in-plain-sight-cloak
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
@@ -1654,6 +1655,7 @@ confirm confirm/dwarven-vigilantes-damage
 confirm confirm/eager-construct-scry
 confirm confirm/ebony-fly-becomes
 confirm confirm/eden-sacrifice
+confirm confirm/elven-farsight-reveal
 confirm confirm/emet-selch-unsundered-transform
 confirm confirm/end-the-turn
 confirm confirm/endling-pump
@@ -2666,6 +2668,7 @@ run prompt-run/greven-predator-captain-sacrifice
 run prompt-run/grist-the-hunger-tide-sacrifice
 run prompt-run/guard-dogs-compare
 run prompt-run/hei-bai-two-counters
+run prompt-run/hew-the-entwood-sacrifice
 run prompt-run/highcliff-felidar-destroy
 run prompt-run/hollow-marauder-draws
 run prompt-run/humiliate-counter
@@ -4083,6 +4086,7 @@ tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
 tail then/elesh-norn-argent-etchings-flicker
+tail then/elven-farsight-after-scry
 tail then/empty-the-laboratory-reveal
 tail then/end-blaze-epiphany-choose
 tail then/epharas-dispersal-surveil
@@ -4118,6 +4122,8 @@ tail then/harsh-mercy-type-chosen
 tail then/haunting-voyage-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
 tail then/heroes-hangout-choose
+tail then/hew-the-entwood-lands
+tail then/hew-the-entwood-rest
 tail then/hidetsugu-devouring-chaos-damage
 tail then/high-society-hunter-counter
 tail then/highway-robbery-draw-two
@@ -4246,6 +4252,7 @@ tail then/stay-hidden-shuffle-manifest
 tail then/std-b15-strongbox-raider-choose
 tail then/stronghold-arena-lose-life
 tail then/sungold-sentinel-color-chosen
+tail then/surrounded-by-orcs-mill
 tail then/suspect-each
 tail then/sylvan-library-next-card
 tail then/sylvia-tilly-joy-of-discovery-when-you-do
