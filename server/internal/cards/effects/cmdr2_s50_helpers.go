@@ -14,7 +14,7 @@ import (
 // CR 202.3e) and the mana spent to cast it, or zero when it cost at least
 // that much (or its cost cannot be read). Neither number can change once
 // the spell is cast (CR 601.2h).
-func cmdr2S50ManaSpentShortfall(g *game.Game, spellID uuid.UUID) int {
+func Cmdr2S50ManaSpentShortfall(g *game.Game, spellID uuid.UUID) int {
 	mv, ok := g.LastKnownSpellManaValueForEffect(spellID)
 	if !ok {
 		return 0
@@ -29,7 +29,7 @@ func cmdr2S50ManaSpentShortfall(g *game.Game, spellID uuid.UUID) int {
 // card types, as printed: "two cards that share all their card types"
 // (Demonic Covenant). A Kindred Enchantment shares all its types with
 // another Kindred Enchantment, not with an Enchantment alone.
-func cmdr2S50ShareAllCardTypes(a, b game.Card) bool {
+func Cmdr2S50ShareAllCardTypes(a, b game.Card) bool {
 	_, ta, _ := game.ParseTypeLine(a.TypeLine)
 	_, tb, _ := game.ParseTypeLine(b.TypeLine)
 	if len(ta) != len(tb) {
@@ -53,7 +53,7 @@ func cmdr2S50ShareAllCardTypes(a, b game.Card) bool {
 // over a card the caller picked, for a source that hid more than one card
 // (Evercoat Ursine's two hideaway abilities). The exile is the link
 // (CR 607.2a), so a card that is no longer hidden by that object is ignored.
-func cmdr2S50PlayHiddenCard(g *game.Game, player uuid.UUID, source game.PermissionCardRef, id uuid.UUID, label string) {
+func Cmdr2S50PlayHiddenCard(g *game.Game, player uuid.UUID, source game.PermissionCardRef, id uuid.UUID, label string) {
 	stillHidden := false
 	for _, h := range g.HiddenCardsForEffect(source) {
 		if h == id {

@@ -14,13 +14,13 @@ import (
 // to two creature and/or land cards among them. With none of either among
 // the five there is nothing to reveal, so all five go to the bottom in a
 // random order at once.
-func socB39LookAtFiveAndSplit(ctx *Context) error {
+func SocB39LookAtFiveAndSplit(ctx *Context) error {
 	g := ctx.Game
 	player := ctx.Controller()
 	looked := g.LookAtTopOfLibraryForEffect(player, 5)
 	candidates := libraryCardsMatching(g, player, looked, Or(Creature(), Land()))
 	if len(candidates) == 0 {
-		return g.PutOnBottomInRandomOrderForEffect(player, game.ZoneLibrary, cardsStillInALibrary(g, looked))
+		return g.PutOnBottomInRandomOrderForEffect(player, game.ZoneLibrary, CardsStillInALibrary(g, looked))
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  player,
@@ -48,7 +48,7 @@ func socB39LookAtFiveAndSplit(ctx *Context) error {
 var socB39ZimonesExperimentRevealed = game.RegisterChooseCardsThen("choose-cards/zimones-experiment-reveal", func(g *game.Game, r game.CardsChosen) error {
 	player := r.Chooser
 	var lands, creatures []uuid.UUID
-	for _, id := range cardsStillInALibrary(g, r.Picked) {
+	for _, id := range CardsStillInALibrary(g, r.Picked) {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
@@ -63,13 +63,13 @@ var socB39ZimonesExperimentRevealed = game.RegisterChooseCardsThen("choose-cards
 	return PutFromLibraryOntoBattlefield{
 		Player:    player,
 		Cards:     r.Carry,
-		Match:     b10OneOf(lands),
+		Match:     B10OneOf(lands),
 		All:       true,
 		Tapped:    true,
 		ThenCarry: creatures,
 		ThenN:     len(creatures),
 		ThenTail:  socB39ZimonesExperimentCreatures,
-	}.Apply(keyedContext(g, player, r.Source))
+	}.Apply(KeyedContext(g, player, r.Source))
 })
 
 // socB39ZimonesExperimentCreatures is the creature sentence and the rest: the
@@ -86,8 +86,8 @@ var socB39ZimonesExperimentCreatures = CardTail("zimones-experiment/creatures-th
 	return TakeFromLibraryToHand{
 		Player: o.Tail.Player,
 		Cards:  carry[n:],
-		Match:  b10OneOf(carry[:n]),
+		Match:  B10OneOf(carry[:n]),
 		All:    true,
-		Key:    takeRestBottomRandom,
+		Key:    TakeRestBottomRandom,
 	}.Apply(ctx)
 })

@@ -8,21 +8,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cards are in your graveyard" (Sidequest: Card Collection), re-checked
 // as the ability resolves (CR 603.4). It reads the item's controller's
 // graveyard (game.FootprintCondGraveyard).
-type finB1CondEightInYourGraveyard struct{}
+type FinB1CondEightInYourGraveyard struct{}
 
-func (finB1CondEightInYourGraveyard) Holds(ctx *Context) bool {
+func (FinB1CondEightInYourGraveyard) Holds(ctx *Context) bool {
 	return GraveyardAtLeast(8, nil)(ctx.Game, ctx.Controller(), ctx.Source())
 }
 
-func (finB1CondEightInYourGraveyard) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondGraveyard, 0), true
+func (FinB1CondEightInYourGraveyard) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondGraveyard, 0), true
 }
 
 // finB1TapAndStun is "tap target <permanent>. Put a stun counter on it":
 // the announced target, if still legal (Ice Flan).
-func finB1TapAndStun(g *game.Game, item *game.StackItem) error {
+func FinB1TapAndStun(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

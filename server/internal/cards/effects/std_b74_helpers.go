@@ -24,7 +24,7 @@ import (
 // hostOK is the condition on the host itself: Mirrormind Crown's "as
 // long as this Equipment is attached to a creature". Nil accepts any
 // attached permanent.
-func copiesOfAttachedInsteadOfFirstTokens(label, question string, hostOK func(game.Card) bool) game.ReplacementEffect {
+func CopiesOfAttachedInsteadOfFirstTokens(label, question string, hostOK func(game.Card) bool) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:  []game.EventKind{game.EventTokenCreated},
 		Optional: true,
@@ -32,7 +32,7 @@ func copiesOfAttachedInsteadOfFirstTokens(label, question string, hostOK func(ga
 			if ev.Kind != game.RepEventCreateTokens || ev.TokenCount() <= 0 || ev.TokenController != src.Controller {
 				return false
 			}
-			if src.AttachedTo.ID == uuid.Nil || !onBattlefield(g, src.AttachedTo.ID) {
+			if src.AttachedTo.ID == uuid.Nil || !OnBattlefield(g, src.AttachedTo.ID) {
 				return false
 			}
 			if hostOK != nil {

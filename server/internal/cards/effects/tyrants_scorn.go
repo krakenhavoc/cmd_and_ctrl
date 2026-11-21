@@ -23,14 +23,14 @@ func init() {
 		Modes: ChooseOne(
 			ModeWithPurpose(ModeDoing("Destroy target creature with mana value 3 or less.",
 				TargetCreature("target creature with mana value 3 or less", ManaValueLE(3)),
-				titanOfIndustryDestroy), game.Purpose{Answers: game.AnswerRemove}),
+				TitanOfIndustryDestroy), game.Purpose{Answers: game.AnswerRemove}),
 			ModeDoing("Return target creature to its owner's hand.",
-				TargetCreature("target creature"), tyrantsScornBounce),
+				TargetCreature("target creature"), TyrantsScornBounce),
 		),
 	})
 }
 
-func tyrantsScornBounce(_ *game.StackItem, ctx *Context, occ int) error {
+func TyrantsScornBounce(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetCard {
 		return nil

@@ -38,7 +38,7 @@ import (
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     crystalFragmentsOracleID,
+		OracleID:     CrystalFragmentsOracleID,
 		Name:         "Crystal Fragments",
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{PumpAttached(1, 1)},
@@ -59,30 +59,30 @@ func init() {
 		return PreventDamageFromSource{Protect: ShieldCreaturesYouControl}.Apply(NewContext(g, item))
 	}
 	Register(Spec{
-		OracleID:        crystalFragmentsOracleID + "#1",
+		OracleID:        CrystalFragmentsOracleID + "#1",
 		Name:            "Summon: Alexander",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, SagaChapterLabel("Summon: Alexander", 1, "prevent all damage that would be dealt to creatures you control this turn"), creaturesYouControl),
 			ChapterTrigger(2, SagaChapterLabel("Summon: Alexander", 2, "prevent all damage that would be dealt to creatures you control this turn"), creaturesYouControl),
-			ChapterTrigger(3, SagaChapterLabel("Summon: Alexander", 3, "tap all creatures your opponents control"), tapAllCreaturesYourOpponentsControl),
+			ChapterTrigger(3, SagaChapterLabel("Summon: Alexander", 3, "tap all creatures your opponents control"), TapAllCreaturesYourOpponentsControl),
 		},
 	})
 }
 
 // crystalFragmentsOracleID is shared by both faces.
-const crystalFragmentsOracleID = "b291d046-7649-4a05-98c4-224ecaece912"
+const CrystalFragmentsOracleID = "b291d046-7649-4a05-98c4-224ecaece912"
 
 // tapAllCreaturesYourOpponentsControl is "Tap all creatures your
 // opponents control", read as it resolves.
-func tapAllCreaturesYourOpponentsControl(g *game.Game, item *game.StackItem) error {
+func TapAllCreaturesYourOpponentsControl(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, opp := range ctx.Opponents() {
 		if opp == uuid.Nil {
 			continue
 		}
-		if err := b29TapAllCreaturesControlledBy(ctx, opp); err != nil {
+		if err := B29TapAllCreaturesControlledBy(ctx, opp); err != nil {
 			return err
 		}
 	}

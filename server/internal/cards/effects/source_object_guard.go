@@ -69,7 +69,7 @@ import (
 // it do not ask the #1432 question of their target, so the source's
 // new object, a member of the set like any other, is acted on. The
 // copy shares Game and Item; nothing else is carried.
-func (c *Context) asGroupMember() *Context {
+func (c *Context) AsGroupMember() *Context {
 	if c == nil {
 		return nil
 	}
@@ -83,17 +83,17 @@ func (c *Context) asGroupMember() *Context {
 // ability knows nothing about. See the file comment. False for a nil
 // context, a nil item (an AsEnters hook), uuid.Nil, any target that is
 // not the source, and any target reached through asGroupMember.
-func (c *Context) isNewSourceObject(target uuid.UUID) bool {
+func (c *Context) IsNewSourceObject(target uuid.UUID) bool {
 	if c == nil || c.groupMember {
 		return false
 	}
-	return c.isNewSourceObjectAsThis(target)
+	return c.IsNewSourceObjectAsThis(target)
 }
 
 // isNewSourceObjectAsThis is isNewSourceObject for a site that names
 // the source by construction ("this" whatever Context it was handed),
 // so the group mark does not switch it off.
-func (c *Context) isNewSourceObjectAsThis(target uuid.UUID) bool {
+func (c *Context) IsNewSourceObjectAsThis(target uuid.UUID) bool {
 	if c == nil || c.Item == nil || c.Game == nil || target == uuid.Nil || target != c.Item.SourceCardID {
 		return false
 	}
@@ -105,7 +105,7 @@ func (c *Context) isNewSourceObjectAsThis(target uuid.UUID) bool {
 // (#3667): "put a counter on this creature" after the creature was
 // sacrificed in response has nothing to land on. Honours asGroupMember
 // like isNewSourceObject.
-func (c *Context) sourceLeftBattlefield(target uuid.UUID) bool {
+func (c *Context) SourceLeftBattlefield(target uuid.UUID) bool {
 	if c == nil || c.groupMember || c.Item == nil || c.Game == nil || target == uuid.Nil || target != c.Item.SourceCardID {
 		return false
 	}
@@ -116,7 +116,7 @@ func (c *Context) sourceLeftBattlefield(target uuid.UUID) bool {
 // (g, item) — the shape every triggered and activated Effect has — and
 // the check a card file makes before it calls a game mutator on its
 // own source directly rather than through a primitive.
-func sourceIsNewObject(g *game.Game, item *game.StackItem) bool {
+func SourceIsNewObject(g *game.Game, item *game.StackItem) bool {
 	return g != nil && g.AbilitySourceIsNewObjectForEffect(item)
 }
 
@@ -124,9 +124,9 @@ func sourceIsNewObject(g *game.Game, item *game.StackItem) bool {
 // the source is a new object — for the primitives that take a list
 // (TurnFaceDown, PhaseOut). Returns `ids` itself when nothing is
 // dropped, so the common case allocates nothing.
-func (c *Context) withoutNewSourceObject(ids []uuid.UUID) []uuid.UUID {
+func (c *Context) WithoutNewSourceObject(ids []uuid.UUID) []uuid.UUID {
 	for i, id := range ids {
-		if !c.isNewSourceObject(id) {
+		if !c.IsNewSourceObject(id) {
 			continue
 		}
 		out := append([]uuid.UUID(nil), ids[:i]...)
@@ -147,8 +147,8 @@ func (c *Context) withoutNewSourceObject(ids []uuid.UUID) []uuid.UUID {
 // source that died in response is in another zone, and one that left
 // and came back is a new object (CR 400.7); either way the instruction
 // finds nothing to move.
-func sourceIsStillThisPermanent(g *game.Game, item *game.StackItem) bool {
-	return item != nil && onBattlefield(g, item.SourceCardID) && !sourceIsNewObject(g, item)
+func SourceIsStillThisPermanent(g *game.Game, item *game.StackItem) bool {
+	return item != nil && OnBattlefield(g, item.SourceCardID) && !SourceIsNewObject(g, item)
 }
 
 // sacrificeThisIfStillHere sacrifices the item's source while it is
@@ -156,8 +156,8 @@ func sourceIsStillThisPermanent(g *game.Game, item *game.StackItem) bool {
 // "sacrifice this unless …" (Static Prison's energy, Icy Prison's any
 // player). A source that has left, or come back as a new object, is
 // not sacrificed (CR 400.7).
-func sacrificeThisIfStillHere(ctx *Context) error {
-	if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+func SacrificeThisIfStillHere(ctx *Context) error {
+	if !SourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 		return nil
 	}
 	return SacrificePermanent{Target: ctx.Item.SourceCardID}.Apply(ctx)

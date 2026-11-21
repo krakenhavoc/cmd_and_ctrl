@@ -22,7 +22,7 @@ import (
 // counter, and the creature is still marked.
 //
 // No simplification.
-const delifsCubeCounter = "cube"
+const DelifsCubeCounter = "cube"
 
 func init() {
 	Register(Spec{
@@ -43,9 +43,9 @@ func init() {
 			{
 				Label:   "{2}, Remove a cube counter from this artifact: Regenerate target creature.",
 				Purpose: game.Purpose{Answers: game.AnswerSurvive},
-				Cost:    Plus(ManaCost("{2}"), RemoveCountersFromThis(delifsCubeCounter, 1)),
+				Cost:    Plus(ManaCost("{2}"), RemoveCountersFromThis(DelifsCubeCounter, 1)),
 				Targets: TargetCreature("target creature"),
-				Effect:  regenerateTheTargetPermanent,
+				Effect:  RegenerateTheTargetPermanent,
 			},
 		},
 	})
@@ -55,8 +55,8 @@ func init() {
 // the counter on the Cube that made the trigger.
 func delifsCube(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if it := firstPayloadCard(ctx); it != uuid.Nil {
+	if it := FirstPayloadCard(ctx); it != uuid.Nil {
 		g.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), it, "Delif's Cube — assigns no combat damage this turn")
 	}
-	return AddCounter{Target: ctx.Source(), Kind: delifsCubeCounter, N: 1}.Apply(ctx)
+	return AddCounter{Target: ctx.Source(), Kind: DelifsCubeCounter, N: 1}.Apply(ctx)
 }

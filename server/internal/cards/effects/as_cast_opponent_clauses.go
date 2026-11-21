@@ -27,11 +27,11 @@ func ForNthOpponentPoisonedAsCast(n, minPoison int, spec *game.TargetSpec) *game
 // from that player's graveyard" clause per possible opponent, each live
 // only for an opponent with `minPoison` or more poison counters as the
 // spell was cast.
-func perPoisonedOpponentGraveyardClauses(minPoison int, noun string, what ...CardPredicate) []*game.TargetSpec {
+func PerPoisonedOpponentGraveyardClauses(minPoison int, noun string, what ...CardPredicate) []*game.TargetSpec {
 	var out []*game.TargetSpec
 	for n := 1; n <= game.MaxPlayers-1; n++ {
 		out = append(out, ForNthOpponentPoisonedAsCast(n, minPoison, TargetCardInGraveyard(
-			"up to one target "+noun+" from the graveyard of the "+nthOpponentWords[n]+
+			"up to one target "+noun+" from the graveyard of the "+NthOpponentWords[n]+
 				" opponent after you in turn order, if they had "+strconv.Itoa(minPoison)+" or more poison counters as you cast this spell", what...).WithCount(0, 1)))
 	}
 	return out

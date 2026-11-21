@@ -65,7 +65,7 @@ func init() {
 			return ScheduleDelayedTrigger{
 				At:     game.StepUpkeep,
 				Label:  "Arcane Denial — its controller draws two cards, you draw a card",
-				Body:   arcaneDenialDrawsBody,
+				Body:   ArcaneDenialDrawsBody,
 				Params: game.EffectParams{Player: victim},
 			}.Apply(ctx)
 		},

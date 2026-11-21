@@ -33,7 +33,7 @@ import (
 // prevention, a locked life total) is not a loss either, so it neither
 // triggers nor uses up the turn's first.
 func youLostLifeForTheFirstTimeThisTurn(ev game.Event, controller uuid.UUID, g *game.Game) (lost int, first bool) {
-	lost, ok := s22PlayerLostLife(ev, controller, g)
+	lost, ok := S22PlayerLostLife(ev, controller, g)
 	if !ok {
 		return 0, false
 	}

@@ -20,14 +20,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Append-only.
 
 // flailingAbilities is the pair, with `name` in the effect labels.
-func flailingAbilities(name string) []ActivatedAbility {
+func FlailingAbilities(name string) []ActivatedAbility {
 	return []ActivatedAbility{
 		{
 			Label:     "{1}: This creature gets +1/+1 until end of turn. Any player may activate this ability.",
 			Cost:      ManaCost("{1}"),
 			AnyPlayer: true,
 			Purpose:   game.Purpose{Answers: game.AnswerPump},
-			Effect:    thisGetsUntilEndOfTurn(1, 1, name+" — +1/+1 until end of turn"),
+			Effect:    ThisGetsUntilEndOfTurn(1, 1, name+" — +1/+1 until end of turn"),
 		},
 		{
 			Label:     "{1}: This creature gets -1/-1 until end of turn. Any player may activate this ability.",
@@ -35,7 +35,7 @@ func flailingAbilities(name string) []ActivatedAbility {
 			AnyPlayer: true,
 			// ADR 0142 sweep rulings: a shrink effect is remove.
 			Purpose: game.Purpose{Answers: game.AnswerRemove},
-			Effect:  thisGetsUntilEndOfTurn(-1, -1, name+" — -1/-1 until end of turn"),
+			Effect:  ThisGetsUntilEndOfTurn(-1, -1, name+" — -1/-1 until end of turn"),
 		},
 	}
 }

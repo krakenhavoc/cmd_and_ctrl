@@ -34,7 +34,7 @@ func init() {
 
 func caparoctiTapTwo(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
-	candidates := caparoctiUntappedArtifactsOrCreatures(g, controller)
+	candidates := CaparoctiUntappedArtifactsOrCreatures(g, controller)
 	if len(candidates) < 2 {
 		return nil
 	}
@@ -55,13 +55,13 @@ func caparoctiTapTwo(g *game.Game, item *game.StackItem) error {
 // caparoctiTap is the two permanents being tapped, then the discover, keyed
 // (#4253): the asking item rides the prompt as data, and "exactly two" is a
 // registered set rule rather than a closure.
-var caparoctiTap = askedPickRule("choose-cards/caparocti-sunborn-tap-two",
+var caparoctiTap = AskedPickRule("choose-cards/caparocti-sunborn-tap-two",
 	func(picked []game.Card) bool { return len(picked) == 2 },
 	func(ctx *Context, r game.CardsChosen) error {
 		if len(r.Picked) != 2 {
 			return nil
 		}
-		still := caparoctiUntappedArtifactsOrCreatures(ctx.Game, ctx.Controller())
+		still := CaparoctiUntappedArtifactsOrCreatures(ctx.Game, ctx.Controller())
 		tapped := 0
 		for _, id := range r.Picked {
 			if !slices.Contains(still, id) {
@@ -80,7 +80,7 @@ var caparoctiTap = askedPickRule("choose-cards/caparocti-sunborn-tap-two",
 
 // caparoctiUntappedArtifactsOrCreatures is every untapped artifact or
 // creature `controller` controls.
-func caparoctiUntappedArtifactsOrCreatures(g *game.Game, controller uuid.UUID) []uuid.UUID {
+func CaparoctiUntappedArtifactsOrCreatures(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || c.Tapped {

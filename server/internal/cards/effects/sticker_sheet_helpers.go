@@ -11,9 +11,9 @@ import (
 
 // tapLegalCardTargets taps each target still legal as the ability
 // resolves (CR 608.2b).
-func tapLegalCardTargets(g *game.Game, item *game.StackItem) error {
+func TapLegalCardTargets(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, id := range legalTargetCardIDs(ctx) {
+	for _, id := range LegalTargetCardIDs(ctx) {
 		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
 			return err
 		}
@@ -22,8 +22,8 @@ func tapLegalCardTargets(g *game.Game, item *game.StackItem) error {
 }
 
 // stickerFirstLegalTarget is the first target card still legal, or false.
-func stickerFirstLegalTarget(ctx *Context) (uuid.UUID, bool) {
-	return b16FirstLegalTargetCard(ctx)
+func StickerFirstLegalTarget(ctx *Context) (uuid.UUID, bool) {
+	return B16FirstLegalTargetCard(ctx)
 }
 
 // CastTargetFromYourGraveyardThisTurn is "you may cast target <card> from
@@ -62,7 +62,7 @@ func (e CastTargetFromYourGraveyardThisTurn) Apply(ctx *Context) error {
 // and subtypes it has" (Unique Charmed Pants): the distinct entries of the
 // three lists as the object has them now (CR 205), a changeling counting
 // every creature type (CR 702.73a).
-func supertypesTypesAndSubtypesOf(c game.Card) int {
+func SupertypesTypesAndSubtypesOf(c game.Card) int {
 	ch := c.Effective()
 	seen := map[string]bool{}
 	for _, s := range ch.Supertypes {
@@ -88,7 +88,7 @@ func supertypesTypesAndSubtypesOf(c game.Card) int {
 // thisDealsTwoToItsTarget is "this permanent deals 2 damage to" the one
 // target the ability chose, if it is still legal as the ability resolves
 // (CR 608.2b).
-func thisDealsTwoToItsTarget(g *game.Game, item *game.StackItem) error {
+func ThisDealsTwoToItsTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
 		return nil

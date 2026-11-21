@@ -53,11 +53,11 @@ func forgottenCreationWheel(g *game.Game, item *game.StackItem) error {
 	if p == nil {
 		return nil
 	}
-	return g.DiscardRandomKeyedForEffect(item.Controller, p.Hand.Size(), NewContext(g, item).ItemTail(forgottenCreationDraw))
+	return g.DiscardRandomKeyedForEffect(item.Controller, p.Hand.Size(), NewContext(g, item).ItemTail(ForgottenCreationDraw))
 }
 
 // forgottenCreationDraw draws a card per card discarded (#4253 slice 9).
-var forgottenCreationDraw = CardTail("forgotten-creation/draw-per-discarded", func(ctx *Context, o game.TailOutcome) error {
+var ForgottenCreationDraw = CardTail("forgotten-creation/draw-per-discarded", func(ctx *Context, o game.TailOutcome) error {
 	g, item, discarded := ctx.Game, ctx.Item, o.IDs
 
 	return DrawCards{Player: item.Controller, N: len(discarded)}.Apply(NewContext(g, item))

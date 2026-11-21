@@ -89,7 +89,7 @@ func ReturnedAuraForm(grantKey string) []game.StaticAbility {
 // the card out of the graveyard in response (CR 608.2b).
 func WhenThisDiesReturnItAsAnAura(name string) game.TriggeredAbility {
 	return On(game.EventLTB, func(ev game.Event, source *game.Card, lki game.Characteristic, _ *game.Game) bool {
-		return cardDied(ev, source) && keywordSliceContains(lki.Types, "Creature")
+		return CardDied(ev, source) && KeywordSliceContains(lki.Types, "Creature")
 	}, name+" — return it to the battlefield as an Aura",
 		func(g *game.Game, item *game.StackItem) error {
 			id := item.SourceCardID

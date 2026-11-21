@@ -102,7 +102,7 @@ func ProducedColorOrChosen(color string) func(*game.Game, uuid.UUID, uuid.UUID) 
 // source. An unchosen colour matches nothing.
 func ChosenColorAnthem(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Creatures you control of the chosen color get " + signedPT(power, toughness) + ".",
+		Label:     "Creatures you control of the chosen color get " + SignedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: CreatureYouControlOfChosenColor,
@@ -223,7 +223,7 @@ var protectionFromChosenColor = CardTail("then/protection-from-chosen-color-unti
 
 // chooseProtectionColorFor asks `chooser` for the colour `target` gains
 // protection from until end of turn, keyed (protectionFromChosenColor).
-func chooseProtectionColorFor(ctx *Context, chooser, target uuid.UUID, name, question string) {
+func ChooseProtectionColorFor(ctx *Context, chooser, target uuid.UUID, name, question string) {
 	then := ctx.ItemTail(protectionFromChosenColor)
 	then.Carry = []uuid.UUID{target}
 	then.Words = []string{name}
@@ -235,7 +235,7 @@ func chooseProtectionColorFor(ctx *Context, chooser, target uuid.UUID, name, que
 // (Prismatic Strands, Avacyn, Guardian Angel): the protected object is the
 // tail's one carried ID, or anything when it carries none. Run against the
 // asking item. An on-disk key.
-var preventDamageFromChosenColor = CardTail("then/prevent-damage-from-chosen-color", func(ctx *Context, o game.TailOutcome) error {
+var PreventDamageFromChosenColor = CardTail("then/prevent-damage-from-chosen-color", func(ctx *Context, o game.TailOutcome) error {
 	color := o.Tail.Word
 	if color == "" {
 		return nil

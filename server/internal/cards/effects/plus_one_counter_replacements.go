@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // replacement's controller controls, the source itself included.
 // Shang-Chi, Martial Mentor doubles the count; Michelangelo, Weirdness to
 // 11 adds one.
-func plusOneCountersOnACreatureYouControl(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+func PlusOneCountersOnACreatureYouControl(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if ev.Kind != game.RepEventCounter || ev.CounterName != game.CounterPlusOne || ev.CounterDelta <= 0 {
 		return false
 	}

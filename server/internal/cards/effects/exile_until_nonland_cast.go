@@ -16,9 +16,9 @@ import (
 // library until a nonland card is exiled, then grants `perm` to that
 // card if it is still in exile. The caller fills in the price, timing,
 // lapse and labels; Player and Zone are set here.
-func exileUntilNonlandGrantingCast(ctx *Context, perm game.CastPermission) error {
+func ExileUntilNonlandGrantingCast(ctx *Context, perm game.CastPermission) error {
 	// #4253 slice 10a: the permission rides the run's keyed tail as data.
-	t := ctx.ItemTail(exileUntilNonlandGranted)
+	t := ctx.ItemTail(ExileUntilNonlandGranted)
 	t.Permission = &perm
 	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), 0, game.ZoneExile, UntilNonland, t)
 }
@@ -29,15 +29,15 @@ func exileUntilNonlandGrantingCast(ctx *Context, perm game.CastPermission) error
 // flash-speed, cast-only permission over the nonland card, priced {0}, made
 // during the resolution (CR 608.2g) and lapsing with the card still in
 // exile. An {X} in its cost is 0 (CR 107.3b).
-func exileUntilNonlandCastFree(ctx *Context, sourceName string) error {
-	return exileUntilNonlandGrantingCast(ctx, exileUntilNonlandFreeCastPermission(ctx, sourceName))
+func ExileUntilNonlandCastFree(ctx *Context, sourceName string) error {
+	return ExileUntilNonlandGrantingCast(ctx, ExileUntilNonlandFreeCastPermission(ctx, sourceName))
 }
 
 // exileUntilNonlandFreeCastPermission is the permission exileUntilNonlandCastFree
 // grants: flash-speed, cast-only, priced {0}, lapsing with the card still in
 // exile. Lady Loki, Agent of Chaos grants the same one from her own tail,
 // after the damage she deals between the walk and the offer.
-func exileUntilNonlandFreeCastPermission(ctx *Context, sourceName string) game.CastPermission {
+func ExileUntilNonlandFreeCastPermission(ctx *Context, sourceName string) game.CastPermission {
 	return game.CastPermission{
 		Cost:        "{0}",
 		Timing:      game.TimingFlash,
@@ -51,15 +51,15 @@ func exileUntilNonlandFreeCastPermission(ctx *Context, sourceName string) game.C
 }
 
 // exileUntilNonlandGranted is the run's "then", told the cards exiled.
-var exileUntilNonlandGranted = CardTail("exile-until-nonland/grant-cast", func(ctx *Context, o game.TailOutcome) error {
+var ExileUntilNonlandGranted = CardTail("exile-until-nonland/grant-cast", func(ctx *Context, o game.TailOutcome) error {
 	if o.Tail.Permission == nil {
 		return nil
 	}
-	return exileUntilNonlandGrant(ctx, *o.Tail.Permission, o.IDs)
+	return ExileUntilNonlandGrant(ctx, *o.Tail.Permission, o.IDs)
 })
 
 // exileUntilNonlandGrant grants perm over the nonland card exiled.
-func exileUntilNonlandGrant(ctx *Context, perm game.CastPermission, exiled []uuid.UUID) error {
+func ExileUntilNonlandGrant(ctx *Context, perm game.CastPermission, exiled []uuid.UUID) error {
 
 	var granted []uuid.UUID
 	for _, id := range exiled {
@@ -76,7 +76,7 @@ func exileUntilNonlandGrant(ctx *Context, perm game.CastPermission, exiled []uui
 	}
 	// #4250: cast during the resolution (CR 608.2g), at the
 	// permission's price.
-	offerResolutionCastOver(ctx.Game, ctx.Controller(), perm.Source, perm.SourceName,
-		game.MayCastKeywordPaidCast, declineLeaveInExile, granted...)
+	OfferResolutionCastOver(ctx.Game, ctx.Controller(), perm.Source, perm.SourceName,
+		game.MayCastKeywordPaidCast, DeclineLeaveInExile, granted...)
 	return nil
 }

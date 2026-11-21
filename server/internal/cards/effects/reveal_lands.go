@@ -157,7 +157,7 @@ func init() {
 			Replacements: []game.ReplacementEffect{
 				EntersTappedUnlessYouRevealFromHand(land.name, clause, matches),
 			},
-			ManaAbilities: []ManaAbility{dualManaAbility(land.a, land.b)},
+			ManaAbilities: []ManaAbility{DualManaAbility(land.a, land.b)},
 		})
 	}
 }

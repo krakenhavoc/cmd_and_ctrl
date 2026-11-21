@@ -33,19 +33,19 @@ func derivedTriggerDef(key string) *game.CardDef {
 	if lender, ok := game.TriggersOfKeyLender(key); ok {
 		text := "All triggered abilities of an exiled card."
 		oracleID, _, _ := strings.Cut(lender, "#")
-		if spec, found := registry[oracleID]; found && spec.Name != "" {
+		if spec, found := Registry[oracleID]; found && spec.Name != "" {
 			text = "All triggered abilities of " + spec.Name + "."
 		}
-		d = game.TriggersOnlyDef(defs[lender], text)
+		d = game.TriggersOnlyDef(Defs[lender], text)
 	} else if lender, ok := game.MergedPartLender(key); ok {
 		// ADR 0223: every ability of a component under a mutated
 		// permanent (CR 702.140e).
 		text := "All abilities of a card under it."
 		oracleID, _, _ := strings.Cut(lender, "#")
-		if spec, found := registry[oracleID]; found && spec.Name != "" {
+		if spec, found := Registry[oracleID]; found && spec.Name != "" {
 			text = "All abilities of " + spec.Name + ", under it."
 		}
-		d = game.MergedPartDef(defs[lender], text)
+		d = game.MergedPartDef(Defs[lender], text)
 	} else {
 		d = game.KeywordTriggerDef(key)
 	}

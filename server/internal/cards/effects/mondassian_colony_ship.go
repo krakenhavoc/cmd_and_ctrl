@@ -31,17 +31,17 @@ func init() {
 		Name:         "Mondassian Colony Ship",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventAttack, aCreatureAttacked, "Mondassian Colony Ship — it gets +1/+1 until end of turn for each other creature its controller controls that shares a creature type with it",
+			On(game.EventAttack, ACreatureAttacked, "Mondassian Colony Ship — it gets +1/+1 until end of turn for each other creature its controller controls that shares a creature type with it",
 				mondassianColonyShipPump),
 			Targeting(WheneverChaosEnsues("Mondassian Colony Ship — turn target creature face down; it becomes a 2/2 Cyberman artifact creature",
-				turnSingleTargetFaceDownAs(CybermanBody)), TargetCreature("target creature")),
+				TurnSingleTargetFaceDownAs(CybermanBody)), TargetCreature("target creature")),
 		},
 	})
 }
 
 // aCreatureAttacked is "whenever a creature attacks": one trigger per
 // attacking creature, whoever controls it.
-func aCreatureAttacked(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func ACreatureAttacked(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventAttack && ev.CardID != uuid.Nil
 }
 
@@ -49,7 +49,7 @@ func mondassianColonyShipPump(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	attacker, ok := battlefieldCardForEffect(g, item.Trigger.Event.CardID)
+	attacker, ok := BattlefieldCardForEffect(g, item.Trigger.Event.CardID)
 	if !ok || !attacker.IsCreature() {
 		return nil
 	}

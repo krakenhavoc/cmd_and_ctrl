@@ -44,7 +44,7 @@ import (
 // captures scalars only and an undo that replays an answer resolves it
 // against the restored game (the delayed-trigger contract,
 // docs/adding-cards.md).
-type punisherRepeat struct {
+type PunisherRepeat struct {
 	Name string
 	Life int
 	// Creature is "or sacrifice a CREATURE" in place of a nonland
@@ -54,16 +54,16 @@ type punisherRepeat struct {
 
 // sacrificeLabel and sacrificeCandidates are the sacrifice branch's words
 // and the victim's permanents that can pay it.
-func (p punisherRepeat) sacrificeLabel() string {
+func (p PunisherRepeat) sacrificeLabel() string {
 	if p.Creature {
 		return punisherSacrificeCreatureLabel
 	}
-	return punisherSacrificeLabel
+	return PunisherSacrificeLabel
 }
 
-func (p punisherRepeat) sacrificeCandidates(g *game.Game, victim uuid.UUID) []uuid.UUID {
+func (p PunisherRepeat) sacrificeCandidates(g *game.Game, victim uuid.UUID) []uuid.UUID {
 	if p.Creature {
-		return creaturesControlledByPlayer(g, victim)
+		return CreaturesControlledByPlayer(g, victim)
 	}
 	return NonlandPermanentsControlledBy(g, victim)
 }
@@ -73,7 +73,7 @@ func (p punisherRepeat) sacrificeCandidates(g *game.Game, victim uuid.UUID) []uu
 // one. Everything after it is queued by an answer.
 //
 // Caller holds g.mu.
-func (p punisherRepeat) start(ctx *Context, times int) error {
+func (p PunisherRepeat) Start(ctx *Context, times int) error {
 	if times <= 0 {
 		return nil
 	}
@@ -92,7 +92,7 @@ func (p punisherRepeat) start(ctx *Context, times int) error {
 // queue to its answer.
 //
 // Caller holds g.mu.
-func (p punisherRepeat) step(ctx *Context, remaining []uuid.UUID) error {
+func (p PunisherRepeat) step(ctx *Context, remaining []uuid.UUID) error {
 	keys, ok := punisherKeysOf[p.Name]
 	if !ok {
 		return fmt.Errorf("%w: punisherRepeat %q has no registered answers", game.ErrInvalidParam, p.Name)
@@ -126,7 +126,7 @@ func (p punisherRepeat) step(ctx *Context, remaining []uuid.UUID) error {
 // cannot drift.
 //
 // Caller holds g.mu.
-func (p punisherRepeat) options(ctx *Context, victim uuid.UUID) []game.ChoiceOption {
+func (p PunisherRepeat) options(ctx *Context, victim uuid.UUID) []game.ChoiceOption {
 	options := []game.ChoiceOption{{
 		Label:    "Lose " + strconv.Itoa(p.Life) + " life",
 		LifeCost: p.Life,
@@ -142,7 +142,7 @@ func (p punisherRepeat) options(ctx *Context, victim uuid.UUID) []game.ChoiceOpt
 
 // The two branch labels; the first option is the life, always.
 const (
-	punisherSacrificeLabel         = "Sacrifice a nonland permanent"
+	PunisherSacrificeLabel         = "Sacrifice a nonland permanent"
 	punisherSacrificeCreatureLabel = "Sacrifice a creature"
 	punisherDiscardLabel           = "Discard a card"
 )
@@ -160,9 +160,9 @@ type punisherKeys struct {
 var punisherKeysOf = map[string]punisherKeys{}
 
 func init() {
-	registerPunisher(tormentOfHailfire, "torment-of-hailfire")
-	registerPunisher(rottenmouthViper, "rottenmouth-viper")
-	registerPunisher(polygraphOrbPunisher, "polygraph-orb")
+	RegisterPunisher(tormentOfHailfire, "torment-of-hailfire")
+	RegisterPunisher(RottenmouthViper, "rottenmouth-viper")
+	RegisterPunisher(polygraphOrbPunisher, "polygraph-orb")
 }
 
 // registerPunisher registers a punisher's continuations under keys that
@@ -170,11 +170,11 @@ func init() {
 // "choose-cards/<slug>-punisher-discarded"): on-disk identities, never
 // renamed, never reused. The rest of the queue is the carry of each, and the
 // body is run against a Context whose controller is the asking effect's.
-func registerPunisher(p punisherRepeat, slug string) {
+func RegisterPunisher(p PunisherRepeat, slug string) {
 	next := func(ctx *Context, rest []uuid.UUID) error { return p.step(ctx, rest) }
 	keys := punisherKeys{}
 	keys.discard = game.RegisterDiscardThen("choose-cards/"+slug+"-punisher-discarded", func(g *game.Game, r game.DiscardsDone) error {
-		return next(keyedContext(g, r.Carry[0], r.Source), r.Carry[1:])
+		return next(KeyedContext(g, r.Carry[0], r.Source), r.Carry[1:])
 	})
 	// The sacrifice's rest is a keyed tail (SacrificeChoice.ThenTail): the
 	// rest of the queue is its carry, the asking effect's controller and
@@ -191,12 +191,12 @@ func registerPunisher(p punisherRepeat, slug string) {
 			return next(ctx, rest)
 		}
 		switch r.Option.Label {
-		case punisherSacrificeLabel, punisherSacrificeCreatureLabel:
+		case PunisherSacrificeLabel, punisherSacrificeCreatureLabel:
 			return SacrificeChoice{
 				Player:     victim,
 				Candidates: p.sacrificeCandidates(ctx.Game, victim),
 				Question:   p.Name + " — " + strings.ToLower(p.sacrificeLabel()[:1]) + p.sacrificeLabel()[1:],
-				ThenTail:   withCarry(ctx.Tail(keys.sacrifice), rest...),
+				ThenTail:   WithCarry(ctx.Tail(keys.sacrifice), rest...),
 			}.Apply(ctx)
 		case punisherDiscardLabel:
 			return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
@@ -222,7 +222,7 @@ func registerPunisher(p punisherRepeat, slug string) {
 // resolution is asked nothing (CR 608.2b).
 //
 // Caller holds g.mu.
-func (p punisherRepeat) onTargetPlayer(ctx *Context) error {
+func (p PunisherRepeat) OnTargetPlayer(ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
 			return p.step(ctx, []uuid.UUID{t.ID})

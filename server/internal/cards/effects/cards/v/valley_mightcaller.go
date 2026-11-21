@@ -1,0 +1,36 @@
+package cardsv
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Valley Mightcaller — Creature — Frog Warrior {G}, 1/1:
+//
+//	"Trample
+//	 Whenever another Frog, Rabbit, Raccoon, or Squirrel you control
+//	 enters, put a +1/+1 counter on this creature."
+//
+// Subtypes are read through the effective view, so a changeling
+// qualifies and the Mightcaller's own entry never counts ("another").
+// The counter goes on only if the Mightcaller is still on the
+// battlefield when the trigger resolves.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "16e9c452-6288-4da8-813d-2eb6b7a538c3",
+		Name:            "Valley Mightcaller",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"trample"},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				c, ok := effects.EnteredUnderYourControl(ev, source, g, true)
+				// The four types are words of the source's text (CR 612.2, #3984).
+				return ok && (c.HasSubtype(source.TextSubtype("Frog")) || c.HasSubtype(source.TextSubtype("Rabbit")) ||
+					c.HasSubtype(source.TextSubtype("Raccoon")) || c.HasSubtype(source.TextSubtype("Squirrel")))
+			}, "Valley Mightcaller — put a +1/+1 counter on it", effects.Do(effects.CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
+		},
+	})
+}

@@ -87,20 +87,20 @@ func boseijuChannel(g *game.Game, item *game.StackItem) error {
 	if victim == uuid.Nil || owner == uuid.Nil {
 		return nil
 	}
-	return g.DestroyPermanentsKeyedForEffect([]uuid.UUID{victim}, withCarry(ctx.ItemTail(boseijuSearch), owner))
+	return g.DestroyPermanentsKeyedForEffect([]uuid.UUID{victim}, WithCarry(ctx.ItemTail(boseijuSearch), owner))
 }
 
 // boseijuSearch is "that permanent's controller may search …", after the
 // destruction, keyed (#4253 slice 10a): the controller is Carry[0].
 var boseijuSearch = CardTail("then/boseiju-who-endures-search", func(ctx *Context, o game.TailOutcome) error {
-	owner := tailCarry0(o)
+	owner := TailCarry0(o)
 	if owner == uuid.Nil {
 		return nil
 	}
 	return SearchLibrary{
 		Player:    owner,
 		Source:    ctx.Source(),
-		Predicate: hasABasicLandType,
+		Predicate: HasABasicLandType,
 		Dest:      game.ZoneBattlefield,
 		Limit:     1,
 		Optional:  true,
@@ -112,7 +112,7 @@ var boseijuSearch = CardTail("then/boseiju-who-endures-search", func(ctx *Contex
 // hasABasicLandType is "a land card with a basic land type" — the
 // land TYPE, not the basic supertype, so a shockland or a Triome
 // qualifies and a Wastes does not.
-func hasABasicLandType(c game.Card) bool {
+func HasABasicLandType(c game.Card) bool {
 	if !c.IsLand() {
 		return false
 	}

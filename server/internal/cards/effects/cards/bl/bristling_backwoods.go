@@ -1,0 +1,48 @@
+package cardsbl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Bristling Backwoods — Land — Desert (EDHREC rank 3590):
+//
+//	"This land enters tapped.
+//	 When this land enters, it deals 1 damage to target opponent.
+//	 {T}: Add {R} or {G}."
+//
+// The Gruul member of Outlaws of Thunder Junction's tapped Desert
+// duals — Abraded Bluffs' shape exactly. The tapped entry is the
+// real CR 614 self-replacement; the enters trigger is targeted
+// ("target opponent") and dealt by the land, so it is colourless
+// noncombat damage; the two printed colours are not narrowed to the
+// commander's identity (the painland posture — the text does not
+// say "in your commander's color identity").
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "9cbc9f83-8979-42a5-a466-a8d89c8e6de8",
+		Name:         "Bristling Backwoods",
+		Completeness: effects.CompletenessFull,
+		Replacements: []game.ReplacementEffect{effects.SelfEntersTapped()},
+		Triggered: []game.TriggeredAbility{{
+			Watches:   []game.EventKind{game.EventETB},
+			AppliesTo: effects.B06SelfETB,
+			Targets:   effects.TargetPlayer("target opponent", effects.Opponent()),
+			Key:       "Bristling Backwoods — 1 damage to target opponent",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				return effects.DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 1}.Apply(effects.NewContext(g, item))
+			},
+		}},
+		ManaAbilities: []effects.ManaAbility{{
+			Cost:     effects.ManaAbilityCost{Tap: true},
+			Produced: "{R|G}",
+			Label:    "Add {R} or {G}",
+		}},
+	})
+}

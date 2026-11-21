@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ability is activated (CR 602.2b) and checked again as it resolves, so
 // a creature that left in response gets nothing (CR 608.2b); the token
 // is gone either way, since sacrificing it is the cost.
-func MutagenToken() game.Card { return tokenFromCatalog(printedMutagenToken) }
+func MutagenToken() game.Card { return TokenFromCatalog(printedMutagenToken) }
 
 // printedMutagenToken is the Mutagen as PRINTED — the abilities
 // included. It is the catalog's entry for this token (token_catalog.go).
@@ -20,8 +20,8 @@ func MutagenToken() game.Card { return tokenFromCatalog(printedMutagenToken) }
 //
 // No Purpose.Answers: the row is sorcery speed and always names a
 // target, which is the shape ADR 0142 leaves undeclared.
-func printedMutagenToken() tokenTemplate {
-	return tokenTemplate{
+func printedMutagenToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "mutagen",
 		Card: game.Card{
 			Name:     "Mutagen",

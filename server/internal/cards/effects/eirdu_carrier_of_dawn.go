@@ -42,7 +42,7 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{B}",
 					Question: "Eirdu, Carrier of Dawn — pay {B} to transform Eirdu?",
-					Then:     eirduTransformPaid,
+					Then:     EirduTransformPaid,
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -64,7 +64,7 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{W}",
 					Question: "Isilu, Carrier of Twilight — pay {W} to transform Isilu?",
-					Then:     eirduTransformPaid,
+					Then:     EirduTransformPaid,
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -74,7 +74,7 @@ func init() {
 // eirduTransformPaid is both faces' paid branch, keyed: transform the asking
 // item's source, unless it has turned over since (CR 701.27f). An on-disk
 // key.
-var eirduTransformPaid = PayUnlessBranches("pay-unless/eirdu-transform",
+var EirduTransformPaid = PayUnlessBranches("pay-unless/eirdu-transform",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		return TransformThis{}.Apply(ctx)
 	}, nil)

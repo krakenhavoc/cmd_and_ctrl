@@ -50,7 +50,7 @@ type TakeFromExileOrOutside struct {
 // exileTake is a registered exile pick: the first prompt of a
 // TakeFromExileOrOutside, keyed.
 type exileTake struct {
-	then game.ChooseCardsThen
+	Then game.ChooseCardsThen
 	// question heads the outside pick the "none" answer asks.
 	question string
 }
@@ -59,8 +59,8 @@ type exileTake struct {
 // game or in exile" card under `key` (#4264), whose "none" asks `outside`
 // with `question`. Call it once, from a package-level var. The key is an
 // on-disk identity, ledgered "choose <key>".
-func registerExileOrOutside(key string, outside outsideTake, question string) exileTake {
-	return exileTake{question: question, then: game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
+func RegisterExileOrOutside(key string, outside outsideTake, question string) exileTake {
+	return exileTake{question: question, Then: game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
 		if !r.Answered {
 			return nil
 		}
@@ -70,7 +70,7 @@ func registerExileOrOutside(key string, outside outsideTake, question string) ex
 			if !stillFaceUpInExile(g, r.Chooser, r.Picked[0]) {
 				return nil
 			}
-			return nothingIfGone(g.BounceToHandForEffect(r.Picked[0]))
+			return NothingIfGone(g.BounceToHandForEffect(r.Picked[0]))
 		}
 		takeFromOutside(g, r.Chooser, r.Source, TakeFromOutside{
 			Player:   r.Chooser,
@@ -118,7 +118,7 @@ func (t TakeFromExileOrOutside) Apply(ctx *Context) error {
 		Cards:      exiled,
 		Min:        0,
 		Max:        1,
-		ThenKey:    t.Exile.then,
+		ThenKey:    t.Exile.Then,
 		CarryWord:  t.Word,
 	})
 	return nil

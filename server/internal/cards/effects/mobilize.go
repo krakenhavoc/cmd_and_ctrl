@@ -32,7 +32,7 @@ func Mobilize(name string, n int) game.TriggeredAbility {
 			RuleDefined: true,
 			N:           n,
 			Tapped:      true,
-			Prefer:      triggerAttackTarget(item),
+			Prefer:      TriggerAttackTarget(item),
 			Label:       name,
 			Tail:        game.KeyedTail{Ref: mobilizeSacrificeAtEndStep},
 		}.Apply(NewContext(g, item))
@@ -58,7 +58,7 @@ func MobilizeX(name string, count func(g *game.Game, item *game.StackItem) int) 
 			RuleDefined: true,
 			N:           n,
 			Tapped:      true,
-			Prefer:      triggerAttackTarget(item),
+			Prefer:      TriggerAttackTarget(item),
 			Label:       name,
 			Tail:        game.KeyedTail{Ref: mobilizeSacrificeAtEndStep},
 		}.Apply(NewContext(g, item))
@@ -75,6 +75,6 @@ var mobilizeSacrificeAtEndStep = AttackingTokensThen("attacking-tokens/mobilize-
 		return ScheduleDelayedTrigger{
 			Label: "Mobilize — sacrifice the Warriors",
 			Cards: created,
-			Body:  sacrificeListedCardsBody,
+			Body:  SacrificeListedCardsBody,
 		}.Apply(ctx)
 	})

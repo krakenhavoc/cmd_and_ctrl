@@ -31,10 +31,10 @@ func init() {
 		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return tormentOfHailfire.start(ctx, ctx.X())
+			return tormentOfHailfire.Start(ctx, ctx.X())
 		},
 	})
 }
 
 // tormentOfHailfire is the printed punisher: 3 life a refusal.
-var tormentOfHailfire = punisherRepeat{Name: "Torment of Hailfire", Life: 3}
+var tormentOfHailfire = PunisherRepeat{Name: "Torment of Hailfire", Life: 3}

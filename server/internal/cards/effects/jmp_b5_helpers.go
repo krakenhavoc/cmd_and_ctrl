@@ -14,14 +14,14 @@ import (
 // number of creatures you control" (Ironroot Warlord): a Layer 7a
 // characteristic-defining ability, counted as the layers run, so a
 // creature entering or leaving changes it at once.
-func jmpB5PowerIsCreaturesYouControl(label string) game.StaticAbility {
+func JmpB5PowerIsCreaturesYouControl(label string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     label,
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7A_CDA,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			c.Power = b04CreaturesControlled(g, source.Controller)
+			c.Power = B04CreaturesControlled(g, source.Controller)
 		},
 	}
 }
@@ -30,7 +30,7 @@ func jmpB5PowerIsCreaturesYouControl(label string) game.StaticAbility {
 // source's controller controls that have a +1/+1 counter on them (High
 // Sentinels of Arashin). Counters are instance state, not a
 // characteristic, so reading them inside a layer pass is safe.
-func jmpB5OtherCreaturesWithACounter(g *game.Game, source *game.Card) int {
+func JmpB5OtherCreaturesWithACounter(g *game.Game, source *game.Card) int {
 	if g == nil || g.Battlefield == nil || source == nil {
 		return 0
 	}
@@ -47,7 +47,7 @@ func jmpB5OtherCreaturesWithACounter(g *game.Game, source *game.Card) int {
 // jmpB5CreaturesYouControlWithACounter snapshots the creatures
 // `controller` controls that have a +1/+1 counter on them, so the
 // caller may add counters while it walks them (Lifecrafter's Gift).
-func jmpB5CreaturesYouControlWithACounter(g *game.Game, controller uuid.UUID) []uuid.UUID {
+func JmpB5CreaturesYouControlWithACounter(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.Counters[game.CounterPlusOne] > 0 {
@@ -59,7 +59,7 @@ func jmpB5CreaturesYouControlWithACounter(g *game.Game, controller uuid.UUID) []
 
 // jmpB5NontokenCreaturesYouControl counts the nontoken creatures
 // `controller` controls as the effect resolves (Lena, Selfless Champion).
-func jmpB5NontokenCreaturesYouControl(g *game.Game, controller uuid.UUID) int {
+func JmpB5NontokenCreaturesYouControl(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && !c.IsToken() {

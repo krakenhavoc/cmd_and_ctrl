@@ -41,7 +41,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverACreatureYouControlConnives("Glorious Purpose — put a +1/+1 counter on that creature and a plan counter on this enchantment",
 				gloriousPurposeCounters),
-			On(game.EventCounterPlaced, mshB2PlanCounterReached(6),
+			On(game.EventCounterPlaced, MshB2PlanCounterReached(6),
 				"Glorious Purpose — sacrifice it; if you do, exile the top four cards of your library and cast any number free",
 				gloriousPurposeSixth),
 		},
@@ -52,12 +52,12 @@ func init() {
 // on the creature that connived, then the plan counter on this.
 func gloriousPurposeCounters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if creature := item.Trigger.Event.CardID; onBattlefield(g, creature) {
+	if creature := item.Trigger.Event.CardID; OnBattlefield(g, creature) {
 		if err := (AddCounter{Target: creature, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
 			return err
 		}
 	}
-	if !onBattlefield(g, item.SourceCardID) || ctx.isNewSourceObjectAsThis(item.SourceCardID) {
+	if !OnBattlefield(g, item.SourceCardID) || ctx.IsNewSourceObjectAsThis(item.SourceCardID) {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: "plan", N: 1}.Apply(ctx)
@@ -67,13 +67,13 @@ func gloriousPurposeCounters(g *game.Game, item *game.StackItem) error {
 // the top four cards.
 func gloriousPurposeSixth(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if !onBattlefield(g, item.SourceCardID) || ctx.isNewSourceObjectAsThis(item.SourceCardID) {
+	if !OnBattlefield(g, item.SourceCardID) || ctx.IsNewSourceObjectAsThis(item.SourceCardID) {
 		return nil
 	}
 	if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
 		return err
 	}
-	if onBattlefield(g, item.SourceCardID) {
+	if OnBattlefield(g, item.SourceCardID) {
 		return nil // "If you do": it was not sacrificed
 	}
 	return MillToZone{
@@ -129,7 +129,7 @@ var gloriousPurposeExiled = CardTail("glorious-purpose/after-exile", func(ctx *C
 	}) {
 		return nil
 	}
-	return gloriousPurposePutRest(g, controller, source, exiled)
+	return GloriousPurposePutRest(g, controller, source, exiled)
 })
 
 // gloriousPurposeRestToHand is "Put the rest into your hand", once the
@@ -137,12 +137,12 @@ var gloriousPurposeExiled = CardTail("glorious-purpose/after-exile", func(ctx *C
 // on-disk key, never renamed.
 var gloriousPurposeRestToHand = game.RegisterChooseCardsThen("resolution-cast/glorious-purpose-rest-to-hand",
 	func(g *game.Game, r game.CardsChosen) error {
-		return gloriousPurposePutRest(g, r.Chooser, r.Source, r.Carry)
+		return GloriousPurposePutRest(g, r.Chooser, r.Source, r.Carry)
 	})
 
 // gloriousPurposePutRest puts every one of the cards still in exile into
 // its controller's hand (the ones cast are on the stack, not in exile).
-func gloriousPurposePutRest(g *game.Game, controller, source uuid.UUID, ids []uuid.UUID) error {
+func GloriousPurposePutRest(g *game.Game, controller, source uuid.UUID, ids []uuid.UUID) error {
 	for _, id := range ids {
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
 			continue

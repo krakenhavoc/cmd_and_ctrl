@@ -24,13 +24,13 @@ func init() {
 		OracleID:     "d4b50749-a016-4aff-8d70-a1707cabf57b",
 		Name:         "Falter",
 		Completeness: CompletenessFull,
-		OnResolve:    faltering("Falter"),
+		OnResolve:    Faltering("Falter"),
 	})
 }
 
 // faltering is "Creatures without flying can't block this turn." as a
 // spell's whole resolution — Falter, Magmatic Chasm, Seismic Stomp.
-func faltering(name string) func(*game.StackItem, *Context) error {
+func Faltering(name string) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return RestrictUntilEOT{
 			Scope:        game.ScopeCreaturesWithoutFlying,

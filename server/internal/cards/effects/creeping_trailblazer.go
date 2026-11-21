@@ -30,10 +30,10 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{2}{R}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+				if !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 					return nil
 				}
-				n := m20ElementalsYouControl(g, item.Controller)
+				n := M20ElementalsYouControl(g, item.Controller)
 				return BoostUntilEOT{Target: item.SourceCardID, Power: n, Toughness: n,
 					Label: "Creeping Trailblazer — +1/+1 for each Elemental you control"}.Apply(NewContext(g, item))
 			},
@@ -44,6 +44,6 @@ func init() {
 // m20ElementalsYouControl is "the number of Elementals you control":
 // every permanent the player controls with the Elemental subtype, read
 // through the layers (Creeping Trailblazer, Lavakin Brawler).
-func m20ElementalsYouControl(g *game.Game, player uuid.UUID) int {
-	return len(permanentsControlledByMatching(g, player, Subtype("Elemental")))
+func M20ElementalsYouControl(g *game.Game, player uuid.UUID) int {
+	return len(PermanentsControlledByMatching(g, player, Subtype("Elemental")))
 }

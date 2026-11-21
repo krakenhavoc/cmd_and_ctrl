@@ -50,7 +50,7 @@ func (t TurnFaceUp) Apply(ctx *Context) error {
 	if actor == uuid.Nil {
 		actor = ctx.Controller()
 	}
-	for _, id := range ctx.withoutNewSourceObject(t.Targets) {
+	for _, id := range ctx.WithoutNewSourceObject(t.Targets) {
 		ctx.Game.TurnFaceUpForEffect(source, actor, id)
 	}
 	return nil
@@ -63,7 +63,7 @@ func (t TurnFaceUp) Apply(ctx *Context) error {
 // Watchdog, #5241). A card that offers a CHOICE (Staff Room) asks this
 // before it asks the question, so it never offers a turn that would do
 // nothing.
-func canTurnFaceUpByEffect(g *game.Game, id uuid.UUID) bool {
+func CanTurnFaceUpByEffect(g *game.Game, id uuid.UUID) bool {
 	c, ok := g.LookupCardForEffect(id)
 	return ok && game.CanTurnFaceUpForEffect(c) && !g.TurnFaceUpForbiddenForEffect(c)
 }
@@ -71,7 +71,7 @@ func canTurnFaceUpByEffect(g *game.Game, id uuid.UUID) bool {
 // faceDownPermanentsThatCanTurnUp lists, in battlefield order, the
 // face-down permanents `player` controls that an effect could turn
 // face up. Zimone's "a permanent you control".
-func faceDownPermanentsThatCanTurnUp(g *game.Game, player uuid.UUID) []uuid.UUID {
+func FaceDownPermanentsThatCanTurnUp(g *game.Game, player uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && game.CanTurnFaceUpForEffect(c) && !g.TurnFaceUpForbiddenForEffect(c) {

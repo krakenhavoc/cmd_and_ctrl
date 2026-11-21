@@ -75,7 +75,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Gray Merchant of Asphodel — drain for your devotion to black", func(g *game.Game, item *game.StackItem) error {
-				return b21DrainEachOpponentAndGainTheTotal(g, item, devotionTo(g, item.Controller, NewContext(g, item).TextColor("B")))
+				return B21DrainEachOpponentAndGainTheTotal(g, item, DevotionTo(g, item.Controller, NewContext(g, item).TextColor("B")))
 			}),
 		},
 	})
@@ -90,6 +90,6 @@ func init() {
 //
 // One colour is devotionToColors with one colour: the two share one
 // walk so they cannot disagree about which permanents count (#4761).
-func devotionTo(g *game.Game, controller uuid.UUID, color string) int {
-	return devotionToColors(g, controller, color)
+func DevotionTo(g *game.Game, controller uuid.UUID, color string) int {
+	return DevotionToColors(g, controller, color)
 }

@@ -41,21 +41,21 @@ func Backup(name string, n int, grantKey string, keywords ...string) game.Trigge
 // creature itself (Hateful Eidolon's ruling). Each Aura is read as the
 // object it was: live while it is still that object on the battlefield,
 // from its last-known record once it has left.
-func socB6AurasOnTheDead(g *game.Game, ev game.Event) map[uuid.UUID]uuid.UUID {
+func SocB6AurasOnTheDead(g *game.Game, ev game.Event) map[uuid.UUID]uuid.UUID {
 	info, ok := g.LastKnownPermanentForEffect(ev.CardID)
 	if !ok {
 		return nil
 	}
 	out := map[uuid.UUID]uuid.UUID{}
 	for _, ref := range info.Attachments {
-		if c, live := g.LookupCardForEffect(ref.ID); live && c.ObjectEpoch == ref.Epoch && onBattlefield(g, ref.ID) {
+		if c, live := g.LookupCardForEffect(ref.ID); live && c.ObjectEpoch == ref.Epoch && OnBattlefield(g, ref.ID) {
 			if c.HasSubtype("Aura") {
 				out[ref.ID] = c.Controller
 			}
 			continue
 		}
 		if rec, found := g.LastKnownPermanentForEffect(ref.ID); found && rec.Epoch == ref.Epoch &&
-			keywordSliceContains(rec.Characteristic.Subtypes, "Aura") {
+			KeywordSliceContains(rec.Characteristic.Subtypes, "Aura") {
 			out[ref.ID] = rec.Controller
 		}
 	}
@@ -72,7 +72,7 @@ func socB6AurasOnTheDead(g *game.Game, ev game.Event) map[uuid.UUID]uuid.UUID {
 		rec, found := g.LastKnownPermanentForEffect(e.CardID)
 		if !found || rec.AttachedTo.Kind != game.TargetCard || rec.AttachedTo.ID != ev.CardID ||
 			(rec.AttachedObject != nil && rec.AttachedObject.Epoch != info.Epoch) ||
-			!keywordSliceContains(rec.Characteristic.Subtypes, "Aura") {
+			!KeywordSliceContains(rec.Characteristic.Subtypes, "Aura") {
 			continue
 		}
 		out[e.CardID] = rec.Controller

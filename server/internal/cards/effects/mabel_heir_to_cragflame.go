@@ -35,12 +35,12 @@ func init() {
 }
 
 // CragflameEquipmentToken is Mabel's legendary Equipment token.
-func CragflameEquipmentToken() game.Card { return tokenFromCatalog(printedCragflameToken) }
+func CragflameEquipmentToken() game.Card { return TokenFromCatalog(printedCragflameToken) }
 
 // printedCragflameToken is the catalog's entry for Cragflame: +1/+1,
 // vigilance, trample and haste for the equipped creature, and equip {2}.
-func printedCragflameToken() tokenTemplate {
-	return tokenTemplate{
+func printedCragflameToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "cragflame",
 		Card: game.Card{
 			Name:     "Cragflame",

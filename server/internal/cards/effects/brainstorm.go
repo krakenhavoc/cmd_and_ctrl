@@ -45,13 +45,13 @@ func init() {
 		Name:         "Brainstorm",
 		Purpose:      game.Purpose{Answers: game.AnswerValue}, // #2877: card selection answers nothing on the stack
 		Completeness: CompletenessFull,
-		OnResolve:    brainstormOnResolve,
+		OnResolve:    BrainstormOnResolve,
 	})
 }
 
 // brainstormOnResolve is the spell's body, shared with Harmonized Trio's
 // prepare spell, which prints the same text.
-func brainstormOnResolve(item *game.StackItem, ctx *Context) error {
+func BrainstormOnResolve(item *game.StackItem, ctx *Context) error {
 	return ctx.Game.DrawNThenForEffect(item.Controller, 3, game.DrawThen{
 		Ref: drawThenBrainstormPutBack, Player: item.Controller, Source: item.SourceCardID, N: 2,
 	})
@@ -60,7 +60,7 @@ func brainstormOnResolve(item *game.StackItem, ctx *Context) error {
 // allHandCardIDs is every card in a player's hand, in hand order.
 // Unlike handCardsMatching it keeps nonpermanent cards, because a
 // clause that puts cards BACK does not care what they could become.
-func allHandCardIDs(g *game.Game, player uuid.UUID) []uuid.UUID {
+func AllHandCardIDs(g *game.Game, player uuid.UUID) []uuid.UUID {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Hand == nil {
 		return nil

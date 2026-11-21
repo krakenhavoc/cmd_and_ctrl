@@ -69,7 +69,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Venom, Lethal Protector — you may sacrifice another creature; if you do, draw X cards, then you may put a permanent card with mana value X or less from your hand onto the battlefield",
 				func(g *game.Game, item *game.StackItem) error {
-					return maySacrificeOne(g, item,
+					return MaySacrificeOne(g, item,
 						"Venom, Lethal Protector — sacrifice another creature to draw cards equal to its mana value?",
 						Creature(), true, venomLethalProtectorSacrificed)
 				}),
@@ -81,7 +81,7 @@ func init() {
 // may put a permanent card with mana value X or less from your hand onto
 // the battlefield", once the creature has really gone, keyed (#4290).
 var venomLethalProtectorSacrificed = RegisterSacrificedOne("prompt-run/venom-lethal-protector-sacrificed", func(ctx *Context, sacrificed uuid.UUID) error {
-	x := departedManaValue(ctx.Game, sacrificed)
+	x := DepartedManaValue(ctx.Game, sacrificed)
 	if err := (DrawCards{Player: ctx.Controller(), N: x}).Apply(ctx); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ var venomLethalProtectorSacrificed = RegisterSacrificedOne("prompt-run/venom-let
 // departedManaValue is the mana value of the permanent object `cardID`
 // last was on the battlefield (CR 608.2h), zero when the engine has no
 // record of it.
-func departedManaValue(g *game.Game, cardID uuid.UUID) int {
+func DepartedManaValue(g *game.Game, cardID uuid.UUID) int {
 	ref, ok := g.PermanentRefForEffect(cardID)
 	if !ok {
 		return 0

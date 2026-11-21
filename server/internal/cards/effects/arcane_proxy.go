@@ -30,8 +30,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				s82BroB21EntersIfCast("Arcane Proxy — exile target instant or sorcery card with mana value less than or equal to this creature's power from your graveyard; copy it and you may cast the copy without paying its mana cost",
-					arcaneProxyExileAndCopy),
+				S82BroB21EntersIfCast("Arcane Proxy — exile target instant or sorcery card with mana value less than or equal to this creature's power from your graveyard; copy it and you may cast the copy without paying its mana cost",
+					ArcaneProxyExileAndCopy),
 				RelativeToSource(
 					TargetCardInGraveyard("target instant or sorcery card with mana value less than or equal to Arcane Proxy's power from your graveyard",
 						YouOwn(), Or(Instant(), Sorcery())),
@@ -40,7 +40,7 @@ func init() {
 	})
 }
 
-func arcaneProxyExileAndCopy(ctx *Context) error {
+func ArcaneProxyExileAndCopy(ctx *Context) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {

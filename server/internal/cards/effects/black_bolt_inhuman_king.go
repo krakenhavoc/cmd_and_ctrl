@@ -36,16 +36,16 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(Noncreature(), "Black Bolt, Inhuman King — +2/+2 until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
-					if !onBattlefield(g, item.SourceCardID) {
+					if !OnBattlefield(g, item.SourceCardID) {
 						return nil
 					}
 					return BoostUntilEOT{Target: item.SourceCardID, Power: 2, Toughness: 2,
 						Label: "Black Bolt, Inhuman King — +2/+2 until end of turn"}.Apply(NewContext(g, item))
 				}),
 			Targeting(
-				On(game.EventBecomesTarget, blackBoltTargetedByAnOpponent,
+				On(game.EventBecomesTarget, BlackBoltTargetedByAnOpponent,
 					"Black Bolt, Inhuman King — Lethal Voice: destroy target nonland permanent that player controls",
-					destroyFirstLegalCardTarget),
+					DestroyFirstLegalCardTarget),
 				ControlledByThatEventActor(TargetPermanent("target nonland permanent that player controls", Nonland()))),
 		},
 	})
@@ -54,7 +54,7 @@ func init() {
 // blackBoltTargetedByAnOpponent is "Black Bolt becomes the target of a spell
 // or ability an opponent controls": the event names the source and its Actor,
 // the controller of the targeting spell or ability, is someone else.
-func blackBoltTargetedByAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func BlackBoltTargetedByAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventBecomesTarget && ev.CardID == source.InstanceID &&
 		ev.Actor != uuid.Nil && ev.Actor != source.Controller
 }

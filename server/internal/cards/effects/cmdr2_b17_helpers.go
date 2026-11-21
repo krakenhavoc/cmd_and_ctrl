@@ -11,7 +11,7 @@ import (
 
 // cmdr2B17SquirrelMobPT is "This creature gets +1/+1 for each other
 // Squirrel on the battlefield" (Squirrel Mob).
-func cmdr2B17SquirrelMobPT() game.StaticAbility {
+func Cmdr2B17SquirrelMobPT() game.StaticAbility {
 	return game.StaticAbility{
 		Label:    "Gets +1/+1 for each other Squirrel on the battlefield.",
 		Layer:    game.Layer7PT,
@@ -35,7 +35,7 @@ func cmdr2B17SquirrelMobPT() game.StaticAbility {
 // cmdr2B17HasAnySubtype is the class Swarmyard Massacre names: a creature
 // with any of the given types, read through its effective subtypes. The
 // caller reads the type words through the spell's own text (CR 612.2).
-func cmdr2B17HasAnySubtype(c game.Card, types []string) bool {
+func Cmdr2B17HasAnySubtype(c game.Card, types []string) bool {
 	if !c.IsCreature() {
 		return false
 	}
@@ -52,8 +52,8 @@ const cmdr2B17VanishingKeyword = "vanishing"
 
 // cmdr2B17VanishingEntry is the first of vanishing's three abilities
 // (CR 702.63a): "This permanent enters with N time counters on it."
-func cmdr2B17VanishingEntry(n int) game.ReplacementEffect {
-	r := b10EntersWithCounters(game.CounterTime, n, "Vanishing: enters with time counters on it")
+func Cmdr2B17VanishingEntry(n int) game.ReplacementEffect {
+	r := B10EntersWithCounters(game.CounterTime, n, "Vanishing: enters with time counters on it")
 	r.RowLabel = fmt.Sprintf("Vanishing %d", n)
 	return r
 }
@@ -65,10 +65,10 @@ func cmdr2B17VanishingEntry(n int) game.ReplacementEffect {
 // removed from it, sacrifice it. The second reads any removal, not only
 // the upkeep one (an Aether Snap-style effect that takes the last
 // counter off still sacrifices it).
-func cmdr2B17VanishingTriggers() []game.TriggeredAbility {
+func Cmdr2B17VanishingTriggers() []game.TriggeredAbility {
 	upkeep := On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
 		return ByYou(ev, source, c, g) && source.Counters[game.CounterTime] > 0
-	}, "Vanishing — remove a time counter", removeACounterFromThis(game.CounterTime))
+	}, "Vanishing — remove a time counter", RemoveACounterFromThis(game.CounterTime))
 	upkeep.Keyword = cmdr2B17VanishingKeyword
 	last := On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return ev.Target == source.InstanceID && ev.Label == game.CounterTime &&

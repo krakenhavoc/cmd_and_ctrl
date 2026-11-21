@@ -32,11 +32,11 @@ func init() {
 	hit := WheneverThisDealsCombatDamageToAPlayer("Power Pack — exile target instant or sorcery card from your graveyard chosen at random",
 		func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
-			id, ok := b16FirstLegalTargetCard(ctx)
+			id, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}
-			return ExileTarget{Target: id, ThenTail: withCarry(ctx.ItemTail(powerPackExiled), id)}.Apply(ctx)
+			return ExileTarget{Target: id, ThenTail: WithCarry(ctx.ItemTail(powerPackExiled), id)}.Apply(ctx)
 		})
 	hit.Targets = ChosenAtRandom(TargetCardInGraveyard("target instant or sorcery card from your graveyard chosen at random",
 		Or(Instant(), Sorcery()), YouOwn()))
@@ -76,15 +76,15 @@ func powerPackCastExiled(g *game.Game, item *game.StackItem) error {
 			Label:                   "Power Pack — cast " + c.Name + " without paying its mana cost",
 		}, []game.Card{c})
 		// #4250: cast as the delayed trigger resolves (CR 608.2g).
-		offerResolutionCastOver(g, item.Controller, item.SourceCardID, "Power Pack",
-			game.MayCastKeywordFreeCast, declineLeaveInExile, c.InstanceID)
+		OfferResolutionCastOver(g, item.Controller, item.SourceCardID, "Power Pack",
+			game.MayCastKeywordFreeCast, DeclineLeaveInExile, c.InstanceID)
 	}
 	return nil
 }
 
 // powerPackExiled is the clause after the exile (#4253 slice 9).
 var powerPackExiled = CardTail("power-pack/after-exile", func(ctx *Context, o game.TailOutcome) error {
-	id := tailCarry0(o)
+	id := TailCarry0(o)
 	exiled := len(o.IDs) == 1
 
 	if !exiled {

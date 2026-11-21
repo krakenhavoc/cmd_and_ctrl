@@ -93,7 +93,7 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfNewPhyrexiaOracleID + "#1",
+		OracleID:     InvasionOfNewPhyrexiaOracleID + "#1",
 		Name:         "Teferi Akosa of Zhalfir",
 		Completeness: CompletenessFull,
 		// Printed loyalty reaches a card through deck import
@@ -249,7 +249,7 @@ func teferiAkosaDiscardPaysTheClause(picked []game.Card) bool {
 // Caller holds g.mu.
 func teferiAkosaTapAnyNumber(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
-	candidates := untappedCreaturesControlledBy(g, controller)
+	candidates := UntappedCreaturesControlledBy(g, controller)
 	if len(candidates) == 0 {
 		return nil
 	}
@@ -270,7 +270,7 @@ func teferiAkosaTapAnyNumber(g *game.Game, item *game.StackItem) error {
 
 // teferiAkosaTapPick is the creatures chosen to be tapped, keyed (#4253
 // sweep): the asking item rides the prompt as data.
-var teferiAkosaTapPick = askedPick("choose-cards/teferi-akosa-tap-any-number", func(ctx *Context, r game.CardsChosen) error {
+var teferiAkosaTapPick = AskedPick("choose-cards/teferi-akosa-tap-any-number", func(ctx *Context, r game.CardsChosen) error {
 	return teferiAkosaTapThenShuffle(ctx.Game, ctx.Item, r.Picked)
 })
 
@@ -293,7 +293,7 @@ func teferiAkosaTapThenShuffle(g *game.Game, item *game.StackItem, picked []uuid
 		if !ok || c.Tapped || !c.IsCreature() || c.Controller != item.Controller {
 			continue
 		}
-		if err := (TapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (TapTarget{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 		tapped = append(tapped, id)
@@ -351,7 +351,7 @@ func teferiAkosaShuffleIntoLibrary(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	owner := c.Owner
-	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{t.ID}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{t.ID}, game.TuckOptions{}, game.KeyedTail{Ref: ThenShuffle, Player: owner})
 }
 
 // untappedCreaturesControlledBy returns the untapped creatures a
@@ -360,7 +360,7 @@ func teferiAkosaShuffleIntoLibrary(g *game.Game, item *game.StackItem) error {
 // something already tapped does not.
 //
 // Caller holds g.mu.
-func untappedCreaturesControlledBy(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+func UntappedCreaturesControlledBy(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == playerID && c.IsCreature() && !c.Tapped {

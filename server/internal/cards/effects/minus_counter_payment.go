@@ -52,7 +52,7 @@ type PayActionUnless struct {
 }
 
 func (p PayActionUnless) Apply(ctx *Context) error {
-	words, action := p.Payment.prompt()
+	words, action := p.Payment.Prompt()
 	return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
 		Chooser: p.Chooser, Source: ctx.Source(), Cost: words, Question: p.Question, Action: action,
 		Then: p.Else, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
@@ -121,7 +121,7 @@ func chantPutter(g *game.Game, item *game.StackItem) uuid.UUID {
 // (CR 118.3) and simply takes the damage, without being asked. The damage
 // is the Chant's, and is dealt even if the Chant has left the battlefield
 // in response (its last known information).
-func chantLandPunisher(name, subtype string) game.TriggeredAbility {
+func ChantLandPunisher(name, subtype string) game.TriggeredAbility {
 	label := name + " — 3 damage to the player who put a " + subtype + " onto the battlefield unless they put a -1/-1 counter on a creature they control"
 	return On(game.EventETB, APlayerPutAPermanentWithSubtype(subtype), label, func(g *game.Game, item *game.StackItem) error {
 		victim := chantPutter(g, item)

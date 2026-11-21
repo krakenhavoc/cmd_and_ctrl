@@ -20,7 +20,7 @@ import (
 
 // massGainLifeForEach is "you gain 1 life for each <permanent> <verb>
 // this way" (Fumigate, Avenge, Ob Nixilis, the Ascended).
-var massGainLifeForEach = MassTail("mass/gain-life-for-each", func(ctx *Context, _ []game.Card, moved int) error {
+var MassGainLifeForEach = MassTail("mass/gain-life-for-each", func(ctx *Context, _ []game.Card, moved int) error {
 	if moved <= 0 {
 		return nil
 	}
@@ -29,31 +29,31 @@ var massGainLifeForEach = MassTail("mass/gain-life-for-each", func(ctx *Context,
 
 // thenVentureIntoTheDungeon is "then venture into the dungeon"
 // (Acererak, the Archlich's return).
-var thenVentureIntoTheDungeon = CardTail("then/venture-into-the-dungeon", func(ctx *Context, _ game.TailOutcome) error {
+var ThenVentureIntoTheDungeon = CardTail("then/venture-into-the-dungeon", func(ctx *Context, _ game.TailOutcome) error {
 	return VentureIntoTheDungeon{}.Apply(ctx)
 })
 
 // thenManifestDread is "then manifest dread" after a bounce (Glitch
 // Interpreter, Unnerving Grasp).
-var thenManifestDread = CardTail("then/manifest-dread", func(ctx *Context, _ game.TailOutcome) error {
+var ThenManifestDread = CardTail("then/manifest-dread", func(ctx *Context, _ game.TailOutcome) error {
 	return ManifestDread{}.Apply(ctx)
 })
 
 // thenEachOpponentLosesN is "each opponent loses N life", Tail.N of it,
 // attributed to the source (Sorin, Grim Nemesis; Caustic Bronco saddled).
 // The asking item rides the tail (ItemTail).
-var thenEachOpponentLosesN = CardTail("then/each-opponent-loses-n-life", func(ctx *Context, o game.TailOutcome) error {
+var ThenEachOpponentLosesN = CardTail("then/each-opponent-loses-n-life", func(ctx *Context, o game.TailOutcome) error {
 	if o.Tail.N <= 0 {
 		return nil
 	}
-	return eachOpponentLosesLife(ctx.Game, ctx.Item, o.Tail.N)
+	return EachOpponentLosesLifeNow(ctx.Game, ctx.Item, o.Tail.N)
 })
 
 // thenIfItWentRun is "if you do, <steps>": the steps registered under the
 // tail's Word (RegisterThenSteps) run against the asking item when the
 // one card went this way (oneWentThisWay).
 var thenIfItWentRun = CardTail("then/if-it-went-run-steps", func(ctx *Context, o game.TailOutcome) error {
-	if !oneWentThisWay(o) {
+	if !OneWentThisWay(o) {
 		return nil
 	}
 	steps, ok := thenStepsByKey[o.Tail.Word]
@@ -64,14 +64,14 @@ var thenIfItWentRun = CardTail("then/if-it-went-run-steps", func(ctx *Context, o
 })
 
 // ifItWentThen is thenIfItWentRun over steps, for the asking item.
-func (c *Context) ifItWentThen(steps ThenSteps) game.KeyedTail {
-	return withWord(c.ItemTail(thenIfItWentRun), steps.Key())
+func (c *Context) IfItWentThen(steps ThenSteps) game.KeyedTail {
+	return WithWord(c.ItemTail(thenIfItWentRun), steps.Key())
 }
 
 // thenShuffleEachCarried is "then each of those owners shuffles", in the
 // order the caller put them on the tail's Carry (Serene Remembrance,
 // Teferi, Temporal Pilgrim).
-var thenShuffleEachCarried = game.RegisterTail("then/shuffle-each-carried", func(g *game.Game, o game.TailOutcome) error {
+var ThenShuffleEachCarried = game.RegisterTail("then/shuffle-each-carried", func(g *game.Game, o game.TailOutcome) error {
 	for _, p := range o.Tail.Carry {
 		if err := g.ShuffleLibraryForEffect(p); err != nil {
 			return err
@@ -127,7 +127,7 @@ const (
 // thenShuffleIfItWent is "if you do, its owner shuffles": Tail.Player's
 // library, when the one card went this way (Lembas).
 var thenShuffleIfItWent = game.RegisterTail("then/shuffle-if-it-went", func(g *game.Game, o game.TailOutcome) error {
-	if !oneWentThisWay(o) {
+	if !OneWentThisWay(o) {
 		return nil
 	}
 	return g.ShuffleLibraryForEffect(o.Tail.Player)

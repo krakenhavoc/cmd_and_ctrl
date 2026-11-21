@@ -18,7 +18,7 @@ import (
 // "target Forest" (Arbor Elf) and any other subtype-gated clause. It
 // reads the post-layer subtype list (#354), so an Urborg-made Swamp or
 // a type-changed permanent qualifies exactly as it does in the rules.
-func b05HasSubtype(subtype string) CardPredicate {
+func B05HasSubtype(subtype string) CardPredicate {
 	// A word of the clause's text, read through the lens the targeting
 	// walk lends (CR 612.2, #3872): Arbor Elf's "target Forest".
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasSubtypeWord(subtype) }
@@ -27,14 +27,14 @@ func b05HasSubtype(subtype string) CardPredicate {
 // b05Legendary is "target legendary permanent" (Minamo, School at
 // Water's Edge). Supertypes come from the effective characteristic so
 // a layer effect that adds or removes Legendary composes.
-func b05Legendary() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return isLegendary(&c) }
+func B05Legendary() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return IsLegendary(&c) }
 }
 
 // b05ControlsSubtype reports whether `controller` controls a
 // battlefield permanent with the given subtype — Ophiomancer's "if
 // you control no Snakes".
-func b05ControlsSubtype(g *game.Game, controller uuid.UUID, subtype string) bool {
+func B05ControlsSubtype(g *game.Game, controller uuid.UUID, subtype string) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.HasSubtype(subtype) {
 			return true
@@ -46,7 +46,7 @@ func b05ControlsSubtype(g *game.Game, controller uuid.UUID, subtype string) bool
 // b05ControlsCreatureOrPlaneswalker is Plaguecrafter's "each player who
 // can't" test: a player with no creature and no planeswalker cannot
 // sacrifice one and discards instead.
-func b05ControlsCreatureOrPlaneswalker(g *game.Game, player uuid.UUID) bool {
+func B05ControlsCreatureOrPlaneswalker(g *game.Game, player uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && (c.IsCreature() || c.IsPlaneswalker()) {
 			return true
@@ -59,7 +59,7 @@ func b05ControlsCreatureOrPlaneswalker(g *game.Game, player uuid.UUID) bool {
 // intervening-if: "if an opponent controls more lands than you".
 // Counts post-layer lands, so an animated or type-changed permanent
 // counts exactly as CR 305 would have it.
-func b05OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
+func B05OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
 	counts := map[uuid.UUID]int{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsLand() {
@@ -83,7 +83,7 @@ func b05OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
 // skipped. Each draw is an ordinary draw, so "whenever an opponent
 // draws" watchers — the Crawler's own second ability included — see
 // every one of them.
-func b05EachPlayerDraws(g *game.Game, item *game.StackItem, n int) error {
+func B05EachPlayerDraws(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
 	numSeats := len(g.Seats)
 	if numSeats == 0 {

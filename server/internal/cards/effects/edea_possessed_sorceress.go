@@ -56,7 +56,7 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     edeaPossessedSorceressOracleID,
+		OracleID:     EdeaPossessedSorceressOracleID,
 		Name:         "Edea, Possessed Sorceress",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -67,7 +67,7 @@ func init() {
 				TargetCreature("target creature an opponent controls", OpponentControls())),
 			{
 				Watches:   []game.EventKind{game.EventLTB},
-				AppliesTo: edeaCreatureYouControlButDontOwnDied,
+				AppliesTo: EdeaCreatureYouControlButDontOwnDied,
 				Key:       edeaReturnLabel,
 				// The dead creature's post-move epoch is a board read
 				// made at trigger time (ADR 0041 P9's fill-in Build):
@@ -93,7 +93,7 @@ func init() {
 }
 
 const (
-	edeaPossessedSorceressOracleID = "7beb7505-b765-486d-a205-78325922a10f"
+	EdeaPossessedSorceressOracleID = "7beb7505-b765-486d-a205-78325922a10f"
 	edeaReturnLabel                = "Edea, Possessed Sorceress — return it to its owner and draw a card"
 )
 
@@ -125,9 +125,9 @@ func edeaStealEffect(g *game.Game, item *game.StackItem) error {
 // edeaCreatureYouControlButDontOwnDied is the dies trigger's
 // condition: a creature died that Edea's controller controlled when it
 // left the battlefield and does not own.
-func edeaCreatureYouControlButDontOwnDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && dead.Owner != source.Controller
+func EdeaCreatureYouControlButDontOwnDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller && dead.Owner != source.Controller
 }
 
 // edeaReturnAndDrawEffect is the dies trigger's resolution (ADR 0041

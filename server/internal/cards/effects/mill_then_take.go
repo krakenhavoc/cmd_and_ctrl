@@ -38,7 +38,7 @@ import (
 // could have moved a card out of the pile between the mill and this
 // prompt, and offering it would queue a pick the submit-side zone
 // check then refuses.
-func mayTakeOneFromAmongThem(ctx *Context, milled []uuid.UUID, match CardPredicate, question string) error {
+func MayTakeOneFromAmongThem(ctx *Context, milled []uuid.UUID, match CardPredicate, question string) error {
 	player := ctx.Controller()
 	var candidates []uuid.UUID
 	for _, id := range milled {
@@ -51,13 +51,13 @@ func mayTakeOneFromAmongThem(ctx *Context, milled []uuid.UUID, match CardPredica
 		}
 		candidates = append(candidates, id)
 	}
-	return mayTakeOneIntoYourHand(ctx, candidates, question)
+	return MayTakeOneIntoYourHand(ctx, candidates, question)
 }
 
 // mayTakeOneFromYourGraveyard is "you may return a <match> card from
 // your graveyard to your hand" — the same prompt over the whole pile
 // rather than over one mill's output.
-func mayTakeOneFromYourGraveyard(ctx *Context, match CardPredicate, question string) error {
+func MayTakeOneFromYourGraveyard(ctx *Context, match CardPredicate, question string) error {
 	player := ctx.Controller()
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Graveyard == nil {
@@ -69,7 +69,7 @@ func mayTakeOneFromYourGraveyard(ctx *Context, match CardPredicate, question str
 			candidates = append(candidates, c.InstanceID)
 		}
 	}
-	return mayTakeOneIntoYourHand(ctx, candidates, question)
+	return MayTakeOneIntoYourHand(ctx, candidates, question)
 }
 
 // mayTakeOneIntoYourHand queues the shared prompt: pick at most one of
@@ -83,13 +83,13 @@ func mayTakeOneFromYourGraveyard(ctx *Context, match CardPredicate, question str
 // The pick is keyed (#4253): the asking item rides the prompt as data, so a
 // table waiting on it is a restore point and the continuation runs against a
 // Context rebuilt from that item.
-func mayTakeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string) error {
-	return takeOneIntoYourHand(ctx, candidates, question, 0)
+func MayTakeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string) error {
+	return TakeOneIntoYourHand(ctx, candidates, question, 0)
 }
 
 // takeOneIntoYourHand is mayTakeOneIntoYourHand with the floor named:
 // 0 is "you may return a card", 1 is "return a card" (Ghostly Dancers).
-func takeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string, min int) error {
+func TakeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string, min int) error {
 	if len(candidates) == 0 {
 		return nil
 	}
@@ -110,7 +110,7 @@ func takeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string, 
 // takeOneIntoHandPick is the card chosen to return to hand, keyed (#4253),
 // shared by every "you may return a card from your graveyard to your hand"
 // pick that goes through takeOneIntoYourHand.
-var takeOneIntoHandPick = askedPick("choose-cards/take-one-from-graveyard-into-hand", func(ctx *Context, r game.CardsChosen) error {
+var takeOneIntoHandPick = AskedPick("choose-cards/take-one-from-graveyard-into-hand", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
 		return nil
 	}

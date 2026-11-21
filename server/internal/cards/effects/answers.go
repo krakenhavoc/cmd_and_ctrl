@@ -66,7 +66,7 @@ func checkAnswerBits(a game.Answers, fail func(string)) {
 // answers. Shared by a card's own rows, a granted bundle's and a token
 // template's. instantLoyalty is true for a card's own rows when the card
 // opens its own loyalty abilities at instant speed (ownLoyaltyAtInstant).
-func checkActivatedAnswers(name, where string, ab game.ActivatedAbilityShape, instantLoyalty bool) {
+func CheckActivatedAnswers(name, where string, ab game.ActivatedAbilityShape, instantLoyalty bool) {
 	a := ab.Purpose.Answers
 	if a == 0 {
 		return
@@ -78,7 +78,7 @@ func checkActivatedAnswers(name, where string, ab game.ActivatedAbilityShape, in
 	if sorcerySpeedRow(ab, instantLoyalty) {
 		fail("are on a sorcery-speed or loyalty row, which is never offered while an item waits on the stack")
 	}
-	if a == game.AnswerValue && !hasUntargetedAnnouncement(ab) {
+	if a == game.AnswerValue && !HasUntargetedAnnouncement(ab) {
 		fail("say value on a row whose every announcement has a target — its move carries has_targets, which stops smart autopass whatever value says; declare what it answers, or nothing")
 	}
 	if ab.Cost.Crew > 0 && !a.Has(game.AnswerAnimate) {
@@ -103,7 +103,7 @@ func sorcerySpeedRow(ab game.ActivatedAbilityShape, instantLoyalty bool) bool {
 // stack and smart autopass reads what they answer. A statement that
 // opens every planeswalker's (Teferi, Temporal Archmage's emblem) is
 // not one: it is about other cards' rows.
-func ownLoyaltyAtInstant(timings []game.ActivationTiming) bool {
+func OwnLoyaltyAtInstant(timings []game.ActivationTiming) bool {
 	for _, t := range timings {
 		if t.OwnLoyalty && t.Grants() {
 			return true
@@ -118,14 +118,14 @@ func ownLoyaltyAtInstant(timings []game.ActivationTiming) bool {
 // nothing. A row that must name a target may declare too (#4734, Q2
 // (a)), and smart autopass reads it when it does, but it is not
 // required to: an undeclared one stops you through has_targets.
-func answersInScope(ab game.ActivatedAbilityShape, instantLoyalty bool) bool {
-	return !sorcerySpeedRow(ab, instantLoyalty) && hasUntargetedAnnouncement(ab)
+func AnswersInScope(ab game.ActivatedAbilityShape, instantLoyalty bool) bool {
+	return !sorcerySpeedRow(ab, instantLoyalty) && HasUntargetedAnnouncement(ab)
 }
 
 // hasUntargetedAnnouncement reports whether the row can be announced
 // with no target: it has no target clause (or one that allows zero
 // targets) and, if it is modal, at least one mode with none.
-func hasUntargetedAnnouncement(ab game.ActivatedAbilityShape) bool {
+func HasUntargetedAnnouncement(ab game.ActivatedAbilityShape) bool {
 	if targetsRequired(ab.Targets) {
 		return false
 	}
@@ -150,7 +150,7 @@ func targetsRequired(t *game.TargetSpec) bool {
 }
 
 // checkManaAnswers is the guard for a mana ability's declared answers.
-func checkManaAnswers(name, where string, m game.ManaAbilityShape) {
+func CheckManaAnswers(name, where string, m game.ManaAbilityShape) {
 	a := m.Answers
 	if a == 0 {
 		return
@@ -169,7 +169,7 @@ func checkManaAnswers(name, where string, m game.ManaAbilityShape) {
 
 // activatedShapeOf is the part of a declared ActivatedAbility the
 // answers guard reads, as the engine's shape.
-func activatedShapeOf(a ActivatedAbility) game.ActivatedAbilityShape {
+func ActivatedShapeOf(a ActivatedAbility) game.ActivatedAbilityShape {
 	return game.ActivatedAbilityShape{
 		Label:        a.Label,
 		Cost:         a.Cost,
@@ -183,7 +183,7 @@ func activatedShapeOf(a ActivatedAbility) game.ActivatedAbilityShape {
 // checkManaAbilitiesAnswers checks every mana ability in a list.
 func checkManaAbilitiesAnswers(name, where string, in []ManaAbility) {
 	for i, m := range in {
-		checkManaAnswers(name, fmt.Sprintf("%s mana ability %d", where, i),
+		CheckManaAnswers(name, fmt.Sprintf("%s mana ability %d", where, i),
 			game.ManaAbilityShape{SacrificeOther: m.Cost.SacrificeOther, Answers: m.Answers})
 	}
 }
@@ -199,7 +199,7 @@ func checkManaAbilitiesAnswers(name, where string, in []ManaAbility) {
 // `value`; nor may an alternative cost that sacrifices or returns a
 // creature instead of paying. A cost the reader can see a creature
 // given up in at enumeration (a choice, a kicker) it reads there too.
-func checkSpellAnswers(spec Spec) {
+func CheckSpellAnswers(spec Spec) {
 	fail := func(where, why string) {
 		panic(fmt.Sprintf("effects.Register: %q %s declares Answers that %s (ADR 0142's amendment of 2026-10-30; docs/adding-cards.md, \"Declaring what an ability answers\")", spec.Name, where, why))
 	}

@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the printed mana cost, spelled exactly as the card prints it, plus one
 // card from the caster's hand discarded as a cost. The card file still
 // opens the zone with CastableZones. The key is an on-disk identity.
-func msc17CastFromGraveyardByDiscarding(printedCost string) game.AlternativeCost {
+func Msc17CastFromGraveyardByDiscarding(printedCost string) game.AlternativeCost {
 	return game.AlternativeCost{
 		Key:             "discard_card_from_graveyard",
 		Label:           "Discard a card to cast this card from your graveyard",
@@ -25,7 +25,7 @@ func msc17CastFromGraveyardByDiscarding(printedCost string) game.AlternativeCost
 // that is still legal (CR 608.2b skips one that left or stopped being a
 // legal pick) and makes it unblockable until the end of the turn. Merfolk
 // Sovereign and Daughter of the Deep share it.
-func msc17CantBeBlockedTheTarget(label string) func(g *game.Game, item *game.StackItem) error {
+func Msc17CantBeBlockedTheTarget(label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {

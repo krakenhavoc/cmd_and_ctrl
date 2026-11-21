@@ -36,7 +36,7 @@ import (
 // was declared blocking `source`.
 //
 // Caller holds the game lock (the harvester's contract).
-func attacksAndIsNotBlocked(ev game.Event, source *game.Card, g *game.Game) bool {
+func AttacksAndIsNotBlocked(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventBlockersDeclared || source == nil {
 		return false
 	}
@@ -62,11 +62,11 @@ func WhenAttacksAndIsNotBlockedEffect(label string, effect func(g *game.Game, it
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventBlockersDeclared},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			return attacksAndIsNotBlocked(ev, source, g)
+			return AttacksAndIsNotBlocked(ev, source, g)
 		},
 		Key: label,
 		Effect: func(g *game.Game, item *game.StackItem) error {
-			return effect(g, item, triggeringActor(item))
+			return effect(g, item, TriggeringActor(item))
 		},
 	}
 }
@@ -74,7 +74,7 @@ func WhenAttacksAndIsNotBlockedEffect(label string, effect func(g *game.Game, it
 // defendingPlayerStillIn reports whether the defending player a trigger
 // captured is still in the game, which every payoff here checks before
 // touching them (CR 800.4a: a player who has left is not affected).
-func defendingPlayerStillIn(g *game.Game, defender uuid.UUID) bool {
+func DefendingPlayerStillIn(g *game.Game, defender uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(defender)
 	return p != nil && !p.Eliminated
 }

@@ -30,7 +30,7 @@ import (
 // self-replacement on the card's own entry (Mossborn Hydra's shape,
 // with the count as a parameter). The counters are on the card
 // before any ETB trigger or state check sees the printed 0/0.
-func b10EntersWithCounters(kind string, n int, label string) game.ReplacementEffect {
+func B10EntersWithCounters(kind string, n int, label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		SelfEntryCounters: &game.EntryCounterAmount{Kind: kind, Amount: n},
 		Watches:           []game.EventKind{game.EventZoneMove},
@@ -53,7 +53,7 @@ func b10EntersWithCounters(kind string, n int, label string) game.ReplacementEff
 // EventChangeLife with a positive Amount, lifelink included (Sanguine
 // Bond's note), so the condition is the sign of the delta on the
 // source's controller.
-func b10YouGainedLife(ev game.Event, source *game.Card) bool {
+func B10YouGainedLife(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventChangeLife && ev.Target == source.Controller && ev.Amount > 0
 }
 
@@ -61,7 +61,7 @@ func b10YouGainedLife(ev game.Event, source *game.Card) bool {
 // spell" — Firebrand Archer. Flux Channeler's condition, shaped as a
 // TriggeredAbility AppliesTo so the card can name it directly. The
 // spell is read off the stack, where its type line is intact.
-func b10NoncreatureSpellCastByYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func B10NoncreatureSpellCastByYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -76,8 +76,8 @@ func b10NoncreatureSpellCastByYou(ev game.Event, source *game.Card, _ game.Chara
 // attacker that traded is still on the battlefield), and the
 // IsCommander flag is the deck importer's — the same field Bastion
 // Protector reads.
-func b10CommanderYouControlDealtCombatDamageToOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) || ev.Target == source.Controller {
+func B10CommanderYouControlDealtCombatDamageToOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) || ev.Target == source.Controller {
 		return false
 	}
 	src, ok := g.LookupCardForEffect(ev.Source)
@@ -89,12 +89,12 @@ func b10CommanderYouControlDealtCombatDamageToOpponent(ev game.Event, source *ga
 // graveyard from the battlefield. Read post-move, like diedCreature —
 // TypeLine and Controller survive the move, so "you control" is the
 // controller it left under.
-func b10LandYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func B10LandYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftAsType(ev, c, "land") && leftUnderControlOf(ev, c) == source.Controller
+	return ok && LeftAsType(ev, c, "land") && LeftUnderControlOf(ev, c) == source.Controller
 }
 
 // b10AnotherLandPlayedByYou is City of Traitors' "when you play
@@ -104,7 +104,7 @@ func b10LandYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool 
 // from: a land RETURNED to the battlefield from a graveyard or exile
 // by an effect (Titania's ETB, Splendid Reclamation, a flickered
 // land) no longer reads as a play.
-func b10AnotherLandPlayedByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B10AnotherLandPlayedByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventZoneMove || !ev.Played || ev.CardID == source.InstanceID {
 		return false
 	}
@@ -116,8 +116,8 @@ func b10AnotherLandPlayedByYou(ev game.Event, source *game.Card, g *game.Game) b
 // another <type> you control enters" — Marwyn's Elf. Any permanent
 // with the subtype, as printed; effective subtypes, so a changeling
 // counts.
-func b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.HasSubtype(subtype)
 }
 
@@ -127,7 +127,7 @@ func b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev game.Event, source
 // them": no counter of any kind with a positive count. A card whose
 // counter map holds a zero entry (a counter that was removed) has no
 // counters, as printed.
-func b10NoCounters() CardPredicate {
+func B10NoCounters() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		for _, n := range c.Counters {
 			if n > 0 {
@@ -143,7 +143,7 @@ func b10NoCounters() CardPredicate {
 // which off the battlefield and for every land in the catalog is the
 // printed type line — a nonbasic land granted a basic land TYPE by
 // Urborg is still nonbasic, because the type is not the supertype.
-func b10NonbasicLand() CardPredicate {
+func B10NonbasicLand() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		if !c.IsLand() {
 			return false
@@ -159,7 +159,7 @@ func b10NonbasicLand() CardPredicate {
 
 // b10CreatureOrPlaneswalker is the object class Soul Shatter and
 // Sheoldred's Edict's third mode speak about.
-func b10CreatureOrPlaneswalker() CardPredicate { return Or(Creature(), Planeswalker()) }
+func B10CreatureOrPlaneswalker() CardPredicate { return Or(Creature(), Planeswalker()) }
 
 // b10GreatestManaValueCreatureOrPlaneswalkerYouControl is Soul
 // Shatter's "a creature or planeswalker with the greatest mana value
@@ -169,7 +169,7 @@ func b10CreatureOrPlaneswalker() CardPredicate { return Or(Creature(), Planeswal
 // player chooses among them ("the greatest" picks out a
 // set, not a single card). Mana value is read off the battlefield, where X is zero (CR
 // 202.3e) and a token with no mana cost is zero.
-func b10GreatestManaValueCreatureOrPlaneswalkerYouControl() CardPredicate {
+func B10GreatestManaValueCreatureOrPlaneswalkerYouControl() CardPredicate {
 	return func(g *game.Game, player uuid.UUID, c game.Card) bool {
 		if c.Controller != player || !(c.IsCreature() || c.IsPlaneswalker()) {
 			return false
@@ -196,7 +196,7 @@ func b10GreatestManaValueCreatureOrPlaneswalkerYouControl() CardPredicate {
 // sacrificing the Stormtamer to counter a spell aimed only at itself
 // fizzles the ability at resolution, exactly as the printed card's
 // ruling has it.
-func b10ItemTargetsYouOrACreatureYouControl(g *game.Game, caster uuid.UUID, item *game.StackItem) bool {
+func B10ItemTargetsYouOrACreatureYouControl(g *game.Game, caster uuid.UUID, item *game.StackItem) bool {
 	for _, t := range item.Targets {
 		switch t.Kind {
 		case game.TargetPlayer:
@@ -219,7 +219,7 @@ func b10ItemTargetsYouOrACreatureYouControl(g *game.Game, caster uuid.UUID, item
 // b10OneOf matches a permanent whose instance ID is in `keep` — the
 // "choose up to two creatures, then destroy the rest" exclusion on
 // Mount Doom.
-func b10OneOf(keep []uuid.UUID) CardPredicate {
+func B10OneOf(keep []uuid.UUID) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		for _, id := range keep {
 			if id == c.InstanceID {
@@ -235,7 +235,7 @@ func b10OneOf(keep []uuid.UUID) CardPredicate {
 // b10LandsControlled counts the lands `controller` controls — Lumra's
 // characteristic-defining power and toughness. Walks the live slice
 // because it runs inside a layer recompute (Adeline's shape).
-func b10LandsControlled(g *game.Game, controller uuid.UUID) int {
+func B10LandsControlled(g *game.Game, controller uuid.UUID) int {
 	if g.Battlefield == nil {
 		return 0
 	}
@@ -254,15 +254,15 @@ func b10LandsControlled(g *game.Game, controller uuid.UUID) int {
 // b10SacrificeAnArtifact is Goblin Engineer's "Sacrifice an
 // artifact:". Built through the same clause the sac-outlet costs use,
 // so the client opens the same picker.
-func b10SacrificeAnArtifact() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact", Artifact())}
+func B10SacrificeAnArtifact() game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("an artifact", Artifact())}
 }
 
 // b10SacrificeALegendaryArtifact is the "and a legendary artifact"
 // half of Mount Doom's last cost; the "Sacrifice Mount Doom" half is
 // SacrificeThis, and Plus merges the two.
-func b10SacrificeALegendaryArtifact() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a legendary artifact", Artifact(), b05Legendary())}
+func B10SacrificeALegendaryArtifact() game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a legendary artifact", Artifact(), B05Legendary())}
 }
 
 // --- effect bodies -----------------------------------------------
@@ -271,11 +271,11 @@ func b10SacrificeALegendaryArtifact() game.AbilityCost {
 // seven cards" — Wheel of Fortune's body, shared with Magus of the
 // Wheel. Every discard happens before any draw, so discard payoffs
 // queue while the effect is still resolving.
-func b10EachPlayerWheels(g *game.Game, item *game.StackItem) error {
+func B10EachPlayerWheels(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	players := tablePlayers(ctx)
+	players := TablePlayers(ctx)
 	for _, id := range players {
-		if _, err := discardWholeHand(g, id); err != nil {
+		if _, err := DiscardWholeHand(g, id); err != nil {
 			return err
 		}
 	}
@@ -294,17 +294,17 @@ func b10EachPlayerWheels(g *game.Game, item *game.StackItem) error {
 // together (#1867), tapped on the entry event: each sees the others
 // enter (CR 603.6a). Also Aftermath Analyst's and Splendid
 // Reclamation's.
-func b10ReturnAllLandCardsFromGraveyardTapped(ctx *Context, player uuid.UUID) error {
+func B10ReturnAllLandCardsFromGraveyardTapped(ctx *Context, player uuid.UUID) error {
 	return ReturnFromGraveyardTogether{
-		Targets: graveyardCardIDs(ctx, player, game.Card.IsLand),
+		Targets: GraveyardCardIDs(ctx, player, game.Card.IsLand),
 		Tapped:  true,
 	}.Apply(ctx)
 }
 
 // b10Fight delegates the simultaneous fight to the engine, retaining the
 // resolving ability's source-object check before naming either fighter.
-func b10Fight(ctx *Context, a, b uuid.UUID) error {
-	if ctx.isNewSourceObjectAsThis(a) || ctx.isNewSourceObjectAsThis(b) {
+func B10Fight(ctx *Context, a, b uuid.UUID) error {
+	if ctx.IsNewSourceObjectAsThis(a) || ctx.IsNewSourceObjectAsThis(b) {
 		return nil
 	}
 	ra, okA := ctx.Game.PermanentRefForEffect(a)
@@ -320,7 +320,7 @@ func b10Fight(ctx *Context, a, b uuid.UUID) error {
 // slot-0 creature fights the slot-1 creature, and only while both are
 // still legal targets (CR 701.14b). An "up to one" slot left empty
 // fights nothing. Ulvenwald Tracker, The Super Hero Civil War.
-func slotZeroFightsSlotOne(g *game.Game, item *game.StackItem) error {
+func SlotZeroFightsSlotOne(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	mine, ok := ctx.ClauseTarget(0)
 	if !ok || mine.Kind != game.TargetCard {
@@ -330,21 +330,21 @@ func slotZeroFightsSlotOne(g *game.Game, item *game.StackItem) error {
 	if !ok || other.Kind != game.TargetCard {
 		return nil
 	}
-	return b10Fight(ctx, mine.ID, other.ID)
+	return B10Fight(ctx, mine.ID, other.ID)
 }
 
 // b10DestroyAllCreaturesExcept is Mount Doom's "choose up to two
 // creatures, then destroy the rest": one simultaneous destruction of
 // every creature not in `keep`.
-func b10DestroyAllCreaturesExcept(ctx *Context, keep []uuid.UUID) error {
-	return DestroyAllMatching{Match: Except(Creature(), b10OneOf(keep))}.Apply(ctx)
+func B10DestroyAllCreaturesExcept(ctx *Context, keep []uuid.UUID) error {
+	return DestroyAllMatching{Match: Except(Creature(), B10OneOf(keep))}.Apply(ctx)
 }
 
 // b10DamageEachLegalTarget is Crackle with Power's body: `amount`
 // damage from the spell to each announced target that is still legal
 // (CR 608.2b — a target that left in response is skipped, the rest
 // are still hit).
-func b10DamageEachLegalTarget(ctx *Context, amount int) error {
+func B10DamageEachLegalTarget(ctx *Context, amount int) error {
 	return ctx.Game.DamageInstanceForEffect(func() error {
 		for _, t := range ctx.LegalTargets() {
 			if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: amount}).Apply(ctx); err != nil {

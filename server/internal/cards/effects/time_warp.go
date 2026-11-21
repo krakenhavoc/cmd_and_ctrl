@@ -25,13 +25,13 @@ func init() {
 		// it at itself (a TargetPurpose entry, not a Purpose amount).
 		Purpose: game.Purpose{Targets: game.ForTargets(
 			game.TargetPurpose{Slot: 0, ExtraTurns: 1})},
-		OnResolve: targetPlayerTakesExtraTurns(1),
+		OnResolve: TargetPlayerTakesExtraTurns(1),
 	})
 }
 
 // targetPlayerTakesExtraTurns is the resolving body of "target player
 // takes N extra turns after this one" (Time Warp, Time Stretch).
-func targetPlayerTakesExtraTurns(n int) func(*game.StackItem, *Context) error {
+func TargetPlayerTakesExtraTurns(n int) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		for _, t := range ctx.LegalTargets() {
 			if t.Kind == game.TargetPlayer {

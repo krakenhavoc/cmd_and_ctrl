@@ -1,0 +1,349 @@
+package testsi
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+)
+
+// inapp_playtest_reports_test.go — the three cards named by the
+// 2026-09-20 playtest reports (#1156, #1157, #1158), each played the
+// way the reporter played it.
+//
+// The mechanics are fixed at their choke points and pinned in the
+// packages that own them (game/replacement_resume_test.go for the
+// CR 614 resume boundary, game/loyalty_test.go for CR 606.3,
+// client/src/lib/loyalty.test.ts for the greyed row). These are the
+// cards as proof: the sequence of a real table, with the printed card.
+
+// --- #1156: "Curiosity should go to the yard" --------------------
+
+// TestIssue1156CuriosityFallsOffACommanderTakingTheCommandZone is the
+// reporter's board: Curiosity on a commander creature, the commander
+// leaves, and its owner takes CR 903.9b's offer.
+//
+// Every other way that host can leave was already covered (#1046's
+// theme deck kills it with the toughness SBA), and the difference is
+// not the exit — it is that this one PAUSES on a prompt. The move
+// returns with nothing moved, the resume lands the commander, and
+// before #1156 nobody ran the state-based actions afterwards, so the
+// Aura sat on the battlefield attached to a card that had left. The
+// client draws an unattached enchantment in the enchantments row,
+// which is exactly what the report says it saw.
+//
+// ADR 0115: a commander headed for the graveyard no longer pauses (it
+// lands there and CR 903.9a asks afterwards), so the paused exit this
+// test is about is now a move to its owner's HAND, which still asks
+// CR 903.9b before anything moves.
+func TestIssue1156CuriosityFallsOffACommanderTakingTheCommandZone(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	cmd := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID:  cmd,
+		Name:        "Malcolm, Alluring Scoundrel",
+		TypeLine:    "Legendary Creature — Siren Pirate",
+		Power:       2,
+		Toughness:   1,
+		Owner:       me.ID,
+		Controller:  me.ID,
+		IsCommander: true,
+	})
+	aura := uuid.New()
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: aura,
+		Name:       "Curiosity",
+		TypeLine:   "Enchantment — Aura",
+		OracleID:   effectstest.CuriosityOracle,
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventZoneMove, CardID: aura, OldZone: game.ZoneStack, NewZone: game.ZoneBattlefield})
+		if err := g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: cmd}); err != nil {
+			t.Fatalf("AttachForEffect: %v", err)
+		}
+	})
+
+	if err := g.MoveCardByID(
+		game.ZoneRef{Kind: game.ZoneBattlefield},
+		game.ZoneRef{Kind: game.ZoneHand, Owner: me.ID}, cmd); err != nil {
+		t.Fatalf("MoveCardByID: %v", err)
+	}
+	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != game.PendingChoiceOptionalReplacement {
+		t.Fatalf("expected the CR 903.9b prompt, got %d pending choices", len(g.PendingChoices))
+	}
+	p := g.PendingChoices[0]
+	if err := g.ResolveOptionalReplacement(p.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveOptionalReplacement: %v", err)
+	}
+
+	if !me.Command.Contains(cmd) {
+		t.Fatal("the commander did not reach the command zone")
+	}
+	if g.Battlefield.Contains(aura) {
+		t.Error("CR 704.5m: Curiosity stayed on the battlefield with nothing to enchant")
+	}
+	if !me.Graveyard.Contains(aura) {
+		t.Error("CR 704.5m: Curiosity is not in its owner's graveyard")
+	}
+}
+
+// --- #1157: "Aetherspark abilities are not functioning" ----------
+
+// TestIssue1157AethersparkPlusOneIsLiveWithNoCreatureToAttachTo pins
+// the three server-side facts the client's greyed row contradicted.
+//
+// The Aetherspark's +1 is "Attach The Aetherspark to up to one target
+// creature you control. Put a +1/+1 counter on that creature." — min
+// 0, so declining is a complete activation that still ticks the
+// loyalty. On a board with nothing to attach to, the engine accepts
+// the activation, internal/legal offers it to a bot, and the view
+// publishes the clause WITH its min. The client's ability-row
+// predicate read only "is the candidate list empty" and greyed it,
+// which — with the −5 and −10 correctly greyed at four loyalty —
+// is every row on the card.
+func TestIssue1157AethersparkPlusOneIsLiveWithNoCreatureToAttachTo(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: id,
+		Name:       "The Aetherspark",
+		// What the deck importer stamps from Scryfall, verbatim.
+		TypeLine:        "Legendary Artifact Planeswalker — Equipment",
+		ManaCost:        "{4}",
+		OracleID:        effectstest.TheAethersparkOracle,
+		StartingLoyalty: 4,
+		Owner:           me.ID,
+		Controller:      me.ID,
+	})
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.LoyaltyCount(g, id); got != 4 {
+		t.Fatalf("printed loyalty on entry: got %d, want 4", got)
+	}
+
+	// 1. The view publishes the clause, empty, with min 0 — which is
+	//    everything the client needs to know it is still activatable.
+	var plusOne *protocol.ActivatedAbilityView
+	v := protocol.ViewOfGameFor(g, me.ID.String())
+	for _, cv := range v.Battlefield.Cards {
+		if cv.InstanceID != id.String() {
+			continue
+		}
+		for i := range cv.ActivatedAbilities {
+			if cv.ActivatedAbilities[i].Index == 0 {
+				plusOne = &cv.ActivatedAbilities[i]
+			}
+		}
+	}
+	if plusOne == nil {
+		t.Fatal("the view published no +1 row")
+	}
+	if plusOne.LegalTargets == nil {
+		t.Fatal("the +1 row carries no legal_targets clause")
+	}
+	if n := len(plusOne.LegalTargets.Cards) + len(plusOne.LegalTargets.Players); n != 0 {
+		t.Fatalf("legal targets on an empty board: got %d, want 0", n)
+	}
+	if plusOne.LegalTargets.Min != 0 {
+		t.Errorf(`"up to one target" published min %d, want 0`, plusOne.LegalTargets.Min)
+	}
+
+	// 2. internal/legal offers it — a bot may take this activation.
+	offered := false
+	for _, m := range legal.EnumerateFor(g, me.ID) {
+		if m.Type == "activate_ability" && m.Source == id {
+			offered = true
+		}
+	}
+	if !offered {
+		t.Error("the enumerator withheld the +1 on a board with no creature")
+	}
+
+	// 3. And the engine accepts it, with no target and no creature.
+	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("the +1 with no target: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := effectstest.LoyaltyCount(g, id); got != 5 {
+		t.Errorf("loyalty after a targetless +1: got %d, want 5", got)
+	}
+}
+
+// --- #1158: "Improv capstone … off of malcolm" -------------------
+
+// seedCapstoneTargets is the top of the library the Capstone's exile
+// run walks.
+func seedCapstoneTargets(me *game.Player) []uuid.UUID {
+	return effectstest.SeedSearchLibrary(me,
+		improvisationCapstoneCard("Bolt", "Instant", "{R}"),
+		improvisationCapstoneCard("Wurm", "Creature — Wurm", "{5}{G}"),
+		improvisationCapstoneCard("Deep", "Instant", "{R}"),
+	)
+}
+
+// pitchCapstoneToMalcolm plays the reported line: Malcolm connects at
+// four chorus counters, the Capstone is the card pitched to the loot,
+// and the offer is taken. Returns the Capstone's instance ID.
+func pitchCapstoneToMalcolm(t *testing.T, g *game.Game, me, opp *game.Player) uuid.UUID {
+	t.Helper()
+	mal := effectstest.PushMalcolm(t, g, me.ID, 3)
+	capstone := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: capstone, Name: "Improvisation Capstone",
+		TypeLine: "Sorcery — Lesson", OracleID: improvisationCapstoneOracle,
+		ManaCost: "{5}{R}{R}", Owner: me.ID, Controller: me.ID,
+	})
+	effectstest.DealCombatDamageToPlayer(g, mal, opp.ID, 2)
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerDiscard(t, g, me.ID, capstone)
+	effectstest.PassPriorityAroundTable(t, g)
+	if !me.Graveyard.Contains(capstone) {
+		t.Fatal("the Capstone is not in the graveyard")
+	}
+	offer := effectstest.LatestChoiceOfKind(g, game.PendingChoiceMayCast)
+	if offer == nil {
+		t.Fatalf("no free cast offered at four chorus counters: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	return capstone
+}
+
+// TestIssue1158CapstoneResolvesOffMalcolmsFreeCast is the reported
+// line end to end, and it PASSES on develop — the report's "having
+// issues resolving off of malcolm" half does not reproduce. Left in
+// place as the pin: the Capstone cast out of the graveyard for {0}
+// exiles off the top until the running total reaches four and grants
+// one cast per card that really arrived.
+func TestIssue1158CapstoneResolvesOffMalcolmsFreeCast(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.AdvanceToMain(t, g)
+	ids := seedCapstoneTargets(me)
+	capstone := pitchCapstoneToMalcolm(t, g, me, opp)
+
+	if err := g.CastSpell(me.ID, capstone, game.CastSpellParams{
+		Strict: true, FromZone: "graveyard",
+	}); err != nil {
+		t.Fatalf("the granted free cast: %v", err)
+	}
+	if len(me.ManaPool) != 0 {
+		t.Errorf("mana pool after a free cast: %d tokens, want 0", len(me.ManaPool))
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+
+	g.ReadSnapshot(func() {
+		for _, ev := range g.Events {
+			if ev.Kind == game.EventEffectError {
+				t.Errorf("EventEffectError while the Capstone resolved: %s", ev.ErrorMsg)
+			}
+		}
+	})
+	// Malcolm's loot drew ids[0], so the Wurm is on top when the
+	// Capstone resolves: mana value 6 clears the printed 4 on the
+	// first card and the run stops there.
+	if !g.Exile.Contains(ids[1]) {
+		t.Error("the Capstone exiled nothing off the top of the library")
+	}
+	if g.Exile.Contains(ids[2]) {
+		t.Error("the run did not stop on the card that carried the total over four")
+	}
+	perm := effectstest.ExiledPermission(g, ids[1])
+	if perm == nil || perm.Cost != "{0}" || !perm.CastOnly {
+		t.Errorf("the exiled card carries no free-cast grant: %+v", perm)
+	}
+	if !g.Exile.Contains(capstone) {
+		t.Error("the Capstone was not exiled by its own paradigm (CR 702.192a)")
+	}
+	// Malcolm's grant was over the graveyard card, and the Capstone is
+	// in exile now: it must not pay for it twice.
+	if err := g.CastSpell(me.ID, capstone, game.CastSpellParams{
+		Strict: true, FromZone: "graveyard",
+	}); err == nil {
+		t.Error("CR 400.7: Malcolm's grant paid for the Capstone a second time")
+	}
+}
+
+// The same line where the table actually plays it. Malcolm's trigger
+// resolves in the combat damage step and its grant is flash-timed
+// (CR 608.2g, the card's declared simplification), so the Capstone —
+// a sorcery — is cast right there rather than in a main phase.
+func TestIssue1158CapstoneResolvesOffMalcolmAtFlashSpeed(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	// The table is in a combat damage step, which a combat nobody
+	// attacks in does not have (CR 508.8): send a creature in.
+	runner := effectstest.PushVanillaCreature(g, me.ID, "Runner", 1, 1)
+	effectstest.AdvanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(runner, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	for g.Turn.Step != game.StepCombatDamage {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	seedCapstoneTargets(me)
+	capstone := pitchCapstoneToMalcolm(t, g, me, opp)
+
+	if err := g.CastSpell(me.ID, capstone, game.CastSpellParams{
+		Strict: true, FromZone: "graveyard",
+	}); err != nil {
+		t.Errorf("Malcolm's flash grant did not pay for the sorcery: %v", err)
+	}
+}
+
+// TestIssue1158CapstoneStopsOnAnExiledCommander was the pinned caveat
+// of #1158 with its verdict flipped by #1159: a commander whose owner
+// took the command zone never reached exile, so it was not one of the
+// cards "you exile" and the run carried on past it.
+//
+// ADR 0115 removed that board. A commander is exiled like any other
+// card, so it IS one of the cards exiled, its mana value 4 meets the
+// printed total on its own, and the run stops there with one grant.
+// CR 903.9a then asks its owner about the command zone; declined, the
+// commander stays in exile, castable through the grant.
+func TestIssue1158CapstoneStopsOnAnExiledCommander(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	cmd := improvisationCapstoneCard("Pirate Commander", "Legendary Creature — Pirate", "{2}{U}{R}")
+	cmd.IsCommander = true
+	cmd.Owner = me.ID
+	ids := effectstest.SeedSearchLibrary(me, cmd,
+		improvisationCapstoneCard("Wurm", "Creature — Wurm", "{5}{G}"))
+
+	effectstest.CastCatalogSpell(t, g, "Improvisation Capstone", "Sorcery — Lesson", improvisationCapstoneOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(ids[0]) {
+		t.Fatalf("the commander is in %s, want exile", effectstest.B12ZoneOf(g, ids[0]))
+	}
+	if g.Exile.Contains(ids[1]) {
+		t.Error("the run carried on past a commander whose mana value already reached 4")
+	}
+	g.ReadSnapshot(func() {
+		if len(me.CastPermissions) != 1 {
+			t.Errorf("grants held: %d, want 1 — the commander in exile", len(me.CastPermissions))
+		}
+	})
+	effectstest.AnswerCommanderReturn(t, g, me.ID, false)
+	if !g.Exile.Contains(ids[0]) {
+		t.Error("a declined commander stays in exile")
+	}
+}

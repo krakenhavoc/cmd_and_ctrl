@@ -13,7 +13,7 @@ import (
 
 // visionsFlashbackAlternative is "Flashback {8}{C}{C}" of a Visions sorcery
 // (CR 702.34a). The "costs {X} less" half is visionsFlashbackDiscount.
-func visionsFlashbackAlternative(cost string) game.AlternativeCost { return Flashback(cost) }
+func VisionsFlashbackAlternative(cost string) game.AlternativeCost { return Flashback(cost) }
 
 // visionsFlashbackDiscount is "This spell costs {X} less to cast this way,
 // where X is the greatest mana value of a commander you own on the
@@ -22,7 +22,7 @@ func visionsFlashbackAlternative(cost string) game.AlternativeCost { return Flas
 // (CostQuery.AltFlashback): a graveyard cast under another permission pays
 // the printed cost, and so does a cast from hand. The reduction spends
 // against generic mana only (CR 118.7).
-func visionsFlashbackDiscount() game.CostModifier {
+func VisionsFlashbackDiscount() game.CostModifier {
 	return CostsLessEach(func(q game.CostQuery) int {
 		if q.Game == nil {
 			return 0
@@ -40,7 +40,7 @@ func s82MidB11HasPrintedFlashback(c game.Card) bool {
 }
 
 // s82MidB11FlashbackYouOwn is the CardPredicate for "card with flashback you own".
-func s82MidB11FlashbackYouOwn() CardPredicate {
+func S82MidB11FlashbackYouOwn() CardPredicate {
 	return func(_ *game.Game, caster uuid.UUID, c game.Card) bool {
 		return c.Owner == caster && s82MidB11HasPrintedFlashback(c)
 	}
@@ -49,7 +49,7 @@ func s82MidB11FlashbackYouOwn() CardPredicate {
 // s82MidB11TypeLineWithCreatureType is a type line with its creature types
 // replaced by one — "except it's a 1/1 green Frog": supertypes, card types
 // and non-creature subtypes (a land type) stay (CR 707.9b).
-func s82MidB11TypeLineWithCreatureType(printed, creatureType string) string {
+func S82MidB11TypeLineWithCreatureType(printed, creatureType string) string {
 	super, types, subs := game.ParseTypeLine(printed)
 	head := make([]string, 0, len(super)+len(types))
 	head = append(head, super...)

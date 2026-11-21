@@ -35,7 +35,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // point.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfArcaviosOracleID,
+		OracleID:     InvasionOfArcaviosOracleID,
 		Name:         "Invasion of Arcavios",
 		Purpose:      game.Purpose{Tutors: 1},
 		Completeness: CompletenessFull,
@@ -49,9 +49,9 @@ func init() {
 					return PickOption{
 						Question: "Invasion of Arcavios — search your library, graveyard, and/or outside the game for an instant or sorcery card you own",
 						Options: []game.ChoiceOption{
-							arcaviosBoth:        {Label: "Search your library and/or graveyard, and outside the game"},
-							arcaviosLibraryOnly: {Label: "Search only your library and/or graveyard"},
-							arcaviosOutsideOnly: {Label: "Search only outside the game"},
+							ArcaviosBoth:        {Label: "Search your library and/or graveyard, and outside the game"},
+							ArcaviosLibraryOnly: {Label: "Search only your library and/or graveyard"},
+							ArcaviosOutsideOnly: {Label: "Search only outside the game"},
 						},
 						ThenKey: invasionOfArcaviosZones,
 					}.Apply(NewContext(g, item))
@@ -63,14 +63,14 @@ func init() {
 
 // invasionOfArcaviosOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfArcaviosOracleID = "9794e31f-e73d-4aa0-a421-dc496080c987"
+const InvasionOfArcaviosOracleID = "9794e31f-e73d-4aa0-a421-dc496080c987"
 
 // The zone question's options, in the order offered. The first is the
 // always-legal one the enumerator relies on.
 const (
-	arcaviosBoth = iota
-	arcaviosLibraryOnly
-	arcaviosOutsideOnly
+	ArcaviosBoth = iota
+	ArcaviosLibraryOnly
+	ArcaviosOutsideOnly
 )
 
 // invasionOfArcaviosZones is the answer to "where do you search?". An
@@ -78,9 +78,9 @@ const (
 var invasionOfArcaviosZones = OptionPickThen("option-pick/invasion-of-arcavios-zones",
 	func(ctx *Context, r game.OptionPicked) error {
 		switch r.Index {
-		case arcaviosBoth, arcaviosLibraryOnly:
+		case ArcaviosBoth, ArcaviosLibraryOnly:
 			alsoOutside := 0
-			if r.Index == arcaviosBoth {
+			if r.Index == ArcaviosBoth {
 				alsoOutside = 1
 			}
 			return SearchLibrary{
@@ -94,7 +94,7 @@ var invasionOfArcaviosZones = OptionPickThen("option-pick/invasion-of-arcavios-z
 				Reason:        "Invasion of Arcavios — an instant or sorcery card you own",
 				ThenTail:      ctx.TailN(invasionOfArcaviosLibraryFound, alsoOutside),
 			}.Apply(ctx)
-		case arcaviosOutsideOnly:
+		case ArcaviosOutsideOnly:
 			return invasionOfArcaviosAskOutside(ctx)
 		}
 		return nil
@@ -123,5 +123,5 @@ func invasionOfArcaviosAskOutside(ctx *Context) error {
 
 // invasionOfArcaviosOutside is the outside half's keyed pick. An on-disk
 // key.
-var invasionOfArcaviosOutside = registerOutsideTake("choose-cards/invasion-of-arcavios-outside",
+var invasionOfArcaviosOutside = RegisterOutsideTake("choose-cards/invasion-of-arcavios-outside",
 	func(c game.Card) bool { return c.IsInstant() || c.IsSorcery() }, true)

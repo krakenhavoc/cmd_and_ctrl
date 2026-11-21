@@ -31,20 +31,20 @@ func init() {
 		Name:         "Costume Closet",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
-			b10EntersWithCounters(game.CounterPlusOne, 2, "Costume Closet: enters with two +1/+1 counters"),
+			B10EntersWithCounters(game.CounterPlusOne, 2, "Costume Closet: enters with two +1/+1 counters"),
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{T}: Move a +1/+1 counter from this artifact onto target creature you control. Activate only as a sorcery.",
 			Cost:         TapCost(),
 			SorcerySpeed: true,
 			Targets:      TargetCreature("target creature you control", YouControl()),
-			Effect:       simicFluxmageMove,
+			Effect:       SimicFluxmageMove,
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && leftAsType(ev, c, "creature") && leftUnderControlOf(ev, c) == source.Controller &&
-					msc17WasModified(g, ev.CardID)
+				return ok && LeftAsType(ev, c, "creature") && LeftUnderControlOf(ev, c) == source.Controller &&
+					Msc17WasModified(g, ev.CardID)
 			}, "Costume Closet — put a +1/+1 counter on this artifact", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
@@ -53,7 +53,7 @@ func init() {
 // msc17WasModified is "modified" for a permanent that has just left the
 // battlefield (CR 700.9, 603.10a): it had a counter, or an Equipment, or
 // an Aura its controller controlled, attached to it as it last existed.
-func msc17WasModified(g *game.Game, cardID uuid.UUID) bool {
+func Msc17WasModified(g *game.Game, cardID uuid.UUID) bool {
 	ref, ok := g.PermanentRefForEffect(cardID)
 	if !ok {
 		return false

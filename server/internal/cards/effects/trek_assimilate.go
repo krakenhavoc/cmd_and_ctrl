@@ -22,7 +22,7 @@ import (
 // creature enters with it. `tail` (zero for none) is told the permanent
 // that entered as TailOutcome.IDs, empty when nothing did.
 func trekAssimilateFrom(ctx *Context, from game.ZoneKind, card uuid.UUID, label string, tail game.TailRef) error {
-	return putCardsFromZoneTogetherWith(ctx, from, []uuid.UUID{card},
+	return PutCardsFromZoneTogetherWith(ctx, from, []uuid.UUID{card},
 		game.ZoneEntryOptions{
 			Controller:         ctx.Controller(),
 			EntersWithCounters: map[string]int{game.CounterPlusOne: 1},

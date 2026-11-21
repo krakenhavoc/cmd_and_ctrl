@@ -15,8 +15,8 @@ import (
 // block." (ttrk 18). A catalog template and not a tokens_table row
 // because the can't-block clause is a static the token always prints,
 // and the plain "1/1 black and green Worm" row is a different token.
-func printedTrekB23CantBlockWormToken() tokenTemplate {
-	return tokenTemplate{
+func printedTrekB23CantBlockWormToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "worm-cant-block",
 		Card: game.Card{
 			Name:      "Worm",
@@ -31,8 +31,8 @@ func printedTrekB23CantBlockWormToken() tokenTemplate {
 }
 
 // trekB23CantBlockWormToken is the Worm's card value for CreateToken.
-func trekB23CantBlockWormToken() game.Card {
-	return tokenFromCatalog(printedTrekB23CantBlockWormToken)
+func TrekB23CantBlockWormToken() game.Card {
+	return TokenFromCatalog(printedTrekB23CantBlockWormToken)
 }
 
 // printedTrekB23CantPhaseInHumanToken is The City on the Edge of
@@ -40,8 +40,8 @@ func trekB23CantBlockWormToken() game.Card {
 // can't phase in." (ttrk 1). The line is the PermanentsCantPhaseIn world
 // rule carried on the token itself; game.phaseInLocked refuses every
 // phase-in while the token is on the battlefield.
-func printedTrekB23CantPhaseInHumanToken() tokenTemplate {
-	return tokenTemplate{
+func printedTrekB23CantPhaseInHumanToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "human-permanents-cant-phase-in",
 		Card: game.Card{
 			Name:           "Human",
@@ -58,7 +58,7 @@ func printedTrekB23CantPhaseInHumanToken() tokenTemplate {
 
 // trekB23CantPhaseInHumanToken is the Human's card value for CreateToken.
 func trekB23CantPhaseInHumanToken() game.Card {
-	return tokenFromCatalog(printedTrekB23CantPhaseInHumanToken)
+	return TokenFromCatalog(printedTrekB23CantPhaseInHumanToken)
 }
 
 // --- All Good Things... -------------------------------------------------------
@@ -69,7 +69,7 @@ func trekB23CantPhaseInHumanToken() game.Card {
 // now. The exile is linked to the Saga object (CR 607.2a, Card.ExiledWith)
 // so chapter IV can read "cards exiled with this Saga". An empty hand
 // exiles nothing.
-func trekB23DrawTwoThenExileFromHand(g *game.Game, item *game.StackItem) error {
+func TrekB23DrawTwoThenExileFromHand(g *game.Game, item *game.StackItem) error {
 	if err := (DrawCards{N: 2}).Apply(NewContext(g, item)); err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ var trekB23AllGoodThingsExiled = game.RegisterChooseCardsThen("choose-cards/all-
 // new object, CR 400.7). They share a card type when one card type is
 // common to every one of them; with no card exiled there is nothing to
 // share and no life is gained.
-func trekB23AllGoodThingsFinale(g *game.Game, item *game.StackItem) error {
+func TrekB23AllGoodThingsFinale(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
 	if !ok {
@@ -132,7 +132,7 @@ func trekB23ShareACardType(cards []*game.Card) bool {
 	if len(cards) == 0 {
 		return false
 	}
-	for _, t := range semblanceCardTypes {
+	for _, t := range SemblanceCardTypes {
 		all := true
 		for _, c := range cards {
 			if !c.HasCardType(t) {
@@ -154,7 +154,7 @@ func trekB23ShareACardType(cards []*game.Card) bool {
 // Every artifact and creature on the battlefield phases out in one
 // simultaneous event (CR 702.26a; attachments go with their hosts,
 // CR 702.26g), then the token is created, so it stays in.
-func trekB23CityChapterOne(g *game.Game, item *game.StackItem) error {
+func TrekB23CityChapterOne(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -173,8 +173,8 @@ func trekB23CityChapterOne(g *game.Game, item *game.StackItem) error {
 // eachPlayerLosesTwoLife is "each player loses 2 life": every live
 // player, the controller included, in seat order. Life loss, not damage.
 // Crushing Disappointment and The City on the Edge of Forever's chapter II.
-func eachPlayerLosesTwoLife(ctx *Context) error {
-	for _, id := range tablePlayers(ctx) {
+func EachPlayerLosesTwoLife(ctx *Context) error {
+	for _, id := range TablePlayers(ctx) {
 		if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), id, -2); err != nil {
 			return err
 		}
@@ -185,8 +185,8 @@ func eachPlayerLosesTwoLife(ctx *Context) error {
 // trekB23CityChapterThree is "Sacrifice a creature token. If you do, you
 // gain 5 life." The controller picks one creature token they control as
 // the chapter resolves; with none there is no sacrifice and no life.
-func trekB23CityChapterThree(g *game.Game, item *game.StackItem) error {
-	return mustSacrificeOne(g, item, "The City on the Edge of Forever — sacrifice a creature token",
+func TrekB23CityChapterThree(g *game.Game, item *game.StackItem) error {
+	return MustSacrificeOne(g, item, "The City on the Edge of Forever — sacrifice a creature token",
 		And(Creature(), IsTokenPredicate()), trekB23CityGainFive)
 }
 
@@ -203,7 +203,7 @@ var trekB23CityGainFive = RegisterSacrificedOne("the-city-on-the-edge-of-forever
 // controls. Put two stun counters on it." as a modal bullet's body: the
 // bullet's target, if it is still legal, is tapped and gets two stun
 // counters (CR 122.1d).
-func trekB23TapAndTwoStunTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
+func TrekB23TapAndTwoStunTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetCard {
 		return nil

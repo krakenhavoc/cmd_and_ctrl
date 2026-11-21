@@ -33,11 +33,11 @@ func init() {
 
 // IcingdeathFrostTongueToken is the legendary white Equipment token as printed.
 func IcingdeathFrostTongueToken() game.Card {
-	return tokenFromCatalog(printedIcingdeathFrostTongueToken)
+	return TokenFromCatalog(printedIcingdeathFrostTongueToken)
 }
 
-func printedIcingdeathFrostTongueToken() tokenTemplate {
-	return tokenTemplate{
+func printedIcingdeathFrostTongueToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "icingdeath-frost-tongue",
 		Card: game.Card{
 			Name:     "Icingdeath, Frost Tongue",
@@ -49,11 +49,11 @@ func printedIcingdeathFrostTongueToken() tokenTemplate {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventAttack},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attachedCreatureAttacked(ev, source)
+				return AttachedCreatureAttacked(ev, source)
 			},
-			TargetsFrom: mshB2TargetCreatureTheAttackerDefends,
+			TargetsFrom: MshB2TargetCreatureTheAttackerDefends,
 			Key:         "Icingdeath, Frost Tongue — tap target creature defending player controls",
-			Effect:      b36TapChosenCreature,
+			Effect:      B36TapChosenCreature,
 		}},
 		Activated: activatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
 	}

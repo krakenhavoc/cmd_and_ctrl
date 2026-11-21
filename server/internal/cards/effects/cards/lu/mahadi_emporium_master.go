@@ -1,0 +1,42 @@
+package cardslu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Mahadi, Emporium Master — Legendary Creature — Devil {1}{B}{R}, 3/3
+// (EDHREC rank 1262):
+//
+//	"At the beginning of your end step, create a Treasure token for
+//	 each creature that died this turn. (It's an artifact with "{T},
+//	 Sacrifice this token: Add one mana of any color.")"
+//
+// The aristocrats deck's end-of-turn payout. "Each creature that died
+// this turn" counts every player's creatures, tokens included, and is
+// evaluated when the trigger RESOLVES, so a creature that dies in
+// response to it is paid for. b11CreaturesDiedThisTurn is the
+// per-turn tally's table-wide death count, the way Bloodchief
+// Ascension reads the life-lost cell.
+//
+// The tally is bumped as each death happens, off the permanent's
+// last-known types (CR 603.10a), so a crewed Vehicle or an animated
+// land that died is counted and a card that has since left the
+// graveyard still is. The caveat this card carried for that ("only a
+// creature because of another effect isn't counted") was stale; #1675
+// pinned the behaviour (TestMahadiCountsACrewedVehicleAndAnAnimatedLand)
+// and cleared it.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "1b3e841e-0f8f-467d-9983-f9b8d081a67f",
+		Name:         "Mahadi, Emporium Master",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.AtYourEndStep("Mahadi, Emporium Master — a Treasure for each creature that died this turn", func(g *game.Game, item *game.StackItem) error {
+				n := effects.B11CreaturesDiedThisTurn(g)
+				return effects.CreateToken{Controller: item.Controller, Template: effects.TreasureToken(), N: n}.Apply(effects.NewContext(g, item))
+			}),
+		},
+	})
+}

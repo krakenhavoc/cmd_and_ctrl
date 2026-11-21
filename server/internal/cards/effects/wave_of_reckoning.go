@@ -20,14 +20,14 @@ func init() {
 		OracleID:     "24f7143c-d43a-4120-baa0-0235b15d8186",
 		Name:         "Wave of Reckoning",
 		Completeness: CompletenessFull,
-		OnResolve:    eachCreatureDealsDamageToItselfEqualToItsPower,
+		OnResolve:    EachCreatureDealsDamageToItselfEqualToItsPower,
 	})
 }
 
 // eachCreatureDealsDamageToItselfEqualToItsPower is "Each creature deals
 // damage to itself equal to its power." as a spell's whole effect: Wave of
 // Reckoning and Solar Blaze.
-func eachCreatureDealsDamageToItselfEqualToItsPower(_ *game.StackItem, ctx *Context) error {
+func EachCreatureDealsDamageToItselfEqualToItsPower(_ *game.StackItem, ctx *Context) error {
 	type hit struct {
 		id    game.Card
 		power int

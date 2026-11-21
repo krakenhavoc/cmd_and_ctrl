@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfRavnicaOracleID,
+		OracleID:     InvasionOfRavnicaOracleID,
 		Name:         "Invasion of Ravnica",
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -29,7 +29,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Invasion of Ravnica — exile target nonland permanent an opponent controls that isn't exactly two colors",
-				socB37ExileTheLegalTarget),
+				SocB37ExileTheLegalTarget),
 				TargetPermanent("target nonland permanent an opponent controls that isn't exactly two colors",
 					Nonland(), OpponentControls(), Not(ExactlyTwoColors()))),
 			DefeatedTrigger("Invasion of Ravnica — defeated: exile it, then cast Guildpact Paragon", SiegeDefeated()),
@@ -39,4 +39,4 @@ func init() {
 
 // invasionOfRavnicaOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfRavnicaOracleID = "78da7a38-0f08-4371-bda3-38f079f7724d"
+const InvasionOfRavnicaOracleID = "78da7a38-0f08-4371-bda3-38f079f7724d"

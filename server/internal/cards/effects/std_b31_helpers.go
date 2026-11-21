@@ -20,8 +20,8 @@ func (c CondSpellsCast) Holds(ctx *Context) bool {
 	return ctx.Game.CastTallyFor(ctx.Controller()).Total >= max(c.AtLeast, 1)
 }
 
-func (c CondSpellsCast) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondSpellsCast, max(c.AtLeast, 1)), true
+func (c CondSpellsCast) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondSpellsCast, max(c.AtLeast, 1)), true
 }
 
 // YouHaveCastSpellsThisTurn is the trigger-time half of CondSpellsCast
@@ -36,7 +36,7 @@ func YouHaveCastSpellsThisTurn(n int) When {
 // Untap that creature. It gains haste until end of turn" (Take for a Ride):
 // the control change, the untap and the haste are one effect, in printed
 // order, each skipped quietly if the creature has gone (CR 608.2b).
-func stdB31Threaten(ctx *Context, target game.TargetRef, label string) error {
+func StdB31Threaten(ctx *Context, target game.TargetRef, label string) error {
 	if target.Kind != game.TargetCard {
 		return nil
 	}
@@ -51,7 +51,7 @@ func stdB31Threaten(ctx *Context, target game.TargetRef, label string) error {
 
 // stdB31CoinCounter is Wishing Well's coin counter. Counter kinds are free-form
 // strings (game/counter_types.go); this one has no meaning beyond its name.
-const stdB31CoinCounter = "coin"
+const StdB31CoinCounter = "coin"
 
 // stdB31WishingWellBody is Wishing Well's reflexive trigger: "you may cast
 // target instant or sorcery card with mana value equal to the number of coin
@@ -60,8 +60,8 @@ const stdB31CoinCounter = "coin"
 // fixed when the trigger is made and rides Params.Amount (Teferi Akosa's
 // ceiling is carried the same way), so the target clause is the same at announce,
 // at resolution and after a restore. An on-disk key.
-var stdB31WishingWellBody = game.ReflexiveBody("wishing-well/free-cast", simpleBody(freeCastTargetFromYourGraveyardExilingIt("Wishing Well")),
+var StdB31WishingWellBody = game.ReflexiveBody("wishing-well/free-cast", SimpleBody(FreeCastTargetFromYourGraveyardExilingIt("Wishing Well")),
 	func(_ uuid.UUID, p game.EffectParams) *game.TargetSpec {
 		return TargetCardInGraveyard("target instant or sorcery card with mana value equal to the number of coin counters from your graveyard",
-			YouOwn(), Or(Instant(), Sorcery()), b03ManaValueIs(p.Amount))
+			YouOwn(), Or(Instant(), Sorcery()), B03ManaValueIs(p.Amount))
 	})

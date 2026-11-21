@@ -66,7 +66,7 @@ func init() {
 		Name:         "Chrome Mox",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters(chromeMoxImprintLabel, chromeMoxImprint),
+			WhenThisEnters(chromeMoxImprintLabel, ChromeMoxImprint),
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
@@ -83,7 +83,7 @@ const chromeMoxImprintLabel = "Chrome Mox — exile a nonartifact, nonland card 
 
 // chromeMoxImprint queues the pick. It QUEUES and does not finish:
 // the exile happens when the controller answers.
-func chromeMoxImprint(g *game.Game, item *game.StackItem) error {
+func ChromeMoxImprint(g *game.Game, item *game.StackItem) error {
 	controller, source := item.Controller, item.SourceCardID
 	candidates := chromeMoxImprintCandidates(g, controller)
 	if len(candidates) == 0 {
@@ -137,7 +137,7 @@ func chromeMoxImprintCandidates(g *game.Game, player uuid.UUID) []uuid.UUID {
 // Read-only, under g.mu, as ManaAbility.ProducedFunc requires.
 func chromeMoxImprintedColors(g *game.Game, _, source uuid.UUID) string {
 	seen := map[string]bool{}
-	for _, id := range b27ExiledWith(g, source, chromeMoxImprintLabel) {
+	for _, id := range B27ExiledWith(g, source, chromeMoxImprintLabel) {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
@@ -146,5 +146,5 @@ func chromeMoxImprintedColors(g *game.Game, _, source uuid.UUID) string {
 			seen[strings.ToUpper(col)] = true
 		}
 	}
-	return pipeString(colorsOnly(orderedManaSymbols(seen)))
+	return PipeString(ColorsOnly(OrderedManaSymbols(seen)))
 }

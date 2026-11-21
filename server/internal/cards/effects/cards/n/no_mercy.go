@@ -1,0 +1,35 @@
+package cardsn
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// No Mercy — Enchantment {2}{B}{B} (EDHREC rank 1469):
+//
+//	"Whenever a creature deals damage to you, destroy it."
+//
+// The rattlesnake. Any creature's damage to the controller — combat
+// or not, an opponent's creature or the controller's own, as printed
+// — triggers it; the creature rides the trigger as a copied ID and
+// is destroyed at resolution if it is still on the battlefield. Not
+// targeted, so hexproof does not save it; indestructible does, as
+// printed. One trigger per damaging creature.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "b9538d53-480b-481a-abbf-83ab17e1a45b",
+		Name:         "No Mercy",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches: []game.EventKind{game.EventDealDamage},
+			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.B13CreatureDealtDamageToYou(ev, source, g)
+			},
+			Key:    "No Mercy — destroy the creature that damaged you",
+			Effect: effects.DestroyTheCreatureThatDealtTheDamage,
+		}},
+	})
+}

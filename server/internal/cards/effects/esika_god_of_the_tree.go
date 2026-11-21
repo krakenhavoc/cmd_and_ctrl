@@ -33,15 +33,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Esika is a recipient; "legendary" is read off the effective supertypes.
 func init() {
 	Register(Spec{
-		OracleID:        esikaGodOfTheTreeOracleID,
+		OracleID:        EsikaGodOfTheTreeOracleID,
 		Name:            "Esika, God of the Tree",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Grants:          []AbilityGrant{AnyColorManaGrant(esikaGrant)},
 		Static: []game.StaticAbility{
-			Labelled(KeywordGrant(otherLegendaryCreaturesYouControl, "vigilance"),
+			Labelled(KeywordGrant(OtherLegendaryCreaturesYouControl, "vigilance"),
 				"Other legendary creatures you control have vigilance."),
-			Labelled(GrantAbilities(otherLegendaryCreaturesYouControl, esikaGrant),
+			Labelled(GrantAbilities(OtherLegendaryCreaturesYouControl, esikaGrant),
 				"Other legendary creatures you control have \"{T}: Add one mana of any color.\""),
 		},
 		ManaAbilities: []ManaAbility{{
@@ -51,7 +51,7 @@ func init() {
 		}},
 	})
 	Register(Spec{
-		OracleID:     esikaGodOfTheTreeOracleID + "#1",
+		OracleID:     EsikaGodOfTheTreeOracleID + "#1",
 		Name:         "The Prismatic Bridge",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -64,7 +64,7 @@ func init() {
 	})
 }
 
-const esikaGodOfTheTreeOracleID = "92023a5d-a143-4950-a71b-d736e6b8e959"
+const EsikaGodOfTheTreeOracleID = "92023a5d-a143-4950-a71b-d736e6b8e959"
 
 // prismaticBridgeHit is "a creature or planeswalker card".
 func prismaticBridgeHit(c game.Card) bool { return c.IsCreature() || c.IsPlaneswalker() }
@@ -73,7 +73,7 @@ func prismaticBridgeHit(c game.Card) bool { return c.IsCreature() || c.IsPlanesw
 const esikaGrant = "esika-god-of-the-tree/any-color"
 
 // otherLegendaryCreaturesYouControl is Esika's recipient set.
-func otherLegendaryCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func OtherLegendaryCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.InstanceID != source.InstanceID && target.Controller == source.Controller &&
 		target.IsCreature() && target.IsLegendary()
 }

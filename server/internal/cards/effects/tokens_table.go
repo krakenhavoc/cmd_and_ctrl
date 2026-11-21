@@ -48,7 +48,7 @@ import (
 // a card that appends to Keywords or Colors cannot leak into the next
 // caller's token.
 func TokenCard(key string) game.Card {
-	t, ok := tokenTable[key]
+	t, ok := TokenTable[key]
 	if !ok {
 		panic("effects.TokenCard: no token template named " + strconv.Quote(key))
 	}
@@ -60,15 +60,15 @@ func TokenCard(key string) game.Card {
 // TokenKeys lists every key in the table, sorted. For tests and the
 // catalogue page.
 func TokenKeys() []string {
-	keys := make([]string, 0, len(tokenTable))
-	for k := range tokenTable {
+	keys := make([]string, 0, len(TokenTable))
+	for k := range TokenTable {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	return keys
 }
 
-var tokenTable = map[string]game.Card{
+var TokenTable = map[string]game.Card{
 	"1/1 green and white Human Citizen":                             {Name: "Human Citizen", TypeLine: "Token Creature — Human Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Citizen":                                   {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Kithkin":                                   {Name: "Kithkin", TypeLine: "Token Creature — Kithkin", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
@@ -211,6 +211,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white Spirit":                                                 {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"1/1 blue Human Wizard":                                            {Name: "Human Wizard", TypeLine: "Token Creature — Human Wizard", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"3/3 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 black Vampire":                                                {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"B"}},
@@ -584,6 +585,8 @@ var tokenTable = map[string]game.Card{
 	"2/2 green and white Elf Knight with vigilance":       {Name: "Elf Knight", TypeLine: "Token Creature — Elf Knight", Power: 2, Toughness: 2, Colors: []string{"G", "W"}, Keywords: []string{"vigilance"}},
 	"4/4 white and blue Sphinx with flying and vigilance": {Name: "Sphinx", TypeLine: "Token Creature — Sphinx", Power: 4, Toughness: 4, Colors: []string{"W", "U"}, Keywords: []string{"flying", "vigilance"}},
 
+	// S82 GAP batch 06: Worzel, the Protector's Scryb Sprites.
+	"1/1 green Faerie with flying named Scryb Sprites": {Name: "Scryb Sprites", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"flying"}},
 	// #5559: Born of the Gods' enchantment creature tokens (Fated
 	// Intervention, Pheres-Band Raiders, God-Favored General, Satyr Nyx-Smith).
 	"3/3 green Centaur enchantment":            {Name: "Centaur", TypeLine: "Token Enchantment Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},

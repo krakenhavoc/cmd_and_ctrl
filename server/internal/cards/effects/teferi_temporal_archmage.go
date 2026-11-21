@@ -53,7 +53,7 @@ func init() {
 		// The fallback for tokens, fixtures and the dev spawner; an
 		// imported deck reads printed loyalty (ADR 0032 §1).
 		StartingLoyalty: 5,
-		Emblem:          loyaltyAtInstantSpeedEmblem("Teferi, Temporal Archmage emblem"),
+		Emblem:          LoyaltyAtInstantSpeedEmblem("Teferi, Temporal Archmage emblem"),
 		Activated: []ActivatedAbility{
 			{
 				Label: "+1: Look at the top two cards of your library. Put one of them into your hand and the other on the bottom of your library.",
@@ -65,7 +65,7 @@ func init() {
 				Label:   "−1: Untap up to four target permanents.",
 				Cost:    LoyaltyCost(-1),
 				Targets: TargetPermanent("up to four target permanents").WithCount(0, 4),
-				Effect:  untapEachLegalTarget,
+				Effect:  UntapEachStillLegalTarget,
 			},
 			{
 				Label: "−10: You get an emblem with \"You may activate loyalty abilities of planeswalkers you control on any player's turn any time you could cast an instant.\"",
@@ -84,7 +84,7 @@ func init() {
 // no name (CR 114.3), and the one a player reads says whose it is.
 // "On any player's turn" is not a clause of its own — see
 // ThisSourcesLoyaltyAbilitiesAtInstantSpeed.
-func loyaltyAtInstantSpeedEmblem(label string) *EmblemSpec {
+func LoyaltyAtInstantSpeedEmblem(label string) *EmblemSpec {
 	const text = "You may activate loyalty abilities of planeswalkers you control on any player's turn any time you could cast an instant."
 	return &EmblemSpec{
 		Label: label,

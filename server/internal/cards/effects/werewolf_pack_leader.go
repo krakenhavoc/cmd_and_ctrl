@@ -41,10 +41,10 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.CardID == source.InstanceID && ev.Actor == source.Controller &&
-					packTacticsAttackingPower(g, source.Controller) >= 6
+					PackTacticsAttackingPower(g, source.Controller) >= 6
 			}, label, func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				if packTacticsTotalPower(g, item.Controller, ctx.Trigger().Event.Batch) < 6 {
+				if PackTacticsTotalPower(g, item.Controller, ctx.Trigger().Event.Batch) < 6 {
 					return nil
 				}
 				return DrawCards{N: 1}.Apply(ctx)
@@ -56,7 +56,7 @@ func init() {
 			Cost:    ManaCost("{3}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				return untilEndOfTurn(ctx, ctx.Source(), nil,
+				return UntilEndOfTurn(ctx, ctx.Source(), nil,
 					"Werewolf Pack Leader — base 5/3, trample and a Werewolf until end of turn",
 					game.SetBasePowerMod(5), game.SetBaseToughnessMod(3), game.AddKeywordsMod("trample"),
 					game.SetCreatureTypesMod(ctx.TextSubtype("Werewolf")))
@@ -71,7 +71,7 @@ func init() {
 // attackers are read off the battlefield. Only the creatures declared so
 // far are attacking at that moment, so a creature put onto the
 // battlefield attacking afterwards is not counted.
-func packTacticsAttackingPower(g *game.Game, player uuid.UUID) int {
+func PackTacticsAttackingPower(g *game.Game, player uuid.UUID) int {
 	total := 0
 	for _, c := range g.Battlefield.Cards {
 		if c.Controller == player && c.AttackingTarget != uuid.Nil {
@@ -87,13 +87,13 @@ func packTacticsAttackingPower(g *game.Game, player uuid.UUID) int {
 // declared as attackers in the declaration `batch`: a creature still on
 // the battlefield at its current power, one that has left at the power it
 // last had.
-func packTacticsTotalPower(g *game.Game, player uuid.UUID, batch uint64) int {
+func PackTacticsTotalPower(g *game.Game, player uuid.UUID, batch uint64) int {
 	total := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventAttack || ev.Batch != batch || ev.Actor != player {
 			continue
 		}
-		if c, ok := battlefieldCardForEffect(g, ev.CardID); ok {
+		if c, ok := BattlefieldCardForEffect(g, ev.CardID); ok {
 			if p := c.PowerForComparison(); p > 0 {
 				total += p
 			}

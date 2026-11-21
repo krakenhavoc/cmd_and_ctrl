@@ -46,7 +46,7 @@ func GrantAbilitiesToYourPlaneswalkers(keys ...string) game.StaticAbility {
 // the turn began. Read off the turn's event log, so it survives the
 // walker leaving. The sandbox's manual loyalty verb (Game.ActivateLoyalty)
 // announces no activation event and is not counted.
-func youActivatedALoyaltyAbilityThisTurn(g *game.Game, you uuid.UUID) bool {
+func YouActivatedALoyaltyAbilityThisTurn(g *game.Game, you uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind == game.EventActivateAbility && ev.Loyalty && ev.Actor == you {
 			return true

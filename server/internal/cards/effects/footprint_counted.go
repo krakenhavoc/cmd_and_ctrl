@@ -42,7 +42,7 @@ func (s CreateXByXToken) Apply(ctx *Context) error {
 
 // The token's size is the item's own constant; what it brings onto the
 // battlefield is the template's, as for CreateToken.
-func (s CreateXByXToken) footprint() (game.FootprintStep, bool) {
+func (s CreateXByXToken) Footprint() (game.FootprintStep, bool) {
 	key, manual, keywords := game.FootprintTokenOf(s.Template)
 	return game.FootprintStep{
 		Kind: game.FootprintCreateToken, N: 1, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
@@ -80,7 +80,7 @@ func (s CreateTokensForEach) footprints() ([]game.FootprintStep, bool) {
 	}
 	key, manual, keywords := game.FootprintTokenOf(s.Template)
 	return []game.FootprintStep{
-		condStep(game.FootprintCondBoard, 0),
+		CondStep(game.FootprintCondBoard, 0),
 		{Kind: game.FootprintCreateToken, N: 1, TokenKey: key, TokenManual: manual, TokenKeywords: keywords},
 	}, true
 }

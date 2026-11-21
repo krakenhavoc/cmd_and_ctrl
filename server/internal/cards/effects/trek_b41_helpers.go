@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // +power/+toughness and gain <keywords> until end of turn": every target
 // still legal as the ability resolves gets both (CR 608.2b), and an
 // illegal one gets neither.
-func trekB41PumpAndGrantEachTarget(power, toughness int, label string, keywords ...string) func(g *game.Game, item *game.StackItem) error {
+func TrekB41PumpAndGrantEachTarget(power, toughness int, label string, keywords ...string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -31,9 +31,9 @@ func trekB41PumpAndGrantEachTarget(power, toughness int, label string, keywords 
 // turn, <effect>": Kid Loki's trigger condition (b41DrewYourSecondCardThisTurn,
 // which fires once a turn, on the second draw). Seek out is an ability
 // word with no rules meaning.
-func trekB41SeekOut(label string, effect Effect) game.TriggeredAbility {
+func TrekB41SeekOut(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return b41DrewYourSecondCardThisTurn(ev, source, g)
+		return B41DrewYourSecondCardThisTurn(ev, source, g)
 	}, label, effect)
 }
 
@@ -44,9 +44,9 @@ func trekB41SeekOut(label string, effect Effect) game.TriggeredAbility {
 // still that object in a graveyard (CR 400.7). Avacyn, Angel of Horror's
 // body with the owner, not the trigger's controller, as the new
 // controller. An on-disk key: never renamed, never reused.
-var trekB41ReturnTheObjectFromGraveyardToItsOwnerBody = game.DelayedBody("graveyard/return-the-object-under-its-owners-control",
+var TrekB41ReturnTheObjectFromGraveyardToItsOwnerBody = game.DelayedBody("graveyard/return-the-object-under-its-owners-control",
 	func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
-		if !objectStillInAGraveyard(g, p.Object) {
+		if !ObjectStillInAGraveyard(g, p.Object) {
 			return nil
 		}
 		return ReturnFromGraveyard{Target: p.Object.ID, Dest: game.ZoneBattlefield}.Apply(NewContext(g, item))

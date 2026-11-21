@@ -20,7 +20,7 @@ func ManaValueLessThanPower() game.SourceComparison {
 // matB04ExileTargetsAndCopy exiles the still-legal card targets of the
 // resolving ability and hands what really reached exile to the given tail,
 // which copies it and offers the cast (CR 707.12).
-func matB04ExileTargetsAndCopy(tail game.TailRef) Effect {
+func MatB04ExileTargetsAndCopy(tail game.TailRef) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		var ids []uuid.UUID

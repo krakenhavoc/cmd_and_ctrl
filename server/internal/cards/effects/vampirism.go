@@ -36,21 +36,21 @@ func init() {
 				return ScheduleDelayedTrigger{
 					At:    game.StepUpkeep,
 					Label: "Vampirism — draw a card",
-					Body:  drawOneBody,
+					Body:  DrawOneBody,
 				}.Apply(NewContext(g, item))
 			}),
 		},
 		Static: []game.StaticAbility{
-			PumpAttachedPer(1, 1, vampirismOtherCreaturesYouControl),
-			b16Anthem(vampirismOtherThanEnchanted, -1, -1),
+			PumpAttachedPer(1, 1, VampirismOtherCreaturesYouControl),
+			B16Anthem(vampirismOtherThanEnchanted, -1, -1),
 		},
 	})
 }
 
 // vampirismOtherCreaturesYouControl counts the creatures the Aura's
 // controller controls, the enchanted creature left out.
-func vampirismOtherCreaturesYouControl(g *game.Game, source *game.Card) int {
-	return permanentsYouControl(g, source, func(c *game.Card) bool {
+func VampirismOtherCreaturesYouControl(g *game.Game, source *game.Card) int {
+	return CountPermanentsYouControl(g, source, func(c *game.Card) bool {
 		return c.IsCreature() && !source.IsAttachedTo(c.InstanceID)
 	})
 }
@@ -58,5 +58,5 @@ func vampirismOtherCreaturesYouControl(g *game.Game, source *game.Card) int {
 // vampirismOtherThanEnchanted is "other creatures you control": the Aura
 // controller's creatures but the one it enchants.
 func vampirismOtherThanEnchanted(target *game.Card, g *game.Game, source *game.Card) bool {
-	return b16CreaturesYouControl(target, g, source) && !source.IsAttachedTo(target.InstanceID)
+	return B16CreaturesYouControl(target, g, source) && !source.IsAttachedTo(target.InstanceID)
 }

@@ -39,7 +39,7 @@ func init() {
 		OracleID:     "e70cac5e-674e-4df7-94c7-77f8801e3941",
 		Name:         "Brutal Hordechief",
 		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{attackDrainTrigger("Brutal Hordechief")},
+		Triggered:    []game.TriggeredAbility{AttackDrainTrigger("Brutal Hordechief")},
 		Activated: []ActivatedAbility{{
 			Label: "{3}{R/W}{R/W}: Creatures your opponents control block this turn if able, and you choose how those creatures block.",
 			Cost:  ManaCost("{3}{R/W}{R/W}"),
@@ -70,24 +70,24 @@ func init() {
 // P9's fill-in Build, as Generous Plunderer's is), so a creature
 // attacking a planeswalker drains its controller. The key is the card
 // name and the clause: a trigger key is an on-disk identity.
-func attackDrainTrigger(cardName string) game.TriggeredAbility {
-	return attackDrainTriggerWhen(cardName, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return attackDeclaredByYou(ev, source.Controller)
+func AttackDrainTrigger(cardName string) game.TriggeredAbility {
+	return AttackDrainTriggerWhen(cardName, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return AttackDeclaredByYou(ev, source.Controller)
 	})
 }
 
 // attackDrainTriggerWhen is attackDrainTrigger's body for any attack
 // condition: "Whenever this creature attacks, defending player loses 1
 // life and you gain 1 life" (Agate-Blade Assassin) passes ThisAttacked.
-func attackDrainTriggerWhen(cardName string, applies func(game.Event, *game.Card, game.Characteristic, *game.Game) bool) game.TriggeredAbility {
-	return attackDrainNTriggerWhen(cardName, 1, applies)
+func AttackDrainTriggerWhen(cardName string, applies func(game.Event, *game.Card, game.Characteristic, *game.Game) bool) game.TriggeredAbility {
+	return AttackDrainNTriggerWhen(cardName, 1, applies)
 }
 
 // attackDrainNTriggerWhen is attackDrainTriggerWhen for a drain of n:
 // "Whenever this land attacks, defending player loses 2 life and you gain
 // 2 life" (Restless Fortress) is n = 2. The key spells n out, so a drain
 // of 1 keeps the key it always had.
-func attackDrainNTriggerWhen(cardName string, n int, applies func(game.Event, *game.Card, game.Characteristic, *game.Game) bool) game.TriggeredAbility {
+func AttackDrainNTriggerWhen(cardName string, n int, applies func(game.Event, *game.Card, game.Characteristic, *game.Game) bool) game.TriggeredAbility {
 	label := fmt.Sprintf("%s — defending player loses %d life and you gain %d life", cardName, n, n)
 	return game.TriggeredAbility{
 		Watches:   []game.EventKind{game.EventAttack},
@@ -95,13 +95,13 @@ func attackDrainNTriggerWhen(cardName string, n int, applies func(game.Event, *g
 		Key:       label,
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label)
-			item.Params.Player = b17DefendingPlayer(g, ev)
+			item.Params.Player = B17DefendingPlayer(g, ev)
 			return item
 		},
 		// The gain waits for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
 		Effect: Do(
 			Instruction(func(ctx *Context) error {
-				if defender := ctx.Item.Params.Player; defender != uuid.Nil && defendingPlayerStillIn(ctx.Game, defender) {
+				if defender := ctx.Item.Params.Player; defender != uuid.Nil && DefendingPlayerStillIn(ctx.Game, defender) {
 					return GainLife{Player: defender, Amount: -n}.Apply(ctx)
 				}
 				return nil

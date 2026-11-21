@@ -23,19 +23,19 @@ func init() {
 		Name:         "Shieldmage Elder",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			shieldAgainstTargetsRow(
+			ShieldAgainstTargetsRow(
 				"Tap two untapped Clerics you control: Prevent all damage target creature would deal this turn.",
-				tapTwoUntapped("two untapped Clerics you control", "Cleric"), TargetCreature("target creature"), false),
-			shieldAgainstTargetsRow(
+				TapTwoUntapped("two untapped Clerics you control", "Cleric"), TargetCreature("target creature"), false),
+			ShieldAgainstTargetsRow(
 				"Tap two untapped Wizards you control: Prevent all damage target spell would deal this turn.",
-				tapTwoUntapped("two untapped Wizards you control", "Wizard"), TargetSpell("target spell"), false),
+				TapTwoUntapped("two untapped Wizards you control", "Wizard"), TargetSpell("target spell"), false),
 		},
 	})
 }
 
 // tapTwoUntapped is "Tap two untapped <creature type>s you control" as a
 // cost, the source included when it has the type.
-func tapTwoUntapped(label, creatureType string) game.AbilityCost {
+func TapTwoUntapped(label, creatureType string) game.AbilityCost {
 	return game.AbilityCost{TapOthers: &game.TapOthersCost{
 		Count:  2,
 		Filter: TargetPermanent(label, Creature(), OfCreatureType(creatureType)),

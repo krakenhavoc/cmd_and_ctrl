@@ -20,16 +20,16 @@ import (
 // the controller and the asking card as the source. Call it once, from a
 // package-level var. The key is an on-disk identity ("choose-cards/<card>-<what>"),
 // ledgered: never renamed, never reused.
-func askedPick(key string, body func(ctx *Context, r game.CardsChosen) error) game.ChooseCardsThen {
-	return askedPickRule(key, nil, body)
+func AskedPick(key string, body func(ctx *Context, r game.CardsChosen) error) game.ChooseCardsThen {
+	return AskedPickRule(key, nil, body)
 }
 
 // askedPickRule is askedPick for a pick with a set rule over what is chosen
 // (game.RegisterChooseCardsThenRule): the rule is a function of the cards
 // alone and captures nothing.
-func askedPickRule(key string, rule game.SetRuleFunc, body func(ctx *Context, r game.CardsChosen) error) game.ChooseCardsThen {
+func AskedPickRule(key string, rule game.SetRuleFunc, body func(ctx *Context, r game.CardsChosen) error) game.ChooseCardsThen {
 	return game.RegisterChooseCardsThenRule(key, rule, func(g *game.Game, r game.CardsChosen) error {
-		ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+		ctx, _ := AskedContext(g, r.Asked, r.Chooser, r.Source, nil)
 		return body(ctx, r)
 	})
 }

@@ -49,14 +49,14 @@ func runContext(g *game.Game, r game.RunDone) *Context {
 	if len(r.Carry) > 0 {
 		controller = r.Carry[0]
 	}
-	return keyedContext(g, controller, r.Source)
+	return KeyedContext(g, controller, r.Source)
 }
 
 // packIDLists joins lists of IDs into one carry, separated by uuid.Nil (an
 // ID is never Nil). unpackIDLists splits it again, always into as many
 // lists as went in; a card whose continuation reads several lists carries
 // them this way.
-func packIDLists(lists ...[]uuid.UUID) []uuid.UUID {
+func PackIDLists(lists ...[]uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for i, l := range lists {
 		out = append(out, l...)
@@ -68,7 +68,7 @@ func packIDLists(lists ...[]uuid.UUID) []uuid.UUID {
 }
 
 // unpackIDLists is packIDLists' inverse; nil for an empty carry.
-func unpackIDLists(carry []uuid.UUID) [][]uuid.UUID {
+func UnpackIDLists(carry []uuid.UUID) [][]uuid.UUID {
 	if len(carry) == 0 {
 		return nil
 	}
@@ -85,8 +85,8 @@ func unpackIDLists(carry []uuid.UUID) [][]uuid.UUID {
 
 // unpackIDPair is unpackIDLists for a carry made of exactly two lists
 // (packIDLists(a, b)): both, nil where one was empty.
-func unpackIDPair(carry []uuid.UUID) (first, second []uuid.UUID) {
-	lists := unpackIDLists(carry)
+func UnpackIDPair(carry []uuid.UUID) (first, second []uuid.UUID) {
+	lists := UnpackIDLists(carry)
 	if len(lists) > 0 {
 		first = lists[0]
 	}

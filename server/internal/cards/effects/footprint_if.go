@@ -33,7 +33,7 @@ type Condition interface {
 	Holds(ctx *Context) bool
 	// condition declares the state it reads, as a FootprintCondition
 	// step, or false when it cannot.
-	condition() (game.FootprintStep, bool)
+	Condition() (game.FootprintStep, bool)
 }
 
 // If is "if <Cond>, <Then>" inside a triggered ability's effect: the
@@ -61,13 +61,13 @@ func (s If) footprints() ([]game.FootprintStep, bool) {
 	if s.Cond == nil || len(s.Then) == 0 {
 		return nil, false
 	}
-	cond, ok := s.Cond.condition()
+	cond, ok := s.Cond.Condition()
 	if !ok {
 		return nil, false
 	}
 	out := []game.FootprintStep{cond}
 	for _, step := range s.Then {
-		more, ok := stepFootprints(step)
+		more, ok := StepFootprints(step)
 		if !ok {
 			return nil, false
 		}
@@ -99,7 +99,7 @@ func InterveningIf(cond Condition, t game.TriggeredAbility) game.TriggeredAbilit
 	if cond == nil || t.Effect == nil {
 		panic("effects.InterveningIf: needs a condition and a declared Effect")
 	}
-	if steps, ok := doStepsOf(t.Effect); ok {
+	if steps, ok := DoStepsOf(t.Effect); ok {
 		t.Effect = Do(If{Cond: cond, Then: steps})
 		return t
 	}
@@ -115,7 +115,7 @@ func (r runEffect) Apply(ctx *Context) error { return r.fn(ctx.Game, ctx.Item) }
 // rowInterveningIf is game.CatalogTriggerInterveningIf: a row whose
 // Effect is a Do that opens with an If declares that If's condition.
 func rowInterveningIf(t game.TriggeredAbility) func(*game.Game, *game.StackItem) bool {
-	steps, ok := doStepsOf(t.Effect)
+	steps, ok := DoStepsOf(t.Effect)
 	if !ok || len(steps) == 0 {
 		return nil
 	}
@@ -130,7 +130,7 @@ func rowInterveningIf(t game.TriggeredAbility) func(*game.Game, *game.StackItem)
 
 func init() { game.CatalogTriggerInterveningIf = rowInterveningIf }
 
-func condStep(c game.FootprintCond, n int) game.FootprintStep {
+func CondStep(c game.FootprintCond, n int) game.FootprintStep {
 	return game.FootprintStep{Kind: game.FootprintCondition, Cond: c, N: n}
 }
 
@@ -140,11 +140,11 @@ func condStep(c game.FootprintCond, n int) game.FootprintStep {
 type CondLifeGained struct{ AtLeast int }
 
 func (c CondLifeGained) Holds(ctx *Context) bool {
-	return b15LifeGainedThisTurn(ctx.Game, ctx.Controller()) >= max(c.AtLeast, 1)
+	return B15LifeGainedThisTurn(ctx.Game, ctx.Controller()) >= max(c.AtLeast, 1)
 }
 
-func (c CondLifeGained) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondLifeGained, max(c.AtLeast, 1)), true
+func (c CondLifeGained) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondLifeGained, max(c.AtLeast, 1)), true
 }
 
 // CondLifeLost is "if you lost [N or more] life this turn".
@@ -152,11 +152,11 @@ func (c CondLifeGained) condition() (game.FootprintStep, bool) {
 type CondLifeLost struct{ AtLeast int }
 
 func (c CondLifeLost) Holds(ctx *Context) bool {
-	return b18LifeLostThisTurn(ctx.Game, ctx.Controller()) >= max(c.AtLeast, 1)
+	return B18LifeLostThisTurn(ctx.Game, ctx.Controller()) >= max(c.AtLeast, 1)
 }
 
-func (c CondLifeLost) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondLifeLost, max(c.AtLeast, 1)), true
+func (c CondLifeLost) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondLifeLost, max(c.AtLeast, 1)), true
 }
 
 // CondCardsDrawn is "if you've drawn [N or more] cards this turn": the
@@ -168,8 +168,8 @@ func (c CondCardsDrawn) Holds(ctx *Context) bool {
 	return ctx.Game.TurnTallyFor(ctx.Controller()).CardsDrawn >= max(c.AtLeast, 1)
 }
 
-func (c CondCardsDrawn) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondCardsDrawn, max(c.AtLeast, 1)), true
+func (c CondCardsDrawn) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondCardsDrawn, max(c.AtLeast, 1)), true
 }
 
 // CondCreatureDied is "if a creature died under
@@ -180,8 +180,8 @@ func (CondCreatureDied) Holds(ctx *Context) bool {
 	return aCreatureDiedUnderYourControlThisTurn(ctx.Game, ctx.Controller())
 }
 
-func (CondCreatureDied) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondCreatureDied, 0), true
+func (CondCreatureDied) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondCreatureDied, 0), true
 }
 
 // CondCitysBlessing is "if you have the city's blessing"
@@ -192,8 +192,8 @@ func (CondCitysBlessing) Holds(ctx *Context) bool {
 	return YouHaveTheCitysBlessing(ctx.Game, ctx.Controller())
 }
 
-func (CondCitysBlessing) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondCitysBlessing, 0), true
+func (CondCitysBlessing) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondCitysBlessing, 0), true
 }
 
 // CondNoSpellsCast is "if you cast no spells this turn" (Edgar,
@@ -204,8 +204,8 @@ func (CondNoSpellsCast) Holds(ctx *Context) bool {
 	return ctx.Game.CastTallyFor(ctx.Controller()).Total == 0
 }
 
-func (CondNoSpellsCast) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondNoSpellsCast, 0), true
+func (CondNoSpellsCast) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondNoSpellsCast, 0), true
 }
 
 // CondMonarch is "if you're the monarch" (Ginger, Queen of
@@ -216,8 +216,8 @@ func (CondMonarch) Holds(ctx *Context) bool {
 	return YoureTheMonarch(ctx.Game, ctx.Controller())
 }
 
-func (CondMonarch) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondMonarch, 0), true
+func (CondMonarch) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondMonarch, 0), true
 }
 
 // CondFewerCountersOnThis is "if this permanent has fewer than N <Kind>
@@ -231,11 +231,11 @@ type CondFewerCountersOnThis struct {
 func (c CondFewerCountersOnThis) Holds(ctx *Context) bool {
 	src := ctx.Source()
 	card, ok := ctx.Game.LookupCardForEffect(src)
-	return ok && onBattlefield(ctx.Game, src) && card.Counters[c.Kind] < c.N
+	return ok && OnBattlefield(ctx.Game, src) && card.Counters[c.Kind] < c.N
 }
 
-func (c CondFewerCountersOnThis) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondSource, c.N), c.Kind != "" && c.N > 0
+func (c CondFewerCountersOnThis) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondSource, c.N), c.Kind != "" && c.N > 0
 }
 
 // CondPowerAtLeast is "if you control a creature with
@@ -244,11 +244,11 @@ func (c CondFewerCountersOnThis) condition() (game.FootprintStep, bool) {
 type CondPowerAtLeast struct{ N int }
 
 func (c CondPowerAtLeast) Holds(ctx *Context) bool {
-	return b24ControlsCreatureWithPowerAtLeast(ctx.Game, ctx.Controller(), c.N)
+	return B24ControlsCreatureWithPowerAtLeast(ctx.Game, ctx.Controller(), c.N)
 }
 
-func (c CondPowerAtLeast) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondBoard, c.N), c.N > 0
+func (c CondPowerAtLeast) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondBoard, c.N), c.N > 0
 }
 
 // CondBoard is an intervening "if" about the permanents on the
@@ -265,6 +265,6 @@ type CondBoard struct {
 
 func (c CondBoard) Holds(ctx *Context) bool { return c.Test != nil && c.Test(ctx) }
 
-func (c CondBoard) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondBoard, 0), c.Test != nil
+func (c CondBoard) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondBoard, 0), c.Test != nil
 }

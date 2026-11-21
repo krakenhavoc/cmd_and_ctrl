@@ -14,7 +14,7 @@ import (
 // socB13EnchantmentSpell passes on an enchantment spell: "Enchantment
 // spells you cast cost {1} less to cast" (Starfield Mystic) is this with
 // YourSpell().
-func socB13EnchantmentSpell() CostPredicate {
+func SocB13EnchantmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.IsEnchantment() }
 }
 
@@ -24,8 +24,8 @@ func socB13EnchantmentSpell() CostPredicate {
 // was an enchantment as it last existed (CR 603.10a) under the source's
 // controller's control, an Aura included. The source itself counts if it is
 // one.
-func socB13EnchantmentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return permanentYouControlWasPutIntoAGraveyard(ev, source, g, "enchantment")
+func SocB13EnchantmentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return PermanentYouControlWasPutIntoAGraveyard(ev, source, g, "enchantment")
 }
 
 // socB13ArtifactOrCreatureCardsThatLeftYourGraveyard lists, for the
@@ -35,13 +35,13 @@ func socB13EnchantmentYouControlWasPutIntoAGraveyard(ev game.Event, source *game
 // "from among those cards". A card that can no longer be found (it left the
 // game, or came back as a new object) is not one of them (CR 400.7). The
 // types are the printed ones (copiable values), not what a permanent is now.
-func socB13ArtifactOrCreatureCardsThatLeftYourGraveyard(g *game.Game, you uuid.UUID, trigger game.Event) []uuid.UUID {
+func SocB13ArtifactOrCreatureCardsThatLeftYourGraveyard(g *game.Game, you uuid.UUID, trigger game.Event) []uuid.UUID {
 	var out []uuid.UUID
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Batch != trigger.Batch || (trigger.Batch == 0 && ev.Seq != trigger.Seq) {
 			continue
 		}
-		c, ok := cardThatLeftAGraveyard(ev, g)
+		c, ok := CardThatLeftAGraveyard(ev, g)
 		if !ok || c.Owner != you || slices.Contains(out, ev.CardID) {
 			continue
 		}

@@ -127,7 +127,7 @@ func necropotenceScheduleDelivery(ctx *Context, exiled []uuid.UUID) error {
 // control-changed card returning to its owner) is not the clause's
 // business.
 func necropotenceExileDiscarded(g *game.Game, item *game.StackItem, controller, cardID uuid.UUID) error {
-	if !discardedCardStillInGraveyard(g, item, cardID) {
+	if !DiscardedCardStillInGraveyard(g, item, cardID) {
 		return nil
 	}
 	if z := g.FindCardZoneForEffect(cardID); z == nil || z.Owner != controller {

@@ -121,14 +121,14 @@ func (x TakeExtraTurnThenLose) Apply(ctx *Context) error {
 	return ScheduleDelayedTrigger{
 		At:          game.StepEnd,
 		Label:       x.Label,
-		Body:        loseTheGameAtThatTurnsEndBody,
+		Body:        LoseTheGameAtThatTurnsEndBody,
 		OnExtraTurn: refs[0],
 	}.Apply(ctx)
 }
 
 // extraTurnThenLoseAtItsEndStep is the resolving body of the three
 // cards that print Final Fortune's sentence.
-func extraTurnThenLoseAtItsEndStep(label string) func(*game.StackItem, *Context) error {
+func ExtraTurnThenLoseAtItsEndStep(label string) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return TakeExtraTurnThenLose{Label: label}.Apply(ctx)
 	}
@@ -137,13 +137,13 @@ func extraTurnThenLoseAtItsEndStep(label string) func(*game.StackItem, *Context)
 // youTakeAnExtraTurn is the resolving body of a spell that says only
 // "Take an extra turn after this one" (Temporal Manipulation, Capture
 // of Jingzhou).
-func youTakeAnExtraTurn(_ *game.StackItem, ctx *Context) error {
+func YouTakeAnExtraTurn(_ *game.StackItem, ctx *Context) error {
 	return TakeExtraTurn{}.Apply(ctx)
 }
 
 // youTakeAnExtraTurnEffect is the same sentence as an activated
 // ability's effect (Magistrate's Scepter, Avatar Kuruk).
-func youTakeAnExtraTurnEffect(g *game.Game, item *game.StackItem) error {
+func YouTakeAnExtraTurnEffect(g *game.Game, item *game.StackItem) error {
 	return TakeExtraTurn{}.Apply(NewContext(g, item))
 }
 

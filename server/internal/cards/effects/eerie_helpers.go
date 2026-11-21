@@ -13,9 +13,9 @@ import (
 // until end of turn" — Dashing Bloodsucker, Cult Healer, Erratic
 // Apparition, Infernal Phantom. Both halves read the source once, at
 // resolution (CR 611.2c), and do nothing if it has left the battlefield.
-func thisCreatureUntilEOT(label string, power, toughness int, keywords ...string) Effect {
+func ThisCreatureUntilEOT(label string, power, toughness int, keywords ...string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !onBattlefield(g, item.SourceCardID) {
+		if !OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
 		ctx := NewContext(g, item)
@@ -32,17 +32,17 @@ func thisCreatureUntilEOT(label string, power, toughness int, keywords ...string
 // eerieDiesWithPower is a "when this creature dies" trigger whose item
 // carries the creature's last-known power (CR 603.10) in Params.Amount,
 // for a body that deals that much.
-func eerieDiesWithPower(label string, targets *game.TargetSpec, effect Effect) game.TriggeredAbility {
+func EerieDiesWithPower(label string, targets *game.TargetSpec, effect Effect) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventLTB},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			return cardDied(ev, source)
+			return CardDied(ev, source)
 		},
 		Targets: targets,
 		Key:     label,
 		Build: func(_ game.Event, source *game.Card, lki game.Characteristic, g *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label)
-			item.Params.Amount = b13LastKnownPower(g, source.InstanceID, lki)
+			item.Params.Amount = B13LastKnownPower(g, source.InstanceID, lki)
 			return item
 		},
 		Effect: effect,
@@ -51,7 +51,7 @@ func eerieDiesWithPower(label string, targets *game.TargetSpec, effect Effect) g
 
 // targetedPlayerOf is the first player a resolving item targets, or
 // uuid.Nil when none is left legal.
-func targetedPlayerOf(ctx *Context) uuid.UUID {
+func TargetedPlayerOf(ctx *Context) uuid.UUID {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
 			return t.ID

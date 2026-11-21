@@ -35,7 +35,7 @@ func init() {
 			Label:   "{4}{B}{B}: Exile target creature and put a +1/+1 counter on this creature.",
 			Cost:    ManaCost("{4}{B}{B}"),
 			Targets: TargetCreature("target creature"),
-			Effect:  exileLinkedTargetThenCounterOnThis,
+			Effect:  ExileLinkedTargetThenCounterOnThis,
 		}},
 	})
 }
@@ -44,7 +44,7 @@ func init() {
 // +1/+1 counter on this creature" (Dark Impostor, Patchwork Crawler): the
 // target is exiled linked to the source, then the counter goes on the
 // source, whether or not the card reached exile.
-func exileLinkedTargetThenCounterOnThis(g *game.Game, item *game.StackItem) error {
+func ExileLinkedTargetThenCounterOnThis(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {

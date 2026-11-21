@@ -23,21 +23,21 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Collector's Case — tap up to one target creature and put two stun counters on it",
-				msc5TapAndStunTwice),
+				Msc5TapAndStunTwice),
 				TargetCreature("up to one target creature", Creature()).WithCount(0, 1)),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{U}, {T}: Tap target creature.",
 			Cost:    Plus(ManaCost("{3}{U}"), TapCost()),
 			Targets: TargetCreature("target creature"),
-			Effect:  tapChosenPermanent,
+			Effect:  TapChosenPermanent,
 		}},
 	})
 }
 
 // msc5TapAndStunTwice taps each target still legal and puts two stun
 // counters on it.
-func msc5TapAndStunTwice(g *game.Game, item *game.StackItem) error {
+func Msc5TapAndStunTwice(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {

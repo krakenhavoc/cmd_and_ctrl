@@ -1,0 +1,36 @@
+package cardsj
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Karolina Dean, Runaway — Legendary Creature — Alien Hero {3}{R}, 3/3
+// (EDHREC rank 19226):
+//
+//	"Flying
+//	 At the beginning of your first main phase, add {W}{U}{B}{R}{G}.
+//	 This mana can't be spent to cast spells from your hand."
+//
+// The mana carries ManaRestrictNotFromHand (#2811): it pays for
+// activated abilities and for spells cast from a graveyard, exile, the
+// command zone or a library top, and not for a spell cast from hand. It
+// empties with the phase like any other mana (CR 500.5).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "50b5faff-acaa-426b-9f3e-1005c0392e6c",
+		Name:            "Karolina Dean, Runaway",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Triggered: []game.TriggeredAbility{
+			effects.AtYourPrecombatMain("Karolina Dean, Runaway — add {W}{U}{B}{R}{G}",
+				func(g *game.Game, item *game.StackItem) error {
+					return g.AddManaWithOptionsForEffect(item.Controller, item.SourceCardID, "{W}{U}{B}{R}{G}",
+						game.AddManaOptions{Restrictions: []string{effects.ManaRestrictNotFromHand}})
+				}),
+		},
+	})
+}

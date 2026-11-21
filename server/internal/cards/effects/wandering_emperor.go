@@ -121,7 +121,7 @@ func init() {
 			{
 				Label:   "−2: Exile target tapped creature. You gain 2 life.",
 				Cost:    LoyaltyCost(-2),
-				Targets: TargetCreature("target tapped creature", tappedPermanent()),
+				Targets: TargetCreature("target tapped creature", TappedPermanent()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					// This ability has exactly one target, so a
@@ -152,7 +152,7 @@ func init() {
 // Emperor's −2. A target predicate rather than a resolution-time
 // check so an untapped creature never appears in the picker, which
 // is what CR 115.4 wants: an illegal target can't be chosen.
-func tappedPermanent() CardPredicate {
+func TappedPermanent() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.Tapped }
 }
 
