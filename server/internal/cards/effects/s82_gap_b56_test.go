@@ -522,19 +522,6 @@ func TestGapRalAndTheImplicitMazeChapterIIIMakesAGrowingSpellgorgerWeird(t *test
 	}
 }
 
-// gapFindNamed is the first battlefield permanent a player controls with
-// this name.
-func gapFindNamed(t *testing.T, g *game.Game, controller uuid.UUID, name string) uuid.UUID {
-	t.Helper()
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.Name == name {
-			return c.InstanceID
-		}
-	}
-	t.Fatalf("no %s under %s's control", name, controller)
-	return uuid.Nil
-}
-
 const gapTamiyoOracle = "d53d5d03-b180-4bdb-8801-260f8a75644d"
 
 func TestGapTamiyoMeetsTheStoryCircleChapterIShrinksAttackersUntilYourNextTurn(t *testing.T) {
