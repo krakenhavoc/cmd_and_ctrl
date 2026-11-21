@@ -2563,6 +2563,7 @@ run prompt-run/benthic-anomaly-chosen
 run prompt-run/benthic-anomaly-copy
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
+run prompt-run/biblioplex-kraken-return
 run prompt-run/bloodcrazed-socialite-pump
 run prompt-run/bns-b52-sutina-return-land
 run prompt-run/boilerbilges-ripper-sacrifice
@@ -2986,6 +2987,7 @@ tail beamtown-bullies/haste-goad-exile
 tail beckett-mariner/promotion-check
 tail belanna-torres-scrapper/after-surveil
 tail beseech-the-mirror/cast-or-to-hand
+tail biblioplex-kraken/unblockable
 tail bind-to-life/after-mill
 tail blb/coiling-rebirth-copy
 tail blb/driftgloom-coyote-counter
