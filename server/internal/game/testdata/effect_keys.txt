@@ -2097,6 +2097,7 @@ option option-pick/arachne-psionic-weaver-look
 option option-pick/aragorn-company-leader-counter
 option option-pick/archfiend-of-spite-life-or-sacrifice
 option option-pick/arni-metalbrow-attacks
+option option-pick/astarions-thirst-commander
 option option-pick/atraxas-skitterfang-keyword
 option option-pick/attach-source-to-player
 option option-pick/aven-courier-counter
@@ -3125,6 +3126,7 @@ tail ascent-of-the-worthy/angel-warrior
 tail ashling-the-limitless/haste-and-pay-or-sacrifice
 tail asmodeus-the-archfiend/returned
 tail assemble-the-legion/muster
+tail astarions-thirst/exiled
 tail attacking-tokens/calamity-sacrifice-then-next-round
 tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
 tail attacking-tokens/delina-token-made
