@@ -112,20 +112,9 @@ func TestBatch23CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The three remaining declared skips must stay out until their
-	// seam lands: an opponent's choice at resolution, a card put from
-	// hand at resolution, and a trigger-replacement ("triggers an
-	// additional time"). Collector Ouphe (the activation gate) and
-	// Runic Armasaur (the ability-activation trigger event) came off
-	// this list with #1210, and Sphinx of the Second Sun (an
-	// additional phase) with ADR 0059 sub-PR 2b (#753).
-	for oracle, name := range map[string]string{
-		"8d571129-9030-47e0-9624-a49fb63e5a1b": "Ilharg, the Raze-Boar",
-	} {
-		if _, ok := Lookup(oracle); ok {
-			t.Errorf("%s is declared skipped on #385 but is registered — update the issue", name)
-		}
-	}
+	// Ilharg, the Raze-Boar (the card put from hand at resolution) came off
+	// the declared skips with GAP batch 74 (#5948): its attack trigger is
+	// Kinscaer Sentry's hand_attacker_put.go seam.
 }
 
 // --- the mana dork and the spells ----------------------------------
