@@ -15,6 +15,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not the {T} symbol, so an Ally that arrived this turn may pay it, and it
 // does not target. The cohort creature can't pay both halves, because its
 // own {T} has already tapped it (CR 118.3), so the clause leaves it out.
-func ogwCohortCost() game.AbilityCost {
+func OgwCohortCost() game.AbilityCost {
 	return Plus(TapCost(), TapAnotherUntapped("an untapped Ally you control", OfCreatureType("Ally")))
 }

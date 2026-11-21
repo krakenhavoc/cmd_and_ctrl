@@ -9,18 +9,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // returned to your hand from the battlefield this turn" (Miles O'Brien,
 // Transporter Ops; CR 603.4), read off the item's controller's turn
 // tally (Game.PermanentReturnedToHandThisTurn) as the trigger resolves.
-type condPermanentReturnedToYourHand struct{}
+type CondPermanentReturnedToYourHand struct{}
 
-func (condPermanentReturnedToYourHand) Holds(ctx *Context) bool {
+func (CondPermanentReturnedToYourHand) Holds(ctx *Context) bool {
 	return ctx.Game.PermanentReturnedToHandThisTurn(ctx.Controller())
 }
 
-func (condPermanentReturnedToYourHand) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondPermanentReturned, 0), true
+func (CondPermanentReturnedToYourHand) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondPermanentReturned, 0), true
 }
 
 // permanentReturnedToYourHand is the same "if" as the trigger fires, for
 // a When.
-func permanentReturnedToYourHand(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func PermanentReturnedToYourHand(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return g.PermanentReturnedToHandThisTurn(source.Controller)
 }

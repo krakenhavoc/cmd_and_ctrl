@@ -50,11 +50,11 @@ func init() {
 // ReliquaryDragonToken is Dragonbroods' Relic's 4/4 Dragon named
 // Reliquary Dragon: all five colors, flying, lifelink, and "When this
 // token enters, it deals 3 damage to any target."
-func ReliquaryDragonToken() game.Card { return tokenFromCatalog(printedReliquaryDragonToken) }
+func ReliquaryDragonToken() game.Card { return TokenFromCatalog(printedReliquaryDragonToken) }
 
 // printedReliquaryDragonToken is the Reliquary Dragon as PRINTED.
-func printedReliquaryDragonToken() tokenTemplate {
-	return tokenTemplate{
+func printedReliquaryDragonToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "reliquary-dragon",
 		Card: game.Card{
 			Name:      "Reliquary Dragon",
@@ -65,7 +65,7 @@ func printedReliquaryDragonToken() tokenTemplate {
 			Keywords:  []string{"flying", "lifelink"},
 		},
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisEnters("Reliquary Dragon — 3 damage to any target", sourceDealsDamageToEachLegalTarget(3)),
+			Targeting(WhenThisEnters("Reliquary Dragon — 3 damage to any target", SourceDealsDamageToEachLegalTarget(3)),
 				TargetAny()),
 		},
 		Text: "This token is all colors.\nFlying, lifelink\nWhen this token enters, it deals 3 damage to any target.",

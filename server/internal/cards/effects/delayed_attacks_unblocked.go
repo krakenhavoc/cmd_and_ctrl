@@ -55,7 +55,7 @@ func thatCreatureAttacksUnblocked(ev game.Event, _ *game.DelayedTrigger, g *game
 	if ev.Kind != game.EventBlockersDeclared || p.Object.ID == uuid.Nil {
 		return nil
 	}
-	c, ok := battlefieldCardForEffect(g, p.Object.ID)
+	c, ok := BattlefieldCardForEffect(g, p.Object.ID)
 	if !ok || c.ObjectEpoch != p.Object.Epoch || !attacksPlayerUnblocked(g, c, ev.Actor) {
 		return nil
 	}
@@ -79,7 +79,7 @@ func whenThatCreatureAttacksUnblocked(ctx *Context, creature uuid.UUID, label st
 	if creature == uuid.Nil {
 		return nil
 	}
-	c, ok := battlefieldCardForEffect(ctx.Game, creature)
+	c, ok := BattlefieldCardForEffect(ctx.Game, creature)
 	if !ok {
 		return nil
 	}
@@ -94,7 +94,7 @@ func whenThatCreatureAttacksUnblocked(ctx *Context, creature uuid.UUID, label st
 
 // firstPayloadCard is the fired instance's "it": the first card on its
 // payload, or uuid.Nil.
-func firstPayloadCard(ctx *Context) uuid.UUID {
+func FirstPayloadCard(ctx *Context) uuid.UUID {
 	if cards := ctx.PayloadCards(); len(cards) > 0 {
 		return cards[0]
 	}
@@ -104,9 +104,9 @@ func firstPayloadCard(ctx *Context) uuid.UUID {
 // powerNowOrLastKnown is "its power" for a creature an effect names: its
 // power now while it is on the battlefield, else as it last existed there
 // (CR 608.2h).
-func powerNowOrLastKnown(g *game.Game, id uuid.UUID) int {
-	if onBattlefield(g, id) {
-		return b31CurrentPowerOf(g, id)
+func PowerNowOrLastKnown(g *game.Game, id uuid.UUID) int {
+	if OnBattlefield(g, id) {
+		return B31CurrentPowerOf(g, id)
 	}
-	return b17LastKnownPowerOffBattlefield(g, id)
+	return B17LastKnownPowerOffBattlefield(g, id)
 }

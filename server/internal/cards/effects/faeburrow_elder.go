@@ -41,7 +41,7 @@ func init() {
 				return target.InstanceID == source.InstanceID
 			},
 			Apply: func(c *game.Characteristic, target *game.Card, g *game.Game, source *game.Card) {
-				n := len(colorsAmongPermanentsYouControl(g, source.Controller))
+				n := len(ColorsAmongPermanentsYouControl(g, source.Controller))
 				c.Power += n
 				c.Toughness += n
 			},
@@ -51,7 +51,7 @@ func init() {
 			Label: "For each color among permanents you control, add one mana of that color",
 			ProducedFunc: func(g *game.Game, controller, _ uuid.UUID) string {
 				var sb strings.Builder
-				for _, col := range colorsAmongPermanentsYouControl(g, controller) {
+				for _, col := range ColorsAmongPermanentsYouControl(g, controller) {
 					sb.WriteString("{" + col + "}")
 				}
 				return sb.String()
@@ -65,7 +65,7 @@ func init() {
 // the union of EffectiveColors() over every permanent the controller
 // controls, in canonical WUBRG order. A colourless permanent
 // contributes nothing, and an empty board answers no colours.
-func colorsAmongPermanentsYouControl(g *game.Game, controller uuid.UUID) []string {
+func ColorsAmongPermanentsYouControl(g *game.Game, controller uuid.UUID) []string {
 	seen := map[string]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller {

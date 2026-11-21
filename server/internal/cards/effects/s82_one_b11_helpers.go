@@ -11,36 +11,36 @@ import (
 
 // s82OneOil is the oil counter's kind. It is the same on-disk identity
 // Vat of Rebirth and Mindsplice Apparatus use.
-const s82OneOil = "oil"
+const S82OneOil = "oil"
 
 // s82HasOilCounter passes for a card with one or more oil counters on it.
-func s82HasOilCounter(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-	return c.Counters[s82OneOil] > 0
+func S82HasOilCounter(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+	return c.Counters[S82OneOil] > 0
 }
 
 // s82OilPermanentsYouControl is "the number of permanents you control
 // with oil counters on them", read as the effect resolves.
-func s82OilPermanentsYouControl(ctx *Context) int {
-	return len(MatchingBattlefield(ctx, And(YouControl(), s82HasOilCounter)))
+func S82OilPermanentsYouControl(ctx *Context) int {
+	return len(MatchingBattlefield(ctx, And(YouControl(), S82HasOilCounter)))
 }
 
 // s82YouControlAnOilPermanent is "you control a permanent with an oil
 // counter on it".
-var s82YouControlAnOilPermanent = CondBoard{
+var S82YouControlAnOilPermanent = CondBoard{
 	Name: "you control a permanent with an oil counter on it",
-	Test: func(ctx *Context) bool { return s82OilPermanentsYouControl(ctx) > 0 },
+	Test: func(ctx *Context) bool { return S82OilPermanentsYouControl(ctx) > 0 },
 }
 
 // s82OilPump is "This creature gets +P/+T for each oil counter on it": a
 // layer 7c modifier over the source alone, read live on every pass.
-func s82OilPump(power, toughness int, label string) game.StaticAbility {
+func S82OilPump(power, toughness int, label string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     label,
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			n := source.Counters[s82OneOil]
+			n := source.Counters[S82OneOil]
 			c.Power += power * n
 			c.Toughness += toughness * n
 		},
@@ -51,6 +51,6 @@ func s82OilPump(power, toughness int, label string) game.StaticAbility {
 // artifact you control is put into a graveyard from the battlefield"
 // (Vat of Rebirth's condition): types and controller as the permanent
 // last existed.
-func s82OilOnDeparture(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func S82OilOnDeparture(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	return vatOfRebirthCondition(ev, source, lki, g)
 }

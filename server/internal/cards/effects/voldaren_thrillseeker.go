@@ -26,21 +26,21 @@ func init() {
 		Completeness: CompletenessFull,
 		Grants: []AbilityGrant{{
 			Key:       voldarenThrillseekerGrant,
-			Activated: []ActivatedAbility{voldarenThrillseekerSacrifice()},
+			Activated: []ActivatedAbility{VoldarenThrillseekerSacrifice()},
 			Text:      "{1}, Sacrifice this creature: It deals damage equal to its power to any target.",
 		}},
 		Triggered: []game.TriggeredAbility{
 			Backup("Voldaren Thrillseeker", 2, voldarenThrillseekerGrant),
 		},
-		Activated: []ActivatedAbility{voldarenThrillseekerSacrifice()},
+		Activated: []ActivatedAbility{VoldarenThrillseekerSacrifice()},
 	})
 }
 
-func voldarenThrillseekerSacrifice() ActivatedAbility {
+func VoldarenThrillseekerSacrifice() ActivatedAbility {
 	return ActivatedAbility{
 		Label:   "{1}, Sacrifice this creature: It deals damage equal to its power to any target.",
 		Cost:    Plus(ManaCost("{1}"), SacrificeThis()),
 		Targets: TargetAny(),
-		Effect:  sacrificedSourceDealsItsPowerToTheTarget,
+		Effect:  SacrificedSourceDealsItsPowerToTheTarget,
 	}
 }

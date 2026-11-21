@@ -13,7 +13,7 @@ import (
 // graveyard from your library" (Polluted Cistern): a mill or any other
 // library-to-graveyard move of a card its controller owns. A card's
 // graveyard is always its owner's, so ownership reads the destination.
-func roomsBCardPutIntoYourGraveyardFromLibrary(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RoomsBCardPutIntoYourGraveyardFromLibrary(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventMill && ev.Kind != game.EventZoneMove {
 		return false
 	}
@@ -30,14 +30,14 @@ func roomsBCardPutIntoYourGraveyardFromLibrary(ev game.Event, source *game.Card,
 // together with the card that triggered it (the same event batch,
 // CR 603.2c). The types are each card's printed ones; a card that has
 // left the graveyard since is still counted, as "those cards".
-func roomsBEachOpponentLosesLifePerCardTypeMilled(g *game.Game, item *game.StackItem) error {
+func RoomsBEachOpponentLosesLifePerCardTypeMilled(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
 	batch := item.Trigger.Event.Batch
 	types := map[string]bool{}
 	for _, ev := range g.EventsThisTurn() {
-		if ev.Batch != batch || !roomsBCardPutIntoYourGraveyardFromLibrary(ev, &game.Card{Controller: item.Controller}, game.Characteristic{}, g) {
+		if ev.Batch != batch || !RoomsBCardPutIntoYourGraveyardFromLibrary(ev, &game.Card{Controller: item.Controller}, game.Characteristic{}, g) {
 			continue
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
@@ -52,20 +52,20 @@ func roomsBEachOpponentLosesLifePerCardTypeMilled(g *game.Game, item *game.Stack
 	if len(types) == 0 {
 		return nil
 	}
-	return eachOpponentLosesLife(g, item, len(types))
+	return EachOpponentLosesLifeNow(g, item, len(types))
 }
 
 // roomsBMillThenReturnAChosenCreatureCard is Dim Oubliette: mill N
 // cards, then the controller chooses a creature card from their
 // graveyard (the milled ones included) and puts it onto the battlefield.
 // The pick is mandatory; with one candidate there is nothing to choose.
-func roomsBMillThenReturnAChosenCreatureCard(n int) Effect {
+func RoomsBMillThenReturnAChosenCreatureCard(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return MillToZone{N: n, ThenTail: NewContext(g, item).ItemTail(roomsBHelpersMilled)}.Apply(NewContext(g, item))
 	}
 }
 
-func roomsBReturnAChosenCreatureCard(ctx *Context) error {
+func RoomsBReturnAChosenCreatureCard(ctx *Context) error {
 	p := ctx.PlayerByID(ctx.Controller())
 	if p == nil || p.Graveyard == nil {
 		return nil
@@ -98,7 +98,7 @@ func roomsBReturnAChosenCreatureCard(ctx *Context) error {
 
 // roomsBChosenCreatureReturn is the creature card chosen returning to the
 // battlefield, keyed (#4253): the asking item rides the prompt as data.
-var roomsBChosenCreatureReturn = askedPick("choose-cards/rooms-b-return-chosen-creature", func(ctx *Context, r game.CardsChosen) error {
+var roomsBChosenCreatureReturn = AskedPick("choose-cards/rooms-b-return-chosen-creature", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
 		return nil
 	}
@@ -108,5 +108,5 @@ var roomsBChosenCreatureReturn = askedPick("choose-cards/rooms-b-return-chosen-c
 // roomsBHelpersMilled is the clause after the mill (#4253 slice 9).
 var roomsBHelpersMilled = CardTail("rooms-b-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
 
-	return roomsBReturnAChosenCreatureCard(ctx)
+	return RoomsBReturnAChosenCreatureCard(ctx)
 })

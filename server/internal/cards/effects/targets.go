@@ -475,17 +475,17 @@ func TargetPlayer(label string, preds ...PlayerPredicate) *game.TargetSpec {
 // TargetCreature — "target creature" narrowed by predicates
 // (NonBlack(), OpponentControls(), PowerLE(2), …).
 func TargetCreature(label string, preds ...CardPredicate) *game.TargetSpec {
-	return battlefieldSpec("creature", label, And(append([]CardPredicate{Creature()}, preds...)...))
+	return BattlefieldSpec("creature", label, And(append([]CardPredicate{Creature()}, preds...)...))
 }
 
 // TargetPermanent — "target permanent" narrowed by predicates
 // ("target artifact or enchantment" is
 // TargetPermanent("…", Or(Artifact(), Enchantment()))).
 func TargetPermanent(label string, preds ...CardPredicate) *game.TargetSpec {
-	return battlefieldSpec("permanent", label, And(preds...))
+	return BattlefieldSpec("permanent", label, And(preds...))
 }
 
-func battlefieldSpec(mode, label string, pred CardPredicate) *game.TargetSpec {
+func BattlefieldSpec(mode, label string, pred CardPredicate) *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:  mode,
 		Label: label,

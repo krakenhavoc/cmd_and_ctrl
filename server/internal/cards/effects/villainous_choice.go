@@ -149,7 +149,7 @@ func (f FaceVillainousChoice) Apply(ctx *Context) error {
 		listed[p]++
 	}
 	var waiting []uuid.UUID
-	for _, p := range apnapPlayers(ctx.Game) {
+	for _, p := range ApnapPlayers(ctx.Game) {
 		n := listed[p]
 		if n == 0 {
 			continue
@@ -160,12 +160,12 @@ func (f FaceVillainousChoice) Apply(ctx *Context) error {
 			waiting = append(waiting, p)
 		}
 	}
-	return f.Choice.ask(ctx, waiting, f.Carry)
+	return f.Choice.Ask(ctx, waiting, f.Carry)
 }
 
 // ask queues the question for the first player in `waiting` who is
 // still in the game. With nobody left it does nothing: the chain is over.
-func (c *VillainousChoice) ask(ctx *Context, waiting, carry []uuid.UUID) error {
+func (c *VillainousChoice) Ask(ctx *Context, waiting, carry []uuid.UUID) error {
 	for i, p := range waiting {
 		pl := ctx.Game.PlayerByIDForEffect(p)
 		if pl == nil || pl.Eliminated {
@@ -218,7 +218,7 @@ func (c *VillainousChoice) answered(ctx *Context, r game.OptionPicked) error {
 		}
 		err = opt.Body(ctx, Facing{Player: r.Chooser, Carry: carry, Remaining: stillToAsk(ctx.Game, waiting)})
 	}
-	if nextErr := c.ask(ctx, waiting, carry); err == nil {
+	if nextErr := c.Ask(ctx, waiting, carry); err == nil {
 		err = nextErr
 	}
 	return err
@@ -240,25 +240,25 @@ func stillToAsk(g *game.Game, waiting []uuid.UUID) int {
 // villainousSacrifice is the body of "[that player] sacrifices a <label>
 // of their choice": one sacrifice prompt for the facing player, none
 // when they have nothing that qualifies (CR 701.21a, 701.55b).
-func villainousSacrifice(label string, match CardPredicate) func(*Context, Facing) error {
+func VillainousSacrifice(label string, match CardPredicate) func(*Context, Facing) error {
 	return func(ctx *Context, f Facing) error {
-		ctx.Game.PlayerSacrificesForEffect(ctx.Source(), f.Player, sacrificeSpec(label, match), "Sacrifice "+label)
+		ctx.Game.PlayerSacrificesForEffect(ctx.Source(), f.Player, SacrificeSpec(label, match), "Sacrifice "+label)
 		return nil
 	}
 }
 
 // villainousCanSacrifice is the Possible check that goes with
 // villainousSacrifice.
-func villainousCanSacrifice(match CardPredicate) func(*game.Game, uuid.UUID) bool {
+func VillainousCanSacrifice(match CardPredicate) func(*game.Game, uuid.UUID) bool {
 	return func(g *game.Game, facing uuid.UUID) bool {
-		return len(permanentsControlledByMatching(g, facing, match)) > 0
+		return len(PermanentsControlledByMatching(g, facing, match)) > 0
 	}
 }
 
 // villainousDiscard is the body of "[that player] discards N cards": the
 // facing player's own pick from their hand (CR 701.9a), as many as they
 // have when the hand is smaller, and no prompt for an empty hand.
-func villainousDiscard(n int) func(*Context, Facing) error {
+func VillainousDiscard(n int) func(*Context, Facing) error {
 	return func(ctx *Context, f Facing) error {
 		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: f.Player, Source: ctx.Source(), N: n})
 		return nil
@@ -266,7 +266,7 @@ func villainousDiscard(n int) func(*Context, Facing) error {
 }
 
 // villainousHandSize is the number of cards in a player's hand.
-func villainousHandSize(g *game.Game, player uuid.UUID) int {
+func VillainousHandSize(g *game.Game, player uuid.UUID) int {
 	if p := g.PlayerByIDForEffect(player); p != nil {
 		return p.Hand.Size()
 	}

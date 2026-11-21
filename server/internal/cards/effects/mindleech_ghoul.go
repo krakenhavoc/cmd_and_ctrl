@@ -33,12 +33,12 @@ func init() {
 // mindleechGhoulExileBody is "When this creature exploits a creature,
 // each opponent exiles a card from their hand." An on-disk key: never
 // renamed, never reused.
-var mindleechGhoulExileBody = game.ReflexiveBody("mindleech-ghoul/exile", simpleBody(mindleechGhoulExile), nil)
+var mindleechGhoulExileBody = game.ReflexiveBody("mindleech-ghoul/exile", SimpleBody(MindleechGhoulExile), nil)
 
 // mindleechGhoulExile asks each opponent, in turn order, for the card
 // they exile. The answer is the shared plain exile (stdB40ExileFromHand).
-func mindleechGhoulExile(g *game.Game, item *game.StackItem) error {
-	eachOpponent(g, item.Controller, func(opp uuid.UUID) bool {
+func MindleechGhoulExile(g *game.Game, item *game.StackItem) error {
+	EachOpponent(g, item.Controller, func(opp uuid.UUID) bool {
 		p := g.PlayerByIDForEffect(opp)
 		if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
 			return false

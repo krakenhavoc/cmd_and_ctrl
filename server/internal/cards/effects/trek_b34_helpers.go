@@ -13,7 +13,7 @@ import (
 // read on post-layer types: an artifact that is a creature only for now (a
 // crewed Vehicle, a stationed Spacecraft) is one while it is, and the
 // source counts itself when it is one.
-func trekB34ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func TrekB34ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsArtifact() && target.IsCreature() && target.Controller == source.Controller
 }
 
@@ -33,11 +33,11 @@ func trekB34ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source 
 // the bottom of its owner's library in a random order. With one creature
 // card revealed there is no choice to make; with none, nothing is
 // assimilated and every revealed card goes to the bottom.
-func trekB34GiftOfPerfection(g *game.Game, item *game.StackItem) error {
+func TrekB34GiftOfPerfection(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var hits, rest []uuid.UUID
-	for _, opp := range opponentsInTurnOrder(g, item.Controller) {
-		run, hit := revealUntil(ctx, opp, func(c game.Card) bool { return c.IsCreature() },
+	for _, opp := range OpponentsInTurnOrder(g, item.Controller) {
+		run, hit := RevealUntil(ctx, opp, func(c game.Card) bool { return c.IsCreature() },
 			"Gift of Perfection — reveal until a creature card")
 		for _, id := range run {
 			if id == hit {
@@ -72,8 +72,8 @@ func trekB34GiftOfPerfection(g *game.Game, item *game.StackItem) error {
 
 var trekB34GiftOfPerfectionPicked = game.RegisterChooseCardsThen("choose-cards/gift-of-perfection-assimilate",
 	func(g *game.Game, r game.CardsChosen) error {
-		ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
-		picked, left := revealPartition(r.Candidates, r.Picked)
+		ctx, _ := AskedContext(g, r.Asked, r.Chooser, r.Source, nil)
+		picked, left := RevealPartition(r.Candidates, r.Picked)
 		if len(picked) > 1 {
 			picked, left = picked[:1], append(left, picked[1:]...)
 		}
@@ -113,7 +113,7 @@ func trekB34GiftOfPerfectionFinish(ctx *Context, picked, rest []uuid.UUID) error
 // in a library: trekB11Assimilate's entry (a +1/+1 counter, a Borg artifact
 // creature that loses its other creature types), from the library.
 func trekB34AssimilateFromLibrary(ctx *Context, card uuid.UUID) error {
-	return putCardsFromZoneTogetherWith(ctx, game.ZoneLibrary, []uuid.UUID{card},
+	return PutCardsFromZoneTogetherWith(ctx, game.ZoneLibrary, []uuid.UUID{card},
 		game.ZoneEntryOptions{
 			Controller:         ctx.Controller(),
 			EntersWithCounters: map[string]int{game.CounterPlusOne: 1},

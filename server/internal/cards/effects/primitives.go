@@ -176,10 +176,10 @@ type DestroyTarget struct {
 func (d DestroyTarget) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
-	if ctx.isNewSourceObject(d.Target) {
+	if ctx.IsNewSourceObject(d.Target) {
 		return nil
 	}
-	return nothingIfGone(ctx.Game.DestroyPermanentForEffect(d.Target,
+	return NothingIfGone(ctx.Game.DestroyPermanentForEffect(d.Target,
 		game.DestroyOptions{CantBeRegenerated: d.CantBeRegenerated}))
 }
 
@@ -205,7 +205,7 @@ type Regenerate struct {
 }
 
 func (r Regenerate) Apply(ctx *Context) error {
-	if r.Target == uuid.Nil || ctx.isNewSourceObject(r.Target) { // #1432
+	if r.Target == uuid.Nil || ctx.IsNewSourceObject(r.Target) { // #1432
 		return nil
 	}
 	if err := ctx.Game.RegenerateForEffect(r.Target); err != nil {
@@ -257,13 +257,13 @@ type SacrificePermanent struct {
 // oneWentThisWay is a single-card door's `sacrificed`, `bounced`,
 // `tucked` or `exiled` read off its keyed tail (SacrificePermanent.ThenTail,
 // BounceToHand.ThenTail): whether the one card went this way (CR 400.7).
-func oneWentThisWay(o game.TailOutcome) bool { return len(o.IDs) == 1 }
+func OneWentThisWay(o game.TailOutcome) bool { return len(o.IDs) == 1 }
 
 func (s SacrificePermanent) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
 	// "If you do" is told no: nothing was sacrificed.
-	if ctx.isNewSourceObject(s.Target) {
+	if ctx.IsNewSourceObject(s.Target) {
 		return s.ThenTail.Run(ctx.Game, nil)
 	}
 	if !s.ThenTail.IsZero() {
@@ -273,7 +273,7 @@ func (s SacrificePermanent) Apply(ctx *Context) error {
 		// nothing else.
 		return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, []uuid.UUID{s.Target}, s.ThenTail)
 	}
-	return nothingIfGone(ctx.Game.SacrificePermanentForEffect(s.Target))
+	return NothingIfGone(ctx.Game.SacrificePermanentForEffect(s.Target))
 }
 
 // ExileTarget moves a card from whichever zone it's in to the
@@ -315,7 +315,7 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
 	// Flicker and ExileThenIfItWas route through here.
-	if ctx.isNewSourceObject(e.Target) {
+	if ctx.IsNewSourceObject(e.Target) {
 		return e.ThenTail.Run(ctx.Game, nil)
 	}
 	var link game.ObjectRef
@@ -324,9 +324,9 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	}
 	if e.ThenTail.IsZero() {
 		if e.Linked {
-			return nothingIfGone(ctx.Game.ExileLinkedForEffect(link, e.Target))
+			return NothingIfGone(ctx.Game.ExileLinkedForEffect(link, e.Target))
 		}
-		return nothingIfGone(ctx.Game.ExileCardForEffect(e.Target))
+		return NothingIfGone(ctx.Game.ExileCardForEffect(e.Target))
 	}
 	if e.Linked {
 		return ctx.Game.ExileLinkedKeyedForEffect(link, []uuid.UUID{e.Target}, e.ThenTail)
@@ -414,7 +414,7 @@ type ExileThenIfItWas struct {
 // var.
 func IfItWasTail(key string, then, otherwise func(ctx *Context) error) game.TailRef {
 	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
-		if !oneWentThisWay(o) {
+		if !OneWentThisWay(o) {
 			return nil
 		}
 		clause := then
@@ -443,7 +443,7 @@ func (e ExileThenIfItWas) Apply(ctx *Context) error {
 	if c, ok := ctx.Game.LookupCardForEffect(e.Target); ok && (e.Was == nil || e.Was(c)) {
 		n = 1
 	}
-	return ExileTarget{Target: e.Target, ThenTail: withN(ctx.ItemTail(e.Keyed), n)}.Apply(ctx)
+	return ExileTarget{Target: e.Target, ThenTail: WithN(ctx.ItemTail(e.Keyed), n)}.Apply(ctx)
 }
 
 // ReturnFromExile puts a card that is currently in exile back onto
@@ -543,7 +543,7 @@ func (f Flicker) Apply(ctx *Context) error {
 	}
 	return ExileTarget{
 		Target:   f.Target,
-		ThenTail: withN(withCarry(ctx.ItemTail(flickerReturnExiled), f.Target, f.Controller), tapped),
+		ThenTail: WithN(WithCarry(ctx.ItemTail(flickerReturnExiled), f.Target, f.Controller), tapped),
 	}.Apply(ctx)
 }
 
@@ -696,13 +696,13 @@ type BounceToHand struct {
 func (b BounceToHand) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
-	if ctx.isNewSourceObject(b.Target) {
+	if ctx.IsNewSourceObject(b.Target) {
 		return b.ThenTail.Run(ctx.Game, nil)
 	}
 	if !b.ThenTail.IsZero() {
 		return ctx.Game.BounceCardsToHandKeyedForEffect([]uuid.UUID{b.Target}, b.ThenTail)
 	}
-	return nothingIfGone(ctx.Game.BounceToHandForEffect(b.Target))
+	return NothingIfGone(ctx.Game.BounceToHandForEffect(b.Target))
 }
 
 // TapTarget taps a battlefield card. No effect if the card is not
@@ -712,10 +712,10 @@ type TapTarget struct {
 }
 
 func (t TapTarget) Apply(ctx *Context) error {
-	if ctx.isNewSourceObject(t.Target) { // #1432
+	if ctx.IsNewSourceObject(t.Target) { // #1432
 		return nil
 	}
-	if !onBattlefield(ctx.Game, t.Target) {
+	if !OnBattlefield(ctx.Game, t.Target) {
 		// Gone by resolution: a target that left (CR 608.2b), or the
 		// source of a "tap this creature" ability that has died. There
 		// is nothing to tap, so the instruction does nothing.
@@ -747,7 +747,7 @@ type UntapTarget struct {
 }
 
 func (u UntapTarget) Apply(ctx *Context) error {
-	if ctx.isNewSourceObject(u.Target) { // #1432
+	if ctx.IsNewSourceObject(u.Target) { // #1432
 		return nil
 	}
 	// "Untap this" after this permanent has left the battlefield: the
@@ -759,7 +759,7 @@ func (u UntapTarget) Apply(ctx *Context) error {
 	// soak). A chosen target that left is already illegal (CR 608.2b);
 	// the same guard covers any other caller that hands this an ID no
 	// longer on the battlefield. TapTarget has the same guard.
-	if !onBattlefield(ctx.Game, u.Target) {
+	if !OnBattlefield(ctx.Game, u.Target) {
 		return nil
 	}
 	return ctx.Game.UntapTargetForEffect(u.Target)
@@ -879,7 +879,7 @@ func (c CounterAllMatching) Apply(ctx *Context) error {
 		return nil
 	}
 	caster := ctx.Controller()
-	reader := ctx.textReader()
+	reader := ctx.TextReader()
 	var ids []uuid.UUID
 	for _, card := range ctx.Game.Stack.Cards {
 		if c.Match(ctx.Game, caster, game.ThroughTextOf(reader, card)) {
@@ -910,7 +910,7 @@ type AddCounter struct {
 // the instruction does nothing. Only ErrCardNotFound is absorbed; an
 // illegal parameter or any other failure still surfaces, because those
 // mean the CARD is wrong rather than that the table moved on.
-func nothingIfGone(err error) error {
+func NothingIfGone(err error) error {
 	if errors.Is(err, game.ErrCardNotFound) {
 		return nil
 	}
@@ -921,13 +921,13 @@ func (a AddCounter) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
 	// Removal (N < 0) is the same act on the same object.
-	if ctx.isNewSourceObject(a.Target) {
+	if ctx.IsNewSourceObject(a.Target) {
 		return nil
 	}
 	// #3667: "this creature" sacrificed or killed in response is a new
 	// object in another zone (CR 400.7); the instruction does nothing
 	// (CR 608.2b).
-	if ctx.sourceLeftBattlefield(a.Target) {
+	if ctx.SourceLeftBattlefield(a.Target) {
 		return nil
 	}
 	err := ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
@@ -971,11 +971,11 @@ func (c CreateToken) Apply(ctx *Context) error {
 // they are not read through the creating effect's text. An exception
 // the copy effect prints ("except it's a 1/1 white Spirit") is applied
 // to the template by the caller, through its text.
-func createTokenCopies(ctx *Context, controller uuid.UUID, tmpl game.Card, n int) error {
+func CreateTokenCopies(ctx *Context, controller uuid.UUID, tmpl game.Card, n int) error {
 	if controller == uuid.Nil {
 		controller = ctx.Controller()
 	}
-	return ctx.Game.CreateTokenForEffect(controller, copiedToken(tmpl), n)
+	return ctx.Game.CreateTokenForEffect(controller, CopiedToken(tmpl), n)
 }
 
 // copiedToken names a token template that is a copy of an object
@@ -983,7 +983,7 @@ func createTokenCopies(ctx *Context, controller uuid.UUID, tmpl game.Card, n int
 // of the creating effect's text, so never read through it. An identity;
 // it exists so TestTokenDescriptionsReadThroughText can tell a copy from
 // a description.
-func copiedToken(tmpl game.Card) game.Card { return tmpl }
+func CopiedToken(tmpl game.Card) game.Card { return tmpl }
 
 // ruleDefinedToken names a token template the rules define rather than
 // the card's text: a keyword's token (living weapon's Germ, job select's
@@ -991,7 +991,7 @@ func copiedToken(tmpl game.Card) game.Card { return tmpl }
 // reminder text) and a predefined token (CR 111.10: a Treasure, a Food,
 // a Role), whose name is the whole of what the text says. It is never
 // read through that text. An identity, like copiedToken.
-func ruleDefinedToken(tmpl game.Card) game.Card { return tmpl }
+func RuleDefinedToken(tmpl game.Card) game.Card { return tmpl }
 
 // ReturnFromGraveyard moves a card from a graveyard to `Dest`
 // (typically ZoneHand, occasionally ZoneBattlefield for
@@ -1057,24 +1057,24 @@ type ReturnFromGraveyard struct {
 func (r ReturnFromGraveyard) Apply(ctx *Context) error {
 	if r.AsAura {
 		_, err := ctx.Game.ReturnFromGraveyardAsAuraForEffect(r.Target, r.Controller, r.Tapped)
-		return nothingIfGone(err)
+		return NothingIfGone(err)
 	}
 	if r.Flipped {
 		_, err := ctx.Game.ReturnFromGraveyardFlippedForEffect(r.Target, r.Controller, r.Tapped)
-		return nothingIfGone(err)
+		return NothingIfGone(err)
 	}
 	if r.Transformed && r.AttachedTo.Kind != "" {
 		_, err := ctx.Game.ReturnFromGraveyardTransformedAttachedForEffect(r.Target, r.Controller, r.AttachedTo)
-		return nothingIfGone(err)
+		return NothingIfGone(err)
 	}
 	if r.Transformed {
 		_, err := ctx.Game.ReturnFromGraveyardTransformedForEffect(r.Target, r.Controller, r.Tapped, r.Counters)
-		return nothingIfGone(err)
+		return NothingIfGone(err)
 	}
 	if r.Tapped {
-		return nothingIfGone(ctx.Game.ReturnFromGraveyardTappedForEffect(r.Target, r.Dest, r.Controller, true))
+		return NothingIfGone(ctx.Game.ReturnFromGraveyardTappedForEffect(r.Target, r.Dest, r.Controller, true))
 	}
-	return nothingIfGone(ctx.Game.ReturnFromGraveyardUnderControlForEffect(r.Target, r.Dest, r.Controller))
+	return NothingIfGone(ctx.Game.ReturnFromGraveyardUnderControlForEffect(r.Target, r.Dest, r.Controller))
 }
 
 // SearchLibrary looks through `Player`'s library for up to `Limit`
@@ -1253,7 +1253,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 	// text now says it (CR 612.2) when the predicate asks through
 	// HasSubtypeWord / HasColorWord.
 	pred := s.Predicate
-	reader := ctx.textReader()
+	reader := ctx.TextReader()
 	if reader != nil && pred != nil {
 		printed := pred
 		pred = func(c game.Card) bool { return printed(game.ThroughTextOf(reader, c)) }
@@ -1349,7 +1349,7 @@ func payUnlessBranch(body func(ctx *Context, r game.PayUnlessAnswer) error) game
 	return func(g *game.Game, r game.PayUnlessAnswer) error {
 		// A prompt that carried the asking item as data (#4264) lets the
 		// branch read its event, targets, X and source object.
-		ctx, carry := askedContext(g, r.Item, r.Chooser, r.Source, r.Carry)
+		ctx, carry := AskedContext(g, r.Item, r.Chooser, r.Source, r.Carry)
 		r.Carry = carry
 		return body(ctx, r)
 	}
@@ -1624,17 +1624,17 @@ func (e EachPlayerSacrifices) Apply(ctx *Context) error {
 	}
 	var spec *game.TargetSpec
 	if e.Match != nil {
-		spec = sacrificeSpec(e.Label, e.Match)
+		spec = SacrificeSpec(e.Label, e.Match)
 	}
 	label := e.Label
 	if label == "" {
 		label = "a permanent"
 	}
-	if !e.Keyed.run.Valid() {
+	if !e.Keyed.Run.Valid() {
 		ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
 		return nil
 	}
-	return ctx.Game.EachPlayerSacrificesThenKeyedForEffect(ctx.Source(), except, spec, "Sacrifice "+label, e.Keyed.run, ctx.RunData(nil))
+	return ctx.Game.EachPlayerSacrificesThenKeyedForEffect(ctx.Source(), except, spec, "Sacrifice "+label, e.Keyed.Run, ctx.RunData(nil))
 }
 
 // Scry is "scry N" (CR 701.22) — look at the top N cards of your
@@ -1745,7 +1745,7 @@ func (s Surveil) Apply(ctx *Context) error {
 
 // thenDrawACard is "then draw a card" after a look-at (Opt, Preordain,
 // Consider): Tail.Player draws one. An on-disk key (#4253 slice 3).
-var thenDrawACard = game.RegisterTail("then/draw-a-card", func(g *game.Game, o game.TailOutcome) error {
+var ThenDrawACard = game.RegisterTail("then/draw-a-card", func(g *game.Game, o game.TailOutcome) error {
 	return g.DrawNForEffect(o.Tail.Player, 1)
 })
 
@@ -1992,7 +1992,7 @@ type ExileTopFaceDown struct {
 // ExileTopFaceDown.ThenTail.Ref.
 func ExileTopFaceDownThen(key string, body func(ctx *Context, exiled []uuid.UUID) error) game.TailRef {
 	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
-		return body(keyedContext(g, o.Tail.Player, o.Tail.Source), o.IDs)
+		return body(KeyedContext(g, o.Tail.Player, o.Tail.Source), o.IDs)
 	})
 }
 

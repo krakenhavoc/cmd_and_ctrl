@@ -15,7 +15,7 @@ import (
 // the toughness twin of greatestPowerAmongCreaturesYouControl (the
 // Henge's X, which Ghalta the Unstoppable reuses). The spell itself is
 // on the stack, so it never counts.
-func rfCreatureBGreatestToughnessYouControl() func(q game.CostQuery) int {
+func RfCreatureBGreatestToughnessYouControl() func(q game.CostQuery) int {
 	return func(q game.CostQuery) int {
 		if q.Game == nil || q.Game.Battlefield == nil {
 			return 0
@@ -38,7 +38,7 @@ func rfCreatureBGreatestToughnessYouControl() func(q game.CostQuery) int {
 // returns from a graveyard (Gallia, Tragic Host) — b10EntersWithCounters
 // gated on the move's origin. A cast from hand (or any other zone)
 // enters bare.
-func rfCreatureBEntersWithCounterFromGraveyard(kind string, n int, label string) game.ReplacementEffect {
+func RfCreatureBEntersWithCounterFromGraveyard(kind string, n int, label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
@@ -58,7 +58,7 @@ func rfCreatureBEntersWithCounterFromGraveyard(kind string, n int, label string)
 // tally, so a creature that entered, left and came back counts only for
 // its new object, and a creature that entered during another player's
 // turn (still summoning-sick on yours) does not.
-func rfCreatureBEnteredThisTurn() CardPredicate {
+func RfCreatureBEnteredThisTurn() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		return g.EnteredThisTurn(c.InstanceID)
 	}
@@ -68,7 +68,7 @@ func rfCreatureBEnteredThisTurn() CardPredicate {
 // a spell this turn" (Edgar, Moonlit Sovereign), for composing with
 // AllOf. The tally is the source controller's, bumped as a spell is
 // announced, so a spell still on the stack counts.
-func rfCreatureBYouCastNoSpellThisTurn(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RfCreatureBYouCastNoSpellThisTurn(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return g.CastTallyFor(source.Controller).Total == 0
 }
 
@@ -77,7 +77,7 @@ func rfCreatureBYouCastNoSpellThisTurn(_ game.Event, source *game.Card, _ game.C
 // EventSurveil with `player` as the actor. Neither event is emitted for
 // a scry or surveil that looked at nothing, because none happened.
 // Caller holds g.mu.
-func rfCreatureBScriedOrSurveilledThisTurn(g *game.Game, player uuid.UUID) bool {
+func RfCreatureBScriedOrSurveilledThisTurn(g *game.Game, player uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if (ev.Kind == game.EventScry || ev.Kind == game.EventSurveil) && ev.Actor == player {
 			return true
@@ -92,13 +92,13 @@ func rfCreatureBScriedOrSurveilledThisTurn(g *game.Game, player uuid.UUID) bool 
 // Sacrifice this token: You gain 3 life." It is the Gingerbrute card
 // (gingerbrute.go) as a token, so it keeps both activated abilities and
 // is a Food as well as a Golem.
-func GingerbruteToken() game.Card { return tokenFromCatalog(printedGingerbruteToken) }
+func GingerbruteToken() game.Card { return TokenFromCatalog(printedGingerbruteToken) }
 
 // printedGingerbruteToken is the Gingerbrute token as PRINTED. Its
 // abilities are registered under game.TokenKey("gingerbrute") from the
 // tokenTemplates list, not carried on the instance.
-func printedGingerbruteToken() tokenTemplate {
-	return tokenTemplate{
+func printedGingerbruteToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "gingerbrute",
 		Card: game.Card{
 			Name:      "Gingerbrute",
@@ -113,7 +113,7 @@ func printedGingerbruteToken() tokenTemplate {
 				Label:   "{1}: This token can't be blocked this turn except by creatures with haste.",
 				Cost:    game.AbilityCost{Mana: "{1}"},
 				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
-				Effect:  rfCreatureBGingerbruteEvade,
+				Effect:  RfCreatureBGingerbruteEvade,
 			},
 			{
 				Label:   "{2}, {T}, Sacrifice this token: You gain 3 life.",
@@ -132,7 +132,7 @@ func printedGingerbruteToken() tokenTemplate {
 // turn" (Fblthp, Impossibly Lost): combat damage above zero dealt to a
 // player who is not the source controller, while it is the source
 // controller's turn. The damage source is unrestricted.
-func rfCreatureBOpponentDealtCombatDamageOnYourTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RfCreatureBOpponentDealtCombatDamageOnYourTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
@@ -145,7 +145,7 @@ func rfCreatureBOpponentDealtCombatDamageOnYourTurn(ev game.Event, source *game.
 // rfCreatureBFblthpImpossiblyLostResolve is the resolution of Fblthp,
 // Impossibly Lost's trigger: draw two, win on an empty library, then
 // the owner shuffles Fblthp into their library.
-func rfCreatureBFblthpImpossiblyLostResolve(g *game.Game, item *game.StackItem) error {
+func RfCreatureBFblthpImpossiblyLostResolve(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
 		return err
@@ -156,25 +156,25 @@ func rfCreatureBFblthpImpossiblyLostResolve(g *game.Game, item *game.StackItem) 
 		}
 	}
 	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+	if !ok || !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 		return nil
 	}
 	owner := c.Owner
-	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{item.SourceCardID}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{item.SourceCardID}, game.TuckOptions{}, game.KeyedTail{Ref: ThenShuffle, Player: owner})
 }
 
 // rfCreatureBFinalityCounter is the counter kind of a finality counter
 // (CR 122.1h). The "exile it instead" half is the engine's own
 // replacement (game.CounterFinality, finality_counters.go), so these
 // cards only have to put the counter on.
-const rfCreatureBFinalityCounter = game.CounterFinality
+const RfCreatureBFinalityCounter = game.CounterFinality
 
 // rfCreatureBAnOpponentWasDealtNoncombatDamage is Grim Repriser's
 // activation condition: this turn some opponent of `controller` was
 // dealt damage above zero that was not combat damage. Reads the turn's
 // EventDealDamage log, so damage dealt before the Repriser died counts.
 // Caller holds g.mu.
-func rfCreatureBAnOpponentWasDealtNoncombatDamage(g *game.Game, controller uuid.UUID) bool {
+func RfCreatureBAnOpponentWasDealtNoncombatDamage(g *game.Game, controller uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || ev.Combat || ev.Amount <= 0 {
 			continue
@@ -190,7 +190,7 @@ func rfCreatureBAnOpponentWasDealtNoncombatDamage(g *game.Game, controller uuid.
 // modal bullet's body: the bullet's own target group, first target
 // still legal as it resolves (CR 608.2b). Divining Duelist's tap and
 // untap bullets differ only in f.
-func rfCreatureBModeTargetDoes(f func(ctx *Context, id uuid.UUID) error) func(*game.StackItem, *Context, int) error {
+func RfCreatureBModeTargetDoes(f func(ctx *Context, id uuid.UUID) error) func(*game.StackItem, *Context, int) error {
 	return func(_ *game.StackItem, ctx *Context, occ int) error {
 		if t, ok := ModeTarget(ctx, occ); ok {
 			return f(ctx, t.ID)
@@ -202,7 +202,7 @@ func rfCreatureBModeTargetDoes(f func(ctx *Context, id uuid.UUID) error) func(*g
 // rfCreatureBGingerbruteEvade is the Gingerbrute's "{1}: This can't be
 // blocked this turn except by creatures with haste", shared by the
 // Gingerbrute card (gingerbrute.go) and the token Ginger makes.
-func rfCreatureBGingerbruteEvade(g *game.Game, item *game.StackItem) error {
+func RfCreatureBGingerbruteEvade(g *game.Game, item *game.StackItem) error {
 	return CantBeBlockedThisTurnExceptBy{
 		Target:   item.SourceCardID,
 		Keywords: []string{"haste"},

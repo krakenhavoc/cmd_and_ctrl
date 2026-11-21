@@ -48,7 +48,7 @@ import (
 // a card that appends to Keywords or Colors cannot leak into the next
 // caller's token.
 func TokenCard(key string) game.Card {
-	t, ok := tokenTable[key]
+	t, ok := TokenTable[key]
 	if !ok {
 		panic("effects.TokenCard: no token template named " + strconv.Quote(key))
 	}
@@ -60,15 +60,15 @@ func TokenCard(key string) game.Card {
 // TokenKeys lists every key in the table, sorted. For tests and the
 // catalogue page.
 func TokenKeys() []string {
-	keys := make([]string, 0, len(tokenTable))
-	for k := range tokenTable {
+	keys := make([]string, 0, len(TokenTable))
+	for k := range TokenTable {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	return keys
 }
 
-var tokenTable = map[string]game.Card{
+var TokenTable = map[string]game.Card{
 	"1/1 green and white Human Citizen":                             {Name: "Human Citizen", TypeLine: "Token Creature — Human Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Citizen":                                   {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Kithkin":                                   {Name: "Kithkin", TypeLine: "Token Creature — Kithkin", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
@@ -78,6 +78,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 blue Faerie Dragon with flying":                            {Name: "Faerie Dragon", TypeLine: "Token Creature — Faerie Dragon", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Faerie with flying":                                   {Name: "Faerie", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 blue Djinn Monk with flying":                               {Name: "Djinn Monk", TypeLine: "Token Creature — Djinn Monk", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"0/0 blue Alien":                                                {Name: "Alien", TypeLine: "Token Creature — Alien", Power: 0, Toughness: 0, Colors: []string{"U"}, PrintedPTKnown: true},
 	"0/0 black Phyrexian Germ":                                      {Name: "Phyrexian Germ", TypeLine: "Token Creature — Phyrexian Germ", Power: 0, Toughness: 0, Colors: []string{"B"}, PrintedPTKnown: true},
 	"0/0 green and blue Fractal":                                    {Name: "Fractal", TypeLine: "Token Creature — Fractal", Power: 0, Toughness: 0, Colors: []string{"G", "U"}, PrintedPTKnown: true},
 	"0/0 green and blue Fractal named Primo, the Indivisible":       {Name: "Primo, the Indivisible", TypeLine: "Token Legendary Creature — Fractal", Power: 0, Toughness: 0, Colors: []string{"G", "U"}, PrintedPTKnown: true},
@@ -235,6 +236,7 @@ var tokenTable = map[string]game.Card{
 	"1/2 white Moogle with lifelink":                                   {Name: "Moogle", TypeLine: "Token Creature — Moogle", Power: 1, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"10/10 colorless Eldrazi":                                          {Name: "Eldrazi", TypeLine: "Token Creature — Eldrazi", Power: 10, Toughness: 10},
 	"3/1 red Elemental":                                                {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}},
+	"3/1 red Elemental with haste":                                     {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}}, // Rakka Mar
 	"3/1 red Knight":                                                   {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 3, Toughness: 1, Colors: []string{"R"}},
 	"3/1 black Mindless-One":                                           {Name: "Mindless-One", TypeLine: "Token Creature — Mindless-One", Power: 3, Toughness: 1, Colors: []string{"B"}},
 	"2/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
@@ -306,6 +308,8 @@ var tokenTable = map[string]game.Card{
 	"3/3 blue and red Elemental with flying":                           {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 3, Colors: []string{"U", "R"}, Keywords: []string{"flying"}},
 	"3/3 green Ape":                                                    {Name: "Ape", TypeLine: "Token Creature — Ape", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Beast":                                                  {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"2/2 colorless Spirit":                                             {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2},
+	"3/3 black Beast with deathtouch":                                  {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"3/3 green Raccoon":                                                {Name: "Raccoon", TypeLine: "Token Creature — Raccoon", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Elk":                                                    {Name: "Elk", TypeLine: "Token Creature — Elk", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/2 red Wolf":                                                     {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 3, Toughness: 2, Colors: []string{"R"}},
@@ -313,6 +317,7 @@ var tokenTable = map[string]game.Card{
 	"3/2 white Hero with vigilance":                                    {Name: "Hero", TypeLine: "Token Creature — Hero", Power: 3, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"3/3 colorless Robot Villain artifact named Doombot":               {Name: "Doombot", TypeLine: "Token Artifact Creature — Robot Villain", Power: 3, Toughness: 3},
 	"3/2 colorless Eldrazi Horror":                                     {Name: "Eldrazi Horror", TypeLine: "Token Creature — Eldrazi Horror", Power: 3, Toughness: 2},
+	"4/4 colorless Eldrazi Angel with flying and vigilance":            {Name: "Eldrazi Angel", TypeLine: "Token Creature — Eldrazi Angel", Power: 4, Toughness: 4, Keywords: []string{"flying", "vigilance"}},
 	"3/2 red and white Spirit":                                         {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 2, Colors: []string{"R", "W"}},
 	"2/2 red Rebel":                                                    {Name: "Rebel", TypeLine: "Token Creature — Rebel", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red and white Spirit":                                         {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"R", "W"}},
@@ -547,6 +552,12 @@ var tokenTable = map[string]game.Card{
 	"2/2 green Cat Warrior with forestwalk":     {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"forestwalk"}},
 	"3/1 red Construct artifact with haste":     {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 
+	// S82 GAP batch 109: Heliod, God of the Sun's Cleric.
+	"2/1 white Cleric enchantment creature": {Name: "Cleric", TypeLine: "Token Enchantment Creature — Cleric", Power: 2, Toughness: 1, Colors: []string{"W"}},
+
+	// S82 GAP batch 110: Battle at the Helvault's Avacyn.
+	"8/8 white Legendary Angel named Avacyn with flying, vigilance, and indestructible": {Name: "Avacyn", TypeLine: "Token Legendary Creature — Angel", Power: 8, Toughness: 8, Colors: []string{"W"}, Keywords: []string{"flying", "vigilance", "indestructible"}},
+
 	// S82 BNS batch 52: Psemilla, Meletian Poet's Nymph.
 	"2/2 white Nymph enchantment creature": {Name: "Nymph", TypeLine: "Token Enchantment Creature — Nymph", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	// S82 BNS batch 54: Giant Opportunity's Giant.
@@ -588,4 +599,14 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Centaur enchantment":            {Name: "Centaur", TypeLine: "Token Enchantment Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 white Soldier enchantment":            {Name: "Soldier", TypeLine: "Token Enchantment Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"3/1 red Elemental enchantment with haste": {Name: "Elemental", TypeLine: "Token Enchantment Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+	// S82 GAP batch 101: Sek'Kuar, Deathkeeper's Graveborn.
+	"3/1 black and red Graveborn with haste": {Name: "Graveborn", TypeLine: "Token Creature — Graveborn", Power: 3, Toughness: 1, Colors: []string{"B", "R"}, Keywords: []string{"haste"}},
+
+	// S82 GAP batch 49: Wurmcoil Larva's two Phyrexian Wurms.
+	"1/2 black Phyrexian Wurm artifact with deathtouch": {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 1, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
+	"2/1 black Phyrexian Wurm artifact with lifelink":   {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
+	// S82 GAP batch 58: Ajani, Nacatl Pariah's Cat Warrior.
+	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
+	// S82 GAP batch 62: Mr. House, President and CEO's Robot.
+	"3/3 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 3, Toughness: 3},
 }

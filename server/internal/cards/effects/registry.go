@@ -15,7 +15,7 @@ import (
 // serialises writes before any reader touches the map. Post-init
 // mutation is disallowed — tests that need to inject specs call
 // registerForTest, which is only visible within the test binary.
-var registry = map[string]Spec{}
+var Registry = map[string]Spec{}
 
 // Register adds a catalog entry. Called once per card at init()
 // time. Panics on duplicate OracleID — a collision means a card
@@ -30,12 +30,12 @@ func Register(spec Spec) {
 	if spec.OracleID == "" {
 		panic(fmt.Sprintf("effects.Register: empty OracleID on %q", spec.Name))
 	}
-	if existing, ok := registry[spec.OracleID]; ok {
+	if existing, ok := Registry[spec.OracleID]; ok {
 		panic(fmt.Sprintf("effects.Register: duplicate OracleID %s (existing %q, new %q)",
 			spec.OracleID, existing.Name, spec.Name))
 	}
 	// ADR 0126 §6: what a declared Purpose may say, slot by slot.
-	checkSpecPurposes(spec)
+	CheckSpecPurposes(spec)
 	// ADR 0208 §5: a sticker sheet's ability stickers.
 	registerStickerSheet(spec)
 	if spec.Modes != nil {
@@ -49,7 +49,7 @@ func Register(spec Spec) {
 		if spec.Modes.Repeatable && spec.Modes.Max == 1 {
 			panic(fmt.Sprintf("effects.Register: %q is Repeatable with Max 1 — there is nothing to repeat", spec.Name))
 		}
-		checkRaisedModeMax(spec.Name, "Modes", spec.Modes)
+		CheckRaisedModeMax(spec.Name, "Modes", spec.Modes)
 		// ADR 0097: no printed spell says "that hasn't been chosen",
 		// and a spell has no permanent object to remember with — the
 		// restriction would read the zero identity and never apply.
@@ -59,7 +59,7 @@ func Register(spec Spec) {
 		if spec.Modes.AtRandom {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
-		checkUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
+		CheckUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
 		checkUpToCount(spec.Name, "a spell's Modes", spec.Modes, nil)
 		checkPawprints(spec.Name, "a spell's Modes", spec.Modes, true)
 		// #5771: "An opponent chooses one".
@@ -71,32 +71,32 @@ func Register(spec Spec) {
 			if !spec.Modes.ChosenByOpponent {
 				refuseThatPlayerControls(spec.Name, "a mode's", o.Targets)
 			}
-			checkFlatClauses(spec.Name, o.Targets)
+			CheckFlatClauses(spec.Name, o.Targets)
 			refuseOpponentChoice(spec.Name, "a mode's", o.Targets)
 			checkSpellXBound(spec.Name, o.Targets)
 			checkModeCost(spec.Name, "mode", i, o.Cost, true)
 			checkTargetAtRandom(spec.Name, "a spell's mode", o.Targets, false)
 		}
 	}
-	checkEscalate(spec)
+	CheckEscalate(spec)
 	checkEntwine(spec)
 	checkSplice(spec)
-	checkFlatClauses(spec.Name, spec.Targets)
+	CheckFlatClauses(spec.Name, spec.Targets)
 	refuseTriggerActorChoice(spec.Name, "a spell's", spec.Targets)
 	refuseThatPlayerControls(spec.Name, "a spell's", spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkTargetAtRandom(spec.Name, "a spell's", spec.Targets, false)
 	checkExhaustAbilities(spec)
-	checkBoast(spec)
+	CheckBoast(spec)
 	checkPowerUp(spec)
-	checkNinjutsu(spec)
+	CheckNinjutsu(spec)
 	checkPowerUpExtras(spec)
-	checkOnlyOnce(spec)
+	CheckOnlyOnce(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
-	checkPlayerKeywords(spec)
-	checkHandSize(spec)
+	CheckPlayerKeywords(spec)
+	CheckHandSize(spec)
 	for _, a := range spec.Activated {
-		checkFlatClauses(spec.Name, a.Targets)
+		CheckFlatClauses(spec.Name, a.Targets)
 		refuseTriggerActorChoice(spec.Name, "an activated ability's", a.Targets)
 		refuseThatPlayerControls(spec.Name, "an activated ability's", a.Targets)
 		refuseOpponentChoosesMode(spec.Name, "an activated ability's Modes", a.Modes)
@@ -122,9 +122,9 @@ func Register(spec Spec) {
 			if a.Targets != nil {
 				panic(fmt.Sprintf("effects.Register: %q declares an activated ability with both Targets and Modes — put the target clause on the mode", spec.Name))
 			}
-			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
+			CheckRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
-			checkUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
+			CheckUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
 			checkUpToCount(spec.Name, "an activated ability's Modes", a.Modes, nil)
 			checkPawprints(spec.Name, "an activated ability's Modes", a.Modes, false)
 			if a.Modes.AtRandom {
@@ -134,7 +134,7 @@ func Register(spec Spec) {
 				if o.Label == "" {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
 				}
-				checkFlatClauses(spec.Name, o.Targets)
+				CheckFlatClauses(spec.Name, o.Targets)
 				refuseOpponentChoice(spec.Name, "an activated mode's", o.Targets)
 				refuseThatPlayerControls(spec.Name, "an activated mode's", o.Targets)
 				checkModeCost(spec.Name, "activated mode", i, o.Cost, false)
@@ -145,8 +145,8 @@ func Register(spec Spec) {
 	for _, t := range spec.Triggered {
 		checkStateTrigger(spec.Name, t)
 		checkNotPutByThisAbility(spec.Name, t)
-		checkTriggersOnlyOnce(spec.Name, t)
-		checkFlatClauses(spec.Name, t.Targets)
+		CheckTriggersOnlyOnce(spec.Name, t)
+		CheckFlatClauses(spec.Name, t.Targets)
 		// A trigger announces no X, ever (#1559) — unlike an activated
 		// ability (#1723), there is no cost to check.
 		checkNoXBound(spec.Name, "a trigger's", t.Targets, false, false)
@@ -167,10 +167,10 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares a trigger with both Targets and Modes — put the target clause on the mode", spec.Name))
 		}
 		if t.Modes != nil {
-			checkRaisedModeMax(spec.Name, "a trigger's Modes", t.Modes)
+			CheckRaisedModeMax(spec.Name, "a trigger's Modes", t.Modes)
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
-			checkUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
+			CheckUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
 			checkUpToCount(spec.Name, "a trigger's Modes", t.Modes, &t)
 			checkPawprints(spec.Name, "a trigger's Modes", t.Modes, false)
 			for i, o := range t.Modes.Options {
@@ -178,7 +178,7 @@ func Register(spec Spec) {
 			}
 		}
 	}
-	checkCastTimeValues(spec)
+	CheckCastTimeValues(spec)
 	// S22: an alternative cost is claimed by name on the wire, so a
 	// blank or duplicated key is unaddressable — the cast either
 	// can't name it or names two of them. Both are copy-paste
@@ -222,27 +222,27 @@ func Register(spec Spec) {
 		// printed. No printed alternative cost names two card-shaped
 		// payments; Demon of Death's Gate's "pay 6 life and sacrifice
 		// three black creatures" is life plus ONE.
-		if n := altCostCardComponents(ac); n > 1 {
+		if n := AltCostCardComponents(ac); n > 1 {
 			panic(fmt.Sprintf("effects.Register: %q offers %q with %d card-shaped payments — an alternative cost carries at most one of ExileFromHand, ReturnToHand, ExileFromGraveyard, Sacrifice, DiscardFromHand, TapOthers and Behold",
 				spec.Name, ac.Key, n))
 		}
-		checkAltCostBehold(spec.Name, ac)
+		CheckAltCostBehold(spec.Name, ac)
 		// The sacrifice component is the additional cost's clause and
 		// is held to the same shape, minus the two variable forms: no
 		// printed alternative cost sacrifices "X" or "any number", and
 		// a fixed count is what the announce path, the picker and the
 		// enumerator all read off it.
-		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
-		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice)
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
+		RefuseSacrificeDifferent(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice)
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostReturnCount(spec.Name, ac)
-		checkAltCostXBound(spec, ac)
+		CheckAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkAltCostRemoveCounters(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
 		checkHarmonize(spec.Name, ac)
 		checkAwaken(spec, ac)
-		checkCastsFace(spec, ac)
+		CheckCastsFace(spec, ac)
 		if ac.FaceDown == nil {
 			continue
 		}
@@ -338,13 +338,13 @@ func Register(spec Spec) {
 	// either/or and optional checks so its own refusal is the one read.
 	checkCollectEvidenceFromTargets(spec)
 	// ADR 0100 §2: the either/or cost's shapes.
-	checkEitherCost(spec)
+	CheckEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.
 	checkReplicate(spec)
 	// #3999: an optional "you may waterbend {N}".
 	checkOptionalWaterbend(spec)
 	// #4642: an optional "you may behold a <type>".
-	checkOptionalBehold(spec)
+	CheckOptionalBehold(spec)
 	// #5193: an optional "you may collect evidence N".
 	checkOptionalCollectEvidence(spec)
 	// #5657: offering's reduction by the sacrificed permanent's mana cost.
@@ -365,11 +365,11 @@ func Register(spec Spec) {
 			if spec.Modes != nil {
 				panic(fmt.Sprintf("effects.Register: %q is modal and its gift rewrites the target clause — put the clause on the mode", spec.Name))
 			}
-			checkFlatClauses(spec.Name, g.Targets)
+			CheckFlatClauses(spec.Name, g.Targets)
 			refuseOpponentChoice(spec.Name, "a gift's", g.Targets)
 		}
 	}
-	checkCasualtyX(spec)
+	CheckCasualtyX(spec)
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
 	for i, oc := range spec.OptionalCosts {
 		// Without the flag the cast path prices it and never offers
@@ -389,7 +389,7 @@ func Register(spec Spec) {
 			if spec.Modes != nil {
 				panic(fmt.Sprintf("effects.Register: %q is modal and optional cost %q rewrites the target clause — put the clause on the mode", spec.Name, oc.Key))
 			}
-			checkFlatClauses(spec.Name, oc.Targets)
+			CheckFlatClauses(spec.Name, oc.Targets)
 			refuseOpponentChoice(spec.Name, "an optional cost's", oc.Targets)
 		}
 		if oc.ChoosesOpponent || oc.Key == game.GiftKey {
@@ -417,8 +417,8 @@ func Register(spec Spec) {
 		// hold one variable clause, and only in the mandatory slot, where
 		// every printed one sits (checkVariableSacrificePlan); no card
 		// prints a variable kicker or buyback.
-		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice, false, false, false)
-		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice)
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice, false, false, false)
+		RefuseSacrificeDifferent(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice)
 		if oc.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q demands nothing", spec.Name, oc.Key))
 		}
@@ -470,7 +470,7 @@ func Register(spec Spec) {
 			}
 		}
 	}
-	checkSpellSpendOnly(spec)
+	CheckSpellSpendOnly(spec)
 	// ADR 0073 §7: a cast condition with no printed clause produces a
 	// refusal the client cannot explain, and a clause with no
 	// condition refuses nothing while claiming to. Same for a
@@ -486,7 +486,7 @@ func Register(spec Spec) {
 	}
 	// CR 116.2d (#1986): an ignorable effect and the restrictions that
 	// are it come together or not at all.
-	checkIgnorableEffect(spec)
+	CheckIgnorableEffect(spec)
 	// #1985: and for the entry twin.
 	checkEntryRestrictions(spec.Name, spec.EntryRestrictions)
 	// ADR 0109 §6: and for a targeting restriction, which must also say
@@ -541,7 +541,7 @@ func Register(spec Spec) {
 		}
 	}
 	checkGrantedAlternativeCosts(spec.Name, spec.GrantedAlternativeCosts)
-	checkOpeningHand(spec.Name, spec.OpeningHand)
+	CheckOpeningHand(spec.Name, spec.OpeningHand)
 	// ADR 0048 addendum §11: no printed card sets a floor on its own
 	// cost, and an untested kind should not be declarable. A mana Unit
 	// belongs on an increase only (open question 3), and carries only
@@ -647,7 +647,7 @@ func Register(spec Spec) {
 	// locked — stronger than printed — and a door gate anywhere else
 	// would switch an ability on and off for a reason the card never
 	// prints.
-	if problem := checkRoomSpec(spec); problem != "" {
+	if problem := CheckRoomSpec(spec); problem != "" {
 		panic(fmt.Sprintf("effects.Register: %q %s (ADR 0103)", spec.Name, problem))
 	}
 	// ADR 0062 Decision 4: a special action the engine cannot carry
@@ -718,7 +718,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
-		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
 		checkExileTotalManaValueX(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
@@ -728,12 +728,12 @@ func Register(spec Spec) {
 		if ec := ab.Cost.ExilePermanents; ec != nil && ec.FromGraveyard && ab.Cost.ExileCards != nil {
 			panic(fmt.Sprintf("effects.Register: %q ability %d exiles materials from the graveyard beside an exile-cards cost — one card could pay both", spec.Name, i))
 		}
-		checkTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
+		CheckTapOthersClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.TapOthers, true)
 		// #660: a discard clause that discards nothing would make
 		// the ability free, the way a zero-counter cost would — unless
 		// it is "Discard your hand" (#1600), whose count is the hand.
-		checkDiscardClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.DiscardCards)
-		checkDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
+		CheckDiscardClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.DiscardCards)
+		CheckDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		checkDiscardXBesideOtherCosts(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		// #2598: the reveal-cards component (reveal_cards_cost.go).
 		checkRevealCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
@@ -745,11 +745,11 @@ func Register(spec Spec) {
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
-		checkAbilityCostModifiers(spec.Name, i, ab)
+		CheckAbilityCostModifiers(spec.Name, i, ab)
 		// #4566: an either/or part of the cost (checkOrCost).
 		checkOrCost(spec.Name, i, ab.Cost)
 		// ADR 0106 §1 decision 1: "Any player may activate this ability".
-		checkAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
+		CheckAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
 		checkGrantorOnlyIsGranted(spec.Name, i, ab)
 		// #4000: an exile-the-grantor cost is a granted row's alone.
 		checkExileGrantor(spec.Name, fmt.Sprintf("ability %d", i), ab, false, "")
@@ -871,14 +871,14 @@ func Register(spec Spec) {
 				spec.Name, i, ab.Cost.MinX, ab.Cost.Mana))
 		}
 		// #1600: a "spend only <colour> mana" clause (spend_only.go).
-		checkSpendOnlyClause(spec.Name, i, ab.Cost)
+		CheckSpendOnlyClause(spec.Name, i, ab.Cost)
 	}
 	for i, ma := range spec.ManaAbilities {
 		// #1213: `false` — a mana ability has no stack item and no
 		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
 		// has nothing to read its count from.
-		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
-		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
+		RefuseSacrificeDifferent(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
 		checkManaTapOthersClause(spec.Name, i, ma)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held
 		// to the same three rules the activated half is held to —
@@ -886,14 +886,14 @@ func Register(spec Spec) {
 		// mysteriously-dead card.
 		checkManaAbilityZones(spec.Name, i, ma)
 		// #1864: an any-player mana ability's limits.
-		checkAnyPlayerManaAbility(spec.Name, i, ma)
+		CheckAnyPlayerManaAbility(spec.Name, i, ma)
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
 		// #1213 / #1283: a card-picking clause that picks nothing would
 		// make the ability free — the refusal the CR 602 discard gets,
 		// and the same "Discard your hand" exception (#1600).
-		checkDiscardClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.DiscardCards)
+		CheckDiscardClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.DiscardCards)
 		// #4896: the mana payer solves its discard as the cheapest N,
 		// with no set rule, and no printed mana ability says "with
 		// different names".
@@ -901,7 +901,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
 				spec.Name, i))
 		}
-		checkManaDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost)
+		CheckManaDiscardHandBesideHandCosts(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost)
 		// ADR 0109 §7: a random discard is a CR 602 component only. No
 		// printed mana ability discards at random, and the mana payer
 		// never draws one, so the ability would be free.
@@ -953,11 +953,11 @@ func Register(spec Spec) {
 		// "sacrifice X …" or "sacrifice any number of …"; the cross-slot
 		// rule that makes the flat payment list unambiguous is
 		// checkVariableSacrificePlan's.
-		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, true, true)
-		refuseSacrificeDifferent(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
+		CheckSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, true, true)
+		RefuseSacrificeDifferent(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
 	}
 	checkVariableSacrificePlan(spec)
-	checkSacrificeAllCost(spec)
+	CheckSacrificeAllCost(spec)
 	avB30cCheckSacrificeHalfCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
@@ -996,19 +996,19 @@ func Register(spec Spec) {
 	// register, look complete on the catalog page, and never apply.
 	checkStaticZones(spec.Name, "static", spec.Static)
 	// ADR 0093: an ability grant is a layer-6 effect and names a bundle.
-	checkStaticGrants(spec.Name, "static", spec.Static)
+	CheckStaticGrants(spec.Name, "static", spec.Static)
 	// ADR 0067 amendment 2026-10-23: a static that reads an ability.
-	checkAbilityReaders(spec.Name, "static", spec.Static)
+	CheckAbilityReaders(spec.Name, "static", spec.Static)
 	if spec.Emblem != nil {
-		checkStaticGrants(spec.Name, "emblem static", spec.Emblem.Static)
-		checkAbilityReaders(spec.Name, "emblem static", spec.Emblem.Static)
+		CheckStaticGrants(spec.Name, "emblem static", spec.Emblem.Static)
+		CheckAbilityReaders(spec.Name, "emblem static", spec.Emblem.Static)
 		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
 	}
-	checkEmblemSpec(spec.Name, spec.Emblem)
-	checkGrants(spec.Name, spec.Grants)
-	registry[spec.OracleID] = spec
-	def := buildDef(spec)
-	fileDef(spec.OracleID, def)
+	CheckEmblemSpec(spec.Name, spec.Emblem)
+	CheckGrants(spec.Name, spec.Grants)
+	Registry[spec.OracleID] = spec
+	def := BuildDef(spec)
+	FileDef(spec.OracleID, def)
 	// #925 + #659: the index has to see the triggers the ENGINE will
 	// harvest, not the ones the card file wrote. A suspend
 	// declaration grows the exile countdown in buildDef — the keyword
@@ -1042,7 +1042,7 @@ func Register(spec Spec) {
 	// census keeps counting cards — an emblem is not a card
 	// (CR 114.4). See emblem.go and ADR 0064.
 	if spec.Emblem != nil {
-		fileDef(game.EmblemKey(spec.OracleID), buildEmblemDef(*spec.Emblem))
+		FileDef(game.EmblemKey(spec.OracleID), buildEmblemDef(*spec.Emblem))
 	}
 	// #665 / CR 707.9a: a card whose copy effect GRANTS an ability
 	// files that ability's own def, under "grant:<key>". Same map,
@@ -1051,7 +1051,7 @@ func Register(spec Spec) {
 	// ordinary CatalogLookup, while the census keeps counting cards —
 	// a granted ability is not one.
 	for _, gr := range spec.Grants {
-		fileDef(game.GrantKey(gr.Key), buildGrantDef(gr))
+		FileDef(game.GrantKey(gr.Key), BuildGrantDef(gr))
 	}
 }
 
@@ -1200,7 +1200,7 @@ func checkOffBattlefieldSelf(card string, self *game.OffBattlefieldSelf) {
 // predicate to read, and it is not also a removal or a borrow (the bucket
 // orders those by rules of their own, ADR 0093 Decision 3 and ADR 0155
 // Decision 4).
-func checkAbilityReaders(card, what string, statics []game.StaticAbility) {
+func CheckAbilityReaders(card, what string, statics []game.StaticAbility) {
 	for i, s := range statics {
 		if !s.ReadsAbilities {
 			continue
@@ -1259,7 +1259,7 @@ func checkLandPlayRestrictions(card string, rs []game.LandPlayRestriction) {
 // (no restriction marked Ignorable) or whose Ignorable restriction has no
 // ignore to be switched off by, and an ignore with no printed row or no
 // rule for whom it bears on.
-func checkIgnorableEffect(spec Spec) {
+func CheckIgnorableEffect(spec Spec) {
 	marked := false
 	for _, r := range spec.CastRestrictions {
 		marked = marked || r.Ignorable
@@ -1444,7 +1444,7 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 // registration and is not checked here. Every such grant with a
 // sacrifice clause today is a count of one, so nothing escapes the
 // guard yet; a grant with a variable count would.
-func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, allowX, allowZero bool) {
+func CheckSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, allowX, allowZero bool) {
 	if spec == nil {
 		return
 	}
@@ -1507,7 +1507,7 @@ func checkSacrificeDifferentRule(card, where string, spec *game.TargetSpec) {
 // is where the one printed card of the family (Transmutation Font) has
 // it. Widen this when a card needs it elsewhere, with that site's
 // payer.
-func refuseSacrificeDifferent(card, where string, spec *game.TargetSpec) {
+func RefuseSacrificeDifferent(card, where string, spec *game.TargetSpec) {
 	if spec != nil && spec.Different != nil {
 		panic(fmt.Sprintf("effects.Register: %q %s has a difference rule on its sacrifice clause — only an activated ability's sacrifice cost reads one (#3940)", card, where))
 	}
@@ -1594,7 +1594,7 @@ func checkAltCostReturnCount(card string, ac game.AlternativeCost) {
 // bound (validateAlternativeCostPaymentLocked), only "mana value X" is a
 // printed form, the pitch names one card, and the card must read its X
 // (XMatters) — a bound on an X the spell never uses binds nothing.
-func checkAltCostXBound(spec Spec, ac game.AlternativeCost) {
+func CheckAltCostXBound(spec Spec, ac game.AlternativeCost) {
 	where := fmt.Sprintf("alternative cost %q", ac.Key)
 	for _, s := range []*game.TargetSpec{ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
 		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.ToughnessAtMostX) {
@@ -1733,7 +1733,7 @@ func checkExileTotalManaValueX(card, where string, cost game.AbilityCost) {
 // intentionally treats a malformed zero value as inert so engine call
 // sites can be nil-safe; a catalog declaration cannot be allowed to
 // turn that into a free ability.
-func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX bool) {
+func CheckTapOthersClause(card, where string, tc *game.TapOthersCost, allowX bool) {
 	if tc == nil {
 		return
 	}
@@ -1770,7 +1770,7 @@ func checkManaTapOthersClause(card string, i int, ma ManaAbility) {
 	tc := ma.Cost.TapOthers
 	where := fmt.Sprintf("mana ability %d", i)
 	if tc == nil || !tc.AnyNumber {
-		checkTapOthersClause(card, where, tc, false)
+		CheckTapOthersClause(card, where, tc, false)
 		return
 	}
 	if ma.ProducedForPaid == nil {
@@ -1779,7 +1779,7 @@ func checkManaTapOthersClause(card string, i int, ma ManaAbility) {
 	fixed := *tc
 	fixed.AnyNumber = false
 	fixed.Count = 1
-	checkTapOthersClause(card, where, &fixed, false)
+	CheckTapOthersClause(card, where, &fixed, false)
 }
 
 // zoneDeclared reports whether `zone` appears in a Spec's
@@ -1822,7 +1822,7 @@ func conditionalZoneDeclared(zones []game.ConditionalCastZone, zone game.ZoneKin
 // The card's layout is not visible here (a Spec carries no layout), so
 // "this is a transform card with that face" is the cast path's check:
 // faceForClaimLocked refuses the claim on any other card.
-func checkCastsFace(spec Spec, ac game.AlternativeCost) {
+func CheckCastsFace(spec Spec, ac game.AlternativeCost) {
 	if ac.CastsFace == 0 {
 		return
 	}
@@ -1841,7 +1841,7 @@ func checkCastsFace(spec Spec, ac game.AlternativeCost) {
 // altCostCardComponents counts an alternative cost's card-shaped
 // payments (#1727) — the ones whose cards ride alt_cost_ids. ADR 0135
 // §1's TapOthers is one of them.
-func altCostCardComponents(ac game.AlternativeCost) int {
+func AltCostCardComponents(ac game.AlternativeCost) int {
 	n := 0
 	for _, spec := range []*game.TargetSpec{ac.ExileFromHand, ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
 		if spec != nil {
@@ -1862,7 +1862,7 @@ func altCostCardComponents(ac game.AlternativeCost) int {
 // shape the cast path reads: a behold (not a plain reveal) of one
 // creature type, no colour quality, a positive count, and no count
 // without a behold to size.
-func checkAltCostBehold(card string, ac game.AlternativeCost) {
+func CheckAltCostBehold(card string, ac game.AlternativeCost) {
 	rc := ac.Behold
 	if rc == nil {
 		if ac.BeholdCount != 0 {
@@ -1900,7 +1900,7 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 		plain.UpTo = false
 		tc = &plain
 	}
-	checkTapOthersClause(card, where, tc, false)
+	CheckTapOthersClause(card, where, tc, false)
 }
 
 // checkAltCostRemoveCounters holds an alternative cost's counter removal
@@ -1928,7 +1928,7 @@ func checkAltCostRemoveCounters(card string, ac game.AlternativeCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s removes counters from \"other\" permanents — a spell being cast is not on the battlefield, so ExcludeSource names nothing", card, where))
 	case !rc.Among || rc.OnePermanent:
 		panic(fmt.Sprintf("effects.Register: %q %s is not \"remove N (or X) counters from among …\" — the only counter removal a cast pays; build it with CastFromGraveyardByRemovingCounters or FlashbackRemoveXCounters", card, where))
-	case altCostCardComponents(ac) > 0:
+	case AltCostCardComponents(ac) > 0:
 		panic(fmt.Sprintf("effects.Register: %q %s removes counters beside a card-shaped payment — no printed alternative cost does", card, where))
 	}
 }
@@ -1999,7 +1999,7 @@ func checkOffering(spec Spec) {
 // nothing rather than triggering the manual fallback correctly.
 func Lookup(oracleID string) (Spec, bool) {
 	requireCompleteCatalog("Lookup")
-	s, ok := registry[oracleID]
+	s, ok := Registry[oracleID]
 	return s, ok
 }
 
@@ -2010,8 +2010,8 @@ func Lookup(oracleID string) (Spec, bool) {
 // mutate it freely without leaking into the registry.
 func All() []Spec {
 	requireCompleteCatalog("All")
-	out := make([]Spec, 0, len(registry))
-	for _, s := range registry {
+	out := make([]Spec, 0, len(Registry))
+	for _, s := range Registry {
 		out = append(out, s)
 	}
 	return out
@@ -2021,7 +2021,7 @@ func All() []Spec {
 // Convenience wrapper for the auto-badge bit (sub-PR 3).
 func Has(oracleID string) bool {
 	requireCompleteCatalog("Has")
-	_, ok := registry[oracleID]
+	_, ok := Registry[oracleID]
 	return ok
 }
 
@@ -2032,7 +2032,7 @@ func Has(oracleID string) bool {
 // constructor (Clauses) flattens, so reaching this is a hand-built
 // literal, and finding out at boot is far cheaper than finding out
 // when a second target silently never gets asked for.
-func checkFlatClauses(name string, spec *game.TargetSpec) {
+func CheckFlatClauses(name string, spec *game.TargetSpec) {
 	if spec == nil {
 		return
 	}
@@ -2119,11 +2119,13 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d sums a total over a clause that can pick a player", name, i))
 	case c.Different != nil || c.Same != nil || len(c.EachOf) > 0:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule beside another set rule — no reader searches for a set under both", name, i))
-	case r.MaxIsX && (!c.CountFromX || !c.UpToX):
+	case r.MaxIsX && c.CountFromX && !c.UpToX:
 		// #5898: "up to X target … with total mana value X or less"
-		// (Orcus, Prince of Undeath) is the one printed form, its count
-		// and its ceiling the same X.
-		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total of X on a clause not counted \"up to X\" — build it as Orcus, Prince of Undeath's", name, i))
+		// (Orcus, Prince of Undeath) counts its targets by the same X, "up
+		// to"; "any number of target … with total mana value X or less"
+		// (Rampaging Yao Guai) counts none by X. A count of exactly X has no
+		// printed card.
+		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total of X on a clause counted exactly X — build it as Orcus, Prince of Undeath's (up to X) or leave the count open", name, i))
 	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule and an X — no printed card has both yet", name, i))
 	}
@@ -2287,7 +2289,7 @@ func checkSpellXBound(name string, spec *game.TargetSpec) {
 // printed Min and the raised Max. Each is a card that would otherwise
 // register silently and ship a mode count the printed card does not
 // have.
-func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
+func CheckRaisedModeMax(name, owner string, ms *game.ModeSpec) {
 	if ms.RaiseMaxIf.IsZero() && ms.RaisedMax == 0 {
 		return
 	}
@@ -2375,7 +2377,7 @@ func checkAtRandom(name string, ms *game.ModeSpec) {
 // EventETB and nothing else, start at zero, cap at its bullets and
 // carry no repeat, raise, random pick or "hasn't been chosen" memory,
 // none of which the count reads.
-func checkUpToCastX(name, owner string, ms *game.ModeSpec, t *game.TriggeredAbility) {
+func CheckUpToCastX(name, owner string, ms *game.ModeSpec, t *game.TriggeredAbility) {
 	if ms == nil || !ms.UpToCastX {
 		return
 	}
@@ -2532,7 +2534,7 @@ func checkExhaustAbilities(spec Spec) {
 // keyword without the bit is priced in full under "Ninjutsu abilities
 // you activate cost {1} less to activate" (Silver-Fur Master), and a
 // bit without the keyword takes a discount the card does not print.
-func checkNinjutsu(spec Spec) {
+func CheckNinjutsu(spec Spec) {
 	check := func(where string, abilities []ActivatedAbility) {
 		for i, a := range abilities {
 			printed := strings.HasPrefix(a.Label, ninjutsuLabelPrefix) || strings.HasPrefix(a.Label, commanderNinjutsuLabelPrefix)
@@ -2556,7 +2558,7 @@ func checkNinjutsu(spec Spec) {
 // "Boast —" with no bit is repeatable every turn and attackless, and a
 // bit with no printed keyword puts a rule on the card the player cannot
 // read. And a boast limit without Applies reaches every creature.
-func checkBoast(spec Spec) {
+func CheckBoast(spec Spec) {
 	seen := map[string]bool{}
 	for i, a := range spec.Activated {
 		if a.Boast {
@@ -2663,7 +2665,7 @@ func printsActivateOnlyOnce(label string) bool {
 // is a rule the player cannot read), two such abilities on one card may
 // not share a label (the record is keyed by it), and the bit is never
 // beside Exhaust or PowerUp, which already carry the limit.
-func checkOnlyOnce(spec Spec) {
+func CheckOnlyOnce(spec Spec) {
 	seen := map[string]bool{}
 	for i, a := range spec.Activated {
 		printed := printsActivateOnlyOnce(a.Label)
@@ -2734,7 +2736,7 @@ func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool
 // entry must carry its condition and its printed sentence: a nil While
 // would grant nothing, silently, and an empty Label would leave the
 // tile's row saying nothing about when the ability holds.
-func checkPlayerKeywords(spec Spec) {
+func CheckPlayerKeywords(spec Spec) {
 	for i, kw := range spec.PlayerKeywords {
 		if !playerKeywordHonoured(kw) {
 			panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
@@ -2981,7 +2983,7 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 //   - SpecialActions or a designation gate, which mean nothing in a
 //     slot that prices exactly one ability;
 //   - a mana Unit the engine would refuse (ADR 0048 addendum §16).
-func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
+func CheckAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 	for j, m := range ab.CostModifiers {
 		where := fmt.Sprintf("ability %d cost modifier %d (%q)", i, j, m.Label)
 		if ab.Cost.Mana == "" {
@@ -3010,7 +3012,7 @@ func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 // is half of the per-object record's key. A state trigger is dispatched
 // by its own path (state_triggers.go), which has no claim, so the bit
 // would do nothing there.
-func checkTriggersOnlyOnce(card string, t game.TriggeredAbility) {
+func CheckTriggersOnlyOnce(card string, t game.TriggeredAbility) {
 	if !t.OnlyOnce {
 		return
 	}

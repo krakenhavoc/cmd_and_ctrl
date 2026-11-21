@@ -1,0 +1,369 @@
+package testsa
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// alternative_cost_test.go — S22, the card side. The engine-side
+// mechanism is pinned in server/internal/game/alternative_cost_test.go;
+// these tests are about the three cards that shipped without their
+// headline mode, plus the one new card the mechanism unlocked.
+
+// mulldrifterOracle is declared in flicker_test.go — same package, and
+// that batch got there first.
+const washAwayOracle = "a4630da0-fe9b-4ead-9621-eac4b7825c35"
+
+// Every alternative cost declared in the catalog has to be reachable
+// by the key the client will send. A typo here is a cast that gets
+// rejected in a real game and nowhere else.
+func TestAlternativeCostsAreWired(t *testing.T) {
+	for _, tc := range []struct{ name, oracle, key, cost string }{
+		{"Vandalblast", effectstest.VandalblastOracle, "overload", "{4}{R}"},
+		{"Cyclonic Rift", effectstest.CyclonicRiftOracle, "overload", "{6}{U}"},
+		{"Slithermuse", effectstest.SlithermuseOracle, "evoke", "{3}{U}"},
+		{"Mulldrifter", effectstest.MulldrifterOracle, "evoke", "{2}{U}"},
+		{"Wash Away", washAwayOracle, "cleave", "{1}{U}{U}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ac := game.AlternativeCostByKey(tc.oracle, tc.key)
+			if ac == nil {
+				t.Fatalf("%s offers no %q cost", tc.name, tc.key)
+			}
+			if ac.ManaCost != tc.cost {
+				t.Errorf("%s %s cost = %q, want %q", tc.name, tc.key, ac.ManaCost, tc.cost)
+			}
+			if ac.Label == "" {
+				t.Errorf("%s %s has no label for the picker", tc.name, tc.key)
+			}
+		})
+	}
+}
+
+// --- Overload ----------------------------------------------------
+
+// The headline mode: an overloaded Rift bounces every nonland
+// permanent its caster doesn't control, and nothing they do.
+func TestCyclonicRiftOverloadBouncesTheirBoardOnly(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	caster := g.Seats[g.Turn.ActiveSeat]
+	victim := g.Seats[1]
+	if caster.ID == victim.ID {
+		victim = g.Seats[2]
+	}
+	theirs := effectstest.SeedPermanentFor(g, victim.ID, "Grizzly Bears", "Creature — Bear")
+	theirRock := effectstest.SeedPermanentFor(g, victim.ID, "Sol Ring", "Artifact")
+	theirLand := effectstest.SeedPermanentFor(g, victim.ID, "Island", "Basic Land — Island")
+	mine := effectstest.SeedPermanentFor(g, caster.ID, "My Bear", "Creature — Bear")
+
+	effectstest.CastWithAltCost(t, g, "Cyclonic Rift", "Instant", effectstest.CyclonicRiftOracle, "overload")
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(theirs) || g.Battlefield.Contains(theirRock) {
+		t.Error("overloaded Rift left an opponent's nonland permanent on the battlefield")
+	}
+	if !g.Battlefield.Contains(theirLand) {
+		t.Error("overloaded Rift bounced a land — the clause is nonland permanents")
+	}
+	if !g.Battlefield.Contains(mine) {
+		t.Error("overloaded Rift is one-sided; it must not touch its caster's board")
+	}
+}
+
+// The printed mode still works, and still bounces exactly one thing.
+func TestCyclonicRiftHardCastStillBouncesOne(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	victim := g.Seats[1]
+	one := effectstest.SeedPermanentFor(g, victim.ID, "Grizzly Bears", "Creature — Bear")
+	two := effectstest.SeedPermanentFor(g, victim.ID, "Sol Ring", "Artifact")
+
+	effectstest.CastCatalogSpell(t, g, "Cyclonic Rift", "Instant", effectstest.CyclonicRiftOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: one}})
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(one) {
+		t.Error("targeted permanent was not bounced")
+	}
+	if !victim.Hand.Contains(one) {
+		t.Error("the bounced permanent did not reach its owner's hand")
+	}
+	if !g.Battlefield.Contains(two) {
+		t.Error("a hard-cast Rift swept the board — the overload branch leaked")
+	}
+}
+
+func TestVandalblastOverloadDestroysTheirArtifactsOnly(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	caster := g.Seats[g.Turn.ActiveSeat]
+	victim := g.Seats[1]
+	if caster.ID == victim.ID {
+		victim = g.Seats[2]
+	}
+	theirs := effectstest.SeedPermanentFor(g, victim.ID, "Sol Ring", "Artifact")
+	theirBear := effectstest.SeedPermanentFor(g, victim.ID, "Grizzly Bears", "Creature — Bear")
+	mine := effectstest.SeedPermanentFor(g, caster.ID, "My Signet", "Artifact")
+
+	effectstest.CastWithAltCost(t, g, "Vandalblast", "Sorcery", effectstest.VandalblastOracle, "overload")
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(theirs) {
+		t.Error("overloaded Vandalblast spared an opponent's artifact")
+	}
+	if !g.Battlefield.Contains(theirBear) {
+		t.Error("overloaded Vandalblast destroyed a non-artifact")
+	}
+	if !g.Battlefield.Contains(mine) {
+		t.Error("overloaded Vandalblast is one-sided; your own artifacts survive")
+	}
+}
+
+// An overloaded spell has no target clause left, so sending one is a
+// rejection — the client would be paying a cost it doesn't
+// understand.
+func TestOverloadRejectsTargets(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	victim := g.Seats[1]
+	id := effectstest.SeedPermanentFor(g, victim.ID, "Sol Ring", "Artifact")
+	active := g.Seats[g.Turn.ActiveSeat]
+	spellID := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: spellID, Name: "Vandalblast", TypeLine: "Sorcery",
+		OracleID: effectstest.VandalblastOracle, Owner: active.ID, Controller: active.ID,
+	})
+	for g.Turn.Step != game.StepPrecombatMain && g.Turn.Step != game.StepPostcombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	err := g.CastSpell(active.ID, spellID, game.CastSpellParams{
+		AlternativeCost: "overload",
+		Targets:         []game.TargetRef{{Kind: game.TargetCard, ID: id}},
+	})
+	if err == nil {
+		t.Fatal("overload with a target should be rejected")
+	}
+	if !active.Hand.Contains(spellID) {
+		t.Error("rejected cast left the spell out of hand")
+	}
+}
+
+// --- Evoke -------------------------------------------------------
+
+// Evoked Slithermuse enters, is sacrificed by the evoke trigger, and
+// the leaves-the-battlefield trigger then draws the hand-size
+// difference. That chain is the entire card.
+func TestSlithermuseEvokeEntersAndDiesAndDraws(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	caster := g.Seats[g.Turn.ActiveSeat]
+	var opp *game.Player
+	for _, p := range g.Seats {
+		if p.ID != caster.ID {
+			opp = p
+			break
+		}
+	}
+	if opp == nil {
+		t.Fatal("no opponent seated")
+	}
+	// Put the opponent three cards up on the caster.
+	for i := 0; i < 3; i++ {
+		opp.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "filler",
+			Owner: opp.ID, Controller: opp.ID})
+	}
+
+	id := effectstest.CastWithAltCost(t, g, "Slithermuse", "Creature — Elemental",
+		effectstest.SlithermuseOracle, "evoke")
+	// Measured with the spell already on the stack, so the walk to a
+	// main phase (and any draw for turn it passed through) is behind
+	// us. Drawing the difference lands the caster's hand exactly level
+	// with the opponent's.
+	diff := len(opp.Hand.Cards) - len(caster.Hand.Cards)
+	if diff <= 0 {
+		t.Fatalf("test setup: opponent must be ahead, diff = %d", diff)
+	}
+	want := len(caster.Hand.Cards) + diff
+
+	effectstest.PassPriorityAroundTable(t, g)
+	// #929: the leave-trigger's "choose an opponent" is a prompt.
+	effectstest.AnswerChoosePlayer(t, g, caster.ID, opp)
+
+	if g.Battlefield.Contains(id) {
+		t.Error("evoked creature is still on the battlefield")
+	}
+	if !caster.Graveyard.Contains(id) {
+		t.Error("evoked creature did not reach its owner's graveyard")
+	}
+	if len(caster.Hand.Cards) != want {
+		t.Errorf("hand %d, want %d (the leave-trigger drew the difference)",
+			len(caster.Hand.Cards), want)
+	}
+}
+
+// Hard-cast, nothing sacrifices it: the creature stays, and the deck
+// keeps the option of blinking it later.
+func TestSlithermuseHardCastStaysOnTheBattlefield(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	id := effectstest.CastCatalogSpell(t, g, "Slithermuse", "Creature — Elemental", effectstest.SlithermuseOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if !g.Battlefield.Contains(id) {
+		t.Error("a hard-cast Slithermuse sacrificed itself — the evoke trigger leaked")
+	}
+}
+
+// Mulldrifter is the canonical evoke card, and the one where the
+// ordering claim is checkable: the creature really ENTERS, so its ETB
+// draw trigger fires alongside the evoke sacrifice. An implementation
+// that sacrificed inside resolution would draw nothing at all.
+//
+// Two triggers, one controller, different abilities — so the engine
+// asks for an order (CR 603.3b) before either reaches the stack. That
+// prompt is correct behaviour, not an obstacle: the draw happens
+// whichever order they are stacked in, which is the point.
+func TestMulldrifterEvokeStillDrawsTwo(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	caster := g.Seats[g.Turn.ActiveSeat]
+
+	id := effectstest.CastWithAltCost(t, g, "Mulldrifter", "Creature — Elemental",
+		effectstest.MulldrifterOracle, "evoke")
+	// Measured with the spell already on the stack, so the walk to a
+	// main phase — and any draw for turn along the way — is behind us
+	// and the only cards left to arrive are the trigger's two.
+	before := len(caster.Hand.Cards)
+	if !effectstest.AnswerAnyTriggerOrderPrompt(t, g, caster.ID) {
+		t.Fatal("evoked Mulldrifter should queue two triggers and ask for an order")
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if got := len(caster.Hand.Cards); got != before+2 {
+		t.Errorf("hand %d, want %d (evoked Mulldrifter still draws two)", got, before+2)
+	}
+	if g.Battlefield.Contains(id) {
+		t.Error("evoked Mulldrifter is still on the battlefield")
+	}
+	if !caster.Graveyard.Contains(id) {
+		t.Error("evoked Mulldrifter did not reach its owner's graveyard")
+	}
+}
+
+// --- Cleave ------------------------------------------------------
+
+// Hard-cast Wash Away can only counter a spell that wasn't cast from
+// its owner's hand; cleaved it counters anything.
+func TestWashAwayClauseWidensUnderCleave(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	// Seat 0 is active; seat 1 casts nothing, so put the victim
+	// spell on the stack from the active seat's own hand and let a
+	// later seat answer it. Simplest arrangement that produces a
+	// hand-cast spell on the stack.
+	active := g.Seats[g.Turn.ActiveSeat]
+	victim := effectstest.CastCatalogSpell(t, g, "Bear Spell", "Creature — Bear", "", nil)
+
+	washID := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: washID, Name: "Wash Away", TypeLine: "Instant",
+		OracleID: washAwayOracle, Owner: active.ID, Controller: active.ID,
+	})
+
+	// The printed clause excludes it — the bear was cast from hand.
+	if err := g.CastSpell(active.ID, washID, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: victim}},
+	}); err == nil {
+		t.Fatal("hard-cast Wash Away must not counter a spell cast from hand")
+	}
+	// Cleaved, it can.
+	if err := g.CastSpell(active.ID, washID, game.CastSpellParams{
+		AlternativeCost: "cleave",
+		Targets:         []game.TargetRef{{Kind: game.TargetCard, ID: victim}},
+	}); err != nil {
+		t.Fatalf("cleaved Wash Away: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(victim) {
+		t.Error("countered spell resolved onto the battlefield anyway")
+	}
+	if !active.Graveyard.Contains(victim) {
+		t.Error("the countered spell did not reach its owner's graveyard")
+	}
+}
+
+// A commander cast is exactly what the printed clause is aimed at:
+// it wasn't cast from its owner's hand, so {U} answers it.
+//
+// #529 / #364: this test used to assert ONLY `!Battlefield.Contains`,
+// which is true whether the countered commander goes to the graveyard
+// with no prompt (the bug) or to the command zone after one (the
+// rule; since ADR 0115 by way of the graveyard, CR 903.9a). It passed for the entire life of the defect and read as
+// coverage for it. A zone-change assertion has to name where the card
+// ARRIVED, not just where it is absent from; "it left" is satisfied
+// by every wrong destination as well as the right one.
+//
+// Note the prompt is answered here rather than passed through:
+// PassPriority deliberately does not gate on open choices (see
+// spell_copy.go), so a test that drives it raw would resolve the
+// commander out from under its own unanswered prompt.
+func TestWashAwayHardCastAnswersACommanderCast(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	cmdID := uuid.New()
+	active.Command.PushTop(game.Card{
+		InstanceID: cmdID, Name: "Some Commander", TypeLine: "Legendary Creature — Human",
+		Owner: active.ID, Controller: active.ID, IsCommander: true,
+	})
+	for g.Turn.Step != game.StepPrecombatMain && g.Turn.Step != game.StepPostcombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if err := g.CastSpell(active.ID, cmdID, game.CastSpellParams{FromZone: "command"}); err != nil {
+		t.Fatalf("commander cast: %v", err)
+	}
+
+	washID := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: washID, Name: "Wash Away", TypeLine: "Instant",
+		OracleID: washAwayOracle, Owner: active.ID, Controller: active.ID,
+	})
+	if err := g.CastSpell(active.ID, washID, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: cmdID}},
+	}); err != nil {
+		t.Fatalf("hard-cast Wash Away on a commander cast: %v", err)
+	}
+	// Pass until Wash Away resolves. The counter puts the commander
+	// into its owner's graveyard, and the CR 903.9a state-based action
+	// then asks its owner (ADR 0115), so the table stops on a prompt
+	// rather than draining the stack.
+	effectstest.PassPriorityUntilChoice(t, g)
+
+	if g.Battlefield.Contains(cmdID) {
+		t.Fatal("the commander resolved despite being countered")
+	}
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("countering a commander offered %d choices, want the CR 903.9a prompt", len(g.PendingChoices))
+	}
+	prompt := g.PendingChoices[0]
+	if prompt.Kind != game.PendingChoiceCommanderReturn {
+		t.Fatalf("prompt kind = %q, want %q", prompt.Kind, game.PendingChoiceCommanderReturn)
+	}
+	if prompt.Chooser != active.ID {
+		t.Errorf("chooser = %s, want the commander's owner %s", prompt.Chooser, active.ID)
+	}
+	// The counter has already put it into the graveyard.
+	if !active.Graveyard.Contains(cmdID) {
+		t.Error("the countered commander is not in the graveyard while its owner is asked")
+	}
+	if err := g.ResolveCommanderReturn(prompt.ID, active.ID, true); err != nil {
+		t.Fatalf("ResolveCommanderReturn: %v", err)
+	}
+	if !active.Command.Contains(cmdID) {
+		t.Error("the countered commander did not return to the command zone")
+	}
+	if active.Graveyard.Contains(cmdID) || g.Stack.Contains(cmdID) || g.Battlefield.Contains(cmdID) {
+		t.Error("the countered commander leaked out of the command zone")
+	}
+}

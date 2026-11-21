@@ -1,0 +1,26 @@
+package cardsn
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Nettle Sentinel — Creature — Elf Warrior {G}, 2/2 (Eventide, #5590):
+//
+//	"This creature doesn't untap during your untap step.
+//	 Whenever you cast a green spell, you may untap this creature."
+//
+// Brass Man's untap-step restriction and the optional cast-trigger untap
+// (eveB1UntapOnCast).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:              "5c367b7d-3cb4-45db-b836-dad953efce15",
+		Name:                  "Nettle Sentinel",
+		Completeness:          effects.CompletenessFull,
+		UntapStepRestrictions: []game.UntapStepRestriction{effects.DoesntUntapDuringYourUntapStep()},
+		Triggered:             []game.TriggeredAbility{effects.EveB1UntapOnCast("Nettle Sentinel", "G")},
+	})
+}

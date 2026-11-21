@@ -20,19 +20,19 @@ import (
 // The attack target is asked of the controller when there is more than
 // one (CR 508.4), exactly as putAttackingYourChoice asks it; the card must
 // still be in `from` when it moves, checked again after the answer.
-func finB11PutAttackingThen(ctx *Context, card uuid.UUID, from game.ZoneKind, name string, then game.TailRef, answer game.OptionPickThen) error {
+func FinB11PutAttackingThen(ctx *Context, card uuid.UUID, from game.ZoneKind, name string, then game.TailRef, answer game.OptionPickThen) error {
 	me := ctx.Controller()
 	refs := ctx.Game.AttackTargetsForEffect(me)
 	if len(refs) == 0 {
 		return nil
 	}
 	if len(refs) == 1 {
-		return finB11PutAttacking(ctx.Game, me, card, from, refs[0].ID, ctx.Tail(then))
+		return FinB11PutAttacking(ctx.Game, me, card, from, refs[0].ID, ctx.Tail(then))
 	}
 	options := make([]game.ChoiceOption, len(refs))
 	carry := []uuid.UUID{card}
 	for i, r := range refs {
-		options[i] = game.ChoiceOption{Label: "Attack " + attackTargetName(ctx.Game, r.ID)}
+		options[i] = game.ChoiceOption{Label: "Attack " + AttackTargetName(ctx.Game, r.ID)}
 		if r.Kind != game.AttackTargetPlayer {
 			options[i].Cards = []uuid.UUID{r.ID}
 		}
@@ -48,7 +48,7 @@ func finB11PutAttackingThen(ctx *Context, card uuid.UUID, from game.ZoneKind, na
 
 // finB11PutAttacking puts the card, if it is still in `from`, onto the
 // battlefield under `me`'s control tapped and attacking `target`.
-func finB11PutAttacking(g *game.Game, me, card uuid.UUID, from game.ZoneKind, target uuid.UUID, then game.KeyedTail) error {
+func FinB11PutAttacking(g *game.Game, me, card uuid.UUID, from game.ZoneKind, target uuid.UUID, then game.KeyedTail) error {
 	if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != from {
 		return nil
 	}
@@ -59,7 +59,7 @@ func finB11PutAttacking(g *game.Game, me, card uuid.UUID, from game.ZoneKind, ta
 
 // finB11PickedAttack reads the answer to "what does it attack?": the card
 // and the attack targets ride the prompt's carry, and the index names one.
-func finB11PickedAttack(r game.OptionPicked) (card, target uuid.UUID, err error) {
+func FinB11PickedAttack(r game.OptionPicked) (card, target uuid.UUID, err error) {
 	if len(r.Carry) < 2 {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("%w: no attack target to pick", game.ErrInvalidParam)
 	}
@@ -75,7 +75,7 @@ func finB11PickedAttack(r game.OptionPicked) (card, target uuid.UUID, err error)
 // cards you own that aren't on the battlefield have flash": a timing grant
 // for creature spells the caster owns, from any zone but the battlefield
 // (a cast never begins there).
-func finB12OwnedCreatureCardsHaveFlash(label string) game.CastTimingRule {
+func FinB12OwnedCreatureCardsHaveFlash(label string) game.CastTimingRule {
 	rule := CastKindAsThoughFlash(game.PermissionFilter{CreatureOnly: true}, label)
 	rule.OwnedByCaster = true
 	return rule

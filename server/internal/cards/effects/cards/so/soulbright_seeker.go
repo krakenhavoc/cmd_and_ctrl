@@ -1,0 +1,74 @@
+package cardsso
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Soulbright Seeker — Creature — Elemental Sorcerer {R}, 2/1:
+//
+//	"As an additional cost to cast this spell, behold an Elemental or pay {2}. (To behold an Elemental, choose an Elemental you control or reveal an Elemental card from your hand.)
+//	 {R}: Target creature you control gains trample until end of turn. If this is the third time this ability has resolved this turn, add {R}{R}{R}{R}."
+//
+// The additional cost is the either/or branch cost of ADR 0100 §2
+// with the behold branch added by its 2026-10-07 amendment
+// (BeholdOrPay): the caster announces the branch, names the
+// card on reveal_ids, and either shows it to the table or pays {2}
+// more.
+//
+// The row's purpose declares the trample as a benefit on its target
+// (#4302) and the {R}{R}{R}{R} of its third resolution this turn
+// (ResolutionMana, #4980), so the bot prices the activation that will
+// be the third resolution by the mana it returns rather than as a
+// repeat of a grant the creature already has.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:       "762679dd-4345-43c3-929b-15959443aeb0",
+		Name:           "Soulbright Seeker",
+		Completeness:   effects.CompletenessFull,
+		AdditionalCost: effects.BeholdOrPay("an", "Elemental", "{2}"),
+		Activated: []effects.ActivatedAbility{{
+			Label:   SoulbrightSeekerLabel,
+			Cost:    effects.ManaCost("{R}"),
+			Targets: effects.TargetCreature("target creature you control", effects.YouControl()),
+			Purpose: soulbrightSeekerPurpose(),
+			Effect:  soulbrightSeekerAbility,
+		}},
+	})
+}
+
+const SoulbrightSeekerLabel = "{R}: Target creature you control gains trample until end of turn; the third time it resolves this turn, add {R}{R}{R}{R}"
+
+// soulbrightSeekerPurpose is what the row does: trample for its target
+// until end of turn, and {R}{R}{R}{R} on the third resolution this turn
+// (the count soulbrightSeekerAbility reads).
+func soulbrightSeekerPurpose() game.Purpose {
+	p := effects.ForTargets(effects.BenefitUntilEOT(0, 0, 0, "trample"))
+	p.ResolutionMana = &game.ResolutionMana{Resolution: 3, Mana: "{R}{R}{R}{R}"}
+	return p
+}
+
+// soulbrightSeekerAbility is the ability's body. The count is the
+// per-turn tally of this Seeker's resolutions of this ability, which
+// includes the one resolving (Game.ResolvedThisTurn, Elrond's count),
+// so the third resolution is the one that adds the mana. The trample
+// is granted first, to the target if it is still legal; the mana
+// does not depend on the target (the ability was not countered).
+func soulbrightSeekerAbility(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	if id, ok := effects.B16FirstLegalTargetCard(ctx); ok {
+		if err := (effects.GrantKeywordUntilEOT{
+			Target:   id,
+			Keywords: []string{"trample"},
+			Label:    "Soulbright Seeker — trample until end of turn",
+		}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	if g.ResolvedThisTurn(item.SourceCardID, SoulbrightSeekerLabel) == 3 {
+		return effects.AddMana{Produced: "{R}{R}{R}{R}"}.Apply(ctx)
+	}
+	return nil
+}

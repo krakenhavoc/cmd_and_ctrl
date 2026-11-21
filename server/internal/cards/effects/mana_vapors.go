@@ -19,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return targetPlayersPermanentsDontUntap(ctx, "Mana Vapors — lands don't untap during that player's next untap step", "land")
+			return TargetPlayersPermanentsDontUntap(ctx, "Mana Vapors — lands don't untap during that player's next untap step", "land")
 		},
 	})
 }
@@ -27,7 +27,7 @@ func init() {
 // targetPlayersPermanentsDontUntap is "<types> target player controls
 // don't untap during their next untap step", reading the player from the
 // spell's still-legal player target (CR 608.2b).
-func targetPlayersPermanentsDontUntap(ctx *Context, label string, types ...string) error {
+func TargetPlayersPermanentsDontUntap(ctx *Context, label string, types ...string) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
 			continue

@@ -11,19 +11,19 @@ import (
 
 // roeB1Spawns creates n of the catalog's Eldrazi Spawn tokens: 0/1
 // colorless Eldrazi Spawn creatures with "Sacrifice this token: Add {C}."
-func roeB1Spawns(n int) Applier {
+func RoeB1Spawns(n int) Applier {
 	return CreateToken{Template: EldraziSpawnToken(), N: n}
 }
 
 // roeB1SpawnsWhenThisEnters is "When this creature enters, create n 0/1
 // colorless Eldrazi Spawn creature tokens" (Emrakul's Hatcher, Kozilek's
 // Predator, Nest Invader, Dread Drone).
-func roeB1SpawnsWhenThisEnters(name string, n int) game.TriggeredAbility {
+func RoeB1SpawnsWhenThisEnters(name string, n int) game.TriggeredAbility {
 	label := name + " — create an Eldrazi Spawn"
 	if n > 1 {
 		label = name + " — create " + roeB1Count(n) + " Eldrazi Spawn"
 	}
-	return WhenThisEnters(label, Do(roeB1Spawns(n)))
+	return WhenThisEnters(label, Do(RoeB1Spawns(n)))
 }
 
 // roeB1Count spells a small count as the cards print it.
@@ -43,7 +43,7 @@ func roeB1Count(n int) string {
 // Eldrazi Spawn": a permanent its controller controls that is both an
 // Eldrazi and a Spawn, read as the spell resolves. Both words are read
 // through the spell's text (CR 612.2).
-func roeB1YouControlAnEldraziSpawn(ctx *Context) bool {
+func RoeB1YouControlAnEldraziSpawn(ctx *Context) bool {
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == ctx.Controller() && c.HasSubtype(ctx.TextSubtype("Eldrazi")) && c.HasSubtype(ctx.TextSubtype("Spawn")) {
 			return true
@@ -56,7 +56,7 @@ func roeB1YouControlAnEldraziSpawn(ctx *Context) bool {
 // creature": any player's sacrifice of a permanent that was a creature as it
 // last stood (the event fires while it is still on the battlefield,
 // CR 603.10a).
-func roeB1APlayerSacrificedACreature(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+func RoeB1APlayerSacrificedACreature(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.CardID == uuid.Nil {
 		return false
 	}
@@ -66,14 +66,14 @@ func roeB1APlayerSacrificedACreature(ev game.Event, _ *game.Card, _ game.Charact
 
 // roeB1CreaturesYouControl counts the creatures the source's controller
 // controls (Pennon Blade's "for each creature you control").
-func roeB1CreaturesYouControl(g *game.Game, source *game.Card) int {
-	return permanentsYouControl(g, source, func(c *game.Card) bool { return c.IsCreature() })
+func RoeB1CreaturesYouControl(g *game.Game, source *game.Card) int {
+	return CountPermanentsYouControl(g, source, func(c *game.Card) bool { return c.IsCreature() })
 }
 
 // roeB1PreventCombatDamageToThis is "Prevent all combat damage that would be
 // dealt to this creature" (CR 615.1a; Guard Gomazoa), Seraph of the Sword's
 // replacement.
-func roeB1PreventCombatDamageToThis(name string) game.ReplacementEffect {
+func RoeB1PreventCombatDamageToThis(name string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:    []game.EventKind{game.EventDealDamage},
 		Prevention: true,
@@ -93,8 +93,8 @@ func roeB1PreventCombatDamageToThis(name string) game.ReplacementEffect {
 
 // roeB1ShrinkGrant is a leveler band's "{B}, {T}: Target creature gets
 // -N/-N until end of turn." as a bundle (Guul Draz Assassin).
-func roeB1ShrinkGrant(key, name string, n int) AbilityGrant {
-	text := "{B}, {T}: Target creature gets " + signedPT(-n, -n) + " until end of turn."
+func RoeB1ShrinkGrant(key, name string, n int) AbilityGrant {
+	text := "{B}, {T}: Target creature gets " + SignedPT(-n, -n) + " until end of turn."
 	return AbilityGrant{
 		Key: key,
 		Activated: []ActivatedAbility{{
@@ -102,7 +102,7 @@ func roeB1ShrinkGrant(key, name string, n int) AbilityGrant {
 			Cost:    Plus(ManaCost("{B}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Purpose: ForTargets(HarmUntilEOT(0, -n, -n)),
-			Effect:  pumpAndGrantFirstTarget(-n, -n, name+" — "+signedPT(-n, -n)+" until end of turn"),
+			Effect:  PumpAndGrantFirstTarget(-n, -n, name+" — "+SignedPT(-n, -n)+" until end of turn"),
 		}},
 		Text: text,
 	}
@@ -110,7 +110,7 @@ func roeB1ShrinkGrant(key, name string, n int) AbilityGrant {
 
 // roeB1ElephantGrant is a leveler band's "{T}: Create N 3/3 green Elephant
 // creature tokens." as a bundle (Kazandu Tuskcaller).
-func roeB1ElephantGrant(key string, n int, text string) AbilityGrant {
+func RoeB1ElephantGrant(key string, n int, text string) AbilityGrant {
 	return AbilityGrant{
 		Key: key,
 		Activated: []ActivatedAbility{{
@@ -125,7 +125,7 @@ func roeB1ElephantGrant(key string, n int, text string) AbilityGrant {
 
 // roeB1PingGrant is a leveler band's "{T}: This creature deals N damage to
 // any target." as a bundle (Brimstone Mage). The host deals the damage.
-func roeB1PingGrant(key string, n int) AbilityGrant {
+func RoeB1PingGrant(key string, n int) AbilityGrant {
 	text := "{T}: This creature deals " + roeB1Digits(n) + " damage to any target."
 	return AbilityGrant{
 		Key: key,
@@ -134,7 +134,7 @@ func roeB1PingGrant(key string, n int) AbilityGrant {
 			Cost:    TapCost(),
 			Targets: TargetAny(),
 			Purpose: ForTargets(DamageToTarget(0, n)),
-			Effect:  sourceDealsDamageToEachLegalTarget(n),
+			Effect:  SourceDealsDamageToEachLegalTarget(n),
 		}},
 		Text: text,
 	}

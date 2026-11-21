@@ -99,36 +99,36 @@ func bisonWhistleCreatureOrGraveyard(ctx *Context, top uuid.UUID) error {
 		Question: "Bison Whistle — put the top card of your library into your graveyard?",
 		YesLabel: "Put it into your graveyard",
 		NoLabel:  "Leave it on top",
-		Then:     bisonWhistleToGraveyard,
+		Then:     BisonWhistleToGraveyard,
 		Carry:    []uuid.UUID{top},
 	}.Apply(ctx)
 }
 
 var bisonWhistleTakeCreature = MayYes("avatar-b30/bison-whistle-take-creature", func(ctx *Context, r game.ConfirmAnswer) error {
-	if !bisonWhistleStillInLibrary(ctx.Game, carryAt(r, 0)) {
+	if !BisonWhistleStillInLibrary(ctx.Game, CarryAt(r, 0)) {
 		return nil
 	}
 	ctx.Game.RevealTopOfLibraryForEffect(r.Chooser, ctx.Source(), 1, "Bison Whistle — reveal the top card")
-	return ctx.Game.BounceToHandForEffect(carryAt(r, 0))
+	return ctx.Game.BounceToHandForEffect(CarryAt(r, 0))
 })
 
-var bisonWhistleToGraveyard = MayYes("avatar-b30/bison-whistle-to-graveyard", putCarriedLibraryCardIntoGraveyard)
+var BisonWhistleToGraveyard = MayYes("avatar-b30/bison-whistle-to-graveyard", PutCarriedLibraryCardIntoGraveyard)
 
 // putCarriedLibraryCardIntoGraveyard is "you may put it into your
 // graveyard" about one looked-at or revealed library card, the answer's
 // first carry: a plain move (not a mill), made only while the card is
 // still in the library. Shared by Bison Whistle and Kellan, Daring
 // Traveler.
-func putCarriedLibraryCardIntoGraveyard(ctx *Context, r game.ConfirmAnswer) error {
-	if !bisonWhistleStillInLibrary(ctx.Game, carryAt(r, 0)) {
+func PutCarriedLibraryCardIntoGraveyard(ctx *Context, r game.ConfirmAnswer) error {
+	if !BisonWhistleStillInLibrary(ctx.Game, CarryAt(r, 0)) {
 		return nil
 	}
-	return ctx.Game.PutIntoGraveyardForEffect(carryAt(r, 0))
+	return ctx.Game.PutIntoGraveyardForEffect(CarryAt(r, 0))
 }
 
 // bisonWhistleStillInLibrary is the CR 608.2b check on the looked-at
 // card: one that has left the library in the meantime is a new object.
-func bisonWhistleStillInLibrary(g *game.Game, id uuid.UUID) bool {
+func BisonWhistleStillInLibrary(g *game.Game, id uuid.UUID) bool {
 	z := g.FindCardZoneForEffect(id)
 	return z != nil && z.Kind == game.ZoneLibrary
 }

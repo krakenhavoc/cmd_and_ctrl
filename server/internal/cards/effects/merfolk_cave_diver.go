@@ -26,8 +26,8 @@ func init() {
 		Name:         "Merfolk Cave-Diver",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventExplored, aCreatureYouControlExplored, label,
-				thisGetsPlusOneZeroAndCantBeBlockedThisTurn(label)),
+			On(game.EventExplored, ACreatureYouControlExplored, label,
+				ThisGetsPlusOneZeroAndCantBeBlockedThisTurn(label)),
 		},
 	})
 }
@@ -35,7 +35,7 @@ func init() {
 // aCreatureYouControlExplored is "whenever a creature you control
 // explores" (CR 701.44b): the explorer's controller is the source's, and
 // an explorer still around is a creature.
-func aCreatureYouControlExplored(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func ACreatureYouControlExplored(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventExplored || ev.Actor != source.Controller {
 		return false
 	}

@@ -49,7 +49,7 @@ func init() {
 					return ScheduleDelayedTrigger{
 						Label: "The Scarab God — return to its owner's hand",
 						Cards: []uuid.UUID{item.SourceCardID},
-						Body:  returnListedGraveyardToHandBody,
+						Body:  ReturnListedGraveyardToHandBody,
 					}.Apply(NewContext(g, item))
 				}),
 		},
@@ -69,7 +69,7 @@ func scarabGodUpkeep(g *game.Game, item *game.StackItem) error {
 	if x <= 0 {
 		return nil
 	}
-	if err := eachOpponentLosesLife(g, item, x); err != nil {
+	if err := EachOpponentLosesLifeNow(g, item, x); err != nil {
 		return err
 	}
 	return Scry{Player: item.Controller, N: x}.Apply(NewContext(g, item))
@@ -94,24 +94,24 @@ func scarabGodReanimateAsZombie(g *game.Game, item *game.StackItem) error {
 
 // scarabGodZombieCopy is the exile's keyed "then" (#4253 slice 10a).
 var scarabGodZombieCopy = ExileThenTokenCopyTail("exile-then-token-copy/the-scarab-god", func(ctx *Context) func(t *game.Card) {
-	return scarabGodZombieExceptionFor(ctx.Game.TextReaderForEffect(ctx.Item))
+	return ScarabGodZombieExceptionFor(ctx.Game.TextReaderForEffect(ctx.Item))
 })
 
 // scarabGodZombieException is "except it's a 4/4 black Zombie" —
 // REPLACES the copy's creature types (CR 707.9a), same as Hashaton's
 // exception but with no "tapped" clause. Read in the printed words; the
 // ability reads them through the God's text (scarabGodZombieExceptionFor).
-func scarabGodZombieException(t *game.Card) { scarabGodZombieExceptionFor(nil)(t) }
+func ScarabGodZombieException(t *game.Card) { ScarabGodZombieExceptionFor(nil)(t) }
 
 // scarabGodZombieExceptionFor is the exception with "black" and "Zombie"
 // read through `reader`, the object whose text it is (CR 612.2, #3984);
 // nil reads the printed words.
-func scarabGodZombieExceptionFor(reader *game.Card) func(*game.Card) {
+func ScarabGodZombieExceptionFor(reader *game.Card) func(*game.Card) {
 	return func(t *game.Card) {
 		t.Power = 4
 		t.Toughness = 4
 		t.VariableToughness = false
 		t.SetCopyExceptionColors(reader.TextColor("B"))
-		t.TypeLine = retypedTypeLine(t.TypeLine, reader.TextSubtype("Zombie"))
+		t.TypeLine = RetypedTypeLine(t.TypeLine, reader.TextSubtype("Zombie"))
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-func doesntUntapDuringYourUntapStep() game.UntapStepRestriction {
+func DoesntUntapDuringYourUntapStep() game.UntapStepRestriction {
 	return game.UntapStepRestriction{
 		Label: "doesn't untap during your untap step",
 		Restricts: func(target *game.Card, _ *game.Game, source *game.Card) bool {
@@ -14,7 +14,7 @@ func doesntUntapDuringYourUntapStep() game.UntapStepRestriction {
 	}
 }
 
-func enchantedDoesntUntap() game.UntapStepRestriction {
+func EnchantedDoesntUntap() game.UntapStepRestriction {
 	return game.UntapStepRestriction{Label: "enchanted creature doesn't untap", Restricts: AttachedToSource}
 }
 
@@ -22,7 +22,7 @@ func enchantedDoesntUntap() game.UntapStepRestriction {
 // untapped" (CR 614.17, #4574): Frozen in Ice. Stronger than
 // enchantedDoesntUntap: an untap effect does nothing to the creature
 // either, for as long as the Aura is on it.
-func enchantedCantBecomeUntapped() game.UntapStepRestriction {
+func EnchantedCantBecomeUntapped() game.UntapStepRestriction {
 	return game.UntapStepRestriction{
 		Label:              "enchanted creature can't become untapped",
 		Restricts:          AttachedToSource,
@@ -30,7 +30,7 @@ func enchantedCantBecomeUntapped() game.UntapStepRestriction {
 	}
 }
 
-func doesntUntapDuringTheirControllersUntapSteps(match CardPredicate) game.UntapStepRestriction {
+func DoesntUntapDuringTheirControllersUntapSteps(match CardPredicate) game.UntapStepRestriction {
 	return game.UntapStepRestriction{
 		Label: "doesn't untap during its controller's untap step",
 		Restricts: func(target *game.Card, g *game.Game, _ *game.Card) bool {
@@ -52,7 +52,7 @@ type DoesntUntapNextUntapStep struct {
 }
 
 func (d DoesntUntapNextUntapStep) Apply(ctx *Context) error {
-	for _, id := range ctx.withoutNewSourceObject(d.Targets) { // #1432
+	for _, id := range ctx.WithoutNewSourceObject(d.Targets) { // #1432
 		if err := ctx.Game.SkipNextUntapStepsForEffect(id, d.Player, max(d.Steps, 1)); err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ type TapAndFreeze struct {
 }
 
 func (t TapAndFreeze) Apply(ctx *Context) error {
-	targets := ctx.withoutNewSourceObject(t.Targets) // #1432
+	targets := ctx.WithoutNewSourceObject(t.Targets) // #1432
 	for _, id := range targets {
 		if err := ctx.Game.TapTargetForEffect(id); err != nil {
 			return err
@@ -93,7 +93,7 @@ type DoesntUntapWhile struct {
 }
 
 func (d DoesntUntapWhile) Apply(ctx *Context) error {
-	for _, id := range ctx.withoutNewSourceObject(d.Targets) { // #1432
+	for _, id := range ctx.WithoutNewSourceObject(d.Targets) { // #1432
 		if err := ctx.Game.HoldUntappedForEffect(id, d.Duration); err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ type CantBecomeUntappedWhile struct {
 }
 
 func (d CantBecomeUntappedWhile) Apply(ctx *Context) error {
-	for _, id := range ctx.withoutNewSourceObject(d.Targets) { // #1432
+	for _, id := range ctx.WithoutNewSourceObject(d.Targets) { // #1432
 		if err := ctx.Game.CantUntapForEffect(id, d.Duration); err != nil {
 			return err
 		}
@@ -125,7 +125,7 @@ func (d CantBecomeUntappedWhile) Apply(ctx *Context) error {
 // tap always happens; the lock is recorded only if the duration starts,
 // exactly as TapAndHoldWhileYouControlThis does.
 func TapAndLockWhileYouControlThis(ctx *Context, targets []uuid.UUID) error {
-	if err := tapEach(ctx, targets); err != nil {
+	if err := TapEach(ctx, targets); err != nil {
 		return err
 	}
 	d, ok := DurationWhileYouControlSource(ctx, ctx.Source(), ctx.Controller())
@@ -145,7 +145,7 @@ func TapAndLockWhileYouControlThis(ctx *Context, targets []uuid.UUID) error {
 // controller, the target is tapped and untaps as normal (CR 611.2b,
 // and the Dungeon Geists ruling of 2019-07-12).
 func TapAndHoldWhileYouControlThis(ctx *Context, targets []uuid.UUID) error {
-	if err := tapEach(ctx, targets); err != nil {
+	if err := TapEach(ctx, targets); err != nil {
 		return err
 	}
 	d, ok := DurationWhileYouControlSource(ctx, ctx.Source(), ctx.Controller())
@@ -160,7 +160,7 @@ func TapAndHoldWhileYouControlThis(ctx *Context, targets []uuid.UUID) error {
 // tapped" — Rust Tick, Amber Prison. Same "never starts" rule: a
 // source untapped in response taps the target and holds nothing.
 func TapAndHoldWhileThisRemainsTapped(ctx *Context, targets []uuid.UUID) error {
-	if err := tapEach(ctx, targets); err != nil {
+	if err := TapEach(ctx, targets); err != nil {
 		return err
 	}
 	d, ok := DurationWhileThisRemainsTapped(ctx) // #1432 included
@@ -170,7 +170,7 @@ func TapAndHoldWhileThisRemainsTapped(ctx *Context, targets []uuid.UUID) error {
 	return DoesntUntapWhile{Targets: targets, Duration: d}.Apply(ctx)
 }
 
-func tapEach(ctx *Context, targets []uuid.UUID) error {
+func TapEach(ctx *Context, targets []uuid.UUID) error {
 	for _, id := range targets {
 		if err := ctx.Game.TapTargetForEffect(id); err != nil {
 			return err
@@ -181,7 +181,7 @@ func tapEach(ctx *Context, targets []uuid.UUID) error {
 
 // holdTargetIDs is the instance IDs of the item's still-legal targets
 // (CR 608.2b), in slot order.
-func holdTargetIDs(ctx *Context) []uuid.UUID {
+func HoldTargetIDs(ctx *Context) []uuid.UUID {
 	ts := ctx.LegalTargets()
 	ids := make([]uuid.UUID, 0, len(ts))
 	for _, t := range ts {

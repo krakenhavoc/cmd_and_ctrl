@@ -83,23 +83,23 @@ func (p Proliferate) Apply(ctx *Context) error {
 // Butler): Tail.N is how many are still owed, Tail.Player proliferates and
 // Tail.Source is the card. An on-disk key: never renamed, never reused.
 // Registered from init: the body names its own key again.
-var thenProliferateAgain game.TailRef
+var ThenProliferateAgain game.TailRef
 
 func init() {
-	thenProliferateAgain = game.RegisterTail("then/proliferate-again", func(g *game.Game, o game.TailOutcome) error {
-		return proliferateTimesKeyed(g, o.Tail.Player, o.Tail.Source, o.Tail.N)
+	ThenProliferateAgain = game.RegisterTail("then/proliferate-again", func(g *game.Game, o game.TailOutcome) error {
+		return ProliferateTimesKeyed(g, o.Tail.Player, o.Tail.Source, o.Tail.N)
 	})
 }
 
 // proliferateTimesKeyed proliferates n times in a row for `player`, each one
 // asked once the one before it is answered, with the rest as data.
-func proliferateTimesKeyed(g *game.Game, player, source uuid.UUID, n int) error {
+func ProliferateTimesKeyed(g *game.Game, player, source uuid.UUID, n int) error {
 	if n <= 0 {
 		return nil
 	}
 	var rest game.KeyedTail
 	if n > 1 {
-		rest = game.KeyedTail{Ref: thenProliferateAgain, Player: player, Source: source, N: n - 1}
+		rest = game.KeyedTail{Ref: ThenProliferateAgain, Player: player, Source: source, N: n - 1}
 	}
 	return g.ProliferateChoosingKeyedForEffect(player, source, rest)
 }

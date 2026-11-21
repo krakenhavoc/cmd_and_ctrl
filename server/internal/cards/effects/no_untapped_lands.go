@@ -49,11 +49,11 @@ func NoUntappedLands(g *game.Game, you uuid.UUID) bool {
 	if you == uuid.Nil {
 		return false
 	}
-	return len(permanentsControlledByMatching(g, you, untappedLandPredicate)) == 0
+	return len(PermanentsControlledByMatching(g, you, untappedLandPredicate)) == 0
 }
 
 // untappedLandPredicate is untappedLand as a CardPredicate.
-func untappedLandPredicate(_ *game.Game, _ uuid.UUID, c game.Card) bool { return untappedLand(c) }
+func untappedLandPredicate(_ *game.Game, _ uuid.UUID, c game.Card) bool { return UntappedLand(c) }
 
 // CondNoUntappedLands is "if you control no untapped lands" as an
 // intervening-if Condition, for InterveningIf and If: read for the item's
@@ -69,8 +69,8 @@ func (CondNoUntappedLands) Holds(ctx *Context) bool {
 	return NoUntappedLands(ctx.Game, ctx.Controller())
 }
 
-func (CondNoUntappedLands) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondBoard, 0), true
+func (CondNoUntappedLands) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondBoard, 0), true
 }
 
 // YouControlNoUntappedLands is the When for "if you control no untapped
@@ -84,7 +84,7 @@ func YouControlNoUntappedLands(_ game.Event, source *game.Card, _ game.Character
 // untapped lands": the source, while it is a creature, and while its
 // controller controls no untapped lands.
 func selfWhileNoUntappedLands(target *game.Card, g *game.Game, source *game.Card) bool {
-	return selfCreature(target, g, source) && NoUntappedLands(g, source.Controller)
+	return SelfCreature(target, g, source) && NoUntappedLands(g, source.Controller)
 }
 
 // SelfPumpWhileNoUntappedLands is "This creature gets +p/+t as long as you
@@ -93,11 +93,11 @@ func selfWhileNoUntappedLands(target *game.Card, g *game.Game, source *game.Card
 // controls no untapped lands.
 func SelfPumpWhileNoUntappedLands(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:           "This creature gets " + signedPT(power, toughness) + " as long as you control no untapped lands.",
+		Label:           "This creature gets " + SignedPT(power, toughness) + " as long as you control no untapped lands.",
 		Layer:           game.Layer7PT,
 		SubLayer:        game.SubLayer7C_Modify,
 		AppliesTo:       selfWhileNoUntappedLands,
-		Apply:           pumpBy(power, toughness),
+		Apply:           PumpBy(power, toughness),
 		DependsOnEvents: []game.EventKind{game.EventAttack},
 	}
 }

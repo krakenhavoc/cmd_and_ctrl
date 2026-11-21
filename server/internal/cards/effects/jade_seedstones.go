@@ -23,16 +23,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // battlefield.
 //
 // No simplification.
-const jadeSeedstonesOracleID = "fa2c984a-6bc1-4ec8-93d7-87f9f06b841e"
+const JadeSeedstonesOracleID = "fa2c984a-6bc1-4ec8-93d7-87f9f06b841e"
 
 func init() {
 	Register(Spec{
-		OracleID:     jadeSeedstonesOracleID,
+		OracleID:     JadeSeedstonesOracleID,
 		Name:         "Jade Seedstones",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				WhenThisEnters("Jade Seedstones — distribute three +1/+1 counters", jadeSeedstonesCounters),
+				WhenThisEnters("Jade Seedstones — distribute three +1/+1 counters", JadeSeedstonesCounters),
 				TargetCreature("one, two, or three target creatures you control", YouControl()).
 					WithCount(1, 3).Dividing(Divide(3))),
 		},
@@ -42,7 +42,7 @@ func init() {
 	})
 
 	Register(Spec{
-		OracleID:     jadeSeedstonesOracleID + "#1",
+		OracleID:     JadeSeedstonesOracleID + "#1",
 		Name:         "Jadeheart Attendant",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -51,7 +51,7 @@ func init() {
 	})
 }
 
-func jadeSeedstonesCounters(g *game.Game, item *game.StackItem) error {
+func JadeSeedstonesCounters(g *game.Game, item *game.StackItem) error {
 	return PutDividedCounters(NewContext(g, item), game.CounterPlusOne)
 }
 

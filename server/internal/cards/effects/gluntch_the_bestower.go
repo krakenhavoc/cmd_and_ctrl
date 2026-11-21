@@ -88,7 +88,7 @@ func init() {
 	})
 	// The creature the first player picks: recorded for the counters' step,
 	// against the trigger the prompt carried (its players chosen included).
-	gluntchCreature = askedPick("choose-cards/gluntch-the-bestower-creature", func(ctx *Context, r game.CardsChosen) error {
+	gluntchCreature = AskedPick("choose-cards/gluntch-the-bestower-creature", func(ctx *Context, r game.CardsChosen) error {
 		ctx.RecordStep(gluntchPickedRecord, r.Picked)
 		return gluntchAfterPick.Run(ctx)
 	})
@@ -102,7 +102,7 @@ func init() {
 // function returns — the Scry.Then rule: a prompt only queues.
 func gluntchCounters(ctx *Context) error {
 	chosen := ctx.ChosenPlayer()
-	creatures := creaturesControlledByPlayer(ctx.Game, chosen)
+	creatures := CreaturesControlledByPlayer(ctx.Game, chosen)
 	if chosen == uuid.Nil || len(creatures) == 0 {
 		return gluntchSecondPlayer(ctx)
 	}
@@ -159,7 +159,7 @@ func init() {
 	gluntchAfterPick = RegisterThenSteps("then-steps/gluntch-the-bestower-counters",
 		Instruction(func(ctx *Context) error {
 			for _, id := range ctx.StepRecord(gluntchPickedRecord).IDs {
-				if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(ctx.asGroupMember()); err != nil {
+				if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(ctx.AsGroupMember()); err != nil {
 					return err
 				}
 			}
@@ -204,7 +204,7 @@ func gluntchTreasure(ctx *Context) error {
 // list from what that seat can actually do (CR 608.2).
 //
 // Caller must hold g.mu — it is an effect-time read.
-func creaturesControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+func CreaturesControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 	if playerID == uuid.Nil {
 		return nil
 	}

@@ -13,7 +13,7 @@ import (
 // s82Bns04DerivedFromOwnBasicLands is Star Compass's DerivedMatch: "a basic
 // land you control" — Reflecting Pool's DerivedFromOwnLands narrowed to
 // basics. Pair it with DerivedColorsOnly: "any color" cannot make {C}.
-func s82Bns04DerivedFromOwnBasicLands() func(game.Card, uuid.UUID) bool {
+func S82Bns04DerivedFromOwnBasicLands() func(game.Card, uuid.UUID) bool {
 	return func(c game.Card, controller uuid.UUID) bool {
 		return c.Controller == controller && c.IsLand() && c.HasSupertype("Basic")
 	}
@@ -22,7 +22,7 @@ func s82Bns04DerivedFromOwnBasicLands() func(game.Card, uuid.UUID) bool {
 // s82Bns04HandSizeExactly is "Activate only if you have exactly n cards in
 // your hand" (Magus of the Library). A hand's size is public; its contents
 // are not read.
-func s82Bns04HandSizeExactly(n int) ActivationCondition {
+func S82Bns04HandSizeExactly(n int) ActivationCondition {
 	return func(g *game.Game, controller, _ uuid.UUID) bool {
 		p := g.PlayerByIDForEffect(controller)
 		return p != nil && p.Hand != nil && len(p.Hand.Cards) == n
@@ -32,7 +32,7 @@ func s82Bns04HandSizeExactly(n int) ActivationCondition {
 // s82Bns04PrintedVanishing is "that creature has vanishing" for the copiable
 // values being copied: the card's catalog row carries the vanishing upkeep
 // trigger, or its printed keywords name it.
-func s82Bns04PrintedVanishing(v *game.PrintedValues) bool {
+func S82Bns04PrintedVanishing(v *game.PrintedValues) bool {
 	for _, k := range v.Keywords {
 		if strings.EqualFold(k, "vanishing") {
 			return true

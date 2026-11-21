@@ -2208,6 +2208,15 @@ type Event struct {
 	// damage to a player" triggers read both. Added in S19 sub-PR 7.
 	Combat bool `json:"combat,omitempty"`
 
+	// SourceName is, on a combat EventDealDamage, the name of the dealing
+	// object as it was when it dealt the damage (its layered name: a copy
+	// has the copied name, CR 707.2), captured at emit time because the
+	// source may since have left the game or been changed. "Each opponent
+	// dealt combat damage this game by a creature named Gollum, Obsessed
+	// Stalker" reads it off the append-only log. Empty on every other event.
+	// Additive within schema v9.
+	SourceName string `json:"source_name,omitempty"`
+
 	// Exhaust marks an EventActivateAbility or
 	// EventManaAbilityActivated whose ability prints the exhaust
 	// keyword — "Activate each exhaust ability only once" (#1181,
@@ -2603,6 +2612,7 @@ func (g *Game) EmitEvent(ev Event) {
 	// harvester saw.
 	ev.Batch = g.currentEventBatchLocked()
 	g.stampPublicNamesLocked(&ev)
+	g.stampCombatSourceNameLocked(&ev)
 	g.Events = append(g.Events, ev)
 	// S17 sub-PR 6 diagnostic: effect-error events are otherwise
 	// silent (no client toast yet). Surfacing them in the server log

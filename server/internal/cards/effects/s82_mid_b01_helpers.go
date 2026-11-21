@@ -8,10 +8,10 @@ import (
 
 // s82MidB01Return bounces the creature Loyal Gryff's controller picked.
 // It is gone from the battlefield (or was never picked) means nothing happens.
-var s82MidB01Return = RegisterPermanentsPick("prompt-run/loyal-gryff-return", PermanentsDef{
+var S82MidB01Return = RegisterPermanentsPick("prompt-run/loyal-gryff-return", PermanentsDef{
 	Then: func(ctx *Context, picked game.PromptedPicks) error {
 		for _, id := range picked.Cards() {
-			if !onBattlefield(ctx.Game, id) {
+			if !OnBattlefield(ctx.Game, id) {
 				continue
 			}
 			return BounceToHand{Target: id}.Apply(ctx)
@@ -24,7 +24,7 @@ var s82MidB01Return = RegisterPermanentsPick("prompt-run/loyal-gryff-return", Pe
 // return another creature you control to its owner's hand" (First Responder,
 // Loyal Gryff): nothing targets, zero is the "you may" decline, and the
 // source itself is never offered.
-func chooseAnotherCreatureYouControl(g *game.Game, item *game.StackItem, question string, keyed PermanentsThen) error {
+func ChooseAnotherCreatureYouControl(g *game.Game, item *game.StackItem, question string, keyed PermanentsThen) error {
 	self := item.SourceCardID
 	return ChoosePermanents{
 		Question: question,

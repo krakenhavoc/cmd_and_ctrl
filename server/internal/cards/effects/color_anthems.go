@@ -20,8 +20,8 @@ import (
 // letter ("G"); `while`, when set, is a condition on the source that
 // must hold for the static to apply at all ("as long as this creature is
 // untapped"). `label` is the printed line.
-func creaturesOfColorYouControlGet(color string, power, toughness int, while func(source *game.Card) bool, label string) game.StaticAbility {
-	return Labelled(b16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+func CreaturesOfColorYouControlGet(color string, power, toughness int, while func(source *game.Card) bool, label string) game.StaticAbility {
+	return Labelled(B16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		if while != nil && !while(source) {
 			return false
 		}

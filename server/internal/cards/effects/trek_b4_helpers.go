@@ -11,7 +11,7 @@ import (
 // trekB4AltCostKeyBeamMeUp is beam me up's offer key: on the wire as
 // `alternative_cost`, on StackItem.AltCost and on a permanent's
 // CastProvenance. An on-disk identity: never renamed, never reused.
-const trekB4AltCostKeyBeamMeUp = "beam_me_up"
+const TrekB4AltCostKeyBeamMeUp = "beam_me_up"
 
 // trekB4BeamMeUp is "Beam me up {cost} (You may cast this card from your
 // graveyard for {cost} if you also return a creature you control to its
@@ -27,9 +27,9 @@ const trekB4AltCostKeyBeamMeUp = "beam_me_up"
 //
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{trekB4BeamMeUp("{2}{W}")},
-func trekB4BeamMeUp(cost string) game.AlternativeCost {
+func TrekB4BeamMeUp(cost string) game.AlternativeCost {
 	ac := Flashback(cost)
-	ac.Key = trekB4AltCostKeyBeamMeUp
+	ac.Key = TrekB4AltCostKeyBeamMeUp
 	ac.Label = "Beam me up " + cost
 	ac.ReturnToHand = PermanentYouControl("a creature you control", Creature())
 	ac.PayLabel = "a creature you control"
@@ -42,7 +42,7 @@ func trekB4BeamMeUp(cost string) game.AlternativeCost {
 // (Card.HasSubtype), so a changeling that is not a Borg would have them
 // all — but a changeling is a Borg, so it never counts. `borg` is the
 // word as the source's text now reads it (CR 612.2).
-func trekB4CreatureTypesAmongNonBorg(g *game.Game, controller uuid.UUID, borg string) int {
+func TrekB4CreatureTypesAmongNonBorg(g *game.Game, controller uuid.UUID, borg string) int {
 	var mine []game.Card
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && !c.HasSubtype(borg) {
@@ -65,28 +65,28 @@ func trekB4CreatureTypesAmongNonBorg(g *game.Game, controller uuid.UUID, borg st
 // Equipment or Spacecraft entered the battlefield under your control this
 // turn", read off the turn's entry tally (the subtypes each permanent had
 // as it entered).
-func trekB4EquipmentOrSpacecraftEnteredUnderYou(g *game.Game, controller uuid.UUID) bool {
+func TrekB4EquipmentOrSpacecraftEnteredUnderYou(g *game.Game, controller uuid.UUID) bool {
 	return g.EnteredWithSubtypeThisTurn(controller, "Equipment") > 0 ||
 		g.EnteredWithSubtypeThisTurn(controller, "Spacecraft") > 0
 }
 
 // condEquipmentOrSpacecraftEntered is the same "if" as an If condition,
 // re-checked as Sulu's trigger resolves (CR 603.4).
-type condEquipmentOrSpacecraftEntered struct{}
+type CondEquipmentOrSpacecraftEntered struct{}
 
-func (condEquipmentOrSpacecraftEntered) Holds(ctx *Context) bool {
-	return trekB4EquipmentOrSpacecraftEnteredUnderYou(ctx.Game, ctx.Controller())
+func (CondEquipmentOrSpacecraftEntered) Holds(ctx *Context) bool {
+	return TrekB4EquipmentOrSpacecraftEnteredUnderYou(ctx.Game, ctx.Controller())
 }
 
-func (condEquipmentOrSpacecraftEntered) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondEquipmentOrSpacecraftEntered, 0), true
+func (CondEquipmentOrSpacecraftEntered) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondEquipmentOrSpacecraftEntered, 0), true
 }
 
 // youDrawIfMode is a modal spell's "you draw N cards" step, guarded by
 // its mode: Abzan Charm's second mode, Test of Conviction's Begin
 // Negotiations. One step, so a later step waits for a prompt the draw
 // asks (CR 608.2c).
-func youDrawIfMode(mode, n int) Instruction {
+func YouDrawIfMode(mode, n int) Instruction {
 	return func(ctx *Context) error {
 		if !ctx.HasMode(mode) {
 			return nil

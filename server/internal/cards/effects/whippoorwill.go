@@ -42,7 +42,7 @@ func init() {
 
 func whippoorwillMark(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -66,7 +66,7 @@ func ExileWhenItDiesThisTurn(ctx *Context, id uuid.UUID, label string) {
 		SourceCardID: ctx.Source(),
 		Label:        label,
 		On:           []game.EventKind{game.EventLTB},
-		Condition:    theListedObjectDiedCondition,
+		Condition:    TheListedObjectDiedCondition,
 		Cards:        []uuid.UUID{id},
 		Duration:     &d,
 		Body:         exileListedFromGraveyardBody,

@@ -19,9 +19,9 @@ import (
 //
 // #4253 slice 10a: the mill's "then" is a keyed tail, the question its
 // Word. The pick after it is keyed too (rfSpellBTakeFromMilledTail).
-func rfSpellBMillThenMayTakePermanent(ctx *Context, question string, milled game.TailRef) error {
+func RfSpellBMillThenMayTakePermanent(ctx *Context, question string, milled game.TailRef) error {
 	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), 4, game.ZoneGraveyard, game.MillUntil{},
-		withWord(ctx.ItemTail(milled), question))
+		WithWord(ctx.ItemTail(milled), question))
 }
 
 // rfSpellBTakeFromMilledTail registers the mill's tail for one card under
@@ -31,16 +31,16 @@ func rfSpellBMillThenMayTakePermanent(ctx *Context, question string, milled game
 // #4253: the pick is keyed too, under "choose-cards/" plus the tail's key
 // with its slashes dashed and "-pick" after it (an on-disk key, ledgered):
 // the asking item rides the prompt as data and `then` runs against it.
-func rfSpellBTakeFromMilledTail(key string, then func(ctx *Context) error) game.TailRef {
-	return rfSpellBTakeFromMilledTailPicked(key, func(ctx *Context, _ []uuid.UUID) error { return then(ctx) })
+func RfSpellBTakeFromMilledTail(key string, then func(ctx *Context) error) game.TailRef {
+	return RfSpellBTakeFromMilledTailPicked(key, func(ctx *Context, _ []uuid.UUID) error { return then(ctx) })
 }
 
 // rfSpellBTakeFromMilledTailPicked is rfSpellBTakeFromMilledTail for a
 // `then` that reads what was taken (Cache Grab's "returned a Squirrel card
 // to your hand this way"): the card picked, empty when none was (nothing
 // eligible, or the pick declined). The keys are the same shape.
-func rfSpellBTakeFromMilledTailPicked(key string, then func(ctx *Context, picked []uuid.UUID) error) game.TailRef {
-	pick := askedPick("choose-cards/"+strings.ReplaceAll(key, "/", "-")+"-pick", func(ctx *Context, r game.CardsChosen) error {
+func RfSpellBTakeFromMilledTailPicked(key string, then func(ctx *Context, picked []uuid.UUID) error) game.TailRef {
+	pick := AskedPick("choose-cards/"+strings.ReplaceAll(key, "/", "-")+"-pick", func(ctx *Context, r game.CardsChosen) error {
 		if len(r.Picked) > 0 {
 			if err := (ReturnFromGraveyard{Target: r.Picked[0], Dest: game.ZoneHand}).Apply(ctx); err != nil {
 				return err
@@ -55,7 +55,7 @@ func rfSpellBTakeFromMilledTailPicked(key string, then func(ctx *Context, picked
 
 // rfSpellBGreatestPowerYouControl is the greatest power among creatures
 // `player` controls, zero with none.
-func rfSpellBGreatestPowerYouControl(ctx *Context, player uuid.UUID) int {
+func RfSpellBGreatestPowerYouControl(ctx *Context, player uuid.UUID) int {
 	best := 0
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() && c.CurrentPower() > best {
@@ -67,7 +67,7 @@ func rfSpellBGreatestPowerYouControl(ctx *Context, player uuid.UUID) int {
 
 // rfSpellBCadetWithHaste is "Create a 2/2 colorless Wizard Soldier
 // creature token named Cadet. It gains haste until end of turn."
-func rfSpellBCadetWithHaste(_ *game.StackItem, ctx *Context, _ int) error {
+func RfSpellBCadetWithHaste(_ *game.StackItem, ctx *Context, _ int) error {
 	made, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("2/2 colorless Wizard Soldier named Cadet")), 1, game.TokenEntryOptions{})
 	if err != nil {
 		return err
@@ -81,7 +81,7 @@ func rfSpellBCadetWithHaste(_ *game.StackItem, ctx *Context, _ int) error {
 }
 
 // rfSpellBCounterNoncreatureUnlessPays is Theorix Charm's first bullet.
-func rfSpellBCounterNoncreatureUnlessPays(_ *game.StackItem, ctx *Context, occ int) error {
+func RfSpellBCounterNoncreatureUnlessPays(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok {
 		return nil

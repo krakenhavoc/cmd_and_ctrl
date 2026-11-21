@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // graveyard" as a spell's whole resolution (Assert Authority, Dissipate):
 // the spell goes to exile through CounterTarget.Dest, and a spell that
 // can't be countered stays on the stack and is not exiled either.
-func counterTargetSpellAndExileIt(_ *game.StackItem, ctx *Context) error {
+func CounterTargetSpellAndExileIt(_ *game.StackItem, ctx *Context) error {
 	t, ok := ctx.ClauseTarget(0)
 	if !ok || t.Kind != game.TargetCard {
 		return nil

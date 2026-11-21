@@ -14,17 +14,17 @@ import (
 // Sacrifice them at the beginning of the next end step." The haste has no
 // duration printed, so it is pinned to each token as that object. The
 // sacrifice is one delayed trigger over all the tokens.
-func s82CopiesHasteSacrifice(ctx *Context, n int, label string) error {
+func S82CopiesHasteSacrifice(ctx *Context, n int, label string) error {
 	copyOf := FirstLegalBattlefieldTarget(ctx)
 	if copyOf == uuid.Nil {
 		return nil
 	}
 	g := ctx.Game
-	cursor := b25LastEventSeq(g)
+	cursor := B25LastEventSeq(g)
 	if err := (CreateTokenCopy{Controller: ctx.Controller(), Copy: copyOf, N: n}).Apply(ctx); err != nil {
 		return err
 	}
-	tokens := b27TokensCreatedByAfter(g, ctx.Controller(), cursor)
+	tokens := B27TokensCreatedByAfter(g, ctx.Controller(), cursor)
 	if len(tokens) == 0 {
 		return nil
 	}
@@ -41,6 +41,6 @@ func s82CopiesHasteSacrifice(ctx *Context, n int, label string) error {
 	return ScheduleDelayedTrigger{
 		Label: label + " — sacrifice the tokens",
 		Cards: tokens,
-		Body:  sacrificeListedCardsBody,
+		Body:  SacrificeListedCardsBody,
 	}.Apply(ctx)
 }

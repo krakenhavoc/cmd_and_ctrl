@@ -40,7 +40,7 @@ func drawThenDiscardRef(question string) game.DrawThenRef {
 // key, and a freshly booted binary must already know that key when it
 // restores the file. TestEveryDrawThenDiscardQuestionIsRegisteredAtInit
 // reads the callers and fails on a question missing here.
-var drawThenDiscardQuestions = []string{
+var DrawThenDiscardQuestions = []string{
 	"",
 	"Anvil of Bogardan — discard a card",
 	"Arni, Humble Scribe — discard a card",
@@ -50,7 +50,7 @@ var drawThenDiscardQuestions = []string{
 }
 
 func init() {
-	for _, q := range drawThenDiscardQuestions {
+	for _, q := range DrawThenDiscardQuestions {
 		drawThenDiscardRef(q)
 	}
 }
@@ -58,7 +58,7 @@ func init() {
 // drawThenDiscard is "<player> draws `draw` cards, then discards
 // `discard` cards" — the discard prompt opens only after every draw has
 // resolved, so the drawn cards are legal discards.
-func drawThenDiscard(g *game.Game, player, source uuid.UUID, draw, discard int, question string) error {
+func DrawThenDiscard(g *game.Game, player, source uuid.UUID, draw, discard int, question string) error {
 	ref := drawThenDiscardRef(question)
 	return g.DrawNThenForEffect(player, draw, game.DrawThen{Ref: ref, Player: player, Source: source, N: discard})
 }
@@ -69,13 +69,13 @@ func drawThenDiscard(g *game.Game, player, source uuid.UUID, draw, discard int, 
 // single card only when it qualifies, or two cards of any kind (the
 // Compulsive Research shape). A hand of one card is discarded whole, and
 // an empty one asks nothing (CR 701.9a).
-func discardTwoUnlessOne(key, question string, qualifies func(game.Card) bool) game.DrawThenRef {
+func DiscardTwoUnlessOne(key, question string, qualifies func(game.Card) bool) game.DrawThenRef {
 	// The prompt is keyed (#4253): its set rule is registered with the
 	// discard continuation, so a table waiting on the discard is a restore
 	// point. The continuation itself does nothing: the discard is the clause.
-	asked := discardTwoUnlessOneRule("choose-cards/"+key, qualifies)
+	asked := DiscardTwoUnlessOneRule("choose-cards/"+key, qualifies)
 	return game.RegisterDrawThen(key, func(g *game.Game, d game.DrawThen) error {
-		return askDiscardTwoUnlessOne(g, d.Player, d.Source, d.N, question, asked)
+		return AskDiscardTwoUnlessOne(g, d.Player, d.Source, d.N, question, asked)
 	})
 }
 
@@ -83,7 +83,7 @@ func discardTwoUnlessOne(key, question string, qualifies func(game.Card) bool) g
 // discard one card that `asked`'s set rule accepts (discardTwoUnlessOneRule):
 // an empty hand asks nothing, and a hand of one card discards that card,
 // whatever it is (CR 701.9a). Bandit's Talent asks it of each opponent.
-func askDiscardTwoUnlessOne(g *game.Game, player, source uuid.UUID, n int, question string, asked game.DiscardThen) error {
+func AskDiscardTwoUnlessOne(g *game.Game, player, source uuid.UUID, n int, question string, asked game.DiscardThen) error {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil {
 		return nil
@@ -109,7 +109,7 @@ func askDiscardTwoUnlessOne(g *game.Game, player, source uuid.UUID, n int, quest
 // legal answer only when it qualifies, two cards of any kind are (the
 // Compulsive Research shape). The key is an on-disk identity ("choose
 // <key>"): never renamed, never reused.
-func discardTwoUnlessOneRule(key string, qualifies func(game.Card) bool) game.DiscardThen {
+func DiscardTwoUnlessOneRule(key string, qualifies func(game.Card) bool) game.DiscardThen {
 	return game.RegisterDiscardThenRule(key, func(picked []game.Card) bool {
 		switch len(picked) {
 		case 2:
@@ -125,19 +125,19 @@ func discardTwoUnlessOneRule(key string, qualifies func(game.Card) bool) game.Di
 var (
 	// "then discard two cards unless you discard an artifact card" —
 	// Thirst for Knowledge.
-	drawThenDiscardTwoUnlessArtifact = discardTwoUnlessOne("discard-two-unless-artifact",
+	DrawThenDiscardTwoUnlessArtifact = DiscardTwoUnlessOne("discard-two-unless-artifact",
 		"Thirst for Knowledge — discard two cards, or one artifact card",
 		func(c game.Card) bool { return c.IsArtifact() })
 
 	// "then discard two cards unless you discard a basic land card" —
 	// Thirst for Discovery.
-	drawThenDiscardTwoUnlessBasicLand = discardTwoUnlessOne("discard-two-unless-basic-land",
+	DrawThenDiscardTwoUnlessBasicLand = DiscardTwoUnlessOne("discard-two-unless-basic-land",
 		"Thirst for Discovery — discard two cards, or one basic land card",
 		IsBasicLand)
 
 	// "then, unless you attacked this turn, discard N" — Chart a Course.
-	drawThenDiscardUnlessAttacked = game.RegisterDrawThen("discard-unless-attacked", func(g *game.Game, d game.DrawThen) error {
-		if b18AttackedThisTurn(g, d.Player) {
+	DrawThenDiscardUnlessAttacked = game.RegisterDrawThen("discard-unless-attacked", func(g *game.Game, d game.DrawThen) error {
+		if B18AttackedThisTurn(g, d.Player) {
 			return nil
 		}
 		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: d.Player, Source: d.Source, N: d.N})
@@ -157,7 +157,7 @@ var (
 
 	// "then put a card from your hand on top of your library" — Enter
 	// the Infinite.
-	drawThenEnterTheInfinitePutBack = game.RegisterDrawThen("enter-the-infinite-put-back", func(g *game.Game, d game.DrawThen) error {
+	DrawThenEnterTheInfinitePutBack = game.RegisterDrawThen("enter-the-infinite-put-back", func(g *game.Game, d game.DrawThen) error {
 		ctx := NewContext(g, &game.StackItem{Controller: d.Player, SourceCardID: d.Source})
 		return PutFromHandOnTopInAnyOrder{
 			Player: d.Player,

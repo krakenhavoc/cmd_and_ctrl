@@ -30,7 +30,7 @@ func init() {
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
+			AppliesTo: B06SelfETB,
 			Key:       "Venser, Shaper Savant — return target spell or permanent to its owner's hand",
 			Targets:   TargetSpellOrPermanent("target spell or permanent", nil, nil),
 			Effect:    ReturnTargetSpellOrPermanentToHand,

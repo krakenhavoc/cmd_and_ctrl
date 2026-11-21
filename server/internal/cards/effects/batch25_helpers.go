@@ -29,8 +29,8 @@ import (
 // b25SacrificeAGoblin is Pashalik Mons' "Sacrifice a Goblin" — any
 // Goblin creature the activator controls, the source included.
 // Effective subtypes, so a changeling is a Goblin.
-func b25SacrificeAGoblin() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a Goblin", OfCreatureType("Goblin"))}
+func B25SacrificeAGoblin() game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a Goblin", OfCreatureType("Goblin"))}
 }
 
 // --- mana ----------------------------------------------------------
@@ -40,7 +40,7 @@ func b25SacrificeAGoblin() game.AbilityCost {
 // the engine's per-turn land-play tally at activation, which both
 // play paths bump before the land's entry is even announced, so the
 // River itself played this turn counts.
-func b25BlackIfLandPlayedElseBlue(g *game.Game, controller, _ uuid.UUID) string {
+func B25BlackIfLandPlayedElseBlue(g *game.Game, controller, _ uuid.UUID) string {
 	if g.LandsPlayedThisTurnFor(controller) > 0 {
 		return "{B}"
 	}
@@ -54,7 +54,7 @@ func b25BlackIfLandPlayedElseBlue(g *game.Game, controller, _ uuid.UUID) string 
 // event carries the origin in OldZone — the command zone, a
 // graveyard, exile. A cast with no recorded origin is treated as a
 // hand cast, the answer that cannot over-fire.
-func b25CastFromNotHand(ev game.Event, controller uuid.UUID) bool {
+func B25CastFromNotHand(ev game.Event, controller uuid.UUID) bool {
 	if ev.Kind != game.EventCast || ev.Actor != controller {
 		return false
 	}
@@ -63,7 +63,7 @@ func b25CastFromNotHand(ev game.Event, controller uuid.UUID) bool {
 
 // b25CastIsMulticolored reports whether the spell a cast event
 // names has two or more colours.
-func b25CastIsMulticolored(ev game.Event, g *game.Game) bool {
+func B25CastIsMulticolored(ev game.Event, g *game.Game) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && len(c.EffectiveColors()) >= 2
 }
@@ -77,15 +77,15 @@ func b25CastIsMulticolored(ev game.Event, g *game.Game) bool {
 // boundary — it counts rounds of the table, so a scan bounded on it
 // would reach back through every other player's turn in the round.
 // The cast being asked about is itself excluded.
-func b25FirstMulticoloredSpellThisTurn(ev game.Event, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || !b25CastIsMulticolored(ev, g) {
+func B25FirstMulticoloredSpellThisTurn(ev game.Event, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || !B25CastIsMulticolored(ev, g) {
 		return false
 	}
 	for _, prev := range g.EventsThisTurn() {
 		if prev.Seq >= ev.Seq {
 			break
 		}
-		if prev.Kind == game.EventCast && prev.Actor == ev.Actor && b25CastIsMulticolored(prev, g) {
+		if prev.Kind == game.EventCast && prev.Actor == ev.Actor && B25CastIsMulticolored(prev, g) {
 			return false
 		}
 	}
@@ -97,7 +97,7 @@ func b25FirstMulticoloredSpellThisTurn(ev game.Event, g *game.Game) bool {
 // counter. Read live, like the rest of combatDamageToPlayerBy's
 // checks — combat damage lands before the state-based sweep, so the
 // creature is still on the battlefield with its counters.
-func b25DamageDealtByCounteredCreature(ev game.Event, g *game.Game) bool {
+func B25DamageDealtByCounteredCreature(ev game.Event, g *game.Game) bool {
 	src, ok := g.LookupCardForEffect(ev.Source)
 	return ok && src.Counters["+1/+1"] > 0
 }
@@ -110,16 +110,16 @@ func b25DamageDealtByCounteredCreature(ev game.Event, g *game.Game) bool {
 // controller is the one it had as it died (leftUnderControlOf,
 // #1682). The source's own death
 // is cardDied's business, so this excludes it.
-func b25AnotherGoblinYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && dead.InstanceID != source.InstanceID && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Goblin"))
+func B25AnotherGoblinYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && dead.InstanceID != source.InstanceID && LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Goblin"))
 }
 
 // --- state reads ---------------------------------------------------
 
 // b25LifeAboveStarting is Cosmos Elixir's test: the player's life
 // total is greater than the format's starting total.
-func b25LifeAboveStarting(g *game.Game, player uuid.UUID) bool {
+func B25LifeAboveStarting(g *game.Game, player uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(player)
 	return p != nil && p.Life > game.StartingLife
 }
@@ -127,7 +127,7 @@ func b25LifeAboveStarting(g *game.Game, player uuid.UUID) bool {
 // b25LastEventSeq is the sequence number of the newest event in the
 // log, or zero on an empty log — a cursor for "what happened after
 // this point".
-func b25LastEventSeq(g *game.Game) uint64 {
+func B25LastEventSeq(g *game.Game) uint64 {
 	if len(g.Events) == 0 {
 		return 0
 	}
@@ -140,7 +140,7 @@ func b25LastEventSeq(g *game.Game) uint64 {
 // event the random discard just emitted. Bounded by the cursor so a
 // discard from earlier in the game is never mistaken for this one:
 // an empty hand discards nothing and reports nothing.
-func b25DiscardedByAfter(g *game.Game, player uuid.UUID, after uint64) (game.Card, bool) {
+func B25DiscardedByAfter(g *game.Game, player uuid.UUID, after uint64) (game.Card, bool) {
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		ev := g.Events[i]
 		if ev.Seq <= after {
@@ -158,7 +158,7 @@ func b25DiscardedByAfter(g *game.Game, player uuid.UUID, after uint64) (game.Car
 // b25EachPlayerExceptDraws draws n cards for every seated player but
 // `except` — Zenith Chronicler's "each other player", where the
 // excluded player is the caster rather than the source's controller.
-func b25EachPlayerExceptDraws(ctx *Context, except uuid.UUID, n int) error {
+func B25EachPlayerExceptDraws(ctx *Context, except uuid.UUID, n int) error {
 	for _, p := range ctx.Game.Seats {
 		if p == nil || p.Eliminated || p.ID == except {
 			continue
@@ -173,8 +173,8 @@ func b25EachPlayerExceptDraws(ctx *Context, except uuid.UUID, n int) error {
 // b25GrowAndSpawnTentacle is Nadir Kraken's "if you do": a +1/+1
 // counter on the Kraken if it is still on the battlefield, and a
 // 1/1 blue Tentacle either way.
-func b25GrowAndSpawnTentacle(ctx *Context, kraken, controller uuid.UUID) error {
-	if onBattlefield(ctx.Game, kraken) {
+func B25GrowAndSpawnTentacle(ctx *Context, kraken, controller uuid.UUID) error {
+	if OnBattlefield(ctx.Game, kraken) {
 		if err := (AddCounter{Target: kraken, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
 			return err
 		}
@@ -184,11 +184,11 @@ func b25GrowAndSpawnTentacle(ctx *Context, kraken, controller uuid.UUID) error {
 
 // b25TevalAttackLabel is the stack label both declarations of
 // Teval's attack trigger share — one printed ability, one name.
-const b25TevalAttackLabel = "Teval, the Balanced Scale — mill three, then return a land card tapped"
+const B25TevalAttackLabel = "Teval, the Balanced Scale — mill three, then return a land card tapped"
 
 // b25TevalLeftGraveyardLabel is the label of Teval's token trigger,
 // which the "one or more" dedup keys on.
-const b25TevalLeftGraveyardLabel = "Teval, the Balanced Scale — cards left your graveyard"
+const B25TevalLeftGraveyardLabel = "Teval, the Balanced Scale — cards left your graveyard"
 
 // b25MillThreeThenMayReturnLandTapped is Teval's attack trigger: "mill
 // three cards. Then you may return a land card from your graveyard to
@@ -197,7 +197,7 @@ const b25TevalLeftGraveyardLabel = "Teval, the Balanced Scale — cards left you
 // The land is chosen AFTER the mill, as the ability resolves (CR 608.2c),
 // so a land the trigger itself milled is a legal pick and opponents see
 // nothing until it is made. "You may" is the floor of zero.
-func b25MillThreeThenMayReturnLandTapped(g *game.Game, item *game.StackItem) error {
+func B25MillThreeThenMayReturnLandTapped(g *game.Game, item *game.StackItem) error {
 	return b25MillThreeThenReturnLandTapped(g, item, 0)
 }
 
@@ -212,7 +212,7 @@ func b25MillThreeThenReturnLandTapped(g *game.Game, item *game.StackItem, min in
 		return err
 	}
 	controller := item.Controller
-	candidates := graveyardCardIDs(ctx, controller, game.Card.IsLand)
+	candidates := GraveyardCardIDs(ctx, controller, game.Card.IsLand)
 	if len(candidates) == 0 {
 		return nil
 	}
@@ -224,7 +224,7 @@ func b25MillThreeThenReturnLandTapped(g *game.Game, item *game.StackItem, min in
 		Cards:      candidates,
 		Min:        min,
 		Max:        1,
-		ThenKey:    b25ReturnLandTapped,
+		ThenKey:    B25ReturnLandTapped,
 		LiveZone:   game.ZoneGraveyard,
 		Asked:      game.NewAskedItem(item),
 	})
@@ -234,7 +234,7 @@ func b25MillThreeThenReturnLandTapped(g *game.Game, item *game.StackItem, min in
 // b25ReturnLandTapped is the chosen land card returning to the battlefield
 // tapped (Teval, Blossoming Tortoise), keyed (#4253): the asking item rides
 // the prompt as data.
-var b25ReturnLandTapped = askedPick("choose-cards/mill-three-return-land-tapped", func(ctx *Context, r game.CardsChosen) error {
+var B25ReturnLandTapped = AskedPick("choose-cards/mill-three-return-land-tapped", func(ctx *Context, r game.CardsChosen) error {
 	for _, id := range r.Picked {
 		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Tapped: true}).Apply(ctx); err != nil {
 			return err
@@ -245,10 +245,10 @@ var b25ReturnLandTapped = askedPick("choose-cards/mill-three-return-land-tapped"
 
 // b25MillThreeThenReturnLandTappedAlways is Blossoming Tortoise's body:
 // the same, with the return not optional.
-func b25MillThreeThenReturnLandTappedAlways(g *game.Game, item *game.StackItem) error {
+func B25MillThreeThenReturnLandTappedAlways(g *game.Game, item *game.StackItem) error {
 	return b25MillThreeThenReturnLandTapped(g, item, 1)
 }
 
 // b25VoraciousHydraLabel is the stack label both declarations of
 // Voracious Hydra's entry trigger share.
-const b25VoraciousHydraLabel = "Voracious Hydra — double its +1/+1 counters, or fight a creature you don't control"
+const B25VoraciousHydraLabel = "Voracious Hydra — double its +1/+1 counters, or fight a creature you don't control"

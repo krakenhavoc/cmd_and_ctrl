@@ -16,7 +16,7 @@ import "sync/atomic"
 // catalogSharded stays false until the split itself (scripts/split-effects)
 // sets it to true. Until then every card is in this package, importing it
 // registers them all, and the guard compiles to nothing.
-const catalogSharded = false
+const catalogSharded = true
 
 var catalogComplete atomic.Bool
 

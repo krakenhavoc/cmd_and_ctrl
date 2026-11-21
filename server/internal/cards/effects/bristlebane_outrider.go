@@ -31,9 +31,9 @@ func init() {
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return selfCreature(target, g, source) && bristlebaneOutriderAnotherCreatureEntered(g, source)
+				return SelfCreature(target, g, source) && BristlebaneOutriderAnotherCreatureEntered(g, source)
 			},
-			Apply: pumpBy(2, 0),
+			Apply: PumpBy(2, 0),
 		}},
 	})
 }
@@ -42,7 +42,7 @@ func init() {
 // the battlefield under your control this turn": the turn's creature entry
 // tally for the source's controller, needing one more entry when the
 // source itself entered this turn.
-func bristlebaneOutriderAnotherCreatureEntered(g *game.Game, source *game.Card) bool {
+func BristlebaneOutriderAnotherCreatureEntered(g *game.Game, source *game.Card) bool {
 	need := 1
 	if g.EnteredThisTurn(source.InstanceID) {
 		need = 2

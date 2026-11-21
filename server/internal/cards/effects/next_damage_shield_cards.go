@@ -10,12 +10,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // nextDamageShieldRow is an activated ability whose whole effect is a
 // shield — a next-damage shield, or (ADR 0108 §7, sourceShieldRow) a
 // shield that is not one-use.
-func nextDamageShieldRow(label string, cost game.AbilityCost, targets *game.TargetSpec, shield Applier) ActivatedAbility {
+func NextDamageShieldRow(label string, cost game.AbilityCost, targets *game.TargetSpec, shield Applier) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
 		Targets: targets,
-		Purpose: preventsDamage(),
+		Purpose: PreventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return shield.Apply(NewContext(g, item))
 		},
@@ -27,7 +27,7 @@ func nextDamageShieldRow(label string, cost game.AbilityCost, targets *game.Targ
 // too (#4734 slice 7, ADR 0142's amendment of 2026-11-05), so smart
 // autopass matches its move by kind instead of stopping at every window
 // through has_targets.
-func preventsDamage() game.Purpose {
+func PreventsDamage() game.Purpose {
 	return game.Purpose{Answers: game.AnswerPrevent}
 }
 
@@ -38,14 +38,14 @@ func preventsDamage() game.Purpose {
 // opponent's creature or to any target is removal too (Soltari
 // Guerrillas, Zhalfirin Crusader), whose `remove` keeps the move's old
 // stops.
-func alsoAnswers(a game.Answers, ab ActivatedAbility) ActivatedAbility {
+func AlsoAnswers(a game.Answers, ab ActivatedAbility) ActivatedAbility {
 	ab.Purpose.Answers |= a
 	return ab
 }
 
 // nextDamageShieldSpell is an instant's OnResolve whose whole effect is
 // a next-damage shield.
-func nextDamageShieldSpell(shield PreventNextDamageFromSource) func(*game.StackItem, *Context) error {
+func NextDamageShieldSpell(shield PreventNextDamageFromSource) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return shield.Apply(ctx)
 	}
@@ -55,7 +55,7 @@ func nextDamageShieldSpell(shield PreventNextDamageFromSource) func(*game.StackI
 // "<cost>: The next time <what> of your choice would deal damage to you
 // this turn, prevent that damage." `label` is the row as printed and
 // `what` the source it names ("a red source"). The Runes add Cycling {2}.
-func circleOfProtection(oracle, name, cost, label, what string, q game.PermanentQuery, more ...ActivatedAbility) Spec {
+func CircleOfProtection(oracle, name, cost, label, what string, q game.PermanentQuery, more ...ActivatedAbility) Spec {
 	shield := PreventNextDamageFromChosenSource(ShieldYou, q)
 	shield.Question = name + " — choose " + what
 	shield.Label = name + " — prevent the next damage from " + what
@@ -63,14 +63,14 @@ func circleOfProtection(oracle, name, cost, label, what string, q game.Permanent
 		OracleID:     oracle,
 		Name:         name,
 		Completeness: CompletenessFull,
-		Activated:    append([]ActivatedAbility{nextDamageShieldRow(label, ManaCost(cost), nil, shield)}, more...),
+		Activated:    append([]ActivatedAbility{NextDamageShieldRow(label, ManaCost(cost), nil, shield)}, more...),
 	}
 }
 
 // runeOfProtection is circleOfProtection with the Runes' {W} row and
 // "Cycling {2}".
-func runeOfProtection(oracle, name, label, what string, q game.PermanentQuery) Spec {
-	return circleOfProtection(oracle, name, "{W}", label, what, q, Cycling("{2}"))
+func RuneOfProtection(oracle, name, label, what string, q game.PermanentQuery) Spec {
+	return CircleOfProtection(oracle, name, "{W}", label, what, q, Cycling("{2}"))
 }
 
 // chosenColorShieldRow is "<cost>: The next time a source of your choice
@@ -79,11 +79,11 @@ func runeOfProtection(oracle, name, label, what string, q game.PermanentQuery) S
 // as the enchantment entered, read as it last existed if the enchantment
 // has gone by resolution (CR 608.2h). Before a colour is chosen there is
 // no source "of the chosen color", so nothing is shielded.
-func chosenColorShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
+func ChosenColorShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
-		Purpose: preventsDamage(),
+		Purpose: PreventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			info, ok := ctx.SourcePermanent()
@@ -100,11 +100,11 @@ func chosenColorShieldRow(label string, cost game.AbilityCost) ActivatedAbility 
 // of Solace). Nothing is chosen at resolution: the first creature of
 // that type to deal damage to you is the one (CR 615.8, 615.9), judged
 // as it deals the damage. The type is read as for chosenColorShieldRow.
-func chosenTypeShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
+func ChosenTypeShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
-		Purpose: preventsDamage(),
+		Purpose: PreventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			info, ok := ctx.SourcePermanent()
@@ -126,7 +126,7 @@ func chosenTypeShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
 // whatever it would deal the damage to. With gainPower, "You gain life
 // equal to target creature's power" comes first, read as the spell
 // resolves.
-func shieldAgainstTargetCreature(then game.BodyRef, gainPower bool) func(*game.StackItem, *Context) error {
+func ShieldAgainstTargetCreature(then game.BodyRef, gainPower bool) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		for _, t := range ctx.LegalTargets() {
 			if t.Kind != game.TargetCard {

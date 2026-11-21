@@ -74,7 +74,7 @@ import (
 // the four ability slots under the token's catalog key, and
 // `tokenFromCatalog` hands out the `Card` with that key stamped on
 // and no closures attached.
-type tokenTemplate struct {
+type TokenTemplate struct {
 	// Slug is the token's catalog identity — the last segment of
 	// game.TokenKey(Slug), the token's printed name lowercased and
 	// hyphenated.
@@ -117,6 +117,13 @@ type tokenTemplate struct {
 	Activated []game.ActivatedAbilityShape
 	Triggered []game.TriggeredAbility
 	Static    []game.StaticAbility
+
+	// Enchant is an Aura token's printed "enchant <what>" clause, when it
+	// is not the implicit "enchant creature" a Role has: Preston Garvey's
+	// Settlement is "Enchant land". Judged as the state-based action
+	// that checks an Aura's host does (CR 704.5m, game.auraEnchantSpecOf),
+	// filed as the token key's target spec. Nil for every other token.
+	Enchant *game.TargetSpec
 
 	// Replacements are the token's printed replacement effects (CR 614),
 	// written exactly as Spec.Replacements are and filed under the same
@@ -176,7 +183,7 @@ type tokenTemplate struct {
 	// two templates, so a template never spells them by hand and the
 	// "flat printed fields equal Faces[ActiveFace]" invariant cannot be
 	// written wrong.
-	Back *tokenTemplate
+	Back *TokenTemplate
 
 	// Text is the token's printed ability text, verbatim, as it
 	// appears on the printed token card ("When this token dies,
@@ -196,7 +203,7 @@ type tokenTemplate struct {
 // value being handed out, so each template is fresh and its slices
 // are its own — the invariant the constructors have always had, and
 // the one mintTokenLocked's Keywords append depends on.
-type tokenTemplateBuilder func() tokenTemplate
+type tokenTemplateBuilder func() TokenTemplate
 
 // tokenTemplates is every token whose template declares a mana,
 // activated, triggered or static ability, a block rule or an attack
@@ -207,7 +214,7 @@ type tokenTemplateBuilder func() tokenTemplate
 // A LIST and not a map, because the slug lives on the template — see
 // tokenTemplate.Slug for the initialization cycle that shape avoids.
 // init builds the by-slug index from it and refuses a duplicate.
-var tokenTemplates = []tokenTemplateBuilder{
+var TokenTemplates = []tokenTemplateBuilder{
 	printedTreasureToken,
 	printedGoldToken,
 	printedFoodToken,
@@ -235,7 +242,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedFableGoblinShamanToken,
 	printedFirebendingDragonToken,
 	printedFirebendingSoldierToken,
-	printedValorsReachWarriorToken,
+	PrintedValorsReachWarriorToken,
 	printedReefWormFishToken,
 	printedReefWormWhaleToken,
 	printedDragonEggToken,
@@ -315,7 +322,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedMitoticSlimeOozeToken,
 
 	// ADR 0185 (#2417): the Incubator, the first double-faced token.
-	printedIncubatorToken,
+	PrintedIncubatorToken,
 
 	// ADR 0186 §5 (#3551): the two Pilot tokens, which count extra when
 	// they crew or saddle.
@@ -362,7 +369,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// S82 Midnight Hunt batch 11 (#5497): Ominous Roost's Bird and Seize the
 	// Storm's Elemental.
 	printedBirdBlocksOnlyFliersToken,
-	printedSeizeTheStormElementalToken,
+	PrintedSeizeTheStormElementalToken,
 
 	// Commander 2019 batch 1 (#5517): Doomed Artisan's Sculpture, a */*
 	// that counts the Sculptures its controller controls.
@@ -475,6 +482,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedAfrB15DogIllusionToken,
 	printedAfrB15IllusionToken,
 
+	// Nahiri, the Lithomancer's Stoneforged Blade (Commander Masters,
+	// #5948): an indestructible Equipment token, +5/+5 and double strike,
+	// equip {0}.
+	printedStoneforgedBladeToken,
+
 	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
 	printedReliquaryDragonToken,
 	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
@@ -498,7 +510,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0223 (#5910): Everquill Phoenix's Feather.
 	printedFeatherToken,
 	// S82 BNS batch 02: Outlaws' Merriment's Human Rogue.
-	printedBnsHumanRogueToken,
+	PrintedBnsHumanRogueToken,
 	// S82 BNS batch 51: Ozox, the Clattering King's Jumblebones.
 	printedBnsB51JumblebonesToken,
 	// S82 GAP batch 05: Arzakon's Black Lotus and Thomil's Lord of the Pit.
@@ -517,22 +529,43 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Commander 2015 (#5546): Daxos the Returned's Spirit, a */* whose
 	// size is its controller's experience counters.
 	printedC15DaxosSpiritToken,
+
+	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
+	// (Commander Masters, S82 GAP batch 104, #5948).
+	printedGapB104SatyrCantBlockToken,
+
+	// S82 GAP batch 45: Tarmogoyf Nest's Tarmogoyf.
+	printedGapB45TarmogoyfToken,
+	// S82 GAP batch 56: Ral and the Implicit Maze's Spellgorger Weird.
+	printedGapB56SpellgorgerWeirdToken,
+
+	// The Prydwen, Steel Flagship's Human Knight (Fallout, #5948): 2/2 white,
+	// +2/+2 while an artifact entered under its controller's control this turn.
+	printedGapB61HumanKnightToken,
+
+	// Preston Garvey, Minuteman's Settlement (Fallout, #5948): a green Aura
+	// token with enchant land that gives the land a mana ability.
+	printedGapB63SettlementToken,
+
+	// Moira Brown, Guide Author's Wasteland Survival Guide (Fallout, #5948).
+	printedGapB64SurvivalGuideToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
 // and read-only afterwards; the tests walk it, and nothing in the
 // production path needs it (a constructor holds its own builder).
-var tokenTemplatesBySlug = map[string]tokenTemplateBuilder{}
+var TokenTemplatesBySlug = map[string]tokenTemplateBuilder{}
 
 // buildTokenDef projects one template into the engine's view of it.
 // Split out of init so the registration rule can be exercised on a
 // template that is not in the list.
-func buildTokenDef(t tokenTemplate) *game.CardDef {
+func BuildTokenDef(t TokenTemplate) *game.CardDef {
 	return &game.CardDef{
 		ManaAbilities: t.Mana,
 		Activated:     t.Activated,
 		Triggered:     t.Triggered,
 		Static:        t.Static,
+		Targets:       t.Enchant,
 		Replacements:  t.Replacements,
 		CostModifiers: t.CostModifiers,
 		BlockRules:    t.BlockRules,
@@ -544,7 +577,7 @@ func buildTokenDef(t tokenTemplate) *game.CardDef {
 // checkTokenTemplate is every rule a template must satisfy to be
 // registrable, as one function so a test can state the rules rather
 // than provoke them at boot. Returns the reason it is not, or "".
-func checkTokenTemplate(t tokenTemplate) string {
+func CheckTokenTemplate(t TokenTemplate) string {
 	if why := checkTokenBack(t); why != "" {
 		return why
 	}
@@ -586,7 +619,7 @@ func checkTokenTemplate(t tokenTemplate) string {
 // satisfy, "" when the template has none or the face is sound. It is
 // checkTokenTemplate's first question because a malformed back would
 // otherwise surface as a token that cannot transform.
-func checkTokenBack(t tokenTemplate) string {
+func checkTokenBack(t TokenTemplate) string {
 	b := t.Back
 	if b == nil {
 		return ""
@@ -614,7 +647,7 @@ func checkTokenBack(t tokenTemplate) string {
 }
 
 // hasAbilities reports whether the template declares any ability slot.
-func (t tokenTemplate) hasAbilities() bool {
+func (t TokenTemplate) hasAbilities() bool {
 	return len(t.Mana) > 0 || len(t.Activated) > 0 || len(t.Triggered) > 0 ||
 		len(t.Static) > 0 || len(t.Replacements) > 0 || len(t.CostModifiers) > 0 || len(t.BlockRules) > 0 || len(t.AttackLimits) > 0
 }
@@ -628,7 +661,7 @@ func tokenBackKey(slug string) string { return game.TokenKey(slug) + "#1" }
 // printed characteristics SetFace materialises when that face is up,
 // and the printed text the hover overlay shows for a face with no
 // printing behind it.
-func tokenFace(t tokenTemplate) game.Face {
+func tokenFace(t TokenTemplate) game.Face {
 	return game.Face{
 		Name:              t.Card.Name,
 		TypeLine:          t.Card.TypeLine,
@@ -643,40 +676,40 @@ func tokenFace(t tokenTemplate) game.Face {
 }
 
 func init() {
-	for _, build := range tokenTemplates {
+	for _, build := range TokenTemplates {
 		t := build()
-		if why := checkTokenTemplate(t); why != "" {
+		if why := CheckTokenTemplate(t); why != "" {
 			panic(fmt.Sprintf("effects: token template %q %s", t.Slug, why))
 		}
 		key := game.TokenKey(t.Slug)
-		if _, taken := defs[key]; taken {
+		if _, taken := Defs[key]; taken {
 			panic(fmt.Sprintf("effects: two token templates claim %q", key))
 		}
 		for i, ab := range t.Activated {
-			checkActivatedAnswers(t.Slug+" token", fmt.Sprintf("activated ability %d", i), ab, false)
+			CheckActivatedAnswers(t.Slug+" token", fmt.Sprintf("activated ability %d", i), ab, false)
 		}
 		for i, m := range t.Mana {
-			checkManaAnswers(t.Slug+" token", fmt.Sprintf("mana ability %d", i), m)
+			CheckManaAnswers(t.Slug+" token", fmt.Sprintf("mana ability %d", i), m)
 		}
-		fileDef(key, buildTokenDef(t))
+		FileDef(key, BuildTokenDef(t))
 		if b := t.Back; b != nil && b.hasAbilities() {
 			for i, ab := range b.Activated {
-				checkActivatedAnswers(t.Slug+" token back face", fmt.Sprintf("activated ability %d", i), ab, false)
+				CheckActivatedAnswers(t.Slug+" token back face", fmt.Sprintf("activated ability %d", i), ab, false)
 			}
 			for i, m := range b.Mana {
-				checkManaAnswers(t.Slug+" token back face", fmt.Sprintf("mana ability %d", i), m)
+				CheckManaAnswers(t.Slug+" token back face", fmt.Sprintf("mana ability %d", i), m)
 			}
 			backKey := tokenBackKey(t.Slug)
-			if _, taken := defs[backKey]; taken {
+			if _, taken := Defs[backKey]; taken {
 				panic(fmt.Sprintf("effects: two token templates claim %q", backKey))
 			}
-			fileDef(backKey, buildTokenDef(*b))
+			FileDef(backKey, BuildTokenDef(*b))
 		}
-		checkGrants(t.Slug, t.Grants)
+		CheckGrants(t.Slug, t.Grants)
 		for _, gr := range t.Grants {
-			fileDef(game.GrantKey(gr.Key), buildGrantDef(gr))
+			FileDef(game.GrantKey(gr.Key), BuildGrantDef(gr))
 		}
-		tokenTemplatesBySlug[t.Slug] = build
+		TokenTemplatesBySlug[t.Slug] = build
 	}
 }
 
@@ -689,7 +722,7 @@ func init() {
 // a Treasure) without the package-variable cycle tokenTemplate.Slug
 // describes. The builder is the same value the list registers, so
 // there is no second spelling of the slug to get wrong.
-func tokenFromCatalog(build tokenTemplateBuilder) game.Card {
+func TokenFromCatalog(build tokenTemplateBuilder) game.Card {
 	t := build()
 	c := t.Card
 	c.TokenKey = game.TokenKey(t.Slug)

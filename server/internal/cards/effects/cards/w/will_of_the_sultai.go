@@ -1,0 +1,120 @@
+package cardsw
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Will of the Sultai — Sorcery {4}{G}:
+//
+//	"Choose one. If you control a commander as you cast this spell,
+//	 you may choose both instead.
+//	 • Target player mills three cards. Return all land cards from
+//	   your graveyard to the battlefield tapped.
+//	 • Put X +1/+1 counters on target creature, where X is the number
+//	   of lands you control. It gains trample until end of turn."
+//
+// The commander rider is the conditional mode count #1590 built:
+// `OrUpToIf(2, YouControlACommander)`, read at announce (CR 601.2b) and
+// fixed from then on.
+//
+// Printed order is the card (CR 608.2c): the lands come back BEFORE
+// the second bullet counts "the number of lands you control", so with
+// both chosen the counters include every land the first bullet
+// returned — milled ones among them when the target player is you. The
+// mill is the sequencing form (MillToZone.ThenTail), so a milled commander
+// pausing the run on CR 903.9's offer holds the return and the counters
+// until it is answered, rather than letting them run a card early.
+//
+// The land return is not about the target: if the targeted player has
+// become illegal the mill is skipped and the lands still come back (CR
+// 608.2b — the spell does as much as it can). Each land returns under
+// its owner's control, the caster's, through the CR 614 entry pipeline
+// with EntersTapped, so it enters tapped rather than being tapped a
+// beat later. The lands enter together, as one event (#1867,
+// CR 603.6a), and the counters wait for that entry to finish, so an
+// entry that stops to ask a question holds them too.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "951a0e34-e610-477f-b441-6680df55a29b",
+		Name:         "Will of the Sultai",
+		Completeness: effects.CompletenessFull,
+		Modes: effects.ChooseOne(
+			effects.Mode("Target player mills three cards. Return all land cards from your graveyard to the battlefield tapped.",
+				effects.TargetPlayer("target player")),
+			effects.Mode("Put X +1/+1 counters on target creature, where X is the number of lands you control. It gains trample until end of turn.",
+				effects.TargetCreature("target creature")),
+		).OrUpToIf(2, effects.YouControlACommander),
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			if !ctx.HasMode(0) {
+				return willOfTheSultaiCounters(ctx)
+			}
+			targets := effects.OptionTargets(ctx, 0)
+			if len(targets) == 0 {
+				return willOfTheSultaiLandsThenCounters(ctx, nil)
+			}
+			return effects.MillToZone{
+				Player:   targets[0].ID,
+				N:        3,
+				To:       game.ZoneGraveyard,
+				ThenTail: ctx.ItemTail(willOfTheSultaiMilled),
+			}.Apply(ctx)
+		},
+	})
+}
+
+// willOfTheSultaiLandsThenCounters is the rest of the first bullet and
+// then, if it was chosen, the second: the order the card prints them.
+func willOfTheSultaiLandsThenCounters(ctx *effects.Context, _ []uuid.UUID) error {
+	return effects.ReturnFromGraveyardTogether{
+		Targets:  effects.GraveyardCardIDs(ctx, ctx.Controller(), game.Card.IsLand),
+		Tapped:   true,
+		ThenTail: willOfTheSultaiCountersTail,
+	}.Apply(ctx)
+}
+
+// willOfTheSultaiCountersTail is the second bullet as a keyed tail (#4253
+// slice 6): the asking item's modes and targets ride the tail. An on-disk
+// key.
+var willOfTheSultaiCountersTail = effects.TogetherTail("will-of-the-sultai/counters-and-trample",
+	func(ctx *effects.Context, _ []uuid.UUID, _ int) error { return willOfTheSultaiCounters(ctx) })
+
+// willOfTheSultaiCounters is the second bullet: X +1/+1 counters, X
+// counted as it resolves, and trample until end of turn.
+func willOfTheSultaiCounters(ctx *effects.Context) error {
+	if !ctx.HasMode(1) {
+		return nil
+	}
+	return willOfTheSultaiBullet.Run(ctx)
+}
+
+// willOfTheSultaiBullet is the second bullet's two instructions: trample
+// waits for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+var willOfTheSultaiBullet = effects.RegisterThenSteps("then-steps/will-of-the-sultai-bullet",
+	effects.Instruction(func(ctx *effects.Context) error {
+		for _, t := range effects.OptionTargets(ctx, 1) {
+			if n := effects.B03LandsControlled(ctx.Game, ctx.Controller()); n > 0 {
+				if err := (effects.AddCounter{Target: t.ID, Kind: "+1/+1", N: n}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}),
+	effects.Instruction(func(ctx *effects.Context) error {
+		for _, t := range effects.OptionTargets(ctx, 1) {
+			if err := (effects.GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"trample"}, Label: "Will of the Sultai — trample"}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}),
+)
+
+// willOfTheSultaiMilled is the clause after the mill (#4253 slice 9).
+var willOfTheSultaiMilled = effects.CardTail("will-of-the-sultai/after-mill", func(ctx *effects.Context, o game.TailOutcome) error {
+
+	return willOfTheSultaiLandsThenCounters(ctx, o.IDs)
+})

@@ -68,7 +68,7 @@ func saprolingBurstCreate(g *game.Game, item *game.StackItem) error {
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
-			Template:    ctx.TextToken(tokenFromCatalog(printedSaprolingBurstToken)),
+			Template:    ctx.TextToken(TokenFromCatalog(printedSaprolingBurstToken)),
 			Count:       1,
 			CreatedWith: game.PermissionCardRef(ref),
 		}},
@@ -77,9 +77,9 @@ func saprolingBurstCreate(g *game.Game, item *game.StackItem) error {
 
 // printedSaprolingBurstToken is Saproling Burst's Saproling. Its slug is
 // an on-disk identity: never renamed, never reused.
-func printedSaprolingBurstToken() tokenTemplate {
+func printedSaprolingBurstToken() TokenTemplate {
 	const text = "This token's power and toughness are each equal to the number of fade counters on Saproling Burst."
-	return tokenTemplate{
+	return TokenTemplate{
 		Slug: "saproling-burst-saproling",
 		Card: game.Card{
 			Name:     "Saproling",
@@ -90,7 +90,7 @@ func printedSaprolingBurstToken() tokenTemplate {
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,
 			Label:     text,
-			AppliesTo: selfOnly,
+			AppliesTo: SelfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				n := 0
 				if link := source.CreatedWith; link.ID != uuid.Nil {

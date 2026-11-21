@@ -296,8 +296,8 @@ type RevealPickThen struct {
 // once, from a package-level var. It must capture nothing.
 func RegisterRevealPick(key string, body func(ctx *Context, picked, left []uuid.UUID, nums []int) error) RevealPickThen {
 	then := game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
-		ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
-		picked, left := revealPartition(r.Candidates, r.Picked)
+		ctx, _ := AskedContext(g, r.Asked, r.Chooser, r.Source, nil)
+		picked, left := RevealPartition(r.Candidates, r.Picked)
 		return body(ctx, picked, left, r.Nums)
 	})
 	return RevealPickThen{then: then, body: body}
@@ -305,7 +305,7 @@ func RegisterRevealPick(key string, body func(ctx *Context, picked, left []uuid.
 
 // revealPartition splits the revealed set into the cards picked and the
 // cards left, each in the order the set was revealed.
-func revealPartition(all, picked []uuid.UUID) (in, out []uuid.UUID) {
+func RevealPartition(all, picked []uuid.UUID) (in, out []uuid.UUID) {
 	for _, id := range all {
 		if slices.Contains(picked, id) {
 			in = append(in, id)
@@ -406,7 +406,7 @@ func (p ChoosePermanents) Apply(ctx *Context) error {
 	if len(of) == 0 {
 		of = []uuid.UUID{chooser}
 	}
-	if !p.Keyed.run.Valid() {
+	if !p.Keyed.Run.Valid() {
 		return fmt.Errorf("%w: ChoosePermanents with no registered pick (RegisterPermanentsPick)", game.ErrInvalidParam)
 	}
 	_, err := ctx.Game.PermanentsPickedThenKeyedForEffect(game.PermanentPickPrompt{
@@ -415,7 +415,7 @@ func (p ChoosePermanents) Apply(ctx *Context) error {
 		Question:   p.Question,
 		Of:         of,
 		Candidates: p.Candidates,
-	}, p.Keyed.run, ctx.RunData(p.Carry, p.Nums...))
+	}, p.Keyed.Run, ctx.RunData(p.Carry, p.Nums...))
 	return err
 }
 
@@ -487,7 +487,7 @@ type SacrificeChoice struct {
 // permanent goes through the sacrifice's continuation, and the prompt's tail
 // runs once it has gone. The answer is not read for "if you do": the prompt
 // is mandatory. An on-disk key: never renamed, never reused.
-var sacrificeChoicePicked = game.RegisterChooseCardsThen("choose-cards/sacrifice-choice", func(g *game.Game, r game.CardsChosen) error {
+var SacrificeChoicePicked = game.RegisterChooseCardsThen("choose-cards/sacrifice-choice", func(g *game.Game, r game.CardsChosen) error {
 	// The prompt's tail rides the sacrifice as the Next of a keyed tail
 	// (#4253), told nothing, as it always was.
 	tail := r.Tail
@@ -533,7 +533,7 @@ func (s SacrificeChoice) Apply(ctx *Context) error {
 		Min:        1,
 		Max:        1,
 		LiveZone:   game.ZoneBattlefield,
-		ThenKey:    sacrificeChoicePicked,
+		ThenKey:    SacrificeChoicePicked,
 		Tail:       s.ThenTail,
 	})
 	return nil
@@ -562,21 +562,21 @@ func PermanentsControlledBy(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 // both do nothing — so the first option is one the chooser can always
 // take, as the prompt requires. Shared by Merrow Reejerey's trigger
 // and Gandalf the Grey's first bullet.
-func tapOrUntapPermanent(ctx *Context, cardName string, target uuid.UUID) error {
+func TapOrUntapPermanent(ctx *Context, cardName string, target uuid.UUID) error {
 	return PickOption{
 		Question: cardName + " — tap or untap that permanent",
 		Options: []game.ChoiceOption{
 			{Label: "Tap it"},
 			{Label: "Untap it"},
 		},
-		ThenKey: tapOrUntapAnswer,
+		ThenKey: TapOrUntapAnswer,
 		Carry:   []uuid.UUID{target},
 	}.Apply(ctx)
 }
 
 // tapOrUntapAnswer is the tap-or-untap choice answered, keyed (#4253): the
 // permanent rides the prompt as its one carried ID.
-var tapOrUntapAnswer = OptionPickThen("option-pick/tap-or-untap-that-permanent", func(ctx *Context, r game.OptionPicked) error {
+var TapOrUntapAnswer = OptionPickThen("option-pick/tap-or-untap-that-permanent", func(ctx *Context, r game.OptionPicked) error {
 	if len(r.Carry) == 0 {
 		return nil
 	}

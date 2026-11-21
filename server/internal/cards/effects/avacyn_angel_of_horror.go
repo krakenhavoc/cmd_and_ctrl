@@ -35,7 +35,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
-				return ThisDied(ev, source, ch, g) || b19AnotherNontokenCreatureYouControlDied(ev, source, g)
+				return ThisDied(ev, source, ch, g) || B19AnotherNontokenCreatureYouControlDied(ev, source, g)
 			},
 			Key:    "Avacyn, Angel of Horror — return that card to the battlefield at the beginning of the next end step",
 			Effect: avacynScheduleReturn,
@@ -57,7 +57,7 @@ func avacynScheduleReturn(g *game.Game, item *game.StackItem) error {
 	return ScheduleDelayedTrigger{
 		Label:  "Avacyn, Angel of Horror — return the card to the battlefield under your control",
 		Cards:  []uuid.UUID{id},
-		Body:   returnTheObjectFromGraveyardUnderYourControlBody,
+		Body:   ReturnTheObjectFromGraveyardUnderYourControlBody,
 		Params: game.EffectParams{Object: game.ObjectRef{ID: id, Epoch: c.ObjectEpoch}},
 	}.Apply(NewContext(g, item))
 }

@@ -31,7 +31,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // one does not come back, and a 4/4 shrugs.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfKarsusOracleID,
+		OracleID:     InvasionOfKarsusOracleID,
 		Name:         "Invasion of Karsus",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 3}},
 		Completeness: CompletenessFull,
@@ -41,7 +41,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Invasion of Karsus — 3 damage to each creature and planeswalker", func(g *game.Game, item *game.StackItem) error {
-				return damageEachMatching(NewContext(g, item), Or(Creature(), Planeswalker()), 3)
+				return DamageEachMatching(NewContext(g, item), Or(Creature(), Planeswalker()), 3)
 			}),
 			DefeatedTrigger("Invasion of Karsus — defeated: exile it, then cast Refraction Elemental", SiegeDefeated()),
 		},
@@ -50,4 +50,4 @@ func init() {
 
 // invasionOfKarsusOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfKarsusOracleID = "2d125ef5-074c-44eb-a1d0-c308d48bfbc2"
+const InvasionOfKarsusOracleID = "2d125ef5-074c-44eb-a1d0-c308d48bfbc2"

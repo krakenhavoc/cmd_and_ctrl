@@ -38,11 +38,11 @@ func init() {
 		Name:         "The Skullspore Nexus",
 		Completeness: CompletenessFull,
 		SelfCostModifiers: []game.CostModifier{
-			CostsLessEach(greatestPowerAmongCreaturesYouControl(),
+			CostsLessEach(GreatestPowerAmongCreaturesYouControl(),
 				"This spell costs {X} less to cast, where X is the greatest power among creatures you control."),
 		},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventLTB, skullsporeNontokenCreatureYouControlDied,
+			OncePerBatch(On(game.EventLTB, SkullsporeNontokenCreatureYouControlDied,
 				"The Skullspore Nexus — create a Fungus Dinosaur with the total power of those creatures",
 				skullsporeFungusDinosaur)),
 		},
@@ -52,7 +52,7 @@ func init() {
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
+				id, ok := B16FirstLegalTargetCard(ctx)
 				if !ok {
 					return nil
 				}
@@ -64,9 +64,9 @@ func init() {
 
 // skullsporeNontokenCreatureYouControlDied is one death in the batch:
 // a nontoken creature the Nexus's controller controlled as it died.
-func skullsporeNontokenCreatureYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && !IsToken(dead) && leftUnderControlOf(ev, dead) == source.Controller
+func SkullsporeNontokenCreatureYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && !IsToken(dead) && LeftUnderControlOf(ev, dead) == source.Controller
 }
 
 // skullsporeFungusDinosaur totals the batch's qualifying deaths and
@@ -82,7 +82,7 @@ func skullsporeFungusDinosaur(g *game.Game, item *game.StackItem) error {
 	for _, ev := range g.EventsThisTurn() {
 		// An unstamped event (Batch zero) is a batch of one: itself.
 		sameBatch := ev.Batch == batch && (batch != 0 || ev.Seq == item.Trigger.Event.Seq)
-		if !sameBatch || seen[ev.CardID] || !skullsporeNontokenCreatureYouControlDied(ev, &source, game.Characteristic{}, g) {
+		if !sameBatch || seen[ev.CardID] || !SkullsporeNontokenCreatureYouControlDied(ev, &source, game.Characteristic{}, g) {
 			continue
 		}
 		seen[ev.CardID] = true

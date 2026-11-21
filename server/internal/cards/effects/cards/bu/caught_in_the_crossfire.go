@@ -1,0 +1,42 @@
+package cardsbu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Caught in the Crossfire — Instant {R}{R}:
+//
+//	"Spree (Choose one or more additional costs.)
+//	 + {1} — Caught in the Crossfire deals 2 damage to each outlaw
+//	   creature. (Assassins, Mercenaries, Pirates, Rogues, and
+//	   Warlocks are outlaws.)
+//	 + {1} — Caught in the Crossfire deals 2 damage to each non-outlaw
+//	   creature."
+//
+// Spree proof card #4 (CR 702.172a, ADR 0065's 2026-09-23 amendment):
+// both bullets are UNTARGETED mass-damage sweeps over a battlefield
+// filter, proving Spree composes with a mode that never opens a
+// targeting prompt at all — choosing both bullets is "deal 2 damage
+// to each creature" for two mana total, split across the outlaw
+// batch b40Outlaw already defines for Shoot the Sheriff.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "d262f3e1-b5bc-4dab-86c2-cd89c2419e54",
+		Name:         "Caught in the Crossfire",
+		Completeness: effects.CompletenessFull,
+		Modes: effects.Spree(
+			effects.ModeWithPurpose(effects.SpreeModeDoing("Caught in the Crossfire deals 2 damage to each outlaw creature.", "{1}", nil,
+				func(item *game.StackItem, ctx *effects.Context, occ int) error {
+					return effects.DamageEachMatching(ctx, effects.And(effects.Creature(), effects.B40Outlaw()), 2)
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2, Partial: true}}),
+			effects.ModeWithPurpose(effects.SpreeModeDoing("Caught in the Crossfire deals 2 damage to each non-outlaw creature.", "{1}", nil,
+				func(item *game.StackItem, ctx *effects.Context, occ int) error {
+					return effects.DamageEachMatching(ctx, effects.And(effects.Creature(), effects.Not(effects.B40Outlaw())), 2)
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 2, Partial: true}}),
+		),
+	})
+}

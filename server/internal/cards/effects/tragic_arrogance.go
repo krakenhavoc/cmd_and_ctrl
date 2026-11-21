@@ -55,9 +55,9 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return ChoosePermanents{
 				Question:   "Tragic Arrogance — choose an artifact, a creature, an enchantment and a planeswalker that player keeps",
-				Of:         seatsFromActive(ctx.Game),
+				Of:         SeatsFromActive(ctx.Game),
 				Candidates: tragicArroganceCandidates,
-				Keyed:      tragicArroganceChosen,
+				Keyed:      TragicArroganceChosen,
 			}.Apply(ctx)
 		},
 	})
@@ -65,7 +65,7 @@ func init() {
 
 // tragicArroganceChosen is the keyed pick (#4290): the set rule over what a
 // player keeps, and sacrificing everything else.
-var tragicArroganceChosen = RegisterPermanentsPick("prompt-run/tragic-arrogance-sacrifice-the-rest", PermanentsDef{
+var TragicArroganceChosen = RegisterPermanentsPick("prompt-run/tragic-arrogance-sacrifice-the-rest", PermanentsDef{
 	Validate: tragicArroganceAssignable,
 	Then:     tragicArroganceSacrificeTheRest,
 })
@@ -82,7 +82,7 @@ var tragicArroganceTypes = []func(game.Card) bool{
 // active player — the order "for each player" walks the table in.
 //
 // Caller holds g.mu.
-func seatsFromActive(g *game.Game) []uuid.UUID {
+func SeatsFromActive(g *game.Game) []uuid.UUID {
 	var out []uuid.UUID
 	n := len(g.Seats)
 	if n == 0 {

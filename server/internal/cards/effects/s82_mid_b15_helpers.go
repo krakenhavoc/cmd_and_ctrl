@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // of card types among cards in your graveyard and its toughness is equal
 // to that number plus 1" (CR 604.3, layer 7a). The count is of the
 // object's controller's graveyard, read live on every recompute.
-func consumingBlobCardTypesCDA(label string) game.StaticAbility {
+func ConsumingBlobCardTypesCDA(label string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:    label,
 		Layer:    game.Layer7PT,
@@ -16,7 +16,7 @@ func consumingBlobCardTypesCDA(label string) game.StaticAbility {
 			return target.InstanceID == source.InstanceID
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			n := b16CardTypesInGraveyard(g, source.Controller)
+			n := B16CardTypesInGraveyard(g, source.Controller)
 			c.Power = n
 			c.Toughness = n + 1
 		},
@@ -28,10 +28,10 @@ const consumingBlobOozeText = "This creature's power is equal to the number of c
 
 // consumingBlobOozeToken is the green Ooze creature token Consuming Blob
 // makes: a */*+1 that sizes itself with the same ability as the Blob.
-func consumingBlobOozeToken() game.Card { return tokenFromCatalog(printedConsumingBlobOozeToken) }
+func ConsumingBlobOozeToken() game.Card { return TokenFromCatalog(printedConsumingBlobOozeToken) }
 
-func printedConsumingBlobOozeToken() tokenTemplate {
-	return tokenTemplate{
+func printedConsumingBlobOozeToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "ooze-graveyard-card-types",
 		Card: game.Card{
 			Name:              "Ooze",
@@ -39,7 +39,7 @@ func printedConsumingBlobOozeToken() tokenTemplate {
 			Colors:            []string{"G"},
 			VariableToughness: true, // printed */*+1
 		},
-		Static: []game.StaticAbility{consumingBlobCardTypesCDA(consumingBlobOozeText)},
+		Static: []game.StaticAbility{ConsumingBlobCardTypesCDA(consumingBlobOozeText)},
 		Text:   consumingBlobOozeText,
 	}
 }
@@ -49,8 +49,8 @@ func printedConsumingBlobOozeToken() tokenTemplate {
 // sacrificed raises both a leaves-the-battlefield event and a zone move, so
 // the batch is keyed on the card (CR 603.2): the same card is one trigger,
 // two cards put there together are two.
-func s82MidB15LandCardToYourGraveyard(label string, effect Effect) game.TriggeredAbility {
-	t := OnAny([]game.EventKind{game.EventMill, game.EventZoneMove, game.EventLTB}, cmdr2B13LandCardToYourGraveyard, label, effect)
+func S82MidB15LandCardToYourGraveyard(label string, effect Effect) game.TriggeredAbility {
+	t := OnAny([]game.EventKind{game.EventMill, game.EventZoneMove, game.EventLTB}, Cmdr2B13LandCardToYourGraveyard, label, effect)
 	t.OncePerBatch = true
 	t.BatchKey = func(ev game.Event, _ *game.Card, _ *game.Game) string { return ev.CardID.String() }
 	return t

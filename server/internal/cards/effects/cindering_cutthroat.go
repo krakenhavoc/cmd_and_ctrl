@@ -24,14 +24,14 @@ func init() {
 		Name:         "Cindering Cutthroat",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
-			b19EntersWithCountersCounted(game.CounterPlusOne, oneIfAnOpponentLostLifeThisTurn,
+			B19EntersWithCountersCounted(game.CounterPlusOne, OneIfAnOpponentLostLifeThisTurn,
 				"Cindering Cutthroat enters with a +1/+1 counter if an opponent lost life this turn"),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B/R}: This creature gains menace until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
 			Cost:    ManaCost("{1}{B/R}"),
-			Effect:  thisGainsKeywordUntilEndOfTurn("menace", "Cindering Cutthroat — menace until end of turn"),
+			Effect:  ThisGainsKeywordUntilEndOfTurn("menace", "Cindering Cutthroat — menace until end of turn"),
 		}},
 	})
 }
@@ -41,8 +41,8 @@ func init() {
 // (Cindering Cutthroat, Frilled Sparkshooter), for
 // b19EntersWithCountersCounted: one if any opponent of the entering
 // permanent's controller lost life this turn, read as it enters.
-func oneIfAnOpponentLostLifeThisTurn(g *game.Game, src *game.Card) int {
-	if opponentLifeLostThisTurn(g, src.Controller) > 0 {
+func OneIfAnOpponentLostLifeThisTurn(g *game.Game, src *game.Card) int {
+	if OpponentLifeLostThisTurn(g, src.Controller) > 0 {
 		return 1
 	}
 	return 0

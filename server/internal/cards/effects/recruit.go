@@ -62,15 +62,15 @@ func recruitFor(g *game.Game, player, source uuid.UUID) error {
 		Source:   source,
 		N:        1,
 		Question: "Recruit: discard a card (a nonland card makes a 1/1 Human Soldier)",
-	}, recruitDiscarded, nil)
+	}, RecruitDiscarded, nil)
 }
 
 // recruitSoldier is the token CR 701.70a names.
-func recruitSoldier() game.Card { return TokenCard("1/1 white Human Soldier") }
+func RecruitSoldier() game.Card { return TokenCard("1/1 white Human Soldier") }
 
 // recruitDiscarded makes the Human Soldier for a nonland card discarded.
 // An on-disk key: never renamed, never reused.
-var recruitDiscarded = game.RegisterDiscardThen("choose-cards/recruit-discarded", func(g *game.Game, r game.DiscardsDone) error {
+var RecruitDiscarded = game.RegisterDiscardThen("choose-cards/recruit-discarded", func(g *game.Game, r game.DiscardsDone) error {
 	discarded := r.Discarded.By(r.Player)
 	if len(discarded) == 0 {
 		return nil
@@ -79,5 +79,5 @@ var recruitDiscarded = game.RegisterDiscardThen("choose-cards/recruit-discarded"
 	if !ok || card.IsLand() {
 		return nil
 	}
-	return CreateToken{Controller: r.Player, Template: recruitSoldier(), N: 1}.Apply(keyedContext(g, r.Player, r.Source))
+	return CreateToken{Controller: r.Player, Template: RecruitSoldier(), N: 1}.Apply(KeyedContext(g, r.Player, r.Source))
 })

@@ -29,7 +29,7 @@ import (
 //     who is not the active player attacked no one this turn.
 //
 // Caller must hold g.mu.
-func trekB37OpponentsAttackedThisTurn(g *game.Game, you uuid.UUID) int {
+func TrekB37OpponentsAttackedThisTurn(g *game.Game, you uuid.UUID) int {
 	if g == nil || you == uuid.Nil || g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
 		return 0
 	}
@@ -65,7 +65,7 @@ func trekB37OpponentsAttackedThisTurn(g *game.Game, you uuid.UUID) int {
 // trekB37KlingonOrWarriorSpell is the cost half of "Klingon spells and
 // Warrior spells you cast" (Gagh Slinger): SpellOfEitherCreatureType, so a
 // Klingon Warrior spell is one spell and gets the discount once.
-func trekB37KlingonOrWarriorSpell() CostPredicate {
+func TrekB37KlingonOrWarriorSpell() CostPredicate {
 	return SpellOfEitherCreatureType("Klingon", "Warrior")
 }
 
@@ -74,15 +74,15 @@ func trekB37KlingonOrWarriorSpell() CostPredicate {
 // source with either type entered under the source's controller. The
 // types are read off the entered permanent as it is on the battlefield
 // (a Klingon Warrior token counts once, as one event).
-func trekB37AnotherKlingonOrWarriorEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func TrekB37AnotherKlingonOrWarriorEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && (c.HasSubtype(source.TextSubtype("Klingon")) || c.HasSubtype(source.TextSubtype("Warrior")))
 }
 
 // trekB37KlingonsAndWarriorsYouControl is "Klingons and Warriors you
 // control" (Gnarling Targ) as the set a resolving effect locks in (CR
 // 611.2c).
-func trekB37KlingonsAndWarriorsYouControl() CardPredicate {
+func TrekB37KlingonsAndWarriorsYouControl() CardPredicate {
 	return And(YouControl(), AnySubtype("Klingon", "Warrior"))
 }
 
@@ -96,7 +96,7 @@ func trekB37KlingonsAndWarriorsYouControl() CardPredicate {
 // has no "until your next turn" end, because it is a continuous effect
 // and not the act of goading (CR 701.15a). The type is a word of the
 // source's text (CR 612.2).
-func trekB37TribblesAreGoaded() game.StaticAbility {
+func TrekB37TribblesAreGoaded() game.StaticAbility {
 	return game.StaticAbility{
 		Label: "All Tribbles are goaded.",
 		Layer: game.Layer6Ability,
@@ -115,7 +115,7 @@ func trekB37TribblesAreGoaded() game.StaticAbility {
 // goad or a continuous one (Card.Goaded) — as it is declared. The row is
 // OncePerBatch, so a declaration with several goaded attackers triggers
 // it once.
-func trekB37GoadedCreatureAttacked(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+func TrekB37GoadedCreatureAttacked(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventAttack || ev.CardID == uuid.Nil {
 		return false
 	}

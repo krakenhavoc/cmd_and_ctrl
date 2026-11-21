@@ -1,0 +1,30 @@
+package cardssh
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Shock — "Shock deals 2 damage to any target." Same shape as
+// Lightning Bolt with a different constant; proves the primitive
+// is reused across cards.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "a9d288b8-cdc1-4e55-a0c9-d6edfc95e65d",
+		Name:         "Shock",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetAny(),
+		Purpose:      game.Purpose{Targets: game.ForTargets(effects.DamageToTarget(0, 2)), Answers: game.AnswerRemove}, // #4734: damages a creature, planeswalker or player
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if len(item.Targets) == 0 {
+				return nil
+			}
+			return effects.DealDamage{
+				Source: ctx.Source(),
+				Target: item.Targets[0].ID,
+				Amount: 2,
+			}.Apply(ctx)
+		},
+	})
+}

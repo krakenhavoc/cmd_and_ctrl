@@ -42,13 +42,13 @@ func SpellWasKicked() game.SpellCondition {
 // SpellRaid is raid's "If you attacked this turn" (Arrow Storm),
 // about the spell's controller.
 func SpellRaid() game.SpellCondition {
-	return func(g *game.Game, item *game.StackItem) bool { return b18AttackedThisTurn(g, item.Controller) }
+	return func(g *game.Game, item *game.StackItem) bool { return B18AttackedThisTurn(g, item.Controller) }
 }
 
 // SpellThreshold is threshold's "If there are seven or more cards in
 // your graveyard" (Lightning Surge), about the spell's controller.
 func SpellThreshold() game.SpellCondition {
-	return func(g *game.Game, item *game.StackItem) bool { return b31GraveyardSize(g, item.Controller) >= 7 }
+	return func(g *game.Game, item *game.StackItem) bool { return B31GraveyardSize(g, item.Controller) >= 7 }
 }
 
 // SpellHellbent is hellbent's "If you have no cards in hand" (Demonfire),
@@ -64,7 +64,7 @@ func SpellHellbent() game.SpellCondition {
 // prevented this turn." and then does `rest` (Stomp, Skullcrack's
 // second sentence, Impractical Joke): the grant begins first, so the
 // spell's own damage is covered.
-func damageCantBePreventedThen(rest func(item *game.StackItem, ctx *Context) error) func(item *game.StackItem, ctx *Context) error {
+func DamageCantBePreventedThen(rest func(item *game.StackItem, ctx *Context) error) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if err := (DamageCantBePreventedThisTurn{}).Apply(ctx); err != nil {
 			return err
@@ -76,12 +76,12 @@ func damageCantBePreventedThen(rest func(item *game.StackItem, ctx *Context) err
 // skullcrackShape is "Players can't gain life this turn. Damage can't
 // be prevented this turn. ~ deals 3 damage to <target>." (Skullcrack,
 // Call In a Professional): both turn grants begin before the damage.
-func skullcrackShape(amount int) func(item *game.StackItem, ctx *Context) error {
+func SkullcrackShape(amount int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if err := (PlayersCantGainLifeThisTurn{}).Apply(ctx); err != nil {
 			return err
 		}
-		return damageCantBePreventedThen(damageToFirstTarget(amount))(item, ctx)
+		return DamageCantBePreventedThen(DamageToFirstTargetStep(amount))(item, ctx)
 	}
 }
 

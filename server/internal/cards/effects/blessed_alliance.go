@@ -60,7 +60,7 @@ func init() {
 						return nil
 					}
 					ctx.Game.PlayerSacrificesForEffect(ctx.Source(), t.ID,
-						sacrificeSpec("an attacking creature", And(Creature(), attackingCreature())),
+						SacrificeSpec("an attacking creature", And(Creature(), IsAttackingCreature())),
 						"Blessed Alliance — sacrifice an attacking creature")
 					return nil
 				}),
@@ -70,6 +70,6 @@ func init() {
 
 // attackingCreature passes a permanent that is attacking (CR 506.4):
 // unlike AttackingOrBlocking it excludes a blocker.
-func attackingCreature() CardPredicate {
+func IsAttackingCreature() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.AttackingTarget != uuid.Nil }
 }

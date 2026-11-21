@@ -42,7 +42,7 @@ func init() {
 		Name:         "Enlightened Tutor",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return tutorToTop(ctx, "Enlightened Tutor — an artifact or enchantment card", true,
+			return TutorToTop(ctx, "Enlightened Tutor — an artifact or enchantment card", true,
 				func(c game.Card) bool { return c.IsArtifact() || c.IsEnchantment() })
 		},
 	})
@@ -52,7 +52,7 @@ func init() {
 		Name:         "Worldly Tutor",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return tutorToTop(ctx, "Worldly Tutor — a creature card", true,
+			return TutorToTop(ctx, "Worldly Tutor — a creature card", true,
 				func(c game.Card) bool { return c.IsCreature() })
 		},
 	})
@@ -62,7 +62,7 @@ func init() {
 		Name:         "Mystical Tutor",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return tutorToTop(ctx, "Mystical Tutor — an instant or sorcery card", true,
+			return TutorToTop(ctx, "Mystical Tutor — an instant or sorcery card", true,
 				func(c game.Card) bool { return c.IsInstant() || c.IsSorcery() })
 		},
 	})
@@ -76,7 +76,7 @@ func init() {
 			// top. You lose 2 life." No reveal, any card. The life loss is the next
 			// instruction, so it waits for the search (CR 608.2c, #4155).
 			Instruction(func(ctx *Context) error {
-				return tutorToTop(ctx, "Imperial Seal — any card", false, nil)
+				return TutorToTop(ctx, "Imperial Seal — any card", false, nil)
 			}),
 			GainLife{Amount: -2},
 		),
@@ -85,7 +85,7 @@ func init() {
 
 // tutorToTop is the shared body: find one card matching `pred` (nil
 // means any card), shuffle, put it on top.
-func tutorToTop(ctx *Context, reason string, reveal bool, pred func(game.Card) bool) error {
+func TutorToTop(ctx *Context, reason string, reveal bool, pred func(game.Card) bool) error {
 	return SearchLibrary{
 		Player:    ctx.Controller(),
 		Predicate: pred,

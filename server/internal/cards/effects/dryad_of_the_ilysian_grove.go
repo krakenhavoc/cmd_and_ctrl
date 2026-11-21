@@ -34,7 +34,7 @@ func init() {
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return target.IsLand() && target.Controller == source.Controller
 				},
-				Apply: dryadOfTheIlysianGroveGrantAllBasicTypes,
+				Apply: DryadOfTheIlysianGroveGrantAllBasicTypes,
 			},
 		},
 	})
@@ -43,7 +43,7 @@ func init() {
 // dryadOfTheIlysianGroveGrantAllBasicTypes appends every basic land
 // type not already present, the same idempotent append Urborg's
 // single-type version uses.
-func dryadOfTheIlysianGroveGrantAllBasicTypes(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+func DryadOfTheIlysianGroveGrantAllBasicTypes(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 	for _, want := range []string{"Plains", "Island", "Swamp", "Mountain", "Forest"} {
 		found := false
 		for _, st := range c.Subtypes {

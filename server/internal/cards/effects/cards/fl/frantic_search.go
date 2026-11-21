@@ -1,0 +1,32 @@
+package cardsfl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Frantic Search — Instant for {2}{U}:
+//
+//	"Draw two cards, then discard two cards. Untap up to three lands."
+//
+// Free if you untap three, which is why it shows up in storm decks
+// and why it's here: two discard triggers for no net mana.
+//
+// "Up to three lands" prints no "target" and no "you control", so on
+// paper it is a resolution-time choice among every land at the
+// table. UntapUpToLands is that choice: a prompt over every tapped
+// land at the table, any controller's, queued after the loot.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "16e015b2-f8a3-4b1a-80be-58a8f5fb5e8c",
+		Name:         "Frantic Search",
+		Purpose:      game.Purpose{Draws: 2, Discards: 2, Answers: game.AnswerValue}, // #2877: answers nothing on the stack
+		Completeness: effects.CompletenessFull,
+		OnResolve: effects.ResolveSteps(
+			// The untap waits for the discard the loot asks (CR 608.2c, #4155).
+			effects.Instruction(func(ctx *effects.Context) error { return effects.LootOne(ctx.Game, ctx.Item, 2) }),
+			effects.UntapUpToLands{N: 3, Question: "Frantic Search — untap up to three lands"},
+		),
+	})
+}

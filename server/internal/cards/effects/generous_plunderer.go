@@ -46,7 +46,7 @@ func init() {
 			{
 				Watches: []game.EventKind{game.EventAttack},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return attackDeclared(ev, source)
+					return AttackDeclared(ev, source)
 				},
 				Key: "Generous Plunderer — damage to defending player equal to their artifacts",
 				// The defending player is a board read at trigger time
@@ -55,12 +55,12 @@ func init() {
 				// declared, and the resolving item cannot re-derive it later.
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 					item := game.NewTriggeredItem(source, "Generous Plunderer — damage to defending player equal to their artifacts")
-					item.Params.Player = b17DefendingPlayer(g, ev)
+					item.Params.Player = B17DefendingPlayer(g, ev)
 					return item
 				},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					defender := item.Params.Player
-					n := b03ArtifactsControlled(g, defender)
+					n := B03ArtifactsControlled(g, defender)
 					if n == 0 {
 						return nil
 					}
@@ -96,6 +96,6 @@ func generousPlundererGift(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}
-	return CreateToken{Controller: item.Targets[0].ID, Template: tappedTreasureToken(), N: 1}.
+	return CreateToken{Controller: item.Targets[0].ID, Template: TappedTreasureToken(), N: 1}.
 		Apply(NewContext(g, item))
 }

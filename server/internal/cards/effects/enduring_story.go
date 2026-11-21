@@ -34,13 +34,13 @@ func YouHaveAnEnduringStory(g *game.Game, you uuid.UUID) bool {
 // story, <these permanents> …": the permanent under test passes `inner`
 // and the SOURCE's controller has an enduring story.
 func WhileEnduringStory(inner func(target *game.Card, g *game.Game, source *game.Card) bool) func(target *game.Card, g *game.Game, source *game.Card) bool {
-	return whileYouHave(YouHaveAnEnduringStory, inner)
+	return WhileYouHave(YouHaveAnEnduringStory, inner)
 }
 
 // SelfWhileEnduringStory is "as long as you have an enduring story, THIS
 // creature …".
 func SelfWhileEnduringStory() func(target *game.Card, g *game.Game, source *game.Card) bool {
-	return whileYouHave(YouHaveAnEnduringStory, selfCreature)
+	return WhileYouHave(YouHaveAnEnduringStory, SelfCreature)
 }
 
 // SelfPumpWhileEnduringStory is "As long as you have an enduring story,
@@ -48,11 +48,11 @@ func SelfWhileEnduringStory() func(target *game.Card, g *game.Game, source *game
 // layer 7c modification.
 func SelfPumpWhileEnduringStory(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Gets " + signedPT(power, toughness) + " while you have an enduring story.",
+		Label:     "Gets " + SignedPT(power, toughness) + " while you have an enduring story.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: SelfWhileEnduringStory(),
-		Apply:     pumpBy(power, toughness),
+		Apply:     PumpBy(power, toughness),
 	}
 }
 
@@ -70,7 +70,7 @@ func SelfKeywordWhileEnduringStory(keyword string) game.StaticAbility {
 // Dreamer): the CR 502.3 restriction on the source, asked at each of its
 // controller's untap steps, so the step after the story arrives untaps it.
 func DoesntUntapUnlessEnduringStory() game.UntapStepRestriction {
-	r := doesntUntapDuringYourUntapStep()
+	r := DoesntUntapDuringYourUntapStep()
 	self := r.Restricts
 	r.Label = "doesn't untap during your untap step unless you have an enduring story"
 	r.Restricts = func(target *game.Card, g *game.Game, source *game.Card) bool {

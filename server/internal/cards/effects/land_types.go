@@ -188,7 +188,7 @@ func landBecomesOrChoose(ctx *Context, name string, dur landDuration, inAddition
 	if len(types) > 1 {
 		question = name + " — choose " + joinOr(types)
 	}
-	then := withCarry(withN(ctx.ItemTail(landBecomesChosen), int(dur)), land)
+	then := WithCarry(WithN(ctx.ItemTail(landBecomesChosen), int(dur)), land)
 	then.Words = []string{name}
 	if inAddition {
 		then.Nums = []int{1}
@@ -236,13 +236,13 @@ var landBecomesChosen = CardTail("then/land-becomes-chosen-type", func(ctx *Cont
 // reads them (Context.TextSubtype), without repeats, in printed order.
 // The input itself when nothing changes.
 func textSubtypes(ctx *Context, printed []string) []string {
-	reader := ctx.textReader()
+	reader := ctx.TextReader()
 	if reader == nil || len(printed) == 0 {
 		return printed
 	}
 	out := make([]string, 0, len(printed))
 	for _, p := range printed {
-		if now := reader.TextSubtype(p); !hasFold(out, now) {
+		if now := reader.TextSubtype(p); !HasFold(out, now) {
 			out = append(out, now)
 		}
 	}
@@ -298,7 +298,7 @@ func TargetLandBecomesUntilItsControllersNextTurn(name, landType string) Effect 
 // type. Each land you control becomes that type until end of turn"
 // (Terraformer, Elsewhere Flask). The lands are the ones you control as
 // it resolves, after the choice (CR 611.2c).
-func eachLandYouControlBecomesChosenTypeUntilEOT(ctx *Context, name string) error {
+func EachLandYouControlBecomesChosenTypeUntilEOT(ctx *Context, name string) error {
 	then := ctx.ItemTail(eachLandYouControlBecomesChosen)
 	then.Words = []string{name}
 	return ChooseBasicLandTypeTail(ctx, name+" — choose a basic land type", nil, then)

@@ -6,10 +6,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // 3, #5948): a legendary black Aura Curse enchantment named Selenia's
 // Curse with enchant player and "If enchanted player would lose life,
 // they lose twice that much life instead."
-func SeleniasCurseToken() game.Card { return tokenFromCatalog(printedSeleniasCurseToken) }
+func SeleniasCurseToken() game.Card { return TokenFromCatalog(printedSeleniasCurseToken) }
 
-func printedSeleniasCurseToken() tokenTemplate {
-	return tokenTemplate{
+func printedSeleniasCurseToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "selenias-curse",
 		Card: game.Card{
 			Name:     "Selenia's Curse",

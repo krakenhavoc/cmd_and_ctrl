@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // yet this turn. The spell being priced is not in the tally yet (see
 // NoArtifactSpellCastYetThisTurn), so a tally of none means this one is the
 // first.
-func socB16FirstXSpellYouCastThisTurn() CostPredicate {
+func SocB16FirstXSpellYouCastThisTurn() CostPredicate {
 	return func(q game.CostQuery) bool {
 		if q.Game == nil {
 			return false

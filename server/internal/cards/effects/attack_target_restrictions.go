@@ -213,7 +213,7 @@ func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbil
 		Label: attackTargetLabel(r),
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.IsCreature() && selfOnly(target, g, source)
+			return target.IsCreature() && SelfOnly(target, g, source)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			r := r

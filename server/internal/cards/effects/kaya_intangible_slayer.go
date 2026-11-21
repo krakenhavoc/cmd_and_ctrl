@@ -91,7 +91,7 @@ var kayaIntangibleSlayerCopy = CardTail("then/kaya-intangible-slayer-copy", func
 			t.VariableToughness = false
 			t.PrintedPTKnown = true
 			t.SetCopyExceptionColors("W")
-			t.TypeLine = socB19WithCreatureAndSubtypeInAddition(t.TypeLine, "Spirit")
+			t.TypeLine = SocB19WithCreatureAndSubtypeInAddition(t.TypeLine, "Spirit")
 			if !hasKeywordWord(t.Keywords, "flying") {
 				t.Keywords = append(t.Keywords, "flying")
 			}

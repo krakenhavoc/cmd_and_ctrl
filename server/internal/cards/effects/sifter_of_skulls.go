@@ -30,9 +30,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid},
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(On(game.EventLTB, sifterOfSkullsCondition,
+			TriggerWithPurpose(On(game.EventLTB, SifterOfSkullsCondition,
 				"Sifter of Skulls — create a 1/1 colorless Eldrazi Scion",
-				Do(CreateToken{Template: b28EldraziScionToken(), N: 1})),
+				Do(CreateToken{Template: B28EldraziScionToken(), N: 1})),
 				game.Purpose{DeathPayoff: true, Tokens: 1}),
 		},
 	})
@@ -40,10 +40,10 @@ func init() {
 
 // sifterOfSkullsCondition is "another nontoken creature you control
 // dies".
-func sifterOfSkullsCondition(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
+func SifterOfSkullsCondition(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 	if !AnotherCreatureDied(ev, source, ch, g) {
 		return false
 	}
-	dead, _ := diedCreature(ev, g)
-	return !IsToken(dead) && leftUnderControlOf(ev, dead) == source.Controller
+	dead, _ := DiedCreature(ev, g)
+	return !IsToken(dead) && LeftUnderControlOf(ev, dead) == source.Controller
 }

@@ -1,0 +1,118 @@
+package cardsbl
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Bonecrusher Giant // Stomp — the catalog's first TARGETED adventure
+// card (CR 715), oracle d6d72f5f…:
+//
+//	Bonecrusher Giant — Creature — Giant {2}{R}, 4/3
+//	  "Whenever this creature becomes the target of a spell, this
+//	   creature deals 2 damage to that spell's controller."
+//	Stomp — Instant — Adventure {1}{R}
+//	  "Damage can't be prevented this turn. Stomp deals 2 damage to
+//	   any target. (Then exile this card. You may cast the creature
+//	   later from exile.)"
+//
+// # Why this card, and why it could not ship with #719
+//
+// #719 shipped the adventure LIFECYCLE and Foulmire Knight // Profane
+// Insight proved it: the cheapest printed Adventure half that needs no
+// announce-time choice at all. Every other candidate the issue named —
+// Stomp, Petty Theft, Swift End — is a TARGETED instant, and a
+// targeted Adventure half was blocked on something that was not in the
+// engine at all. The view published `target_mode` and `legal_targets`
+// for the face that was UP, so a human client asked to cast face 1 had
+// no picker to open; the bot enumerator was already face-correct, and
+// so was CastSpell. #992 put the announce data on the wire per
+// castable face and taught `cardAsFace` to consume it, and this card
+// is what proves it end to end.
+//
+// # Two keys, one card
+//
+// One oracle_id per CARD, so game.CatalogKey makes it composite: the
+// creature keeps the bare oracle ID and Stomp takes "<oracle_id>#1".
+// Both faces register, as Foulmire Knight's do — the creature half is
+// a real castable object whose coverage the catalog page should state
+// rather than leave blank.
+//
+// # Stomp's first sentence
+//
+// "Damage can't be prevented this turn" is ADR 0107 §5's turn grant
+// (ModDamageCantBePrevented, CR 615.12): a rule that covers every
+// source for the rest of the turn, not a rider on this spell's own
+// damage, which is why the printed card is a fog-breaker rather than a
+// Shock. It begins before the 2 damage, so that is covered too.
+//
+// The creature half ships FULL. "Becomes the target of A SPELL" is
+// narrower than the "spell or ability" wording its family usually
+// prints — EventBecomesTarget is emitted for both and carries no
+// discriminator, so the spell half is read off the stack
+// (SelfTargetedByASpell, the same predicate Departed Deckhand and
+// Gargos use). Firing on abilities too would be a strictly better
+// Bonecrusher Giant, which is the one direction this catalog does not
+// ship.
+//
+// The trigger fires at ANNOUNCE (CR 601.2c), so it goes on the stack
+// ABOVE the spell that targeted and resolves first. That is exactly
+// why the card is played: the two damage is dealt before the removal
+// spell resolves, and a Giant that survives is still there when it
+// does.
+
+// bonecrusherGiantOracleID is shared by both faces of the card.
+const BonecrusherGiantOracleID = "d6d72f5f-8f5d-4180-b514-f22ff5482902"
+
+func init() {
+	// Face 0 — the creature.
+	effects.Register(effects.Spec{
+		OracleID:     BonecrusherGiantOracleID,
+		Name:         "Bonecrusher Giant",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches:   []game.EventKind{game.EventBecomesTarget},
+			AppliesTo: effects.SelfTargetedByASpell,
+			// "THAT SPELL'S CONTROLLER" is Event.Actor, captured in
+			// Build rather than looked up in the effect. The trigger
+			// is harvested at announce (CR 601.2c) and resolves later,
+			// by which time the spell may have been countered and its
+			// stack item gone — and the ability names the player it
+			// named when it triggered, not whoever is left. Actor is
+			// set by emitBecameTargetLocked at every one of the six
+			// sites that finish choosing targets, so this reads the
+			// same answer however the spell was announced.
+			Key: "Bonecrusher Giant — 2 damage to that spell's controller",
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				if item.Trigger == nil || item.Trigger.Event.Actor == uuid.Nil {
+					return nil
+				}
+				return effects.DealDamage{
+					Source: item.SourceCardID,
+					Target: item.Trigger.Event.Actor,
+					Amount: 2,
+				}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+
+	// Face 1 — the Adventure. An instant while it is on the stack
+	// (CR 715.3a); what happens after OnResolve returns is the
+	// engine's CR 715.3d branch (game/adventure.go), and this file
+	// says nothing about it.
+	effects.Register(effects.Spec{
+		OracleID:     BonecrusherGiantOracleID + "#1",
+		Name:         "Stomp",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetAny(),
+		Purpose:      effects.ForTargets(effects.DamageToTarget(0, 2)),
+		OnResolve: effects.DamageCantBePreventedThen(func(item *game.StackItem, ctx *effects.Context) error {
+			for _, t := range ctx.LegalTargets() {
+				return effects.DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}.Apply(ctx)
+			}
+			return nil
+		}),
+	})
+}

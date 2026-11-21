@@ -1,0 +1,44 @@
+package cardse
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Endemic Plague — Sorcery {3}{B}:
+//
+//	"As an additional cost to cast this spell, sacrifice a creature.
+//	 Destroy all creatures that share a creature type with the
+//	 sacrificed creature. They can't be regenerated."
+//
+// The creature types are the sacrificed creature's as it last existed
+// on the battlefield (CR 608.2h), read off the payment record (ADR 0113
+// §1). A changeling on either side shares a type with every creature
+// that has one (CR 702.73a), and a creature with no creature type shares
+// nothing. The destruction ignores regeneration shields (CR 701.19c).
+//
+// No simplifications.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID: "db982577-1c75-4bc9-ab15-1888ea0be16d",
+		Name:     "Endemic Plague",
+		// ADR 0126 §6: only creatures sharing a type with the sacrificed one.
+		Purpose:        game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
+		Completeness:   effects.CompletenessFull,
+		AdditionalCost: effects.SacrificeCost("a creature", effects.Creature()),
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			info, ok := ctx.SacrificedPermanent()
+			if !ok {
+				return nil
+			}
+			return effects.DestroyAllMatching{
+				Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+					return c.IsCreature() && effects.SharesACreatureTypeWith(info, c)
+				},
+				CantBeRegenerated: true,
+			}.Apply(ctx)
+		},
+	})
+}

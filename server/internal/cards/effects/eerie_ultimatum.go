@@ -36,7 +36,7 @@ func init() {
 		Name:         "Eerie Ultimatum",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			candidates := graveyardCardIDs(ctx, item.Controller, game.Card.IsPermanent)
+			candidates := GraveyardCardIDs(ctx, item.Controller, game.Card.IsPermanent)
 			if len(candidates) == 0 {
 				return nil
 			}
@@ -48,7 +48,7 @@ func init() {
 				Cards:      candidates,
 				Min:        0,
 				Max:        0,
-				ThenKey:    eerieUltimatumReturn,
+				ThenKey:    EerieUltimatumReturn,
 				LiveZone:   game.ZoneGraveyard,
 				Asked:      game.NewAskedItem(item),
 			})
@@ -61,7 +61,7 @@ func init() {
 // ("with different names") is registered with it, and the asking spell
 // rides the prompt as data (#4253). An on-disk key: never renamed, never
 // reused.
-var eerieUltimatumReturn = game.RegisterChooseCardsThenRule("choose-cards/eerie-ultimatum-return", allDifferentNames,
+var EerieUltimatumReturn = game.RegisterChooseCardsThenRule("choose-cards/eerie-ultimatum-return", allDifferentNames,
 	func(g *game.Game, r game.CardsChosen) error {
 		if r.Asked == nil {
 			return nil
@@ -93,6 +93,6 @@ func allDifferentNames(picked []game.Card) bool {
 // reanimations (#1559): Agadeem's Awakening, Behold the Sinister Six!.
 // The set rule itself is the clause's; by the time this runs the CR
 // 608.2b re-check has already dropped any pick that breaks it.
-func returnLegalGraveyardTargetsToBattlefield(ctx *Context) error {
-	return ReturnFromGraveyardTogether{Targets: legalTargetCardIDs(ctx)}.Apply(ctx)
+func ReturnLegalGraveyardTargetsToBattlefield(ctx *Context) error {
+	return ReturnFromGraveyardTogether{Targets: LegalTargetCardIDs(ctx)}.Apply(ctx)
 }

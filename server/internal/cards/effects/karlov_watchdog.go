@@ -77,7 +77,7 @@ func OpponentsPermanentsCantTurnFaceUpDuringYourTurn(label string) game.TurnFace
 // late in the same combat cannot. A file restored without the ordinal
 // reads as the first combat.
 func karlovWatchdogAttackedWithThree(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) || len(b13AttackingCreaturesYouControl(g, ev.Actor)) < 3 {
+	if !AttackDeclaredByYou(ev, source.Controller) || len(B13AttackingCreaturesYouControl(g, ev.Actor)) < 3 {
 		return false
 	}
 	return g.TriggeredThisTurn(source.InstanceID, karlovWatchdogAttackLabel) < max(g.Turn.PhaseOrdinal, 1)

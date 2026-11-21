@@ -8,15 +8,15 @@ import (
 
 // plagueOfVerminOrder is "starting with you" (Plague of Vermin): the
 // spell's controller, then the living opponents in turn order.
-func plagueOfVerminOrder(g *game.Game, controller uuid.UUID) []uuid.UUID {
-	return append([]uuid.UUID{controller}, opponentsInTurnOrder(g, controller)...)
+func PlagueOfVerminOrder(g *game.Game, controller uuid.UUID) []uuid.UUID {
+	return append([]uuid.UUID{controller}, OpponentsInTurnOrder(g, controller)...)
 }
 
 // plagueOfVerminAsk asks the player at `pos` of `order` how much life they
 // pay. nums is [position, life paid in this pass, then the total paid by
 // each player in `order`]: plain data, so a table waiting on the question
 // is a restore point (#4294).
-func plagueOfVerminAsk(ctx *Context, order []uuid.UUID, nums []int) error {
+func PlagueOfVerminAsk(ctx *Context, order []uuid.UUID, nums []int) error {
 	return PayLifeAmount{
 		Chooser:  order[nums[0]],
 		Question: "Plague of Vermin — pay any amount of life (each 1 life paid makes you a 1/1 Rat)",
@@ -48,11 +48,11 @@ func plagueOfVerminPaidBody(ctx *Context, r game.NumberAnswer) error {
 	pos++
 	if pos < len(order) {
 		nums[0] = pos
-		return plagueOfVerminAsk(ctx, order, nums)
+		return PlagueOfVerminAsk(ctx, order, nums)
 	}
 	if nums[1] > 0 {
 		nums[0], nums[1] = 0, 0
-		return plagueOfVerminAsk(ctx, order, nums)
+		return PlagueOfVerminAsk(ctx, order, nums)
 	}
 	for i, p := range order {
 		if n := nums[2+i]; n > 0 {

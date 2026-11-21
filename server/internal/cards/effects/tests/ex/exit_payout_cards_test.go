@@ -1,0 +1,411 @@
+package testsex
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// exit_payout_cards_test.go — #993 on the five cards the widened lint
+// found, resolved through the real priority loop.
+//
+// exile_payout_cards_test.go is the same file for #911's exile, and the
+// boards here are its boards with a different verb: a CR 903.9b prompt
+// held open by a bounced commander, and a CR 614 window that cancels the move
+// outright. What each card owes on those boards is the whole of the
+// triage, and it is not the same answer for all five:
+//
+//   - Boomerang Basics and Chain of Vapor owe only ORDER. Their second
+//     sentence is about a PLAYER and is not introduced by an "if you
+//     do", so it happens whichever way the question is answered — the
+//     Path to Exile reading (ADR 0013 §5m item 2, §5v). What must not
+//     happen is the draw, or the next question, arriving while the
+//     first question is still on the table.
+//   - Ruthless Technomancer owes the ANSWER. "If you do, create a
+//     number of Treasure tokens equal to that creature's power" is
+//     gated on the sacrifice, and the card used to read the live board
+//     on the next line — which says "still on the battlefield, so not
+//     sacrificed" for a leg that is merely paused.
+//   - Hermit Druid and Consuming Aberration owe SEQUENCE. Both used to
+//     write the next instruction on the line after a mill that can
+//     pause; the Aberration's loop then re-read the top of the library
+//     and milled the same paused card again.
+//
+// ADR 0115: a commander sacrificed or milled no longer pauses. It lands
+// in the graveyard like any other card and CR 903.9a asks its owner
+// afterwards, so the Technomancer, Chain of Vapor's sacrifice, Hermit
+// Druid and the Aberration tests below pin that the payout happens at
+// once and is not disturbed by the later answer. Boomerang Basics and
+// Chain of Vapor's bounce are CR 903.9b and still ask first.
+
+// --- Boomerang Basics ----------------------------------------------
+
+// TestBoomerangBasicsWaitsForTheCommandZoneAnswer is the ordering half.
+// The draw is the bounce's continuation, so it cannot land while the
+// owner is still being asked about the command zone.
+//
+// Both answers draw, and that is the rules call (#993, ADR 0013 §5v):
+// "if you controlled that permanent" is a condition about the PLAYER's
+// past relationship to the spell's target, true before anything moves
+// and beyond any replacement's reach. A commander of yours that took
+// CR 903.9b's offer was still yours.
+func TestBoomerangBasicsWaitsForTheCommandZoneAnswer(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		commandZone bool
+	}{
+		{"to the command zone: the draw still happens", true},
+		{"to the hand: the card and the draw", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := effectstest.NewCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			mine := effectstest.PushVanillaCreature(g, me.ID, "My Commander", 1, 1)
+			effectstest.MarkCommanderCard(t, g, me, mine)
+
+			effectstest.CastCatalogSpell(t, g, "Boomerang Basics", "Sorcery — Lesson",
+				effectstest.B42BoomerangBasicsOracle, effectstest.B42CardTarget(mine))
+			handAfterCast := me.Hand.Size()
+			effectstest.PassPriorityAroundTable(t, g)
+
+			if got := me.Hand.Size(); got != handAfterCast {
+				t.Fatalf("hand %d → %d while the CR 903.9 prompt is open, want unchanged — "+
+					"the draw is the return's continuation", handAfterCast, got)
+			}
+			if !g.Battlefield.Contains(mine) {
+				t.Fatal("nothing moves until the command-zone question is answered")
+			}
+
+			if tc.commandZone {
+				effectstest.B36AcceptCommandZone(t, g, me.ID)
+				if !me.Command.Contains(mine) {
+					t.Fatal("accepting puts the commander in the command zone")
+				}
+				if got := me.Hand.Size(); got != handAfterCast+1 {
+					t.Errorf("hand %d → %d, want +1 (the draw only) — you still controlled that "+
+						"permanent, so the clause is true however the return was replaced",
+						handAfterCast, got)
+				}
+				return
+			}
+			effectstest.B21DeclineCommandZone(t, g, me.ID)
+			if !me.Hand.Contains(mine) {
+				t.Fatal("declining returns the permanent to its owner's hand")
+			}
+			if got := me.Hand.Size(); got != handAfterCast+2 {
+				t.Errorf("hand %d → %d, want +2 (the returned card and the draw)", handAfterCast, got)
+			}
+		})
+	}
+}
+
+// TestBoomerangBasicsStillDrawsNothingForAnOpponentsPermanent is the
+// control: the continuation must not have turned the rider into an
+// unconditional cantrip.
+func TestBoomerangBasicsStillDrawsNothingForAnOpponentsPermanent(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	theirs := effectstest.PushVanillaCreature(g, opp.ID, "Theirs", 1, 1)
+
+	effectstest.CastCatalogSpell(t, g, "Boomerang Basics", "Sorcery — Lesson",
+		effectstest.B42BoomerangBasicsOracle, effectstest.B42CardTarget(theirs))
+	handAfterCast := me.Hand.Size()
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if !opp.Hand.Contains(theirs) {
+		t.Fatal("an opponent's permanent is returned too")
+	}
+	if got := me.Hand.Size(); got != handAfterCast {
+		t.Errorf("hand %d → %d, want unchanged — you did not control that permanent", handAfterCast, got)
+	}
+}
+
+// --- Chain of Vapor -------------------------------------------------
+
+// TestChainOfVaporAsksTheChainAfterTheReturnSettles. The chain's first
+// question goes to the bounced permanent's controller, and they are
+// already answering one — a commander of theirs is asking about the
+// command zone. Two prompts at once, in the wrong order, is the bug
+// ADR 0013 §5m item 2 fixed for Path to Exile.
+func TestChainOfVaporAsksTheChainAfterTheReturnSettles(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	opp := g.Seats[1]
+	theirs := effectstest.PushVanillaCreature(g, opp.ID, "Their Commander", 1, 1)
+	effectstest.MarkCommanderCard(t, g, opp, theirs)
+	effectstest.SeedLandOnBattlefield(g, opp.ID, "Their Swamp", "Basic Land — Swamp")
+
+	effectstest.CastCatalogSpell(t, g, "Chain of Vapor", "Instant", effectstest.ChainOfVaporOracle, effectstest.B42CardTarget(theirs))
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if n := countPendingFor(g, opp.ID, game.PendingChoiceConfirm); n != 0 {
+		t.Fatalf("%d confirm prompts for the permanent's controller while the CR 903.9 question "+
+			"is still open, want 0 — the chain is the return's continuation", n)
+	}
+	effectstest.B21DeclineCommandZone(t, g, opp.ID)
+	if !opp.Hand.Contains(theirs) {
+		t.Fatal("declining returns the permanent to its owner's hand")
+	}
+	if n := countPendingFor(g, opp.ID, game.PendingChoiceConfirm); n != 1 {
+		t.Errorf("%d confirm prompts once the return has settled, want 1 — \"then that permanent's "+
+			"controller may sacrifice a land\"", n)
+	}
+}
+
+// TestChainOfVaporStillAsksWhenTheReturnWasReplacedAway is the other
+// half of the same rules call: the second sentence is about a PLAYER
+// and is not an "if you do", so a commander that took the command zone
+// still leaves its controller being asked about a land.
+func TestChainOfVaporStillAsksWhenTheReturnWasReplacedAway(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	opp := g.Seats[1]
+	theirs := effectstest.PushVanillaCreature(g, opp.ID, "Their Commander", 1, 1)
+	effectstest.MarkCommanderCard(t, g, opp, theirs)
+	effectstest.SeedLandOnBattlefield(g, opp.ID, "Their Swamp", "Basic Land — Swamp")
+
+	effectstest.CastCatalogSpell(t, g, "Chain of Vapor", "Instant", effectstest.ChainOfVaporOracle, effectstest.B42CardTarget(theirs))
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.B36AcceptCommandZone(t, g, opp.ID)
+
+	if !opp.Command.Contains(theirs) {
+		t.Fatal("accepting puts the commander in the command zone")
+	}
+	if n := countPendingFor(g, opp.ID, game.PendingChoiceConfirm); n != 1 {
+		t.Errorf("%d confirm prompts, want 1 — the chain is not gated on the return", n)
+	}
+}
+
+// TestChainOfVaporCopyQuestionFollowsTheSacrificedLand is the
+// SacrificeChoice half of the same fix. Its doc says "Then runs once
+// the permanent has gone". A sacrificed commander LAND used to pause on
+// CR 903.9 with the copy question already asked; since ADR 0115 it goes
+// to the graveyard at once, the copy question follows, and CR 903.9a
+// asks its owner about the command zone only after the resolution.
+func TestChainOfVaporCopyQuestionFollowsTheSacrificedLand(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	opp := g.Seats[1]
+	theirs := effectstest.PushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
+	land := effectstest.PushLand(g, opp.ID, "Their Island")
+	effectstest.MarkCommanderCard(t, g, opp, land)
+
+	effectstest.CastCatalogSpell(t, g, "Chain of Vapor", "Instant", effectstest.ChainOfVaporOracle, effectstest.B42CardTarget(theirs))
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerMayChoice(t, g, opp.ID, true)
+
+	sac := effectstest.LatestChooseCardsFor(g, opp.ID)
+	if sac == nil {
+		t.Fatalf("they pick which land to sacrifice: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveChooseCards(sac.ID, opp.ID, []uuid.UUID{land}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+
+	if !opp.Graveyard.Contains(land) {
+		t.Fatalf("the sacrificed land is in %s, want its owner's graveyard", effectstest.B12ZoneOf(g, land))
+	}
+	if n := countPendingFor(g, opp.ID, game.PendingChoiceConfirm); n != 1 {
+		t.Errorf("%d copy questions once the sacrifice has settled, want 1", n)
+	}
+	if n := countPendingFor(g, opp.ID, game.PendingChoiceOptionalReplacement); n != 0 {
+		t.Errorf("%d CR 903.9b prompts for a sacrificed land, want 0", n)
+	}
+}
+
+// --- Ruthless Technomancer ------------------------------------------
+
+// TestRuthlessTechnomancerPaysForASacrificedCommander is the clause
+// that IS gated, and the outcome the old live-board read got wrong: a
+// sacrificed commander used to sit on the battlefield while its owner
+// answered CR 903.9, so "is it still on the battlefield?" said "not
+// sacrificed" and no Treasure was ever made.
+//
+// Since ADR 0115 the commander is sacrificed into its owner's graveyard
+// like any other creature, the Treasures are made at once, and the
+// CR 903.9a answer that follows changes nothing.
+func TestRuthlessTechnomancerPaysForASacrificedCommander(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		commandZone bool
+	}{
+		{"then to the command zone: still sacrificed", true},
+		{"left in the graveyard: sacrificed", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := effectstest.NewCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			victim := effectstest.B12Creature(g, me.ID, "Dear Friend", "Legendary Creature — Human", 3, 3)
+			effectstest.MarkCommanderCard(t, g, me, victim)
+
+			technomancerETB(t, g, me, victim)
+
+			if !me.Graveyard.Contains(victim) {
+				t.Fatal("the sacrificed commander is in its owner's graveyard")
+			}
+			if n, _ := effectstest.B14Tokens(g, me.ID, "Treasure"); n != 3 {
+				t.Fatalf("%d Treasures before the CR 903.9a answer, want 3 — the creature's power", n)
+			}
+			effectstest.AnswerCommanderReturn(t, g, me.ID, tc.commandZone)
+			if tc.commandZone && !me.Command.Contains(victim) {
+				t.Fatal("yes puts the commander in the command zone")
+			}
+			if !tc.commandZone && !me.Graveyard.Contains(victim) {
+				t.Fatal("no leaves it in its owner's graveyard")
+			}
+			if n, _ := effectstest.B14Tokens(g, me.ID, "Treasure"); n != 3 {
+				t.Errorf("%d Treasures after the answer, want 3", n)
+			}
+		})
+	}
+}
+
+// TestRuthlessTechnomancerPaysNothingForACancelledSacrifice is the
+// other side of the gate: the window kept the creature on the
+// battlefield, so nothing was sacrificed and "if you do" is false.
+func TestRuthlessTechnomancerPaysNothingForACancelledSacrifice(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	victim := effectstest.B12Creature(g, me.ID, "Stubborn Friend", "Creature — Human", 3, 3)
+	effectstest.RegisterExitReplacement(t, g, victim, "it can't leave the battlefield",
+		func(ev *game.ReplacementEvent) { ev.Cancel() })
+
+	technomancerETB(t, g, me, victim)
+
+	if !g.Battlefield.Contains(victim) {
+		t.Fatal("control: the cancelled move leaves the creature on the battlefield")
+	}
+	if n, _ := effectstest.B14Tokens(g, me.ID, "Treasure"); n != 0 {
+		t.Errorf("%d Treasures, want 0 — nothing was sacrificed, so \"if you do\" is false", n)
+	}
+}
+
+// technomancerETB resolves a Ruthless Technomancer under `me` with its
+// enter trigger accepted and `victim` chosen, and settles the table up
+// to whatever prompt the sacrifice itself opens.
+func technomancerETB(t *testing.T, g *game.Game, me *game.Player, victim uuid.UUID) {
+	t.Helper()
+	effectstest.CastAndResolveCreature(t, g, "Ruthless Technomancer", "Creature — Human Wizard",
+		effectstest.B19RuthlessTechnomancerOracle)
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerOwnPermanents(t, g, me.ID, victim)
+	effectstest.PassPriorityAroundTable(t, g)
+}
+
+// --- Hermit Druid ---------------------------------------------------
+
+// TestHermitDruidPutsTheLandInHandAfterTheMillSettles. "Put that card
+// into your hand and all other cards revealed this way into your
+// graveyard" is one instruction about a settled run, and one of the
+// cards above the land is a commander. Since ADR 0115 the commander is
+// milled with the rest of the run, the land reaches hand, and CR 903.9a
+// asks its owner about the command zone afterwards.
+func TestHermitDruidPutsTheLandInHandAfterTheMillSettles(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	druid := effectstest.PushCatalogPermanent(g, me.ID, "Hermit Druid", "Creature — Human Druid",
+		effectstest.B21HermitDruidOracle, false)
+
+	// Top of the library downward: a commander card, a spell, then the
+	// basic land that ends the run.
+	effectstest.B10LibraryTop(me, "My Swamp", "Basic Land — Swamp", "", 0, 0)
+	effectstest.B10LibraryTop(me, "Filler", "Instant", "{U}", 0, 0)
+	commander := effectstest.B10LibraryTop(me, "My Commander", "Legendary Creature — Human", "{2}{B}", 2, 2)
+	effectstest.MarkCommanderCard(t, g, me, commander)
+	land := me.Library.Cards[len(me.Library.Cards)-3].InstanceID
+
+	effectstest.AdvanceToMain(t, g)
+	effectstest.B06AddMana(me, "G")
+	if err := g.ActivateCatalogAbility(me.ID, druid, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate Hermit Druid: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if !me.Graveyard.Contains(commander) {
+		t.Fatal("the commander card is milled with the rest of the run")
+	}
+	effectstest.AnswerCommanderReturn(t, g, me.ID, false)
+
+	if !me.Hand.Contains(land) {
+		t.Errorf("the basic land should be in hand once the mill has settled; it is in %s",
+			effectstest.B12ZoneOf(g, land))
+	}
+	if !me.Graveyard.Contains(commander) {
+		t.Error("declining leaves the commander card in its owner's graveyard with the rest of the run")
+	}
+}
+
+// --- Consuming Aberration -------------------------------------------
+
+// TestConsumingAberrationMillsACommanderOnce is the loop that spun. The
+// old body read the top of the library, milled one card, and asked
+// whether the card it had read was a land; a milled commander's prompt
+// left the card exactly where it was, so the next pass read the same
+// card and milled it again — round and round until the fuse blew or
+// somebody answered.
+//
+// The run is chosen up front now, and since ADR 0115 a milled commander
+// does not pause at all: it is milled once with the rest of the run and
+// CR 903.9a asks its owner afterwards.
+func TestConsumingAberrationMillsACommanderOnce(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	effectstest.B12Push(g, me.ID, "Consuming Aberration", "Creature — Horror", effectstest.B14ConsumingAberrationOracle, 0, 0)
+	// The Aberration is a */* equal to the cards in opponents'
+	// graveyards, so it needs one to survive the CR 704.5f check long
+	// enough to trigger at all.
+	effectstest.PushGraveyardCardForTest(opp, "Dead A")
+
+	// Top downward: a commander card, a spell, then the land.
+	effectstest.B10LibraryTop(opp, "Their Land", "Basic Land — Swamp", "", 0, 0)
+	effectstest.B10LibraryTop(opp, "Their Spell", "Instant", "{U}", 0, 0)
+	commander := effectstest.B10LibraryTop(opp, "Their Commander", "Legendary Creature — Human", "{2}{B}", 2, 2)
+	effectstest.MarkCommanderCard(t, g, opp, commander)
+	before := opp.Library.Size()
+
+	effectstest.CastCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if got := before - opp.Library.Size(); got != 3 {
+		t.Errorf("milled %d, want 3 (up to and including the land) — the commander must not shorten "+
+			"the run, and must not be milled twice", got)
+	}
+	effectstest.AnswerCommanderReturn(t, g, opp.ID, false)
+	if !opp.Graveyard.Contains(commander) {
+		t.Error("declining leaves the commander card in its owner's graveyard")
+	}
+	if n := countInZone(opp.Graveyard, commander); n != 1 {
+		t.Errorf("the commander card is in the graveyard %d times, want 1 — the loop used to "+
+			"re-read the top of the library and mill the same paused card again", n)
+	}
+}
+
+// --- local helpers ---------------------------------------------------
+
+// countPendingFor counts the pending choices of one kind addressed to
+// one seat.
+func countPendingFor(g *game.Game, chooser uuid.UUID, kind game.PendingChoiceKind) int {
+	n := 0
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == kind && c.Chooser == chooser {
+			n++
+		}
+	}
+	return n
+}
+
+// countInZone counts how many times one instance ID appears in a zone.
+// A card can only be in a zone once; the count is what makes "milled
+// twice" a failure rather than a silent pass.
+func countInZone(z *game.Zone, id uuid.UUID) int {
+	if z == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range z.Cards {
+		if c.InstanceID == id {
+			n++
+		}
+	}
+	return n
+}

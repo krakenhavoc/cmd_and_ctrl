@@ -1,0 +1,105 @@
+package cardsso
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Sorin Markov — Legendary Planeswalker — Sorin {3}{B}{B}{B},
+// starting loyalty 4 (EDHREC rank 4141):
+//
+//	"+2: Sorin Markov deals 2 damage to any target and you gain 2
+//	     life.
+//	 −3: Target opponent's life total becomes 10.
+//	 −7: You control target player during that player's next turn."
+//
+// Six mana, and the −3 is what you pay it for. In a format that
+// starts at 40, "becomes 10" is the largest single swing any card in
+// this batch produces: it takes thirty life off the player who has
+// been gaining it all game, and it can be used again two turns later
+// because the +2 climbs faster than the −3 falls. The +2 is a real
+// ability rather than filler — 2 damage and 2 life on a six-mana
+// walker keeps him alive against a 2/2.
+//
+// "BECOMES 10" IS A SET, NOT A LOSS. CR 118.5 makes it a life change
+// of whatever size closes the gap, so a player at 4 GAINS 6 and a
+// player at 40 LOSES 30. That direction is printed and it matters:
+// against a player who has been drained to single digits the −3 is a
+// gift, which is why b31LifeBecomes computes the delta rather than
+// assuming a loss. Because it is a life change and not damage, life
+// loss triggers (a Vito, a Wound Reflection) see it and damage
+// prevention does not.
+//
+// The +2 uses the widest target clause — "any target" is a player, a
+// creature, a planeswalker or a battle — and the life gain happens
+// whether or not the damage did (but not when the target is illegal, CR 608.2b) (a fogged or prevented 2 still gains
+// the 2).
+//
+// THE −7 is turn control (CR 723.1, ADR 0167, #3857). Its target is
+// any player, so a Sorin player may point it at themselves for nothing,
+// and the controller makes every decision the controlled player is
+// asked for through the "Playing as" board swap. It is the plain form
+// of the effect: no extra turn afterwards (controlTargetPlayerNextTurn).
+// The control waits for the target's next turn that actually begins
+// (CR 723.1b) and ends with it.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "c151e8b7-4b28-4f03-8a81-9bf623f893d7",
+		Name:         "Sorin Markov",
+		Completeness: effects.CompletenessFull,
+		// Printed loyalty reaches the card through deck import
+		// (ADR 0032 §1); this is the fallback for tokens, fixtures
+		// and the dev spawner.
+		StartingLoyalty: 4,
+		Activated: []effects.ActivatedAbility{
+			{
+				Label:   "+2: Sorin Markov deals 2 damage to any target and you gain 2 life.",
+				Cost:    effects.LoyaltyCost(2),
+				Targets: effects.TargetAny(),
+				Purpose: effects.ForTargets(effects.DamageToTarget(0, 2)),
+				// The life gain waits for a prompt the damage asks (CR 608.2c, #4155).
+				Effect: effects.Do(
+					// CR 608.2b: with its only target illegal the ability
+					// does nothing at all, life gain included (#4082).
+					// The life gain is NOT conditional on the damage
+					// landing — a fogged or prevented 2 still gains 2.
+					effects.Instruction(func(ctx *effects.Context) error {
+						legal := ctx.LegalTargets()
+						if len(legal) == 0 {
+							return nil
+						}
+						return effects.DealDamage{Source: ctx.Item.SourceCardID, Target: legal[0].ID, Amount: 2}.Apply(ctx)
+					}),
+					effects.Instruction(func(ctx *effects.Context) error {
+						if len(ctx.LegalTargets()) == 0 {
+							return nil
+						}
+						return effects.GainLife{Amount: 2}.Apply(ctx)
+					}),
+				),
+			},
+			{
+				Label:   "−3: Target opponent's life total becomes 10.",
+				Cost:    effects.LoyaltyCost(-3),
+				Targets: effects.TargetPlayer("target opponent", effects.Opponent()),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := effects.NewContext(g, item)
+					for _, t := range ctx.LegalTargets() {
+						if t.Kind != game.TargetPlayer {
+							continue
+						}
+						return effects.B31LifeBecomes(ctx, t.ID, 10)
+					}
+					return nil
+				},
+			},
+			{
+				Label:   "−7: You control target player during that player's next turn.",
+				Cost:    effects.LoyaltyCost(-7),
+				Targets: effects.TargetPlayer("target player"),
+				Effect:  effects.ControlTargetPlayerNextTurn("Sorin Markov"),
+			},
+		},
+	})
+}

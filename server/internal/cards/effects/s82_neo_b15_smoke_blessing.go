@@ -8,15 +8,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // damage to its controller and you create a Treasure token."
 
 // SmokeBlessingToken is the Smoke Blessing token's template.
-func SmokeBlessingToken() game.Card { return tokenFromCatalog(printedSmokeBlessingToken) }
+func SmokeBlessingToken() game.Card { return TokenFromCatalog(printedSmokeBlessingToken) }
 
 // printedSmokeBlessingToken is the Smoke Blessing as printed. The trigger is
 // the Aura's own, so "you" is the token's controller (CR 109.5), however the
 // creature is controlled; "its controller" is whoever controlled the
 // creature as it died (last-known information, CR 608.2h), and the creature
 // is the damage source.
-func printedSmokeBlessingToken() tokenTemplate {
-	return tokenTemplate{
+func printedSmokeBlessingToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "smoke-blessing",
 		Card: game.Card{
 			Name:     "Smoke Blessing",

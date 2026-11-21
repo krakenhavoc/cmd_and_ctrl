@@ -28,7 +28,7 @@ import (
 // turn". PlayerTurnTally.AttacksDeclared counts every EventAttack the
 // player announced, so this is one cell (#1009: it used to walk the
 // log back to the turn's upkeep).
-func b18AttackedThisTurn(g *game.Game, player uuid.UUID) bool {
+func B18AttackedThisTurn(g *game.Game, player uuid.UUID) bool {
 	return g.TurnTallyFor(player).AttacksDeclared > 0
 }
 
@@ -38,7 +38,7 @@ func b18AttackedThisTurn(g *game.Game, player uuid.UUID) bool {
 // EventDealDamage to the player, which writes the life total
 // directly and emits no EventChangeLife of its own. Both are folded
 // into PlayerTurnTally.LifeLost as they happen.
-func b18LifeLostThisTurn(g *game.Game, player uuid.UUID) int {
+func B18LifeLostThisTurn(g *game.Game, player uuid.UUID) int {
 	return g.TurnTallyFor(player).LifeLost
 }
 
@@ -47,7 +47,7 @@ func b18LifeLostThisTurn(g *game.Game, player uuid.UUID) int {
 // b18ControlsYourCommander is the lieutenant condition: `player`
 // controls a permanent that is a commander THEY OWN. Owner matters —
 // "your commander" is not an opponent's commander you stole.
-func b18ControlsYourCommander(g *game.Game, player uuid.UUID) bool {
+func B18ControlsYourCommander(g *game.Game, player uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsCommander && c.Owner == player && c.Controller == player {
 			return true
@@ -61,7 +61,7 @@ func b18ControlsYourCommander(g *game.Game, player uuid.UUID) bool {
 // the battlefield for anything whose AttachedTo points at the card
 // (#379's relation) and is an Aura right now; an Equipment does not
 // count.
-func b18AurasAttachedTo(g *game.Game, cardID uuid.UUID) int {
+func B18AurasAttachedTo(g *game.Game, cardID uuid.UUID) int {
 	n := 0
 	for _, a := range g.BattlefieldCardsForEffect() {
 		if a.IsAttachedTo(cardID) && a.IsAura() {
@@ -75,7 +75,7 @@ func b18AurasAttachedTo(g *game.Game, cardID uuid.UUID) int {
 // `player` controls a permanent of the colour. Effective colours, so
 // a Painter's Servant would count, and a colourless artifact does
 // not.
-func b18ControlsPermanentOfColor(g *game.Game, player uuid.UUID, color string) bool {
+func B18ControlsPermanentOfColor(g *game.Game, player uuid.UUID, color string) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.HasColor(color) {
 			return true
@@ -88,8 +88,8 @@ func b18ControlsPermanentOfColor(g *game.Game, player uuid.UUID, color string) b
 
 // b18AnotherAngelOrClericYouControlEntered is Righteous Valkyrie's
 // condition, reading effective subtypes so a changeling counts.
-func b18AnotherAngelOrClericYouControlEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B18AnotherAngelOrClericYouControlEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	if !ok || !c.IsCreature() {
 		return game.Card{}, false
 	}
@@ -103,7 +103,7 @@ func b18AnotherAngelOrClericYouControlEntered(ev game.Event, source *game.Card, 
 // b18SpellCastByYouIsAura is Kor Spiritdancer's "whenever you cast
 // an Aura spell": the spell is on the stack when EventCast fires, so
 // its subtype is read where it sits.
-func b18SpellCastByYouIsAura(ev game.Event, source *game.Card, g *game.Game) bool {
+func B18SpellCastByYouIsAura(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -113,7 +113,7 @@ func b18SpellCastByYouIsAura(ev game.Event, source *game.Card, g *game.Game) boo
 
 // b18OpponentDiscarded is "whenever an opponent discards a card"
 // (Sangromancer) — the discarding player is the event's Actor.
-func b18OpponentDiscarded(ev game.Event, source *game.Card) bool {
+func B18OpponentDiscarded(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventDiscardCard && ev.Actor != uuid.Nil && ev.Actor != source.Controller
 }
 
@@ -121,9 +121,9 @@ func b18OpponentDiscarded(ev game.Event, source *game.Card) bool {
 // controls dies" (Sangromancer): the dead creature was controlled, as
 // it last existed, by someone other than the source's controller
 // (leftUnderControlOf, #1682).
-func b18OpponentsCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) != source.Controller
+func B18OpponentsCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) != source.Controller
 }
 
 // --- effects -----------------------------------------------------
@@ -132,7 +132,7 @@ func b18OpponentsCreatureDied(ev game.Event, source *game.Card, g *game.Game) bo
 // each player draws a card and loses 1 life, APNAP from the active
 // seat, eliminated seats skipped. Draw then loss per player, in the
 // printed order.
-func b18EachPlayerDrawsAndLosesLife(g *game.Game, item *game.StackItem) error {
+func B18EachPlayerDrawsAndLosesLife(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	numSeats := len(g.Seats)
 	if numSeats == 0 {
@@ -178,7 +178,7 @@ func b18EachPlayerDrawsAndLosesLife(g *game.Game, item *game.StackItem) error {
 // Searches are queued in the order the exiled creatures were swept,
 // so the prompts arrive in a stable order; each shuffles as it
 // finishes, which nothing can observe.
-func b18ExileCreaturesThenControllersFetch(ctx *Context, creatures []game.Card, reason string) error {
+func B18ExileCreaturesThenControllersFetch(ctx *Context, creatures []game.Card, reason string) error {
 	ids := make([]uuid.UUID, 0, len(creatures))
 	for _, c := range creatures {
 		if z := ctx.Game.FindCardZoneForEffect(c.InstanceID); z == nil || z.Kind != game.ZoneBattlefield {
@@ -186,7 +186,7 @@ func b18ExileCreaturesThenControllersFetch(ctx *Context, creatures []game.Card, 
 		}
 		ids = append(ids, c.InstanceID)
 	}
-	return ctx.Game.ExileCardsKeyedForEffect(ids, withWord(ctx.ItemTail(b18ExiledControllersFetch), reason))
+	return ctx.Game.ExileCardsKeyedForEffect(ids, WithWord(ctx.ItemTail(b18ExiledControllersFetch), reason))
 }
 
 // b18ExiledControllersFetch is the controllers' basic-land search after the exile (#4253 slice 9). The prompt reason is the Word.

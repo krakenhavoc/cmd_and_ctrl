@@ -14,12 +14,12 @@ import (
 // gapB06FerozsBanToken is Feroz's Ban, the artifact Feroz, Ulgrotha's Warden
 // makes: "Creature spells cost {2} more to cast." The cost modifier rides the
 // template like Tamiyo's Notebook's.
-func gapB06FerozsBanToken() game.Card { return tokenFromCatalog(printedGapB06FerozsBanToken) }
+func GapB06FerozsBanToken() game.Card { return TokenFromCatalog(printedGapB06FerozsBanToken) }
 
 // printedGapB06FerozsBanToken is that token as PRINTED. Its slug is an on-disk
 // identity.
-func printedGapB06FerozsBanToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB06FerozsBanToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "ferozs-ban",
 		Card: game.Card{
 			Name:     "Feroz's Ban",
@@ -34,12 +34,12 @@ func printedGapB06FerozsBanToken() tokenTemplate {
 
 // gapB06GiantBadgerToken is Greensleeves's Giant Badger: a 2/2 green Badger
 // with "Whenever this creature blocks, it gets +2/+2 until end of turn."
-func gapB06GiantBadgerToken() game.Card { return tokenFromCatalog(printedGapB06GiantBadgerToken) }
+func GapB06GiantBadgerToken() game.Card { return TokenFromCatalog(printedGapB06GiantBadgerToken) }
 
 // printedGapB06GiantBadgerToken is that token as PRINTED. Its slug is an
 // on-disk identity.
-func printedGapB06GiantBadgerToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB06GiantBadgerToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "giant-badger",
 		Card: game.Card{
 			Name:      "Giant Badger",
@@ -50,9 +50,9 @@ func printedGapB06GiantBadgerToken() tokenTemplate {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return selfBlocksOnce(ev, source)
+				return SelfBlocksOnce(ev, source)
 			}, "Giant Badger — it gets +2/+2 until end of turn",
-				thisGetsUntilEndOfTurn(2, 2, "Giant Badger — +2/+2 until end of turn")),
+				ThisGetsUntilEndOfTurn(2, 2, "Giant Badger — +2/+2 until end of turn")),
 		},
 		Text: "Whenever this creature blocks, it gets +2/+2 until end of turn.",
 	}
@@ -60,12 +60,12 @@ func printedGapB06GiantBadgerToken() tokenTemplate {
 
 // gapB06LoyaltyCatToken is Worzel's Cat: a 1/1 white Cat with "{T}: Put a
 // loyalty counter on each planeswalker you control."
-func gapB06LoyaltyCatToken() game.Card { return tokenFromCatalog(printedGapB06LoyaltyCatToken) }
+func GapB06LoyaltyCatToken() game.Card { return TokenFromCatalog(printedGapB06LoyaltyCatToken) }
 
 // printedGapB06LoyaltyCatToken is that token as PRINTED. Its slug is an
 // on-disk identity.
-func printedGapB06LoyaltyCatToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB06LoyaltyCatToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "cat-loyalty",
 		Card: game.Card{
 			Name:      "Cat",
@@ -95,7 +95,7 @@ func gapB06LoyaltyOnEachWalker(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: game.CounterLoyalty, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterLoyalty, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

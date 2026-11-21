@@ -116,7 +116,7 @@ func manaActivationPing(name, label string, n int) game.TriggeredAbility {
 // about the command zone, so a Shivan Reef in a mono-blue deck still
 // offers {R} (after {U}). (The narrowing is only for Arcane Signet
 // and Command Tower and their kin, which do print the clause.)
-func painDual(a, b, self string) ManaAbility {
+func PainDual(a, b, self string) ManaAbility {
 	return ManaAbility{
 		Cost:      ManaAbilityCost{Tap: true},
 		Produced:  "{" + a + "|" + b + "}",
@@ -133,7 +133,7 @@ func painDual(a, b, self string) ManaAbility {
 // acceptable one. The planner offers both halves since #2392 (the
 // painful one through its PainToYou declaration), and orders the
 // coloured half in its pain tier, after every painless source.
-func painlessColorless() ManaAbility {
+func PainlessColorless() ManaAbility {
 	return ManaAbility{
 		Cost:     ManaAbilityCost{Tap: true},
 		Produced: "{C}",

@@ -36,7 +36,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{1}: Choose target creature with a counter on it. When that creature dies this turn, return that card to its owner's hand.",
 			Cost:    ManaCost("{1}"),
-			Targets: TargetCreature("target creature with a counter on it", b41HasACounter()),
+			Targets: TargetCreature("target creature with a counter on it", B41HasACounter()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				ts := ctx.LegalTargets()
@@ -60,9 +60,9 @@ func ReturnToHandWhenItDiesThisTurn(ctx *Context, id uuid.UUID, label string) {
 		SourceCardID: ctx.Source(),
 		Label:        label,
 		On:           []game.EventKind{game.EventLTB},
-		Condition:    theListedObjectDiedCondition,
+		Condition:    TheListedObjectDiedCondition,
 		Cards:        []uuid.UUID{id},
 		Duration:     &d,
-		Body:         returnListedGraveyardToHandBody,
+		Body:         ReturnListedGraveyardToHandBody,
 	})
 }

@@ -1,0 +1,115 @@
+package testsi
+
+import (
+	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+const kozileksCommandOracle = "2f2c549d-0293-4b9d-b9a8-ff392800f3a5"
+
+// TestKozileksCommandSpawnsTokensAndExilesACreature picks bullets 0
+// and 2: X Eldrazi Spawn tokens for a target player, and exiling a
+// creature with mana value X or less.
+func TestKozileksCommandSpawnsTokensAndExilesACreature(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	weenie := effectstest.B12Creature(g, opp.ID, "Weenie", "Creature — Bear", 2, 2)
+
+	effectstest.B19CastXModal(t, g, "Kozilek's Command", "Kindred Instant — Eldrazi", kozileksCommandOracle, "{X}{C}{C}", 2,
+		[]int{0, 2},
+		[]game.TargetRef{
+			effectstest.ModeRef(game.TargetPlayer, me.ID, 0, 0),
+			effectstest.ModeRef(game.TargetCard, weenie, 1, 0),
+		})
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if g.Battlefield.Contains(weenie) {
+		t.Error("the mana-value-2-or-less creature should have been exiled")
+	}
+	spawns := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == me.ID && c.Name == "Eldrazi Spawn" {
+			spawns++
+		}
+	}
+	if spawns != 2 {
+		t.Errorf("X=2 should create two Eldrazi Spawn tokens, got %d", spawns)
+	}
+}
+
+// TestKozileksCommandScryThenDraw picks bullet 1 alongside bullet 0.
+func TestKozileksCommandScryThenDraw(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.SeedLibrary(me, "Bottom Me", "Bottom Too")
+
+	effectstest.B19CastXModal(t, g, "Kozilek's Command", "Kindred Instant — Eldrazi", kozileksCommandOracle, "{X}{C}{C}", 2,
+		[]int{0, 1},
+		[]game.TargetRef{
+			effectstest.ModeRef(game.TargetPlayer, me.ID, 0, 0),
+			effectstest.ModeRef(game.TargetPlayer, me.ID, 1, 0),
+		})
+	effectstest.PassPriorityAroundTable(t, g)
+
+	c := effectstest.ScryChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatalf("no scry-X prompt: %+v", g.PendingChoices)
+	}
+	if len(c.ScryCards) != 2 {
+		t.Fatalf("scry X=2 should offer two cards: %d", len(c.ScryCards))
+	}
+	hand := me.Hand.Size()
+	if err := g.ResolveScry(c.ID, me.ID, c.ScryCards, nil); err != nil {
+		t.Fatalf("ResolveScry: %v", err)
+	}
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("scry X then draw a card: hand %d, want %d", me.Hand.Size(), hand+1)
+	}
+}
+
+// TestKozileksCommandExilesUpToXFromGraveyards: the fourth bullet takes
+// any number of cards from zero to X (#1738).
+func TestKozileksCommandExilesUpToXFromGraveyards(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	a := effectstest.GraveCreature(me, "Mine A", "{1}")
+	b := effectstest.GraveCreature(opp, "Theirs B", "{2}")
+
+	effectstest.B19CastXModal(t, g, "Kozilek's Command", "Kindred Instant — Eldrazi", kozileksCommandOracle, "{X}{C}{C}", 2,
+		[]int{0, 3},
+		[]game.TargetRef{
+			effectstest.ModeRef(game.TargetPlayer, me.ID, 0, 0),
+			effectstest.ModeRef(game.TargetCard, a, 1, 0),
+			effectstest.ModeRef(game.TargetCard, b, 1, 0),
+		})
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(a) || !g.Exile.Contains(b) {
+		t.Error("both graveyard cards named should be exiled")
+	}
+}
+
+// Fewer cards than X is a legal announcement.
+func TestKozileksCommandExilesFewerThanXFromGraveyards(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	a := effectstest.GraveCreature(me, "Mine A", "{1}")
+	b := effectstest.GraveCreature(opp, "Theirs B", "{2}")
+
+	effectstest.B19CastXModal(t, g, "Kozilek's Command", "Kindred Instant — Eldrazi", kozileksCommandOracle, "{X}{C}{C}", 3,
+		[]int{0, 3},
+		[]game.TargetRef{
+			effectstest.ModeRef(game.TargetPlayer, me.ID, 0, 0),
+			effectstest.ModeRef(game.TargetCard, a, 1, 0),
+		})
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if !g.Exile.Contains(a) {
+		t.Error("the one named graveyard card should be exiled")
+	}
+	if g.Exile.Contains(b) {
+		t.Error("the card that was not named stays")
+	}
+}

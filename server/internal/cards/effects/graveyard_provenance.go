@@ -33,7 +33,7 @@ import (
 // that was already in the graveyard when the turn began.
 //
 // Caller holds g.mu.
-func discardedOrMilledThisTurn(g *game.Game, cardID uuid.UUID) bool {
+func DiscardedOrMilledThisTurn(g *game.Game, cardID uuid.UUID) bool {
 	inArrival, counts := false, false
 	for _, ev := range g.EventsThisTurn() {
 		if ev.CardID != cardID {
@@ -63,13 +63,13 @@ func discardedOrMilledThisTurn(g *game.Game, cardID uuid.UUID) bool {
 // types, so it still counts.
 //
 // Caller holds g.mu.
-func descendedThisTurn(g *game.Game, player uuid.UUID) bool {
+func DescendedThisTurn(g *game.Game, player uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if ev.NewZone != game.ZoneGraveyard || ev.OldZone == game.ZoneGraveyard || ev.CardID == uuid.Nil {
 			continue
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		if ok && c.Owner == player && isPermanentCard(c) {
+		if ok && c.Owner == player && IsPermanentCard(c) {
 			return true
 		}
 	}

@@ -118,7 +118,7 @@ func RegisterBlighted(key string, then func(ctx *Context, d BlightDone) error) B
 		tailKey = "test/blighted-" + rest
 	}
 	done := CardTail(tailKey, func(ctx *Context, o game.TailOutcome) error {
-		lists := unpackIDLists(o.Tail.Carry)
+		lists := UnpackIDLists(o.Tail.Carry)
 		for len(lists) < 3 {
 			lists = append(lists, nil)
 		}
@@ -148,7 +148,7 @@ func RegisterBlighted(key string, then func(ctx *Context, d BlightDone) error) B
 			Ref:    blightPlaceNext,
 			Player: ctx.Controller(),
 			Source: r.Source,
-			Carry:  packIDLists(r.Carry, players, creatures),
+			Carry:  PackIDLists(r.Carry, players, creatures),
 			Nums:   append([]int{n, 0, 0}, nums...),
 			Next:   &next,
 		}
@@ -174,7 +174,7 @@ var blightPlaceNext = game.RegisterTail("blight/place-next", func(g *game.Game, 
 		return nil
 	}
 	n, next, placed := t.Nums[0], t.Nums[1], t.Nums[2]+o.Amount
-	lists := unpackIDLists(t.Carry)
+	lists := UnpackIDLists(t.Carry)
 	for len(lists) < 3 {
 		lists = append(lists, nil)
 	}
@@ -185,7 +185,7 @@ var blightPlaceNext = game.RegisterTail("blight/place-next", func(g *game.Game, 
 		return g.BlightKeyedForEffect(players[next], creatures[next], n, step)
 	}
 	done := *t.Next
-	done.Carry = packIDLists(carry, players, creatures)
+	done.Carry = PackIDLists(carry, players, creatures)
 	done.Nums = append([]int(nil), t.Nums[3:]...)
 	return done.RunTold(g, creatures, placed)
 })
@@ -216,7 +216,7 @@ func (b Blight) Apply(ctx *Context) error {
 		floor = 0
 	}
 	var legs []game.ChooseCardsPrompt
-	for _, seat := range apnapPlayers(ctx.Game) {
+	for _, seat := range ApnapPlayers(ctx.Game) {
 		if !named[seat] {
 			continue
 		}

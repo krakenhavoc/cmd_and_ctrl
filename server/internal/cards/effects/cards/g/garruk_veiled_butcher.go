@@ -1,0 +1,142 @@
+package cardsg
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Garruk, Veiled Butcher — Legendary Planeswalker — Garruk {3}{B}{B},
+// loyalty 5 (Reality Fracture):
+//
+//		"If a creature an opponent controls would die, exile it instead.
+//		 +2: Up to one target creature gets -4/-1 until your next turn.
+//		 −2: Each player sacrifices a creature of their choice. If you
+//		     sacrificed a creature this way, create a 4/4 green Beast
+//		     creature token with trample.
+//		 −3: Each opponent discards two cards. For each opponent who didn't
+//		     discard two nonland cards this way, you draw a card."
+//
+//	  - The static is a CR 614 replacement on a creature moving from the
+//	    battlefield to the graveyard, Liesa's shape: the creature is exiled,
+//	    so it never died and its dies-triggers do not fire. "An opponent
+//	    controls" is read as the creature stands on the battlefield.
+//	  - The −2 is the Rise of the Witch-king edict: one prompt per seat,
+//	    the token only if the controller's own run named a creature.
+//	  - The −3 asks every opponent for two cards with the engine's discard
+//	    fan-out, then draws once per opponent whose answer was not two
+//	    nonland cards. An opponent with fewer than two cards (or an empty
+//	    hand, who is never asked) did not discard two nonland cards.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "4a6972fe-348a-4a19-a1d0-bdf8f1f9c792",
+		Name:         "Garruk, Veiled Butcher",
+		Completeness: effects.CompletenessFull,
+		Replacements: []game.ReplacementEffect{{
+			Watches:   []game.EventKind{game.EventZoneMove},
+			AppliesTo: effects.RfOpponentCreatureWouldDie,
+			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+				ev.NewZone = game.ZoneExile
+				ev.NewZoneOwner = uuid.Nil
+				return nil
+			},
+			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+				return src.Controller
+			},
+			Label: "Garruk, Veiled Butcher: exile instead of dying",
+		}},
+		Activated: []effects.ActivatedAbility{
+			{
+				Label:   "+2: Up to one target creature gets -4/-1 until your next turn.",
+				Cost:    effects.LoyaltyCost(2),
+				Targets: effects.TargetCreature("up to one target creature").WithCount(0, 1),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := effects.NewContext(g, item)
+					for _, t := range ctx.LegalTargets() {
+						if t.Kind != game.TargetCard {
+							continue
+						}
+						if err := (effects.ScopedEffectFor{
+							Target:   t.ID,
+							Mods:     []game.Mod{game.ModifyPTMod(-4, -1)},
+							Duration: effects.DurationUntilYourNextTurn(ctx, ctx.Controller()),
+							Label:    "Garruk, Veiled Butcher — -4/-1 until your next turn",
+						}).Apply(ctx); err != nil {
+							return err
+						}
+					}
+					return nil
+				},
+			},
+			{
+				Label: "−2: Each player sacrifices a creature of their choice. If you sacrificed a creature this way, create a 4/4 green Beast creature token with trample.",
+				Cost:  effects.LoyaltyCost(-2),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return effects.EachPlayerSacrifices{
+						Match: effects.Creature(),
+						Label: "a creature",
+						Keyed: garrukVeiledButcherEdicted,
+					}.Apply(effects.NewContext(g, item))
+				},
+			},
+			{
+				Label:  "−3: Each opponent discards two cards. For each opponent who didn't discard two nonland cards this way, you draw a card.",
+				Cost:   effects.LoyaltyCost(-3),
+				Effect: garrukVeiledButcherMinusThree,
+			},
+		},
+	})
+}
+
+// garrukVeiledButcherEdicted is the Beast once the edict has landed and
+// the controller sacrificed a creature, keyed (#4290).
+var garrukVeiledButcherEdicted = effects.RegisterEdictThen("prompt-run/garruk-veiled-butcher-beast", func(ctx *effects.Context, sacrificed game.PromptedSacrifices) error {
+	if !sacrificed.Sacrificed(ctx.Controller()) {
+		return nil
+	}
+	return effects.CreateToken{Template: effects.TokenCard("4/4 green Beast with trample"), N: 1}.Apply(ctx)
+})
+
+func garrukVeiledButcherMinusThree(g *game.Game, item *game.StackItem) error {
+	// Keyed (#4290): the controller rides the run as its carry, so a
+	// table waiting on any opponent's discard is a restore point.
+	return g.EachPlayerDiscardsThenKeyedForEffect(item.Controller,
+		game.DiscardPrompt{
+			Source:   item.SourceCardID,
+			N:        2,
+			Question: "Garruk, Veiled Butcher — discard two cards",
+		},
+		garrukVeiledButcherDraws, []uuid.UUID{item.Controller})
+}
+
+// garrukVeiledButcherDraws is "for each opponent who didn't discard two
+// nonland cards this way, you draw a card", once every opponent has
+// answered.
+var garrukVeiledButcherDraws = game.RegisterPromptRunThen("prompt-run/garruk-veiled-butcher-draws", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	controller := r.Carry[0]
+	discarded := r.Discards()
+	draws := 0
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated || p.ID == controller {
+			continue
+		}
+		cards := discarded.By(p.ID)
+		ok := len(cards) == 2
+		for _, id := range cards {
+			if c, found := g.LookupCardForEffect(id); !found || c.IsLand() {
+				ok = false
+			}
+		}
+		if !ok {
+			draws++
+		}
+	}
+	if draws == 0 {
+		return nil
+	}
+	return g.DrawNForEffect(controller, draws)
+})

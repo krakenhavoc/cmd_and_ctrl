@@ -12,8 +12,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "may" is asked as the trigger resolves (CR 603.5). The return goes
 // through BounceToHand's CR 400.7 guard, so an Onna that left and came
 // back as a new object stays where it is.
-func sokB1OnnaReturn(name string) game.TriggeredAbility {
-	return Optional(WheneverYouCast(chkB1SpiritOrArcane(), name+" — return it to its owner's hand",
+func SokB1OnnaReturn(name string) game.TriggeredAbility {
+	return Optional(WheneverYouCast(ChkB1SpiritOrArcane(), name+" — return it to its owner's hand",
 		func(g *game.Game, item *game.StackItem) error {
 			return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
 		}), name+" — return this creature to its owner's hand?")
@@ -25,7 +25,7 @@ func sokB1OnnaReturn(name string) game.TriggeredAbility {
 // the creature is picked as the trigger resolves, the source itself
 // included; with none there is nothing to return. The colour is read off
 // the effective colours, as a word of the card's text.
-func sokB1ReturnACreatureOfColour(name, colour, word string) game.TriggeredAbility {
+func SokB1ReturnACreatureOfColour(name, colour, word string) game.TriggeredAbility {
 	return AtYourUpkeep(name+" — return a "+word+" creature you control", Do(ReturnOneYouControl{
 		Match:    func(c game.Card) bool { return c.IsCreature() && c.HasColorWord(colour) },
 		Question: name + " — return a " + word + " creature you control to its owner's hand",
@@ -35,6 +35,6 @@ func sokB1ReturnACreatureOfColour(name, colour, word string) game.TriggeredAbili
 // sokB1CardsInYourHand is "the number of cards in your hand", counted as
 // the spell or ability resolves (CR 608.2h): a spell that counts its
 // caster's hand is on the stack by then, so it does not count itself.
-func sokB1CardsInYourHand(ctx *Context) int {
-	return cardsInHand(ctx.Game, ctx.Controller())
+func SokB1CardsInYourHand(ctx *Context) int {
+	return CardsInHand(ctx.Game, ctx.Controller())
 }

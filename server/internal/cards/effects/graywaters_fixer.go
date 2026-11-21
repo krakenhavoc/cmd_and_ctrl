@@ -67,7 +67,7 @@ func graywatersFixerRecipient(card *game.Card, g *game.Game, source *game.Card) 
 	if _, ok := card.ParsedManaValue(); !ok {
 		return false
 	}
-	return outlaw()(g, source.Controller, *card)
+	return Outlaw()(g, source.Controller, *card)
 }
 
 // ItsManaValue is "{X}, where X is its mana value" as the mana component of

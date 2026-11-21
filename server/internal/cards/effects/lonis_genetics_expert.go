@@ -41,12 +41,12 @@ func init() {
 			{
 				Watches: []game.EventKind{game.EventCounterPlaced},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return ev.Target == source.InstanceID && b33CountersPlacedDelta(ev, game.CounterPlusOne, g) > 0
+					return ev.Target == source.InstanceID && B33CountersPlacedDelta(ev, game.CounterPlusOne, g) > 0
 				},
 				Key: investigateLabel,
 				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 					item := game.NewTriggeredItem(source, investigateLabel)
-					item.Params.Amount = b33CountersPlacedDelta(ev, game.CounterPlusOne, g)
+					item.Params.Amount = B33CountersPlacedDelta(ev, game.CounterPlusOne, g)
 					return item
 				},
 				Effect: func(g *game.Game, item *game.StackItem) error {
@@ -56,9 +56,9 @@ func init() {
 					return Investigate{Player: item.Controller, N: item.Params.Amount}.Apply(NewContext(g, item))
 				},
 			},
-			Targeting(On(game.EventSacrifice, lonisYouSacrificedAClue,
+			Targeting(On(game.EventSacrifice, LonisYouSacrificedAClue,
 				"Lonis, Genetics Expert — put a +1/+1 counter on another target creature you control",
-				putPlusOneCounterOnEachLegalTarget),
+				PutPlusOneCounterOnEachLegalTarget),
 				Another(TargetCreature("another target creature you control", YouControl()))),
 		},
 	})
@@ -66,7 +66,7 @@ func init() {
 
 // lonisYouSacrificedAClue is "you sacrifice a Clue": EventSacrifice
 // fires before the zone move, so the Clue is still there to be read.
-func lonisYouSacrificedAClue(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func LonisYouSacrificedAClue(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller || ev.CardID == uuid.Nil {
 		return false
 	}

@@ -37,7 +37,7 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfAlaraOracleID,
+		OracleID:     InvasionOfAlaraOracleID,
 		Name:         "Invasion of Alara",
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -53,7 +53,7 @@ func init() {
 
 // invasionOfAlaraOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfAlaraOracleID = "8faa4330-07bb-4b65-810a-bbce29d3cd42"
+const InvasionOfAlaraOracleID = "8faa4330-07bb-4b65-810a-bbce29d3cd42"
 
 // invasionOfAlaraHit is "a nonland card with mana value 4 or less". An
 // unreadable cost is not a hit (cascade's reading).

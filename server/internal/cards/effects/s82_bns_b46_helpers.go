@@ -6,7 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // your opponents have cast this turn": the per-turn cast tally of every
 // other seat still in the game. The spell being priced is not in its
 // caster's tally yet, and the caster is excluded anyway.
-func opponentSpellsCastThisTurn(q game.CostQuery) int {
+func OpponentSpellsCastThisTurn(q game.CostQuery) int {
 	if q.Game == nil {
 		return 0
 	}

@@ -17,7 +17,7 @@ import (
 // really removed, so a source that left or lost its counter gives nothing.
 // The damaged player rides the reflexive trigger's params, for "that
 // player".
-func s82NeoB06RemoveKeywordCounterThen(kind, label string, body game.BodyRef) func(*game.Game, *game.StackItem) error {
+func S82NeoB06RemoveKeywordCounterThen(kind, label string, body game.BodyRef) func(*game.Game, *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		if item.Trigger == nil {
 			return nil
@@ -41,7 +41,7 @@ func s82NeoB06RemoveKeywordCounterThen(kind, label string, body game.BodyRef) fu
 // s82NeoB06ThatPlayerRevealsHandExile is Biting-Palm Ninja's reflexive body:
 // "that player reveals their hand and you choose a nonland card from it.
 // Exile that card."
-var s82NeoB06RevealHandExileBody = game.ReflexiveBody("s82-neo-b06/biting-palm-ninja-reveal-exile",
+var S82NeoB06RevealHandExileBody = game.ReflexiveBody("s82-neo-b06/biting-palm-ninja-reveal-exile",
 	func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 		if p.Player == uuid.Nil {
 			return nil

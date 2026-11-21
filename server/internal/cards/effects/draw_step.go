@@ -25,7 +25,7 @@ func eachOtherPlayersDrawStep(_ *game.Game, source *game.Card, activePlayer uuid
 // draw a card during each other player's draw step" — the source's
 // controller draws N cards (default 1) during any other player's draw
 // step.
-func drawDuringEachOtherPlayersDrawStep(label string, n int) game.DrawStepPermission {
+func DrawDuringEachOtherPlayersDrawStep(label string, n int) game.DrawStepPermission {
 	return game.DrawStepPermission{
 		Label:     label,
 		AppliesTo: eachOtherPlayersDrawStep,

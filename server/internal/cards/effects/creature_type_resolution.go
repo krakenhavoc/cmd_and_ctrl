@@ -47,7 +47,7 @@ func ChooseCreatureTypeTail(g *game.Game, chooser, source uuid.UUID, question st
 // is not run when nobody chose. It runs against the Context of CardTail.
 // The key is an on-disk identity (ledgered "tail <key>"): never renamed,
 // never reused.
-func creatureTypeChosen(key string, body func(ctx *Context, creatureType string, o game.TailOutcome) error) game.TailRef {
+func CreatureTypeChosen(key string, body func(ctx *Context, creatureType string, o game.TailOutcome) error) game.TailRef {
 	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
 		if o.Tail.Word == "" {
 			return nil
@@ -60,7 +60,7 @@ func creatureTypeChosen(key string, body func(ctx *Context, creatureType string,
 // type `t` — "for each permanent you control of that type". Reads
 // through Card.HasSubtype, so a changeling counts for every type
 // (CR 702.73a) and a layer-4 grant counts too.
-func permanentsOfTypeYouControl(g *game.Game, player uuid.UUID, t string) int {
+func PermanentsOfTypeYouControl(g *game.Game, player uuid.UUID, t string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.HasSubtype(t) {
@@ -73,7 +73,7 @@ func permanentsOfTypeYouControl(g *game.Game, player uuid.UUID, t string) int {
 // creaturesOfTypeYouControl is the creature-only form ("for each
 // creature you control of the chosen type"), as instance IDs in
 // battlefield order.
-func creaturesOfTypeYouControl(g *game.Game, player uuid.UUID, t string) []uuid.UUID {
+func CreaturesOfTypeYouControl(g *game.Game, player uuid.UUID, t string) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() && c.HasSubtype(t) {
@@ -86,7 +86,7 @@ func creaturesOfTypeYouControl(g *game.Game, player uuid.UUID, t string) []uuid.
 // notOfCreatureType is "creatures that aren't of the chosen type": a
 // creature whose types do not include `t`. A changeling is of every
 // type, so it is never matched.
-func notOfCreatureType(t string) CardPredicate {
+func NotOfCreatureType(t string) CardPredicate {
 	return And(Creature(), Not(OfCreatureType(t)))
 }
 
@@ -94,7 +94,7 @@ func notOfCreatureType(t string) CardPredicate {
 // with `first` — the order "each player chooses" is asked in (CR 101.4:
 // active player first, then turn order; the caster stands in for the
 // active player, which is exact for a sorcery).
-func seatsFromController(g *game.Game, first uuid.UUID) []uuid.UUID {
+func SeatsFromController(g *game.Game, first uuid.UUID) []uuid.UUID {
 	start := 0
 	for i, p := range g.Seats {
 		if p != nil && p.ID == first {

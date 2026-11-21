@@ -9,8 +9,8 @@ import (
 // gapB33EachPlayerLosesAThirdOfTheirLife is "each player loses a third of
 // their life, round up" (Pox): the caster first, then each opponent in seat
 // order. A player at zero or less loses nothing.
-func gapB33EachPlayerLosesAThirdOfTheirLife(ctx *Context) error {
-	for _, id := range tablePlayers(ctx) {
+func GapB33EachPlayerLosesAThirdOfTheirLife(ctx *Context) error {
+	for _, id := range TablePlayers(ctx) {
 		p := ctx.PlayerByID(id)
 		if p == nil || p.Eliminated || p.Life <= 0 {
 			continue
@@ -27,18 +27,18 @@ func gapB33EachPlayerLosesAThirdOfTheirLife(ctx *Context) error {
 // gapB33SacrificeAThird asks every seat to sacrifice a third (rounded up) of
 // the permanents it controls that match, counted as the instruction starts.
 // then is the registered rest of the card (the zero value for none).
-func gapB33SacrificeAThird(ctx *Context, match CardPredicate, label string, then game.PromptRunThen) error {
+func GapB33SacrificeAThird(ctx *Context, match CardPredicate, label string, then game.PromptRunThen) error {
 	var asks []uuid.UUID
-	for _, seat := range tablePlayers(ctx) {
+	for _, seat := range TablePlayers(ctx) {
 		if p := ctx.PlayerByID(seat); p == nil || p.Eliminated {
 			continue
 		}
-		owed := (len(permanentsControlledByMatching(ctx.Game, seat, match)) + 2) / 3
+		owed := (len(PermanentsControlledByMatching(ctx.Game, seat, match)) + 2) / 3
 		for i := 0; i < owed; i++ {
 			asks = append(asks, seat)
 		}
 	}
-	spec := sacrificeSpec(label, match)
+	spec := SacrificeSpec(label, match)
 	reason := "Pox — sacrifice a third of the " + label
 	if len(asks) == 0 {
 		if then.Valid() {

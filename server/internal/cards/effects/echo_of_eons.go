@@ -42,16 +42,16 @@ func init() {
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{2}{U}")},
-		OnResolve:        echoOfEonsResolve,
+		OnResolve:        EchoOfEonsResolve,
 	})
 }
 
 // echoOfEonsResolve is "each player shuffles their hand and graveyard into
 // their library, then draws seven cards", shared with Memory (Commit //
 // Memory), which prints the same sentence.
-func echoOfEonsResolve(_ *game.StackItem, ctx *Context) error {
-	players := tablePlayers(ctx)
-	return echoOfEonsShuffleEach(ctx.Game, players, players)
+func EchoOfEonsResolve(_ *game.StackItem, ctx *Context) error {
+	players := TablePlayers(ctx)
+	return EchoOfEonsShuffleEach(ctx.Game, players, players)
 }
 
 // echoOfEonsShuffleEach tucks the head player's hand and graveyard
@@ -66,12 +66,12 @@ func echoOfEonsResolve(_ *game.StackItem, ctx *Context) error {
 // closure boundary, the same discipline jaceUltimate
 // (jace_the_mind_sculptor.go) follows for the identical reason — undo
 // resolves a delayed continuation against a cloned game.
-func echoOfEonsShuffleEach(g *game.Game, remaining, all []uuid.UUID) error {
+func EchoOfEonsShuffleEach(g *game.Game, remaining, all []uuid.UUID) error {
 	if len(remaining) == 0 {
-		return echoOfEonsDrawEach(g, all)
+		return EchoOfEonsDrawEach(g, all)
 	}
 	id, rest := remaining[0], remaining[1:]
-	ids := append(allHandCardIDs(g, id), echoOfEonsGraveyardCardIDs(g, id)...)
+	ids := append(AllHandCardIDs(g, id), EchoOfEonsGraveyardCardIDs(g, id)...)
 	// Keyed (#4253 slice 10a): Player is the seat that shuffles next,
 	// Carry the full roster then the seats still to go, N the roster's
 	// length.
@@ -94,7 +94,7 @@ func init() {
 		if n == 0 {
 			all = nil
 		}
-		return echoOfEonsShuffleEach(g, rest, all)
+		return EchoOfEonsShuffleEach(g, rest, all)
 	})
 }
 
@@ -102,7 +102,7 @@ func init() {
 // once every shuffle above has landed. A draw does not pause on
 // anything a commander would care about, so a plain loop is enough
 // here where the shuffle phase needed recursion.
-func echoOfEonsDrawEach(g *game.Game, players []uuid.UUID) error {
+func EchoOfEonsDrawEach(g *game.Game, players []uuid.UUID) error {
 	for _, id := range players {
 		if err := g.DrawNForEffect(id, 7); err != nil {
 			return err
@@ -114,7 +114,7 @@ func echoOfEonsDrawEach(g *game.Game, players []uuid.UUID) error {
 // echoOfEonsGraveyardCardIDs is every card in a player's graveyard, in
 // zone order — the graveyard half of "shuffles their hand and
 // graveyard into their library", alongside allHandCardIDs's hand half.
-func echoOfEonsGraveyardCardIDs(g *game.Game, player uuid.UUID) []uuid.UUID {
+func EchoOfEonsGraveyardCardIDs(g *game.Game, player uuid.UUID) []uuid.UUID {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return nil
