@@ -3821,6 +3821,7 @@ tail tail/s82-neo-b18-behold-the-unspeakable-draw-two
 tail tail/s82-neo-b18-kirin-orochi-counter
 tail tail/s82-neo-b18-kirin-orochi-spirit
 tail tail/sensational-spider-man-after-stun
+tail tail/the-moment-then-sacrifice
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
 tail tail/winter-cynical-opportunist-exiled
