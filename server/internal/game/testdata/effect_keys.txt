@@ -1386,9 +1386,9 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
-choose choose-cards/vault-21-house-gambit-reveal
 choose choose-cards/vault-101-attach
 choose choose-cards/vault-101-put
+choose choose-cards/vault-21-house-gambit-reveal
 choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/victor-valgavoths-seneschal-reanimate
