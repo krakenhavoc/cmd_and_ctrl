@@ -73,6 +73,7 @@ Mirrormere Guardian | ring | on a triggered row that is not the card's enters ef
 Misty Mountains Raider | amass | on a triggered row that is not the card's enters effect, which nothing prices
 Model of Unity | scry | the text makes it conditional or optional
 Moria Scavenger | amass | the text makes it conditional or optional
+Multiple Choice | scry | the text makes it conditional or optional
 Neva, Stalked by Nightmares | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Norn's Wellspring | scry | on a triggered row that is not the card's enters effect, which nothing prices
 One Ring to Rule Them All | ring | on a triggered row that is not the card's enters effect, which nothing prices

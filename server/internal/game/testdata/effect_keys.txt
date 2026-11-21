@@ -1836,6 +1836,7 @@ confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
 confirm may/shakedown-heavy-draw
 confirm may/soulbright-flamekin-add-mana
+confirm multiple-choice/may-choose-player
 confirm s82-bns-b28/draugr-to-graveyard
 confirm s82-bro-b07/sarinth-take-land
 confirm s82-bro-b07/sarinth-to-graveyard
@@ -2076,6 +2077,7 @@ option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
 option option-pick/multiform-wonder-keyword
+option option-pick/multiple-choice-player
 option option-pick/mutinous-massacre-parity
 option option-pick/narset-of-the-ancient-way-mana
 option option-pick/nazgul-battle-mace-pay-or-take
@@ -2687,6 +2689,7 @@ run prompt-run/mica-reader-of-ruins-copy
 run prompt-run/midnight-crusader-shuttle-take
 run prompt-run/momentum-breaker-discard
 run prompt-run/mukotai-soulripper-grow
+run prompt-run/multiple-choice-bounce
 run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
@@ -3463,6 +3466,7 @@ tail indoctrination-attendant/mite
 tail infernal-vessel/demon
 tail insidious-roots/counter-on-each-plant
 tail instrument-of-the-bards/treasure-if-legendary
+tail interpret-the-signs/reveal-and-draw
 tail intuition/choose
 tail invasion-of-arcavios/library-found
 tail invasion-of-kaldheim/draw-and-play
@@ -3598,6 +3602,7 @@ tail msh-a6/origin-of-the-avengers-draw
 tail msh-a7/rick-jones-after-mill
 tail msh-a8/tricksters-stratagem-connive
 tail msh-a9/ultron-robot-villain
+tail multiple-choice/scry-then-draw
 tail mutinous-massacre/steal-everything
 tail myr-custodian/ask-opponents
 tail myriad/exile-tokens-at-end-of-combat
