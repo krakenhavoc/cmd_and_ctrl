@@ -268,6 +268,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 230 (#5948).
 	"Lae'zel's Acrobatics": "exiles only the nontoken creatures its caster controls and returns them (at once on a high roll, then again at the next end step): a blink of the caster's own board, not a wipe",
+
+	// S82 GAP batch 231 (#5948).
+	"Cloudkill": "-X/-X to every creature where X is the greatest mana value of a commander its caster owns on the battlefield or in the command zone: no fixed amount a sweep can declare, and zero with no commander",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

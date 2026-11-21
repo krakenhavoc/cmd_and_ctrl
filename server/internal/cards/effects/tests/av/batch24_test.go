@@ -72,9 +72,9 @@ func TestBatch24CardsAreRegistered(t *testing.T) {
 	// express, and a spec would ship the card stronger than printed.
 	// Dread Presence came off with the modal trigger (#5948). Linvala and Cursed Totem came off this list with #1210's
 	// activation gate and are in `want` above, and Vat of Rebirth came
-	// off with the remove-counters cost (#2952).
+	// off with the remove-counters cost (#2952). Ascend from Avernus came off with
+	// a spell's own exile step as it resolves (Reunion of the House's, #5948).
 	for _, skipped := range []string{
-		"451e8ece-7389-4d52-8bc9-450cb5e53e6a", // Ascend from Avernus — a spell exiling itself as it resolves
 		"be6155de-c5b2-415c-ad83-142f9926462a", // Khalni Heart Expedition — remove-counters cost
 	} {
 		if _, ok := effects.Lookup(skipped); ok {

@@ -1,10 +1,7 @@
 package cardsr
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Reunion of the House — Sorcery {5}{W}{W} (Tarkir: Dragonstorm Commander):
@@ -30,18 +27,7 @@ func init() {
 		Targets: effects.TargetCardInGraveyard("any number of target creature cards with total power 10 or less from your graveyard",
 			effects.Creature(), effects.YouOwn()).WithCount(0, 0).WithTotal(effects.CmdrB13TotalPowerAtMost(10)),
 		OnResolve: effects.ResolveSteps(
-			effects.Instruction(func(ctx *effects.Context) error {
-				var ids []uuid.UUID
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						ids = append(ids, t.ID)
-					}
-				}
-				if len(ids) == 0 {
-					return nil
-				}
-				return effects.PutCardsFromZoneTogether(ctx, game.ZoneGraveyard, ids, ctx.Controller(), false)
-			}),
+			effects.Instruction(effects.ReturnLegalGraveyardTargetsToBattlefieldTogether),
 			effects.Instruction(func(ctx *effects.Context) error { return effects.ExileTarget{Target: ctx.Source()}.Apply(ctx) }),
 		),
 	})
