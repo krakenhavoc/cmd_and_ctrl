@@ -452,6 +452,7 @@ body stensia-uprising/damage
 body stitched-assistant/scry-draw
 body stolen-uniform/unattach-the-equipment
 body storm/the-spell-just-cast
+body strax-sontaran-nurse/fight
 body summon-kujata/fire-damage
 body sunburst/that-spell-gains
 body sunfire-torch/damage
@@ -478,6 +479,7 @@ body the-ancient-one/mill
 body the-deck-of-many-things/owner-loses
 body the-falcon-airship-restored/return
 body the-fire-nation-drill/destroy
+body the-fugitive-doctor/flashback
 body the-last-ronin/attacks-alone
 body the-last-ronin/return
 body the-mindskinner/each-opponent-mills
@@ -2665,6 +2667,7 @@ run prompt-run/tenured-tethermage-tokens
 run prompt-run/terror-ballista-sacrifice
 run prompt-run/the-death-of-gwen-stacy-lose-life
 run prompt-run/the-eternal-wanderer-sacrifice-the-rest
+run prompt-run/the-fugitive-doctor-sacrifice
 run prompt-run/the-goose-mother-sacrifice-draw
 run prompt-run/the-huntsmans-redemption-sacrificed
 run prompt-run/the-legend-of-yangchen-exile
@@ -3156,6 +3159,7 @@ tail engine/explore-after-scry
 tail engine/explore-ask
 tail engine/explore-done
 tail engine/face-down-permitted-granted
+tail engine/foretold-by-effect
 tail engine/foretold-exiled
 tail engine/gain-suspend-exiled
 tail engine/impulse-exile-granted
@@ -3687,6 +3691,7 @@ tail sacrificed-one/prompt-run/spirit-sisters-call-return
 tail sacrificed-one/prompt-run/strefan-maurer-progenitor-put
 tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/terror-ballista-sacrifice
+tail sacrificed-one/prompt-run/the-fugitive-doctor-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
