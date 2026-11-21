@@ -219,6 +219,7 @@ body glorifier-of-suffering/counters
 body gnawing-crescendo/cant-block-rat
 body goad/clear-listed
 body good-king-mog/copy-a-non-saga-token
+body gorbag-of-minas-morgul/modes
 body graf-reaver/destroy
 body grant/double-strike-and-trample-until-eot
 body graveyard/return-listed-to-hand
@@ -323,6 +324,7 @@ body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
 body ochre-jelly/split-token
 body offspring/granted-token
+body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body overcharged-amalgam/counter
 body overlook/brokers-hideout-fetch
@@ -1143,6 +1145,7 @@ choose choose-cards/o-kagachi-made-manifest-pick
 choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
+choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/one-last-job-host
 choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
@@ -1631,6 +1634,7 @@ confirm confirm/gaze-of-pain-damage
 confirm confirm/geier-reach-bandit-transform
 confirm confirm/gitaxian-anatomist-tap
 confirm confirm/gogo-copy
+confirm confirm/gorbag-sacrifice
 confirm confirm/graha-tia-pay-and-create
 confirm confirm/grave-endeavor-result
 confirm confirm/hauntwoods-shrieker-face-up
@@ -2712,6 +2716,7 @@ run prompt-run/vile-mutilator-sacrifice-creatures
 run prompt-run/visions-of-ruin-treasures
 run prompt-run/vivien-on-the-hunt-sacrificed
 run prompt-run/vonas-hunger-sacrifice
+run prompt-run/voracious-fell-beast-food
 run prompt-run/way-of-the-deathbringer-beast
 run prompt-run/wedding-security-counter-draw
 run prompt-run/west-wind-avatar-gain-3
@@ -2864,6 +2869,7 @@ tail attacking-tokens/living-laser-exile-the-tokens
 tail attacking-tokens/loki-the-deceiver-sacrifice-the-token
 tail attacking-tokens/mirror-style-master-next
 tail attacking-tokens/mobilize-sacrifice-the-warriors
+tail attacking-tokens/mordor-trebuchet-sacrifice-the-boulder
 tail attacking-tokens/phantom-steed-sacrifice-at-end-of-combat
 tail attacking-tokens/redoubled-stormsinger-next
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
@@ -3981,6 +3987,7 @@ tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
 tail then/god-pharaohs-gift-copy
 tail then/god-pharaohs-gift-haste
+tail then/gorbag-sacrificed
 tail then/grasp-of-fate-exiled-one
 tail then/grave-endeavor-drain
 tail then/grist-the-hunger-tide-mill
@@ -4019,6 +4026,7 @@ tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
+tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
 tail then/make-an-example-chosen-pile
 tail then/manabond-discard-hand
@@ -4039,6 +4047,7 @@ tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
+tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
 tail then/oona-queen-of-the-fae-color-chosen
