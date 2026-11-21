@@ -482,6 +482,11 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedAfrB15DogIllusionToken,
 	printedAfrB15IllusionToken,
 
+	// Nahiri, the Lithomancer's Stoneforged Blade (Commander Masters,
+	// #5948): an indestructible Equipment token, +5/+5 and double strike,
+	// equip {0}.
+	printedStoneforgedBladeToken,
+
 	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
 	printedReliquaryDragonToken,
 	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
@@ -527,6 +532,11 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 43: Disa the Restless' Tarmogoyf (Modern Horizons 3
 	// Commander), a */1+* Lhurgoyf with the card's characteristic-defining ability.
 	printedGapB43TarmogoyfToken,
+
+	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
+	// (Commander Masters, S82 GAP batch 104, #5948).
+	printedGapB104SatyrCantBlockToken,
+
 	// S82 GAP batch 45: Tarmogoyf Nest's Tarmogoyf.
 	printedGapB45TarmogoyfToken,
 	// S82 GAP batch 56: Ral and the Implicit Maze's Spellgorger Weird.

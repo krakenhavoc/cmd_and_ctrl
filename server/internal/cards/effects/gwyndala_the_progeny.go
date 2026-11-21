@@ -67,7 +67,7 @@ func printedNeurofluxHeirloomToken() TokenTemplate {
 		},
 		Text:      "Equipped creature gets +1/+1.\nEquip {2}",
 		Static:    []game.StaticAbility{PumpAttached(1, 1)},
-		Activated: activatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
+		Activated: ActivatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
 	}
 }
 

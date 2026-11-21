@@ -201,7 +201,7 @@ type EmblemSpec struct {
 // emblemActivatedShapes projects an emblem's activated abilities, each
 // functioning from the command zone (CR 114.4).
 func emblemActivatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
-	out := activatedShapes(in)
+	out := ActivatedShapes(in)
 	for i := range out {
 		out[i].Zones = []game.ZoneKind{game.ZoneCommand}
 	}

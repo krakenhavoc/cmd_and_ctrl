@@ -82,6 +82,7 @@ var permissionFilterDerived = map[string]string{
 	"sigarda_font_of_blessings.go":    "standing cast permission (stampStandingPermissionLocked)",
 	"breath_of_the_sleepless.go":      "standing cast timing (castTimingVerdictLocked)",
 	"rattlechains.go":                 "standing cast timing (castTimingVerdictLocked)",
+	"quick_sliver.go":                 "standing cast timing (castTimingVerdictLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {
