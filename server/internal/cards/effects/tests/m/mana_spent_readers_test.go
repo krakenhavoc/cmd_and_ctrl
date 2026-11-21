@@ -55,7 +55,8 @@ func TestManaSpentReadersDeclareIt(t *testing.T) {
 			code.WriteString(line)
 			code.WriteByte('\n')
 		}
-		body := code.String()
+		// Sculpted Sunburst's name is not the sunburst keyword.
+		body := strings.ReplaceAll(code.String(), "Sculpted Sunburst", "")
 		declares := strings.Contains(body, "ReadsManaSpent:")
 		// The declaration's own line names the vocabulary-free
 		// constants (ReadsOwnPayment …), so it does not count as a read.
