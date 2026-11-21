@@ -604,3 +604,45 @@ func TestUndoOfTheGrantItselfUnlocksTheTotal(t *testing.T) {
 		t.Errorf("life = %d after the undo, want %d", g.Seats[0].Life, start-3)
 	}
 }
+
+// Courageous Resolve's fateful hour (S82 GAP batch 120): "you can't lose
+// life this turn" stops a loss, damage's life cost and a life payment, but
+// not a gain.
+func TestALifeLossLockStopsLossAndDamageButNotGain(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	me.Life = 5
+	g.WithWriteLock(func() { g.GrantLifeLossLockForEffect(me.ID, "Test lock", uuid.Nil, Duration{}) })
+
+	if _, err := g.ChangePlayerLife(me.ID, -3); err != nil {
+		t.Fatalf("ChangePlayerLife: %v", err)
+	}
+	if me.Life != 5 {
+		t.Errorf("life = %d after a 3 life loss under the lock, want 5", me.Life)
+	}
+	src := pushColouredCreature(g, opp, "Hitter", []string{"R"})
+	g.WithWriteLock(func() { g.markCombatDamageToPlayerLocked(me.ID, src, 4, "") })
+	if me.Life != 5 {
+		t.Errorf("life = %d after 4 combat damage under the lock, want 5", me.Life)
+	}
+	var canPay bool
+	g.ReadSnapshot(func() { canPay = g.CanPayLifeLocked(me, 1) })
+	if canPay {
+		t.Error("a life payment was payable under the lock")
+	}
+	if _, err := g.ChangePlayerLife(me.ID, 2); err != nil {
+		t.Fatalf("ChangePlayerLife: %v", err)
+	}
+	if me.Life != 7 {
+		t.Errorf("life = %d after gaining 2 under the lock, want 7 (a gain is not stopped)", me.Life)
+	}
+	// It ends with the turn.
+	advanceTo(t, g, StepCleanup)
+	advanceTo(t, g, StepUpkeep)
+	if _, err := g.ChangePlayerLife(me.ID, -3); err != nil {
+		t.Fatalf("ChangePlayerLife: %v", err)
+	}
+	if me.Life != 4 {
+		t.Errorf("life = %d after a loss on a later turn, want 4", me.Life)
+	}
+}

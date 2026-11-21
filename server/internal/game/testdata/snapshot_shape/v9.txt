@@ -79022,6 +79022,7 @@ seats[].statics[].keepManaColors[]	string
 seats[].statics[].keyword	string
 seats[].statics[].label	string
 seats[].statics[].lifeFloorOne	bool
+seats[].statics[].lifeLossLocked	bool
 seats[].statics[].lifeTotalLocked	bool
 seats[].statics[].manaAbility	object
 seats[].statics[].manaAbility.lifeCost	number:int
