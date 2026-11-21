@@ -2118,6 +2118,7 @@ option option-pick/villainous-the-dalek-emperor
 option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
+option option-pick/vislor-turlough-deal-with-the-black-guardian
 option option-pick/wake-to-slaughter-opponent
 option option-pick/winding-way-type
 option option-pick/wingnut-bat-on-the-belfry-keyword
@@ -3821,6 +3822,7 @@ tail tail/s82-neo-b18-behold-the-unspeakable-draw-two
 tail tail/s82-neo-b18-kirin-orochi-counter
 tail tail/s82-neo-b18-kirin-orochi-spirit
 tail tail/sensational-spider-man-after-stun
+tail tail/time-reaper-gain-life
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
 tail tail/winter-cynical-opportunist-exiled
