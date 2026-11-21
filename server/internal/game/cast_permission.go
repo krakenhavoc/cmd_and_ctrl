@@ -411,6 +411,14 @@ type PermissionFilter struct {
 	// came back. Read off Card.SurveilledThisTurn, pure card data.
 	SurveilledThisTurn bool `json:"surveilledThisTurn,omitempty"`
 
+	// MilledThisTurn is Raul, Trouble Shooter's "cards in your graveyard that
+	// were milled this turn": the card arrived in the graveyard during the
+	// current turn as a mill's graveyard leg (CR 701.17a). A card discarded,
+	// surveilled, searched for or put there any other way does not qualify,
+	// and neither does one that left the graveyard and came back. Read off
+	// Card.MilledThisTurn, pure card data. Additive.
+	MilledThisTurn bool `json:"milledThisTurn,omitempty"`
+
 	// Named is "spells with the same name as that creature" (Reflector
 	// Mage, ADR 0066's 2026-10-19 amendment): a qualifying card's name
 	// is exactly this. Empty constrains nothing. Read by a granted cast
@@ -574,6 +582,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.SurveilledThisTurn && !c.SurveilledThisTurn() {
 		return false
 	}
+	if f.MilledThisTurn && !c.MilledThisTurn() {
+		return false
+	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
@@ -606,6 +617,7 @@ func (f PermissionFilter) faceBlind() bool {
 	f.ExiledWithSourceThisTurn, f.ExiledOnTurn = false, 0
 	f.PutInGraveyardThisTurn = false
 	f.SurveilledThisTurn = false
+	f.MilledThisTurn = false
 	f.FromChosenType = false
 	return f == PermissionFilter{}
 }

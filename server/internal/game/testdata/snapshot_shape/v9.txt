@@ -268,6 +268,7 @@ battlefield.cards[].meldedFrom	array
 battlefield.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 battlefield.cards[].mergedFrom	array
 battlefield.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+battlefield.cards[].milled	bool
 battlefield.cards[].modesChosen	map:string
 battlefield.cards[].modesChosen{}	array
 battlefield.cards[].modesChosen{}[]	number:int
@@ -846,6 +847,7 @@ enteringTokens[].meldedFrom	array
 enteringTokens[].meldedFrom[]	recursive(game.cardSnapshot)
 enteringTokens[].mergedFrom	array
 enteringTokens[].mergedFrom[]	recursive(game.cardSnapshot)
+enteringTokens[].milled	bool
 enteringTokens[].modesChosen	map:string
 enteringTokens[].modesChosen{}	array
 enteringTokens[].modesChosen{}[]	number:int
@@ -1390,6 +1392,7 @@ exile.cards[].meldedFrom	array
 exile.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 exile.cards[].mergedFrom	array
 exile.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+exile.cards[].milled	bool
 exile.cards[].modesChosen	map:string
 exile.cards[].modesChosen{}	array
 exile.cards[].modesChosen{}[]	number:int
@@ -2171,6 +2174,7 @@ followUpParks[].then.permission.filter.instantOrSorceryOnly	bool
 followUpParks[].then.permission.filter.keywordsAny	string
 followUpParks[].then.permission.filter.landsOnly	bool
 followUpParks[].then.permission.filter.legendaryOnly	bool
+followUpParks[].then.permission.filter.milledThisTurn	bool
 followUpParks[].then.permission.filter.named	string
 followUpParks[].then.permission.filter.nonLandOnly	bool
 followUpParks[].then.permission.filter.nonLandPermanentOnly	bool
@@ -2850,6 +2854,7 @@ frozenEntries[].event.counterTail.then.permission.filter.instantOrSorceryOnly	bo
 frozenEntries[].event.counterTail.then.permission.filter.keywordsAny	string
 frozenEntries[].event.counterTail.then.permission.filter.landsOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.counterTail.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.counterTail.then.permission.filter.named	string
 frozenEntries[].event.counterTail.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -3507,6 +3512,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.instantOrSorceryOnl
 frozenEntries[].event.damageTail.each.each.permission.filter.keywordsAny	string
 frozenEntries[].event.damageTail.each.each.permission.filter.landsOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.legendaryOnly	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.milledThisTurn	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.named	string
 frozenEntries[].event.damageTail.each.each.permission.filter.nonLandOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.nonLandPermanentOnly	bool
@@ -4155,6 +4161,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.instantOrSorceryOnl
 frozenEntries[].event.damageTail.each.then.permission.filter.keywordsAny	string
 frozenEntries[].event.damageTail.each.then.permission.filter.landsOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.named	string
 frozenEntries[].event.damageTail.each.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.nonLandPermanentOnly	bool
@@ -4989,6 +4996,7 @@ frozenEntries[].event.damageTail.then.permission.filter.instantOrSorceryOnly	boo
 frozenEntries[].event.damageTail.then.permission.filter.keywordsAny	string
 frozenEntries[].event.damageTail.then.permission.filter.landsOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.damageTail.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.damageTail.then.permission.filter.named	string
 frozenEntries[].event.damageTail.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -5760,6 +5768,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.instan
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.landsOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.named	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.nonLandPermanentOnly	bool
@@ -6484,6 +6493,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.instantOrSorceryOnl
 frozenEntries[].event.entryTail.batch.then.permission.filter.keywordsAny	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.landsOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.named	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.nonLandPermanentOnly	bool
@@ -7132,6 +7142,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.instantOrSorceryOnly	boo
 frozenEntries[].event.entryTail.keyed.permission.filter.keywordsAny	string
 frozenEntries[].event.entryTail.keyed.permission.filter.landsOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.legendaryOnly	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.milledThisTurn	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.named	string
 frozenEntries[].event.entryTail.keyed.permission.filter.nonLandOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.nonLandPermanentOnly	bool
@@ -7813,6 +7824,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.instantOr
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.landsOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.legendaryOnly	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.milledThisTurn	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.named	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.nonLandOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.nonLandPermanentOnly	bool
@@ -8482,6 +8494,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.instantOrSorceryOn
 frozenEntries[].event.entryTail.tokens.then.permission.filter.keywordsAny	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.landsOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.named	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.nonLandPermanentOnly	bool
@@ -9050,6 +9063,7 @@ frozenEntries[].event.keywordActionTail.armyToken.meldedFrom	array
 frozenEntries[].event.keywordActionTail.armyToken.meldedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.keywordActionTail.armyToken.mergedFrom	array
 frozenEntries[].event.keywordActionTail.armyToken.mergedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.keywordActionTail.armyToken.milled	bool
 frozenEntries[].event.keywordActionTail.armyToken.modesChosen	map:string
 frozenEntries[].event.keywordActionTail.armyToken.modesChosen{}	array
 frozenEntries[].event.keywordActionTail.armyToken.modesChosen{}[]	number:int
@@ -9581,6 +9595,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.instantOrSorceryO
 frozenEntries[].event.keywordActionTail.then.permission.filter.keywordsAny	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.landsOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.named	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -10253,6 +10268,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.instantOrSorceryOnly	
 frozenEntries[].event.lifeTail.each.then.permission.filter.keywordsAny	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.landsOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.named	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.nonLandPermanentOnly	bool
@@ -10904,6 +10920,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.keywordsAny	string
 frozenEntries[].event.lifeTail.then.permission.filter.landsOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.lifeTail.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.lifeTail.then.permission.filter.named	string
 frozenEntries[].event.lifeTail.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -11461,6 +11478,7 @@ frozenEntries[].event.millTail.run.planned[].meldedFrom	array
 frozenEntries[].event.millTail.run.planned[].meldedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.millTail.run.planned[].mergedFrom	array
 frozenEntries[].event.millTail.run.planned[].mergedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.millTail.run.planned[].milled	bool
 frozenEntries[].event.millTail.run.planned[].modesChosen	map:string
 frozenEntries[].event.millTail.run.planned[].modesChosen{}	array
 frozenEntries[].event.millTail.run.planned[].modesChosen{}[]	number:int
@@ -11889,6 +11907,7 @@ frozenEntries[].event.millTail.run.seen[].meldedFrom	array
 frozenEntries[].event.millTail.run.seen[].meldedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.millTail.run.seen[].mergedFrom	array
 frozenEntries[].event.millTail.run.seen[].mergedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.millTail.run.seen[].milled	bool
 frozenEntries[].event.millTail.run.seen[].modesChosen	map:string
 frozenEntries[].event.millTail.run.seen[].modesChosen{}	array
 frozenEntries[].event.millTail.run.seen[].modesChosen{}[]	number:int
@@ -12413,6 +12432,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.instantOrSorceryOnly	b
 frozenEntries[].event.millTail.run.then.permission.filter.keywordsAny	string
 frozenEntries[].event.millTail.run.then.permission.filter.landsOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.millTail.run.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.millTail.run.then.permission.filter.named	string
 frozenEntries[].event.millTail.run.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.nonLandPermanentOnly	bool
@@ -13059,6 +13079,7 @@ frozenEntries[].event.millTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.keywordsAny	string
 frozenEntries[].event.millTail.then.permission.filter.landsOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.millTail.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.millTail.then.permission.filter.named	string
 frozenEntries[].event.millTail.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -14203,6 +14224,7 @@ frozenEntries[].event.tokenGroups[].template.meldedFrom	array
 frozenEntries[].event.tokenGroups[].template.meldedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.tokenGroups[].template.mergedFrom	array
 frozenEntries[].event.tokenGroups[].template.mergedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.tokenGroups[].template.milled	bool
 frozenEntries[].event.tokenGroups[].template.modesChosen	map:string
 frozenEntries[].event.tokenGroups[].template.modesChosen{}	array
 frozenEntries[].event.tokenGroups[].template.modesChosen{}[]	number:int
@@ -14728,6 +14750,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.keywordsAny	string
 frozenEntries[].event.tokenTail.then.permission.filter.landsOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.tokenTail.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.tokenTail.then.permission.filter.named	string
 frozenEntries[].event.tokenTail.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -15299,6 +15322,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.meldedFrom	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.meldedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.tokensAfterMove[].groups[].template.mergedFrom	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.mergedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.tokensAfterMove[].groups[].template.milled	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.modesChosen	map:string
 frozenEntries[].event.tokensAfterMove[].groups[].template.modesChosen{}	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.modesChosen{}[]	number:int
@@ -15740,6 +15764,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].meldedFrom	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].meldedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].mergedFrom	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].mergedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].milled	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].modesChosen	map:string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].modesChosen{}	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].modesChosen{}[]	number:int
@@ -16168,6 +16193,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].meldedFrom	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].meldedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].mergedFrom	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].mergedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].milled	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].modesChosen	map:string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].modesChosen{}	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].modesChosen{}[]	number:int
@@ -16692,6 +16718,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.instantOrS
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.landsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.named	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.nonLandPermanentOnly	bool
@@ -17373,6 +17400,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.inst
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.landsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.legendaryOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.milledThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.named	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.nonLandOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.nonLandPermanentOnly	bool
@@ -18019,6 +18047,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.instantOrSorcer
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.landsOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.named	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -18685,6 +18714,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.instantOrSorc
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.landsOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.named	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -19420,6 +19450,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.instantOrSor
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.landsOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.legendaryOnly	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.milledThisTurn	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.named	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.nonLandOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -19971,6 +20002,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].meldedFrom	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].meldedFrom[]	recursive(game.cardSnapshot)
 frozenEntries[].event.zoneRoute.simultaneousExit[].mergedFrom	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].mergedFrom[]	recursive(game.cardSnapshot)
+frozenEntries[].event.zoneRoute.simultaneousExit[].milled	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].modesChosen	map:string
 frozenEntries[].event.zoneRoute.simultaneousExit[].modesChosen{}	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].modesChosen{}[]	number:int
@@ -21061,6 +21093,7 @@ lastKnownStack[].card.meldedFrom	array
 lastKnownStack[].card.meldedFrom[]	recursive(game.cardSnapshot)
 lastKnownStack[].card.mergedFrom	array
 lastKnownStack[].card.mergedFrom[]	recursive(game.cardSnapshot)
+lastKnownStack[].card.milled	bool
 lastKnownStack[].card.modesChosen	map:string
 lastKnownStack[].card.modesChosen{}	array
 lastKnownStack[].card.modesChosen{}[]	number:int
@@ -21982,6 +22015,7 @@ match.decks[].fixed[].meldedFrom	array
 match.decks[].fixed[].meldedFrom[]	recursive(game.cardSnapshot)
 match.decks[].fixed[].mergedFrom	array
 match.decks[].fixed[].mergedFrom[]	recursive(game.cardSnapshot)
+match.decks[].fixed[].milled	bool
 match.decks[].fixed[].modesChosen	map:string
 match.decks[].fixed[].modesChosen{}	array
 match.decks[].fixed[].modesChosen{}[]	number:int
@@ -22408,6 +22442,7 @@ match.decks[].main[].meldedFrom	array
 match.decks[].main[].meldedFrom[]	recursive(game.cardSnapshot)
 match.decks[].main[].mergedFrom	array
 match.decks[].main[].mergedFrom[]	recursive(game.cardSnapshot)
+match.decks[].main[].milled	bool
 match.decks[].main[].modesChosen	map:string
 match.decks[].main[].modesChosen{}	array
 match.decks[].main[].modesChosen{}[]	number:int
@@ -22837,6 +22872,7 @@ match.decks[].side[].meldedFrom	array
 match.decks[].side[].meldedFrom[]	recursive(game.cardSnapshot)
 match.decks[].side[].mergedFrom	array
 match.decks[].side[].mergedFrom[]	recursive(game.cardSnapshot)
+match.decks[].side[].milled	bool
 match.decks[].side[].modesChosen	map:string
 match.decks[].side[].modesChosen{}	array
 match.decks[].side[].modesChosen{}[]	number:int
@@ -23401,6 +23437,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.instantOrSorceryOnly	bo
 movesAwaitingTokens[].counterTail.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].counterTail.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.named	string
 movesAwaitingTokens[].counterTail.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -24058,6 +24095,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.instantOrSorceryOnl
 movesAwaitingTokens[].damageTail.each.each.permission.filter.keywordsAny	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.landsOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.named	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.nonLandPermanentOnly	bool
@@ -24706,6 +24744,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.instantOrSorceryOnl
 movesAwaitingTokens[].damageTail.each.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.named	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.nonLandPermanentOnly	bool
@@ -25540,6 +25579,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.instantOrSorceryOnly	boo
 movesAwaitingTokens[].damageTail.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].damageTail.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.named	string
 movesAwaitingTokens[].damageTail.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -26311,6 +26351,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.instan
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.named	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.nonLandPermanentOnly	bool
@@ -27035,6 +27076,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.instantOrSorceryOnl
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.named	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.nonLandPermanentOnly	bool
@@ -27683,6 +27725,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.instantOrSorceryOnly	boo
 movesAwaitingTokens[].entryTail.keyed.permission.filter.keywordsAny	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.landsOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.named	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.nonLandPermanentOnly	bool
@@ -28364,6 +28407,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.instantOr
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.landsOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.named	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.nonLandPermanentOnly	bool
@@ -29033,6 +29077,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.instantOrSorceryOn
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.named	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.nonLandPermanentOnly	bool
@@ -29601,6 +29646,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.meldedFrom	array
 movesAwaitingTokens[].keywordActionTail.armyToken.meldedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].keywordActionTail.armyToken.mergedFrom	array
 movesAwaitingTokens[].keywordActionTail.armyToken.mergedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].keywordActionTail.armyToken.milled	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.modesChosen	map:string
 movesAwaitingTokens[].keywordActionTail.armyToken.modesChosen{}	array
 movesAwaitingTokens[].keywordActionTail.armyToken.modesChosen{}[]	number:int
@@ -30132,6 +30178,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.instantOrSorceryO
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.named	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -30804,6 +30851,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.instantOrSorceryOnly	
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.named	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.nonLandPermanentOnly	bool
@@ -31455,6 +31503,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.named	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -32012,6 +32061,7 @@ movesAwaitingTokens[].millTail.run.planned[].meldedFrom	array
 movesAwaitingTokens[].millTail.run.planned[].meldedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].millTail.run.planned[].mergedFrom	array
 movesAwaitingTokens[].millTail.run.planned[].mergedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].millTail.run.planned[].milled	bool
 movesAwaitingTokens[].millTail.run.planned[].modesChosen	map:string
 movesAwaitingTokens[].millTail.run.planned[].modesChosen{}	array
 movesAwaitingTokens[].millTail.run.planned[].modesChosen{}[]	number:int
@@ -32440,6 +32490,7 @@ movesAwaitingTokens[].millTail.run.seen[].meldedFrom	array
 movesAwaitingTokens[].millTail.run.seen[].meldedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].millTail.run.seen[].mergedFrom	array
 movesAwaitingTokens[].millTail.run.seen[].mergedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].millTail.run.seen[].milled	bool
 movesAwaitingTokens[].millTail.run.seen[].modesChosen	map:string
 movesAwaitingTokens[].millTail.run.seen[].modesChosen{}	array
 movesAwaitingTokens[].millTail.run.seen[].modesChosen{}[]	number:int
@@ -32964,6 +33015,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.instantOrSorceryOnly	b
 movesAwaitingTokens[].millTail.run.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.named	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.nonLandPermanentOnly	bool
@@ -33610,6 +33662,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].millTail.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].millTail.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].millTail.then.permission.filter.named	string
 movesAwaitingTokens[].millTail.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -34754,6 +34807,7 @@ movesAwaitingTokens[].tokenGroups[].template.meldedFrom	array
 movesAwaitingTokens[].tokenGroups[].template.meldedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].tokenGroups[].template.mergedFrom	array
 movesAwaitingTokens[].tokenGroups[].template.mergedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].tokenGroups[].template.milled	bool
 movesAwaitingTokens[].tokenGroups[].template.modesChosen	map:string
 movesAwaitingTokens[].tokenGroups[].template.modesChosen{}	array
 movesAwaitingTokens[].tokenGroups[].template.modesChosen{}[]	number:int
@@ -35279,6 +35333,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.named	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -35850,6 +35905,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.meldedFrom	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.meldedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.mergedFrom	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.mergedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.milled	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.modesChosen	map:string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.modesChosen{}	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.modesChosen{}[]	number:int
@@ -36291,6 +36347,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].meldedFrom	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].meldedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].mergedFrom	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].mergedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].milled	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].modesChosen	map:string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].modesChosen{}	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].modesChosen{}[]	number:int
@@ -36719,6 +36776,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].meldedFrom	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].meldedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].mergedFrom	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].mergedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].milled	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].modesChosen	map:string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].modesChosen{}	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].modesChosen{}[]	number:int
@@ -37243,6 +37301,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.instantOrS
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.named	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.nonLandPermanentOnly	bool
@@ -37924,6 +37983,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.inst
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.landsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.named	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.nonLandPermanentOnly	bool
@@ -38570,6 +38630,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.instantOrSorcer
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.named	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -39236,6 +39297,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.instantOrSorc
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.named	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -39971,6 +40033,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.instantOrSor
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.landsOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.legendaryOnly	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.milledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.named	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.nonLandOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -40522,6 +40585,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].meldedFrom	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].meldedFrom[]	recursive(game.cardSnapshot)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].mergedFrom	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].mergedFrom[]	recursive(game.cardSnapshot)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].milled	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].modesChosen	map:string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].modesChosen{}	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].modesChosen{}[]	number:int
@@ -42498,6 +42562,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.meldedFrom	array
 pendingChoices[].attackSplit.settled.chosen[].template.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].attackSplit.settled.chosen[].template.mergedFrom	array
 pendingChoices[].attackSplit.settled.chosen[].template.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].attackSplit.settled.chosen[].template.milled	bool
 pendingChoices[].attackSplit.settled.chosen[].template.modesChosen	map:string
 pendingChoices[].attackSplit.settled.chosen[].template.modesChosen{}	array
 pendingChoices[].attackSplit.settled.chosen[].template.modesChosen{}[]	number:int
@@ -42946,6 +43011,7 @@ pendingChoices[].attackSplit.settled.groups[].template.meldedFrom	array
 pendingChoices[].attackSplit.settled.groups[].template.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].attackSplit.settled.groups[].template.mergedFrom	array
 pendingChoices[].attackSplit.settled.groups[].template.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].attackSplit.settled.groups[].template.milled	bool
 pendingChoices[].attackSplit.settled.groups[].template.modesChosen	map:string
 pendingChoices[].attackSplit.settled.groups[].template.modesChosen{}	array
 pendingChoices[].attackSplit.settled.groups[].template.modesChosen{}[]	number:int
@@ -43475,6 +43541,7 @@ pendingChoices[].attackSplit.tail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.keywordsAny	string
 pendingChoices[].attackSplit.tail.permission.filter.landsOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.legendaryOnly	bool
+pendingChoices[].attackSplit.tail.permission.filter.milledThisTurn	bool
 pendingChoices[].attackSplit.tail.permission.filter.named	string
 pendingChoices[].attackSplit.tail.permission.filter.nonLandOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.nonLandPermanentOnly	bool
@@ -44022,6 +44089,7 @@ pendingChoices[].attackSplit.template.meldedFrom	array
 pendingChoices[].attackSplit.template.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].attackSplit.template.mergedFrom	array
 pendingChoices[].attackSplit.template.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].attackSplit.template.milled	bool
 pendingChoices[].attackSplit.template.modesChosen	map:string
 pendingChoices[].attackSplit.template.modesChosen{}	array
 pendingChoices[].attackSplit.template.modesChosen{}[]	number:int
@@ -44862,6 +44930,7 @@ pendingChoices[].copyWalk.src.meldedFrom	array
 pendingChoices[].copyWalk.src.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].copyWalk.src.mergedFrom	array
 pendingChoices[].copyWalk.src.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].copyWalk.src.milled	bool
 pendingChoices[].copyWalk.src.modesChosen	map:string
 pendingChoices[].copyWalk.src.modesChosen{}	array
 pendingChoices[].copyWalk.src.modesChosen{}[]	number:int
@@ -45644,6 +45713,7 @@ pendingChoices[].diceRoll.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.keywordsAny	string
 pendingChoices[].diceRoll.then.permission.filter.landsOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.legendaryOnly	bool
+pendingChoices[].diceRoll.then.permission.filter.milledThisTurn	bool
 pendingChoices[].diceRoll.then.permission.filter.named	string
 pendingChoices[].diceRoll.then.permission.filter.nonLandOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.nonLandPermanentOnly	bool
@@ -46699,6 +46769,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.instantOrSorceryOnly	b
 pendingChoices[].divideShield.walk.each.permission.filter.keywordsAny	string
 pendingChoices[].divideShield.walk.each.permission.filter.landsOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.legendaryOnly	bool
+pendingChoices[].divideShield.walk.each.permission.filter.milledThisTurn	bool
 pendingChoices[].divideShield.walk.each.permission.filter.named	string
 pendingChoices[].divideShield.walk.each.permission.filter.nonLandOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.nonLandPermanentOnly	bool
@@ -47347,6 +47418,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.instantOrSorceryOnly	b
 pendingChoices[].divideShield.walk.then.permission.filter.keywordsAny	string
 pendingChoices[].divideShield.walk.then.permission.filter.landsOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.legendaryOnly	bool
+pendingChoices[].divideShield.walk.then.permission.filter.milledThisTurn	bool
 pendingChoices[].divideShield.walk.then.permission.filter.named	string
 pendingChoices[].divideShield.walk.then.permission.filter.nonLandOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.nonLandPermanentOnly	bool
@@ -48001,6 +48073,7 @@ pendingChoices[].libraryOrder.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.keywordsAny	string
 pendingChoices[].libraryOrder.then.permission.filter.landsOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.legendaryOnly	bool
+pendingChoices[].libraryOrder.then.permission.filter.milledThisTurn	bool
 pendingChoices[].libraryOrder.then.permission.filter.named	string
 pendingChoices[].libraryOrder.then.permission.filter.nonLandOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.nonLandPermanentOnly	bool
@@ -48709,6 +48782,7 @@ pendingChoices[].nameThen.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].nameThen.permission.filter.keywordsAny	string
 pendingChoices[].nameThen.permission.filter.landsOnly	bool
 pendingChoices[].nameThen.permission.filter.legendaryOnly	bool
+pendingChoices[].nameThen.permission.filter.milledThisTurn	bool
 pendingChoices[].nameThen.permission.filter.named	string
 pendingChoices[].nameThen.permission.filter.nonLandOnly	bool
 pendingChoices[].nameThen.permission.filter.nonLandPermanentOnly	bool
@@ -49857,6 +49931,7 @@ pendingChoices[].pickTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].pickTail.permission.filter.keywordsAny	string
 pendingChoices[].pickTail.permission.filter.landsOnly	bool
 pendingChoices[].pickTail.permission.filter.legendaryOnly	bool
+pendingChoices[].pickTail.permission.filter.milledThisTurn	bool
 pendingChoices[].pickTail.permission.filter.named	string
 pendingChoices[].pickTail.permission.filter.nonLandOnly	bool
 pendingChoices[].pickTail.permission.filter.nonLandPermanentOnly	bool
@@ -50550,6 +50625,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.inst
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -51207,6 +51283,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.named	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.nonLandPermanentOnly	bool
@@ -51855,6 +51932,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.nonLandPermanentOnly	bool
@@ -52689,6 +52767,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.insta
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -53460,6 +53539,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.nonLandPermanentOnly	bool
@@ -54184,6 +54264,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.nonLandPermanentOnly	bool
@@ -54832,6 +54913,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.insta
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.named	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.nonLandPermanentOnly	bool
@@ -55513,6 +55595,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.named	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.nonLandPermanentOnly	bool
@@ -56182,6 +56265,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.nonLandPermanentOnly	bool
@@ -56750,6 +56834,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.meldedFrom	
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.mergedFrom	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.milled	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.modesChosen	map:string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.modesChosen{}	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.modesChosen{}[]	number:int
@@ -57281,6 +57366,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -57953,6 +58039,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.in
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.nonLandPermanentOnly	bool
@@ -58604,6 +58691,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.instant
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -59161,6 +59249,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].meldedFrom	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.millTail.run.planned[].mergedFrom	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.millTail.run.planned[].milled	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].modesChosen	map:string
 pendingChoices[].replacementResume.event.millTail.run.planned[].modesChosen{}	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].modesChosen{}[]	number:int
@@ -59589,6 +59678,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].meldedFrom	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.millTail.run.seen[].mergedFrom	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.millTail.run.seen[].milled	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].modesChosen	map:string
 pendingChoices[].replacementResume.event.millTail.run.seen[].modesChosen{}	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].modesChosen{}[]	number:int
@@ -60113,6 +60203,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.ins
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.nonLandPermanentOnly	bool
@@ -60759,6 +60850,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.instant
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -61903,6 +61995,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.meldedFrom	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.tokenGroups[].template.mergedFrom	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.tokenGroups[].template.milled	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.modesChosen	map:string
 pendingChoices[].replacementResume.event.tokenGroups[].template.modesChosen{}	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.modesChosen{}[]	number:int
@@ -62428,6 +62521,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.instan
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.nonLandPermanentOnly	bool
@@ -62999,6 +63093,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.mel
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.mergedFrom	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.milled	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.modesChosen	map:string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.modesChosen{}	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.modesChosen{}[]	number:int
@@ -63440,6 +63535,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].meld
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].mergedFrom	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].milled	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].modesChosen	map:string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].modesChosen{}	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].modesChosen{}[]	number:int
@@ -63868,6 +63964,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].meldedF
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].mergedFrom	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].milled	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].modesChosen	map:string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].modesChosen{}	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].modesChosen{}[]	number:int
@@ -64392,6 +64489,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.nonLandPermanentOnly	bool
@@ -65073,6 +65171,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.named	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.nonLandPermanentOnly	bool
@@ -65719,6 +65818,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -66385,6 +66485,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -67120,6 +67221,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.landsOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.legendaryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.milledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.named	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.nonLandOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.nonLandPermanentOnly	bool
@@ -67671,6 +67773,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].meldedFrom
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].mergedFrom	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].milled	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].modesChosen	map:string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].modesChosen{}	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].modesChosen{}[]	number:int
@@ -68225,6 +68328,7 @@ pendingChoices[].scryThen.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].scryThen.permission.filter.keywordsAny	string
 pendingChoices[].scryThen.permission.filter.landsOnly	bool
 pendingChoices[].scryThen.permission.filter.legendaryOnly	bool
+pendingChoices[].scryThen.permission.filter.milledThisTurn	bool
 pendingChoices[].scryThen.permission.filter.named	string
 pendingChoices[].scryThen.permission.filter.nonLandOnly	bool
 pendingChoices[].scryThen.permission.filter.nonLandPermanentOnly	bool
@@ -68919,6 +69023,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.instantOrSorceryOn
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.keywordsAny	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.landsOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.legendaryOnly	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.milledThisTurn	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.named	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.nonLandOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.nonLandPermanentOnly	bool
@@ -69949,6 +70054,7 @@ pendingChoices[].targetWalk.frame.source.meldedFrom	array
 pendingChoices[].targetWalk.frame.source.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].targetWalk.frame.source.mergedFrom	array
 pendingChoices[].targetWalk.frame.source.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].targetWalk.frame.source.milled	bool
 pendingChoices[].targetWalk.frame.source.modesChosen	map:string
 pendingChoices[].targetWalk.frame.source.modesChosen{}	array
 pendingChoices[].targetWalk.frame.source.modesChosen{}[]	number:int
@@ -70749,6 +70855,7 @@ pendingChoices[].triggerFrame.source.meldedFrom	array
 pendingChoices[].triggerFrame.source.meldedFrom[]	recursive(game.cardSnapshot)
 pendingChoices[].triggerFrame.source.mergedFrom	array
 pendingChoices[].triggerFrame.source.mergedFrom[]	recursive(game.cardSnapshot)
+pendingChoices[].triggerFrame.source.milled	bool
 pendingChoices[].triggerFrame.source.modesChosen	map:string
 pendingChoices[].triggerFrame.source.modesChosen{}	array
 pendingChoices[].triggerFrame.source.modesChosen{}[]	number:int
@@ -71938,6 +72045,7 @@ phasedOut.cards[].meldedFrom	array
 phasedOut.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 phasedOut.cards[].mergedFrom	array
 phasedOut.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+phasedOut.cards[].milled	bool
 phasedOut.cards[].modesChosen	map:string
 phasedOut.cards[].modesChosen{}	array
 phasedOut.cards[].modesChosen{}[]	number:int
@@ -72369,6 +72477,7 @@ planechase.deck.cards[].meldedFrom	array
 planechase.deck.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 planechase.deck.cards[].mergedFrom	array
 planechase.deck.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+planechase.deck.cards[].milled	bool
 planechase.deck.cards[].modesChosen	map:string
 planechase.deck.cards[].modesChosen{}	array
 planechase.deck.cards[].modesChosen{}[]	number:int
@@ -72800,6 +72909,7 @@ planechase.faceUp.cards[].meldedFrom	array
 planechase.faceUp.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 planechase.faceUp.cards[].mergedFrom	array
 planechase.faceUp.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+planechase.faceUp.cards[].milled	bool
 planechase.faceUp.cards[].modesChosen	map:string
 planechase.faceUp.cards[].modesChosen{}	array
 planechase.faceUp.cards[].modesChosen{}[]	number:int
@@ -73479,6 +73589,7 @@ resolving.card.meldedFrom	array
 resolving.card.meldedFrom[]	recursive(game.cardSnapshot)
 resolving.card.mergedFrom	array
 resolving.card.mergedFrom[]	recursive(game.cardSnapshot)
+resolving.card.milled	bool
 resolving.card.modesChosen	map:string
 resolving.card.modesChosen{}	array
 resolving.card.modesChosen{}[]	number:int
@@ -74534,6 +74645,7 @@ seats[].attractionDeck.cards[].meldedFrom	array
 seats[].attractionDeck.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].attractionDeck.cards[].mergedFrom	array
 seats[].attractionDeck.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].attractionDeck.cards[].milled	bool
 seats[].attractionDeck.cards[].modesChosen	map:string
 seats[].attractionDeck.cards[].modesChosen{}	array
 seats[].attractionDeck.cards[].modesChosen{}[]	number:int
@@ -74826,6 +74938,7 @@ seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.keywordsAny	string
 seats[].castPermissions[].filter.landsOnly	bool
 seats[].castPermissions[].filter.legendaryOnly	bool
+seats[].castPermissions[].filter.milledThisTurn	bool
 seats[].castPermissions[].filter.named	string
 seats[].castPermissions[].filter.nonLandOnly	bool
 seats[].castPermissions[].filter.nonLandPermanentOnly	bool
@@ -75140,6 +75253,7 @@ seats[].command.cards[].meldedFrom	array
 seats[].command.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].command.cards[].mergedFrom	array
 seats[].command.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].command.cards[].milled	bool
 seats[].command.cards[].modesChosen	map:string
 seats[].command.cards[].modesChosen{}	array
 seats[].command.cards[].modesChosen{}[]	number:int
@@ -75573,6 +75687,7 @@ seats[].companion.cards[].meldedFrom	array
 seats[].companion.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].companion.cards[].mergedFrom	array
 seats[].companion.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].companion.cards[].milled	bool
 seats[].companion.cards[].modesChosen	map:string
 seats[].companion.cards[].modesChosen{}	array
 seats[].companion.cards[].modesChosen{}[]	number:int
@@ -76015,6 +76130,7 @@ seats[].emblems.cards[].meldedFrom	array
 seats[].emblems.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].emblems.cards[].mergedFrom	array
 seats[].emblems.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].emblems.cards[].milled	bool
 seats[].emblems.cards[].modesChosen	map:string
 seats[].emblems.cards[].modesChosen{}	array
 seats[].emblems.cards[].modesChosen{}[]	number:int
@@ -76544,6 +76660,7 @@ seats[].graveyard.cards[].meldedFrom	array
 seats[].graveyard.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].graveyard.cards[].mergedFrom	array
 seats[].graveyard.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].graveyard.cards[].milled	bool
 seats[].graveyard.cards[].modesChosen	map:string
 seats[].graveyard.cards[].modesChosen{}	array
 seats[].graveyard.cards[].modesChosen{}[]	number:int
@@ -76973,6 +77090,7 @@ seats[].hand.cards[].meldedFrom	array
 seats[].hand.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].hand.cards[].mergedFrom	array
 seats[].hand.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].hand.cards[].milled	bool
 seats[].hand.cards[].modesChosen	map:string
 seats[].hand.cards[].modesChosen{}	array
 seats[].hand.cards[].modesChosen{}[]	number:int
@@ -77407,6 +77525,7 @@ seats[].junkyard.cards[].meldedFrom	array
 seats[].junkyard.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].junkyard.cards[].mergedFrom	array
 seats[].junkyard.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].junkyard.cards[].milled	bool
 seats[].junkyard.cards[].modesChosen	map:string
 seats[].junkyard.cards[].modesChosen{}	array
 seats[].junkyard.cards[].modesChosen{}[]	number:int
@@ -77862,6 +77981,7 @@ seats[].library.cards[].meldedFrom	array
 seats[].library.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].library.cards[].mergedFrom	array
 seats[].library.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].library.cards[].milled	bool
 seats[].library.cards[].modesChosen	map:string
 seats[].library.cards[].modesChosen{}	array
 seats[].library.cards[].modesChosen{}[]	number:int
@@ -78332,6 +78452,7 @@ seats[].sideboard.cards[].meldedFrom	array
 seats[].sideboard.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 seats[].sideboard.cards[].mergedFrom	array
 seats[].sideboard.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+seats[].sideboard.cards[].milled	bool
 seats[].sideboard.cards[].modesChosen	map:string
 seats[].sideboard.cards[].modesChosen{}	array
 seats[].sideboard.cards[].modesChosen{}[]	number:int
@@ -78578,6 +78699,7 @@ seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.keywordsAny	string
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
 seats[].statics[].cantBeCountered.filter.legendaryOnly	bool
+seats[].statics[].cantBeCountered.filter.milledThisTurn	bool
 seats[].statics[].cantBeCountered.filter.named	string
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
@@ -78629,6 +78751,7 @@ seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.keywordsAny	string
 seats[].statics[].castBan.filter.landsOnly	bool
 seats[].statics[].castBan.filter.legendaryOnly	bool
+seats[].statics[].castBan.filter.milledThisTurn	bool
 seats[].statics[].castBan.filter.named	string
 seats[].statics[].castBan.filter.nonLandOnly	bool
 seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
@@ -78736,6 +78859,7 @@ seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.keywordsAny	string
 seats[].statics[].nextSpell.filter.landsOnly	bool
 seats[].statics[].nextSpell.filter.legendaryOnly	bool
+seats[].statics[].nextSpell.filter.milledThisTurn	bool
 seats[].statics[].nextSpell.filter.named	string
 seats[].statics[].nextSpell.filter.nonLandOnly	bool
 seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
@@ -78795,6 +78919,7 @@ seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.keywordsAny	string
 seats[].statics[].timing.filter.landsOnly	bool
 seats[].statics[].timing.filter.legendaryOnly	bool
+seats[].statics[].timing.filter.milledThisTurn	bool
 seats[].statics[].timing.filter.named	string
 seats[].statics[].timing.filter.nonLandOnly	bool
 seats[].statics[].timing.filter.nonLandPermanentOnly	bool
@@ -79142,6 +79267,7 @@ stack.cards[].meldedFrom	array
 stack.cards[].meldedFrom[]	recursive(game.cardSnapshot)
 stack.cards[].mergedFrom	array
 stack.cards[].mergedFrom[]	recursive(game.cardSnapshot)
+stack.cards[].milled	bool
 stack.cards[].modesChosen	map:string
 stack.cards[].modesChosen{}	array
 stack.cards[].modesChosen{}[]	number:int

@@ -594,4 +594,6 @@ var tokenTable = map[string]game.Card{
 	"2/1 black Phyrexian Wurm artifact with lifelink":   {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
 	// S82 GAP batch 58: Ajani, Nacatl Pariah's Cat Warrior.
 	"2/1 white Cat Warrior": {Name: "Cat Warrior", TypeLine: "Token Creature — Cat Warrior", Power: 2, Toughness: 1, Colors: []string{"W"}},
+	// S82 GAP batch 62: Mr. House, President and CEO's Robot.
+	"3/3 colorless Robot artifact": {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 3, Toughness: 3},
 }
