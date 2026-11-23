@@ -1,6 +1,6 @@
 # ADR 0022 — Impulse exile: playing cards from a zone that isn't yours
 
-**Status:** accepted (S21 sub-PR 6)
+**Status:** Accepted (S21 sub-PR 6)
 **Extends:** [ADR 0021](0021-additional-costs.md) (announce-time gates on `CastSpell`).
 **Turn-identity amendment:** [ADR 0059](0059-turn-machinery.md) sub-PR 1
 separates the per-turn `Seq` from display `Round`; the surviving

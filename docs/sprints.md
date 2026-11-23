@@ -122,7 +122,7 @@ planned just-in-time from the S12 pain-point triage.
 | S76     | Cards: incubate, face-down and outside the game                      | 7     | [#3616](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3616) | 2026-10-30 | **done**    |
 | S77     | Discord and social: voice, friends, mod tools and events             | 7     | [#3617](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3617) | —          | in progress |
 | S78     | Launch week: player reports, flakes and first-game polish            | 7     | [#4648](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4648) | —          | in progress |
-| S79     | Card coverage: every Standard set, newest first                      | 7     | [#4649](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4649) | —          | in progress |
+| S79     | Card coverage: every Standard set, newest first                      | 7     | [#4649](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4649) | —          | **done**    |
 | S80     | Table effects: a cue for every common moment                         | 7     | [#4650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4650) | —          | in progress |
 | S81     | Formats: Standard 1v1 and booster draft                              | 7     | [#5431](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5431) | —          | in progress |
 | S82     | Card coverage: sets outside Standard, newest first                   | 7     | [#5458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5458) | —          | in progress |
@@ -4040,7 +4040,9 @@ Engine fixes from the batches:
 
 ### Status
 
-**In progress** (2026-11-23 docs sync). Illusionist's Gambit's owner decision, [#5685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5685), is closed, so no set, seam or card issue of this sprint is open; only the tracker [#4649](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4649) is. The exit criteria read as met; closing the sprint is the owner's call.
+**Done** (2026-11-23). The tracker [#4649](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4649) is closed with the owner's OK; every checklist item on it is closed or merged.
+
+Before that: **In progress** (2026-11-23 docs sync). Illusionist's Gambit's owner decision, [#5685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5685), is closed, so no set, seam or card issue of this sprint is open; only the tracker [#4649](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4649) is. The exit criteria read as met; closing the sprint is the owner's call.
 
 Before that: **In progress** (2026-11-11 audit, [#5690](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5690)). Every set issue is closed: [#4452](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4452) and the Standard sets #4453 to #4471, with Star Trek, the TMNT Commander set, Avatar Eternal and the Strixhaven Commander set beside them. Every seam and engine fix listed above is closed. The Commander decks of the Standard sets ([#5368](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5368)) are in but for one card, Illusionist's Gambit, which waits on an owner decision in [#5685](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5685); the last roll-up was [#5686](https://github.com/krakenhavoc/cmd_and_ctrl/pull/5686), which with [#5453](https://github.com/krakenhavoc/cmd_and_ctrl/pull/5453) finished [#5445](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5445), [#5447](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5447) and [#5457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5457). The catalog on cmd-dev holds 12,896 cards: 12,894 Full and two with a caveat (Blade of the Swarm and Raiding Schemes, [#5688](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5688)). Open in the milestone: the tracker, #5685 and #5688. The sets outside Standard are S82.
 

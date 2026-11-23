@@ -5,7 +5,7 @@ Each ADR is `NNNN-slug.md`, and its number appears in both the filename and the 
 
 ## Index
 
-Every ADR, its title (the H1) and the first word of its **Status** line. Status words are the ADRs' own: *Implemented* was used by the early ADRs for an accepted decision that had shipped; later ADRs stay *Accepted* once built. Read the ADR for amendments and partial supersessions. Numbers 0005, 0024, 0029, 0030 and 0190
+Every ADR, its title (the H1) and the first word of its **Status** line. Status words are the ADRs' own. An ADR that has shipped stays *Accepted*; the early ones that said *Implemented* or lowercase *accepted* were reworded. Read the ADR for amendments and partial supersessions. Numbers 0005, 0024, 0029, 0030 and 0190
 have no file on any branch; numbers are never reused, so they stay empty.
 
 | # | Title | Status |
@@ -21,27 +21,27 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0010 | [Card-effect catalog foundation (S14)](0010-card-effect-catalog.md) | Accepted |
 | 0011 | [Mana pool, cost model, and auto-tapper (S15)](0011-mana-pool-and-auto-tapper.md) | Accepted |
 | 0012 | [Continuous effects + layer system (S16)](0012-layer-system.md) | Accepted |
-| 0013 | [Replacement effects engine (S17)](0013-replacement-effects.md) | Implemented |
-| 0014 | [Combat keywords (S18)](0014-combat-keywords.md) | Implemented |
-| 0015 | [Zone browser modal shell (S18.5)](0015-zone-browser-library-search.md) | Implemented |
-| 0016 | [Broadcasting lobby mutations to connected clients](0016-lobby-state-broadcast.md) | Implemented |
-| 0017 | [In-app bug reports as GitHub issues](0017-bug-report-button.md) | Implemented |
-| 0018 | [Triggered abilities use the stack](0018-triggers-on-the-stack.md) | Implemented |
-| 0019 | [Structured targeting](0019-structured-targeting.md) | Implemented |
+| 0013 | [Replacement effects engine (S17)](0013-replacement-effects.md) | Accepted |
+| 0014 | [Combat keywords (S18)](0014-combat-keywords.md) | Accepted |
+| 0015 | [Zone browser modal shell (S18.5)](0015-zone-browser-library-search.md) | Accepted |
+| 0016 | [Broadcasting lobby mutations to connected clients](0016-lobby-state-broadcast.md) | Accepted |
+| 0017 | [In-app bug reports as GitHub issues](0017-bug-report-button.md) | Accepted |
+| 0018 | [Triggered abilities use the stack](0018-triggers-on-the-stack.md) | Accepted |
+| 0019 | [Structured targeting](0019-structured-targeting.md) | Accepted |
 | 0020 | [Activated abilities in the catalog](0020-activated-abilities.md) | Accepted |
 | 0021 | [Additional costs to cast](0021-additional-costs.md) | Accepted |
 | 0022 | [Impulse exile: playing cards from a zone that isn't yours](0022-impulse-exile.md) | Accepted |
-| 0023 | [A `develop` branch with its own preview deployment](0023-develop-environment.md) | Implemented |
+| 0023 | [A `develop` branch with its own preview deployment](0023-develop-environment.md) | Accepted |
 | 0025 | [Alternative costs to cast](0025-alternative-costs.md) | Accepted |
 | 0026 | [Delayed triggers and return-from-exile (flicker)](0026-delayed-triggers.md) | Accepted |
-| 0027 | [Attack triggers ride an event, not combat state](0027-attack-triggers.md) | Implemented |
-| 0028 | [Right-click admin context menu for per-card overrides](0028-admin-context-menu.md) | Implemented |
-| 0031 | [Progressive web app: installable shell, cached card art, nothing else offline](0031-progressive-web-app.md) | Implemented |
-| 0032 | [Starting loyalty is printed card data, not catalog data](0032-planeswalkers.md) | Implemented |
+| 0027 | [Attack triggers ride an event, not combat state](0027-attack-triggers.md) | Accepted |
+| 0028 | [Right-click admin context menu for per-card overrides](0028-admin-context-menu.md) | Accepted |
+| 0031 | [Progressive web app: installable shell, cached card art, nothing else offline](0031-progressive-web-app.md) | Accepted |
+| 0032 | [Starting loyalty is printed card data, not catalog data](0032-planeswalkers.md) | Accepted |
 | 0033 | [AI bot seat: legal-move enumeration, virtual seats, tiered policies](0033-ai-bot-seat.md) | Accepted |
 | 0034 | [Multi-face cards: MDFC, transform, adventure](0034-multi-face-cards.md) | Accepted |
 | 0035 | ["Until end of turn" continuous effects (S32)](0035-until-end-of-turn-effects.md) | Accepted |
-| 0036 | [Attachments: Equipment and Auras](0036-attachments.md) | Proposed |
+| 0036 | [Attachments: Equipment and Auras](0036-attachments.md) | Accepted |
 | 0037 | [Telling the player a card's rules aren't implemented](0037-unimplemented-card-signal.md) | Accepted |
 | 0038 | [Protection-style keywords at the targeting choke point](0038-protection-style-keywords.md) | Accepted |
 | 0039 | [Layer 4 is authoritative: the type predicates read `Effective()`](0039-layer-4-authoritative.md) | Accepted |
@@ -57,7 +57,7 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0049 | [Architecture review of the card ↔ engine seam (September 2026)](0049-card-engine-seam-review.md) | Accepted |
 | 0050 | [Discord sign-in before the invite (identity-only sessions)](0050-discord-login-identity.md) | Accepted |
 | 0051 | [A persistent user database: people, their games, and their decks](0051-user-database.md) | Accepted |
-| 0052 | [Bot decision harness and eval loop for the local model](0052-bot-decision-harness-and-eval.md) | Proposed |
+| 0052 | [Bot decision harness and eval loop for the local model](0052-bot-decision-harness-and-eval.md) | Accepted |
 | 0053 | [Combat damage beats: first strike and regular damage as two visible moments](0053-combat-damage-beats.md) | Accepted |
 | 0054 | [Dice rolls and coin flips from effects](0054-dice-rolls-and-coin-flips.md) | Accepted |
 | 0055 | [CR 732 loop breaker: the engine detects trigger loops by tally and suspends autopass](0055-loop-breaker.md) | Accepted |
@@ -82,7 +82,7 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0074 | [Triggered mana abilities: a trigger that never reaches the stack, and the colour it can read](0074-triggered-mana-abilities.md) | Accepted |
 | 0075 | [Table settings and host controls: who runs a table, what they can change, and spawning on a live game](0075-table-settings-and-host-controls.md) | Accepted |
 | 0076 | [The tutorial: a scripted practice game that teaches the client, not the rules](0076-tutorial.md) | Accepted |
-| 0077 | [Opponent boards are read-outs, not small cards: the summary panel and what expands it](0077-opponent-board-summary.md) | Proposed |
+| 0077 | [Opponent boards are read-outs, not small cards: the summary panel and what expands it](0077-opponent-board-summary.md) | Accepted |
 | 0078 | [Tokens get real artwork: a Scryfall token printing, resolved at runtime](0078-token-art.md) | Accepted |
 | 0079 | [Transforming a permanent: turning a card over is not a zone change (CR 701.27, CR 712)](0079-transforming-a-permanent.md) | Accepted |
 | 0080 | [Attack taxes: "creatures can't attack you unless their controller pays {N}" (CR 508.1h)](0080-attack-taxes.md) | Accepted |
@@ -98,7 +98,7 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0090 | [Preparation cards: the prepared designation and casting the prepare spell as a copy](0090-preparation-cards.md) | Accepted |
 | 0091 | [Hideaway: a face-down exile its source's controller may look at, linked to that source, with a free play](0091-hideaway.md) | Accepted |
 | 0092 | [A public roadmap from a CI-checked registry, and a site portal](0092-public-roadmap-and-site-portal.md) | Accepted |
-| 0093 | [Abilities granted to other permanents: a layer-6 grant writes a catalog bundle key onto the recipient](0093-abilities-granted-to-other-permanents.md) | Proposed |
+| 0093 | [Abilities granted to other permanents: a layer-6 grant writes a catalog bundle key onto the recipient](0093-abilities-granted-to-other-permanents.md) | Accepted |
 | 0094 | [Card lookups go through a checked hint table, not a walk of every zone](0094-card-location-index.md) | Accepted |
 | 0095 | [Deck coverage checks and deck requests, on the site and in Discord](0095-deck-coverage-and-deck-requests.md) | Accepted |
 | 0096 | [The monarch from a card effect](0096-the-monarch-from-a-card-effect.md) | Accepted |
@@ -118,16 +118,16 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0110 | [Remember me: durable sign-in, account settings, admins and saved setups](0110-remember-me.md) | Accepted |
 | 0111 | [Table UX: one action dock, bottom right](0111-action-dock.md) | Accepted |
 | 0112 | [Signed-in home, player mode, and one decks page](0112-signed-in-home-player-mode-and-one-decks-page.md) | Accepted |
-| 0113 | [Small seams for the S58 deck requests](0113-small-seams-for-the-s58-deck-requests.md) | Proposed |
-| 0114 | [The Ring tempts you](0114-the-ring-tempts-you.md) | Proposed |
-| 0115 | [Commanders die (CR 903.9a)](0115-commanders-die.md) | Proposed |
+| 0113 | [Small seams for the S58 deck requests](0113-small-seams-for-the-s58-deck-requests.md) | Accepted |
+| 0114 | [The Ring tempts you](0114-the-ring-tempts-you.md) | Accepted |
+| 0115 | [Commanders die (CR 903.9a)](0115-commanders-die.md) | Accepted |
 | 0116 | [A card filter on the revealed-hand pick](0116-a-card-filter-on-the-revealed-hand-pick.md) | Accepted |
 | 0117 | [Click to act, and a per-colour mana stepper](0117-click-to-act-and-a-per-colour-mana-stepper.md) | Accepted |
 | 0118 | [Strict payment by default, Cast anyway, and alternative costs for every spell](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md) | Accepted |
 | 0119 | [A stack you can follow](0119-a-stack-you-can-follow.md) | Accepted |
 | 0120 | [Expand a player's board on top of the table](0120-expand-a-players-board.md) | Accepted |
 | 0121 | [Animated dice: an opening roll at the table, dice you can watch, and a Roll a die action](0121-animated-dice.md) | Accepted |
-| 0122 | [An agent at the table: a local MCP seat](0122-an-agent-at-the-table-a-local-mcp-seat.md) | Proposed |
+| 0122 | [An agent at the table: a local MCP seat](0122-an-agent-at-the-table-a-local-mcp-seat.md) | Accepted |
 | 0123 | [Monitoring: metrics, logs, dashboards and alerts](0123-monitoring-metrics-logs-dashboards-and-alerts.md) | Accepted |
 | 0124 | [Admin views: accounts, games and who is on now](0124-admin-views-accounts-games-and-who-is-on-now.md) | Accepted |
 | 0125 | [A walkthrough that keeps up: first-use hints and a refreshed tutorial](0125-a-walkthrough-that-keeps-up.md) | Accepted |
@@ -166,8 +166,8 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0158 | [Signed-in pages: Tables with History, a deck grid, and a catalog with a filter sidebar](0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) | Accepted |
 | 0159 | [Per-table Discord voice rooms](0159-per-table-discord-voice-rooms.md) | Accepted |
 | 0160 | [Text-changing effects (CR 612): exchanging text boxes is a layer-3 substitution of the ability key](0160-text-changing-effects-exchanging-text-boxes.md) | Accepted |
-| 0161 | [An LFG board in Discord](0161-an-lfg-board-in-discord.md) | Proposed |
-| 0162 | [Discord DM notifications](0162-discord-dm-notifications.md) | Proposed |
+| 0161 | [An LFG board in Discord](0161-an-lfg-board-in-discord.md) | Accepted |
+| 0162 | [Discord DM notifications](0162-discord-dm-notifications.md) | Accepted |
 | 0163 | [Discord Linked Roles: CMD & CTRL stats on a member's profile](0163-discord-linked-roles.md) | Accepted |
 | 0164 | [Rematch: the host offers the same game again](0164-rematch-the-host-offers-the-same-game-again.md) | Accepted |
 | 0165 | [Game statistics: a record derived from every finished game](0165-game-statistics-a-record-derived-from-every-finished-game.md) | Accepted |
@@ -228,7 +228,7 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0221 | [Block taxes: "creatures can't block unless their controller pays {N}" (CR 509.1d)](0221-block-taxes.md) | Accepted |
 | 0222 | [Formats beyond Commander: Standard 1v1 and booster draft](0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) | Accepted |
 | 0223 | [Mutate: merged permanents, over or under (CR 702.140, CR 730)](0223-mutate-merged-permanents.md) | Accepted |
-| 0224 | [Banding: attacking in a band, blocking a band, and who divides the damage (CR 702.22)](0224-banding.md) | Proposed |
+| 0224 | [Banding: attacking in a band, blocking a band, and who divides the damage (CR 702.22)](0224-banding.md) | Accepted |
 | 0225 | [Splitting the card catalog package: a core, card shards and test packages](0225-splitting-the-card-catalog-package.md) | Accepted |
 
 ## Picking a number

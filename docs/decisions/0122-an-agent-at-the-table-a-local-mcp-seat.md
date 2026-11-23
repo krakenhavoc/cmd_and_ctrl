@@ -1,6 +1,6 @@
 # ADR 0122 — An agent at the table: a local MCP seat
 
-**Status:** Proposed · 2026-10-04 · S62 — An agent at the table. Amended the same day with the owner's review answers (decisions 6–8), and again for the Go version (decision 8 as amended).
+**Status:** Accepted · 2026-10-04 · S62 — An agent at the table. Amended the same day with the owner's review answers (decisions 6–8), and again for the Go version (decision 8 as amended).
 **Issues:** [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) (this change, and S62's tracker).
 **Owner decisions:** the five answers of 2026-10-04 on #2230 and the three review answers of the same day, quoted under [Owner decisions](#owner-decisions-2026-10-04). They are binding. This ADR also makes calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before PR 2 lands.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-04. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 38 remote heads, then on all 182 local branches. The highest number on any of them was 0120, on `origin/develop`. 0121 was reserved for animated dice ([#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229)), and it has since landed on `develop`. This ADR takes **0122**.

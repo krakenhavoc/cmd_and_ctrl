@@ -1,4 +1,4 @@
-.PHONY: docker-test docker-lint vulncheck tool-pins all buildbuild-bot build-boteval build-mcpseat run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
+.PHONY: docker-test docker-lint vulncheck tool-pins all build build-bot build-boteval build-mcpseat run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 BOT_BINARY := bin/cmd_and_ctrl-bot

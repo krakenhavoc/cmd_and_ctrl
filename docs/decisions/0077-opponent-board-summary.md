@@ -1,6 +1,6 @@
 # ADR 0077 — Opponent boards are read-outs, not small cards: the summary panel and what expands it
 
-**Status:** Proposed · 2026-09-19 · S32 — Playtest stabilisation, round 1
+**Status:** Accepted · 2026-09-19 · S32 — Playtest stabilisation, round 1
 **Issue:** [#956](https://github.com/krakenhavoc/cmd_and_ctrl/issues/956) (in-app
 report: "On a three player game, I cannot see my whole hand")
 **Numbering:** this ADR was written as 0076 and renumbered to **0077** on

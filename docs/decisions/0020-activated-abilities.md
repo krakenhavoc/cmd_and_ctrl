@@ -1,6 +1,6 @@
 # ADR 0020 — Activated abilities in the catalog
 
-**Status:** accepted (S21 sub-PR 2)
+**Status:** Accepted (S21 sub-PR 2)
 **Supersedes:** nothing. Extends [ADR 0018](0018-triggers-on-the-stack.md).
 
 ## Context

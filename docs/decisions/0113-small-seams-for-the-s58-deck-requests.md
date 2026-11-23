@@ -1,6 +1,6 @@
 # ADR 0113 — Small seams for the S58 deck requests
 
-**Status:** Proposed · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
+**Status:** Accepted · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
 **Owner decisions:** both questions answered on 2026-10-03; see [Owner decisions (2026-10-03)](#owner-decisions-2026-10-03). Everything else below is settled by the rules or by an earlier owner decision, and is written as decided.
 **Issues:** [#2072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2072) (a spell that reads what its sacrifice cost took), [#2073](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2073) (annihilator), [#2074](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2074) (statics that set or change a maximum hand size), [#2075](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2075) (undying and persist).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-03. I ran `git fetch --all --prune` and read the `docs/decisions/` file names on all 36 remote heads (`origin/develop`, `origin/main` and 34 chore, docs, feat, fix, repro and wip branches). The highest number anywhere is 0112. This one takes **0113**.

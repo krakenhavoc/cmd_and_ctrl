@@ -1,6 +1,6 @@
 # ADR 0021 — Additional costs to cast
 
-**Status:** accepted (S21 sub-PR 5)
+**Status:** Accepted (S21 sub-PR 5)
 **Extends:** [ADR 0020](0020-activated-abilities.md) (the cost model
 for activated abilities), [ADR 0019](0019-structured-targeting.md)
 (the announce-time validation pattern).

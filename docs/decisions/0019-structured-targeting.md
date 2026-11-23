@@ -1,6 +1,6 @@
 # ADR 0019 — Structured targeting
 
-**Status:** Implemented (sub-PR 1) · 2026-09-04 · Branch `feat/s20-target-predicates`
+**Status:** Accepted (sub-PR 1) · 2026-09-04 · Branch `feat/s20-target-predicates`
 
 ## Context
 

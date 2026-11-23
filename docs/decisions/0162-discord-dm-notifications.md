@@ -1,6 +1,6 @@
 # ADR 0162 — Discord DM notifications
 
-**Status:** Proposed · 2026-10-13 · Backlog
+**Status:** Accepted · 2026-10-13 · Backlog
 **Issue:** [#3320](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3320)
 **Owner decisions:** the two answers of 2026-10-13 are quoted under [Owner decisions](#owner-decisions-2026-10-13). They are binding. Calls this ADR makes on its own are listed under [Calls made here](#calls-made-here) for the owner to overturn in review, before slice 2 lands.
 **Numbering:** checked with ADR 0161's sweep (12 remote heads, highest 0160). ADR 0161 took 0161; this is **0162**.

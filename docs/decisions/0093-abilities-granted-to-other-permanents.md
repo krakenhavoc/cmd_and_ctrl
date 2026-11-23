@@ -1,6 +1,6 @@
 # ADR 0093 — Abilities granted to other permanents: a layer-6 grant writes a catalog bundle key onto the recipient
 
-**Status:** Proposed · 2026-09-24 · S38 — Layers: dependency ordering, ability grants, ability removal
+**Status:** Accepted · 2026-09-24 · S38 — Layers: dependency ordering, ability grants, ability removal
 **Amended:** 2026-09-24 — the owner answered four of the five open questions; see "Owner decisions".
 2026-09-24 — PR 1's implementation notes; see "Amendment 2026-09-24 — what PR 1 built".
 2026-09-24 — PR 4 (duration grants, #1584); see "Amendment 2026-09-24 — what PR 4 built".

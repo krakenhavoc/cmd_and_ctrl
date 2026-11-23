@@ -1,6 +1,6 @@
 # ADR 0001 — WebSocket library for the Go game server
 
-- **Status:** accepted
+- **Status:** Accepted
 - **Date:** 2026-04-10
 - **Sprint:** S01 — Go server + client scaffold
 - **Deciders:** project owner

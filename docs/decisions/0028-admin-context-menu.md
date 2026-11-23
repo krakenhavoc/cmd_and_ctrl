@@ -1,6 +1,6 @@
 # ADR 0028 — Right-click admin context menu for per-card overrides
 
-**Status:** Implemented · 2026-09-10 · Branch `feat/admin-context-menu`
+**Status:** Accepted · 2026-09-10 · Branch `feat/admin-context-menu`
 **Amended:** 2026-09-16 · #170 closeout: the stale #164 references corrected, and the two unshipped items handed to their own issues (see the amendment at the end)
 **Amended:** 2026-10-19 · [#4131](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4131): the table-wide sandbox verbs are gated (see the last amendment)
 **Relabelled:** 2026-10-09 · [ADR 0143](0143-gameplay-settings-overhaul.md) §3.2: the "Enable admin overrides" setting (`gameplay.adminOverrides`, unchanged) is now **Manual card controls on right-click**, under Settings → Gameplay → Advanced.

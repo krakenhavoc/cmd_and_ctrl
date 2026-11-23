@@ -1,6 +1,6 @@
 # ADR 0048 — Cost modification and the free-spell family
 
-**Status:** accepted (S28)
+**Status:** Accepted (S28)
 **Amended:** 2026-09-17 · PR #776 — §15's `cost_notes` ship on the snapshot as `CardView.target_cost_notes` (see the amendment under §15)
 **Amended:** 2026-09-17 · #831 — CR 107.3b fixes X at 0 on a cast that pays neither the mana cost nor an alternative cost that includes X (see the amendment at the end)
 **Extends:** [ADR 0011](0011-mana-pool-and-auto-tapper.md) (the cost

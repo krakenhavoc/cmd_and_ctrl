@@ -1,6 +1,6 @@
 # ADR 0014 — Combat keywords (S18)
 
-**Status:** Implemented · 2026-04-23 (planned + shipped) · Sprint S18
+**Status:** Accepted · 2026-04-23 (planned + shipped) · Sprint S18
 
 ## Context
 

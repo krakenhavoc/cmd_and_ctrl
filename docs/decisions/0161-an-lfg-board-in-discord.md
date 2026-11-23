@@ -1,6 +1,6 @@
 # ADR 0161 — An LFG board in Discord
 
-**Status:** Proposed · 2026-10-13 · Backlog
+**Status:** Accepted · 2026-10-13 · Backlog
 **Issue:** [#3319](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3319)
 **Owner decisions:** the two answers of 2026-10-13 are quoted under [Owner decisions](#owner-decisions-2026-10-13). They are binding. This ADR also makes calls the answers did not cover; they are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before slice 2 lands.
 **Numbering:** every ADR file on all 12 remote heads was listed after `git fetch --all --prune`. The highest number anywhere was **0160**, so this is **0161**. ADR 0162 (DM notifications) and ADR 0163 (Linked Roles) are drafted in the same PR.
