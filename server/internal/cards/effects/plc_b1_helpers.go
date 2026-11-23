@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // plcGrantTheModesTarget is "target creature gains <keyword> until end of
 // turn" as a modal bullet's body (Midnight, Piracy and Evolution Charm):
 // this occurrence's own target, while it is still legal (CR 608.2b).
-func plcGrantTheModesTarget(label, keyword string) func(*game.StackItem, *Context, int) error {
+func PlcGrantTheModesTarget(label, keyword string) func(*game.StackItem, *Context, int) error {
 	return func(_ *game.StackItem, ctx *Context, occ int) error {
 		t, ok := ModeTarget(ctx, occ)
 		if !ok || t.Kind != game.TargetCard {
