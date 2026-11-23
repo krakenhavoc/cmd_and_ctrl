@@ -32,20 +32,30 @@ cmd_and_ctrl/
 │   │   ├── ws/          # gorilla/websocket hub, Room, RoomManager, per-viewer broadcast
 │   │   ├── mcpseat/     # the MCP seat's library: ten tools over stdio, Layer A imported from aiseat/rules, imports no server state (ADR 0122)
 │   │   ├── aiseat/      # AI bot seats (S31): runner goroutine per bot, tiered policies, curated decks, announced improvisation — see docs/bot.md
-│   │   │   └── boardtext/ # the board half of the bot prompt as a pure Render(view, seat, opts): shared with the MCP seat (ADR 0122 §5)
+│   │   │   ├── boardtext/ # the board half of the bot prompt as a pure Render(view, seat, opts): shared with the MCP seat (ADR 0122 §5)
+│   │   │   ├── rules/     # Layer A: resolves a decision window outright when the rules already settle it (ADR 0033 §5)
+│   │   │   ├── heuristic/ # Layer B: the rule-based policy, the `heuristic` tier and the fallback under every model failure; no network, no randomness
+│   │   │   ├── model/     # Layer C: the model-backed policy and the funnel that keeps most windows away from it (ADR 0033 §5)
+│   │   │   ├── deckprofile/ # the model tiers' prompt-cached view of a pre-built deck: decklist with oracle text and archetype plan
+│   │   │   ├── tiers/     # builds the four difficulties (random, heuristic, assisted, strong) and their runner pacing (ADR 0033 §6)
+│   │   │   ├── budget/    # the spend guard every hosted-model call goes through (#2980)
+│   │   │   ├── decisionlog/ # one JSONL file per game: what each bot seat was asked, what it decided, what happened to the answer
+│   │   │   └── suite/     # the labelled position suite: frozen decision windows with a human's answer, scored against a policy
 │   │   ├── botarena/    # headless bot-vs-bot games and their report, behind `boteval arena` (ADR 0052 decision 4); outside aiseat/ because aiseat may not import internal/game
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── adminview/   # the admin views' read side: every SQL statement behind /admin/users* and /admin/games* (SELECT only, guarded by a test), their response types, and pure merges with the lobby's live tables; imports no lobby or ws (ADR 0124)
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes; card roles (roles.go, roles_overrides.go, ADR 0217 §7)
-│   │   │   ├── effects/  # the card catalog (package effects): Spec, Register, Lookup, every seam and shared helper. Split by #5906 (ADR 0225) when its second PR lands; until then every card and test is in this one directory:
+│   │   │   ├── effects/  # the card catalog (package effects): Spec, Register, Lookup, every seam and shared helper, and the card files listed in core_cards.txt. Split by #5906 (ADR 0225):
 │   │   │   │   ├── shards.txt      # the frozen range table: which card shard and test package a file name belongs to
 │   │   │   │   ├── core_cards.txt  # the card files that stay in the core because other files use their helpers (written by the split)
-│   │   │   │   ├── cards/          # package cards, the aggregator: links every shard; import it for its side effect wherever the whole catalog is read
-│   │   │   │   │   └── <shard>/    # package cards<shard>: card files only, one init() each, qualified calls into the core
+│   │   │   │   ├── cards/          # package cards, the aggregator: links every shard and tells the core the catalog is whole; import it for its side effect wherever the whole catalog is read
+│   │   │   │   │   └── <shard>/    # package cards<shard> (37 shards, a … x, by file-name range): card files only, one init() each, qualified calls into the core
 │   │   │   │   ├── effectstest/    # test helpers lifted out of the old _test.go files (NewCatalogGame, …) and the flat view the source-scanning tests read
-│   │   │   │   └── tests/<id>/     # package tests<id>: the catalog's tests, plus a generated main_test.go
+│   │   │   │   ├── tests/<id>/     # package tests<id> (23 packages, a … u, by file-name range): the catalog's tests, plus a generated main_test.go
+│   │   │   │   └── testdata/       # legacy_trigger_builds.txt, the ratchet list one catalog test reads
 │   │   │   ├── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
+│   │   │   ├── tokenart/ # resolves a Scryfall token printing for a token about to be created, so the client can draw it; the seam that lets internal/game reach the index without importing it (ADR 0078)
 │   │   │   └── oracletext/ # reads printed Oracle text: the comparison form coverage's drift guards use, and the catalog row → printed ability map behind a stack item's ability_text (#3830)
 │   │   ├── catalog/     # /catalog routes (public) — what the engine automates + how completely (ADR 0042)
 │   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092) and its closed list from docs/engine-seams/closed/ (#1461)
@@ -82,6 +92,7 @@ cmd_and_ctrl/
 │   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)
 │   │   ├── capacity/    # the server's caps and their defaults: weighted table load, WebSocket connections, creation rates; policy and arithmetic only, the lobby and hub enforce them (ADR 0148)
 │   │   ├── metrics/     # Prometheus metrics on our own registry, served on a loopback-only listener; route-pattern HTTP labels, closed label sets guarded by a test (ADR 0123)
+│   │   │   └── metricstest/ # test helper: a metric family's summed value for before/after deltas, and the names a set of collectors can report
 │   │   ├── docsguard/   # tests only: ADR numbering, the size of AGENTS.md, the CI shard list and other docs/ guards
 │   │   ├── util/        # small shared helpers: appenv (the dev-only gate), clientip, envflag, ratelimit, redact, token
 │   │   └── db/          # persistent SQLite store (ADR 0051): open, WAL, the migrations runner and the backup timer
@@ -92,20 +103,29 @@ cmd_and_ctrl/
 │   │   ├── App.svelte   # router shell
 │   │   ├── main.ts
 │   │   ├── app.css
-│   │   ├── lib/         # protocol types, WebSocket client, session, api, hash router
+│   │   ├── lib/         # protocol types, WebSocket client, session, api, hash router, labels.ts
+│   │   │   ├── components/ # the shared Svelte components: board, panels, pickers, dialogs
+│   │   │   ├── fx/        # table effects: signature scenes for named cards, tints and voice cues (ADR 0209)
+│   │   │   ├── hints/     # the first-use hint runtime that collects every `*.hint.ts` (ADR 0125 §3.2)
+│   │   │   └── test/      # test-only stubs and harnesses; never ships
 │   │   ├── routes/      # one Svelte page per route: FrontPage, Lobby, Join, Game, Decks, Catalog, Roadmap, Stats, Pods, Friends, Draft, DraftSets, MyDrafts, MyCubes, Admin, Privacy, …
 │   │   └── sw/          # the service worker (ADR 0031)
 │   ├── public/          # static files: card backs, fonts, icons, the web manifest, sounds and voices
 │   ├── tools/           # dev tools that never ship: the fx preview harness (fx-preview/, `npm run fx-preview`, #4868) and the icon and card-back generators
 │   ├── index.html
 │   ├── vite.config.ts
+│   ├── vite-plugin-sw.ts # builds the service worker and its precache list
+│   ├── vitest.config.ts
 │   ├── svelte.config.js
 │   ├── tsconfig.json
 │   ├── eslint.config.js
 │   └── package.json
-├── scripts/             # scryfall-refresh.sh (weekly cron), backup-offsite.sh (nightly R2 backup), set-server-env.sh and ensure-monitoring-agent.sh (CD), ci-test-shard.sh (which packages each `server-test` shard runs, #2766) + one-off tools
+├── scripts/             # go-docker.sh (Go without a local toolchain), scryfall-refresh.sh (weekly), backup-offsite.sh and restore-rehearsal.sh (backup timers), the CD and release helpers, ci-test-shard.sh (which packages each `server-test` shard runs, #2766) + one-off tools; each is in docs/commands.md
+│   ├── cost/            # the project cost tracker behind `make cost-*` (Python)
+│   └── split-effects/   # the Go tool behind split-effects.sh that splits the card catalog and places new files (ADR 0225)
 ├── tests-e2e/           # Playwright end-to-end specs (see its README.md)
-├── deploy/              # Caddyfile and the systemd units for the bot, the backup and the restore rehearsal
+├── deploy/              # Caddyfile and the systemd units for the bot, the backup and the restore rehearsal (see deploy/README.md)
+│   ├── alloy/           # the Grafana Alloy config and unit drop-in CD installs on both app hosts (ADR 0123)
 │   └── monitoring/      # alert rules (+ promtool tests in rules/tests/) and Grafana dashboards the monitoring VM syncs from main (ADR 0123) — see docs/monitoring.md
 ├── data/                # runtime state (gitignored): Scryfall cache, snapshots, images
 └── docs/

@@ -203,13 +203,13 @@ previous revision had the old number.
   is not one of the three alternative costs that exist.
 - **Meticulous Archive does not surveil**; the enters-tapped half and
   the duals are real
-  ([surveil_lands.go:16](../../server/internal/cards/effects/surveil_lands.go)).
+  ([surveil_lands.go:16](../../server/internal/cards/effects/cards/st/surveil_lands.go)).
   Surveil needs a new `PendingChoice` kind — scry's structure with
   "bottom of library" replaced by "graveyard".
 - **Floodfarm Verge ships mono-{W}**: its conditional second mana
   ability has no shape (`ManaAbilityCost` has no condition slot), so the
   card is strictly *worse* than printed
-  ([verges.go](../../server/internal/cards/effects/verges.go)).
+  ([verges.go](../../server/internal/cards/effects/cards/v/verges.go)).
 - ~~**Hallowed Fountain enters tapped, then offers to untap for 2
   life**~~ — **superseded** by
   [#268](https://github.com/krakenhavoc/cmd_and_ctrl/pull/268), which

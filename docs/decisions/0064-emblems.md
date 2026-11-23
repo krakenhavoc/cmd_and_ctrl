@@ -466,7 +466,7 @@ zero value of both is "declares neither", which is every emblem catalogued
 before this card.
 
 Proof card: Teferi, Who Slows the Sunset
-([teferi_who_slows_the_sunset.go](../../server/internal/cards/effects/teferi_who_slows_the_sunset.go)).
+([teferi_who_slows_the_sunset.go](../../server/internal/cards/effects/cards/sy/teferi_who_slows_the_sunset.go)).
 Tracker: [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884).
 
 ## Note (2026-09-24, #1275): a fifth slot — activation timing

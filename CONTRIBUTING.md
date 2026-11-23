@@ -38,7 +38,7 @@ make lint         # go vet, ESLint and Prettier
 
 - **Client tests:** `npm test` in `client/`.
 - **Without a local Go toolchain:** `scripts/go-docker.sh` runs Go in Docker. See
-  [AGENTS.md §5](AGENTS.md#5-commands-youll-actually-run).
+  [AGENTS.md §5](AGENTS.md#5-commands-and-rules).
 - **Adding or fixing a card:** start with [docs/adding-cards.md](docs/adding-cards.md).
 
 ## Make the change

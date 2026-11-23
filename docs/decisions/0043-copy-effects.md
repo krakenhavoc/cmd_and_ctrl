@@ -11,7 +11,7 @@ copy effects — was deferred to S16.5 with a named trigger: *land it
 when a Clone-class card enters the catalog*.
 
 That trigger fired twice. Clone was added to a playtest deck and
-[#335](../../issues/335) reported it: "does not allow the selection of
+[#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335) reported it: "does not allow the selection of
 any usable target and enters the battlefield as a 0/0." Both halves of
 that sentence are one missing feature. The CR 614 replacement pipeline
 had no way to express "as this enters, choose something", and the
@@ -130,7 +130,7 @@ it.
 
 ### 5. Dependency detection (CR 613.8) stays deferred
 
-The other half of [#159](../../issues/159) is **not** shipped, and
+The other half of [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159) is **not** shipped, and
 this is the decision rather than an omission.
 
 CR 613.8's rule — apply A before B when A's existence changes what B
