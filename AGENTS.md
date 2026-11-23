@@ -67,8 +67,9 @@ cmd_and_ctrl/
 ├── Makefile       # top-level dev/test/lint targets
 ├── server/        # Go game server (authoritative state, WebSocket + HTTP API)
 ├── client/        # TypeScript + Svelte 5 + Vite
+├── tests-e2e/     # Playwright e2e
 ├── scripts/       # CD helpers, cron and backup jobs, one-off tools
-├── deploy/        # monitoring alert rules and Grafana dashboards
+├── deploy/        # Caddy, systemd, monitoring
 ├── data/          # runtime state (gitignored)
 └── docs/          # reference, runbooks and ADRs
 ```
@@ -116,7 +117,7 @@ Work is organised into 2-week sprints, tracked on the
 checklist; the plan lists them.
 
 **Every commit and pull request must reference the sprint and issue it relates
-to.** This is non-negotiable. If a PR does not belong to the active sprint, say so
+to.** If a PR does not belong to the active sprint, say so
 and justify it.
 
 ### Picking an ADR number

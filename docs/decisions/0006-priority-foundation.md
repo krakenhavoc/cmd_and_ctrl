@@ -218,7 +218,7 @@ the cursor on to Upkeep.
   goroutine handoff + lock semantics for no actual benefit. Synchronous
   recursion under one write lock is simpler and easier to test.
 - **`SkipNextDrawForActive bool` instead of `StartingSeat int`.** Considered
-  in the original [s13-priority-foundation.md](/home/node/.claude/plans/s13-priority-foundation.md)
+  in the original `s13-priority-foundation.md` (a local plan file, not in the repository)
   research synthesis. Rejected during the 2026-04-20 re-plan: a one-shot
   flag works for the common case but doesn't survive a Concede-then-
   Pass-Turn that would land back on the starting seat at turn 1; a
