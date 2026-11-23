@@ -16,7 +16,7 @@ import (
 // creatureCardsAmong counts the cards of `exiled` that were creature
 // cards before they moved — "for each creature card exiled this way"
 // (Waste Management). exileTargetCardsThen supplies both arguments.
-func creatureCardsAmong(exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) int {
+func CreatureCardsAmong(exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) int {
 	n := 0
 	for _, id := range exiled {
 		if wasCreature[id] {
@@ -28,15 +28,15 @@ func creatureCardsAmong(exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) int 
 
 // anyWasCreature is "if at least one creature card was exiled this
 // way" (Soul-Shackled Zombie, Kaya, Orzhov Usurper).
-func anyWasCreature(exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) bool {
-	return creatureCardsAmong(exiled, wasCreature) > 0
+func AnyWasCreature(exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) bool {
+	return CreatureCardsAmong(exiled, wasCreature) > 0
 }
 
 // upToNCardsFromASingleGraveyard is the clause with its printed wording
 // spelled from the count: "up to three target cards from a single
 // graveyard".
-func upToNCardsFromASingleGraveyard(n int) *game.TargetSpec {
-	return UpToCardsFromASingleGraveyard("up to "+numberWord(n)+" target cards from a single graveyard", n)
+func UpToNCardsFromASingleGraveyard(n int) *game.TargetSpec {
+	return UpToCardsFromASingleGraveyard("up to "+NumberWord(n)+" target cards from a single graveyard", n)
 }
 
 // ExileFromASingleGraveyardAbility is the activated ability "<cost>:
@@ -46,12 +46,12 @@ func upToNCardsFromASingleGraveyard(n int) *game.TargetSpec {
 // Ghoul and Unlicensed Hearse with other costs and counts.
 func ExileFromASingleGraveyardAbility(costText string, cost game.AbilityCost, n int) ActivatedAbility {
 	return ActivatedAbility{
-		Label: costText + ": Exile up to " + numberWord(n) + " target cards from a single graveyard.",
+		Label: costText + ": Exile up to " + NumberWord(n) + " target cards from a single graveyard.",
 		// ADR 0142 sweep ruling 9, split from restrict by ADR 0009's
 		// amendment of 2026-10-30 (#4734, Q5): graveyard hate is graveyard.
 		Purpose: game.Purpose{Answers: game.AnswerGraveyard},
 		Cost:    cost,
-		Targets: upToNCardsFromASingleGraveyard(n),
+		Targets: UpToNCardsFromASingleGraveyard(n),
 		Effect:  ExileTargetCards,
 	}
 }
@@ -65,14 +65,14 @@ func ExileFromASingleGraveyardAbility(costText string, cost game.AbilityCost, n 
 // doing nothing: an "up to" clause is never unfillable (CR 603.3d).
 func WhenThisEntersExileFromASingleGraveyard(name string, n int, effect Effect) game.TriggeredAbility {
 	return Targeting(
-		WhenThisEnters(name+" — exile up to "+numberWord(n)+" target cards from a single graveyard", effect),
-		upToNCardsFromASingleGraveyard(n))
+		WhenThisEnters(name+" — exile up to "+NumberWord(n)+" target cards from a single graveyard", effect),
+		UpToNCardsFromASingleGraveyard(n))
 }
 
 // exileTargetCardsOnResolve is ExileTargetCards as a spell's OnResolve
 // — Decompose, Scarab Feast, Rapid Decay, Shred Memory.
-func exileTargetCardsOnResolve(_ *game.StackItem, ctx *Context) error {
-	return exileTargetCardsThen(ctx, game.TailRef{})
+func ExileTargetCardsOnResolve(_ *game.StackItem, ctx *Context) error {
+	return ExileTargetCardsThen(ctx, game.TailRef{})
 }
 
 // ExileTargetCards exiles every card target that is still legal as the
@@ -80,7 +80,7 @@ func exileTargetCardsOnResolve(_ *game.StackItem, ctx *Context) error {
 // target that left its graveyard in response is skipped, and the rest
 // still go. Decompose, Carrion Beetles, Digsite Conservator.
 func ExileTargetCards(g *game.Game, item *game.StackItem) error {
-	return exileTargetCardsThen(NewContext(g, item), game.TailRef{})
+	return ExileTargetCardsThen(NewContext(g, item), game.TailRef{})
 }
 
 // exileTargetCardsThen is ExileTargetCards with a clause hanging off
@@ -93,7 +93,7 @@ func ExileTargetCards(g *game.Game, item *game.StackItem) error {
 //
 // The context is rebuilt inside the continuation from the live *Game,
 // the contract massEffect.apply explains.
-func exileTargetCardsThen(ctx *Context, then game.TailRef) error {
+func ExileTargetCardsThen(ctx *Context, then game.TailRef) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
@@ -101,7 +101,7 @@ func exileTargetCardsThen(ctx *Context, then game.TailRef) error {
 		}
 		ids = append(ids, t.ID)
 	}
-	return exileCardsThen(ctx, ids, then)
+	return ExileCardsThen(ctx, ids, then)
 }
 
 // exileCardsThen is exileTargetCardsThen over a list of cards that are
@@ -111,7 +111,7 @@ func exileTargetCardsThen(ctx *Context, then game.TailRef) error {
 // #4253 slice 9: `then` is a registered tail (GraveyardExileTail), or the
 // zero ref for none, so a table waiting on a CR 616 prompt in the middle
 // of the exile is a restore point.
-func exileCardsThen(ctx *Context, cards []uuid.UUID, then game.TailRef) error {
+func ExileCardsThen(ctx *Context, cards []uuid.UUID, then game.TailRef) error {
 	var ids []uuid.UUID
 	for _, id := range cards {
 		if _, ok := ctx.Game.LookupCardForEffect(id); !ok {

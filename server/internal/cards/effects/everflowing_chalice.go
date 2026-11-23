@@ -36,7 +36,7 @@ func init() {
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:           ManaAbilityCost{Tap: true},
-				ProducedAmount: everflowingChaliceProduced,
+				ProducedAmount: EverflowingChaliceProduced,
 				Label:          "{T}: Add {C} for each charge counter on this artifact",
 			},
 		},
@@ -45,7 +45,7 @@ func init() {
 
 // everflowingChaliceProduced is "Add {C} for each charge counter on
 // this artifact" — read off the ability's own source, not the board.
-func everflowingChaliceProduced(g *game.Game, _, source uuid.UUID) game.ManaAmount {
+func EverflowingChaliceProduced(g *game.Game, _, source uuid.UUID) game.ManaAmount {
 	c, ok := g.LookupCardForEffect(source)
 	if !ok {
 		return game.ManaAmount{}

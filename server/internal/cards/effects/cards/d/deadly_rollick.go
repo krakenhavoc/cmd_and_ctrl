@@ -1,0 +1,35 @@
+package cardsd
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Deadly Rollick — Instant {3}{B}:
+//
+//	"If you control a commander, you may cast this spell without
+//	paying its mana cost.
+//	 Exile target creature."
+//
+// One of the five "free spells" from Commander Legends. The exile
+// half is ordinary removal; the free-cast half is what makes the card
+// a staple.
+//
+// The shared commander alternative-cost gate checks the caster controls
+// a commander when the spell is announced. Either printed cost is legal.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:         "0456ec64-2c81-4763-a352-8ff64a4c3d6b",
+		Name:             "Deadly Rollick",
+		Completeness:     effects.CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{effects.FreeIfYouControlCommander("Cast without paying its mana cost")},
+		Targets:          effects.TargetCreature("target creature"),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+				return nil
+			}
+			return effects.ExileTarget{Target: item.Targets[0].ID}.Apply(ctx)
+		},
+	})
+}

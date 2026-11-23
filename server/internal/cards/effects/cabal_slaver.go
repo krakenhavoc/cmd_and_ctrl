@@ -21,10 +21,10 @@ func init() {
 		Name:         "Cabal Slaver",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDealDamage, aCreatureOfTypeDealtCombatDamageToAPlayer("Goblin"),
+			On(game.EventDealDamage, ACreatureOfTypeDealtCombatDamageToAPlayer("Goblin"),
 				"Cabal Slaver — that player discards a card",
 				func(g *game.Game, item *game.StackItem) error {
-					return discardOne(g, item, NewContext(g, item).Trigger().Event.Target)
+					return DiscardOne(g, item, NewContext(g, item).Trigger().Event.Target)
 				}),
 		},
 	})
@@ -35,7 +35,7 @@ func init() {
 // Sliver): combat damage to a seated player from a creature, any
 // player's, that is of the type as the damage is dealt. The type word is
 // read through the source's own text (CR 612.2).
-func aCreatureOfTypeDealtCombatDamageToAPlayer(tribe string) When {
+func ACreatureOfTypeDealtCombatDamageToAPlayer(tribe string) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || g.PlayerByIDForEffect(ev.Target) == nil {
 			return false

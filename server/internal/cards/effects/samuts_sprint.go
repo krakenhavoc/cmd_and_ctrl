@@ -20,7 +20,7 @@ func init() {
 			Targets: game.ForTargets(BenefitUntilEOT(0, 2, 1, "haste"))},
 		Targets: TargetCreature("target creature"),
 		OnResolve: ResolveSteps(
-			warPlusTwoOneAndHaste("Samut's Sprint — +2/+1 and haste"),
+			WarPlusTwoOneAndHaste("Samut's Sprint — +2/+1 and haste"),
 			Scry{N: 1},
 		),
 	})
@@ -29,8 +29,8 @@ func init() {
 // warPlusTwoOneAndHaste is "Target creature gets +2/+1 and gains haste
 // until end of turn" as one step: the still-legal target gets both
 // (CR 608.2b). Samut's Sprint and Samut, Tyrant Smasher's −1.
-func warPlusTwoOneAndHaste(label string) Instruction {
+func WarPlusTwoOneAndHaste(label string) Instruction {
 	return func(ctx *Context) error {
-		return pumpAndGrantFirstTarget(2, 1, label, "haste")(ctx.Game, ctx.Item)
+		return PumpAndGrantFirstTarget(2, 1, label, "haste")(ctx.Game, ctx.Item)
 	}
 }

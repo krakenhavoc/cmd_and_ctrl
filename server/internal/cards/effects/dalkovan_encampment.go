@@ -39,7 +39,7 @@ func init() {
 		Name:         "Dalkovan Encampment",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
-			SelfEntersTappedUnless(youControlLandTyped("Swamp", "Mountain")),
+			SelfEntersTappedUnless(YouControlLandTyped("Swamp", "Mountain")),
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
@@ -54,7 +54,7 @@ func init() {
 				return DelayedOnEvent{
 					Label:        b33DalkovanAttackLabel,
 					On:           []game.EventKind{game.EventAttack},
-					Condition:    youAttackCondition,
+					Condition:    YouAttackCondition,
 					Body:         dalkovanWarriorsBody,
 					Repeats:      true,
 					OncePerBatch: true,
@@ -67,7 +67,7 @@ func init() {
 var (
 	// youAttackCondition is "whenever you attack": an EventAttack for a
 	// creature the trigger's controller controls.
-	youAttackCondition = game.DelayedCondition("attack/you-attack",
+	YouAttackCondition = game.DelayedCondition("attack/you-attack",
 		func(ev game.Event, dt *game.DelayedTrigger, _ *game.Game, _ game.EffectParams) bool {
 			return ev.Kind == game.EventAttack && ev.Actor == dt.Controller
 		})
@@ -79,10 +79,10 @@ var (
 // attacking 1/1 red Warriors, sacrificed at the next end step.
 func dalkovanWarriors(g *game.Game, item *game.StackItem) error {
 	return CreateTokensAttackingYourChoice{
-		Template: b33TappedAttackingRedWarrior(),
+		Template: B33TappedAttackingRedWarrior(),
 		N:        2,
 		Tapped:   true,
-		Prefer:   triggerAttackTarget(item),
+		Prefer:   TriggerAttackTarget(item),
 		Label:    "Dalkovan Encampment",
 		Tail:     game.KeyedTail{Ref: dalkovanWarriorsSacrifice},
 	}.Apply(NewContext(g, item))
@@ -98,6 +98,6 @@ var dalkovanWarriorsSacrifice = AttackingTokensThen("attacking-tokens/dalkovan-e
 		return ScheduleDelayedTrigger{
 			Label: "Dalkovan Encampment — sacrifice the Warriors",
 			Cards: created,
-			Body:  sacrificeListedCardsBody,
+			Body:  SacrificeListedCardsBody,
 		}.Apply(ctx)
 	})

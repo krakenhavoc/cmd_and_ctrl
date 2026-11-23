@@ -47,15 +47,15 @@ func init() {
 			WhenThisEntersOrAttacks("Colossal Grave-Reaver — mill three cards", Do(MillCards{N: 3})),
 			{
 				OncePerBatch: true,
-				Watches:      libraryToGraveyardKinds,
+				Watches:      LibraryToGraveyardKinds,
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return cardPutIntoYourGraveyardFromYourLibrary(ev, source, g, isCreatureCard)
+					return CardPutIntoYourGraveyardFromYourLibrary(ev, source, g, IsCreatureCard)
 				},
 				Key: b17GraveReaverReturnLabel,
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return b17ReanimateOneMilled(g, item, item.Controller,
+					return B17ReanimateOneMilled(g, item, item.Controller,
 						"Colossal Grave-Reaver — put one of the milled creature cards onto the battlefield",
-						cardsPutIntoGraveyardFromLibraryInBatch(g, item.Trigger.Event.Batch, item.Controller, isCreatureCard))
+						CardsPutIntoGraveyardFromLibraryInBatch(g, item.Trigger.Event.Batch, item.Controller, IsCreatureCard))
 				},
 			},
 		},
@@ -66,7 +66,7 @@ func init() {
 // lone candidate returns outright, several are offered to the
 // controller as an exactly-one pick. `from` is the graveyard's owner
 // (Helm of Obedience reanimates out of somebody else's).
-func b17ReanimateOneMilled(g *game.Game, item *game.StackItem, from uuid.UUID, question string, creatures []uuid.UUID) error {
+func B17ReanimateOneMilled(g *game.Game, item *game.StackItem, from uuid.UUID, question string, creatures []uuid.UUID) error {
 	switch len(creatures) {
 	case 0:
 		return nil
@@ -85,7 +85,7 @@ func b17ReanimateOneMilled(g *game.Game, item *game.StackItem, from uuid.UUID, q
 		Cards:      creatures,
 		Min:        1,
 		Max:        1,
-		ThenKey:    b17ReanimatePicked,
+		ThenKey:    B17ReanimatePicked,
 		LiveZone:   game.ZoneGraveyard,
 		Asked:      game.NewAskedItem(item),
 	})
@@ -96,7 +96,7 @@ func b17ReanimateOneMilled(g *game.Game, item *game.StackItem, from uuid.UUID, q
 // battlefield" (#4253): the asking item rides the prompt as data. Shared by
 // every card that reanimates one of a milled batch. An on-disk key: never
 // renamed, never reused.
-var b17ReanimatePicked = game.RegisterChooseCardsThen("choose-cards/reanimate-one-milled", func(g *game.Game, r game.CardsChosen) error {
+var B17ReanimatePicked = game.RegisterChooseCardsThen("choose-cards/reanimate-one-milled", func(g *game.Game, r game.CardsChosen) error {
 	if len(r.Picked) == 0 || r.Asked == nil {
 		return nil
 	}

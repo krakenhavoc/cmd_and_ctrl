@@ -1,0 +1,474 @@
+package testss82v
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+func TestShocklandPromptPausesTheEntry(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+
+	id := effectstest.PlayLandFromHand(t, g, "Steam Vents", effectstest.SteamVentsOracle)
+
+	c := effectstest.EntryPayLifeChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("playing a shockland queued no pay-life prompt")
+	}
+	if c.PayCost != "2 life" {
+		t.Errorf("prompt cost label: got %q, want %q", c.PayCost, "2 life")
+	}
+	if c.Source != id {
+		t.Errorf("prompt source: got %s, want the entering land %s", c.Source, id)
+	}
+	// The entry is what's being replaced, so nothing has entered.
+	if _, ok := effectstest.BattlefieldCard(g, id); ok {
+		t.Error("the land reached the battlefield before the choice was made")
+	}
+	if !me.Hand.Contains(id) {
+		t.Error("the land left the hand while the entry prompt was still open")
+	}
+
+	effectstest.AnswerEntryPayLife(t, g, me.ID, false)
+	if _, ok := effectstest.BattlefieldCard(g, id); !ok {
+		t.Fatal("answering the prompt did not resume the entry")
+	}
+}
+
+func TestShocklandPaidTwoLifeEntersUntapped(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	lifeBefore := me.Life
+
+	id := effectstest.PlayLandFromHand(t, g, "Hallowed Fountain", effectstest.HallowedFountainOracle)
+	effectstest.AnswerEntryPayLife(t, g, me.ID, true)
+
+	card, ok := effectstest.BattlefieldCard(g, id)
+	if !ok {
+		t.Fatal("Hallowed Fountain is not on the battlefield")
+	}
+	if card.Tapped {
+		t.Error("paid 2 life and the land still entered tapped")
+	}
+	if got := lifeBefore - me.Life; got != 2 {
+		t.Errorf("life paid: got %d, want 2", got)
+	}
+	// The pay branch of the old implementation entered tapped and
+	// then untapped: one tap event and one untap event. A replaced
+	// entry emits neither.
+	if n := effectstest.TapEventsFor(g, id); n != 0 {
+		t.Errorf("%d tap events; a paid shockland is never tapped at all", n)
+	}
+	if n := effectstest.UntapEventsFor(g, id); n != 0 {
+		t.Errorf("%d untap events; the land entered untapped, it was not untapped", n)
+	}
+}
+
+func TestShocklandDeclinedEntersTapped(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	lifeBefore := me.Life
+
+	id := effectstest.PlayLandFromHand(t, g, "Blood Crypt", effectstest.BloodCryptOracle)
+	effectstest.AnswerEntryPayLife(t, g, me.ID, false)
+
+	card, ok := effectstest.BattlefieldCard(g, id)
+	if !ok {
+		t.Fatal("Blood Crypt is not on the battlefield")
+	}
+	if !card.Tapped {
+		t.Error("declined the payment and the land entered untapped anyway")
+	}
+	// The discriminator: the land ENTERED tapped, so nothing tapped
+	// it. An OnETB tap would show up here as one event.
+	if n := effectstest.TapEventsFor(g, id); n != 0 {
+		t.Errorf("%d tap events; the land should have ENTERED tapped", n)
+	}
+	if me.Life != lifeBefore {
+		t.Errorf("life changed on a decline: got %d, want %d", me.Life, lifeBefore)
+	}
+}
+
+// TestShocklandBelowTheCostIsNotPrompted pins CR 119.4: a player may
+// pay 2 life only with a life total of at least 2. At 1 life there is
+// no decision to offer, so the land just enters tapped — and it must
+// not cost the player their last life either.
+func TestShocklandBelowTheCostIsNotPrompted(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	me.Life = 1
+
+	id := effectstest.PlayLandFromHand(t, g, "Godless Shrine", effectstest.ShocklandOracleIDs["Godless Shrine"])
+
+	if c := effectstest.EntryPayLifeChoiceFor(g, me.ID); c != nil {
+		t.Error("prompted for a payment the player cannot legally make")
+	}
+	card, ok := effectstest.BattlefieldCard(g, id)
+	if !ok {
+		t.Fatal("the land did not enter when the prompt was skipped")
+	}
+	if !card.Tapped {
+		t.Error("unpaid shockland entered untapped")
+	}
+	if n := effectstest.TapEventsFor(g, id); n != 0 {
+		t.Errorf("%d tap events; the land should have ENTERED tapped", n)
+	}
+	if me.Life != 1 {
+		t.Errorf("life: got %d, want 1 — an unaffordable cost must not be charged", me.Life)
+	}
+}
+
+// TestShocklandExactlyTheCostMayPay is the other side of CR 119.4:
+// at exactly 2 life the payment is legal, and taking it to 0 is the
+// player's business (state-based actions handle the rest).
+func TestShocklandExactlyTheCostMayPay(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	me.Life = 2
+
+	id := effectstest.PlayLandFromHand(t, g, "Watery Grave", effectstest.ShocklandOracleIDs["Watery Grave"])
+	if c := effectstest.EntryPayLifeChoiceFor(g, me.ID); c == nil {
+		t.Fatal("no prompt at exactly the cost — paying to 0 is legal")
+	}
+	effectstest.AnswerEntryPayLife(t, g, me.ID, true)
+
+	if me.Life != 0 {
+		t.Errorf("life: got %d, want 0", me.Life)
+	}
+	// "State-based actions handle the rest" is the whole tail of this
+	// test now: at 0 life the player loses, and CR 800.4a (#769) takes
+	// their objects out of the game with them — this land included, at
+	// a four-seat table where the game goes on. That a PAID shockland
+	// enters untapped is TestShocklandPaidTwoLifeEntersUntapped's
+	// claim; this test is about the payment being legal at exactly the
+	// cost.
+	if !me.Eliminated {
+		t.Error("a player at 0 life should have lost to the state-based action")
+	}
+	if _, ok := effectstest.BattlefieldCard(g, id); ok {
+		t.Error("the land stayed on the battlefield after its owner left the game (CR 800.4a)")
+	}
+}
+
+// TestShocklandNoStackTrip pins the other half of the superseded
+// simplification: the choice is not a triggered ability, so it never
+// touches the stack and never hands an opponent priority.
+func TestShocklandNoStackTrip(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+
+	id := effectstest.PlayLandFromHand(t, g, "Temple Garden", effectstest.ShocklandOracleIDs["Temple Garden"])
+	effectstest.AnswerEntryPayLife(t, g, me.ID, true)
+
+	if n := g.Stack.Size(); n != 0 {
+		t.Errorf("stack holds %d items; the entry choice is a replacement, not a trigger", n)
+	}
+	if len(g.PendingTriggers) != 0 {
+		t.Errorf("%d pending triggers; the entry choice is not a trigger", len(g.PendingTriggers))
+	}
+	if _, ok := effectstest.BattlefieldCard(g, id); !ok {
+		t.Fatal("Temple Garden is not on the battlefield")
+	}
+}
+
+// TestShocklandUnderKismetStillOffersThePayment covers the CR 616
+// case: an opponent's Kismet replaces the same entry, so the
+// affected player orders the two replacements first. The payment
+// decision has to survive that — an effect with a choice inside it
+// must not be fired blind just because it arrived through the
+// ordering prompt.
+//
+// Paying under a Kismet is a bad deal (the land enters tapped
+// either way), which is exactly why the player, not the engine,
+// should be the one to decline it.
+func TestShocklandUnderKismetStillOffersThePayment(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opponent := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	lifeBefore := me.Life
+	effectstest.SeedReplacementPermanent(g, "81fdd1c4-d43b-4f8b-8712-7c2bf45a3e0b", "Kismet", opponent.ID)
+
+	id := effectstest.PlayLandFromHand(t, g, "Sacred Foundry", effectstest.ShocklandOracleIDs["Sacred Foundry"])
+
+	var order *game.PendingChoice
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceReplacementOrder {
+			order = c
+		}
+	}
+	if order == nil {
+		t.Fatal("two enters-tapped replacements applied but no CR 616 ordering prompt")
+	}
+	if order.Chooser != me.ID {
+		t.Errorf("ordering chooser = %s, want the entering land's controller %s", order.Chooser, me.ID)
+	}
+	if err := g.ResolveReplacementOrder(order.ID, me.ID, order.ReplacementEffectIDs); err != nil {
+		t.Fatalf("ResolveReplacementOrder: %v", err)
+	}
+
+	if effectstest.EntryPayLifeChoiceFor(g, me.ID) == nil {
+		t.Fatal("the ordering prompt swallowed the pay-life decision")
+	}
+	effectstest.AnswerEntryPayLife(t, g, me.ID, false)
+
+	card, ok := effectstest.BattlefieldCard(g, id)
+	if !ok {
+		t.Fatal("Sacred Foundry never entered")
+	}
+	if !card.Tapped {
+		t.Error("entered untapped with a Kismet out and no payment")
+	}
+	if n := effectstest.TapEventsFor(g, id); n != 0 {
+		t.Errorf("%d tap events; both replacements act on the ENTRY", n)
+	}
+	if me.Life != lifeBefore {
+		t.Errorf("life changed on a decline: got %d, want %d", me.Life, lifeBefore)
+	}
+}
+
+// TestShocklandOnAnUnresumableEntryEntersTapped covers an entry site
+// that runs the replacement pipeline but has no resume for a paused
+// prompt (a direct move, as opposed to playing the land). Prompting
+// there would strand the card in its old zone, so the engine takes
+// the branch the player didn't pay for: the land enters tapped, for
+// free, and the game keeps moving. Weaker than printed, never
+// stronger.
+func TestShocklandOnAnUnresumableEntryEntersTapped(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	lifeBefore := me.Life
+
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: id,
+		Name:       "Overgrown Tomb",
+		TypeLine:   "Land",
+		OracleID:   effectstest.ShocklandOracleIDs["Overgrown Tomb"],
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+	if err := g.MoveCardByID(
+		game.ZoneRef{Kind: game.ZoneHand, Owner: me.ID},
+		game.ZoneRef{Kind: game.ZoneBattlefield},
+		id,
+	); err != nil {
+		t.Fatalf("MoveCardByID: %v", err)
+	}
+
+	if c := effectstest.EntryPayLifeChoiceFor(g, me.ID); c != nil {
+		t.Error("prompted on an entry the engine cannot resume")
+	}
+	card, ok := effectstest.BattlefieldCard(g, id)
+	if !ok {
+		t.Fatal("the land was stranded outside the battlefield")
+	}
+	if !card.Tapped {
+		t.Error("entered untapped without a payment")
+	}
+	if n := effectstest.TapEventsFor(g, id); n != 0 {
+		t.Errorf("%d tap events; it should have ENTERED tapped", n)
+	}
+	if me.Life != lifeBefore {
+		t.Errorf("life changed without a prompt: got %d, want %d", me.Life, lifeBefore)
+	}
+}
+
+// TestShocklandCycleRegistered walks all ten: each is registered
+// under the oracle ID Scryfall reports, charges 2 life on entry, and
+// carries its two-colour mana ability.
+func TestShocklandCycleRegistered(t *testing.T) {
+	for name, oracleID := range effectstest.ShocklandOracleIDs {
+		spec, ok := effects.Lookup(oracleID)
+		if !ok {
+			t.Errorf("%s (%s) is not registered", name, oracleID)
+			continue
+		}
+		if spec.Name != name {
+			t.Errorf("%s registered under the name %q", oracleID, spec.Name)
+		}
+		if len(spec.Replacements) != 1 {
+			t.Errorf("%s: %d replacements, want 1", name, len(spec.Replacements))
+			continue
+		}
+		if got := spec.Replacements[0].EntryLifeCost; got != 2 {
+			t.Errorf("%s: entry life cost %d, want 2", name, got)
+		}
+		if len(spec.ManaAbilities) != 1 {
+			t.Errorf("%s: %d mana abilities, want 1", name, len(spec.ManaAbilities))
+		}
+	}
+}
+
+// TestShocklandEveryMemberEntersTappedOnDecline plays each of the ten
+// through the real path — a typo in one oracle ID would otherwise
+// only show up as a card that silently does nothing.
+func TestShocklandEveryMemberEntersTappedOnDecline(t *testing.T) {
+	for name, oracleID := range effectstest.ShocklandOracleIDs {
+		t.Run(name, func(t *testing.T) {
+			g := effectstest.NewCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+
+			id := effectstest.PlayLandFromHand(t, g, name, oracleID)
+			effectstest.AnswerEntryPayLife(t, g, me.ID, false)
+
+			card, ok := effectstest.BattlefieldCard(g, id)
+			if !ok {
+				t.Fatalf("%s is not on the battlefield", name)
+			}
+			if !card.Tapped {
+				t.Errorf("%s entered untapped without paying", name)
+			}
+			if n := effectstest.TapEventsFor(g, id); n != 0 {
+				t.Errorf("%s: %d tap events; it should have ENTERED tapped", name, n)
+			}
+		})
+	}
+}
+
+// TestEveryShocklandEntrySiteOffersThePayment is the table that used
+// to hold the shocklands' CAVEAT against the engine (#1051), and since
+// #1322 holds its absence.
+//
+// The caveat read "a shockland a spell PUTS onto the battlefield out of
+// a hand or library always enters tapped", and was true because the
+// put batch (putOntoBattlefieldFromZoneLocked) was the one entry site
+// built without entryResumable: a per-card resume would have landed one
+// card after the rest of the batch had been announced. The batch is a
+// resumable value now (server/internal/game/entry_batch.go), so every
+// row asks, pays, and enters untapped — and the caveat is gone from all
+// ten shocklands and the fifteen pay-life MDFC land backs.
+//
+// One table over the entry SITES rather than a test per card, because
+// the claim the cards make is about every way a land can arrive: a
+// site that stops asking would fail here by name.
+//
+// The search row is deliberately thin. What it pins is that this
+// family is asked at all; the search's own side of the pause —
+// nothing moves while the question is open, EventSearchLibrary and
+// the shuffle wait for the answer — is
+// TestFetchedShocklandOffersItsPaymentAndTheSearchWaits
+// (search_chooser_test.go), and is not copied here.
+func TestEveryShocklandEntrySiteOffersThePayment(t *testing.T) {
+	for _, tc := range []struct {
+		site  string
+		enter func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID
+	}{
+		{
+			// A fetchland cracking for it, Farseek, a Circuitous
+			// Route: the search path, entryResumable since #478.
+			site: "fetched by a search",
+			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+				t.Helper()
+				id := effectstest.PushLibraryCardForTest(me, game.Card{
+					Name:     "Steam Vents",
+					TypeLine: "Land — Island Mountain",
+					OracleID: effectstest.SteamVentsOracle,
+				})
+				g.WithWriteLock(func() {
+					if err := g.SearchLibraryForEffectWithOptions(me.ID,
+						func(c game.Card) bool { return c.Name == "Steam Vents" },
+						game.ZoneBattlefield, 1, false, false, false); err != nil {
+						t.Fatalf("SearchLibraryForEffectWithOptions: %v", err)
+					}
+				})
+				effectstest.TakeSearchPrompts(t, g)
+				return id
+			},
+		},
+		{
+			// Warp World, Genesis Wave, Coiling Oracle: the library
+			// half of the put batch, resumable since #1322.
+			site: "put from the library",
+			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+				t.Helper()
+				id := effectstest.PushLibraryCardForTest(me, game.Card{
+					Name:     "Blood Crypt",
+					TypeLine: "Land — Swamp Mountain",
+					OracleID: effectstest.BloodCryptOracle,
+				})
+				g.WithWriteLock(func() {
+					if _, err := g.PutCardsFromLibraryOntoBattlefieldForEffect(
+						[]uuid.UUID{id}, game.LibraryEntryOptions{Controller: me.ID},
+					); err != nil {
+						t.Fatalf("PutCardsFromLibraryOntoBattlefieldForEffect: %v", err)
+					}
+				})
+				return id
+			},
+		},
+		{
+			// Arboreal Grazer: the hand half of the same batch, and
+			// not a land drop.
+			site: "put from the hand",
+			enter: func(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+				t.Helper()
+				id := uuid.New()
+				me.Hand.PushTop(game.Card{
+					InstanceID: id,
+					Name:       "Hallowed Fountain",
+					TypeLine:   "Land — Plains Island",
+					OracleID:   effectstest.HallowedFountainOracle,
+					Owner:      me.ID,
+					Controller: me.ID,
+				})
+				g.WithWriteLock(func() {
+					if _, err := g.PutFromHandOntoBattlefieldForEffect(
+						id, game.HandEntryOptions{Controller: me.ID},
+					); err != nil {
+						t.Fatalf("PutFromHandOntoBattlefieldForEffect: %v", err)
+					}
+				})
+				return id
+			},
+		},
+	} {
+		t.Run(tc.site, func(t *testing.T) {
+			g := effectstest.NewCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			lifeBefore := me.Life
+
+			id := tc.enter(t, g, me)
+
+			prompt := effectstest.EntryPayLifeChoiceFor(g, me.ID)
+			if prompt == nil {
+				t.Fatal("no pay-life prompt: every entry site is entryResumable since #1322, " +
+					"so the land's own replacement is allowed to ask")
+			}
+			if prompt.PayCost != "2 life" {
+				t.Errorf("prompt cost label: got %q, want %q", prompt.PayCost, "2 life")
+			}
+			// The ENTRY is what is being replaced, so nothing has
+			// entered while the question is open.
+			if _, ok := effectstest.BattlefieldCard(g, id); ok {
+				t.Error("the land entered before the choice was made")
+			}
+			effectstest.AnswerEntryPayLife(t, g, me.ID, true)
+			wantLife, wantTapped := lifeBefore-2, false
+
+			card, ok := effectstest.BattlefieldCard(g, id)
+			if !ok {
+				t.Fatal("the land is not on the battlefield")
+			}
+			if card.Tapped != wantTapped {
+				t.Errorf("tapped = %v, want %v", card.Tapped, wantTapped)
+			}
+			if me.Life != wantLife {
+				t.Errorf("life: got %d, want %d", me.Life, wantLife)
+			}
+			// The whole cycle's discriminator, at every site: the
+			// entry is what the replacement acts on, so nothing is
+			// ever tapped or untapped after the fact.
+			if n := effectstest.TapEventsFor(g, id); n != 0 {
+				t.Errorf("%d tap events; the land should have ENTERED as it is", n)
+			}
+			if n := effectstest.UntapEventsFor(g, id); n != 0 {
+				t.Errorf("%d untap events; there was no tapped window to undo", n)
+			}
+		})
+	}
+}

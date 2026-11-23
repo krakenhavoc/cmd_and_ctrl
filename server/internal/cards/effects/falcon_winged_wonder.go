@@ -31,11 +31,11 @@ func init() {
 
 // mshA3RedwingToken is Redwing, the legendary 1/1 blue Bird Scout with
 // flying and "Whenever Redwing attacks, surveil 1."
-func mshA3RedwingToken() game.Card { return tokenFromCatalog(printedMshA3RedwingToken) }
+func mshA3RedwingToken() game.Card { return TokenFromCatalog(printedMshA3RedwingToken) }
 
 // printedMshA3RedwingToken is Redwing as PRINTED.
-func printedMshA3RedwingToken() tokenTemplate {
-	return tokenTemplate{
+func printedMshA3RedwingToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "redwing",
 		Card: game.Card{
 			Name:      "Redwing",

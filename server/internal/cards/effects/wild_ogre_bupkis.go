@@ -33,7 +33,7 @@ func init() {
 			{
 				Key: wildOgreBupkisCounter,
 				Triggered: []game.TriggeredAbility{
-					WheneverThisAttacks("Wild Ogre Bupkis sticker — put a +1/+1 counter on it", thisGetsAPlusOneCounter),
+					WheneverThisAttacks("Wild Ogre Bupkis sticker — put a +1/+1 counter on it", ThisGetsAPlusOneCounter),
 				},
 				Text: "Whenever this creature attacks, put a +1/+1 counter on it.",
 			},
@@ -43,7 +43,7 @@ func init() {
 					Label: "Metalcraft — This permanent has protection from noncreature permanents as long as you control three or more artifacts.",
 					Layer: game.Layer6Ability,
 					AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-						return source != nil && target.InstanceID == source.InstanceID && stickerArtifactsControlledBy(g, source.Controller) >= 3
+						return source != nil && target.InstanceID == source.InstanceID && StickerArtifactsControlledBy(g, source.Controller) >= 3
 					},
 					Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 						c.Abilities = game.AppendKeywordAbility(c.Abilities, "protection from noncreature permanents")
@@ -61,8 +61,8 @@ func init() {
 
 // thisGetsAPlusOneCounter is "put a +1/+1 counter on it" for the source of
 // an attack trigger, nothing if the source is a new object (CR 400.7).
-func thisGetsAPlusOneCounter(g *game.Game, item *game.StackItem) error {
-	if sourceIsNewObject(g, item) || !onBattlefield(g, item.SourceCardID) {
+func ThisGetsAPlusOneCounter(g *game.Game, item *game.StackItem) error {
+	if SourceIsNewObject(g, item) || !OnBattlefield(g, item.SourceCardID) {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
@@ -70,7 +70,7 @@ func thisGetsAPlusOneCounter(g *game.Game, item *game.StackItem) error {
 
 // stickerArtifactsControlledBy counts the artifacts `you` control, walking the
 // battlefield directly because a layer pass may hold only the read lock.
-func stickerArtifactsControlledBy(g *game.Game, you uuid.UUID) int {
+func StickerArtifactsControlledBy(g *game.Game, you uuid.UUID) int {
 	n := 0
 	if g.Battlefield == nil {
 		return 0

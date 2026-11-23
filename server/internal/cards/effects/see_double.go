@@ -42,7 +42,7 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Copy target spell. You may choose new targets for the copy.",
 				TargetSpell("target spell"),
-				copyModeTargetSpellWithNewTargets),
+				CopyModeTargetSpellWithNewTargets),
 			ModeDoing("Create a token that's a copy of target creature.",
 				TargetCreature("target creature"),
 				seeDoubleTokenCopy),

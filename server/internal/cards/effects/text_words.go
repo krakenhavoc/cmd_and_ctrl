@@ -88,7 +88,7 @@ type ChangeTextWord struct {
 func (t ChangeTextWord) Apply(ctx *Context) error {
 	// #1432, CR 400.7: a source that left and came back is a new object
 	// this ability knows nothing about.
-	if t.Target == uuid.Nil || ctx.isNewSourceObject(t.Target) {
+	if t.Target == uuid.Nil || ctx.IsNewSourceObject(t.Target) {
 		return nil
 	}
 	words := textWordChoices(t.Kinds)
@@ -100,7 +100,7 @@ func (t ChangeTextWord) Apply(ctx *Context) error {
 		options[i] = game.ChoiceOption{Label: w.label}
 	}
 	return PickOption{
-		Question: cardNameFor(ctx.Game, ctx.Source()) + " — choose the word to replace",
+		Question: CardNameFor(ctx.Game, ctx.Source()) + " — choose the word to replace",
 		Options:  options,
 		ThenKey:  changeTextWordFirst,
 		Carry:    append([]uuid.UUID{t.Target}, intsToCarry([]int{textWordKindsMask(t.Kinds), textWordDuration(t.UntilEndOfTurn)})...),
@@ -186,7 +186,7 @@ func init() {
 			toOptions[j] = game.ChoiceOption{Label: w.label}
 		}
 		return PickOption{
-			Question: fmt.Sprintf("%s — replace %s with", cardNameFor(ctx.Game, ctx.Source()), from.label),
+			Question: fmt.Sprintf("%s — replace %s with", CardNameFor(ctx.Game, ctx.Source()), from.label),
 			Options:  toOptions,
 			ThenKey:  changeTextWordSecond,
 			Carry:    append(append([]uuid.UUID(nil), r.Carry...), intsToCarry([]int{r.Index})...),
@@ -206,7 +206,7 @@ func init() {
 		to := textWordReplacements(from)
 		if r.Index >= 0 && r.Index < len(to) {
 			g, source := ctx.Game, ctx.Source()
-			changeTextWordNow(g, source, r.Carry[0], from.kind, from.word, to[r.Index].word, from.label, to[r.Index].label, cardNameFor(g, source), nums[1] != 0)
+			changeTextWordNow(g, source, r.Carry[0], from.kind, from.word, to[r.Index].word, from.label, to[r.Index].label, CardNameFor(g, source), nums[1] != 0)
 		}
 		return r.Tail.Run(ctx.Game, nil)
 	})
@@ -229,12 +229,12 @@ type ChangeCreatureTypeWord struct {
 }
 
 func (t ChangeCreatureTypeWord) Apply(ctx *Context) error {
-	if t.Target == uuid.Nil || ctx.isNewSourceObject(t.Target) {
+	if t.Target == uuid.Nil || ctx.IsNewSourceObject(t.Target) {
 		return nil
 	}
 	g := ctx.Game
-	name := cardNameFor(g, ctx.Source())
-	then := withCarry(withN(ctx.Tail(changeCreatureTypeWordReplace), textWordDuration(t.UntilEndOfTurn)), t.Target)
+	name := CardNameFor(g, ctx.Source())
+	then := WithCarry(WithN(ctx.Tail(changeCreatureTypeWordReplace), textWordDuration(t.UntilEndOfTurn)), t.Target)
 	if fixed := t.To; fixed != "" {
 		then.Ref = changeCreatureTypeWordToFixed
 		then.Words = []string{fixed}
@@ -271,7 +271,7 @@ var (
 		}
 		to := o.Tail.Words[0]
 		changeTextWordNow(ctx.Game, ctx.Source(), o.Tail.Carry[0], game.TextWordCreatureType, from, to, from, to,
-			cardNameFor(ctx.Game, ctx.Source()), o.Tail.N != 0)
+			CardNameFor(ctx.Game, ctx.Source()), o.Tail.N != 0)
 		return nil
 	})
 
@@ -290,7 +290,7 @@ var (
 		ctx.Game.QueueCreatureTypeChoiceThenForEffect(game.CreatureTypePrompt{
 			Chooser:  ctx.Controller(),
 			Source:   ctx.Source(),
-			Question: fmt.Sprintf("%s — replace %s with", cardNameFor(ctx.Game, ctx.Source()), from),
+			Question: fmt.Sprintf("%s — replace %s with", CardNameFor(ctx.Game, ctx.Source()), from),
 			Except:   append(append([]string(nil), o.Tail.Words...), from),
 			ThenTail: then,
 		})
@@ -306,7 +306,7 @@ var (
 		}
 		from := o.Tail.Words[0]
 		changeTextWordNow(ctx.Game, ctx.Source(), o.Tail.Carry[0], game.TextWordCreatureType, from, to, from, to,
-			cardNameFor(ctx.Game, ctx.Source()), o.Tail.N != 0)
+			CardNameFor(ctx.Game, ctx.Source()), o.Tail.N != 0)
 		return nil
 	})
 )
@@ -323,7 +323,7 @@ func changeTextWordNow(g *game.Game, source, target uuid.UUID, kind game.TextWor
 
 // cardNameFor is the name of the card `id`, wherever it is, or "This
 // spell" when it cannot be found.
-func cardNameFor(g *game.Game, id uuid.UUID) string {
+func CardNameFor(g *game.Game, id uuid.UUID) string {
 	if c, ok := g.LookupCardForEffect(id); ok && c.Name != "" {
 		return c.Name
 	}
@@ -337,7 +337,7 @@ func cardNameFor(g *game.Game, id uuid.UUID) string {
 //
 // `then` is what is printed after the change, a registered tail run against
 // the asking item (ctx.ItemTail); the zero TailRef when nothing is.
-func changeTextOfTarget(kinds []game.TextWordKind, untilEndOfTurn bool, then game.TailRef) func(*game.StackItem, *Context) error {
+func ChangeTextOfTarget(kinds []game.TextWordKind, untilEndOfTurn bool, then game.TailRef) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		var rest game.KeyedTail
 		if then.Key() != "" {
@@ -355,10 +355,10 @@ func changeTextOfTarget(kinds []game.TextWordKind, untilEndOfTurn bool, then gam
 
 // nothingAfterTheChange is changeTextOfTarget's `then` for a card with
 // nothing printed after the change: the zero TailRef.
-var nothingAfterTheChange game.TailRef
+var NothingAfterTheChange game.TailRef
 
 var (
-	textColorWords  = []game.TextWordKind{game.TextWordColor}
-	textLandWords   = []game.TextWordKind{game.TextWordBasicLandType}
-	textEitherWords = []game.TextWordKind{game.TextWordColor, game.TextWordBasicLandType}
+	TextColorWords  = []game.TextWordKind{game.TextWordColor}
+	TextLandWords   = []game.TextWordKind{game.TextWordBasicLandType}
+	TextEitherWords = []game.TextWordKind{game.TextWordColor, game.TextWordBasicLandType}
 )

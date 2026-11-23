@@ -21,7 +21,7 @@ var stdB3RemoveChargeCountersBody = game.SimpleDelayedBody("systems-override/rem
 				continue
 			}
 			c, ok := g.LookupCardForEffect(t.ID)
-			if !ok || !onBattlefield(g, t.ID) {
+			if !ok || !OnBattlefield(g, t.ID) {
 				continue
 			}
 			n := c.Counters[game.CounterCharge]
@@ -40,7 +40,7 @@ var stdB3RemoveChargeCountersBody = game.SimpleDelayedBody("systems-override/rem
 
 // stdB3ScheduleChargeRemoval is the "if you do" half: told how many charge
 // counters landed, it schedules their removal at the next end step.
-var stdB3ScheduleChargeRemoval = CardTail("systems-override/schedule-charge-removal", func(ctx *Context, o game.TailOutcome) error {
+var StdB3ScheduleChargeRemoval = CardTail("systems-override/schedule-charge-removal", func(ctx *Context, o game.TailOutcome) error {
 	if o.Amount <= 0 || len(o.Tail.Carry) == 0 {
 		return nil
 	}
@@ -52,7 +52,7 @@ var stdB3ScheduleChargeRemoval = CardTail("systems-override/schedule-charge-remo
 })
 
 // stdB3Taken is a uuid helper: the single-element slice.
-func stdB3Taken(id uuid.UUID) []uuid.UUID { return []uuid.UUID{id} }
+func StdB3Taken(id uuid.UUID) []uuid.UUID { return []uuid.UUID{id} }
 
 // WarpForArtifactAndRedCreatureCardsInHand is Tannuk, Steadfast Second's
 // "Artifact cards and red creature cards in your hand have warp {cost}"
@@ -76,11 +76,11 @@ func WarpForArtifactAndRedCreatureCardsInHand(cost string) game.GrantedAlternati
 }
 
 // StdB3DroneToken is the Drone's card value for CreateToken.
-func StdB3DroneToken() game.Card { return tokenFromCatalog(printedDroneToken) }
+func StdB3DroneToken() game.Card { return TokenFromCatalog(printedDroneToken) }
 
 // stdB3ArtifactsYouControl is "artifacts you control": the source's
 // controller's permanents that are artifacts, read post-layer.
-func stdB3ArtifactsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func StdB3ArtifactsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.IsArtifact()
 }
 
@@ -90,12 +90,12 @@ func stdB3ArtifactsYouControl(target *game.Card, _ *game.Game, source *game.Card
 // Food. An object that is not an artifact cannot have an artifact type
 // (CR 205.3d), so a non-artifact the predicate matches is left alone.
 // AreAlsoEquipment's sibling.
-func stdB3AreAlsoFood(label string, applies func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
+func StdB3AreAlsoFood(label string, applies func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer4Type,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			if !eotHasType(c.Types, "Artifact") || eotHasType(c.Subtypes, "Food") {
+			if !EotHasType(c.Types, "Artifact") || EotHasType(c.Subtypes, "Food") {
 				return
 			}
 			c.Subtypes = append(append([]string(nil), c.Subtypes...), "Food")

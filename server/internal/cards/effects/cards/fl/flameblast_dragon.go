@@ -1,0 +1,77 @@
+package cardsfl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Flameblast Dragon — Creature — Dragon {4}{R}{R}, 5/5:
+//
+//	"Flying
+//	 Whenever this creature attacks, you may pay {X}{R}. If you do, it
+//	 deals X damage to any target."
+//
+// The target is chosen as the trigger is put on the stack (CR 603.3d),
+// and X as it resolves (CR 608.2d), through MayPayX (#2727): a number
+// from 0 to the most you can pay, then the ordinary "you may pay {3}{R}"
+// prompt. A bot pays for the target's lethal damage when it can (an
+// opponent's creature or planeswalker), everything it can at an
+// opponent, and nothing at itself or its own permanents.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "3180ee4f-66d7-4b73-bc10-9ee0c790ec18",
+		Name:            "Flameblast Dragon",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Triggered: []game.TriggeredAbility{
+			effects.Targeting(effects.WheneverThisAttacks("Flameblast Dragon — pay {X}{R} to deal X damage to any target", flameblastDragonAttacks),
+				effects.TargetAny()),
+		},
+	})
+}
+
+// flameblastDragonPaid is the paid half, keyed (#4289): X rides the prompt.
+var FlameblastDragonPaid = effects.PayUnlessBranches("pay-unless/flameblast-dragon-x-damage",
+	func(ctx *effects.Context, r game.PayUnlessAnswer) error {
+		return effects.SourceDealsComputedDamageToEachLegalTarget(func(*effects.Context) int { return r.Number })(ctx.Game, ctx.Item)
+	}, nil)
+
+func flameblastDragonAttacks(g *game.Game, item *game.StackItem) error {
+	return effects.MayPayX{
+		Cost:  "{X}{R}",
+		Label: "Flameblast Dragon",
+		Buys:  "deal X damage to the target",
+		Goal:  flameblastDragonGoal,
+		Unit:  game.PayAmountDamage,
+		Then:  FlameblastDragonPaid,
+	}.Apply(effects.NewContext(g, item))
+}
+
+// flameblastDragonGoal is the X a bot pays: the target's lethal damage
+// when it is an opponent's permanent and that much can be paid, every
+// point at an opponent, and nothing at you or your own permanents.
+func flameblastDragonGoal(ctx *effects.Context, ceiling int) int {
+	targets := ctx.LegalTargets()
+	if len(targets) == 0 {
+		return 0
+	}
+	you := ctx.Controller()
+	id := targets[0].ID
+	if p := ctx.Game.PlayerByIDForEffect(id); p != nil {
+		if p.ID == you {
+			return 0
+		}
+		return ceiling
+	}
+	c, ok := ctx.Game.LookupCardForEffect(id)
+	if !ok || c.Controller == you {
+		return 0
+	}
+	if lethal := effects.LethalDamageGoal(ctx); lethal > 0 && lethal <= ceiling {
+		return lethal
+	}
+	return 0
+}

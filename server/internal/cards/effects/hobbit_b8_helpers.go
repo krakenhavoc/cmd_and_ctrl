@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it lands under its owner's control, and nothing happens when the pick
 // was declined (an "up to one" clause) or is gone. Bilbo, Unexpected
 // Adventurer, Emeria, the Sky Ruin and Goblin Engineer share it.
-func hobB8ReturnTargetGraveyardCardToBattlefield(g *game.Game, item *game.StackItem) error {
+func HobB8ReturnTargetGraveyardCardToBattlefield(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}

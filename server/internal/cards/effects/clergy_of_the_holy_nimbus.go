@@ -22,14 +22,14 @@ func init() {
 		Name:         "Clergy of the Holy Nimbus",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{RegenerateIfThisWouldBeDestroyed()},
-		Activated:    []ActivatedAbility{noRegenerationRow("{1}")},
+		Activated:    []ActivatedAbility{NoRegenerationRow("{1}")},
 	})
 }
 
 // noRegenerationRow is the Holy Nimbus pair's "{N}: This creature can't
 // be regenerated this turn. Only your opponents may activate this
 // ability."
-func noRegenerationRow(cost string) ActivatedAbility {
+func NoRegenerationRow(cost string) ActivatedAbility {
 	return ActivatedAbility{
 		Label:         cost + ": This creature can't be regenerated this turn. Only your opponents may activate this ability.",
 		Cost:          ManaCost(cost),

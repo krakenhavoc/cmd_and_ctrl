@@ -13,7 +13,7 @@ import (
 // dmuB19GreatestEquipmentValueNow is the greatest mana value among the
 // Equipment attached to `host` right now, and whether any is (a
 // battlefield read, for a trigger's "if it's equipped" as it triggers).
-func dmuB19GreatestEquipmentValueNow(g *game.Game, host *game.Card) (int, bool) {
+func DmuB19GreatestEquipmentValueNow(g *game.Game, host *game.Card) (int, bool) {
 	best, any := 0, false
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
@@ -31,7 +31,7 @@ func dmuB19GreatestEquipmentValueNow(g *game.Game, host *game.Card) (int, bool) 
 // (PermanentInfo.Attachments), each still the object that was attached.
 // One that has left the battlefield or been blinked is not counted. Read
 // off the live object while `host` is still there.
-func dmuB19GreatestEquipmentValue(g *game.Game, host uuid.UUID) (int, bool) {
+func DmuB19GreatestEquipmentValue(g *game.Game, host uuid.UUID) (int, bool) {
 	ref, ok := g.PermanentRefForEffect(host)
 	if !ok {
 		return 0, false

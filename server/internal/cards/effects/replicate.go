@@ -83,7 +83,7 @@ func ReplicateTapping(label string, max int, preds ...CardPredicate) game.Additi
 	return game.AdditionalCost{
 		Optional:  true,
 		Key:       game.ReplicateKey,
-		TapOthers: tapOthersPrice(1, label, preds...),
+		TapOthers: TapOthersPrice(1, label, preds...),
 		Repeat:    max,
 		Label:     "Replicate—Tap " + label,
 	}
@@ -114,7 +114,7 @@ func Replicate() game.TriggeredAbility {
 				XValue:       replicatePayments(g, source),
 			}
 		},
-		Effect: replicateEffect,
+		Effect: ReplicateEffect,
 	}
 }
 
@@ -130,7 +130,7 @@ func replicatePayments(g *game.Game, spell *game.Card) int {
 // replicateEffect copies the spell once per payment. CopySpell offers
 // each copy new targets (CR 707.10c) only when the spell chose any, so a
 // spell with no targets asks nothing.
-func replicateEffect(g *game.Game, item *game.StackItem) error {
+func ReplicateEffect(g *game.Game, item *game.StackItem) error {
 	if item.XValue <= 0 {
 		return nil
 	}

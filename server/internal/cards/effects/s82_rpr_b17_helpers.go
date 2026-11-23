@@ -10,14 +10,14 @@ import (
 // `controller` controls (Heroes' Podium). Types and supertypes are read
 // post-layer; it runs inside a layer recompute, at layer 7, by which point
 // layers 4 has settled every type and supertype.
-func s82RprB17OtherLegendaryCreatures(g *game.Game, controller, except uuid.UUID) int {
+func S82RprB17OtherLegendaryCreatures(g *game.Game, controller, except uuid.UUID) int {
 	n := 0
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.InstanceID == except || c.Controller != controller || !c.IsCreature() {
 			continue
 		}
-		if isLegendary(c) {
+		if IsLegendary(c) {
 			n++
 		}
 	}
@@ -26,7 +26,7 @@ func s82RprB17OtherLegendaryCreatures(g *game.Game, controller, except uuid.UUID
 
 // s82RprB17SameNameAsTarget is the set Echoing Truth returns: the target
 // and every other permanent with the same name, read now, post-layer.
-func s82RprB17SameNameAsTarget(g *game.Game, target uuid.UUID) []uuid.UUID {
+func S82RprB17SameNameAsTarget(g *game.Game, target uuid.UUID) []uuid.UUID {
 	t, ok := g.LookupCardForEffect(target)
 	if !ok {
 		return nil

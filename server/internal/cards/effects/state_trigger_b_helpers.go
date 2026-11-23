@@ -18,10 +18,10 @@ import (
 // Influence's state trigger, Force Bubble's end step). A source that has
 // left has none to remove, and one that came back is a new object
 // (AddCounter, #1432).
-func removeAllCountersFromThis(kind string) Effect {
+func RemoveAllCountersFromThisEffect(kind string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		c, ok := g.LookupCardForEffect(item.SourceCardID)
-		if !ok || !onBattlefield(g, item.SourceCardID) || c.Counters[kind] <= 0 {
+		if !ok || !OnBattlefield(g, item.SourceCardID) || c.Counters[kind] <= 0 {
 			return nil
 		}
 		return AddCounter{Target: item.SourceCardID, Kind: kind, N: -c.Counters[kind]}.Apply(NewContext(g, item))
@@ -35,9 +35,9 @@ func removeAllCountersFromThis(kind string) Effect {
 // as there are exactly three tide counters on this enchantment, all blue
 // creatures get +2/+0". The layer engine recomputes on every counter
 // change, so the count is read as it stands.
-func whileExactlyTideCounters(n int, who func(target, source *game.Card) bool, dp, dt int) game.StaticAbility {
+func WhileExactlyTideCounters(n int, who func(target, source *game.Card) bool, dp, dt int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:    fmt.Sprintf("While it has exactly %s on it, affected creatures get %s.", tideCounters(n), signedPT(dp, dt)),
+		Label:    fmt.Sprintf("While it has exactly %s on it, affected creatures get %s.", tideCounters(n), SignedPT(dp, dt)),
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
@@ -59,8 +59,8 @@ func tideCounters(n int) string {
 }
 
 // thisCreatureOnly is the `who` of a self-only whileExactlyTideCounters.
-func thisCreatureOnly(target, source *game.Card) bool { return target.InstanceID == source.InstanceID }
+func ThisCreatureOnly(target, source *game.Card) bool { return target.InstanceID == source.InstanceID }
 
 // blueCreatures is the `who` of "all blue creatures", anyone's. "Blue"
 // is a word of the source's text (CR 612.2).
-func blueCreatures(target, source *game.Card) bool { return target.HasColor(source.TextColor("U")) }
+func BlueCreatures(target, source *game.Card) bool { return target.HasColor(source.TextColor("U")) }

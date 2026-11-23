@@ -29,7 +29,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(b43PanoramaFetch(
+	Register(B43PanoramaFetch(
 		"71e28800-c42c-48c0-95e5-0296be54a4e8", "Naya Panorama",
 		"Mountain", "Forest", "Plains"))
 }
@@ -42,7 +42,7 @@ func init() {
 // Lives here rather than in batch43_helpers.go because it is a CYCLE
 // table, not a shared body — the next Panorama is a row, the way the
 // gain lands and the Tron lands are rows.
-func b43PanoramaFetch(oracleID, name string, subtypes ...string) Spec {
+func B43PanoramaFetch(oracleID, name string, subtypes ...string) Spec {
 	match := IsBasicLandOfAnySubtype(subtypes...)
 	reason := "Choose a basic " + subtypes[0]
 	for i := 1; i < len(subtypes); i++ {

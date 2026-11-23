@@ -26,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Left: Door{Triggered: []game.TriggeredAbility{
 			WhenYouUnlockThisDoor(game.DoorLeft, "Spiked Corridor — create three 1/1 red Devil creature tokens",
-				Do(CreateToken{Template: devilToken(), N: 3})),
+				Do(CreateToken{Template: DevilToken(), N: 3})),
 		}},
 		Right: Door{Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},
@@ -34,7 +34,7 @@ func init() {
 				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.IsCombatDamage {
 					return false
 				}
-				if !damageSourceControlledBy(ev, g, src.Controller) {
+				if !DamageSourceControlledBy(ev, g, src.Controller) {
 					return false
 				}
 				p := g.PlayerByIDForEffect(ev.DamageTarget)
@@ -54,12 +54,12 @@ func init() {
 
 // devilToken is the 1/1 red Devil with "When this token dies, it deals 1
 // damage to any target."
-func devilToken() game.Card { return tokenFromCatalog(printedDevilToken) }
+func DevilToken() game.Card { return TokenFromCatalog(printedDevilToken) }
 
 // printedDevilToken is the Devil as PRINTED. The damage's source is the
 // token that died (CR 603.10a: a leaves-the-battlefield trigger).
-func printedDevilToken() tokenTemplate {
-	return tokenTemplate{
+func printedDevilToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "devil",
 		Card: game.Card{
 			Name:      "Devil",
@@ -69,7 +69,7 @@ func printedDevilToken() tokenTemplate {
 			Colors:    []string{"R"},
 		},
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisDies("Devil — 1 damage to any target", sourceDealsOneToFirstTarget), TargetAny()),
+			Targeting(WhenThisDies("Devil — 1 damage to any target", SourceDealsOneToFirstTarget), TargetAny()),
 		},
 		Text: "When this token dies, it deals 1 damage to any target.",
 	}

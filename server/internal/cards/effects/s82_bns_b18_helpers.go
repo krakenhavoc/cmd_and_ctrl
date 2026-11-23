@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // slot 1's creature, as one damage event (eachDealsDamageEqualToItsPower).
 // With no source chosen, or a victim that has left, nothing happens
 // (CR 608.2b).
-func s82Bns18SourcesDamageTheOther(ctx *Context) error {
+func S82Bns18SourcesDamageTheOther(ctx *Context) error {
 	var sources []game.TargetRef
 	for _, t := range ctx.ClauseTargets(0) {
 		if t.Kind == game.TargetCard && ctx.IsTargetLegal(t) {
@@ -18,5 +18,5 @@ func s82Bns18SourcesDamageTheOther(ctx *Context) error {
 	if !ok || victim.Kind != game.TargetCard || len(sources) == 0 {
 		return nil
 	}
-	return eachDealsDamageEqualToItsPower(ctx, sources, victim.ID)
+	return EachDealsDamageEqualToItsPower(ctx, sources, victim.ID)
 }

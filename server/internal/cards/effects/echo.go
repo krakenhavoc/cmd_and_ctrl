@@ -54,7 +54,7 @@ type UpkeepPayment struct {
 }
 
 // prompt is the payment's Cost string and Action for UpkeepPayUnless.
-func (p UpkeepPayment) prompt() (string, *game.PayAction) {
+func (p UpkeepPayment) Prompt() (string, *game.PayAction) {
 	if p.Action != nil {
 		return p.Words, p.Action
 	}
@@ -65,7 +65,7 @@ func (p UpkeepPayment) prompt() (string, *game.PayAction) {
 func DiscardPayment(n int) UpkeepPayment {
 	words := "Discard a card"
 	if n != 1 {
-		words = "Discard " + numberWord(n) + " cards"
+		words = "Discard " + NumberWord(n) + " cards"
 	}
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionDiscard, Count: n}, Words: words}
 }
@@ -79,7 +79,7 @@ func DiscardPayment(n int) UpkeepPayment {
 func FlipCoinsPayment(n int) UpkeepPayment {
 	words := "Flip a coin"
 	if n != 1 {
-		words = "Flip " + numberWord(n) + " coins"
+		words = "Flip " + NumberWord(n) + " coins"
 	}
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionNothing}, Words: words, Flips: n}
 }
@@ -90,7 +90,7 @@ func FlipCoinsPayment(n int) UpkeepPayment {
 func SacrificePayment(n int, noun, plural string, of game.PermanentQuery) UpkeepPayment {
 	words := "Sacrifice " + articleFor(noun) + " " + noun
 	if n != 1 {
-		words = "Sacrifice " + numberWord(n) + " " + plural
+		words = "Sacrifice " + NumberWord(n) + " " + plural
 	}
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionSacrifice, Count: n, Of: of}, Words: words}
 }
@@ -102,7 +102,7 @@ func SacrificePayment(n int, noun, plural string, of game.PermanentQuery) Upkeep
 func TapPayment(n int, noun, plural string, of game.PermanentQuery) UpkeepPayment {
 	words := "Tap an untapped " + noun + " you control"
 	if n != 1 {
-		words = "Tap " + numberWord(n) + " untapped " + plural + " you control"
+		words = "Tap " + NumberWord(n) + " untapped " + plural + " you control"
 	}
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionTap, Count: n, Of: of}, Words: words}
 }
@@ -186,17 +186,17 @@ func EchoPaying(label string, price func(ctx *Context) UpkeepPayment) game.Trigg
 			// CR 603.4, again on resolution: the same object, still
 			// yours, still charged. One that left, came back as a new
 			// object (CR 400.7) or changed hands is not.
-			if sourceIsNewObject(g, item) || !g.CameUnderControlSinceLastUpkeepForEffect(source, item.Controller) {
+			if SourceIsNewObject(g, item) || !g.CameUnderControlSinceLastUpkeepForEffect(source, item.Controller) {
 				return nil
 			}
 			ctx := NewContext(g, item)
-			cost, action := price(ctx).prompt()
+			cost, action := price(ctx).Prompt()
 			return UpkeepPayUnless{
 				Chooser:  item.Controller,
 				Cost:     cost,
 				Action:   action,
 				Question: label + ": pay it, or sacrifice it?",
-				Else:     echoPaidOrSacrificed,
+				Else:     EchoPaidOrSacrificed,
 			}.Apply(ctx)
 		},
 	}
@@ -216,13 +216,13 @@ func WhenEchoIsPaid(label string, effect Effect) game.TriggeredAbility {
 // carries the permanent's object (SourceObject, with its epoch), so a
 // table waiting on the payer is a restore point and a permanent that left
 // and came back is not sacrificed in its old self's place.
-var echoPaidOrSacrificed = PayUnlessBranches("pay-unless/echo-sacrifice-or-announce",
+var EchoPaidOrSacrificed = PayUnlessBranches("pay-unless/echo-sacrifice-or-announce",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		ctx.Game.AnnounceEchoPaidForEffect(ctx.Source(), ctx.Controller())
 		return nil
 	},
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
-		if sourceIsNewObject(ctx.Game, ctx.Item) {
+		if SourceIsNewObject(ctx.Game, ctx.Item) {
 			return nil
 		}
 		return SacrificeThisIfStillOnBattlefield(ctx.Game, ctx.Item)

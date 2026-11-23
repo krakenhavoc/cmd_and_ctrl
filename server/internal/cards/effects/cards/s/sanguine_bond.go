@@ -1,0 +1,40 @@
+package cardss
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Sanguine Bond — Enchantment {3}{B}{B} (EDHREC rank 505):
+//
+//	"Whenever you gain life, target opponent loses that much life."
+//
+// Every point of lifegain becomes a targeted drain. The trigger
+// watches EventChangeLife for a positive delta on its controller —
+// which every lifegain path in the engine emits, lifelink included
+// (combat lifelink, the damage-assignment resume and
+// ChangePlayerLifeForEffect all emit it) — and captures the amount
+// by value in Build, so a life total that changes again before the
+// trigger resolves does not change the drain. The drain is life LOSS,
+// not damage, so damage prevention and damage doublers never see it —
+// but since #482 it does run the CR 614 life window, so a life-loss
+// replacement (Bloodletter of Aclazotz) would.
+//
+// With Exquisite Blood on the same side of the table the two
+// triggers feed each other until the targeted opponent is dead; each
+// Bond trigger asks for its target, so the loop is click-through in
+// this engine exactly as it is announced in paper, and it ends when
+// the eliminated player is no longer a legal target.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "73089a39-a2f6-4aa2-a058-e6551475153d",
+		Name:         "Sanguine Bond",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WheneverYouGainLifeTargetOpponentLosesThatMuch("Sanguine Bond — target opponent loses that much life"),
+		},
+	})
+}

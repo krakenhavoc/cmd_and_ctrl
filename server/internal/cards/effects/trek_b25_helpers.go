@@ -14,7 +14,7 @@ import (
 // tail, built with trekSacrificeTokensAtNextEndStep) is handed exactly the
 // tokens that landed, so a replacement that makes more (or none) is
 // followed.
-func trekKlingonWarriorSacrificedAtNextEndStep(then game.TailRef) Effect {
+func TrekKlingonWarriorSacrificedAtNextEndStep(then game.TailRef) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		return g.CreateTokensKeyedForEffect(game.TokenCreation{
@@ -28,7 +28,7 @@ func trekKlingonWarriorSacrificedAtNextEndStep(then game.TailRef) Effect {
 // trekSacrificeTokensAtNextEndStep is the tail body that schedules a CR
 // 603.7 delayed trigger at the beginning of the next end step sacrificing
 // the tokens the creation made (the tail's IDs), labelled `label`.
-func trekSacrificeTokensAtNextEndStep(label string) func(ctx *Context, o game.TailOutcome) error {
+func TrekSacrificeTokensAtNextEndStep(label string) func(ctx *Context, o game.TailOutcome) error {
 	return func(ctx *Context, o game.TailOutcome) error {
 		if len(o.IDs) == 0 {
 			return nil
@@ -36,7 +36,7 @@ func trekSacrificeTokensAtNextEndStep(label string) func(ctx *Context, o game.Ta
 		return ScheduleDelayedTrigger{
 			Label: label,
 			Cards: o.IDs,
-			Body:  sacrificeListedCardsBody,
+			Body:  SacrificeListedCardsBody,
 		}.Apply(ctx)
 	}
 }
@@ -44,14 +44,14 @@ func trekSacrificeTokensAtNextEndStep(label string) func(ctx *Context, o game.Ta
 // trekB25ArtifactCreaturesYouControl is "artifact creatures you control"
 // for a static's AppliesTo: the source itself included, read through the
 // layered types.
-func trekB25ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func TrekB25ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.IsCreature() && target.IsArtifact()
 }
 
 // trekB25ExceptItHasMenace is the "except it has menace" exception clause
 // of a token copy (CR 707.9), Mirror Universe Intrusion's: menace rides
 // the token's own keywords, as TokenCopyGainsHaste's haste does.
-func trekB25ExceptItHasMenace(t *game.Card) {
+func TrekB25ExceptItHasMenace(t *game.Card) {
 	for _, kw := range t.Keywords {
 		if kw == "menace" {
 			return
@@ -65,8 +65,8 @@ func trekB25ExceptItHasMenace(t *game.Card) {
 // be the permanent that activated it (CR 400.7) and have that creature type
 // now, the type a word of the source's text (CR 612.2, #3984). Frodo,
 // Sauron's Bane and Nog, Ambitious Cadet.
-func sourceIsStillThisPermanentWithTextSubtype(g *game.Game, item *game.StackItem, subtype string) bool {
-	if !sourceIsStillThisPermanent(g, item) {
+func SourceIsStillThisPermanentWithTextSubtype(g *game.Game, item *game.StackItem, subtype string) bool {
+	if !SourceIsStillThisPermanent(g, item) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(item.SourceCardID)

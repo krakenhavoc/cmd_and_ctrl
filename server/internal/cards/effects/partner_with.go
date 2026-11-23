@@ -41,7 +41,7 @@ import (
 // partnerWithKeyMark is the text every partner-with row's label carries
 // between the card's name and its partner's. The roadmap's probe finds
 // the rows by it.
-const partnerWithKeyMark = " — partner with "
+const PartnerWithKeyMark = " — partner with "
 
 // PartnerWith is the entry trigger of "Partner with [partner]" on the
 // card named `card`: "When this permanent enters, target player may
@@ -49,13 +49,13 @@ const partnerWithKeyMark = " — partner with "
 // into their hand, then shuffle" (CR 702.124j).
 func PartnerWith(card, partner string) game.TriggeredAbility {
 	return Targeting(
-		WhenThisEnters(card+partnerWithKeyMark+partner, partnerWithSearch(partner)),
+		WhenThisEnters(card+PartnerWithKeyMark+partner, partnerWithSearch(partner)),
 		TargetPlayer("target player"))
 }
 
 // IsPartnerWithRow reports whether a triggered row is PartnerWith's.
 func IsPartnerWithRow(t game.TriggeredAbility) bool {
-	return strings.Contains(t.Key, partnerWithKeyMark)
+	return strings.Contains(t.Key, PartnerWithKeyMark)
 }
 
 // partnerWithSearch is the trigger's resolution: the target player is

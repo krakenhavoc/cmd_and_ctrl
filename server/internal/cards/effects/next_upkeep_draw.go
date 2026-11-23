@@ -15,10 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // drawACardAtTheNextUpkeep is the clause as a primitive, so a spell
 // applies it after its other instructions and a trigger sequences it
 // with Do. `label` names the delayed trigger ("<Card> — draw a card").
-func drawACardAtTheNextUpkeep(label string) ScheduleDelayedTrigger {
+func DrawACardAtTheNextUpkeep(label string) ScheduleDelayedTrigger {
 	return ScheduleDelayedTrigger{
 		At:    game.StepUpkeep,
 		Label: label,
-		Body:  drawOneBody,
+		Body:  DrawOneBody,
 	}
 }

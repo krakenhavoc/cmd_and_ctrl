@@ -101,6 +101,14 @@ type CardDef struct {
 	// PrintedKeywords, appended once at build time.
 	Static       []StaticAbility
 	Replacements []ReplacementEffect
+	// GrantedReplacements are the replacement effects a layer-6 grant
+	// bundle carries (Master Chef's "This creature enters with an additional
+	// +1/+1 counter on it", Scion of Halaster's draw replacement): a
+	// recipient has them while it has the grant, as its own, so the source
+	// of each is the recipient and "you" is the recipient's controller.
+	// Merged into the composite definition's Replacements
+	// (copy_grants.go); empty on every definition but a grant bundle's.
+	GrantedReplacements []ReplacementEffect
 	// EntersWithCountersFromCast are the card's printed "this
 	// permanent enters with N counters on it" clauses whose N is read
 	// from the spell that became it (CR 614.1c) — Hangarback Walker's
@@ -414,6 +422,13 @@ type CardDef struct {
 	// through CatalogAbilityKey; see game.CatalogPlayerLifeFloorOne and
 	// life_floor.go (#5770).
 	PlayerLifeFloorOne bool
+	// PlayerLifeFloorOneIfCreature is Worship's "If you control a creature,
+	// damage that would reduce your life total to less than 1 reduces it to
+	// 1 instead": PlayerLifeFloorOne that applies only while its CONTROLLER
+	// controls a creature. Read from the battlefield through
+	// CatalogAbilityKey; see game.CatalogPlayerLifeFloorOneIfCreature and
+	// life_floor.go (S82 GAP batch 119).
+	PlayerLifeFloorOneIfCreature bool
 	// DamageStaysThroughCleanup is this permanent's printed "Damage
 	// isn't removed from this creature during cleanup steps" (CR 514.2 —
 	// Ancient Adamantoise). Read from the battlefield through
@@ -1188,6 +1203,10 @@ func init() {
 	CatalogPlayerLifeFloorOne = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeFloorOne
+	}
+	CatalogPlayerLifeFloorOneIfCreature = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.PlayerLifeFloorOneIfCreature
 	}
 	CatalogDamageStaysThroughCleanup = func(key string) bool {
 		d := catalogDef(key)

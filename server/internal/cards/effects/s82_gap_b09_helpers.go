@@ -8,13 +8,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // condGapB09YouHaveNoCardsInHand is the intervening "if you have no cards
 // in hand" (CR 603.4), read as the trigger fires and again as it
 // resolves. A hand's size is public; its contents are not read.
-type condGapB09YouHaveNoCardsInHand struct{}
+type CondGapB09YouHaveNoCardsInHand struct{}
 
-func (condGapB09YouHaveNoCardsInHand) Holds(ctx *Context) bool {
+func (CondGapB09YouHaveNoCardsInHand) Holds(ctx *Context) bool {
 	p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
 	return p != nil && (p.Hand == nil || p.Hand.Size() == 0)
 }
 
-func (condGapB09YouHaveNoCardsInHand) condition() (game.FootprintStep, bool) {
+func (CondGapB09YouHaveNoCardsInHand) Condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }

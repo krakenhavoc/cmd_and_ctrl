@@ -469,6 +469,16 @@ func absorbToken(token string, out *ParsedCost) error {
 		return nil
 	}
 
+	// Three-way hybrid — "{G/W/U}": one symbol payable with mana of any of
+	// its three colours. No card prints it; it is how "pay {G}, {W}, or {U}"
+	// (Isu the Abominable) is one payment of one mana of three colours.
+	if len(u) == 5 && u[1] == '/' && u[3] == '/' && isColor(u[0]) && isColor(u[2]) && isColor(u[4]) {
+		out.Required = append(out.Required, ColorRequirement{
+			Options: []string{string(u[0]), string(u[2]), string(u[4])},
+		})
+		return nil
+	}
+
 	// Hybrid forms — "{W/U}", "{2/W}", "{W/P}".
 	if len(u) == 3 && u[1] == '/' {
 		left, right := u[0], u[2]

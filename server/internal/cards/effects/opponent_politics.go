@@ -32,7 +32,7 @@ import (
 // tally to exactly two.
 //
 // Caller holds g.mu.
-func opponentDrewTheirSecondCardThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+func OpponentDrewTheirSecondCardThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDrawCard || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
@@ -44,7 +44,7 @@ func opponentDrewTheirSecondCardThisTurn(ev game.Event, source *game.Card, g *ga
 // EventCast fires, so the second cast reads exactly two.
 //
 // Caller holds g.mu.
-func opponentCastTheirSecondSpellThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+func OpponentCastTheirSecondSpellThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
@@ -68,7 +68,7 @@ func opponentCastTheirSecondSpellThisTurn(ev game.Event, source *game.Card, g *g
 // with you directly rather than read through the defending player.
 //
 // Caller holds g.mu.
-func opponentAttackedYouWithAtLeast(ev game.Event, source *game.Card, g *game.Game, n int, label string) bool {
+func OpponentAttackedYouWithAtLeast(ev game.Event, source *game.Card, g *game.Game, n int, label string) bool {
 	return opponentAttackedWithAtLeast(ev, source, g, n, label, false)
 }
 
@@ -89,20 +89,20 @@ func opponentAttackedWithAtLeast(ev game.Event, source *game.Card, g *game.Game,
 		return false
 	}
 	at := 0
-	for _, id := range b13AttackingCreaturesYouControl(g, ev.Actor) {
+	for _, id := range B13AttackingCreaturesYouControl(g, ev.Actor) {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
 		}
 		if c.AttackingTarget == source.Controller ||
-			(planeswalkers && attacksYouOrYourPlaneswalker(g, c.AttackingTarget, source.Controller)) {
+			(planeswalkers && AttacksYouOrYourPlaneswalker(g, c.AttackingTarget, source.Controller)) {
 			at++
 		}
 	}
 	if at < n {
 		return false
 	}
-	return !b11TriggeredThisTurn(g, source.InstanceID, label)
+	return !B11TriggeredThisTurn(g, source.InstanceID, label)
 }
 
 // creatureDealtCombatDamageToAnOpponentOf is "whenever a creature
@@ -117,7 +117,7 @@ func opponentAttackedWithAtLeast(ev game.Event, source *game.Card, g *game.Game,
 // blocker is still on the battlefield when its damage event fires.
 //
 // Caller holds g.mu.
-func creatureDealtCombatDamageToAnOpponentOf(ev game.Event, controller uuid.UUID, g *game.Game) bool {
+func CreatureDealtCombatDamageToAnOpponentOf(ev game.Event, controller uuid.UUID, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}

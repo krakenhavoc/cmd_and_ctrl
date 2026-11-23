@@ -456,7 +456,8 @@ func (g *Game) copyCandidateStillLegalLocked(
 // copySourceCardLocked is the object a copy_target answer names, as the
 // copy reads it: a permanent on the battlefield, or — for "enter as a
 // copy of any creature card in a graveyard" (Body Double, Superior
-// Spider-Man, #4797) — a card in a graveyard, whose copiable values
+// Spider-Man, #4797) — a card in a graveyard, or in exile (The Master,
+// Formed Anew's "a creature card in exile with a takeover counter on it"), whose copiable values
 // are its printed ones (CR 707.2). The candidate list decides which
 // zones a card offers; this only finds the pick where it is. Anywhere
 // else (it was exiled in response) it is no longer there to copy, and
@@ -468,7 +469,7 @@ func (g *Game) copySourceCardLocked(cardID uuid.UUID) (Card, bool) {
 		return *src, true
 	}
 	z := g.findCardZoneLocked(cardID)
-	if z == nil || z.Kind != ZoneGraveyard {
+	if z == nil || (z.Kind != ZoneGraveyard && z.Kind != ZoneExile) {
 		return Card{}, false
 	}
 	for _, c := range z.Cards {

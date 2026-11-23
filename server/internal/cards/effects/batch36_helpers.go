@@ -38,16 +38,16 @@ import (
 // --- tokens --------------------------------------------------------
 
 // b36WhiteCatToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
-func b36WhiteCatToken() game.Card { return TokenCard("1/1 white Cat") }
+func B36WhiteCatToken() game.Card { return TokenCard("1/1 white Cat") }
 
 // b36WhiteVampireLifelinkToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
-func b36WhiteVampireLifelinkToken() game.Card { return TokenCard("1/1 white Vampire with lifelink") }
+func B36WhiteVampireLifelinkToken() game.Card { return TokenCard("1/1 white Vampire with lifelink") }
 
 // b36BlueThopterToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
-func b36BlueThopterToken() game.Card { return TokenCard("1/1 blue Thopter artifact with flying") }
+func B36BlueThopterToken() game.Card { return TokenCard("1/1 blue Thopter artifact with flying") }
 
 // b36WhiteHumanSoldierToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
-func b36WhiteHumanSoldierToken() game.Card { return TokenCard("1/1 white Human Soldier") }
+func B36WhiteHumanSoldierToken() game.Card { return TokenCard("1/1 white Human Soldier") }
 
 // --- costs ---------------------------------------------------------
 
@@ -55,8 +55,8 @@ func b36WhiteHumanSoldierToken() game.Card { return TokenCard("1/1 white Human S
 // artifact:" — any artifact the activator controls other than the
 // source. Built through the same clause the sac-outlet costs use, so
 // the client opens the same picker.
-func b36SacrificeAnotherArtifact() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: Another(sacrificeSpec("another artifact", Artifact()))}
+func B36SacrificeAnotherArtifact() game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: Another(SacrificeSpec("another artifact", Artifact()))}
 }
 
 // --- predicates ----------------------------------------------------
@@ -65,7 +65,7 @@ func b36SacrificeAnotherArtifact() game.AbilityCost {
 // own": a permanent flagged as a commander whose OWNER is the
 // activator — a stolen commander of yours is still yours to return,
 // and an opponent's commander you control is not.
-func b36CommanderYouOwn() CardPredicate {
+func B36CommanderYouOwn() CardPredicate {
 	return func(_ *game.Game, caster uuid.UUID, c game.Card) bool {
 		return c.IsCommander && c.Owner == caster
 	}
@@ -74,19 +74,19 @@ func b36CommanderYouOwn() CardPredicate {
 // b36ArtifactCreatureYouControl is Tempered Steel's scope — post-
 // layer types, so an animated artifact and an artifact-ified
 // creature both count.
-func b36ArtifactCreatureYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B36ArtifactCreatureYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.IsArtifact() && target.Controller == source.Controller
 }
 
 // b36IsAuraCard is Heliod's Pilgrim's search filter: an Aura card,
 // read off the printed type line as every library search does.
-func b36IsAuraCard(c game.Card) bool { return c.IsAura() }
+func B36IsAuraCard(c game.Card) bool { return c.IsAura() }
 
 // b36IsDragonCreatureCard is Sarkhan's Triumph's search filter: a
 // creature card with the Dragon type, on the printed type line.
 // SearchLibrary lends the spell's text, so "Dragon" follows a text
 // change (CR 612.2, #3984).
-func b36IsDragonCreatureCard(c game.Card) bool {
+func B36IsDragonCreatureCard(c game.Card) bool {
 	return c.IsCreature() && c.HasSubtypeWord("Dragon")
 }
 
@@ -95,7 +95,7 @@ func b36IsDragonCreatureCard(c game.Card) bool {
 // b36TokensControlled counts the tokens `controller` controls, of
 // any type — Cadira's "for each token you control". A Treasure and
 // a Clue count, as printed.
-func b36TokensControlled(g *game.Game, controller uuid.UUID) int {
+func B36TokensControlled(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && IsToken(c) {
@@ -111,11 +111,11 @@ func b36TokensControlled(g *game.Game, controller uuid.UUID) int {
 // Fang's condition: Arahbo himself entered, or another nontoken Cat
 // entered under his controller's control. Effective subtypes, so a
 // changeling counts; his own Cat tokens never do.
-func b36SelfOrAnotherNontokenCatYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+func B36SelfOrAnotherNontokenCatYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind == game.EventETB && ev.CardID == source.InstanceID {
 		return true
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsCreature() && !IsToken(c) && c.HasSubtype(source.TextSubtype("Cat"))
 }
 
@@ -123,11 +123,11 @@ func b36SelfOrAnotherNontokenCatYouControlEntered(ev game.Event, source *game.Ca
 // condition: the Captain entered, or another Human — token or not —
 // entered under his controller's control. His own Human Soldier
 // tokens count, as printed.
-func b36SelfOrAnotherHumanYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+func B36SelfOrAnotherHumanYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind == game.EventETB && ev.CardID == source.InstanceID {
 		return true
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	// "Human" is a word of the source's text (CR 612.2, #3984).
 	return ok && c.HasSubtype(source.TextSubtype("Human"))
 }
@@ -139,8 +139,8 @@ func b36SelfOrAnotherHumanYouControlEntered(ev game.Event, source *game.Card, g 
 // per combat through OncePerBatch, because the engine
 // emits one attack event per creature and the printed ability fires
 // once for the batch.
-func b36NontokenVampiresYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
+func B36NontokenVampiresYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -152,8 +152,8 @@ func b36NontokenVampiresYouControlAttacked(ev game.Event, source *game.Card, g *
 // also an artifact — the Sphinx itself, a Thopter, an animated
 // Treasure — dealt combat damage to a player. One trigger per
 // creature that connects, as printed.
-func b36ArtifactCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func B36ArtifactCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
@@ -162,47 +162,47 @@ func b36ArtifactCreatureYouControlDealtCombatDamageToPlayer(ev game.Event, sourc
 
 // b36SelfDealtCombatDamageToPlayer is "whenever this creature deals
 // combat damage to a player" — Cadira.
-func b36SelfDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
-	return ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)
+func B36SelfDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
+	return ev.Source == source.InstanceID && CombatDamageToPlayerBy(ev, source.Controller, g)
 }
 
 // b36AngelYouControlDied is Bishop of Wings' second condition: an
 // Angel its controller controlled died — an Angel as it last existed
 // (leftAsSubtype, #1679), so a changeling counts and so does a
 // creature that was an Angel only through a grant.
-func b36AngelYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Angel"))
+func B36AngelYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Angel"))
 }
 
 // b36AnotherFaerieYouControlDied is Tegwyll, Duke of Splendor's
 // condition: another Faerie his controller controlled died —
 // Tegwyll's own death does not count, as printed.
-func b36AnotherFaerieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
+func B36AnotherFaerieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
 	return ok && dead.InstanceID != source.InstanceID &&
-		leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Faerie"))
+		LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Faerie"))
 }
 
 // b36EndStepAndAnOpponentLostThree is Sygg, River Cutthroat's
 // intervening-if at announce (CR 603.4): any player's end step
 // began, and some one opponent of the controller has lost 3 or more
 // life this turn.
-func b36EndStepAndAnOpponentLostThree(ev game.Event, source *game.Card, g *game.Game) bool {
-	return b15EndStepBegan(ev) && b06AnOpponentLostAtLeastThisTurn(g, source.Controller, 3)
+func B36EndStepAndAnOpponentLostThree(ev game.Event, source *game.Card, g *game.Game) bool {
+	return B15EndStepBegan(ev) && b06AnOpponentLostAtLeastThisTurn(g, source.Controller, 3)
 }
 
 // --- effect bodies -------------------------------------------------
 
 // b36AngelOfSerenityExileLabel is the stack label of Angel of
 // Serenity's entry trigger.
-const b36AngelOfSerenityExileLabel = "Angel of Serenity — exile up to three other creatures"
+const B36AngelOfSerenityExileLabel = "Angel of Serenity — exile up to three other creatures"
 
 // b36ExileChosenCreatures is Angel of Serenity's entry body: every
 // announced creature still legal at resolution is exiled, linked to her
 // (ExileTarget.Linked), the Angel herself excepted. The "may" was
 // answered when the trigger fired.
-func b36ExileChosenCreatures(g *game.Game, item *game.StackItem) error {
+func B36ExileChosenCreatures(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == item.SourceCardID {
@@ -220,7 +220,7 @@ func b36ExileChosenCreatures(g *game.Game, item *game.StackItem) error {
 // (her last-known record, the leave trigger's own source object) returns
 // to its owner's hand. A card that has since left exile has lost the
 // link, so nothing is pulled out of a graveyard or a hand.
-func b36ReturnCardsExiledWithToOwnersHands(g *game.Game, item *game.StackItem) error {
+func B36ReturnCardsExiledWithToOwnersHands(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
 	if !ok {
@@ -245,9 +245,9 @@ func b36ReturnCardsExiledWithToOwnersHands(g *game.Game, item *game.StackItem) e
 // enchants as it enters (CR 303.4f, #3158), and one with nothing to
 // enchant stays in the graveyard (CR 303.4g). The cards are read before
 // anything moves.
-func b36ReturnAllEnchantmentCards(ctx *Context) error {
+func B36ReturnAllEnchantmentCards(ctx *Context) error {
 	return ReturnFromGraveyardTogether{
-		Targets: graveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
+		Targets: GraveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
 			return c.IsEnchantment()
 		}),
 	}.Apply(ctx)
@@ -258,8 +258,8 @@ func b36ReturnAllEnchantmentCards(ctx *Context) error {
 // value is read back off the event log, and the search accepts only
 // artifact cards at exactly that value plus one, put onto the
 // battlefield untapped.
-func b36RepurposingBaySearch(g *game.Game, item *game.StackItem) error {
-	sacrificed, ok := b17PermanentSacrificedToPay(g, item)
+func B36RepurposingBaySearch(g *game.Game, item *game.StackItem) error {
+	sacrificed, ok := B17PermanentSacrificedToPay(g, item)
 	if !ok {
 		return nil
 	}
@@ -284,10 +284,10 @@ func b36RepurposingBaySearch(g *game.Game, item *game.StackItem) error {
 // announced commander, if still on the battlefield and still legal,
 // goes to its owner's hand — through the shared exit primitive, so
 // CR 903.9 offers the command zone on the way (#539).
-func bounceChosenTarget(g *game.Game, item *game.StackItem) error {
+func BounceChosenTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok || !onBattlefield(g, id) {
+	id, ok := B16FirstLegalTargetCard(ctx)
+	if !ok || !OnBattlefield(g, id) {
 		return nil
 	}
 	return BounceToHand{Target: id}.Apply(ctx)
@@ -295,9 +295,9 @@ func bounceChosenTarget(g *game.Game, item *game.StackItem) error {
 
 // b36CounterOnChosenAnimal is Animal Sanctuary's body: a +1/+1
 // counter on the announced permanent, if still legal.
-func b36CounterOnChosenAnimal(g *game.Game, item *game.StackItem) error {
+func B36CounterOnChosenAnimal(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -306,9 +306,9 @@ func b36CounterOnChosenAnimal(g *game.Game, item *game.StackItem) error {
 
 // b36TapChosenCreature is Lossarnach Captain's entry body: the
 // announced creature, if still legal, is tapped.
-func b36TapChosenCreature(g *game.Game, item *game.StackItem) error {
+func B36TapChosenCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -319,29 +319,29 @@ func b36TapChosenCreature(g *game.Game, item *game.StackItem) error {
 // body: damage from the Fanatic to each opponent equal to the
 // controller's devotion to red, counted as the trigger resolves —
 // the Fanatic's own {R} included while he is still there.
-func b36DamageEachOpponentForDevotionToRed(g *game.Game, item *game.StackItem) error {
-	n := devotionTo(g, item.Controller, NewContext(g, item).TextColor("R"))
+func B36DamageEachOpponentForDevotionToRed(g *game.Game, item *game.StackItem) error {
+	n := DevotionTo(g, item.Controller, NewContext(g, item).TextColor("R"))
 	if n <= 0 {
 		return nil
 	}
-	return damageToEachOpponent(g, item, n)
+	return DamageToEachOpponent(g, item, n)
 }
 
 // b36RabbitsPerTokenYouControl is Cadira's body: one 1/1 white
 // Rabbit for each token the controller controls as the trigger
 // resolves — the Rabbits enter together, so none of them counts
 // itself.
-var b36RabbitsPerTokenYouControl = Do(CreateTokensForEach{
+var B36RabbitsPerTokenYouControl = Do(CreateTokensForEach{
 	Template: TokenCard("1/1 white Rabbit"),
 	Name:     "token you control",
 	Count: func(ctx *Context) int {
-		return b36TokensControlled(ctx.Game, ctx.Controller())
+		return B36TokensControlled(ctx.Game, ctx.Controller())
 	},
 })
 
 // b36DrawAndLoseOne is Tegwyll's dies body: the controller draws a
 // card, then loses 1 life, in printed order.
-func b36DrawAndLoseOne(g *game.Game, item *game.StackItem) error {
+func B36DrawAndLoseOne(g *game.Game, item *game.StackItem) error {
 	if err := (DrawCards{Player: item.Controller, N: 1}).Apply(NewContext(g, item)); err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func b36DrawAndLoseOne(g *game.Game, item *game.StackItem) error {
 // b36DrawIfAnOpponentLostThree is Sygg's end-step body: the
 // intervening-if re-checked at resolution (CR 603.4), then a card.
 // The "may" was answered when the trigger fired.
-func b36DrawIfAnOpponentLostThree(g *game.Game, item *game.StackItem) error {
+func B36DrawIfAnOpponentLostThree(g *game.Game, item *game.StackItem) error {
 	if !b06AnOpponentLostAtLeastThisTurn(g, item.Controller, 3) {
 		return nil
 	}
@@ -360,7 +360,7 @@ func b36DrawIfAnOpponentLostThree(g *game.Game, item *game.StackItem) error {
 
 // b36GainLife is "you gain N life" as a trigger body — Lifecreed
 // Duo's 1, Bishop of Wings' 4.
-func b36GainLife(n int) func(g *game.Game, item *game.StackItem) error {
+func B36GainLife(n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		return GainLife{Player: item.Controller, Amount: n}.Apply(NewContext(g, item))
 	}
@@ -368,7 +368,7 @@ func b36GainLife(n int) func(g *game.Game, item *game.StackItem) error {
 
 // b36DrawOne is "draw a card" as a trigger body — Llanowar
 // Visionary's entry.
-func b36DrawOne(g *game.Game, item *game.StackItem) error {
+func B36DrawOne(g *game.Game, item *game.StackItem) error {
 	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 }
 
@@ -383,7 +383,7 @@ func b36DrawOne(g *game.Game, item *game.StackItem) error {
 // trigger is targeted ("target opponent") and dealt by the land, so
 // it is colourless noncombat damage; the two printed colours are not
 // narrowed to the commander's identity (the painland posture).
-func b36DesertDual(oracleID, name, a, b string) Spec {
+func B36DesertDual(oracleID, name, a, b string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -391,10 +391,10 @@ func b36DesertDual(oracleID, name, a, b string) Spec {
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
+			AppliesTo: B06SelfETB,
 			Targets:   TargetPlayer("target opponent", Opponent()),
 			Key:       name + " — 1 damage to target opponent",
-			Effect:    b36DesertDualDamage,
+			Effect:    B36DesertDualDamage,
 		}},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
@@ -407,7 +407,7 @@ func b36DesertDual(oracleID, name, a, b string) Spec {
 // b36DesertDualDamage is the desert dual's ETB: 1 damage to the
 // chosen target opponent, dealt by the land itself (item.SourceCardID),
 // read off item.Targets rather than a captured value (ADR 0041 P9).
-func b36DesertDualDamage(g *game.Game, item *game.StackItem) error {
+func B36DesertDualDamage(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}

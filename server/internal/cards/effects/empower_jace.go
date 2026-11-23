@@ -49,13 +49,13 @@ const JaceTokenSubtype = "Jace"
 //
 // Not legendary: two of them may be on the battlefield at once, which
 // is why the keyword action asks which one gets the counters.
-func JaceToken() game.Card { return tokenFromCatalog(printedJaceToken) }
+func JaceToken() game.Card { return TokenFromCatalog(printedJaceToken) }
 
 // printedJaceToken is the Jace token as printed, abilities included.
 // Its printed loyalty is 0, so the CR 306.5b entry stamp puts nothing
 // on it: the counters come from the instruction that made it.
-func printedJaceToken() tokenTemplate {
-	return tokenTemplate{
+func printedJaceToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "jace",
 		Card: game.Card{
 			Name:            "Jace",
@@ -178,7 +178,7 @@ var empowerNoThen = RegisterEmpowerThen("prompt-run/empower-jace-choose", nil)
 // rides it as data and the card's own rest is named by its key (the Word).
 func empowerPutOn(g *game.Game, item *game.StackItem, player, jace uuid.UUID, n int, rest EmpowerThen) error {
 	then := NewContext(g, item).ItemTail(empowerJaceFinish)
-	then.Word = rest.pick.run.Key()
+	then.Word = rest.pick.Run.Key()
 	return g.AddCounterByKeyedForEffect(player, jace, game.CounterLoyalty, n, then)
 }
 
@@ -204,7 +204,7 @@ func (e EmpowerJace) Apply(ctx *Context) error {
 	}
 	item := ctx.Item
 	rest := e.Then
-	if !rest.pick.run.Valid() {
+	if !rest.pick.Run.Valid() {
 		rest = empowerNoThen
 	}
 	if len(JaceTokensControlledBy(ctx.Game, player)) > 0 {
@@ -222,8 +222,8 @@ func (e EmpowerJace) Apply(ctx *Context) error {
 	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: player,
 		Source:     ctx.Source(),
-		Groups:     []game.TokenGroup{{Template: ruleDefinedToken(JaceToken()), Count: 1}},
-	}, withWord(withN(ctx.ItemTail(empowerJacePlace), n), rest.pick.run.Key()))
+		Groups:     []game.TokenGroup{{Template: RuleDefinedToken(JaceToken()), Count: 1}},
+	}, WithWord(WithN(ctx.ItemTail(empowerJacePlace), n), rest.pick.Run.Key()))
 }
 
 // empowerJacePlace is the half of the keyword action after the Jace token

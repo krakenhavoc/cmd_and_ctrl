@@ -20,7 +20,7 @@ import (
 // sncB19ExileForLand is the cycle's hand ability and the grant it hands out.
 // `key` is the grant's on-disk identity, `produced` the colour pipe
 // ("{B|R|G}"), `colors` the oracle's colour list ("{B}, {R}, or {G}").
-func sncB19ExileForLand(name, key, produced, colors string) (AbilityGrant, ActivatedAbility) {
+func SncB19ExileForLand(name, key, produced, colors string) (AbilityGrant, ActivatedAbility) {
 	grant := TapForManaGrant(key, produced, "Add "+colors, "{T}: Add "+colors+".")
 	ability := ActivatedAbility{
 		Label: "{2}, Exile this card from your hand: Target land gains \"{T}: Add " + colors +
@@ -30,7 +30,7 @@ func sncB19ExileForLand(name, key, produced, colors string) (AbilityGrant, Activ
 		Targets: TargetPermanent("target land", Land()),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
-			land, ok := b16FirstLegalTargetCard(ctx)
+			land, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}

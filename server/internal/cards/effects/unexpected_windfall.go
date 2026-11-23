@@ -20,7 +20,7 @@ func init() {
 		Completeness:   CompletenessFull,
 		AdditionalCost: DiscardCost(1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return drawAndTreasure(item, ctx, 2, 2)
+			return DrawAndTreasure(item, ctx, 2, 2)
 		},
 	})
 }
@@ -28,7 +28,7 @@ func init() {
 // drawAndTreasure is the shared body of Big Score and Unexpected
 // Windfall: draw `cards`, then create `treasures` Treasure tokens,
 // in printed order.
-func drawAndTreasure(item *game.StackItem, ctx *Context, cards, treasures int) error {
+func DrawAndTreasure(item *game.StackItem, ctx *Context, cards, treasures int) error {
 	if err := (DrawCards{Player: item.Controller, N: cards}).Apply(ctx); err != nil {
 		return err
 	}

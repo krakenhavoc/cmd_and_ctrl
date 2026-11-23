@@ -29,7 +29,7 @@ import (
 // Not summoning sickness: a creature that entered during an
 // opponent's turn still carries SummonedThisTurn on yours (CR 302.6)
 // and did not enter this turn.
-func b06EnteredThisTurn(g *game.Game, cardID uuid.UUID) bool {
+func B06EnteredThisTurn(g *game.Game, cardID uuid.UUID) bool {
 	return g.EnteredThisTurn(cardID)
 }
 
@@ -75,20 +75,20 @@ func b06ExileListedCards(g *game.Game, item *game.StackItem) error {
 // control a Plains" — one land type where the checklands name two.
 // youControlLandTyped with the same lowercase needle twice is exactly
 // that.
-func b06EntersTappedUnlessLandType(subtype string) game.ReplacementEffect {
-	ab := SelfEntersTappedUnless(youControlLandTyped(subtype, subtype))
+func B06EntersTappedUnlessLandType(subtype string) game.ReplacementEffect {
+	ab := SelfEntersTappedUnless(YouControlLandTyped(subtype, subtype))
 	ab.RowLabel = "Enters tapped unless you control " + articleFor(strings.ToLower(subtype)) + " " + subtype + "."
 	return ab
 }
 
 // b06SelfETB is the AppliesTo every "when this permanent enters"
 // trigger in this batch shares.
-func b06SelfETB(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func B06SelfETB(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.CardID == source.InstanceID
 }
 
 // isLegendary reads the post-layer supertypes.
-func isLegendary(c *game.Card) bool {
+func IsLegendary(c *game.Card) bool {
 	for _, s := range c.Effective().Supertypes {
 		if s == "Legendary" {
 			return true
@@ -102,7 +102,7 @@ func isLegendary(c *game.Card) bool {
 // Idyllic Tutor (enchantment), Eladamri's Call (creature). Grim Tutor
 // is not one — it neither reveals nor filters, and it taxes life after
 // the search.
-func b06TutorToHand(reason string, pred func(game.Card) bool) func(item *game.StackItem, ctx *Context) error {
+func B06TutorToHand(reason string, pred func(game.Card) bool) func(item *game.StackItem, ctx *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return SearchLibrary{
 			Player:    ctx.Controller(),

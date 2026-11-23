@@ -148,7 +148,7 @@ jobs:
       # avoids).
       - &setup-go
         name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -515,7 +515,7 @@ jobs:
       - name: Token templates — match against the real Scryfall dump
         if: ${{ !cancelled() }}
         working-directory: server
-        run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v
+        run: go test ./internal/cards/effects/tests/to/ -run RealDumpEveryTokenTemplate -v
 
       # The oracle-text fixture behind TestAbilitiesMatchOracleText
       # (#1276, ADR 0042 amendment). PR CI has no dump, so the check

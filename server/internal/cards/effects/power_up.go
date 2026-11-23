@@ -39,7 +39,7 @@ func PowerUp(text string, cost game.AbilityCost, effect Effect) ActivatedAbility
 // response is pump (game.AnswerPump), read by smart autopass and the bot.
 // Every power-up row so far is one; a row that does something else
 // builds PowerUp and sets its own Purpose.
-func powerUpAnswering(text string, cost game.AbilityCost, effect Effect) ActivatedAbility {
+func PowerUpAnswering(text string, cost game.AbilityCost, effect Effect) ActivatedAbility {
 	ab := PowerUp(text, cost, effect)
 	ab.Purpose.Answers = game.AnswerPump
 	return ab

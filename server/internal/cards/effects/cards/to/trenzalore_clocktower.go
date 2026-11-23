@@ -1,0 +1,60 @@
+package cardsto
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Trenzalore Clocktower — Legendary Land (Doctor Who):
+//
+//	"{T}: Add {U}. Put a time counter on Trenzalore Clocktower.
+//	 {1}{U}, {T}, Remove twelve time counters from Trenzalore Clocktower and
+//	 exile it: Shuffle your graveyard and hand into your library, then draw
+//	 seven cards. Activate only if you control a Time Lord."
+//
+// The counter is a rider of the mana ability (Foreboding Statue's), settled
+// as the mana is made. The second ability's cost removes twelve counters and
+// exiles the land; its effect tucks the hand and graveyard (Midnight Clock's
+// payoff) and, in the tail once the tuck is done, shuffles and draws seven.
+// "Activate only if you control a Time Lord" is an activation condition read
+// off the battlefield (Time Lord is the two type words Time and Lord).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "69143645-97b6-4c7c-9fa2-844fb3b99822",
+		Name:         "Trenzalore Clocktower",
+		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Draws: 7},
+		ManaAbilities: []effects.ManaAbility{{
+			Cost:     effects.ManaAbilityCost{Tap: true},
+			Produced: "{U}",
+			Rider: func(g *game.Game, _, source uuid.UUID) error {
+				_, err := g.AddCounterMustSettleNowForEffect(source, game.CounterTime, 1)
+				return err
+			},
+			Label: "{T}: Add {U}. Put a time counter on Trenzalore Clocktower.",
+		}},
+		Activated: []effects.ActivatedAbility{{
+			Label:     "{1}{U}, {T}, Remove twelve time counters from Trenzalore Clocktower and exile it: Shuffle your graveyard and hand into your library, then draw seven cards. Activate only if you control a Time Lord.",
+			Purpose:   game.Purpose{Draws: 7, Answers: game.AnswerValue},
+			Cost:      effects.Plus(effects.ManaCost("{1}{U}"), effects.TapCost(), effects.RemoveCountersFromThis(game.CounterTime, 12), effects.ExileThis()),
+			Condition: effects.GapB95YouControlATimeLord,
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ids := append(effects.AllHandCardIDs(g, item.Controller), effects.EchoOfEonsGraveyardCardIDs(g, item.Controller)...)
+				return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, effects.NewContext(g, item).ItemTail(trenzaloreClocktowerTucked))
+			},
+		}},
+	})
+}
+
+// trenzaloreClocktowerTucked is the rest of the ability once the hand and
+// graveyard are in the library: shuffle, then draw seven. An on-disk key.
+var trenzaloreClocktowerTucked = effects.CardTail("then/trenzalore-clocktower-shuffle-draw", func(ctx *effects.Context, _ game.TailOutcome) error {
+	if err := ctx.Game.ShuffleLibraryForEffect(ctx.Controller()); err != nil {
+		return err
+	}
+	return ctx.Game.DrawNForEffect(ctx.Controller(), 7)
+})

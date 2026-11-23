@@ -1,0 +1,81 @@
+package cardsj
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Jeska's Will — Sorcery {2}{R}:
+//
+//	"Choose one. If you control a commander as you cast this spell,
+//	 you may choose both instead.
+//	 • Add {R} for each card in target opponent's hand.
+//	 • Exile the top three cards of your library. You may play them
+//	   this turn."
+//
+// The batch-01 triage filed this under "mana pipeline", because a
+// SPELL that adds mana had no path to a pool. `AddMana` (the same
+// primitive Dark Ritual took in the batch's first pass) is that path,
+// and the impulse exile the second bullet wants is the one Laelia and
+// Bonehoard Dracosaur already use.
+//
+// Bullet one counts the hand at RESOLUTION, not at announce, so a
+// discard in response shrinks the ritual. The target is an opponent
+// and it is a real target: hexproof stops it, and an opponent who
+// has left takes the whole bullet with them (CR 608.2b), which is why
+// the body re-reads the clause through ctx.ModeTargets rather than
+// item.Targets.
+//
+// Bullet two is "play", not "cast" (CR 601.1a), so a land among the
+// three can be played as the turn's land drop. The permission is
+// per-instance and expires with the turn; cards left in exile stay
+// there.
+//
+// "If you control a commander as you cast this spell, you may choose
+// both instead" is a conditional mode count (#1590, ADR 0065's
+// 2026-09-27 amendment): `OrUpToIf(2, YouControlACommander)` raises the
+// bound to two while the caster controls a commander permanent —
+// anybody's, including one they have stolen — read at announce (CR
+// 601.2b) and never again, so a commander that dies in response still
+// leaves both bullets on the stack. Until #1590 the card asked for one
+// bullet always, the weaker-than-printed posture #259 demands.
+//
+// Both bullets are ModeDoing bodies run in printed order; they touch
+// different things (a mana pool, the top of your library), so the
+// order the caster clicked them in is not observable.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "0fd114c4-092b-4e28-b0dc-ef529f3bc73e",
+		Name:         "Jeska's Will",
+		Completeness: effects.CompletenessFull,
+		Modes: effects.ChooseOne(
+			effects.ModeDoing("Add {R} for each card in target opponent's hand.",
+				effects.TargetPlayer("target opponent", effects.Opponent()),
+				jeskasWillRitual),
+			effects.ModeDoing("Exile the top three cards of your library. You may play them this turn.", nil,
+				jeskasWillImpulse),
+		).OrUpToIf(2, effects.YouControlACommander),
+	})
+}
+
+// jeskasWillRitual is the first bullet: one red mana per card in the
+// chosen opponent's hand, counted as the spell resolves. A target
+// that is no longer legal adds nothing rather than erroring.
+func jeskasWillRitual(item *game.StackItem, ctx *effects.Context, occurrence int) error {
+	refs := ctx.ModeTargets(occurrence)
+	if len(refs) == 0 {
+		return nil
+	}
+	n := effects.B14HandSize(ctx.Game, refs[0].ID)
+	if n <= 0 {
+		return nil
+	}
+	return effects.AddMana{Player: item.Controller, Amount: effects.ManaN(n, "R")}.Apply(ctx)
+}
+
+// jeskasWillImpulse is the second bullet: three cards off the top,
+// exiled and playable for the rest of the turn.
+func jeskasWillImpulse(item *game.StackItem, ctx *effects.Context, _ int) error {
+	_, err := effects.B12ImpulseExileForTurn(ctx.Game, item, 3)
+	return err
+}

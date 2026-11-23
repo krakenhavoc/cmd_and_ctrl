@@ -388,7 +388,7 @@ func libraryCardsMatching(g *game.Game, player uuid.UUID, ids []uuid.UUID, pred 
 			continue
 		}
 		c, ok := g.LookupCardForEffect(id)
-		if !ok || !isPermanentCard(c) {
+		if !ok || !IsPermanentCard(c) {
 			continue
 		}
 		if pred != nil && !pred(g, player, c) {
@@ -402,7 +402,7 @@ func libraryCardsMatching(g *game.Game, player uuid.UUID, ids []uuid.UUID, pred 
 // isPermanentCard is "a permanent card" as the library-to-battlefield
 // family prints it: a permanent type (CR 110.4) on something that is a
 // card rather than a token (CR 108.2, CR 111.8).
-func isPermanentCard(c game.Card) bool {
+func IsPermanentCard(c game.Card) bool {
 	return c.IsPermanent() && !c.IsToken()
 }
 
@@ -410,7 +410,7 @@ func isPermanentCard(c game.Card) bool {
 // left a library, in order.
 //
 // Caller holds g.mu.
-func cardsStillInALibrary(g *game.Game, ids []uuid.UUID) []uuid.UUID {
+func CardsStillInALibrary(g *game.Game, ids []uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, id := range ids {
 		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneLibrary {
@@ -445,7 +445,7 @@ func PutFromLibraryTailCarrying(key string, extra int, body func(ctx *Context, r
 			Source:  o.Tail.Source,
 			Player:  o.Tail.Player,
 			Entered: o.IDs,
-			Rest:    cardsStillInALibrary(ctx.Game, carry[extra:]),
+			Rest:    CardsStillInALibrary(ctx.Game, carry[extra:]),
 			N:       o.Tail.N,
 			Carry:   carry[:extra],
 		})
@@ -482,7 +482,7 @@ func PutRestOnBottomInRandomOrder(g *game.Game, res PutFromLibraryResult) error 
 // loop carries on and the first error is returned, as the random-order
 // bottom does.
 func PutRestIntoGraveyard(g *game.Game, res PutFromLibraryResult) error {
-	return restIntoGraveyard(g, res.Rest)
+	return RestIntoGraveyard(g, res.Rest)
 }
 
 // restIntoGraveyard is the body PutRestIntoGraveyard and
@@ -497,7 +497,7 @@ func PutRestIntoGraveyard(g *game.Game, res PutFromLibraryResult) error {
 // A token stays where it is (CR 111.8), and an error on one card does
 // not keep the others out: the loop carries on and the first error is
 // returned.
-func restIntoGraveyard(g *game.Game, ids []uuid.UUID) error {
+func RestIntoGraveyard(g *game.Game, ids []uuid.UUID) error {
 	var firstErr error
 	for _, id := range ids {
 		if c, ok := g.LookupCardForEffect(id); ok && c.IsToken() {
@@ -526,8 +526,8 @@ func restIntoGraveyard(g *game.Game, ids []uuid.UUID) error {
 // battlefield" bring it back (CR 111.8).
 //
 // Caller holds g.mu.
-func revealUntil(ctx *Context, player uuid.UUID, pred func(game.Card) bool, reason string) ([]uuid.UUID, uuid.UUID) {
-	run, hits := revealUntilCount(ctx, player, pred, 1, reason)
+func RevealUntil(ctx *Context, player uuid.UUID, pred func(game.Card) bool, reason string) ([]uuid.UUID, uuid.UUID) {
+	run, hits := RevealUntilCount(ctx, player, pred, 1, reason)
 	if len(hits) == 0 {
 		return run, uuid.Nil
 	}
@@ -544,7 +544,7 @@ func revealUntil(ctx *Context, player uuid.UUID, pred func(game.Card) bool, reas
 // is revealed with the rest but is never a hit (CR 108.2).
 //
 // Caller holds g.mu.
-func revealUntilCount(ctx *Context, player uuid.UUID, pred func(game.Card) bool, n int, reason string) ([]uuid.UUID, []uuid.UUID) {
+func RevealUntilCount(ctx *Context, player uuid.UUID, pred func(game.Card) bool, n int, reason string) ([]uuid.UUID, []uuid.UUID) {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Library == nil || n < 1 {
 		return nil, nil
@@ -590,7 +590,7 @@ type RevealUntilThenPutOntoBattlefield struct {
 
 func (r RevealUntilThenPutOntoBattlefield) Apply(ctx *Context) error {
 	player := ctx.Controller()
-	run, hit := revealUntil(ctx, player, r.Match, r.Reason)
+	run, hit := RevealUntil(ctx, player, r.Match, r.Reason)
 	// With no hit the match refuses everything, nothing enters, and
 	// Then still bottoms the whole run.
 	return PutFromLibraryOntoBattlefield{
@@ -617,14 +617,14 @@ func (r RevealUntilThenPutOntoBattlefield) Apply(ctx *Context) error {
 // move it either (see IsToken).
 //
 // Caller holds g.mu.
-func revealTopThenPutIfMatch(g *game.Game, source, player uuid.UUID, match func(game.Card) bool, tapped bool, reason string) (uuid.UUID, error) {
+func RevealTopThenPutIfMatch(g *game.Game, source, player uuid.UUID, match func(game.Card) bool, tapped bool, reason string) (uuid.UUID, error) {
 	ids := g.RevealTopOfLibraryForEffect(player, source, 1, reason)
 	if len(ids) == 0 {
 		return uuid.Nil, nil
 	}
 	top := ids[0]
 	c, ok := g.LookupCardForEffect(top)
-	if !ok || !isPermanentCard(c) || !match(c) {
+	if !ok || !IsPermanentCard(c) || !match(c) {
 		return top, nil
 	}
 	_, err := g.PutFromLibraryOntoBattlefieldForEffect(top, game.LibraryEntryOptions{

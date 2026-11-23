@@ -59,7 +59,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				On(game.EventETB, AllOf(Self, nullSummonerWasCast),
+				On(game.EventETB, AllOf(Self, NullSummonerWasCast),
 					"Null Summoner — target opponent reveals their hand, you choose a nonland card and exile it",
 					nullSummonerExileFromHand),
 				TargetPlayer("target opponent", Opponent())),
@@ -79,7 +79,7 @@ func init() {
 
 // nullSummonerWasCast is "if you cast it": the entering permanent came
 // from a spell.
-func nullSummonerWasCast(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func NullSummonerWasCast(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return source != nil && source.Provenance.FromZone != ""
 }
 

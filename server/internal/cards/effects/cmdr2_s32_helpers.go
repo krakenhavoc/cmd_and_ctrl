@@ -15,7 +15,7 @@ import (
 // "if you do" a clause may print after it. The card leaves exile, so the
 // CR 607.2a link and the "until" record that held it are spent: the card is
 // not returned when its source leaves.
-func cmdr2S32PutExiledCardIntoGraveyard(g *game.Game, id uuid.UUID) (bool, error) {
+func Cmdr2S32PutExiledCardIntoGraveyard(g *game.Game, id uuid.UUID) (bool, error) {
 	z := g.FindCardZoneForEffect(id)
 	if z == nil || z.Kind != game.ZoneExile {
 		return false, nil

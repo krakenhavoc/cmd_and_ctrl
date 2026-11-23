@@ -26,7 +26,7 @@ func init() {
 		"Olivia, Crimson Bride — return target creature card from your graveyard to the battlefield tapped and attacking; it gains an exile trigger",
 		func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
-			ids := legalTargetCardIDs(ctx)
+			ids := LegalTargetCardIDs(ctx)
 			if len(ids) == 0 {
 				return nil
 			}
@@ -56,7 +56,7 @@ const oliviaCrimsonBrideExileGrant = "olivia-crimson-bride/exile"
 // An on-disk key: never renamed, never reused.
 var oliviaCrimsonBrideGrantTail = CardTail("then/olivia-crimson-bride-grant", func(ctx *Context, o game.TailOutcome) error {
 	for _, id := range o.IDs {
-		if !onBattlefield(ctx.Game, id) {
+		if !OnBattlefield(ctx.Game, id) {
 			continue
 		}
 		if err := (ScopedEffectFor{

@@ -2210,6 +2210,13 @@ type CastTally struct {
 	Instants                int `json:"instants,omitempty"`
 	Sorceries               int `json:"sorceries,omitempty"`
 	OtterSpellsExceptAlania int `json:"otterSpellsExceptAlania,omitempty"`
+	// DragonSpells counts the Dragon spells the player cast this turn, read
+	// as each spell became cast like Instants (CR 601.2i): Acolyte of
+	// Bahamut's "the first Dragon spell you cast each turn costs {2} less"
+	// prices a spell while this is still 0, because a cost is determined
+	// (CR 601.2f) before the spell is counted. Additive within the snapshot
+	// version.
+	DragonSpells int `json:"dragonSpells,omitempty"`
 	// InstantSorceryVillain counts the spells the player cast this turn that
 	// are an instant, a sorcery or a Villain (Lady Loki, Agent of Chaos's
 	// "your first instant, sorcery, or Villain spell each turn"), read as

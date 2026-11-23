@@ -1479,7 +1479,7 @@ func (g *Game) triggerOrderBoardOpaqueLocked() (card string, opaque bool) {
 var characteristicModKinds = map[ModKind]bool{
 	ModSetController: true, ModAddTypes: true, ModRemoveTypes: true,
 	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true,
-	ModAddKeywords: true, ModRemoveKeywords: true, ModLoseAllAbilities: true,
+	ModAddKeywords: true, ModRemoveKeywords: true, ModRemoveKeywordPrefixes: true, ModLoseAllAbilities: true,
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
 	ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModAttackPermanentIfAble: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
@@ -1813,7 +1813,8 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// unattaches it, while its permanent is there.
 	"AttachOnlyTo": defFieldOwnRules,
 	"LifeForMana":  defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
-	"GrantText": defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
+	"GrantedReplacements": defFieldInert, // a grant bundle's own slot: merged into the composite's Replacements (copy_grants.go)
+	"GrantText":           defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
@@ -1832,7 +1833,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "VentureLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules, "DamageLastLoyalty": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules, "CoinFlipRules": defFieldRules,
-	"DealtDamageCantBeRegenerated": defFieldRules, "PlayerLifeFloorOne": defFieldRules,
+	"DealtDamageCantBeRegenerated": defFieldRules, "PlayerLifeFloorOne": defFieldRules, "PlayerLifeFloorOneIfCreature": defFieldRules,
 }
 
 // defBearsRules reports whether a definition has a rules slot set

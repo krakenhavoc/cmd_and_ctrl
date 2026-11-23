@@ -101,7 +101,7 @@ func blockRequirementLabel(kind game.BlockRequirementKind, filter string) string
 // BlocksEachCombat is "This creature blocks each combat if able"
 // (Razorgrass Screen, Watchdog).
 func BlocksEachCombat() game.StaticAbility {
-	return BlocksEachCombatWhere(selfOnly)
+	return BlocksEachCombatWhere(SelfOnly)
 }
 
 // BlocksEachCombatWhere is "<creatures> block each combat if able" from
@@ -116,7 +116,7 @@ func BlocksEachCombatWhere(appliesTo func(target *game.Card, g *game.Game, sourc
 // so" (Prized Unicorn). For "… enchanted creature …" (Lure) pass
 // AttachedToSource to BlockRequirementWhere instead.
 func AllAbleToBlockDoSo() game.StaticAbility {
-	s := BlockRequirementWhere(game.BlockRequirementLure, selfOnly)
+	s := BlockRequirementWhere(game.BlockRequirementLure, SelfOnly)
 	s.Label = "All creatures able to block it do so." // #2219: the tile's label
 	return s
 }
@@ -130,7 +130,7 @@ func FilteredLure(filter string) game.StaticAbility {
 	if filter == "" {
 		panic("effects: FilteredLure needs a filter; use AllAbleToBlockDoSo for an unfiltered Lure")
 	}
-	s := blockRequirementStatic(game.BlockRequirementLure, filter, selfOnly)
+	s := blockRequirementStatic(game.BlockRequirementLure, filter, SelfOnly)
 	s.Label = strings.Replace(s.Label, "creatures it affects", "it", 1)
 	return s
 }
@@ -138,7 +138,7 @@ func FilteredLure(filter string) game.StaticAbility {
 // MustBeBlocked is "This creature must be blocked if able" (Gaea's
 // Protector).
 func MustBeBlocked() game.StaticAbility {
-	s := BlockRequirementWhere(game.BlockRequirementMustBeBlocked, selfOnly)
+	s := BlockRequirementWhere(game.BlockRequirementMustBeBlocked, SelfOnly)
 	s.Label = "Must be blocked if able." // #2219: the tile's label
 	return s
 }

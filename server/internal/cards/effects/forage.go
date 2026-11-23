@@ -64,7 +64,7 @@ func MayForage(ctx *Context, question string, then game.PayUnlessElse) error {
 // nothing printed after it (Corpseberry Cultivator's beginning of
 // combat): the forage is the whole point, and "whenever you forage" is
 // what pays off.
-var mayForageNothingMore = PayUnlessBranches("pay-unless/forage-only",
+var MayForageNothingMore = PayUnlessBranches("pay-unless/forage-only",
 	func(*Context, game.PayUnlessAnswer) error { return nil }, nil)
 
 // WheneverYouForage is "Whenever you forage, <effect>" (Corpseberry

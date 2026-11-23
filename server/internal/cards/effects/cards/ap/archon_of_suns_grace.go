@@ -1,0 +1,55 @@
+package cardsap
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Archon of Sun's Grace — Creature — Archon {2}{W}{W}, 3/4 (EDHREC
+// rank 1195):
+//
+//	"Flying
+//	 Lifelink
+//	 Pegasus creatures you control have lifelink.
+//	 Constellation — Whenever an enchantment you control enters,
+//	 create a 2/2 white Pegasus creature token with flying."
+//
+// The enchantress deck's flying army. Flying and lifelink ride
+// PrintedKeywords; the Pegasus grant is a Layer 6 static (Lord of
+// Atlantis' shape, without the "other" — the Archon is not a Pegasus,
+// so nothing changes for it); constellation is the landfall trigger
+// shape with "enchantment" for "land", one trigger per enchantment.
+// The token's flying is real, carried on its Keywords.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "48a99dce-0aa9-4aac-81df-cec5f94c639d",
+		Name:            "Archon of Sun's Grace",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying", "lifelink"},
+		Static: []game.StaticAbility{{
+			Label: "Pegasus creatures you control have lifelink.",
+			Layer: game.Layer6Ability,
+			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+				// "Pegasus" is a word of the source's text (CR 612.2, #3984).
+				return target.Controller == source.Controller && target.IsCreature() && target.HasSubtype(source.TextSubtype("Pegasus"))
+			},
+			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+				for _, k := range c.Abilities {
+					if k == "lifelink" {
+						return
+					}
+				}
+				c.Abilities = append(c.Abilities, "lifelink")
+			},
+		}},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				c, ok := effects.EnteredUnderYourControl(ev, source, g, false)
+				return ok && c.IsEnchantment()
+			}, "Archon of Sun's Grace — create a 2/2 Pegasus with flying (constellation)", effects.Do(effects.CreateToken{Template: effects.TokenCard("2/2 white Pegasus with flying"), N: 1})),
+		},
+	})
+}

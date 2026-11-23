@@ -14,8 +14,8 @@ import (
 // creature" as a step of a larger trigger (heroic, Favored Hoplite; Colleen
 // Wing): nothing for a source that has left or come back as a new object
 // (CR 400.7).
-func plusOneCounterOnSourceIfSameObject(ctx *Context) error {
-	if sourceIsNewObject(ctx.Game, ctx.Item) || !onBattlefield(ctx.Game, ctx.Source()) {
+func PlusOneCounterOnSourceIfSameObject(ctx *Context) error {
+	if SourceIsNewObject(ctx.Game, ctx.Item) || !OnBattlefield(ctx.Game, ctx.Source()) {
 		return nil
 	}
 	return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
@@ -25,8 +25,8 @@ func plusOneCounterOnSourceIfSameObject(ctx *Context) error {
 // you control enters" (Baron Strucker, Crossbones): a permanent under the
 // source controller's control, not the source, with the Villain subtype as
 // it enters (a changeling counts).
-func mshB2AnotherVillainEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func MshB2AnotherVillainEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.HasSubtype(source.TextSubtype("Villain"))
 }
 
@@ -34,12 +34,12 @@ func mshB2AnotherVillainEntered(ev game.Event, source *game.Card, g *game.Game) 
 // put one or more +1/+1 counters on the source this turn (Beast, Erudite
 // Aerialist): any placement in this turn's event log that names them as the
 // placer and the source as the recipient.
-func mshB2YouPutPlusOneOnThisTurn(g *game.Game, source *game.Card) bool {
+func MshB2YouPutPlusOneOnThisTurn(g *game.Game, source *game.Card) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventCounterPlaced || ev.Target != source.InstanceID || ev.Label != game.CounterPlusOne {
 			continue
 		}
-		if _, ok := countersPutBy(ev, source.Controller, g, true); ok {
+		if _, ok := CountersPutBy(ev, source.Controller, g, true); ok {
 			return true
 		}
 	}
@@ -49,12 +49,12 @@ func mshB2YouPutPlusOneOnThisTurn(g *game.Game, source *game.Card) bool {
 // mshB2PlanCounterReached is the When of "when the Nth plan counter is put
 // on this enchantment" (Claim the Kingdom): a plan-counter placement on the
 // source whose new total reaches n from below.
-func mshB2PlanCounterReached(n int) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func MshB2PlanCounterReached(n int) func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		if ev.Kind != game.EventCounterPlaced || ev.Target != source.InstanceID || ev.Label != "plan" || ev.Amount < n {
 			return false
 		}
-		return b12CounterTotalBefore(ev, g) < n
+		return B12CounterTotalBefore(ev, g) < n
 	}
 }
 
@@ -62,10 +62,10 @@ func mshB2PlanCounterReached(n int) func(ev game.Event, source *game.Card, _ gam
 // the source goes first (nothing happens for a source that has left or come
 // back as a new object), and only then is the reflexive trigger put on the
 // stack, so its target is chosen after the sacrifice.
-func mshB2SacrificeThisThenWhenYouDo(label string, body game.BodyRef) Effect {
+func MshB2SacrificeThisThenWhenYouDo(label string, body game.BodyRef) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		if !onBattlefield(g, item.SourceCardID) || ctx.isNewSourceObjectAsThis(item.SourceCardID) {
+		if !OnBattlefield(g, item.SourceCardID) || ctx.IsNewSourceObjectAsThis(item.SourceCardID) {
 			return nil
 		}
 		if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
@@ -80,7 +80,7 @@ func mshB2SacrificeThisThenWhenYouDo(label string, body game.BodyRef) Effect {
 // not the attacker (Captain America's Shield: the equipped creature
 // attacked). The defending player is the one the attacker named by the
 // triggering event is attacking.
-func mshB2TargetCreatureTheAttackerDefends(tc game.TriggerContext, _ *game.Card, g *game.Game) *game.TargetSpec {
+func MshB2TargetCreatureTheAttackerDefends(tc game.TriggerContext, _ *game.Card, g *game.Game) *game.TargetSpec {
 	attacker, ok := g.LookupCardForEffect(tc.Event.CardID)
 	if !ok {
 		return nil

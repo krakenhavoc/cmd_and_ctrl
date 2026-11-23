@@ -33,7 +33,7 @@ func init() {
 				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 {
 					return false
 				}
-				return damageSourceControlledBy(ev, g, src.Controller)
+				return DamageSourceControlledBy(ev, g, src.Controller)
 			},
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.DamageAmount *= 2
@@ -54,7 +54,7 @@ func init() {
 // to now. A stolen creature's "when this dies" damage is still
 // attributed to the player who controlled it when it died, even
 // though the graveyard card goes home to its owner.
-func damageSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
-	ch, ok := damageSourceCharacteristics(ev, g)
+func DamageSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
+	ch, ok := DamageSourceCharacteristics(ev, g)
 	return ok && ch.Controller == controller
 }

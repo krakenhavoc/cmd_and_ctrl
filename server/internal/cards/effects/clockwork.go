@@ -36,19 +36,19 @@ func removePlusOneCounterFromDelayedTriggerSource(g *game.Game, item *game.Stack
 	if g.AbilitySourceGoneForEffect(item) {
 		return nil
 	}
-	return removeACounterFromThis(game.CounterPlusOne)(g, item)
+	return RemoveACounterFromThis(game.CounterPlusOne)(g, item)
 }
 
 // thisAttacksOrBlocks is "whenever this creature attacks or blocks":
 // its own attack declaration, or the first of its blocks (CR 509.3a).
-func thisAttacksOrBlocks(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-	return attackDeclared(ev, source) || selfBlocksOnce(ev, source)
+func ThisAttacksOrBlocks(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return AttackDeclared(ev, source) || SelfBlocksOnce(ev, source)
 }
 
 // clockworkLosesACounterAtEndOfCombat is the printed trigger, labelled
 // with the card's name.
-func clockworkLosesACounterAtEndOfCombat(name string) game.TriggeredAbility {
-	return OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, thisAttacksOrBlocks,
+func ClockworkLosesACounterAtEndOfCombat(name string) game.TriggeredAbility {
+	return OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, ThisAttacksOrBlocks,
 		name+" — remove a +1/+1 counter from it at end of combat",
 		func(g *game.Game, item *game.StackItem) error {
 			return ScheduleDelayedTrigger{

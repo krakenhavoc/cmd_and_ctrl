@@ -1,0 +1,72 @@
+package cardsa
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Amped Raptor — Creature — Dinosaur {1}{R}, 2/1:
+//
+//	"First strike
+//	 When this creature enters, you get {E}{E} (two energy counters).
+//	 Then if you cast it from your hand, exile cards from the top of
+//	 your library until you exile a nonland card. You may cast that card
+//	 by paying an amount of {E} equal to its mana value rather than
+//	 paying its mana cost."
+//
+// The energy comes first, so the two it gives can pay for the hit. "Then
+// if you cast it from your hand" is checked as the trigger resolves (it
+// is not an intervening if), off the cast event (b30CastFromHand), so a
+// reanimated or blinked Raptor only gets the energy.
+//
+// The cast is a per-card CastPermission (ADR 0066) priced by
+// EnergyEqualToManaValue (ADR 0129 §5): Bolas's Citadel's "rather than
+// pay its mana cost" with energy for life, so it is the only way to cast
+// the card this way, a caster short of the energy cannot claim it (CR
+// 118.3), and an {X} in the card's cost is 0 (CR 107.3b). The rulings
+// put the cast inside the resolution with its type's timing ignored, so
+// the grant is Fevered Suspicion's: flash timing (CR 608.2g), and a
+// window that closes when you pass priority, leaving an uncast card in
+// exile.
+//
+// #4250: the cast is made DURING the trigger's resolution (CR 608.2g), through the
+// resolution_cast prompt over the card (offerResolutionCastOver), and
+// the decline leaves it where it is. Nobody receives priority in between.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "3ed14ea7-ee62-4604-af3b-deafb00108c3",
+		Name:            "Amped Raptor",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"first strike"},
+		Purpose:         game.Purpose{Energy: 2},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Amped Raptor — you get {E}{E}, then exile until a nonland card", ampedRaptorEnters),
+		},
+	})
+}
+
+// ampedRaptorAltCostKey is the claim the permission synthesises. An
+// on-disk identity (it lands on StackItem.AltCost): never renamed.
+const AmpedRaptorAltCostKey = "amped_raptor"
+
+func ampedRaptorEnters(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	if err := (effects.GetEnergy{N: 2}).Apply(ctx); err != nil {
+		return err
+	}
+	if !effects.B30CastFromHand(g, item.SourceCardID) {
+		return nil
+	}
+	return effects.ExileUntilNonlandGrantingCast(ctx, game.CastPermission{
+		AltCostKey:             AmpedRaptorAltCostKey,
+		EnergyEqualToManaValue: true,
+		Timing:                 game.TimingFlash,
+		CastOnly:               true,
+		Duration:               ctx.Game.UntilEndOfTurnDuration(),
+		LapseOnPass:            game.LapseStaysInExile,
+		Source:                 ctx.Source(),
+		SourceName:             "Amped Raptor",
+		Label:                  "Pay {E} equal to its mana value (Amped Raptor)",
+	})
+}

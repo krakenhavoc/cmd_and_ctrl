@@ -10,7 +10,7 @@ import (
 
 // trekB6BeamMeUpKey is the alternative-cost key "Beam me up" rides on
 // StackItem.AltCost. An on-disk identity: never renamed, never reused.
-const trekB6BeamMeUpKey = "beam_me_up"
+const TrekB6BeamMeUpKey = "beam_me_up"
 
 // trekB6BeamMeUp is "Beam me up <cost> (You may cast this card from your
 // graveyard for <cost> if you also return a creature you control to its
@@ -24,9 +24,9 @@ const trekB6BeamMeUpKey = "beam_me_up"
 //
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{trekB6BeamMeUp("{3}{U}")},
-func trekB6BeamMeUp(cost string) game.AlternativeCost {
+func TrekB6BeamMeUp(cost string) game.AlternativeCost {
 	ac := Flashback(cost)
-	ac.Key = trekB6BeamMeUpKey
+	ac.Key = TrekB6BeamMeUpKey
 	ac.Label = "Beam me up " + cost
 	ac.ReturnToHand = PermanentYouControl("a creature you control", Creature())
 	ac.PayLabel = "a creature you control"
@@ -38,7 +38,7 @@ func trekB6BeamMeUp(cost string) game.AlternativeCost {
 // Guidance Failure): the first still-legal target goes to its owner's
 // library, the owner choosing the end. A target gone by resolution does
 // nothing.
-func ownerTucksFirstTargetTopOrBottom(ctx *Context, label string) error {
+func OwnerTucksFirstTargetTopOrBottom(ctx *Context, label string) error {
 	var id uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {

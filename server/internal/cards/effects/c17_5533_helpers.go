@@ -20,10 +20,10 @@ func init() {
 		// Wasitora, Nekoru Queen.
 		"3/3 black and red and green Cat Dragon with flying": {Name: "Cat Dragon", TypeLine: "Token Creature — Cat Dragon", Power: 3, Toughness: 3, Colors: []string{"B", "R", "G"}, Keywords: []string{"flying"}},
 	} {
-		if _, dup := tokenTable[key]; dup {
+		if _, dup := TokenTable[key]; dup {
 			panic("c17_5533_helpers: token key already in the table: " + key)
 		}
-		tokenTable[key] = card
+		TokenTable[key] = card
 	}
 }
 
@@ -34,26 +34,26 @@ func init() {
 // the second is eachAttackingOpponentDoesTheSame, the attacking opponent's
 // copy of the effect under their control. Curse of Bounty, Curse of
 // Disturbance and Curse of Vitality.
-func c17CurseWhenAttacked(mine, theirs string, effect Effect) []game.TriggeredAbility {
+func C17CurseWhenAttacked(mine, theirs string, effect Effect) []game.TriggeredAbility {
 	you := OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 		return source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == ev.Target
 	}, mine, effect))
-	return []game.TriggeredAbility{you, eachAttackingOpponentDoesTheSame(theirs, effect)}
+	return []game.TriggeredAbility{you, EachAttackingOpponentDoesTheSame(theirs, effect)}
 }
 
 // c17UntapAllNonlandYouControl is "untap all nonland permanents you
 // control" for the item's controller, who is the attacking opponent on
 // Curse of Bounty's second ability.
-func c17UntapAllNonlandYouControl(g *game.Game, item *game.StackItem) error {
-	return b16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return !c.IsLand() })
+func C17UntapAllNonlandYouControl(g *game.Game, item *game.StackItem) error {
+	return B16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return !c.IsLand() })
 }
 
 // c17ARatDied is Hungry Lynx's "Whenever a Rat dies": any player's creature
 // that was a Rat as it last existed on the battlefield (CR 603.10a). The
 // word is read from the source's text (CR 612.2).
-func c17ARatDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && leftAsSubtype(ev, dead, source.TextSubtype("Rat"))
+func C17ARatDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftAsSubtype(ev, dead, source.TextSubtype("Rat"))
 }
 
 // c17ADragonYouControlDiedWhileInGraveyard is Boneyard Scourge's "Whenever a
@@ -61,12 +61,12 @@ func c17ARatDied(ev game.Event, source *game.Card, _ game.Characteristic, g *gam
 // creature was a Dragon its controller controlled as it last existed, and
 // the Scourge was already in the graveyard (furiousForebearWasInGraveyard:
 // not its own death, nor a death in the batch that put it there).
-func c17ADragonYouControlDiedWhileInGraveyard(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	if !ok || leftUnderControlOf(ev, dead) != source.Controller || !leftAsSubtype(ev, dead, source.TextSubtype("Dragon")) {
+func C17ADragonYouControlDiedWhileInGraveyard(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	if !ok || LeftUnderControlOf(ev, dead) != source.Controller || !LeftAsSubtype(ev, dead, source.TextSubtype("Dragon")) {
 		return false
 	}
-	return furiousForebearWasInGraveyard(ev, source, ch, g)
+	return FuriousForebearWasInGraveyard(ev, source, ch, g)
 }
 
 // c17AttachAllEquipmentToSource is Balan's "Attach all Equipment you
@@ -74,8 +74,8 @@ func c17ADragonYouControlDiedWhileInGraveyard(ev game.Event, source *game.Card, 
 // resolves, moved onto the source while it is still the same permanent
 // (CR 400.7). AttachForEffect leaves alone an Equipment that can't be
 // attached to it (CR 701.3b).
-func c17AttachAllEquipmentToSource(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+func C17AttachAllEquipmentToSource(g *game.Game, item *game.StackItem) error {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	var gear []uuid.UUID
@@ -98,7 +98,7 @@ func c17AttachAllEquipmentToSource(g *game.Game, item *game.StackItem) error {
 // put that card into your hand": the search puts the card into the hand and
 // a Hammer of Nazahn is then put onto the battlefield from it, Guidelight
 // Pathmaker's shape (nothing happens between the two moves). An on-disk key.
-var c17ThenPutFoundHammerOntoBattlefield = game.RegisterTail("then/c17-put-found-hammer-of-nazahn-onto-battlefield",
+var C17ThenPutFoundHammerOntoBattlefield = game.RegisterTail("then/c17-put-found-hammer-of-nazahn-onto-battlefield",
 	func(g *game.Game, o game.TailOutcome) error {
 		for _, id := range o.IDs {
 			c, ok := g.LookupCardForEffect(id)
@@ -117,7 +117,7 @@ var c17ThenPutFoundHammerOntoBattlefield = game.RegisterTail("then/c17-put-found
 // the finished sacrifice run (Invoke Despair's shape): nothing sacrificed
 // means they couldn't. Carry is the Queen's controller, then the damaged
 // player. An on-disk key: never renamed, never reused.
-var c17WasitoraSacrificed = game.RegisterPromptRunThen("prompt-run/c17-wasitora-sacrificed", func(g *game.Game, r game.RunDone) error {
+var C17WasitoraSacrificed = game.RegisterPromptRunThen("prompt-run/c17-wasitora-sacrificed", func(g *game.Game, r game.RunDone) error {
 	if len(r.Carry) < 2 {
 		return nil
 	}
@@ -125,5 +125,5 @@ var c17WasitoraSacrificed = game.RegisterPromptRunThen("prompt-run/c17-wasitora-
 	if len(r.Sacrifices().By(victim)) > 0 {
 		return nil
 	}
-	return CreateToken{Controller: me, Template: TokenCard("3/3 black and red and green Cat Dragon with flying"), N: 1}.Apply(keyedContext(g, me, r.Source))
+	return CreateToken{Controller: me, Template: TokenCard("3/3 black and red and green Cat Dragon with flying"), N: 1}.Apply(KeyedContext(g, me, r.Source))
 })

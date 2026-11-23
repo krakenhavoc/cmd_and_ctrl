@@ -1,0 +1,48 @@
+package cardsw
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Wurmcoil Engine — 6/6 Artifact Creature — Phyrexian Wurm for {6}:
+//
+//	"Deathtouch, lifelink.
+//	When Wurmcoil Engine dies, create a 3/3 colorless Phyrexian Wurm
+//	artifact creature token with deathtouch and a 3/3 colorless
+//	Phyrexian Wurm artifact creature token with lifelink."
+//
+// S19 sub-PR 4 implements the dies half: a mandatory LTB trigger
+// that creates two 3/3 Phyrexian Wurm tokens when it resolves. S21
+// sub-PR 1 makes token keywords real, so the two halves are now
+// distinct — one deathtouch Wurm, one lifelink Wurm, as printed —
+// instead of two copies of a vanilla template. Wurmcoil's own
+// printed deathtouch / lifelink ride the S18 keyword pipeline via
+// PrintedKeywords. cardDied gates the trigger to graveyard-only.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "d1a60f44-7696-49ee-91fb-cab5b3102962",
+		Name:            "Wurmcoil Engine",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"deathtouch", "lifelink"},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisDies("Wurmcoil Engine — create two 3/3 Wurms", func(g *game.Game, item *game.StackItem) error {
+				ctx := effects.NewContext(g, item)
+				for _, tmpl := range []game.Card{
+					effects.PhyrexianWurmDeathtouchToken(),
+					effects.PhyrexianWurmLifelinkToken(),
+				} {
+					if err := (effects.CreateToken{
+						Controller: item.Controller,
+						Template:   tmpl,
+						N:          1,
+					}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		},
+	})
+}

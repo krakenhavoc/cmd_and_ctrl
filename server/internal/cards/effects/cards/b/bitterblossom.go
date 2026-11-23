@@ -1,0 +1,34 @@
+package cardsb
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Bitterblossom — Kindred Enchantment — Faerie for {1}{B}:
+//
+//	"At the beginning of your upkeep, you lose 1 life and create a
+//	1/1 black Faerie Rogue creature token with flying."
+//
+// S19 sub-PR 5: a "your upkeep" trigger combining a life cost with
+// a token. Mandatory; the trigger goes on the stack at upkeep and
+// resolves to the life loss + token. The Faerie token's flying is
+// real: FaerieRogueToken carries it on Card.Keywords, which
+// printedCharacteristic folds into the layer engine (S21 sub-PR 1).
+// The "cosmetic" note here outlived the fix; corrected in the #338
+// sweep.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "fb868840-09fa-49b1-85cb-b08ad065e972",
+		Name:         "Bitterblossom",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.AtYourUpkeep("Bitterblossom — lose 1 life, create a Faerie Rogue", effects.Do(
+				// The Faerie waits for a prompt the life loss asks (CR 608.2c, #4155).
+				effects.GainLife{Amount: -1},
+				effects.CreateToken{Template: effects.FaerieRogueToken(), N: 1},
+			)),
+		},
+	})
+}

@@ -34,7 +34,7 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     sidequestPlayBlitzballOracleID,
+		OracleID:     SidequestPlayBlitzballOracleID,
 		Name:         "Sidequest: Play Blitzball",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -42,7 +42,7 @@ func init() {
 				AtBeginningOfYourCombat("Sidequest: Play Blitzball — target creature you control gets +2/+0 until end of turn",
 					func(g *game.Game, item *game.StackItem) error {
 						ctx := NewContext(g, item)
-						id, ok := b16FirstLegalTargetCard(ctx)
+						id, ok := B16FirstLegalTargetCard(ctx)
 						if !ok {
 							return nil
 						}
@@ -71,7 +71,7 @@ func init() {
 
 // sidequestPlayBlitzballOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const sidequestPlayBlitzballOracleID = "9c0255ff-6579-4ce4-810d-01df9922ab33"
+const SidequestPlayBlitzballOracleID = "9c0255ff-6579-4ce4-810d-01df9922ab33"
 
 // aPlayerWasDealtSixCombatDamage is "a player was dealt 6 or more combat
 // damage this turn".

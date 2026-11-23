@@ -45,7 +45,7 @@ func init() {
 				return ChoosePlayer{
 					Among:    Opponents,
 					Question: "Slithermuse — choose an opponent",
-					ThenKey:  slithermuseDraw,
+					ThenKey:  SlithermuseDraw,
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -59,7 +59,7 @@ func init() {
 // Keyed (#4253): it reads only the Context it is handed, rebuilt from
 // the asking trigger, so a restore across the prompt resolves it against
 // the restored game. An on-disk key: never renamed, never reused.
-var slithermuseDraw = ChoosePlayerThen("option-pick/slithermuse-opponent", func(ctx *Context, chosen uuid.UUID, _ []uuid.UUID) error {
+var SlithermuseDraw = ChoosePlayerThen("option-pick/slithermuse-opponent", func(ctx *Context, chosen uuid.UUID, _ []uuid.UUID) error {
 	opp := ctx.PlayerByID(chosen)
 	me := ctx.PlayerByID(ctx.Controller())
 	if opp == nil || me == nil {

@@ -25,13 +25,13 @@ func init() {
 		Name:         "Abyssal Nightstalker",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenAttacksAndIsNotBlockedEffect("Abyssal Nightstalker — defending player discards a card", defendingPlayerDiscardsACard),
+			WhenAttacksAndIsNotBlockedEffect("Abyssal Nightstalker — defending player discards a card", DefendingPlayerDiscardsACard),
 		},
 	})
 }
 
-func defendingPlayerDiscardsACard(g *game.Game, item *game.StackItem, defender uuid.UUID) error {
-	if !defendingPlayerStillIn(g, defender) {
+func DefendingPlayerDiscardsACard(g *game.Game, item *game.StackItem, defender uuid.UUID) error {
+	if !DefendingPlayerStillIn(g, defender) {
 		return nil
 	}
 	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{

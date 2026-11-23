@@ -41,7 +41,7 @@ func init() {
 // bottom of your library": an up-to-one pick from the caster's hand.
 func manholeMissileMayTuck(ctx *Context) error {
 	player := ctx.Controller()
-	hand := allHandCardIDs(ctx.Game, player)
+	hand := AllHandCardIDs(ctx.Game, player)
 	if len(hand) == 0 {
 		return nil
 	}
@@ -53,7 +53,7 @@ func manholeMissileMayTuck(ctx *Context) error {
 		Min:      0,
 		Max:      1,
 		LiveZone: game.ZoneHand,
-		ThenKey:  manholeMissileTucked,
+		ThenKey:  ManholeMissileTucked,
 	})
 	return nil
 }
@@ -62,7 +62,7 @@ var (
 	// manholeMissileTucked is the pick's answer, keyed (#4253): the picked
 	// card goes to the bottom of its owner's library, and the draw is told
 	// whether it got there. An on-disk key.
-	manholeMissileTucked = game.RegisterChooseCardsThen("choose-cards/manhole-missile-bottom", func(g *game.Game, r game.CardsChosen) error {
+	ManholeMissileTucked = game.RegisterChooseCardsThen("choose-cards/manhole-missile-bottom", func(g *game.Game, r game.CardsChosen) error {
 		if len(r.Picked) == 0 {
 			return nil
 		}

@@ -59,7 +59,7 @@ import (
 var sacrificeThisAfterActivationsBody game.BodyRef
 
 func init() {
-	sacrificeThisAfterActivationsBody = game.SimpleDelayedBody("activation-count/sacrifice-this-creature", sacrificeDelayedTriggerSource)
+	sacrificeThisAfterActivationsBody = game.SimpleDelayedBody("activation-count/sacrifice-this-creature", SacrificeDelayedTriggerSource)
 }
 
 // SacrificeAtNextEndStepIfActivatedRider is the mana-ability rider "If

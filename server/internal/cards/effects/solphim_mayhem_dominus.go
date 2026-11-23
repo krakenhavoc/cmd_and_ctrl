@@ -42,12 +42,12 @@ func init() {
 			Label:   "{1}{R/P}{R/P}, Discard two cards: Put an indestructible counter on Solphim, Mayhem Dominus.",
 			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    Plus(ManaCost("{1}{R/P}{R/P}"), DiscardN(2, "two cards")),
-			Effect:  putIndestructibleCounterOnSource(),
+			Effect:  PutIndestructibleCounterOnSource(),
 		}},
 		Replacements: []game.ReplacementEffect{{
 			Watches:   []game.EventKind{game.EventDealDamage},
 			RowLabel:  "Noncombat damage your sources would deal to an opponent or their permanents is doubled.",
-			AppliesTo: noncombatDamageFromYourSourceToAnOpponent,
+			AppliesTo: NoncombatDamageFromYourSourceToAnOpponent,
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.DamageAmount *= 2
 				return nil
@@ -62,14 +62,14 @@ func init() {
 // noncombatDamageFromYourSourceToAnOpponent is the AppliesTo of "if a
 // source you control would deal noncombat damage to an opponent or a
 // permanent an opponent controls" (Solphim, Artist's Talent's level 3).
-func noncombatDamageFromYourSourceToAnOpponent(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+func NoncombatDamageFromYourSourceToAnOpponent(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.IsCombatDamage {
 		return false
 	}
-	if !damageSourceControlledBy(ev, g, src.Controller) {
+	if !DamageSourceControlledBy(ev, g, src.Controller) {
 		return false
 	}
-	return damageHitsAnOpponentOf(ev, g, src.Controller)
+	return DamageHitsAnOpponentOf(ev, g, src.Controller)
 }
 
 // damageHitsAnOpponentOf reports whether the damage target is a
@@ -77,7 +77,7 @@ func noncombatDamageFromYourSourceToAnOpponent(ev *game.ReplacementEvent, g *gam
 // The target ID is a player or a card and the kind isn't recorded,
 // so this resolves it as a player first and falls back to a card
 // lookup — the same disambiguation the damage emitter uses.
-func damageHitsAnOpponentOf(ev *game.ReplacementEvent, g *game.Game, you uuid.UUID) bool {
+func DamageHitsAnOpponentOf(ev *game.ReplacementEvent, g *game.Game, you uuid.UUID) bool {
 	if ev.DamageTarget == uuid.Nil {
 		return false
 	}

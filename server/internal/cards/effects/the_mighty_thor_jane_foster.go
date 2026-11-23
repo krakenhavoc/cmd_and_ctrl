@@ -32,12 +32,12 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				WheneverThisAttacks("The Mighty Thor — exile and return a nontoken artifact or creature tapped", mightyThorFlickerTapped),
+				WheneverThisAttacks("The Mighty Thor — exile and return a nontoken artifact or creature tapped", MightyThorFlickerTapped),
 				TargetPermanent("up to one target nontoken artifact or creature",
 					Or(Artifact(), Creature()), Not(IsTokenPredicate())).WithCount(0, 1),
 			),
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				c, ok := enteredUnderYourControl(ev, source, g, false)
+				c, ok := EnteredUnderYourControl(ev, source, g, false)
 				return ok && c.HasSubtype("Equipment")
 			}, "The Mighty Thor — draw a card (an Equipment entered)", Do(DrawCards{N: 1})),
 		},
@@ -46,9 +46,9 @@ func init() {
 
 // mightyThorFlickerTapped exiles the chosen permanent, if it is still
 // a legal target, and returns it tapped under its owner's control.
-func mightyThorFlickerTapped(g *game.Game, item *game.StackItem) error {
+func MightyThorFlickerTapped(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

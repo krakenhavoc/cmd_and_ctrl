@@ -9,7 +9,7 @@
 - [PLAN.md](../../PLAN.md) §3, which this ADR's PR amends: other formats move from "out of scope" to a secondary area.
 - [#2352](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2352): Luke's plan for a format on the table and best-of-one Standard. It becomes slice 1 here, unchanged in substance.
 - [ADR 0191](0191-a-sideboard-is-the-outside-the-game-pool.md): a sideboard already rides into the game as the outside-the-game pool.
-- [ADR 0033](0033-ai-bot-seat.md) and [ADR 0126](0126-bots-that-play-their-decks-the-heuristic-prices-what-a-card-does.md): the bot seat, and the Purpose declarations a draft bot can price a card with.
+- [ADR 0033](0033-ai-bot-seat.md) and [ADR 0126](0126-bots-that-play-their-decks.md): the bot seat, and the Purpose declarations a draft bot can price a card with.
 - [ADR 0148](0148-capacity-limits-for-a-public-launch.md) and [ADR 0149](0149-privacy-notice-and-account-deletion.md): the capacity caps and the rules for storing anything about a person.
 - Discussion [#4472](https://github.com/krakenhavoc/cmd_and_ctrl/discussions/4472), which set out the options.
 

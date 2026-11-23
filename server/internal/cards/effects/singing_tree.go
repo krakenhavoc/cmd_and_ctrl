@@ -24,7 +24,7 @@ func init() {
 			Label:   "{T}: Target attacking creature has base power 0 until end of turn.",
 			Cost:    TapCost(),
 			Targets: TargetCreature("target attacking creature", AttackingCreature()),
-			Effect:  basePowerZeroUntilEOT("Singing Tree — base power 0 until end of turn"),
+			Effect:  BasePowerZeroUntilEOT("Singing Tree — base power 0 until end of turn"),
 		}},
 	})
 }
@@ -33,13 +33,13 @@ func init() {
 // of turn" (Singing Tree, Island of Wak-Wak): the first legal target's
 // base power is set to 0 in layer 7b until cleanup, and its toughness is
 // left alone.
-func basePowerZeroUntilEOT(label string) Effect {
+func BasePowerZeroUntilEOT(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		target := FirstLegalBattlefieldTarget(ctx)
 		if target == uuid.Nil {
 			return nil
 		}
-		return untilEndOfTurn(ctx, target, nil, label, game.SetBasePowerMod(0))
+		return UntilEndOfTurn(ctx, target, nil, label, game.SetBasePowerMod(0))
 	}
 }

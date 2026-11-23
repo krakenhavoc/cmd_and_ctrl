@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // source, so a table waiting on the payer is a restore point. Stasis,
 // Haazda Shield Mate, Koskun Falls and every cumulative upkeep that is
 // not a coin flip share it.
-var upkeepSacrificeSource = PayUnlessElse("pay-unless/upkeep-sacrifice-source",
+var UpkeepSacrificeSource = PayUnlessElse("pay-unless/upkeep-sacrifice-source",
 	func(ctx *Context, r game.PayUnlessAnswer) error {
 		return SacrificePermanent{Target: r.Source}.Apply(ctx)
 	})
@@ -25,7 +25,7 @@ func UpkeepSacrificeUnlessYouPay(name, cost string) game.TriggeredAbility {
 			Chooser:  item.Controller,
 			Cost:     cost,
 			Question: name + " — pay " + cost + " or sacrifice " + name + "?",
-			Else:     upkeepSacrificeSource,
+			Else:     UpkeepSacrificeSource,
 		}.Apply(NewContext(g, item))
 	})
 }

@@ -30,7 +30,7 @@ func init() {
 		Name:         "Winds of Change",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return windsOfChangeShuffleFrom(ctx.Game, tablePlayers(ctx), nil)
+			return WindsOfChangeShuffleFrom(ctx.Game, TablePlayers(ctx), nil)
 		},
 	})
 }
@@ -38,7 +38,7 @@ func init() {
 // windsOfChangeShuffleFrom tucks the hand of the seat after the ones
 // already counted (len(counts) of them), or, once every seat is done,
 // deals each its new hand.
-func windsOfChangeShuffleFrom(g *game.Game, all []uuid.UUID, counts []int) error {
+func WindsOfChangeShuffleFrom(g *game.Game, all []uuid.UUID, counts []int) error {
 	if len(counts) >= len(all) {
 		for i, id := range all {
 			if counts[i] <= 0 {
@@ -51,7 +51,7 @@ func windsOfChangeShuffleFrom(g *game.Game, all []uuid.UUID, counts []int) error
 		return nil
 	}
 	id := all[len(counts)]
-	return g.TuckCardsToLibraryKeyedForEffect(allHandCardIDs(g, id), game.TuckOptions{},
+	return g.TuckCardsToLibraryKeyedForEffect(AllHandCardIDs(g, id), game.TuckOptions{},
 		game.KeyedTail{Ref: windsOfChangeShuffled, Player: id, Carry: append([]uuid.UUID(nil), all...),
 			Nums: append([]int(nil), counts...)})
 }
@@ -67,6 +67,6 @@ func init() {
 			return err
 		}
 		counts := append(append([]int(nil), o.Tail.Nums...), len(o.IDs))
-		return windsOfChangeShuffleFrom(g, o.Tail.Carry, counts)
+		return WindsOfChangeShuffleFrom(g, o.Tail.Carry, counts)
 	})
 }

@@ -1,0 +1,283 @@
+package testsu
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// TestGiantGrowthPumpsUntilCleanup is the S32 acceptance card: the
+// +3/+3 is on the wire the moment the spell resolves and gone after
+// the cleanup step.
+func TestGiantGrowthPumpsUntilCleanup(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Grizzly Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2,
+		Toughness:  2,
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+
+	effectstest.CastCatalogSpell(t, g, "Giant Growth", "Instant", effectstest.GiantGrowthOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if p, tough := effectstest.EffectivePower(t, g, bear), effectstest.EffectiveToughness(t, g, bear); p != 5 || tough != 5 {
+		t.Fatalf("post-resolution P/T = %d/%d, want 5/5", p, tough)
+	}
+	if n := len(g.ScopedEffects); n != 1 {
+		t.Fatalf("ScopedEffects = %d, want 1", n)
+	}
+
+	effectstest.AdvanceToNextSeatsTurn(t, g)
+
+	if n := len(g.ScopedEffects); n != 0 {
+		t.Errorf("ScopedEffects = %d after cleanup, want 0", n)
+	}
+	if p, tough := effectstest.EffectivePower(t, g, bear), effectstest.EffectiveToughness(t, g, bear); p != 2 || tough != 2 {
+		t.Errorf("post-cleanup P/T = %d/%d, want 2/2", p, tough)
+	}
+}
+
+// TestGiantGrowthComposesWithAnthem — CR 613.7 at the card level:
+// the pump is a layer 7c modification, so it adds to Glorious
+// Anthem's +1/+1 instead of replacing it.
+func TestGiantGrowthComposesWithAnthem(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Glorious Anthem",
+		TypeLine:   "Enchantment",
+		OracleID:   effectstest.GloriousAnthemOracle,
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+	bear := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Grizzly Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2,
+		Toughness:  2,
+		Owner:      me.ID,
+		Controller: me.ID,
+	})
+	if p := effectstest.EffectivePower(t, g, bear); p != 3 {
+		t.Fatalf("setup: anthem power = %d, want 3", p)
+	}
+
+	effectstest.CastCatalogSpell(t, g, "Giant Growth", "Instant", effectstest.GiantGrowthOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if p, tough := effectstest.EffectivePower(t, g, bear), effectstest.EffectiveToughness(t, g, bear); p != 6 || tough != 6 {
+		t.Errorf("anthem + Giant Growth P/T = %d/%d, want 6/6", p, tough)
+	}
+}
+
+// TestOverrunPumpsAndGrantsTrample is the mass-grant acceptance:
+// both halves land on every creature you control, and neither lands
+// on an opponent's.
+func TestOverrunPumpsAndGrantsTrample(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+
+	mine := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Grizzly Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+	theirs := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Enemy Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2, Toughness: 2,
+		Owner: opp.ID, Controller: opp.ID,
+	})
+	myLand := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Forest",
+		TypeLine:   "Basic Land — Forest",
+		Owner:      me.ID, Controller: me.ID,
+	})
+
+	effectstest.CastCatalogSpell(t, g, "Overrun", "Sorcery", effectstest.OverrunOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if p, tough := effectstest.EffectivePower(t, g, mine), effectstest.EffectiveToughness(t, g, mine); p != 5 || tough != 5 {
+		t.Errorf("my creature = %d/%d, want 5/5", p, tough)
+	}
+	if !effectstest.HasEffectiveKeyword(t, g, mine, "trample") {
+		t.Error("my creature did not gain trample")
+	}
+	if p := effectstest.EffectivePower(t, g, theirs); p != 2 {
+		t.Errorf("opponent's creature = %d power, want 2", p)
+	}
+	if effectstest.HasEffectiveKeyword(t, g, theirs, "trample") {
+		t.Error("opponent's creature gained trample")
+	}
+	if p := effectstest.EffectivePower(t, g, myLand); p != 0 {
+		t.Errorf("my land = %d power, want 0 (Overrun hits creatures only)", p)
+	}
+
+	effectstest.AdvanceToNextSeatsTurn(t, g)
+	if p := effectstest.EffectivePower(t, g, mine); p != 2 {
+		t.Errorf("post-cleanup power = %d, want 2", p)
+	}
+	if effectstest.HasEffectiveKeyword(t, g, mine, "trample") {
+		t.Error("trample survived the cleanup step")
+	}
+}
+
+// TestOverrunMissesCreaturesThatArriveAfterIt is CR 611.2c: a
+// one-shot continuous effect affects only the permanents that were
+// on the battlefield when it resolved. The pump must NOT follow a
+// creature cast later in the same turn.
+func TestOverrunMissesCreaturesThatArriveAfterIt(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+
+	early := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Early Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+
+	effectstest.CastCatalogSpell(t, g, "Overrun", "Sorcery", effectstest.OverrunOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	late := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Late Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+
+	if p := effectstest.EffectivePower(t, g, early); p != 5 {
+		t.Errorf("creature present at resolution = %d power, want 5", p)
+	}
+	if p := effectstest.EffectivePower(t, g, late); p != 2 {
+		t.Errorf("creature that arrived after resolution = %d power, want 2 (CR 611.2c)", p)
+	}
+	if effectstest.HasEffectiveKeyword(t, g, late, "trample") {
+		t.Error("a creature that arrived after Overrun resolved gained trample (CR 611.2c)")
+	}
+}
+
+// TestBoostUntilEOTDropsAFlickeredCreature is CR 400.7: a permanent
+// that leaves and returns is a new object, so the grant stops
+// applying even though the instance ID is reused by the engine.
+func TestBoostUntilEOTDropsAFlickeredCreature(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Grizzly Bears",
+		TypeLine:   "Creature — Bear",
+		Power:      2, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+
+	effectstest.CastCatalogSpell(t, g, "Giant Growth", "Instant", effectstest.GiantGrowthOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
+	effectstest.PassPriorityAroundTable(t, g)
+	if p := effectstest.EffectivePower(t, g, bear); p != 5 {
+		t.Fatalf("setup: power = %d, want 5", p)
+	}
+
+	// Blink it out and back — same instance ID, new entry stamp.
+	if err := g.MoveCardByID(
+		game.ZoneRef{Kind: game.ZoneBattlefield},
+		game.ZoneRef{Kind: game.ZoneExile},
+		bear,
+	); err != nil {
+		t.Fatalf("exile: %v", err)
+	}
+	if err := g.MoveCardByID(
+		game.ZoneRef{Kind: game.ZoneExile},
+		game.ZoneRef{Kind: game.ZoneBattlefield},
+		bear,
+	); err != nil {
+		t.Fatalf("return: %v", err)
+	}
+
+	if p := effectstest.EffectivePower(t, g, bear); p != 2 {
+		t.Errorf("power after blink = %d, want 2 (CR 400.7 — a new object)", p)
+	}
+}
+
+// TestAangGainsLifelinkOnLessonCast restores the clause Aang, the
+// Last Airbender shipped without in S23: "Whenever you cast a
+// Lesson spell, Aang gains lifelink until end of turn." Lifelink is
+// one of the twelve keywords the combat code honours, so this grant
+// is real, not cosmetic.
+func TestAangGainsLifelinkOnLessonCast(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	aang := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Aang, the Last Airbender",
+		TypeLine:   "Legendary Creature — Human Avatar Ally",
+		OracleID:   effectstest.AangTheLastAirbenderOracle,
+		Power:      3, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+	if effectstest.HasEffectiveKeyword(t, g, aang, "lifelink") {
+		t.Fatal("setup: Aang already has lifelink")
+	}
+
+	// A Lesson spell. Non-catalog on purpose — the trigger reads the
+	// cast card's type line off the stack, so any Lesson works.
+	effectstest.CastCatalogSpell(t, g, "Introduction to Prophecy", "Sorcery — Lesson", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if !effectstest.HasEffectiveKeyword(t, g, aang, "lifelink") {
+		t.Error("Aang did not gain lifelink from a Lesson cast")
+	}
+	if !effectstest.HasEffectiveKeyword(t, g, aang, "flying") {
+		t.Error("the grant clobbered Aang's printed flying")
+	}
+
+	effectstest.AdvanceToNextSeatsTurn(t, g)
+	if effectstest.HasEffectiveKeyword(t, g, aang, "lifelink") {
+		t.Error("lifelink survived the cleanup step")
+	}
+}
+
+// TestAangIgnoresNonLessonCasts — the trigger is type-gated, not a
+// blanket "whenever you cast anything".
+func TestAangIgnoresNonLessonCasts(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	aang := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(),
+		Name:       "Aang, the Last Airbender",
+		TypeLine:   "Legendary Creature — Human Avatar Ally",
+		OracleID:   effectstest.AangTheLastAirbenderOracle,
+		Power:      3, Toughness: 2,
+		Owner: me.ID, Controller: me.ID,
+	})
+
+	effectstest.CastCatalogSpell(t, g, "Divination Filler", "Sorcery", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if effectstest.HasEffectiveKeyword(t, g, aang, "lifelink") {
+		t.Error("a non-Lesson sorcery granted lifelink")
+	}
+	if n := len(g.ScopedEffects); n != 0 {
+		t.Errorf("ScopedEffects = %d, want 0", n)
+	}
+}

@@ -25,7 +25,7 @@ func init() {
 			Purpose:   game.Purpose{Answers: game.AnswerPump, SkipsTurns: 1},
 			Cost:      ManaCost("{0}"),
 			Condition: OncePerTurnActivation(label),
-			Effect:    chronatogPumpAndSkip("Chronatog — +3/+3"),
+			Effect:    ChronatogPumpAndSkip("Chronatog — +3/+3"),
 		}},
 	})
 }
@@ -34,9 +34,9 @@ func init() {
 // Totem: the source gets +3/+3 until end of turn, then its controller
 // skips their next turn. It captures only the label, a plain string
 // (undo resolves an ability against a cloned game).
-func chronatogPumpAndSkip(label string) func(g *game.Game, item *game.StackItem) error {
+func ChronatogPumpAndSkip(label string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		if err := thisGetsUntilEndOfTurn(3, 3, label)(g, item); err != nil {
+		if err := ThisGetsUntilEndOfTurn(3, 3, label)(g, item); err != nil {
 			return err
 		}
 		return SkipYourNextTurns{}.Apply(NewContext(g, item))

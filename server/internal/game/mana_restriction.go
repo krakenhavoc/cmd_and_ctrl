@@ -166,6 +166,13 @@ const (
 	// the Paruns' and Obsidian Obelisk's "spend this mana only to cast
 	// a multicolored spell" (#1600).
 	ManaRestrictMulticolored = "multicolored"
+
+	// ManaRestrictDevoid permits the token only to cast a spell that has
+	// devoid (CR 702.114a, #5948): Corrupted Crossroads' "Spend this mana
+	// only to cast a spell with devoid". Cast only: an ability is not a
+	// spell. It reads the spell's printed devoid keyword (ManaSpendContext.
+	// HasDevoid), the same fact that makes the spell colourless.
+	ManaRestrictDevoid = "devoid"
 	// ManaRestrictNoGeneric is a SYMBOL-level negative clause — "this
 	// mana can't be spent to pay generic mana costs" (Jegantha, the
 	// Wellspring, #2170). Every other tag asks what the mana pays FOR;
@@ -231,6 +238,13 @@ const (
 	// (weaker than printed, never stronger). Combine it with
 	// ManaRestrictType("Creature") for the printed clause.
 	ManaRestrictSpellNoAbilities = "spell:no-abilities"
+	// ManaRestrictSpellFreerunning permits the token only on a spell that
+	// has freerunning (S82, CR 106.6, CR 702.173): Brotherhood
+	// Headquarters' "a spell that has freerunning". It asks about the
+	// card being cast, whatever cost is paid for it: a spell that offers
+	// a freerunning cost qualifies when it is cast for its mana cost too.
+	// An activation never satisfies it.
+	ManaRestrictSpellFreerunning = "spell:freerunning"
 )
 
 // ManaRestrictAltCost builds "spend this mana only to pay a [keyword]
@@ -403,6 +417,10 @@ type ManaSpendContext struct {
 	// tests for.
 	Colors []string
 
+	// HasDevoid is set for a cast of a spell that has devoid (CR 702.114a):
+	// what ManaRestrictDevoid reads. False for every other payment.
+	HasDevoid bool
+
 	// AllCreatureTypes marks an object that is every creature type
 	// (CR 702.73a) — a changeling spell, or a permanent under a
 	// Maskwood Nexus. A "subtype:" restriction is satisfied by ANY
@@ -514,6 +532,12 @@ type ManaSpendContext struct {
 	// ManaRestrictSpellNoAbilities reads. False for every payment that
 	// is not a cast.
 	NoAbilitiesSpell bool
+
+	// FreerunningSpell is set when the spell being cast has freerunning
+	// (it offers a freerunning alternative cost): what
+	// ManaRestrictSpellFreerunning reads. False for every payment that
+	// is not a cast.
+	FreerunningSpell bool
 
 	// SpellOwner is the owner of the spell being cast (CR 108.3): what
 	// ManaRestrictSpellNotOwned compares with Payer (#5457). Set by
@@ -722,11 +746,13 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		Supertypes:       ch.Supertypes,
 		Colors:           c.EffectiveColors(),
 		AllCreatureTypes: HasAllCreatureTypes(&c),
+		HasDevoid:        c.printsDevoid(),
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		FaceDownSpell:    c.FaceDown,
 		NoAbilitiesSpell: c.FaceDown || PrintsNoAbilities(c),
+		FreerunningSpell: !c.FaceDown && AlternativeCostByKey(CatalogKey(c), "freerunning") != nil,
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		SpellOwner:       c.Owner,
 		wish:             newSpendWish(c),
@@ -816,6 +842,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast && ctx.FaceDownSpell
 	case ManaRestrictSpellNoAbilities:
 		return ctx.Purpose == SpendPurposeCast && ctx.NoAbilitiesSpell
+	case ManaRestrictSpellFreerunning:
+		return ctx.Purpose == SpendPurposeCast && ctx.FreerunningSpell
 	case ManaRestrictKickedSpell:
 		return ctx.Purpose == SpendPurposeCast && ctx.KickedSpell
 	case ManaRestrictSpellNotOwned:
@@ -853,6 +881,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		// either — refuse rather than read "no colours" as
 		// "colorless".
 		return ctx.hasPaidForObject() && len(ctx.Colors) == 0
+	case ManaRestrictDevoid:
+		return ctx.Purpose == SpendPurposeCast && ctx.HasDevoid
 	case ManaRestrictMonocolored:
 		// #1600, CR 105.2a. The same unknown-purpose refusal as
 		// colorless: no object, no colour count.

@@ -33,7 +33,7 @@ func neoIsCreatureOrVehicle(c game.Card) bool {
 // names each share but the last, which takes what is left (matDistributeStep).
 // The player is clause `slot` of the spell; a player who is no longer a legal
 // target ends the distribution (CR 608.2b).
-func neoDistributeAmongPlayersCreaturesAndVehicles(ctx *Context, slot, n int) error {
+func NeoDistributeAmongPlayersCreaturesAndVehicles(ctx *Context, slot, n int) error {
 	t, ok := ctx.ClauseTarget(slot)
 	if !ok || t.Kind != game.TargetPlayer || n <= 0 {
 		return nil
@@ -62,7 +62,7 @@ func neoDistributeAmongPlayersCreaturesAndVehicles(ctx *Context, slot, n int) er
 
 // neoDistributePick is the permanents chosen: it starts the shares. A pick
 // that is no longer one of the player's creatures or Vehicles is dropped.
-var neoDistributePick = askedPick("choose-cards/neo-distribute-counters-among-players-permanents", func(ctx *Context, r game.CardsChosen) error {
+var neoDistributePick = AskedPick("choose-cards/neo-distribute-counters-among-players-permanents", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Nums) < 2 {
 		return nil
 	}
@@ -129,7 +129,7 @@ func neoTokenCounterChosenBody(ctx *Context, r game.OptionPicked) error {
 
 // neoTokenCounterTail starts the per-token counter choices once the tokens
 // have landed. An on-disk key.
-var neoTokenCounterTail = CardTail("neo-invoke-the-ancients/counters", func(ctx *Context, o game.TailOutcome) error {
+var NeoTokenCounterTail = CardTail("neo-invoke-the-ancients/counters", func(ctx *Context, o game.TailOutcome) error {
 	return neoAskTokenCounter(ctx, o.IDs)
 })
 
@@ -155,7 +155,7 @@ func neoSpellManaValue(c game.Card) int {
 
 // neoTotalSpellManaValueAtMost is the set rule "with total mana value N or
 // less" over a picked set of instants and sorceries.
-func neoTotalSpellManaValueAtMost(limit int) game.SetRuleFunc {
+func NeoTotalSpellManaValueAtMost(limit int) game.SetRuleFunc {
 	return func(picked []game.Card) bool {
 		total := 0
 		for _, c := range picked {
@@ -171,8 +171,8 @@ func neoTotalSpellManaValueAtMost(limit int) game.SetRuleFunc {
 // the artifact sacrificed must have mana value X (game.SacrificeManaValueX;
 // {X} in its cost counts as 0, a token as 0). It is also the X the ability's
 // target clause is bound to.
-func neoSacrificeAnArtifactWithManaValueX(label string) game.AbilityCost {
-	spec := sacrificeSpec(label, Artifact(), YouControl()).WithCount(1, 1)
+func NeoSacrificeAnArtifactWithManaValueX(label string) game.AbilityCost {
+	spec := SacrificeSpec(label, Artifact(), YouControl()).WithCount(1, 1)
 	spec.ManaValueEqualsX = true
 	return game.AbilityCost{SacrificeOther: spec}
 }
@@ -182,7 +182,7 @@ func neoSacrificeAnArtifactWithManaValueX(label string) game.AbilityCost {
 // announced X, not the damage dealt, so it is gained in full when the
 // damage is prevented; a target that is gone stops the whole spell
 // (CR 608.2b), so no life is gained then.
-func damageXToTheTargetAndGainX(item *game.StackItem, ctx *Context, x int) error {
+func DamageXToTheTargetAndGainX(item *game.StackItem, ctx *Context, x int) error {
 	if len(item.Targets) == 0 {
 		return nil
 	}

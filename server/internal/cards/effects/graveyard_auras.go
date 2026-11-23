@@ -104,13 +104,13 @@ var animateAttachTail = EnteredTail("graveyard-auras/attach-and-schedule-sacrifi
 // entered. It captures plain values only (the continuation contract).
 func animateAttachAndSchedule(g *game.Game, aura game.ObjectRef, name string, controller, entered uuid.UUID) error {
 	var returned game.ObjectRef
-	if entered != uuid.Nil && onBattlefield(g, entered) {
+	if entered != uuid.Nil && OnBattlefield(g, entered) {
 		if c, ok := g.LookupCardForEffect(entered); ok {
 			returned = game.ObjectRef{ID: entered, Epoch: c.ObjectEpoch}
 		}
 	}
 	auraHere := false
-	if c, ok := g.LookupCardForEffect(aura.ID); ok && c.ObjectEpoch == aura.Epoch && onBattlefield(g, aura.ID) {
+	if c, ok := g.LookupCardForEffect(aura.ID); ok && c.ObjectEpoch == aura.Epoch && OnBattlefield(g, aura.ID) {
 		auraHere = true
 	}
 	if returned.ID != uuid.Nil && auraHere {
@@ -126,7 +126,7 @@ func animateAttachAndSchedule(g *game.Game, aura game.ObjectRef, name string, co
 		SourceObject: aura,
 		Label:        name + " — that creature's controller sacrifices it",
 		On:           []game.EventKind{game.EventLTB},
-		Condition:    thisAuraLeftCondition,
+		Condition:    ThisAuraLeftCondition,
 		CondParams:   game.EffectParams{Object: aura},
 		Duration:     &d,
 		Body:         sacrificeTheReturnedCreatureBody,
@@ -148,7 +148,7 @@ var (
 	// CondParams.Object names. It fires the first time that card leaves,
 	// which is the object it was scheduled for, since the Aura was on
 	// the battlefield when it was scheduled.
-	thisAuraLeftCondition = game.DelayedCondition("attach/this-aura-left", thisAuraLeft)
+	ThisAuraLeftCondition = game.DelayedCondition("attach/this-aura-left", thisAuraLeft)
 
 	// "That creature's controller sacrifices it" (ADR 0154 decision 6):
 	// the permanent Params.Object names, while it is still that object
@@ -167,7 +167,7 @@ func sacrificeTheReturnedCreature(g *game.Game, _ *game.StackItem, p game.Effect
 		return nil
 	}
 	c, ok := g.LookupCardForEffect(id)
-	if !ok || c.ObjectEpoch != p.Object.Epoch || !onBattlefield(g, id) {
+	if !ok || c.ObjectEpoch != p.Object.Epoch || !OnBattlefield(g, id) {
 		return nil
 	}
 	return g.SacrificePermanentForEffect(id)
@@ -187,7 +187,7 @@ func UpkeepOfEnchantedCreaturesController(ev game.Event, source *game.Card, _ ga
 // player, who pays; "that creature" is the creature the Aura enchants as
 // the trigger resolves (or last enchanted, if the Aura has left), and it
 // is untapped only while it is still that object on the battlefield.
-func mayPayToUntapEnchantedCreature(name, cost string) Effect {
+func MayPayToUntapEnchantedCreature(name, cost string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if item == nil || item.Trigger == nil {
 			return nil
@@ -198,7 +198,7 @@ func mayPayToUntapEnchantedCreature(name, cost string) Effect {
 			return nil
 		}
 		host, ok := g.LookupCardForEffect(aura.AttachedTo.ID)
-		if !ok || !onBattlefield(g, host.InstanceID) {
+		if !ok || !OnBattlefield(g, host.InstanceID) {
 			return nil
 		}
 		creature := game.ObjectRef{ID: host.InstanceID, Epoch: host.ObjectEpoch}
@@ -206,7 +206,7 @@ func mayPayToUntapEnchantedCreature(name, cost string) Effect {
 			Chooser:      item.Trigger.Event.Actor,
 			Cost:         cost,
 			Question:     name + " — pay " + cost + " to untap the enchanted creature?",
-			Then:         mayPayUntapEnchantedCreaturePaid,
+			Then:         MayPayUntapEnchantedCreaturePaid,
 			CarryObjects: []game.ObjectRef{creature},
 		}.Apply(ctx)
 	}
@@ -274,14 +274,14 @@ func (BecomeAnAuraAndReanimateTarget) Apply(ctx *Context) error {
 // mayPayToUntapEnchantedCreature, keyed (#4264): the creature, with the
 // epoch it had as the trigger resolved, rides the prompt, so a creature
 // that left and came back is a new object and is not untapped (CR 400.7).
-var mayPayUntapEnchantedCreaturePaid = PayUnlessBranches("pay-unless/untap-enchanted-creature",
+var MayPayUntapEnchantedCreaturePaid = PayUnlessBranches("pay-unless/untap-enchanted-creature",
 	func(ctx *Context, r game.PayUnlessAnswer) error {
 		if len(r.Objects) == 0 {
 			return nil
 		}
 		creature := r.Objects[0]
 		c, ok := ctx.Game.LookupCardForEffect(creature.ID)
-		if !ok || c.ObjectEpoch != creature.Epoch || !onBattlefield(ctx.Game, creature.ID) {
+		if !ok || c.ObjectEpoch != creature.Epoch || !OnBattlefield(ctx.Game, creature.ID) {
 			return nil
 		}
 		return UntapTarget{Target: creature.ID}.Apply(ctx)

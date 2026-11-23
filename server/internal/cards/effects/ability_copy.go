@@ -167,7 +167,7 @@ func AbilityFromSource(pred CardPredicate) AbilityPredicate {
 // stack (#4092). The copy is the trigger controller's (CR 707.10b).
 // An event with no item, or an item gone from the stack, copies
 // nothing.
-func copyTheTriggeringAbility(g *game.Game, item *game.StackItem) error {
+func CopyTheTriggeringAbility(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ability := ctx.Trigger().Event.StackItemID
 	if ability == uuid.Nil {

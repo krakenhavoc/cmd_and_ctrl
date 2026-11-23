@@ -9,10 +9,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // KeimiToken is Tatsunari, Toad Rider's Keimi: a legendary 3/3 black and
 // green Frog with "Whenever you cast an enchantment spell, each opponent
 // loses 1 life and you gain 1 life." "You" is the token's controller.
-func KeimiToken() game.Card { return tokenFromCatalog(printedNeoB20KeimiToken) }
+func KeimiToken() game.Card { return TokenFromCatalog(printedNeoB20KeimiToken) }
 
-func printedNeoB20KeimiToken() tokenTemplate {
-	return tokenTemplate{
+func printedNeoB20KeimiToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "keimi",
 		Card: game.Card{
 			Name:      "Keimi",
@@ -33,10 +33,10 @@ func printedNeoB20KeimiToken() tokenTemplate {
 // TamiyosNotebookToken is Tamiyo, Compleated Sage's legendary colorless
 // Book artifact token: "Spells you cast cost {2} less to cast." and "{T}:
 // Draw a card."
-func TamiyosNotebookToken() game.Card { return tokenFromCatalog(printedNeoB20NotebookToken) }
+func TamiyosNotebookToken() game.Card { return TokenFromCatalog(printedNeoB20NotebookToken) }
 
-func printedNeoB20NotebookToken() tokenTemplate {
-	return tokenTemplate{
+func printedNeoB20NotebookToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "tamiyos-notebook",
 		Card: game.Card{
 			Name:     "Tamiyo's Notebook",
@@ -59,10 +59,10 @@ func printedNeoB20NotebookToken() tokenTemplate {
 
 // NeoB20NinjaToken is Kaito Shizuki's 1/1 blue Ninja creature token with
 // "This token can't be blocked."
-func NeoB20NinjaToken() game.Card { return tokenFromCatalog(printedNeoB20NinjaToken) }
+func NeoB20NinjaToken() game.Card { return TokenFromCatalog(printedNeoB20NinjaToken) }
 
-func printedNeoB20NinjaToken() tokenTemplate {
-	return tokenTemplate{
+func printedNeoB20NinjaToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "ninja-unblockable",
 		Card: game.Card{
 			Name:      "Ninja",

@@ -6,7 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // withAnswers is p with the answers an ability gives declared beside its
 // target entries: ForTargets(...) on its own carries only the targets.
-func withAnswers(p game.Purpose, a game.Answers) game.Purpose {
+func WithAnswers(p game.Purpose, a game.Answers) game.Purpose {
 	p.Answers = a
 	return p
 }
@@ -14,7 +14,7 @@ func withAnswers(p game.Purpose, a game.Answers) game.Purpose {
 // modeTargetPlayerDraws is the "Target player draws a card." bullet: the
 // mode occurrence's target player draws one card, nothing if the target is
 // no longer legal (Sublime Epiphany, Sygg's Command).
-func modeTargetPlayerDraws(_ *game.StackItem, ctx *Context, occ int) error {
+func ModeTargetPlayerDraws(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetPlayer {
 		return nil

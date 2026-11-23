@@ -15,29 +15,29 @@ var (
 	// library in a random order" (Fomori Vault, Memory Deluge, The Lady of
 	// Otaria, Marina Vendrell, Yuna's Whistle, Artificer Class, Prophetic
 	// Titan).
-	takeRestBottomRandom = RegisterTake("choose-cards/take-rest-bottom-random",
+	TakeRestBottomRandom = RegisterTake("choose-cards/take-rest-bottom-random",
 		TakeDef{Then: TakeRestOnBottomInRandomOrder})
 
 	// takeRestBottomAny is "…and the rest on the bottom of your library in
 	// any order" (Dig Through Time, Stock Up, the look-and-take helpers).
-	takeRestBottomAny = RegisterTake("choose-cards/take-rest-bottom-any-order",
+	TakeRestBottomAny = RegisterTake("choose-cards/take-rest-bottom-any-order",
 		TakeDef{Then: TakeRestOnBottomInAnyOrder})
 
 	// takeRevealRestBottomRandom is "you may reveal a … card from among
 	// them and put it into your hand. Put the rest on the bottom of your
 	// library in a random order" (Monumental Henge, Horn of the Mark).
-	takeRevealRestBottomRandom = RegisterTake("choose-cards/take-reveal-rest-bottom-random",
+	TakeRevealRestBottomRandom = RegisterTake("choose-cards/take-reveal-rest-bottom-random",
 		TakeDef{Reveal: true, Then: TakeRestOnBottomInRandomOrder})
 
 	// takeRevealRestBottomAny is the same with "in any order" (Duskwatch
 	// Recruiter, Growing Rites of Itlimoc, Gavony Dawnguard, Oath of
 	// Nissa).
-	takeRevealRestBottomAny = RegisterTake("choose-cards/take-reveal-rest-bottom-any-order",
+	TakeRevealRestBottomAny = RegisterTake("choose-cards/take-reveal-rest-bottom-any-order",
 		TakeDef{Reveal: true, Then: TakeRestOnBottomInAnyOrder})
 
 	// takeRestGraveyard is "…and put the rest into your graveyard" (Wail
 	// of the Forgotten, Tamiyo, Collector of Tales).
-	takeRestGraveyard = RegisterTake("choose-cards/take-rest-graveyard",
+	TakeRestGraveyard = RegisterTake("choose-cards/take-rest-graveyard",
 		TakeDef{Then: TakeRestIntoGraveyard})
 
 	// sorinMirthlessTake is Sorin the Mirthless's +1: revealed, taken, and

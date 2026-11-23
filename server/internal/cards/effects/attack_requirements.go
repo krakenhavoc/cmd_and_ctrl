@@ -49,7 +49,7 @@ func requirementFrom(source *game.Card, otherThan uuid.UUID) game.AttackRequirem
 // (CR 613.1f — the catalog stops being asked once CatalogAbilityKey
 // answers empty).
 func AttacksEachCombat() game.StaticAbility {
-	s := AttacksEachCombatWhere(selfOnly)
+	s := AttacksEachCombatWhere(SelfOnly)
 	s.Label = "Attacks each combat if able." // #2219: the tile's label
 	return s
 }
@@ -120,7 +120,7 @@ func AttacksAnOpponentWithTheMostLifeEachCombat(exempt func(g *game.Game, source
 		Layer: game.Layer6Ability,
 		Label: "Attacks an opponent with the most life each combat if able.",
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			if !target.IsCreature() || !selfOnly(target, g, source) {
+			if !target.IsCreature() || !SelfOnly(target, g, source) {
 				return false
 			}
 			return exempt == nil || !exempt(g, source)
@@ -139,7 +139,7 @@ func AttacksAnOpponentWithTheMostLifeEachCombat(exempt func(g *game.Game, source
 // than the effective ones a layer is still computing. A copy is still
 // seen: layer 1 rewrites that baseline before the pass (ADR 0043), so a
 // Clone of the named creature has its name.
-func youControlACreatureNamed(name string) func(g *game.Game, source *game.Card) bool {
+func YouControlACreatureNamed(name string) func(g *game.Game, source *game.Card) bool {
 	return func(g *game.Game, source *game.Card) bool {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]

@@ -9,7 +9,7 @@ import (
 // detainEachLegalTarget is "detain <target creatures>": every target still
 // legal as the ability resolves is detained (CR 701.35a), the set pinned
 // now, until the controller's next turn (Detain).
-func detainEachLegalTarget(label string) Effect {
+func DetainEachLegalTarget(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -30,15 +30,15 @@ func detainEachLegalTarget(label string) Effect {
 
 // bnsB10HandAtMostOne is "you have one or fewer cards in hand", read for the
 // source's controller on every recompute (CR 611.3a).
-func bnsB10HandAtMostOne(g *game.Game, you uuid.UUID) bool {
+func BnsB10HandAtMostOne(g *game.Game, you uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(you)
 	return p != nil && p.Hand != nil && p.Hand.Size() <= 1
 }
 
 // bnsB10DiscardHandThenInvestigate is Carnage Interpreter's enter body:
 // discard your hand (even an empty one), then investigate four times.
-func bnsB10DiscardHandThenInvestigate(g *game.Game, item *game.StackItem) error {
-	if _, err := discardWholeHand(g, item.Controller); err != nil {
+func BnsB10DiscardHandThenInvestigate(g *game.Game, item *game.StackItem) error {
+	if _, err := DiscardWholeHand(g, item.Controller); err != nil {
 		return err
 	}
 	return Investigate{N: 4}.Apply(NewContext(g, item))

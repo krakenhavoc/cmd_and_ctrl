@@ -10,8 +10,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // sacrificeThisUnlessYouSacrificeALand is the trigger's whole effect for
 // a land. `name` is the permanent's printed name, for the prompts.
-func sacrificeThisUnlessYouSacrificeALand(name string) Effect {
-	return sacrificeThisUnlessYouSacrificeA(name, "a land", Land(), sacrificeALandOrThisAnswer)
+func SacrificeThisUnlessYouSacrificeALand(name string) Effect {
+	return SacrificeThisUnlessYouSacrificeA(name, "a land", Land(), sacrificeALandOrThisAnswer)
 }
 
 // sacrificeThisUnlessYouSacrificeA is the tax for any kind of permanent:
@@ -22,12 +22,12 @@ func sacrificeThisUnlessYouSacrificeALand(name string) Effect {
 // a real PendingChoice, so the upkeep step cannot advance past it
 // unanswered. `answer` is the keyed continuation registered for the same
 // `what` and `match` (sacrificeOneOrThisAnswer).
-func sacrificeThisUnlessYouSacrificeA(name, what string, match CardPredicate, answer game.OptionPickThen) Effect {
+func SacrificeThisUnlessYouSacrificeA(name, what string, match CardPredicate, answer game.OptionPickThen) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		controller := item.Controller
 		source := item.SourceCardID
-		if len(permanentsControlledByMatching(g, controller, match)) == 0 {
+		if len(PermanentsControlledByMatching(g, controller, match)) == 0 {
 			return SacrificePermanent{Target: source}.Apply(ctx)
 		}
 		return PickOption{
@@ -47,7 +47,7 @@ func sacrificeThisUnlessYouSacrificeA(name, what string, match CardPredicate, an
 var sacrificeALandOrThisAnswer = sacrificeOneOrThisAnswer("option-pick/sacrifice-this-unless-you-sacrifice-a-land", "a land", Land())
 
 // sacrificeACreatureOrThisAnswer is Contamination's.
-var sacrificeACreatureOrThisAnswer = sacrificeOneOrThisAnswer("option-pick/sacrifice-this-unless-you-sacrifice-a-creature", "a creature", Creature())
+var SacrificeACreatureOrThisAnswer = sacrificeOneOrThisAnswer("option-pick/sacrifice-this-unless-you-sacrifice-a-creature", "a creature", Creature())
 
 // sacrificeOneOrThisAnswer registers the continuation of one kind of
 // tax under `key`, an on-disk identity: never renamed, never reused.
@@ -66,7 +66,7 @@ func sacrificeOneOrThisAnswer(key, what string, match CardPredicate) game.Option
 			// keyed.
 			return SacrificeChoice{
 				Player:     ctx.Controller(),
-				Candidates: permanentsControlledByMatching(ctx.Game, ctx.Controller(), match),
+				Candidates: PermanentsControlledByMatching(ctx.Game, ctx.Controller(), match),
 				Question:   name + " — sacrifice " + what,
 			}.Apply(ctx)
 		}

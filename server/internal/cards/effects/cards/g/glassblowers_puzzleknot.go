@@ -1,0 +1,36 @@
+package cardsg
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Glassblower's Puzzleknot — Artifact {2}:
+//
+//	"When this artifact enters, scry 2, then you get {E}{E}. (You get two
+//	 energy counters. To scry 2, look at the top two cards of your
+//	 library, then put any number of them on the bottom and the rest on
+//	 top in any order.)
+//	 {2}{U}, Sacrifice this artifact: Scry 2, then you get {E}{E}."
+//
+// ADR 0129 PR 1. The energy follows the scry prompt (scryThenGetEnergy).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "0fbe0610-8565-4910-bf35-2c10e38b633a",
+		Name:         "Glassblower's Puzzleknot",
+		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Energy: 2, Scry: 2},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Glassblower's Puzzleknot — scry 2, then you get {E}{E}", effects.ScryThenGetEnergy(2, 2)),
+		},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{2}{U}, Sacrifice this artifact: Scry 2, then you get {E}{E}.",
+			Cost:    effects.Plus(effects.ManaCost("{2}{U}"), effects.SacrificeThis()),
+			Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 2, Scry: 2},
+			Effect:  effects.ScryThenGetEnergy(2, 2),
+		}},
+	})
+}

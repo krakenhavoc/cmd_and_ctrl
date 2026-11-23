@@ -35,7 +35,7 @@ func init() {
 		AsEnters: ChooseCreatureTypeFromAsEnters("Dawn-Blessed Pennant",
 			"Elemental", "Elf", "Faerie", "Giant", "Goblin", "Kithkin", "Merfolk", "Treefolk"),
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, dawnBlessedPennantOfChosenTypeEntered,
+			On(game.EventETB, DawnBlessedPennantOfChosenTypeEntered,
 				"Dawn-Blessed Pennant — you gain 1 life", Do(GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{
@@ -43,17 +43,17 @@ func init() {
 			Cost:  Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Targets: OfTheChosenType(TargetCardInGraveyard(
 				"target card of the chosen type from your graveyard", YouOwn())),
-			Effect: returnFirstLegalGraveyardTargetToHand,
+			Effect: ReturnFirstLegalGraveyardTargetToHand,
 		}},
 	})
 }
 
 // dawnBlessedPennantOfChosenTypeEntered is "a permanent you control of
 // the chosen type enters".
-func dawnBlessedPennantOfChosenTypeEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func DawnBlessedPennantOfChosenTypeEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if source.NamedTribe == "" {
 		return false
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.HasSubtype(source.NamedTribe)
 }

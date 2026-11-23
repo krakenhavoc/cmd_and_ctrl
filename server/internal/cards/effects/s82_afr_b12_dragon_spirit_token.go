@@ -7,10 +7,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so it is a catalog template (ADR 0083), not a plain table row. One
 // trigger per damage event: a second event after the sacrifice finds it
 // gone and does nothing.
-func afrDragonSpiritToken() game.Card { return tokenFromCatalog(printedAfrDragonSpiritToken) }
+func AfrDragonSpiritToken() game.Card { return TokenFromCatalog(printedAfrDragonSpiritToken) }
 
-func printedAfrDragonSpiritToken() tokenTemplate {
-	return tokenTemplate{
+func printedAfrDragonSpiritToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "afr-dragon-spirit-5-4",
 		Card: game.Card{
 			Name:      "Dragon Spirit",

@@ -40,9 +40,9 @@ import (
 func init() {
 	cast := WhenYouCastThisSpell("Kozilek, the Broken Reality — up to two target players each manifest two cards from their hands",
 		Do(EachManifestsFromHand{
-			Players: kozilekTargetPlayers,
+			Players: KozilekTargetPlayers,
 			N:       2,
-			Then:    kozilekDrawPerManifest,
+			Then:    KozilekDrawPerManifest,
 		}))
 	cast.Targets = TargetPlayer("up to two target players").WithCount(0, 2)
 	Register(Spec{
@@ -51,7 +51,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{cast},
 		Static: []game.StaticAbility{
-			Labelled(b16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+			Labelled(B16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller &&
 					target.IsColorless() && target.InstanceID != source.InstanceID
 			}, 3, 2), "Other colorless creatures you control get +3/+2."),
@@ -61,7 +61,7 @@ func init() {
 
 // kozilekTargetPlayers is the cast trigger's players that are still
 // legal targets as it resolves.
-func kozilekTargetPlayers(ctx *Context) []uuid.UUID {
+func KozilekTargetPlayers(ctx *Context) []uuid.UUID {
 	var out []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
@@ -73,7 +73,7 @@ func kozilekTargetPlayers(ctx *Context) []uuid.UUID {
 
 // kozilekDrawPerManifest is "for each card manifested this way, you
 // draw a card", keyed (#4290).
-var kozilekDrawPerManifest = RegisterManifestThen("prompt-run/kozilek-the-broken-reality-draw",
+var KozilekDrawPerManifest = RegisterManifestThen("prompt-run/kozilek-the-broken-reality-draw",
 	func(ctx *Context, manifested []uuid.UUID) error {
 		return DrawCards{N: len(manifested)}.Apply(ctx)
 	})

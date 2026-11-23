@@ -122,6 +122,12 @@ func (g *Game) optionalCostsWithGrantorsLocked(caster uuid.UUID, card Card) ([]A
 			c := gr.Cost
 			c.Optional = true
 			c.Granted = true
+			if c.ManaCostIsSpellCost && c.ManaCost == "" {
+				c.ManaCost = card.ManaCost
+				if c.Label != "" && card.ManaCost != "" {
+					c.Label += " " + card.ManaCost
+				}
+			}
 			out = append(out, c)
 			grantors = append(grantors, src.InstanceID)
 		}

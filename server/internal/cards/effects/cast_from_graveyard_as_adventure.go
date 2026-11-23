@@ -18,10 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // name is the creature's name and adventure the Adventure's, for the
 // permission's attribution.
-func castItFromYourGraveyardAsAnAdventure(name, adventure string) Effect {
+func CastItFromYourGraveyardAsAnAdventure(name, adventure string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		z := g.FindCardZoneForEffect(item.SourceCardID)
-		if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
+		if z == nil || z.Kind != game.ZoneGraveyard || !SameGraveyardObject(z, item) {
 			return nil
 		}
 		c, ok := g.LookupCardForEffect(item.SourceCardID)

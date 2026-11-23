@@ -30,8 +30,8 @@ func (CondOpponentPermanentDealtExcessDamage) Holds(ctx *Context) bool {
 	return ctx.Game.OpponentPermanentDealtExcessDamageThisTurn(ctx.Controller())
 }
 
-func (CondOpponentPermanentDealtExcessDamage) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondOpponentPermanentDealtExcessDamage, 0), true
+func (CondOpponentPermanentDealtExcessDamage) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondOpponentPermanentDealtExcessDamage, 0), true
 }
 
 // AnOpponentsPermanentWasDealtExcessDamage is the When for the same

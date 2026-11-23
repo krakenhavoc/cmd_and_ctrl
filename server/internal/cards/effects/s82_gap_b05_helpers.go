@@ -13,12 +13,12 @@ import (
 // gapB05BlackLotusToken is Arzakon's Black Lotus: a colourless artifact token
 // with "{T}, Sacrifice this token: Add three mana of any one color." The three
 // mana are ONE colour pick (the Gilded Lotus shape), as Kwia Vigorbloom's Lotus.
-func gapB05BlackLotusToken() game.Card { return tokenFromCatalog(printedGapB05BlackLotusToken) }
+func GapB05BlackLotusToken() game.Card { return TokenFromCatalog(printedGapB05BlackLotusToken) }
 
 // printedGapB05BlackLotusToken is that token as PRINTED. Its slug is an
 // on-disk identity.
-func printedGapB05BlackLotusToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB05BlackLotusToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "black-lotus",
 		Card: game.Card{
 			Name:     "Black Lotus",
@@ -37,12 +37,12 @@ func printedGapB05BlackLotusToken() tokenTemplate {
 // gapB05LordOfThePitToken is Thomil's Lord of the Pit: a 7/7 black Demon with
 // flying, trample and "At the beginning of your upkeep, sacrifice another
 // creature. If you can't, this token deals 7 damage to you."
-func gapB05LordOfThePitToken() game.Card { return tokenFromCatalog(printedGapB05LordOfThePitToken) }
+func GapB05LordOfThePitToken() game.Card { return TokenFromCatalog(printedGapB05LordOfThePitToken) }
 
 // printedGapB05LordOfThePitToken is that token as PRINTED. Its slug is an
 // on-disk identity.
-func printedGapB05LordOfThePitToken() tokenTemplate {
-	return tokenTemplate{
+func printedGapB05LordOfThePitToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "lord-of-the-pit",
 		Card: game.Card{
 			Name:      "Lord of the Pit",
@@ -85,7 +85,7 @@ func gapB05LordUpkeep(g *game.Game, item *game.StackItem) error {
 // that targets a creature an opponent controls": the cast is yours, the spell
 // is an Aura, and a target it announced (CR 601.2c) is a creature on the
 // battlefield an opponent of the source's controller controls.
-func gapB05YouCastAnAuraOnAnOpponentsCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func GapB05YouCastAnAuraOnAnOpponentsCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -98,7 +98,7 @@ func gapB05YouCastAnAuraOnAnOpponentsCreature(ev game.Event, source *game.Card, 
 		return false
 	}
 	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || !onBattlefield(g, t.ID) {
+		if t.Kind != game.TargetCard || !OnBattlefield(g, t.ID) {
 			continue
 		}
 		if c, ok := g.LookupCardForEffect(t.ID); ok && c.IsCreature() && c.Controller != source.Controller {
@@ -116,7 +116,7 @@ func gapB05YouCastAnAuraOnAnOpponentsCreature(ev game.Event, source *game.Card, 
 // PutFromHandOntoBattlefieldForEffect is the one door in. A replacement that
 // stops the entry leaves it where it is, in the hand, a card nobody drew; a
 // conjured card has no previous zone to return to.
-func gapB05Conjure(ctx *Context, player uuid.UUID, card game.Card) error {
+func GapB05Conjure(ctx *Context, player uuid.UUID, card game.Card) error {
 	p := ctx.Game.PlayerByIDForEffect(player)
 	if p == nil {
 		return nil
@@ -131,7 +131,7 @@ func gapB05Conjure(ctx *Context, player uuid.UUID, card game.Card) error {
 // gapB05FoodFightCard is the Food Fight card Overcooked conjures: Wilds of
 // Eldraine's {1}{R} enchantment, identified by its oracle ID like any catalog
 // card, so its grant of the sacrifice ability is the catalog's.
-func gapB05FoodFightCard() game.Card {
+func GapB05FoodFightCard() game.Card {
 	return game.Card{
 		Name:       "Food Fight",
 		TypeLine:   "Enchantment",

@@ -45,7 +45,7 @@ func init() {
 		Purpose:      game.Purpose{Answers: game.AnswerValue}, // #2877: card advantage answers nothing on the stack
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return factOrFictionReveal(ctx)
+			return FactOrFictionReveal(ctx)
 		},
 	})
 }
@@ -55,7 +55,7 @@ func init() {
 // controller.
 //
 // Caller holds g.mu.
-func factOrFictionReveal(ctx *Context) error {
+func FactOrFictionReveal(ctx *Context) error {
 	revealed := ctx.Game.RevealTopOfLibraryForEffect(ctx.Controller(), ctx.Source(), 5,
 		"Fact or Fiction — reveal the top five cards of your library")
 	if len(revealed) == 0 {
@@ -80,7 +80,7 @@ var factOrFictionSplit = ChoosePlayerThen("option-pick/fact-or-fiction-splitter"
 		// Nobody left to separate them (CR 800.4a). The cards were
 		// revealed and the spell still resolves; everything is one pile
 		// and the controller takes it, which is the only outcome left.
-		return factOrFictionSettle(ctx.Game, revealed, nil)
+		return FactOrFictionSettle(ctx.Game, revealed, nil)
 	}
 	return PileSplit{
 		Splitter:      splitter,
@@ -98,7 +98,7 @@ var factOrFictionSplit = ChoosePlayerThen("option-pick/fact-or-fiction-splitter"
 // chosen pile goes to hand, the other to the graveyard. An on-disk key:
 // never renamed, never reused.
 var factOrFictionTake = PileTail("then/fact-or-fiction-take", func(ctx *Context, taken, left []uuid.UUID, _ game.TailOutcome) error {
-	return factOrFictionSettle(ctx.Game, taken, left)
+	return FactOrFictionSettle(ctx.Game, taken, left)
 })
 
 // factOrFictionSettle moves the two piles. A card that is no longer
@@ -108,7 +108,7 @@ var factOrFictionTake = PileTail("then/fact-or-fiction-take", func(ctx *Context,
 // the first missing card.
 //
 // Caller holds g.mu.
-func factOrFictionSettle(g *game.Game, toHand, toGraveyard []uuid.UUID) error {
+func FactOrFictionSettle(g *game.Game, toHand, toGraveyard []uuid.UUID) error {
 	for _, id := range toHand {
 		if g.FindCardZoneForEffect(id) == nil {
 			continue
