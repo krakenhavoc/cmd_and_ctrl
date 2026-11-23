@@ -23,7 +23,7 @@ import (
 // removes the X counters the activator announces (X may be 0). Each of
 // the X mana is either of the land's two colours, picked one by one.
 // `a` and `b` are colour letters ("W", "U").
-func tspB2StorageLand(oracleID, name, a, b string) Spec {
+func TspB2StorageLand(oracleID, name, a, b string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -47,7 +47,7 @@ func tspB2StorageLand(oracleID, name, a, b string) Spec {
 			Label:   "{1}, {T}: Put a storage counter on this land.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
-			Effect:  putStorageCounterOnThis,
+			Effect:  PutStorageCounterOnThis,
 		}},
 	}
 }
@@ -56,7 +56,7 @@ func tspB2StorageLand(oracleID, name, a, b string) Spec {
 // creature on the battlefield that is white as it is now, whoever controls
 // it, except the Crusader itself. The colour is a word of the card's text
 // (CR 612.2), read through TextColor.
-func tspB2OtherWhiteCreatures(target *game.Card, _ *game.Game, source *game.Card) bool {
+func TspB2OtherWhiteCreatures(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.InstanceID != source.InstanceID &&
 		slices.Contains(target.EffectiveColors(), source.TextColor("W"))
 }
@@ -64,7 +64,7 @@ func tspB2OtherWhiteCreatures(target *game.Card, _ *game.Game, source *game.Card
 // tspB2DestroyArtifactsCreaturesEnchantments is Magus of the Disk's
 // "Destroy all artifacts, creatures, and enchantments.", the Magus
 // included if it is still there.
-func tspB2DestroyArtifactsCreaturesEnchantments(g *game.Game, item *game.StackItem) error {
+func TspB2DestroyArtifactsCreaturesEnchantments(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	match := Or(Artifact(), Creature(), Enchantment())
 	return DestroyAllMatching{Match: match}.Apply(ctx)
@@ -75,8 +75,8 @@ func tspB2DestroyArtifactsCreaturesEnchantments(g *game.Game, item *game.StackIt
 // Sulfurous Blast, Careful Consideration). It is read as the spell
 // resolves, which is the same answer: the stack has to empty for a step
 // to end, so a spell resolves in the step it was cast in.
-func tspB2MainPhaseAmount(ctx *Context, n, main int) int {
-	if b14InYourMainPhase(ctx.Game, ctx.Controller()) {
+func TspB2MainPhaseAmount(ctx *Context, n, main int) int {
+	if B14InYourMainPhase(ctx.Game, ctx.Controller()) {
 		return main
 	}
 	return n
