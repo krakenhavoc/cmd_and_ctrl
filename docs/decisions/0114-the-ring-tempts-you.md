@@ -1,6 +1,6 @@
 # ADR 0114 — The Ring tempts you
 
-**Status:** Proposed · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
+**Status:** Accepted · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
 **Owner decisions:** all four questions answered on 2026-10-03; see [Owner decisions (2026-10-03)](#owner-decisions-2026-10-03).
 **Issues:** [#2076](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2076) (the seam), [#2062](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2062) (Night - Sauron The Slayer, the deck that asked for it).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-03. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 36 remote heads (`origin/develop`, `origin/main`, `origin/feat/s58-pr1-stamps-mdfc` and the other chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0112. `docs/s58-small-seams-adr` is being written at the same time and takes the first free number, 0113, so this ADR takes **0114**.

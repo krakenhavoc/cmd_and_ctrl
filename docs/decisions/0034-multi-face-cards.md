@@ -1,6 +1,6 @@
 # ADR 0034 — Multi-face cards: MDFC, transform, adventure
 
-**Status:** accepted — the spine and the MDFC picker shipped together. See "What shipped" below.
+**Status:** Accepted — the spine and the MDFC picker shipped together. See "What shipped" below.
 **Motivated by:** [#278](https://github.com/krakenhavoc/cmd_and_ctrl/issues/278) (this spike), [#265](https://github.com/krakenhavoc/cmd_and_ctrl/issues/265) (Sea Gate Restoration entered as a land with no prompt), [#276](https://github.com/krakenhavoc/cmd_and_ctrl/issues/276) (transform commander has no colour identity).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (oracle-ID-keyed specs), [ADR 0012](0012-layer-system.md) (`Effective()`), [ADR 0013](0013-replacement-effects.md) (the entry-choice pause), [ADR 0022](0022-impulse-exile.md) (`ExilePlay`).
 

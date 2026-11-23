@@ -1,6 +1,6 @@
 # ADR 0023 — A `develop` branch with its own preview deployment
 
-**Status:** Implemented · 2026-09-09 · Branch `chore/develop-environment`
+**Status:** Accepted · 2026-09-09 · Branch `chore/develop-environment`
 **Revised:** 2026-09-09 · §2 replaced · Branch `chore/dev-env-second-vm`
 **Revised:** 2026-09-16 · §4 and Consequences corrected (nightly e2e
 runs locally; both follow-ups dropped) · Branch `docs/adr-0023-nightly-e2e`

@@ -1,6 +1,6 @@
 # ADR 0015 — Zone browser modal shell (S18.5)
 
-**Status:** Implemented · 2026-04-23 · Sprint S18.5
+**Status:** Accepted · 2026-04-23 · Sprint S18.5
 
 ## Context
 

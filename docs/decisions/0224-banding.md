@@ -1,6 +1,6 @@
 # ADR 0224 — Banding: attacking in a band, blocking a band, and who divides the damage (CR 702.22)
 
-**Status:** Proposed · 2026-11-19 · S82 — Card coverage: sets outside Standard, newest first. The owner reviews it before the PR merges; the two recommendations flagged in §8 are the ones to look at.
+**Status:** Accepted · 2026-11-19 · S82 — Card coverage: sets outside Standard, newest first. The owner reviews it before the PR merges; the two recommendations flagged in §8 are the ones to look at.
 **Issues:** [#5723](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5723) (seam: banding), found while adding the first Limited Edition Alpha batch ([#5642](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5642)). Cards: Benalish Hero, Mesa Pegasus, Timber Wolves, Helm of Chatzuk.
 **Numbering:** after `git fetch --all --prune`, `git ls-tree --name-only <ref> docs/decisions/` over all 272 remote branches. The highest number anywhere was **0223**, so this is **0224**.
 **Builds on:** [ADR 0045](0045-combat-restrictions.md) (the block declaration and its lock-in, #830 and #1279; a creature blocking several attackers, Decisions 60-63, #1706), [ADR 0147](0147-auto-assign-combat-damage.md) (the canonical damage split and the client's auto-assign), the attack declaration's lock-in (#859, `game/attackers.go`) and the bulk declaration (#318).

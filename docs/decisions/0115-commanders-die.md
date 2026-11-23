@@ -1,6 +1,6 @@
 # ADR 0115 — Commanders die (CR 903.9a)
 
-**Status:** Proposed · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
+**Status:** Accepted · 2026-10-03 · S58 — Deck requests, October batch (tracker [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077))
 **Issues:** [#2085](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2085) (this change), [#2076](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2076) and [ADR 0114](0114-the-ring-tempts-you.md) owner decision 4 (Sauron, Lord of the Rings, which found it).
 **Owner decision behind it (2026-10-03):** fix this faithfully, for every trigger, with this ADR first. Sauron, Lord of the Rings ships before it with a caveat, and this work lifts that caveat.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-03. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 38 remote heads: `origin/develop`, `origin/main`, the `feat/s58-pr3-valgavoth`, `feat/s58-pr4-mishra` and `feat/s58-pr5-jodi` branches, and the other chore, docs, feat, fix, repro and wip branches. The highest number on any of them is 0114, so this ADR takes **0115**.

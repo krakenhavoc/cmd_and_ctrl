@@ -1,6 +1,6 @@
 # ADR 0025 — Alternative costs to cast
 
-**Status:** accepted (S22)
+**Status:** Accepted (S22)
 **Extends:** [ADR 0021](0021-additional-costs.md) (the *additional*
 cost this is deliberately not), [ADR 0019](0019-structured-targeting.md)
 (the clause a cost is now allowed to rewrite),
