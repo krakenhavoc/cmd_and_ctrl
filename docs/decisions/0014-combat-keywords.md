@@ -43,7 +43,7 @@ the layer engine to the wire projection picks it up. S18 does not
 introduce a richer "keyword ability" type.
 
 What's new is the consumer side. S18 adds
-[server/internal/game/keywords.go](../server/internal/game/keywords.go)
+[server/internal/game/keywords.go](../../server/internal/game/keywords.go)
 with four readers:
 
 ```go
