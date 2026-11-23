@@ -14,21 +14,21 @@ import (
 // Discarding the card is part of the cost, so it is in the graveyard
 // before the ability resolves, and the counters go on a target still
 // legal at resolution (CR 608.2b). label is the printed line.
-func morReinforce(n int, cost, label string) ActivatedAbility {
+func MorReinforce(n int, cost, label string) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Purpose: game.Purpose{Answers: game.AnswerPump},
 		Cost:    Plus(ManaCost(cost), DiscardThis()),
 		Zones:   []game.ZoneKind{game.ZoneHand},
 		Targets: TargetCreature("target creature"),
-		Effect:  renewCountersOnTarget(game.CounterPlusOne, n),
+		Effect:  RenewCountersOnTarget(game.CounterPlusOne, n),
 	}
 }
 
 // morDrawIfYouControlAWizard is the Wizard spells' "If you control a
 // Wizard, draw a card", read as the spell resolves (Mana Sculpt's
 // ControlsA: effective subtypes, so a changeling counts).
-func morDrawIfYouControlAWizard(ctx *Context) error {
+func MorDrawIfYouControlAWizard(ctx *Context) error {
 	if !ControlsA(ctx.TextSubtype("Wizard"))(ctx.Game, ctx.Controller()) {
 		return nil
 	}
@@ -38,7 +38,7 @@ func morDrawIfYouControlAWizard(ctx *Context) error {
 // morDrawIfProwled is "If this spell's prowl cost was paid, draw a card":
 // the alternative cost announced with the cast (CR 601.2b), read back as
 // the spell resolves.
-func morDrawIfProwled(ctx *Context) error {
+func MorDrawIfProwled(ctx *Context) error {
 	if !ctx.PaidAltCost("prowl") {
 		return nil
 	}
@@ -47,7 +47,7 @@ func morDrawIfProwled(ctx *Context) error {
 
 // morMoreLifeThanAnOpponent is "if you have more life than an opponent":
 // more than at least one opponent still in the game.
-func morMoreLifeThanAnOpponent(g *game.Game, you uuid.UUID) bool {
+func MorMoreLifeThanAnOpponent(g *game.Game, you uuid.UUID) bool {
 	me := g.PlayerByIDForEffect(you)
 	if me == nil {
 		return false
@@ -66,6 +66,6 @@ func morMoreLifeThanAnOpponent(g *game.Game, you uuid.UUID) bool {
 // morCastWithProwl is "if its prowl cost was paid" on a permanent: its
 // cast provenance names the prowl cost (CR 400.7d), the way Spiders-Man,
 // Heroic Horde reads web-slinging.
-func morCastWithProwl(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func MorCastWithProwl(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return source != nil && source.Provenance.AltCost == "prowl"
 }
