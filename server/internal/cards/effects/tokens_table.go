@@ -663,4 +663,10 @@ var TokenTable = map[string]game.Card{
 	"2/2 blue Wizard": {Name: "Wizard", TypeLine: "Token Creature — Wizard", Power: 2, Toughness: 2, Colors: []string{"U"}},
 	// S82 GAP batch 136: Penumbra Bobcat's Cat.
 	"2/1 black Cat": {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 1, Colors: []string{"B"}},
+	// S82 MOR batch 1 (#5592): Walker of the Grove, Feudkiller's Verdict,
+	// Weirding Shaman and Stonybrook Schoolmaster.
+	"1/1 black Goblin Rogue":  {Name: "Goblin Rogue", TypeLine: "Token Creature — Goblin Rogue", Power: 1, Toughness: 1, Colors: []string{"B"}},
+	"1/1 blue Merfolk Wizard": {Name: "Merfolk Wizard", TypeLine: "Token Creature — Merfolk Wizard", Power: 1, Toughness: 1, Colors: []string{"U"}},
+	"4/4 green Elemental":     {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"G"}},
+	"5/5 white Giant Warrior": {Name: "Giant Warrior", TypeLine: "Token Creature — Giant Warrior", Power: 5, Toughness: 5, Colors: []string{"W"}},
 }
