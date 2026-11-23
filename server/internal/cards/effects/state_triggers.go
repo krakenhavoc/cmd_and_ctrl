@@ -152,7 +152,7 @@ func WheneverACreatureHasAtLeast(kind string, n int, label string, effect Effect
 // (Endangered Armodon's "a creature with toughness 2 or less"). pred is
 // asked with the controller as its "caster", which is what every
 // relative predicate reads.
-func controlsAnyCard(g *game.Game, controller uuid.UUID, pred CardPredicate) bool {
+func ControlsAnyCard(g *game.Game, controller uuid.UUID, pred CardPredicate) bool {
 	if g.Battlefield == nil {
 		return false
 	}
@@ -177,9 +177,9 @@ func controlsAnyCard(g *game.Game, controller uuid.UUID, pred CardPredicate) boo
 // once, from a package-level var or a Spec literal built in init: never
 // from a resolution.
 func SacrificeThisThen(key string, then func(ctx *Context) error) Effect {
-	ref := ifItWentTail(key, then)
+	ref := IfItWentTail(key, then)
 	return func(g *game.Game, item *game.StackItem) error {
-		if !onBattlefield(g, item.SourceCardID) {
+		if !OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
 		ctx := NewContext(g, item)
@@ -193,10 +193,10 @@ func SacrificeThisThen(key string, then func(ctx *Context) error) Effect {
 func ExileThisThen(key string, then func(ctx *Context) error) Effect {
 	var ref game.TailRef
 	if key != "" && then != nil {
-		ref = ifItWentTail(key, then)
+		ref = IfItWentTail(key, then)
 	}
 	return func(g *game.Game, item *game.StackItem) error {
-		if !onBattlefield(g, item.SourceCardID) {
+		if !OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
 		ctx := NewContext(g, item)
@@ -209,9 +209,9 @@ func ExileThisThen(key string, then func(ctx *Context) error) Effect {
 
 // ifItWentTail registers "if you do, <then>" after a single-card door:
 // `then` runs only when the card went this way (oneWentThisWay).
-func ifItWentTail(key string, then func(ctx *Context) error) game.TailRef {
+func IfItWentTail(key string, then func(ctx *Context) error) game.TailRef {
 	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
-		if !oneWentThisWay(o) || then == nil {
+		if !OneWentThisWay(o) || then == nil {
 			return nil
 		}
 		return then(ctx)

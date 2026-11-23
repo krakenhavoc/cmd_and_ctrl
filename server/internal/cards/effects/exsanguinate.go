@@ -23,7 +23,7 @@ func init() {
 		Name:         "Exsanguinate",
 		XMatters:     true,
 		Completeness: CompletenessFull,
-		OnResolve:    exsanguinateResolve(),
+		OnResolve:    ExsanguinateResolve(),
 	})
 }
 
@@ -31,8 +31,8 @@ func init() {
 // prepare spell of Stensian Sanguinist (#4834), which prints the same
 // text. A constructor, so a Spec that calls it still shows the XMatters guard
 // the announced X it reads.
-func exsanguinateResolve() func(item *game.StackItem, ctx *Context) error {
+func ExsanguinateResolve() func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		return b21DrainEachOpponentAndGainTheTotal(ctx.Game, item, ctx.X())
+		return B21DrainEachOpponentAndGainTheTotal(ctx.Game, item, ctx.X())
 	}
 }

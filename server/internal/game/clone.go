@@ -143,6 +143,7 @@ func (g *Game) cloneLocked() *Game {
 	out.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	out.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	out.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	out.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	if len(g.SpellsCastThisTurn) > 0 {
 		out.SpellsCastThisTurn = make(map[uuid.UUID]CastTally, len(g.SpellsCastThisTurn))
 		for k, v := range g.SpellsCastThisTurn {
@@ -459,6 +460,8 @@ func (g *Game) cloneLocked() *Game {
 	// #1364: the last-known defending players rewind with the attack
 	// declarations they describe.
 	out.attackDefenders = copyUUIDPairMap(g.attackDefenders)
+	// ADR 0224: and the bands those attacks were declared in.
+	out.attackBands = copyUUIDPairMap(g.attackBands)
 	// #1279: which defenders have completed their block declaration
 	// rewinds with the declaration — an undo back past a defender's
 	// finish_blocks reopens it, so the attacker they had not blocked
@@ -755,6 +758,14 @@ func deepenCard(out *Card) {
 			deepenCard(&out.MeldedFrom[i])
 		}
 	}
+	// ADR 0223: a mutated permanent's components, the same shape.
+	if from := out.MergedFrom; len(from) > 0 {
+		out.MergedFrom = make([]Card, len(from))
+		copy(out.MergedFrom, from)
+		for i := range out.MergedFrom {
+			deepenCard(&out.MergedFrom[i])
+		}
+	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
@@ -953,6 +964,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
 		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
+		ModeChooser:      s.ModeChooser,
 		XValue:           s.XValue,
 		HoldPriority:     s.HoldPriority,
 		SplitSecond:      s.SplitSecond,
@@ -969,6 +981,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		// #3863
@@ -1339,6 +1352,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyExtraActivationsThisTurn = src.LoyaltyExtraActivationsThisTurn
 	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.LoyaltyTwiceThisTurn = src.LoyaltyTwiceThisTurn
+	g.LoyaltyPermanentTwiceThisTurn = src.LoyaltyPermanentTwiceThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn
@@ -1412,6 +1426,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.blockedAttackers = src.blockedAttackers
 	g.announcedAttacks = src.announcedAttacks
 	g.attackDefenders = src.attackDefenders
+	g.attackBands = src.attackBands
 	g.blocksDeclared = src.blocksDeclared
 	g.blockDeclarationClosed = src.blockDeclarationClosed
 	g.attacksDeclared = src.attacksDeclared

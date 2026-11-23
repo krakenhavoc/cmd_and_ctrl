@@ -286,6 +286,32 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		if len(g.CastPermissions) > 0 {
 			merged.CastPermissions = append(append([]CastPermission(nil), merged.CastPermissions...), g.CastPermissions...)
 		}
+		// ADR 0223, CR 702.140e: a component under a mutated permanent
+		// lends EVERY ability, its replacement effects included ("if
+		// this creature would die, …" keeps working from underneath).
+		// No other granted part carries them.
+		// A layer-6 grant bundle may carry replacement effects of the
+		// recipient's own (Master Chef, Scion of Halaster): the recipient
+		// is each one's source, so they end the pass the grant does.
+		if len(g.GrantedReplacements) > 0 {
+			merged.Replacements = append(append([]ReplacementEffect(nil), merged.Replacements...), g.GrantedReplacements...)
+		}
+		if g.MergedComponent && len(g.Replacements) > 0 {
+			merged.Replacements = append(append([]ReplacementEffect(nil), merged.Replacements...), g.Replacements...)
+		}
+		// And its catalog-declared printed keywords, which are read off
+		// the composite key's PrintedKeywords rather than a static row
+		// (#4236). A cumulative keyword (prowess) counts once per
+		// component; any other one is a union.
+		if g.MergedComponent && len(g.PrintedKeywords) > 0 {
+			kws := append([]string(nil), merged.PrintedKeywords...)
+			for _, kw := range g.PrintedKeywords {
+				if KeywordIsCumulative(kw) || !containsKeyword(kws, kw) {
+					kws = append(kws, kw)
+				}
+			}
+			merged.PrintedKeywords = kws
+		}
 	}
 	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its
 	// triggered rows twice, and each copy is a different instance of

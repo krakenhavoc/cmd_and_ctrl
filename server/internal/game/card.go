@@ -625,6 +625,17 @@ type Card struct {
 	// it leaves the battlefield (CR 712.21). See meld.go.
 	MeldedFrom []Card
 
+	// MergedFrom is every component of a MERGED (mutated) permanent,
+	// topmost first (CR 730.2, 702.140c; ADR 0223). The entry whose
+	// InstanceID is this permanent's own stands for the card the
+	// permanent was before it first merged; every other entry is a card
+	// or token that merged into it, as it sat on the stack. Empty on
+	// every other object. The flat printed fields are the topmost
+	// component's plus every other component's abilities (mutate.go),
+	// and MoveCard splits the permanent back into these components when
+	// it leaves the battlefield (CR 730.3).
+	MergedFrom []Card
+
 	// MeldSplitFrom is, on the card that carried a melded permanent's
 	// identity as it left the battlefield, the OTHER card that permanent
 	// became (CR 712.21c): "if an effect can find the new object that a
@@ -1327,6 +1338,21 @@ type Card struct {
 	// the snapshot.
 	ExiledWithTurn int
 
+	// ExiledByAbilityOf is the player who controlled the resolving
+	// ABILITY whose instruction put this card into exile: Evelyn, the
+	// Covetous's "a card from exile with a collection counter on it if it
+	// was exiled by an ability you controlled" (#5876). The controller is
+	// the stack item's (CR 113.8), read off the move's cause
+	// (move_cause.go) as the card lands, so a stolen permanent's ability
+	// is its thief's and a later change of control does not rewrite it.
+	// A spell's exile, a cost, a special action, a rule and a manual
+	// move stamp nothing, and nor does a cause whose item cannot be told
+	// apart from a spell (weaker than printed, never stronger).
+	//
+	// Cleared by MoveCard on every move, so a card that leaves exile was
+	// exiled by nobody. Carried by the snapshot.
+	ExiledByAbilityOf uuid.UUID
+
 	// EncodedOn is CR 702.99b's "encoded": the permanent OBJECT
 	// {instance, epoch} a card with cipher was exiled encoded on as its
 	// spell resolved (#3867, cipher.go). A separate link from ExiledWith
@@ -1558,6 +1584,18 @@ type Card struct {
 	// stamp alone and it is right again when the card leaves the
 	// battlefield.
 	WarpText PrintedFact
+
+	// FlashbackText records whether the card's printed oracle text has the
+	// flashback keyword (CR 702.34a), per FlashbackInText (S82, MID batch
+	// 7). Stamped by the deck importer beside WarpText, for the same
+	// reason: game.Card carries no oracle text, and flashback is not a
+	// canonical keyword token, so Keywords does not carry it.
+	// PrintedUnknown (the zero value) on a card that was never imported.
+	// Re-derived from the face that is up by SetFace. Read through
+	// HasFlashback, for Phantom Carriage's "a card with flashback or
+	// disturb" on a card the catalog does not run. Not a copiable value,
+	// for WarpText's reason.
+	FlashbackText PrintedFact
 
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
@@ -1879,6 +1917,16 @@ type Card struct {
 	// Duskmantle). Cleared by MoveCard on every move, so a card that leaves
 	// and comes back is a new object (CR 400.7). Carried by the snapshot.
 	Surveilled bool
+
+	// Milled says the arrival PutInGraveyardFrom records was a mill's
+	// graveyard leg (CR 701.17a, milled_cards.go): the card came off the top
+	// of its owner's library as a mill and landed in a graveyard. With
+	// PutInGraveyardThisTurn it is "cards in your graveyard that were milled
+	// this turn" (Card.MilledThisTurn, Raul, Trouble Shooter). A search that
+	// puts a card into a graveyard, or a surveil, is not a mill. Cleared by
+	// MoveCard on every move, so a card that leaves and comes back is a new
+	// object (CR 400.7). Carried by the snapshot.
+	Milled bool
 
 	// SuspendGranted says an effect gave this exiled card suspend (CR
 	// 702.62a, #4455): Kang Prime's and Doom's Time Platform's "If it

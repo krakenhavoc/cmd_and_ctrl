@@ -1490,6 +1490,11 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendErrorPayload(frame.ID, body)
 			return
 		}
+		// ADR 0224: a declaration refused for an illegal band.
+		if body, ok := attackBandPayload(err); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		code, msg := classifyActionError(err)
 		c.sendError(frame.ID, code, msg)
 		return
@@ -1640,6 +1645,10 @@ func classifyActionError(err error) (code, message string) {
 		// this arm is the same code and a viewer-neutral sentence.
 		body, _ := attackRequirementPayload(err, uuid.Nil)
 		return body.Code, body.Message
+	case errors.Is(err, game.ErrIllegalBand):
+		// ADR 0224, the same shape.
+		body, _ := attackBandPayload(err)
+		return body.Code, body.Message
 	case errors.Is(err, game.ErrAttackTaxUnpaid):
 		// ADR 0080. The hub sends the structured frame
 		// (attackTaxPayload) before reaching this classifier; this arm
@@ -1787,6 +1796,29 @@ func attackRequirementPayload(err error, viewer uuid.UUID) (protocol.ErrorPayloa
 		body.Message = re.Sentence(viewer)
 		if re.Attacker != uuid.Nil {
 			body.CardID = re.Attacker.String()
+		}
+	}
+	return body, true
+}
+
+// attackBandPayload builds the `illegal_attack` error frame for a
+// declaration refused for a band that breaks CR 702.22c-d (ADR 0224):
+// reason `band`, a creature of the band in card_id, and the engine's
+// sentence. ok is false for any other error.
+func attackBandPayload(err error) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrIllegalBand) {
+		return protocol.ErrorPayload{}, false
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeIllegalAttack,
+		Message: "that band can't be formed",
+		Reason:  protocol.AttackRefusalBand,
+	}
+	var be *game.BandRefusedError
+	if errors.As(err, &be) {
+		body.Message = be.Sentence()
+		if be.Attacker != uuid.Nil {
+			body.CardID = be.Attacker.String()
 		}
 	}
 	return body, true

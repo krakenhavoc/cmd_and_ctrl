@@ -39,6 +39,11 @@ type AbilityCost struct {
 	// Tap requires the source to be untapped, taps it, and — for a
 	// creature source — enforces summoning sickness (CR 302.6).
 	Tap bool
+	// UntapSelf is the untap symbol {Q} (CR 107.6): "Untap this
+	// permanent" as a cost. The source must be tapped (an untapped
+	// permanent can't be untapped again), able to become untapped,
+	// and, for a creature, past summoning sickness (CR 302.6).
+	UntapSelf bool
 
 	// TapOthers taps OTHER untapped permanents the activator
 	// controls — Earthcraft's "tap an untapped creature you
@@ -439,6 +444,16 @@ type AbilityCost struct {
 	// (CR 118.3) with nothing to show. See payRevealHandCostLocked in
 	// reveal_hand_cost.go. An ACTIVATED ability only, like RevealCards.
 	RevealHand bool
+
+	// RevealThis is "Reveal this card from your hand" as a cost: Forecast
+	// (CR 702.57a), Sky Hussar's "Tap two untapped white and/or blue creatures
+	// you control, Reveal this card from your hand: Draw a card." The card
+	// shown is the ability's own source, in the hand it is activated from; it is
+	// shown to every player as the cost is paid (CR 601.2h), before anyone may
+	// respond, and a countered ability has still shown it. Revealing moves
+	// nothing (CR 701.20b). See payRevealThisCostLocked in reveal_this_cost.go.
+	// An ACTIVATED ability only, like RevealCards and RevealHand.
+	RevealThis bool
 
 	// RevealSecretChoice is "Reveal the creature type you chose" as a
 	// cost (A Killer Among Us, secret_choice.go): the word the source's
@@ -893,6 +908,13 @@ type ActivatedAbilityShape struct {
 	// instant" (#1208) — can find them, instead of matching on the
 	// label's spelling.
 	Equip bool
+
+	// ClassLevel marks a Class's "{cost}: Level N" ability (CR 716.2a). Set by
+	// effects.LevelUp. It gates nothing (the level and sorcery timing are the
+	// ability's Condition); it is the ability's NAME for a spend restriction,
+	// "spend this mana only to ... gain a Class level" (Sorcerer Class,
+	// ManaRestrictClassLevel, matched against ManaSpendContext.ClassLevel).
+	ClassLevel bool
 
 	// Reconfigure marks both CR 702.151a reconfigure abilities, the
 	// attach and the unattach. Set by effects.Reconfigure and by no
@@ -1587,6 +1609,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// (CR 702.29a), not a fork.
 	source, srcZone := g.findCardAndZoneLocked(cardID)
 	if source == nil {
+		// #5868, CR 113.6 / CR 114.4: an emblem's activated ability
+		// functions from the command zone. An emblem is not in the card
+		// index (ADR 0064: no verb can name it), so it is found here, by
+		// the one verb that may: its owner activating its ability. The
+		// "else" arm below holds it to its owner (CR 114.2: the owner is
+		// its controller).
+		source, srcZone = g.emblemByIDLocked(cardID)
+	}
+	if source == nil {
 		return ErrCardNotFound
 	}
 	if srcZone == ZoneBattlefield {
@@ -1891,6 +1922,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// with {T} isn't) are never sick, and an "as though those
 		// creatures had haste" static of the activator's lifts it
 		// (#3928, CR 609.4).
+		if g.ActivationSummoningSickLocked(source, playerID) {
+			return ErrSummoningSick
+		}
+	}
+	if ab.Cost.UntapSelf {
+		if !source.Tapped || g.CantBecomeUntappedLocked(source) {
+			return ErrNotTapped
+		}
 		if g.ActivationSummoningSickLocked(source, playerID) {
 			return ErrSummoningSick
 		}
@@ -2352,6 +2391,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		riderCtx.PowerUp = ab.PowerUp
 		// CR 702.6 (#4600): and "...or activate equip abilities".
 		riderCtx.Equip = ab.Equip
+		// CR 716.2a: and "...or to gain a Class level".
+		riderCtx.ClassLevel = ab.ClassLevel
 		// #4834: "spend this mana only on costs that contain {X}".
 		riderCtx.CostHasX = ab.Cost.XSlots() > 0
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
@@ -2415,6 +2456,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		}
 		source.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
+	}
+	// CR 107.6: the untap symbol untaps the source as a cost.
+	if ab.Cost.UntapSelf {
+		g.untapPermanentLocked(source)
 	}
 	// ADR 0130 §4: "Exert this creature", beside the {T} and while the
 	// source is certainly on the battlefield (CR 701.43c), keyed to the
@@ -2523,6 +2568,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.RevealHand {
 		g.payRevealHandCostLocked(playerID, cardID)
 	}
+	// "Reveal this card from your hand", at the same point.
+	if ab.Cost.RevealThis {
+		g.payRevealThisCostLocked(playerID, cardID)
+	}
 	// And "Reveal the creature type you chose", while the source is still
 	// on the battlefield to be read.
 	g.payRevealSecretChoiceCostLocked(playerID, cardID, ab.Cost)
@@ -2546,10 +2595,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// before the stack item is built so the leaves-triggers it queues
 	// are drained ABOVE the ability by the closing state-check pass
 	// (CR 603.3b).
+	returnedRefs := g.sacrificeRefsLocked(params.ReturnIDs) // #5948: which, named before they move
 	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs, params.commanderAnswers)
 	if err != nil {
 		return err
 	}
+	paid.ReturnedObjects = returnedRefs
 	// #1227: what the returned permanent was attacking, read by the
 	// payer BEFORE the bounce because the exit clears it and LKI
 	// carries no combat state. Ninjutsu's entry reads it back through
@@ -2860,6 +2911,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// loyalty ability is one with a loyalty symbol in its cost
 		// (CR 606.2), granted or printed.
 		Loyalty: ab.Cost.Loyalty != nil,
+		// Neerdiv, Devious Diver: the zone the source was activated from.
+		ActivatedFrom: activatedFromZone(srcZone),
 		// CR 107.3a: an {X} mana symbol in the activation cost.
 		XCost: ab.Cost.XSlots() > 0,
 		// #5662: every point of life this announcement paid, for "if
@@ -2964,6 +3017,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 //     get wrong in the strict direction; getting it wrong the other
 //     way is impossible here, because the check simply isn't made.
 //   - Overshooting is legal. The printed number is a floor.
+//   - A creature that "can't crew Vehicles" can't be tapped to pay a
+//     crew cost (CR 702.122d, CanCrewVehicles), and naming one refuses
+//     the whole payment with ErrCantCrew. A saddle cost still takes it.
 //
 // The clause is "creatures you control", with no "another", so a
 // Vehicle that something else has already animated is a legal
@@ -3020,6 +3076,9 @@ func (g *Game) validateCrewCostLocked(playerID, sourceID uuid.UUID, cost Ability
 		}
 		if c.Tapped {
 			return nil, ErrAlreadyTapped
+		}
+		if !saddle && !CanCrewVehicles(c) {
+			return nil, ErrCantCrew
 		}
 		// CountedPower, not CurrentPower: "crews Vehicles as though its
 		// power were 2 greater" changes what the creature counts for
@@ -3282,4 +3341,14 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 	paid.Mana = spent
 	g.EmitEvent(manaSpentEvent(p.ID, sourceID, spent))
 	return paid, note, nil
+}
+
+// activatedFromZone is Event.ActivatedFrom's value: empty for the
+// battlefield, which is nearly every activation, so those events keep the
+// shape they had; the zone itself for a hand or graveyard ability.
+func activatedFromZone(z ZoneKind) ZoneKind {
+	if z == ZoneBattlefield {
+		return ""
+	}
+	return z
 }

@@ -255,12 +255,24 @@ type PermissionFilter struct {
 	// colors".
 	LegendaryOnly bool `json:"legendaryOnly,omitempty"`
 
+	// SnowOnly is Isu the Abominable's "snow lands and snow spells": the
+	// card must have the snow supertype (CR 205.4), read from its effective
+	// characteristics. It judges a land to be played and a spell to be cast
+	// alike.
+	SnowOnly bool `json:"snowOnly,omitempty"`
+
 	// ArtifactOrColorlessOnly is Mystic Forge's "artifact spells and
 	// colorless spells": an OR of two properties read from the card's
 	// effective characteristics, so a colored artifact and a colorless
 	// non-artifact (an Eldrazi) both qualify. Pair it with NonLandOnly,
 	// because a land is never cast and a colorless land is not a spell.
 	ArtifactOrColorlessOnly bool `json:"artifactOrColorlessOnly,omitempty"`
+
+	// ColorlessOnly is Darksteel Monolith's "a colorless spell": the card
+	// has no colour (CR 105.2c), read from its effective characteristics,
+	// so a coloured artifact fails it and an Eldrazi passes. Pair it with
+	// NonLandOnly where lands could reach the filter. Additive.
+	ColorlessOnly bool `json:"colorlessOnly,omitempty"`
 
 	// AuraOrEquipmentOnly is Sigarda's Aid's "Aura and Equipment
 	// spells" (#3918): an OR of two subtypes, read from the card's
@@ -293,6 +305,14 @@ type PermissionFilter struct {
 	// Additive.
 	ColorCountExactly int `json:"colorCountExactly,omitempty"`
 
+	// KeywordsAny is Errant and Giada's "spells with flash or flying": the
+	// card has AT LEAST ONE of these keywords, lowercase and joined by
+	// spaces ("flash flying"), read through the layered keyword view of the
+	// card where it sits (a printed keyword on a library card). A string
+	// rather than a slice because PermissionFilter is compared with ==.
+	// Empty constrains nothing. Additive (S82).
+	KeywordsAny string `json:"keywordsAny,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -304,6 +324,12 @@ type PermissionFilter struct {
 	// by the derivation for FromChosenType; a catalog card may also
 	// set it directly.
 	CreatureType string `json:"creatureType,omitempty"`
+
+	// ArtifactOrSubtype is "an artifact or <subtype> spell" (Arcade Gannon's
+	// "artifact or Human spell"): a qualifying card is an artifact, or has
+	// this subtype read through Card.HasSubtype. Empty constrains nothing.
+	// Additive within a snapshot version.
+	ArtifactOrSubtype string `json:"artifactOrSubtype,omitempty"`
 
 	// CreatureTypesAny is Deeproot Historian's "MERFOLK AND DRUID cards
 	// in your graveyard have retrace" (#2550): a card qualifies when it
@@ -351,6 +377,14 @@ type PermissionFilter struct {
 	// place for the same reason.
 	OwnedByHolder bool `json:"ownedByHolder,omitempty"`
 
+	// ExiledByHolderAbility is Evelyn, the Covetous's "if it was exiled
+	// by an ability you controlled" (#5876): the card must carry
+	// Card.ExiledByAbilityOf naming the permission's holder. Like the
+	// ownership clauses, the holder is not known to the pure-data Matches,
+	// so it is read in permissionReachesPileLocked beside them. A card a
+	// spell exiled, or one an opponent's ability exiled, does not qualify.
+	ExiledByHolderAbility bool `json:"exiledByHolderAbility,omitempty"`
+
 	// WithCounter is the name of a counter the card must carry — the
 	// "stash" counter on Tinybones' exiled cards. Counters on a card in
 	// exile are per object (CR 122.2, 400.7) and MoveCard clears them
@@ -394,6 +428,24 @@ type PermissionFilter struct {
 	// does not qualify, and neither does one that left the graveyard and
 	// came back. Read off Card.SurveilledThisTurn, pure card data.
 	SurveilledThisTurn bool `json:"surveilledThisTurn,omitempty"`
+
+	// FromLibraryToGraveyardThisTurn is Kagha, Shadow Archdruid's "cards in
+	// your graveyard that were put there from your library this turn": the
+	// card arrived in the graveyard during the current turn from a library,
+	// by a mill, a surveil, a discard-from-the-top effect or any other move
+	// out of the library (Card.PutInGraveyardFrom). A card that came from a
+	// hand, the battlefield or the stack does not qualify, and neither does
+	// one that left the graveyard and came back (CR 400.7). Read off
+	// Card.PutInGraveyardFromLibraryThisTurn, pure card data. Additive.
+	FromLibraryToGraveyardThisTurn bool `json:"fromLibraryToGraveyardThisTurn,omitempty"`
+
+	// MilledThisTurn is Raul, Trouble Shooter's "cards in your graveyard that
+	// were milled this turn": the card arrived in the graveyard during the
+	// current turn as a mill's graveyard leg (CR 701.17a). A card discarded,
+	// surveilled, searched for or put there any other way does not qualify,
+	// and neither does one that left the graveyard and came back. Read off
+	// Card.MilledThisTurn, pure card data. Additive.
+	MilledThisTurn bool `json:"milledThisTurn,omitempty"`
 
 	// Named is "spells with the same name as that creature" (Reflector
 	// Mage, ADR 0066's 2026-10-19 amendment): a qualifying card's name
@@ -516,13 +568,22 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.LegendaryOnly && !c.IsLegendary() {
 		return false
 	}
+	if f.SnowOnly && !c.HasSupertype("Snow") {
+		return false
+	}
 	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {
+		return false
+	}
+	if f.ColorlessOnly && !c.IsColorless() {
 		return false
 	}
 	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {
 		return false
 	}
 	if f.Subtype != "" && !c.HasSubtype(f.Subtype) {
+		return false
+	}
+	if f.ArtifactOrSubtype != "" && !c.IsArtifact() && !c.HasSubtype(f.ArtifactOrSubtype) {
 		return false
 	}
 	if f.NotSubtype != "" && c.HasSubtype(f.NotSubtype) {
@@ -532,6 +593,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.ColorCountExactly != 0 && len(c.EffectiveColors()) != f.ColorCountExactly {
+		return false
+	}
+	if f.KeywordsAny != "" && !cardHasAnyKeyword(c, f.KeywordsAny) {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
@@ -553,6 +617,12 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.SurveilledThisTurn && !c.SurveilledThisTurn() {
+		return false
+	}
+	if f.MilledThisTurn && !c.MilledThisTurn() {
+		return false
+	}
+	if f.FromLibraryToGraveyardThisTurn && !c.PutInGraveyardFromLibraryThisTurn() {
 		return false
 	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
@@ -581,11 +651,14 @@ func (f PermissionFilter) Matches(c Card) bool {
 func (f PermissionFilter) faceBlind() bool {
 	f.CardInZone = false
 	f.NotOwnedByHolder, f.OwnedByHolder = false, false
+	f.ExiledByHolderAbility = false
 	f.WithCounter = ""
 	f.ExiledWithSource, f.ExiledWith = false, PermissionCardRef{}
 	f.ExiledWithSourceThisTurn, f.ExiledOnTurn = false, 0
 	f.PutInGraveyardThisTurn = false
 	f.SurveilledThisTurn = false
+	f.MilledThisTurn = false
+	f.FromLibraryToGraveyardThisTurn = false
 	f.FromChosenType = false
 	return f == PermissionFilter{}
 }
@@ -603,6 +676,17 @@ func (f PermissionFilter) judgesSpell() bool {
 func cardHasAnyColor(c Card, letters string) bool {
 	for _, l := range letters {
 		if c.HasColor(string(l)) {
+			return true
+		}
+	}
+	return false
+}
+
+// cardHasAnyKeyword reports whether the card has at least one of the
+// keywords named in the space-separated list.
+func cardHasAnyKeyword(c Card, list string) bool {
+	for _, kw := range strings.Fields(list) {
+		if HasKeyword(&c, kw) {
 			return true
 		}
 	}
@@ -725,6 +809,24 @@ type CastPermission struct {
 	// all agree. Zero is no reduction, which is every permission written
 	// before this.
 	CostLess int `json:"costLess,omitempty"`
+
+	// AffinityFor is "it has affinity for <type>" (CR 702.41a; Chiss-Goria,
+	// Forge Tyrant): the spell cast through this permission costs {1}
+	// less for each permanent of that card type its caster controls as it
+	// is cast. It is CostLess counted off the board, taken off with it by
+	// the one pricer (grantReductionLocked) so the payment, the preview
+	// and the enumerator agree, and never below {0}. Empty is no
+	// affinity, which is every permission written before this.
+	AffinityFor string `json:"affinityFor,omitempty"`
+
+	// Undaunted is "that spell has undaunted" (CR 702.125a; Durnan of the
+	// Yawning Portal): a spell cast through this permission costs {1} less
+	// for each opponent its caster has as it is cast (CR 702.125b: every
+	// other seat still in the game). It is CostLess counted off the table,
+	// taken off with it by the one pricer (grantReductionLocked) so the
+	// payment, the preview and the enumerator agree, and never below {0}.
+	// False is no undaunted, which is every permission written before this.
+	Undaunted bool `json:"undaunted,omitempty"`
 
 	// CostMore is "a spell cast this way costs {N} more to cast" (Zero,
 	// Incorporeal Sensate, #4973): generic mana added to the price of a
@@ -926,6 +1028,14 @@ type CastPermission struct {
 	// as this one. ADR 0066's 2026-09-24 amendment (#1573).
 	AnyType bool `json:"anyType,omitempty"`
 
+	// AnyColorFrom narrows the "spend mana as though it were mana of any
+	// color" clause to one kind of mana: "you may spend colorless mana as
+	// though it were mana of any color to cast that spell" (Abstruse
+	// Appropriation, #5948) sets "C". Each colored symbol then also
+	// admits that mana (widenFromColors), and other mana pays as printed.
+	// Ignored when AnyColor or AnyType is set.
+	AnyColorFrom string `json:"anyColorFrom,omitempty"`
+
 	// --- the window ------------------------------------------------
 
 	// Duration is when the permission ENDS (CR 611.2), in the one
@@ -1112,6 +1222,13 @@ type CastPermission struct {
 	// MaxSpellManaValue, so the cap is the count as the spell is cast.
 	// Empty is no such cap. Additive.
 	MaxSpellManaValueCountOf []string `json:"maxSpellManaValueCountOf,omitempty"`
+	// MaxSpellManaValueCountersOnSource is a MaxSpellManaValue that is the
+	// number of counters of this kind on the permission's source: "a spell
+	// with mana value less than or equal to the number of quest counters on
+	// Arcade Gannon". Only a STANDING permission reads it, derived like
+	// MaxSpellManaValueCountOf, so the cap is the count as the spell is
+	// cast. Empty is no such cap. Additive.
+	MaxSpellManaValueCountersOnSource string `json:"maxSpellManaValueCountersOnSource,omitempty"`
 
 	// MinSpellManaValue is the floor of the same test: the SPELL this
 	// permission lets a player cast must have at least this mana value
@@ -1294,6 +1411,30 @@ type CastPermission struct {
 	// the card the copy was made from, decided as its trigger resolved
 	// (#3157). Nil names nothing, which is every permission before it.
 	FollowUpObject *ObjectRef `json:"followUpObject,omitempty"`
+
+	// FollowUpOnLandPlay makes FollowUp run for a LAND played through
+	// this permission too, not only for a spell cast through it (#5904,
+	// Share the Spoils: "you may play a land or cast a spell from among
+	// cards exiled with this enchantment ... When they do, exile the top
+	// card of their library"). Playing a land is not casting (CR 305.1,
+	// 116.2a), so a follow-up written for a cast never runs for one; a
+	// permission whose "when they do" covers both says so here. The body
+	// is handed the land as Spell. False is every permission before it.
+	// Additive within a snapshot version.
+	FollowUpOnLandPlay bool `json:"followUpOnLandPlay,omitempty"`
+
+	// EachPlayer makes a CATALOG standing permission a grant to every
+	// player in the game rather than only to the granting permanent's
+	// controller (#5904, Share the Spoils: "During each player's turn,
+	// that player may play a land or cast a spell from among cards exiled
+	// with this enchantment"). standingCastPermissionsLocked derives it
+	// for each seat from the permanent wherever it sits, so it still ends
+	// the moment the permanent leaves, and each holder's gate Condition
+	// is asked with that holder (a per-player once-each-turn budget).
+	// "During that player's turn" is the permission's Timing
+	// (TimingYourTurnOnly), read against the holder. Meaningless on a
+	// stored permission, which names its one Player. Additive.
+	EachPlayer bool `json:"eachPlayer,omitempty"`
 
 	// RequiresNoSpellsCast ends the permission the moment its holder
 	// has cast any spell this turn. It is the "if you haven't cast a
@@ -2506,7 +2647,13 @@ func (g *Game) storedHandPermissionLocked(p *Player, card Card) *CastPermission 
 func (g *Game) storedHandPermissionForLocked(p *Player, card Card, key string) *CastPermission {
 	for i := range p.CastPermissions {
 		perm := &p.CastPermissions[i]
-		if perm.Scope == ScopeStanding || !perm.CoversCard(card, ZoneHand) {
+		if !perm.CoversCard(card, ZoneHand) {
+			continue
+		}
+		// #5922: the one standing rule over a hand is a stored one over
+		// ANOTHER player's (Sen Triplets), and it reaches the cards in
+		// that hand and no other.
+		if perm.Scope == ScopeStanding && (!perm.ForeignHandRule() || !g.permissionReachesPileLocked(p.ID, perm, card, ZoneHand)) {
 			continue
 		}
 		if key != "" && perm.AltCostKey != key {
@@ -2535,13 +2682,25 @@ func (g *Game) storedHandPermissionForLocked(p *Player, card Card, key string) *
 // CastSpell narrows once the claim is resolved and before the timing
 // gate; the enumerator narrows per offer, so the two agree.
 func (p *CastPermission) ForClaim(alt *AlternativeCost) *CastPermission {
-	if p == nil || p.Zone != ZoneHand {
+	if p == nil || p.Zone != ZoneHand || p.ForeignHandRule() {
 		return p
 	}
 	if alt == nil || AltCostKeyword(alt.Key) != p.AltCostKey {
 		return nil
 	}
 	return p
+}
+
+// ForeignHandRule reports a stored standing permission over ANOTHER
+// player's hand: "you may play lands and cast spells from that player's
+// hand this turn" (Sen Triplets, #5922). Unlike a hand grant that prices
+// one claim (miracle, ForClaim), it is the whole reason a cast of a card
+// in that hand exists, so it applies to every claim the card offers, at
+// the card's own timing and price, and to a land play (CR 305.1) that
+// spends the holder's land drop. Nil-safe.
+func (p *CastPermission) ForeignHandRule() bool {
+	return p != nil && p.Zone == ZoneHand && p.Scope == ScopeStanding &&
+		p.ZoneOwner != uuid.Nil && p.ZoneOwner != p.Player
 }
 
 // PileOwnerFor resolves WHOSE graveyard or library this permission
@@ -2599,6 +2758,16 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 	}
 	if perm.Filter.OwnedByHolder && card.Owner != holder {
 		return false
+	}
+	if perm.Filter.ExiledByHolderAbility && (holder == uuid.Nil || card.ExiledByAbilityOf != holder) {
+		return false
+	}
+	// #5922: a hand holds only its owner's cards (CR 400.3), and a standing rule over
+	// one names whose (ForeignHandRule). Asked of the hand itself rather
+	// than of the card's owner, since nothing else derives a hand rule.
+	if zone == ZoneHand {
+		owner := g.playerByIDLocked(perm.PileOwnerFor(holder))
+		return owner != nil && owner.Hand != nil && owner.Hand.Contains(card.InstanceID)
 	}
 	if zone != ZoneGraveyard && zone != ZoneLibrary {
 		return true
@@ -2707,7 +2876,8 @@ var CatalogGatedCastPermissions func(oracleID string) []CastPermissionGate
 
 // standingCastPermissionsLocked derives every ScopeStanding
 // permission the player currently holds, from the permanents they
-// control. Nothing is stored, which IS the duration: a source that
+// control, and from any permanent's permissions that name EACH player
+// (CastPermission.EachPlayer, #5904). Nothing is stored, which IS the duration: a source that
 // leaves stops granting on the next query, and two sources compose.
 //
 // CatalogAbilityKey rather than CatalogKey, for the reason
@@ -2735,7 +2905,10 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 	var out []CastPermission
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != p.ID {
+		// #5904: a permanent another player controls grants this one
+		// only the permissions it gives EACH player (Share the Spoils).
+		foreign := c.Controller != p.ID
+		if foreign && p.Eliminated {
 			continue
 		}
 		// The empty KEY is the skip, not an empty oracle ID — a token
@@ -2746,9 +2919,13 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 		}
 		if CatalogCastPermissions != nil {
 			for _, perm := range CatalogCastPermissions(key) {
+				if foreign && !perm.EachPlayer {
+					continue
+				}
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
+					g.fillDerivedSourceLiveLocked(&stamped, c)
 					out = append(out, stamped)
 				}
 			}
@@ -2760,12 +2937,16 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			return gp.ActiveWhen
 		})
 		for _, gp := range gated {
+			if foreign && !gp.Permission.EachPlayer {
+				continue
+			}
 			if gp.Condition != nil && !gp.Condition(g, p.ID, c.InstanceID) {
 				continue
 			}
 			if stamped, ok := stampStandingPermissionLocked(gp.Permission, p, c); ok {
 				g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 				g.fillDerivedLiveLocked(&stamped, p.ID)
+				g.fillDerivedSourceLiveLocked(&stamped, c)
 				out = append(out, stamped)
 			}
 		}
@@ -2789,6 +2970,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
+					g.fillDerivedSourceLiveLocked(&stamped, c)
 					out = append(out, stamped)
 				}
 			}
@@ -3381,8 +3563,12 @@ func asAnyColorCost(cost ParsedCost) ParsedCost {
 // of any TYPE can be spent" (Hostage Taker). Every requirement,
 // colorless included, is widened to any mana. A hybrid or
 // two-for-one hybrid slot is one slot, paid by one mana of any type.
+//
+// A snow {S} is kept in both folds (#5986): snow is neither a colour
+// nor a type of mana (CR 107.4h), so spending mana as though it were
+// any type does not make it snow mana.
 func asAnyTypeCost(cost ParsedCost) ParsedCost {
-	return widenSlots(cost, func(ColorRequirement) bool { return false })
+	return widenSlots(cost, func(r ColorRequirement) bool { return r.Snow })
 }
 
 // widenSlots marks every requirement `keep` does not name AnyMana and
@@ -3417,6 +3603,8 @@ func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
 		return asAnyTypeCost(cost)
 	case grant.AnyColor:
 		return asAnyColorCost(cost)
+	case grant.AnyColorFrom != "":
+		return widenFromColors(cost, []string{grant.AnyColorFrom})
 	}
 	return cost
 }
@@ -3449,10 +3637,18 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 	// admit it takes nothing off (ForSpell).
 	// #4696: the permission that opens that face, as CastSpell finds it.
 	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
-	if grant == nil || grant.CostLess <= 0 {
+	if grant == nil {
 		return 0
 	}
-	return grant.CostLess
+	// The affinity is counted as the spell is cast (CR 702.41a).
+	reduction := grant.CostLess + g.affinityCountLocked(playerID, grant.AffinityFor)
+	if grant.Undaunted {
+		reduction += g.undauntedCountLocked(playerID)
+	}
+	if reduction <= 0 {
+		return 0
+	}
+	return reduction
 }
 
 // grantIncreaseLocked is CostQuery.GrantIncrease for one announcement: the

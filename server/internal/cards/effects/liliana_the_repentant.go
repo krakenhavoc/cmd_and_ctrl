@@ -22,7 +22,7 @@ func init() {
 		Name:         "Liliana the Repentant",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, anotherCreatureOrPlaneswalkerEnteredUnderYourControl,
+			On(game.EventETB, AnotherCreatureOrPlaneswalkerEnteredUnderYourControl,
 				"Liliana the Repentant — mill two cards",
 				Do(MillCards{N: 2})),
 		},
@@ -46,7 +46,7 @@ func init() {
 						return err
 					}
 				}
-				return plusOneCountersOnThis(1)(g, item)
+				return PlusOneCountersOnThis(1)(g, item)
 			},
 		}},
 	})
@@ -54,7 +54,7 @@ func init() {
 
 // anotherCreatureOrPlaneswalkerEnteredUnderYourControl is "whenever
 // another creature or planeswalker you control enters".
-func anotherCreatureOrPlaneswalkerEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func AnotherCreatureOrPlaneswalkerEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && (c.IsCreature() || c.IsPlaneswalker())
 }

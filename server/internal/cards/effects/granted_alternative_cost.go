@@ -105,7 +105,7 @@ func WebSlingingForSpellsYouCast(cost string, spells game.PermissionFilter) game
 			Key:          GrantedAltCostWebSlinging,
 			Label:        "Web-slinging " + cost,
 			ManaCost:     cost,
-			ReturnToHand: PermanentYouControl("a tapped creature you control", Creature(), b751Tapped()),
+			ReturnToHand: PermanentYouControl("a tapped creature you control", Creature(), B751Tapped()),
 			PayLabel:     "a tapped creature you control",
 		},
 		Spells: spells,
@@ -240,7 +240,7 @@ func EmergeForCreatureSpellsYouCast() game.GrantedAlternativeCost {
 		Offer: game.AlternativeCost{
 			Key:                          GrantedAltCostEmerge,
 			Label:                        "Emerge",
-			Sacrifice:                    sacrificeSpec(what, Creature()).WithCount(1, 1),
+			Sacrifice:                    SacrificeSpec(what, Creature()).WithCount(1, 1),
 			ReducedBySacrificedManaValue: true,
 			PayLabel:                     what,
 		},
@@ -355,6 +355,9 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if gr.MaxManaValueFunc != nil && gr.MaxManaValueText == "" {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a MaxManaValueFunc and no MaxManaValueText — the ability row words it", name, o.Key))
 		}
+		if gr.MaxManaValueOfSource != nil && gr.MaxManaValueText == "" {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a MaxManaValueOfSource and no MaxManaValueText — the ability row words it", name, o.Key))
+		}
 		if gr.LifeEqualToManaValue && (o.ManaCost != "" || o.Energy != 0 || gr.PricedAtManaCost) {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q pays life equal to mana value and also declares another price", name, o.Key))
 		}
@@ -382,7 +385,7 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if evidence {
 			checkGrantedCollectEvidence(name, o)
 		}
-		if o.Life != 0 || (o.PaysCards() && !emerge && !webSlinging && !evidence) || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
+		if o.Life != 0 || (o.PaysCards() && !emerge && !webSlinging && !evidence) || (o.Condition != nil && o.Key != GrantedAltCostFreerunning) || o.Targets != nil || o.ClearsTargets ||
 			(o.SacrificeOnEntry && o.Key != GrantedAltCostEvoke) || o.FromZone != "" || o.ExileOnLeavingStack || (o.WarpExile && o.Key != game.GrantedAltCostWarp) || o.Dash || (o.Blitz != (o.Key == GrantedAltCostBlitz)) || o.Sneak ||
 			o.EntersWithCounterName != "" || o.FaceDown != nil || (o.RequiresGrant && o.Key != GrantedAltCostMiracle) || o.CastsFace != 0 || o.Granted || o.XCeiling != 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q declares more than a price and a label — narrow its zones with Zones, not FromZone", name, o.Key))

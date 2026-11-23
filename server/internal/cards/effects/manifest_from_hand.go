@@ -72,7 +72,7 @@ type EachManifestsFromHand struct {
 // ManifestThen is a registered "for each card manifested this way" rest of
 // the card. Hold one only from RegisterManifestThen; the zero value is no
 // rest.
-type ManifestThen struct{ run game.PromptRunThen }
+type ManifestThen struct{ Run game.PromptRunThen }
 
 // RegisterManifestThen registers the rest of a card after
 // EachManifestsFromHand under key (ledgered "run <key>": never renamed,
@@ -89,7 +89,7 @@ func RegisterManifestThen(key string, body func(ctx *Context, manifested []uuid.
 			return body(ctx, o.IDs)
 		})
 	}
-	return ManifestThen{run: RunThen(key, func(ctx *Context, r game.RunDone) error {
+	return ManifestThen{Run: RunThen(key, func(ctx *Context, r game.RunDone) error {
 		return manifestPicked(ctx, r, tail)
 	})}
 }
@@ -102,7 +102,7 @@ var manifestNoThen = RegisterManifestThen("prompt-run/manifest-from-hand", nil)
 // order, then, for each player who manifests their whole hand without a
 // choice, a list led by the player and followed by that hand.
 func manifestPicked(ctx *Context, r game.RunDone, tail game.TailRef) error {
-	lists := unpackIDLists(r.Carry)
+	lists := UnpackIDLists(r.Carry)
 	if len(lists) == 0 {
 		// Nobody to manifest: the rest of the card still runs, on nothing.
 		lists = [][]uuid.UUID{nil}
@@ -144,7 +144,7 @@ func (e EachManifestsFromHand) Apply(ctx *Context) error {
 	// Frozen before the run starts and never written after: the run's
 	// continuation shares them with every undo snapshot.
 	var players []uuid.UUID
-	for _, id := range apnapPlayers(g) {
+	for _, id := range ApnapPlayers(g) {
 		if slices.Contains(want, id) {
 			players = append(players, id)
 		}
@@ -152,7 +152,7 @@ func (e EachManifestsFromHand) Apply(ctx *Context) error {
 	autos := [][]uuid.UUID{players}
 	var legs []game.ChooseCardsPrompt
 	for _, id := range players {
-		hand := handCardIDs(g, id)
+		hand := HandCardIDs(g, id)
 		switch {
 		case len(hand) == 0 || n <= 0:
 		case len(hand) <= n:
@@ -171,18 +171,18 @@ func (e EachManifestsFromHand) Apply(ctx *Context) error {
 			})
 		}
 	}
-	then := e.Then.run
+	then := e.Then.Run
 	if !then.Valid() {
-		then = manifestNoThen.run
+		then = manifestNoThen.Run
 	}
 	// Keyed (#4290): the players and the hands manifested without a choice
 	// ride the run as its carry, the resolving item as its asking item.
-	_, err := g.ChooseCardsRunThenKeyedForEffect(legs, then, source, ctx.RunData(packIDLists(autos...)))
+	_, err := g.ChooseCardsRunThenKeyedForEffect(legs, then, source, ctx.RunData(PackIDLists(autos...)))
 	return err
 }
 
 // handCardIDs lists the cards in a player's hand, in hand order.
-func handCardIDs(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+func HandCardIDs(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 	p := g.PlayerByIDForEffect(playerID)
 	if p == nil || p.Hand == nil {
 		return nil

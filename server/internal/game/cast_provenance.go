@@ -189,6 +189,15 @@ type CastProvenance struct {
 	// that rule, and never by ranging this slice against a zone.
 	Delved []ObjectRef `json:"delved,omitempty"`
 
+	// Convoked is PaidCost.Convoked carried across the entry (CR 400.7d,
+	// S82): the creatures tapped to convoke the spell, in the order named
+	// (CR 702.51). What "each creature that convoked it" and "the number
+	// of creatures that convoked it" read from an enters trigger
+	// (Zephyr Singer, Knight-Errant of Eos). Instance IDs, as
+	// PaidCost.Convoked is. Nil for a permanent not cast, or cast with
+	// no convoke.
+	Convoked []uuid.UUID `json:"convoked,omitempty"`
+
 	// AltCostObjects is PaidCost.AltCostObjects carried across the entry
 	// (CR 400.7d, ADR 0135 §4): the objects the alternative cost's card
 	// component paid with, in the order named. An entry trigger cannot
@@ -265,7 +274,7 @@ func (p CastProvenance) Spent() ManaSpent {
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
 		len(p.Mana) > 0 || p.ManaOnPaper || p.PaperMana != 0 || p.GiftOpponent != uuid.Nil || p.X != 0 || p.PhyrexianLife != 0 ||
-		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.AltCostObjects) > 0 || len(p.GrantedOptional) > 0
+		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.Convoked) > 0 || len(p.AltCostObjects) > 0 || len(p.GrantedOptional) > 0
 }
 
 // CastByItsController reports whether the permanent `c` was cast by
@@ -296,6 +305,9 @@ func (p CastProvenance) Clone() CastProvenance {
 	// whose Applied stamps are what a Hall of the Bandit Lord's haste
 	// reads off this permanent.
 	p.Mana = cloneManaTokens(p.Mana)
+	if len(p.Convoked) > 0 {
+		p.Convoked = append([]uuid.UUID(nil), p.Convoked...)
+	}
 	if len(p.AltCostObjects) > 0 {
 		p.AltCostObjects = append([]ObjectRef(nil), p.AltCostObjects...)
 	}
@@ -366,6 +378,11 @@ func (c Card) CastX() int { return c.Provenance.X }
 // cast, or was cast without delving.
 func (c Card) Delved() []ObjectRef { return c.Provenance.Delved }
 
+// ConvokedBy is the creatures that were tapped to convoke the spell that
+// became this permanent (CR 702.51, CR 400.7d), as instance IDs in the
+// order named. Nil for a permanent that was not cast or not convoked.
+func (c Card) ConvokedBy() []uuid.UUID { return c.Provenance.Convoked }
+
 // CastProvenanceForEffect returns what the permanent with this ID
 // remembers about the spell it came from, or the zero record when the
 // card is not on the battlefield.
@@ -435,6 +452,10 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 	// backing array for the reason OptionalCosts has one.
 	if len(item.Paid.Delved) > 0 {
 		prov.Delved = append([]ObjectRef(nil), item.Paid.Delved...)
+	}
+	// S82: the creatures that convoked the spell, same copy.
+	if len(item.Paid.Convoked) > 0 {
+		prov.Convoked = append([]uuid.UUID(nil), item.Paid.Convoked...)
 	}
 	// ADR 0135 §4: the objects the alternative cost paid with, for the
 	// same reason and with the same copy.

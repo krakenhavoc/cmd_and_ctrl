@@ -14,6 +14,7 @@ import (
 // of CardDef exactly once (TestEveryCardDefSlotIsClassifiedForAbilityRows),
 // so a slot added to CardDef is placed rather than silently dropped.
 var abilityRowFieldsNotRows = map[string]string{
+	"GrantedReplacements":        "a grant bundle's replacement effects; the recipient's composite definition merges them into Replacements, which is the row",
 	"Resolve":                    "the spell's effect as it resolves, not an ability of the object",
 	"LibraryTopVisibleWhen":      "the designation gating the look-at-the-top-card permission, a condition and not an ability of the object",
 	"ResumeResolve":              "the rest of that effect after a prompt (#4019), not an ability of the object",
@@ -43,6 +44,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"SpendOnlySources":           "the spell's own spend-only-by-source clause (#2556): the same, for the mana's source",
 	"SelfCostModifiers":          "what THIS spell costs, shown by the cast surface",
 	"CastableZones":              "where the card may be cast from, shown by the cast surface",
+	"CastsOnlyFromGraveyard":     "the card may be cast from a graveyard and nowhere else (Haakon, Stromgald Scourge), shown by the cast surface",
 	"CastableZonesIf":            "where the card may be cast from while a condition holds (#3105), shown by the cast surface",
 	"SpecialActions":             "special actions (CR 116), not abilities: ADR 0105's star pip",
 	"OpeningHand":                "an action taken from the opening hand before the game (CR 103.6, ADR 0133), not an ability of the permanent",
@@ -58,6 +60,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"Emblem":                     "an emblem's presentation",
 	"TokenText":                  "a token's printed text, already token_text",
 	"GrantText":                  "a grant bundle's printed text, already granted_abilities",
+	"MergedComponent":            "a flag on a mutated permanent's component part (ADR 0223); its rows are the slots it merges",
 	"XMatters":                   "an enumerator hint",
 	"MadnessLife":                "the life a madness cost charges, read when pricing the cast",
 	"XCeiling":                   "a bound on a spell's announced X, read at cast",

@@ -1,0 +1,43 @@
+package cardsst
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Steel Overseer — Artifact Creature — Construct {2}, 1/1 (EDHREC
+// rank 808):
+//
+//	"{T}: Put a +1/+1 counter on each artifact creature you control."
+//
+// The artifact-aggro lord. One tap ability (summoning sickness
+// applies, CR 302.6), whose effect walks the battlefield when it
+// resolves — so an artifact creature that enters in response gets a
+// counter, as printed. The Overseer counts itself.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "986ae327-f433-4c58-93dc-afc544b9bfcb",
+		Name:         "Steel Overseer",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{T}: Put a +1/+1 counter on each artifact creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    effects.TapCost(),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := effects.NewContext(g, item)
+				for _, c := range g.BattlefieldCardsForEffect() {
+					if c.Controller != item.Controller || !c.IsCreature() || !c.IsArtifact() {
+						continue
+					}
+					if err := (effects.AddCounter{Target: c.InstanceID, Kind: "+1/+1", N: 1}).Apply(ctx.AsGroupMember()); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		}},
+	})
+}

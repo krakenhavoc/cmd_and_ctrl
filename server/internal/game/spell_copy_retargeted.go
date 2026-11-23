@@ -69,19 +69,11 @@ func (g *Game) SpellCouldTargetInsteadForEffect(spellID, controller, from, to uu
 // instead, and reports whether it did. Nothing is asked. A division (CR
 // 601.2d) travels with its slot, as a retarget's does (CR 115.7c).
 //
+// It is one copy instruction (#5918): an effect that copies the spell for
+// each of several objects calls CopySpellRetargetedEachForEffect once
+// instead, so a replacement of the instruction applies once.
+//
 // Caller must hold g.mu.
 func (g *Game) CopySpellRetargetedForEffect(spellID, controller, from, to uuid.UUID) bool {
-	src, item, next, ok := g.retargetedSpellCopyLocked(spellID, controller, from, to)
-	if !ok {
-		return false
-	}
-	g.createSpellCopyLocked(src, item, controller, next)
-	top, err := g.Stack.Top()
-	if err != nil {
-		return false
-	}
-	if meta := g.StackMeta[top.InstanceID]; meta != nil && meta.IsCopy {
-		meta.Distribution = remapDistributionLocked(meta.Distribution, item.Targets, next)
-	}
-	return true
+	return g.CopySpellRetargetedEachForEffect(spellID, controller, from, []uuid.UUID{to}) > 0
 }

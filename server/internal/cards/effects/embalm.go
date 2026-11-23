@@ -68,11 +68,11 @@ func Eternalize(cost string) ActivatedAbility {
 // into the shared one. Package-level and capture-free for the reason
 // every ability body is.
 func embalmToken(g *game.Game, item *game.StackItem) error {
-	return zombieTokenCopyOfSource(g, item, embalmException)
+	return zombieTokenCopyOfSource(g, item, EmbalmException)
 }
 
 func eternalizeToken(g *game.Game, item *game.StackItem) error {
-	return zombieTokenCopyOfSource(g, item, eternalizeException)
+	return zombieTokenCopyOfSource(g, item, EternalizeException)
 }
 
 // zombieTokenCopyOfSource creates one token copy of the ability's own
@@ -91,15 +91,15 @@ func zombieTokenCopyOfSource(g *game.Game, item *game.StackItem, except func(*ga
 // it's a Zombie in addition to its other types" (CR 702.128a).
 //
 // The P/T is untouched: an embalm token is the creature's own size.
-func embalmException(t *game.Card) {
+func EmbalmException(t *game.Card) {
 	t.SetCopyExceptionColors("W")
 	t.ManaCost = ""
-	t.TypeLine = addedSubtypeTypeLine(t.TypeLine, "Zombie")
+	t.TypeLine = AddedSubtypeTypeLine(t.TypeLine, "Zombie")
 }
 
 // eternalizeException is "except it's a 4/4 black Zombie in addition
 // to its other types and it has no mana cost" (CR 702.129a).
-func eternalizeException(t *game.Card) {
+func EternalizeException(t *game.Card) {
 	t.Power = 4
 	t.Toughness = 4
 	// A printed 4, not a `*` stand-in (#683): an eternalized
@@ -108,7 +108,7 @@ func eternalizeException(t *game.Card) {
 	t.PrintedPTKnown = true
 	t.SetCopyExceptionColors("B")
 	t.ManaCost = ""
-	t.TypeLine = addedSubtypeTypeLine(t.TypeLine, "Zombie")
+	t.TypeLine = AddedSubtypeTypeLine(t.TypeLine, "Zombie")
 }
 
 // addedSubtypeTypeLine rebuilds a type line with `subtype` ADDED to
@@ -131,7 +131,7 @@ func eternalizeException(t *game.Card) {
 // Zombie helper.
 //
 //nolint:unparam // see above
-func addedSubtypeTypeLine(printed, subtype string) string {
+func AddedSubtypeTypeLine(printed, subtype string) string {
 	super, types, subs := game.ParseTypeLine(printed)
 	for _, s := range subs {
 		if strings.EqualFold(s, subtype) {

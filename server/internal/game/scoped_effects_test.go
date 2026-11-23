@@ -307,6 +307,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModCantBeBlockedExceptBy: true, ModLimitBlockersPerDefender: true,
 		ModCantBeBlockedByPlayer: true, ModCantBlockPlayersCreatures: true, ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true,
 		ModCantBeBlockedBySubtypes:     true, // #4100
+		ModCantBlockSubtypes:           true, // Pyrophobia, cases in cards/effects
 		ModCantBeBlockedByPowerAtLeast: true, // Squeak By, cases in scoped_block_rules_test.go
 		ModCantBeBlockedByObject:       true, // #4307, cases in scoped_block_rules_object_test.go
 		ModCantBeBlockedByMoreThan:     true, // cases in scoped_block_rules_max_test.go
@@ -314,9 +315,19 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// by targeting, not a layer, and its cases are in
 		// cant_have_1651_test.go here and in cards/effects.
 		ModCantHaveKeywords: true, ModWaiveHexproof: true,
+		// #5948: Shay Cormac's "lose protection and ward". Its cases are in
+		// lose_keyword_families_test.go here and in cards/effects.
+		ModRemoveKeywordPrefixes: true, ModSuppressWard: true,
+		// #5948: Tax Collector's timed cost increase, read by the cast
+		// pricer. Its cases are in scoped_cost_tax_test.go here and in
+		// cards/effects.
+		ModSpellsCostMoreForOpponents: true,
 		// #3860: read by targeting, like the waiver. Its cases are in
 		// targeting_bar_test.go.
 		ModCantBeTargetedByOpponents: true,
+		// #5718: Peace Talks' table-wide bar, read by targeting too. Its
+		// cases are in targeting_bar_table_test.go.
+		ModCantBeTargetedBySpellsOrActivated: true,
 		// #1593: becomeCopy is layer 1, materialised onto the printed
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.
@@ -334,9 +345,17 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// unpreventable_damage_test.go and cant_gain_life_test.go.
 		ModDamageCantBePrevented: true, ModDamageCantBeRedirected: true,
 		ModCantGainLife: true, ModGainNoLife: true,
+		// Everybody Lives!: the loss twin of "can't gain life", read by the
+		// life gate, the damage tail and the pay-life check. Its cases are
+		// in the effects package's S82 GAP batch 95 tests.
+		ModCantLoseLife: true,
 		// #4307: Squid Fire Knight's dice replacement, read by no layer.
 		// Its cases are in dice_roll_test.go and cards/effects.
 		ModRollExtraDieIgnoreOne: true,
+		// #5875: Urabrask, Heretic Praetor's next-draw replacement, read
+		// by no layer. Its cases are in next_draw_exile_top_test.go and
+		// cards/effects.
+		ModNextDrawExileTopPlay: true,
 		// #4973: Brad Boimler's extra counter, read by no layer. Its cases
 		// are in one_more_counter_test.go and cards/effects.
 		ModOneMoreCounter: true,
@@ -369,6 +388,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
+		// Don't Blink: the entering-from-exile replacement. Its cases are
+		// in the effects package's S82 GAP batch 94 tests.
+		ModShuffleInsteadOfEnteringFromExile: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
@@ -419,6 +441,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,
+		// #5869: its life-priced sibling, same file.
+		ModAttackTaxLife: true,
 		// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt. Its
 		// cases are in turn_skip_test.go.
 		ModSkipTurns: true,
@@ -431,9 +455,15 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5075 (Empty City Ruse): a player's next turn's combat phases
 		// skipped. Its cases are in skip_combat_phases_test.go.
 		ModSkipCombatPhases: true,
+		// #5838 (Blinding Angel): a player's next combat phase skipped.
+		// Its cases are in skip_next_combat_phase_test.go.
+		ModSkipNextCombatPhase: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,
+		// Melira, the Living Cure: a rule gate on poison counters for one
+		// player. Its cases are in cant_get_poison_test.go.
+		ModCantGetPoisonCounters: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

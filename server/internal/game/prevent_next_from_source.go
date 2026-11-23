@@ -145,6 +145,18 @@ type NextDamageShield struct {
 	// from the source neither meets the shield nor spends it. It writes
 	// the ModPreventNextCombatFromSource kind.
 	CombatOnly bool
+	// ToPlayersOnly is "the next time <source> would deal combat damage to
+	// one or more players" (Ria Ivor, Bane of Bladehold): damage to a
+	// permanent neither meets the shield nor spends it. It writes a
+	// players-only recipient filter on a combat-only shield, and asks for
+	// no protected player or permanent.
+	ToPlayersOnly bool
+	// ThisCombat is "this combat": the shield ends with the combat phase
+	// it was made in, where every other shield lasts until end of turn
+	// (CR 511.3). One made outside a combat phase is never made, as
+	// CR 611.2b has an effect that lasts "this combat" never begin when
+	// there is no combat.
+	ThisCombat bool
 
 	// Label is the record's label, shown in a CR 616 ordering prompt.
 	Label string
@@ -180,7 +192,20 @@ func (g *Game) PreventNextDamageFromSourceForEffect(s NextDamageShield) bool {
 	if label == "" {
 		label = "prevent the next damage from a source"
 	}
+	if s.ToPlayersOnly {
+		if !s.CombatOnly || s.ProtectPlayer != uuid.Nil || s.ProtectPermanent != uuid.Nil || len(s.ProtectTypes) != 0 {
+			return false
+		}
+		m.RecipientFilter = []DamageRecipientFilter{{Players: true}}
+	}
 	d := g.UntilEndOfTurnDuration()
+	if s.ThisCombat {
+		combat, ok := g.UntilEndOfCombatDuration()
+		if !ok {
+			return false
+		}
+		d = combat
+	}
 	if s.ProtectPermanent != uuid.Nil {
 		affected := g.PinnedObjectsLocked(s.ProtectPermanent)
 		if len(affected) == 0 {

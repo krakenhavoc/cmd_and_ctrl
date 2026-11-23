@@ -75,6 +75,7 @@ export default defineConfig({
   resolve: { conditions: ["browser"] },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // tools/: the fx preview harness's scenario check (#4868).
+    include: ["src/**/*.test.ts", "tools/**/*.test.ts"],
   },
 });

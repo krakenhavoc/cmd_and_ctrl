@@ -13,7 +13,7 @@ import (
 // N cards" (Commander William Riker): the controller draws first, then the
 // targeted opponent. The second draw waits for any prompt the first asks
 // (CR 608.2c, #4155).
-func trekB39YouAndTargetOpponentEachDraw(n int) Effect {
+func TrekB39YouAndTargetOpponentEachDraw(n int) Effect {
 	return Do(
 		DrawCards{N: n},
 		Instruction(func(ctx *Context) error {
@@ -29,17 +29,17 @@ func trekB39YouAndTargetOpponentEachDraw(n int) Effect {
 
 // --- Chief Montgomery Scott ---------------------------------------------
 
-const trekB39ScottName = "Chief Montgomery Scott"
+const TrekB39ScottName = "Chief Montgomery Scott"
 
 // trekB39ScottPut is "You may put a creature or Spacecraft card from your
 // hand onto the battlefield. It enters with X additional +1/+1 counters on
 // it if it's a creature and X additional charge counters on it if it's a
 // Spacecraft": the optional pick from the hand, with X counted as the
 // ability resolves and carried on the prompt as a number.
-func trekB39ScottPut(g *game.Game, item *game.StackItem) error {
+func TrekB39ScottPut(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	player := ctx.Controller()
-	candidates := handCardsMatching(g, player, Or(Creature(), HasSubtype("Spacecraft")))
+	candidates := HandCardsMatching(g, player, Or(Creature(), HasSubtype("Spacecraft")))
 	if len(candidates) == 0 {
 		return nil
 	}
@@ -47,13 +47,13 @@ func trekB39ScottPut(g *game.Game, item *game.StackItem) error {
 		Destination: game.ChooseOntoBattlefield,
 		Chooser:     player,
 		Source:      ctx.Source(),
-		Question:    trekB39ScottName + " — you may put a creature or Spacecraft card from your hand onto the battlefield",
+		Question:    TrekB39ScottName + " — you may put a creature or Spacecraft card from your hand onto the battlefield",
 		Cards:       candidates,
 		Min:         0,
 		Max:         1,
 		ThenKey:     trekB39ScottPicked,
 		LiveZone:    game.ZoneHand,
-		CarryNums:   []int{socB23DifferentlyNamedLands(ctx)},
+		CarryNums:   []int{SocB23DifferentlyNamedLands(ctx)},
 	})
 	return nil
 }
@@ -81,14 +81,14 @@ var trekB39ScottPicked = game.RegisterChooseCardsThen("choose-cards/chief-montgo
 
 // --- Cmdr. Troi, Outgoing Empath ----------------------------------------
 
-const trekB39TroiName = "Cmdr. Troi, Outgoing Empath"
+const TrekB39TroiName = "Cmdr. Troi, Outgoing Empath"
 
 // trekB39OpponentWhoseTurnItIs is "target opponent whose turn it is": an
 // opponent who is the active player, checked as the target is chosen and
 // again as the ability resolves (CR 608.2b).
-func trekB39OpponentWhoseTurnItIs() PlayerPredicate {
+func TrekB39OpponentWhoseTurnItIs() PlayerPredicate {
 	return func(g *game.Game, caster uuid.UUID, p *game.Player) bool {
-		return p.ID != caster && isActivePlayer(g, p.ID)
+		return p.ID != caster && IsActivePlayer(g, p.ID)
 	}
 }
 
@@ -98,7 +98,7 @@ func trekB39OpponentWhoseTurnItIs() PlayerPredicate {
 // ability's controller rides the offer's carry, first, so the rest knows
 // who copies or draws; a player is never a card on the stack, so it is
 // never read as a cast card.
-func trekB39TroiOffer(g *game.Game, item *game.StackItem) error {
+func TrekB39TroiOffer(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var opp uuid.UUID
 	for _, t := range ctx.LegalTargets() {
@@ -110,13 +110,13 @@ func trekB39TroiOffer(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	controller := ctx.Controller()
-	hand := allHandCardIDs(g, opp)
-	perm := g.FreeCastFromHandPermission(opp, ctx.Source(), trekB39TroiName)
+	hand := AllHandCardIDs(g, opp)
+	perm := g.FreeCastFromHandPermission(opp, ctx.Source(), TrekB39TroiName)
 	carry := append([]uuid.UUID{controller}, hand...)
 	if !g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
 		Chooser:      opp,
 		Source:       ctx.Source(),
-		Reason:       trekB39TroiName,
+		Reason:       TrekB39TroiName,
 		Cards:        hand,
 		Permission:   &perm,
 		Keyword:      game.MayCastKeywordHandCast,
@@ -157,7 +157,7 @@ var trekB39TroiAfter = game.RegisterChooseCardsThen("resolution-cast/cmdr-troi-c
 
 // trekB39AttackingCreatureCount is the number of attacking creatures, every
 // player's, counted as the bullet resolves.
-func trekB39AttackingCreatureCount(ctx *Context) int {
+func TrekB39AttackingCreatureCount(ctx *Context) int {
 	return len(AttackingCreatures(ctx.Game))
 }
 
@@ -166,15 +166,15 @@ func trekB39AttackingCreatureCount(ctx *Context) int {
 // trekB39AnotherKlingonOrWarriorYouControlDied is "another Klingon or
 // Warrior you control dies", read off the dead permanent's last-known
 // characteristics (CR 603.10a).
-func trekB39AnotherKlingonOrWarriorYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func TrekB39AnotherKlingonOrWarriorYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	dead, ok := diedCreature(ev, g)
-	if !ok || leftUnderControlOf(ev, dead) != source.Controller {
+	dead, ok := DiedCreature(ev, g)
+	if !ok || LeftUnderControlOf(ev, dead) != source.Controller {
 		return false
 	}
-	return leftAsSubtype(ev, dead, source.TextSubtype("Klingon")) || leftAsSubtype(ev, dead, source.TextSubtype("Warrior"))
+	return LeftAsSubtype(ev, dead, source.TextSubtype("Klingon")) || LeftAsSubtype(ev, dead, source.TextSubtype("Warrior"))
 }
 
 // --- Hugh, First of Many -------------------------------------------------
@@ -213,35 +213,10 @@ func trekB39HughIsTheGrantor(g *game.Game, source *game.Card, caster uuid.UUID, 
 // spell is named, not targeted, so one countered in response is still
 // copied from last-known information (CR 608.2h). A copy of an artifact
 // spell becomes a token as it resolves (CR 111.13, CR 608.3f).
-func trekB39HughReplicate(label string) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Keyword: KeywordReplicate,
-		Key:     label,
-		Watches: []game.EventKind{game.EventCast},
-		AppliesTo: socB32YouCastASpellThat(func(spell game.Card, source *game.Card, g *game.Game) bool {
-			return spell.IsArtifact() && trekB39HughPaid(g, spell.InstanceID) > 0 &&
-				trekB39HughIsTheGrantor(g, source, source.Controller, spell)
-		}),
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			item.Controller, item.Owner = ev.Actor, ev.Actor
-			item.Params.Object = game.ObjectRef{ID: ev.CardID}
-			item.Params.Amount = trekB39HughPaid(g, ev.CardID)
-			return item
-		},
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			if item.Params.Amount <= 0 {
-				return nil
-			}
-			return CopySpell{
-				StackID:          item.Params.Object.ID,
-				Controller:       item.Controller,
-				Count:            item.Params.Amount,
-				ChooseNewTargets: true,
-				FromLastKnown:    true,
-			}.Apply(NewContext(g, item))
-		},
-	}
+func TrekB39HughReplicate(label string) game.TriggeredAbility {
+	return S82SncReplicateTrigger(label, func(_ *game.Game, _ uuid.UUID, spell game.Card) bool {
+		return spell.IsArtifact()
+	})
 }
 
 // --- Jurati, Cordial Queen -----------------------------------------------
@@ -249,7 +224,7 @@ func trekB39HughReplicate(label string) game.TriggeredAbility {
 // trekB39ArtifactCreaturesHitAPlayer is "an artifact creature you control
 // dealt combat damage to a player", the dealer's types read as it dealt the
 // damage.
-func trekB39ArtifactCreaturesHitAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func TrekB39ArtifactCreaturesHitAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || g.PlayerByIDForEffect(ev.Target) == nil {
 		return false
 	}
@@ -259,7 +234,7 @@ func trekB39ArtifactCreaturesHitAPlayer(ev game.Event, source *game.Card, _ game
 
 // trekB39TokenCopyOfTheTarget is "create a token that's a copy of target
 // <token> you control": one copy of the first target still legal.
-func trekB39TokenCopyOfTheTarget(g *game.Game, item *game.StackItem) error {
+func TrekB39TokenCopyOfTheTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {

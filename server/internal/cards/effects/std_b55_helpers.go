@@ -15,12 +15,12 @@ import (
 // any face-up adventurer card in exile whose owner is `you`, whether or
 // not it was ever cast as an Adventure (the Memory Theft reading; a
 // face-down card shows no characteristics). Caller holds g.mu.
-func ownsExiledAdventure(g *game.Game, you uuid.UUID) bool {
+func OwnsExiledAdventure(g *game.Game, you uuid.UUID) bool {
 	if g.Exile == nil || you == uuid.Nil {
 		return false
 	}
 	for _, c := range g.Exile.Cards {
-		if c.Owner == you && !c.FaceDown && cardHasAdventure(c) {
+		if c.Owner == you && !c.FaceDown && CardHasAdventure(c) {
 			return true
 		}
 	}
@@ -30,7 +30,7 @@ func ownsExiledAdventure(g *game.Game, you uuid.UUID) bool {
 // cardHasAdventure is "a card that has an Adventure": an adventure-layout
 // card whose second face is an Adventure (not a Vengeance or Omen half),
 // wherever it is and whichever half is showing (the 2019-10-04 rulings).
-func cardHasAdventure(c game.Card) bool {
+func CardHasAdventure(c game.Card) bool {
 	if c.Layout != game.LayoutAdventure || len(c.Faces) < 2 {
 		return false
 	}
@@ -44,7 +44,7 @@ func cardHasAdventure(c game.Card) bool {
 
 // HasAnAdventure is the card predicate for "a card that has an Adventure".
 func HasAnAdventure() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return cardHasAdventure(c) }
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return CardHasAdventure(c) }
 }
 
 // AdventureSpellCast is the card predicate for "an Adventure spell": a
@@ -61,13 +61,13 @@ func AdventureSpellCast() CardPredicate {
 // sorcery spell and is not one) and the card has an Adventure.
 func PermanentSpellWithAnAdventure() CostPredicate {
 	return func(q game.CostQuery) bool {
-		return cardHasAdventure(q.Card) && !q.Card.IsInstant() && !q.Card.IsSorcery()
+		return CardHasAdventure(q.Card) && !q.Card.IsInstant() && !q.Card.IsSorcery()
 	}
 }
 
 // yourLifeIsAtMost is the cost predicate for "if your life total is N or
 // less" on a spell's own cost (The End), read for the caster at announce.
-func yourLifeIsAtMost(n int) CostPredicate {
+func YourLifeIsAtMost(n int) CostPredicate {
 	return func(q game.CostQuery) bool {
 		if q.Game == nil {
 			return false
@@ -86,7 +86,7 @@ func yourLifeIsAtMost(n int) CostPredicate {
 // generic reduction (CR 601.2f), which never touches coloured mana. Spells
 // with either colour qualify (the filter is "any of"), and the promise lasts
 // the turn and applies to every matching spell.
-func scionDiscountAbility(label, source, colors string, gained bool) ActivatedAbility {
+func ScionDiscountAbility(label, source, colors string, gained bool) ActivatedAbility {
 	return ActivatedAbility{
 		Label:        label,
 		Cost:         TapCost(),
@@ -114,16 +114,16 @@ func scionDiscountAbility(label, source, colors string, gained bool) ActivatedAb
 // an Aura attached to it, a Role included (CR 303.4). Read off the live
 // battlefield at announce and again when the target is re-judged.
 func Enchanted() CardPredicate {
-	return func(g *game.Game, _ uuid.UUID, c game.Card) bool { return isEnchantedByAura(g, c.InstanceID) }
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool { return IsEnchantedByAura(g, c.InstanceID) }
 }
 
 // exileTheModesTargetPlayersGraveyard is the bullet body "Exile target
 // player's graveyard." for a mode whose target clause is a player (Kutzil's
 // Flanker, Sentinel of Lost Lore).
-func exileTheModesTargetPlayersGraveyard(item *game.StackItem, ctx *Context, occ int) error {
+func ExileTheModesTargetPlayersGraveyard(item *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetPlayer {
 		return nil
 	}
-	return exileGraveyardForEffect(ctx.Game, item, t.ID)
+	return ExileGraveyardForEffect(ctx.Game, item, t.ID)
 }

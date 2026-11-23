@@ -361,6 +361,14 @@ type Game struct {
 	// loyalty_limit.go.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool
 
+	// LoyaltyPermanentTwiceThisTurn is the set of PERMANENTS whose
+	// controller "may activate loyalty abilities of [it] twice this turn
+	// rather than only once" (Kaito, Dancing Shadow, #5479): the same
+	// permission as LoyaltyTwiceThisTurn, but one permanent's rather
+	// than a player's planeswalkers. Keyed by instance ID, flushed at the
+	// turn boundary and forgotten when the object leaves the battlefield.
+	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped
@@ -668,10 +676,12 @@ type Game struct {
 	//
 	// blockedAttackers is the CR 509.1h state: "a creature remains
 	// blocked even if all the creatures blocking it are removed from
-	// combat". It is written in two places —
+	// combat". It is written in three places —
 	// commitBlockDeclarationLocked, the block declaration's lock-in,
-	// and stampEntryBlockerLocked, a creature put onto the battlefield
-	// blocking (put_blocking.go) — and read by both combat damage
+	// stampEntryBlockerLocked, a creature put onto the battlefield
+	// blocking (put_blocking.go), and BecomeBlockedForEffect, an effect
+	// that says an attacker becomes blocked (become_blocked.go, #5839)
+	// — and read by both combat damage
 	// steps, which never ask the live battlefield whether an attacker
 	// is blocked (#715: they used to, so an attacker whose chump
 	// blocker died hit the player). The same set is the CR 506.4
@@ -732,6 +742,20 @@ type Game struct {
 	// announcedAttacks, and carried by Clone / RestoreFrom and the
 	// persisted snapshot for the same reasons.
 	attackDefenders map[uuid.UUID]uuid.UUID
+
+	// attackBands is each banded attacker's BAND (CR 702.22c, ADR 0224,
+	// banding.go): attacker instance ID -> the band's key, the instance
+	// ID of the band's first member in the declaration. Two attackers
+	// are in the same band when their keys are equal. Written once, by
+	// the declaration that announces the band (CR 508.1e); a band lasts
+	// for the rest of combat (CR 702.22e) and loses a member that leaves
+	// combat (CR 702.22f), which every reader enforces by asking only
+	// about members still attacking (bandMatesLocked), and which
+	// removeFromCombatLocked makes explicit.
+	//
+	// Cleared with the rest of combat, and carried by Clone /
+	// RestoreFrom and the persisted snapshot (GameSnapshot.AttackBands).
+	attackBands map[uuid.UUID]uuid.UUID
 
 	// blocksDeclared is the set of DEFENDING PLAYERS whose CR 509.1
 	// block declaration is complete this combat (#1279, ADR 0045
@@ -1484,6 +1508,7 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 		g.setDeckSourceOrdinalLocked(c.InstanceID, seat, i)
 		seatDeckCard(p, c)
 	}
+	p.StartingDeckSize = p.Library.Size() + p.Command.Size()
 
 	g.Seats = append(g.Seats, p)
 	return p, nil
@@ -1543,6 +1568,7 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 		g.setDeckSourceOrdinalLocked(c.InstanceID, p.Seat, i)
 		seatDeckCard(p, c)
 	}
+	p.StartingDeckSize = p.Library.Size() + p.Command.Size()
 	p.DeckImported = true
 	return nil
 }
@@ -2122,6 +2148,12 @@ type CastTally struct {
 	// never a spell (CR 305.1), so neither adds anything. Read through
 	// CardTypesCast. Additive within the snapshot version.
 	CardTypes string `json:"cardTypes,omitempty"`
+	// NoncreatureCardTypes is CardTypes over the noncreature spells only
+	// (a spell that is a creature as it became cast, CR 601.2i, adds
+	// nothing): Hurkyl, Master Wizard's "each card type among noncreature
+	// spells you've cast this turn". Read through NoncreatureCardTypesCast.
+	// Additive within the snapshot version.
+	NoncreatureCardTypes string `json:"noncreatureCardTypes,omitempty"`
 	// Artifact counts the artifact spells the player cast this turn,
 	// read as each spell became cast, off the spell on the stack
 	// (CR 601.2i), like InstantSorceryColors. Artificer Class's "the
@@ -2129,6 +2161,12 @@ type CastTally struct {
 	// spell while Artifact is still 0: a cost is determined (CR 601.2f)
 	// before the spell is counted here.
 	Artifact int `json:"artifact,omitempty"`
+	// Enchantment counts the enchantment spells the player cast this turn,
+	// read as each spell became cast like Artifact (CR 601.2i): Psemilla,
+	// Meletian Poet's "whenever you cast your first enchantment spell each
+	// turn" reads 1 on the cast event, which is bumped before it. Additive
+	// within the snapshot version.
+	Enchantment int `json:"enchantment,omitempty"`
 	// LegendaryCreature counts the legendary creature spells the player
 	// cast this turn, read as each spell became cast like Artifact:
 	// Serah Farron's "the first legendary creature spell you cast each
@@ -2163,9 +2201,22 @@ type CastTally struct {
 	// Alania you've cast this turn" reads Instants == 1 on an instant
 	// spell, and so on, because the tally is bumped before EventCast.
 	// Additive within the snapshot version.
+	// NonPhyrexian counts the spells the player cast this turn that are
+	// not Phyrexian, read as each spell became cast like InstantSorcery
+	// (CR 601.2i): Phyrexian Censor's "can't cast more than one
+	// non-Phyrexian spell each turn" refuses a non-Phyrexian spell once
+	// this is 1. Additive within the snapshot version.
+	NonPhyrexian            int `json:"nonPhyrexian,omitempty"`
 	Instants                int `json:"instants,omitempty"`
 	Sorceries               int `json:"sorceries,omitempty"`
 	OtterSpellsExceptAlania int `json:"otterSpellsExceptAlania,omitempty"`
+	// DragonSpells counts the Dragon spells the player cast this turn, read
+	// as each spell became cast like Instants (CR 601.2i): Acolyte of
+	// Bahamut's "the first Dragon spell you cast each turn costs {2} less"
+	// prices a spell while this is still 0, because a cost is determined
+	// (CR 601.2f) before the spell is counted. Additive within the snapshot
+	// version.
+	DragonSpells int `json:"dragonSpells,omitempty"`
 	// InstantSorceryVillain counts the spells the player cast this turn that
 	// are an instant, a sorcery or a Villain (Lady Loki, Agent of Chaos's
 	// "your first instant, sorcery, or Villain spell each turn"), read as
@@ -2225,6 +2276,13 @@ type CastTally struct {
 	// rest of the turn (weaker, never stronger). Additive within the
 	// snapshot version.
 	NotFromHand int `json:"notFromHand,omitempty"`
+	// FromExile counts the spells the player cast this turn from exile,
+	// read like NotFromHand off the zone the card was in as the cast was
+	// proposed: Wild-Magic Sorcerer's "the first spell you cast from exile
+	// each turn" is FromExile == 1 once the tally is bumped, which is before
+	// EventCast. A copy of a spell is not cast (CR 707.10). Additive within
+	// the snapshot version.
+	FromExile int `json:"fromExile,omitempty"`
 }
 
 // FromHand is how many of the player's spells this turn were cast from
@@ -2306,15 +2364,37 @@ var cardTypes205Sorted = slices.Sorted(maps.Keys(cardTypes205))
 // withSpellCardTypes adds a cast spell's card types to CardTypes,
 // skipping any word that is not a CR 205.2a card type.
 func (t CastTally) withSpellCardTypes(types []string) CastTally {
-	have := strings.Fields(t.CardTypes)
+	t.CardTypes = mergeCardTypes(t.CardTypes, types)
+	return t
+}
+
+// withNoncreatureSpellCardTypes adds a cast NONCREATURE spell's card types
+// to NoncreatureCardTypes (Hurkyl, Master Wizard).
+func (t CastTally) withNoncreatureSpellCardTypes(types []string) CastTally {
+	t.NoncreatureCardTypes = mergeCardTypes(t.NoncreatureCardTypes, types)
+	return t
+}
+
+// mergeCardTypes is the CR 205.2a card types in `have` (a space-joined
+// set) and `types`, alphabetical and space-joined, skipping any word that
+// is not a card type.
+func mergeCardTypes(have string, types []string) string {
+	haveTypes := strings.Fields(have)
 	var out []string
 	for _, ct := range cardTypes205Sorted {
-		if slices.Contains(have, ct) || slices.ContainsFunc(types, func(s string) bool { return strings.EqualFold(s, ct) }) {
+		if slices.Contains(haveTypes, ct) || slices.ContainsFunc(types, func(s string) bool { return strings.EqualFold(s, ct) }) {
 			out = append(out, ct)
 		}
 	}
-	t.CardTypes = strings.Join(out, " ")
-	return t
+	return strings.Join(out, " ")
+}
+
+// NoncreatureCardTypesCast is the distinct card types among the
+// NONCREATURE spells the player cast this turn, in alphabetical order: an
+// artifact creature spell adds nothing (it is a creature spell), an
+// artifact enchantment spell adds two.
+func (t CastTally) NoncreatureCardTypesCast() []string {
+	return strings.Fields(t.NoncreatureCardTypes)
 }
 
 // CardTypesCast is the distinct card types among the spells the player
@@ -2532,6 +2612,15 @@ func (g *Game) runStepEntryHooksLocked() {
 	// phases are skipped never begins, an added one included, so the
 	// cursor walks past each of its steps (skip_combat_phases.go).
 	if PhaseOf(g.Turn.Step) == PhaseCombat && g.combatPhasesSkippedThisTurnLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
+	// #5838 (CR 500.11, 614.10a): "skips their next combat phase" is
+	// spent by the first combat phase of the player's that would begin
+	// and is not skipped above; the rest of that phase leaves the plan
+	// and the cursor walks on (skip_next_combat_phase.go).
+	if g.spendNextCombatSkipLocked() {
 		g.advanceCursorLocked()
 		g.runStepEntryHooksLocked()
 		return

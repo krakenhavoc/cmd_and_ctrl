@@ -98,6 +98,17 @@ func EquipPayingAbility(label string, cost game.AbilityCost) ActivatedAbility {
 	return ab
 }
 
+// AttachedOnlyTo is the clause of an Equipment's "<this> can be attached
+// only to <label>" for Spec.AttachOnlyTo (#5846): Konda's Banner is
+// AttachedOnlyTo("a legendary creature", Legendary()). The creature is
+// implied, as an Equipment equips only a creature (CR 301.5c). Leave the
+// card's EquipAbility as printed: the restriction is on what the
+// Equipment may be attached to, not on what its equip ability targets
+// (the engine refuses the attach at resolution, CR 301.5b).
+func AttachedOnlyTo(label string, preds ...CardPredicate) *game.TargetSpec {
+	return TargetCreature(label, preds...)
+}
+
 // AttachSourceToTarget is the equip ability's resolution: attach the
 // source permanent to the chosen creature.
 //
@@ -168,7 +179,7 @@ func AttachedToSource(target *game.Card, _ *game.Game, source *game.Card) bool {
 // non-setting P/T change belongs (CR 613.4c).
 func PumpAttached(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Attached creature gets " + signedPT(power, toughness) + ".",
+		Label:     "Attached creature gets " + SignedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: AttachedToSource,
@@ -223,7 +234,7 @@ func RemoveFromAttached(keywords ...string) game.StaticAbility {
 			for _, a := range c.Abilities {
 				drop := false
 				for _, kw := range keywords {
-					if equalFoldASCIIEffects(a, kw) {
+					if EqualFoldASCIIEffects(a, kw) {
 						drop = true
 						break
 					}
@@ -498,7 +509,7 @@ func EnchantPlayer(preds ...PlayerPredicate) *game.TargetSpec {
 // that just died, and a direct read of AttachedTo is correct. Had it
 // gone the other way this would have needed the LKI snapshot to grow
 // an attachment field, which it has not got.
-func equippedCreatureDied(ev game.Event, source *game.Card) bool {
+func EquippedCreatureDied(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventLTB &&
 		ev.NewZone == game.ZoneGraveyard &&
 		source.IsAttachedTo(ev.CardID)
@@ -508,7 +519,7 @@ func equippedCreatureDied(ev game.Event, source *game.Card) bool {
 // condition: "Whenever equipped creature deals combat damage to a
 // player". The same EventDealDamage + ev.Combat shape Bident of
 // Thassa uses, with the controller check swapped for the attachment.
-func attachedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
+func AttachedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
@@ -520,8 +531,8 @@ func attachedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card,
 
 // attachedCreatureDealtCombatDamageToPlayerOrBattle is the same condition
 // for "deals combat damage to a player or battle" (Beamtown Beatstick).
-func attachedCreatureDealtCombatDamageToPlayerOrBattle(ev game.Event, source *game.Card, g *game.Game) bool {
-	if attachedCreatureDealtCombatDamageToPlayer(ev, source, g) {
+func AttachedCreatureDealtCombatDamageToPlayerOrBattle(ev game.Event, source *game.Card, g *game.Game) bool {
+	if AttachedCreatureDealtCombatDamageToPlayer(ev, source, g) {
 		return true
 	}
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || !source.IsAttachedTo(ev.Source) {
@@ -538,7 +549,7 @@ func attachedCreatureDealtCombatDamageToPlayerOrBattle(ev game.Event, source *ga
 // Reads the battlefield through the effect API under the resolution
 // write lock; collects IDs first so the untap does not mutate the
 // slice being walked.
-func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context) error {
+func UntapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context) error {
 	var ids []uuid.UUID
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
@@ -547,7 +558,7 @@ func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context)
 		}
 	}
 	for _, id := range ids {
-		if err := (UntapTarget{Target: id}.Apply(ctx.asGroupMember())); err != nil {
+		if err := (UntapTarget{Target: id}.Apply(ctx.AsGroupMember())); err != nil {
 			return err
 		}
 	}
@@ -651,7 +662,7 @@ func textSubtypesOf(source *game.Card, subtypes []string, printed bool) []string
 	}
 	out := make([]string, 0, len(subtypes))
 	for _, s := range subtypes {
-		if now := source.TextSubtype(s); !hasFold(out, now) {
+		if now := source.TextSubtype(s); !HasFold(out, now) {
 			out = append(out, now)
 		}
 	}

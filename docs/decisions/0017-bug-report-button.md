@@ -1,6 +1,6 @@
 # ADR 0017 — In-app bug reports as GitHub issues
 
-**Status:** Implemented · 2026-07-08 · Branch `feat/bug-report-button`
+**Status:** Accepted · 2026-07-08 · Branch `feat/bug-report-button`
 **Revised:** 2026-09-08 · §4 amended, §6–§7 added · Branch
 `feat/bugreport-logs-attachments`
 **Revised:** 2026-09-14 · §8 added (report kinds → labels) · Branch

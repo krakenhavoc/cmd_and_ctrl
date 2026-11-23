@@ -107,3 +107,11 @@ func (g *Game) altBlitzLocked(playerID uuid.UUID, card Card, params CastSpellPar
 	alt := g.claimedAltCostLocked(playerID, card, params)
 	return alt != nil && alt.Blitz
 }
+
+// altFlashbackLocked is CostQuery.AltFlashback for one announcement:
+// whether the alternative cost the cast claims is a flashback cost (CR
+// 702.34a). Caller must hold g.mu.
+func (g *Game) altFlashbackLocked(playerID uuid.UUID, card Card, params CastSpellParams) bool {
+	alt := g.claimedAltCostLocked(playerID, card, params)
+	return alt != nil && alt.Key == "flashback"
+}

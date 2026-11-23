@@ -44,7 +44,7 @@ type Suspect struct {
 }
 
 func (s Suspect) Apply(ctx *Context) error {
-	if ctx.isNewSourceObject(s.Target) { // #1432
+	if ctx.IsNewSourceObject(s.Target) { // #1432
 		return nil
 	}
 	ctx.Game.SuspectForEffect(s.Target)
@@ -57,7 +57,7 @@ type Unsuspect struct {
 }
 
 func (u Unsuspect) Apply(ctx *Context) error {
-	if ctx.isNewSourceObject(u.Target) { // #1432
+	if ctx.IsNewSourceObject(u.Target) { // #1432
 		return nil
 	}
 	ctx.Game.UnsuspectForEffect(u.Target)
@@ -115,9 +115,9 @@ func SuspectEachLegalTarget(g *game.Game, item *game.StackItem) error {
 // creature through the Aura's attachment as the trigger resolves, or
 // as it last was if the Aura has already gone (CR 608.2h), so
 // "enchanted creature" still means the host.
-func suspectEnchantedCreature(g *game.Game, item *game.StackItem) error {
+func SuspectEnchantedCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	host, ok := enchantedCreatureAsItResolves(ctx)
+	host, ok := EnchantedCreatureAsItResolves(ctx)
 	if !ok {
 		return nil
 	}
@@ -128,7 +128,7 @@ func suspectEnchantedCreature(g *game.Game, item *game.StackItem) error {
 // own triggered ability: the permanent the Aura is attached to as the
 // ability resolves, or was attached to when it left (CR 608.2h). False
 // when the Aura is attached to no card.
-func enchantedCreatureAsItResolves(ctx *Context) (uuid.UUID, bool) {
+func EnchantedCreatureAsItResolves(ctx *Context) (uuid.UUID, bool) {
 	ref, ok := ctx.SourceRef()
 	if !ok {
 		return uuid.Nil, false
@@ -145,7 +145,7 @@ func enchantedCreatureAsItResolves(ctx *Context) (uuid.UUID, bool) {
 // hexproof never applies; the source itself qualifies when it is a
 // suspected creature, as it does for any sacrifice outlet.
 func SacrificeASuspectedCreature() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a suspected creature", Creature(), Suspected())}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a suspected creature", Creature(), Suspected())}
 }
 
 // UpToOneTargetCreature is the "up to one target creature" clause the

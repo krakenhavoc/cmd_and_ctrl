@@ -29,21 +29,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:         distractingGeistOracleID,
+		OracleID:         DistractingGeistOracleID,
 		Name:             "Distracting Geist",
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Disturb("{4}{W}")},
-		Triggered:        []game.TriggeredAbility{distractingGeistTap("Distracting Geist — tap target creature defending player controls")},
+		Triggered:        []game.TriggeredAbility{DistractingGeistTap("Distracting Geist — tap target creature defending player controls")},
 	})
 	Register(Spec{
-		OracleID:     distractingGeistOracleID + "#1",
+		OracleID:     DistractingGeistOracleID + "#1",
 		Name:         "Clever Distraction",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
 		Grants: []AbilityGrant{{
 			Key:       cleverDistractionTap,
-			Triggered: []game.TriggeredAbility{distractingGeistTap("Clever Distraction — tap target creature defending player controls")},
+			Triggered: []game.TriggeredAbility{DistractingGeistTap("Clever Distraction — tap target creature defending player controls")},
 			Text:      "Whenever this creature attacks, tap target creature defending player controls.",
 		}},
 		Static:       []game.StaticAbility{GrantAbilitiesToAttached(cleverDistractionTap)},
@@ -52,19 +52,19 @@ func init() {
 }
 
 const (
-	distractingGeistOracleID = "2fcd5779-7234-49e3-b3c5-ebc07db74462"
+	DistractingGeistOracleID = "2fcd5779-7234-49e3-b3c5-ebc07db74462"
 	cleverDistractionTap     = "clever-distraction/tap"
 )
 
 // distractingGeistTap is "Whenever this creature attacks, tap target
 // creature defending player controls", printed on the front face and
 // quoted on the back.
-func distractingGeistTap(label string) game.TriggeredAbility {
+func DistractingGeistTap(label string) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches:     []game.EventKind{game.EventAttack},
 		AppliesTo:   ThisAttacked,
 		TargetsFrom: TargetCreatureDefendingPlayerControls,
 		Key:         label,
-		Effect:      b36TapChosenCreature,
+		Effect:      B36TapChosenCreature,
 	}
 }

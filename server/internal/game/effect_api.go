@@ -179,6 +179,11 @@ type DiscardPrompt struct {
 	// "discards half the cards in their hand"). N is ignored. Plain data,
 	// so a run over several seats gives each its own count.
 	HalfHand bool
+	// ThirdHandUp makes the count a third of the cards in the discarding
+	// player's hand, rounded up, read as that player is asked (Pox's
+	// "discards a third of the cards in their hand"). N is ignored. Plain
+	// data, like HalfHand.
+	ThirdHandUp bool
 	// UpTo makes N a ceiling rather than an exact count ("discard up
 	// to two cards"), which is the difference between a floor of N
 	// and a floor of zero on the underlying pick.
@@ -306,6 +311,10 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 		// "half the cards in their hand, rounded down" (Pox Plague), read as
 		// this seat is asked, so a run asks each seat for its own count.
 		n = player.Hand.Size() / 2
+	}
+	if p.ThirdHandUp {
+		// "a third of the cards in their hand, round up" (Pox).
+		n = (player.Hand.Size() + 2) / 3
 	}
 	if g.effectDiscardBlockedLocked(p.Player) {
 		// #2178: an opponent's spell or ability can't make this player
@@ -1655,7 +1664,14 @@ func (g *Game) ExileSpellForEffect(stackID uuid.UUID) error {
 // commander gets the CR 903.9 command-zone choice — #364. When the
 // prompt is queued nothing has moved, the stack item is still
 // registered, and both complete when the owner answers.
+//
+// The sandbox action takes no battlefield destination: only an effect's
+// counter puts the card there (#5931, CounterTargetToZoneForEffect), with
+// the entry window and the controller its card names.
 func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
+	if dst != nil && dst.Kind == ZoneBattlefield {
+		return ErrInvalidStackDestination
+	}
 	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true)
 }
 
@@ -1720,18 +1736,28 @@ func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback Zo
 	// Resolve the destination. nil → the fallback at the spell's
 	// owner (a countered spell's graveyard, a returned spell's hand),
 	// or exile when that player has left the game (the primitive's
-	// own fallback). Battlefield / stack are illegal — an effect that
-	// "puts the spell onto the battlefield" would be a different
-	// effect, and either verb MUST move the spell off the stack.
+	// own fallback). The stack is illegal, and so is the battlefield for
+	// anything but a counter (#5931): either verb MUST move the spell off
+	// the stack.
 	destKind, destOwner := fallback, item.Owner
 	if dst != nil {
-		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
+		if dst.Kind == ZoneStack || (dst.Kind == ZoneBattlefield && !countered) {
 			return zoneRoute{}, ErrInvalidStackDestination
 		}
-		if g.zoneFromRefLocked(*dst) == nil {
+		switch {
+		case dst.Kind == ZoneBattlefield:
+			// #5931: a COUNTER that puts the card onto the battlefield
+			// instead of into its owner's graveyard (Desertion). The
+			// route's DstOwner names the controller it enters under;
+			// routeCardToZoneLocked hands it to the entry pipeline
+			// (counter_onto_battlefield.go). Only a counter: a bounce or
+			// a plain exit onto the battlefield is still refused above.
+			destKind, destOwner = ZoneBattlefield, dst.Owner
+		case g.zoneFromRefLocked(*dst) == nil:
 			return zoneRoute{}, ErrZoneNotFound
+		default:
+			destKind, destOwner = dst.Kind, dst.Owner
 		}
-		destKind, destOwner = dst.Kind, dst.Owner
 	}
 	// S29 flashback: "exile this card instead of putting it anywhere
 	// else ANY TIME it would leave the stack" (CR 702.34a). It beats

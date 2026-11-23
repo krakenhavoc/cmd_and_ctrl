@@ -31,7 +31,7 @@ import (
 // b17LandCardsInGraveyard counts the land cards in `player`'s
 // graveyard — Multani's second term. Printed type lines: a card in a
 // graveyard has no layer cache.
-func b17LandCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+func B17LandCardsInGraveyard(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
@@ -50,7 +50,7 @@ func b17LandCardsInGraveyard(g *game.Game, player uuid.UUID) int {
 // owns — Nighthawk Scavenger's power. ONE set across all of them, as
 // printed ("among cards in your opponents' graveyards"): a creature
 // in two graveyards is one type, not two.
-func b17CardTypesInOpponentsGraveyards(g *game.Game, controller uuid.UUID) int {
+func B17CardTypesInOpponentsGraveyards(g *game.Game, controller uuid.UUID) int {
 	seen := map[string]bool{}
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.ID == controller || p.Graveyard == nil {
@@ -70,7 +70,7 @@ func b17CardTypesInOpponentsGraveyards(g *game.Game, controller uuid.UUID) int {
 // Since S27 an attack target may be a planeswalker or a battle, and
 // "attacks you" / "you're the defending player" mean the player
 // behind it.
-func b17DefendingPlayer(g *game.Game, ev game.Event) uuid.UUID {
+func B17DefendingPlayer(g *game.Game, ev game.Event) uuid.UUID {
 	if ev.Kind != game.EventAttack || ev.Target == uuid.Nil {
 		return uuid.Nil
 	}
@@ -84,7 +84,7 @@ func b17DefendingPlayer(g *game.Game, ev game.Event) uuid.UUID {
 // b17DefendingPlayer: an attack at a player's planeswalker or battle is
 // not an attack on that player (#4839). "Defending player" is still
 // b17DefendingPlayer.
-func attackedPlayer(g *game.Game, ev game.Event) uuid.UUID {
+func AttackedPlayer(g *game.Game, ev game.Event) uuid.UUID {
 	if ev.Kind != game.EventAttack || ev.Target == uuid.Nil || g.PlayerByIDForEffect(ev.Target) == nil {
 		return uuid.Nil
 	}
@@ -96,7 +96,7 @@ func attackedPlayer(g *game.Game, ev game.Event) uuid.UUID {
 // control: "attacks you or a planeswalker you control" (CR 508.3a). A
 // battle `you` protect is neither, though `you` defend it (#4864).
 // Effective types: a planeswalker animated out of being one is not.
-func attacksYouOrYourPlaneswalker(g *game.Game, target, you uuid.UUID) bool {
+func AttacksYouOrYourPlaneswalker(g *game.Game, target, you uuid.UUID) bool {
 	if target == uuid.Nil || you == uuid.Nil {
 		return false
 	}
@@ -113,7 +113,7 @@ func attacksYouOrYourPlaneswalker(g *game.Game, target, you uuid.UUID) bool {
 // b17OpponentHasMoreLifeThanAnother is Breena's intervening if: `opp`
 // (an opponent of `controller`) has more life than at least one
 // OTHER opponent of `controller` still in the game.
-func b17OpponentHasMoreLifeThanAnother(g *game.Game, controller, opp uuid.UUID) bool {
+func B17OpponentHasMoreLifeThanAnother(g *game.Game, controller, opp uuid.UUID) bool {
 	target := g.PlayerByIDForEffect(opp)
 	if target == nil || target.Eliminated || opp == controller {
 		return false
@@ -134,8 +134,8 @@ func b17OpponentHasMoreLifeThanAnother(g *game.Game, controller, opp uuid.UUID) 
 // than `player` — Firemane Commando's "if none of those creatures
 // attacked you". Read at resolution against the combat state, which
 // AttackingTarget carries until combat ends.
-func b17AttackersAllAvoid(g *game.Game, attacker, player uuid.UUID) bool {
-	for _, id := range b13AttackingCreaturesYouControl(g, attacker) {
+func B17AttackersAllAvoid(g *game.Game, attacker, player uuid.UUID) bool {
+	for _, id := range B13AttackingCreaturesYouControl(g, attacker) {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
@@ -168,7 +168,7 @@ func b17AttackersAllAvoid(g *game.Game, attacker, player uuid.UUID) bool {
 // the resolving one is the (older + 1)-th most recent announce —
 // the resolving item has already left StackMeta by the time its
 // Effect runs.
-func b17PermanentSacrificedToPay(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
+func B17PermanentSacrificedToPay(g *game.Game, item *game.StackItem) (uuid.UUID, bool) {
 	if refs := item.Paid.SacrificedObjects; len(refs) > 0 {
 		return refs[0].ID, true
 	}
@@ -222,7 +222,7 @@ func b17PermanentSacrificedToPay(g *game.Game, item *game.StackItem) (uuid.UUID,
 // floored at zero the way CurrentPower floors it. The departure
 // record holds the post-layer power, so an anthem's or an Equipment's
 // bonus is in it (CR 608.2h).
-func b17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
+func B17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 	var p int
 	if info, ok := g.LastKnownPermanentForEffect(cardID); ok {
 		p = info.Power
@@ -245,40 +245,40 @@ func b17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 // #1682); whether it was a Zombie is its last-known subtypes (leftAsSubtype, #1679), so a
 // changeling counts and so does a creature that was a Zombie only
 // through a grant (Maskwood Nexus).
-func b17SelfOrZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	if cardDied(ev, source) {
+func B17SelfOrZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	if CardDied(ev, source) {
 		return true
 	}
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Zombie"))
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Zombie"))
 }
 
 // b17SelfOrAnotherCreatureDied is Cordial Vampire's condition: any
 // creature death at the table, its own included.
-func b17SelfOrAnotherCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	if cardDied(ev, source) {
+func B17SelfOrAnotherCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	if CardDied(ev, source) {
 		return true
 	}
-	_, died := diedCreature(ev, g)
+	_, died := DiedCreature(ev, g)
 	return died
 }
 
 // b17AnotherNontokenCreatureDied is Harvester of Souls's condition.
-func b17AnotherNontokenCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func B17AnotherNontokenCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	dead, ok := diedCreature(ev, g)
+	dead, ok := DiedCreature(ev, g)
 	return ok && !IsToken(dead)
 }
 
 // b17SourceDealtDamageToSelf is Phyrexian Obliterator's condition:
 // any source dealt damage to the Obliterator. EventDealDamage names
 // the damaged card in Target and the dealer in Source.
-func b17SourceDealtDamageToSelf(ev game.Event, source *game.Card) bool {
+func B17SourceDealtDamageToSelf(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventDealDamage && ev.Target == source.InstanceID && ev.Amount > 0
 }
 
@@ -287,7 +287,7 @@ func b17SourceDealtDamageToSelf(ev game.Event, source *game.Card) bool {
 // and ability paths do not, so the source is looked up wherever it
 // is — a spell dealing damage is still on the stack while its
 // effect runs, and its Controller is the caster.
-func b17DamageSourceController(ev game.Event, g *game.Game) uuid.UUID {
+func B17DamageSourceController(ev game.Event, g *game.Game) uuid.UUID {
 	if c, ok := g.LookupCardForEffect(ev.Source); ok && c.Controller != uuid.Nil {
 		return c.Controller
 	}
@@ -303,24 +303,24 @@ func ASourceAnOpponentControlsDealtDamageToYou(ev game.Event, source *game.Card,
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target != source.Controller {
 		return false
 	}
-	dealer := b17DamageSourceController(ev, g)
+	dealer := B17DamageSourceController(ev, g)
 	return dealer != uuid.Nil && dealer != source.Controller
 }
 
 // b17OpponentsCreatureAttackedYou is Kazuul's condition: a creature
 // an opponent controls was declared attacking, and the source's
 // controller is the defending player.
-func b17OpponentsCreatureAttackedYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B17OpponentsCreatureAttackedYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventAttack || ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
-	return b17DefendingPlayer(g, ev) == source.Controller
+	return B17DefendingPlayer(g, ev) == source.Controller
 }
 
 // b17ElfSpellCastByYou is Leaf-Crowned Visionary's "whenever you cast
 // an Elf spell". The spell is read off the stack, where its printed
 // type line is intact; a changeling counts.
-func b17ElfSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B17ElfSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -331,12 +331,12 @@ func b17ElfSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 
 // b17HistoricSpellCastByYou is Teshar's "whenever you cast a historic
 // spell" — an artifact, a legendary, or a Saga.
-func b17HistoricSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B17HistoricSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && b09IsHistoric(c)
+	return ok && B09IsHistoric(c)
 }
 
 // b17BreenaKey names Breena's ability for the once-per-batch guard
@@ -345,14 +345,14 @@ func b17HistoricSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) b
 // dimension (OncePerBatchPerPlayer), which is what keeps a
 // five-creature attack on one opponent to one card while a split
 // attack on two still triggers twice.
-const b17BreenaKey = "Breena, the Demagogue — an opponent was attacked"
+const B17BreenaKey = "Breena, the Demagogue — an opponent was attacked"
 
 // b17BreenaLabel is the stack label of Breena's trigger for one
 // attacked opponent. The attacked player's name is in it because the
 // ability triggers once per opponent attacked per combat: it is what
 // tells two of them apart on the stack, and what the once-per-turn
 // tally (the declared extra-combat retreat) keys on.
-func b17BreenaLabel(g *game.Game, opp uuid.UUID) string {
+func B17BreenaLabel(g *game.Game, opp uuid.UUID) string {
 	name := "an opponent"
 	if p := g.PlayerByIDForEffect(opp); p != nil {
 		name = p.Name
@@ -366,7 +366,7 @@ func b17BreenaLabel(g *game.Game, opp uuid.UUID) string {
 // as it already has — Deepglow Skate, per target. The counts are
 // snapshotted first, so a doubler (Doubling Season) that fires on
 // the first kind cannot change what the second receives.
-func b17DoubleCountersOn(ctx *Context, target uuid.UUID) error {
+func B17DoubleCountersOn(ctx *Context, target uuid.UUID) error {
 	c, ok := ctx.Game.LookupCardForEffect(target)
 	if !ok || len(c.Counters) == 0 {
 		return nil
@@ -377,13 +377,13 @@ func b17DoubleCountersOn(ctx *Context, target uuid.UUID) error {
 			counters[kind] = n
 		}
 	}
-	return b14PutCounters(ctx, target, counters)
+	return B14PutCounters(ctx, target, counters)
 }
 
 // b17PutCounterOnEachVampireYouControl is Cordial Vampire's body:
 // one +1/+1 counter on every Vampire its controller controls, the
 // set snapshotted before the first counter lands.
-func b17PutCounterOnEachVampireYouControl(g *game.Game, item *game.StackItem) error {
+func B17PutCounterOnEachVampireYouControl(g *game.Game, item *game.StackItem) error {
 	// "Vampire" is a word of the source's text (CR 612.2, #3984).
 	vampire := g.TextReaderForEffect(item).TextSubtype("Vampire")
 	var ids []uuid.UUID
@@ -392,7 +392,7 @@ func b17PutCounterOnEachVampireYouControl(g *game.Game, item *game.StackItem) er
 			ids = append(ids, c.InstanceID)
 		}
 	}
-	return b13PutCounterOnEach(NewContext(g, item), ids)
+	return B13PutCounterOnEach(NewContext(g, item), ids)
 }
 
 // b17PlayerSacrificesN queues `n` sacrifice prompts for `player`, each
@@ -401,7 +401,7 @@ func b17PutCounterOnEachVampireYouControl(g *game.Game, item *game.StackItem) er
 // permanent, so N of them are asked as N prompts, the option lists
 // trimmed after every answer; a player with fewer permanents than
 // owed sacrifices what they have and the rest are dropped.
-func b17PlayerSacrificesN(g *game.Game, source, player uuid.UUID, n int, reason string) {
+func B17PlayerSacrificesN(g *game.Game, source, player uuid.UUID, n int, reason string) {
 	if n < 1 {
 		return
 	}
@@ -412,12 +412,12 @@ func b17PlayerSacrificesN(g *game.Game, source, player uuid.UUID, n int, reason 
 // discards their hand, then draws cards equal to the greatest number
 // of cards a player discarded this way. Every discard happens before
 // any draw, and the count is taken from the discards themselves.
-func b17WheelToGreatestDiscard(g *game.Game, item *game.StackItem) error {
+func B17WheelToGreatestDiscard(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	players := tablePlayers(ctx)
+	players := TablePlayers(ctx)
 	greatest := 0
 	for _, id := range players {
-		n, err := discardWholeHand(g, id)
+		n, err := DiscardWholeHand(g, id)
 		if err != nil {
 			return err
 		}
@@ -440,8 +440,8 @@ func b17WheelToGreatestDiscard(g *game.Game, item *game.StackItem) error {
 // exile `cardID` from its owner's graveyard — if it is still there —
 // and let `player` play it this turn. The grant is "play", so a land
 // discarded to a looter can be played off it.
-func b17ExileFromGraveyardAndMayPlay(g *game.Game, item *game.StackItem, player, cardID uuid.UUID) error {
-	if !discardedCardStillInGraveyard(g, item, cardID) {
+func B17ExileFromGraveyardAndMayPlay(g *game.Game, item *game.StackItem, player, cardID uuid.UUID) error {
+	if !DiscardedCardStillInGraveyard(g, item, cardID) {
 		return nil
 	}
 	return g.ExileCardWithPermissionForEffect(cardID, game.CastPermission{
@@ -458,7 +458,7 @@ func b17ExileFromGraveyardAndMayPlay(g *game.Game, item *game.StackItem, player,
 // first Plains is on the battlefield, so the second land count sees
 // it; a declined first search still offers the second when the
 // condition holds, as the printed "repeat this process" does.
-func b17ClaimJumperSearch(g *game.Game, item *game.StackItem, again bool) error {
+func B17ClaimJumperSearch(g *game.Game, item *game.StackItem, again bool) error {
 	controller, source := item.Controller, item.SourceCardID
 	var tail game.KeyedTail
 	if again {
@@ -486,10 +486,10 @@ var b17ClaimJumperRepeat game.TailRef
 
 func init() {
 	b17ClaimJumperRepeat = CardTail("claim-jumper/repeat", func(ctx *Context, o game.TailOutcome) error {
-		if !b03OpponentControlsMoreLands(ctx.Game, o.Tail.Player) {
+		if !B03OpponentControlsMoreLands(ctx.Game, o.Tail.Player) {
 			return nil
 		}
-		return b17ClaimJumperSearch(ctx.Game, ctx.Item, false)
+		return B17ClaimJumperSearch(ctx.Game, ctx.Item, false)
 	})
 }
 
@@ -497,9 +497,9 @@ func init() {
 // slot that is still a legal battlefield card — the body of a
 // single-target "destroy target X" activated ability (Insidious
 // Fungus's two removal modes).
-func destroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func DestroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -512,7 +512,7 @@ func destroyFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 // case a card from it is somehow still on the battlefield: a
 // commander is destroyed like any creature (CR 903.9a, ADR 0115) and
 // does not count.
-func b17FoodPerCreatureYouControl(ctx *Context, destroyed []game.Card) error {
+func B17FoodPerCreatureYouControl(ctx *Context, destroyed []game.Card) error {
 	gone := make(map[uuid.UUID]bool, len(destroyed))
 	for _, c := range destroyed {
 		gone[c.InstanceID] = true
@@ -537,16 +537,10 @@ func b17FoodPerCreatureYouControl(ctx *Context, destroyed []game.Card) error {
 // on the entry of a creature under the source's controller's
 // control, adding the source's toughness as it is at that moment
 // (counters and anthems included).
-func b17OtherCreaturesYouControlEnterWithCounters(label string) game.ReplacementEffect {
+func B17OtherCreaturesYouControlEnterWithCounters(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
-		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield || src == nil || ev.CardID == src.InstanceID {
-				return false
-			}
-			entering, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && entering.IsCreature() && entering.Controller == src.Controller
-		},
+		Watches:   []game.EventKind{game.EventZoneMove},
+		AppliesTo: BnsB13OtherCreatureYouControlEnters,
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) error {
 			ev.AddCounterAtETB("+1/+1", src.CurrentToughness())
 			return nil

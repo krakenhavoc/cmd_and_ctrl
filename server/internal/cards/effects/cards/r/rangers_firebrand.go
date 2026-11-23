@@ -1,0 +1,34 @@
+package cardsr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Ranger's Firebrand — Sorcery {R}:
+//
+//	"Ranger's Firebrand deals 2 damage to any target. The Ring tempts
+//	 you."
+//
+// The tempt runs once the damage is dealt (a damage replacement can
+// stop to ask, CR 616.1). State-based actions are not checked until
+// the spell has resolved (CR 704.3), so a creature of yours dealt
+// lethal damage may still be chosen as the Ring-bearer.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "796d3836-d820-440c-b0ad-5907b3cfcb10",
+		Name:         "Ranger's Firebrand",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetAny(),
+		Purpose:      effects.WithRiders(effects.ForTargets(effects.DamageToTarget(0, 2)), game.Purpose{RingTempts: 1}),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			// The tempt is a keyed tail (#4253), the item riding it, so a
+			// prompt the damage pauses on is a restore point.
+			return ctx.Game.DealDamageEachKeyedForEffect(ctx.Source(), effects.LegalTargetIDs(ctx), 2,
+				ctx.ItemTail(effects.RingTemptsYouTail))
+		},
+	})
+}

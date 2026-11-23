@@ -32,14 +32,14 @@ func Prowl(cost string) game.AlternativeCost {
 		Key:            "prowl",
 		Label:          "Prowl " + cost,
 		ManaCost:       cost,
-		SpellCondition: prowlConditionMet,
+		SpellCondition: ProwlConditionMet,
 	}
 }
 
 // prowlConditionMet is prowl's gate: a creature type of the spell among
 // the creature types of a creature the caster controlled as it dealt
 // combat damage to a player this turn.
-func prowlConditionMet(g *game.Game, controller uuid.UUID, spell *game.Card) bool {
+func ProwlConditionMet(g *game.Game, controller uuid.UUID, spell *game.Card) bool {
 	for _, t := range game.CreatureTypesOf(spell) {
 		if len(g.PlayersDealtCombatDamageThisTurnBySubtype(controller, t)) > 0 {
 			return true

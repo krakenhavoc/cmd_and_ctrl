@@ -26,7 +26,7 @@ func init() {
 		Name:         "Disorienting Choice",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Tutors: 1, Lands: 1, Answers: game.AnswerRemove},
-		Targets:      perOpponentClauses(game.MaxPlayers-1, "artifact or enchantment", Or(Artifact(), Enchantment())),
+		Targets:      PerOpponentClauses(game.MaxPlayers-1, "artifact or enchantment", Or(Artifact(), Enchantment())),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			var picks []uuid.UUID
 			for _, t := range ctx.LegalTargets() {
@@ -43,13 +43,13 @@ func init() {
 // whether to exile it; `all` rides along as the chosen set.
 func disorientingChoiceAsk(ctx *Context, pending, all []uuid.UUID) error {
 	for len(pending) > 0 {
-		c, ok := disorientingChoiceOnBattlefield(ctx, pending[0])
+		c, ok := DisorientingChoiceOnBattlefield(ctx, pending[0])
 		if ok {
 			return MayChoice{
 				Player:   c.Controller,
 				Question: "Disorienting Choice — exile " + c.Name + "? (If you don't, the caster searches for a land.)",
 				Then:     disorientingChoiceAnswer,
-				Carry:    packIDLists(pending[:1], pending[1:], all),
+				Carry:    PackIDLists(pending[:1], pending[1:], all),
 			}.Apply(ctx)
 		}
 		pending = pending[1:]
@@ -61,7 +61,7 @@ var disorientingChoiceAnswer game.ConfirmThen
 
 func init() {
 	disorientingChoiceAnswer = MayAnswer("confirm/disorienting-choice-exile", func(ctx *Context, r game.ConfirmAnswer) error {
-		lists := unpackIDLists(r.Carry)
+		lists := UnpackIDLists(r.Carry)
 		if len(lists) < 3 {
 			return nil
 		}
@@ -80,7 +80,7 @@ func init() {
 func disorientingChoiceSearch(ctx *Context, all []uuid.UUID) error {
 	n := 0
 	for _, id := range all {
-		if _, ok := disorientingChoiceOnBattlefield(ctx, id); ok {
+		if _, ok := DisorientingChoiceOnBattlefield(ctx, id); ok {
 			n++
 		}
 	}
@@ -90,7 +90,7 @@ func disorientingChoiceSearch(ctx *Context, all []uuid.UUID) error {
 	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
 		Player:        ctx.Controller(),
 		Source:        ctx.Source(),
-		Pred:          b03IsLandCard,
+		Pred:          B03IsLandCard,
 		Dest:          game.ZoneBattlefield,
 		Limit:         n,
 		UpTo:          true,
@@ -100,7 +100,7 @@ func disorientingChoiceSearch(ctx *Context, all []uuid.UUID) error {
 	})
 }
 
-func disorientingChoiceOnBattlefield(ctx *Context, id uuid.UUID) (game.Card, bool) {
+func DisorientingChoiceOnBattlefield(ctx *Context, id uuid.UUID) (game.Card, bool) {
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.InstanceID == id {
 			return c, true

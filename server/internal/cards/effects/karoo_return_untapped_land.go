@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // untappedLandOfType is the payment match of "return an untapped <type>
 // you control": an untapped land with the land type `word`, the word
 // read through the source's text when the source is still here.
-func untappedLandOfType(word string) func(source *game.Card, land game.Card) bool {
+func UntappedLandOfType(word string) func(source *game.Card, land game.Card) bool {
 	return func(source *game.Card, land game.Card) bool {
 		sub := word
 		if source != nil {
@@ -39,7 +39,7 @@ func untappedLandOfType(word string) func(source *game.Card, land game.Card) boo
 // basic land type its trigger asks for, `color` the colour letter its
 // mana ability adds beside {C}, and `ret` the card's own registered
 // return (keys are per card).
-func karooReturningUntapped(oracleID, name, landType, color string, ret *returnLandsOrSacrifice) Spec {
+func KarooReturningUntapped(oracleID, name, landType, color string, ret *returnLandsOrSacrifice) Spec {
 	produced := "{C}{" + color + "}"
 	return Spec{
 		OracleID:     oracleID,
@@ -53,7 +53,7 @@ func karooReturningUntapped(oracleID, name, landType, color string, ret *returnL
 			Label:    "{T}: Add " + produced + ".",
 		}},
 		Triggered: []game.TriggeredAbility{
-			ret.trigger(name + " — sacrifice it unless you return an untapped " + landType + " you control to its owner's hand"),
+			ret.Trigger(name + " — sacrifice it unless you return an untapped " + landType + " you control to its owner's hand"),
 		},
 	}
 }

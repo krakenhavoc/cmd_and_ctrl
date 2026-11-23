@@ -301,6 +301,15 @@ type CostQuery struct {
 	// cast, and for an activation or special action.
 	AltBlitz bool
 
+	// AltFlashback reports that the alternative cost this cast claims is
+	// the card's flashback cost (CR 702.34a): Visions of Glory's "This
+	// spell costs {X} less to cast this way" is a reduction of the
+	// flashback cast alone, which a graveyard cast through some other
+	// permission (Patrician Geist's graveyard, an escape cost) must not
+	// get. Filled by the one pricer and by the enumerator from the offer
+	// it is announcing, as AltBlitz is. False for every other cast.
+	AltFlashback bool
+
 	// GrantReduction is the generic mana a cast permission takes off the
 	// spell cast through it (CastPermission.CostLess, #3787): Urianger
 	// Augurelt's "spells you cast this way cost {2} less to cast". Read
@@ -437,6 +446,14 @@ type SpecialActionCostSubject struct {
 	// ("the first card you foretell"), so a predicate reads this
 	// rather than assuming the only special action with a cost.
 	Kind SpecialActionKind
+
+	// Route is which rule a turn_face_up is taken under (ADR 0189
+	// decision 4, SpecialAction.Route), and empty for every other kind.
+	// Exiled Doomsayer's "All morph costs cost {2} more" (#5844) taxes
+	// the morph route (CR 702.37e, megamorph included by CR 702.37b) and
+	// not a disguise cost or a manifested or cloaked card's mana cost,
+	// which are the same KIND of special action at a different price.
+	Route TurnFaceUpRoute
 }
 
 // CostModifier is one "spells cost {N} more / less to cast" static
@@ -856,6 +873,11 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	out = g.appendEminenceCostModifiersLocked(out, q)
 	// ADR 0216 §6: a face-up plane's cost modifiers, all of them.
 	out = g.appendPlanarCostModifiersLocked(out, q)
+	// An emblem's cost modifiers (CR 114.3): Saheeli, Filigree Master's.
+	out = g.appendEmblemCostModifiersLocked(out, q)
+	// #5948: a timed "spells your opponents cast cost {N} more" held as a
+	// scoped record (Tax Collector, scoped_cost_tax.go).
+	out = g.appendScopedCostTaxLocked(out, q)
 	// #1184: an ability's cost is not its source's cost, and #1319
 	// widens the same fact to a special action's. The self slot is
 	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the
@@ -1199,7 +1221,7 @@ func (g *Game) AbilityManaCostAtXForEffect(activator uuid.UUID, source Card, zon
 	if x > 0 {
 		q.XValue = x
 	}
-	if ab.Cost.Mana == "" && !g.activationTaxApplicableLocked(q) {
+	if ab.Cost.Mana == "" && !g.costIncreaseApplicableLocked(q) {
 		// Nothing to discount: a cost with no mana component has no
 		// generic mana for a reduction to take off (CR 118.7a). Only an
 		// INCREASE can give it one (#5382, CR 602.2b through 601.2f:
@@ -1290,7 +1312,7 @@ func (g *Game) PriceActivation(activator, cardID uuid.UUID, index int, targets [
 // Caller must hold g.mu (read or write).
 func (g *Game) AbilityPriceReadsTargetsForEffect(ab ActivatedAbilityShape) bool {
 	// #5382: a cost with no mana component is priced only by an
-	// increase (activationTaxApplicableLocked), so for one only an
+	// increase (costIncreaseApplicableLocked), so for one only an
 	// increase that reads targets can make the price read them.
 	noMana := ab.Cost.Mana == ""
 	reads := func(m CostModifier) bool {
@@ -1327,8 +1349,12 @@ func (g *Game) AbilityPriceReadsTargetsForEffect(ab ActivatedAbilityShape) bool 
 // (SpecialAction.Zone), and the query reports it, so a plot from the
 // top of a library is not priced as a plot from the hand.
 //
+// The offer's Route rides along (#5844), so a clause that names one
+// turn-face-up cost ("all morph costs") can tell it from another.
+//
 // Caller must hold g.mu.
-func (g *Game) specialActionCostQueryLocked(actor uuid.UUID, card Card, kind SpecialActionKind, zone ZoneKind) CostQuery {
+func (g *Game) specialActionCostQueryLocked(actor uuid.UUID, card Card, kind SpecialActionKind, sa SpecialAction) CostQuery {
+	zone := sa.Zone
 	if zone == "" {
 		zone = specialActionZone(kind)
 	}
@@ -1338,7 +1364,8 @@ func (g *Game) specialActionCostQueryLocked(actor uuid.UUID, card Card, kind Spe
 		Controller: actor,
 		FromZone:   zone,
 		SpecialAction: &SpecialActionCostSubject{
-			Kind: kind,
+			Kind:  kind,
+			Route: sa.Route,
 		},
 	}
 }
@@ -1368,15 +1395,48 @@ func (g *Game) SpecialActionManaCostForEffect(actor uuid.UUID, card Card, kind S
 	if err != nil {
 		return ParsedCost{}, err
 	}
+	q := g.specialActionCostQueryLocked(actor, card, kind, sa)
 	if sa.Cost == "" {
-		// Nothing to discount and nothing to tax: a cost with no mana
-		// component is not made of mana, so the pass has no subject.
-		return base, nil
+		// Nothing to discount: a cost with no mana component has no
+		// generic mana for a reduction to take off (CR 118.7a). Only an
+		// INCREASE can give it some (#5844, the activation pricers'
+		// #5382 gate: Exiled Doomsayer's "All morph costs cost {2} more"
+		// reaches a morph cost that prints no mana), and with none on
+		// the board the printed (empty) cost is the price.
+		if !g.costIncreaseApplicableLocked(q) {
+			return base, nil
+		}
+		priced, err := g.applyCostModifiersLocked(base, q)
+		if err != nil {
+			return ParsedCost{}, err
+		}
+		if priced.Empty() {
+			return base, nil
+		}
+		return priced, nil
 	}
 	if kind == SpecialActionTurnFaceUp && sa.Route != TurnFaceUpByManaCost {
 		base = g.faceUpCostLessLocked(base, actor, card)
 	}
-	return g.applyCostModifiersLocked(base, g.specialActionCostQueryLocked(actor, card, kind, sa.Zone))
+	return g.applyCostModifiersLocked(base, q)
+}
+
+// SpecialActionChargesManaForEffect reports whether taking `sa` owes any
+// mana at all (#5844): its printed cost has a mana component, or a
+// special-action cost increase gives one to a cost that printed none.
+// AbilityChargesManaForEffect's twin (#5382), and the one question the
+// payment gate, the legal-move enumerator and the view ask instead of
+// testing sa.Cost != "", so a tax the engine charges is never a payment
+// a reader skipped. A pricing error answers true, so the caller goes on
+// to the pricer and refuses where the pricer does.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) SpecialActionChargesManaForEffect(actor uuid.UUID, card Card, kind SpecialActionKind, sa SpecialAction) bool {
+	if sa.Cost != "" {
+		return true
+	}
+	priced, err := g.SpecialActionManaCostForEffect(actor, card, kind, sa)
+	return err != nil || !priced.Empty()
 }
 
 // manaAbilityCostQueryLocked builds the CostQuery for one activation of
@@ -1443,7 +1503,7 @@ func (g *Game) ManaAbilityManaCostForEffect(activator uuid.UUID, source Card, ab
 		return ParsedCost{}, err
 	}
 	q := g.manaAbilityCostQueryLocked(activator, source, ab)
-	if ab.ManaCost == "" && !g.activationTaxApplicableLocked(q) {
+	if ab.ManaCost == "" && !g.costIncreaseApplicableLocked(q) {
 		// Nothing to discount, exactly as the CR 602 twin: a tap-only
 		// mana ability has no generic mana for a reduction to take off,
 		// and only an activation cost INCREASE could give it some
@@ -1461,7 +1521,7 @@ func (g *Game) ManaAbilityManaCostForEffect(activator uuid.UUID, source Card, ab
 	return priced, nil
 }
 
-// activationTaxApplicableLocked reports whether any activation cost
+// costIncreaseApplicableLocked reports whether any activation cost
 // INCREASE bears on the activation q describes (#5382): a board,
 // command-zone or planar modifier with CostModifier.Activations, or the
 // ability's own clause, whose AppliesTo admits it. It is the gate the
@@ -1471,13 +1531,18 @@ func (g *Game) ManaAbilityManaCostForEffect(activator uuid.UUID, source Card, ab
 // "costs {N} more to activate" on it prices them as it always did,
 // without running the reductions over a cost they cannot touch.
 //
+// The special-action pricer asks it too (#5844), for a special action
+// with no printed mana cost: q's own announcement kind partitions the
+// modifiers (pricesAnnouncement), so there the question is about
+// special-action increases only — Exiled Doomsayer's on a morph cost.
+//
 // An increase whose AppliesTo panics is not this function's problem:
 // amountFor runs the same predicate again inside the pass. One whose
 // amount would be negative still reads as applicable here, so the pass
 // runs and refuses it, exactly as for a printed mana cost.
 //
 // Caller must hold g.mu.
-func (g *Game) activationTaxApplicableLocked(q CostQuery) bool {
+func (g *Game) costIncreaseApplicableLocked(q CostQuery) bool {
 	for _, bm := range g.activeCostModifiersLocked(q) {
 		if bm.modifier.Kind != CostIncrease {
 			continue

@@ -30,7 +30,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return SearchLibrary{
 						Player:    item.Controller,
-						Predicate: func(c game.Card) bool { return b09IsEquipmentCard(c) && c.ManaValue() <= 3 },
+						Predicate: func(c game.Card) bool { return B09IsEquipmentCard(c) && c.ManaValue() <= 3 },
 						Dest:      game.ZoneBattlefield,
 						Limit:     1,
 						Optional:  true,
@@ -38,12 +38,12 @@ func init() {
 						Reason:    "Captain America, Liberator — an Equipment card with mana value 3 or less, onto the battlefield",
 					}.Apply(NewContext(g, item))
 				}),
-			On(game.EventAttack, msc6ThisAttacks,
+			On(game.EventAttack, Msc6ThisAttacks,
 				"Captain America, Liberator — for each Equipment attached to him, a 1/1 white Soldier",
 				Do(CreateTokensForEach{
 					Template: TokenCard("1/1 white Soldier"),
 					Name:     "Equipment attached to Captain America",
-					Count:    msc16EquipmentAttachedToTheSource,
+					Count:    Msc16EquipmentAttachedToTheSource,
 				})),
 		},
 	})
@@ -53,7 +53,7 @@ func init() {
 // him": live while the source is on the battlefield, else the Equipment that
 // was attached to it as it last existed (CR 608.2h). An Equipment that has
 // since left the battlefield still counts, read from the card where it is now.
-func msc16EquipmentAttachedToTheSource(ctx *Context) int {
+func Msc16EquipmentAttachedToTheSource(ctx *Context) int {
 	n := 0
 	if info, ok := ctx.SourcePermanent(); ok && info.Left {
 		for _, ref := range info.Attachments {

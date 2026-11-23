@@ -1,6 +1,6 @@
 # ADR 0066 — Granted cast and play permissions
 
-**Status:** accepted
+**Status:** Accepted
 **Date:** 2026-09-18
 **Sprint:** S42 — Casting from non-hand zones: granted permissions and alternative costs
 **Issues:** [#652](https://github.com/krakenhavoc/cmd_and_ctrl/issues/652) (granted cast permissions), [#765](https://github.com/krakenhavoc/cmd_and_ctrl/issues/765) (play and cast from the top of your library). Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885).

@@ -57,7 +57,7 @@ func forayOfOrcsDamage(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	power := 0
 	if army := ctx.PayloadCards(); len(army) > 0 {
-		power = b29PowerAsItLastStood(g, army[0])
+		power = B29PowerAsItLastStood(g, army[0])
 	}
 	if power <= 0 {
 		return nil

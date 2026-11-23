@@ -36,29 +36,52 @@ func init() {
 					ids = append(ids, t.ID)
 				}
 			}
-			return hiddenStringsMayTapOrUntap(ctx, ids)
+			return MayTapOrUntapEachInTurn(ctx, "Hidden Strings", hiddenStringsAnswer, ids)
 		},
 	})
 }
 
-// hiddenStringsMayTapOrUntap asks about the first of `ids`, then the
-// rest once that answer is in.
-func hiddenStringsMayTapOrUntap(ctx *Context, ids []uuid.UUID) error {
+// mayTapOrUntapEachInTurn is "you may tap or untap target permanent, then
+// you may tap or untap another target permanent" for the card named: it
+// asks about the first of `ids`, and `then` (the card's own keyed answer)
+// applies that answer and asks about the rest with tapOrUntapEachAnswered.
+// Hidden Strings and Toils of Night and Day share it.
+func MayTapOrUntapEachInTurn(ctx *Context, card string, then game.OptionPickThen, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
 	target := ids[0]
-	name := cardNameFor(ctx.Game, target)
+	name := CardNameFor(ctx.Game, target)
 	return PickOption{
-		Question: "Hidden Strings — you may tap or untap " + name,
+		Question: card + " — you may tap or untap " + name,
 		Options: []game.ChoiceOption{
 			{Label: "Tap it", Cards: []uuid.UUID{target}},
 			{Label: "Untap it", Cards: []uuid.UUID{target}},
 			{Label: "Leave it as it is", Cards: []uuid.UUID{target}},
 		},
-		ThenKey: hiddenStringsAnswer,
+		ThenKey: then,
 		Carry:   ids,
 	}.Apply(ctx)
+}
+
+// tapOrUntapEachAnswered applies the answer about the first carried
+// target, then asks about the rest under the same card name and key.
+func TapOrUntapEachAnswered(ctx *Context, r game.OptionPicked, card string, then game.OptionPickThen) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	target, rest := r.Carry[0], r.Carry[1:]
+	var err error
+	switch r.Index {
+	case 0:
+		err = TapTarget{Target: target}.Apply(ctx)
+	case 1:
+		err = UntapTarget{Target: target}.Apply(ctx)
+	}
+	if err != nil {
+		return err
+	}
+	return MayTapOrUntapEachInTurn(ctx, card, then, rest)
 }
 
 // hiddenStringsAnswer is the answer about the first target, then the next
@@ -76,19 +99,5 @@ func init() {
 }
 
 func hiddenStringsAnswered(ctx *Context, r game.OptionPicked) error {
-	if len(r.Carry) == 0 {
-		return nil
-	}
-	target, rest := r.Carry[0], r.Carry[1:]
-	var err error
-	switch r.Index {
-	case 0:
-		err = TapTarget{Target: target}.Apply(ctx)
-	case 1:
-		err = UntapTarget{Target: target}.Apply(ctx)
-	}
-	if err != nil {
-		return err
-	}
-	return hiddenStringsMayTapOrUntap(ctx, rest)
+	return TapOrUntapEachAnswered(ctx, r, "Hidden Strings", hiddenStringsAnswer)
 }

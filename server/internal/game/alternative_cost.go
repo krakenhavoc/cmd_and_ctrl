@@ -172,6 +172,13 @@ type AlternativeCost struct {
 	// ReturnToHand is "return an Island you control to its owner's
 	// hand" (Daze), matched against the caster's permanents. Also
 	// named in CastSpellParams.AltCostIDs.
+	//
+	// The count is the spec's Min, one when unset (#5837): Gush's
+	// "return two Islands you control to their owner's hand" is a spec
+	// of Min == Max == 2, and the caster names exactly that many
+	// distinct permanents. A board with fewer can't pay it (CR 118.3),
+	// so the offer is not shown. Each goes to its owner's hand (CR
+	// 400.3), with the spell already on the stack (CR 601.2h).
 	ReturnToHand *TargetSpec
 
 	// ExileFromGraveyard is escape's "Exile N other cards from your
@@ -733,7 +740,13 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 		}
 		return a.DiscardFromHand, ZoneHand, n
 	case a.ReturnToHand != nil:
-		return a.ReturnToHand, ZoneBattlefield, 1
+		// #5837: the count is the spec's Min, one when unset, as for a
+		// pitch — Daze's one Island, Gush's two, Thwart's three.
+		n := a.ReturnToHand.Min
+		if n < 1 {
+			n = 1
+		}
+		return a.ReturnToHand, ZoneBattlefield, n
 	case a.ExileFromGraveyard != nil:
 		n := a.ExileFromGraveyard.Min
 		if n < 1 {
@@ -996,7 +1009,8 @@ func (a *AlternativeCost) PaysCards() bool {
 
 // CardPaymentCount is how many cards the caster must name in
 // CastSpellParams.AltCostIDs to pay this offer's card component: one
-// for a pitch or a bounce, escape's N, zero for an offer whose only
+// for most pitches and bounces, Gush's two Islands (#5837), escape's N,
+// zero for an offer whose only
 // components are mana and life.
 //
 // Exported because the payment is exactly `want` and not "at least"
@@ -1518,7 +1532,15 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 			commanderAnswers: answers,
 		})
 	case alt.ReturnToHand != nil:
-		return move(ids[0], ZoneHand)
+		// One permanent for Daze, two for Gush, three for Thwart
+		// (#5837): each to its OWNER's hand (CR 400.3), which is what
+		// routeCardToZoneLocked resolves a hand with no named owner to,
+		// so an Island the caster controls but does not own goes home.
+		for _, id := range ids {
+			if err := move(id, ZoneHand); err != nil {
+				return err
+			}
+		}
 	case alt.CollectEvidence != nil:
 		// CR 701.59a: collect evidence N, exiled as a cost with the
 		// spell already on the stack, then announced once, so "whenever
@@ -1535,8 +1557,26 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 		// visible to anything watching the graveyard shrink, and
 		// what makes the cards stay exiled when the spell is
 		// countered.
+		//
+		// #5880, CR 607.2q: for a permanent spell the exiles are linked
+		// to the spell object (permanentSpellCostLinkLocked, Fear of
+		// Abduction's link), and relinkCostExilesLocked moves the link to
+		// the permanent as it enters, so Skyway Robber's "cards exiled
+		// with this creature" names the five cards its escape cost
+		// exiled. Nothing reads a link but the object it names, so an
+		// escaped creature without such an ability is unaffected.
+		link := g.permanentSpellCostLinkLocked(castID)
 		for _, id := range ids {
-			if err := move(id, ZoneExile); err != nil {
+			if _, err := g.routeCardToZoneLocked(zoneRoute{
+				CardID:          id,
+				Dst:             ZoneExile,
+				Actor:           playerID,
+				Source:          castID,
+				Cause:           spellCostCause(playerID, castID),
+				MustSettleNow:   true,
+				commanderAnswer: commanderAnswerFor(answers, id),
+				ExiledWith:      link,
+			}); err != nil {
 				return err
 			}
 		}

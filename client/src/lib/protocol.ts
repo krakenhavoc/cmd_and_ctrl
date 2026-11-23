@@ -212,6 +212,10 @@ export const ATTACK_REFUSAL_REASONS = [
   // unobeyable, or the active player's pass in declare_attackers would
   // leave one unmet. `card_id` is the creature that carries it.
   "attack_requirement",
+  // ADR 0224 (#5723): a band in the declaration breaks CR 702.22c-d —
+  // two creatures without banding in it, or members attacking
+  // different things. `card_id` is a creature of the band.
+  "band",
 ] as const;
 export type AttackRefusalReason = (typeof ATTACK_REFUSAL_REASONS)[number];
 
@@ -1431,6 +1435,7 @@ export type LogKind =
   // `card_id` is the melded permanent and `label` names the two cards
   // it was melded from.
   | "meld"
+  | "mutate"
   // #1199, ADR 0084: a permanent phased out or in (CR 702.26).
   // Narrated for `transform`'s reason and one more that is stronger
   // here — phasing out is not a zone change (CR 702.26d), so no
@@ -2480,6 +2485,13 @@ export interface PendingChoiceView {
   mode_used_options?: string[];
   mode_used_indexes?: number[];
   mode_not_chosen?: ModeNotChosen;
+  // #5771, CR 700.2e: on a mode_pick an opponent answers for an "An
+  // opponent chooses one" spell, the player id casting it, and the
+  // spell's name (its card is still in the caster's hand, out of the
+  // chooser's sight, while the cast waits). Absent on a trigger's own
+  // mode_pick.
+  mode_chosen_for?: string;
+  mode_spell_name?: string;
 }
 
 // ModeNotChosen is a "that hasn't been chosen" restriction (ADR 0097):
@@ -2593,6 +2605,12 @@ export interface DamageAssignmentView {
   // blocks every creature in blocker_card_ids, and its controller
   // divides its damage among them freely — no order, no trample.
   blocker_divides?: boolean;
+  // ADR 0224, CR 702.22j-k: banding handed this division to the other
+  // side. The chooser divides damage dealt TO their own creatures: the
+  // defending player an attacker's among their blockers, or the active
+  // player a blocker's among their attackers. No trample, and
+  // covers_lethal is never set, so the split is never sent unasked.
+  banding?: boolean;
   // #2956 (ADR 0147): the server's canonical split
   // (legal.CanonicalDamageSplit), the one the bots answer with. The
   // prompt pre-fills it, and with "Auto-assign combat damage" on the
@@ -3083,8 +3101,9 @@ export interface PlayerView {
   // directly.
   outside_play?: { source_name: string; can_name?: boolean };
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
-  // right now — bare engine tokens, "hexproof" or a general
-  // "protection from <quality>" ("protection from everything" is the
+  // right now — bare engine tokens, "hexproof", "shroud" (#5842,
+  // CR 702.18a: Gilded Light; it stops the seat's own spells too) or a
+  // general "protection from <quality>" ("protection from everything" is the
   // only quality a catalogued card grants a player today — Teferi's
   // Protection, The One Ring, Leyline of Sanctity, Aegis of the
   // Gods). Derived grants (a controlled Leyline) come first, then
@@ -3205,6 +3224,13 @@ export interface EmblemView {
   // is gained at, so the table can show the lines still to come.
   // Absent on every other emblem.
   lines?: EmblemLineView[];
+  // #5868, CR 114.4: the emblem's activated abilities (Karn, Living
+  // Legacy's "Tap an untapped artifact you control: This emblem deals 1
+  // damage to any target."), the same rows a card's `zone_abilities`
+  // carries. OWNER ONLY: present on your own emblems and absent on every
+  // other seat's. Sent as `activate_ability` with the emblem's
+  // instance_id as `source_card_id`.
+  zone_abilities?: ActivatedAbilityView[];
 }
 
 export interface EmblemLineView {
@@ -3270,6 +3296,13 @@ export interface ModeSpecView {
   // to more; the server refuses a selection that does. Absent for a
   // modal card without pawprints.
   pawprints?: number;
+  // #5771, CR 700.2e: "An opponent chooses one —" (Fatal Lore). The
+  // caster does not choose the mode: the card is cast with no mode and
+  // no target and no picker opens. The server asks the caster which
+  // opponent (an option_pick, when more than one could choose), that
+  // opponent a mode_pick (`mode_chosen_for`), then the caster any
+  // targets (a pick_target).
+  chosen_by_opponent?: boolean;
 }
 
 // EscalateView is ModeSpecView.escalate. Discards ride cast_spell's
@@ -3478,6 +3511,12 @@ export interface OptionalCostView {
   // pays for, and `energy_short` says it pays for none.
   energy?: number;
   energy_short?: boolean;
+  // #5782 (ADR 0100's 2026-11-20 amendment): the fixed life this cost
+  // pays (Slaughter's "Buyback—Pay 4 life" is 4), and `life_short` when
+  // the viewer can't pay it now (a life total below it, CR 119.4, or a
+  // rule that stops them paying life), so the offer cannot be taken.
+  pay_life?: number;
+  life_short?: boolean;
   // The card-shaped halves, in the same shape and with the same
   // meaning AdditionalCostView gives them: a present-and-empty
   // sacrifice_options means the offer cannot be taken right now.
@@ -5343,6 +5382,10 @@ export interface CardView extends CastSurfaceView {
   // id is a seat id or an instance id and this says which. Absent
   // when nothing is declared.
   attacking_target_kind?: "player" | "planeswalker" | "battle";
+  // ADR 0224, CR 702.22c: the band this attacker is in. Attackers with
+  // the same number attack as one band, and blocking one blocks them all
+  // (CR 702.22h). Absent for an attacker in no band.
+  attack_band?: number;
   // #1339: the seat defending against this attack — the only seat
   // whose creatures may block it (CR 802.4a): the player attacked, the
   // planeswalker's controller, or the battle's PROTECTOR. Absent when
@@ -5699,7 +5742,8 @@ export interface CardView extends CastSurfaceView {
   // S24 — the restriction set the server computed for this
   // permanent: "cant_attack", "cant_block", "cant_be_blocked",
   // "cant_activate", "cant_activate_mana", and (#2733)
-  // "cant_become_suspected". Absent for the permanent
+  // "cant_become_suspected", and (#5673) "cant_crew" (the server
+  // leaves it out of every crew cost's crew_options). Absent for the permanent
   // nothing is restricting, which is nearly all of them.
   //
   // Deliberately separate from `abilities`. A restriction is not a
@@ -5747,6 +5791,12 @@ export interface CardView extends CastSurfaceView {
   // is the permanent; this is what it is made of, and what its owner
   // gets back when it leaves. Absent on every other card.
   melded_from?: CardFaceView[];
+  // ADR 0223 (CR 702.140c, 730.2): a MUTATED permanent's components,
+  // topmost first. Everything above describes the permanent (the top
+  // card plus every component's abilities); this is what it is made
+  // of, and what its owner gets back when it leaves. Absent on every
+  // other card.
+  merged_from?: CardFaceView[];
   // ADR 0145 (CR 712.4): a meld card's combined back face — the
   // permanent it and its partner become when they meld. Absent on
   // every other card and on a melded permanent.
@@ -6065,6 +6115,11 @@ export interface AttackTargetView {
   // in the client re-derives what an attack costs, for the same
   // reason nothing re-derives who may attack (#429, ADR 0045 §6).
   tax?: string;
+  // #5869: the life ONE creature pays to attack this target (2 under
+  // Sivitri, Dragon Master's +1), paid after `tax`'s mana and only from
+  // a life total at least that large (CR 119.4). Absent when attacking
+  // it costs no life. A declaration of n attackers pays n times as much.
+  tax_life?: number;
   // #4198: how many symbols in ONE creature's `tax` carry CR 107.4f's
   // "or 2 life" option (Norn's Annex's {W/P} is 1). Absent when none
   // does. A declaration of n attackers prints n times as many, and the

@@ -29,15 +29,15 @@ import (
 // b13AnotherCreatureYouControlEntered is "whenever another creature
 // you control enters" — Corpse Knight, Witty Roastmaster, Prosperous
 // Innkeeper. Post-layer type, so an animated land counts.
-func b13AnotherCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B13AnotherCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsCreature()
 }
 
 // b13LandYouControlEntered is landfall — Hedron Crab. Tireless
 // Provisioner's condition, named.
-func b13LandYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func B13LandYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsLand()
 }
 
@@ -48,7 +48,7 @@ func b13LandYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bo
 // traded with its blocker is still on the battlefield when its event
 // fires. The damaging creature's ID is ev.Source itself, so callers
 // that need it read that off the event rather than a second return.
-func b13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B13CreatureDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target != source.Controller {
 		return false
 	}
@@ -72,7 +72,7 @@ func damageSourceIsABattlefieldCreature(ev game.Event, g *game.Game) bool {
 // creature rides the trigger's event and is destroyed only if it is
 // still on the battlefield. Not targeted, so hexproof does not save it;
 // indestructible does.
-func destroyTheCreatureThatDealtTheDamage(g *game.Game, item *game.StackItem) error {
+func DestroyTheCreatureThatDealtTheDamage(g *game.Game, item *game.StackItem) error {
 	attacker := item.Trigger.Event.Source
 	if z := g.FindCardZoneForEffect(attacker); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
@@ -92,8 +92,8 @@ func destroyTheCreatureThatDealtTheDamage(g *game.Game, item *game.StackItem) er
 // not for the owner. "Creature" is its type as it last existed
 // (leftAsType, #1675), so a crewed Vehicle or an animated land that
 // is bounced counts.
-func b13OtherCreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
-	return ev.CardID != source.InstanceID && creatureYouControlLeftWithoutDying(ev, source, g)
+func B13OtherCreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
+	return ev.CardID != source.InstanceID && CreatureYouControlLeftWithoutDying(ev, source, g)
 }
 
 // creatureYouControlLeftWithoutDying is the same condition without
@@ -101,12 +101,12 @@ func b13OtherCreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card
 // departing creature IS the source, the harvester's CR 603.10a
 // look-back hands this the card that left, so the controller test is
 // trivially the source's own.
-func creatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
+func CreatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone == game.ZoneGraveyard {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftAsType(ev, c, "creature") && leftUnderControlOf(ev, c) == source.Controller
+	return ok && LeftAsType(ev, c, "creature") && LeftUnderControlOf(ev, c) == source.Controller
 }
 
 // --- power of a departed permanent ---------------------------------
@@ -116,7 +116,7 @@ func creatureYouControlLeftWithoutDying(ev game.Event, source *game.Card, g *gam
 // counter kind, CR 122.1a), floored at zero the way CurrentPower floors
 // it. `lki` is the harvester's characteristic, used only when the card
 // has no departure record (it never left through the battlefield exit).
-func b13LastKnownPower(g *game.Game, cardID uuid.UUID, lki game.Characteristic) int {
+func B13LastKnownPower(g *game.Game, cardID uuid.UUID, lki game.Characteristic) int {
 	p := lki.Power
 	if info, ok := g.LastKnownPermanentForEffect(cardID); ok {
 		p = info.Power
@@ -131,7 +131,7 @@ func b13LastKnownPower(g *game.Game, cardID uuid.UUID, lki game.Characteristic) 
 
 // b13WithoutPlusOneCounter is Wave Goodbye's "creature without a
 // +1/+1 counter on it".
-func b13WithoutPlusOneCounter() CardPredicate {
+func B13WithoutPlusOneCounter() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.Counters["+1/+1"] <= 0
 	}
@@ -139,7 +139,7 @@ func b13WithoutPlusOneCounter() CardPredicate {
 
 // b13PowerGreaterThan is Fell the Mighty's "creatures with power
 // greater than N", current power so counters and anthems count.
-func b13PowerGreaterThan(n int) CardPredicate {
+func B13PowerGreaterThan(n int) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsCreature() && c.CurrentPower() > n
 	}
@@ -154,7 +154,7 @@ func b13PowerGreaterThan(n int) CardPredicate {
 // where X is zero (CR 202.3e). Re-run at resolution like every
 // target predicate, so a graveyard that shrank in response can
 // legally take the target out.
-func b13ManaValueAtMostControllersGraveyard() CardPredicate {
+func B13ManaValueAtMostControllersGraveyard() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		controller := c.Controller
 		if item := g.StackItemForEffect(c.InstanceID); item != nil {
@@ -180,7 +180,7 @@ func b13ManaValueAtMostControllersGraveyard() CardPredicate {
 // at declaration and cleared as the end of combat step ENDS
 // (CR 511.3), so a trigger that resolves during a combat damage step
 // or the end of combat step still sees the attackers.
-func b13AttackingCreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
+func B13AttackingCreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.AttackingTarget != uuid.Nil {
@@ -194,8 +194,8 @@ func b13AttackingCreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.
 
 // b13PutCounterOnEach puts one +1/+1 counter on every listed
 // permanent still on the battlefield, in the given order.
-func b13PutCounterOnEach(ctx *Context, ids []uuid.UUID) error {
-	return b13PutCounterOnEachThen(ctx, ids, game.KeyedTail{})
+func B13PutCounterOnEach(ctx *Context, ids []uuid.UUID) error {
+	return B13PutCounterOnEachThen(ctx, ids, game.KeyedTail{})
 }
 
 // b13PutCounterOnEachThen is b13PutCounterOnEach with a continuation
@@ -212,7 +212,7 @@ func b13PutCounterOnEach(ctx *Context, ids []uuid.UUID) error {
 // #4253 slice 7: `then` is a registered tail and the rest of the list rides
 // each placement's tail as data, so a CR 616 prompt over any one of them is
 // a restore point.
-func b13PutCounterOnEachThen(ctx *Context, ids []uuid.UUID, then game.KeyedTail) error {
+func B13PutCounterOnEachThen(ctx *Context, ids []uuid.UUID, then game.KeyedTail) error {
 	for len(ids) > 0 {
 		if z := ctx.Game.FindCardZoneForEffect(ids[0]); z != nil && z.Kind == game.ZoneBattlefield {
 			break
@@ -242,13 +242,13 @@ func init() {
 		if o.Tail.Next != nil {
 			then = *o.Tail.Next
 		}
-		return b13PutCounterOnEachThen(ctx, o.Tail.Carry, then)
+		return B13PutCounterOnEachThen(ctx, o.Tail.Carry, then)
 	})
 }
 
 // b13CreateTappedTreasures is "create N tapped Treasure tokens" —
 // Goldvein Hydra's payout. Zero or fewer makes nothing.
-func b13CreateTappedTreasures(ctx *Context, controller uuid.UUID, n int) error {
+func B13CreateTappedTreasures(ctx *Context, controller uuid.UUID, n int) error {
 	if n <= 0 {
 		return nil
 	}

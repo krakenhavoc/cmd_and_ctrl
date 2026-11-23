@@ -31,7 +31,7 @@ func WheneverYouPutOneOrMoreCountersOnACreature(match func(g *game.Game, source 
 		if source == nil {
 			return false
 		}
-		if _, ok := b12CountersPlacedByYou(ev, source, g); !ok {
+		if _, ok := B12CountersPlacedByYou(ev, source, g); !ok {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.Target)
@@ -40,24 +40,24 @@ func WheneverYouPutOneOrMoreCountersOnACreature(match func(g *game.Game, source 
 		}
 		return match == nil || match(g, source, c)
 	}, label, effect))
-	t.BatchKey = counterTargetBatchKey
+	t.BatchKey = CounterTargetBatchKey
 	return t
 }
 
 // counterTargetBatchKey is the TriggeredAbility.BatchKey for a counter
 // placement: the permanent the counters went on.
-func counterTargetBatchKey(ev game.Event, _ *game.Card, _ *game.Game) string {
+func CounterTargetBatchKey(ev game.Event, _ *game.Card, _ *game.Game) string {
 	return ev.Target.String()
 }
 
 // creatureYouDontControl is the match for "a creature you don't
 // control".
-func creatureYouDontControl(_ *game.Game, source *game.Card, c game.Card) bool {
+func CreatureYouDontControl(_ *game.Game, source *game.Card, c game.Card) bool {
 	return c.Controller != source.Controller && c.Controller != uuid.Nil
 }
 
 // creatureYouControl is the match for "a creature you control".
-func creatureYouControl(_ *game.Game, source *game.Card, c game.Card) bool {
+func CreatureYouControl(_ *game.Game, source *game.Card, c game.Card) bool {
 	return c.Controller == source.Controller && c.Controller != uuid.Nil
 }
 
@@ -75,7 +75,7 @@ func WheneverYouPutCountersOfKindOnACreature(kind string, match func(g *game.Gam
 		if source == nil || ev.Label != kind {
 			return false
 		}
-		if _, ok := countersPutBy(ev, source.Controller, g, true); !ok {
+		if _, ok := CountersPutBy(ev, source.Controller, g, true); !ok {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.Target)
@@ -84,7 +84,7 @@ func WheneverYouPutCountersOfKindOnACreature(kind string, match func(g *game.Gam
 		}
 		return match == nil || match(g, source, c)
 	}, label, effect))
-	t.BatchKey = counterTargetBatchKey
+	t.BatchKey = CounterTargetBatchKey
 	return t
 }
 
@@ -107,7 +107,7 @@ func CountersOfKindYouPutInTheSameBatch(g *game.Game, ev game.Event, you uuid.UU
 		if e.Batch != ev.Batch || e.Kind != game.EventCounterPlaced || e.Target != ev.Target || e.Label != kind {
 			continue
 		}
-		if delta, ok := countersPutBy(e, you, g, false); ok {
+		if delta, ok := CountersPutBy(e, you, g, false); ok {
 			n += delta
 		}
 	}
@@ -117,6 +117,6 @@ func CountersOfKindYouPutInTheSameBatch(g *game.Game, ev game.Event, you uuid.UU
 // countersPutBy is how many counters ev placed and whether `you` put
 // them: b12CountersPlacedBy, which reads the placer every placement
 // names on the event (Event.Actor, #3942).
-func countersPutBy(ev game.Event, you uuid.UUID, g *game.Game, requireBattlefield bool) (int, bool) {
+func CountersPutBy(ev game.Event, you uuid.UUID, g *game.Game, requireBattlefield bool) (int, bool) {
 	return b12CountersPlacedBy(ev, you, g, requireBattlefield)
 }

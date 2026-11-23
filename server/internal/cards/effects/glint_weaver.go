@@ -27,7 +27,7 @@ func init() {
 		PrintedKeywords: []string{"reach"},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
-			AppliesTo: b06SelfETB,
+			AppliesTo: B06SelfETB,
 			Targets: TargetCreature("one, two, or three target creatures").
 				WithCount(1, 3).Dividing(Divide(3)),
 			Key: "Glint Weaver — distribute three +1/+1 counters, then gain life",
@@ -38,7 +38,7 @@ func init() {
 					return PutDividedCounters(ctx, game.CounterPlusOne)
 				}),
 				Instruction(func(ctx *Context) error {
-					n := glintWeaverGreatestToughnessControlledBy(ctx.Game, ctx.Controller())
+					n := GlintWeaverGreatestToughnessControlledBy(ctx.Game, ctx.Controller())
 					return GainLife{Player: ctx.Controller(), Amount: n}.Apply(ctx)
 				}),
 			),
@@ -50,7 +50,7 @@ func init() {
 // among creatures you control", read after the counters have already
 // landed so a Glint Weaver that grew itself counts its new toughness.
 // Zero when the controller has no creatures.
-func glintWeaverGreatestToughnessControlledBy(g *game.Game, controller uuid.UUID) int {
+func GlintWeaverGreatestToughnessControlledBy(g *game.Game, controller uuid.UUID) int {
 	best := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || !c.IsCreature() {

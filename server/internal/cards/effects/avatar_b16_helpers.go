@@ -17,11 +17,11 @@ import (
 type avB16CondLessonInYourGraveyard struct{}
 
 func (avB16CondLessonInYourGraveyard) Holds(ctx *Context) bool {
-	return avB4LessonsInGraveyard(ctx.Game, ctx.Controller()) > 0
+	return AvB4LessonsInGraveyard(ctx.Game, ctx.Controller()) > 0
 }
 
-func (avB16CondLessonInYourGraveyard) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondGraveyard, 0), true
+func (avB16CondLessonInYourGraveyard) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondGraveyard, 0), true
 }
 
 // avB16DiedWithALessonInYourGraveyard is "When this creature dies, if
@@ -30,12 +30,12 @@ func (avB16CondLessonInYourGraveyard) condition() (game.FootprintStep, bool) {
 // (the creature is in it by now, and is never a Lesson). If there is none,
 // the ability is not put on the stack at all (the card's ruling).
 func avB16DiedWithALessonInYourGraveyard(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-	return ThisDied(ev, source, lki, g) && avB4LessonsInGraveyard(g, source.Controller) > 0
+	return ThisDied(ev, source, lki, g) && AvB4LessonsInGraveyard(g, source.Controller) > 0
 }
 
 // avB16WhenThisDiesIfLesson is the whole row for "When this creature
 // dies, if there's a Lesson card in your graveyard, <steps>".
-func avB16WhenThisDiesIfLesson(label string, steps ...Applier) game.TriggeredAbility {
+func AvB16WhenThisDiesIfLesson(label string, steps ...Applier) game.TriggeredAbility {
 	return InterveningIf(avB16CondLessonInYourGraveyard{},
 		On(game.EventLTB, avB16DiedWithALessonInYourGraveyard, label, Do(steps...)))
 }
@@ -44,7 +44,7 @@ func avB16WhenThisDiesIfLesson(label string, steps ...Applier) game.TriggeredAbi
 // flying get +1/+1." (Favorable Winds, Air Nomad Legacy): a layer 7c
 // modify over the controller's creatures that have flying, read through
 // the layers on every pass.
-func creaturesYouControlWithFlyingGetPlusOne() game.StaticAbility {
+func CreaturesYouControlWithFlyingGetPlusOne() game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "Creatures you control with flying get +1/+1.",
 		Layer:     game.Layer7PT,
@@ -62,7 +62,7 @@ func creaturesYouControlWithFlyingGetPlusOne() game.StaticAbility {
 // Administrator). The condition is read as the creature enters (CR
 // 614.1c): a creature that entered before its controller attacked this
 // turn gets nothing later.
-func avB16SelfEntersWithCountersIfRaid(kind string, n int) game.ReplacementEffect {
+func AvB16SelfEntersWithCountersIfRaid(kind string, n int) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		RowLabel:  "Raid — Enters with " + counterCountPhrase(n, kind) + " on it if you attacked this turn.",
 		EntryOnly: true,
@@ -71,7 +71,7 @@ func avB16SelfEntersWithCountersIfRaid(kind string, n int) game.ReplacementEffec
 			return ev.Kind == game.RepEventMove &&
 				ev.NewZone == game.ZoneBattlefield &&
 				src != nil && ev.CardID == src.InstanceID &&
-				b18AttackedThisTurn(g, src.Controller)
+				B18AttackedThisTurn(g, src.Controller)
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.AddCounterAtETB(kind, n)
@@ -83,7 +83,7 @@ func avB16SelfEntersWithCountersIfRaid(kind string, n int) game.ReplacementEffec
 // avB16PlusOneCountersOnLandsYouControl is the number of +1/+1 counters
 // on lands `you` controls (Toph, the Blind Bandit), the land type read
 // through the layers.
-func avB16PlusOneCountersOnLandsYouControl(g *game.Game, you uuid.UUID) int {
+func AvB16PlusOneCountersOnLandsYouControl(g *game.Game, you uuid.UUID) int {
 	n := 0
 	for _, c := range g.Battlefield.Cards {
 		if c.Controller == you && c.IsLand() {
@@ -98,15 +98,15 @@ func avB16PlusOneCountersOnLandsYouControl(g *game.Game, you uuid.UUID) int {
 // avB16SoldierFirebendingToken is the 2/2 red Soldier with firebending 1
 // (Cruel Administrator): the catalog's `token:soldier-firebending`, the
 // same printed token Firebender Ascension makes.
-func avB16SoldierFirebendingToken() game.Card {
-	return tokenFromCatalog(printedFirebendingSoldierToken)
+func AvB16SoldierFirebendingToken() game.Card {
+	return TokenFromCatalog(printedFirebendingSoldierToken)
 }
 
 // avB16Earthbend is a triggered ability's whole effect when it is
 // "earthbend N" and nothing else (Toph, the Blind Bandit's enters trigger,
 // Earth Village Ruffians' dies trigger): the row's target is the keyword's
 // own clause (EarthbendTargets).
-func avB16Earthbend(n int) Effect {
+func AvB16Earthbend(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return EarthbendFirstTarget(EarthbendCount(n))(item, NewContext(g, item))
 	}

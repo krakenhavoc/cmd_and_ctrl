@@ -52,7 +52,7 @@ func init() {
 // only, so it is safe inside a layer pass.
 func nameStickersWithAtLeastLetters(n int) func(g *game.Game, source *game.Card) int {
 	return func(_ *game.Game, source *game.Card) int {
-		return nameStickerCount(*source, func(text string) bool { return game.StickerLetters(text) >= n })
+		return NameStickerCount(*source, func(text string) bool { return game.StickerLetters(text) >= n })
 	}
 }
 
@@ -69,19 +69,19 @@ func fightTheBlankFightWhenYouDo(ctx *Context) error {
 	}.Apply(ctx)
 }
 
-var fightTheBlankFightBody = game.ReflexiveBody("fight-the-blank-fight/fight", simpleBody(fightTheBlankFightFight),
-	constTargets(func() *game.TargetSpec {
+var fightTheBlankFightBody = game.ReflexiveBody("fight-the-blank-fight/fight", SimpleBody(FightTheBlankFightFight),
+	ConstTargets(func() *game.TargetSpec {
 		return TargetCreature("up to one target creature you don't control", Not(YouControl())).WithCount(0, 1)
 	}))
 
-func fightTheBlankFightFight(g *game.Game, item *game.StackItem) error {
+func FightTheBlankFightFight(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	auras := ctx.PayloadCards()
 	if len(auras) == 0 {
 		return nil
 	}
 	aura, ok := g.LookupCardForEffect(auras[0])
-	if !ok || !onBattlefield(g, aura.InstanceID) {
+	if !ok || !OnBattlefield(g, aura.InstanceID) {
 		return nil
 	}
 	host := g.AttachedHostOf(&aura)
@@ -90,7 +90,7 @@ func fightTheBlankFightFight(g *game.Game, item *game.StackItem) error {
 	}
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
-			return b10Fight(ctx, host.InstanceID, t.ID)
+			return B10Fight(ctx, host.InstanceID, t.ID)
 		}
 	}
 	return nil

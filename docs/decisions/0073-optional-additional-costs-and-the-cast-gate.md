@@ -1,6 +1,6 @@
 # ADR 0073 — Optional additional costs and the announce-time cast gate
 
-**Status:** accepted
+**Status:** Accepted
 **Date:** 2026-09-18
 **Sprint:** S42 — Casting from non-hand zones: granted permissions and alternative costs
 **Issues:** [#664](https://github.com/krakenhavoc/cmd_and_ctrl/issues/664) (optional additional costs — kicker and buyback, including non-mana), [#760](https://github.com/krakenhavoc/cmd_and_ctrl/issues/760) (one announce-time cast gate). Tracker [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885).

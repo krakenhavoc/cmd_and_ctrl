@@ -21,7 +21,14 @@ const (
 	SlotRare     Slot = "rare"
 	SlotLand     Slot = "land"
 	SlotWildcard Slot = "wildcard"
+	// SlotFoil is a play booster's traditional foil, drawn as a plain
+	// card.
+	SlotFoil Slot = "foil"
 )
+
+// packOrder is the order of the slots in a pack. A bonus card sits after
+// the cards of the slot it took the place of.
+var packOrder = []Slot{SlotCommon, SlotUncommon, SlotRare, SlotLand, SlotWildcard, SlotFoil}
 
 // Pick is one card of a pack and the slot that drew it.
 type Pick struct {
@@ -121,37 +128,63 @@ func (p Pool) rareOrMythic(d *drawer) (Card, bool) {
 	return d.draw(first)
 }
 
-// wildcard draws a card of any rarity: the rarity by the recipe's
-// weights over the rarities the set has, then a card of it.
-func (p Pool) wildcard(d *drawer) (Card, bool) {
-	wc, wu, wr := p.Recipe.WildcardCommon, p.Recipe.WildcardUncommon, p.Recipe.WildcardRareOrMythic
-	if len(p.Commons) == 0 {
-		wc = 0
+// bySplit draws a card of any rarity: the rarity by the split's weights
+// over the rarities the pool has, then a card of it. A rare or mythic
+// falls back to the other rather than repeat a card, as the rare slot
+// does.
+func (p Pool) bySplit(d *drawer, split RaritySplit) (Card, bool) {
+	weights := []struct {
+		w    int
+		pool []Card
+	}{
+		{split.Common, p.Commons},
+		{split.Uncommon, p.Uncommons},
+		{split.Rare, p.Rares},
+		{split.Mythic, p.Mythics},
 	}
-	if len(p.Uncommons) == 0 {
-		wu = 0
+	total := 0
+	for i := range weights {
+		if weights[i].w < 0 || len(weights[i].pool) == 0 {
+			weights[i].w = 0
+		}
+		total += weights[i].w
 	}
-	if len(p.Rares)+len(p.Mythics) == 0 {
-		wr = 0
-	}
-	total := wc + wu + wr
 	if total <= 0 {
 		// Every weight is off, or names an empty rarity: a common.
 		return d.draw(p.Commons)
 	}
-	switch n := d.rng.IntN(total); {
-	case n < wc:
-		return d.draw(p.Commons)
-	case n < wc+wu:
-		return d.draw(p.Uncommons)
+	n := d.rng.IntN(total)
+	pick := 0
+	for i, w := range weights {
+		if n < w.w {
+			pick = i
+			break
+		}
+		n -= w.w
+	}
+	switch pick {
+	case 2, 3:
+		first, second := p.Rares, p.Mythics
+		if pick == 3 {
+			first, second = p.Mythics, p.Rares
+		}
+		if d.free(first) == 0 && d.free(second) > 0 {
+			first = second
+		}
+		return d.draw(first)
 	default:
-		return p.rareOrMythic(d)
+		return d.draw(weights[pick].pool)
 	}
 }
 
 // Pack draws one pack from the pool with rng. The same pool and rng
 // state give the same pack. No oracle ID repeats within a pack unless
 // the pool is too small to avoid it.
+//
+// The bonus slots are rolled first, in the recipe's order. Each one that
+// opens takes the place of one slot of the kind it replaces, while one
+// is left; a slot with no cards in the data never opens, and draws
+// nothing from rng to decide so. Then the slots are drawn in packOrder.
 func (p Pool) Pack(rng *rand.Rand) (Pack, error) {
 	if !p.CanFill() {
 		return Pack{}, fmt.Errorf("%w: %q", ErrNoPack, p.Set)
@@ -164,43 +197,58 @@ func (p Pool) Pack(rng *rand.Rand) (Pack, error) {
 			out.Cards = append(out.Cards, Pick{Card: c, Slot: slot})
 		}
 	}
-	common := func(slot Slot) {
-		c, ok := d.draw(p.Commons)
-		add(slot, c, ok)
+
+	left := map[Slot]int{}
+	for _, s := range packOrder {
+		left[s] = r.slotCount(s)
+	}
+	opened := map[Slot][]int{}
+	for i, b := range r.Bonus {
+		if i >= len(p.Bonus) || len(p.Bonus[i]) == 0 || !r.bonusOn(b) || left[b.Slot()] <= 0 {
+			continue
+		}
+		if b.OneIn > 1 && !oneIn(rng, b.OneIn) {
+			continue
+		}
+		left[b.Slot()]--
+		opened[b.Slot()] = append(opened[b.Slot()], i)
 	}
 
-	for range r.Commons {
-		common(SlotCommon)
-	}
-	// The bonus slots (a play booster's seventh common slot). The roll
-	// is skipped, not just ignored, when the set has no bonus sheet in
-	// the data.
-	for range r.BonusSlots {
-		if len(p.Bonus) > 0 && oneIn(rng, r.BonusSheetOneIn) {
-			c, ok := d.draw(p.Bonus)
+	for _, slot := range packOrder {
+		if slot == SlotRare {
+			c, ok := p.rareOrMythic(d)
+			add(SlotRare, c, ok)
+			continue
+		}
+		for range left[slot] {
+			switch slot {
+			case SlotCommon:
+				c, ok := d.draw(p.Commons)
+				add(SlotCommon, c, ok)
+			case SlotUncommon:
+				c, ok := d.draw(p.Uncommons)
+				add(SlotUncommon, c, ok)
+			case SlotLand:
+				if len(p.Lands) > 0 {
+					c, ok := d.draw(p.Lands)
+					add(SlotLand, c, ok)
+				} else {
+					// A set with no basic lands in its boosters.
+					c, ok := d.draw(p.Commons)
+					add(SlotLand, c, ok)
+				}
+			case SlotWildcard:
+				c, ok := p.bySplit(d, r.Wildcard)
+				add(SlotWildcard, c, ok)
+			case SlotFoil:
+				c, ok := p.bySplit(d, r.Foil)
+				add(SlotFoil, c, ok)
+			}
+		}
+		for _, i := range opened[slot] {
+			c, ok := d.draw(p.Bonus[i])
 			add(SlotBonus, c, ok)
-		} else {
-			common(SlotCommon)
 		}
-	}
-	for range r.Uncommons {
-		c, ok := d.draw(p.Uncommons)
-		add(SlotUncommon, c, ok)
-	}
-	c, ok := p.rareOrMythic(d)
-	add(SlotRare, c, ok)
-	for range r.Lands {
-		if len(p.Lands) > 0 {
-			c, ok := d.draw(p.Lands)
-			add(SlotLand, c, ok)
-		} else {
-			// A set with no basic lands in its boosters.
-			common(SlotLand)
-		}
-	}
-	for range r.Wildcards {
-		c, ok := p.wildcard(d)
-		add(SlotWildcard, c, ok)
 	}
 	return out, nil
 }

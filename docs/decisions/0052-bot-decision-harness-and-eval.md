@@ -1,6 +1,6 @@
 # ADR 0052 — Bot decision harness and eval loop for the local model
 
-**Status:** Proposed · 2026-09-17 · Sprint S31 (follow-up) · Tracking issue [#837](https://github.com/krakenhavoc/cmd_and_ctrl/issues/837)
+**Status:** Accepted · 2026-09-17 · Sprint S31 (follow-up) · Tracking issue [#837](https://github.com/krakenhavoc/cmd_and_ctrl/issues/837)
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) — §3's type gate (a policy
 never holds a `*game.Game`), §5's three-layer funnel, §6's tiers, and
 §10's `MinThink`/`MaxThink` pacing. Nothing here changes those. This

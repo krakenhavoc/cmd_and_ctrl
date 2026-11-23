@@ -37,7 +37,7 @@ func init() {
 			ModeDoing("Exile all opponents' graveyards.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
 					for _, opp := range ctx.Opponents() {
-						if err := exileGraveyardForEffect(ctx.Game, item, opp); err != nil {
+						if err := ExileGraveyardForEffect(ctx.Game, item, opp); err != nil {
 							return err
 						}
 					}
@@ -45,7 +45,7 @@ func init() {
 				}),
 			ModeDoing("Create a 1/1 white and black Spirit creature token with flying.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
-					return CreateToken{Controller: item.Controller, Template: kayasGuileSpirit(), N: 1}.Apply(ctx)
+					return CreateToken{Controller: item.Controller, Template: KayasGuileSpirit(), N: 1}.Apply(ctx)
 				}),
 			ModeDoing("You gain 4 life.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
@@ -57,7 +57,7 @@ func init() {
 
 // kayasGuileSpirit is the printed token: a 1/1 white and black Spirit
 // with flying.
-func kayasGuileSpirit() game.Card {
+func KayasGuileSpirit() game.Card {
 	return game.Card{
 		Name:      "Spirit",
 		TypeLine:  "Token Creature — Spirit",

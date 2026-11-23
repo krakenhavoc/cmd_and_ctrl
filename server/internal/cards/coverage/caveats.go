@@ -412,6 +412,14 @@ var mechanics = []Mechanic{
 		Adopt:      `Bestow("{cost}") — it bundles the enchant creature target and the Aura spell (ADR 0141)`,
 	},
 	{
+		Name:       "mutate",
+		Phrases:    []string{"mutate", "mutates"},
+		Implements: altCost(game.MutateKey),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "mutate") resolves`,
+		Confidence: Exact,
+		Adopt:      `Mutate("{cost}"), and On(game.EventMutate, ThisCreatureMutates, …) for "whenever this creature mutates" (ADR 0223)`,
+	},
+	{
 		// ADR 0154 (#1780): an Aura whose enchant clause is a card in a
 		// graveyard (Animate Dead, Dance of the Dead).
 		Name:    "graveyard aura",
@@ -908,6 +916,18 @@ var mechanics = []Mechanic{
 		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "flanking"`,
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{game.KeywordFlanking} — the engine does the rest`,
+	},
+	{
+		// #5723 (ADR 0224): banding is a canonicalKeywords token the
+		// engine runs itself (game/banding.go): the attack declaration's
+		// bands, the block lock-in and the damage division. "Bands with
+		// other" is a different phrase and stays unrecognised.
+		Name:       "banding",
+		Phrases:    []string{"banding"},
+		Implements: printedKeywordProbe(game.KeywordBanding),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "banding"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordBanding} — the engine does the rest`,
 	},
 	{
 		// #2075 (ADR 0113 §4): undying and persist are canonicalKeywords

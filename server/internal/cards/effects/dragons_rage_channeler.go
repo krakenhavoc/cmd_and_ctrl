@@ -32,7 +32,7 @@ func init() {
 		Name:         "Dragon's Rage Channeler",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, b10NoncreatureSpellCastByYou,
+			On(game.EventCast, B10NoncreatureSpellCastByYou,
 				"Dragon's Rage Channeler — surveil 1", Do(Surveil{N: 1})),
 		},
 		Static: []game.StaticAbility{
@@ -41,7 +41,7 @@ func init() {
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-					return target.InstanceID == source.InstanceID && drcDeliriumMet(g, source.Controller)
+					return target.InstanceID == source.InstanceID && DrcDeliriumMet(g, source.Controller)
 				},
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Power += 2
@@ -52,7 +52,7 @@ func init() {
 				Label: "Has flying while there are four or more card types among cards in your graveyard.",
 				Layer: game.Layer6Ability,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-					return target.InstanceID == source.InstanceID && drcDeliriumMet(g, source.Controller)
+					return target.InstanceID == source.InstanceID && DrcDeliriumMet(g, source.Controller)
 				},
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					for _, kw := range c.Abilities {
@@ -64,7 +64,7 @@ func init() {
 				},
 			},
 			AttacksEachCombatWhere(func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID && drcDeliriumMet(g, source.Controller)
+				return target.InstanceID == source.InstanceID && DrcDeliriumMet(g, source.Controller)
 			}),
 		},
 	})
@@ -75,7 +75,7 @@ func init() {
 // off the printed type line (IsCreature / IsLand / etc. read the same
 // way for a graveyard card, which has no layer-applied
 // characteristics of its own).
-func drcDeliriumMet(g *game.Game, controller uuid.UUID) bool {
+func DrcDeliriumMet(g *game.Game, controller uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(controller)
 	if p == nil || p.Graveyard == nil {
 		return false

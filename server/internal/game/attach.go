@@ -104,9 +104,11 @@ func (c Card) IsAttachedTo(hostID uuid.UUID) bool {
 // A fourth: an attachment that is already attached would be MOVED onto
 // something it can't legally be attached to (an Aura's enchant clause,
 // protection, an Equipment's creature-only rule, CR 301.5c). It stays
-// where it is (CR 701.3b, #3160). An attachment that is not attached yet
-// (an Aura entering or resolving, CR 303.4f) is not moved and is not
-// checked here: it attaches and the state-based action decides.
+// where it is (CR 701.3b, #3160). An Aura that is not attached yet
+// (entering or resolving, CR 303.4f) is not moved and is not checked
+// here: it attaches and the state-based action decides. An Equipment's
+// own "can be attached only to …" clause is checked attached or not
+// (CR 301.5b, #5846): an Equipment that clause refuses stays where it is.
 //
 // Caller must hold g.mu (this is a *ForEffect surface — it runs
 // inside a resolution that already owns the write lock).
@@ -180,20 +182,55 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		g.emitAttachSkippedLocked(attachmentID, host, "this permanent can't be attached to that host")
 		return nil
 	}
+	// #5846, CR 301.5b: an Equipment's own "can be attached only to …"
+	// clause (Konda's Banner) is asked of every attach, attached or not:
+	// an effect that tries to attach it to an object it can't equip
+	// doesn't move it, so the Banner equipped to a nonlegendary creature
+	// never becomes attached, rather than attaching and falling off at the
+	// next state-based check (an attach and an unattach that never
+	// happened). An Equipment entering attached is the same (CR 301.5e: it
+	// enters unattached). Only the clause, not the whole CR 704.5n test:
+	// "Equip planeswalker" attaches to a noncreature "as though that
+	// planeswalker were a creature" (CR 702.6e), which Luxior then makes
+	// one, so the creature half stays with the state-based action for an
+	// Equipment that is not attached yet.
+	if moved && isEquipmentAttachment(c) && host.Kind == TargetCard && !g.equipmentAttachOnlyAdmitsLocked(c, host) {
+		g.emitAttachSkippedLocked(attachmentID, host, "this Equipment can't be attached to that creature")
+		return nil
+	}
+	// CR 701.3d: moving an attachment off one permanent or player onto
+	// another makes it "become unattached" from the first, so a "whenever
+	// this Equipment becomes unattached from a permanent" ability
+	// (Grafted Exoskeleton) sees an Equipment re-equipped elsewhere. Only
+	// a move to a different object: onto the host it is on, nothing
+	// happened (CR 701.3b).
+	oldHost, leftOld := c.AttachedTo, moved && c.IsAttached() && c.AttachedTo != host
+	// Read before the first event: a listener may reshape the battlefield
+	// slice c points into.
+	actor, kind := c.Controller, attachmentKindOf(c)
 	c.AttachedTo = host
 	c.AttachedEpoch = hostEpoch
 	c.AttachedPinned = host.Kind == TargetCard
 	c.AttachedAt = timeNowUnixNano()
+	if leftOld {
+		g.EmitEvent(Event{
+			Kind:   EventUnattach,
+			Actor:  actor,
+			Source: attachmentID,
+			CardID: attachmentID,
+			Target: oldHost.ID,
+		})
+	}
 	g.EmitEvent(Event{
 		Kind:   EventAttach,
-		Actor:  c.Controller,
-		Source: c.InstanceID,
-		CardID: c.InstanceID,
+		Actor:  actor,
+		Source: attachmentID,
+		CardID: attachmentID,
 		Target: host.ID,
 		// #4444: what it is, for the log's line and the client's cue, and
 		// whether it moved at all (CR 701.3b: onto the host it is already
 		// on, the effect does nothing).
-		Label:           attachmentKindOf(c),
+		Label:           kind,
 		AlreadyAttached: !moved,
 	})
 	// #2709: the attachment's "As this Equipment becomes attached to a
@@ -427,7 +464,11 @@ func (g *Game) AttachmentsOf(hostID uuid.UUID) []uuid.UUID {
 //     deliberately not its equip clause: equip says "creature you
 //     control", but that restriction applies only while activating.
 //     Control of the creature may change afterwards and the
-//     Equipment stays put; only "is it still a creature" matters.
+//     Equipment stays put; only "is it still a creature" matters —
+//     and, for an Equipment that prints "can be attached only to …"
+//     (Konda's Banner, CardDef.AttachOnlyTo, #5846), whether the host
+//     still meets that clause, which is a condition on what it equips
+//     and not on the activation.
 //
 // A card with no catalog TargetSpec (a sandbox Aura, a fixture)
 // falls back to the same structural check as Equipment, which keeps
@@ -631,6 +672,11 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// CR 301.5c — an Equipment can only be attached to a
 		// creature. Effective, not printed: a creature that stopped
 		// being a creature drops its sword.
+		// CR 301.6: a Fortification attaches to a land instead, and
+		// falls off a permanent that stops being one (CR 704.5n).
+		if isFortificationAttachment(c) {
+			return g.Battlefield.Cards[idx].IsLand()
+		}
 		if !g.Battlefield.Cards[idx].IsCreature() {
 			return false
 		}
@@ -639,7 +685,14 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// animated Equipment falls off; an attached reconfigure
 		// Equipment is not a creature at all (CR 702.151b), and one
 		// that a later effect animates stays. See reconfigure.go.
-		if c.HasSubtype("Equipment") && !c.IsAura() {
+		if isEquipmentAttachment(c) {
+			// #5846: the Equipment's own "can be attached only to"
+			// clause (Konda's Banner), judged against the host as it is
+			// now, so a creature that stops being legendary drops the
+			// Banner (CR 301.5c, CR 704.5n).
+			if !g.equipmentAttachOnlyAdmitsLocked(c, c.AttachedTo) {
+				return false
+			}
 			return equipmentCreatureMayEquipLocked(c)
 		}
 		return true
@@ -819,4 +872,45 @@ func (g *Game) AttachedToSourceOKForEffect(spec *TargetSpec, sourceID, candidate
 	}
 	c := findBattlefieldCard(g, candidate)
 	return c != nil && c.IsAttachedTo(sourceID)
+}
+
+// isFortificationAttachment reports whether the permanent attaches as a
+// Fortification (CR 301.6): a Fortification by its effective subtypes, not
+// an Aura and not also an Equipment.
+func isFortificationAttachment(c *Card) bool {
+	return c.HasSubtype("Fortification") && !c.IsAura() && !c.HasSubtype("Equipment")
+}
+
+// isEquipmentAttachment reports whether the permanent attaches as an
+// Equipment (CR 301.5): an Equipment by its effective subtypes and not an
+// Aura, which its enchant clause judges instead.
+func isEquipmentAttachment(c *Card) bool {
+	return c.HasSubtype("Equipment") && !c.IsAura()
+}
+
+// equipmentAttachOnlyAdmitsLocked asks an Equipment's own "<this> can be
+// attached only to <a quality>" (CardDef.AttachOnlyTo, Konda's Banner's
+// "a legendary creature", #5846) of `host`. True when the Equipment has
+// no such clause.
+//
+// The clause is a static ability of the Equipment, read off its rules
+// text (catalogKeyOf, as an Aura's enchant clause is), so a copy of the
+// Banner has it and an Equipment that has lost all its abilities
+// (CR 613.1f) does not. It is a predicate over the host, not a target:
+// hexproof and the like are not asked, and protection is
+// attachmentLegalLocked's own check.
+//
+// Caller must hold g.mu. Reads effective characteristics, so it runs
+// after the layer recompute like the rest of attachmentLegalLocked.
+func (g *Game) equipmentAttachOnlyAdmitsLocked(c *Card, host TargetRef) bool {
+	if c.HasLostAllAbilities() {
+		return true
+	}
+	d := catalogDef(catalogKeyOf(c))
+	if d == nil || d.AttachOnlyTo == nil {
+		return true
+	}
+	src := SourceChooser(c.Controller)
+	src.text = c.TextWords
+	return g.specMatchLocked(src, d.AttachOnlyTo, host, false)
 }

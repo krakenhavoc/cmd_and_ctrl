@@ -1,0 +1,105 @@
+package cardsmi
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Mob Verdict — Sorcery {2}{R}{R}:
+//
+//	"Secret council — Each player secretly votes for another player,
+//	 then those votes are revealed. For each vote an opponent received,
+//	 Mob Verdict deals 2 damage to that player and each creature that
+//	 player controls. For each vote you received, draw a card."
+//
+// A secret vote over players (ADR 0180) in which no voter is offered
+// themselves ("another player", Vote.OthersOnly). Each vote an opponent
+// received is its own instruction: 2 damage to that player and each
+// creature they control at once, one damage instance, and the next
+// vote's damage after it has settled, so a creature that died to the
+// first vote is not hit by the second. Opponents are dealt with in turn
+// order, then the caster draws a card per vote they received.
+//
+// The bots' hints: the caster wants every vote on an opponent; an
+// opponent wants the votes on another opponent rather than on the
+// caster, whom a vote only gives a card.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "cb91e09e-f7fb-44bc-b78f-de29705bd2d6",
+		Name:         "Mob Verdict",
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			opts := effects.VoteForPlayers(ctx.Game)
+			forController := make([]int, len(opts))
+			forOpponents := make([]int, len(opts))
+			for i, o := range opts {
+				if o.Player != ctx.Controller() {
+					forController[i], forOpponents[i] = 2, 1
+				}
+			}
+			return effects.Vote{
+				Question:      "Mob Verdict — secretly vote for another player",
+				Options:       opts,
+				Secret:        true,
+				OthersOnly:    true,
+				ForController: forController,
+				ForOpponents:  forOpponents,
+				Then:          mobVerdictVoted,
+			}.Apply(ctx)
+		},
+	})
+}
+
+var mobVerdictVoted = effects.VoteResultThen("vote/mob-verdict", func(ctx *effects.Context, r game.VoteResult) error {
+	received := effects.VotesReceived(r)
+	var hits []uuid.UUID
+	for _, p := range ctx.Opponents() {
+		for range received[p] {
+			hits = append(hits, p)
+		}
+	}
+	return mobVerdictStrike(ctx.Game, ctx.Source(), ctx.Controller(), hits, received[ctx.Controller()])
+})
+
+// mobVerdictStrike deals one vote's damage, 2 to the first player in
+// hits and to each creature they control, and the rest once it has
+// settled; then the caster draws `draws` cards. The rest of the strikes
+// is a keyed tail (mobVerdictNext, #4253), so a CR 616 prompt over one
+// vote's damage is a restore point.
+func mobVerdictStrike(g *game.Game, source, caster uuid.UUID, hits []uuid.UUID, draws int) error {
+	if len(hits) == 0 {
+		if draws > 0 && effects.VoterStillIn(g, caster) {
+			return g.DrawNForEffect(caster, draws)
+		}
+		return nil
+	}
+	p, rest := hits[0], hits[1:]
+	if !effects.VoterStillIn(g, p) {
+		return mobVerdictStrike(g, source, caster, rest, draws)
+	}
+	targets := []uuid.UUID{p}
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == p && c.IsCreature() {
+			targets = append(targets, c.InstanceID)
+		}
+	}
+	return g.DealDamageEachKeyedForEffect(source, targets, 2, game.KeyedTail{
+		Ref: mobVerdictNext, Player: caster, Source: source, Carry: append([]uuid.UUID(nil), rest...), N: draws,
+	})
+}
+
+// mobVerdictNext is the strikes still owed once one has settled: the
+// players still to be hit are the tail's Carry, the caster its Player and
+// the cards to draw its N. An on-disk key. Registered from init: the
+// strike it runs names it again.
+var mobVerdictNext game.TailRef
+
+func init() {
+	mobVerdictNext = game.RegisterTail("then/mob-verdict-next-strike", func(g *game.Game, o game.TailOutcome) error {
+		return mobVerdictStrike(g, o.Tail.Source, o.Tail.Player, o.Tail.Carry, o.Tail.N)
+	})
+}

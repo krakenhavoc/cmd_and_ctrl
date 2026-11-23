@@ -1410,7 +1410,10 @@ const (
 	// OncePerBatch ability sees one occurrence. Added in #830. Also
 	// emitted by stampEntryBlockerLocked when a creature put onto the
 	// battlefield blocking blocks an attacker that was unblocked at
-	// that time (CR 509.3c, #4956).
+	// that time (CR 509.3c, #4956), and by BecomeBlockedForEffect when an
+	// effect makes an unblocked attacker blocked with no creature
+	// blocking it (Fog Patch, CR 509.1h, #5839); Actor is then the
+	// attacker's defending player, and no EventBlock goes with it.
 	EventBecomesBlocked EventKind = "becomes_blocked"
 
 	// EventBlockersDeclared — the defending player named by Actor has
@@ -1498,6 +1501,15 @@ const (
 	// log line and nothing else: the entry already did everything a
 	// permanent entering does. ADR 0145.
 	EventMeld EventKind = "meld"
+
+	// EventMutate — a mutating creature spell merged with a creature
+	// (CR 702.140c, 730.2; ADR 0223). CardID is the mutated permanent
+	// (the same object it was before, CR 730.2c), Source the card that
+	// merged into it and Label its name, Actor the spell's controller,
+	// and Amount 1 when it went under (0 on top). It is what "whenever
+	// this creature mutates" reads (CR 702.140d). Not a zone move and
+	// not an entry (CR 730.2b).
+	EventMutate EventKind = "mutate"
 
 	// EventPhaseOut / EventPhaseIn — CardID phased out or in
 	// (CR 702.26). Actor is its controller; Source, on a phase-out, is
@@ -1841,6 +1853,12 @@ type Event struct {
 	// reads 6 with no new field and no snapshot change.
 	DamageNotLifeLoss int `json:"damage_not_life_loss,omitempty"`
 
+	// ExcessDamage is, on an EventDealDamage to a creature or planeswalker,
+	// how much of Amount was excess damage (CR 120.10, the greatest of the
+	// amounts for a permanent that is both), judged as the damage landed.
+	// 0 for any other event. Additive (#5908): "is dealt excess damage".
+	ExcessDamage int `json:"excess_damage,omitempty"`
+
 	// DamageInstance is the ADR 0108 damage instance an EventDealDamage
 	// was dealt in (2026-10-13 amendment): every damage event one
 	// instruction or one combat damage step opens shares it, which is
@@ -2004,6 +2022,17 @@ type Event struct {
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
 
+	// BecameToken marks the EventZoneMove from no zone onto the
+	// battlefield that announces the token a copy of a permanent spell
+	// becomes as it resolves (CR 608.3f, CR 707.10f, #4994). That token
+	// is not "created" (CR 111.13), so its arrival is not an
+	// EventTokenCreated and nothing that watches creations sees it; the
+	// move is what every entry reader (the layer listener, Deep Gnome
+	// Terramancer, the trigger doublers) already reads. The flag is for
+	// the game log, which tells this move as the token's arrival where it
+	// skips a spawn's move from no zone. Additive within schema v9.
+	BecameToken bool `json:"became_token,omitempty"`
+
 	// ExiledWith and ExiledWithAbility are the CR 607.2a link a card
 	// PLAYED FROM EXILE had while it sat there (Card.ExiledWith and
 	// Card.ExiledWithAbility): set on the EventCast of a spell cast from
@@ -2050,6 +2079,13 @@ type Event struct {
 	// counters' inherent trigger (CR 728.1a, "life loss from
 	// radiation"; rad_counters.go, #2042). False on every other event.
 	FromRadiation bool `json:"from_radiation,omitempty"`
+
+	// LifePayment marks an EventChangeLife that was life PAID as a cost
+	// (CR 119.4, payLifeAsCostLocked), as against life an effect made a
+	// player lose: "whenever a spell or ability you control causes you to
+	// lose life" (Sahir, Visitor in Darkness, #5948) reads the second only.
+	// False on every other event. Additive within the snapshot version.
+	LifePayment bool `json:"life_payment,omitempty"`
 
 	// CardIDs are the cards one keyword action moved together, on the
 	// event that names the action rather than a single card: the cards
@@ -2114,6 +2150,13 @@ type Event struct {
 	// a battlefield exit. Additive within the snapshot version.
 	LeaveCause  LeaveCause `json:"leave_cause,omitempty"`
 	LeaveSource uuid.UUID  `json:"leave_source,omitempty"`
+	// LeaveController is the controller of the resolving spell or ability
+	// behind a battlefield exit made by an effect (#5929, Karmic Justice's
+	// "a spell or ability an opponent controls destroys ..."): the player who
+	// controlled the object whose resolution moved it, uuid.Nil for a cost, a
+	// rule, a state-based action nobody's resolution caused, and every other
+	// event. Additive within the snapshot version.
+	LeaveController uuid.UUID `json:"leave_controller,omitempty"`
 
 	// PublicNames maps a referenced token's ID to its name, captured
 	// when the event was emitted so the log can still name a token that
@@ -2164,6 +2207,15 @@ type Event struct {
 	// a downstream prompt is answered). "Whenever ~ deals combat
 	// damage to a player" triggers read both. Added in S19 sub-PR 7.
 	Combat bool `json:"combat,omitempty"`
+
+	// SourceName is, on a combat EventDealDamage, the name of the dealing
+	// object as it was when it dealt the damage (its layered name: a copy
+	// has the copied name, CR 707.2), captured at emit time because the
+	// source may since have left the game or been changed. "Each opponent
+	// dealt combat damage this game by a creature named Gollum, Obsessed
+	// Stalker" reads it off the append-only log. Empty on every other event.
+	// Additive within schema v9.
+	SourceName string `json:"source_name,omitempty"`
 
 	// Exhaust marks an EventActivateAbility or
 	// EventManaAbilityActivated whose ability prints the exhaust
@@ -2216,6 +2268,16 @@ type Event struct {
 	// plainly knowable. False on every other event. Additive within
 	// schema v9.
 	XCost bool `json:"x_cost,omitempty"`
+
+	// ActivatedFrom is, on an EventActivateAbility, the zone the ability's
+	// source was in as it was activated (CR 602.2): the graveyard for an
+	// unearth or a graveyard ability, the hand for cycling, the battlefield
+	// for nearly every other. "Whenever you ... activate an ability of a
+	// card in your graveyard" (Neerdiv, Devious Diver, S82 BNS batch 51)
+	// reads it, for Exhaust's reason: a cost may already have moved the
+	// source (an embalm or eternalize exiles it) by the time a watcher runs.
+	// Empty for the battlefield and on every other event. Additive within the schema.
+	ActivatedFrom ZoneKind `json:"activated_from,omitempty"`
 
 	// LifePaid is, on an EventActivateAbility, the life the activator
 	// paid to activate the ability: PaidCost.LifePaid as the
@@ -2550,6 +2612,7 @@ func (g *Game) EmitEvent(ev Event) {
 	// harvester saw.
 	ev.Batch = g.currentEventBatchLocked()
 	g.stampPublicNamesLocked(&ev)
+	g.stampCombatSourceNameLocked(&ev)
 	g.Events = append(g.Events, ev)
 	// S17 sub-PR 6 diagnostic: effect-error events are otherwise
 	// silent (no client toast yet). Surfacing them in the server log

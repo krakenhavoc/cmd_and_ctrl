@@ -58,6 +58,14 @@ const (
 	// the other card is still returned as long as it shares one of them
 	// (the Unbury ruling). The zone of the candidate is the clause's own.
 	TargetCardSharesCreatureType TargetRelationKind = "card_shares_creature_type"
+	// TargetControlledByOpponentOfPlayer is "target creatures their
+	// opponents control", where they are the earlier target PLAYER (Portal
+	// Manipulator's "choose target player and any number of target
+	// attacking creatures their opponents control"). The anchor must be a
+	// player pick, and the candidate must be a permanent on the battlefield
+	// controlled by a player who is an opponent of that player. It may pick
+	// several permanents, each judged against the anchor alone.
+	TargetControlledByOpponentOfPlayer TargetRelationKind = "controlled_by_opponent_of_player"
 )
 
 // ManyPicks reports whether a dependent clause of this kind may pick
@@ -66,7 +74,7 @@ const (
 // copy and retarget walks refill its picks one at a time
 // (relatedTargetsCanFinishLocked).
 func (k TargetRelationKind) ManyPicks() bool {
-	return k == TargetInTargetPlayersGraveyard
+	return k == TargetInTargetPlayersGraveyard || k == TargetControlledByOpponentOfPlayer
 }
 
 // TargetRelationMatchesForEffect judges the relationship using the current
@@ -109,6 +117,9 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 		return ok && z.Kind == ZoneBattlefield && c.Controller == controller
 	case TargetInTargetPlayersGraveyard:
 		return anchor.Kind == TargetPlayer && anchor.ID != uuid.Nil && z.Kind == ZoneGraveyard && z.Owner == anchor.ID
+	case TargetControlledByOpponentOfPlayer:
+		return anchor.Kind == TargetPlayer && anchor.ID != uuid.Nil && z.Kind == ZoneBattlefield &&
+			c.Controller != anchor.ID
 	case TargetSharesCardType:
 		a := findBattlefieldCard(g, anchor.ID)
 		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&

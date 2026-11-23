@@ -41,13 +41,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters(label, func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				x := mountainsControlledBy(g, item.Controller, ctx.TextSubtype("Mountain"))
+				x := MountainsControlledBy(g, item.Controller, ctx.TextSubtype("Mountain"))
 				self := item.SourceCardID
-				if sourceIsNewObject(g, item) {
+				if SourceIsNewObject(g, item) {
 					self = uuid.Nil
 				}
 				other := func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID != self }
-				return damageEachMatchingAndEachPlayerThen(ctx, And(Creature(), WithoutKeyword("flying"), other), x, RecipientThen{})
+				return DamageEachMatchingAndEachPlayerThen(ctx, And(Creature(), WithoutKeyword("flying"), other), x, RecipientThen{})
 			}),
 			ExertedGets("Themberchaud — he gains flying until end of turn", 0, 0, "flying"),
 		},
@@ -57,6 +57,6 @@ func init() {
 // mountainsControlledBy counts the Mountains `controller` controls, by
 // effective subtype; `mountain` is the word as Themberchaud's text reads
 // it (CR 612.2).
-func mountainsControlledBy(g *game.Game, controller uuid.UUID, mountain string) int {
-	return b12OtherMountainsControlled(g, controller, uuid.Nil, mountain)
+func MountainsControlledBy(g *game.Game, controller uuid.UUID, mountain string) int {
+	return B12OtherMountainsControlled(g, controller, uuid.Nil, mountain)
 }

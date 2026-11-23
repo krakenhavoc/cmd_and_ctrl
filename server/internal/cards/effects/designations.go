@@ -108,11 +108,12 @@ func LevelUp(level int, cost game.AbilityCost) ActivatedAbility {
 		Label:        label,
 		Cost:         cost,
 		SorcerySpeed: true,
+		ClassLevel:   true,
 		Condition: func(g *game.Game, _ uuid.UUID, source uuid.UUID) bool {
 			return g.ClassLevelFor(source) == level-1
 		},
 		Effect: func(g *game.Game, item *game.StackItem) error {
-			if sourceIsNewObject(g, item) { // #1432: a new Class starts at level 1
+			if SourceIsNewObject(g, item) { // #1432: a new Class starts at level 1
 				return nil
 			}
 			return g.SetClassLevelForEffect(item.SourceCardID, level)
@@ -176,7 +177,7 @@ func ToSolve(label string, condition func(g *game.Game, controller, source uuid.
 			// CR 603.4: the intervening if is checked again on
 			// resolution. Nothing happens if it is false — the
 			// ability is simply removed from the stack.
-			if !condition(g, item.Controller, item.SourceCardID) || sourceIsNewObject(g, item) { // #1432
+			if !condition(g, item.Controller, item.SourceCardID) || SourceIsNewObject(g, item) { // #1432
 				return nil
 			}
 			return g.SolveCaseForEffect(item.SourceCardID)
@@ -207,7 +208,7 @@ func Harness(label string, cost game.AbilityCost) ActivatedAbility {
 		Label: label,
 		Cost:  cost,
 		Effect: func(g *game.Game, item *game.StackItem) error {
-			if sourceIsNewObject(g, item) { // #1432
+			if SourceIsNewObject(g, item) { // #1432
 				return nil
 			}
 			return g.HarnessForEffect(item.SourceCardID)
@@ -236,7 +237,7 @@ func Harness(label string, cost game.AbilityCost) ActivatedAbility {
 // one too or Windcrag Siege's Mardu word would offer a prompt option
 // that TestEveryAnchorWordGateIsOffered could not tell switches
 // anything on.
-func specDesignations(spec Spec) []game.Designation {
+func SpecDesignations(spec Spec) []game.Designation {
 	out := make([]game.Designation, 0, len(spec.Static)+len(spec.Triggered)+len(spec.Activated)+len(spec.CostModifiers)+len(spec.GatedCastPermissions)+len(spec.TriggerDoublers)+len(spec.TriggerSuppressors))
 	for _, a := range spec.Static {
 		out = append(out, a.ActiveWhen)

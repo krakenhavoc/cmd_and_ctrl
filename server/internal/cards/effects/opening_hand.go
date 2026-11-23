@@ -59,7 +59,7 @@ func ThenExileFromHand(n int) OpeningHandOption {
 // checkOpeningHand refuses a declaration the engine would read wrongly,
 // at boot: a counter with no name or no count, and a negative exile
 // count.
-func checkOpeningHand(name string, a *game.OpeningHandAction) {
+func CheckOpeningHand(name string, a *game.OpeningHandAction) {
 	if a == nil {
 		return
 	}

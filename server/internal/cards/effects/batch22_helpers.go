@@ -33,7 +33,7 @@ import (
 // the source's controller cast a spell, it is not their turn, and the
 // engine's per-turn cast tally — bumped before EventCast fires — says
 // it is their first this turn.
-func b22FirstSpellOnAnOpponentsTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+func B22FirstSpellOnAnOpponentsTurn(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -48,18 +48,18 @@ func b22FirstSpellOnAnOpponentsTurn(ev game.Event, source *game.Card, g *game.Ga
 // dies" on a NONcreature source (Cauldron of Essence): the dead
 // creature was the source's controller's as it last existed
 // (leftUnderControlOf, #1682).
-func b22CreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller
+func B22CreatureYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller
 }
 
 // b22SlimedCreatureYouDontControlDied is Toxrill's third ability: a
 // creature the source's controller did not control died with a slime
 // counter on it. The card's counters are cleared on the way out
 // (CR 400.7), so the count is read off the departure record.
-func b22SlimedCreatureYouDontControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	if !ok || leftUnderControlOf(ev, dead) == source.Controller {
+func B22SlimedCreatureYouDontControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	if !ok || LeftUnderControlOf(ev, dead) == source.Controller {
 		return false
 	}
 	info, ok := g.LastKnownPermanentForEffect(dead.InstanceID)
@@ -70,7 +70,7 @@ func b22SlimedCreatureYouDontControlDied(ev game.Event, source *game.Card, g *ga
 // "dies or is put into exile from the battlefield": the source's own
 // EventLTB, bound for a graveyard or exile — a bounce or a library
 // tuck does not count.
-func b22SelfDiedOrWasExiledFromBattlefield(ev game.Event, source *game.Card) bool {
+func B22SelfDiedOrWasExiledFromBattlefield(ev game.Event, source *game.Card) bool {
 	if ev.Kind != game.EventLTB || ev.CardID != source.InstanceID {
 		return false
 	}
@@ -80,8 +80,8 @@ func b22SelfDiedOrWasExiledFromBattlefield(ev game.Event, source *game.Card) boo
 // b22SelfEnteredOrDied is Mycosynth Wellspring's one ability with
 // two trigger conditions — "enters or is put into a graveyard from
 // the battlefield".
-func b22SelfEnteredOrDied(ev game.Event, source *game.Card) bool {
-	return (ev.Kind == game.EventETB && ev.CardID == source.InstanceID) || cardDied(ev, source)
+func B22SelfEnteredOrDied(ev game.Event, source *game.Card) bool {
+	return (ev.Kind == game.EventETB && ev.CardID == source.InstanceID) || CardDied(ev, source)
 }
 
 // --- board reads -------------------------------------------------
@@ -90,7 +90,7 @@ func b22SelfEnteredOrDied(ev game.Event, source *game.Card) bool {
 // `controller` controls with the given subtype, the source excluded
 // — Earthshaker Dreadmaw's "each other Dinosaur you control". Post-
 // layer subtype, so a changeling counts.
-func b22OtherCreaturesOfSubtypeControlled(g *game.Game, controller, except uuid.UUID, subtype string) int {
+func B22OtherCreaturesOfSubtypeControlled(g *game.Game, controller, except uuid.UUID, subtype string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID != except && c.Controller == controller && c.IsCreature() && c.HasSubtype(subtype) {
@@ -106,7 +106,7 @@ func b22OtherCreaturesOfSubtypeControlled(g *game.Game, controller, except uuid.
 // trigger: a slime counter on each creature the source's controller
 // does not control, the set snapshotted before the first counter
 // lands.
-func b22PutCounterOnEachCreatureYouDontControl(g *game.Game, item *game.StackItem, kind string) error {
+func B22PutCounterOnEachCreatureYouDontControl(g *game.Game, item *game.StackItem, kind string) error {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != item.Controller && c.IsCreature() {
@@ -118,7 +118,7 @@ func b22PutCounterOnEachCreatureYouDontControl(g *game.Game, item *game.StackIte
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: kind, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: kind, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -129,7 +129,7 @@ func b22PutCounterOnEachCreatureYouDontControl(g *game.Game, item *game.StackIte
 // get -1/-1 for each slime counter on them." Layer 7c, reading the
 // live counter map; a counter placement bumps the layer version, so
 // the end-step trigger's counters shrink the creature at once.
-func b22SlimeShrink() game.StaticAbility {
+func B22SlimeShrink() game.StaticAbility {
 	return game.StaticAbility{
 		Label:    "Creatures you don't control get -1/-1 for each slime counter on them.",
 		Layer:    game.Layer7PT,
@@ -162,7 +162,7 @@ func b22SlimeShrink() game.StaticAbility {
 // remove-and-reinsert: Depth rides the route, so the card is placed
 // once, where the card says, on whichever side of the prompt the move
 // settles. No continuation is needed — nothing follows the tuck.
-func b22TuckThirdFromTop(g *game.Game, cardID uuid.UUID) error {
+func B22TuckThirdFromTop(g *game.Game, cardID uuid.UUID) error {
 	return g.TuckToLibraryAtDepthForEffect(cardID, 3)
 }
 
@@ -170,7 +170,7 @@ func b22TuckThirdFromTop(g *game.Game, cardID uuid.UUID) error {
 // legal when the ability resolves — both of Ioreth's activations,
 // one slot or two. A target that left or turned illegal in response
 // is skipped rather than erroring.
-func b22UntapEachLegalTarget(g *game.Game, item *game.StackItem) error {
+func B22UntapEachLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -185,7 +185,7 @@ func b22UntapEachLegalTarget(g *game.Game, item *game.StackItem) error {
 
 // b22MillHalf is "mills half their library, rounded down" for one
 // player — Singularity Rupture.
-func b22MillHalf(ctx *Context, player uuid.UUID) error {
+func B22MillHalf(ctx *Context, player uuid.UUID) error {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Library == nil {
 		return nil

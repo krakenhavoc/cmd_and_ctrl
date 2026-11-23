@@ -45,7 +45,7 @@ func init() {
 func forgottenAncientMove(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	self := item.SourceCardID
-	if sourceIsNewObject(g, item) || !onBattlefield(g, self) || forgottenAncientCounters(g, self) == 0 {
+	if SourceIsNewObject(g, item) || !OnBattlefield(g, self) || ForgottenAncientCounters(g, self) == 0 {
 		return nil
 	}
 	var seats []uuid.UUID
@@ -84,11 +84,11 @@ var forgottenAncientMoved = RegisterPermanentsPick("prompt-run/forgotten-ancient
 func forgottenAncientMoveOnto(ctx *Context, self uuid.UUID, onto []uuid.UUID) error {
 	for len(onto) > 0 {
 		to, rest := onto[0], onto[1:]
-		have := forgottenAncientCounters(ctx.Game, self)
-		if have == 0 || !onBattlefield(ctx.Game, self) {
+		have := ForgottenAncientCounters(ctx.Game, self)
+		if have == 0 || !OnBattlefield(ctx.Game, self) {
 			return nil
 		}
-		if !onBattlefield(ctx.Game, to) {
+		if !OnBattlefield(ctx.Game, to) {
 			onto = rest
 			continue
 		}
@@ -120,7 +120,7 @@ var forgottenAncientChosen = NumberThen("number/forgotten-ancient-move-counters"
 		}
 		self, to, rest := r.Carry[0], r.Carry[1], r.Carry[2:]
 		n := r.Number
-		if n <= 0 || !onBattlefield(ctx.Game, self) || !onBattlefield(ctx.Game, to) {
+		if n <= 0 || !OnBattlefield(ctx.Game, self) || !OnBattlefield(ctx.Game, to) {
 			n = 0
 		}
 		// The rest of the move, and the next creature's
@@ -150,7 +150,7 @@ func forgottenAncientMoveSteps() []Applier {
 		}),
 		Instruction(func(ctx *Context) error {
 			n, self := ctx.StepRecord(forgottenAncientRecord).N(), ctx.Item.SourceCardID
-			if n <= 0 || !onBattlefield(ctx.Game, self) {
+			if n <= 0 || !OnBattlefield(ctx.Game, self) {
 				return nil
 			}
 			return ctx.Game.AddCounterForEffect(self, game.CounterPlusOne, -n)
@@ -165,7 +165,7 @@ func forgottenAncientMoveSteps() []Applier {
 	}
 }
 
-func forgottenAncientCounters(g *game.Game, id uuid.UUID) int {
+func ForgottenAncientCounters(g *game.Game, id uuid.UUID) int {
 	c, ok := g.LookupCardForEffect(id)
 	if !ok {
 		return 0

@@ -12,7 +12,7 @@ import (
 // avB18LessonSpell is a cost predicate for "Lesson spells" (Uncle Iroh):
 // Lesson is a spell subtype on the printed type line ("Sorcery —
 // Lesson"), read off the spell as it is priced.
-func avB18LessonSpell() CostPredicate {
+func AvB18LessonSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.HasSubtype("Lesson") }
 }
 
@@ -20,7 +20,7 @@ func avB18LessonSpell() CostPredicate {
 // permanent" (Sandbender Scavengers, Zhao): Pirate Peddlers' reading, an
 // EventSacrifice with the source's controller as the Actor, one per
 // permanent, never the source itself.
-func avB18YouSacrificedAnother(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func AvB18YouSacrificedAnother(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Actor == source.Controller && ev.CardID != uuid.Nil && ev.CardID != source.InstanceID
 }
 
@@ -29,11 +29,11 @@ func avB18YouSacrificedAnother(ev game.Event, source *game.Card, _ game.Characte
 // battlefield (CR 700.4), so the Vehicle triggers only when it was a
 // creature as it last existed there (CR 603.10a), crewed. A Vehicle
 // destroyed while it was not crewed does not die.
-func avB18ThisVehicleDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !cardDied(ev, source) {
+func AvB18ThisVehicleDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !CardDied(ev, source) {
 		return false
 	}
-	_, ok := diedCreature(ev, g)
+	_, ok := DiedCreature(ev, g)
 	return ok
 }
 
@@ -43,12 +43,12 @@ func avB18ThisVehicleDied(ev game.Event, source *game.Card, _ game.Characteristi
 // unrestricted DefenderWaiver (ADR 0106's 2026-10-16 amendment, #1936)
 // while cond holds for the source, read live at declaration. The keyword
 // stays (CR 702.3b is waived, not removed).
-func avB18CanAttackAsThoughNoDefenderWhile(label string, cond func(g *game.Game, source *game.Card) bool) game.StaticAbility {
+func AvB18CanAttackAsThoughNoDefenderWhile(label string, cond func(g *game.Game, source *game.Card) bool) game.StaticAbility {
 	return game.StaticAbility{
 		Label: label,
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.IsCreature() && selfOnly(target, g, source) && cond(g, source)
+			return target.IsCreature() && SelfOnly(target, g, source) && cond(g, source)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			w := game.DefenderWaiver{}

@@ -123,6 +123,13 @@ type ActivationAbility struct {
 	// activated". Derived from ActivatedAbilityShape.PowerUp by
 	// ActivationAbilityOf, never set by a card file.
 	PowerUp bool
+
+	// Cycling marks a cycling ability, typecycling included (CR 702.29f:
+	// "typecycling abilities are cycling abilities"), because
+	// Stabilizer's clause names the action: "Players can't cycle cards"
+	// (#5843). Derived from ActivatedAbilityShape.Cycling by
+	// ActivationAbilityOf, never set by a card file.
+	Cycling bool
 }
 
 // ActivationAbilityOf is the one place an activated ability's shape
@@ -141,6 +148,7 @@ func ActivationAbilityOf(ab ActivatedAbilityShape) ActivationAbility {
 		Loyalty:      ab.Cost.Loyalty != nil,
 		Equip:        ab.Equip,
 		PowerUp:      ab.PowerUp,
+		Cycling:      ab.Cycling,
 	}
 }
 
@@ -316,6 +324,12 @@ func (g *Game) ActivationGateLocked(activator uuid.UUID, card Card, zone ZoneKin
 	if g == nil || g.Battlefield == nil {
 		return nil
 	}
+	// #5922: a granted "<player> can't activate abilities" with a
+	// duration, on the activator (Sen Triplets). Every ability, mana
+	// abilities too, so it is asked before anything about the ability.
+	if reason, source, ok := g.playerActivationBanLocked(activator); ok {
+		return &CantActivateError{Reason: reason, Source: source}
+	}
 	// The THIRD source, the one the header promised: a ban with a
 	// duration, a ScopedEffect swept when it ends (#4571, Kang the
 	// Conqueror's "power-up abilities can't be activated" for an extra
@@ -365,6 +379,9 @@ func (g *Game) AnyActivationRestrictionsForEffect() bool {
 		return false
 	}
 	if _, _, ok := g.powerUpBanLocked(); ok {
+		return true
+	}
+	if g.anyPlayerActivationBanLocked() {
 		return true
 	}
 	if CatalogActivationRestrictions == nil {

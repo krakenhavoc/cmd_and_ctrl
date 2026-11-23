@@ -14,7 +14,7 @@ import (
 // cmdr2B25CountersOnTarget is "put N -1/-1 counters on target creature":
 // the first target, if it is still legal as the ability resolves
 // (CR 608.2b).
-func cmdr2B25CountersOnTarget(n int) Effect {
+func Cmdr2B25CountersOnTarget(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
@@ -29,7 +29,7 @@ func cmdr2B25CountersOnTarget(n int) Effect {
 // others is set ("each other creature"). The set is read before the first
 // counter goes on, so a creature is counted once, and each is a member of
 // a group (CR 608.2h).
-func cmdr2B25CountersOnEach(others bool, match CardPredicate) Effect {
+func Cmdr2B25CountersOnEach(others bool, match CardPredicate) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		var ids []uuid.UUID
@@ -43,10 +43,10 @@ func cmdr2B25CountersOnEach(others bool, match CardPredicate) Effect {
 			ids = append(ids, c.InstanceID)
 		}
 		for _, id := range ids {
-			if !onBattlefield(g, id) {
+			if !OnBattlefield(g, id) {
 				continue
 			}
-			if err := (AddCounter{Target: id, Kind: game.CounterMinusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+			if err := (AddCounter{Target: id, Kind: game.CounterMinusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 				return err
 			}
 		}
@@ -60,18 +60,18 @@ func cmdr2B25CountersOnEach(others bool, match CardPredicate) Effect {
 // put on a creature": a counter-placement event that raised a creature's
 // -1/-1 total (b33CountersPlacedDelta), whoever put them. One event is one
 // trigger however many counters it placed.
-func cmdr2B25MinusCountersPlacedOnACreature(ev game.Event, g *game.Game) bool {
-	if b33CountersPlacedDelta(ev, game.CounterMinusOne, g) <= 0 {
+func Cmdr2B25MinusCountersPlacedOnACreature(ev game.Event, g *game.Game) bool {
+	if B33CountersPlacedDelta(ev, game.CounterMinusOne, g) <= 0 {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Target)
-	return ok && c.IsCreature() && onBattlefield(g, ev.Target)
+	return ok && c.IsCreature() && OnBattlefield(g, ev.Target)
 }
 
 // cmdr2B25CountersOnEachTarget is "put a -1/-1 counter on each of up to N
 // target creatures": every target still legal as the ability resolves
 // (CR 608.2b), one counter each.
-func cmdr2B25CountersOnEachTarget(g *game.Game, item *game.StackItem) error {
+func Cmdr2B25CountersOnEachTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -86,7 +86,7 @@ func cmdr2B25CountersOnEachTarget(g *game.Game, item *game.StackItem) error {
 
 // cmdr2B25CounterTotal is the number of counters of every kind in a map,
 // the "number of counters on that creature" of a last-known read.
-func cmdr2B25CounterTotal(counters map[string]int) int {
+func Cmdr2B25CounterTotal(counters map[string]int) int {
 	n := 0
 	for _, c := range counters {
 		if c > 0 {
@@ -99,36 +99,36 @@ func cmdr2B25CounterTotal(counters map[string]int) int {
 // cmdr2B25CreatureDiedWithACounter is "a creature with a counter on it
 // dies": a creature went to the graveyard having had a counter of any kind
 // (CR 603.10a), read from the departure record.
-func cmdr2B25CreatureDiedWithACounter(ev game.Event, g *game.Game) bool {
-	if _, ok := diedCreature(ev, g); !ok {
+func Cmdr2B25CreatureDiedWithACounter(ev game.Event, g *game.Game) bool {
+	if _, ok := DiedCreature(ev, g); !ok {
 		return false
 	}
-	return cmdr2B25CounterTotal(g.LastKnownCountersForEffect(ev.CardID)) > 0
+	return Cmdr2B25CounterTotal(g.LastKnownCountersForEffect(ev.CardID)) > 0
 }
 
 // cmdr2B25OpponentCreatureDiedWithACounter is cmdr2B25CreatureDiedWithACounter
 // narrowed to a creature the source's controller's opponent controlled as it
 // died (leftUnderControlOf, CR 603.10a).
-func cmdr2B25OpponentCreatureDiedWithACounter(ev game.Event, source *game.Card, g *game.Game, minusOnly bool) bool {
-	dead, ok := diedCreature(ev, g)
+func Cmdr2B25OpponentCreatureDiedWithACounter(ev game.Event, source *game.Card, g *game.Game, minusOnly bool) bool {
+	dead, ok := DiedCreature(ev, g)
 	if !ok {
 		return false
 	}
-	if controller := leftUnderControlOf(ev, dead); controller == source.Controller || g.PlayerByIDForEffect(controller) == nil {
+	if controller := LeftUnderControlOf(ev, dead); controller == source.Controller || g.PlayerByIDForEffect(controller) == nil {
 		return false
 	}
 	counters := g.LastKnownCountersForEffect(ev.CardID)
 	if minusOnly {
 		return counters[game.CounterMinusOne] > 0
 	}
-	return cmdr2B25CounterTotal(counters) > 0
+	return Cmdr2B25CounterTotal(counters) > 0
 }
 
 // cmdr2B25PutLandFromHandOrGraveyardTapped is "you may put a land card from
 // your hand or graveyard onto the battlefield tapped": the pick over the
 // lands in both zones, the chosen card entering from whichever holds it
 // when the answer arrives (Bonny Pall's shape, entering tapped).
-func cmdr2B25PutLandFromHandOrGraveyardTapped(source string) Effect {
+func Cmdr2B25PutLandFromHandOrGraveyardTapped(source string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		p := g.PlayerByIDForEffect(item.Controller)
 		if p == nil {
@@ -182,4 +182,4 @@ var cmdr2B25LandPicked = game.RegisterChooseCardsThen("choose-cards/cmdr2-b25-la
 })
 
 // itoaB25 renders a count for a label.
-func itoaB25(n int) string { return strconv.Itoa(n) }
+func ItoaB25(n int) string { return strconv.Itoa(n) }

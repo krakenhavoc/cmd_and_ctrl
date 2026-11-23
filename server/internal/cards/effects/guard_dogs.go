@@ -25,6 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{W}, {T}: Choose a permanent you control. Prevent all combat damage target creature would deal this turn if it shares a color with that permanent.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
 			Cost:    Plus(ManaCost("{2}{W}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
@@ -67,7 +68,7 @@ func guardDogsCompare(ctx *Context, picked game.PromptedPicks) error {
 			continue
 		}
 		c, ok := ctx.Game.LookupCardForEffect(t.ID)
-		if !ok || !sharesAColorNow(c, perm) {
+		if !ok || !SharesAColorNow(c, perm) {
 			return nil
 		}
 		return PreventDamageFromSource{From: t.ID, CombatOnly: true, Protect: ShieldAnything}.Apply(ctx)
@@ -77,7 +78,7 @@ func guardDogsCompare(ctx *Context, picked game.PromptedPicks) error {
 
 // sharesAColorNow reports whether two objects have a colour in common,
 // read off their current characteristics.
-func sharesAColorNow(a, b game.Card) bool {
+func SharesAColorNow(a, b game.Card) bool {
 	for _, color := range []string{"W", "U", "B", "R", "G"} {
 		if a.HasColor(color) && b.HasColor(color) {
 			return true

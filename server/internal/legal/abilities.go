@@ -245,7 +245,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
 	defer func() {
-		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowCostHasX = game.AbilityOrigin{}, false, false, false
+		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowClassLevel, e.rowCostHasX = game.AbilityOrigin{}, false, false, false, false
 	}()
 	// #4475: an equip ability's {0} twin (game/equip_cost_alternative.go)
 	// is offered as a row of its own, addressed by its own index and ref,
@@ -276,6 +276,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		e.rowOrigin = origins.At(idx)
 		e.rowPowerUp = ab.PowerUp
 		e.rowEquip = ab.Equip
+		e.rowClassLevel = ab.ClassLevel
 		e.rowCostHasX = ab.Cost.XSlots() > 0
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
@@ -394,6 +395,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// refuses with, so an "as though those creatures had
 			// haste" static (#3928) opens the same rows here.
 			if g.ActivationSummoningSickLocked(source, e.seat) {
+				continue
+			}
+		}
+		if ab.Cost.UntapSelf {
+			// CR 107.6, through the gates ActivateCatalogAbility refuses with.
+			if !source.Tapped || g.CantBecomeUntappedLocked(source) || g.ActivationSummoningSickLocked(source, e.seat) {
 				continue
 			}
 		}
@@ -2349,6 +2356,11 @@ func (e *enumerator) crewPayment(crew int, except uuid.UUID, use game.CostPowerU
 	for i := range e.g.Battlefield.Cards {
 		c := &e.g.Battlefield.Cards[i]
 		if c.Controller != e.seat || !c.IsCreature() || c.Tapped || c.InstanceID == except {
+			continue
+		}
+		// CR 702.122d: a creature that can't crew Vehicles pays no crew
+		// cost. Saddle and teamwork (use 0) still take it.
+		if use == game.CostPowerCrew && !game.CanCrewVehicles(c) {
 			continue
 		}
 		pool = append(pool, candidate{id: c.InstanceID, power: c.CountedPower(use), real: c.CurrentPower()})

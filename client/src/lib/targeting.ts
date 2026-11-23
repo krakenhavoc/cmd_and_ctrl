@@ -1175,8 +1175,10 @@ export function modeSteps(card: CardView, modes: number[], choices?: CastChoices
 }
 
 // isModal reports whether a card needs the mode picker before it
-// can be cast.
+// can be cast. #5771: not when an opponent chooses the mode (CR
+// 700.2e) — the card is cast with no mode, and the server asks.
 export function isModal(card: CardView): boolean {
+  if (card.modes?.chosen_by_opponent) return false;
   return (card.modes?.options?.length ?? 0) > 0;
 }
 
@@ -1489,6 +1491,17 @@ export function modesUnderChoices(card: CardView, choices: CastChoices | undefin
   const paid = modes?.if_optional_paid;
   if (!modes || !paid || (choices?.optionalCosts?.length ?? 0) === 0) return card;
   return { ...card, modes: { ...modes, min: paid.min, max: paid.max } };
+}
+
+// optionalCostLifeShort is why an offer that pays a fixed amount of
+// life can't be taken now (#5782, ADR 0100's 2026-11-20 amendment):
+// the server marks it `life_short` when the viewer's life total is
+// below `pay_life` (CR 119.4) or they can't pay life at all. Undefined
+// when the offer pays no life or the viewer can pay it.
+export function optionalCostLifeShort(offer: OptionalCostView): string | undefined {
+  if (offer.life_short !== true) return undefined;
+  const n = offer.pay_life ?? 0;
+  return n > 0 ? `You can't pay ${n} life right now` : "You can't pay life right now";
 }
 
 // optionalCostPayOptions returns the permanents that can pay an

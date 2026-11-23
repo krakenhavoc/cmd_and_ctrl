@@ -15,7 +15,7 @@ import (
 // (Captain's Defense, Evasive Maneuvers). The target clause is the
 // card's own; a target that is no longer legal (it stopped blocking, or
 // left) makes the whole spell do nothing, the draw included (CR 608.2b).
-func pumpBlockerTwoThenDraw(label string) func(item *game.StackItem, ctx *Context) error {
+func PumpBlockerTwoThenDraw(label string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 			return nil
@@ -35,15 +35,15 @@ func pumpBlockerTwoThenDraw(label string) func(item *game.StackItem, ctx *Contex
 // (The Wasp, Janet Van Dyne; Shuttle Crew). With no legal target the
 // trigger is removed from the stack (CR 603.3d); a target untapped or
 // gone by resolution is dealt nothing (CR 608.2b).
-func whenThisEntersFourDamageToTappedOpponentCreature(label string) game.TriggeredAbility {
+func WhenThisEntersFourDamageToTappedOpponentCreature(label string) game.TriggeredAbility {
 	return TriggerWithPurpose(
 		Targeting(
-			WhenThisEnters(label, fourDamageToFirstLegalTarget),
-			TargetCreature("target tapped creature an opponent controls", OpponentControls(), b751Tapped())),
+			WhenThisEnters(label, FourDamageToFirstLegalTarget),
+			TargetCreature("target tapped creature an opponent controls", OpponentControls(), B751Tapped())),
 		ForTargets(DamageToTarget(0, 4)))
 }
 
-func fourDamageToFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func FourDamageToFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
@@ -57,18 +57,18 @@ func fourDamageToFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 // opponent" (Hydra Omnivore; U.S.S. Prometheus's Multivector Assault
 // Mode). How much landed and on whom are facts of the damage event,
 // carried on the item; the damage to the others is one damage instance.
-func whenThisHitsAnOpponentThatMuchToEachOther(key string) game.TriggeredAbility {
+func WhenThisHitsAnOpponentThatMuchToEachOther(key string) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventDealDamage},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			return b38ThisDealtCombatDamageToAnOpponent(ev, source, g)
+			return B38ThisDealtCombatDamageToAnOpponent(ev, source, g)
 		},
 		Key:    key,
-		Effect: thatMuchToEachOpponentButTheOneHit,
+		Effect: ThatMuchToEachOpponentButTheOneHit,
 	}
 }
 
-func thatMuchToEachOpponentButTheOneHit(g *game.Game, item *game.StackItem) error {
+func ThatMuchToEachOpponentButTheOneHit(g *game.Game, item *game.StackItem) error {
 	amount, hit := item.Trigger.Event.Amount, item.Trigger.Event.Target
 	ctx := NewContext(g, item)
 	return ctx.Game.DamageInstanceForEffect(func() error {
@@ -89,12 +89,12 @@ func thatMuchToEachOpponentButTheOneHit(g *game.Game, item *game.StackItem) erro
 // trekB43EnterpriseCDiscardHand is the yes to "you may discard your
 // hand": the whole hand goes as one discard, and Forgotten Creation's
 // tail draws one card for each card really discarded this way.
-var trekB43EnterpriseCDiscardHand = MayYes("confirm/uss-enterprise-c-discard-hand", func(ctx *Context, r game.ConfirmAnswer) error {
+var TrekB43EnterpriseCDiscardHand = MayYes("confirm/uss-enterprise-c-discard-hand", func(ctx *Context, r game.ConfirmAnswer) error {
 	p := ctx.Game.PlayerByIDForEffect(r.Chooser)
 	if p == nil {
 		return nil
 	}
-	return ctx.Game.DiscardRandomKeyedForEffect(r.Chooser, p.Hand.Size(), ctx.ItemTail(forgottenCreationDraw))
+	return ctx.Game.DiscardRandomKeyedForEffect(r.Chooser, p.Hand.Size(), ctx.ItemTail(ForgottenCreationDraw))
 })
 
 // --- U.S.S. Farragut, Bold Explorer --------------------------------------
@@ -106,13 +106,13 @@ var trekB43EnterpriseCDiscardHand = MayYes("confirm/uss-enterprise-c-discard-han
 // next end step puts it on the bottom of its owner's library. A declined
 // "you may", or no creature card in hand, does nothing more. An on-disk
 // key.
-var trekB43FarragutHasteAndBottom = PutFromHandTail("uss-farragut/haste-then-bottom-at-end-step", func(ctx *Context, res PutFromHandResult) error {
+var TrekB43FarragutHasteAndBottom = PutFromHandTail("uss-farragut/haste-then-bottom-at-end-step", func(ctx *Context, res PutFromHandResult) error {
 	if res.Entered == uuid.Nil {
 		return nil
 	}
 	g := ctx.Game
 	c, ok := g.LookupCardForEffect(res.Entered)
-	if !ok || !onBattlefield(g, res.Entered) {
+	if !ok || !OnBattlefield(g, res.Entered) {
 		return nil
 	}
 	if err := (ScopedEffectFor{
@@ -143,7 +143,7 @@ var trekB43FarragutBottomBody = game.DelayedBody("uss-farragut/bottom-of-library
 func trekB43FarragutBottom(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	id := p.Object.ID
 	c, ok := g.LookupCardForEffect(id)
-	if !ok || c.ObjectEpoch != p.Object.Epoch || !onBattlefield(g, id) {
+	if !ok || c.ObjectEpoch != p.Object.Epoch || !OnBattlefield(g, id) {
 		return nil
 	}
 	ctx := NewContext(g, item)
@@ -159,7 +159,7 @@ var trekB43FarragutWhenYouDo = CardTail("uss-farragut/when-you-do-draw", func(ct
 	if len(o.IDs) == 0 {
 		return nil
 	}
-	return WhenYouDo("U.S.S. Farragut — draw a card", drawOneBody).Apply(ctx)
+	return WhenYouDo("U.S.S. Farragut — draw a card", DrawOneBody).Apply(ctx)
 })
 
 // --- U.S.S. Stargazer, Here and There ------------------------------------
@@ -169,12 +169,12 @@ var trekB43FarragutWhenYouDo = CardTail("uss-farragut/when-you-do-draw", func(ct
 // among what they could attack (CR 508.4), offered first what the
 // Stargazer attacks. It was never declared, so it fires no attack
 // trigger (CR 508.4).
-func trekB43StargazerIllusion(g *game.Game, item *game.StackItem) error {
+func TrekB43StargazerIllusion(g *game.Game, item *game.StackItem) error {
 	return CreateTokensAttackingYourChoice{
 		Template: TokenCard("4/3 colorless Spacecraft Illusion artifact with flying"),
 		N:        1,
 		Tapped:   true,
-		Prefer:   triggerAttackTarget(item),
+		Prefer:   TriggerAttackTarget(item),
 		Label:    "U.S.S. Stargazer",
 		Tail:     game.KeyedTail{Ref: trekB43StargazerExile},
 	}.Apply(NewContext(g, item))
@@ -192,7 +192,7 @@ var trekB43StargazerExile = AttackingTokensThen("attacking-tokens/uss-stargazer-
 			At:    game.StepEndCombat,
 			Label: "U.S.S. Stargazer — exile the Spacecraft Illusion",
 			Cards: created,
-			Body:  exileListedCardsBody,
+			Body:  ExileListedCardsBody,
 		}.Apply(ctx)
 	})
 
@@ -203,7 +203,7 @@ var trekB43StargazerExile = AttackingTokensThen("attacking-tokens/uss-stargazer-
 // Robot artifact in addition to its other types." The exceptions are
 // part of the copiable values (CR 707.9b). A target gone by resolution
 // makes the ability do nothing (CR 608.2b).
-func trekB43ShoreLeaveCopy(g *game.Game, item *game.StackItem) error {
+func TrekB43ShoreLeaveCopy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	targets := ctx.LegalTargets()
 	if len(targets) == 0 {

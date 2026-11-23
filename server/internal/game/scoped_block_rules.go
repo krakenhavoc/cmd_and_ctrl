@@ -80,6 +80,10 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBlockPlayersCreatures rule needs Text, the clause the refusal sentence reads"
 		}
+	case ModCantBlockSubtypes:
+		if m.Text == "" || len(m.Subtypes) == 0 {
+			return "a cantBlockSubtypes rule needs Subtypes and Text, the clause the refusal sentence reads"
+		}
 	case ModCantBeBlockedByColor:
 		if len(m.Colors) != 1 || !strings.Contains("WUBRG", m.Colors[0]) || len(m.Colors[0]) != 1 {
 			return "a cantBeBlockedByColor rule needs one WUBRG color"
@@ -186,6 +190,13 @@ func CantBeBlockedBySubtypesMod(subtypes []string, text string) Mod {
 // the refusal sentence reads it.
 func CantBlockPlayersCreaturesMod(player uuid.UUID, text string) Mod {
 	return Mod{Kind: ModCantBlockPlayersCreatures, Player: player, Text: text}
+}
+
+// CantBlockSubtypesMod is "<creature type>s can't block this turn"
+// (Pyrophobia): every creature of one of `subtypes` (an any-of) may block
+// no attacker. `text` is the clause as the refusal sentence reads it.
+func CantBlockSubtypesMod(subtypes []string, text string) Mod {
+	return Mod{Kind: ModCantBlockSubtypes, Subtypes: copyStrings(subtypes), Text: text}
 }
 
 // CantBeBlockedByObjectMod is "<creature> can't be blocked by <that
@@ -300,6 +311,16 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Label:  m.Text,
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return barred(blocker) && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBlockSubtypes:
+		inScope := scopePredicate(e.Scope, e.Controller)
+		barred := blockRuleAllowedPredicate(nil, m.Subtypes)
+		return BlockRule{
+			Reason: BlockReasonCantBlockAttacker,
+			Label:  m.Text,
+			Pair: func(g *Game, _, blocker, _ *Card) bool {
+				return blocker != nil && barred(blocker) && inScope(blocker, g, nil)
 			},
 		}
 	case ModCantBeBlockedByObject:

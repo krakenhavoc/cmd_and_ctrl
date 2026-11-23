@@ -689,6 +689,14 @@ type PendingChoice struct {
 	ModeUsedLabel []string
 	ModeNotChosen ModeMemory
 
+	// ModePickFor is, on a mode_pick an opponent answers for an "An
+	// opponent chooses one" spell (#5771, opponent_mode.go), the player
+	// casting it. uuid.Nil on every mode_pick a controller answers for
+	// their own trigger. Read by the wire (the chooser is told whose
+	// spell it is, and a bot choosing for somebody else's spell prices
+	// the bullets the other way round) and never by a rule.
+	ModePickFor uuid.UUID
+
 	// modePickResume is the server-only continuation for a
 	// PendingChoiceModePick: the captured trigger, so the answer
 	// continues into the CR 603.3d target walk and then Build.
@@ -1119,8 +1127,11 @@ type PendingChoice struct {
 	// (Game.ChoicePromptBlocksTable, choice_gate.go): CR 117.3 does
 	// not let priority pass on with a required action outstanding and
 	// CR 500.2 does not let the step end until it has been taken. Set
-	// only by QueueUpkeepPayUnlessForEffect (upkeep_pay_unless.go),
-	// which is the one door into this shape.
+	// by a door whose card anchors the prompt to its step
+	// (QueueUpkeepPayUnlessForEffect, upkeep_pay_unless.go; a keyed
+	// pay-unless's InThisStep), and since #5793 derived by
+	// QueueChoiceForEffect for every pay_unless a resolution asks
+	// (resolution_pay_unless.go, CR 118.12).
 	//
 	// It replaced a per-card "please block" boolean in #997, for the
 	// reason #951 gives for deriving the other narrowing: the boolean
@@ -1608,6 +1619,15 @@ type DamageAssignmentFrame struct {
 	// of it to what it attacks. Zero in every other prompt, and in a
 	// frame restored from before the field, which is what those were.
 	AsThoughUnblocked bool `json:",omitempty"`
+	// Banding marks a prompt whose chooser is NOT the source's controller
+	// (ADR 0224): CR 702.22j hands an attacker's division to the
+	// defending player when a creature with banding blocks it, and
+	// CR 702.22k hands a blocker's division to the active player when it
+	// blocks a creature with banding. Either way the chooser divides as
+	// they choose among BlockerIDs; AllowTrample and AsThoughUnblocked are
+	// false. Zero in every other prompt, and in a frame restored from
+	// before the field, which is what those were.
+	Banding bool `json:",omitempty"`
 	// HasDeathtouch is true when the attacker has deathtouch (CR
 	// 702.2c — 1 damage is lethal). The server uses this to relax
 	// trample's lethal-to-every-blocker rule (CR 702.19b): 1 damage
@@ -1755,6 +1775,10 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 	// ADR 0127 §2: a covered pay_unless or confirm is filed under the
 	// key of the resolution or branch that asks it.
 	g.keyResolutionPromptLocked(&choice)
+	// #5793: a pay_unless a resolution asks is owed in the step it is
+	// asked in. After the key, on purpose: ADR 0127's coverage reads the
+	// card's own step anchor, not this derived one (auto_answer.go).
+	g.oweResolutionPayUnlessInStepLocked(&choice)
 	g.PendingChoices = append(g.PendingChoices, &choice)
 	return choice.ID
 }
@@ -2258,6 +2282,16 @@ func (g *Game) reassignChoiceLocked(c *PendingChoice, newChooser uuid.UUID) bool
 		if len(c.PickTargetPlayers) == 0 && len(c.PickTargetCards) == 0 {
 			return false
 		}
+	case PendingChoiceModePick:
+		// #5771, CR 800.4g: an opponent's mode choice passes to another
+		// OPPONENT of the caster ("that player chooses another opponent
+		// if possible"), never to the caster, and the bullets on offer are
+		// judged again with the new chooser as "that player". One who can
+		// choose none does not get the prompt.
+		if !c.isOpponentModePick() || newChooser == c.opponentTargetResume.controller ||
+			!g.refreshOpponentModeOfferLocked(c, newChooser) {
+			return false
+		}
 	case PendingChoiceOptionPick:
 		// The branches are labelled sentences and survive on their own;
 		// only the piles they name, and the SEATS they name, can go.
@@ -2601,6 +2635,10 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		// mustSettleNow, so this is never asked; the dice flow asks the
 		// roller the order of the choosers itself (dice_roll.go).
 		return ev.RollPlayer
+	case RepEventCopySpell:
+		// #5918. The player who would copy (CR 616.1). The window sets
+		// mustSettleNow, so this is never asked.
+		return ev.CopyPlayer
 	case RepEventLife:
 		return ev.LifePlayer
 	case RepEventCounter:
@@ -2978,6 +3016,10 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// #4307: unreachable. The window sets mustSettleNow, so no roll
 		// queues a CR 616 prompt; the dice flow asks its own keyed
 		// questions after the window settles (dice_roll.go).
+		return nil
+	case RepEventCopySpell:
+		// #5918: unreachable. The window sets mustSettleNow, so no copy
+		// instruction queues a CR 616 prompt (spell_copy_event.go).
 		return nil
 	case RepEventProduceMana:
 		// #1222: unreachable, and that is the decision rather than an
@@ -3359,6 +3401,10 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// dice, and the tail told so). The window never pauses, so
 		// nothing resumes into here.
 		return nil
+	case RepEventCopySpell:
+		// #5918: copySpellTimesLocked reads a cancelled instruction inline
+		// (no copies). The window never pauses, so nothing resumes here.
+		return nil
 	case RepEventProduceMana:
 		// #1222: a production cannot even reach this function — it
 		// sets mustSettleNow, so it never pauses and nothing resumes
@@ -3417,7 +3463,12 @@ type RevealedHandDiscard struct {
 	// FromGraveyard is "or a card from their graveyard" (Agonizing
 	// Remorse): every card in FromPlayer's graveyard is a candidate as
 	// well as the hand's matches. Filter applies to the hand only.
-	FromGraveyard bool
+	// GraveyardFilter, with FromGraveyard, limits the graveyard's candidates
+	// the way Filter limits the hand's (Dreams of Steel and Oil's "an
+	// artifact or creature card from their graveyard"). Nil offers every
+	// card, as Agonizing Remorse does. Read when the pick is raised.
+	GraveyardFilter func(Card) bool
+	FromGraveyard   bool
 	// Then is the registered continuation told what was chosen: "if
 	// you do / if you don't", a clause that reads the chosen card, or
 	// anything else printed after the pick that must wait for it.

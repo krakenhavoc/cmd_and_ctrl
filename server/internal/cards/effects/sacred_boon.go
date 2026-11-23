@@ -18,10 +18,11 @@ func init() {
 	Register(Spec{
 		OracleID:     "32a8d49b-cdfb-4944-bfb5-afd704cc3658",
 		Name:         "Sacred Boon",
+		Purpose:      game.Purpose{Answers: game.AnswerPrevent}, // #4734 slice 6
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return endStepToughnessShield(ctx, 3, "Sacred Boon")
+			return EndStepToughnessShield(ctx, 3, "Sacred Boon")
 		},
 	})
 }
@@ -32,7 +33,7 @@ func init() {
 // this way" (Sacred Boon, Scars of the Veteran). The follow-up does
 // nothing for a target that isn't a creature (Scars' "If it's a
 // creature"). A target gone by resolution gets no shield (CR 608.2b).
-func endStepToughnessShield(ctx *Context, n int, name string) error {
+func EndStepToughnessShield(ctx *Context, n int, name string) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard && t.Kind != game.TargetPlayer {
 			continue

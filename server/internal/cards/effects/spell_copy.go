@@ -25,7 +25,9 @@ import (
 // Count > 1 produces that many copies, each created separately and
 // each offered its own target choice — which is what Increasing
 // Vengeance's "copy that spell twice instead" means (two
-// independent copies, not one copy resolving twice).
+// independent copies, not one copy resolving twice). They are one copy
+// instruction (game.CopySpellTimesForEffect, #5918), so Twinning Staff
+// adds one copy to the lot, not one to each.
 //
 // ChooseNewTargets carries the "You may choose new targets for the
 // copy" clause. Leave it false only for a card that does not print
@@ -38,8 +40,8 @@ import (
 // FromLastKnown says the effect does not target it. That
 // is the CR 608.2b outcome for the whole spell in the single-target
 // case, and the engine's re-check has already handled it by the
-// time OnResolve runs; the guard here is for the multi-copy loop,
-// where the first copy can change the board under the second.
+// time OnResolve runs; the guard here is for a spell named by a
+// trigger or a follow-up rather than targeted.
 type CopySpell struct {
 	// StackID is the spell to copy — an instance ID on the stack.
 	StackID uuid.UUID
@@ -98,39 +100,38 @@ func (c CopySpell) Apply(ctx *Context) error {
 	if controller == uuid.Nil {
 		controller = ctx.Controller()
 	}
-	for i := 0; i < n; i++ {
-		copyFn := ctx.Game.CopySpellForEffect
-		if c.FromLastKnown {
-			copyFn = ctx.Game.CopyLastKnownSpellForEffect
-		}
-		err := copyFn(c.StackID, controller, c.ChooseNewTargets, c.Except)
-		if errors.Is(err, game.ErrCardNotFound) {
-			// The copied spell is not on the stack, is not the item
-			// resolving, and (for FromLastKnown) has no last-known
-			// record. That is the right answer for a spell that was
-			// countered under an effect that targets it (CR 608.2b), and
-			// for a spell that left between copies: the copies already
-			// made stand and there is nothing left to copy. It is also
-			// how a copy is silently lost when the engine has dropped
-			// the spell's record (#4270: a restore that dropped the
-			// resolving slot), so it is logged rather than swallowed.
-			slog.Warn("copy spell: the spell to copy was not found; no copy made",
-				"stack_id", c.StackID, "copies_made", i, "copies_wanted", n,
-				"from_last_known", c.FromLastKnown)
-			return nil
-		}
-		if err != nil {
-			return err
-		}
+	// #5918: the copies are ONE copy instruction (CR 707.10), so a
+	// replacement of it (Twinning Staff) applies once however many
+	// copies the card makes.
+	err := ctx.Game.CopySpellTimesForEffect(game.SpellCopy{
+		Spell:               c.StackID,
+		Controller:          controller,
+		Times:               n,
+		MayChooseNewTargets: c.ChooseNewTargets,
+		FromLastKnown:       c.FromLastKnown,
+		Except:              c.Except,
+	})
+	if errors.Is(err, game.ErrCardNotFound) {
+		// The copied spell is not on the stack, is not the item
+		// resolving, and (for FromLastKnown) has no last-known record.
+		// That is the right answer for a spell that was countered under
+		// an effect that targets it (CR 608.2b). It is also how a copy is
+		// silently lost when the engine has dropped the spell's record
+		// (#4270: a restore that dropped the resolving slot), so it is
+		// logged rather than swallowed.
+		slog.Warn("copy spell: the spell to copy was not found; no copy made",
+			"stack_id", c.StackID, "copies_wanted", n,
+			"from_last_known", c.FromLastKnown)
+		return nil
 	}
-	return nil
+	return err
 }
 
 // instantOrSorcerySpell is the target clause every card in this
 // family prints. Kept here rather than in targets.go so a
 // concurrent batch touching that file doesn't collide; move it if a
 // third family wants it.
-func instantOrSorcerySpell(label string, extra ...CardPredicate) *game.TargetSpec {
+func TargetInstantOrSorcerySpell(label string, extra ...CardPredicate) *game.TargetSpec {
 	preds := append([]CardPredicate{Or(Instant(), Sorcery())}, extra...)
 	return TargetSpell(label, preds...)
 }
@@ -140,7 +141,7 @@ func instantOrSorcerySpell(label string, extra ...CardPredicate) *game.TargetSpe
 // Choreographed Sparks): copy the bullet's targeted spell under the
 // spell's controller, with the CR 707.10c re-target prompt. The bullet's
 // own target clause decides which spells qualify.
-func copyModeTargetSpellWithNewTargets(_ *game.StackItem, ctx *Context, occurrence int) error {
+func CopyModeTargetSpellWithNewTargets(_ *game.StackItem, ctx *Context, occurrence int) error {
 	refs := ctx.ModeTargets(occurrence)
 	if len(refs) == 0 {
 		return nil

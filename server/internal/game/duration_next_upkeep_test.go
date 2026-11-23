@@ -198,8 +198,8 @@ func TestUntilYourNextUpkeepSurvivesARestore(t *testing.T) {
 }
 
 func TestUntilYourNextUpkeepKeepsItsPersistedIntAndNamesItself(t *testing.T) {
-	if !UntilYourNextUpkeep.Known() || UntilYourNextUpkeep != UntilNextEndStep+1 || (UntilYourNextUpkeep + 1).Known() {
-		t.Error("UntilYourNextUpkeep is not the last known duration kind, right after UntilNextEndStep")
+	if !UntilYourNextUpkeep.Known() || UntilYourNextUpkeep != UntilNextEndStep+1 {
+		t.Error("UntilYourNextUpkeep is not a known duration kind right after UntilNextEndStep")
 	}
 	if int(UntilYourNextUpkeep) != 12 {
 		t.Errorf("UntilYourNextUpkeep persists as %d, want 12", UntilYourNextUpkeep)

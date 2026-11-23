@@ -20,6 +20,7 @@ with no engine change: see [adding-a-signature.md](adding-a-signature.md).
 
 Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points here.
 
+  - [Where a card goes](#where-a-card-goes)
   - [Recipe](#recipe)
   - [Random effects (#744)](#random-effects-744)
   - [Adding a mana ability (S15+)](#adding-a-mana-ability-s15)
@@ -32,6 +33,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
+  - [Paying {S}: snow mana (#5986, CR 107.4h)](#paying-s-snow-mana-5986-cr-1074h)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
@@ -50,12 +52,13 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Skip that draw" (#5246, CR 614.1b)](#skip-that-draw-5246-cr-6141b)
   - ["This ability triggers only once" (#5245)](#this-ability-triggers-only-once-5245)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
+  - ["Can be attached only to a legendary creature" (#5846)](#can-be-attached-only-to-a-legendary-creature-5846)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
   - [Tapping the grantor, and an ability a card is given until end of turn (#4465, #4464)](#tapping-the-grantor-and-an-ability-a-card-is-given-until-end-of-turn-4465-4464)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
   - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
-  - ["Unless they put a -1/-1 counter on a creature they control" (#5746)](#unless-they-put-a--11-counter-on-a-creature-they-control-5746)
+  - ["Unless they put a -1/-1 counter on a creature they control" (#5746)](#unless-they-put-a--1-1-counter-on-a-creature-they-control-5746)
   - [Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)
   - [Cloak (#4452, CR 701.58)](#cloak-4452-cr-70158)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
@@ -81,6 +84,8 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Shared vocabulary, and the clone gate](#shared-vocabulary-and-the-clone-gate)
   - [Winning, losing, and "can't lose" (S40, ADR 0057)](#winning-losing-and-cant-lose-s40-adr-0057)
   - [Skipping all combat phases of a player's next turn (#5075, CR 500.11, 614.10)](#skipping-all-combat-phases-of-a-players-next-turn-5075-cr-50011-61410)
+  - [Skipping a player's next combat phase (#5838, CR 500.11, 614.10)](#skipping-a-players-next-combat-phase-5838-cr-50011-61410)
+  - ["Attacking creatures become blocked" (#5839, CR 509.1h)](#attacking-creatures-become-blocked-5839-cr-5091h)
   - [Exert (ADR 0130, #2048, CR 701.43)](#exert-adr-0130-2048-cr-70143)
   - [Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)](#whenever-you-waterbend-earthbend-firebend-or-airbend-5276-adr-0081-amendment-2026-11-07)
   - [When NOT to add a catalog entry](#when-not-to-add-a-catalog-entry)
@@ -128,7 +133,102 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Plane cards (ADR 0216 slice 4, #4870)](#plane-cards-adr-0216-slice-4-4870)
 
   - [Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)](#aetherdrift-leftovers-no-abilities-exile-x-and-an-event-amount-4464)
+  - [Ante cards: built, with their ante text inert (#5724, CR 407)](#ante-cards-built-with-their-ante-text-inert-5724-cr-407)
   - [When in doubt](#when-in-doubt)
+
+### Where a card goes
+
+`server/internal/cards/effects/` is a tree of packages, not one package.
+#5906 split it ([ADR 0225](decisions/0225-splitting-the-card-catalog-package.md),
+PR #5975) because the one package had grown past what the compiler can
+build in 16 GB:
+
+| what | where | package |
+|---|---|---|
+| a card file (it has an `init()`) | `server/internal/cards/effects/cards/<shard>/<snake_name>.go` | `cards<shard>` |
+| a helper two or more files use, a seam, `Spec` | `server/internal/cards/effects/<file>.go` (the core) | `effects` |
+| a test | `server/internal/cards/effects/tests/<id>/<name>_test.go` | `tests<id>` |
+| a test helper another test package uses | `server/internal/cards/effects/effectstest/<file>.go` | `effectstest` |
+
+- **`<shard>` and `<id>` come from the file name**, through the frozen range
+  table [`shards.txt`](../server/internal/cards/effects/shards.txt): the last
+  row of its kind whose bound sorts at or before the lower-cased name.
+  `miasma_demon.go` is in `cards/mi/` and `mill_cost_test.go` in `tests/m/`.
+  You never pick a shard by hand: `--place` (below) does it.
+- **A card file reaches the core qualified**, never through a dot import:
+  ```go
+  package cardsmi
+
+  import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+
+  func init() {
+      effects.Register(effects.Spec{
+          OracleID:     "<oracle id>",
+          Name:         "Card Name",
+          Completeness: effects.CompletenessFull,
+          Targets:      effects.TargetAny(),
+          Purpose:      effects.ForTargets(effects.DamageToTarget(0, 3)),
+          OnResolve:    effects.DamageToFirstTargetStep(3), // was damageToFirstTarget
+      })
+  }
+  ```
+  The recipes in this guide write core names bare (`Register(Spec{…})`,
+  `TargetAny()`), as the core's own files do; in a card file each one is
+  `effects.<Name>`. Many recipes were written before the split and name
+  helpers by their old unexported spelling (`onBattlefield`,
+  `newCatalogGame`, `pushBattlefieldCardWithTimestamp`): from a shard or a
+  test package the name is exported, `effects.OnBattlefield` or
+  `effectstest.NewCatalogGame`, and `scripts/split-effects/table.txt` maps
+  every renamed one.
+- **A card file declares nothing another file uses.** If two cards share a
+  helper, put it in a core file with no `init()` (a mechanic-named file, as
+  [Shared vocabulary](#shared-vocabulary-and-the-clone-gate) says), exported:
+  `func OnBattlefield(…)`, called as `effects.OnBattlefield(…)`. A shard
+  cannot import another shard. `core_cards.txt` lists the card files that
+  stayed in the core at the split because their siblings use their helpers;
+  never add to it (moving a listed file's helpers out and its card to its
+  shard is welcome).
+- **Tests** go in their test package and reach everything qualified:
+  `effectstest.NewCatalogGame(t)`, `effectstest.PassPriorityAroundTable(t, g)`,
+  `effects.Lookup(id)`, and a card's own helper as `cardsmi.Helper` when a
+  test needs it. Every test package links the whole catalog (its generated
+  `main_test.go` imports `effects/cards`), so tests look cards up by name as
+  before. A helper that tests in two packages share goes in `effectstest`,
+  exported. A test that reads its own sources uses the flat view
+  (`effectstest.FlatGlob("*.go")`, `FlatReadFile`, `FlatParseFile`): the
+  tree as the one directory it was, qualifiers removed.
+- **Anything that reads the catalog links it all.** A main package, or the
+  tests of a package that reaches the core, imports
+  `_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/cards"`
+  (the split generated `catalog_link.go` / `effects_catalog_link_test.go` for
+  every one that existed). Without it `effects.Lookup`, `All` and `Has`
+  panic and say so.
+
+**Placing a new file.** Write the new card file and its test in
+`server/internal/cards/effects/`, then let the tool move them. A branch written for the old one-package layout (or an agent
+following an old recipe) is in the same position: those files do not
+compile in the core, and `TestEffectsTreeLayout`
+(`server/internal/docsguard`, which runs `scripts/split-effects.sh --check`)
+fails naming each misplaced file and one command to run from the repository
+root:
+
+```bash
+scripts/split-effects.sh --place server/internal/cards/effects/foo.go server/internal/cards/effects/foo_test.go
+```
+
+It moves each card file to its shard, each test to its test package and any
+other file to the core (with `git mv` when git tracks it), sets the package clause, and
+rewrites every name that no longer resolves: `onBattlefield` becomes
+`effects.OnBattlefield`, `newCatalogGame` becomes
+`effectstest.NewCatalogGame`, `Register(Spec{…})` becomes
+`effects.Register(effects.Spec{…})`. It reads the split's own rename table
+(`scripts/split-effects/table.txt`). If the file needs a core helper that is
+still unexported, it exports it in place. Then build and test what it
+touched, and commit. `scripts/split-effects.sh --check` lists anything
+still misplaced. A branch cut before the split that *edits* an existing card
+file rebases onto the moved file (raise `merge.renameLimit` if git says rename detection
+was skipped); resolve its conflicts, then run `--place` on that file too to
+rewrite any old name it brought.
 
 ### Recipe
 
@@ -430,6 +530,19 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    activated ability, a `Repeatable` spec or a raised count. A card
    that lets someone choose instead (Typhoid Mary) is not this.
 
+   **"An opponent chooses one —" (#5771, CR 700.2e)** is
+   `OpponentChoosesOne(…)` on a **spell's** `Modes` (Fatal Lore, Library
+   of Lat-Nam, Misfortune). The opponent chooses as the spell is cast, the
+   caster picks which opponent when more than one could, and the caster
+   picks the chosen bullet's targets after; the engine parks the cast and
+   asks all of it (`game/opponent_mode.go`), so the card file declares the
+   bullets and nothing else. That opponent is "that player": read it with
+   `ctx.ModeChooser()`, and write "target … that player controls" as
+   `ThatPlayerControls(…)`. Declare each bullet's `Purpose` from the
+   caster's side, as for any modal spell: a bot choosing for somebody else
+   prices it as the caster's gain. `Register` refuses it on a trigger or an
+   activated ability, and beside a cost, a raised count or a repeat.
+
    **"When this enters, choose up to X" (#4617, CR 107.3m)** is
    `ChooseUpToX(…)` on the **enters trigger's** `Modes` (The Ruinous
    Wrecking Crew), where X is the X paid for the spell that became the
@@ -493,11 +606,20 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    Judgment's old shape, and it is the wrong event.
 
 4. **Write the card file.** One file per card at
-   `server/internal/cards/effects/<snake_name>.go`:
+   `server/internal/cards/effects/cards/<shard>/<snake_name>.go`, calling
+   the core qualified, as `effects.Register(effects.Spec{…})`. Write it as
+   `server/internal/cards/effects/<snake_name>.go` and run
+   `scripts/split-effects.sh --place server/internal/cards/effects/<snake_name>.go`
+   from the repository root: it picks the shard, moves the file and sets
+   its package clause (see [Where a card goes](#where-a-card-goes)):
    ```go
-   package effects
+   package cards<shard>
 
-   import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+   import (
+       "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+       "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+   )
 
    // Card Name — "full oracle text quoted."
    //
@@ -505,12 +627,12 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    // target-at-ETB deferrals, etc.). Be specific about WHAT is
    // deferred and to which future sprint.
    func init() {
-       Register(Spec{
+       effects.Register(effects.Spec{
            OracleID:     "<uuid from step 1>",
            Name:         "Card Name",
-           Completeness: CompletenessFull,
+           Completeness: effects.CompletenessFull,
            TargetMode:   "<player / creature / ...>",
-           OnResolve: func(item *game.StackItem, ctx *Context) error {
+           OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
                // primitive composition here
                return nil
            },
@@ -587,14 +709,18 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    no loyalty component, so don't invent one (see the deferral list
    below).
 
-5. **Add a test case** in
-   [cards_test.go](../server/internal/cards/effects/cards_test.go). Use
-   `newCatalogGame(t)` + `castCatalogSpell(t, g, name, typeLine, oracleID, targets)`
-   + `passPriorityAroundTable(t, g)` and assert the resulting state. For
-   an ETB trigger that call settles the spell and the trigger it queues;
-   assert `triggerOnStack` between two calls when the response window is
-   the point. An `AsEnters` choice fires inline during entry — no extra
-   setup needed. For library tutors, seed needles via `pushLibraryCardForTest`
+5. **Add a test case** in a `<snake_name>_test.go` file in its test
+   package, `server/internal/cards/effects/tests/<id>/` (package
+   `tests<id>`; `--place` puts it there too, from the same command as the
+   card file). Use `effectstest.NewCatalogGame(t)` +
+   `effectstest.CastCatalogSpell(t, g, name, typeLine, oracleID, targets)`
+   + `effectstest.PassPriorityAroundTable(t, g)` and assert the resulting
+   state; [tests/br/cards_test.go](../server/internal/cards/effects/tests/br/cards_test.go)
+   has many examples. For an ETB trigger that call settles the spell and
+   the trigger it queues; assert `effectstest.TriggerOnStack` between two
+   calls when the response window is the point. An `AsEnters` choice fires
+   inline during entry — no extra setup needed. For library tutors, seed
+   needles via `effectstest.PushLibraryCardForTest`
    (which uses `PushBottom` so the "first match" sandbox pick is
    deterministic).
 
@@ -770,6 +896,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Discard a card | `ManaAbilityCost{DiscardCards: DiscardACard().DiscardCards}` | Skirge Familiar |
 | Exile a card from your hand | `ManaAbilityCost{ExileCards: ExileACardFromHand()}` | Cadaverous Bloom (#1283) |
 | Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
+| {1}, Exile this card from your graveyard | `ManaAbility{Zones: []game.ZoneKind{game.ZoneGraveyard}, Cost: ManaAbilityCost{Mana: "{1}", ExileSelf: true}}` (the costed auto-tap pass plans it) | Jack-o'-Lantern (#5896) |
 | Exile a creature you control | `ManaAbilityCost{ExilePermanents: ExileACreatureYouControl().ExilePermanents}` | Food Chain (#1600) |
 
 **"Mana abilities of this land cost an additional 1 life to activate"**
@@ -885,6 +1012,13 @@ fields `ActivateAbilityParams` uses (`CounterSourceIDs`,
 `CounterCounts`, `CounterKind`), the view ships the same
 `counter_cost_*` fields, and the client opens the same
 `CounterCostModal`.
+
+`RemoveAllCountersFromThis(kind)` is "Remove all <kind> counters from this
+permanent" (Catti-brie of Mithral Hall, S82): `CounterRemovalCost.All`, a
+variable cost whose payment is every counter of the kind the source holds. A
+partial count is refused (`ErrInvalidParam`), no count at all means all of them,
+none held pays zero, and the view floors the stepper at the held count. The
+effect reads the number as `ctx.CountersRemoved()`.
 
 A zero floor means zero is an announcement (#2951): a payment with no
 counter fields, or `CounterCounts: []int{0}`, removes nothing and still
@@ -1191,7 +1325,7 @@ func init() {
 - Keyword lockout ("lose X and can't have or gain X", the Archetypes) — not a hand-written removal, which a later grant undoes (CR 613.7). Use `effects.LoseAndCantHave(applies, "x")`, or `LoseAndCantHaveUntilEOT` for a resolving ability (Arcane Lighthouse). The engine strips the keyword after the whole layer-6 bucket (ADR 0038, amendment of 2026-09-28)
 - A grant that reads a keyword ("Other creatures you control with flying have indestructible", Sephara; "Creatures you control with first strike have double strike", Kwende) — use `effects.WithKeywordHave(scope, "flying", label, "indestructible")`. It declares `ReadsAbilities`, so the engine applies the grant after every layer-6 effect that would add or remove the keyword it reads, whatever the timestamps (CR 613.8b; ADR 0067, amendment of 2026-10-23). A layer-6 static whose `AppliesTo` reads `HasKeyword` without that declaration is applied in timestamp order and misses a creature that gains the keyword later. A layer-7c anthem over "creatures with flying" (Empyrean Eagle) needs nothing: layer 6 is over by then
 
-**Tests** — see [anthem_test.go](../server/internal/cards/effects/anthem_test.go) and [tarmogoyf_test.go](../server/internal/cards/effects/tarmogoyf_test.go) for the layer-aware pattern. Use `pushBattlefieldCardWithTimestamp` (fires `EventZoneMove` so the listener stamps `EnteredBattlefieldAt` + bumps `layerVersion`); read effective characteristics via `effectivePower` / `effectiveToughness` / `effectiveTypes` / `effectiveAbilities` helpers.
+**Tests** — see [anthem_test.go](../server/internal/cards/effects/tests/a/anthem_test.go) and [tarmogoyf_test.go](../server/internal/cards/effects/tests/t/tarmogoyf_test.go) for the layer-aware pattern. Use `pushBattlefieldCardWithTimestamp` (fires `EventZoneMove` so the listener stamps `EnteredBattlefieldAt` + bumps `layerVersion`); read effective characteristics via `effectivePower` / `effectiveToughness` / `effectiveTypes` / `effectiveAbilities` helpers.
 
 **Don't bypass the printed/effective split:** if an effect needs to read another card's characteristic, use `target.Effective()` not `target.Power` / `target.TypeLine`. Reading printed values inside `AppliesTo` or `Apply` is a layer-ordering bug waiting to happen.
 
@@ -1206,6 +1340,7 @@ func init() {
 | "until end of turn" | `DurationUntilEndOfTurn(ctx)` | that turn's cleanup step (CR 514.2) |
 | "until your next turn" | `DurationUntilYourNextTurn(ctx, player)` | as that player's next turn begins, before untap — and when a departed player's turn *would have* begun (CR 800.4m) |
 | "until your next upkeep" | `DurationUntilYourNextUpkeep(ctx, player)` | as that player's next upkeep step begins, after untap and before the upkeep's triggers go on the stack (CR 503.1a); a second upkeep in one turn ends it, a skipped one doesn't, and a departed player's ends as their turn *would have* begun (CR 800.4m) (#5737) |
+| "this turn and next turn" | `DurationThisTurnAndNextTurn(ctx)` | at the cleanup step of the turn after this one, whoever takes it: two turns, never a round, and an extra turn taken right after this one is the next turn (CR 500.7, 514.2) (#5718) |
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
 | "this combat" / "until end of combat" | `DurationUntilEndOfCombat(ctx)` (second return false outside a combat phase: register nothing) | as the end of combat step ends, or an effect ends the phase (CR 511.3, 724.2d); an additional combat phase is a different combat (#2027) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
@@ -1269,6 +1404,13 @@ OnResolve: func(item *game.StackItem, ctx *Context) error {
 The engine stamps it on `StackItem.CastValues` after every cost is paid and before anyone can respond; it survives undo and snapshots, and a spell copy keeps its original's (CR 707.10). Use it only for text that says "as you cast"; a count the text reads as the spell resolves (Traverse the Outlands) stays in `OnResolve`. `ok` from `ctx.CastValue` is false only for a game restored from before the value existed; fall back to the resolution-time reading there.
 
 ### Granting an ability to another permanent (ADR 0093, #754)
+
+A bundle may also carry replacement effects, `AbilityGrant.Replacements`
+(Master Chef's "This creature enters with an additional +1/+1 counter on it"):
+the recipient has them while it has the grant, as its own, so `src` in each
+`AppliesTo` and `Replace` is the recipient and "you" is its controller. They
+merge into the composite definition's `Replacements` (`game.CardDef.
+GrantedReplacements`, `game/copy_grants.go`).
 
 "Creatures you control have '{T}: Add one mana of any color.'" is a
 layer-6 grant of a catalog BUNDLE, never a closure on the recipient.
@@ -1376,6 +1518,13 @@ the grant. Never write a granted trigger on the GRANTOR watching the
 recipients: the controller, the removal and the LKI all come out wrong.
 See `dionus_elvish_archdruid.go`, `agent_of_the_iron_throne.go` and
 `thornbite_staff.go`.
+
+A granted trigger that names the PLAYER WHO GAVE IT ("When this permanent
+deals damage to the player who cast Hellish Rebuke, …") sets
+`EventTargetIsGrantActivator` on its row: the harvest passes it only when the
+event's Target is the "you" of the grant that very row came from
+(`GrantedAbility.Activator`, per occurrence, so two casters' grants each name
+their own caster). It never passes on an own row. See `hellish_rebuke.go`.
 
 A grant from a RESOLVING spell or ability ("until end of turn, target
 creature gains '…'", Urza's Saga's "this Saga gains '…'") is the same
@@ -2214,6 +2363,44 @@ A caveat that says "pays 2 life instead of {B}" goes stale the day a card
 declares `LifeForMana`; the `paying 2 life instead of black mana`
 coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
 
+### Paying {S}: snow mana (#5986, CR 107.4h)
+
+An `{S}` in a cost is written as printed, in the cost string, and needs
+nothing else on the card:
+
+```go
+Activated: []ActivatedAbility{selfPumpRow("Hailstorm Valkyrie", "{S}{S}", 2, 2)}, // {S}{S}: +2/+2
+Cost:      ManaCost("{1}{S}"),                                                  // Grim Draugr
+```
+
+A mana cost with `{S}` (`Card.ManaCost` from Scryfall) is read the same
+way. `ParseCost` makes each `{S}` one `ColorRequirement` with `Snow` set
+(its `Options` read `{"C"}`, kept for old restore points; never read them
+for a snow slot). What the engine does with it:
+
+- **Only mana a snow source made pays it, of any colour or colourless**
+  (CR 107.4h). The bit is `ManaSourceSnow` on the token, snapshotted from
+  the producing permanent's snow supertype (CR 205.4g) when the mana is
+  made. Every solver asks `ColorRequirement.PaidBy(color, snow)`: the pool
+  payment, the auto-tapper (`tapSource.Snow`), the pool top-up and so the
+  legal-move list and the greyed actions. A Sol Ring's `{C}` does not pay
+  it; a Snow-Covered Forest's `{G}` does.
+- **No reduction removes it.** A generic reduction never reaches it
+  (CR 107.4h), and a reduction by `{C}` reduces generic instead
+  (CR 118.7b). A reduction BY `{S}` is generic (CR 118.7g).
+- **No spend grant widens it.** "Spend mana as though it were mana of any
+  color / type" leaves it alone: snow is neither a colour nor a type.
+- **Convoke, improvise and the like can't pay it:** a tapped creature is
+  not mana.
+- A mana ability that owes `{S}` itself is not auto-tapped (the costed
+  planner refuses it); it is still activatable by hand.
+
+"Spent to cast this spell" readings of `{S}` (Blessing of Frost's "the
+amount of {S} spent", Berg Strider's "if {S} was spent") are a separate
+question, read off the payment the way "if mana from a Treasure was spent"
+is: `ManaSpent.CountFrom(game.ManaSourceSnow)`. No catalog card reads it
+yet. A card whose only snow text is an `{S}` in a cost needs no caveat.
+
 ### "Players can't pay life to cast spells or to activate abilities" (#5660)
 
 "Players can't pay life to cast spells or to activate abilities that
@@ -2816,7 +3003,7 @@ a `Replace` that assumes it only ever runs after a "yes"; it never runs
 otherwise, but it may never run at all. See
 [ADR 0013 §5h](decisions/0013-replacement-effects.md).
 
-**Tests** — see `server/internal/cards/effects/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
+**Tests** — see `server/internal/cards/effects/tests/cr/doubling_season_test.go` for the CR 616 ordering pattern (Doubling Season + Hardened Scales → the affected player picks order → `[HS, DS]` yields 4 counters, `[DS, HS]` yields 3). Use `pushBattlefieldCardWithTimestamp` to get the source on the battlefield + the listener to stamp `EnteredBattlefieldAt`; trigger the event with the public mutation (`AddCounter`, `DrawCard`, etc.) and assert on the resulting state plus any queued `PendingChoice`.
 
 **Don't use the replacement pipeline when a primitive flag suffices.** "This card does X to a land it fetches" (Cultivate, Path to Exile, Solemn Simulacrum) is a self-contained card behavior, not a general replacement. Declare `TappedOnEntry: true` on the `SearchLibrary` primitive rather than a full `ReplacementEffect`. The generic pipeline is for effects that watch *other* cards' events.
 
@@ -3476,9 +3663,14 @@ copy is created, so the copy's characteristics are already edited when
 protection and the CR 707.10c re-target prompt read them.
 
 **A copy of a PERMANENT spell becomes a token as it resolves**
-(CR 608.3f, CR 111.13), through #923's one token-creation path, so a
-doubler doubles it, the creature's own enters abilities fire, and a
-bounce cannot turn it into a card. Nothing on the card declares that —
+(CR 608.3f, CR 111.13). The token is not "created" (#4994, ADR 0043's
+2026-11-20 amendment): no doubler doubles it, and a "whenever you create a
+token" trigger does not see it, because its arrival is an `EventZoneMove`
+from no zone with `Event.BecameToken` set, not an `EventTokenCreated`. A
+trigger that means "a token entered" must watch `EventETB` or a move onto
+the battlefield, not `EventTokenCreated`. Entry replacements still apply to
+it, the creature's own enters abilities fire, and a bounce cannot turn it
+into a card. Nothing on the card declares that —
 a card that copies a creature spell needs no more than the target
 clause. What is NOT copiable, and must stay off `PrintedValues`: the
 costs paid (`PaidCost.OptionalCosts` — kicker rides the STACK ITEM
@@ -3487,7 +3679,7 @@ foretold (`StackItem.Foretold`, `Card.FaceDownKind`) — a copy was
 never cast. A copy of an ABILITY is still unbuilt.
 
 **Tests** — see
-[copy_effects_test.go](../server/internal/cards/effects/copy_effects_test.go).
+[copy_effects_test.go](../server/internal/cards/effects/tests/cm/copy_effects_test.go).
 The pattern is `castCatalogSpell` → `resolveWithCopyChoice(t, g,
 pick)` (pass `uuid.Nil` to decline) → assert on the battlefield card.
 Assert the OBSERVABLE result — name, P/T, types, counters, and for
@@ -3616,6 +3808,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"soulbond"` | Soulbond (CR 702.95) — #5675. The token is the badge and the gate: the keyword's two triggered abilities are the catalog rows `Soulbond(name)` returns, and they read this token off the layered ability list, so a creature that has lost it (a copy that "loses soulbond") never asks to pair. Declare both; see "Soulbond" below. |
+| `"banding"` | Banding (CR 702.22) — #5723, [ADR 0224](decisions/0224-banding.md). The engine runs all of it (`game/banding.go`): bands announced on `declare_attackers` (`AttackDeclaration.Band`, CR 702.22c-e), a blocker of one member blocking the band at the block lock-in (CR 702.22h-i), and the damage division handed to the other player when a creature with banding is blocking or blocked (CR 702.22j-k). Every consumer reads the token off the layered ability list, so grant it with `GrantKeywordUntilEOT` / `KeywordGrant` like any keyword (Helm of Chatzuk). Not cumulative (CR 702.22m). A creature whose only text is banding needs no card file. "Bands with other" is NOT this token and is not supported: leave such a card out |
 | `"flanking"` | Flanking (CR 702.25) — #5757, #5784, a TRIGGERED keyword built like exalted: one trigger per instance (`game/flanking.go`, CR 702.25b), one per creature that blocks it (CR 509.3d), and the blocker gets -1/-1 until end of turn unless it has flanking itself, printed, imported or granted (CR 702.25a). Cumulative, so grant it through `GrantToAttached` / `KeywordGrant` / `game.AppendKeywordAbility` (Agility); "loses flanking" (`game.RemoveKeywordsMod`, Barbed Foliage) takes the trigger with it. Declare it in `PrintedKeywords`; never write a flanking trigger by hand. `RetiredFlankingRow(name)` is the pre-#5784 row, kept on the cards that shipped with it so an old restore point resolves; it never triggers, and no new card uses it. A creature whose only text is flanking needs no card file |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"melee"` | Melee (CR 702.121) — #4722, a TRIGGERED keyword: one attack trigger per instance (`game/melee.go`) gives the creature +1/+1 until end of turn for each opponent you attacked with a creature this combat, counted as the trigger resolves (`Game.OpponentsAttackedThisCombat`: attacks on a planeswalker or battle count no player). Cumulative (CR 702.121b), so grant it through `KeywordGrant` / `TribalKeywordGrant` / `game.AppendKeywordAbility` (Titania, Proud Pummeler). A creature whose only text is melee needs no card file. Never write the pump by hand |
@@ -3728,7 +3921,7 @@ keywords.
 
 **Tests** — assert `Effective().Abilities` contains the keyword
 strings after the card is pushed to the battlefield. See
-`server/internal/cards/effects/serra_angel_test.go` for the template.
+`server/internal/cards/effects/tests/i/keyword_cards_test.go` (Serra Angel) for the template.
 Combat behaviour (flying block restriction, trample overflow, etc.)
 is tested in `server/internal/game/combat_test.go` against
 manufactured battlefield state — card-level tests just verify the
@@ -3948,6 +4141,21 @@ Five bits: `CantAttack`, `CantBlock`, `CantBeBlocked`, `CantActivate`,
 `CantActivateMana` (plus `CantAttackOrBlock` for the common pair).
 The activation pair is split because Faith's Fetters says "unless
 they're mana abilities" and Arrest does not.
+
+**"Can't crew Vehicles"** (Intercessor's Arrest, #5673) is `game.CantCrew`,
+a bit of the second set, `game.ExtraRestriction`: `game.Restriction` is a
+`uint8` whose eight bits are all taken and is on disk, so it is full and
+a new restriction bit goes in `ExtraRestriction`. Write both sets with
+`RestrictAttachedExtra(game.CantAttackOrBlock|game.CantActivate, game.CantCrew)`,
+`RestrictSelfExtra(0, game.CantCrew)` on a creature that prints it, or
+`RestrictUntilEOT{ExtraRestrictions: …}`. CR 702.122d: the creature can't
+be tapped to pay a Vehicle's crew cost. The one reader is
+`game.CanCrewVehicles`, asked by the crew validator (which refuses with
+`game.ErrCantCrew` and taps nothing), the view's `crew_options` and the
+enumerator's `crewPayment`. It names crew only: a saddle cost, a
+teamwork cost and any other "tap an untapped creature you control" still
+take the creature. The wire token is `cant_crew`, on the same
+`restrictions` list as the first set's.
 
 **The engine reads them; you do not.** Declarations go through
 `game.AttackerEligible` and `Game.CanBlockLocked` (the boolean form of
@@ -4357,6 +4565,18 @@ creature's CONTROLLER's opponents, this protects against the CASTER's,
 and they differ the moment the target is somebody else's creature. It is
 a data record the targeting gate reads live, so a hexproof waiver can't
 lift it.
+
+**"Players and permanents can't be the targets of spells or activated
+abilities"** for a duration (Peace Talks, #5718) is
+`Game.PlayersAndPermanentsCantBeTargetedForEffect(source, controller,
+duration, label)`: one table-wide record over every player and every
+permanent, read live. It refuses a spell (an Aura spell too, CR 303.4a)
+and an activated ability, and lets a triggered ability (or a copy of one)
+through. The walk knows which it is asking for through
+`TargetSource.IsSpell` and `TargetSource.IsTriggered`: a trigger's walk is
+built with `WithTrigger`, which marks it, and anything else is a spell's
+or an activation's. Spells on the stack and cards in other zones are not
+covered.
 
 **A clause relative to the event that fired the trigger** — "Destroy
 target artifact that opponent controls", where "that opponent" is the
@@ -4781,6 +5001,29 @@ information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
 
+### "Can be attached only to a legendary creature" (#5846)
+
+An Equipment's "<this> can be attached only to <a quality>" (Konda's
+Banner) is `Spec.AttachOnlyTo`, built with `AttachedOnlyTo(label, preds…)`:
+
+```go
+AttachOnlyTo: AttachedOnlyTo("a legendary creature", Legendary()),
+Activated:    []ActivatedAbility{EquipAbility("{2}")}, // as printed
+```
+
+`game.attachmentLegalLocked` reads it, so the three places an attach is
+decided all honour it with no card code: an equip or an effect that would
+attach the Equipment to a creature the clause refuses leaves it where it is
+(`AttachForEffect`, CR 301.5b, CR 701.3b), `AttachLegalForEffect` leaves that
+creature out of a "move an Equipment" choice, and an Equipment on a host that
+stops meeting the clause becomes unattached (CR 301.5c, CR 704.5n). Leave the
+equip ability as printed: "Equip {2}" still targets any creature you control,
+and aimed at one the clause refuses it resolves and does nothing (the rulings
+on Gate Smasher and O-Naginata). Narrowing the target instead is CR 702.6c's
+"Equip legendary creature", a different card (`EquipOnlyAbility`). The clause
+is a static ability, so a copy has it and an Equipment that has lost all
+abilities does not.
+
 ### An Equipment that arrives on its own token (#5654)
 
 "When this Equipment enters, create a <token>, then attach this to it" is
@@ -5204,13 +5447,13 @@ BlockRules: []game.BlockRule{
   ([ADR 0187](decisions/0187-any-player-pays-per-object-graveyard-and-either-payments.md)
   amendment 2026-10-16).
 
-Tests: [block_rules_test.go](../server/internal/cards/effects/block_rules_test.go)
+Tests: [block_rules_test.go](../server/internal/cards/effects/tests/av/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
 `block_decision_seats`;
-[combat_limits_test.go](../server/internal/cards/effects/combat_limits_test.go)
+[combat_limits_test.go](../server/internal/cards/effects/tests/cm/combat_limits_test.go)
 pins the whole-combat limits, checking the enumerator against the verb
 on a clone for every candidate, and
-[conditional_combat_limits_test.go](../server/internal/cards/effects/conditional_combat_limits_test.go)
+[conditional_combat_limits_test.go](../server/internal/cards/effects/tests/cm/conditional_combat_limits_test.go)
 does the same for the #1534 variants, planeswalker targets included.
 
 ### Adding a triggered ability (S19+)
@@ -5360,7 +5603,7 @@ Grinder, Sail into the West, Sycorax Commander, whose count is filed under a
 key that names the player).
 
 Which bodies still run whole is a scan, not a guess (#4155):
-`TestScanStepsBodies` (`effects/steps_scan_test.go`) lists each hand-written
+`TestScanStepsBodies` (`effects/tests/st/steps_scan_test.go`) lists each hand-written
 body where an earlier statement can open a prompt (a scry, a search, a
 choose, a CR 616 order on damage, counters, tokens, life, a draw or a mill)
 and a later statement has an effect, ranked by EDHREC. Run it from `server/`
@@ -5741,7 +5984,7 @@ at X=0? "Look at the top X cards" does not, so the bot's enumerator
 declines to offer it there (CR 732.2a; `internal/legal/x.go`). Leave
 it unset only for a card with a fixed RIDER, something that happens
 whatever X is — The Goose Mother's 2/2 flying body — and add an entry
-to `xMattersAllowlist` in `effects/x_matters_guard_test.go` saying
+to `xMattersAllowlist` in `effects/tests/u/x_matters_guard_test.go` saying
 what the rider is, because that source scan fails the build on a Spec
 that reads `ctx.X()` without declaring:
 
@@ -6545,8 +6788,22 @@ OptionalCosts: []game.AdditionalCost{Multikicker("{G}", 20)},                   
 OptionalCosts: []game.AdditionalCost{Buyback("{3}")},                           // Capsize
 OptionalCosts: []game.AdditionalCost{BuybackSacrifice("a land", Land())},       // Constant Mists
 OptionalCosts: []game.AdditionalCost{KickerSacrifice("a creature", Creature())},
+OptionalCosts: []game.AdditionalCost{BuybackPayLife(4)},                        // Slaughter
+OptionalCosts: []game.AdditionalCost{KickerPayLife(3)},                         // Phyrexian Scuta
 OptionalCosts: Kickers("{R}", "{W}"),                                            // Thornscape Battlemage
 ```
+
+**"Buyback—Pay N life" / "Kicker—Pay N life"** (#5782, ADR 0100's
+2026-11-20 amendment) is `BuybackPayLife(n)` / `KickerPayLife(n)`: the
+fixed `PayLife` component the either/or branches use, on an optional
+cost. Nothing else is needed in the card file. The engine pays the life
+with the rest of the total cost (CR 601.2h) and refuses the announcement
+when the caster's life total is below it, or when they can't pay life
+at all (CR 119.4). The view marks the offer `life_short` so the client
+greys it, and the bot is offered it only while it would survive the
+payment. A cost that pays life AND something else ("Buyback—Pay 3 life,
+Discard a card at random", Flowstone Flood) needs every component to
+exist; a random discard as a cost does not yet, so that card stays out.
 
 **"Kicker {R} and/or {W}"** (CR 702.33b) is `Kickers(first, second)`: two
 `Kicker` entries in printed order, both keyed kicker, each its own once-only
@@ -6583,9 +6840,9 @@ hand-rolled one compiles and then never returns a bought-back card to
 hand. `Register` refuses the mistakes that would otherwise ship
 quietly: an `Optional` cost in the mandatory slot, a missing or
 duplicated `Key` (kicker's pair aside), a repeatable cost that also demands cards or
-permanents (every printed multikicker is mana), and an optional
-`PayLifeX` (it would fight the mandatory cost for the shared `XValue`
-slot).
+permanents (every printed multikicker is mana, so a repeated life
+payment is refused too), an optional `PayLifeX` (it would fight the
+mandatory cost for the shared `XValue` slot), and a negative `PayLife`.
 
 Read the choice back at RESOLUTION with `ctx.WasKicked()` /
 `ctx.KickedTimes()`, the same shape `ctx.PaidAltCost("overload")`
@@ -7455,7 +7712,7 @@ the first sentence moved, so with no exile there is no "it" and neither
 branch runs — Cling to Dust's "Otherwise, you draw a card" is the same
 conditional's other half, not a separate sentence. Write the whole
 family as `ExileThenIfItWas{Target, Was: WasCreatureCard, Then,
-Otherwise}` rather than by hand; `cards/effects/exile_payout_guard_test.go`
+Otherwise}` rather than by hand; `cards/effects/tests/ex/exit_payout_guard_test.go`
 fails the build on a condition, after a fire-and-forget exile, that
 reads a local assigned before it, and its allowlist is where a clause
 that is genuinely ungated (Swords to Plowshares, Solitude) gets
@@ -7752,7 +8009,7 @@ alongside `Slots`. The fan-out asks every player at once, APNAP, each
 about their own look only, and acts on nothing until the last answer is
 in — so the rest of the card goes in the outer `Then`, never on the next
 line. See
-[wandering_archaic.go](../server/internal/cards/effects/wandering_archaic.go)
+[wandering_archaic.go](../server/internal/cards/effects/cards/w/wandering_archaic.go)
 and [ADR 0013 §5ai](decisions/0013-replacement-effects.md#5ai-amendment-2026-10-01-a-card-set-pick-is-a-run-too--every-player-chooses-from-their-own-look).
 
 "Put the rest on the bottom in a random order" anywhere else is
@@ -8123,6 +8380,26 @@ REDUCES the mana half, which the pricer does not read), Firecat Blitz's
 creatures" price (Battle Screech, Prismatic Strands), which is a tap
 component the struct does not have.
 
+**Returning N permanents as the price (#5837).** Daze's "return an Island
+you control to its owner's hand rather than pay this spell's mana cost" is
+`ReturnInstead`; the count is the clause's `WithCount(n, n)`, one when the
+clause is a plain `PermanentYouControl`:
+
+```go
+AlternativeCosts: []game.AlternativeCost{                                          // Gush
+    ReturnInstead(
+        "Return two Islands you control to their owner's hand",
+        PermanentYouControl("two Islands you control", HasSubtype("Island")).WithCount(2, 2),
+        "two Islands you control",
+    ),
+},
+```
+
+The caster names exactly n distinct permanents they control in
+`alt_cost_ids`; a board with fewer can't pay it (CR 118.3), so the offer is
+not shown. Each goes to its owner's hand (CR 400.3) with the spell already
+on the stack. `Register` refuses any count but a fixed one of at least one.
+
 **A behold as part of the price (#4689, CR 701.4a, ADR 0025 amendment
 2026-11-03).** "Flashback—{1}{R}, Behold three Elementals" (Kindle the
 Inner Flame) is `AlternativeCost.Behold` (a `game.RevealCost{Behold:
@@ -8349,7 +8626,6 @@ bilboCastFromGraveyard(g, item)                         // Bilbo, Thief in the N
 // fizzled) and as a CR 616.1 exit beside buyback and rebound; a permission
 // sets one of the two.
 ```
-```
 
 Five rules worth knowing before you write one. **The key is shared with
 the printed keyword** (`"flashback"`, `"escape"`), because CR 702.34a's
@@ -8447,8 +8723,8 @@ leaves-the-battlefield trigger or a delayed trigger: the return is a
 one-shot effect performed before anyone gets priority, and it does not
 leave the game with the player who exiled the card. The primitive also
 answers CR 610.3a/b — an "until" whose event has already happened
-exiles nothing. See [palace_jailer.go](../server/internal/cards/effects/palace_jailer.go)
-and [ossification.go](../server/internal/cards/effects/ossification.go).
+exiles nothing. See [palace_jailer.go](../server/internal/cards/effects/cards/p/palace_jailer.go)
+and [ossification.go](../server/internal/cards/effects/cards/o/ossification.go).
 
 **An "until" that returns a card to a HAND (#4585, CR 610.3).** The return
 sends an object to "its previous zone", so a card exiled out of a hand
@@ -8474,7 +8750,7 @@ file does is register **both faces**: the creature under the bare
 oracle ID and the Adventure half under `"<oracle_id>#1"`, the same
 composite keyspace a Siege's back face and the sixty MDFC land backs
 live in. See
-[foulmire_knight.go](../server/internal/cards/effects/foulmire_knight.go).
+[foulmire_knight.go](../server/internal/cards/effects/cards/fl/foulmire_knight.go).
 The creature's entry is usually a bare `Completeness` declaration plus
 its `PrintedKeywords` — without it the whole card wears the
 "unimplemented" badge in hand, because the Adventure's text makes
@@ -8484,7 +8760,7 @@ surface — `target_mode`, `legal_targets`, `clauses`, the modes and the
 price list — per castable face, and the client's face picker swaps the
 chosen half's block in, so Stomp, Petty Theft and Swift End open a
 target picker like any other spell. See
-[bonecrusher_giant.go](../server/internal/cards/effects/bonecrusher_giant.go).
+[bonecrusher_giant.go](../server/internal/cards/effects/cards/bl/bonecrusher_giant.go).
 Nothing about a card file changes for it: write the Adventure half's
 `Targets` exactly as you would on a single-faced instant, under the
 `"#1"` key. An uncatalogued adventure card is still unaffected — it has
@@ -9163,7 +9439,7 @@ trigger fires and removes the trigger if the set is empty (CR
 queues a `pick_target` prompt the controller answers by clicking
 the board. The chosen ref arrives in `item.Targets[0]` — your
 `Effect` reads it from there (see `destroyChosenTargetTrigger` in
-[acidic_slime.go](../server/internal/cards/effects/acidic_slime.go)) —
+[acidic_slime.go](../server/internal/cards/effects/cards/a/acidic_slime.go)) —
 and resolution re-checks it (CR 608.2b). Never pick a target
 inside `Build`.
 
@@ -9207,11 +9483,17 @@ Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
 applies: it queues a `pay_unless` prompt for the taxed player and
 returns; the "unless" consequence runs later as its registered `Else` when
 they answer "Don't pay" — or "Pay" without the mana in pool +
-untapped sources. Read the payer's ID off the triggering event at
+untapped sources. The table waits for that answer (#5793): the engine
+anchors every pay-unless a resolution asks to the step it is asked in, so
+nothing passes, the step does not end, and a spell's later instructions and
+its exit wait until the payer has answered (CR 118.12, 608.2g, 117.3b). This
+holds for a spell or activated ability too ("return target creature unless
+its controller pays {1}. Draw a card."): plain `PayUnless{Else}` inside
+`ResolveSteps` is the whole recipe, with no flag on the card. Read the payer's ID off the triggering event at
 resolution (`item.Trigger.Event.Actor` for cast / draw events — not
 captured in a `Build`, which would put the row on the legacy list) and
 read the controller off the `Context` inside `Else`. See
-[rhystic_study.go](../server/internal/cards/effects/rhystic_study.go),
+[rhystic_study.go](../server/internal/cards/effects/cards/r/rhystic_study.go),
 whose `Effect` reads the payer as `ctx.Trigger().Event.Actor`.
 Write the decline KEYED (#4256): `Else: smotheringTitheDecline` with
 `var smotheringTitheDecline = PayUnlessElse("pay-unless/smothering-tithe-treasure",
@@ -9418,7 +9700,7 @@ optional triggers, `answerLatestTriggerPrompt` (which passes priority
 until the trigger resolves and asks) then `passPriorityAroundTable`
 again. Upkeep triggers: `advanceToUpkeepOf`
 then `passPriorityAroundTable`. See the S19 sections of
-[cards_test.go](../server/internal/cards/effects/cards_test.go).
+[cards_test.go](../server/internal/cards/effects/tests/br/cards_test.go).
 
 ### Adding a triggered MANA ability (#763)
 
@@ -9498,7 +9780,7 @@ yet, which is how the auto-tap planner reads them
   locking mutator, which would deadlock under the read lock.
 
 `TestEveryCatalogManaTriggerIsReadOnly` in
-[mana_trigger_judge_test.go](../server/internal/cards/effects/mana_trigger_judge_test.go)
+[mana_trigger_judge_test.go](../server/internal/cards/effects/tests/m/mana_trigger_judge_test.go)
 runs every catalogued trigger through the judge under `ReadSnapshot` and
 fails if the game's snapshot changes.
 
@@ -9545,11 +9827,11 @@ Tide, Bubbling Muck) is `TurnManaTrigger`, and the planner judges it
 through the same pass.
 
 **Tests**: `pushAuraOnLand` + `tapForMana` in
-[mana_trigger_cards_test.go](../server/internal/cards/effects/mana_trigger_cards_test.go);
+[mana_trigger_cards_test.go](../server/internal/cards/effects/tests/m/mana_trigger_cards_test.go);
 the engine rules themselves are in
 [mana_trigger_test.go](../server/internal/game/mana_trigger_test.go).
 What the planner makes of a card is tested through the real catalog in
-[autotap_trigger_mana_test.go](../server/internal/cards/effects/autotap_trigger_mana_test.go)
+[autotap_trigger_mana_test.go](../server/internal/cards/effects/tests/a/autotap_trigger_mana_test.go)
 (`castAutoTappedFromHand`, `plansFor`), and the planner's own rules, on
 stubbed triggers, in
 [autotap_trigger_mana_test.go](../server/internal/game/autotap_trigger_mana_test.go)
@@ -10245,14 +10527,17 @@ that question — the gated verbs ask it and so does `internal/legal`,
 which is what keeps the bots and the engine from disagreeing the way
 they did for the whole life of the allowlist (#794). Deny by default:
 an unclassified kind blocks, and `pay_unless` is still the one kind
-that does not (ADR 0018 §6). That row answers for the KIND; a live
+that does not (ADR 0018 §6) — but only for a prompt queued outside a
+resolution: since #5793 every pay-unless a resolution asks is owed in
+its step, below. That row answers for the KIND; a live
 PROMPT is asked through `(*game.Game).ChoicePromptBlocksTable`, which
 adds two one-way narrowings on top of it, both DERIVED from the board
 rather than declared by a card — `PendingChoice.GuardsStackItem`, a
 prompt whose decline counters an object still on the stack (#951,
 `counter_unless_paid.go`), and `PendingChoice.OwedInStep`, a prompt the
 payer owes before the step it was asked in can end (#997,
-`upkeep_pay_unless.go`). Both can only make a prompt block, never let
+`upkeep_pay_unless.go`; derived since #5793 for every pay-unless a
+resolution asks, `resolution_pay_unless.go`). Both can only make a prompt block, never let
 one through, and both lift by themselves when the thing they are about
 has gone — which is what stops either being a wedge. There is no
 card-level "please block" switch: #567 shipped one and the next two
@@ -10305,19 +10590,19 @@ string.
 
 Two things that are not obvious:
 
-- **The prompt blocks the table**, which no other `pay_unless` does.
-  Use `effects.UpkeepPayUnless` (never `PayUnless`) for "at the
-  beginning of your upkeep, pay or else": it goes through
+- **The prompt blocks the table**, as every `pay_unless` a resolution
+  asks does since #5793. Still use `effects.UpkeepPayUnless` (never
+  `PayUnless`) for "at the beginning of your upkeep, pay or else": its
+  anchor is the card's own, so ADR 0127 never offers a standing
+  "Always / Never pay" for it (the derived anchor keeps one). It goes through
   `Game.QueueUpkeepPayUnlessForEffect`, which anchors the prompt to the
   step it was raised in (`PendingChoice.OwedInStep`), and
   `game.ChoicePromptBlocksTable` holds the table there until it is
   answered — read by the engine gate and by `internal/legal` alike.
-  ADR 0018 §6's latitude is Rhystic Study's: a question to a *different*
-  player after the ability left the stack. This one asks the active
-  player during their own upkeep, and the answer decides whether a
-  permanent is still on the battlefield. The narrowing is one-way and
-  per prompt — the `pay_unless` **kind** is unchanged, so Rhystic Study
-  still plays as it did. Stasis and Pact of Negation are the same door
+  This one asks the active player during their own upkeep, and the
+  answer decides whether a permanent is still on the battlefield. The
+  narrowing is one-way and per prompt — the `pay_unless` **kind** is
+  unchanged. Stasis and Pact of Negation are the same door
   (#997); nothing declares a halt on the card. So is a beginning-of-end-step
   "sacrifice it unless you pay", such as Ashling, the Limitless's delayed
   trigger for its token (#5803).
@@ -10665,7 +10950,7 @@ skips it if `ObjectEpochForEffect` has changed (CR 400.7). "Creatures
 that blocked this creature this turn" is read from the turn's
 `EventBlock` records, which a creature put onto the battlefield blocking
 never writes (CR 509.4). See `creaturesThatBlockedThisTurn` in
-[jovens_ferrets.go](../server/internal/cards/effects/jovens_ferrets.go).
+[jovens_ferrets.go](../server/internal/cards/effects/cards/j/jovens_ferrets.go).
 
 Those markers are for a set the card names ("those creatures"). When the
 card names a PLAYER's permanents instead ("Lands target player controls
@@ -10966,7 +11251,7 @@ cover the payoffs: `TurnExiledFaceUpForEffect` (shows it to every seat)
 and `PutExiledCreatureOntoBattlefieldOrHandForEffect` (the "you may put
 it onto the battlefield, otherwise into its owner's hand" prompt). The
 worked card is
-[the_creation_of_avacyn.go](../server/internal/cards/effects/the_creation_of_avacyn.go).
+[the_creation_of_avacyn.go](../server/internal/cards/effects/cards/th/the_creation_of_avacyn.go).
 
 ### Adding a manifest dread card (S43+, ADR 0082 amendment 2026-10-07)
 
@@ -11211,7 +11496,9 @@ card types too, so an artifact creature would stop being an artifact.
 **"…and isn't a Human"** is `game.LoseSubtypesMod(ctx.TextSubtype("Human"))`
 in the same kind of record (#4072, layer 4, CR 613.1d): it removes the
 named subtypes and nothing else, so a Human lord stops pumping the
-creature while the effect lasts (Werewolf Pack Leader). The kind
+creature while the effect lasts. Dancing Sword's "it isn't an
+Equipment" uses it; Werewolf Pack Leader did until its Oracle text
+became "is a Werewolf", a `SetCreatureTypesMod` (#5949). The kind
 `loseSubtypes` is an on-disk identity. A changeling stays every
 creature type, since that is a flag and not a list.
 
@@ -11247,7 +11534,7 @@ A `OfThatPlayersChoice` clause on a damage trigger is asked of the player the
 damage was dealt to (`triggerChooserOf`): Bladegriff Prototype.
 
 **Tests** — `pushNamedTribePermanent` in
-[tribal_test.go](../server/internal/cards/effects/tribal_test.go) seeds
+[tribal_test.go](../server/internal/cards/effects/tests/to/tribal_test.go) seeds
 a permanent and answers its prompt in one call. Assert through
 `effectivePower` / `effectiveAbilities` / `effectiveSubtypes` like
 any other layer card.
@@ -11372,21 +11659,23 @@ together after the last; the auto-tapper offers one candidate per pair.
 A spell or trigger may add it through `AddManaForEffect` too, without
 restrictions (Firemind Vessel, Guild Globe, Component Pouch, Interplanar
 Beacon; tests in
-[different_colors_cards_test.go](../server/internal/cards/effects/different_colors_cards_test.go)).
+[different_colors_cards_test.go](../server/internal/cards/effects/tests/cr/different_colors_cards_test.go)).
 
 **Tests**: `pushChosenColorPermanent` and `answerColor` in
-[color_choice_cards_test.go](../server/internal/cards/effects/color_choice_cards_test.go).
+[color_choice_cards_test.go](../server/internal/cards/effects/tests/cm/color_choice_cards_test.go).
 
 ### Shared vocabulary, and the clone gate
 
-The catalog is one package and its helpers are one vocabulary. The
+The catalog's core helpers are one vocabulary. The
 September 2026 review ([Discussion #557](https://github.com/krakenhavoc/cmd_and_ctrl/discussions/557))
 found the biggest cost in the tree was card-side copy-paste that grew
 because batch authors were told never to touch shared files; that rule
 is gone. In its place:
 
 - **Shared code lives in mechanic-named files, and those files are
-  append-only.** A trigger shape or condition goes in
+  append-only.** Since #5906's split those files are in the core
+  (`server/internal/cards/effects/`, no `init()`) and their helpers are
+  exported, so a card shard can call them ([Where a card goes](#where-a-card-goes)). A trigger shape or condition goes in
   `triggers_common.go`; a card predicate or an effect body used by
   more than one card goes in `helpers.go` (or a `predicates_<mechanic>.go`
   / `effects_<mechanic>.go` beside it); a token is a row in
@@ -11795,8 +12084,51 @@ record goes as the next turn begins; a waiting one for a player who has
 left goes then too. `Game.CombatPhaseSkipsForLocked(player)` counts what
 is owed, the turn in progress included.
 
-"Skip your next combat phase" (Moment of Silence) is not this: it skips
-one phase of THIS turn, and is not built.
+"Skip their next combat phase" is not this either: see the next
+subsection. "Target player skips their next combat phase this turn"
+(Moment of Silence) skips one phase of THIS turn, and is not built.
+
+### Skipping a player's next combat phase (#5838, CR 500.11, 614.10)
+
+"Whenever this creature deals combat damage to a player, that player
+skips their next combat phase" (Blinding Angel) skips ONE combat phase,
+the next one of that player's that would begin, in whatever turn it
+falls. The trigger's body is one function from
+[skip_combat_phases.go](../server/internal/cards/effects/skip_combat_phases.go):
+
+```go
+WheneverThisDealsCombatDamageToAPlayer("Blinding Angel — that player skips their next combat phase",
+    DamagedPlayerSkipsNextCombatPhase),
+```
+
+It writes a `skipNextCombatPhase` ScopedEffect record
+(`Game.SkipNextCombatPhaseForEffect(player, source, label)`) that is
+spent at step entry: as a combat step of that player's turn is about to
+begin and its combat phase has not begun, the oldest record goes and the
+rest of that phase comes out of the plan, so nothing in it happens
+(CR 500.11). A turn with two combat phases loses only the first; two
+records skip two (CR 614.10a). A combat phase that has begun can't be
+skipped, so a record made during that player's own combat waits for the
+next one (CR 614.10); one made before their combat in their own turn
+takes that turn's. A combat phase another effect skips (the whole-turn
+skip above) does not use it up (CR 614.10a). A waiting record for a
+player who has left goes as the next turn begins.
+`Game.NextCombatPhaseSkipsForLocked(player)` counts what is owed.
+
+### "Attacking creatures become blocked" (#5839, CR 509.1h)
+
+An effect that makes an attacker blocked with no creature blocking it
+(Fog Patch) is `Game.BecomeBlockedForEffect(ids)`, from
+[become_blocked.go](../server/internal/game/become_blocked.go). It writes
+the same blocked record the block declaration writes, so the attacker
+stays blocked for the rest of combat, rides a snapshot, and assigns no
+combat damage unless it has trample, which assigns all of it to what it
+is attacking (CR 510.1c, 702.19d). An attacker that was unblocked gets
+its one `EventBecomesBlocked` (CR 509.3c), with its defending player as
+`Actor`, so afflict and "whenever this creature becomes blocked" fire;
+one already blocked does not become blocked again, and no `EventBlock`
+is emitted, so "becomes blocked by a creature" does not (CR 509.3d). It
+does nothing before the declare blockers step.
 
 ### Whenever you waterbend, earthbend, firebend or airbend (#5276, ADR 0081 amendment 2026-11-07)
 
@@ -12188,7 +12520,7 @@ tapped", "enters with counters") and `AsEnters` choices are not
 triggers, so they are never suppressed. Tests:
 [game/trigger_suppression_test.go](../server/internal/game/trigger_suppression_test.go)
 for the rules and
-[effects/trigger_suppression_test.go](../server/internal/cards/effects/trigger_suppression_test.go)
+[effects/tests/to/trigger_suppression_test.go](../server/internal/cards/effects/tests/to/trigger_suppression_test.go)
 for the cards. A card test should check the prompt count as well as
 the outcome, because `passPriorityAroundTable` stops at a prompt, and
 an ordering prompt leaves the board looking suppressed. See
@@ -12277,6 +12609,12 @@ Three things to know:
   `ev.DamageTarget == src.Controller` is "damage to you" (Ajani
   Steadfast's emblem, `ajaniSteadfastEmblemPrevention`). The owner orders
   it against every other effect (CR 616.1).
+- **An emblem's cost modifiers** (S82, #5482) are `EmblemSpec.CostModifiers`,
+  built with the `Spec.CostModifiers` constructors (`CostsLess`, `YourSpell()`,
+  `ArtifactSpell()`). The cast price reads every seat's emblems beside the
+  battlefield, with the emblem as the source and its owner as "you", so
+  Saheeli, Filigree Master's "Artifact spells you cast cost {1} less to cast"
+  discounts only its owner's casts (`game.appendEmblemCostModifiersLocked`).
 
 ### Compleated (CR 702.150a, ADR 0183, #2946)
 
@@ -12644,10 +12982,10 @@ engine turns the permanent over when the designation changes, makes a
 daybound card cast at night enter on its back face (so it is the back
 face's "enters" ability that triggers, and no transform event fires),
 and refuses every other instruction to transform it. See
-[village_watch.go](../server/internal/cards/effects/village_watch.go) and
-[infestation_expert.go](../server/internal/cards/effects/infestation_expert.go);
+[village_watch.go](../server/internal/cards/effects/cards/v/village_watch.go) and
+[infestation_expert.go](../server/internal/cards/effects/cards/hu/infestation_expert.go);
 a face with nothing but keywords is a row of the table in
-[werewolves_keyword.go](../server/internal/cards/effects/werewolves_keyword.go).
+[werewolves_keyword.go](../server/internal/cards/effects/cards/w/werewolves_keyword.go).
 Test them through `deck.ToGameCard` (`werewolfRow` in
 `werewolf_cards_test.go`), because the per-face keywords reach the card
 only through the importer.
@@ -12669,8 +13007,8 @@ Static: []game.StaticAbility{NonHumanWerewolvesYouControlCantTransform()} // Imm
 player only. Before offering "you may transform it", ask
 `Game.CanTransformForEffect(id)`: it is false for a daybound or
 nightbound permanent and for one a "can't transform" effect covers. See
-[huntmaster_of_the_fells.go](../server/internal/cards/effects/huntmaster_of_the_fells.go)
-and [geier_reach_bandit.go](../server/internal/cards/effects/geier_reach_bandit.go).
+[huntmaster_of_the_fells.go](../server/internal/cards/effects/cards/hu/huntmaster_of_the_fells.go)
+and [geier_reach_bandit.go](../server/internal/cards/effects/cards/g/geier_reach_bandit.go).
 
 ### Role tokens (ADR 0036 and ADR 0093 amendments 2026-10-08, #1945, CR 111.10 / 303.7a / 704.5z)
 
@@ -13826,7 +14164,7 @@ nothing was chosen or there was nothing to choose from (CR 701.24d).
 **Searching your library and/or outside the game** (Turtles Forever, #4681) is
 not a flag on `SearchLibrarySpec`: the database pool (ADR 0198) answers with
 card names, which no library search prompt can hold beside instance IDs. It is
-three keyed prompts in a row, in `effects/turtles_forever.go`: a `PickOption`
+three keyed prompts in a row, in `effects/cards/to/turtles_forever.go`: a `PickOption`
 for the zones (both, the library only, outside the game only; asked first, so
 the library is searched, and announced, only when chosen, as #4519 does for
 "and/or graveyard"), then the library search, then an outside pick for the
@@ -13904,8 +14242,8 @@ it out as `adventure`. Register both faces the same way: the permanent
 under the bare oracle ID and the Omen half under `"<oracle_id>#1"`, with
 the Omen's `Targets`, `Purpose` and `OnResolve` written as for any instant
 or sorcery. See
-[bloomvine_regent.go](../server/internal/cards/effects/bloomvine_regent.go)
-and [twinmaw_stormbrood.go](../server/internal/cards/effects/twinmaw_stormbrood.go).
+[bloomvine_regent.go](../server/internal/cards/effects/cards/bl/bloomvine_regent.go)
+and [twinmaw_stormbrood.go](../server/internal/cards/effects/cards/to/twinmaw_stormbrood.go).
 
 Write nothing about the lifecycle. The engine reads the `Omen` spell type
 off the face's type line (`castAsOmen`, [game/omen.go](../server/internal/game/omen.go)),
@@ -14136,7 +14474,7 @@ Three things to know:
   game is waiting on and nothing else.
 - **Test with a window that is still open.** `newCatalogGame` has already
   kept every hand. Use `openingTable`, `handWith` and `keepAll` in
-  [opening_hand_actions_test.go](../server/internal/cards/effects/opening_hand_actions_test.go),
+  [opening_hand_actions_test.go](../server/internal/cards/effects/tests/o/opening_hand_actions_test.go),
   which stop before the first keep so the hands can be stocked.
 
 ### Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)
@@ -14771,6 +15109,15 @@ g.PermanentEnteredFaceDownThisTurn(you) || g.TurnedPermanentFaceUpThisTurn(you) 
   paying a special action's cost, and a special action carries no X (not in
   `SpecialActionParams`, the enumerator or the client's row), so Aurelia's
   Vindicator is left out.
+- **"All morph costs cost {2} more"** (Exiled Doomsayer, #5844) is
+  `SpecialActionCostsMore(2, "…", AMorphCost())` in `Spec.CostModifiers`, the
+  increase twin of `SpecialActionCostsLess`. `AMorphCost` reads the offer's
+  route (`CostQuery.SpecialAction.Route`), so it taxes morph and megamorph
+  (CR 702.37b) and a manifested card's morph route (CR 701.40c), and never a
+  disguise cost, a manifested or cloaked card's mana cost, or the {3}
+  face-down cast. Increases come before reductions (CR 601.2f), and one
+  reaches a turn-face-up cost that prints no mana: every reader asks
+  `SpecialActionChargesManaForEffect`, never `sa.Cost != ""`.
 
 ### "You may look at face-down creatures you don't control" (#5251)
 
@@ -14822,6 +15169,12 @@ reading the `CardDef` and are not set by the catalog any more.
   continuously since the beginning of the turn", `forceTheChosenCreature(label)` is the whole Effect, and
   `mustAttackOrBeDestroyed` is the shared body (an attack-requirement scoped effect until end of turn, and a delayed
   trigger on `destroyUnlessItAttackedBody`).
+- **"If this creature attacks, all creatures you control attack if able"** (Viashino Bey, #5840) is
+  `IfThisAttacksAllYourCreaturesAttack()`, a static, not a trigger. It writes a requirement with
+  `game.AttackRequirement.IfSourceAttacks` set, which exists only in a declaration that has its source attacking
+  (CR 508.1d, "attacks if some condition is met"). Declaring nothing stays legal; declaring the source owes an attack from
+  every other creature that can attack for free. For another "if <it> attacks, <creatures> attack if able" card, set
+  the same flag on a requirement from `requirementFrom(source, …)` and scope the static's `AppliesTo`.
 - **"For as long as this remains tapped"** is read from the moment the ability is activated (ADR 0109's amendment of
   2026-10-19). Build the duration with `DurationWhileThisRemainsTapped` or `WhileYouControlThisAndItRemainsTapped`
   (through `GainControlOfTargetFor`, `TargetGetsWhileThisRemainsTapped` or `TapAndHoldWhileThisRemainsTapped`) and the
@@ -15140,6 +15493,41 @@ Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 - **"<This>'s power and toughness are each equal to your life total"** is `powerAndToughnessEqualToYourLifeTotal()`
   (Serra Avatar, Angelic Enforcer). It declares `DependsOnLifeTotal`; a life-keyed static without it keeps a stale
   size until something unrelated drops the layer cache.
+
+### Ante cards: built, with their ante text inert (#5724, CR 407)
+
+**Owner decision, 2026-11-16: ante cards go in the catalog.** C2 never plays for
+ante, so their ante text does nothing in any game here, and the rest of each card
+is built as printed. A set-coverage batch builds them like any other card; it
+neither asks again nor lists them as excluded. The ante cards are Contract from
+Below, Darkpact and Demonic Attorney (Alpha), Jeweled Bird (Arabian Nights),
+Bronze Tablet (Antiquities), Rebirth and Tempest Efreet (Legends), Timmerian
+Fiends (Homelands) and Amulet of Quoz (Ice Age).
+
+C2 has no ante zone. The rules still let a card ante something even in a game
+not played for ante (CR 407.3 only keeps these cards out of decks; CR 407.4 says
+what anteing is), so treating anteing as impossible is the owner's call, not a
+rule. With it, each piece of ante text reads like this:
+
+- **"Remove this card from your deck before playing if you're not playing for
+  ante."** Not an ability. Declare nothing for it. Whether such a card may be in a
+  deck is deck legality (CR 407.3, and these cards are banned in Commander), not
+  the catalog's business.
+- **"Ante the top card of your library", "each player antes …".** The instruction
+  is impossible, so it does nothing and the rest of the effect still happens
+  (CR 609.3). Contract from Below is "discard your hand, then draw seven cards".
+- **"If you do" / "if a player does" after an ante.** Nothing was anted, so the
+  contingent part never happens. Build only what can happen: Jeweled Bird is a
+  tap ability that does nothing.
+- **"Target card in the ante".** Nothing is ever in the ante, so the spell has no
+  legal target and can't be cast (CR 601.2c, 601.2e). Build Darkpact only if a
+  target constructor can say "a card in the ante" honestly, so the engine refuses
+  the cast; otherwise leave it out and note that on its set's issue.
+
+Inert ante text is how the card plays here, not a simplification, so a card whose
+other text is exact is `CompletenessFull` with no `Caveats`. Say in its header
+comment that the ante clause is inert and link this section. If the non-ante text
+needs a seam the engine lacks, the usual rule applies: leave the card out.
 
 ### When in doubt
 

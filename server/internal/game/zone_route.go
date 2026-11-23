@@ -502,6 +502,10 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// #4307: unreachable. A roll's window never pauses
 		// (mustSettleNow), so it has no prompt to drop or prune.
 		return nil
+	case RepEventCopySpell:
+		// #5918: unreachable. A copy instruction's window never pauses
+		// (mustSettleNow), so it has no prompt to drop or prune.
+		return nil
 	case RepEventMill:
 		// #569: an abandoned MILL has read no cards off the library —
 		// the plan is made after the amount settles — and the caller
@@ -642,6 +646,13 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 			NewZoneOwner: r.DstOwner,
 			zoneRoute:    &r,
 		})
+	}
+	if src.Kind == ZoneStack && r.Countered && r.Dst == ZoneBattlefield {
+		// #5931: a counter that puts the card onto the battlefield
+		// instead of into its owner's graveyard (Desertion) is an ENTRY,
+		// owed the CR 614 entry window, the controller stamp and the
+		// ETB. counter_onto_battlefield.go.
+		return false, g.counterOntoBattlefieldLocked(&r)
 	}
 	dstZone, _, err := g.routeDestinationLocked(r.CardID, r.Dst, r.DstOwner)
 	if err != nil {
@@ -912,6 +923,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// here, stamped once the card has actually landed in exile.
 	stampExiledWithLocked(dstZone, ev.CardID, ev.ExiledWith, ev.exiledWithAbility(), g.Turn.Seq)
 	stampExileCounterLocked(dstZone, ev.CardID, ev.ExileCounter)
+	g.stampExiledByAbilityLocked(dstZone, ev.CardID, ev.moveCause())
 	if src.Kind == ZoneStack {
 		// #1318: the source zone decides, not a flag on the route. A
 		// card that has left the stack is no longer a spell (CR 400.7),
@@ -992,6 +1004,9 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		r.Cause.stampCause(&out)
 		leave.stamp(&out)
 		g.EmitEvent(out)
+		if kind == EventMill {
+			g.markMilledLocked(dstZone, ev.CardID)
+		}
 	}
 	if fromBattlefield {
 		ltb := Event{
@@ -1021,7 +1036,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// gets its own landing here. CR 903.9c first: a melded commander
 	// sent to the command zone instead takes only its commander card
 	// there, and the other goes where the move was going.
-	if moved.IsMelded() {
+	if isMultiCardPtr(&moved) {
 		landed := dstZone
 		if redirected && dstZone.Kind == ZoneCommand {
 			g.sendMeldPassengersOnLocked(moved, dstZone, r.Dst, actor, leave)

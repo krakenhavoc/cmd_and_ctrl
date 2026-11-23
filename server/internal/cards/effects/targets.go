@@ -475,17 +475,17 @@ func TargetPlayer(label string, preds ...PlayerPredicate) *game.TargetSpec {
 // TargetCreature — "target creature" narrowed by predicates
 // (NonBlack(), OpponentControls(), PowerLE(2), …).
 func TargetCreature(label string, preds ...CardPredicate) *game.TargetSpec {
-	return battlefieldSpec("creature", label, And(append([]CardPredicate{Creature()}, preds...)...))
+	return BattlefieldSpec("creature", label, And(append([]CardPredicate{Creature()}, preds...)...))
 }
 
 // TargetPermanent — "target permanent" narrowed by predicates
 // ("target artifact or enchantment" is
 // TargetPermanent("…", Or(Artifact(), Enchantment()))).
 func TargetPermanent(label string, preds ...CardPredicate) *game.TargetSpec {
-	return battlefieldSpec("permanent", label, And(preds...))
+	return BattlefieldSpec("permanent", label, And(preds...))
 }
 
-func battlefieldSpec(mode, label string, pred CardPredicate) *game.TargetSpec {
+func BattlefieldSpec(mode, label string, pred CardPredicate) *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:  mode,
 		Label: label,
@@ -700,6 +700,23 @@ func ControlledByThatEventActor(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// ControlledByThatEventLeaveController narrows a TRIGGERED ability's clause to
+// what the controller of the spell or ability behind the triggering zone
+// change controls (Karmic Justice's "destroy target permanent that opponent
+// controls" after "a spell or ability an opponent controls destroys a
+// noncreature permanent you control", #5929). ControlledByThatEventActor's
+// twin for an event whose Actor is not that player: this reads
+// Event.LeaveController. Data on the clause
+// (game.TargetSpec.ControlledByEventLeaveController), judged in the one shared
+// walk; on a spell, an activation or an event with no cause controller it
+// admits nothing.
+//
+//	ControlledByThatEventLeaveController(TargetPermanent("target permanent that opponent controls"))
+func ControlledByThatEventLeaveController(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ControlledByEventLeaveController = true
+	return spec
+}
+
 // ManaValueAtMostTheEventAmount narrows a TRIGGERED ability's clause to cards
 // whose mana value is at most the triggering event's Amount: "target creature
 // card with mana value X or less …, where X is the amount of damage this
@@ -796,6 +813,19 @@ func TheyControl(spec *game.TargetSpec) *game.TargetSpec {
 //	AnotherPlayerControls(OfThatPlayersChoice(TargetPermanent("target permanent another player controls")))
 func AnotherPlayerControls(spec *game.TargetSpec) *game.TargetSpec {
 	spec.ControlledByAnotherThanChooser = true
+	return spec
+}
+
+// WithTheSameManaValueAsIt is "with the same mana value" on a triggered
+// ability's clause, where "it" is the object the triggering event is about:
+// the permanent that entered (game.TargetSpec.ManaValueEqualsEventObject).
+// Judged in the one shared walk, so the legal set, the announce, the CR
+// 608.2b re-check, the client's picker and the bot's moves are one answer. A
+// walk with no fired trigger admits nothing.
+//
+//	WithTheSameManaValueAsIt(TargetCreature("up to one target creature you don't control with the same mana value", OpponentControls()))
+func WithTheSameManaValueAsIt(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ManaValueEqualsEventObject = true
 	return spec
 }
 

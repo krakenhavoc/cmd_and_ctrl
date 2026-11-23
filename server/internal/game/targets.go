@@ -133,16 +133,48 @@ type TargetSource struct {
 	// abilities from artifact sources your opponents control" (Species
 	// 8472, #4973), where CR 702.16b's protection reads both.
 	spell bool
+
+	// triggered says the walk's source is a TRIGGERED ability (CR
+	// 113.3c), and not a spell or an activated ability (#5718). Set by
+	// WithTrigger, which every trigger's target walk builds its source
+	// through (the harvest's fillable check, the mode prompt, each pick
+	// step and its answer), by stackItemSourceLocked for a triggered item
+	// (the resolution re-check, CR 608.2b) and by copyTargetSourceLocked
+	// for a copy of one (CR 707.10). Read through IsTriggered by a bar on
+	// "spells or activated abilities" (Peace Talks), which a triggered
+	// ability passes. A source with neither flag is a spell's walk, an
+	// activation's, or no source at all.
+	triggered bool
+
+	// castValues is the walked item's StackItem.CastValues, for a clause
+	// whose answer was fixed as the spell was cast
+	// (TargetSpec.AsCastOpponentSlot, #5860). Nil while the spell is
+	// still being cast, when the clause reads the game live.
+	castValues map[string]int
+
+	// modeChooser is the opponent who chose the walked spell's mode
+	// (ModeSpec.ChosenByOpponent, #5771): the "that player" a
+	// ControlledByModeChooser clause reads. Set by the cast once the mode
+	// is chosen, by the parked mode_pick's own source (ModePickSpecLocked)
+	// and by stackItemSourceLocked from StackItem.ModeChooser. uuid.Nil
+	// on every other walk.
+	modeChooser uuid.UUID
 }
 
 // IsSpell reports whether the source is a spell (a card being cast, a
 // spell on the stack or a copy of one) rather than an ability.
 func (s TargetSource) IsSpell() bool { return s.spell }
 
+// IsTriggered reports whether the source is a triggered ability (or a
+// copy of one) rather than a spell or an activated ability (#5718).
+func (s TargetSource) IsTriggered() bool { return s.triggered }
+
 // WithTrigger is this source judging a clause for the triggered ability
-// the event `tc` fired. A zero context (one that did not Fire) leaves
-// the source as it was.
+// the event `tc` fired. The source is a triggered ability's either way
+// (IsTriggered); a zero context (one that did not Fire, a CR 603.12
+// reflexive trigger's) attaches no event.
 func (s TargetSource) WithTrigger(tc TriggerContext) TargetSource {
+	s.triggered = true
 	if !tc.Fired() {
 		return s
 	}
@@ -167,6 +199,31 @@ func (s TargetSource) PowerToughness() (power, toughness int, ok bool) {
 		return s.Snapshot.Power, s.Snapshot.Toughness, true
 	}
 	return 0, 0, false
+}
+
+// name is the source's name: the live object's, or the last-known
+// snapshot's (CR 608.2h). ok is false when the walk has neither.
+func (s TargetSource) name() (string, bool) {
+	switch {
+	case s.Object != nil:
+		return s.Object.Name, true
+	case s.Snapshot != nil:
+		return s.Snapshot.Name, true
+	}
+	return "", false
+}
+
+// loyalty is the number of loyalty counters on the source: the live
+// object's, or a departed source's last-known count (CR 608.2h). ok is
+// false when the walk has no source object.
+func (s TargetSource) loyalty() (int, bool) {
+	switch {
+	case s.Object != nil:
+		return s.Object.Counters[CounterLoyalty], true
+	case s.Departed != nil:
+		return s.Departed.Counters[CounterLoyalty], true
+	}
+	return 0, false
 }
 
 // ObjectRef names the object this walk is relative to, as the
@@ -293,10 +350,21 @@ func SourceChooser(controller uuid.UUID) TargetSource {
 // snapshot: a caller that has both kept the snapshot as a fallback.
 func (s TargetSource) Characteristics() *Characteristic {
 	if s.Object != nil {
+		var ch *Characteristic
 		if s.X > 0 {
-			return SourceCharacteristicsX(s.Object, s.X)
+			ch = SourceCharacteristicsX(s.Object, s.X)
+		} else {
+			ch = SourceCharacteristics(s.Object)
 		}
-		return SourceCharacteristics(s.Object)
+		if ch != nil && s.spell {
+			ch.SourceIsSpell = true
+		}
+		return ch
+	}
+	if s.Snapshot != nil && s.spell && !s.Snapshot.SourceIsSpell {
+		cp := copyCharacteristic(s.Snapshot)
+		cp.SourceIsSpell = true
+		return cp
 	}
 	return s.Snapshot
 }
@@ -339,6 +407,13 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 		return TargetSource{}
 	}
 	src := g.stackItemSourceBaseLocked(item)
+	// #5860: a clause fixed as the spell was cast reads its stamp.
+	src.castValues = item.CastValues
+	// #5771: "that player controls" reads the opponent who chose the mode.
+	src.modeChooser = item.ModeChooser
+	// #5718: a triggered item is judged as a triggered ability's walk,
+	// whatever its source object is now.
+	src.triggered = item.Kind == StackItemTriggered
 	if item.Trigger != nil {
 		// #3860: a triggered item re-checks a clause that is relative to
 		// its event ("that opponent controls") against the event it
@@ -559,6 +634,15 @@ type TargetSpec struct {
 	// one with effects.ExiledWithThis.
 	ExiledWithSource bool
 
+	// OwnedBySourceOwner is "with the same owner as this spell": the
+	// candidate's owner must be the clause's source's owner — mutate's
+	// target (CR 702.140a, ADR 0223), which is not always the caster's
+	// own creature (a spell cast from another player's cards targets
+	// that player's). DATA judged in the shared walk beside CardOK, for
+	// the reason ExiledWithSource is. With no source object the clause
+	// admits nothing.
+	OwnedBySourceOwner bool
+
 	// OfSourcesChosenType is "target card of the chosen type": the
 	// candidate must have the creature type chosen for the clause's own
 	// source as it entered (Card.NamedTribe, CR 614.12) — Dawn-Blessed
@@ -618,6 +702,18 @@ type TargetSpec struct {
 	// naming no Actor. Build it with effects.ControlledByThatEventActor.
 	ControlledByEventActor bool
 
+	// ControlledByEventLeaveController is "…that opponent controls" where that
+	// opponent is the controller of the spell or ability whose resolution
+	// moved the permanent in the triggering event (Event.LeaveController): Karmic Justice's
+	// "Whenever a spell or ability an opponent controls destroys a
+	// noncreature permanent you control, you may destroy target permanent
+	// that opponent controls" (#5929). ControlledByEventActor's twin for a
+	// zone move, whose Actor is not the player behind it. DATA, judged in
+	// sourceAdmits for ControlledByThatPlayer's reasons, and like it admits
+	// NOTHING on a walk with no fired trigger or an event with no recorded
+	// leave controller. Build it with effects.ControlledByThatEventLeaveController.
+	ControlledByEventLeaveController bool
+
 	// ManaValueAtMostEventAmount is "with mana value X or less, where X is
 	// the amount of damage" the triggering event dealt (Venerable Warsinger:
 	// "return target creature card with mana value X or less from your
@@ -661,6 +757,20 @@ type TargetSpec struct {
 	// the required-ness is Game.ClauseMinForEffect. Build it with
 	// effects.ForNthOpponent.
 	OpponentSlot int
+
+	// AsCastOpponentSlot and AsCastMinPoison are "for each opponent who
+	// has N or more poison counters as you cast this spell, … target …
+	// from that player's graveyard" (Geth's Summons, #5860): the clause
+	// belongs to the n-th seat (1-based) after the chooser's, the
+	// candidate must be owned by that opponent, and that opponent must
+	// have had AsCastMinPoison or more poison counters as the spell was
+	// cast. The poison is judged live while the spell is announced (CR
+	// 601.2c) and fixed on the item as the cast completes (CR 601.2i), so
+	// the CR 608.2b re-check never re-judges it. DATA, judged in
+	// sourceAdmits (as_cast_opponent.go). Zero slot is no gate. Build it
+	// with effects.ForNthOpponentPoisonedAsCast.
+	AsCastOpponentSlot int
+	AsCastMinPoison    int
 
 	// ChosenByOpponent is "target … of an opponent's choice" (#2055,
 	// ADR 0019's 2026-10-16 amendment): as the spell or ability is put
@@ -740,6 +850,28 @@ type TargetSpec struct {
 	// beside ControlledByChooser. Build it with effects.AnotherPlayerControls.
 	ControlledByAnotherThanChooser bool
 
+	// ControlledByModeChooser is "… that player controls" on a bullet of
+	// a spell whose mode an opponent chooses (ModeSpec.ChosenByOpponent,
+	// #5771): Fatal Lore's "destroy up to two target creatures that
+	// player controls", where "that player" is the opponent who chose
+	// the mode. Read off the walk's source (TargetSource.modeChooser),
+	// which the cast sets once the mode is chosen and the item carries
+	// for the CR 608.2b re-check (StackItem.ModeChooser). A walk with no
+	// chooser yet -- a view of the card before it is cast -- admits a
+	// permanent any opponent of the controller controls, the superset,
+	// as ControlledByChooser's unbound set is. Meaningless outside such
+	// a bullet; effects.Register refuses it there. Build it with
+	// effects.ThatPlayerControls.
+	ControlledByModeChooser bool
+
+	// afterOpponentMode marks a per-announcement clause copy that belongs
+	// to a bullet an opponent chose (#5771): the caster's payload could
+	// not name its targets, because the mode was not known when it was
+	// sent, so the cast parks on it and asks the caster (opponent_mode.go).
+	// Set only on the copies AnnouncedClauses hands out, never on a
+	// catalog clause.
+	afterOpponentMode bool
+
 	// SharesCardTypeWithEventObject is "that shares a card type with
 	// it" on a TRIGGERED ability's clause, where "it" is the object the
 	// triggering event is about: the permanent that entered, for
@@ -753,6 +885,18 @@ type TargetSpec struct {
 	// no event object admits NOTHING. Build it with
 	// effects.SharesACardTypeWithIt.
 	SharesCardTypeWithEventObject bool
+
+	// ManaValueEqualsEventObject is "with the same mana value" on a
+	// TRIGGERED ability's clause, where the comparison is with the object
+	// the triggering event is about: the permanent that entered, for Boxing
+	// Ring's "it fights up to one target creature you don't control with
+	// the same mana value". The bound is the mana value the trigger's
+	// CR 603.10 snapshot recorded (ObjectSnapshot.ManaValue), so it is
+	// known when the target is chosen (CR 603.3d) and re-checked on
+	// resolution (CR 608.2b) even once the object has gone. DATA, judged
+	// in the same shared walk; a walk with no fired trigger or no event
+	// object admits NOTHING. Build it with effects.WithTheSameManaValueAsIt.
+	ManaValueEqualsEventObject bool
 
 	// chooser is the opponent who chooses this clause, once bound
 	// (bindStepChoosers). Unexported and never set on a catalog spec,
@@ -891,6 +1035,16 @@ type TargetSpec struct {
 	// where it cannot be announced, and AllowSame and Players
 	// everywhere. See SacrificeCostBounds.
 	Min, Max int
+
+	// MaxFrom is "up to X targets, where X is <a number read as the ability
+	// is activated>" (Endurance Bobblehead: X is the number of Bobbleheads
+	// you control as you activate this ability). A registered amount rule
+	// (RegisterDivideAmount), read once at announce by
+	// bindDivideAmountsLocked (CR 601.2b, 602.2b), which writes the answer
+	// into the announced clause's Max with a Min of 0; the catalog's clause
+	// is never touched. Data, not a func, for the reason AmountKey is. The
+	// zero value is no rule.
+	MaxFrom DivideAmount
 
 	// CountFromX makes the clause's target count the announced X
 	// rather than a printed constant — "Exile X target creatures you
@@ -1045,6 +1199,15 @@ type TargetSpec struct {
 	// "mana value X" one, so a client narrowing by X never hides a
 	// candidate the engine accepts.
 	ManaValueEqualsXPlus int
+
+	// ManaValueAtMostXPlus is the offset of "with mana value less than X"
+	// (March of Burgeoning Life): with ManaValueAtMostX set, a candidate
+	// admits at mana value X + N or less, so -1 is "less than X". Zero is
+	// plain "X or less". Additive within the snapshot version: it is only
+	// ever set by a catalog clause. The view still ships the clause as
+	// "X or less", a superset a client narrowing by X never over-hides;
+	// the announce check and the CR 608.2b re-check are the engine's.
+	ManaValueAtMostXPlus int
 
 	// PowerAtMostX and ToughnessAtMostX are "with power X or less" and
 	// "with toughness X or less" (ADR 0109 §9, #1842): the same
@@ -1230,6 +1393,15 @@ func (s *TargetSpec) WithTotal(r *TargetTotal) *TargetSpec {
 // (#1559). Mutates and returns the receiver, as WithCount does.
 func (s *TargetSpec) WithManaValueAtMostX() *TargetSpec {
 	s.ManaValueAtMostX = true
+	return s
+}
+
+// WithManaValueLessThanX marks the clause "with mana value less than X":
+// "X or less" shifted down by one (ManaValueAtMostXPlus). Mutates and
+// returns the receiver, as WithManaValueAtMostX does.
+func (s *TargetSpec) WithManaValueLessThanX() *TargetSpec {
+	s.ManaValueAtMostX = true
+	s.ManaValueAtMostXPlus = -1
 	return s
 }
 
@@ -1427,6 +1599,11 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 	if spec.Abilities {
 		for _, item := range g.abilityItemsBySeqLocked() {
 			if spec.AbilityOK != nil && !spec.AbilityOK(g, src.Controller, item) {
+				continue
+			}
+			// "another": an ability of the clause's own source is not offered
+			// (The Peregrine Dynamo's "from another legendary source").
+			if spec.excludesSource(src, item.SourceCardID) {
 				continue
 			}
 			out.Cards = append(out.Cards, item.ID)
@@ -1663,7 +1840,8 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		// ref to exactly one thing.
 		if spec.Abilities {
 			if item := g.StackMeta[ref.ID]; item != nil && item.Kind != StackItemSpell {
-				return spec.AbilityOK == nil || spec.AbilityOK(g, src.Controller, item)
+				return (spec.AbilityOK == nil || spec.AbilityOK(g, src.Controller, item)) &&
+					!spec.excludesSource(src, item.SourceCardID)
 			}
 		}
 		z := g.findCardZoneLocked(ref.ID)
@@ -1716,6 +1894,16 @@ const (
 	// The source's power is its live value while it stands and its
 	// last-known value once it has left (CR 608.2h), as for SourcePower.
 	SourceManaValueVsPower SourceStat = "mana_value_vs_power"
+	// SourceManaValueVsLoyalty compares the CANDIDATE's mana value with
+	// the number of loyalty counters on the SOURCE: "target creature or
+	// Equipment card with mana value less than Nahiri's loyalty" (Nahiri,
+	// the Unforgiving). The loyalty is the live object's while it stands
+	// and its last-known record's once it has left (CR 608.2h).
+	SourceManaValueVsLoyalty SourceStat = "mana_value_vs_loyalty"
+	// SourceSameName is "with the same name as this creature" (Callidus
+	// Assassin): the candidate's name equals the source's. It has no Cmp.
+	// Read from the live object's name, or the last-known snapshot's.
+	SourceSameName SourceStat = "same_name"
 )
 
 // SourceCmp is how the candidate's stat compares with the source's.
@@ -1744,6 +1932,8 @@ func (sc SourceComparison) holds(c Card, srcPower, srcToughness int) bool {
 	case SourceToughness:
 		cand, src = c.CurrentToughness(), srcToughness
 	case SourceManaValueVsPower:
+		cand = c.ManaValue()
+	case SourceManaValueVsLoyalty:
 		cand = c.ManaValue()
 	}
 	switch sc.Cmp {
@@ -1979,7 +2169,15 @@ func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
 		return false
 	}
 	that := src.Trigger.Event.Target
-	return that != uuid.Nil && c.Controller == that
+	if that == uuid.Nil {
+		return false
+	}
+	// A card in a graveyard has no controller to speak of: "in that player's
+	// graveyard" is read from its owner (Neyam Shai Murad).
+	if len(s.Zones) == 1 && s.Zones[0] == ZoneGraveyard {
+		return c.Owner == that
+	}
+	return c.Controller == that
 }
 
 // attackingThatPlayerAdmits is AttackingThatPlayer's gate: true without the
@@ -2004,6 +2202,21 @@ func (s *TargetSpec) eventActorAdmits(src TargetSource, c Card) bool {
 		return true
 	}
 	who := triggerActorOf(src)
+	return who != uuid.Nil && c.Controller == who
+}
+
+// eventLeaveAdmits is ControlledByEventLeaveController's gate: true without
+// the flag, and with it only a candidate controlled by the controller of the
+// spell or ability behind the triggering event. No trigger, or an event with
+// no recorded cause controller, admits nothing.
+func (s *TargetSpec) eventLeaveAdmits(src TargetSource, c Card) bool {
+	if !s.ControlledByEventLeaveController {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return false
+	}
+	who := src.Trigger.Event.LeaveController
 	return who != uuid.Nil && c.Controller == who
 }
 
@@ -2049,6 +2262,20 @@ func (s *TargetSpec) chooserAdmits(src TargetSource, c Card) bool {
 	return c.Controller != uuid.Nil && c.Controller != src.Controller
 }
 
+// modeChooserAdmits is ControlledByModeChooser's gate (#5771): true
+// without the flag; with it, a candidate controlled by the opponent who
+// chose the spell's mode, or -- before one has -- by any player other
+// than the walk's controller.
+func (s *TargetSpec) modeChooserAdmits(src TargetSource, c Card) bool {
+	if !s.ControlledByModeChooser {
+		return true
+	}
+	if src.modeChooser != uuid.Nil {
+		return c.Controller == src.modeChooser
+	}
+	return c.Controller != uuid.Nil && c.Controller != src.Controller
+}
+
 // otherThanChooserAdmits is ControlledByAnotherThanChooser's gate
 // (#5739): true without the flag; with it, a candidate controlled by a
 // player other than the clause's chooser, read off the walk's own event
@@ -2086,6 +2313,23 @@ func (s *TargetSpec) eventObjectTypeAdmits(g *Game, src TargetSource, c Card) bo
 		ch = info.Characteristic
 	}
 	return len(SharedCardTypes([]Card{{effective: &ch}, c})) > 0
+}
+
+// eventObjectManaValueAdmits is ManaValueEqualsEventObject's gate: true
+// without the flag; with it, a candidate whose mana value is exactly the
+// triggering event's object's, as its snapshot recorded it. No fired
+// trigger or no event object admits nothing.
+//
+// Caller must hold g.mu.
+func (s *TargetSpec) eventObjectManaValueAdmits(g *Game, src TargetSource, c Card) bool {
+	if !s.ManaValueEqualsEventObject {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() || src.Trigger.Object == nil {
+		return false
+	}
+	mv, ok := g.ManaValueForEffect(c)
+	return ok && mv == src.Trigger.Object.ManaValue
 }
 
 // triggerChooserOf is the player who answers a ChosenByTriggerActor
@@ -2130,22 +2374,43 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
 		return true
 	}
 	p, t, ok := src.PowerToughness()
-	if !ok {
-		return false
-	}
+	loyalty, loyaltyOK := src.loyalty()
 	for _, sc := range s.RelativeToSource {
-		if !sc.holds(c, p, t) {
+		if sc.Stat == SourceSameName {
+			name, nameOK := src.name()
+			if !nameOK || name == "" || c.Name != name {
+				return false
+			}
+			continue
+		}
+		if sc.Stat == SourceManaValueVsLoyalty {
+			if !loyaltyOK || !sc.holds(c, loyalty, 0) {
+				return false
+			}
+			continue
+		}
+		if !ok || !sc.holds(c, p, t) {
 			return false
 		}
 	}
 	return true
+}
+
+// sourceOwnerAdmits is OwnedBySourceOwner's gate: true without the
+// flag; with it, a candidate owned by the source object's owner. No
+// source object admits nothing (ADR 0223).
+func (s *TargetSpec) sourceOwnerAdmits(src TargetSource, c Card) bool {
+	if !s.OwnedBySourceOwner {
+		return true
+	}
+	return src.Object != nil && src.Object.Owner != uuid.Nil && c.Owner == src.Object.Owner
 }
 
 // validateTargetsLocked is the announce-time gate (CR 601.2c) for a

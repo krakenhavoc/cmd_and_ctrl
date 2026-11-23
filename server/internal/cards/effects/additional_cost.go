@@ -55,7 +55,7 @@ func discardLabel(n int) string {
 // watching the death triggers above the spell and drains first.
 func SacrificeCost(label string, preds ...CardPredicate) *game.AdditionalCost {
 	return &game.AdditionalCost{
-		Sacrifice: sacrificeSpec(label, preds...),
+		Sacrifice: SacrificeSpec(label, preds...),
 		Label:     "Sacrifice " + label,
 	}
 }
@@ -69,7 +69,7 @@ func SacrificeCost(label string, preds ...CardPredicate) *game.AdditionalCost {
 // is on the stack.
 func SacrificeNCost(n int, label string, preds ...CardPredicate) *game.AdditionalCost {
 	return &game.AdditionalCost{
-		Sacrifice: sacrificeSpec(label, preds...).WithCount(n, n),
+		Sacrifice: SacrificeSpec(label, preds...).WithCount(n, n),
 		Label:     "Sacrifice " + label,
 	}
 }
@@ -86,7 +86,7 @@ func SacrificeNCost(n int, label string, preds ...CardPredicate) *game.Additiona
 // pair, and one announced X paying two printed costs is a price nobody
 // chose.
 func SacrificeXCost(label string, preds ...CardPredicate) *game.AdditionalCost {
-	spec := sacrificeSpec(label, preds...)
+	spec := SacrificeSpec(label, preds...)
 	spec.CountFromX = true
 	return &game.AdditionalCost{
 		Sacrifice: spec,
@@ -113,7 +113,7 @@ func SacrificeXCost(label string, preds ...CardPredicate) *game.AdditionalCost {
 // optional cost, in an either/or branch and on any ability.
 func SacrificeAnyNumberCost(label string, preds ...CardPredicate) *game.AdditionalCost {
 	return &game.AdditionalCost{
-		Sacrifice: sacrificeSpec(label, preds...).WithCount(0, 0),
+		Sacrifice: SacrificeSpec(label, preds...).WithCount(0, 0),
 		Label:     "Sacrifice " + label,
 	}
 }
@@ -290,7 +290,7 @@ func BeholdAndExileCost(article, subtype string) *game.AdditionalCost {
 // pulled out of anywhere. A countered Champion never became a permanent,
 // so its card stays in exile. `name` is the card's name.
 func ReturnTheExiledCardToHand(name string) game.TriggeredAbility {
-	return On(game.EventLTB, Self, name+" — return the exiled card to its owner's hand", b36ReturnCardsExiledWithToOwnersHands)
+	return On(game.EventLTB, Self, name+" — return the exiled card to its owner's hand", B36ReturnCardsExiledWithToOwnersHands)
 }
 
 // ExilePermanentCost is "As an additional cost to cast this spell, exile
@@ -462,7 +462,7 @@ func ExileXFromGraveyardCost(label string, match func(game.Card) bool) *game.Add
 // announced X: Harvest Pyre and Haunting Misery, whose X is the number of
 // cards their additional cost exiled (#1948). A target that left in
 // response gets nothing (CR 608.2b), and X = 0 deals nothing.
-func dealXToTarget(_ *game.StackItem, ctx *Context) error {
+func DealXToTarget(_ *game.StackItem, ctx *Context) error {
 	x := ctx.X()
 	targets := ctx.LegalTargets()
 	if x <= 0 || len(targets) == 0 {
@@ -486,7 +486,7 @@ func dealXToTarget(_ *game.StackItem, ctx *Context) error {
 // as every additional cost is.
 func TapUntappedCost(n int, label string, preds ...CardPredicate) *game.AdditionalCost {
 	return &game.AdditionalCost{
-		TapOthers: tapOthersPrice(n, label, preds...),
+		TapOthers: TapOthersPrice(n, label, preds...),
 		Label:     "Tap " + label,
 	}
 }
@@ -501,7 +501,7 @@ func TapUntappedCost(n int, label string, preds ...CardPredicate) *game.Addition
 // without the verb ("any number of untapped creatures you control").
 // The mandatory slot only.
 func TapAnyNumberUntappedCost(label string, preds ...CardPredicate) *game.AdditionalCost {
-	tc := tapOthersPrice(0, label, preds...)
+	tc := TapOthersPrice(0, label, preds...)
 	tc.AnyNumber = true
 	return &game.AdditionalCost{TapOthers: tc, Label: "Tap " + label}
 }
@@ -622,9 +622,11 @@ func checkTapListAlone(spec Spec) {
 //     gift's opponent, "pay X life";
 //   - an unparseable branch mana cost.
 //
-// And, outside a branch, the two components that exist only for one:
-// a fixed PayLife in an optional cost and a mandatory mana cost.
-func checkEitherCost(spec Spec) {
+// And, outside a branch, the components that exist only for one: an
+// optional cost's own branches and a mandatory mana cost. A fixed
+// PayLife is a branch's or an optional cost's (KickerPayLife,
+// BuybackPayLife; ADR 0100's 2026-11-20 amendment).
+func CheckEitherCost(spec Spec) {
 	if ac := spec.AdditionalCost; ac != nil && ac.DiscardLand && ac.DiscardCards <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q narrows a discard to land cards but discards nothing (DiscardLandCost)", spec.Name))
 	}
@@ -649,8 +651,16 @@ func checkEitherCost(spec Spec) {
 		if oc.ExileCards != nil && oc.Key != game.CollectEvidenceKey {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles cards from a graveyard — only the mandatory slot may (#3536), or an optional collect evidence (OptionalCollectEvidence)", spec.Name, oc.Key))
 		}
-		if oc.PayLife != 0 || len(oc.Either) > 0 || oc.Forage {
-			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays fixed life or has branches — both exist only on a branch of the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
+		if len(oc.Either) > 0 || oc.Forage {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q has branches — they exist only on the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
+		}
+		// ADR 0100's 2026-11-20 amendment (#5782): a kicker or buyback may
+		// pay a fixed amount of life ("Buyback—Pay 4 life", Slaughter),
+		// offered only while the caster's life total is at least that much
+		// (CR 119.4). A negative amount is a typo, and a repeated life
+		// payment is refused with the other non-mana repeats above.
+		if oc.PayLife < 0 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays a negative amount of life", spec.Name, oc.Key))
 		}
 		// An optional reveal is only the behold cost (#4642); checkOptionalBehold
 		// holds its shape.
@@ -702,7 +712,7 @@ func checkEitherCost(spec Spec) {
 				// Monstrous Emergence's "choose a creature you control or reveal a
 				// creature card from your hand" (ChooseOrRevealCost): a behold of a
 				// card type that records its pick, alone on the slot.
-				if !rc.Behold || rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+				if (!rc.Behold && !rc.Colorless) || rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
 					panic(fmt.Sprintf("effects.Register: %q declares a malformed choose-or-reveal cost — build it with ChooseOrRevealCost, alone on the mandatory slot", spec.Name))
 				}
 			} else if !rc.Exile {
@@ -769,8 +779,8 @@ func checkEitherCost(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q %s declares an unparseable mana cost %q: %v", spec.Name, where, b.ManaCost, err))
 			}
 		}
-		checkSacrificeClause(spec.Name, where, b.Sacrifice, false, false, false)
-		refuseSacrificeDifferent(spec.Name, where, b.Sacrifice)
+		CheckSacrificeClause(spec.Name, where, b.Sacrifice, false, false, false)
+		RefuseSacrificeDifferent(spec.Name, where, b.Sacrifice)
 		// #1948: a fixed "exile two cards from your graveyard" branch
 		// (Soaring Stoneglider) is the mandatory slot's clause, paid the
 		// same way once the branch is chosen.
@@ -1011,7 +1021,7 @@ func KickerSacrifice(label string, preds ...CardPredicate) game.AdditionalCost {
 	return game.AdditionalCost{
 		Optional:  true,
 		Key:       game.KickerKey,
-		Sacrifice: sacrificeSpec(label, preds...),
+		Sacrifice: SacrificeSpec(label, preds...),
 		Label:     "Kicker—Sacrifice " + label,
 	}
 }
@@ -1069,8 +1079,43 @@ func BuybackSacrifice(label string, preds ...CardPredicate) game.AdditionalCost 
 	return game.AdditionalCost{
 		Optional:  true,
 		Key:       game.BuybackKey,
-		Sacrifice: sacrificeSpec(label, preds...),
+		Sacrifice: SacrificeSpec(label, preds...),
 		Label:     "Buyback—Sacrifice " + label,
+	}
+}
+
+// BuybackPayLife is a NON-MANA buyback that pays life — "Buyback—Pay 4
+// life" (Slaughter, #5782). KickerPayLife is the kicker twin, "Kicker—
+// Pay 3 life" (Phyrexian Scuta).
+//
+// The life is the fixed PayLife component the either/or branches use
+// (ADR 0100 §2, opened to optional costs by its 2026-11-20 amendment):
+// paid with the total cost, with the spell on the stack (CR 601.2h), and
+// the offer can be taken only by a caster whose life total is at least n
+// and who is allowed to pay life (CR 119.4). The cast path, the view's
+// `life_short` and the bot enumerator all ask the same CR 119.4 reader,
+// so nobody is offered a payment the server refuses.
+//
+//	OptionalCosts: []game.AdditionalCost{BuybackPayLife(4)},   // Slaughter
+func BuybackPayLife(n int) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional: true,
+		Key:      game.BuybackKey,
+		PayLife:  n,
+		Label:    fmt.Sprintf("Buyback—Pay %d life", n),
+	}
+}
+
+// KickerPayLife is "Kicker—Pay N life" (Phyrexian Scuta): BuybackPayLife
+// keyed as a kicker, so ctx.WasKicked() and game.CardKickedTimes read it.
+//
+//	OptionalCosts: []game.AdditionalCost{KickerPayLife(3)},   // Phyrexian Scuta
+func KickerPayLife(n int) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional: true,
+		Key:      game.KickerKey,
+		PayLife:  n,
+		Label:    fmt.Sprintf("Kicker—Pay %d life", n),
 	}
 }
 

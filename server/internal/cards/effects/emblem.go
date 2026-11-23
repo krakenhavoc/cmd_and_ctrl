@@ -168,11 +168,44 @@ type EmblemSpec struct {
 	// paying their mana costs". Offered to the emblem's owner.
 	GrantedAlternativeCosts []game.GrantedAlternativeCost
 
+	// CostModifiers are the emblem's cost-changing statics, the
+	// `Spec.CostModifiers` slot one zone over: Saheeli, Filigree Master's
+	// "Artifact spells you cast cost {1} less to cast." Priced as any
+	// cost modifier is (CR 601.2f), with the emblem as the source and its
+	// owner as "you".
+	CostModifiers []game.CostModifier
+
 	// Lines are the emblem's abilities line by line, each with the
 	// count it is gained at, for an emblem whose abilities switch on one
 	// by one (the Ring, CR 701.54c). The wire's text for it is derived
 	// from the lines it has right now. Empty for every card's emblem.
 	Lines []game.EmblemLine
+
+	// Activated are the emblem's activated abilities (#5868, CR 114.4,
+	// CR 113.6): Karn, Living Legacy's "Tap an untapped artifact you
+	// control: This emblem deals 1 damage to any target." Declared as a
+	// card's are; buildEmblemDef files them as functioning from the
+	// command zone, which is the only zone an emblem is in (CR 114.2),
+	// so a row leaves Zones nil. Its owner activates it through the
+	// ordinary activation verb, with the emblem as the source, so the
+	// emblem is "this emblem" and its owner is "you".
+	//
+	// A cost component that only a permanent can pay — {T}, sacrifice
+	// this, a loyalty cost — is refused at registration: an emblem is
+	// not a permanent (CR 114.5). Tapping OTHER permanents is not {T}
+	// (CR 302.6 does not apply), so TapOthers is how "tap an untapped
+	// artifact you control" is paid.
+	Activated []ActivatedAbility
+}
+
+// emblemActivatedShapes projects an emblem's activated abilities, each
+// functioning from the command zone (CR 114.4).
+func emblemActivatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
+	out := ActivatedShapes(in)
+	for i := range out {
+		out[i].Zones = []game.ZoneKind{game.ZoneCommand}
+	}
+	return out
 }
 
 // buildEmblemDef projects an EmblemSpec into the CardDef the engine
@@ -202,14 +235,17 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 		Replacements:            e.Replacements,
 		HandSize:                e.HandSize,
 		GrantedAlternativeCosts: e.GrantedAlternativeCosts,
-		Emblem:                  &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
+		CostModifiers:           e.CostModifiers,
+		// #5868: activated from the command zone by the emblem's owner.
+		Activated: emblemActivatedShapes(e.Activated),
+		Emblem:    &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
 	}
 }
 
 // checkEmblemSpec is the registration guard. Every failure here is a
 // card file that is wrong in a way no test of the card would catch,
 // so it fails at boot.
-func checkEmblemSpec(name string, e *EmblemSpec) {
+func CheckEmblemSpec(name string, e *EmblemSpec) {
 	if e == nil {
 		return
 	}
@@ -222,10 +258,11 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 	if len(e.Static) == 0 && len(e.Triggered) == 0 && len(e.UntapStep) == 0 && len(e.DrawStep) == 0 &&
 		len(e.ActivationTimings) == 0 && len(e.CastRestrictions) == 0 && len(e.LandPlayRestrictions) == 0 &&
 		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 && len(e.CastPermissions) == 0 &&
-		len(e.Replacements) == 0 && len(e.HandSize) == 0 && len(e.GrantedAlternativeCosts) == 0 {
+		len(e.Replacements) == 0 && len(e.HandSize) == 0 && len(e.GrantedAlternativeCosts) == 0 && len(e.CostModifiers) == 0 && len(e.Activated) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)
+	checkEmblemActivated(name, e.Activated)
 	checkCastRestrictions(name+" emblem", e.CastRestrictions)
 	checkLandPlayRestrictions(name+" emblem", e.LandPlayRestrictions)
 	checkGrantedAlternativeCosts(name+" emblem", e.GrantedAlternativeCosts)
@@ -248,6 +285,31 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 		// #3862: likewise the zone layer step.
 		if len(s.AffectsZones) > 0 {
 			panic(fmt.Sprintf("effects.Register: %s emblem static %d affects objects off the battlefield — only a battlefield permanent's static over them is applied", name, i))
+		}
+	}
+}
+
+// checkEmblemActivated refuses an emblem's activated ability that could
+// never be activated or that names a zone of its own (#5868). An emblem
+// is not a permanent (CR 114.5), so {T}, sacrifice-this and the other
+// components game.AbilityNeedsPermanentSource names cannot be paid by
+// it, and it is only ever in the command zone (CR 114.2).
+func checkEmblemActivated(name string, abilities []ActivatedAbility) {
+	for i, ab := range abilities {
+		if ab.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %s emblem activated ability %d has no Label", name, i))
+		}
+		if ab.Effect == nil {
+			panic(fmt.Sprintf("effects.Register: %s emblem activated ability %d has no Effect", name, i))
+		}
+		if len(ab.Zones) > 0 {
+			panic(fmt.Sprintf("effects.Register: %s emblem activated ability %d declares Zones — an emblem's ability functions from the command zone, which is filed for it", name, i))
+		}
+		if what := game.AbilityNeedsPermanentSource(ab.Cost); what != "" {
+			panic(fmt.Sprintf("effects.Register: %s emblem activated ability %d declares %s — an emblem is not a permanent (CR 114.5)", name, i, what))
+		}
+		if ab.Cost.ExileSelf || ab.Cost.BottomSelf {
+			panic(fmt.Sprintf("effects.Register: %s emblem activated ability %d moves its source as a cost — nothing can move an emblem (CR 114.5)", name, i))
 		}
 	}
 }

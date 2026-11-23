@@ -1229,6 +1229,16 @@
   const modeMin = $derived(active?.mode_min ?? 0);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
+  // #5771, CR 700.2e: an "An opponent chooses one" spell another player
+  // is casting. The mode is this viewer's to choose; the spell and its
+  // targets stay the caster's. The card is still in the caster's hand,
+  // so its name rides the prompt.
+  const modeCaster = $derived(
+    active?.mode_chosen_for
+      ? ((snap.seats ?? []).find((s) => s.id === active?.mode_chosen_for)?.name ?? "An opponent")
+      : null,
+  );
+  const modeSpell = $derived(active?.mode_spell_name || "their spell");
   // ADR 0097 (#1749): every bullet in printed order, the ones this
   // object's ability has already chosen marked used. The used ones
   // ride beside the offer (`mode_used_*`), so they are merged in here
@@ -2044,7 +2054,7 @@
       // so, rather than offer "Choose" with nothing chosen.
       const verb = modeMin === 0 && modePicks.length === 0 ? "Choose none" : "Choose";
       return {
-        label: triggerSourceName(c.source),
+        label: modeCaster ? `${modeCaster}'s ${modeSpell}` : triggerSourceName(c.source),
         src: c.reason || "choose one",
         count: `${modePicks.length} / ${modeMax > 0 ? modeMax : "any"}`,
         width: 560,
@@ -2791,8 +2801,13 @@
       </ul>
     {:else if isModePick}
       <p class="prompt-hint">
-        The ability is not on the stack until you answer — its mode is chosen as it goes there (CR
-        603.3c), and any targets it asks for come after.
+        {#if modeCaster}
+          {modeCaster} is casting {modeSpell}, and you choose its mode (CR 700.2e). {modeCaster} chooses
+          any targets after, and "that player" in it is you.
+        {:else}
+          The ability is not on the stack until you answer — its mode is chosen as it goes there (CR
+          603.3c), and any targets it asks for come after.
+        {/if}
         {#if modeRepeatable}
           You may choose the same mode more than once.
         {/if}
@@ -2801,7 +2816,11 @@
           ability does nothing.
         {/if}
       </p>
-      <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
+      <ul
+        class="prompt-options"
+        role={modeSingle ? "radiogroup" : "group"}
+        aria-label={modeCaster ? L.opponentModeChoice(modeCaster, modeSpell) : undefined}
+      >
         {#each modeRows as row (row.idx)}
           {@const idx = row.idx}
           {@const times = modeTimes(idx)}
@@ -2926,7 +2945,23 @@
         {/if}
       {/if}
     {:else if isDamageAssignment && damageFrame}
-      {#if damageFrame.blocker_divides}
+      {#if damageFrame.banding}
+        <!-- ADR 0224, CR 702.22j-k: banding hands the division to the
+               other side, so the creatures taking the damage are yours. -->
+        <p class="prompt-hint">
+          <span class="band-tag">banding</span>
+          {#if damageFrame.blocker_divides}
+            <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+            is blocking {damageFrame.blocker_card_ids.length} of your creatures, and one of them has banding,
+            so you divide its {damageFrame.attacker_power} damage among them however you like.
+          {:else}
+            <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+            is blocked by {damageFrame.blocker_card_ids.length} of your creatures, and one of them has
+            banding, so you divide its {damageFrame.attacker_power} damage among them however you like.
+            None of it tramples over.
+          {/if}
+        </p>
+      {:else if damageFrame.blocker_divides}
         <!-- #1706, CR 510.1d: a blocker dividing its damage among the
                attackers it blocks — any split that adds up. -->
         <p class="prompt-hint">
@@ -3503,6 +3538,17 @@
 <svelte:window onkeydown={handleKey} />
 
 <style>
+  /* ADR 0224: the banding prompt's tag, the attack picker's limit-tag
+     shape. */
+  .band-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 4px;
+  }
   /* ADR 0111 PR 5: the mana symbols in the dock's prompt area. Five
      colours fit one row of the 300-380px dock; a sixth wraps. */
   .dock-commander {

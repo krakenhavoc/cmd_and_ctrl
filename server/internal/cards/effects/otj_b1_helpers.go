@@ -7,7 +7,7 @@ package effects
 // otjB1LootCounter is Bandit's Haul's loot counter. Counter kinds are
 // free-form strings (game/counter_types.go); this one has no engine
 // meaning beyond its name.
-const otjB1LootCounter = "loot"
+const OtjB1LootCounter = "loot"
 
 // otjB1SacrificedWasOutlaw reports whether the permanent the ability's
 // cost sacrificed was an outlaw as it last existed on the battlefield
@@ -15,7 +15,7 @@ const otjB1LootCounter = "loot"
 // creature with every creature type (CR 702.73a). The same batch as
 // b40Outlaw, read off the cost's last-known record rather than a live
 // card.
-func otjB1SacrificedWasOutlaw(ctx *Context) bool {
+func OtjB1SacrificedWasOutlaw(ctx *Context) bool {
 	info, ok := ctx.SacrificedPermanent()
 	if !ok {
 		return false
@@ -24,7 +24,7 @@ func otjB1SacrificedWasOutlaw(ctx *Context) bool {
 		return true
 	}
 	for _, t := range []string{"Assassin", "Mercenary", "Pirate", "Rogue", "Warlock"} {
-		if hasFold(info.Characteristic.Subtypes, t) {
+		if HasFold(info.Characteristic.Subtypes, t) {
 			return true
 		}
 	}

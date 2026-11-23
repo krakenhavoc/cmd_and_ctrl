@@ -14,7 +14,7 @@ import (
 // std54FoodFightDamage is Food Fight's granted ability: the sacrificed
 // artifact deals 1 plus the number of permanents named Food Fight the
 // ability's controller controls to the announced target, if still legal.
-func std54FoodFightDamage(g *game.Game, item *game.StackItem) error {
+func Std54FoodFightDamage(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	amount := 1
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -31,7 +31,7 @@ func std54FoodFightDamage(g *game.Game, item *game.StackItem) error {
 // std54SpellDamagedItsOnlyTarget is Imodane's condition: ev is damage dealt
 // by an instant or sorcery spell the source's controller controls, a spell
 // whose announced targets are all one creature, to that creature.
-func std54SpellDamagedItsOnlyTarget(ev game.Event, source *game.Card, g *game.Game) bool {
+func Std54SpellDamagedItsOnlyTarget(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Source == uuid.Nil || ev.Target == uuid.Nil {
 		return false
 	}
@@ -70,21 +70,21 @@ func std54HasAdventure(c game.Card) bool {
 // the delayed ability's controller's control, a non-token as it last
 // existed (CR 603.10a). The keys are on-disk identities.
 var (
-	std54NontokenCreatureYouControlDiedCondition = game.DelayedCondition("dies/nontoken-creature-you-control-this-turn", std54NontokenCreatureYouControlDied)
-	std54CantBlockRatBody                        = game.SimpleDelayedBody("gnawing-crescendo/cant-block-rat", func(g *game.Game, item *game.StackItem) error {
+	Std54NontokenCreatureYouControlDiedCondition = game.DelayedCondition("dies/nontoken-creature-you-control-this-turn", std54NontokenCreatureYouControlDied)
+	Std54CantBlockRatBody                        = game.SimpleDelayedBody("gnawing-crescendo/cant-block-rat", func(g *game.Game, item *game.StackItem) error {
 		return CreateToken{Template: CantBlockRatToken(), N: 1}.Apply(NewContext(g, item))
 	})
 )
 
 func std54NontokenCreatureYouControlDied(ev game.Event, dt *game.DelayedTrigger, g *game.Game, _ game.EffectParams) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == dt.Controller && !IsToken(dead)
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == dt.Controller && !IsToken(dead)
 }
 
 // std54InstantSorceryOrAdventureInGraveyard counts the cards in a player's
 // graveyard that are instant cards, sorcery cards, and/or have an Adventure
 // (Frantic Firebolt, Hearth Elemental): each card is counted once.
-func std54InstantSorceryOrAdventureInGraveyard(g *game.Game, player uuid.UUID) int {
+func Std54InstantSorceryOrAdventureInGraveyard(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0

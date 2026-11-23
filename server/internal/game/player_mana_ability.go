@@ -139,7 +139,7 @@ func (g *Game) PlayerManaAbilitiesLocked(playerID uuid.UUID) []PlayerManaAbility
 			Label:    s.Label,
 			LifeCost: s.ManaAbility.LifeCost,
 			Produced: s.ManaAbility.Produced,
-			Payable:  g.CanPayLifeLocked(p, s.ManaAbility.LifeCost) && !g.LandManaOnlyLocked(playerID),
+			Payable:  g.CanPayLifeLocked(p, s.ManaAbility.LifeCost) && !g.LandManaOnlyLocked(playerID) && !g.playerActivationBanned(playerID),
 		})
 	}
 	return out
@@ -189,6 +189,11 @@ func (g *Game) activatePlayerManaAbilityLocked(playerID, source uuid.UUID) error
 		return fmt.Errorf("%w: %s has no mana ability from that source this turn", ErrInvalidParam, p.Name)
 	}
 	if g.LandManaOnlyLocked(playerID) {
+		return ErrCantActivate
+	}
+	// #5922: "can't activate abilities" reaches a player's own granted
+	// mana ability too.
+	if _, _, banned := g.playerActivationBanLocked(playerID); banned {
 		return ErrCantActivate
 	}
 	ab := *grant.ManaAbility

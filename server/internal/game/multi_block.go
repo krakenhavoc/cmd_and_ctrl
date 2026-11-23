@@ -228,12 +228,24 @@ func (g *Game) queueBlockerDamageDivisionLocked(blk *Card, attackerIDs []uuid.UU
 	}
 	res := SourceDamageResultTraits(blk)
 	frame.SourceInfect, frame.SourceWither, frame.SourceToxic = res.Infect, res.Wither, res.ToxicTotal
+	chooser, reason := blk.Controller, "Divide combat damage among the creatures it blocks"
+	// ADR 0224, CR 702.22k: a blocker blocking a creature with banding
+	// has its damage divided by the ACTIVE player among the creatures it
+	// blocks. Read as the damage is assigned, so a band whose members
+	// have all lost banding is divided by the blocker's controller.
+	if g.anyHasBandingLocked(attackerIDs) {
+		if ap := g.activePlayerIDLocked(); ap != uuid.Nil {
+			chooser = ap
+			frame.Banding = true
+			reason = "Divide the blocking creature's combat damage among your attackers (banding)"
+		}
+	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,
-		Chooser:          blk.Controller,
+		Chooser:          chooser,
 		Count:            len(attackerIDs),
 		Source:           blk.InstanceID,
-		Reason:           "Divide combat damage among the creatures it blocks",
+		Reason:           reason,
 		DamageAssignment: frame,
 	})
 }

@@ -21,8 +21,13 @@ run:
   # an ordinary PR lints in about 5m.
   # 20m (#5434): the push of a roll-up to develop (hundreds of cards/effects files
   # and internal/game together, cold cache) ran past 10m twice with 0 issues.
+  # 35m (#5906): internal/cards/effects passed 20,000 files. develop's own push
+  # on 2026-11-19 (run 44563592850) linted in 19m30s with 0 issues, and PR #5941,
+  # which changes no Go, ran past 20m with 0 issues (run 44571275077). The job
+  # has no timeout-minutes of its own, so this is the only bound. The lasting fix
+  # is #5906's split of the effects package.
   # `migrate` drops this key (v2 has no timeout by default); it is kept on purpose.
-  timeout: 20m
+  timeout: 35m
 
 linters:
   default: none
@@ -75,6 +80,9 @@ linters:
         - maybelle
         # Mathemagics (Secrets of Strixhaven) is a printed card name.
         - mathemagics
+        # Primaris Eliminator and Primaris Chaplain (Warhammer 40,000 Commander)
+        # are printed card names.
+        - primaris
   exclusions:
     # v1's defaults, written out by `migrate`: lax generated-file
     # detection and the three conventional directories. No preset is
@@ -88,6 +96,13 @@ linters:
           - errcheck
           - unparam
         path: _test\.go
+      # The catalog's test helpers, lifted out of _test.go files when
+      # internal/cards/effects was split (#5906, ADR 0225): test code in
+      # non-test files, held to the same rules as the tests that call them.
+      - linters:
+          - errcheck
+          - unparam
+        path: internal/cards/effects/effectstest/
     paths:
       - third_party$
       - builtin$

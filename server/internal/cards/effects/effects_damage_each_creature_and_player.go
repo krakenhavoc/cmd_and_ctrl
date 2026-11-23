@@ -21,16 +21,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // thisDealsDamageToEachCreatureMatchingAndEachPlayer is the body:
 // `n` damage to each creature matching `match`, then to each player.
-// Every catalogued caller prints 1 today (the Mongers, Ifh-Bíff Efreet,
-// Whirling Catapult); `n` is the printed N of the shape, kept so the
-// next card that prints 2 needs no second body.
+// The Mongers, Ifh-Bíff Efreet and Whirling Catapult print 1; Hammerfist
+// Giant (#5600) prints 4 on a tap row. `n` is the printed N of the shape.
 //
 //nolint:unparam // see above
-func thisDealsDamageToEachCreatureMatchingAndEachPlayer(match CardPredicate, n int) func(g *game.Game, item *game.StackItem) error {
+func ThisDealsDamageToEachCreatureMatchingAndEachPlayer(match CardPredicate, n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		return ctx.Game.DamageInstanceForEffect(func() error {
-			if err := damageEachMatching(ctx, And(Creature(), match), n); err != nil {
+			if err := DamageEachMatching(ctx, And(Creature(), match), n); err != nil {
 				return err
 			}
 			for _, p := range g.Seats {

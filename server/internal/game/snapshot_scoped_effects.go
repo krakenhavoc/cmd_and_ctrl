@@ -78,6 +78,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		if d.Condition != "" && !KnownEffectCondition(d.Condition) {
 			unknown = append(unknown, "delayed-trigger condition "+d.Condition)
 		}
+		if d.UntilThen != "" && !KnownEffectBody(d.UntilThen) {
+			unknown = append(unknown, "until-return follow-up body "+d.UntilThen)
+		}
 		// A spell filter is a closed vocabulary too (#1568 review).
 		for _, p := range []*EffectParams{d.Params, d.CondParams} {
 			if p != nil && !p.Filter.Valid() {
@@ -513,6 +516,15 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			}
 			// S79 (#5075): a combat-phase skip naming no player.
 			if problem := skipCombatPhasesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #5838: a next-combat-phase skip naming no player.
+			if problem := skipNextCombatPhaseModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #5718: the table-wide targeting bar is a game record that
+			// names nothing.
+			if problem := tableTargetingBarModProblem(e.Scope, m); problem != "" {
 				unknown = append(unknown, problem)
 			}
 			// #2567: an attack-this-permanent requirement naming no

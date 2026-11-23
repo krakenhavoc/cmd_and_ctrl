@@ -68,7 +68,7 @@ func incrementTriggers(ev game.Event, source *game.Card, _ game.Characteristic, 
 // incrementResolve re-checks the condition (CR 603.4) and puts the
 // counter on this creature.
 func incrementResolve(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	self, ok := g.LookupCardForEffect(item.SourceCardID)
@@ -93,7 +93,7 @@ func incrementResolve(g *game.Game, item *game.StackItem) error {
 // event, the conservative reading. The counters come from the dead
 // creature's frozen record and land on the new token, so they read and
 // change nothing another trigger in the batch can reach.
-func socB19FractalWithTheDeadsCounters(key string) Effect {
+func SocB19FractalWithTheDeadsCounters(key string) Effect {
 	return Do(
 		socB19CreateFractal{CreateToken: CreateToken{Template: TokenCard("0/0 green and blue Fractal"), N: 1}, key: key},
 		socB19PutDeadCounters{CounterOnThis: CounterOnThis{Kind: game.CounterPlusOne, N: 1}, key: key},
@@ -110,7 +110,7 @@ type socB19CreateFractal struct {
 }
 
 func (s socB19CreateFractal) Apply(ctx *Context) error {
-	ctx.RecordStep(s.key, nil, int(b25LastEventSeq(ctx.Game)))
+	ctx.RecordStep(s.key, nil, int(B25LastEventSeq(ctx.Game)))
 	_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 green and blue Fractal")), 1, game.TokenEntryOptions{})
 	return err
 }
@@ -142,12 +142,12 @@ func (s socB19PutDeadCounters) Apply(ctx *Context) error {
 		}
 	}
 	sort.Strings(kinds)
-	for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
-		if !onBattlefield(ctx.Game, id) || !socB8IsFractal(ctx.Game, id) {
+	for _, id := range B27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
+		if !OnBattlefield(ctx.Game, id) || !socB8IsFractal(ctx.Game, id) {
 			continue
 		}
 		for _, kind := range kinds {
-			if err := (AddCounter{Target: id, Kind: kind, N: dead.Counters[kind]}).Apply(ctx.asGroupMember()); err != nil {
+			if err := (AddCounter{Target: id, Kind: kind, N: dead.Counters[kind]}).Apply(ctx.AsGroupMember()); err != nil {
 				return err
 			}
 		}
@@ -159,7 +159,7 @@ func (s socB19PutDeadCounters) Apply(ctx *Context) error {
 // creature card type and `subtype`, both "in addition to its other types"
 // (CR 707.9b, Applied Geometry): a copy of an artifact is an Artifact
 // Creature with the new subtype added to its own.
-func socB19WithCreatureAndSubtypeInAddition(printed, subtype string) string {
+func SocB19WithCreatureAndSubtypeInAddition(printed, subtype string) string {
 	super, types, subs := game.ParseTypeLine(printed)
 	hasCreature := false
 	for _, t := range types {
@@ -193,19 +193,19 @@ func socB19WithCreatureAndSubtypeInAddition(printed, subtype string) string {
 // +1/+1 counters on it" pair: the counters go on the tokens `controller`
 // created after the event cursor filed under key, the ones still on the
 // battlefield.
-func socB19PutCountersOnNewTokens(ctx *Context, key string, n int) error {
+func SocB19PutCountersOnNewTokens(ctx *Context, key string, n int) error {
 	rec := ctx.StepRecord(key)
 	if len(rec.Ns) < 1 || n <= 0 {
 		return nil
 	}
 	var ids []uuid.UUID
-	for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
-		if onBattlefield(ctx.Game, id) {
+	for _, id := range B27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
+		if OnBattlefield(ctx.Game, id) {
 			ids = append(ids, id)
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

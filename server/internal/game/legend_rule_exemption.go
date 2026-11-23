@@ -37,6 +37,20 @@ const (
 	// through the exempting permanent's text (CR 612.2). Appended last so
 	// no existing value moves.
 	LegendRuleExemptYourSubtype
+	// LegendRuleExemptYourTokens is "The legend rule doesn't apply to
+	// tokens you control" (Cadric, Soul Kindler): only the controller's
+	// permanents that are tokens right now. A legendary card they control,
+	// and anything an opponent controls, still answers to CR 704.5j.
+	// Appended last so no existing value moves.
+	LegendRuleExemptYourTokens
+	// LegendRuleExemptNamedPair is "If there are exactly two permanents
+	// named <this card> on the battlefield, the legend rule doesn't apply
+	// to them" (Brothers Yamazaki): read live, the exempting permanent's
+	// own effective name; covers both permanents, whoever controls them,
+	// while exactly two bear that name. A third (or a lone one) switches
+	// it off, and CR 704.5j applies. Appended last so no existing value
+	// moves.
+	LegendRuleExemptNamedPair
 )
 
 // LegendRuleExemption is one printed legend-rule exemption. Catalog data.
@@ -63,6 +77,12 @@ type legendRuleExempt struct {
 	// subtypeControllers are the subtypes each controller's permanents
 	// are covered for (LegendRuleExemptYourSubtype).
 	subtypeControllers map[uuid.UUID][]string
+	// tokenControllers are the controllers whose TOKENS are covered
+	// (LegendRuleExemptYourTokens).
+	tokenControllers map[uuid.UUID]bool
+	// pairNames are the names of exactly-two pairs the exemption covers
+	// (LegendRuleExemptNamedPair).
+	pairNames map[string]bool
 }
 
 func (e legendRuleExempt) covers(controller uuid.UUID) bool {
@@ -72,8 +92,18 @@ func (e legendRuleExempt) covers(controller uuid.UUID) bool {
 // coversPermanent is covers for one permanent: its controller is exempt
 // outright, or it is a creature and the controller's creatures are.
 func (e legendRuleExempt) coversPermanent(c *Card) bool {
-	if e.covers(c.Controller) || (e.creatureControllers[c.Controller] && c.IsCreature()) {
+	if e.covers(c.Controller) || (e.creatureControllers[c.Controller] && c.IsCreature()) ||
+		(e.tokenControllers[c.Controller] && c.IsToken()) {
 		return true
+	}
+	if len(e.pairNames) > 0 {
+		name := c.Effective().Name
+		if name == "" {
+			name = c.Name
+		}
+		if e.pairNames[name] {
+			return true
+		}
 	}
 	for _, sub := range e.subtypeControllers[c.Controller] {
 		if c.HasSubtype(sub) {
@@ -129,6 +159,23 @@ func (g *Game) legendRuleExemptControllersLocked() legendRuleExempt {
 					out.creatureControllers = map[uuid.UUID]bool{}
 				}
 				out.creatureControllers[src.Controller] = true
+			case LegendRuleExemptYourTokens:
+				if out.tokenControllers == nil {
+					out.tokenControllers = map[uuid.UUID]bool{}
+				}
+				out.tokenControllers[src.Controller] = true
+			case LegendRuleExemptNamedPair:
+				name := src.Effective().Name
+				if name == "" {
+					name = src.Name
+				}
+				if name == "" || g.battlefieldNameCountLocked(name) != 2 {
+					continue
+				}
+				if out.pairNames == nil {
+					out.pairNames = map[string]bool{}
+				}
+				out.pairNames[name] = true
 			case LegendRuleExemptYourSubtype:
 				if s.Subtype == "" {
 					continue
@@ -164,4 +211,21 @@ func (g *Game) LegendRuleDoesntApplyThisTurnForEffect(sourceID, player uuid.UUID
 	}
 	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
 		[]Mod{{Kind: ModLegendRuleDoesntApply, Player: player}}, g.UntilEndOfTurnDuration(), label)
+}
+
+// battlefieldNameCountLocked counts the permanents whose effective name
+// is `name` (CR 201.2). Caller must hold g.mu.
+func (g *Game) battlefieldNameCountLocked(name string) int {
+	n := 0
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		got := c.Effective().Name
+		if got == "" {
+			got = c.Name
+		}
+		if got == name {
+			n++
+		}
+	}
+	return n
 }

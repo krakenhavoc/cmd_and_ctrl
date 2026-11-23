@@ -114,9 +114,19 @@ type GrantedAlternativeCost struct {
 	// without it), the words the ability row shows for it.
 	MaxManaValueFunc func(g *Game, caster uuid.UUID) int
 
-	// MaxManaValueText words MaxManaValueFunc for the ability row:
-	// "the number of creatures you control".
+	// MaxManaValueText words MaxManaValueFunc (and MaxManaValueOfSource) for
+	// the ability row: "the number of creatures you control".
 	MaxManaValueText string
+
+	// MaxManaValueOfSource is a cap read off the permanent that grants the
+	// offer: As Foretold's "with mana value X or less, where X is the
+	// number of time counters on this enchantment" (#5929). Asked with the
+	// granting source every time the offer is derived, so two As Foretolds
+	// each cap by their own counters, and never a number frozen when the
+	// permanent arrived. A pure read of the Game (the caller holds g.mu).
+	// Nil means no such cap; it applies beside MaxManaValue and
+	// MaxManaValueFunc. Needs MaxManaValueText (Register panics without it).
+	MaxManaValueOfSource func(g *Game, source *Card) int
 
 	// PricedAtManaCost is Herigast, Erupting Nullkite's "The emerge
 	// cost is equal to its mana cost" (ADR 0135 §4 and PR 6, CR
@@ -350,6 +360,9 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			// source's text (CR 612.2, #4005).
 			gr.Spells = gr.Spells.ThroughTextOf(src)
 			if gr.Offer.Key == "" || !gr.reaches(zone) || !gr.covers(g, playerID, card) || seen[gr.Offer.Key] {
+				continue
+			}
+			if gr.MaxManaValueOfSource != nil && card.ManaValue() > gr.MaxManaValueOfSource(g, src) {
 				continue
 			}
 			// #3174: a door, a turn and a once-each-turn claim. Asked

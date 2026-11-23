@@ -1,0 +1,30 @@
+package cardsbl
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Braidwood Cup — Artifact {3} (Urza's Destiny, #5621):
+//
+//	"{T}: You gain 1 life."
+//
+// Overgrown Arch's first row on an artifact. It uses the stack (it is
+// not a mana ability), and a noncreature artifact has no summoning
+// sickness, so the Cup can be tapped the turn it arrives.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "d52b72ff-a82d-430e-94c7-675c83b43e50",
+		Name:         "Braidwood Cup",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{T}: You gain 1 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    effects.TapCost(),
+			Effect:  effects.GainOneLifeEffect,
+		}},
+	})
+}

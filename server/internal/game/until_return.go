@@ -135,6 +135,15 @@ type UntilReturn struct {
 	On         []EventKind
 	Condition  ConditionRef
 	CondParams EffectParams
+
+	// ThenEnters is a triggered ability that follows the return to the
+	// battlefield (#5877): "When an exiled card enters under your
+	// control this way, <ThenEnters>" (Lagrella, the Magpie). Its body
+	// reads the returned permanent from the item's Targets and Params.
+	// Object (the object it became as it entered). ThenEntersLabel is
+	// its label. Ignored with ToHand: nothing enters the battlefield.
+	ThenEnters      BodyRef
+	ThenEntersLabel string
 }
 
 // untilReturnBody is the return itself: put Params.Object back onto
@@ -152,6 +161,7 @@ func init() {
 	untilReturnBody = DelayedBody("until/return-to-battlefield", func(g *Game, _ *StackItem, p EffectParams) error {
 		return g.returnUntilObjectsLocked([]ObjectRef{p.Object})
 	})
+	untilThenEnteredCondition = DelayedCondition("until/returned-under-your-control", untilThenEntered)
 }
 
 // ScheduleUntilReturnForEffect records the return of the card `cardID`,
@@ -182,8 +192,16 @@ func (g *Game) ScheduleUntilReturnForEffect(cardID uuid.UUID, u UntilReturn) uui
 	}
 	duration := IndefiniteDuration()
 	params := EffectParams{Object: ObjectRef{ID: cardID, Epoch: c.ObjectEpoch}}
+	var then BodyRef
+	thenLabel := ""
 	if u.ToHand {
 		params.Name = untilToHandWord
+	} else if u.ThenEnters.key != "" {
+		if _, known := lookupBody(u.ThenEnters.key); !known {
+			effectKeyFault(fmt.Sprintf("game: until return %q names an unregistered follow-up body %q", u.Label, u.ThenEnters.key))
+			return uuid.Nil
+		}
+		then, thenLabel = u.ThenEnters, u.ThenEntersLabel
 	}
 	return g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 		Controller:   u.Controller,
@@ -198,6 +216,9 @@ func (g *Game) ScheduleUntilReturnForEffect(cardID uuid.UUID, u UntilReturn) uui
 		Duration:     &duration,
 		Until:        true,
 		UntilLeaves:  u.Leaves,
+		UntilThen:    then,
+
+		UntilThenLabel: thenLabel,
 	})
 }
 
@@ -319,7 +340,7 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 		return false
 	}
 	var due []ObjectRef
-	var dueHand []*DelayedTrigger
+	var dueHand, dueThen []*DelayedTrigger
 	changed := false
 	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, dt := range g.DelayedTriggers {
@@ -336,6 +357,9 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 				dueHand = append(dueHand, dt)
 			} else {
 				due = append(due, dt.Params.Object)
+				if dt.UntilThen.key != "" {
+					dueThen = append(dueThen, dt)
+				}
 			}
 			changed = true
 			continue
@@ -356,6 +380,10 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 	if len(due) == 0 && len(dueHand) == 0 {
 		return false
 	}
+	// #5877: a follow-up is listening before the entry it answers.
+	for _, dt := range dueThen {
+		g.scheduleUntilThenLocked(dt)
+	}
 	if err := g.returnUntilObjectsLocked(due); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
@@ -369,6 +397,82 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 		})
 	}
 	return true
+}
+
+// untilThenEnteredCondition is the event condition of a follow-up
+// (#5877): the returned card entered the battlefield THIS WAY — as the
+// object its exile's very next zone change made it (CR 400.7: every
+// zone change is a new object, and the return is the one directly
+// after the exile) — under the follow-up's controller's control.
+// Assigned in init, beside untilReturnBody.
+var untilThenEnteredCondition ConditionRef
+
+// untilThenEntered is untilThenEnteredCondition's predicate.
+func untilThenEntered(ev Event, dt *DelayedTrigger, g *Game, _ EffectParams) bool {
+	if ev.Kind != EventETB || len(dt.Cards) == 0 || ev.CardID != dt.Cards[0] {
+		return false
+	}
+	c, ok := g.battlefieldCardLocked(ev.CardID)
+	return ok && c.ObjectEpoch == dt.Params.Object.Epoch && c.Controller == dt.Controller
+}
+
+// scheduleUntilThenLocked queues the follow-up `dt` carries, a CR 603.7
+// delayed triggered ability that triggers when the card the record
+// returns enters under dt.Controller's control this way, immediately
+// before the return. It is controlled by the controller of the effect
+// that exiled the card (CR 603.7d, 603.7e) and lasts until end of turn: one
+// that did not trigger (the card returned under its owner, another
+// player, CR 610.3c) can never trigger later, because only the return
+// makes that object, and the cleanup sweep drops it.
+//
+// Caller must hold g.mu (write).
+func (g *Game) scheduleUntilThenLocked(dt *DelayedTrigger) {
+	ref := dt.Params.Object
+	g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
+		Controller:   dt.Controller,
+		SourceCardID: dt.SourceCardID,
+		SourceObject: dt.SourceObject,
+		Label:        dt.UntilThenLabel,
+		Cards:        []uuid.UUID{ref.ID},
+		Body:         dt.UntilThen,
+		Params:       EffectParams{Object: ObjectRef{ID: ref.ID, Epoch: ref.Epoch + 1}},
+		On:           []EventKind{EventETB},
+		Condition:    untilThenEnteredCondition,
+	})
+}
+
+// followUntilThenLocked is the follow-up's half of CR 400.7 (#5877): the
+// exile return mints the entering permanent a fresh instance ID
+// (resetAsNewObjectLocked), so a follow-up waiting for the card `oldID`
+// is pointed at `newID` (already on the battlefield under it) before
+// EventETB is emitted. Only a follow-up whose object is the one entering
+// now (its epoch) is moved. The queue is
+// rewritten with copies, because a record may be shared with an undo
+// snapshot.
+//
+// Caller must hold g.mu (write).
+func (g *Game) followUntilThenLocked(oldID, newID uuid.UUID) {
+	c, ok := g.battlefieldCardLocked(newID)
+	if !ok {
+		return
+	}
+	var out []*DelayedTrigger
+	for i, dt := range g.DelayedTriggers {
+		if dt == nil || dt.Condition != untilThenEnteredCondition || len(dt.Cards) != 1 ||
+			dt.Cards[0] != oldID || dt.Params.Object.Epoch != c.ObjectEpoch {
+			continue
+		}
+		if out == nil {
+			out = append([]*DelayedTrigger(nil), g.DelayedTriggers...)
+		}
+		cp := cloneDelayedTrigger(dt)
+		cp.Cards = []uuid.UUID{newID}
+		cp.Params.Object.ID = newID
+		out[i] = cp
+	}
+	if out != nil {
+		g.DelayedTriggers = out
+	}
 }
 
 // untilToHandWord marks an "until" record whose card returns to its

@@ -74,7 +74,16 @@ func NoManaWasSpentToCast(g *game.Game, spellID uuid.UUID) bool {
 // nothing, which is the printed behaviour of a variable removal that
 // removed no counters — the land still taps.
 func ProducedPerCounterRemoved(color string) func(*game.Game, uuid.UUID, uuid.UUID, game.PaidCost) game.ManaOutput {
-	opts := []string{color}
+	return ProducedPerCounterRemovedInAnyCombinationOf(color)
+}
+
+// ProducedPerCounterRemovedInAnyCombinationOf is ProducedPerCounterRemoved
+// with a choice of colours for each mana: the Time Spiral storage lands'
+// "Remove X storage counters from this land: Add X mana in any combination
+// of {W} and/or {U}" is ProducedPerCounterRemovedInAnyCombinationOf("W", "U").
+// Each of the X mana is picked independently from `colors` (#5596).
+func ProducedPerCounterRemovedInAnyCombinationOf(colors ...string) func(*game.Game, uuid.UUID, uuid.UUID, game.PaidCost) game.ManaOutput {
+	opts := append([]string(nil), colors...)
 	return func(_ *game.Game, _, _ uuid.UUID, paid game.PaidCost) game.ManaOutput {
 		return game.ManaOutput{Amount: game.ManaAmount{Options: opts, N: paid.CountersRemoved}}
 	}

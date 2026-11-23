@@ -32,7 +32,7 @@ func init() {
 				Label:   "{T}: This creature deals damage equal to its power to any target.",
 				Cost:    TapCost(),
 				Targets: TargetAny(),
-				Effect:  sourceDealsDamageEqualToItsPowerToTarget,
+				Effect:  SourceDealsDamageEqualToItsPowerToTarget,
 			}},
 			Text: "{T}: This creature deals damage equal to its power to any target.",
 		}},
@@ -43,9 +43,9 @@ func init() {
 // sourceDealsDamageEqualToItsPowerToTarget is "<this> deals damage
 // equal to its power to <its target>": the ability's source, with its
 // power read now or, if it has left the battlefield, as it last was.
-func sourceDealsDamageEqualToItsPowerToTarget(g *game.Game, item *game.StackItem) error {
+func SourceDealsDamageEqualToItsPowerToTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	power := b43PowerNowOrLastKnown(g, item.SourceCardID)
+	power := B43PowerNowOrLastKnown(g, item.SourceCardID)
 	if power <= 0 {
 		return nil
 	}

@@ -31,14 +31,14 @@ func Fabricate(cardName string, n int) game.TriggeredAbility {
 // there is nothing to put counters on.
 func fabricateChoice(g *game.Game, item *game.StackItem, label string, n int) error {
 	ctx := NewContext(g, item)
-	if !onBattlefield(g, item.SourceCardID) {
+	if !OnBattlefield(g, item.SourceCardID) {
 		return fabricateServos(ctx, n)
 	}
 	return MayChoice{
 		Question: label,
 		YesLabel: fmt.Sprintf("Put %d +1/+1 counter(s) on it", n),
 		NoLabel:  fmt.Sprintf("Create %d 1/1 colorless Servo artifact creature token(s)", n),
-		Then:     mayFabricate,
+		Then:     MayFabricate,
 		Word:     strconv.Itoa(n),
 	}.Apply(ctx)
 }
@@ -51,6 +51,6 @@ func fabricateServos(ctx *Context, n int) error {
 // mayFabricate is fabricate N's choice: "yes" puts N +1/+1 counters on the
 // source, "no" creates N Servos (Word is N). Angel of Invention and every
 // Fabricate card. Keyed (#4291).
-var mayFabricate = MayYesNo("confirm/fabricate", func(ctx *Context, r game.ConfirmAnswer) error {
-	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: wordInt(r)}.Apply(ctx)
-}, func(ctx *Context, r game.ConfirmAnswer) error { return fabricateServos(ctx, wordInt(r)) })
+var MayFabricate = MayYesNo("confirm/fabricate", func(ctx *Context, r game.ConfirmAnswer) error {
+	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: WordInt(r)}.Apply(ctx)
+}, func(ctx *Context, r game.ConfirmAnswer) error { return fabricateServos(ctx, WordInt(r)) })

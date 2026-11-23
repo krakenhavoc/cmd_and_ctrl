@@ -88,6 +88,10 @@ type Characteristic struct {
 	// (or was, for a last-known source) rather than a spell: "protection
 	// from noncreature permanents" reads it (#4307).
 	SourceIsPermanent bool
+	// SourceIsSpell says the source is a spell (on the stack, being cast, or
+	// a copy of one) rather than an ability or a permanent: "protection from
+	// spells that are one or more colors" reads it (Emrakul, the Aeons Torn).
+	SourceIsSpell bool
 
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless
@@ -114,6 +118,16 @@ type Characteristic struct {
 	// abilities": a layer-6 grant sorted after the removal survives in
 	// GrantedAbilities below, and every reader keeps that half.
 	AbilitiesRemoved bool
+
+	// IntrinsicLandManaRemoved records that a layer-6 effect took away the
+	// mana abilities a land's basic land types give it (CR 305.6), as
+	// Toxicrene's "all lands ... lose all other abilities" does to a Forest
+	// whose type it leaves alone (CR 613.1f). AbilitiesRemoved alone leaves
+	// them, because CR 305.7's own removal is the half of a land-type change
+	// that arrives with the new type's abilities; an effect that removes
+	// abilities without changing types sets this too, from its Apply. A
+	// layer-6 grant still survives it. Additive, S82 GAP batch 192 (#5948).
+	IntrinsicLandManaRemoved bool `json:",omitempty"`
 
 	// RemovedOwnAbilities are the individual catalog rows of this
 	// object's OWN definition that a layer-6 effect switched off, one
@@ -250,6 +264,11 @@ type Characteristic struct {
 	// cannot strip a Pacifism, which is the rules-correct outcome.
 	// restrictions.go has the taxonomy.
 	Restrictions Restriction
+
+	// ExtraRestrictions is the second restriction set (CantCrew), for
+	// the bits that no longer fit in Restrictions; written and read
+	// the same way. restrictions.go.
+	ExtraRestrictions ExtraRestriction `json:",omitempty"`
 
 	// ManaAbilityLifeTax is the life each mana ability of this
 	// permanent costs on top of its own cost: Thran Portal's "Mana

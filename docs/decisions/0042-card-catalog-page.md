@@ -1,6 +1,6 @@
 # ADR 0042 — The public card catalogue, and declaring completeness
 
-**Status:** accepted
+**Status:** Accepted
 **Date:** 2026-09-11
 **Sprint:** Post-S30 — Rolling deck-driven catalog growth
 **Issue:** [#410](https://github.com/krakenhavoc/cmd_and_ctrl/issues/410); follow-up to [#338](https://github.com/krakenhavoc/cmd_and_ctrl/issues/338) / [#350](https://github.com/krakenhavoc/cmd_and_ctrl/issues/350)

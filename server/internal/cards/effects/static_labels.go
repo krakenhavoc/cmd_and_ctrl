@@ -23,7 +23,7 @@ import (
 
 // signedPT renders a power/toughness change the way the card prints it:
 // "+1/+1", "-2/-2", "+3/-1".
-func signedPT(power, toughness int) string {
+func SignedPT(power, toughness int) string {
 	return fmt.Sprintf("%+d/%+d", power, toughness)
 }
 
@@ -83,11 +83,12 @@ func (f TribeFilter) subject() string {
 	return strings.ToUpper(who[:1]) + who[1:]
 }
 
-// restrictionClause names the bits of a Restriction a player reads on a
-// card: "can't attack", "can't attack or block". Empty when r holds a
-// bit this wording does not cover, so the row falls back to its kind
-// rather than saying half of it.
-func restrictionClause(r game.Restriction) string {
+// restrictionClause names the bits of a restriction set a player reads
+// on a card: "can't attack", "can't attack or block", "can't attack,
+// block, or crew Vehicles". `x` is the second set (game.ExtraRestriction).
+// Empty when either set holds a bit this wording does not cover, so the
+// row falls back to its kind rather than saying half of it.
+func restrictionClause(r game.Restriction, x game.ExtraRestriction) string {
 	var parts []string
 	rest := r
 	for _, p := range []struct {
@@ -102,18 +103,32 @@ func restrictionClause(r game.Restriction) string {
 			rest &^= p.bit
 		}
 	}
+	restX := x
+	if restX&game.CantCrew != 0 {
+		parts = append(parts, "crew Vehicles")
+		restX &^= game.CantCrew
+	}
 	var clauses []string
 	if len(parts) > 0 {
-		clauses = append(clauses, "can't "+strings.Join(parts, " or "))
+		clauses = append(clauses, "can't "+joinOrSerial(parts))
 	}
 	if rest&game.CantBeBlocked != 0 {
 		clauses = append(clauses, "can't be blocked")
 		rest &^= game.CantBeBlocked
 	}
-	if rest != 0 || len(clauses) == 0 {
+	if rest != 0 || restX != 0 || len(clauses) == 0 {
 		return ""
 	}
 	return strings.Join(clauses, " and ")
+}
+
+// joinOrSerial is "attack", "attack or block", "attack, block, or crew
+// Vehicles": the printed list form.
+func joinOrSerial(parts []string) string {
+	if len(parts) < 3 {
+		return strings.Join(parts, " or ")
+	}
+	return strings.Join(parts[:len(parts)-1], ", ") + ", or " + parts[len(parts)-1]
 }
 
 // queryNoun renders a PermanentQuery as the thing a player sees on the
@@ -124,7 +139,11 @@ func queryNoun(q game.PermanentQuery) string {
 	if len(words) == 0 {
 		return ""
 	}
-	return strings.Join(words, " or ")
+	noun := strings.Join(words, " or ")
+	if q.HasExactPT {
+		noun = fmt.Sprintf("%d/%d %s", q.ExactPower, q.ExactToughness, noun)
+	}
+	return noun
 }
 
 func queriesNoun(qs []game.PermanentQuery) string {
@@ -166,6 +185,11 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 		return "Can't attack unless you have the city's blessing."
 	case r.ControllerHandAtLeast > 0:
 		return fmt.Sprintf("Can't attack unless you have %d or more cards in hand.", r.ControllerHandAtLeast)
+	case len(r.ControllerMustControl) > 0:
+		if n := queriesNoun(r.ControllerMustControl); n != "" {
+			return "Can't attack unless you control " + articleFor(strings.ToLower(n)) + " " + n + "."
+		}
+		return "Can't attack unless you control a certain permanent."
 	case r.NotAlreadyAttackedThisTurn:
 		return "Can't attack a player it already attacked this turn."
 	case r.PlayerMustHaveActedLastTurn:

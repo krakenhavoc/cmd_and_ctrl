@@ -50,26 +50,20 @@ func init() {
 				{
 					Layer:     game.Layer7PT,
 					SubLayer:  game.SubLayer7C_Modify,
-					AppliesTo: creaturesTheEmblemsOwnerControls,
+					AppliesTo: CreaturesTheEmblemsOwnerControls,
 					Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 						c.Power += 2
 						c.Toughness += 2
 					},
 				},
-				KeywordGrant(creaturesTheEmblemsOwnerControls, "flying"),
+				KeywordGrant(CreaturesTheEmblemsOwnerControls, "flying"),
 			},
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label: "+1: Create three 1/1 white Soldier creature tokens.",
-				Cost:  LoyaltyCost(1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					return CreateToken{
-						Controller: item.Controller,
-						Template:   TokenCard("1/1 white Soldier"),
-						N:          3,
-					}.Apply(NewContext(g, item))
-				},
+				Label:  "+1: Create three 1/1 white Soldier creature tokens.",
+				Cost:   LoyaltyCost(1),
+				Effect: CreateThreeSoldiers,
 			},
 			{
 				Label: "−3: Destroy all creatures with power 4 or greater.",
@@ -89,7 +83,7 @@ func init() {
 						}
 					}
 					for _, c := range doomed {
-						if err := (DestroyTarget{Target: c.InstanceID}).Apply(ctx.asGroupMember()); err != nil {
+						if err := (DestroyTarget{Target: c.InstanceID}).Apply(ctx.AsGroupMember()); err != nil {
 							return err
 						}
 					}
@@ -112,6 +106,6 @@ func init() {
 // never changes, so this is the same predicate an anthem uses with the
 // same meaning. Shared by the emblem's two statics so the layer-6 half
 // and the layer-7c half can never drift apart.
-func creaturesTheEmblemsOwnerControls(target *game.Card, _ *game.Game, source *game.Card) bool {
+func CreaturesTheEmblemsOwnerControls(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.Controller == source.Controller
 }

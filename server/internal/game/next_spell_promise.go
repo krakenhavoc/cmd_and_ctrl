@@ -89,6 +89,13 @@ type NextSpellPromise struct {
 	// stores the number, which is what the printed text says.
 	Reduce int `json:"reduce,omitempty"`
 
+	// Increase is "spells you cast this turn cost {N} more to cast": generic
+	// mana added as an ordinary CR 601.2f increase (Academy Loremaster's
+	// "spells they cast this turn cost {2} more"). Only an EveryMatchingSpell
+	// promise carries one: a tax on the next spell alone is not a printed
+	// shape. Additive within the schema version.
+	Increase int `json:"increase,omitempty"`
+
 	// AffinityFor is "has affinity for <type>" (CR 702.41a): the spell
 	// costs {1} less for each permanent of that card type the caster
 	// controls as they cast it (Saheeli, the Gifted's "artifacts").
@@ -224,6 +231,12 @@ type PromisedCounter struct {
 	// comparable. Additive within a snapshot version; empty is a plain
 	// total.
 	PerSubtype string `json:"perSubtype,omitempty"`
+	// IfOpponentDealtDamage makes the mark bloodthirst's (CR 702.54a): the
+	// counters are put on only if an opponent of the spell's controller was
+	// dealt damage this turn, read as the permanent enters, not as the mark
+	// was written. Bloodlord of Vaasgoth's "it gains bloodthirst 3". Additive
+	// within a snapshot version; false is an unconditional mark.
+	IfOpponentDealtDamage bool `json:"ifOpponentDealtDamage,omitempty"`
 }
 
 // copyPromisedCounters gives a mark slice its own backing array. Nil
@@ -281,7 +294,23 @@ func (g *Game) nextSpellCostModifiersLocked(player uuid.UUID, card Card) []bound
 	var out []boundCostModifier
 	for _, s := range p.Statics {
 		np := s.NextSpell
-		if (np.Reduce <= 0 && np.AffinityFor == "" && !np.Undaunted) || !g.livePromise(s) || !np.Matches(card) {
+		if !g.livePromise(s) || !np.Matches(card) {
+			continue
+		}
+		if np.Increase > 0 && np.EveryMatchingSpell {
+			inc := np.Increase
+			src := card
+			src.Controller = player
+			out = append(out, boundCostModifier{
+				modifier: CostModifier{
+					Kind:   CostIncrease,
+					Label:  np.Text,
+					Amount: func(CostQuery) int { return inc },
+				},
+				source: src,
+			})
+		}
+		if np.Reduce <= 0 && np.AffinityFor == "" && !np.Undaunted {
 			continue
 		}
 		n := np.Reduce + g.affinityCountLocked(player, np.AffinityFor)
@@ -412,6 +441,9 @@ func (g *Game) promisedEntryCountersLocked(ev *ReplacementEvent, item *StackItem
 	}
 	for _, m := range item.PromisedCounters {
 		n := m.Count
+		if m.IfOpponentDealtDamage && !g.opponentWasDealtDamageThisTurnLocked(item.Controller) {
+			continue
+		}
 		if m.PerSubtype != "" {
 			n *= g.countControlledWithSubtypesLocked(item.Controller, strings.Split(m.PerSubtype, "|"))
 		}
@@ -419,6 +451,21 @@ func (g *Game) promisedEntryCountersLocked(ev *ReplacementEvent, item *StackItem
 			ev.AddCounterAtETB(m.Kind, n)
 		}
 	}
+}
+
+// opponentWasDealtDamageThisTurnLocked is bloodthirst's condition (CR
+// 702.54a): damage dealt this turn to a player other than `controller`.
+// Damage, not life lost, so a drain does not count; damage to a creature
+// or planeswalker is not damage to an opponent.
+//
+// Caller must hold g.mu.
+func (g *Game) opponentWasDealtDamageThisTurnLocked(controller uuid.UUID) bool {
+	for _, ev := range g.EventsThisTurn() {
+		if ev.Kind == EventDealDamage && ev.Amount > 0 && ev.Target != controller && g.playerByIDLocked(ev.Target) != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // countControlledWithSubtypesLocked is how many battlefield permanents

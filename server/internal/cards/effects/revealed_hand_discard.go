@@ -66,6 +66,9 @@ type ChooseFromRevealedHand struct {
 	// FromGraveyard adds "or a card from their graveyard" (Agonizing
 	// Remorse). Filter reads the hand only.
 	FromGraveyard bool
+	// GraveyardFilter limits FromGraveyard's candidates (Dreams of Steel
+	// and Oil). Nil offers every card.
+	GraveyardFilter CardPredicate
 	// Then is the rest of the card, told what was chosen: a
 	// RevealedPickThen or RevealedPickFirst var declared in the card's
 	// file.
@@ -80,7 +83,7 @@ type ChooseFromRevealedHand struct {
 // chooseNonlandFromTargetedHand is "target player reveals their hand. You
 // choose a nonland card from it": the choice, for the cards (Thoughtseize,
 // The Torment of Gollum) whose later sentences wait for its question.
-func chooseNonlandFromTargetedHand(ctx *Context) error {
+func ChooseNonlandFromTargetedHand(ctx *Context) error {
 	return ChooseFromRevealedHand{
 		Player: TargetedPlayer(ctx),
 		Filter: Nonland(),
@@ -116,6 +119,10 @@ func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 		Optional:      e.Optional,
 		FromGraveyard: e.FromGraveyard,
 		Then:          e.Then,
+	}
+	if e.GraveyardFilter != nil {
+		g, pred := ctx.Game, e.GraveyardFilter
+		d.GraveyardFilter = func(c game.Card) bool { return pred(g, chooser, c) }
 	}
 	if e.Exile {
 		d.Destination = game.PickExile

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -185,6 +186,17 @@ type ObjectSnapshot struct {
 	// stack. Empty for an object with none and for one that was not on the
 	// battlefield when the event was harvested.
 	Counters map[string]int `json:",omitempty"`
+
+	// Attached are the permanents attached to the object when the event
+	// was harvested (CR 603.10a), written down for the two events whose
+	// harvest runs while the attachment still stands: an attack declaration
+	// (the object is still on the battlefield) and a leave-the-battlefield
+	// (the CR 704.5n unattach is a state-based action that has not run
+	// yet). A dies or attacks trigger that moves "all Equipment attached to
+	// that creature" (Rhuk, Hexgold Nabber) reads it after the creature is
+	// gone and the Equipment have fallen off. Empty for every other event
+	// and for an object with nothing attached.
+	Attached []ObjectRef `json:",omitempty"`
 }
 
 // Ref names the object the snapshot describes, for PermanentForEffect.
@@ -342,7 +354,15 @@ func (tc TriggerContext) Amount() int { return tc.Event.Amount }
 //
 // Caller must hold g.mu.
 func (g *Game) triggerContextLocked(ev Event) TriggerContext {
-	return TriggerContext{Event: ev, Object: g.objectSnapshotLocked(ev.CardID)}
+	obj := g.objectSnapshotLocked(ev.CardID)
+	if obj != nil && (ev.Kind == EventLTB || ev.Kind == EventAttack) {
+		for i := range g.Battlefield.Cards {
+			if a := &g.Battlefield.Cards[i]; a.IsAttachedTo(ev.CardID) {
+				obj.Attached = append(obj.Attached, ObjectRef{ID: a.InstanceID, Epoch: a.ObjectEpoch})
+			}
+		}
+	}
+	return TriggerContext{Event: ev, Object: obj}
 }
 
 // objectSnapshotLocked reads last-known information about one object
@@ -470,6 +490,9 @@ func cloneTriggerContext(tc *TriggerContext) *TriggerContext {
 		if len(tc.Object.AltCostObjects) > 0 {
 			obj.AltCostObjects = append([]ObjectRef(nil), tc.Object.AltCostObjects...)
 		}
+		if len(tc.Object.Attached) > 0 {
+			obj.Attached = append([]ObjectRef(nil), tc.Object.Attached...)
+		}
 		out.Object = &obj
 	}
 	return &out
@@ -495,6 +518,9 @@ func (g *Game) triggerTargetsLocked(t TriggeredAbility, tc TriggerContext, sourc
 	if t.XFromCast && t.Targets != nil && t.Targets.CountFromX {
 		return xCountedTriggerTargets(t.Targets, source)
 	}
+	if t.XFromCast && t.Targets != nil && t.Targets.Total != nil && t.Targets.Total.MaxIsX {
+		return xBoundTotalTriggerTargets(t.Targets, source)
+	}
 	return t.Targets
 }
 
@@ -514,6 +540,27 @@ func (g *Game) colorsAmongPermanentsLocked(player uuid.UUID) int {
 		}
 	}
 	return len(seen)
+}
+
+// xBoundTotalTriggerTargets is the clause of "When this enters, destroy any
+// number of target artifacts and/or enchantments with total mana value X or
+// less" (Rampaging Yao Guai): a clause with a total ceiling of X
+// (TargetTotal.MaxIsX) and no count of X, on a XFromCast row, gets the X its
+// source was cast with (Card.CastX, CR 107.3m) as its ceiling, on a copy so
+// the catalog's clause is untouched. The re-check as the ability resolves
+// binds the same X from the item (itemAnnouncedClauses). An X of zero still
+// admits the permanents whose mana value is 0.
+func xBoundTotalTriggerTargets(spec *TargetSpec, source *Card) *TargetSpec {
+	x := 0
+	if source != nil {
+		x = source.CastX()
+	}
+	cp := *spec
+	t := *spec.Total
+	t.Max = max(x, 0)
+	t.Label = "have total mana value " + strconv.Itoa(t.Max) + " or less"
+	cp.Total = &t
+	return &cp
 }
 
 // xCountedTriggerTargets is the clause of "When this enters, tap X target

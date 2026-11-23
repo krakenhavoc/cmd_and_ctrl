@@ -343,6 +343,11 @@ func matchPayersToRequirements(reqs []ColorRequirement, payers []Card) []int {
 // a {C} or a colored symbol. Hybrid symbols carry both halves in
 // Options, so either colour covers them.
 func payerCoversRequirement(c Card, req ColorRequirement) bool {
+	// #5986: a tapped creature is not mana, so it is not mana a snow
+	// source produced, which is all an {S} takes (CR 107.4h).
+	if req.Snow {
+		return false
+	}
 	for _, color := range c.EffectiveColors() {
 		// The PRINTED colours, never Admits: a "spend mana as though it
 		// were mana of any color" grant (ColorRequirement.AnyMana)

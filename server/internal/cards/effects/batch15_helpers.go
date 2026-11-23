@@ -29,7 +29,7 @@ import (
 
 // b15OpponentCastSpell is "whenever an opponent casts a spell" —
 // Sunscorch Regent. Any spell, any opponent.
-func b15OpponentCastSpell(ev game.Event, source *game.Card) bool {
+func B15OpponentCastSpell(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventCast && ev.Actor != uuid.Nil && ev.Actor != source.Controller
 }
 
@@ -38,7 +38,7 @@ func b15OpponentCastSpell(ev game.Event, source *game.Card) bool {
 // stack — Scryfall's stamped list, or the mana cost for a fixture —
 // so a red-and-green Boros Charm cast off a hybrid cost still counts
 // as red, as printed.
-func b15RedSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B15RedSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -49,19 +49,19 @@ func b15RedSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 // b15AnotherNontokenCreatureYouControlEntered is Soul of the
 // Harvest's condition — b13AnotherCreatureYouControlEntered with the
 // token exclusion.
-func b15AnotherNontokenCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B15AnotherNontokenCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsCreature() && !IsToken(c)
 }
 
 // b15AnotherCreatureDied is "whenever another creature dies" —
 // Poison-Tip Archer. Anyone's creature, the controller's own
 // included; the source's own death is excluded by ID.
-func b15AnotherCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
+func B15AnotherCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
-	_, died := diedCreature(ev, g)
+	_, died := DiedCreature(ev, g)
 	return died
 }
 
@@ -69,14 +69,14 @@ func b15AnotherCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool
 // condition: another artifact the controller controls entered with
 // mana value 3 or greater. Mana value is read off the permanent
 // (CR 202.3e — X is zero, a token with no cost is zero).
-func b15AnotherBigArtifactYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B15AnotherBigArtifactYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsArtifact() && c.ManaValue() >= 3
 }
 
 // b15EndStepBegan is "at the beginning of each end step" — any
 // player's. The Gaffer, Smuggler's Share.
-func b15EndStepBegan(ev game.Event) bool {
+func B15EndStepBegan(ev game.Event) bool {
 	return ev.Kind == game.EventBeginEndStep
 }
 
@@ -90,14 +90,14 @@ func b15EndStepBegan(ev game.Event) bool {
 // — The Gaffer's "3 or more". Positive EventChangeLife only: a
 // lifelink hit, a GainLife primitive and a drain's gain half all
 // emit one, and a loss (negative Amount) is not a gain.
-func b15LifeGainedThisTurn(g *game.Game, player uuid.UUID) int {
+func B15LifeGainedThisTurn(g *game.Game, player uuid.UUID) int {
 	return g.TurnTallyFor(player).LifeGained
 }
 
 // b15CardsDrawnThisTurn is how many cards each player drew this turn
 // — Smuggler's Share's first count. EventDrawCard fires once per
 // card with the drawer in Actor.
-func b15CardsDrawnThisTurn(g *game.Game) map[uuid.UUID]int {
+func B15CardsDrawnThisTurn(g *game.Game) map[uuid.UUID]int {
 	drawn := map[uuid.UUID]int{}
 	for id, t := range g.TurnTally.Players {
 		if t.CardsDrawn > 0 {
@@ -118,7 +118,7 @@ func b15CardsDrawnThisTurn(g *game.Game) map[uuid.UUID]int {
 // player it entered under, both as printed. The doc comment used to
 // describe an event-log walk that looked the land up where it sits
 // now; the code has read the tally since #586 and this says so.
-func b15LandsEnteredThisTurn(g *game.Game) map[uuid.UUID]int {
+func B15LandsEnteredThisTurn(g *game.Game) map[uuid.UUID]int {
 	lands := map[uuid.UUID]int{}
 	for id, t := range g.TurnTally.Players {
 		if t.LandsEntered > 0 {
@@ -146,7 +146,7 @@ func b15IsEnchanted(g *game.Game, c game.Card) bool {
 }
 
 // b15NotEnchanted is the predicate form.
-func b15NotEnchanted() CardPredicate {
+func B15NotEnchanted() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		return !b15IsEnchanted(g, c)
 	}
@@ -157,7 +157,7 @@ func b15NotEnchanted() CardPredicate {
 // (CR 605.1a/b), read by game.HasPrintedManaAbility: the importer's
 // stamp off the printed text for every imported card, catalogued or not
 // (#3943), and the catalog only for a card whose text was never read.
-func b15ArtifactWithManaAbilityOrBasicLand(c game.Card) bool {
+func B15ArtifactWithManaAbilityOrBasicLand(c game.Card) bool {
 	if IsBasicLand(c) {
 		return true
 	}
@@ -172,7 +172,7 @@ func b15ArtifactWithManaAbilityOrBasicLand(c game.Card) bool {
 // copy counts under the name it has now. Walks the live slice: it
 // runs inside a layer recompute, at layer 7, by which point layer 1
 // has settled every name and layer 4 every type.
-func b15OtherCreaturesControlledWithSameName(g *game.Game, controller, except uuid.UUID, name string) int {
+func B15OtherCreaturesControlledWithSameName(g *game.Game, controller, except uuid.UUID, name string) int {
 	if name == "" {
 		return 0
 	}
@@ -192,7 +192,7 @@ func b15OtherCreaturesControlledWithSameName(g *game.Game, controller, except uu
 // b15ArtifactsControlled counts the artifacts `controller` controls
 // on the post-layer type line. Walks the live slice: it runs inside
 // a layer recompute.
-func b15ArtifactsControlled(g *game.Game, controller uuid.UUID) int {
+func B15ArtifactsControlled(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
@@ -206,7 +206,7 @@ func b15ArtifactsControlled(g *game.Game, controller uuid.UUID) int {
 // b15OnBattlefield reports whether the card is on the battlefield
 // right now — the guard a trigger's Effect runs before putting a
 // counter on its own source, since AddCounter does not gate on zone.
-func b15OnBattlefield(g *game.Game, id uuid.UUID) bool {
+func B15OnBattlefield(g *game.Game, id uuid.UUID) bool {
 	z := g.FindCardZoneForEffect(id)
 	return z != nil && z.Kind == game.ZoneBattlefield
 }
@@ -219,7 +219,7 @@ func b15OnBattlefield(g *game.Game, id uuid.UUID) bool {
 // delayed trigger captures nothing. A card that is not in a
 // graveyard any more — reanimated, exiled, or sent to the command zone
 // at CR 903.9a's prompt — is a different object and is left alone.
-func b15ReturnListedCardsFromGraveyardToHand(g *game.Game, item *game.StackItem) error {
+func B15ReturnListedCardsFromGraveyardToHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range item.Targets {
 		if t.Kind != game.TargetCard {
@@ -245,7 +245,7 @@ func b15ReturnListedCardsFromGraveyardToHand(g *game.Game, item *game.StackItem)
 // land taps, refused at zero life), not a painland's rider; the two
 // printed colours are not narrowed to the commander's identity. The
 // cash-in is Buried Ruin's three-component cost with a draw.
-func b15CanopyLand(oracleID, name, a, b string) Spec {
+func B15CanopyLand(oracleID, name, a, b string) Spec {
 	produced := "{" + a + "|" + b + "}"
 	return Spec{
 		OracleID:     oracleID,

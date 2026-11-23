@@ -1,6 +1,6 @@
 # ADR 0031 — Progressive web app: installable shell, cached card art, nothing else offline
 
-**Status:** Implemented · 2026-09-10 · Branch `feat/pwa`
+**Status:** Accepted · 2026-09-10 · Branch `feat/pwa`
 
 ## Context
 

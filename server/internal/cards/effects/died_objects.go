@@ -33,7 +33,7 @@ func inGraveyardOneMoveAfter(g *game.Game, id uuid.UUID, battlefieldEpoch int) b
 // creature the trigger is about, still in a graveyard as the card that
 // died. With no CR 603.10 snapshot on the trigger (a hand-built item),
 // being in a graveyard is all that can be asked.
-func diedCardStillInGraveyard(ctx *Context, dead uuid.UUID) bool {
+func DiedCardStillInGraveyard(ctx *Context, dead uuid.UUID) bool {
 	obj := ctx.Trigger().Object
 	if obj == nil {
 		z := ctx.Game.FindCardZoneForEffect(dead)
@@ -46,7 +46,7 @@ func diedCardStillInGraveyard(ctx *Context, dead uuid.UUID) bool {
 // triggered while its source was on the battlefield and resolves after
 // the source was put into a graveyard — an Aura that fell off the
 // creature whose death it watched (Avatar Destiny).
-func sourceCardInGraveyardAfterLeaving(ctx *Context) bool {
+func SourceCardInGraveyardAfterLeaving(ctx *Context) bool {
 	ref, ok := ctx.SourceRef()
 	if !ok {
 		return false
@@ -69,7 +69,7 @@ func sourceCardInGraveyardAfterLeaving(ctx *Context) bool {
 // commander its owner moved to the command zone under CR 903.9a is the
 // last of these: the move to the graveyard was the first zone change and
 // the state-based action is the second.
-func cardTheCostMovedToAPublicZone(g *game.Game, sacrificed game.ObjectRef) (game.ObjectRef, bool) {
+func CardTheCostMovedToAPublicZone(g *game.Game, sacrificed game.ObjectRef) (game.ObjectRef, bool) {
 	next := game.ObjectRef{ID: sacrificed.ID, Epoch: sacrificed.Epoch + 1}
 	_, ok := objectStillInAPublicZone(g, next)
 	return next, ok

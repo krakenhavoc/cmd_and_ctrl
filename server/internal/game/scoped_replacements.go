@@ -158,6 +158,11 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a rollExtraDieIgnoreOne replacement names no player"
 		}
+	case ModNextDrawExileTopPlay:
+		// #5875: Urabrask, Heretic Praetor names the player who draws.
+		if m.Player == uuid.Nil {
+			return "a nextDrawExileTopPlay replacement names no player"
+		}
 	case ModOneMoreCounter:
 		// #4973: Brad Boimler names whose permanents get the extra counter.
 		if m.Player == uuid.Nil {
@@ -190,6 +195,8 @@ var (
 	watchLife     = []EventKind{EventChangeLife}
 	// watchRollDie is a dice roll instruction (RepEventRollDice, #4307).
 	watchRollDie = []EventKind{EventRollDie}
+	// watchDraw is a card draw (RepEventDraw, #5875).
+	watchDraw = []EventKind{EventDrawCard}
 	// watchMoveOrDiscard is "from anywhere": a discard is its own
 	// replacement window (RepEventDiscard, #650), not a RepEventMove.
 	watchMoveOrDiscard = []EventKind{EventZoneMove, EventDiscardCard}
@@ -208,12 +215,16 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchLife
 	case ModRollExtraDieIgnoreOne:
 		return watchRollDie
+	case ModNextDrawExileTopPlay:
+		return watchDraw
 	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		return watchCounterPlaced
 	case ModMultiplyTokens:
 		return []EventKind{EventTokenCreated}
 	case ModExileInsteadOfYourGraveyard:
 		return watchMoveOrDiscard
+	case ModShuffleInsteadOfEnteringFromExile:
+		return watchZoneMove
 	case ModLandManaIsColor:
 		return watchManaAdded
 	}
@@ -494,6 +505,39 @@ func (g *Game) ExileInsteadOfYourGraveyardThisTurnForEffect(sourceID, player uui
 		[]Mod{{Kind: ModExileInsteadOfYourGraveyard, Player: player}}, g.UntilEndOfTurnDuration(), label)
 }
 
+// ShuffleInsteadOfEnteringFromExileThisTurnForEffect is Don't Blink's "until
+// end of turn, if one or more creatures would enter from exile or after
+// being cast from exile, their owners shuffle them into their libraries
+// instead" (CR 614.1a). The record is game-wide with no object pinned.
+//
+// Caller must hold g.mu (write) — every caller is a resolving effect.
+func (g *Game) ShuffleInsteadOfEnteringFromExileThisTurnForEffect(sourceID uuid.UUID, label string) bool {
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
+		[]Mod{{Kind: ModShuffleInsteadOfEnteringFromExile}}, g.UntilEndOfTurnDuration(), label)
+}
+
+// shuffleInsteadOfEnteringFromExileAppliesLocked is the kind's test: a
+// creature card moving onto the battlefield out of exile, or the creature
+// spell that was cast from exile as it resolves. Not a token, and not a
+// card that is entering as a copy of something else (its characteristics
+// as it enters are the copy's).
+//
+// Caller must hold g.mu.
+func shuffleInsteadOfEnteringFromExileAppliesLocked(g *Game, ev *ReplacementEvent) bool {
+	if ev.Kind != RepEventMove || ev.NewZone != ZoneBattlefield || ev.Canceled {
+		return false
+	}
+	fromExile := ev.OldZone == ZoneExile
+	if ev.stackItem != nil && !ev.stackItem.IsCopy && ev.stackItem.CastFromZone == ZoneExile {
+		fromExile = true
+	}
+	if !fromExile {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && !c.IsToken() && c.IsCreature()
+}
+
 // ---------------------------------------------------------------
 // The gather adapter
 // ---------------------------------------------------------------
@@ -629,7 +673,9 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource,
 				ModPreventFromSource, ModRedirectDamage,
 				// #4307: the roller orders dice replacements (CR 616.1).
-				ModRollExtraDieIgnoreOne:
+				ModRollExtraDieIgnoreOne,
+				// #5875: and the drawer draw replacements.
+				ModNextDrawExileTopPlay:
 				// CR 616.1 gives the ordering choice to the AFFECTED
 				// player — whoever is being dealt the damage — so a
 				// prevention shield or a redirection reports no
@@ -651,6 +697,12 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 			return e.Controller
 		},
 		Label: label,
+	}
+	if kind == ModNextDrawExileTopPlay {
+		// #5875: the draw is replaced by a body that runs once the
+		// window has settled (draw_instead.go); Replace above still runs
+		// as it applies, to spend the record.
+		eff.DrawInstead = nextDrawExileTopInstead
 	}
 	return eff
 }
@@ -731,12 +783,16 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 			dest = c.Owner
 		}
 		return dest == m.Player
+	case ModShuffleInsteadOfEnteringFromExile:
+		return shuffleInsteadOfEnteringFromExileAppliesLocked(g, ev)
 	case ModGainNoLife:
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
 	case ModRollExtraDieIgnoreOne:
 		return rollExtraDieAppliesLocked(m, ev)
+	case ModNextDrawExileTopPlay:
+		return nextDrawExileTopAppliesLocked(m, ev)
 	case ModOneMoreCounter:
 		return oneMoreCounterAppliesLocked(g, m, ev)
 	case ModOneMorePlusOneCounter:
@@ -818,6 +874,13 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		// the engine's own path.
 		ev.NewZone = ZoneExile
 		ev.NewZoneOwner = uuid.Nil
+	case ModShuffleInsteadOfEnteringFromExile:
+		// "Their owners shuffle them into their libraries instead": the
+		// card goes to its OWNER's library, which is then shuffled
+		// (ShuffleDestinationLibrary, as Darksteel Colossus does).
+		ev.NewZone = ZoneLibrary
+		ev.NewZoneOwner = uuid.Nil
+		ev.ShuffleDestinationLibrary = true
 	case ModGainNoLife:
 		// "That player gains no life instead": CR 614.10's null
 		// replacement. No EventChangeLife, so "whenever you gain life"
@@ -825,6 +888,8 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		ev.Cancel()
 	case ModRollExtraDieIgnoreOne:
 		g.applyRollExtraDieLocked(e, ev)
+	case ModNextDrawExileTopPlay:
+		g.applyNextDrawExileTopLocked(e, ev)
 	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		// "That many plus one": one window per kind, so one more each.
 		ev.CounterDelta++

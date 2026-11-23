@@ -28,7 +28,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, informedInkwrightCast,
+			On(game.EventCast, InformedInkwrightCast,
 				"Informed Inkwright — Repartee: create a 1/1 Inkling with flying",
 				Do(CreateToken{Template: TokenCard("1/1 white and black Inkling with flying"), N: 1})),
 		},
@@ -37,7 +37,7 @@ func init() {
 
 // informedInkwrightCast is "you cast an instant or sorcery spell that
 // targets a creature": the cast spell's own targets, as announced.
-func informedInkwrightCast(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func InformedInkwrightCast(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -50,7 +50,7 @@ func informedInkwrightCast(ev game.Event, source *game.Card, _ game.Characterist
 		return false
 	}
 	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || !onBattlefield(g, t.ID) {
+		if t.Kind != game.TargetCard || !OnBattlefield(g, t.ID) {
 			continue
 		}
 		if c, ok := g.LookupCardForEffect(t.ID); ok && c.IsCreature() {

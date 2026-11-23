@@ -446,6 +446,10 @@ type GameSnapshot struct {
 	// abilities twice this turn. Additive.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyTwiceThisTurn,omitempty"`
 
+	// LoyaltyPermanentTwiceThisTurn is Game's (#5479): the permanents
+	// whose loyalty abilities may be activated twice this turn. Additive.
+	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyPermanentTwiceThisTurn,omitempty"`
+
 	// Activations is the per-(object, ability) activation record
 	// (#1181). Carried because its game-lifetime half IS game state a
 	// player can lose on: a restore that forgot it would hand every
@@ -704,6 +708,13 @@ type GameSnapshot struct {
 	// before it restores as empty, which is the old behaviour: such
 	// an attacker cannot be blocked until combat ends. No schema bump.
 	AttackDefenders map[uuid.UUID]uuid.UUID `json:"attackDefenders,omitempty"`
+
+	// AttackBands is Game.attackBands (ADR 0224, CR 702.22): each banded
+	// attacker's band key. Empty outside combat and in every combat with
+	// no band. A file written before it restores as empty, which is a
+	// combat whose attackers were declared without bands, the only kind
+	// there was. Additive, no schema bump.
+	AttackBands map[uuid.UUID]uuid.UUID `json:"attackBands,omitempty"`
 
 	// FirstStrikeStepParticipants is the CR 510.4 / 702.7c
 	// participation record for the combat damage steps (#716): the
@@ -1006,6 +1017,10 @@ type playerSnapshot struct {
 	// amendment, #3016). Additive: a file written before it restores
 	// with none, so every batch is asked by hand again.
 	TriggerOrderMemory map[string]RememberedTriggerOrder `json:"triggerOrderMemory,omitempty"`
+
+	// StartingDeckSize is Player.StartingDeckSize (Whtz, the Bibliophile).
+	// Additive within version 9 (#522): absent in older saves, read as 0.
+	StartingDeckSize int `json:"startingDeckSize,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -1082,6 +1097,10 @@ type cardSnapshot struct {
 	// PrintedUnknown, which is what every older file says, and HasWarp
 	// then asks the catalog as it always did.
 	WarpText PrintedFact `json:"warpText,omitempty"`
+	// FlashbackText is Card.FlashbackText (S82). Additive; absent means
+	// PrintedUnknown, which is what every older file says, and
+	// HasFlashback then asks the catalog.
+	FlashbackText PrintedFact `json:"flashbackText,omitempty"`
 	// NoAbilitiesText is Card.NoAbilitiesText (#4464). Additive; absent
 	// means PrintedUnknown, which is what every older file says.
 	NoAbilitiesText PrintedFact         `json:"noAbilitiesText,omitempty"`
@@ -1187,6 +1206,10 @@ type cardSnapshot struct {
 	// arrival was a surveil's graveyard leg. Absent from every earlier
 	// file, which restores as "not surveilled".
 	Surveilled bool `json:"surveilled,omitempty"`
+	// Milled is Card.Milled (Raul, Trouble Shooter): the arrival was a
+	// mill's graveyard leg. Absent from every earlier file, which restores
+	// as "not milled".
+	Milled bool `json:"milled,omitempty"`
 	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
 	// effect gave suspend. Absent from every earlier file, which restores as
 	// "has only its printed abilities".
@@ -1321,6 +1344,9 @@ type cardSnapshot struct {
 	// card.
 	Meld       *MeldPrint     `json:"meld,omitempty"`
 	MeldedFrom []cardSnapshot `json:"meldedFrom,omitempty"`
+	// MergedFrom is Card.MergedFrom: a mutated permanent's components,
+	// topmost first (ADR 0223).
+	MergedFrom []cardSnapshot `json:"mergedFrom,omitempty"`
 	// MeldSplitFrom is CR 712.21c's link from the card that carried a
 	// melded permanent out of play to the other card it became, carried
 	// because a delayed "return it" can outlive a restore. ADR 0145.
@@ -1470,6 +1496,12 @@ type cardSnapshot struct {
 	// "not this turn", so a restored game's earlier links grant nothing
 	// this-turn clauses read, which is the safe direction.
 	ExiledWithTurn int `json:"exiledWithTurn,omitempty"`
+	// ExiledByAbilityOf is the player whose ability exiled the card
+	// (#5876, Evelyn, the Covetous). Additive within the version: a file
+	// without it restores "exiled by nobody's ability", so a restored
+	// game's earlier exiles open nothing that reads it, the safe
+	// direction. A pointer, so a card no ability exiled writes nothing.
+	ExiledByAbilityOf *uuid.UUID `json:"exiledByAbilityOf,omitempty"`
 	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
 	// the creature object a card in exile is encoded on and when. Carried
 	// because nothing else records it, and additive within v7: a file
@@ -1778,6 +1810,16 @@ type stackItemSnapshot struct {
 	CastFromZone   ZoneKind        `json:"castFromZone,omitempty"`
 	AltCost        string          `json:"altCost,omitempty"`
 	Foretold       bool            `json:"foretold,omitempty"`
+
+	// ModeChooser is StackItem.ModeChooser (#5771): the opponent who
+	// chose an "An opponent chooses one" spell's mode. Additive within
+	// the schema version and omitted when unset, which is every other
+	// item.
+	ModeChooser *uuid.UUID `json:"modeChooser,omitempty"`
+
+	// MutateUnder is StackItem.MutateUnder (ADR 0223).
+	MutateUnder bool `json:"mutateUnder,omitempty"`
+
 	// OwnFlashCast (#3156): the spell was cast with its own flash
 	// permission when a sorcery couldn't have been. Carried: the timing
 	// of the cast cannot be recomputed after a restore.
@@ -1810,6 +1852,10 @@ type stackItemSnapshot struct {
 	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
 	// Carried for the reason ExileWithCounter is.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+	// ExileAndSuspend is Gandalf of the Secret Fire's mark: exile the
+	// resolving spell with this many time counters and give it suspend.
+	// Carried for the reason ExileWithCounter is.
+	ExileAndSuspend int `json:"exileAndSuspend,omitempty"`
 	// ExileLinkedTo is Forger's Foundry's mark: exile the resolving spell,
 	// linked to this object. Carried for the reason ExileWithCounter is.
 	ExileLinkedTo *PermissionCardRef `json:"exileLinkedTo,omitempty"`
@@ -1942,6 +1988,13 @@ type delayedTriggerSnapshot struct {
 	UntilLeaves *ObjectRef `json:"untilLeaves,omitempty"`
 	Due         bool       `json:"due,omitempty"`
 
+	// #5877: the follow-up an "until" return carries (Lagrella, the
+	// Magpie). Additive: an older binary drops the keys and returns the
+	// card without the follow-up (weaker, never stronger); this binary
+	// refuses a follow-up body it does not have (ErrUnknownEffectKey).
+	UntilThen      string `json:"untilThen,omitempty"`
+	UntilThenLabel string `json:"untilThenLabel,omitempty"`
+
 	// #2169, CR 603.7b / 605.1b: a trigger that keeps triggering for its
 	// duration, and its triggered-mana twin. Additive: an older binary
 	// drops the keys and fires a repeating trigger once (weaker, never
@@ -2030,6 +2083,7 @@ type pendingChoiceSnapshot struct {
 	ModeUsedIndex    []int          `json:"modeUsedIndex,omitempty"`
 	ModeUsedLabel    []string       `json:"modeUsedLabel,omitempty"`
 	ModeNotChosen    ModeMemory     `json:"modeNotChosen,omitempty"`
+	ModePickFor      *uuid.UUID     `json:"modePickFor,omitempty"` // #5771: PendingChoice.ModePickFor, the caster an opponent's mode_pick is for; absent on every other prompt
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
 	// ADR 0116: the revealed-hand pick's legal cards and their label.
 	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
@@ -2628,6 +2682,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.BlockedAttackers = copyBoolMap(g.blockedAttackers)
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
+	s.AttackBands = copyUUIDPairMap(g.attackBands)
 	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
 	s.BlockDeclarationClosed = g.blockDeclarationClosed
 	s.AttacksDeclared = g.attacksDeclared
@@ -2689,6 +2744,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	s.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
@@ -3128,6 +3184,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ManaAbilityText:          c.ManaAbilityText,
 		NoAbilitiesText:          c.NoAbilitiesText,
 		WarpText:                 c.WarpText,
+		FlashbackText:            c.FlashbackText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -3167,6 +3224,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		Surveilled:               c.Surveilled,
+		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -3225,6 +3283,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
 		ExiledWithTurn:           c.ExiledWithTurn,
+		ExiledByAbilityOf:        uuidPtrOrNil(c.ExiledByAbilityOf),
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
 		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -3256,6 +3315,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 	for i := range c.MeldedFrom {
 		out.MeldedFrom = append(out.MeldedFrom, snapshotCard(c.MeldedFrom[i], cen))
 	}
+	for i := range c.MergedFrom {
+		out.MergedFrom = append(out.MergedFrom, snapshotCard(c.MergedFrom[i], cen))
+	}
 	return out
 }
 
@@ -3264,6 +3326,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		ID:                         p.ID,
 		Name:                       p.Name,
 		Seat:                       p.Seat,
+		StartingDeckSize:           p.StartingDeckSize,
 		Life:                       p.Life,
 		Poison:                     p.Poison,
 		Energy:                     p.Energy,
@@ -3378,9 +3441,11 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
 		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
+		ModeChooser:      uuidPtrOrNil(s.ModeChooser),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
+		MutateUnder:      s.MutateUnder,
 		Foretold:         s.Foretold,
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
@@ -3393,6 +3458,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
@@ -3529,6 +3595,8 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Until:              d.Until,
 		UntilLeaves:        d.UntilLeaves.stamped(),
 		Due:                d.Due,
+		UntilThen:          d.UntilThen.key,
+		UntilThenLabel:     d.UntilThenLabel,
 		Repeats:            d.Repeats,
 		OncePerBatch:       d.OncePerBatch,
 		ThroughCleanup:     d.ThroughCleanup,
@@ -3618,6 +3686,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		ModeUsedIndex:         copyInts(c.ModeUsedIndex),
 		ModeUsedLabel:         copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:         c.ModeNotChosen,
+		ModePickFor:           uuidPtrOrNil(c.ModePickFor),
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
 		CastPile:              copyUUIDs(c.CastPile),
@@ -3915,6 +3984,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
+	g.attackBands = copyUUIDPairMap(s.AttackBands)
 	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
 	g.blockDeclarationClosed = s.BlockDeclarationClosed
 	g.attacksDeclared = s.AttacksDeclared
@@ -4043,6 +4113,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
+	g.LoyaltyPermanentTwiceThisTurn = copyBoolMap(s.LoyaltyPermanentTwiceThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
@@ -4287,6 +4358,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ManaAbilityText:          c.ManaAbilityText,
 		NoAbilitiesText:          c.NoAbilitiesText,
 		WarpText:                 c.WarpText,
+		FlashbackText:            c.FlashbackText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -4325,6 +4397,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		Surveilled:               c.Surveilled,
+		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -4383,6 +4456,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
 		ExiledWithTurn:           c.ExiledWithTurn,
+		ExiledByAbilityOf:        uuidOrNil(c.ExiledByAbilityOf),
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
 		CreatedWith:              restoreEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -4447,6 +4521,9 @@ func restoreCard(c *cardSnapshot) Card {
 	for i := range c.MeldedFrom {
 		out.MeldedFrom = append(out.MeldedFrom, restoreCard(&c.MeldedFrom[i]))
 	}
+	for i := range c.MergedFrom {
+		out.MergedFrom = append(out.MergedFrom, restoreCard(&c.MergedFrom[i]))
+	}
 	return out
 }
 
@@ -4455,6 +4532,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		ID:                         p.ID,
 		Name:                       p.Name,
 		Seat:                       p.Seat,
+		StartingDeckSize:           p.StartingDeckSize,
 		Life:                       p.Life,
 		Poison:                     p.Poison,
 		Energy:                     p.Energy,
@@ -4583,9 +4661,11 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
 		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
+		ModeChooser:      uuidOrNil(s.ModeChooser),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
+		MutateUnder:      s.MutateUnder,
 		Foretold:         s.Foretold,
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
@@ -4598,6 +4678,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
@@ -4679,6 +4760,8 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Until:            d.Until,
 		UntilLeaves:      d.UntilLeaves.value(),
 		Due:              d.Due,
+		UntilThen:        BodyRef{key: d.UntilThen},
+		UntilThenLabel:   d.UntilThenLabel,
 		Repeats:          d.Repeats,
 		OncePerBatch:     d.OncePerBatch,
 		ThroughCleanup:   d.ThroughCleanup,
@@ -4752,6 +4835,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeUsedIndex:         copyInts(c.ModeUsedIndex),
 		ModeUsedLabel:         copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:         c.ModeNotChosen,
+		ModePickFor:           uuidOrNil(c.ModePickFor),
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
 		CastPile:              copyUUIDs(c.CastPile),

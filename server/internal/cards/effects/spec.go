@@ -176,6 +176,17 @@ type Spec struct {
 	// WhenThisDiesReturnItAsAnAura.
 	ReturnedAura *game.TargetSpec
 
+	// AttachOnlyTo is an Equipment's "<this> can be attached only to
+	// <a quality>" (Konda's Banner, #5846): AttachedOnlyTo("a legendary
+	// creature", Legendary()). The engine holds every attach of the
+	// permanent to it (CR 301.5b, CR 701.3b: an equip or an effect aimed
+	// elsewhere doesn't move it) and unattaches it from a host that stops
+	// meeting it (CR 301.5c, CR 704.5n). The equip ability is left as
+	// printed: "Equip {2}" still targets any creature you control, and on
+	// one this rejects it resolves and does nothing (Gate Smasher's and
+	// O-Naginata's rulings). Nil for every other card.
+	AttachOnlyTo *game.TargetSpec
+
 	// ManaAbilities is the list of activated mana abilities the card
 	// exposes from the battlefield. Each entry is one tap-or-cost-
 	// for-mana ability — Sol Ring's "{T}: Add {C}{C}", Birds of
@@ -777,6 +788,21 @@ type Spec struct {
 	//	SpellsYouCastHaveDelve: true, // Teval, Arbiter of Virtue
 	SpellsYouCastHaveDelve bool
 
+	// FirstSpellHasAssist is a permanent's "The first spell you cast during
+	// each of your turns has assist" (Yume, Chronicler of Valor): a static
+	// ability of the permanent (CR 604.1), read off the battlefield as a
+	// spell is announced (game.SpellHasAssistLocked), so it gives assist to
+	// the first spell its controller casts on their own turn while it is
+	// there, and to none once it has gone or lost its abilities:
+	//
+	//	FirstSpellHasAssist: true, // Yume, Chronicler of Valor
+	FirstSpellHasAssist bool
+
+	// AsYouCascadePutALand is "As you cascade, you may put a land card from
+	// among the exiled cards onto the battlefield tapped" (Averna, the Chaos
+	// Bloom): cascade's land step for this permanent's controller.
+	AsYouCascadePutALand bool
+
 	// SplitSecondGrants declares a permanent's "<spells> you control have
 	// split second" (CR 702.61; Samut, Tyrant of Naktamun; #3502). A
 	// static ability of the permanent (CR 604.1), read LIVE off the
@@ -1068,6 +1094,14 @@ type Spec struct {
 	// per-instance permissions.
 	CastableZonesIf []game.ConditionalCastZone
 
+	// CastsOnlyFromGraveyard is "You may cast this card from your graveyard,
+	// but not from anywhere else" (Haakon, Stromgald Scourge): the card is
+	// refused from every zone but a graveyard, under any permission (the
+	// zone half of CR 702.127a's aftermath rule, read through
+	// aftermathZoneRule), and its owner's graveyard is open to it. Declare
+	// it with no CastableZones entry; Register refuses the pair. Additive.
+	CastsOnlyFromGraveyard bool
+
 	// SpecialActions are the CR 116.2 special actions this card
 	// offers from its owner's hand — foretell (CR 702.143) and
 	// suspend (CR 702.62). A special action does NOT use the stack
@@ -1288,6 +1322,15 @@ type Spec struct {
 	//
 	// Issue #5770.
 	PlayerLifeFloorOne bool
+
+	// PlayerLifeFloorOneIfCreature declares Worship's printed static "If you
+	// control a creature, damage that would reduce your life total to less
+	// than 1 reduces it to 1 instead", about this permanent's CONTROLLER:
+	// PlayerLifeFloorOne that applies only while that player controls a
+	// creature (read through the layered view as the damage is dealt). True
+	// while the permanent is on the battlefield and nowhere else; see
+	// game/life_floor.go.
+	PlayerLifeFloorOneIfCreature bool
 
 	// DamageStaysThroughCleanup declares the printed static "Damage
 	// isn't removed from this creature during cleanup steps" (CR 514.2 —
@@ -1669,6 +1712,12 @@ type Spec struct {
 	// (Exploration Broodship). Read live by EffectiveLandDropsLocked.
 	// Not combined with the other two conditions.
 	AdditionalLandPlaysAtCharge int
+
+	// AdditionalLandPlaysAtLevel makes AdditionalLandPlays count only
+	// while the permanent is a Class of at least this level (CR 716.2a):
+	// Druid Class's level 2. Read live by EffectiveLandDropsLocked. Not
+	// combined with the other conditions.
+	AdditionalLandPlaysAtLevel int
 
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the
@@ -2102,6 +2151,10 @@ type ActivatedAbility struct {
 	// reduction itself (game/power_up.go). Set it through the PowerUp
 	// constructor (power_up.go), which also writes the label.
 	PowerUp bool
+	// ClassLevel marks a Class's "{cost}: Level N" ability (CR 716.2a). Set
+	// by LevelUp and by no card file: it names the ability for the spend
+	// restriction "only to gain a Class level" (game.ManaRestrictClassLevel).
+	ClassLevel bool
 	// Ninjutsu marks a ninjutsu or commander ninjutsu ability (CR
 	// 702.49a, 702.49d; #5672). It gates nothing; it names the keyword
 	// for a cost modifier that prices "ninjutsu abilities"
@@ -2218,7 +2271,7 @@ type ManaAbility struct {
 	// hand — the zone, the exile cost and the label travel together
 	// and a declaration missing any of them is refused at boot.
 	//
-	// Only the hand is supported (game.supportedManaAbilityZones);
+	// Only the hand and the graveyard are supported (game.supportedManaAbilityZones);
 	// Register refuses the rest, because a zone no consumer walks is
 	// a mana ability the engine would silently never offer.
 	Zones []game.ZoneKind

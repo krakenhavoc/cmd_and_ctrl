@@ -198,7 +198,30 @@ const (
 	// colour, so it is its own kind and Value is empty. An unknown
 	// source matches nothing, as for every characteristic quality.
 	ProtectionQualityColorless
+	// ProtectionQualityCreatureSubtype is "protection from creatures of
+	// type <T>" (Riders of Gavony's "creatures of the chosen type"): the
+	// source is a CREATURE with the creature type T, a changeling being
+	// every type. Unlike ProtectionQualitySubtype ("protection from
+	// Vampires") a non-creature object carrying the type (a Kindred
+	// spell) does not match. Value is the canonical creature type.
+	ProtectionQualityCreatureSubtype
+	// ProtectionQualityColoredSpells is "protection from spells that are
+	// one or more colors" (CR 702.16a, Emrakul, the Aeons Torn): the source
+	// is a spell (not an ability, not a permanent) with at least one colour.
+	// A spell's colours are those of the card or copy on the stack
+	// (CR 105.2); colourless spells and abilities are not stopped.
+	ProtectionQualityColoredSpells
 )
+
+// protectionCreaturesOfType heads the token of ProtectionQualityCreatureSubtype,
+// lowercase: "protection from creatures of type Vampire".
+const protectionCreaturesOfType = "creatures of type "
+
+// ProtectionFromCreaturesOfType is the token for protection from creatures
+// of one creature type.
+func ProtectionFromCreaturesOfType(creatureType string) string {
+	return protectionPrefix + protectionCreaturesOfType + creatureType
+}
 
 // String is the stable wire token for a quality kind, for the
 // protocol projection (and through it the client's badge and the
@@ -241,6 +264,11 @@ func (k ProtectionQualityKind) String() string {
 		return "mana_value_at_least"
 	case ProtectionQualityColorless:
 		return "colorless"
+	case ProtectionQualityColoredSpells:
+		return "colored_spells"
+	case ProtectionQualityCreatureSubtype:
+		// Same wire kind as a creature-type quality: the badge reads Value.
+		return "subtype"
 	}
 	return ""
 }
@@ -466,6 +494,8 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityNoncreaturePermanents, Printed: printed}, true
 	case "multicolored":
 		return ProtectionQuality{Kind: ProtectionQualityMulticolored, Printed: printed}, true
+	case "spells that are one or more colors":
+		return ProtectionQuality{Kind: ProtectionQualityColoredSpells, Printed: printed}, true
 	case protectionColorless:
 		return ProtectionQuality{Kind: ProtectionQualityColorless, Printed: printed}, true
 	}
@@ -478,6 +508,12 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	}
 	if ct, ok := protectionCardTypes[lower]; ok {
 		return ProtectionQuality{Kind: ProtectionQualityCardType, Value: ct, Printed: printed}, true
+	}
+	if rest, ok := strings.CutPrefix(lower, protectionCreaturesOfType); ok {
+		if ct, ok := CanonicalCreatureType(strings.TrimSpace(rest)); ok {
+			return ProtectionQuality{Kind: ProtectionQualityCreatureSubtype, Value: ct, Printed: printed}, true
+		}
+		return ProtectionQuality{}, false
 	}
 	// A subtype, and only a CREATURE type: those are the ones printed
 	// protection names (Demons, Dragons, Goblins) and the ones
@@ -876,6 +912,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return len(src.Colors) > 0
 	case ProtectionQualityMulticolored:
 		return len(src.Colors) >= 2
+	case ProtectionQualityColoredSpells:
+		return src.SourceIsSpell && len(src.Colors) >= 1
 	case ProtectionQualityColorless:
 		// CR 105.2c. The snapshot's colours are the post-layer ones, so
 		// an artifact an effect made red is not colourless and a
@@ -885,6 +923,9 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:
 		return typeListHas(src.Types, q.Value)
+	case ProtectionQualityCreatureSubtype:
+		return typeListHas(src.Types, "creature") &&
+			(typeListHas(src.Subtypes, q.Value) || (src.AllCreatureTypes && IsCreatureType(q.Value)))
 	case ProtectionQualitySubtype:
 		if typeListHas(src.Subtypes, q.Value) {
 			return true

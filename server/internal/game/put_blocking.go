@@ -49,25 +49,66 @@ func (g *Game) stampEntryBlockerLocked(id, attacker uuid.UUID) {
 		c.clearBlocking()
 		return
 	}
+	// ADR 0224, CR 702.22h: blocking one member of a band blocks every
+	// member, so the band-mates are blocked by this creature too.
+	blocked := g.withBandMatesLocked([]uuid.UUID{attacker})
 	// Asked BEFORE the stamp: once this creature is blocking it, the
 	// attacker no longer reads as unblocked.
-	becomesBlocked := g.UnblockedAttackerForEffect(attacker)
-	c.setBlockingSet([]uuid.UUID{attacker})
+	becomes := make([]bool, len(blocked))
+	for i, a := range blocked {
+		becomes[i] = g.UnblockedAttackerForEffect(a)
+	}
+	c.setBlockingSet(blocked)
 	if g.announcedBlocks == nil {
 		g.announcedBlocks = map[uuid.UUID][]uuid.UUID{}
 	}
-	g.announcedBlocks[id] = []uuid.UUID{attacker}
+	g.announcedBlocks[id] = append([]uuid.UUID(nil), blocked...)
 	if g.blockedAttackers == nil {
 		g.blockedAttackers = map[uuid.UUID]bool{}
 	}
-	g.blockedAttackers[attacker] = true
-	if becomesBlocked {
+	for _, a := range blocked {
+		g.blockedAttackers[a] = true
+	}
+	for i, a := range blocked {
+		if !becomes[i] {
+			continue
+		}
 		g.EmitEvent(Event{
 			Kind:   EventBecomesBlocked,
 			Actor:  c.Controller,
-			Source: attacker,
-			CardID: attacker,
-			Target: attacker,
+			Source: a,
+			CardID: a,
+			Target: a,
 		})
 	}
+}
+
+// PutOnBattlefieldBlockingForEffect makes a creature that is ALREADY on the
+// battlefield a blocker of `attacker` without declaring it one: Aetherplasm's
+// "put a creature card from your hand onto the battlefield blocking that
+// creature", whose card has just entered and is made a blocker as its entry
+// settles. It is the second door onto stampEntryBlockerLocked, the one a
+// permanent that did not enter in the same instruction uses, as
+// PutOnBattlefieldAttackingForEffect is for stampEntryAttackerLocked; the rule
+// it applies is the same CR 506.3d one, and the creature fires no "whenever ~
+// blocks" trigger (CR 509.4).
+//
+// The layer pass runs first so the type the creature has now is the one read.
+// Returns false, changing nothing, when the permanent is not a creature on the
+// battlefield, when it is already blocking, or when `attacker` is not an
+// attacking creature on the battlefield.
+//
+// Caller must hold g.mu.
+func (g *Game) PutOnBattlefieldBlockingForEffect(id, attacker uuid.UUID) bool {
+	g.RecomputeLayersIfStaleLocked()
+	c := findBattlefieldCard(g, id)
+	if c == nil || !c.IsCreature() || c.BlockingTarget != uuid.Nil {
+		return false
+	}
+	a := findBattlefieldCard(g, attacker)
+	if a == nil || a.AttackingTarget == uuid.Nil {
+		return false
+	}
+	g.stampEntryBlockerLocked(id, attacker)
+	return true
 }

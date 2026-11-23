@@ -60,12 +60,21 @@
   // (`seed`), and its confirm joins the staged set (`keptStage`). The
   // creatures that ride along from it are part of the one declaration,
   // so the Phyrexian stepper counts their symbols too.
+  //
+  // ADR 0224 (#5723): when a creature here has banding, every row gets a
+  // Band toggle, and the checked rows toggled on attack as one band
+  // (CR 702.22c): any number with banding and up to one without. A band
+  // the server would refuse says why under the rows and holds the
+  // confirm. One band per defender per declaration is this picker's
+  // limit, not the rule's; the server takes any number.
 
   import type { CardView, GameView } from "../../protocol";
   import {
     attackLimitOn,
     attackLimitSentence,
+    attackPriceText,
     attackTaxLabelForCount,
+    attackTaxLifeOn,
     attackTaxOn,
     planAttackAll,
     eligibleAt,
@@ -87,6 +96,7 @@
     type EnlistOption,
   } from "../../enlist";
   import { L } from "../../labels";
+  import { bandProblem, hasBanding } from "../../banding";
   import DockSheet from "./DockSheet.svelte";
   import AttackLifeStepper from "./AttackLifeStepper.svelte";
 
@@ -119,12 +129,14 @@
     // #4198: `phyrexianLife` is how many Phyrexian symbols of the tax
     // are paid with life; 0 pays them all with mana.
     // #5658: `enlist` maps a checked attacker to the creature it enlists.
+    // ADR 0224: `band` is the checked attackers whose Band toggle is on.
     onConfirm: (
       attackerIDs: string[],
       lockedSources: string[],
       exertIDs: string[],
       phyrexianLife: number,
       enlist: Record<string, string>,
+      band: string[],
     ) => void;
     onCancel: () => void;
   }
@@ -149,6 +161,9 @@
   const defender = $derived(plan.defenders.find((s) => s.id === defenderSeatID) ?? null);
   const defenderName = $derived(defender ? defender.display_name || defender.name : "");
   const each = $derived(defenderSeatID ? attackTaxOn(view, defenderSeatID) : "");
+  // #5869: the life one creature pays (Sivitri, Dragon Master's +1).
+  const eachLife = $derived(defenderSeatID ? attackTaxLifeOn(view, defenderSeatID) : 0);
+  const eachText = $derived(attackPriceText(each, eachLife));
   // #1533: the most creatures this declaration may add at the defender
   // under a count limit. null means no limit applies, or the server
   // does not publish one; the server still refuses an over-full pick
@@ -166,6 +181,9 @@
   let enlisted = $state<Record<string, string>>({});
   // #4198: the Phyrexian symbols the player pays with life.
   let lifeSymbols = $state(0);
+  // ADR 0224: the attackers the player put in the band. Off on every
+  // row: nothing is banded the player didn't ask to (CR 508.1e).
+  let banded = $state<string[]>([]);
 
   // Seed the selection with every eligible attacker when the modal
   // OPENS for a defender — not on every later snapshot, which would
@@ -183,8 +201,19 @@
       exerted = [];
       enlisted = {};
       lifeSymbols = 0;
+      banded = [];
     }
   });
+
+  // ADR 0224: the band, read on the live selection like everything else.
+  const anyBanding = $derived(eligible.some((c) => hasBanding(c)));
+  const liveBanded = $derived(banded.filter((id) => liveSelected.includes(id)));
+  const bandError = $derived(
+    bandProblem(eligible.filter((c) => liveBanded.includes(c.instance_id))),
+  );
+  function toggleBand(id: string): void {
+    banded = banded.includes(id) ? banded.filter((x) => x !== id) : [...banded, id];
+  }
 
   // #5658: a row's enlist choice. Only a checked attacker's choice is
   // sent, and never a creature that is itself checked to attack or that
@@ -290,10 +319,15 @@
   }
 
   function confirm(): void {
-    if (liveSelected.length === 0 || overCap) return;
-    onConfirm(liveSelected.slice(), lockedSources.slice(), liveExerted.slice(), liveLife, {
-      ...liveEnlisted,
-    });
+    if (liveSelected.length === 0 || overCap || bandError) return;
+    onConfirm(
+      liveSelected.slice(),
+      lockedSources.slice(),
+      liveExerted.slice(),
+      liveLife,
+      { ...liveEnlisted },
+      liveBanded.length >= 2 ? liveBanded.slice() : [],
+    );
   }
 </script>
 
@@ -307,7 +341,7 @@
       ? `${liveSelected.length} / ${cap} allowed`
       : `${liveSelected.length} / ${eligible.length} attacking`}
     primary={confirmAction(`Attack with ${liveSelected.length}`, confirm, {
-      disabled: liveSelected.length === 0 || overCap,
+      disabled: liveSelected.length === 0 || overCap || !!bandError,
     })}
     secondary={[cancelAction(onCancel)]}
   >
@@ -323,10 +357,10 @@
       </p>
     {/if}
     <p class="prompt-hint">
-      {#if each}
-        Attacking {defenderName} costs {each} per creature. Pick which ones to send.
-        {#if attackTaxLabelForCount(each, liveSelected.length)}
-          <strong>{attackTaxLabelForCount(each, liveSelected.length)}</strong> for the
+      {#if eachText}
+        Attacking {defenderName} costs {eachText} per creature. Pick which ones to send.
+        {#if attackTaxLabelForCount(each, liveSelected.length, eachLife)}
+          <strong>{attackTaxLabelForCount(each, liveSelected.length, eachLife)}</strong> for the
           {liveSelected.length} checked below.
         {/if}
       {:else}
@@ -368,6 +402,25 @@
               {ex ? "Exerting" : "Exert"}
             </button>
           {/if}
+          {#if anyBanding}
+            {@const inBand = banded.includes(c.instance_id)}
+            <!-- ADR 0224: the Band toggle, off by default. -->
+            <button
+              type="button"
+              class="ghost exert-btn"
+              class:on={inBand}
+              role="switch"
+              aria-checked={inBand}
+              aria-label={L.bandAttacker(c.name || "unknown creature")}
+              disabled={!on}
+              title={hasBanding(c)
+                ? "attack in the band — creatures in a band are blocked together"
+                : "attack in the band as its one creature without banding"}
+              onclick={() => toggleBand(c.instance_id)}
+            >
+              {inBand ? "In band" : "Band"}
+            </button>
+          {/if}
           {#if c.instance_id in plan.enlistable}
             {@const choices = enlistChoices(c.instance_id)}
             <!-- #5658: the creature this attacker enlists; none by default. -->
@@ -392,6 +445,19 @@
       <p class="prompt-hint" role="note">
         Exert is off unless you turn it on. {EXERT_NOTE}
       </p>
+    {/if}
+    {#if anyBanding}
+      <p class="prompt-hint" role="note">
+        Creatures toggled to Band attack {defenderName} as one band: blocking one of them blocks them
+        all, and whoever controls a creature with banding divides the damage dealt to their creatures.
+        A band has any number of creatures with banding and at most one without.
+      </p>
+      {#if bandError}
+        <p class="limit-reason" role="alert">
+          <span class="limit-tag">band</span>
+          <span>{bandError}</span>
+        </p>
+      {/if}
     {/if}
     {#if anyEnlistable}
       <p class="prompt-hint" role="note">

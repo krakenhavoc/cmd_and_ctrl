@@ -37,7 +37,7 @@ import (
 // lifelink, stamped tapped so CreateTokensAttackingForEffect — which
 // copies the template and sets only the attack — puts it in tapped
 // and attacking (General Kreat's posture).
-func b31TappedCatLifelinkToken() game.Card {
+func B31TappedCatLifelinkToken() game.Card {
 	tmpl := TokenCard("1/1 white Cat with lifelink")
 	tmpl.Tapped = true
 	return tmpl
@@ -53,7 +53,7 @@ func b31TappedCatLifelinkToken() game.Card {
 // an opponent's creature TOKEN does not, because token creation
 // skips the zone-move pipeline (the Kismet gap, declared on the
 // card).
-func b31OpponentsCreaturesEnterTapped(label string) game.ReplacementEffect {
+func B31OpponentsCreaturesEnterTapped(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -82,7 +82,7 @@ func b31OpponentsCreaturesEnterTapped(label string) game.ReplacementEffect {
 // b31LandCreaturesYouControl is Blossoming Tortoise's "Land creatures
 // you control" — post-layer types, so an animated land counts and a
 // creature that became a land counts.
-func b31LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B31LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.IsCreature() && target.IsLand()
 }
 
@@ -93,19 +93,19 @@ func b31LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Ca
 // controller's graveyard is short. Every other type the card prints
 // (Artifact) stays. Read on every recompute, so the god wakes the
 // moment the layer cache next rebuilds.
-func b31NotACreatureWhileGraveyardBelow(n int) game.StaticAbility {
+func B31NotACreatureWhileGraveyardBelow(n int) game.StaticAbility {
 	return game.StaticAbility{
 		Label: fmt.Sprintf("Isn't a creature unless you have %d or more cards in your graveyard.", n),
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.InstanceID == source.InstanceID && b31GraveyardSize(g, source.Controller) < n
+			return target.InstanceID == source.InstanceID && B31GraveyardSize(g, source.Controller) < n
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			// notACreature (helpers.go), shared with impending. The
 			// layer pass drops the creature subtypes along with the
 			// type, so a Maskwood Nexus does not leave the god a Goblin
 			// while it is not a creature (CR 205.1a, #670, #2041).
-			notACreature(c)
+			NotACreature(c)
 		},
 	}
 }
@@ -113,7 +113,7 @@ func b31NotACreatureWhileGraveyardBelow(n int) game.StaticAbility {
 // --- state reads ---------------------------------------------------
 
 // b31GraveyardSize is the number of cards in `player`'s graveyard.
-func b31GraveyardSize(g *game.Game, player uuid.UUID) int {
+func B31GraveyardSize(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
@@ -125,8 +125,8 @@ func b31GraveyardSize(g *game.Game, player uuid.UUID) int {
 // layers brought current first, then counters (CurrentPower) — for
 // Soul's Majesty's "the power of target creature". Zero for a card
 // that is not on the battlefield.
-func b31CurrentPowerOf(g *game.Game, cardID uuid.UUID) int {
-	if !onBattlefield(g, cardID) {
+func B31CurrentPowerOf(g *game.Game, cardID uuid.UUID) int {
+	if !OnBattlefield(g, cardID) {
 		return 0
 	}
 	g.RecomputeLayersIfStaleLocked()
@@ -144,8 +144,8 @@ func b31CurrentPowerOf(g *game.Game, cardID uuid.UUID) int {
 // source's controller's control and was tapped when its entry was
 // announced. Every entry path stamps Tapped before EventETB fires,
 // so a land that is tapped at the event entered that way.
-func b31LandYouControlEnteredTapped(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func B31LandYouControlEnteredTapped(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsLand() && c.Tapped
 }
 
@@ -154,8 +154,8 @@ func b31LandYouControlEnteredTapped(ev game.Event, source *game.Card, g *game.Ga
 // controller's control. Post-layer types, so an animated artifact
 // counts; the Munitions the Manufacturing itself makes are tokens
 // and do not chain.
-func b31NontokenArtifactYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func B31NontokenArtifactYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsArtifact() && !IsToken(c)
 }
 
@@ -163,7 +163,7 @@ func b31NontokenArtifactYouControlEntered(ev game.Event, source *game.Card, g *g
 // source's controller sacrificed a Food. EventSacrifice fires before
 // the zone move, so the Food is still on the battlefield to be read
 // — effective subtypes, so a Food that is also a creature counts.
-func b31YouSacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool {
+func B31YouSacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller || ev.CardID == uuid.Nil {
 		return false
 	}
@@ -175,7 +175,7 @@ func b31YouSacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool 
 // printed ability with two trigger conditions, watching the land
 // play (b20LandPlayed, off Event.Played since #1326) and the cast on
 // one declaration.
-func b31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Game) bool {
+func B31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventCast:
 		return ev.Actor == source.Controller
@@ -183,7 +183,7 @@ func b31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Gam
 		if ev.Actor != source.Controller {
 			return false
 		}
-		ok := b20LandPlayed(ev, g)
+		ok := B20LandPlayed(ev, g)
 		return ok
 	}
 	return false
@@ -193,19 +193,19 @@ func b31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Gam
 
 // b31TillerEngineLabel is the stack label both declarations of
 // Tiller Engine's trigger share.
-const b31TillerEngineLabel = "Tiller Engine — untap that land, or tap a nonland permanent an opponent controls"
+const B31TillerEngineLabel = "Tiller Engine — untap that land, or tap a nonland permanent an opponent controls"
 
 // b31BlossomingTortoiseLabel is the stack label both declarations
 // of Blossoming Tortoise's trigger share. The trigger's body is no
 // longer a batch 31 helper: once #767 removed its library clamp it
 // matched Teval's, so both use b25MillThreeThenReturnLandTapped.
-const b31BlossomingTortoiseLabel = "Blossoming Tortoise — mill three, then return a land card tapped"
+const B31BlossomingTortoiseLabel = "Blossoming Tortoise — mill three, then return a land card tapped"
 
 // b31LifeBecomes sets `player`'s life total to `total` the way CR
 // 119.5 says to: the player gains or loses the difference, so a
 // lifegain or life-loss trigger sees the change. A total already
 // equal to the target changes nothing.
-func b31LifeBecomes(ctx *Context, player uuid.UUID, total int) error {
+func B31LifeBecomes(ctx *Context, player uuid.UUID, total int) error {
 	p := ctx.PlayerByID(player)
 	if p == nil || p.Life == total {
 		return nil
@@ -217,7 +217,7 @@ func b31LifeBecomes(ctx *Context, player uuid.UUID, total int) error {
 // opponent chosen when the trigger went on the stack loses
 // item.Params.Amount life — the power the Guest had as it left,
 // stamped onto Params by a fill-in Build.
-func b31ChosenOpponentLosesLife(g *game.Game, item *game.StackItem) error {
+func B31ChosenOpponentLosesLife(g *game.Game, item *game.StackItem) error {
 	amount := item.Params.Amount
 	if amount <= 0 {
 		return nil
@@ -234,7 +234,7 @@ func b31ChosenOpponentLosesLife(g *game.Game, item *game.StackItem) error {
 
 // b31CountersOnChosenCreature is Fain's first activation: two +1/+1
 // counters on the creature chosen at announce, if it is still legal.
-func b31CountersOnChosenCreature(g *game.Game, item *game.StackItem) error {
+func B31CountersOnChosenCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -247,8 +247,8 @@ func b31CountersOnChosenCreature(g *game.Game, item *game.StackItem) error {
 
 // b31UntapSelf untaps the item's source if it is still on the
 // battlefield — Fain's "{3}{B}: Untap Fain".
-func b31UntapSelf(g *game.Game, item *game.StackItem) error {
-	if !onBattlefield(g, item.SourceCardID) {
+func B31UntapSelf(g *game.Game, item *game.StackItem) error {
+	if !OnBattlefield(g, item.SourceCardID) {
 		return nil
 	}
 	return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
@@ -257,7 +257,7 @@ func b31UntapSelf(g *game.Game, item *game.StackItem) error {
 // b31MillChosenPlayer is Nephalia Drownyard's activation: the player
 // chosen at announce mills `n` cards — the rest of their library when
 // it holds fewer (CR 701.17b).
-func b31MillChosenPlayer(n int) func(g *game.Game, item *game.StackItem) error {
+func B31MillChosenPlayer(n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -274,7 +274,7 @@ func b31MillChosenPlayer(n int) func(g *game.Game, item *game.StackItem) error {
 // card — any land with the Plains type — onto the battlefield
 // tapped, then shuffle. The "may" was answered when the trigger
 // fired; the S22 chooser still lets the searcher fail to find.
-func b31FetchPlainsTapped(g *game.Game, item *game.StackItem) error {
+func B31FetchPlainsTapped(g *game.Game, item *game.StackItem) error {
 	return SearchLibrary{
 		Player:        item.Controller,
 		Predicate:     IsLandWithSubtype("Plains"),
@@ -297,7 +297,7 @@ func b31FetchPlainsTapped(g *game.Game, item *game.StackItem) error {
 // pauses on a CR 616 ordering prompt removes nothing until the prompt
 // is answered — read early, the check would see the counter still
 // there and never sacrifice.
-func b31RemoveMiningCounterOrSacrifice(g *game.Game, _, source uuid.UUID) error {
+func B31RemoveMiningCounterOrSacrifice(g *game.Game, _, source uuid.UUID) error {
 	return g.AddCounterByKeyedForEffect(uuid.Nil, source, "mining", -1,
 		game.KeyedTail{Ref: gemstoneMineSacrificeIfEmpty, Source: source})
 }
@@ -316,7 +316,7 @@ var gemstoneMineSacrificeIfEmpty = game.RegisterTail("gemstone-mine/sacrifice-if
 // b31HasMiningCounter gates Gemstone Mine's activation: at least one
 // mining counter must be there to remove (CR 601.2h — unpayable
 // costs can't be paid).
-func b31HasMiningCounter(g *game.Game, _, source uuid.UUID) bool {
+func B31HasMiningCounter(g *game.Game, _, source uuid.UUID) bool {
 	c, ok := g.LookupCardForEffect(source)
 	return ok && c.Counters["mining"] > 0
 }

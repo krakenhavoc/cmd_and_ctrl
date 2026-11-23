@@ -148,6 +148,7 @@ var gameFields = plan(
 	"LoyaltyExtraActivationsThisTurn", carried, "",
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"LoyaltyTwiceThisTurn", carried, "",
+	"LoyaltyPermanentTwiceThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"DilemmasFacedThisTurn", carried, "", // #4973
@@ -277,6 +278,10 @@ var gameFields = plan(
 	// with announcedAttacks: a restore that dropped it would leave an
 	// attacker whose planeswalker has left unblockable (CR 506.4c).
 	"attackDefenders", carried, "",
+	// ADR 0224: the bands the attacks were declared in. Carried with
+	// attackDefenders: a restore that dropped it would split a band, so
+	// blocking one member would no longer block the rest (CR 702.22h).
+	"attackBands", carried, "",
 	// #1279: which defenders have completed their block declaration.
 	// Carried with the block maps above: a restore that dropped it
 	// would re-ask a defender who had already declared, and one that
@@ -422,6 +427,7 @@ var cardFields = plan(
 	"ManaAbilityText", carried, "",
 	"NoAbilitiesText", carried, "",
 	"WarpText", carried, "",
+	"FlashbackText", carried, "",
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
@@ -516,6 +522,9 @@ var cardFields = plan(
 	// #5429: carried — a restore that dropped it would close Eye of
 	// Duskmantle's permission on the cards this turn's surveil opened.
 	"Surveilled", carried, "",
+	// Raul, Trouble Shooter: carried — a restore that dropped it would close
+	// his permission on the cards this turn's mills opened.
+	"Milled", carried, "",
 	// #4455: carried — a restore that dropped it would leave a card Kang
 	// Prime gave suspend counting down with no upkeep trigger and no free cast.
 	"SuspendGranted", carried, "",
@@ -637,6 +646,7 @@ var cardFields = plan(
 	// which are what its owner gets back when it leaves.
 	"Meld", carried, "",
 	"MeldedFrom", carried, "",
+	"MergedFrom", carried, "",
 	"MeldSplitFrom", carried, "",
 	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
 	// designations. Carried, and the reason is sharper than for the
@@ -712,6 +722,8 @@ var cardFields = plan(
 	"ExiledWithAbility", carried, "",
 	// #4458: the turn that link was made on; zero is "not this turn".
 	"ExiledWithTurn", carried, "",
+	// #5876: whose ability exiled the card; zero is "nobody's ability".
+	"ExiledByAbilityOf", carried, "",
 	// #3867: cipher's encoding (CR 702.99b) and its layer-6 timestamp.
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",
@@ -763,6 +775,7 @@ var playerFields = plan(
 	"ID", carried, "",
 	"Name", carried, "",
 	"Seat", carried, "",
+	"StartingDeckSize", carried, "",
 	"Life", carried, "",
 	"Poison", carried, "",
 	"Energy", carried, "",
@@ -979,9 +992,12 @@ var stackItemFields = plan(
 	"Distribution", carried, "",
 	// #2055: which opponent chose each "of an opponent's choice" clause.
 	"TargetChoosers", carried, "",
+	// #5771: the opponent who chose an "An opponent chooses one" mode.
+	"ModeChooser", carried, "",
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
+	"MutateUnder", carried, "",
 	// CR 702.143c (#658). Carried: a restore that lost it would make
 	// "if this spell was foretold" false for a spell already on the
 	// stack, and the fact cannot be recomputed — the card turned face
@@ -1008,6 +1024,7 @@ var stackItemFields = plan(
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
 	"ExileAndPlot", carried, "",
+	"ExileAndSuspend", carried, "",
 	"ExileLinkedTo", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",
 	"BottomInsteadOfGraveyard", carried, "",
@@ -1106,6 +1123,8 @@ var delayedTriggerFields = plan(
 	"Until", carried, "",
 	"UntilLeaves", carried, "",
 	"Due", carried, "",
+	"UntilThen", carried, "",
+	"UntilThenLabel", carried, "",
 	"Repeats", carried, "", // #2169, CR 603.7b
 	"OncePerBatch", carried, "", // #3172, CR 603.2c
 	"ThroughCleanup", carried, "", // #4462, Stolen Uniform: kept past the cleanup sweep
@@ -1219,6 +1238,8 @@ var pendingChoiceFields = plan(
 	"ModeUsedIndex", carried, "",
 	"ModeUsedLabel", carried, "",
 	"ModeNotChosen", carried, "",
+	// #5771: the caster an opponent's mode_pick is for.
+	"ModePickFor", carried, "",
 	"SacrificeOptions", carried, "",
 	// ADR 0116: the revealed-hand pick's legal cards. Carried for the
 	// same reason SacrificeOptions is — a restored game that forgot

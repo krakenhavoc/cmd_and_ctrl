@@ -158,6 +158,16 @@ type PaidCost struct {
 	// SacrificedObjects.
 	AltCostObjects []ObjectRef `json:"altCostObjects,omitempty"`
 
+	// ReturnedObjects is WHICH permanents a ReturnToHand component
+	// returned to their owners' hands (#5948): each as the battlefield
+	// object it was, in the order the activator named them. CR 400.7j
+	// lets the effect find an object its cost moved and CR 608.2h reads
+	// it as it last existed on the battlefield, which is
+	// Game.PermanentForEffect on each ref. Wonderscape Sage's "unless that
+	// land had a nonbasic land type" reads it through
+	// Context.ReturnedPermanents. Additive within a snapshot version.
+	ReturnedObjects []ObjectRef `json:"returnedObjects,omitempty"`
+
 	// ReturnedAttacking is what the permanent a ReturnToHand component
 	// returned was ATTACKING when it was returned — the player,
 	// planeswalker or battle, in Card.AttackingTarget's own overloaded
@@ -439,6 +449,9 @@ type PaidTap struct {
 	// toughness), kept and rewritten at the same two moments. Zero falls
 	// back to Power. Read it through PaidTapStationAnyPowerForEffect.
 	StationAnyPower int `json:"stationAnyPower,omitempty"`
+	// ManaValue is the card's mana value when a Chosen reveal recorded it
+	// from the hand (Calamity of the Titans); zero for every other record.
+	ManaValue int `json:"manaValue,omitempty"`
 }
 
 // PaidOptionalCost reports whether the optional cost at `index` was
@@ -530,7 +543,7 @@ func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper && p.PaperMana == 0 &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
-		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
+		p.ReturnedAttacking == uuid.Nil && len(p.ReturnedObjects) == 0 && len(p.OptionalCosts) == 0 &&
 		len(p.TappedOthers) == 0 && len(p.Chosen) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
 		p.AssistedBy == uuid.Nil && p.AssistPaid == 0 && len(p.Rolled) == 0
@@ -568,6 +581,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.Delved) > 0 {
 		out.Delved = append([]ObjectRef(nil), p.Delved...)
+	}
+	if len(p.ReturnedObjects) > 0 {
+		out.ReturnedObjects = append([]ObjectRef(nil), p.ReturnedObjects...)
 	}
 	if len(p.SacrificedObjects) > 0 {
 		out.SacrificedObjects = append([]ObjectRef(nil), p.SacrificedObjects...)

@@ -69,15 +69,15 @@ func init() {
 }
 
 // UrzaConstructToken is the 0/0 Construct Urza's ETB creates.
-func UrzaConstructToken() game.Card { return tokenFromCatalog(printedUrzaConstructToken) }
+func UrzaConstructToken() game.Card { return TokenFromCatalog(printedUrzaConstructToken) }
 
 // printedUrzaConstructToken carries its own printed ability: "This
 // token gets +1/+1 for each artifact you control." A self-only
 // Layer 7c modify (not a CDA — the base 0/0 is printed, the bonus is
 // a boost on top of it), reading the token's OWN controller so a
 // changed-control Construct sizes off its new controller's board.
-func printedUrzaConstructToken() tokenTemplate {
-	return tokenTemplate{
+func printedUrzaConstructToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "urza-construct",
 		Card: game.Card{
 			Name:      "Construct",

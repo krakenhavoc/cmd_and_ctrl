@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // excessNoncombatDamageToOpponentCreature returns the excess noncombat
 // damage that ev dealt to a creature `source`'s controller's opponents
 // control, or zero when ev is not that.
-func excessNoncombatDamageToOpponentCreature(ev game.Event, source *game.Card, g *game.Game) int {
+func ExcessNoncombatDamageToOpponentCreature(ev game.Event, source *game.Card, g *game.Game) int {
 	if ev.Kind != game.EventDealDamage || ev.Combat || ev.Amount <= 0 {
 		return 0
 	}

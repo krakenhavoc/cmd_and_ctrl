@@ -1,6 +1,6 @@
 # ADR 0027 — Attack triggers ride an event, not combat state
 
-**Status:** Implemented · 2026-09-10 · Branch `feat/attack-triggers`
+**Status:** Accepted · 2026-09-10 · Branch `feat/attack-triggers`
 **Amendment:** 2026-09-28 · **Accepted** · [Combat state rides the leaves-the-battlefield event (CR 603.10a)](#amendment-2026-09-28-1661-combat-state-rides-the-leaves-the-battlefield-event) · [#1661](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1661)
 
 ## Context

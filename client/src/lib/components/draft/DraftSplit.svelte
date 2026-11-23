@@ -71,11 +71,12 @@
     onmove(id, to);
     said = `Moved ${nameOf(id)} to ${to === "main" ? "main" : "sideboard"}.`;
     // The button that was pressed is gone from its area; focus follows
-    // the card to the other one instead of to nowhere.
+    // the card to the other one instead of to nowhere, and the view stays
+    // where it is (#5921).
     if (keepFocus) {
       void tick().then(() => {
         const all = root?.querySelectorAll<HTMLElement>("[data-move-id]") ?? [];
-        for (const el of all) if (el.dataset.moveId === id) el.focus();
+        for (const el of all) if (el.dataset.moveId === id) el.focus({ preventScroll: true });
       });
     }
   }

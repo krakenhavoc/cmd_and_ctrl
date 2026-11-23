@@ -160,7 +160,10 @@ func (e *enumerator) castZones(anyGrant bool) []castZone {
 		}
 		out = append(out,
 			castZone{other.Graveyard, game.ZoneGraveyard, "graveyard", false},
-			castZone{other.Library, game.ZoneLibrary, "library", false})
+			castZone{other.Library, game.ZoneLibrary, "library", false},
+			// #5922: another seat's hand, open only under a stored
+			// permission over it (Sen Triplets).
+			castZone{other.Hand, game.ZoneHand, "hand", false})
 	}
 	return out
 }
@@ -274,6 +277,12 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 		// this loop offered a bot reached the frame with no announce
 		// stamps at all.
 		if perm == nil && !(mine && g.CardCastableFromAnyFaceLocked(c, kind)) {
+			return
+		}
+	case game.ZoneHand:
+		// #5922: a card in ANOTHER seat's hand is open only under a
+		// permission (castSourceZoneLocked finds it there only under one).
+		if !mine && perm == nil {
 			return
 		}
 	}
@@ -991,11 +1000,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// way.
 	lifeReserved := offerLife(offer) + branchLife(addCost)
 	// #5659: an announced optional cost's fixed life (a Defiler's "you
-	// may pay 2 life") is owed too, and a set whose life the seat can't
-	// pay (CR 119.4, a locked life total) is a cast the engine refuses.
+	// may pay 2 life", Slaughter's "Buyback—Pay 4 life", #5782) is owed
+	// too, and a set whose life the seat can't pay (CR 119.4, a locked
+	// life total, "can't pay life to cast spells") is a cast the engine
+	// refuses. On top of the rule, the policy the branches' life follows
+	// (castCostBranches): an optional payment that would leave the seat
+	// at 0 life is never offered, because the next state-based check
+	// would kill it (CR 704.5a) for a kicker or a buyback.
 	if owed := optionalLife(optional, chosen); owed > 0 {
 		lifeReserved += owed
-		if !e.g.CanPayLifeLocked(e.p, lifeReserved) {
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, lifeReserved) || e.p.Life <= lifeReserved {
 			return
 		}
 	}
@@ -1015,7 +1029,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// selection rather than once for the card.
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	modeSets := [][]int{nil}
-	if modeSpec != nil {
+	// #5771, CR 700.2e: "An opponent chooses one" — the caster names no
+	// mode and no target; the engine parks the cast and asks. The one
+	// move is the cast with none, offered while some opponent could
+	// choose a bullet (the same gate the park asks).
+	if modeSpec != nil && modeSpec.ChosenByOpponent {
+		if !e.g.OpponentCouldChooseModeForEffect(castSrc, modeSpec) {
+			return
+		}
+	} else if modeSpec != nil {
 		// #1655: under THIS announcement's optional costs — a kicked
 		// Inscription of Ruin may take every bullet, an unkicked one
 		// exactly one, and each is its own move.
@@ -1376,6 +1398,7 @@ modeLoop:
 				AltSacrificeManaValue: altMV,
 				AltTappedPower:        altPower,
 				AltBlitz:              offer != nil && offer.Blitz,
+				AltFlashback:          offer != nil && offer.Key == "flashback",
 				GrantReduction:        grantLess,
 				GrantIncrease:         grantMore,
 				ExilingFromHand:       len(handExile),
@@ -1503,6 +1526,7 @@ modeLoop:
 					AltSacrificeManaValue: altMV,
 					AltTappedPower:        altPower,
 					AltBlitz:              offer != nil && offer.Blitz,
+					AltFlashback:          offer != nil && offer.Key == "flashback",
 					GrantReduction:        grantLess,
 					GrantIncrease:         grantMore,
 					ExilingFromHand:       len(handExile),
@@ -1587,6 +1611,7 @@ modeLoop:
 							AltSacrificeManaValue: altMV,
 							AltTappedPower:        altPower,
 							AltBlitz:              offer != nil && offer.Blitz,
+							AltFlashback:          offer != nil && offer.Key == "flashback",
 							GrantReduction:        grantLess,
 							GrantIncrease:         grantMore,
 							ExilingFromHand:       len(handExile),
@@ -1980,7 +2005,8 @@ func (e *enumerator) castMoveEmitter(
 			// price Force of Will's pitch as free. See MoveCost.
 			// #1677: and the Phyrexian symbols this move pays with
 			// life, which Params names only as a count.
-			// ADR 0100: and a branch's fixed "pay 3 life".
+			// ADR 0100: and a branch's fixed "pay 3 life", and an
+			// announced optional cost's ("Buyback—Pay 4 life", #5782).
 			// ADR 0129 §5: and the energy the cast pays — the offer's
 			// and a replicate's, once per payment.
 			// ADR 0136 §2: and the mana it charges in all, which the
@@ -1988,7 +2014,7 @@ func (e *enumerator) castMoveEmitter(
 			// cast always carries a Cost.
 			// #5390: and the counters the offer removes, priced against
 			// the creatures they come off as an activation's are.
-			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying)+optionalLife(optional, chosen), 0), phyLife),
 				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax), counters.prices()),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is

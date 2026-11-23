@@ -30,7 +30,7 @@ func init() {
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{Miracle("{W}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return tuckAllCreaturesToBottomByOwner(ctx, item, "Terminus — put these on the bottom of your library in any order")
+			return TuckAllCreaturesToBottomByOwner(ctx, item, "Terminus — put these on the bottom of your library in any order")
 		},
 	})
 }
@@ -38,13 +38,13 @@ func init() {
 // tuckAllCreaturesToBottomByOwner is Terminus's body: every creature
 // on the battlefield to the bottom of its owner's library at once,
 // then one ordering prompt per owner with more than one card to order.
-func tuckAllCreaturesToBottomByOwner(ctx *Context, item *game.StackItem, label string) error {
+func TuckAllCreaturesToBottomByOwner(ctx *Context, item *game.StackItem, label string) error {
 	swept := MatchingBattlefield(ctx, Creature())
 	ids := make([]uuid.UUID, 0, len(swept))
 	for _, c := range swept {
 		ids = append(ids, c.InstanceID)
 	}
-	return tuckCardsToBottomByOwner(ctx, item, ids, label)
+	return TuckCardsToBottomByOwner(ctx, item, ids, label)
 }
 
 // tuckCardsToBottomByOwner puts every card in ids on the bottom of its
@@ -52,9 +52,9 @@ func tuckAllCreaturesToBottomByOwner(ctx *Context, item *game.StackItem, label s
 // each owner with more than one of them to order their own (CR 401.4).
 // The body Terminus and Trial of a Time Lord share ("the owner of each
 // card puts that card on the bottom of their library").
-func tuckCardsToBottomByOwner(ctx *Context, item *game.StackItem, ids []uuid.UUID, label string) error {
+func TuckCardsToBottomByOwner(ctx *Context, item *game.StackItem, ids []uuid.UUID, label string) error {
 	// Keyed (#4253 slice 10a): the ordering prompts are the tuck's tail,
 	// run against the asking item.
-	tail := withWord(withN(NewContext(ctx.Game, item).ItemTail(tuckEachOwnerOrders), tuckOrderBottom), label)
+	tail := WithWord(WithN(NewContext(ctx.Game, item).ItemTail(tuckEachOwnerOrders), tuckOrderBottom), label)
 	return ctx.Game.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{ToBottom: true}, tail)
 }

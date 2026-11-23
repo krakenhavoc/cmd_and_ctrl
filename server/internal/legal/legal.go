@@ -1038,6 +1038,9 @@ type enumerator struct {
 	// rowEquip is whether that row is an equip ability, for the spend
 	// context's ManaRestrictEquip (#4600).
 	rowEquip bool
+	// rowClassLevel is whether that row is a Class level-up ability, for the
+	// spend context's ManaRestrictClassLevel (CR 716.2a).
+	rowClassLevel bool
 	// rowCostHasX is whether that row's cost contains {X}, for the
 	// spend context's ManaRestrictXCost (#4834).
 	rowCostHasX bool
@@ -1053,6 +1056,7 @@ func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
 	spend := game.ManaSpendForAbilityRow(*source, e.rowOrigin)
 	spend.PowerUp = e.rowPowerUp
 	spend.Equip = e.rowEquip
+	spend.ClassLevel = e.rowClassLevel
 	spend.CostHasX = e.rowCostHasX
 	return spend
 }
@@ -1151,7 +1155,9 @@ func targetsStackObject(g *game.Game, refs []game.TargetRef) bool {
 // anything. A bot seat therefore idled until a human answered the tax,
 // which is the opposite of what the ADR decided and of what a human at
 // the same table may do. Both sides now read game.ChoiceBlocksTable, so
-// they cannot disagree again.
+// they cannot disagree again. (#5793 since made a pay_unless asked
+// mid-resolution block, through the same predicate: a Rhystic tax now
+// holds the table while it is asked, for bots and humans alike.)
 func anyBlockingChoiceOpen(g *game.Game) bool {
 	for _, c := range g.PendingChoices {
 		if c != nil && g.ChoicePromptBlocksTable(c) {

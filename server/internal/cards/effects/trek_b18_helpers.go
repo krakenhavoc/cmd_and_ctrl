@@ -13,14 +13,14 @@ import (
 // battlefield while the player who controlled it as it last existed
 // there (CR 603.10a) is the active player. Part of the trigger event,
 // read as the death happens; not rechecked.
-func trekB18DiedDuringYourTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-	return ThisDied(ev, source, lki, g) && IsYourTurn(g, leftUnderControlOf(ev, *source))
+func TrekB18DiedDuringYourTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	return ThisDied(ev, source, lki, g) && IsYourTurn(g, LeftUnderControlOf(ev, *source))
 }
 
 // trekB18ThisAttackedThisTurn is the trigger-time half of "if this
 // creature attacked this turn" (Targ Wrangler): the source object was
 // declared as an attacker this turn, per object (CR 400.7).
-func trekB18ThisAttackedThisTurn(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func TrekB18ThisAttackedThisTurn(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return g.AttackedThisTurn(source.InstanceID)
 }
 
@@ -29,22 +29,22 @@ func trekB18ThisAttackedThisTurn(_ game.Event, source *game.Card, _ game.Charact
 // this turn, read from its last known information once it has left the
 // battlefield (CR 608.2h). The turn's attack history only grows, and it
 // is a fact about the source object, so it declares a source read.
-type trekB18CondThisAttackedThisTurn struct{}
+type TrekB18CondThisAttackedThisTurn struct{}
 
-func (trekB18CondThisAttackedThisTurn) Holds(ctx *Context) bool {
+func (TrekB18CondThisAttackedThisTurn) Holds(ctx *Context) bool {
 	ref, ok := ctx.SourceRef()
 	return ok && ctx.Game.ObjectAttackedThisTurn(ref)
 }
 
-func (trekB18CondThisAttackedThisTurn) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondSource, 0), true
+func (TrekB18CondThisAttackedThisTurn) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondSource, 0), true
 }
 
 // trekB18AltCostKeyBeamMeUp is beam me up's offer key: on the wire as
 // `alternative_cost`, on StackItem.AltCost and on a permanent's
 // CastProvenance. An on-disk identity: never renamed, never reused. The
 // same key every Star Trek batch that prints the keyword uses.
-const trekB18AltCostKeyBeamMeUp = "beam_me_up"
+const TrekB18AltCostKeyBeamMeUp = "beam_me_up"
 
 // trekB18BeamMeUp is "Beam me up {cost} (You may cast this card from your
 // graveyard for {cost} if you also return a creature you control to its
@@ -59,9 +59,9 @@ const trekB18AltCostKeyBeamMeUp = "beam_me_up"
 //
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{trekB18BeamMeUp("{3}{R}{R}{R}")},
-func trekB18BeamMeUp(cost string) game.AlternativeCost {
+func TrekB18BeamMeUp(cost string) game.AlternativeCost {
 	ac := Flashback(cost)
-	ac.Key = trekB18AltCostKeyBeamMeUp
+	ac.Key = TrekB18AltCostKeyBeamMeUp
 	ac.Label = "Beam me up " + cost
 	ac.ReturnToHand = PermanentYouControl("a creature you control", Creature())
 	ac.PayLabel = "a creature you control"
@@ -75,10 +75,10 @@ func trekB18BeamMeUp(cost string) game.AlternativeCost {
 // has just exiled the card, so the token copies the card as it is in
 // exile (its copiable values, CR 707.2), and one delayed trigger
 // sacrifices it at the beginning of the next end step (CR 603.7).
-func trekB18TokenCopyOfThisSacrificedAtNextEndStep(label string) Effect {
+func TrekB18TokenCopyOfThisSacrificedAtNextEndStep(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		cursor := b25LastEventSeq(g)
+		cursor := B25LastEventSeq(g)
 		if err := (CreateTokenCopy{
 			Controller: item.Controller,
 			Copy:       item.SourceCardID,
@@ -86,14 +86,14 @@ func trekB18TokenCopyOfThisSacrificedAtNextEndStep(label string) Effect {
 		}).Apply(ctx); err != nil {
 			return err
 		}
-		tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
+		tokens := B27TokensCreatedByAfter(g, item.Controller, cursor)
 		if len(tokens) == 0 {
 			return nil
 		}
 		return ScheduleDelayedTrigger{
 			Label: label,
 			Cards: tokens,
-			Body:  sacrificeListedCardsBody,
+			Body:  SacrificeListedCardsBody,
 		}.Apply(ctx)
 	}
 }
@@ -110,9 +110,9 @@ func trekB18TokenCopyOfThisSacrificedAtNextEndStep(label string) Effect {
 // in the library is revealed but is not a land card (CR 108.2). The put
 // is keyed, and its tail puts the rest on the bottom and schedules the
 // sacrifice of exactly the lands that entered.
-func trekB18WillRikerReveal(g *game.Game, item *game.StackItem) error {
+func TrekB18WillRikerReveal(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	run, _ := revealUntilCount(ctx, ctx.Controller(), func(c game.Card) bool { return c.IsLand() }, 2,
+	run, _ := RevealUntilCount(ctx, ctx.Controller(), func(c game.Card) bool { return c.IsLand() }, 2,
 		"Will Riker, First in the Field — revealed until two land cards")
 	return PutFromLibraryOntoBattlefield{
 		Player:   ctx.Controller(),
@@ -139,7 +139,7 @@ var trekB18WillRikerLandsTail = PutFromLibraryTail("will-riker/rest-on-bottom-th
 		var objects []game.ObjectRef
 		for _, id := range res.Entered {
 			ref, ok := ctx.Game.PermanentRefForEffect(id)
-			if !ok || !onBattlefield(ctx.Game, id) {
+			if !ok || !OnBattlefield(ctx.Game, id) {
 				continue
 			}
 			ids = append(ids, id)
@@ -171,7 +171,7 @@ func trekB18SacrificeListedObjects(g *game.Game, item *game.StackItem, p game.Ef
 	ctx := NewContext(g, item)
 	for _, ref := range p.Objects {
 		c, ok := g.LookupCardForEffect(ref.ID)
-		if !ok || c.ObjectEpoch != ref.Epoch || !onBattlefield(g, ref.ID) || c.Controller != item.Controller {
+		if !ok || c.ObjectEpoch != ref.Epoch || !OnBattlefield(g, ref.ID) || c.Controller != item.Controller {
 			continue
 		}
 		if err := (SacrificePermanent{Target: ref.ID}).Apply(ctx); err != nil {

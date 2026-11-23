@@ -32,7 +32,7 @@ func CanAttackPlayersWhoAttackedYouAsThoughNoDefender() game.StaticAbility {
 		Label: "This creature can attack players who attacked you during their last turn as though it didn't have defender.",
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.IsCreature() && selfOnly(target, g, source)
+			return target.IsCreature() && SelfOnly(target, g, source)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			w := game.DefenderWaiver{OnlyPlayersWhoAttackedYou: true}
@@ -52,13 +52,13 @@ func CanAttackPlayersWhoAttackedYouAsThoughNoDefender() game.StaticAbility {
 // the battlefield: a new object is not "this creature" (CR 400.7).
 func CanAttackThisTurnAsThoughNoDefender(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !onBattlefield(g, item.SourceCardID) {
+		if !OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
-		return waiveDefenderUntilEOT(NewContext(g, item), item.SourceCardID, label)
+		return WaiveDefenderUntilEOT(NewContext(g, item), item.SourceCardID, label)
 	}
 }
 
-func waiveDefenderUntilEOT(ctx *Context, id uuid.UUID, label string) error {
-	return untilEndOfTurn(ctx, id, nil, label, game.WaiveDefenderMod())
+func WaiveDefenderUntilEOT(ctx *Context, id uuid.UUID, label string) error {
+	return UntilEndOfTurn(ctx, id, nil, label, game.WaiveDefenderMod())
 }

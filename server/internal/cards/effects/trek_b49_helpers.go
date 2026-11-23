@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // pump and a keyword grant on the one target, both until end of turn.
 // If the target is no longer attacking at resolution it is illegal and
 // the spell does nothing (CR 608.2b).
-func trekB49AttackerPumpThreeTrample(oracleID, name string) Spec {
+func TrekB49AttackerPumpThreeTrample(oracleID, name string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -16,7 +16,7 @@ func trekB49AttackerPumpThreeTrample(oracleID, name string) Spec {
 		Targets:      TargetCreature("target attacking creature", AttackingCreature()),
 		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 3, "trample")),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
+			id, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}

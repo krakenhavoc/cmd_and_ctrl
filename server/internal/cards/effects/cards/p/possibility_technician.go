@@ -1,0 +1,51 @@
+package cardsp
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Possibility Technician — Creature — Kavu Artificer {2}{R}, 3/3:
+//
+//	"Whenever this creature or another Kavu you control enters, exile
+//	 the top card of your library. For as long as that card remains
+//	 exiled, you may play it if you control a Kavu.
+//	 Warp {1}{R} (You may cast this card from your hand for its warp
+//	 cost. Exile this creature at the beginning of the next end step,
+//	 then you may cast it from exile on a later turn.)"
+//
+// A conditional exile play (#3192, ADR 0066's second 2026-10-13
+// amendment): the permission lasts for as long as the card remains
+// exiled and is live only while its holder controls a Kavu
+// (game.CondControlSubtype, read each time the card is asked about, so
+// losing the last Kavu shuts it and getting another opens it again).
+// The trigger is one ability watching the Technician's own entry and
+// every other Kavu's. Warp is the shared alternative cost, paid from
+// hand.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:         "ebbf84f7-d142-4de5-bfc1-ea86f082d733",
+		Name:             "Possibility Technician",
+		Completeness:     effects.CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{effects.Warp("{1}{R}")},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				c, ok := effects.EnteredUnderYourControl(ev, source, g, false)
+				// "Kavu" is a word of the source's text (CR 612.2, #3984).
+				return ok && (ev.CardID == source.InstanceID || c.HasSubtype(source.TextSubtype("Kavu")))
+			}, "Possibility Technician — exile the top card of your library", func(g *game.Game, item *game.StackItem) error {
+				ctx := effects.NewContext(g, item)
+				// The permission's "you control a Kavu" is read as the
+				// effect is created (CR 608.2h).
+				return effects.ExileTopWithPermission{
+					From: item.Controller, GrantTo: item.Controller, N: 1,
+					WhileExiled: true,
+					Condition:   &game.PermissionCondition{Key: game.CondControlSubtype, Subtype: ctx.TextSubtype("Kavu")},
+				}.Apply(ctx)
+			}),
+		},
+	})
+}

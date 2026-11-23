@@ -64,14 +64,14 @@ var antManPaid = PayUnlessBranches("pay-unless/ant-man-colony-commander-counter"
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		return ReflexiveTrigger{
 			Label: "Ant-Man, Colony Commander — put a +1/+1 counter on target creature",
-			Body:  antManCounterBody,
+			Body:  AntManCounterBody,
 		}.Apply(ctx)
 	}, nil)
 
 // antManCounterBody is "when you do, put a +1/+1 counter on target
 // creature".
-var antManCounterBody = game.ReflexiveBody("ant-man-colony-commander/counter", simpleBody(PlusOneCounterOnTheTarget),
-	constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+var AntManCounterBody = game.ReflexiveBody("ant-man-colony-commander/counter", SimpleBody(PlusOneCounterOnTheTarget),
+	ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
 
 // antManCounterPlaced is the When of the Insect trigger: the source's
 // controller put +1/+1 counters on a creature, and this ability has not
@@ -80,13 +80,13 @@ func antManCounterPlaced(ev game.Event, source *game.Card, _ game.Characteristic
 	if source == nil || ev.Label != game.CounterPlusOne {
 		return false
 	}
-	if _, ok := countersPutBy(ev, source.Controller, g, true); !ok {
+	if _, ok := CountersPutBy(ev, source.Controller, g, true); !ok {
 		return false
 	}
 	if !antManIsCreature(g, ev.Target) {
 		return false
 	}
-	return !b11TriggeredThisTurn(g, source.InstanceID, antManInsectLabel)
+	return !B11TriggeredThisTurn(g, source.InstanceID, antManInsectLabel)
 }
 
 // antManIsCreature reports whether id is a creature on the battlefield.

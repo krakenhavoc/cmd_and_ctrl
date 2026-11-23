@@ -13,13 +13,13 @@ import (
 // target-mode hint.
 
 // defs is the engine-facing catalog, keyed exactly as registry is.
-var defs = map[string]*game.CardDef{}
+var Defs = map[string]*game.CardDef{}
 
 // lookupDef is the game.CatalogLookup implementation. A derived key
 // ("all triggered abilities of <card>", #5683) is answered from the card
 // it names; every other key is a filed definition.
-func lookupDef(key string) *game.CardDef {
-	if d, ok := defs[key]; ok {
+func LookupDef(key string) *game.CardDef {
+	if d, ok := Defs[key]; ok {
 		return d
 	}
 	return derivedTriggerDef(key)
@@ -31,18 +31,18 @@ func lookupDef(key string) *game.CardDef {
 // can name is a row whose waiting stack item can be restored. It also
 // marks which rows are source-blind (#1968, source_blind.go), on the
 // copy IdentifyCatalogRows made, so the card file's slice is untouched.
-func fileDef(key string, d *game.CardDef) {
+func FileDef(key string, d *game.CardDef) {
 	game.IdentifyCatalogRows(key, d)
 	classifySourceBlind(d)
 	classifyFootprint(d)
-	defs[key] = d
+	Defs[key] = d
 }
 
 // activatedShapes projects declared activated abilities into the
 // engine's shapes. Shared by buildDef and by buildGrantDef, because
 // a CR 707.9a granted activated ability is declared exactly as a
 // card's own is (ability_grant.go). Nil in, nil out.
-func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
+func ActivatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 	if len(in) == 0 {
 		return nil
 	}
@@ -64,6 +64,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			Exhaust:       a.Exhaust,
 			Boast:         a.Boast,
 			PowerUp:       a.PowerUp,
+			ClassLevel:    a.ClassLevel,
 			Ninjutsu:      a.Ninjutsu,
 			OnlyOnce:      a.OnlyOnce,
 			CostModifiers: a.CostModifiers,
@@ -122,7 +123,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			PreRider:                  a.PreRider,
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 			Condition:                 manaAbilityCondition(a),
-			ProducedFunc:              foldProduced(a),
+			ProducedFunc:              FoldProduced(a),
 			ProducedForPaid:           a.ProducedForPaid,
 			DerivesFromOtherSources:   a.DerivesFromOtherSources,
 			DerivedMatch:              a.DerivedMatch,
@@ -197,12 +198,13 @@ func manaAbilityCondition(a ManaAbility) ActivationCondition {
 }
 
 // buildDef projects one Spec into the shape the engine reads.
-func buildDef(spec Spec) *game.CardDef {
+func BuildDef(spec Spec) *game.CardDef {
 	d := &game.CardDef{
 		StartingLoyalty:                     spec.StartingLoyalty,
 		TargetMode:                          spec.TargetMode,
 		Targets:                             spec.Targets,
 		ReturnedAura:                        spec.ReturnedAura,
+		AttachOnlyTo:                        spec.AttachOnlyTo,
 		Modes:                               spec.Modes,
 		Purpose:                             spec.Purpose,
 		Replacements:                        spec.Replacements,
@@ -221,6 +223,8 @@ func buildDef(spec Spec) *game.CardDef {
 		SpendOnly:                           spec.SpendOnly,
 		SpendOnlySources:                    spec.SpendOnlySources,
 		SpellsYouCastHaveDelve:              spec.SpellsYouCastHaveDelve,
+		FirstSpellHasAssist:                 spec.FirstSpellHasAssist,
+		AsYouCascadePutALand:                spec.AsYouCascadePutALand,
 		SplitSecondGrants:                   spec.SplitSecondGrants,
 		GrantedOptionalCosts:                spec.GrantedOptionalCosts,
 		GrantedTapCosts:                     spec.GrantedTapCosts,
@@ -240,6 +244,7 @@ func buildDef(spec Spec) *game.CardDef {
 		WardSuppressions:                    spec.WardSuppressions,
 		CastableZones:                       spec.CastableZones,
 		CastableZonesIf:                     spec.CastableZonesIf,
+		CastsOnlyFromGraveyard:              spec.CastsOnlyFromGraveyard,
 		SpecialActions:                      spec.SpecialActions,
 		SpecialActionGrants:                 spec.SpecialActionGrants,
 		UntapStep:                           spec.UntapStep,
@@ -262,6 +267,7 @@ func buildDef(spec Spec) *game.CardDef {
 		PlayerKeywordsIf:                    spec.PlayerKeywordsIf,
 		PlayerLifeTotalLocked:               spec.PlayerLifeTotalLocked,
 		PlayerLifeFloorOne:                  spec.PlayerLifeFloorOne,
+		PlayerLifeFloorOneIfCreature:        spec.PlayerLifeFloorOneIfCreature,
 		DamageStaysThroughCleanup:           spec.DamageStaysThroughCleanup,
 		LoyaltyTwiceEachTurn:                spec.LoyaltyTwiceEachTurn,
 		ActivateAsThoughHaste:               spec.ActivateAsThoughHaste,
@@ -413,7 +419,7 @@ func buildDef(spec Spec) *game.CardDef {
 	if asAttached := spec.AsAttached; asAttached != nil {
 		d.AsAttached = liveCardHook(asAttached)
 	}
-	d.Activated = activatedShapes(spec.Activated)
+	d.Activated = ActivatedShapes(spec.Activated)
 	d.ManaAbilities = manaShapes(spec.ManaAbilities)
 	// #4928 / CR 605.1b: a damage trigger printed beside a mana ability
 	// is an ordinary triggered ability, grown here as a Triggered row and
@@ -499,7 +505,7 @@ func gatedStandingCastPermissions(in []game.CastPermissionGate) []game.CastPermi
 // foldProduced is the shape's single produce hook (#3042): the spec's
 // string ProducedFunc, or its count-driven ProducedAmount, as one
 // func returning a game.ManaOutput. Nil when the spec declares neither.
-func foldProduced(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) game.ManaOutput {
+func FoldProduced(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) game.ManaOutput {
 	switch {
 	case a.ProducedAmount != nil:
 		f := a.ProducedAmount
@@ -516,7 +522,7 @@ func foldProduced(a ManaAbility) func(g *game.Game, controller, source uuid.UUID
 // AdditionalLandPlaysForEachPlayer has none of those, its plays are
 // ConditionalLandPlays.
 func unconditionalLandPlays(spec Spec) int {
-	if spec.AdditionalLandPlaysNeedsAnother != "" || spec.AdditionalLandPlaysForEachPlayer || spec.AdditionalLandPlaysAtCharge > 0 {
+	if spec.AdditionalLandPlaysNeedsAnother != "" || spec.AdditionalLandPlaysForEachPlayer || spec.AdditionalLandPlaysAtCharge > 0 || spec.AdditionalLandPlaysAtLevel > 0 {
 		return 0
 	}
 	return spec.AdditionalLandPlays
@@ -531,6 +537,9 @@ func conditionalLandPlays(spec Spec) game.ConditionalLandPlays {
 	}
 	if spec.AdditionalLandPlaysAtCharge > 0 {
 		return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, AtCharge: spec.AdditionalLandPlaysAtCharge}
+	}
+	if spec.AdditionalLandPlaysAtLevel > 0 {
+		return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, AtLevel: spec.AdditionalLandPlaysAtLevel}
 	}
 	if spec.AdditionalLandPlaysNeedsAnother == "" {
 		return game.ConditionalLandPlays{}

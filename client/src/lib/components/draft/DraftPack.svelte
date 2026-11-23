@@ -8,9 +8,11 @@
   //
   // A card can also be dragged (pointer events: a mouse, a pen, or a
   // finger held for a moment, #5848) onto Main or the Sideboard of the
-  // picks beside the pack. With one card to take that picks it into that
-  // pile at once. With two, the card is chosen as a click would choose it
-  // and remembered for the Sideboard, and the primary picks the pair.
+  // picks beside the pack. A drop puts the card there with no confirm
+  // step (#5921); a player who changes their mind moves it back in the
+  // picks. With one card to take the drop picks it at once. With two the
+  // server takes the pair in one pick, so the first card dropped waits,
+  // chosen for its pile, and the drop that completes the pair sends both.
   // Which pile is the page's business: `onaside` is told, just before
   // `onpick`, which of the picked cards go to the Sideboard.
   //
@@ -120,25 +122,26 @@
     onpick([...selected]);
   }
 
-  // A card dragged onto a pile. One card to take: it is picked into that
-  // pile. Two: it is chosen for it, and the primary sends the pair.
+  // A card dragged onto a pile is picked into it with no confirm (#5921).
+  // The pick goes as soon as the drop completes it: at once with one card
+  // to take, on the second card with two (a card chosen by a click counts).
   function drop(card: DraftCard, to: Zone): void {
     if (busy) return;
-    const pile = to === "main" ? L.draftDeckZone : L.draftSideboardZone;
-    if (take === 1) {
-      selected = [card.id];
-      aside = [];
-      if (to === "side") onaside?.([card.id]);
-      said = `Picked ${card.name} into ${pile}.`;
-      onpick([card.id]);
-      return;
-    }
+    const pile = (id: string): string =>
+      aside.includes(id) ? L.draftSideboardZone : L.draftDeckZone;
     if (!selected.includes(card.id)) selected = toggleSelection(selected, card.id, take);
     aside =
       to === "side"
-        ? [...aside.filter((id) => id !== card.id), card.id]
-        : aside.filter((id) => id !== card.id);
-    said = `Chose ${card.name} for ${pile}.`;
+        ? [...aside.filter((id) => id !== card.id && selected.includes(id)), card.id]
+        : aside.filter((id) => id !== card.id && selected.includes(id));
+    if (canConfirm(selected, pack, take)) {
+      said = `Picked ${selected
+        .map((id) => `${pack.find((c) => c.id === id)?.name ?? ""} into ${pile(id)}`)
+        .join(" and ")}.`;
+      confirm();
+      return;
+    }
+    said = `Chose ${card.name} for ${pile(card.id)}. Drag or choose ${take - selected.length} more.`;
   }
 
   // With one card to take: a double-click picks it outright.
@@ -204,6 +207,11 @@
     <p class="tip">
       Double-click a card to pick it, or drag it to {L.draftDeckZone} or {L.draftSideboardZone}.
     </p>
+  {:else}
+    <p class="tip">
+      Drag two cards to {L.draftDeckZone} or {L.draftSideboardZone} to pick them, or choose two and press
+      {pickCount(take)}.
+    </p>
   {/if}
   <p class="sr-only" role="status" data-testid="draft-pack-said">{said}</p>
   <DraftPreview scope="pack" children={previewExtra} />
@@ -218,7 +226,8 @@
     margin: 0;
     padding: 0;
     display: grid;
-    /* Big enough to read a card: five across at the 1200px page, three at 820px. */
+    /* Big enough to read a card: five across at 1200px, three at 820px, and more
+       on a larger screen, where the draft room fills the width (#5921). */
     grid-template-columns: repeat(auto-fill, minmax(var(--pack-tile, 190px), 1fr));
     gap: 14px;
   }

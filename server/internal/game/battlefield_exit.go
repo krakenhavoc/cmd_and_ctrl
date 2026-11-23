@@ -367,6 +367,10 @@ func (g *Game) forgetPerObjectTurnStateLocked(cardID uuid.UUID) {
 	if len(g.LoyaltyActivatedTwiceThisTurn) == 0 {
 		g.LoyaltyActivatedTwiceThisTurn = nil
 	}
+	delete(g.LoyaltyPermanentTwiceThisTurn, cardID)
+	if len(g.LoyaltyPermanentTwiceThisTurn) == 0 {
+		g.LoyaltyPermanentTwiceThisTurn = nil
+	}
 	// #4191: the Chain Veil grants a permanent has spent are its own;
 	// the grants themselves are the player's and stay.
 	delete(g.LoyaltyExtraActivationsUsedThisTurn, cardID)

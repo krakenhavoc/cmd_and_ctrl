@@ -657,6 +657,14 @@ type CastSpellParams struct {
 	// announcement's resume, so no payload answers for an opponent.
 	opponentPicks []opponentPick
 
+	// opponentMode is the mode half of a parked cast whose modes an
+	// opponent chooses (#5771, ModeSpec.ChosenByOpponent,
+	// opponent_mode.go): the opponent the caster named, and that
+	// opponent's modes once they have answered. Unexported, and set only
+	// by the parked announcement's resume, so no payload answers for an
+	// opponent.
+	opponentMode *opponentModeAnswer
+
 	// splicedRefs are the refs of Targets that answer a spliced text
 	// (TargetRef.Splice > 0), taken out of Targets as the cast begins so
 	// that everything reading Targets reads the spell's own text's, as
@@ -1323,7 +1331,23 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		OracleID:      CatalogKey(card),
 		OptionalCosts: params.OptionalCosts,
 	})
-	if err := validateModes(modeSpec, modeMin, modeMax, params.Modes); err != nil {
+	// #5771, CR 700.2e: "An opponent chooses one —". The caster's payload
+	// names no mode; the cast parks below, before anything is paid, until
+	// the opponent has chosen, and the answer rides params.opponentMode.
+	modesPending, err := settleOpponentModes(modeSpec, &params)
+	if err != nil {
+		slog.Warn("cast_spell rejected: the caster named a mode an opponent chooses",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"modes_received", params.Modes,
+		)
+		return err
+	}
+	if modesPending {
+		// Nothing to validate yet: the opponent's answer is checked
+		// against the same bounds when it is given (validateModePick),
+		// and again here on the re-run.
+	} else if err := validateModes(modeSpec, modeMin, modeMax, params.Modes); err != nil {
 		slog.Warn("cast_spell rejected: bad mode choice",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1386,6 +1410,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if len(steps) == 0 && modeSpec != nil && len(params.Targets) > 0 {
 		return ErrInvalidParam
 	}
+	// #5771: an opponent chose the mode, so the caster's payload could
+	// not name its bullet's targets; the cast asks for them below.
+	markAfterOpponentMode(modeSpec, steps)
 	// ADR 0089 §3: a card whose ONLY clause is the one an unpaid
 	// optional cost would add (Valley Rally's "if the gift was
 	// promised, target creature you control") has structured
@@ -1419,6 +1446,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #4869, CR 601.2a: and it is cast, so it is not its own target.
 	castSrc := SourceCast(playerID, &card)
 	castSrc.X = params.XValue
+	// #5771: "that player" is the opponent who chose the mode.
+	castSrc.modeChooser = params.opponentMode.chosenBy()
 	// #2055: the payload names targets for the caster's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
@@ -1985,7 +2014,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if spendsGrant {
 				g.consumeLimitedGrantLocked(playerID, grantCard, grant)
 			}
-			return nil
+			return g.runLandPlayFollowUpLocked(grant, followUp, playerID, grantSource, cardID, followUpObject)
 		}
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
 			g.clearReplacementEventLocked(ev.ID)
@@ -2025,6 +2054,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// it, as a spell cast through it does at the end of this function.
 		if spendsGrant {
 			g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+		}
+		if err := g.runLandPlayFollowUpLocked(grant, followUp, playerID, grantSource, cardID, followUpObject); err != nil {
+			return err
 		}
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style
@@ -2078,10 +2110,25 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	asking = append(asking, costCommanderMovesTo(ZoneHand, spliceReturnIDsOf(params.SplicePayments)...)...)
 	// #5247: and the additional cost's return to hand (Fear of Isolation).
 	asking = append(asking, costCommanderMovesTo(ZoneHand, params.ReturnIDs...)...)
+	// #5771, CR 700.2e: an opponent's mode choice still to be made parks
+	// the cast here, at the same point and for the same reason: the
+	// caster names an opponent (when more than one could choose), that
+	// opponent answers a mode_pick, and the answer casts it again
+	// (opponent_mode.go). CR 601.2b's mode comes before CR 601.2c's
+	// targets, so this is asked first.
+	if modesPending {
+		parked := params
+		parked.Targets = ownTargets
+		return g.parkForOpponentModeLocked(&opponentTargetFrame{
+			parkedAnnouncement: castAnnouncement(playerID, cardID, card.Name, parked),
+		}, castSrc, modeSpec)
+	}
 	// #2055: an "of an opponent's choice" clause still unanswered parks
 	// the cast here, before anything is paid or moved (CR 601.2c comes
 	// before CR 601.2h): the caster names an opponent and that opponent
 	// picks, and each answer casts it again (opponent_target.go).
+	// #5771: so does a bullet an opponent chose, whose targets the caster
+	// is asked for now that the bullet is known.
 	if len(oppTargets.pending) > 0 {
 		parked := params
 		parked.Targets = ownTargets
@@ -2236,6 +2283,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		// #2055: who chose each "of an opponent's choice" clause.
 		TargetChoosers: copyTargetChoosers(oppTargets.choosers),
+		ModeChooser:    params.opponentMode.chosenBy(), // #5771: who chose the mode, when an opponent did
 		Spliced:        cloneSplicedTexts(spliced),
 		Modes:          append([]int(nil), params.Modes...),
 		XValue:         params.XValue,
@@ -2440,7 +2488,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// graveyard-leaves watcher lands above it and a countered spell does not
 	// give the cards back (CR 601.2h).
 	if len(params.ExileIDs) > 0 {
-		if err := g.payExileCardsCostLocked(playerID, cardID, params.ExileIDs, params.commanderAnswers); err != nil {
+		// #5895, CR 607.2q: a LinkToSource clause (Gorex, the Tombshell's
+		// "exiled with Gorex") links each card to the spell object, which
+		// the permanent it becomes inherits; every other clause links none.
+		var link PermissionCardRef
+		if ec := planExileCards(costPlan); ec != nil && ec.LinkToSource {
+			link = g.permanentSpellCostLinkLocked(cardID)
+		}
+		if err := g.payExileCardsCostToLocked(playerID, cardID, params.ExileIDs, params.commanderAnswers, link); err != nil {
 			slog.Error("cast_spell: exile-cards cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
@@ -2636,6 +2691,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if src.Kind != ZoneHand {
 		tally.NotFromHand++
 	}
+	if src.Kind == ZoneExile {
+		tally.FromExile++
+	}
 	// ADR 0108 §9: the colours of the instants and sorceries cast this
 	// turn (Refraction Trap), read off the spell as it is on the stack.
 	for i := range g.Stack.Cards {
@@ -2644,12 +2702,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			tally = tally.withSpellColors(ch.Colors)
 			// #4677: April O'Neil's "card type among spells you've cast".
 			tally = tally.withSpellCardTypes(ch.Types)
+			if !characteristicHasType(ch, "Creature") {
+				tally = tally.withNoncreatureSpellCardTypes(ch.Types)
+			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++
 				if mv, ok := g.castManaValueLocked(sc); ok && mv > tally.InstantSorceryMaxManaValue {
 					tally.InstantSorceryMaxManaValue = mv
 				}
+			}
+			if !characteristicHasSubtype(ch, "Phyrexian") {
+				tally.NonPhyrexian++
 			}
 			if characteristicHasType(ch, "Instant") {
 				tally.Instants++
@@ -2660,6 +2724,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasSubtype(ch, "Otter") && !strings.EqualFold(sc.Name, "Alania, Divergent Storm") {
 				tally.OtterSpellsExceptAlania++
 			}
+			// Acolyte of Bahamut's "first Dragon spell you cast each turn".
+			if characteristicHasSubtype(ch, "Dragon") {
+				tally.DragonSpells++
+			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {
 				tally.InstantSorceryVillain++
@@ -2667,6 +2735,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
+			}
+			// Psemilla's "first enchantment spell you cast each turn".
+			if characteristicHasType(ch, "Enchantment") {
+				tally.Enchantment++
 			}
 			// Serah Farron's "first legendary creature spell you cast each turn".
 			if characteristicHasType(ch, "Creature") && characteristicHasSupertype(ch, "Legendary") {
@@ -2737,14 +2809,22 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #3781, CR 601.2i: "as you cast this spell" values are fixed here,
 	// with every cost paid and nobody yet holding priority.
 	g.stampCastTimeValuesLocked(card, g.StackMeta[cardID])
+	// #5860: and which opponents met an as-cast target condition.
+	g.stampAsCastOpponentsLocked(card, g.StackMeta[cardID])
 	// CR 702.33h (#4307): a paid sticker kicker gives its ticket and its
 	// sticker question now, as the additional cost it is.
 	g.payStickerKickerLocked(playerID, card)
 	// #4973: a modal spell's modes were chosen as it was cast (CR 601.2b,
 	// 700.2a) — "you face a dilemma". Before EventCast, as the choice
 	// came before the cast finished.
+	// #5771, CR 700.2e: when an opponent chose them, it is that opponent
+	// who faced it.
 	if modeSpec != nil && len(params.Modes) > 0 {
-		g.emitFacedDilemmaLocked(playerID, cardID)
+		chooser := playerID
+		if by := params.opponentMode.chosenBy(); by != uuid.Nil {
+			chooser = by
+		}
+		g.emitFacedDilemmaLocked(chooser, cardID)
 	}
 	castEv := Event{
 		Kind:    EventCast,
@@ -3176,7 +3256,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 	defer g.pushCounterPlacerLocked(p.ID)()
 	// Colour-picked one requirement at a time, a folded run written out
 	// (#3909).
-	pending := append([]ColorRequirement(nil), cost.unfolded().Required...)
+	pending := colourLedger(cost.unfolded().Required)
 	identity := commanderIdentityFor(g, p)
 	for _, planned := range plan {
 		cardID := planned.CardID
@@ -3671,7 +3751,10 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if card == nil || card.Owner != p.ID {
 		return
 	}
-	ab := g.autoManaExileAbilityFor(p.ID, *card, manaAbilitiesOf(card), zone)
+	// #5896: a Costed entry (Jack-o'-Lantern's "{1}, Exile this card
+	// from your graveyard") re-finds its ability through the costed
+	// picker, every other through the ordinary one.
+	ab := g.zoneManaAbilityForPlanLocked(p.ID, *card, planned, zone)
 	if ab == nil {
 		return
 	}
@@ -3728,6 +3811,20 @@ func (g *Game) materializeExiledManaSourceLocked(
 	// reason, one zone over: by the time the mana is minted the card
 	// is in exile and this pointer is dangling.
 	srcKinds := manaSourceKindsOf(*card)
+	// #5896: a Costed entry's mana cost, paid FIRST — the component
+	// order ActivateManaAbility pays in, mana before the exile — out of
+	// the tokens the plan named for it, as the battlefield arm pays a
+	// Signet's {1}. A cost the pool can no longer pay drops the entry
+	// with the card still in its zone.
+	if planned.Costed {
+		spent, ok := g.payPlannedManaCostLocked(p, *card, ab, planned.FundedBy)
+		if !ok {
+			return
+		}
+		if len(spent) > 0 {
+			g.EmitEvent(manaSpentEvent(p.ID, cardID, spent))
+		}
+	}
 	// #1183: the activation record, written at the last point before
 	// the card is committed — the placement and the argument the
 	// battlefield arm gives for its own write, with the exile in the
@@ -3763,6 +3860,14 @@ func (g *Game) materializeExiledManaSourceLocked(
 		if si == oneColorIdx {
 			color = planned.OneColor
 			for k := 0; k < slot.AmountFor(color); k++ {
+				bookColorRequirement(color, pending)
+			}
+		} else if ps, ok := plannedSlotColor(planned, si, len(slots), slot.Options); ok {
+			// #5896: an explicit (costed) plan's colour, as the
+			// battlefield arm reads it. Mana that funds a later Costed
+			// entry books none of the cost being paid.
+			color = ps.Color
+			if !ps.Funds {
 				bookColorRequirement(color, pending)
 			}
 		} else {
@@ -3815,6 +3920,22 @@ func pickColorForSlot(options []string, pending *[]ColorRequirement) string {
 		return bestOpt
 	}
 	return options[0]
+}
+
+// colourLedger is the executor's colour ledger for a cost's coloured
+// requirements: a copy of them, less every snow slot (#5986). An {S} is
+// paid by any mana a snow source makes (CR 107.4h), so it never asks a
+// source for a colour, and the plan already booked a snow source for
+// it (slotPays). Left on the ledger it would read as a {C} (its
+// Options), and a Sol Ring's {C} would tick it off.
+func colourLedger(reqs []ColorRequirement) []ColorRequirement {
+	out := make([]ColorRequirement, 0, len(reqs))
+	for _, r := range reqs {
+		if !r.Snow {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // bookColorRequirement ticks off one still-unsatisfied requirement
@@ -3980,6 +4101,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// #5667, CR 702.152a: whether the claimed offer is a blitz cost
 		// (Henzie "Toolbox" Torre's "Blitz costs you pay cost {1} less").
 		AltBlitz: g.altBlitzLocked(p.ID, card, params),
+		// CR 702.34a: whether the claimed offer is the flashback cost.
+		AltFlashback: g.altFlashbackLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 		// and its "costs {N} more" (Zero, Incorporeal Sensate).
@@ -4513,6 +4636,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 	if g.bestowTargetIllegalLocked(&top, item) {
 		g.endBestowOnStackLocked(&top, item)
 	}
+	// ADR 0223, CR 702.140b: and a mutating creature spell, which
+	// resolves on as a creature spell.
+	if g.mutateTargetIllegalLocked(item) {
+		g.endMutateOnStackLocked(item)
+	}
 	if spellWithSplicedTextAllTargetsIllegalLocked(g, item) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
@@ -4578,6 +4706,10 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// entry begins, so a replacement of the roll that asks which roll to
 	// ignore is one more prompt the tail below waits for (dice_cost.go).
 	g.rollEntryDiceLocked(top, item)
+	// ADR 0223, CR 702.140c: a mutating creature spell's controller
+	// chooses over or under as it resolves; the merge below waits for
+	// the answer like any other question the resolution asks.
+	g.askMutateOverUnderLocked(top, item)
 	// #3613, CR 608.2c / 608.2n: an effect that asked something is not
 	// finished until the answer is in, so neither is the spell. The
 	// rest of this resolution — the exit below and the log's
@@ -4633,6 +4765,12 @@ func (g *Game) finishSpellResolutionStageLocked(top Card, item *StackItem, ciphe
 	// says a copy in any zone other than the stack has already ceased
 	// to exist, so a copy that moved ITSELF never resolves and never
 	// becomes a token.
+	// ADR 0223, CR 702.140c and 608.3d: a mutating creature spell
+	// whose target is legal does not enter the battlefield; it merges
+	// with that creature.
+	if merged := g.mergeMutatingSpellLocked(top, item); merged {
+		return nil
+	}
 	if item.IsCopy && top.IsPermanent() {
 		return g.resolvePermanentSpellCopyLocked(top, item)
 	}
@@ -6480,7 +6618,8 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 		// on the stack, and there is nobody left to make the
 		// announcement (CR 800.4a, CR 800.4d), so the prompt is
 		// withdrawn and nothing runs.
-		if c != nil && c.Chooser != playerID && c.PickTargetFor == playerID {
+		// #5771: and an opponent choosing the mode of their spell.
+		if c != nil && c.Chooser != playerID && (c.PickTargetFor == playerID || c.ModePickFor == playerID) {
 			g.EmitEvent(Event{
 				Kind:   EventPendingChoiceDropped,
 				Actor:  c.Chooser,
@@ -6829,7 +6968,23 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		moveCause = MoveCause{Kind: MoveCauseCost}
 	}
 	mark := leaveMark{cause: ev.LeaveCause, source: g.leaveSourceLocked(moveCause)}
+	if !ev.mustSettleNow {
+		// #5929: the controller of the spell or ability whose resolution moved
+		// it, on the exit event ("a spell or ability an opponent controls
+		// destroys ..."). A cost names nobody's resolution.
+		cause := ev.moveCause()
+		if cause.Kind == "" {
+			cause = g.resolutionCauseLocked()
+		}
+		if cause.Kind == MoveCauseEffect {
+			mark.controller = cause.Controller
+		}
+	}
 	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
+	if moveErr == nil {
+		// #5876: whose ability exiled the permanent, once it is there.
+		g.stampExiledByAbilityLocked(g.Exile, ev.CardID, ev.moveCause())
+	}
 	// ADR 0178: a replacement's declared life change ("instead exile it
 	// and you gain 2 life") lands after the move and before the route's
 	// continuation, which waits for it if it pauses.
@@ -6981,7 +7136,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// destruction or sacrifice is bound for a graveyard, which is where
 	// a CR 903.9c command-zone redirect sends the card that is not the
 	// commander.
-	if moved.IsMelded() {
+	if isMultiCardPtr(&moved) {
 		if dest == ZoneCommand {
 			g.sendMeldPassengersOnLocked(moved, destZone, ZoneGraveyard, actor, mark)
 		} else {
@@ -9244,6 +9399,9 @@ func intrinsicLandManaAbilities(c *Card) []ManaAbilityShape {
 	if !hasCardType(c, "land") {
 		return nil
 	}
+	if c.effective != nil && c.effective.IntrinsicLandManaRemoved {
+		return nil
+	}
 	var subtypes []string
 	switch {
 	case c.effective != nil:
@@ -10407,6 +10565,12 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			// EventAttack the creature is owed has to name the
 			// defender it ENDS on. Both halves are the lock-in's job
 			// — see commitAttackDeclarationLocked.
+			// ADR 0224, CR 702.22d: every creature in a band attacks the
+			// same thing, so a banded attacker re-pointed elsewhere leaves
+			// its band. The rest of the band stays one.
+			if card.AttackingTarget != targetPlayerID {
+				g.leaveBandLocked(card.InstanceID)
+			}
 			// #1364: setAttackTargetLocked also records the defending
 			// player, for CR 506.4c's "it may be blocked" after the
 			// planeswalker or battle it attacks has left.
@@ -10447,6 +10611,13 @@ type AttackDeclaration struct {
 	// creature the attacker can't enlist refuses the whole declaration
 	// with ErrCantEnlist.
 	Enlist uuid.UUID
+	// Band puts the attacker in a band (CR 508.1e, 702.22c; ADR 0224,
+	// banding.go): the entries of one declare_attackers that share a
+	// positive Band number are one band. Zero is no band. A band of one
+	// entry is no band at all, and a band that breaks CR 702.22c-d
+	// refuses the whole declaration with a *BandRefusedError. Only the
+	// bulk verb announces bands; DeclareAttackerDeclWith ignores it.
+	Band int
 }
 
 // DeclareAttackers declares an entire attacking set in ONE mutation.
@@ -10537,6 +10708,13 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// nothing more attacks. A declarer who left chooses nothing more.
 	g.settleOrphanedHandoffLocked()
 	if g.attackTargetsPhaseLocked() {
+		// ADR 0224: bands are the declarer's announcement (CR 508.1e),
+		// not part of confirming the targets.
+		for _, d := range decls {
+			if d.Band > 0 {
+				return nil, &BandRefusedError{Reason: BandRefusalNotHere, Attacker: d.Attacker}
+			}
+		}
 		return g.confirmAttackTargetsLocked(decls, params)
 	}
 	if g.attackChosenLocked() {
@@ -10640,6 +10818,13 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if err := g.validateEnlistChoicesLocked(eligible); err != nil {
 		return nil, err
 	}
+	// ADR 0224: the declaration's bands (CR 508.1e, 702.22c-d), all or
+	// nothing like the limit: which creatures to band is the attacking
+	// player's choice, made by sending a legal band. Judged on the
+	// eligible entries, so a skipped creature is no member.
+	if err := g.bandRefusalLocked(eligible); err != nil {
+		return nil, err
+	}
 	// CR 508.1h, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.
 	//
@@ -10696,6 +10881,8 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if len(declared) == 0 {
 		return nil, ErrNoLegalAttackers
 	}
+	// ADR 0224: the bands are announced with the attacks (CR 508.1e).
+	g.stageBandsLocked(eligible)
 	// One lock-in and one drain for the whole declaration — see the
 	// CR 508.2 note in the doc comment. runStateChecksLocked's first
 	// act is commitAttackDeclarationLocked, which announces every
@@ -11109,7 +11296,23 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// the first-strike step), skip the whole attacker-side
 		// branch but fall through to blocker damage below.
 		if atkParticipates {
-			if len(liveBlockers) == 0 {
+			if len(liveBlockers) > 0 && g.anyHasBandingLocked(liveBlockers) {
+				// ADR 0224, CR 702.22j: blocked by a creature with banding,
+				// the attacker's damage is divided by the DEFENDING player
+				// among the creatures blocking it — among them only, so
+				// trample puts nothing on the player and "as though it
+				// weren't blocked" is not offered. With one blocker there
+				// is nothing to divide.
+				if atkPower > 0 && len(liveBlockers) == 1 {
+					mark(liveBlockers[0], atkID, atkPower)
+				} else if atkPower > 0 {
+					atk, blockers, p := atk, liveBlockers, atkPower
+					chooser := g.bandingDefenderLocked(atk, blockers)
+					prompts = append(prompts, func() {
+						g.queueBandingAssignmentPromptLocked(atk, blockers, p, step, chooser)
+					})
+				}
+			} else if len(liveBlockers) == 0 {
 				// Nothing is blocking it now — but that is not the
 				// same question as whether it is BLOCKED (CR 509.1h).
 				// A blocked attacker with no blockers left assigns no
@@ -11263,6 +11466,42 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 //
 // Caller must hold g.mu.
 func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string) {
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:             PendingChoiceDamageAssignment,
+		Chooser:          atk.Controller,
+		Count:            len(blockerIDs),
+		Source:           atk.InstanceID,
+		Reason:           "Assign combat damage",
+		DamageAssignment: attackerDamageFrame(atk, blockerIDs, atkPower, step),
+	})
+}
+
+// queueBandingAssignmentPromptLocked is CR 702.22j's prompt: an attacker
+// blocked by a creature with banding has its combat damage divided by
+// the defending player (`chooser`) among the creatures blocking it,
+// as they choose (ADR 0224). The attacker's own frame with trample and
+// "as though it weren't blocked" switched off, since the division is
+// among the blockers only, and Banding set to say whose choice it is.
+//
+// Caller must hold g.mu.
+func (g *Game) queueBandingAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string, chooser uuid.UUID) {
+	frame := attackerDamageFrame(atk, blockerIDs, atkPower, step)
+	frame.AllowTrample = false
+	frame.AsThoughUnblocked = false
+	frame.Banding = true
+	g.QueueChoiceForEffect(PendingChoice{
+		Kind:             PendingChoiceDamageAssignment,
+		Chooser:          chooser,
+		Count:            len(blockerIDs),
+		Source:           atk.InstanceID,
+		Reason:           "Divide the attacking creature's combat damage among your blockers (banding)",
+		DamageAssignment: frame,
+	})
+}
+
+// attackerDamageFrame is the CR 510.1c frame for an attacker's damage:
+// every source keyword snapshotted as the prompt is queued.
+func attackerDamageFrame(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string) *DamageAssignmentFrame {
 	frame := &DamageAssignmentFrame{
 		AttackerID:        atk.InstanceID,
 		BlockerIDs:        append([]uuid.UUID(nil), blockerIDs...),
@@ -11283,14 +11522,7 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 	// by the same reader the direct combat paths use.
 	res := SourceDamageResultTraits(atk)
 	frame.SourceInfect, frame.SourceWither, frame.SourceToxic = res.Infect, res.Wither, res.ToxicTotal
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:             PendingChoiceDamageAssignment,
-		Chooser:          atk.Controller,
-		Count:            len(blockerIDs),
-		Source:           atk.InstanceID,
-		Reason:           "Assign combat damage",
-		DamageAssignment: frame,
-	})
+	return frame
 }
 
 // markCombatDamageOnCardLocked adds damage to a battlefield card and

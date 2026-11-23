@@ -12,7 +12,7 @@ import (
 // trekB27TuckTargetCardToBottom is "Put target card from your graveyard on
 // the bottom of your library" (Cybernetic Specialist): the still-legal
 // target card goes to the bottom of its owner's library (CR 608.2b).
-func trekB27TuckTargetCardToBottom(g *game.Game, item *game.StackItem) error {
+func TrekB27TuckTargetCardToBottom(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -26,8 +26,8 @@ func trekB27TuckTargetCardToBottom(g *game.Game, item *game.StackItem) error {
 // static switched on by a station threshold (Deep Space 9's 9+ line,
 // CR 721.2a): b16Anthem over the source controller's creatures, gated on
 // the charge-counter count and read live.
-func trekB27CreaturesYouControlGet(label string, n, power, toughness int) game.StaticAbility {
-	s := b16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+func TrekB27CreaturesYouControlGet(label string, n, power, toughness int) game.StaticAbility {
+	s := B16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.IsCreature() && target.Controller == source.Controller
 	}, power, toughness)
 	s.Label = label
@@ -42,7 +42,7 @@ func trekB27CreaturesYouControlGet(label string, n, power, toughness int) game.S
 // puts every permanent card among them that is still there onto the
 // battlefield under the ability's controller in one simultaneous entry
 // (CR 110.2a). Nonpermanent cards stay in exile.
-func trekB27ExileTopFourPutPermanents(g *game.Game, item *game.StackItem) error {
+func TrekB27ExileTopFourPutPermanents(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	return MillToZone{Player: item.Controller, N: 4, To: game.ZoneExile, ThenTail: ctx.ItemTail(trekB27PutExiledPermanents)}.Apply(ctx)
 }
@@ -53,7 +53,7 @@ var trekB27PutExiledPermanents = CardTail("trek-b27/deep-space-9-put-permanents"
 	var entries []game.BatchEntry
 	for _, id := range o.IDs {
 		c, ok := g.LookupCardForEffect(id)
-		if z := g.FindCardZoneForEffect(id); !ok || z == nil || z.Kind != game.ZoneExile || !isPermanentCard(c) {
+		if z := g.FindCardZoneForEffect(id); !ok || z == nil || z.Kind != game.ZoneExile || !IsPermanentCard(c) {
 			continue
 		}
 		entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneExile})
@@ -66,8 +66,8 @@ var trekB27PutExiledPermanents = CardTail("trek-b27/deep-space-9-put-permanents"
 
 // trekB27OnePlusLifeGainedThisTurn is Sickbay's X: one plus the life the
 // trigger's controller gained this turn, read as the trigger resolves.
-func trekB27OnePlusLifeGainedThisTurn(g *game.Game, controller uuid.UUID) int {
-	return 1 + b15LifeGainedThisTurn(g, controller)
+func TrekB27OnePlusLifeGainedThisTurn(g *game.Game, controller uuid.UUID) int {
+	return 1 + B15LifeGainedThisTurn(g, controller)
 }
 
 // modeSourceDealsDamageToTargetPlayer is a modal bullet's "<this> deals N
@@ -75,7 +75,7 @@ func trekB27OnePlusLifeGainedThisTurn(g *game.Game, controller uuid.UUID) int {
 // still legal, is dealt N damage by the ability's source (its last-known
 // information if it has left, CR 608.2h). Hawkeye, Master Marksman's
 // Explosive and Tea, Earl Grey, Hot's first mode.
-func modeSourceDealsDamageToTargetPlayer(n int) func(item *game.StackItem, ctx *Context, occ int) error {
+func ModeSourceDealsDamageToTargetPlayer(n int) func(item *game.StackItem, ctx *Context, occ int) error {
 	return func(item *game.StackItem, ctx *Context, occ int) error {
 		t, ok := ModeTarget(ctx, occ)
 		if !ok || t.Kind != game.TargetPlayer {

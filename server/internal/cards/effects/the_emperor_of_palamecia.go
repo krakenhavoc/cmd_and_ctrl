@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	const label = "The Emperor of Palamecia — put a +1/+1 counter on it; then if it has three or more +1/+1 counters, transform it"
 	trig := On(game.EventCast, YouCast(Noncreature()), label, func(g *game.Game, item *game.StackItem) error {
-		if item.Params.Amount < 4 || !sourceIsStillThisPermanent(g, item) {
+		if item.Params.Amount < 4 || !SourceIsStillThisPermanent(g, item) {
 			return nil
 		}
 		ctx := NewContext(g, item)
@@ -49,11 +49,11 @@ func init() {
 	trig = InterveningIf(CondBoard{Name: "at least four mana was spent to cast it", Test: func(ctx *Context) bool {
 		return ctx.Item != nil && ctx.Item.Params.Amount >= 4
 	}}, trig)
-	mana := dualManaAbility("U", "R")
+	mana := DualManaAbility("U", "R")
 	mana.Restrictions = []string{ManaRestrictCast, ManaRestrictNotType("Creature")}
 	mana.Label = "{T}: Add {U} or {R}. Spend this mana only to cast a noncreature spell."
 	Register(Spec{
-		OracleID:       theEmperorOfPalameciaOracleID,
+		OracleID:       TheEmperorOfPalameciaOracleID,
 		Name:           "The Emperor of Palamecia",
 		ReadsManaSpent: game.ReadsYourCasts,
 		Completeness:   CompletenessFull,
@@ -64,4 +64,4 @@ func init() {
 
 // theEmperorOfPalameciaOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const theEmperorOfPalameciaOracleID = "042c01ec-9f1f-432b-bea9-d64d822cd91e"
+const TheEmperorOfPalameciaOracleID = "042c01ec-9f1f-432b-bea9-d64d822cd91e"

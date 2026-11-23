@@ -1,6 +1,6 @@
 # ADR 0018 — Triggered abilities use the stack
 
-**Status:** Implemented · 2026-09-02 · Branch `feat/s19-triggers-on-stack`
+**Status:** Accepted · 2026-09-02 · Branch `feat/s19-triggers-on-stack`
 **Addendum:** 2026-09-17 · **Accepted** · [Trigger doubling (CR 603.2d)](#addendum-2026-09-17-trigger-doubling-cr-6032d--accepted) · tracked on [#752](https://github.com/krakenhavoc/cmd_and_ctrl/issues/752)
 **Amendment:** 2026-09-24 · **Accepted** · [Resolution-time LKI for a permanent that has left (CR 608.2h)](#amendment-2026-09-24--resolution-time-lki-for-a-permanent-that-has-left-cr-6082h--accepted--s38) · [#1379](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1379)
 **Amendment:** 2026-09-24 · **Accepted** · [A batch that commutes needs no CR 603.3b order](#amendment-2026-09-24--a-batch-that-commutes-needs-no-cr-6033b-order--accepted--s48) · [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511)
@@ -9,7 +9,7 @@
 **Amendment:** 2026-10-12 · **Accepted** · [An identical batch is asked again when its copies read their subjects](#amendment-2026-10-12--an-identical-batch-is-asked-again-when-its-copies-read-their-subjects-3021--accepted) · [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021)
 **Amendment:** 2026-10-13 · **Accepted** · [The order prompt says why it asked](#amendment-2026-10-13--the-order-prompt-says-why-it-asked-3015--accepted) · [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015)
 **Amendment:** 2026-10-13 (second) · **Accepted** · [The six remaining villainous-choice cards](#amendment-2026-10-13-second--the-six-remaining-villainous-choice-cards-3143--accepted--backlog) · [#3143](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3143)
-**Amendment:** 2026-10-15 · **Accepted** · [A became-target event says what kind of object targeted](#amendment-2026-10-15--a-became-target-event-says-what-kind-of-object-targeted-3779--accepted) · [#3779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3779)
+**Amendment:** 2026-10-15 · **Accepted** · [A became-target event says what kind of object targeted](#amendment-2026-10-15-seventh--a-became-target-event-says-what-kind-of-object-targeted-3779--accepted) · [#3779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3779)
 **Amendment:** 2026-11-12 · **Accepted** · [A became-target event names the keyword ability that targeted](#amendment-2026-11-12--a-became-target-event-names-the-keyword-ability-that-targeted-5651--accepted) · [#5651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5651)
 
 ## Context
@@ -5148,3 +5148,33 @@ backup ability is the row it came from.
 `TestMirrorShieldHopliteCopiesTheBackupAbilityAtANewTarget` and its siblings fail; without the row lookup
 `TestTargeterKeywordReadsTheCatalogRow` fails; without the `KeywordBackup` exemption in `abilityRowsOf`
 `TestBackupKeepsItsAbilityRow` fails.
+
+## Amendment 2026-11-20 — every pay-unless a resolution asks holds the table; §6's latitude is retired (#5793) · Accepted · S82
+
+### What was wrong
+
+§6 let the table play on while a `pay_unless` was open, for Rhystic Study's reasons: the ability has left the stack, the question is another player's, and neither answer reads the step. #951 (a decline that counters a stack object) and #997 (the upkeep pay-or-else) took two shapes back out of that latitude. Every other pay-unless kept it, including shapes §6's reasons never covered. #5793 reproduced it with a real engine: a sorcery reading "return target creature to its owner's hand unless its controller pays {1}. Draw a card." drew the card and went to the graveyard before the payer answered. Then any seat could pass, the step could end, and the bounce landed whenever the payer got round to answering. Crystal Shard's activated ability behaved the same way. So did Arcum's Whistle (the forced attack could be answered after declare attackers), Waterbending Lesson (the discard), Combustion Man and Kazuul (the destroy and the Ogre after blockers) and Elesh Norn // The Argent Etchings (the life loss). The six Prophecy "Rhystic" spells were left out of the catalog for this reason.
+
+The rules have no latitude here. CR 118.12 and 118.12a make the payment "a cost, paid when the spell or ability resolves". CR 608.2g lets the payer activate mana abilities in the middle of that resolution. CR 117.3b gives the active player priority only after the spell or ability resolves. The resolution is not finished until the payer answers, so nobody may act and the step may not end in the meantime. ADR 0150 decision 2 already said the same of the any-player offers: "That latitude only makes sense when nothing on the board waits on the answer."
+
+### Owner decision (2026-11-19, on #5793)
+
+Option 1 of the four the findings listed: **the engine derives a step halt for every keyed pay-unless asked mid-resolution**, this amendment retires §6's latitude, and ADR 0127 is amended in the same change so that "Always / Never pay" still answers the step-owed prompts it covered before (Rhystic Study and the rest). Ashling, the Limitless moves to `UpkeepPayUnless` under #997. The other options were narrower halts: everything except an opponent asked by a trigger; spells and activated abilities only; or a card-side `PayUnless.InThisStep` flag, which would bring back the per-card switch #997 removed.
+
+### Decision
+
+1. **A pay-unless a resolution asks is owed in the step it is asked in.** `QueueChoiceForEffect` stamps the prompt `midResolution` when a resolution is open and the prompt belongs to it (#1289, `resolution_pause.go`). For a `pay_unless` so stamped that names no step yet, it also sets `PendingChoice.OwedInStep` to the cursor (`Game.oweResolutionPayUnlessInStepLocked`, `server/internal/game/resolution_pay_unless.go`). This is every door, because they all reach `QueueChoiceForEffect`: plain `PayUnless`, `PayUnlessBranches`, `MayPay`, the waterbend and non-mana payments, `CounterUnlessPaid` and `GuardedPayUnless` (still guarded too), and an any-player link, whose next link takes the same anchor.
+2. **Nothing else had to change.** #997's gate reads the anchor (`ChoicePromptBlocksTable`), so the prompt blocks `advance_step`, `pass_priority` and `pass_turn`, and `internal/legal` offers the other seats nothing. A blocking stamped prompt holds the resolution open (`pausedResolutionChoiceLocked`), so a spell's later steps (#4012), its exit (#3613) and the CR 704.3 boundary wait. The answer's own `runStateChecksLocked` then resumes them. A bot answers it through the ordinary pay-unless policy, as it already answered the upkeep and guarded shapes. The client already draws every `pay_unless` for its chooser, whether or not it blocks.
+3. **The kind row is unchanged.** `choiceGateDecisions[pay_unless]` stays `false`. It is still the answer for a prompt queued outside a resolution, which is rare: a test, a restore point written before this change, or a branch that runs after its resolution has closed. The halt is a fact about the prompt, derived as #951's and #997's are, and a card cannot declare it.
+4. **It cannot wedge a table, for #997's reason.** The anchor is a live comparison with the cursor and cannot outlive its step. Every pay-unless has an always-legal answer (decline), and a departing payer's prompt is settled by the departure table (CR 800.4f).
+5. **Snapshot.** No change. `OwedInStep` and `midResolution` are already carried. A restore point from before this change keeps its open pay-unless as it was (unanchored), and a new one restores held (`TestADerivedAnchorSurvivesARestore`, `TestPayUnlessOnAResolvingSpellIsARestorePoint`). No effect key, wire field or closure route is added.
+
+### What changes for players
+
+Rhystic Study, Mystic Remora's Rhystic half, Smothering Tithe, Esper Sentinel and Wandering Archaic now hold the table while their payer decides, like any other question asked during a resolution. §6's "you paying for that?" while the next spell is already being cast is gone. Without a standing answer, the payer answers before anyone else acts. With one (ADR 0127's amendment of this date), the server answers at once, as before. Crystal Shard, Arcum's Whistle, Waterbending Lesson, Combustion Man, Kazuul and Elesh Norn's consequences now land inside the resolution that asked, before anyone gets priority. The six Prophecy cards (Rhystic Lightning, Rhystic Syphon, Rhystic Deluge, Excise, Withdraw, Flay) can be written with plain `PayUnless{Else}` inside `ResolveSteps`. They are left for a card batch.
+
+Ashling, the Limitless already asks through `UpkeepPayUnless` (#5803), so it needs no change here.
+
+### Tests
+
+`game/resolution_pay_unless_test.go`: the anchor, the gate, the held resolution and the answer finishing it; the anchor across a strict restore; ADR 0127 coverage kept for the derived anchor and still refused for the card's own. `game/resolution_pause_test.go`: a pay-unless the resolution asks now holds the sweep, and one queued outside a resolution does not. `effects/pay_unless_resolving_spell_test.go`: #5793's reproduction (on f2353f118) with its assertions turned round, on a test sorcery with a later instruction (declined, paid, and across a strict restore) and on Crystal Shard. Card tests that walked past an open pay-unless now answer it first: Kazuul (two triggers, answered one at a time), Banon, Aphelia and Elenda and Azor (an attack or end-step offer), Urza's Sylex and Nihil Spellbomb (the sacrifice or exile cost's trigger resolves above the ability), Lifecrafter's Bestiary, the blue draw deck smoke test, Mystic Remora's Rhystic half (now step-owed and still keyed), and Wandering Archaic, whose #4276 "the table moved on" tests became "the table waits". **Back-out:** dropping the stamp in `QueueChoiceForEffect` fails `TestAPayUnlessAResolutionAsksIsOwedInItsStep` and `TestPayUnlessOnAResolvingSpellHoldsTheTable`. Stamping it before the ADR 0127 key fails `TestADerivedAnchorKeepsAStandingAnswer`.

@@ -55,10 +55,11 @@ import "github.com/google/uuid"
 //  4. A COPY OF A PERMANENT SPELL BECOMES A TOKEN. CR 608.3f: when
 //     it would resolve, no permanent card enters — a token that is a
 //     copy of the spell does, and the copy ceases to exist. That is
-//     resolvePermanentSpellCopyLocked at the bottom of this file, and
-//     it goes through #923's one token-creation path, so a doubler
-//     doubles it (it really is a created token, CR 111.13), entry
-//     replacements apply, and the entry can pause and resume. Until
+//     resolvePermanentSpellCopyLocked at the bottom of this file. The
+//     token is NOT "created" (CR 111.13, #4994), so no doubler doubles
+//     it and no "whenever you create a token" sees it, but it takes the
+//     ordinary battlefield entry: entry replacements apply, enters
+//     triggers fire, and the entry can pause and resume. Until
 //     #666 the engine refused instead, on the reasoning that a second
 //     card-shaped object carrying the original's oracle ID on the
 //     battlefield was worse than nothing; the token is what makes it
@@ -116,7 +117,8 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 	if !ok {
 		return ErrCardNotFound
 	}
-	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, except, nil)
+	// #5918: one copy instruction (spell_copy_event.go).
+	g.copySpellTimesLocked(src, item, controller, 1, mayChooseNewTargets, except, nil)
 	return nil
 }
 
@@ -159,7 +161,8 @@ func (g *Game) CopyLastKnownSpellGainingKeywordsForEffect(sourceID, spellID, con
 	if len(keywords) > 0 {
 		gains = &copyGrant{Source: sourceID, Keywords: append([]string(nil), keywords...), Label: label}
 	}
-	g.copySpellFromLocked(src, item, controller, mayChooseNewTargets, nil, gains)
+	// #5918: one copy instruction (spell_copy_event.go).
+	g.copySpellTimesLocked(src, item, controller, 1, mayChooseNewTargets, nil, gains)
 	return nil
 }
 
@@ -487,11 +490,19 @@ func (g *Game) queueCopyTargetStepLocked(f *copyFrame) bool {
 func (g *Game) copyTargetSourceLocked(cf *copyFrame) TargetSource {
 	if cf.item.Kind != StackItemSpell && cf.item.SourceCardID != uuid.Nil {
 		if rec, ok := g.departedAbilitySourceLocked(&cf.item); ok {
-			return SourceSnapshot(cf.controller, lastKnownSourceCharacteristics(rec))
+			src := SourceSnapshot(cf.controller, lastKnownSourceCharacteristics(rec))
+			// #5718: a copy of a triggered ability is one (CR 707.10).
+			src.triggered = cf.item.Kind == StackItemTriggered
+			return src
 		}
 	}
 	src := SourceSnapshot(cf.controller, SourceCharacteristics(&cf.src))
 	src.spell = cf.item.Kind == StackItemSpell
+	src.triggered = cf.item.Kind == StackItemTriggered
+	// #5860, CR 707.10: a copy keeps what its original fixed as it was cast.
+	src.castValues = cf.item.CastValues
+	// #5771, CR 707.10: and the opponent who chose its mode.
+	src.modeChooser = cf.item.ModeChooser
 	return src
 }
 
@@ -656,7 +667,10 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 		// #2055, CR 707.10: the opponents named are a choice made as
 		// the original was announced, and the copy keeps them.
 		TargetChoosers: copyTargetChoosers(item.TargetChoosers),
-		SplitSecond:    item.SplitSecond,
+		// #5771, CR 707.10: the mode is copied, and so is who chose it,
+		// the "that player" of its text.
+		ModeChooser: item.ModeChooser,
+		SplitSecond: item.SplitSecond,
 		// #3781, CR 707.10: what the original fixed as it was cast.
 		CastValues: copyStringIntMap(item.CastValues),
 		IsCopy:     true,
@@ -857,20 +871,26 @@ func (g *Game) resolveCopyTargetsLocked(idx int, cf *copyFrame, targets []Target
 //     battlefield (token_existence.go) — both for free, off
 //     `Card.IsToken`, because the template carries the Token
 //     supertype.
-//   - It really is a CREATED token (CR 111.13), so it goes through
-//     #923's one creation path: the CR 701.7b window opens, Doubling
-//     Season doubles it, Academy Manufactor could rewrite it, and
-//     every token then takes the ordinary battlefield entry —
-//     enters-tapped, enters-with-counters, `fireETBHookLocked` and a
-//     resumable pause included.
+//   - It is NOT a created token. CR 111.13: "The token is not
+//     'created' for the purposes of any replacement effects or
+//     triggered abilities that refer to creating a token", and CR
+//     608.3f says the same for "any rules or effects". So no
+//     RepEventCreateTokens window opens on it (Doubling Season,
+//     Parallel Lives and Academy Manufactor never see it), and its
+//     arrival is an EventZoneMove from no zone rather than an
+//     EventTokenCreated, so no "whenever you create a token" trigger
+//     and no tokens-created tally counts it (putSpellCopyTokenLocked;
+//     #4994, ADR 0043's 2026-11-20 amendment). It still takes the
+//     ordinary battlefield entry: enters-tapped, enters-with-counters,
+//     `fireETBHookLocked`, EventETB and a resumable pause included.
 //   - The copy's own modifications ride along. The token is a copy of
 //     the SPELL, and the spell on the stack already carries whatever
 //     its "except" clause said (Double Major's "it isn't legendary"),
 //     because CopySpellForEffect wrote those values into it when the
 //     copy was created.
 //
-// The copy leaves the stack FIRST. The creation can pause on a CR 616
-// ordering prompt, and a copy still sitting on the stack whose
+// The copy leaves the stack FIRST. The token's entry can pause on a CR
+// 616 ordering prompt, and a copy still sitting on the stack whose
 // StackMeta the resolver has already deleted is an object nothing can
 // resolve.
 //
@@ -945,11 +965,7 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	// original's defender (sneak.go). Data on the group, so a creation
 	// paused on a CR 616 prompt is still a restore point.
 	sneakAttacking := applySneakCopyEntry(&entry, tmpl, item)
-	spec := TokenCreation{
-		Controller: item.Controller,
-		Groups:     []TokenGroup{{Template: tmpl, Count: 1, Entry: entry, Attacking: sneakAttacking}},
-		Source:     item.SourceCardID,
-	}
+	grp := TokenGroup{Template: tmpl, Count: 1, Entry: entry, Attacking: sneakAttacking}
 	// #4253 slice 6: the rest is data: the targets ride the asking item,
 	// the two flags ride N. A creation that stops on a CR 616 prompt is
 	// then a restore point.
@@ -992,7 +1008,43 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	if altCostHasEntryRider(tmpl, item) {
 		tail.Next = &KeyedTail{Ref: spellCopyTokenAltCostRef, Player: item.Controller, Source: item.SourceCardID, Word: item.AltCost}
 	}
-	return g.CreateTokensKeyedForEffect(spec, tail)
+	return g.putSpellCopyTokenLocked(grp, item.Controller, item.SourceCardID, tail)
+}
+
+// putSpellCopyTokenLocked puts the one token a resolving copy of a
+// permanent spell becomes onto the battlefield (CR 608.3f, CR 707.10f).
+//
+// It is the creation path with the creation taken out. CR 111.13: "The
+// token is not 'created' for the purposes of any replacement effects or
+// triggered abilities that refer to creating a token." So no
+// RepEventCreateTokens window opens (#4994): the group is minted as it
+// stands, one token, and entered through the staged entry a created
+// token takes (enterStagedTokensLocked), on a run marked NotCreated, so
+// its arrival is announced as a move from no zone rather than as a
+// creation (announceEntryLocked). Everything about the token ENTERING
+// still happens: the CR 614 entry window (enters tapped, enters with
+// counters), the enters triggers, and a pause on a CR 616 prompt there,
+// which is a restore point because the rest rides the run as data.
+//
+// `then` runs with the token's ID once it has landed, or with none when
+// its entry was replaced away.
+//
+// Caller must hold g.mu.
+func (g *Game) putSpellCopyTokenLocked(grp TokenGroup, controller, source uuid.UUID, then KeyedTail) error {
+	tok := g.mintTokenLocked(grp, controller)
+	// CR 508.4a, as applyResolvedTokenCreationLocked does for a created
+	// token: a sneaked copy's token enters attacking what the original's
+	// returned creature attacked, unless that can no longer be attacked.
+	if grp.Attacking != uuid.Nil && g.classifyAttackTargetLocked(grp.Attacking) != AttackTargetNone {
+		tok.AttackingTarget = grp.Attacking
+	}
+	g.enteringTokens = append(g.enteringTokens, tok)
+	return g.enterStagedTokensLocked(&tokenEntryRun{
+		Rest:       []tokenEntryStep{{ID: tok.InstanceID, Entry: snapshotTokenEntry(grp.Entry)}},
+		Source:     source,
+		Then:       snapshotKeyedTail(then),
+		NotCreated: true,
+	})
 }
 
 // altCostHasEntryRider reports whether `item` was cast for (or is a copy

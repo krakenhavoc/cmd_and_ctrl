@@ -35,6 +35,14 @@ type ExileUntil struct {
 	// ThisLeaves is "until this permanent leaves the battlefield".
 	ThisLeaves bool
 
+	// UntilLeaves is "until <another object> leaves the battlefield", the
+	// object named by its ref (Calix, Destiny's Hand's "until target
+	// enchantment you control leaves the battlefield"). It rides the
+	// event-conditioned record like a Leaves object, so a restore point holds
+	// it. An object that has already left makes the exile do nothing
+	// (CR 610.3c). Used instead of ThisLeaves, never with it.
+	UntilLeaves game.ObjectRef
+
 	// On and Condition are "until <an event>": the events watched and a
 	// registered condition over them (one that reads no parameters).
 	On        []game.EventKind
@@ -68,6 +76,15 @@ type ExileUntil struct {
 	// Game.ExiledWithRowForEffect. The return is unchanged: moving the
 	// card out of exile clears the link.
 	Linked bool
+
+	// ThenEnters is a triggered ability that follows the return
+	// (#5877): "When an exiled card enters under your control this way,
+	// <ThenEnters>" (Lagrella, the Magpie), a registered delayed body
+	// that reads the returned permanent from the item's Targets and
+	// Params.Object. ThenEntersLabel is its label. Only on the plain
+	// "until this leaves the battlefield" form.
+	ThenEnters      game.BodyRef
+	ThenEntersLabel string
 }
 
 // Apply is CR 610.3a/b first — an "until" whose event has already
@@ -92,6 +109,9 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		Condition:    e.Condition,
 	}
 	record := true
+	if e.UntilLeaves.ID != uuid.Nil {
+		u.Leaves = e.UntilLeaves
+	}
 	if e.ThisLeaves {
 		ref, ok := ctx.SourceRef()
 		if ok {
@@ -115,6 +135,9 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		}
 		if record {
 			t.Carry, t.N = []uuid.UUID{u.Leaves.ID}, u.Leaves.Epoch
+			if key := e.ThenEnters.Key(); key != "" {
+				t.Words = []string{key, e.ThenEntersLabel}
+			}
 		}
 		if !e.ThenTail.IsZero() {
 			next := e.ThenTail
@@ -201,9 +224,10 @@ func exileUntilEventRecord(g *game.Game, o game.TailOutcome) {
 // exileUntilRecorded is ExileUntil's keyed tail (#4253 slice 10a), told
 // the card when it reached exile: the grant (the tail's Permission) and the
 // return's record, "until <Carry[0] at epoch N> leaves the battlefield",
-// labelled with the tail's Word, for the effect of Player and Source. A
-// tail with no Carry exiles with no record (an item that names no source
-// object). The tail's Next, when set, is the caller's ExileUntil.ThenTail,
+// labelled with the tail's Word, for the effect of Player and Source, with
+// the follow-up body Words[0] labelled Words[1] when there are Words
+// (#5877). A tail with no Carry exiles with no record (an item that names
+// no source object). The tail's Next, when set, is the caller's ExileUntil.ThenTail,
 // told the same IDs once the record is written. An on-disk key.
 var exileUntilRecorded = game.RegisterTail("exile-until/record-return", func(g *game.Game, o game.TailOutcome) error {
 	if len(o.IDs) == 1 {
@@ -225,12 +249,18 @@ func exileUntilRecord(g *game.Game, o game.TailOutcome) {
 		g.GrantCastPermissionOverCardForEffect(target, perm)
 	}
 	if len(o.Tail.Carry) > 0 {
-		g.ScheduleUntilReturnForEffect(target, game.UntilReturn{
+		u := game.UntilReturn{
 			Controller:   o.Tail.Player,
 			SourceCardID: o.Tail.Source,
 			Label:        o.Tail.Word,
 			Leaves:       game.ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N},
-		})
+		}
+		if w := o.Tail.Words; len(w) == 2 {
+			if body, ok := game.BodyRefByKey(w[0]); ok {
+				u.ThenEnters, u.ThenEntersLabel = body, w[1]
+			}
+		}
+		g.ScheduleUntilReturnForEffect(target, u)
 	}
 }
 
@@ -238,7 +268,7 @@ func exileUntilRecord(g *game.Game, o game.TailOutcome) {
 // trigger body: exile the card the pick stamped into the item, if it is
 // still a legal target (CR 608.2b), until this permanent leaves the
 // battlefield. `label` is the held card's line on the table.
-func exileChosenTargetUntilThisLeaves(label string) Effect {
+func ExileChosenTargetUntilThisLeaves(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -257,8 +287,8 @@ func exileChosenTargetUntilThisLeaves(label string) Effect {
 // The life follows the exile whether or not anything was exiled; a
 // trigger whose chosen target is gone by resolution has no legal target
 // and does not resolve at all.
-func exileChosenTargetUntilThisLeavesThenGainLife(label string, life int) Effect {
-	untilLeaves := exileChosenTargetUntilThisLeaves(label)
+func ExileChosenTargetUntilThisLeavesThenGainLife(label string, life int) Effect {
+	untilLeaves := ExileChosenTargetUntilThisLeaves(label)
 	return func(g *game.Game, item *game.StackItem) error {
 		if err := untilLeaves(g, item); err != nil {
 			return err
@@ -277,12 +307,12 @@ func exileChosenTargetUntilThisLeavesThenGainLife(label string, life int) Effect
 // never reaches the stack. The row keeps its label, so a restored card
 // does not count it as an ability lost (AGENTS.md §5).
 func UntilThisLeavesLegacyReturn(returnLabel, exileLabel string) game.TriggeredAbility {
-	t := On(game.EventLTB, Self, returnLabel, b41ReturnCardsExiledWithToTheBattlefield(exileLabel))
+	t := On(game.EventLTB, Self, returnLabel, B41ReturnCardsExiledWithToTheBattlefield(exileLabel))
 	t.AppliesTo = func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 		if !Self(ev, source, ch, g) {
 			return false
 		}
-		for _, id := range b27ExiledWith(g, source.InstanceID, exileLabel) {
+		for _, id := range B27ExiledWith(g, source.InstanceID, exileLabel) {
 			if !g.UntilReturnPendingForEffect(id) {
 				return true
 			}

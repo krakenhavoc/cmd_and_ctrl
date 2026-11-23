@@ -23,13 +23,13 @@ func init() {
 		OracleID:     "d1b815d1-2848-40d4-a555-66822d1becbc",
 		Name:         "Channel",
 		Completeness: CompletenessFull,
-		OnResolve:    channelOnResolve,
+		OnResolve:    ChannelOnResolve,
 	})
 }
 
 // channelOnResolve gives the caster "pay 1 life: add {C}" until end of
 // turn, attributed to the resolving spell.
-func channelOnResolve(item *game.StackItem, ctx *Context) error {
+func ChannelOnResolve(item *game.StackItem, ctx *Context) error {
 	ctx.Game.GrantPlayerManaAbilityForEffect(ctx.Controller(),
 		game.PlayerManaAbility{LifeCost: 1, Produced: "{C}"},
 		"Channel", ctx.Source(), ctx.Game.UntilEndOfTurnDuration())

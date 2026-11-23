@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // tappedSacrificeLand is the whole Spec of one of those lands. `color`
 // is the mana symbol's letter ("W", "U", …).
-func tappedSacrificeLand(oracleID, name, color string) Spec {
+func TappedSacrificeLand(oracleID, name, color string) Spec {
 	one := "{" + color + "}"
 	return Spec{
 		OracleID:     oracleID,

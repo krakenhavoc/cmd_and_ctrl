@@ -106,6 +106,9 @@ var redactedCardKeys = map[string]bool{
 	// #1339: who is defending against an attack is as public as what
 	// it is attacking — it is derived from it.
 	"defending_player": true,
+	// ADR 0224: the band an attacker is in is announced to the table
+	// (CR 508.1e), and a number names no card.
+	"attack_band": true,
 	// ADR 0114 §9: that a permanent is its controller's Ring-bearer is
 	// public — the Ring tempted its controller in front of the table,
 	// and the designation says nothing about which card it is.
@@ -286,6 +289,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		AttackingTarget:     "defender",
 		AttackingTargetKind: "player",
 		DefendingPlayer:     "defender",
+		AttackBand:          1,
 		ProtectorPlayer:     "protector",
 		Defense:             4,
 		BlockingTarget:      "attacker",
@@ -393,6 +397,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// combined back face both name the card.
 		MeldedFrom: []CardFaceView{{Name: "Hidden Half", Image: "/cards/half/image"}},
 		MeldsInto:  &CardFaceView{Name: "Hidden Whole", Image: "/cards/whole/image"},
+		// ADR 0223: a mutated permanent's components name the card too.
+		MergedFrom: []CardFaceView{{Name: "Hidden Component", Image: "/cards/component/image"}},
 	}
 }
 

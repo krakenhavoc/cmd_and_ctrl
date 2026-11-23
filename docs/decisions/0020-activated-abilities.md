@@ -1,6 +1,6 @@
 # ADR 0020 — Activated abilities in the catalog
 
-**Status:** accepted (S21 sub-PR 2)
+**Status:** Accepted (S21 sub-PR 2)
 **Supersedes:** nothing. Extends [ADR 0018](0018-triggers-on-the-stack.md).
 
 ## Context
@@ -2067,6 +2067,14 @@ kinds at once.
 a zone the planner's gather, the enumerator's walk and the view's stamp do not
 visit would be a declaration the engine silently ignores. The card would
 register, look complete on the catalog page, and never make a mana.
+
+*Amendment (#5896, 2026-11-18):* the GRAVEYARD joined the set for
+Jack-o'-Lantern's "{1}, Exile this card from your graveyard: Add one mana of
+any color." The walk, the enumerator and the view already visited the
+graveyard for CR 602 abilities. Its cost owes mana besides the exile, so the
+auto-tapper's costed pass (#2455) gathers off-battlefield sources too
+(`autoManaExileCostedFor`), and the executor pays the planned {1} before the
+exile.
 
 The graveyard, exile and the command zone are each one line in that list plus
 one pile in `gatherManaZoneSources` on the day a printed card asks. Nothing

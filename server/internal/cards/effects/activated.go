@@ -27,13 +27,13 @@ func SacrificeThis() game.AbilityCost { return game.AbilityCost{SacrificeSelf: t
 // creature". The source itself qualifies when it's a creature —
 // Carrion Feeder really can eat itself.
 func SacrificeACreature() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a creature", Creature())}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a creature", Creature())}
 }
 
 // SacrificeAPermanent is "Sacrifice a permanent" (Altar of
 // Dementia's broader cousin).
 func SacrificeAPermanent() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a permanent")}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a permanent")}
 }
 
 // SacrificeN is "Sacrifice N <permanents>" — "Sacrifice two
@@ -58,7 +58,7 @@ func SacrificeAPermanent() game.AbilityCost {
 // (#1213); this constructor is the fixed one and Register refuses a
 // count below one here.
 func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n)}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec(label, preds...).WithCount(n, n)}
 }
 
 // SacrificeNDifferent is SacrificeN with a rule over the set: no two of
@@ -73,7 +73,7 @@ func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
 // with no name can't pay it at all. Register allows it on an activated
 // ability's cost only, at a count of two or more.
 func SacrificeNDifferent(n int, label string, d *game.TargetDifference, preds ...CardPredicate) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n).EachDifferent(d)}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec(label, preds...).WithCount(n, n).EachDifferent(d)}
 }
 
 // Another is the printed word "another" / "other" on a clause: the
@@ -94,7 +94,7 @@ func Another(spec *game.TargetSpec) *game.TargetSpec {
 // the source itself is not a legal payment (a second permanent with the
 // same name is).
 func SacrificeAnotherN(n int, label string, preds ...CardPredicate) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: Another(sacrificeSpec(label, preds...)).WithCount(n, n)}
+	return game.AbilityCost{SacrificeOther: Another(SacrificeSpec(label, preds...)).WithCount(n, n)}
 }
 
 // SacrificeEach is "Sacrifice <one of each kind>" — Jarad, Golgari
@@ -138,7 +138,7 @@ func SacrificeCardType(label string, cardTypes ...string) game.SacrificeKind {
 // additional-cost form share: a head whose predicate is the union of the
 // kinds, with the kinds as EachOf and the count their number.
 func sacrificeEachSpec(label string, kinds ...game.SacrificeKind) *game.TargetSpec {
-	spec := sacrificeSpec(label)
+	spec := SacrificeSpec(label)
 	spec.CardOK = func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
 		return anyKindMatches(kinds, c)
 	}
@@ -173,7 +173,7 @@ func anyKindMatches(kinds []game.SacrificeKind, c game.Card) bool {
 // lists are walked in plan order and need a fixed width, so
 // Register refuses a variable clause in AdditionalCost.
 func SacrificeOneOrMore(label string, preds ...CardPredicate) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(1, 0)}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec(label, preds...).WithCount(1, 0)}
 }
 
 // SacrificeX is "Sacrifice X <permanents>" — Grim Hireling's "{B},
@@ -193,7 +193,7 @@ func SacrificeOneOrMore(label string, preds ...CardPredicate) game.AbilityCost {
 // Register refuses it on a mana ability (CR 605.3b) and on a cast's
 // additional cost.
 func SacrificeX(label string, preds ...CardPredicate) game.AbilityCost {
-	spec := sacrificeSpec(label, preds...)
+	spec := SacrificeSpec(label, preds...)
 	spec.CountFromX = true
 	return game.AbilityCost{SacrificeOther: spec}
 }
@@ -386,6 +386,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// flip for nothing and show nothing.
 		if c.RevealHand {
 			out.RevealHand = true
+		}
+		if c.RevealThis {
+			out.RevealThis = true
 		}
 		// "Reveal the creature type you chose" likewise: dropped, A Killer
 		// Among Us would show nothing and need no choice.
@@ -1165,7 +1168,7 @@ func ExileACardFromHand() *game.ExileCost {
 // doesn't target, so hexproof and "can't be the target of" never
 // apply to it. The controller filter lives in the engine's cost
 // validation (CR 701.21a).
-func sacrificeSpec(label string, preds ...CardPredicate) *game.TargetSpec {
+func SacrificeSpec(label string, preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent(label, preds...)
 }
 
@@ -1217,6 +1220,21 @@ func RemoveCountersFrom(kind string, n int, label string, preds ...CardPredicate
 	}}
 }
 
+// RemoveCountersOfKindsFrom is RemoveCountersFrom for a clause that names
+// two or more kinds: Ion Storm's "Remove a +1/+1 counter or a charge counter
+// from a permanent you control" is
+//
+//	RemoveCountersOfKindsFrom(1, "a permanent you control",
+//	    []string{game.CounterPlusOne, "charge"})
+//
+// The activator names the permanent and which listed kind comes off it; a
+// kind outside the list is neither offered nor accepted.
+func RemoveCountersOfKindsFrom(n int, label string, kinds []string, preds ...CardPredicate) game.AbilityCost {
+	c := RemoveCountersFrom("", n, label, preds...)
+	c.RemoveCounters.Kinds = append([]string(nil), kinds...)
+	return c
+}
+
 // RemoveCountersXFromThis is "Remove X <kind> counters from this
 // permanent" and "Remove any number of <kind> counters from this
 // permanent" — they are the same cost, because what X can be is
@@ -1234,6 +1252,19 @@ func RemoveCountersXFromThis(kind string, min int) game.AbilityCost {
 		Counter:  kind,
 		N:        min,
 		Variable: true,
+	}}
+}
+
+// RemoveAllCountersFromThis is "Remove all <kind> counters from this
+// permanent" (Catti-brie of Mithral Hall): the cost takes every counter of
+// the kind the source holds, never fewer, and the number removed reaches the
+// effect as ctx.CountersRemoved(), zero when none were there (CR 118.3 lets
+// a cost of removing nothing be paid).
+func RemoveAllCountersFromThis(kind string) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		Counter:  kind,
+		Variable: true,
+		All:      true,
 	}}
 }
 

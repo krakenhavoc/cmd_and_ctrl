@@ -24,7 +24,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Crude Bent Blade — target opponent sacrifices a creature of their choice",
-					targetPlayerSacrificesACreature("Crude Bent Blade — sacrifice a creature")),
+					TargetPlayerSacrificesACreature("Crude Bent Blade — sacrifice a creature")),
 				TargetPlayer("target opponent", Opponent()),
 			),
 		},
@@ -37,11 +37,11 @@ func init() {
 // player target sacrifices, and a target that left leaves nothing to do
 // (CR 608.2b). The prompt carries `label`. Crude Bent Blade's and Custodi
 // Lich's body.
-func targetPlayerSacrificesACreature(label string) Effect {
+func TargetPlayerSacrificesACreature(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		for _, t := range NewContext(g, item).LegalTargets() {
 			if t.Kind == game.TargetPlayer {
-				g.PlayerSacrificesForEffect(item.SourceCardID, t.ID, sacrificeSpec("a creature", Creature()), label)
+				g.PlayerSacrificesForEffect(item.SourceCardID, t.ID, SacrificeSpec("a creature", Creature()), label)
 				return nil
 			}
 		}

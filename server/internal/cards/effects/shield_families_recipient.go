@@ -67,7 +67,7 @@ func (t ShieldTarget) protectMany(ctx *Context) []uuid.UUID {
 	}
 	out := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
-		if id == uuid.Nil || ctx.isNewSourceObject(id) || !onBattlefield(ctx.Game, id) || slices.Contains(out, id) {
+		if id == uuid.Nil || ctx.IsNewSourceObject(id) || !OnBattlefield(ctx.Game, id) || slices.Contains(out, id) {
 			continue
 		}
 		out = append(out, id)
@@ -78,7 +78,7 @@ func (t ShieldTarget) protectMany(ctx *Context) []uuid.UUID {
 // toAndByShield is "Prevent all [combat] damage that would be dealt to
 // and dealt by <protect> this turn": one record whose protected
 // permanents are also its sources (game.Mod.AndDealtBy).
-func toAndByShield(protect ShieldTarget, combatOnly bool) PreventDamageFromSource {
+func ToAndByShield(protect ShieldTarget, combatOnly bool) PreventDamageFromSource {
 	return PreventDamageFromSource{Protect: protect, AndDealtBy: true, CombatOnly: combatOnly}
 }
 
@@ -86,20 +86,21 @@ func toAndByShield(protect ShieldTarget, combatOnly bool) PreventDamageFromSourc
 // Untap target attacking creature [<filter>]. Prevent all combat damage
 // that would be dealt to and dealt by that creature this turn." A target
 // gone by resolution leaves the ability nothing to do (CR 608.2b).
-func untapAttackerToAndByRow(label string, cost game.AbilityCost, targets *game.TargetSpec) ActivatedAbility {
+func UntapAttackerToAndByRow(label string, cost game.AbilityCost, targets *game.TargetSpec) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
 		Targets: targets,
+		Purpose: PreventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
-			return untapThenToAndBy(NewContext(g, item))
+			return UntapThenToAndBy(NewContext(g, item))
 		},
 	}
 }
 
 // untapThenToAndBy untaps the item's first legal creature target and
 // shields it, to and by, from combat damage this turn.
-func untapThenToAndBy(ctx *Context) error {
+func UntapThenToAndBy(ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -107,7 +108,7 @@ func untapThenToAndBy(ctx *Context) error {
 		if err := (UntapTarget{Target: t.ID}).Apply(ctx); err != nil {
 			return err
 		}
-		return toAndByShield(ShieldObject(t.ID), true).Apply(ctx)
+		return ToAndByShield(ShieldObject(t.ID), true).Apply(ctx)
 	}
 	return nil
 }
@@ -116,13 +117,13 @@ func untapThenToAndBy(ctx *Context) error {
 // dealt to and dealt by this creature this turn" (Moonlight Geist,
 // Urborg Phantom, Deftblade Elite). A source that has left and come back
 // is a new object, and is not shielded (CR 400.7).
-func toAndByThisRow(label string, cost game.AbilityCost) ActivatedAbility {
+func ToAndByThisRow(label string, cost game.AbilityCost) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
-		Purpose: preventsDamageUnlessTargeted(nil),
+		Purpose: PreventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
-			return shieldThis(g, item, toAndByShield(ShieldTarget{}, true))
+			return ApplyShieldThis(g, item, ToAndByShield(ShieldTarget{}, true))
 		},
 	}
 }
@@ -131,17 +132,22 @@ func toAndByThisRow(label string, cost game.AbilityCost) ActivatedAbility {
 // all damage that would be dealt to and dealt by target permanent an
 // opponent controls" (Dovin, Hand of Control; Kiora, the Crashing Wave):
 // one to-and-by record, all damage, until your next turn (CR 611.2b).
-func untilYourNextTurnToAndByRow(label string, cost game.AbilityCost) ActivatedAbility {
-	shield := toAndByShield(ShieldTheTarget, false)
+// Both are loyalty rows, activated only in your main phase with the
+// stack empty (CR 606.3), so the row declares no answers: the guard
+// refuses them there.
+func UntilYourNextTurnToAndByRow(label string, cost game.AbilityCost) ActivatedAbility {
+	shield := ToAndByShield(ShieldTheTarget, false)
 	shield.UntilYourNextTurn = true
-	return sourceShieldRow(label, cost, TargetPermanent("target permanent an opponent controls", OpponentControls()), shield)
+	row := SourceShieldRow(label, cost, TargetPermanent("target permanent an opponent controls", OpponentControls()), shield)
+	row.Purpose = game.Purpose{}
+	return row
 }
 
 // shieldThis is `shield` pinned to the ability's own source, "this
 // creature" (Trained Pronghorn, Favored Hoplite). A source that has left
 // and come back is a new object, and is not shielded (CR 400.7).
-func shieldThis(g *game.Game, item *game.StackItem, shield PreventDamageFromSource) error {
-	if sourceIsNewObject(g, item) || !onBattlefield(g, item.SourceCardID) {
+func ApplyShieldThis(g *game.Game, item *game.StackItem, shield PreventDamageFromSource) error {
+	if SourceIsNewObject(g, item) || !OnBattlefield(g, item.SourceCardID) {
 		return nil
 	}
 	shield.Protect = ShieldObject(item.SourceCardID)
@@ -150,15 +156,15 @@ func shieldThis(g *game.Game, item *game.StackItem, shield PreventDamageFromSour
 
 // shieldTargetRow is "<cost>: Prevent all damage that would be dealt to
 // target <X> this turn" (Kitsune Healer, Oriss, Godtoucher).
-func shieldTargetRow(label string, cost game.AbilityCost, targets *game.TargetSpec) ActivatedAbility {
-	return sourceShieldRow(label, cost, targets, PreventDamageFromSource{Protect: ShieldTheTarget})
+func ShieldTargetRow(label string, cost game.AbilityCost, targets *game.TargetSpec) ActivatedAbility {
+	return SourceShieldRow(label, cost, targets, PreventDamageFromSource{Protect: ShieldTheTarget})
 }
 
 // shieldTargetSpell is an instant's OnResolve whose whole effect is
 // "Prevent all damage that would be dealt to target creature this turn"
 // (Indestructible Aura, Shielded Passage).
-func shieldTargetSpell() func(*game.StackItem, *Context) error {
-	return sourceShieldSpell(PreventDamageFromSource{Protect: ShieldTheTarget})
+func ShieldTargetSpell() func(*game.StackItem, *Context) error {
+	return SourceShieldSpell(PreventDamageFromSource{Protect: ShieldTheTarget})
 }
 
 // thenShieldTheTarget runs `first` on the item's first legal creature
@@ -168,7 +174,7 @@ func shieldTargetSpell() func(*game.StackItem, *Context) error {
 // turn. Prevent all damage that would be dealt to that creature this
 // turn" (Leap of Faith). A target gone by resolution leaves nothing to
 // do (CR 608.2b).
-func thenShieldTheTarget(ctx *Context, combatOnly bool, first func(id uuid.UUID) error) error {
+func ThenShieldTheTarget(ctx *Context, combatOnly bool, first func(id uuid.UUID) error) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -186,7 +192,7 @@ func thenShieldTheTarget(ctx *Context, combatOnly bool, first func(id uuid.UUID)
 // activePlayerIDOf is whose turn it is, read without taking the game's
 // lock (a cast condition, a target predicate and an effect all run
 // under it). uuid.Nil before the game has a turn.
-func activePlayerIDOf(g *game.Game) uuid.UUID {
+func ActivePlayerIDOf(g *game.Game) uuid.UUID {
 	if g == nil || g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) || g.Seats[g.Turn.ActiveSeat] == nil {
 		return uuid.Nil
 	}
@@ -199,7 +205,7 @@ func activePlayerIDOf(g *game.Game) uuid.UUID {
 // item as EventCast is emitted. A spell with this creature as two of
 // its targets triggers it once; a copy is not cast (CR 707.10) and an
 // ability is not a spell, so neither triggers it.
-func heroic(label string, effect Effect) game.TriggeredAbility {
+func Heroic(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		if ev.Actor != source.Controller {
 			return false
@@ -220,7 +226,7 @@ func heroic(label string, effect Effect) game.TriggeredAbility {
 // "At the beginning of the next end step, return those cards to the
 // battlefield tapped under their owners' control" (Morningtide's Light):
 // flicker's return body, with the cards entering tapped, together.
-var returnExiledToOwnersTappedBody = game.SimpleDelayedBody("flicker/return-exiled-to-owners-tapped", returnExiledCardsToOwnersTapped)
+var ReturnExiledToOwnersTappedBody = game.SimpleDelayedBody("flicker/return-exiled-to-owners-tapped", returnExiledCardsToOwnersTapped)
 
 func returnExiledCardsToOwnersTapped(g *game.Game, item *game.StackItem) error {
 	var ids []uuid.UUID

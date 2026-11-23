@@ -74,7 +74,7 @@ var expressiveIterationBottomPicked = game.RegisterChooseCardsThen("choose-cards
 		return nil
 	}
 	var exile uuid.UUID
-	for _, id := range cardsStillInALibrary(g, r.Carry) {
+	for _, id := range CardsStillInALibrary(g, r.Carry) {
 		if id != r.Picked[0] {
 			exile = id
 			break

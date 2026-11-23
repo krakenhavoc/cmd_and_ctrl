@@ -15,9 +15,9 @@ import (
 // Sculptor, Hofri Ghostforge's shape with the "may" of its exile. `tailKey`
 // names the "if you do" tail (an on-disk identity, namespaced by card) and
 // `except` is the card's "except" clause on the copiable values.
-func cmdr2S47ExileThenCopyTrigger(label, question, tailKey string, except func(*game.Card)) game.TriggeredAbility {
+func Cmdr2S47ExileThenCopyTrigger(label, question, tailKey string, except func(*game.Card)) game.TriggeredAbility {
 	tail := CardTail(tailKey, func(ctx *Context, o game.TailOutcome) error {
-		if !oneWentThisWay(o) {
+		if !OneWentThisWay(o) {
 			return nil
 		}
 		obj := ctx.Trigger().Object
@@ -29,13 +29,13 @@ func cmdr2S47ExileThenCopyTrigger(label, question, tailKey string, except func(*
 			return nil
 		}
 		except(&tmpl)
-		return createTokenCopies(ctx, ctx.Controller(), tmpl, 1)
+		return CreateTokenCopies(ctx, ctx.Controller(), tmpl, 1)
 	})
-	return Optional(On(game.EventLTB, hofriGhostforgeAnotherNontokenCreatureDied, label,
+	return Optional(On(game.EventLTB, HofriGhostforgeAnotherNontokenCreatureDied, label,
 		func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			dead := item.Trigger.Event.CardID
-			if !diedCardStillInGraveyard(ctx, dead) {
+			if !DiedCardStillInGraveyard(ctx, dead) {
 				return nil
 			}
 			return ExileTarget{Target: dead, ThenTail: ctx.ItemTail(tail)}.Apply(ctx)
@@ -47,13 +47,13 @@ var (
 	// (Theoretical Duplication): the creature an EventETB names, while it
 	// is a nontoken creature an opponent of the delayed trigger's
 	// controller controls.
-	cmdr2S47OpponentNontokenCreatureEntersCondition = game.DelayedEachCondition(
+	Cmdr2S47OpponentNontokenCreatureEntersCondition = game.DelayedEachCondition(
 		"etb/each-nontoken-creature-an-opponent-controls", cmdr2S47OpponentNontokenCreatureEntered)
 
 	// "Create a token that's a copy of that creature" (Theoretical
 	// Duplication): the payload's creature, copied while it is still that
 	// object on the battlefield.
-	cmdr2S47CopyThePayloadBody = game.SimpleDelayedBody("copy/token-copy-of-the-payload", cmdr2S47CopyThePayload)
+	Cmdr2S47CopyThePayloadBody = game.SimpleDelayedBody("copy/token-copy-of-the-payload", cmdr2S47CopyThePayload)
 )
 
 func cmdr2S47OpponentNontokenCreatureEntered(ev game.Event, dt *game.DelayedTrigger, g *game.Game, _ game.EffectParams) []uuid.UUID {
@@ -64,7 +64,7 @@ func cmdr2S47OpponentNontokenCreatureEntered(ev game.Event, dt *game.DelayedTrig
 	if !ok || !c.IsCreature() || c.IsToken() || c.Controller == dt.Controller {
 		return nil
 	}
-	if !eachOpponent(g, dt.Controller, func(opp uuid.UUID) bool { return opp == c.Controller }) {
+	if !EachOpponent(g, dt.Controller, func(opp uuid.UUID) bool { return opp == c.Controller }) {
 		return nil
 	}
 	return []uuid.UUID{ev.CardID}
@@ -72,11 +72,11 @@ func cmdr2S47OpponentNontokenCreatureEntered(ev game.Event, dt *game.DelayedTrig
 
 func cmdr2S47CopyThePayload(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	obj, ok := payloadObject(ctx)
+	obj, ok := PayloadObject(ctx)
 	if !ok {
 		return nil
 	}
-	c, ok := battlefieldCardForEffect(g, obj.ID)
+	c, ok := BattlefieldCardForEffect(g, obj.ID)
 	if !ok || c.ObjectEpoch != obj.Epoch {
 		return nil
 	}

@@ -1,3 +1,516 @@
 {
-  "sets": {}
+  "sets": {
+    "woe": {
+      "note": "MTGJSON v5 WOE.json data.booster.draft, fetched 2026-11-18 (Wilds of Eldraine); rare slot mythic 0.1429 = 1 in 7.00; Enchanting Tales (enchantingTales) in 3 of 3 packs = 1 in 1.00, in place of a common.",
+      "kind": "draft",
+      "mythic_one_in": 7,
+      "bonus": [
+        {
+          "name": "Enchanting Tales",
+          "one_in": 1,
+          "sources": [
+            {
+              "set": "wot",
+              "from": 1,
+              "to": 83
+            }
+          ]
+        }
+      ]
+    },
+    "lci": {
+      "note": "MTGJSON v5 LCI.json data.booster.draft, fetched 2026-11-18 (The Lost Caverns of Ixalan); rare slot mythic 0.1467 = 1 in 6.82; no basic land: the land slot is a full-art Cave (an LCI common), so it is an eleventh common here.",
+      "kind": "draft",
+      "mythic_one_in": 7,
+      "commons": 11,
+      "lands": 0
+    },
+    "mkm": {
+      "note": "MTGJSON v5 MKM.json data.booster.play, fetched 2026-11-18 (Murders at Karlov Manor); rare slot mythic 0.1429 = 1 in 7.00; The List (theList) in 5 of 40 packs = 1 in 8.00, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 7,
+      "wildcard": {
+        "common": 1692,
+        "uncommon": 5133,
+        "rare": 2960,
+        "mythic": 215
+      },
+      "foil": {
+        "common": 5800,
+        "uncommon": 3200,
+        "rare": 875,
+        "mythic": 125
+      },
+      "bonus": [
+        {
+          "name": "The List",
+          "one_in": 8,
+          "sources": [
+            {
+              "set": "plst",
+              "numbers": [
+                "2X2-17",
+                "APC-117",
+                "ARB-68",
+                "C16-47",
+                "C21-19",
+                "CLB-85",
+                "DDU-50",
+                "DIS-33",
+                "DIS-173",
+                "DKA-4",
+                "DKA-143",
+                "DOM-130",
+                "DST-40",
+                "ELD-107",
+                "HOU-149",
+                "ISD-183",
+                "JOU-153",
+                "KLD-221",
+                "M14-213",
+                "M20-167",
+                "MBS-10",
+                "MH1-21",
+                "MH2-46",
+                "MH2-191",
+                "MRD-99",
+                "ONS-89",
+                "ONS-272",
+                "RAV-277",
+                "RNA-182",
+                "RTR-140",
+                "SOI-262",
+                "SOM-96",
+                "SOM-98",
+                "STX-64",
+                "STX-220",
+                "UMA-138",
+                "UMA-247",
+                "VOW-207",
+                "WAR-54",
+                "XLN-91"
+              ]
+            },
+            {
+              "set": "spg",
+              "from": 19,
+              "to": 28
+            }
+          ]
+        }
+      ]
+    },
+    "otj": {
+      "note": "MTGJSON v5 OTJ.json data.booster.play, fetched 2026-11-18 (Outlaws of Thunder Junction); rare slot mythic 0.1429 = 1 in 7.00; Breaking News (breakingNews) in 25 of 25 packs = 1 in 1.00, in place of a common; The List (theList) in 5 of 25 packs = 1 in 5.00, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 7,
+      "wildcard": {
+        "common": 6560,
+        "uncommon": 2608,
+        "rare": 714,
+        "mythic": 119
+      },
+      "foil": {
+        "common": 5870,
+        "uncommon": 3240,
+        "rare": 763,
+        "mythic": 127
+      },
+      "bonus": [
+        {
+          "name": "Breaking News",
+          "one_in": 1,
+          "sources": [
+            {
+              "set": "otp",
+              "from": 1,
+              "to": 65
+            }
+          ]
+        },
+        {
+          "name": "The List",
+          "one_in": 5,
+          "sources": [
+            {
+              "set": "big",
+              "from": 1,
+              "to": 30
+            },
+            {
+              "set": "spg",
+              "from": 29,
+              "to": 38
+            }
+          ]
+        }
+      ]
+    },
+    "blb": {
+      "note": "MTGJSON v5 BLB.json data.booster.play, fetched 2026-11-18 (Bloomburrow); rare slot mythic 0.1429 = 1 in 7.00; Special Guests (specialGuest) in 15 of 1000 packs = 1 in 66.67, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 7,
+      "wildcard": {
+        "common": 2000,
+        "uncommon": 6450,
+        "rare": 1329,
+        "mythic": 221
+      },
+      "foil": {
+        "common": 5800,
+        "uncommon": 3200,
+        "rare": 857,
+        "mythic": 143
+      },
+      "bonus": [
+        {
+          "name": "Special Guests",
+          "one_in": 67,
+          "sources": [
+            {
+              "set": "spg",
+              "from": 54,
+              "to": 63
+            }
+          ]
+        }
+      ]
+    },
+    "dsk": {
+      "note": "MTGJSON v5 DSK.json data.booster.play, fetched 2026-11-18 (Duskmourn: House of Horror); rare slot mythic 0.1429 = 1 in 7.00; Special Guests (specialGuest) in 5 of 320 packs = 1 in 64.00, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 7,
+      "wildcard": {
+        "common": 1805,
+        "uncommon": 6690,
+        "rare": 1290,
+        "mythic": 215
+      },
+      "foil": {
+        "common": 5800,
+        "uncommon": 3200,
+        "rare": 857,
+        "mythic": 143
+      },
+      "bonus": [
+        {
+          "name": "Special Guests",
+          "one_in": 64,
+          "sources": [
+            {
+              "set": "spg",
+              "from": 64,
+              "to": 73
+            }
+          ]
+        }
+      ]
+    },
+    "fdn": {
+      "note": "MTGJSON v5 FDN.json data.booster.play, fetched 2026-11-18 (Foundations); rare slot mythic 0.1429 = 1 in 7.00; Special Guests (specialGuest) in 15 of 1000 packs = 1 in 66.67, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 7,
+      "wildcard": {
+        "common": 1850,
+        "uncommon": 6070,
+        "rare": 1783,
+        "mythic": 297
+      },
+      "foil": {
+        "common": 6002,
+        "uncommon": 3146,
+        "rare": 730,
+        "mythic": 122
+      },
+      "bonus": [
+        {
+          "name": "Special Guests",
+          "one_in": 67,
+          "sources": [
+            {
+              "set": "spg",
+              "from": 74,
+              "to": 83
+            }
+          ]
+        }
+      ]
+    },
+    "dft": {
+      "note": "MTGJSON v5 DFT.json data.booster.play, fetched 2026-11-18 (Aetherdrift); rare slot mythic 0.1429 = 1 in 7.00; Special Guests (specialGuest) in 5 of 320 packs = 1 in 64.00, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 7,
+      "wildcard": {
+        "common": 1250,
+        "uncommon": 6670,
+        "rare": 1783,
+        "mythic": 297
+      },
+      "foil": {
+        "common": 6100,
+        "uncommon": 3050,
+        "rare": 729,
+        "mythic": 121
+      },
+      "bonus": [
+        {
+          "name": "Special Guests",
+          "one_in": 64,
+          "sources": [
+            {
+              "set": "spg",
+              "from": 84,
+              "to": 93
+            }
+          ]
+        }
+      ]
+    },
+    "tdm": {
+      "note": "MTGJSON v5 TDM.json data.booster.play, fetched 2026-11-18 (Tarkir: Dragonstorm); rare slot mythic 0.1463 = 1 in 6.84; Special Guests (specialGuest) in 5 of 320 packs = 1 in 64.00, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 7,
+      "wildcard": {
+        "common": 1594,
+        "uncommon": 6117,
+        "rare": 1949,
+        "mythic": 340
+      },
+      "foil": {
+        "common": 5775,
+        "uncommon": 3304,
+        "rare": 784,
+        "mythic": 136
+      },
+      "bonus": [
+        {
+          "name": "Special Guests",
+          "one_in": 64,
+          "sources": [
+            {
+              "set": "spg",
+              "from": 104,
+              "to": 113
+            }
+          ]
+        }
+      ]
+    },
+    "fin": {
+      "note": "MTGJSON v5 FIN.json data.booster.play, fetched 2026-11-18 (Final Fantasy); rare slot mythic 0.1150 = 1 in 8.70; Through the Ages (throughTheAges) in 5 of 15 packs = 1 in 3.00, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 9,
+      "wildcard": {
+        "common": 1930,
+        "uncommon": 6400,
+        "rare": 1478,
+        "mythic": 192
+      },
+      "foil": {
+        "common": 5585,
+        "uncommon": 3665,
+        "rare": 650,
+        "mythic": 100
+      },
+      "bonus": [
+        {
+          "name": "Through the Ages",
+          "one_in": 3,
+          "sources": [
+            {
+              "set": "fca",
+              "from": 1,
+              "to": 64
+            }
+          ]
+        }
+      ]
+    },
+    "eoe": {
+      "note": "MTGJSON v5 EOE.json data.booster.play, fetched 2026-11-18 (Edge of Eternities); rare slot mythic 0.1561 = 1 in 6.41; Special Guests (specialGuest) in 45 of 2500 packs = 1 in 55.56, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000; Stellar Sights (eos) are 0.1250 of the wildcard sheet = 1 in 8.00; Stellar Sights (eos) are 0.0125 of the foil sheet = 1 in 80.01.",
+      "kind": "play",
+      "mythic_one_in": 6,
+      "wildcard": {
+        "common": 1429,
+        "uncommon": 7143,
+        "rare": 1349,
+        "mythic": 79
+      },
+      "foil": {
+        "common": 5873,
+        "uncommon": 3240,
+        "rare": 750,
+        "mythic": 137
+      },
+      "bonus": [
+        {
+          "name": "Special Guests",
+          "one_in": 56,
+          "sources": [
+            {
+              "set": "spg",
+              "from": 119,
+              "to": 128
+            }
+          ]
+        },
+        {
+          "name": "Stellar Sights",
+          "one_in": 8,
+          "replaces": "wildcard",
+          "sources": [
+            {
+              "set": "eos",
+              "from": 1,
+              "to": 45
+            }
+          ]
+        },
+        {
+          "name": "Stellar Sights",
+          "one_in": 80,
+          "replaces": "foil",
+          "sources": [
+            {
+              "set": "eos",
+              "from": 1,
+              "to": 45
+            }
+          ]
+        }
+      ]
+    },
+    "spm": {
+      "note": "MTGJSON v5 SPM.json data.booster.play, fetched 2026-11-18 (Marvel's Spider-Man); rare slot mythic 0.1264 = 1 in 7.91; Source Material (sourceMaterial) in 5 of 120 packs = 1 in 24.00, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 8,
+      "wildcard": {
+        "common": 7080,
+        "uncommon": 444,
+        "rare": 2164,
+        "mythic": 312
+      },
+      "foil": {
+        "common": 6580,
+        "uncommon": 2441,
+        "rare": 853,
+        "mythic": 126
+      },
+      "bonus": [
+        {
+          "name": "Source Material",
+          "one_in": 24,
+          "sources": [
+            {
+              "set": "mar",
+              "from": 1,
+              "to": 40
+            }
+          ]
+        }
+      ]
+    },
+    "tla": {
+      "note": "MTGJSON v5 TLA.json data.booster.play, fetched 2026-11-18 (Avatar: The Last Airbender); rare slot mythic 0.1496 = 1 in 6.68; Source Material (sourceMaterial) in 5 of 130 packs = 1 in 26.00, in place of a common; wildcard and foil splits are the sheets' weights of the set's own cards, per 10,000.",
+      "kind": "play",
+      "mythic_one_in": 7,
+      "wildcard": {
+        "common": 420,
+        "uncommon": 7459,
+        "rare": 1801,
+        "mythic": 320
+      },
+      "foil": {
+        "common": 5406,
+        "uncommon": 3706,
+        "rare": 753,
+        "mythic": 136
+      },
+      "bonus": [
+        {
+          "name": "Source Material",
+          "one_in": 26,
+          "sources": [
+            {
+              "set": "tle",
+              "from": 1,
+              "to": 61
+            }
+          ]
+        }
+      ]
+    },
+    "mom": {
+      "note": "MTGJSON v5 MOM.json data.booster.draft, fetched 2026-11-18 (March of the Machine); rare slot mythic 0.1429 = 1 in 7.00; Multiverse Legends (multiverseLegend) in 420 of 420 packs = 1 in 1.00, in place of a common.",
+      "kind": "draft",
+      "mythic_one_in": 7,
+      "bonus": [
+        {
+          "name": "Multiverse Legends",
+          "one_in": 1,
+          "sources": [
+            {
+              "set": "mul",
+              "from": 1,
+              "to": 65
+            }
+          ]
+        }
+      ]
+    },
+    "one": {
+      "note": "MTGJSON v5 ONE.json data.booster.draft, fetched 2026-11-18 (Phyrexia: All Will Be One); rare slot mythic 0.1429 = 1 in 7.00.",
+      "kind": "draft",
+      "mythic_one_in": 7
+    },
+    "bro": {
+      "note": "MTGJSON v5 BRO.json data.booster.draft, fetched 2026-11-18 (The Brothers' War); rare slot mythic 0.1544 = 1 in 6.48; Retro Artifacts (brrRetroArtifact) in 12 of 12 packs = 1 in 1.00, in place of the land slot.",
+      "kind": "draft",
+      "mythic_one_in": 6,
+      "bonus": [
+        {
+          "name": "Retro Artifacts",
+          "one_in": 1,
+          "replaces": "land",
+          "sources": [
+            {
+              "set": "brr",
+              "from": 1,
+              "to": 126
+            }
+          ]
+        }
+      ]
+    },
+    "dmu": {
+      "note": "MTGJSON v5 DMU.json data.booster.draft, fetched 2026-11-18 (Dominaria United); rare slot mythic 0.1429 = 1 in 7.00.",
+      "kind": "draft",
+      "mythic_one_in": 7
+    },
+    "snc": {
+      "note": "MTGJSON v5 SNC.json data.booster.draft, fetched 2026-11-18 (Streets of New Capenna); rare slot mythic 0.1429 = 1 in 7.00.",
+      "kind": "draft",
+      "mythic_one_in": 7
+    },
+    "neo": {
+      "note": "MTGJSON v5 NEO.json data.booster.draft, fetched 2026-11-18 (Kamigawa: Neon Dynasty); rare slot mythic 0.1324 = 1 in 7.56.",
+      "kind": "draft",
+      "mythic_one_in": 8
+    },
+    "vow": {
+      "note": "MTGJSON v5 VOW.json data.booster.draft, fetched 2026-11-18 (Innistrad: Crimson Vow); rare slot mythic 0.1342 = 1 in 7.45.",
+      "kind": "draft",
+      "mythic_one_in": 7
+    },
+    "mid": {
+      "note": "MTGJSON v5 MID.json data.booster.draft, fetched 2026-11-18 (Innistrad: Midnight Hunt); rare slot mythic 0.1342 = 1 in 7.45.",
+      "kind": "draft",
+      "mythic_one_in": 7
+    },
+    "afr": {
+      "note": "MTGJSON v5 AFR.json data.booster.draft, fetched 2026-11-18 (Adventures in the Forgotten Realms); rare slot mythic 0.1429 = 1 in 7.00.",
+      "kind": "draft",
+      "mythic_one_in": 7
+    }
+  }
 }

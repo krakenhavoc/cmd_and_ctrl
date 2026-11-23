@@ -74,11 +74,11 @@ type eotAffected map[uuid.UUID]int64
 // for the rest of the turn.
 //
 // Caller must be inside the resolution frame (holds g.mu write).
-func eotSnapshot(ctx *Context, target uuid.UUID, match CardPredicate) eotAffected {
+func EotSnapshot(ctx *Context, target uuid.UUID, match CardPredicate) eotAffected {
 	// #1432: "this creature gets +1/+1" pinned to a source that left
 	// and came back pins nothing — the new object is not "this". A
 	// Match selection is a set, not "this", and is not asked.
-	if match == nil && ctx.isNewSourceObject(target) {
+	if match == nil && ctx.IsNewSourceObject(target) {
 		return nil
 	}
 	out := eotAffected{}
@@ -87,7 +87,7 @@ func eotSnapshot(ctx *Context, target uuid.UUID, match CardPredicate) eotAffecte
 	// (CR 612.2, #3984): each candidate is lent it, as MatchingBattlefield
 	// does, so "each Elf creature you control" under an Artificial
 	// Evolution names the new type.
-	reader := ctx.textReader()
+	reader := ctx.TextReader()
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if match != nil {
 			if !match(ctx.Game, caster, game.ThroughTextOf(reader, c)) {
@@ -138,7 +138,7 @@ func (b BoostUntilEOT) Apply(ctx *Context) error {
 	if b.Power == 0 && b.Toughness == 0 {
 		return nil
 	}
-	return untilEndOfTurn(ctx, b.Target, b.Match,
+	return UntilEndOfTurn(ctx, b.Target, b.Match,
 		eotLabel(b.Label, "pump until end of turn"),
 		game.ModifyPTMod(b.Power, b.Toughness))
 }
@@ -160,7 +160,7 @@ type SwitchPTUntilEOT struct {
 }
 
 func (s SwitchPTUntilEOT) Apply(ctx *Context) error {
-	return untilEndOfTurn(ctx, s.Target, s.Match,
+	return UntilEndOfTurn(ctx, s.Target, s.Match,
 		eotLabel(s.Label, "switch power and toughness until end of turn"),
 		game.SwitchPTMod())
 }
@@ -169,9 +169,9 @@ func (s SwitchPTUntilEOT) Apply(ctx *Context) error {
 // of turn" as an ability's effect (Crag Puca, Aquamoeba, Valakut
 // Fireboar). The source must still be the permanent the ability came
 // from: one that left and came back is a new object (CR 400.7).
-func switchThisPT(label string) Effect {
+func SwitchThisPT(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !sourceIsStillThisPermanent(g, item) {
+		if !SourceIsStillThisPermanent(g, item) {
 			return nil
 		}
 		return SwitchPTUntilEOT{Target: item.SourceCardID, Label: label}.Apply(NewContext(g, item))
@@ -181,7 +181,7 @@ func switchThisPT(label string) Effect {
 // switchEachTargetPT is "switch target creature's power and toughness
 // until end of turn" over every still-legal card target of the item (CR
 // 608.2b): Merfolk Thaumaturgist's one, Inversion Behemoth's any number.
-func switchEachTargetPT(ctx *Context, label string) error {
+func SwitchEachTargetPT(ctx *Context, label string) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -196,7 +196,7 @@ func switchEachTargetPT(ctx *Context, label string) error {
 // untilEndOfTurn is the one body every until-end-of-turn primitive
 // shares: `mods` over the set `target` / `match` names, locked now
 // (CR 611.2c), ending in this turn's cleanup step (CR 514.2).
-func untilEndOfTurn(ctx *Context, target uuid.UUID, match CardPredicate, label string, mods ...game.Mod) error {
+func UntilEndOfTurn(ctx *Context, target uuid.UUID, match CardPredicate, label string, mods ...game.Mod) error {
 	return ScopedEffectFor{
 		Target:   target,
 		Match:    match,
@@ -265,7 +265,7 @@ func (k GrantKeywordUntilEOT) Apply(ctx *Context) error {
 	if len(k.Keywords) == 0 {
 		return nil
 	}
-	return untilEndOfTurn(ctx, k.Target, k.Match,
+	return UntilEndOfTurn(ctx, k.Target, k.Match,
 		eotLabel(k.Label, "keyword grant until end of turn"),
 		game.AddKeywordsMod(k.Keywords...))
 }
@@ -286,7 +286,7 @@ type CantBeTargetedByYourOpponentsUntilEOT struct {
 }
 
 func (c CantBeTargetedByYourOpponentsUntilEOT) Apply(ctx *Context) error {
-	return untilEndOfTurn(ctx, c.Target, nil,
+	return UntilEndOfTurn(ctx, c.Target, nil,
 		eotLabel(c.Label, "can't be the target of spells or abilities your opponents control until end of turn"),
 		game.CantBeTargetedByOpponentsMod())
 }
@@ -295,7 +295,7 @@ func (c CantBeTargetedByYourOpponentsUntilEOT) Apply(ctx *Context) error {
 // Keeps a Layer 6 grant idempotent when two copies of the same
 // effect stack — "gains trample" twice is still just trample, and a
 // duplicated string would survive into the wire view.
-func eotHasAbility(abilities []string, kw string) bool {
+func EotHasAbility(abilities []string, kw string) bool {
 	for _, a := range abilities {
 		if a == kw {
 			return true

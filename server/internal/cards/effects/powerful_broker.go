@@ -31,16 +31,22 @@ func init() {
 			Label:        "{T}: For each kind of counter on target permanent or player, give that permanent or player another counter of that kind. Activate only as a sorcery.",
 			Cost:         TapCost(),
 			SorcerySpeed: true,
-			Targets:      ardennTargetPermanentOrPlayer(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					return mshA6AnotherOfEachKind(ctx, t)
-				}
-				return nil
-			},
+			Targets:      ArdennTargetPermanentOrPlayer(),
+			Effect:       MshA6AnotherOfEachKindOnTarget,
 		}},
 	})
+}
+
+// mshA6AnotherOfEachKindOnTarget is the body of "for each kind of counter on
+// target permanent or player, give that permanent or player another counter of
+// that kind" (Powerful Broker, Skyship Plunderer): the first legal target, if
+// there is one, gets one more counter of each kind it has.
+func MshA6AnotherOfEachKindOnTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		return mshA6AnotherOfEachKind(ctx, t)
+	}
+	return nil
 }
 
 // mshA6AnotherOfEachKind gives the target one more counter of each kind it
@@ -51,7 +57,7 @@ func mshA6AnotherOfEachKind(ctx *Context, t game.TargetRef) error {
 		if p == nil {
 			return nil
 		}
-		kinds := mshA6KindsWithCounters(p.Counters)
+		kinds := MshA6KindsWithCounters(p.Counters)
 		for _, kind := range kinds {
 			if err := ctx.Game.AddPlayerCounterForEffect(t.ID, kind, 1); err != nil {
 				return err
@@ -63,7 +69,7 @@ func mshA6AnotherOfEachKind(ctx *Context, t game.TargetRef) error {
 	if !ok {
 		return nil
 	}
-	for _, kind := range mshA6KindsWithCounters(c.Counters) {
+	for _, kind := range MshA6KindsWithCounters(c.Counters) {
 		if err := (AddCounter{Target: t.ID, Kind: kind, N: 1}).Apply(ctx); err != nil {
 			return err
 		}
@@ -73,7 +79,7 @@ func mshA6AnotherOfEachKind(ctx *Context, t game.TargetRef) error {
 
 // mshA6KindsWithCounters lists, in a stable order, the kinds with at least
 // one counter.
-func mshA6KindsWithCounters(counters map[string]int) []string {
+func MshA6KindsWithCounters(counters map[string]int) []string {
 	kinds := make([]string, 0, len(counters))
 	for kind, n := range counters {
 		if n > 0 {

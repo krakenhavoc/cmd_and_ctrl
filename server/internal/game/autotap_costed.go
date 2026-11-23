@@ -110,6 +110,17 @@ func (g *Game) autoTapCostedCost(asker uuid.UUID, source Card, a ManaAbilityShap
 	if !g.ManaAbilityChargesManaForEffect(asker, source, a) || !g.autoTapAcceptsBesidesManaCost(asker, source, a, nil) {
 		return ParsedCost{}, false
 	}
+	return g.autoTapCostedPrice(asker, source, a)
+}
+
+// autoTapCostedPrice is autoTapCostedCost's second half: the static
+// output a costed plan can book and the priced mana it owes, with
+// every cost shape the solver cannot fund refused. Shared with the
+// off-battlefield costed picker (autoManaExileCostedFor, #5896), so a
+// graveyard source and a Signet are priced by one rule.
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapCostedPrice(asker uuid.UUID, source Card, a ManaAbilityShape) (ParsedCost, bool) {
 	// The planner books a static output. A computed one may read what
 	// the plan changes (Doubling Cube reads the pool), and a pre-rider
 	// or a spend rider is a closure it cannot price.
@@ -327,6 +338,8 @@ func floatingSources(pool ManaPool) []tapSource {
 			out = append(out, tapSource{
 				CardID: tok.Source,
 				Slots:  []ProducedManaEntry{{Options: []string{tok.Color}}},
+				// #5986: floating snow mana still pays an {S}.
+				Snow: tok.SourceKinds.Has(ManaSourceSnow),
 			})
 		}
 	}

@@ -49,7 +49,7 @@ func requirementFrom(source *game.Card, otherThan uuid.UUID) game.AttackRequirem
 // (CR 613.1f — the catalog stops being asked once CatalogAbilityKey
 // answers empty).
 func AttacksEachCombat() game.StaticAbility {
-	s := AttacksEachCombatWhere(selfOnly)
+	s := AttacksEachCombatWhere(SelfOnly)
 	s.Label = "Attacks each combat if able." // #2219: the tile's label
 	return s
 }
@@ -76,6 +76,34 @@ func AttacksEachCombatWhere(appliesTo func(target *game.Card, g *game.Game, sour
 	}
 }
 
+// IfThisAttacksAllYourCreaturesAttack is "If this creature attacks, all
+// creatures you control attack if able" (Viashino Bey, #5840). It is a
+// constraint on declaring an attack, not a trigger (the card's ruling):
+// every other creature the source's controller controls carries a
+// requirement that exists only in a declaration with the source in it
+// (game.AttackRequirement.IfSourceAttacks), so declaring nothing is
+// legal, and declaring the source owes an attack from every other
+// creature that can attack for free (CR 508.1d). The source itself is
+// left out: "if this attacks, this attacks if able" asks nothing.
+//
+// Like AttacksEachCombatWhere, it is the source's ability: a source
+// that loses its abilities stops imposing it.
+func IfThisAttacksAllYourCreaturesAttack() game.StaticAbility {
+	return game.StaticAbility{
+		Layer: game.Layer6Ability,
+		Label: "If this creature attacks, all creatures you control attack if able.",
+		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+			return target.IsCreature() && target.InstanceID != source.InstanceID &&
+				target.Controller == source.Controller
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			r := requirementFrom(source, uuid.Nil)
+			r.IfSourceAttacks = true
+			c.AttackRequirements = append(c.AttackRequirements, r)
+		},
+	}
+}
+
 // AttacksAnOpponentWithTheMostLifeEachCombat is "~ attacks an opponent
 // with the most life among your opponents each combat if able" — a
 // requirement a creature prints on itself (Galactus, Devourer of
@@ -92,7 +120,7 @@ func AttacksAnOpponentWithTheMostLifeEachCombat(exempt func(g *game.Game, source
 		Layer: game.Layer6Ability,
 		Label: "Attacks an opponent with the most life each combat if able.",
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			if !target.IsCreature() || !selfOnly(target, g, source) {
+			if !target.IsCreature() || !SelfOnly(target, g, source) {
 				return false
 			}
 			return exempt == nil || !exempt(g, source)
@@ -111,7 +139,7 @@ func AttacksAnOpponentWithTheMostLifeEachCombat(exempt func(g *game.Game, source
 // than the effective ones a layer is still computing. A copy is still
 // seen: layer 1 rewrites that baseline before the pass (ADR 0043), so a
 // Clone of the named creature has its name.
-func youControlACreatureNamed(name string) func(g *game.Game, source *game.Card) bool {
+func YouControlACreatureNamed(name string) func(g *game.Game, source *game.Card) bool {
 	return func(g *game.Game, source *game.Card) bool {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]

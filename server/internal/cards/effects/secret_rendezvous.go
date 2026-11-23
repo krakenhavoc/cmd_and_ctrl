@@ -20,13 +20,13 @@ func init() {
 		Targets:      TargetPlayer("target opponent", Opponent()),
 		// You draw three, and so does the opponent you aim it at.
 		Purpose:   game.Purpose{Draws: 3, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, Draws: 3})},
-		OnResolve: secretRendezvousOnResolve,
+		OnResolve: SecretRendezvousOnResolve,
 	})
 }
 
 // secretRendezvousOnResolve is the spell's body, shared with Joined
 // Researchers' prepare spell, which prints the same text.
-var secretRendezvousOnResolve = ResolveSteps(
+var SecretRendezvousOnResolve = ResolveSteps(
 	// The target's draw waits for a prompt the caster's draw asks (CR 608.2c, #4155).
 	DrawCards{N: 3},
 	Instruction(func(ctx *Context) error {

@@ -49,9 +49,51 @@ func AttackTaxMod(defender uuid.UUID, mana string) Mod {
 	return Mod{Kind: ModAttackTax, Player: defender, Text: mana}
 }
 
+// ModAttackTaxLife is "creatures can't attack <Player> unless their
+// controller pays <Amount> life for each of those creatures", for the
+// record's duration (#5869, Sivitri, Dragon Master). Reads Player (the
+// defended seat, required), Amount (life for one creature, at least 1)
+// and Types: ["planeswalker"] widens it to "you or planeswalkers you
+// control" (AttackTaxOnPlayerOrPlaneswalkers), and nothing else may be
+// named there. A kind of its own rather than a life field on
+// ModAttackTax so a binary from before it refuses a restore point
+// naming it instead of reading the record as a tax of nothing. Adds no
+// snapshot key: every field it reads is already on Mod.
+const ModAttackTaxLife ModKind = "attackTaxLife"
+
+// AttackTaxLifeMod is the ModAttackTaxLife mod for `defender` charging
+// `life` per attacking creature, defending `scope`.
+func AttackTaxLifeMod(defender uuid.UUID, life int, scope AttackTaxScope) Mod {
+	m := Mod{Kind: ModAttackTaxLife, Player: defender, Amount: life}
+	if scope == AttackTaxOnPlayerOrPlaneswalkers {
+		m.Types = []string{"planeswalker"}
+	}
+	return m
+}
+
+// attackTaxLifeScope reads a ModAttackTaxLife mod's Types as its scope.
+func attackTaxLifeScope(m Mod) AttackTaxScope {
+	if len(m.Types) == 1 && m.Types[0] == "planeswalker" {
+		return AttackTaxOnPlayerOrPlaneswalkers
+	}
+	return AttackTaxOnPlayer
+}
+
 // attackTaxModProblem is the registration and restore check for
-// ModAttackTax. "" when the mod is sound or is another kind.
+// ModAttackTax and ModAttackTaxLife. "" when the mod is sound or is
+// another kind.
 func attackTaxModProblem(m Mod) string {
+	if m.Kind == ModAttackTaxLife {
+		switch {
+		case m.Player == uuid.Nil:
+			return "an attackTaxLife mod defends no player"
+		case m.Amount <= 0:
+			return "an attackTaxLife mod charges no life"
+		case len(m.Types) > 1 || (len(m.Types) == 1 && m.Types[0] != "planeswalker"):
+			return fmt.Sprintf("an attackTaxLife mod's types %q name something other than planeswalker", m.Types)
+		}
+		return ""
+	}
 	if m.Kind != ModAttackTax {
 		return ""
 	}
@@ -102,6 +144,23 @@ func (g *Game) AnyAttackTaxForEffect(sourceID uuid.UUID, mana string, d Duration
 		[]Mod{AttackTaxMod(uuid.Nil, mana)}, d, label)
 }
 
+// AttackTaxLifeForEffect registers "creatures can't attack `defender`
+// [or planeswalkers they control] unless their controller pays `life`
+// life for each of those creatures" until `d` runs out (default: end of
+// turn). Reports whether a record was written (#5869).
+//
+// Caller must hold g.mu (write).
+func (g *Game) AttackTaxLifeForEffect(sourceID, defender uuid.UUID, life int, scope AttackTaxScope, d Duration, label string) bool {
+	if life <= 0 || g.playerByIDLocked(defender) == nil {
+		return false
+	}
+	if d.IsZero() {
+		d = g.UntilEndOfTurnDuration()
+	}
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
+		[]Mod{AttackTaxLifeMod(defender, life, scope)}, d, label)
+}
+
 // durationAttackTaxLines is the taxes the live ModAttackTax records
 // charge one attacker against `defender`. The duration is asked here
 // rather than left to the sweep, for handPlayBanLocked's reason:
@@ -113,6 +172,22 @@ func (g *Game) durationAttackTaxLines(defender uuid.UUID, kind AttackTargetKind,
 	for i := range g.ScopedEffects {
 		e := &g.ScopedEffects[i]
 		for _, m := range e.Mods {
+			if m.Kind == ModAttackTaxLife {
+				if m.Player != defender || m.Amount <= 0 || !attackTaxLifeScope(m).covers(kind) {
+					continue
+				}
+				if g.durationExpiredLocked(e.Duration, false) {
+					continue
+				}
+				out = append(out, AttackTaxLine{
+					Source:   e.Source.ID,
+					Label:    e.Label,
+					Defender: defender,
+					Attacker: attacker,
+					Life:     m.Amount,
+				})
+				continue
+			}
 			if m.Kind != ModAttackTax || m.Text == "" {
 				continue
 			}

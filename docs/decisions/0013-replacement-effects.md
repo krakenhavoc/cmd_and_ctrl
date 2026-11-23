@@ -1,6 +1,6 @@
 # ADR 0013 — Replacement effects engine (S17)
 
-**Status:** Implemented · 2026-04-22 (planned), 2026-04-23 (shipped) · Sprint S17
+**Status:** Accepted · 2026-04-22 (planned), 2026-04-23 (shipped) · Sprint S17
 **Amended:** 2026-09-16 · Branch `docs/discard-rules-library-of-leng` — §10 withdrawn, see [§10a](#10a-amendment-2026-09-16-10-misread-the-card-and-the-rules)
 **Amended:** 2026-09-17 · Branch `fix/792-identical-replacements-no-prompt` — §5's prompt has two exceptions now, see [§5a](#5a-amendment-2026-09-17-when-the-616-prompt-has-only-one-answer)
 **Amended:** 2026-09-17 · Branch `fix/799-853-discard-helper` — §5f's open note is closed: a discard is an exit too, see [§5g](#5g-amendment-2026-09-17-a-discard-is-an-exit-too)
@@ -1482,7 +1482,7 @@ open entry prompt, answer it again, and the Guildgate arrives again.
 
 ### 5p. Amendment, 2026-09-18: regeneration is an engine built-in on the destroy event
 
-**Status:** accepted (#667). Extends Decision 5 and Decision 8; no
+**Status:** Accepted (#667). Extends Decision 5 and Decision 8; no
 decision is reversed.
 
 CR 701.19 was the last thing in the sprint's "S30 tail" that the

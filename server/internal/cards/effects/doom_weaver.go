@@ -34,7 +34,7 @@ func init() {
 		Grants: []AbilityGrant{{
 			Key: doomWeaverGrant,
 			Triggered: []game.TriggeredAbility{
-				WhenThisDies("Doom Weaver — draw cards equal to this creature's power", doomWeaverDraw),
+				WhenThisDies("Doom Weaver — draw cards equal to this creature's power", DoomWeaverDraw),
 			},
 			Text: "When this creature dies, draw cards equal to its power.",
 		}},
@@ -47,7 +47,7 @@ func init() {
 
 // doomWeaverDraw draws cards equal to the dead creature's last-known
 // power. A power of zero or less draws nothing.
-func doomWeaverDraw(g *game.Game, item *game.StackItem) error {
+func DoomWeaverDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	info, ok := ctx.TriggeringPermanent()
 	if !ok || info.Power <= 0 {

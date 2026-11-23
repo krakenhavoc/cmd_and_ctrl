@@ -148,6 +148,13 @@ type AttackTargetRestriction struct {
 	// the city's blessing a fact about the controller alone, so it refuses
 	// every target while it is unmet.
 	ControllerHandAtLeast int `json:",omitempty"`
+	// ControllerMustControl, when set, forbids attacking anything while the
+	// attacking creature's controller controls no permanent matching ANY of
+	// these queries: "can't attack unless you control a 1/1 creature"
+	// (Lovestruck Beast, #5948, CR 508.1c). A fact about the controller
+	// alone, read live at declaration, so it refuses every target while
+	// unmet.
+	ControllerMustControl []PermanentQuery `json:",omitempty"`
 	// NotAlreadyAttackedThisTurn forbids attacking a player this object
 	// has already attacked this turn: "can't attack a player it has
 	// already attacked this turn" (Bloodthirster, #2171, CR 508.1c). It
@@ -196,6 +203,13 @@ type AttackTargetRestriction struct {
 	// planeswalker or a battle may still be attacked (the 2022 ruling),
 	// so it is not a defending-player clause.
 	PlayerMustHaveActedLastTurn bool `json:",omitempty"`
+	// NotAnAbility marks a restriction that is the effect of a resolved
+	// ability rather than an ability of the creature (CR 611.2a): Chaos
+	// Dragon's "this creature can't attack those players or planeswalkers
+	// they control this combat" (#5897). Its Source may be the creature
+	// itself, yet a later "loses all abilities" (CR 613.1f) does not take
+	// it, so dropSelfAttackTargetRestrictions keeps it.
+	NotAnAbility bool `json:",omitempty"`
 }
 
 // Equal reports whether r and o are the same restriction. A method rather
@@ -213,7 +227,9 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
-		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn
+		samePermanentQueries(r.ControllerMustControl, o.ControllerMustControl) &&
+		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn &&
+		r.NotAnAbility == o.NotAnAbility
 }
 
 // inactiveLastTurnRefuses is the PlayerMustHaveActedLastTurn clause:
@@ -236,7 +252,7 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0
+		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0 || len(r.ControllerMustControl) > 0
 }
 
 // unmetDefenderClauseLocked is the first of r's defending-player clauses
@@ -272,6 +288,9 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 		if yp := g.playerByIDLocked(you); yp == nil || yp.Hand == nil || yp.Hand.Size() < n {
 			return g.playerNameLocked(you) + " has fewer than " + countWord(n) + " cards in hand"
 		}
+	}
+	if qs := r.ControllerMustControl; len(qs) > 0 && !g.controlsMatchingLocked(you, qs) {
+		return g.playerNameLocked(you) + " controls no " + PermanentQueriesNoun(qs)
 	}
 	return ""
 }
@@ -577,14 +596,15 @@ func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
 
 // dropSelfAttackTargetRestrictions removes the restrictions `c` imposes
 // on itself, for a layer-6 "loses all abilities": each is one of its own
-// abilities (CR 613.1f). A restriction another permanent imposes stays.
+// abilities (CR 613.1f). A restriction another permanent imposes stays,
+// and so does one that is a resolved ability's effect (NotAnAbility).
 func dropSelfAttackTargetRestrictions(ch *Characteristic, c *Card) {
 	if len(ch.AttackTargetRestrictions) == 0 {
 		return
 	}
 	kept := ch.AttackTargetRestrictions[:0:0]
 	for _, r := range ch.AttackTargetRestrictions {
-		if r.Source != c.InstanceID {
+		if r.Source != c.InstanceID || r.NotAnAbility {
 			kept = append(kept, r)
 		}
 	}

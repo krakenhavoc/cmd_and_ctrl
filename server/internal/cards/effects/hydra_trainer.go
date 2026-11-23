@@ -34,17 +34,17 @@ func init() {
 			Label:   "{2}{G}: Adapt 2",
 			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{2}{G}"),
-			Effect:  adaptTwo,
+			Effect:  AdaptTwo,
 		}},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenExerted(label, func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
+					id, ok := B16FirstLegalTargetCard(ctx)
 					if !ok {
 						return nil
 					}
-					x := countersOnPermanentsControlledBy(g, item.Controller)
+					x := CountersOnPermanentsControlledBy(g, item.Controller)
 					return BoostUntilEOT{Target: id, Power: x, Toughness: x, Label: label}.Apply(ctx)
 				}),
 				TargetCreature("target creature")),
@@ -54,7 +54,7 @@ func init() {
 
 // countersOnPermanentsControlledBy sums every counter of every kind on
 // the permanents `controller` controls: Hydra Trainer's X.
-func countersOnPermanentsControlledBy(g *game.Game, controller uuid.UUID) int {
+func CountersOnPermanentsControlledBy(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller {
@@ -71,7 +71,7 @@ func countersOnPermanentsControlledBy(g *game.Game, controller uuid.UUID) int {
 
 // adaptTwo is "Adapt 2" (CR 701.46a): if the source has no +1/+1
 // counters on it as the ability resolves, put two on it.
-func adaptTwo(g *game.Game, item *game.StackItem) error {
+func AdaptTwo(g *game.Game, item *game.StackItem) error {
 	src, ok := g.LookupCardForEffect(item.SourceCardID)
 	if !ok || src.Counters[game.CounterPlusOne] > 0 {
 		return nil

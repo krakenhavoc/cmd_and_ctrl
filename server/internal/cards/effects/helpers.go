@@ -15,9 +15,9 @@ import (
 // whole body (Nimrodel Watcher, Merfolk Cave-Diver): both halves land on
 // the source only while it is still the permanent the ability came from
 // (CR 400.7).
-func thisGetsPlusOneZeroAndCantBeBlockedThisTurn(label string) Effect {
+func ThisGetsPlusOneZeroAndCantBeBlockedThisTurn(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !sourceIsStillThisPermanent(g, item) {
+		if !SourceIsStillThisPermanent(g, item) {
 			return nil
 		}
 		ctx := NewContext(g, item)
@@ -33,7 +33,7 @@ func thisGetsPlusOneZeroAndCantBeBlockedThisTurn(label string) Effect {
 // Earth). It re-checks the target against the item's own targets rather
 // than a captured slice, for undo safety, and does nothing for a target
 // that is no longer legal (CR 608.2b).
-func exileTheFirstTargetIfLegal(ctx *Context) error {
+func ExileTheFirstTargetIfLegal(ctx *Context) error {
 	if ctx.Item == nil || len(ctx.Item.Targets) == 0 || !ctx.IsTargetLegal(ctx.Item.Targets[0]) {
 		return nil
 	}
@@ -46,7 +46,7 @@ func exileTheFirstTargetIfLegal(ctx *Context) error {
 // count an optional cost raises (Peerless Recycling's gift, Blood
 // Beckoning's kicker, #1716). A pick that left the graveyard in
 // response is dropped by the CR 608.2b re-check before this runs.
-func returnLegalGraveyardTargetsToHand(ctx *Context) error {
+func ReturnLegalGraveyardTargetsToHand(ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -66,7 +66,7 @@ func returnLegalGraveyardTargetsToHand(ctx *Context) error {
 // would mis-fire a "when ~ dies" ability on a bounce or a Path to
 // Exile. The harvester stamps EventLTB.NewZone at every exit site.
 // Added in S19 sub-PR 4.
-func cardDied(ev game.Event, source *game.Card) bool {
+func CardDied(ev game.Event, source *game.Card) bool {
 	return ev.CardID == source.InstanceID && ev.NewZone == game.ZoneGraveyard
 }
 
@@ -131,8 +131,8 @@ func IsBasicLand(c game.Card) bool {
 // changes what is seen. A target player with no hand zone, or one who
 // has left, is skipped and the draw still happens — the draw is not
 // conditional on the look.
-func lookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
-	lookAtTargetPlayersHand(item, ctx)
+func LookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
+	LookAtTargetPlayersHand(item, ctx)
 	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 }
 
@@ -140,7 +140,7 @@ func lookAtTargetPlayersHandThenDraw(item *game.StackItem, ctx *Context) error {
 // of lookAtTargetPlayersHandThenDraw without the draw, and Glasses of
 // Urza's whole ability. Only the resolving effect's controller learns
 // the hand (see above).
-func lookAtTargetPlayersHand(item *game.StackItem, ctx *Context) {
+func LookAtTargetPlayersHand(item *game.StackItem, ctx *Context) {
 	if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetPlayer {
 		if p := ctx.PlayerByID(item.Targets[0].ID); p != nil && p.Hand != nil {
 			for i := range p.Hand.Cards {
@@ -157,7 +157,7 @@ func lookAtTargetPlayersHand(item *game.StackItem, ctx *Context) {
 // Myr Retriever) that has no clause beyond the return itself. The
 // target's zone is whatever TargetCardInGraveyard already restricted
 // it to; this is only the resolution half.
-func returnTargetedCardToHand(g *game.Game, item *game.StackItem) error {
+func ReturnTargetedCardToHand(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
@@ -198,7 +198,7 @@ func IsBasicLandOfAnySubtype(subtypes ...string) func(game.Card) bool {
 // check for ASCII-only needles. The type lines we feed this come
 // straight from Scryfall and are plain ASCII; if future text goes
 // Unicode the caller should switch to strings.EqualFold + slicing.
-func containsFoldASCII(haystack, needle string) bool {
+func ContainsFoldASCII(haystack, needle string) bool {
 	if len(haystack) < len(needle) {
 		return false
 	}
@@ -230,7 +230,7 @@ func containsFoldASCII(haystack, needle string) bool {
 // Coastal Piracy) gates on this. Added in S19 sub-PR 7.
 //
 // Caller must hold g.mu.
-func combatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
+func CombatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
@@ -257,7 +257,7 @@ func combatDamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) b
 // were dropped from it instead.
 //
 // Caller must hold g.mu.
-func damageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
+func DamageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 {
 		return false
 	}
@@ -282,7 +282,7 @@ func damageToPlayerBy(ev game.Event, controller uuid.UUID, g *game.Game) bool {
 // a count. For every card here that means the same total damage —
 // it only diverges for a card that cares about the batch size in a
 // nonlinear way.
-func artifactEnteredUnderYourControl(ev game.Event, source *game.Card, g *game.Game) bool {
+func IsArtifactEnteredUnderYourControl(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventETB || ev.CardID == source.InstanceID {
 		return false
 	}
@@ -292,7 +292,7 @@ func artifactEnteredUnderYourControl(ev game.Event, source *game.Card, g *game.G
 
 // discardedByYou reports whether ev is a discard by source's
 // controller.
-func discardedByYou(ev game.Event, source *game.Card) bool {
+func DiscardedByYou(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventDiscardCard && ev.Actor == source.Controller
 }
 
@@ -305,8 +305,8 @@ func discardedByYou(ev game.Event, source *game.Card) bool {
 // identity each reads back afterward is b27ExiledWith, keyed on the
 // caller's own (source, label) pair, not on anything this function
 // does.
-func exileFromGraveyardIfStillThere(g *game.Game, item *game.StackItem, cardID uuid.UUID) error {
-	if !discardedCardStillInGraveyard(g, item, cardID) {
+func ExileFromGraveyardIfStillThere(g *game.Game, item *game.StackItem, cardID uuid.UUID) error {
+	if !DiscardedCardStillInGraveyard(g, item, cardID) {
 		return nil
 	}
 	return ExileTarget{Target: cardID}.Apply(NewContext(g, item))
@@ -319,7 +319,7 @@ func exileFromGraveyardIfStillThere(g *game.Game, item *game.StackItem, cardID u
 // that left the graveyard and came back is a new object (CR 400.7), so
 // "exile that card" does nothing to it (#2453). An item with no stamp
 // keeps the plain "is it in a graveyard" answer.
-func discardedCardStillInGraveyard(g *game.Game, item *game.StackItem, cardID uuid.UUID) bool {
+func DiscardedCardStillInGraveyard(g *game.Game, item *game.StackItem, cardID uuid.UUID) bool {
 	if cardID == uuid.Nil {
 		return false
 	}
@@ -338,13 +338,13 @@ func discardedCardStillInGraveyard(g *game.Game, item *game.StackItem, cardID uu
 // is intact.
 // Needles must be lowercase — containsFoldASCII folds the haystack,
 // not the needle.
-func eventCardHasType(ev game.Event, g *game.Game, words ...string) bool {
+func EventCardHasType(ev game.Event, g *game.Game, words ...string) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	if !ok {
 		return false
 	}
 	for _, w := range words {
-		if containsFoldASCII(c.TypeLine, w) {
+		if ContainsFoldASCII(c.TypeLine, w) {
 			return true
 		}
 	}
@@ -354,9 +354,9 @@ func eventCardHasType(ev game.Event, g *game.Game, words ...string) bool {
 // damageEachOpponentThenGainLife is "~ deals N damage to each opponent
 // and you gain N life" as a whole effect (Y'shtola, Night's Blessed;
 // Quintorius Kand).
-func damageEachOpponentThenGainLife(n int) Effect {
+func DamageEachOpponentThenGainLife(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if err := damageToEachOpponent(g, item, n); err != nil {
+		if err := DamageToEachOpponent(g, item, n); err != nil {
 			return err
 		}
 		return GainLife{Player: item.Controller, Amount: n}.Apply(NewContext(g, item))
@@ -366,7 +366,7 @@ func damageEachOpponentThenGainLife(n int) Effect {
 // damageToEachOpponent deals n damage to every opponent of the
 // source's controller. The shared body of the "pings the table"
 // pirates.
-func damageToEachOpponent(g *game.Game, item *game.StackItem, n int) error {
+func DamageToEachOpponent(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
 	return ctx.Game.DamageInstanceForEffect(func() error {
 		for _, opp := range ctx.Opponents() {
@@ -388,16 +388,16 @@ func damageToEachOpponent(g *game.Game, item *game.StackItem, n int) error {
 // that reads the other way round
 // ("discard a card, then ...") puts its second half in
 // DiscardPrompt.Then instead.
-func lootOne(g *game.Game, item *game.StackItem, n int) error {
-	return drawThenDiscard(g, item.Controller, item.SourceCardID, n, n, "")
+func LootOne(g *game.Game, item *game.StackItem, n int) error {
+	return DrawThenDiscard(g, item.Controller, item.SourceCardID, n, n, "")
 }
 
 // drawTwoThenDiscardOne is "draw two cards, then discard a card" as a
 // modal bullet's body — Three Steps Ahead's and Sultai Charm's. The draw
 // is the statement above the queue because the discard prompt is built
 // from the post-draw hand.
-func drawTwoThenDiscardOne(item *game.StackItem, ctx *Context, _ int) error {
-	return drawThenDiscard(ctx.Game, item.Controller, item.SourceCardID, 2, 1, "")
+func DrawTwoThenDiscardOne(item *game.StackItem, ctx *Context, _ int) error {
+	return DrawThenDiscard(ctx.Game, item.Controller, item.SourceCardID, 2, 1, "")
 }
 
 // --- S21 sub-PR 3: aristocrats helpers ---------------------------
@@ -419,12 +419,12 @@ func drawTwoThenDiscardOne(item *game.StackItem, ctx *Context, _ int) error {
 // has stopped applying — a crewed Vehicle is an artifact again, an
 // animated manland a land. So the test is the permanent's type as it
 // last existed, which the exit stamps on the event (leftAsType).
-func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
+func DiedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return game.Card{}, false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !leftAsType(ev, c, "creature") {
+	if !ok || !LeftAsType(ev, c, "creature") {
 		return game.Card{}, false
 	}
 	return c, true
@@ -442,7 +442,7 @@ func diedCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 // creature / an artifact / a land" asks here, never c.IsCreature():
 // the card in the graveyard, hand or exile no longer has the types an
 // effect gave it.
-func leftAsType(ev game.Event, c game.Card, cardType string) bool {
+func LeftAsType(ev game.Event, c game.Card, cardType string) bool {
 	if was, known := ev.WasType(cardType); known {
 		return was
 	}
@@ -463,7 +463,7 @@ func leftAsType(ev game.Event, c game.Card, cardType string) bool {
 // so a creature that was a Zombie only through one reads as whatever
 // it prints — and one an effect STOPPED being a Zombie reads as one
 // again.
-func leftAsSubtype(ev game.Event, c game.Card, subtype string) bool {
+func LeftAsSubtype(ev game.Event, c game.Card, subtype string) bool {
 	if was, known := ev.WasSubtype(subtype); known {
 		return was
 	}
@@ -477,7 +477,7 @@ func leftAsSubtype(ev game.Event, c game.Card, subtype string) bool {
 // Clone that copied a legend was legendary, and is a plain Clone in
 // the graveyard. c is the card as it sits now, consulted only for an
 // event that carries no last-known information.
-func leftAsSupertype(ev game.Event, c game.Card, supertype string) bool {
+func LeftAsSupertype(ev game.Event, c game.Card, supertype string) bool {
 	if was, known := ev.WasSupertype(supertype); known {
 		return was
 	}
@@ -498,7 +498,7 @@ func leftAsSupertype(ev game.Event, c game.Card, supertype string) bool {
 // Zulaport Cutthroat drains and the owner's does not. OWNER clauses —
 // "its owner's graveyard", "under its owner's control", "a creature
 // card you own" — read c.Owner and are not this question.
-func leftUnderControlOf(ev game.Event, c game.Card) uuid.UUID {
+func LeftUnderControlOf(ev game.Event, c game.Card) uuid.UUID {
 	if controller, known := ev.LeftUnderControlOf(); known {
 		return controller
 	}
@@ -519,7 +519,7 @@ func leftUnderControlOf(ev game.Event, c game.Card) uuid.UUID {
 // applies any more, so a creature painted black by Darkest Hour reads
 // as whatever it prints, and one an effect painted another colour
 // still reads as its printed colour.
-func leftAsColor(ev game.Event, c game.Card, color string) bool {
+func LeftAsColor(ev game.Event, c game.Card, color string) bool {
 	if was, known := ev.WasColor(color); known {
 		return was
 	}
@@ -534,7 +534,7 @@ func leftAsColor(ev game.Event, c game.Card, color string) bool {
 // the battlefield and is a plain creature in the graveyard. c is the card as
 // it sits now, consulted only for an event that carries no last-known
 // information.
-func leftWithKeyword(ev game.Event, c game.Card, keyword string) bool {
+func LeftWithKeyword(ev game.Event, c game.Card, keyword string) bool {
 	if was, known := ev.WasKeyword(keyword); known {
 		return was
 	}
@@ -560,7 +560,7 @@ func leftWithKeyword(ev game.Event, c game.Card, keyword string) bool {
 // creature attacks, and a crewed Vehicle that died attacking is an
 // artifact again by the time it is in the graveyard. The event says
 // what it was.
-func diedWhileAttacking(ev game.Event, g *game.Game) (game.Card, bool) {
+func DiedWhileAttacking(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.AttackingTarget == uuid.Nil {
 		return game.Card{}, false
 	}
@@ -570,7 +570,7 @@ func diedWhileAttacking(ev game.Event, g *game.Game) (game.Card, bool) {
 // diedWhileBlocking is diedWhileAttacking for a creature that was
 // BLOCKING as it died — "whenever a blocking creature dies" (Death
 // Tyrant). Event.BlockingTarget names the attacker it was blocking.
-func diedWhileBlocking(ev game.Event, g *game.Game) (game.Card, bool) {
+func DiedWhileBlocking(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.BlockingTarget == uuid.Nil {
 		return game.Card{}, false
 	}
@@ -599,7 +599,7 @@ func IsToken(c game.Card) bool {
 // Titan) is ONE ability with two trigger conditions, and the shared
 // field lets it watch both kinds with the bare
 // `ev.CardID == source.InstanceID` rather than a kind switch.
-func attackDeclared(ev game.Event, source *game.Card) bool {
+func AttackDeclared(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventAttack && ev.CardID == source.InstanceID
 }
 
@@ -612,7 +612,7 @@ func attackDeclared(ev game.Event, source *game.Card) bool {
 // the creature that attacked: the printed text is "a creature you
 // control", not "another". A card that wants the "another" reading
 // adds `ev.CardID != source.InstanceID`.
-func attackDeclaredByYou(ev game.Event, controller uuid.UUID) bool {
+func AttackDeclaredByYou(ev game.Event, controller uuid.UUID) bool {
 	return ev.Kind == game.EventAttack && ev.Actor == controller
 }
 
@@ -661,7 +661,7 @@ func IsLandWithSubtype(subtype string) func(game.Card) bool {
 // noted on the card).
 func IsBasicLandExcept(subtype string) func(game.Card) bool {
 	return func(c game.Card) bool {
-		return IsBasicLand(c) && !containsFoldASCII(c.TypeLine, subtype)
+		return IsBasicLand(c) && !ContainsFoldASCII(c.TypeLine, subtype)
 	}
 }
 
@@ -693,7 +693,7 @@ func IsLandWithAnySubtype(subtypes ...string) func(game.Card) bool {
 // battlefield between announce and resolution — the caller has
 // already destroyed nothing in that case, so it just skips the
 // rider rather than guessing whose token it is.
-func controllerOfTarget(ctx *Context, target uuid.UUID) (uuid.UUID, bool) {
+func ControllerOfTarget(ctx *Context, target uuid.UUID) (uuid.UUID, bool) {
 	c, ok := ctx.Game.LookupCardForEffect(target)
 	if !ok {
 		return uuid.Nil, false
@@ -703,7 +703,7 @@ func controllerOfTarget(ctx *Context, target uuid.UUID) (uuid.UUID, bool) {
 
 // --- shared effect bodies (folded by #583) -------------------------
 
-func returnTargetCardToHand(g *game.Game, item *game.StackItem) error {
+func ReturnTargetCardToHand(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
@@ -714,14 +714,14 @@ func returnTargetCardToHand(g *game.Game, item *game.StackItem) error {
 // its owner's library" as a spell's whole effect — Submerge, Set
 // Adrift. The tuck is the last instruction, so the fire-and-forget
 // form is right: nothing reads where the card went.
-func putTargetOnTopOfOwnersLibrary(item *game.StackItem, ctx *Context) error {
+func PutTargetOnTopOfOwnersLibrary(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
 	return ctx.Game.TuckToLibraryForEffect(item.Targets[0].ID, false)
 }
 
-func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
+func DestroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
@@ -732,7 +732,7 @@ func destroyChosenPermanent(g *game.Game, item *game.StackItem) error {
 // any target" — Goblin Sharpshooter's own ping and the ping Thornbite
 // Staff GRANTS (ADR 0093), where the source is the equipped host. The
 // ability's source deals 1 damage to the first chosen target.
-func sourceDealsOneToFirstTarget(g *game.Game, item *game.StackItem) error {
+func SourceDealsOneToFirstTarget(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 {
 		return nil
 	}
@@ -746,7 +746,7 @@ func sourceDealsOneToFirstTarget(g *game.Game, item *game.StackItem) error {
 // activation whose target could leave the battlefield in response.
 // Hopeful Initiate's and Staff of Compleation's destroy activations
 // share this exact shape.
-func destroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
+func DestroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, ref := range ctx.LegalTargets() {
 		if ref.Kind == game.TargetCard {
@@ -760,7 +760,7 @@ func destroyFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
 // for "Exile target [permanent]." — the first card target still legal
 // at resolution (CR 608.2b) is exiled, and nothing happens when none
 // is. Teysa, Orzhov Scion's and Hanged Executioner's activations.
-func exileFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
+func ExileFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, ref := range ctx.LegalTargets() {
 		if ref.Kind == game.TargetCard {
@@ -774,7 +774,7 @@ func exileFirstLegalCardTarget(g *game.Game, item *game.StackItem) error {
 // you gain n life" for a trigger whose target clause is a player. A
 // target that is no longer legal is skipped, and the gain happens only
 // when a target was drained. Vein Ripper.
-func targetOpponentLosesAndYouGain(g *game.Game, item *game.StackItem, n int) error {
+func TargetOpponentLosesAndYouGain(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
@@ -793,7 +793,7 @@ func targetOpponentLosesAndYouGain(g *game.Game, item *game.StackItem, n int) er
 // to <zone>" ability to `dest`, under its owner's control. A target
 // that left the graveyard in response is skipped (CR 608.2b). The two
 // named forms below are what a card's Effect slot takes.
-func returnFirstLegalGraveyardTarget(g *game.Game, item *game.StackItem, dest game.ZoneKind) error {
+func ReturnFirstLegalGraveyardTarget(g *game.Game, item *game.StackItem, dest game.ZoneKind) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -805,21 +805,21 @@ func returnFirstLegalGraveyardTarget(g *game.Game, item *game.StackItem, dest ga
 
 // returnFirstLegalGraveyardTargetToHand is "return target … card from
 // your graveyard to your hand" — Codex Shredder, Samwise Gamgee.
-func returnFirstLegalGraveyardTargetToHand(g *game.Game, item *game.StackItem) error {
-	return returnFirstLegalGraveyardTarget(g, item, game.ZoneHand)
+func ReturnFirstLegalGraveyardTargetToHand(g *game.Game, item *game.StackItem) error {
+	return ReturnFirstLegalGraveyardTarget(g, item, game.ZoneHand)
 }
 
 // returnFirstLegalGraveyardTargetToBattlefield is "return target …
 // card from your graveyard to the battlefield" — Cauldron of Essence,
 // Whisper, Blood Liturgist.
-func returnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.StackItem) error {
-	return returnFirstLegalGraveyardTarget(g, item, game.ZoneBattlefield)
+func ReturnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.StackItem) error {
+	return ReturnFirstLegalGraveyardTarget(g, item, game.ZoneBattlefield)
 }
 
 // returnFirstLegalGraveyardTargetToBattlefieldTapped is "return target …
 // card from your graveyard to the battlefield tapped" — Ratchet, Field
 // Medic's and Terra, Herald of Hope's reflexive bodies.
-func returnFirstLegalGraveyardTargetToBattlefieldTapped(g *game.Game, item *game.StackItem) error {
+func ReturnFirstLegalGraveyardTargetToBattlefieldTapped(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -833,7 +833,7 @@ func returnFirstLegalGraveyardTargetToBattlefieldTapped(g *game.Game, item *game
 // from a graveyard onto the battlefield under your control" — Captain
 // N'ghathrod's end step, Ruthless Technomancer's return: the card enters
 // under the item's controller, whoever owns it.
-func returnFirstLegalGraveyardTargetUnderYourControl(g *game.Game, item *game.StackItem) error {
+func ReturnFirstLegalGraveyardTargetUnderYourControl(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -846,7 +846,7 @@ func returnFirstLegalGraveyardTargetUnderYourControl(g *game.Game, item *game.St
 // exileEveryLegalCardTarget is "exile up to N target permanents": each
 // card target still legal as the ability resolves is exiled (CR 608.2b)
 // — Karn Liberated's −3 and Angel of the Ruins.
-func exileEveryLegalCardTarget(g *game.Game, item *game.StackItem) error {
+func ExileEveryLegalCardTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -870,7 +870,7 @@ func exileEveryLegalCardTarget(g *game.Game, item *game.StackItem) error {
 // The name keeps the spell in it because the clause is what differs
 // between the two families and the body is not — see Disallow,
 // Voidslime, Stifle and Tale's End, which all call this.
-func counterTheTargetSpell(item *game.StackItem, ctx *Context) error {
+func CounterTheTargetSpell(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 {
 		return nil
 	}
@@ -882,7 +882,7 @@ func counterTheTargetSpell(item *game.StackItem, ctx *Context) error {
 // Distortion's. The first target still legal as the ability resolves
 // (CR 608.2b) is countered; counterTheTargetSpell is the same body for
 // a spell's OnResolve, which is handed the item instead.
-func counterTheChosenSpell(g *game.Game, item *game.StackItem) error {
+func CounterTheChosenSpell(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		return CounterTarget{StackID: t.ID}.Apply(ctx)
@@ -892,7 +892,7 @@ func counterTheChosenSpell(g *game.Game, item *game.StackItem) error {
 
 // destroyTheTargetPermanent is the whole OnResolve of "Destroy target
 // [permanent]." — Bedevil's body, named for the same reason.
-func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
+func DestroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
@@ -904,7 +904,7 @@ func destroyTheTargetPermanent(item *game.StackItem, ctx *Context) error {
 // fourth ability and Ring of the Lucii's second. Named because two
 // cards shipping the same six lines is one helper waiting to exist
 // (#583).
-func tapChosenPermanent(g *game.Game, item *game.StackItem) error {
+func TapChosenPermanent(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
@@ -921,9 +921,9 @@ func tapChosenPermanent(g *game.Game, item *game.StackItem) error {
 // resolves is a no-op (CR 701.19b), which the primitive handles;
 // reading the target through LegalTargets is what makes an ability
 // whose ONLY target is gone fizzle properly instead.
-func regenerateTheTargetPermanent(g *game.Game, item *game.StackItem) error {
+func RegenerateTheTargetPermanent(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -940,7 +940,7 @@ func regenerateTheTargetPermanent(g *game.Game, item *game.StackItem) error {
 // It exists because #667 made the rider real: the three bodies were
 // already identical and became a new clone family the moment they all
 // grew the same extra field. One helper, three callers.
-func destroyTheTargetPermanentNoRegen(item *game.StackItem, ctx *Context) error {
+func DestroyTheTargetPermanentNoRegen(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
@@ -952,7 +952,7 @@ func destroyTheTargetPermanentNoRegen(item *game.StackItem, ctx *Context) error 
 // Narcomoeba's arrival (#925). The card is its own payload, so it
 // reads the ID off item.SourceCardID rather than out of a closure,
 // which is what lets both cards share one package-level func.
-func returnThisCardFromYourGraveyard(g *game.Game, item *game.StackItem) error {
+func ReturnThisCardFromYourGraveyard(g *game.Game, item *game.StackItem) error {
 	// CR 400.7: a card that has left the graveyard since the ability
 	// triggered — a second Bloodghast landfall after the first already
 	// returned it — is a new object, and the ability does nothing. The
@@ -976,7 +976,7 @@ func returnThisCardFromYourGraveyard(g *game.Game, item *game.StackItem) error {
 // empty (CR 608.2b — every target became illegal, so the spell was
 // countered by game rules before it got here; the guard is belt and
 // braces).
-func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) error {
+func DamageToFirstTargetStep(amount int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 {
 			return nil
@@ -1025,7 +1025,7 @@ func damageToFirstTarget(amount int) func(item *game.StackItem, ctx *Context) er
 // no-op on a card that has gone, and the two cards that read that
 // check place a keyword counter on a source that must still be there.
 // Keep them separate rather than merging them into one flagged helper.
-func plusOneCountersOnThis(n int) Effect {
+func PlusOneCountersOnThis(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return AddCounter{
 			Target: item.SourceCardID,
@@ -1040,8 +1040,8 @@ func plusOneCountersOnThis(n int) Effect {
 // source (Gwenna, Eyes of Gaea's untap, Pacesetter Paragon's double
 // strike): nothing happens if the source has left or come back as a new
 // object (CR 400.7).
-func plusOneCounterOnThisIfStillHere(ctx *Context) error {
-	if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+func PlusOneCounterOnThisIfStillHere(ctx *Context) error {
+	if !SourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 		return nil
 	}
 	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
@@ -1051,8 +1051,8 @@ func plusOneCounterOnThisIfStillHere(ctx *Context) error {
 // (Vastwood Fortification, Ingenious Leonin's first sentence): one counter
 // through the counter pipeline on the first still-legal target card, and
 // nothing for a target that is gone (CR 608.2b).
-func plusOneCounterOnTheTarget(ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func PutPlusOneCounterOnTheTarget(ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -1062,7 +1062,7 @@ func plusOneCounterOnTheTarget(ctx *Context) error {
 // tapTargetAndStunIt is "Tap target creature. Put a stun counter on it."
 // (Cryotheory Adept, Loch Mare): the first legal target is tapped and
 // gets one stun counter; a target gone by resolution gets nothing.
-func tapTargetAndStunIt(g *game.Game, item *game.StackItem) error {
+func TapTargetAndStunIt(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
@@ -1074,9 +1074,9 @@ func tapTargetAndStunIt(g *game.Game, item *game.StackItem) error {
 	return AddCounter{Target: ts[0].ID, Kind: game.CounterStun, N: 1}.Apply(ctx)
 }
 
-func putIndestructibleCounterOnSource() Effect {
+func PutIndestructibleCounterOnSource() Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !b15OnBattlefield(g, item.SourceCardID) {
+		if !B15OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
 		return AddCounter{Target: item.SourceCardID, Kind: game.CounterIndestructible, N: 1}.
@@ -1120,7 +1120,7 @@ func EachLandIsAlso(subtype string) game.StaticAbility {
 // battlefield loop.
 //
 // Caller must hold g.mu — it is an effect-time read.
-func permanentsControlledByMatching(g *game.Game, playerID uuid.UUID, pred CardPredicate) []uuid.UUID {
+func PermanentsControlledByMatching(g *game.Game, playerID uuid.UUID, pred CardPredicate) []uuid.UUID {
 	if g == nil || playerID == uuid.Nil {
 		return nil
 	}
@@ -1143,7 +1143,7 @@ func permanentsControlledByMatching(g *game.Game, playerID uuid.UUID, pred CardP
 // is on the stack (#788).
 //
 // Caller must hold g.mu.
-func spellManaValueForEffect(g *game.Game, cardID uuid.UUID) int {
+func SpellManaValueForEffect(g *game.Game, cardID uuid.UUID) int {
 	c, ok := g.LookupCardForEffect(cardID)
 	if !ok {
 		return 0
@@ -1157,7 +1157,7 @@ func spellManaValueForEffect(g *game.Game, cardID uuid.UUID) int {
 // read for every single-player-target card: a target that became
 // illegal in response is skipped, and a card whose only target is
 // gone does nothing rather than erroring.
-func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
+func FirstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
 			return t.ID, true
@@ -1170,11 +1170,11 @@ func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 // card" (Flumph, Teyo, Geometric Tactician): your draw, then the
 // still-legal target's, as one Do so the second waits for any prompt
 // the first asks (CR 608.2c, #4155).
-func youAndTargetOpponentEachDraw() Effect {
+func YouAndTargetOpponentEachDraw() Effect {
 	return Do(
 		DrawCards{N: 1},
 		Instruction(func(ctx *Context) error {
-			if p, ok := firstLegalPlayerTarget(ctx); ok {
+			if p, ok := FirstLegalPlayerTarget(ctx); ok {
 				return DrawCards{Player: p, N: 1}.Apply(ctx)
 			}
 			return nil
@@ -1196,7 +1196,7 @@ func youAndTargetOpponentEachDraw() Effect {
 // It does NOT touch power and toughness. A characteristic with no
 // Creature type has no P/T that anything reads, and layer 7 runs
 // after layer 4 in any case.
-func notACreature(c *game.Characteristic) {
+func NotACreature(c *game.Characteristic) {
 	kept := make([]string, 0, len(c.Types))
 	for _, t := range c.Types {
 		if t != "Creature" {
@@ -1249,7 +1249,7 @@ func EnteringPermanentChooser(ev *game.ReplacementEvent, _ *game.Game, src *game
 // the ability resolves doing nothing, which is the printed outcome.
 // Named in #1213, where the third and fourth copies would have been
 // written.
-func untapTheTarget(g *game.Game, item *game.StackItem) error {
+func UntapTheTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
@@ -1267,10 +1267,10 @@ func untapTheTarget(g *game.Game, item *game.StackItem) error {
 // Down, which is the same loop over one slot. A permanent chosen for two
 // of the spell's "target" words (CR 115.3, Urgent Necropsy's artifact
 // creature) is destroyed once.
-func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
+func DestroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard || ctx.isNewSourceObject(t.ID) || slices.Contains(ids, t.ID) {
+		if t.Kind != game.TargetCard || ctx.IsNewSourceObject(t.ID) || slices.Contains(ids, t.ID) {
 			continue
 		}
 		ids = append(ids, t.ID)
@@ -1290,7 +1290,7 @@ func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
 // counter on each of X target creatures") and Rishkar, Peema Renegade
 // ("put a +1/+1 counter on each of up to two target creatures") — the
 // same loop as destroyEachLegalTarget, one primitive over.
-func putPlusOneCounterOnEachLegalTarget(g *game.Game, item *game.StackItem) error {
+func PutPlusOneCounterOnEachLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -1307,7 +1307,7 @@ func putPlusOneCounterOnEachLegalTarget(g *game.Game, item *game.StackItem) erro
 // target creature [you control]": the bullet's still-legal target gets two
 // counters (CR 608.2b). Shared by Apothecary Stomper's first mode and Trash
 // the Town's first Spree bullet.
-func twoPlusOneCountersOnModeTarget(_ *game.StackItem, ctx *Context, occ int) error {
+func TwoPlusOneCountersOnModeTarget(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetCard {
 		return nil
@@ -1322,7 +1322,7 @@ func twoPlusOneCountersOnModeTarget(_ *game.StackItem, ctx *Context, occ int) er
 // #1291). Named here because both cards' AppliesTo bodies were
 // byte-identical and the clone gate found the third growing copy
 // before it could land.
-func plusOneCounterPlacementOnYourCreature(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+func PlusOneCounterPlacementOnYourCreature(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if ev.Kind != game.RepEventCounter {
 		return false
 	}
@@ -1346,7 +1346,7 @@ func plusOneCounterPlacementOnYourCreature(ev *game.ReplacementEvent, g *game.Ga
 // resolution-time sacrifice pick: `player` draws one card for each
 // permanent chosen, and nothing when none was. God-Eternal Bontu's and
 // Sephiroth's shared Then (the clone gate found the second copy).
-func drawOnePerPicked(player uuid.UUID) func(ctx *Context, picked game.PromptedPicks) error {
+func DrawOnePerPicked(player uuid.UUID) func(ctx *Context, picked game.PromptedPicks) error {
 	return func(ctx *Context, picked game.PromptedPicks) error {
 		n := picked.Count()
 		if n == 0 {
@@ -1362,7 +1362,7 @@ func drawOnePerPicked(player uuid.UUID) func(ctx *Context, picked game.PromptedP
 // left the game has already countered the ability (CR 608.2b), so
 // nothing happens. Shared by Vengeful Bloodwitch, Sephiroth, Fabled
 // SOLDIER and Sephiroth's Super Nova emblem.
-func drainTargetOpponentOne(g *game.Game, item *game.StackItem) error {
+func DrainTargetOpponentOne(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
@@ -1383,7 +1383,7 @@ func drainTargetOpponentOne(g *game.Game, item *game.StackItem) error {
 // rather than captured, so a table with this trigger waiting on the
 // stack is a restore point. A drawer who has since left the game
 // takes no damage.
-func dealOneDamageToPlayerWhoDrew(g *game.Game, item *game.StackItem) error {
+func DealOneDamageToPlayerWhoDrew(g *game.Game, item *game.StackItem) error {
 	drawer := item.Trigger.Event.Actor
 	if g.PlayerByIDForEffect(drawer) == nil {
 		return nil
@@ -1397,7 +1397,7 @@ func dealOneDamageToPlayerWhoDrew(g *game.Game, item *game.StackItem) error {
 // Wrathful Raptors. The damaged permanent and the amount are read off
 // the item's triggering event (item.Trigger.Event, ADR 0041 P9)
 // rather than captured.
-func damagedCreatureReflectsChosenAmount(g *game.Game, item *game.StackItem) error {
+func DamagedCreatureReflectsChosenAmount(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 {
 		return nil
 	}
@@ -1410,7 +1410,7 @@ func damagedCreatureReflectsChosenAmount(g *game.Game, item *game.StackItem) err
 // creature's controller, read off the trigger's last-known object
 // (item.Trigger.Object, ADR 0041 P9), loses the life, and a departed
 // player is asked nothing.
-func thatPlayerLosesOneLife(g *game.Game, item *game.StackItem) error {
+func ThatPlayerLosesOneLife(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil || item.Trigger.Object == nil {
 		return nil
 	}
@@ -1426,8 +1426,8 @@ func thatPlayerLosesOneLife(g *game.Game, item *game.StackItem) error {
 // target still legal at resolution (CR 608.2b). Niv-Mizzet, the
 // Firemind's draw trigger and Balduvian Trading Post's "1 damage to
 // target attacking creature" share it.
-func sourceDealsDamageToEachLegalTarget(amount int) func(g *game.Game, item *game.StackItem) error {
-	return sourceDealsComputedDamageToEachLegalTarget(func(*Context) int { return amount })
+func SourceDealsDamageToEachLegalTarget(amount int) func(g *game.Game, item *game.StackItem) error {
+	return SourceDealsComputedDamageToEachLegalTarget(func(*Context) int { return amount })
 }
 
 // sourceDealsComputedDamageToEachLegalTarget is
@@ -1435,7 +1435,7 @@ func sourceDealsDamageToEachLegalTarget(amount int) func(g *game.Game, item *gam
 // ("damage equal to 2 plus the sacrificed permanent's mana value" —
 // Broadside Bombardiers). The amount is read once, before any damage is
 // dealt.
-func sourceDealsComputedDamageToEachLegalTarget(amount func(ctx *Context) int) func(g *game.Game, item *game.StackItem) error {
+func SourceDealsComputedDamageToEachLegalTarget(amount func(ctx *Context) int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		n := amount(ctx)
@@ -1453,8 +1453,8 @@ func sourceDealsComputedDamageToEachLegalTarget(amount func(ctx *Context) int) f
 // bounceTheTarget is the OnResolve "Return target <permanent> to its
 // owner's hand" as a spell's whole effect (Void Squall): the first
 // target still legal as it resolves (CR 608.2b).
-func bounceTheTarget(_ *game.StackItem, ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func BounceTheTarget(_ *game.StackItem, ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -1466,8 +1466,8 @@ func bounceTheTarget(_ *game.StackItem, ctx *Context) error {
 // control" (Momentary Blink, Ephemerate): the creature comes back as a
 // new object (CR 400.7) under its OWNER's control, which is the
 // difference from Cloudshift's "under your control".
-func flickerTheTargetToItsOwner(_ *game.StackItem, ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func FlickerTheTargetToItsOwner(_ *game.StackItem, ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -1479,7 +1479,7 @@ func flickerTheTargetToItsOwner(_ *game.StackItem, ctx *Context) error {
 // 514.2). A target that became illegal never gets here (CR 608.2b: a
 // spell whose only target is illegal is countered by the game rules).
 // Artful Maneuver and Prey's Vengeance print it.
-func boostTheTargetUntilEOT(power, toughness int, label string) func(item *game.StackItem, ctx *Context) error {
+func BoostTheTargetUntilEOT(power, toughness int, label string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 			return nil
@@ -1492,7 +1492,7 @@ func boostTheTargetUntilEOT(power, toughness int, label string) func(item *game.
 // creature gets +P/+0 until end of turn and can't be blocked this
 // turn" (Distortion Strike, Taigam's Strike): the pump and the
 // restriction, both ending at cleanup.
-func boostTheTargetAndUnblockableThisTurn(power int, name string) func(item *game.StackItem, ctx *Context) error {
+func BoostTheTargetAndUnblockableThisTurn(power int, name string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 			return nil
@@ -1511,7 +1511,7 @@ func boostTheTargetAndUnblockableThisTurn(power int, name string) func(item *gam
 // chosen as the spell resolves, and asked as the colour the creature is
 // protected FROM (#780), so a bot names the biggest threat. A target
 // that left in response is asked nothing.
-func protectionFromAChosenColorForTheTarget(name string) func(item *game.StackItem, ctx *Context) error {
+func ProtectionFromAChosenColorForTheTarget(name string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		var target game.TargetRef
 		for _, t := range ctx.LegalTargets() {
@@ -1522,7 +1522,7 @@ func protectionFromAChosenColorForTheTarget(name string) func(item *game.StackIt
 		if target.Kind != game.TargetCard {
 			return nil
 		}
-		chooseProtectionColorFor(ctx, item.Controller, target.ID, name, name+" — choose a color")
+		ChooseProtectionColorFor(ctx, item.Controller, target.ID, name, name+" — choose a color")
 		return nil
 	}
 }
@@ -1530,7 +1530,7 @@ func protectionFromAChosenColorForTheTarget(name string) func(item *game.StackIt
 // tapTheFirstLegalTarget is "Tap target <permanent>" as an ability's
 // whole effect: the first target still legal as it resolves (CR
 // 608.2b). Citadel Siege's Dragons mode and Storm Elemental share it.
-func tapTheFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func TapTheFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		return TapTarget{Target: t.ID}.Apply(ctx)
@@ -1543,8 +1543,8 @@ func tapTheFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 // the object the ability came from (CR 400.7): one that left and came
 // back in response is a new object and stays where it is. Quicksilver
 // Wall and Leashling share it.
-func returnThisPermanentToOwnersHand(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+func ReturnThisPermanentToOwnersHand(g *game.Game, item *game.StackItem) error {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
@@ -1556,7 +1556,7 @@ func returnThisPermanentToOwnersHand(g *game.Game, item *game.StackItem) error {
 // hand" from the graveyard it died into. The card may have left the
 // graveyard before the ability resolves; then it does nothing, since
 // the card it names is gone.
-func returnThisCardFromYourGraveyardToHand(g *game.Game, item *game.StackItem) error {
+func ReturnThisCardFromYourGraveyardToHand(g *game.Game, item *game.StackItem) error {
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
 	}
@@ -1569,7 +1569,7 @@ func returnThisCardFromYourGraveyardToHand(g *game.Game, item *game.StackItem) e
 // on resolution. A spell that is no longer on the stack answers "known
 // nothing", but CounterTarget on a missing item is already a no-op, so
 // the re-read is the honest check and not the guard.
-func counterTheSpellIfNoManaWasSpent(g *game.Game, item *game.StackItem) error {
+func CounterTheSpellIfNoManaWasSpent(g *game.Game, item *game.StackItem) error {
 	spell := item.Trigger.Event.CardID
 	if !NoManaWasSpentToCast(g, spell) {
 		return nil
@@ -1581,8 +1581,8 @@ func counterTheSpellIfNoManaWasSpent(g *game.Game, item *game.StackItem) error {
 // as a trigger body (Door of Destinies, Black Market). A source that
 // left and came back in response is a new object, so the counter goes
 // nowhere (#1432).
-func putChargeCounterOnThis(g *game.Game, item *game.StackItem) error {
-	if sourceIsNewObject(g, item) { // #1432
+func PutChargeCounterOnThis(g *game.Game, item *game.StackItem) error {
+	if SourceIsNewObject(g, item) { // #1432
 		return nil
 	}
 	return g.AddCounterForEffect(item.SourceCardID, "charge", 1)
@@ -1591,10 +1591,10 @@ func putChargeCounterOnThis(g *game.Game, item *game.StackItem) error {
 // millHalfOfTargetPlayer is "target player mills half their library,
 // rounded down" as an OnResolve: Traumatize, Overture. A target that
 // left the game in response makes the spell do nothing.
-func millHalfOfTargetPlayer(_ *game.StackItem, ctx *Context) error {
+func MillHalfOfTargetPlayer(_ *game.StackItem, ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
-			return b22MillHalf(ctx, t.ID)
+			return B22MillHalf(ctx, t.ID)
 		}
 	}
 	return nil
@@ -1604,10 +1604,10 @@ func millHalfOfTargetPlayer(_ *game.StackItem, ctx *Context) error {
 // the player the item targets, if still legal as it resolves (CR 608.2b),
 // mills N through the mill primitive. Scrabbling Skullcrab and Desperate
 // Bloodseeker share it.
-func targetPlayerMills(n int) Effect {
+func TargetPlayerMillsEffect(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		p := targetedPlayerOf(ctx)
+		p := TargetedPlayerOf(ctx)
 		if p == uuid.Nil {
 			return nil
 		}
@@ -1620,7 +1620,7 @@ func targetPlayerMills(n int) Effect {
 // controller chose from the item and puts one counter on each that is
 // still a legal target as it resolves (CR 608.2b). Ivy Lane Denizen and
 // Sunrise Cavalier are the same body behind different conditions.
-func plusOneCounterOnChosenTargets(g *game.Game, item *game.StackItem) error {
+func PlusOneCounterOnChosenTargets(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
@@ -1636,7 +1636,7 @@ func plusOneCounterOnChosenTargets(g *game.Game, item *game.StackItem) error {
 // is the spell). The life is lost in the search's continuation, after
 // the card is in hand, and whether or not a card was taken: it is not a
 // cost.
-func searchForACardThenLoseLife(item *game.StackItem, ctx *Context, reason string, life int) error {
+func SearchForACardThenLoseLife(item *game.StackItem, ctx *Context, reason string, life int) error {
 	source, controller := item.SourceCardID, item.Controller
 	return SearchLibrary{
 		Player:   controller,
@@ -1644,7 +1644,7 @@ func searchForACardThenLoseLife(item *game.StackItem, ctx *Context, reason strin
 		Limit:    1,
 		Shuffle:  true,
 		Reason:   reason,
-		ThenTail: game.KeyedTail{Ref: thenChangeLife, Player: controller, Source: source, N: -life},
+		ThenTail: game.KeyedTail{Ref: ThenChangeLife, Player: controller, Source: source, N: -life},
 	}.Apply(ctx)
 }
 
@@ -1653,17 +1653,17 @@ func searchForACardThenLoseLife(item *game.StackItem, ctx *Context, reason strin
 // damage instance, every creature on the battlefield and then each
 // opponent still in the game, in seat order. The controller is not
 // dealt any — Pyrohemia's "each player" is the sibling that is.
-func damageEachCreatureAndEachOpponent(ctx *Context, n int) error {
-	return damageEachMatchingAndEachOpponent(ctx, Creature(), n)
+func DamageEachCreatureAndEachOpponent(ctx *Context, n int) error {
+	return DamageEachMatchingAndEachOpponent(ctx, Creature(), n)
 }
 
 // damageEachMatchingAndEachOpponent is damageEachCreatureAndEachOpponent
 // for a narrower creature set: "N damage to each non-Villain creature and
 // each opponent" (Avengers: Under Siege's chapter II).
-func damageEachMatchingAndEachOpponent(ctx *Context, match CardPredicate, n int) error {
+func DamageEachMatchingAndEachOpponent(ctx *Context, match CardPredicate, n int) error {
 	controller := ctx.Controller()
 	return ctx.Game.DamageInstanceForEffect(func() error {
-		if err := damageEachMatching(ctx, match, n); err != nil {
+		if err := DamageEachMatching(ctx, match, n); err != nil {
 			return err
 		}
 		for _, p := range ctx.Game.Seats {
@@ -1699,7 +1699,7 @@ func PlusOneCounterOnChosenTarget(g *game.Game, item *game.StackItem) error {
 // resolution goes to its owner's hand (CR 608.2b), a target that has gone
 // is skipped, and none chosen is not an error. Nightscape Battlemage's
 // kicker and Getaway Car share it.
-func bounceEachLegalTarget(g *game.Game, item *game.StackItem) error {
+func BounceEachLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
@@ -1741,7 +1741,7 @@ func PlusOneCounterOnTheTarget(g *game.Game, item *game.StackItem) error {
 // eachOpponentSacrificesACreature is "each opponent sacrifices a creature
 // of their choice": every other player chooses and sacrifices their own
 // (Ultimo, Civilization's End; Origin of Black Widow's chapter I).
-func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
+func EachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
 	return EachPlayerSacrifices{
 		ExceptController: true,
 		Match:            Creature(),
@@ -1753,13 +1753,13 @@ func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
 // creature card from your graveyard to the battlefield with a +1/+1 counter
 // on it" (Generous Revival, Prison Break). The counter is a CR 614.1c
 // "enters with".
-func returnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) error {
+func ReturnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) error {
 	return returnTargetCreatureWithPlusOneCounters(ctx, 1)
 }
 
 // returnTargetCreatureWithTwoPlusOneCounters is the same OnResolve with
 // "two additional +1/+1 counters on it" (Evil Reawakened).
-func returnTargetCreatureWithTwoPlusOneCounters(_ *game.StackItem, ctx *Context) error {
+func ReturnTargetCreatureWithTwoPlusOneCounters(_ *game.StackItem, ctx *Context) error {
 	return returnTargetCreatureWithPlusOneCounters(ctx, 2)
 }
 
@@ -1783,16 +1783,16 @@ func returnTargetCreatureWithPlusOneCounters(ctx *Context, n int) error {
 // "return target creature to its owner's hand" (or "up to one") for the first
 // target still legal as it resolves (Chulane, Teller of Tales; Spider-Man
 // 2099, Miguel O'Hara).
-func bounceTheTargetToHand(g *game.Game, item *game.StackItem) error {
-	return bounceTheTarget(item, NewContext(g, item))
+func BounceTheTargetToHand(g *game.Game, item *game.StackItem) error {
+	return BounceTheTarget(item, NewContext(g, item))
 }
 
 // conniveFirstLegalTarget is "target creature you control connives": the
 // announced creature, if still legal, connives (Mob Lookout, Scorpion,
 // Seething Striker).
-func conniveFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func ConniveFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -1804,18 +1804,18 @@ func conniveFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 // Bounce, Johann's Stopgap): the bounce, then the draw as a keyed tail
 // that waits behind it, so a replacement or an order prompt on the
 // return is answered before the card is drawn.
-func bounceTheTargetThenDraw(item *game.StackItem, ctx *Context) error {
+func BounceTheTargetThenDraw(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
-	return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
+	return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(ThenDrawCards, 1)}.Apply(ctx)
 }
 
 // bounceTheTargetThenDrawIfKicked is "Return target nonland permanent to
 // its owner's hand. If this spell was kicked, draw a card." as a spell's
 // whole OnResolve (Whoosh!, Into the Roil): bounceTheTargetThenDraw's
 // keyed draw, for one card when the kicker was paid and none otherwise.
-func bounceTheTargetThenDrawIfKicked(item *game.StackItem, ctx *Context) error {
+func BounceTheTargetThenDrawIfKicked(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
@@ -1823,7 +1823,7 @@ func bounceTheTargetThenDrawIfKicked(item *game.StackItem, ctx *Context) error {
 	if ctx.WasKicked() {
 		draws = 1
 	}
-	return BounceToHand{Target: item.Targets[0].ID, ThenTail: withN(ctx.Tail(thenDrawCards), draws)}.Apply(ctx)
+	return BounceToHand{Target: item.Targets[0].ID, ThenTail: WithN(ctx.Tail(ThenDrawCards), draws)}.Apply(ctx)
 }
 
 // sacrificedSourceDealsItsPowerToTheTarget is "Sacrifice this creature:
@@ -1833,7 +1833,7 @@ func bounceTheTargetThenDrawIfKicked(item *game.StackItem, ctx *Context) error {
 // it last existed on the battlefield (CR 113.7a, ctx.SourcePermanent), and
 // it is still the damage's source. Nothing is dealt for a power of 0 or
 // less, or when the target is no longer legal (CR 608.2b).
-func sacrificedSourceDealsItsPowerToTheTarget(g *game.Game, item *game.StackItem) error {
+func SacrificedSourceDealsItsPowerToTheTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	info, ok := ctx.SourcePermanent()
 	legal := ctx.LegalTargets()
@@ -1847,8 +1847,8 @@ func sacrificedSourceDealsItsPowerToTheTarget(g *game.Game, item *game.StackItem
 // id, where X is its power as the effect applies, with the layers applied
 // (CR 608.2h). A permanent that has left the battlefield, or whose power
 // is 0 or less, gets nothing (Railway Brawler, Heroes' Bane).
-func plusOneCountersEqualToItsPower(g *game.Game, item *game.StackItem, id uuid.UUID) error {
-	if !onBattlefield(g, id) {
+func PlusOneCountersEqualToItsPower(g *game.Game, item *game.StackItem, id uuid.UUID) error {
+	if !OnBattlefield(g, id) {
 		return nil
 	}
 	g.RecomputeLayersIfStaleLocked()
@@ -1865,7 +1865,7 @@ func plusOneCountersEqualToItsPower(g *game.Game, item *game.StackItem, id uuid.
 // with the counter as it enters, and a card that left the graveyard in
 // response stays where it is. Grim Reaper's Scythe's verb aimed at the
 // source.
-func returnThisFromGraveyardWithAFinalityCounter(g *game.Game, item *game.StackItem) error {
+func ReturnThisFromGraveyardWithAFinalityCounter(g *game.Game, item *game.StackItem) error {
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
 	}
@@ -1880,10 +1880,10 @@ func returnThisFromGraveyardWithAFinalityCounter(g *game.Game, item *game.StackI
 // source is usually sacrificed as the cost, which costs the reader
 // nothing: the stack item keeps its instance ID, and the record was
 // written against that ID while it was on the battlefield.
-func returnCardsExiledWithToOwnersHands(label string) Effect {
+func ReturnCardsExiledWithToOwnersHands(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		for _, id := range b27ExiledWith(g, item.SourceCardID, label) {
+		for _, id := range B27ExiledWith(g, item.SourceCardID, label) {
 			if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
 				return err
 			}
@@ -1899,7 +1899,7 @@ func returnCardsExiledWithToOwnersHands(label string) Effect {
 // Equipment has left the battlefield (CR 608.2h). An unattached
 // Equipment, or a host that has gone or is no longer a creature, pumps
 // nothing.
-func pumpEquippedCreatureUntilEOT(ctx *Context, power, toughness int, label string) error {
+func PumpEquippedCreatureUntilEOT(ctx *Context, power, toughness int, label string) error {
 	source, ok := ctx.SourcePermanent()
 	if !ok || source.AttachedObject == nil {
 		return nil
@@ -1920,7 +1920,7 @@ func pumpEquippedCreatureUntilEOT(ctx *Context, power, toughness int, label stri
 // the triggering damage event's amount: Breeches' play-this-turn window over
 // the trigger controller's own library. Thor, Guardian of Midgard and
 // Virtue of Courage.
-func exileThatManyYouMayPlayThisTurn(g *game.Game, item *game.StackItem) error {
+func ExileThatManyYouMayPlayThisTurn(g *game.Game, item *game.StackItem) error {
 	return ExileTopWithPermission{
 		From:    item.Controller,
 		GrantTo: item.Controller,
@@ -1935,8 +1935,8 @@ func exileThatManyYouMayPlayThisTurn(g *game.Game, item *game.StackItem) error {
 // Caves"; uuid.Nil leaves out nothing. Cave is a land type, read through
 // the effective view on the battlefield (so a type grant counts) and the
 // printed type line in the graveyard.
-func caveCount(g *game.Game, player, except uuid.UUID) int {
-	n := b19ZombieCardsInGraveyard(g, player, "Cave")
+func CaveCount(g *game.Game, player, except uuid.UUID) int {
+	n := B19ZombieCardsInGraveyard(g, player, "Cave")
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.InstanceID != except && c.IsLand() && c.HasSubtype("Cave") {
 			n++
@@ -1950,7 +1950,7 @@ func caveCount(g *game.Game, player, except uuid.UUID) int {
 // dies trigger's body (Ferocity of the Hunt, Fungal Fortitude): the card
 // the trigger's event names comes back as a new object, tapped, under its
 // OWNER's control. A token has no card to return, so it does nothing.
-func returnDiedCardToBattlefieldTapped(g *game.Game, item *game.StackItem) error {
+func ReturnDiedCardToBattlefieldTapped(g *game.Game, item *game.StackItem) error {
 	_, err := g.ReturnToBattlefieldForEffect(item.Trigger.Event.CardID, uuid.Nil, true)
 	if errors.Is(err, game.ErrCardNotFound) {
 		return nil
@@ -1963,10 +1963,10 @@ func returnDiedCardToBattlefieldTapped(g *game.Game, item *game.StackItem) error
 // owner's hand" (Mischievous Pup, Stickytongue Sentinel): the still-legal
 // pick returns to its owner's hand (bounceTheTargetToHand), and choosing
 // none returns nothing. "Other" is the object, never a name.
-func whenThisEntersReturnAnotherPermanentYouControl(cardName string) game.TriggeredAbility {
+func WhenThisEntersReturnAnotherPermanentYouControl(cardName string) game.TriggeredAbility {
 	return Targeting(
 		WhenThisEnters(cardName+" — return up to one other target permanent you control to its owner's hand",
-			bounceTheTargetToHand),
+			BounceTheTargetToHand),
 		Another(TargetPermanent("up to one other target permanent you control", YouControl())).WithCount(0, 1),
 	)
 }
@@ -1976,7 +1976,7 @@ func whenThisEntersReturnAnotherPermanentYouControl(cardName string) game.Trigge
 // narrowed to artifacts entering under another player's control. A token
 // runs the same entry pipeline, so an opponent's Treasure enters tapped
 // too.
-func opponentsArtifactsEnterTapped(label string) game.ReplacementEffect {
+func OpponentsArtifactsEnterTapped(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -2003,11 +2003,36 @@ func opponentsArtifactsEnterTapped(label string) game.ReplacementEffect {
 // exileEachChosenCard is a choose-cards answer that exiles every picked
 // card (Ego Drain's and Ruthless Negotiation's "exile a card from your
 // hand"). The prompt's LiveZone has already dropped a pick that left.
-func exileEachChosenCard(g *game.Game, r game.CardsChosen) error {
+func ExileEachChosenCard(g *game.Game, r game.CardsChosen) error {
 	for _, id := range r.Picked {
 		if err := g.ExileCardForEffect(id); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// shieldCounterOnFirstTarget puts a shield counter on the ability's first
+// target, if it is still there (CR 608.2b).
+func ShieldCounterOnFirstTarget(ctx *Context) error {
+	t, ok := ctx.ClauseTarget(0)
+	if !ok {
+		return nil
+	}
+	return AddCounter{Target: t.ID, Kind: game.CounterShield, N: 1}.Apply(ctx)
+}
+
+// targetCantBlockThisCreature is "Target creature can't block this creature
+// this turn." as an activated ability's body (Shrewd Hatchling, Screeching
+// Griffin): the record bars only blocks of the ability's source, and a
+// target gone by resolution gets nothing (CR 608.2b).
+func TargetCantBlockThisCreature(label string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		id, ok := B16FirstLegalTargetCard(ctx)
+		if !ok {
+			return nil
+		}
+		return CantBlockThisCreatureThisTurn{Blocker: id, Attacker: item.SourceCardID, Label: label}.Apply(ctx)
+	}
 }

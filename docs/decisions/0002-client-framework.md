@@ -1,6 +1,6 @@
 # ADR 0002 — Client framework
 
-- **Status:** accepted
+- **Status:** Accepted
 - **Date:** 2026-04-10
 - **Sprint:** S01 — Go server + client scaffold
 - **Deciders:** project owner

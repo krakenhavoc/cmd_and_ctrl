@@ -118,6 +118,15 @@ import (
 // does not reach the turn the effect was made in, even when a loyalty
 // ability was activated at instant speed during that player's own turn.
 //
+// IfSourceAttacks makes any of the shapes conditional on its Source
+// being declared as an attacker (#5840, Viashino Bey: "If this creature
+// attacks, all creatures you control attack if able"). CR 508.1d counts
+// requirements "that say a creature attacks if able, or that it attacks
+// if some condition is met"; this one's condition is part of the very
+// declaration being judged, so it exists only in a declaration that has
+// its source in it. See "A requirement gated on its source attacking"
+// above attackRequirementsOfLocked.
+//
 // Pure data, so the Characteristic that carries it stays copyable.
 type AttackRequirement struct {
 	// Source is the permanent (or the resolved spell or ability's
@@ -153,7 +162,25 @@ type AttackRequirement struct {
 	// player's next turn"). attackRequirementsOfLocked leaves it out
 	// until then.
 	AfterTurn int
+	// IfSourceAttacks, when set, makes the requirement exist only in a
+	// declaration in which Source is attacking (#5840). It never binds
+	// Source itself: "if this attacks, this attacks if able" asks
+	// nothing. Additive in the snapshot (it rides last-known
+	// characteristics): a file written before it has none set, and a
+	// binary that drops it misreads only last-known information, which
+	// no attack declaration is judged against.
+	IfSourceAttacks bool
 }
+
+// AnyPlayerSentinel is the OtherThan of "attacks a player each combat if
+// able" (Nahiri, the Unforgiving, #5479): an ID that is never a player, so
+// "a player other than it" is every player and no planeswalker or battle.
+// An on-disk identity: never changed.
+var AnyPlayerSentinel = uuid.MustParse("00000000-0000-4000-8000-00000000a771")
+
+// AttackAPlayerIfAbleMod is "attacks a player each combat if able": an
+// attack requirement obeyed only by an attack on a player, any player.
+func AttackAPlayerIfAbleMod() Mod { return AddAttackRequirementMod(AnyPlayerSentinel) }
 
 // obeyedBy reports whether an attack at `target` obeys r. uuid.Nil is
 // "not attacking", which obeys nothing.
@@ -179,6 +206,8 @@ func (r AttackRequirement) obeyedBy(g *Game, target uuid.UUID) bool {
 	if r.OtherThan == uuid.Nil {
 		return true
 	}
+	// AnyPlayer: "attacks a player each combat if able" (Nahiri, the
+	// Unforgiving), obeyed by attacking any player and by nothing else.
 	return target != r.OtherThan && g.classifyAttackTargetLocked(target) == AttackTargetPlayer
 }
 
@@ -229,14 +258,34 @@ func (g *Game) isMostLifeOpponentLocked(you, target uuid.UUID) bool {
 // #2567) is not on the list until that turn: it does not exist yet as
 // far as CR 508.1d is concerned.
 //
+// # A requirement gated on its source attacking
+//
+// A requirement with IfSourceAttacks (#5840, Viashino Bey) is on the
+// list only when `assign`, the declaration being judged, has its
+// source attacking, and never on the source itself. So reach(D) counts
+// it only for a D that already has the source in it, and never for a
+// completion that would add the source: declaring nothing obeys the
+// maximum (the requirement does not exist), while staging the source
+// raises reach by every free attack the others could make, and the
+// checkpoint then refuses the pass until they make them. Staging it
+// can never lower reach on that account, and nothing undeclares an
+// attacker, so the "every accepted verb keeps reach" argument above
+// still holds. The source's own other requirements, and its slot
+// under an attack limit, are counted as for any creature, so it is
+// refused where its attack would cost another creature's requirement
+// (Zurgo's one slot under Silent Arbiter).
+//
 // Caller must hold g.mu with fresh layers.
-func (g *Game) attackRequirementsOfLocked(c *Card) []AttackRequirement {
+func (g *Game) attackRequirementsOfLocked(c *Card, assign map[uuid.UUID]uuid.UUID) []AttackRequirement {
 	if c == nil {
 		return nil
 	}
 	var out []AttackRequirement
 	for _, r := range c.Effective().AttackRequirements {
 		if r.AfterTurn > 0 && g.Turn.Seq <= r.AfterTurn {
+			continue
+		}
+		if r.IfSourceAttacks && (r.Source == c.InstanceID || assign[r.Source] == uuid.Nil) {
 			continue
 		}
 		out = append(out, r)
@@ -322,7 +371,7 @@ func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.U
 		if g.attackDeclinedLocked(c.InstanceID) {
 			continue
 		}
-		reqs := g.attackRequirementsOfLocked(c)
+		reqs := g.attackRequirementsOfLocked(c, assign)
 		if len(reqs) == 0 {
 			continue
 		}
@@ -557,7 +606,7 @@ func (g *Game) attackRequirementReachLocked(ap uuid.UUID, assign map[uuid.UUID]u
 		if c == nil || c.Controller != ap {
 			continue
 		}
-		out.obeyed += g.requirementWeightLocked(g.attackRequirementsOfLocked(c), target)
+		out.obeyed += g.requirementWeightLocked(g.attackRequirementsOfLocked(c, assign), target)
 	}
 	out.cands = g.attackRequirementCandidatesLocked(ap, assign)
 	cp := g.attackCapacityLocked(assign)
@@ -696,6 +745,7 @@ func (e *AttackRequirementError) Unwrap() error { return ErrAttackRequirement }
 //	"Grizzly Bears is goaded by you and must attack a player other than you if able."
 //	"Galactus, Devourer of Worlds must attack an opponent with the most life if able."
 //	"Grizzly Bears must attack Gideon Jura if able."
+//	"Grizzly Bears must attack if able, because Viashino Bey is attacking."
 func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 	who := nameOr(e.AttackerName, "That creature")
 	r := e.Requirement
@@ -729,14 +779,24 @@ func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 	}
 	if r.GoadedBy != uuid.Nil {
 		s := who + " is goaded by " + player(r.GoadedBy, e.GoaderName)
+		if r.OtherThan == AnyPlayerSentinel {
+			return s + " and must attack a player if able."
+		}
 		if r.OtherThan != uuid.Nil {
 			return s + " and must attack a player other than " + player(r.OtherThan, e.OtherThanName) + " if able."
 		}
 		return s + " and must attack this combat if able."
 	}
 	var s string
-	if r.OtherThan != uuid.Nil {
+	if r.OtherThan == AnyPlayerSentinel {
+		s = who + " must attack a player if able"
+	} else if r.OtherThan != uuid.Nil {
 		s = who + " must attack a player other than " + player(r.OtherThan, e.OtherThanName) + " if able"
+	} else if r.IfSourceAttacks {
+		// #5840: the requirement exists only because its source is
+		// attacking, so the sentence says that rather than "this
+		// combat", which would read as owed whatever the player does.
+		return who + " must attack if able, because " + nameOr(r.SourceName, "another creature") + " is attacking."
 	} else {
 		s = who + " must attack this combat if able"
 	}
@@ -792,12 +852,17 @@ func (g *Game) explainReachDropLocked(ap uuid.UUID, beforeAssign, afterAssign ma
 		}
 		return r.witness[id]
 	}
+	// The requirements as they stood BEFORE: a drop is something that
+	// could have been obeyed and no longer can, and a requirement the
+	// new declaration brings into being (#5840, its source just staged)
+	// was never obeyable before it. Every one that existed before still
+	// exists after, since no verb takes an attacker out.
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.Controller != ap {
 			continue
 		}
-		reqs := g.attackRequirementsOfLocked(c)
+		reqs := g.attackRequirementsOfLocked(c, beforeAssign)
 		if len(reqs) == 0 {
 			continue
 		}
@@ -813,7 +878,7 @@ func (g *Game) explainReachDropLocked(ap uuid.UUID, beforeAssign, afterAssign ma
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if t, ok := before.witness[c.InstanceID]; ok {
-			return g.attackRequirementErrorLocked(c.InstanceID, g.attackRequirementsOfLocked(c), uuid.Nil, t)
+			return g.attackRequirementErrorLocked(c.InstanceID, g.attackRequirementsOfLocked(c, beforeAssign), uuid.Nil, t)
 		}
 	}
 	return &AttackRequirementError{}
@@ -877,7 +942,8 @@ func (g *Game) attackRequirementsUnmetLocked() *AttackRequirementError {
 	if !g.anyAttackRequirementLocked(ap) {
 		return nil
 	}
-	r := g.attackRequirementReachLocked(ap, g.currentAttackAssignmentLocked())
+	assign := g.currentAttackAssignmentLocked()
+	r := g.attackRequirementReachLocked(ap, assign)
 	if r.addition == 0 {
 		return nil
 	}
@@ -887,7 +953,7 @@ func (g *Game) attackRequirementsUnmetLocked() *AttackRequirementError {
 		if !ok {
 			continue
 		}
-		return g.attackRequirementErrorLocked(c.InstanceID, g.attackRequirementsOfLocked(c), uuid.Nil, t)
+		return g.attackRequirementErrorLocked(c.InstanceID, g.attackRequirementsOfLocked(c, assign), uuid.Nil, t)
 	}
 	return &AttackRequirementError{}
 }

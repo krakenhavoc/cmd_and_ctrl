@@ -10,9 +10,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (Bleed Dry, Ob Nixilis's Cruelty). Printed order is resolution order:
 // the shrink first, then the replacement, so a creature the shrink kills
 // is exiled.
-func shrinkFirstTargetExileIfItDies(n int) func(item *game.StackItem, ctx *Context) error {
+func ShrinkFirstTargetExileIfItDies(n int) func(item *game.StackItem, ctx *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -28,9 +28,9 @@ func shrinkFirstTargetExileIfItDies(n int) func(item *game.StackItem, ctx *Conte
 // Purphoros). The rider is the spell's, not the damage's, so it holds
 // even when the damage is prevented (ADR 0108 §2). `then` runs last, for
 // a card with a further clause (Rage of Purphoros's scry).
-func damageFirstTargetThenNoRegen(amount int, then func(ctx *Context) error) func(item *game.StackItem, ctx *Context) error {
+func DamageFirstTargetThenNoRegen(amount int, then func(ctx *Context) error) func(item *game.StackItem, ctx *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -50,9 +50,9 @@ func damageFirstTargetThenNoRegen(amount int, then func(ctx *Context) error) fun
 // targetCantBeRegeneratedThisTurn is "Target creature can't be
 // regenerated this turn." as a whole effect (Hurr Jackal, Furnace Brood,
 // Gravebind).
-func targetCantBeRegeneratedThisTurn(g *game.Game, item *game.StackItem) error {
+func TargetCantBeRegeneratedThisTurn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

@@ -36,7 +36,7 @@ func init() {
 				InterveningIf(socB29YouGainedLifeThisTurn,
 					On(game.EventBeginEndStep, AllOf(ByYou, socB29YouGainedLifeThisTurnWhen),
 						"Moseo, Vein's New Dean — Infusion: return up to one target creature card with mana value X or less from your graveyard to the battlefield",
-						moseoInfusion)),
+						MoseoInfusion)),
 				TargetCardInGraveyard("up to one target creature card with mana value X or less from your graveyard, where X is the life you gained this turn",
 					YouOwn(), Creature(), ManaValueAtMostLifeGainedThisTurn()).WithCount(0, 1),
 			),
@@ -49,21 +49,16 @@ func init() {
 // rises within a turn, so a trigger that held as the step began still holds.
 var socB29YouGainedLifeThisTurn = CondBoard{
 	Name: "you gained life this turn",
-	Test: func(ctx *Context) bool { return b15LifeGainedThisTurn(ctx.Game, ctx.Controller()) > 0 },
+	Test: func(ctx *Context) bool { return B15LifeGainedThisTurn(ctx.Game, ctx.Controller()) > 0 },
 }
 
 // socB29YouGainedLifeThisTurnWhen is the same "if" as the trigger's When,
 // read as the end step begins.
 func socB29YouGainedLifeThisTurnWhen(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return b15LifeGainedThisTurn(g, source.Controller) > 0
+	return B15LifeGainedThisTurn(g, source.Controller) > 0
 }
 
 // moseoInfusion returns the chosen creature card to the battlefield.
-func moseoInfusion(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
+func MoseoInfusion(g *game.Game, item *game.StackItem) error {
+	return S82Mom16PutTargetOntoTheBattlefield(g, item)
 }

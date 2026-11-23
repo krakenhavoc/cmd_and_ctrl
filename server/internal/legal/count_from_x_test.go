@@ -306,6 +306,20 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 			tied, moves = probe()
 		}
 		if tied == 0 {
+			// A clause over artifact and/or non-Aura enchantment cards
+			// in YOUR graveyard with mana value X or less (Dance of the
+			// Manse) finds nothing among creature cards. Swap the seed
+			// for cheap artifact cards, for this probe alone.
+			removeFromGraveyard(active, seeded)
+			seeded = seeded[:0]
+			for i := 0; i < 11; i++ {
+				seeded = append(seeded, graveyardCard(active, game.Card{
+					Name: "My Broken Relic", TypeLine: "Artifact", ManaCost: "{1}",
+				}))
+			}
+			tied, moves = probe()
+		}
+		if tied == 0 {
 			t.Errorf("%s: no cast of its X-defined clause was offered on a board that can pay for one", spec.Name)
 		}
 		dispatchAll(t, g, active.ID, moves)

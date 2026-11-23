@@ -39,6 +39,7 @@ import (
 //   - the effect counter verbs (CounterTargetForEffect and its two
 //     siblings) → RepEventCounterSpell (#4056, counter_spell.go)
 //   - RollDiceThenForEffect → RepEventRollDice (#4307, dice_roll.go)
+//   - every spell-copy door (spell_copy_event.go) → RepEventCopySpell (#5918)
 //
 // The six *ForEffect helpers in effect_api.go route through the same
 // pipeline so catalog-driven mutations fire replacements too.
@@ -67,6 +68,7 @@ import (
 //	"extra_turn"   — RepEventExtraTurn — ExtraTurnSeat, ExtraTurnRef (CR 500.7 / 614.10)
 //	"counter_spell"— RepEventCounterSpell — CounterSpellID, CounterBy, CounterBySource (CR 701.6a / 614.1a)
 //	"roll_dice"    — RepEventRollDice — RollPlayer, RollSides, RollCount (CR 706.1)
+//	"copy_spell"   — RepEventCopySpell — CopySpellID, CopyPlayer, CopyCount (CR 707.10)
 type ReplacementEventKind string
 
 const (
@@ -233,6 +235,19 @@ const (
 	// is only the order of the choosers, which the dice flow asks the
 	// roller itself (diceOrderKey). The affected player is the roller.
 	RepEventRollDice ReplacementEventKind = "roll_dice"
+
+	// RepEventCopySpell is one instruction to copy a spell one or more
+	// times (CR 707.10), opened before any copy is made (#5918,
+	// spell_copy_event.go). Twinning Staff replaces it ("If you would copy
+	// a spell one or more times, instead copy it that many times plus an
+	// additional time"). One window per INSTRUCTION, the way
+	// RepEventCreateTokens is one per creation instruction: storm's "copy
+	// it for each other spell" is one event of N copies, not N events of
+	// one. The window settles inline (mustSettleNow): the only
+	// replacements of this kind add a copy, and adding commutes, so a CR
+	// 616.1 order among them changes nothing. The affected player is the
+	// one who would copy.
+	RepEventCopySpell ReplacementEventKind = "copy_spell"
 )
 
 // isExitMove reports whether a kind is a routed move OUT of a zone — an
@@ -1220,6 +1235,13 @@ type ReplacementEvent struct {
 	// Event.FromRadiation.
 	LifeFromRadiation bool
 
+	// LifeFromDamage marks life lost because damage was dealt to the
+	// player (CR 120.3a), the life window damageLifeLossThroughReplacementsLocked
+	// runs. A replacement worded about damage, Archon of Coronation's
+	// "damage doesn't cause you to lose life", reads it; a drain or a
+	// life payment never carries it.
+	LifeFromDamage bool
+
 	// LifePayment marks a life loss that is a PAYMENT (CR 118.3, CR 119.4):
 	// the cost-shaped path payLifeAsCostLocked takes, which every "pay N
 	// life" runs through (a Phyrexian symbol, a ward, a shockland, an
@@ -1346,6 +1368,19 @@ type ReplacementEvent struct {
 	// (Guile). Set only through ExileCounteredSpellInsteadForEffect;
 	// plain data, so a copy for an undo snapshot is a struct copy.
 	counterInstead *counterInstead
+
+	// --- RepEventCopySpell fields (#5918, spell_copy_event.go) ---
+
+	// CopySpellID is the spell that would be copied, CopyPlayer the player
+	// who would copy it (the copies' controller, CR 707.10) and CopyCount
+	// how many copies (CR 707.10). A replacement that adds copies raises
+	// CopyCount; copyAdditional is how many of them were added "with new
+	// targets" (CopyOneMoreWithNewTargets), whatever the instruction said
+	// about the others. Plain data.
+	CopySpellID    uuid.UUID
+	CopyPlayer     uuid.UUID
+	CopyCount      int
+	copyAdditional int
 
 	// --- RepEventRollDice fields (#4307, dice_roll.go) ---
 
@@ -3112,6 +3147,11 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// after the roll; this window opens once per instruction, before
 		// any die is rolled. The same reuse as RepEventMill's.
 		want = EventRollDie
+	case RepEventCopySpell:
+		// CR 707.10. EventSpellCopied is the post-event twin, one per
+		// copy put on the stack; this window opens once per instruction,
+		// before any copy is made. The same reuse as RepEventMill's.
+		want = EventSpellCopied
 	case RepEventExtraTurn:
 		// CR 500.7 / 614.10. EventExtraTurnAdded is the twin of QUEUING
 		// the turn, which happens long before this window and under a

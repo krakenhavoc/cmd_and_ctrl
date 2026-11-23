@@ -103,6 +103,14 @@ const (
 	// say (an Equipment has other abilities that are not equip). Combine
 	// it with the cast clause through ManaRestrictAnyOf.
 	ManaRestrictEquip = "purpose:equip"
+	// ManaRestrictClassLevel permits the token only on the cost of a Class's
+	// level-up ability (CR 716.2a): the "gain a Class level" half of Sorcerer
+	// Class's "Spend this mana only to cast an instant or sorcery spell or to
+	// gain a Class level". A purpose tag like ManaRestrictEquip: it needs an
+	// activation AND that the ability is a level-up one
+	// (ManaSpendContext.ClassLevel). Combine it with the cast clause through
+	// ManaRestrictAnyOf.
+	ManaRestrictClassLevel = "purpose:class_level"
 	// ManaRestrictUnlock permits the token only on an unlock cost
 	// (CR 709.5e, ADR 0103) — the "unlock doors" half of Smoky
 	// Lounge's and Creeping Peeper's restrictions. Combine it with a
@@ -158,6 +166,13 @@ const (
 	// the Paruns' and Obsidian Obelisk's "spend this mana only to cast
 	// a multicolored spell" (#1600).
 	ManaRestrictMulticolored = "multicolored"
+
+	// ManaRestrictDevoid permits the token only to cast a spell that has
+	// devoid (CR 702.114a, #5948): Corrupted Crossroads' "Spend this mana
+	// only to cast a spell with devoid". Cast only: an ability is not a
+	// spell. It reads the spell's printed devoid keyword (ManaSpendContext.
+	// HasDevoid), the same fact that makes the spell colourless.
+	ManaRestrictDevoid = "devoid"
 	// ManaRestrictNoGeneric is a SYMBOL-level negative clause — "this
 	// mana can't be spent to pay generic mana costs" (Jegantha, the
 	// Wellspring, #2170). Every other tag asks what the mana pays FOR;
@@ -195,6 +210,16 @@ const (
 	// a turn-face-up never satisfies it; combine it with
 	// ManaRestrictTurnFaceUp through ManaRestrictAnyOf.
 	ManaRestrictFaceDownSpell = "spell:face-down"
+	// ManaRestrictKickedSpell permits the token only on a spell cast
+	// with its kicker (or multikicker) paid (CR 702.33a): Volshe
+	// Tideturner's "cast an instant or sorcery spell or a kicked spell".
+	// The kicker is chosen at announcement (CR 601.2b), before any cost
+	// is paid, so the whole payment, the kicker's share and the mana
+	// cost's, is for a kicked spell. It asks about the spell being
+	// cast, so an activation never satisfies it, and a payment that
+	// does not say which optional costs it pays (ManaSpendForCast on
+	// its own) refuses it; ManaSpendForCastParams stamps the choice.
+	ManaRestrictKickedSpell = "spell:kicked"
 	// ManaRestrictSpellNotOwned permits the token only on a spell its
 	// payer does not own (#5457, CR 106.6, CR 108.3): Thieving Varmint's
 	// "Spend this mana only to cast spells you don't own". It compares
@@ -203,6 +228,23 @@ const (
 	// does a cast whose payer or owner the payment did not name (weaker
 	// than printed, never stronger).
 	ManaRestrictSpellNotOwned = "spell:not-owned"
+	// ManaRestrictSpellNoAbilities permits the token only on a spell with
+	// no abilities (S82, CR 106.6, CR 113.1): Jasmine Boreal of the
+	// Seven's "Spend this mana only to cast creature spells with no
+	// abilities". It asks about the spell being cast, as the card prints
+	// it (PrintsNoAbilities) or face down (CR 708.2a: a face-down spell
+	// has no abilities), so an activation never satisfies it, and a card
+	// whose text the importer never read is not known to have none
+	// (weaker than printed, never stronger). Combine it with
+	// ManaRestrictType("Creature") for the printed clause.
+	ManaRestrictSpellNoAbilities = "spell:no-abilities"
+	// ManaRestrictSpellFreerunning permits the token only on a spell that
+	// has freerunning (S82, CR 106.6, CR 702.173): Brotherhood
+	// Headquarters' "a spell that has freerunning". It asks about the
+	// card being cast, whatever cost is paid for it: a spell that offers
+	// a freerunning cost qualifies when it is cast for its mana cost too.
+	// An activation never satisfies it.
+	ManaRestrictSpellFreerunning = "spell:freerunning"
 )
 
 // ManaRestrictAltCost builds "spend this mana only to pay a [keyword]
@@ -375,6 +417,10 @@ type ManaSpendContext struct {
 	// tests for.
 	Colors []string
 
+	// HasDevoid is set for a cast of a spell that has devoid (CR 702.114a):
+	// what ManaRestrictDevoid reads. False for every other payment.
+	HasDevoid bool
+
 	// AllCreatureTypes marks an object that is every creature type
 	// (CR 702.73a) — a changeling spell, or a permanent under a
 	// Maskwood Nexus. A "subtype:" restriction is satisfied by ANY
@@ -435,6 +481,13 @@ type ManaSpendContext struct {
 	// mirrored row and carries the bit.
 	Equip bool
 
+	// ClassLevel is set when the ability being paid for is a Class's level-up
+	// ability (CR 716.2a): what ManaRestrictClassLevel reads. Set by the same
+	// sites as Equip, from ActivatedAbility.ClassLevel; false for a cast, a
+	// mana ability and every unnamed payment, which therefore can't spend
+	// level-up-only mana.
+	ClassLevel bool
+
 	// CostHasX is set when the cost being paid contains {X}: what
 	// ManaRestrictXCost reads (#4834). ManaSpendForCast sets it from the
 	// spell's mana cost (ManaSpendForCastParams from the alternative
@@ -462,11 +515,29 @@ type ManaSpendContext struct {
 	// payment that is not a cast.
 	FaceDownSpell bool
 
+	// KickedSpell is set when the spell being cast has its kicker paid
+	// (CR 702.33a): what ManaRestrictKickedSpell reads. Set by
+	// ManaSpendForCastParams from the cast's chosen optional costs;
+	// false for every payment that is not a cast.
+	KickedSpell bool
+
 	// YourCommander is set when the spell being cast is a commander its
 	// caster owns (CR 903.3d): what ManaRestrictYourCommander reads.
 	// Set by ManaSpendForCast; false for every payment that is not a
 	// cast.
 	YourCommander bool
+
+	// NoAbilitiesSpell is set when the spell being cast has no abilities
+	// (a vanilla card, or one cast face down): what
+	// ManaRestrictSpellNoAbilities reads. False for every payment that
+	// is not a cast.
+	NoAbilitiesSpell bool
+
+	// FreerunningSpell is set when the spell being cast has freerunning
+	// (it offers a freerunning alternative cost): what
+	// ManaRestrictSpellFreerunning reads. False for every payment that
+	// is not a cast.
+	FreerunningSpell bool
 
 	// SpellOwner is the owner of the spell being cast (CR 108.3): what
 	// ManaRestrictSpellNotOwned compares with Payer (#5457). Set by
@@ -579,6 +650,7 @@ func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
 	// #4694: the spell's mana value on the stack counts the X announced
 	// for it (CR 202.3e). Only an {X} in its MANA cost counts, so an
 	// alternative cost's X changes nothing here.
+	ctx.KickedSpell = KickedTimesPaid(c, params.OptionalCosts) > 0
 	return ctx.WithX(params.XValue)
 }
 
@@ -674,10 +746,13 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		Supertypes:       ch.Supertypes,
 		Colors:           c.EffectiveColors(),
 		AllCreatureTypes: HasAllCreatureTypes(&c),
+		HasDevoid:        c.printsDevoid(),
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		FaceDownSpell:    c.FaceDown,
+		NoAbilitiesSpell: c.FaceDown || PrintsNoAbilities(c),
+		FreerunningSpell: !c.FaceDown && AlternativeCostByKey(CatalogKey(c), "freerunning") != nil,
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		SpellOwner:       c.Owner,
 		wish:             newSpendWish(c),
@@ -755,6 +830,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate && ctx.PowerUp
 	case ManaRestrictEquip:
 		return ctx.Purpose == SpendPurposeActivate && ctx.Equip
+	case ManaRestrictClassLevel:
+		return ctx.Purpose == SpendPurposeActivate && ctx.ClassLevel
 	case ManaRestrictXCost:
 		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasX
 	case ManaRestrictYourCommander:
@@ -763,6 +840,12 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast && ctx.ManaCostHasX
 	case ManaRestrictFaceDownSpell:
 		return ctx.Purpose == SpendPurposeCast && ctx.FaceDownSpell
+	case ManaRestrictSpellNoAbilities:
+		return ctx.Purpose == SpendPurposeCast && ctx.NoAbilitiesSpell
+	case ManaRestrictSpellFreerunning:
+		return ctx.Purpose == SpendPurposeCast && ctx.FreerunningSpell
+	case ManaRestrictKickedSpell:
+		return ctx.Purpose == SpendPurposeCast && ctx.KickedSpell
 	case ManaRestrictSpellNotOwned:
 		return ctx.Purpose == SpendPurposeCast && ctx.Payer != uuid.Nil && ctx.SpellOwner != uuid.Nil && ctx.Payer != ctx.SpellOwner
 	case ManaRestrictUnlock:
@@ -798,6 +881,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		// either — refuse rather than read "no colours" as
 		// "colorless".
 		return ctx.hasPaidForObject() && len(ctx.Colors) == 0
+	case ManaRestrictDevoid:
+		return ctx.Purpose == SpendPurposeCast && ctx.HasDevoid
 	case ManaRestrictMonocolored:
 		// #1600, CR 105.2a. The same unknown-purpose refusal as
 		// colorless: no object, no colour count.
@@ -868,6 +953,8 @@ func (ctx ManaSpendContext) matchesKeyed(key, value string) bool {
 		return containsFold(ctx.Colors, value)
 	case manaValueKey:
 		return ctx.matchesManaValue(value)
+	case colorCountKey:
+		return ctx.matchesColorCount(value)
 	case altCostKey:
 		// #5680: a clause about the cost a spell is cast for.
 		return ctx.Purpose == SpendPurposeCast && ctx.AltCost == value

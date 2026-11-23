@@ -78,6 +78,16 @@ type CardDef struct {
 	// ReturnedAuraSpecFor, and only for a permanent whose Card.ReturnedAura
 	// is set. Nil for every card but the ones that return as an Aura.
 	ReturnedAura *TargetSpec
+	// AttachOnlyTo is an Equipment's static "<this> can be attached only
+	// to <a quality>" (Konda's Banner's "a legendary creature", #5846): the
+	// one clause the objects it equips must also meet, beyond CR 301.5c's.
+	// Read through equipmentAttachOnlyAdmitsLocked, by AttachForEffect and
+	// attachmentLegalLocked, so an equip or an effect that would attach it
+	// elsewhere does not move it (CR 301.5b, CR 701.3b) and it becomes
+	// unattached from a host that stops meeting it (CR 301.5c, CR 704.5n).
+	// Not Targets: the equip ability's target is still "target creature
+	// you control". Nil for every other card.
+	AttachOnlyTo *TargetSpec
 	Modes        *ModeSpec
 
 	// Purpose is what the card does, declared on its Spec (ADR 0126
@@ -91,6 +101,14 @@ type CardDef struct {
 	// PrintedKeywords, appended once at build time.
 	Static       []StaticAbility
 	Replacements []ReplacementEffect
+	// GrantedReplacements are the replacement effects a layer-6 grant
+	// bundle carries (Master Chef's "This creature enters with an additional
+	// +1/+1 counter on it", Scion of Halaster's draw replacement): a
+	// recipient has them while it has the grant, as its own, so the source
+	// of each is the recipient and "you" is the recipient's controller.
+	// Merged into the composite definition's Replacements
+	// (copy_grants.go); empty on every definition but a grant bundle's.
+	GrantedReplacements []ReplacementEffect
 	// EntersWithCountersFromCast are the card's printed "this
 	// permanent enters with N counters on it" clauses whose N is read
 	// from the spell that became it (CR 614.1c) — Hangarback Walker's
@@ -139,6 +157,15 @@ type CardDef struct {
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
 	// the battlefield through DelveForLocked.
 	SpellsYouCastHaveDelve bool
+	// FirstSpellHasAssist is a permanent's "The first spell you cast during
+	// each of your turns has assist" (Yume, Chronicler of Valor). Read from
+	// the battlefield through SpellHasAssistLocked.
+	FirstSpellHasAssist bool
+
+	// AsYouCascadePutALand is "As you cascade, you may put a land card from
+	// among the exiled cards onto the battlefield tapped" (Averna, the Chaos
+	// Bloom), read live off the battlefield by CascadeForEffect.
+	AsYouCascadePutALand bool
 	// SplitSecondGrants are a permanent's "<spells> you control have
 	// split second" (Samut, Tyrant of Naktamun; #3502). Read live off
 	// the battlefield through CatalogSplitSecondGrants; see
@@ -240,6 +267,10 @@ type CardDef struct {
 	// You may cast this card from your graveyard"). Read through
 	// cardOpensZoneLocked, beside CastableZones.
 	CastableZonesIf []ConditionalCastZone
+	// CastsOnlyFromGraveyard is Haakon's "cast this card from your graveyard,
+	// but not from anywhere else" (Spec.CastsOnlyFromGraveyard), read by
+	// aftermathZoneRule.
+	CastsOnlyFromGraveyard bool
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -391,6 +422,13 @@ type CardDef struct {
 	// through CatalogAbilityKey; see game.CatalogPlayerLifeFloorOne and
 	// life_floor.go (#5770).
 	PlayerLifeFloorOne bool
+	// PlayerLifeFloorOneIfCreature is Worship's "If you control a creature,
+	// damage that would reduce your life total to less than 1 reduces it to
+	// 1 instead": PlayerLifeFloorOne that applies only while its CONTROLLER
+	// controls a creature. Read from the battlefield through
+	// CatalogAbilityKey; see game.CatalogPlayerLifeFloorOneIfCreature and
+	// life_floor.go (S82 GAP batch 119).
+	PlayerLifeFloorOneIfCreature bool
 	// DamageStaysThroughCleanup is this permanent's printed "Damage
 	// isn't removed from this creature during cleanup steps" (CR 514.2 —
 	// Ancient Adamantoise). Read from the battlefield through
@@ -533,6 +571,12 @@ type CardDef struct {
 	// player what their permanent can now do. Read through
 	// GrantTextFor.
 	GrantText string
+
+	// MergedComponent marks the definition a "merged:" part resolves to
+	// (ADR 0223, mutate.go): every ability of a component under a
+	// mutated permanent. mergeCatalogParts merges its replacement
+	// effects too, which no other granted part carries.
+	MergedComponent bool
 
 	// XMatters says everything the card does scales with the
 	// announced X, so X=0 does nothing at all. Read only by the
@@ -880,9 +924,21 @@ func init() {
 		}
 		return nil
 	}
+	CatalogAsYouCascadePutsALand = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.AsYouCascadePutALand
+		}
+		return false
+	}
 	CatalogSpellsHaveDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.SpellsYouCastHaveDelve
+		}
+		return false
+	}
+	CatalogFirstSpellHasAssist = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.FirstSpellHasAssist
 		}
 		return false
 	}
@@ -987,6 +1043,12 @@ func init() {
 			return d.CastableZones
 		}
 		return nil
+	}
+	CatalogCastsOnlyFromGraveyard = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.CastsOnlyFromGraveyard
+		}
+		return false
 	}
 	CatalogCastableZonesIf = func(key string) []ConditionalCastZone {
 		if d := catalogDef(key); d != nil {
@@ -1141,6 +1203,10 @@ func init() {
 	CatalogPlayerLifeFloorOne = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeFloorOne
+	}
+	CatalogPlayerLifeFloorOneIfCreature = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.PlayerLifeFloorOneIfCreature
 	}
 	CatalogDamageStaysThroughCleanup = func(key string) bool {
 		d := catalogDef(key)

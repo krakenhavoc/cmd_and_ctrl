@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // explores again": the mode occurrence's target explores. Each explore is
 // its own Instruction so the second waits for the first's graveyard
 // question (CR 608.2c).
-func exploreTheModeTarget(ctx *Context) error {
+func ExploreTheModeTarget(ctx *Context) error {
 	t, ok := ModeTarget(ctx, ctx.Occurrence())
 	if !ok || t.Kind != game.TargetCard {
 		return nil
@@ -20,7 +20,7 @@ func exploreTheModeTarget(ctx *Context) error {
 // your graveyard to the battlefield": the clause-0 target, if it is still
 // legal (CR 608.2b), enters under its owner's control. Defossilize's first
 // step and Too Evil to Stay Dead's whole body.
-func returnTargetCardToTheBattlefield(_ *game.StackItem, ctx *Context) error {
+func ReturnTargetCardToTheBattlefield(_ *game.StackItem, ctx *Context) error {
 	t, ok := ctx.ClauseTarget(0)
 	if !ok {
 		return nil

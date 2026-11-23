@@ -38,7 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Firebender Ascension — create a 2/2 red Soldier creature token with firebending 1",
-				Do(CreateToken{Template: firebendingSoldierToken(), N: 1})),
+				Do(CreateToken{Template: FirebendingSoldierToken(), N: 1})),
 			On(game.EventTriggerPlaced, firebenderAscensionAttackTrigger,
 				"Firebender Ascension — put a quest counter on this enchantment, then you may copy that ability",
 				firebenderAscensionBody),
@@ -89,9 +89,9 @@ func firebenderAscensionBody(g *game.Game, item *game.StackItem) error {
 // firebenderAscensionCopyAnswer is the "yes": copy the ability that
 // caused the trigger. Keyed (#4291).
 var firebenderAscensionCopyAnswer = MayYes("confirm/firebender-ascension-copy", func(ctx *Context, _ game.ConfirmAnswer) error {
-	return copyTheTriggeringAbility(ctx.Game, ctx.Item)
+	return CopyTheTriggeringAbility(ctx.Game, ctx.Item)
 })
 
 // firebendingSoldierToken is Firebender Ascension's 2/2 red Soldier with
 // firebending 1.
-func firebendingSoldierToken() game.Card { return tokenFromCatalog(printedFirebendingSoldierToken) }
+func FirebendingSoldierToken() game.Card { return TokenFromCatalog(printedFirebendingSoldierToken) }

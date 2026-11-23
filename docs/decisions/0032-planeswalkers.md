@@ -1,6 +1,6 @@
 # ADR 0032 — Starting loyalty is printed card data, not catalog data
 
-**Status:** Implemented · 2026-09-11 · Branch `fix/planeswalkers-274`
+**Status:** Accepted · 2026-09-11 · Branch `fix/planeswalkers-274`
 **Amended:** 2026-09-11 · Branch `feat/loyalty-abilities` — §8 below
 **Amended:** 2026-10-07 · Branch `feat/2046-pw-creature` — the final amendment below (#2046)
 **Issue:** [#274](https://github.com/krakenhavoc/cmd_and_ctrl/issues/274),

@@ -29,16 +29,16 @@ func init() {
 		Completeness: CompletenessFull,
 		AsEnters:     ChoosePlayerAsEnters("The Rack", Opponents),
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBeginUpkeep, theChosenPlayersTurn,
+			On(game.EventBeginUpkeep, TheChosenPlayersTurn,
 				"The Rack — deals damage to the chosen player equal to 3 minus their hand size",
-				damageUpkeepPlayerByHand(func(hand int) int { return 3 - hand })),
+				DamageUpkeepPlayerByHand(func(hand int) int { return 3 - hand })),
 		},
 	})
 }
 
 // theChosenPlayersTurn — the event's actor (the upkeep's player) is the
 // seat stored on the source by its as-enters choice.
-func theChosenPlayersTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func TheChosenPlayersTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	chosen := ChosenPlayerOf(g, source.InstanceID)
 	return chosen != uuid.Nil && ev.Actor == chosen
 }

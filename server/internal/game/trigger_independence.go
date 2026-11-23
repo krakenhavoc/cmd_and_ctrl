@@ -99,12 +99,20 @@ const (
 	// FootprintCondLifeLost: the item's controller lost N or more life
 	// this turn (Lunar Convocation's Bat). The tally only rises.
 	FootprintCondLifeLost FootprintCond = "life_lost"
+	// FootprintCondOpponentLostLife: an opponent of the item's controller
+	// lost life this turn (Arrogant Outlaw). Each turn tally only rises.
+	FootprintCondOpponentLostLife FootprintCond = "opponent_lost_life"
 	// FootprintCondCardsDrawn: the item's controller drew N or more cards
 	// this turn (Lake-town Toymaker). The turn's tally only rises.
 	FootprintCondCardsDrawn FootprintCond = "cards_drawn"
 	// FootprintCondCreatureDied: a creature died under the item's
 	// controller's control this turn (Faramir). The tally only rises.
 	FootprintCondCreatureDied FootprintCond = "creature_died"
+	// FootprintCondAnyCreatureDied: a creature died this turn under any
+	// controller (Bulette's and Warlock Class's "if a creature died this
+	// turn", S82). The
+	// table-wide tally only rises.
+	FootprintCondAnyCreatureDied FootprintCond = "any_creature_died"
 	// FootprintCondEquipmentOrSpacecraftEntered: an Equipment or
 	// Spacecraft entered the battlefield under the item's controller's
 	// control this turn (Sulu, Space Swashbuckler). The turn's entry
@@ -137,6 +145,11 @@ const (
 	// spell from their hand this turn (#5235, Outlaws of Thunder
 	// Junction). No step in the vocabulary casts a spell.
 	FootprintCondNoSpellsCastFromHand FootprintCond = "no_spells_cast_from_hand"
+	// FootprintCondNoCardsPlayedFromExile: the item's controller played
+	// no card from exile this turn (#5482, Visions of Phyrexia). The
+	// turn's tally only rises, and no step in the vocabulary casts a
+	// spell or plays a land.
+	FootprintCondNoCardsPlayedFromExile FootprintCond = "no_cards_played_from_exile"
 	// FootprintCondCastSpellMV: the item's controller has cast a spell
 	// with mana value N or greater this turn (Rhino, Barreling Brute).
 	// No step in the vocabulary casts a spell.
@@ -175,6 +188,15 @@ const (
 	// dealt excess damage this turn (Rith, Liberated Primeval, #5663).
 	// The tally only rises within a turn.
 	FootprintCondOpponentPermanentDealtExcessDamage FootprintCond = "opponent_permanent_dealt_excess_damage"
+	// FootprintCondDamagedByGiantWizardOrSpell: the permanent the item's
+	// trigger event names was dealt damage this turn by a Giant, a Wizard
+	// or a spell the item's controller controlled (Aegar, the Freezing
+	// Flame, #5908). The damage record only grows within a turn.
+	FootprintCondDamagedByGiantWizardOrSpell FootprintCond = "damaged_by_giant_wizard_or_spell"
+	// FootprintCondPlusOneCounterPutOnYourPermanent: a +1/+1 counter was put
+	// this turn on a permanent the item's controller controls (Fairgrounds
+	// Trumpeter, #5908). The event log only grows within a turn.
+	FootprintCondPlusOneCounterPutOnYourPermanent FootprintCond = "plus_one_counter_put_on_your_permanent"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -809,10 +831,19 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.LifeGained >= atLeast
 	case FootprintCondLifeLost:
 		return tally.LifeLost >= atLeast
+	case FootprintCondOpponentLostLife:
+		for _, seat := range g.Seats {
+			if seat != nil && seat.ID != you && g.TurnTallyFor(seat.ID).LifeLost > 0 {
+				return true
+			}
+		}
+		return false
 	case FootprintCondCardsDrawn:
 		return tally.CardsDrawn >= atLeast
 	case FootprintCondCreatureDied:
 		return tally.CreaturesDied > 0
+	case FootprintCondAnyCreatureDied:
+		return g.TurnTally.CreaturesDied > 0
 	case FootprintCondEquipmentOrSpacecraftEntered:
 		return g.EnteredWithSubtypeThisTurn(you, "Equipment") > 0 || g.EnteredWithSubtypeThisTurn(you, "Spacecraft") > 0
 	case FootprintCondPermanentReturned:
@@ -827,6 +858,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.CastTallyFor(you).Total == 0
 	case FootprintCondNoSpellsCastFromHand:
 		return g.CastTallyFor(you).FromHand() == 0
+	case FootprintCondNoCardsPlayedFromExile:
+		return tally.CardsPlayedFromExile == 0
 	case FootprintCondSpellsCast:
 		return g.CastTallyFor(you).Total >= atLeast
 	case FootprintCondCastSpellMV:
@@ -839,6 +872,11 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return !g.DealtCombatDamageSinceLastTurnForEffect(you)
 	case FootprintCondOpponentPermanentDealtExcessDamage:
 		return g.OpponentPermanentDealtExcessDamageThisTurn(you)
+	case FootprintCondPlusOneCounterPutOnYourPermanent:
+		return g.PlusOneCounterPutOnYourPermanentThisTurnForEffect(you)
+	case FootprintCondDamagedByGiantWizardOrSpell:
+		return t.Trigger != nil &&
+			g.PermanentDealtDamageThisTurnByKindForEffect(t.Trigger.Event.Target, you, true, "Giant", "Wizard")
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:
@@ -1441,7 +1479,7 @@ func (g *Game) triggerOrderBoardOpaqueLocked() (card string, opaque bool) {
 var characteristicModKinds = map[ModKind]bool{
 	ModSetController: true, ModAddTypes: true, ModRemoveTypes: true,
 	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true,
-	ModAddKeywords: true, ModRemoveKeywords: true, ModLoseAllAbilities: true,
+	ModAddKeywords: true, ModRemoveKeywords: true, ModRemoveKeywordPrefixes: true, ModLoseAllAbilities: true,
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
 	ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModAttackPermanentIfAble: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
@@ -1450,7 +1488,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true, ModCantBlockPlayersCreatures: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
-	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true,
+	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBlockSubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true,
 	ModCantBeBlockedByMoreThan: true,
 }
 
@@ -1743,11 +1781,11 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,
 	"OptionalCosts": defFieldInert, "AlternativeCosts": defFieldInert,
 	"TapCost": defFieldInert, "Delve": defFieldInert, "Splice": defFieldInert, "SpendOnly": defFieldInert,
-	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
+	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "FirstSpellHasAssist": defFieldInert, "AsYouCascadePutALand": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert, "PowerUpExtras": defFieldInert,
 	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
-	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert,
+	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert, "CastsOnlyFromGraveyard": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert,
 	"CounterRemovalLocks": defFieldInert, "UntapCaps": defFieldInert,
@@ -1770,8 +1808,13 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// #3998: Opposition Agent controls an opponent's search and exiles
 	// what it finds while its permanent is there.
 	"ControlsOpponentsSearches": defFieldOwnRules,
-	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
-	"GrantText": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
+	// #5846: an Equipment's "can be attached only to …" (Konda's Banner)
+	// decides what another item's attach step does and when CR 704.5n
+	// unattaches it, while its permanent is there.
+	"AttachOnlyTo": defFieldOwnRules,
+	"LifeForMana":  defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
+	"GrantedReplacements": defFieldInert, // a grant bundle's own slot: merged into the composite's Replacements (copy_grants.go)
+	"GrantText":           defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
@@ -1790,7 +1833,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "VentureLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules, "DamageLastLoyalty": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules, "CoinFlipRules": defFieldRules,
-	"DealtDamageCantBeRegenerated": defFieldRules, "PlayerLifeFloorOne": defFieldRules,
+	"DealtDamageCantBeRegenerated": defFieldRules, "PlayerLifeFloorOne": defFieldRules, "PlayerLifeFloorOneIfCreature": defFieldRules,
 }
 
 // defBearsRules reports whether a definition has a rules slot set

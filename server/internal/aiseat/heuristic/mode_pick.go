@@ -63,6 +63,18 @@ func (p *Policy) modePickValue(st *state, ch *protocol.PendingChoiceView, modes 
 	for j, i := range ch.ModeIndexes {
 		bullets[i] = &ch.ModeBullets[j]
 	}
+	// #5771, CR 700.2e: an opponent's "An opponent chooses one" spell.
+	// The mode is the bot's, the spell and its targets the caster's, so
+	// the bot takes the bullet that does the caster the least good.
+	if ch.ModeChosenFor != "" && ch.ModeChosenFor != st.me {
+		var gain float64
+		for _, m := range modes {
+			if b := bullets[m]; b != nil {
+				gain += p.casterBulletGain(st, b)
+			}
+		}
+		return -gain, "mode pick: the bullet that does the caster least"
+	}
 	var v float64
 	for _, m := range modes {
 		if b := bullets[m]; b != nil {
@@ -91,6 +103,48 @@ func (p *Policy) modeBulletValue(st *state, b *protocol.ModeOptionView) float64 
 	}
 	for i := range clauses {
 		v += st.bestClausePicks(p.cfg, &clauses[i])
+	}
+	return v
+}
+
+// casterBulletGain is what one bullet of somebody else's spell does for
+// its caster, as the bot can see it (#5771): its declared purpose, priced
+// as the bot would price getting it itself, plus, for each target clause,
+// what the caster's best picks among the bot's own permanents would cost
+// the bot (the caster takes the most valuable first, up to the clause's
+// count). Picks of anybody else's are left out: the bot is not the one
+// they hurt. A bullet that declares nothing and can pick nothing of the
+// bot's is worth nothing to the caster, and so is the one an opponent
+// leaves them when every other bullet helps them.
+func (p *Policy) casterBulletGain(st *state, b *protocol.ModeOptionView) float64 {
+	var v float64
+	var ps purposeSet
+	ps.add(b.Purpose)
+	if p.purposePriced(ps) {
+		v += p.purposeValue(st, ps, 0, nil, false)
+	}
+	clauses := b.Clauses
+	if len(clauses) == 0 && b.LegalTargets != nil {
+		clauses = []protocol.LegalTargetsView{*b.LegalTargets}
+	}
+	for i := range clauses {
+		c := &clauses[i]
+		var losses []float64
+		for _, id := range c.Cards {
+			if x := st.bf[id]; x != nil && x.Controller == st.me {
+				losses = append(losses, st.permanentValue(x))
+			}
+		}
+		sort.Sort(sort.Reverse(sort.Float64Slice(losses)))
+		hi := c.Max
+		if hi <= 0 || hi > len(losses) {
+			hi = len(losses)
+		}
+		for _, l := range losses[:hi] {
+			if l > 0 {
+				v += l
+			}
+		}
 	}
 	return v
 }

@@ -960,6 +960,20 @@ describe("the pick screen", () => {
     );
   });
 
+  it("fills the width of a large screen, gutters kept, where the lobby keeps the site column (#5921)", async () => {
+    const c = await room(view({ state: "lobby", pack: undefined, take: 0, picks: [] }));
+    const page = (): HTMLElement => c.querySelector<HTMLElement>("main.site-page")!;
+    expect(page().classList.contains("wide")).toBe(true);
+    socket().frame("draft", view({ seq: 20 }));
+    await settle();
+    expect(page().classList.contains("full")).toBe(true);
+    expect(page().classList.contains("wide")).toBe(false);
+    // The Page's own rule: "full" has no max-width, the gutters stay.
+    const css = readFileSync(join(__dirname, "../lib/components/Page.svelte"), "utf8");
+    expect(css).toMatch(/\.site-page \{[^}]*padding: 40px var\(--page-gutter\) 56px;/);
+    expect(css).not.toMatch(/\.site-page\.full \{[^}]*max-width/);
+  });
+
   it("sends a draft_pick with the chosen card once it is confirmed", async () => {
     const c = await room();
     const confirm = button(c, "Pick 1 card");

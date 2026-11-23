@@ -246,11 +246,14 @@ type staticRowSlot struct {
 // list slot is one row. A slot's entries are designation-gated when
 // their type declares ActiveWhen.
 var staticRowSlots = []staticRowSlot{
+	{field: "AttachOnlyTo", label: attachOnlyToRows},
 	{field: "Replacements", fallback: "Replacement effect", ownLabel: true},
 	{field: "EntersWithCountersFromCast", label: entersWithCountersRows},
 	{field: "TriggerDoublers", fallback: "Abilities trigger an additional time", ownLabel: true},
 	{field: "TriggerSuppressors", fallback: "Stops abilities from triggering", ownLabel: true},
 	{field: "SpellsYouCastHaveDelve", label: boolRow("Spells you cast have delve.")},
+	{field: "FirstSpellHasAssist", label: boolRow("The first spell you cast during each of your turns has assist.")},
+	{field: "AsYouCascadePutALand", label: boolRow("As you cascade, you may put a land card from among the exiled cards onto the battlefield tapped.")},
 	{field: "SplitSecondGrants", fallback: "Your spells have split second", ownLabel: true},
 	{field: "GrantedOptionalCosts", fallback: "Spells you cast have an additional cost", ownLabel: true},
 	{field: "GrantedTapCosts", fallback: "Spells you cast have convoke", ownLabel: true},
@@ -289,6 +292,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "PlayerKeywordsIf", fallback: "Gives you an ability some of the time", ownLabel: true},
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
 	{field: "PlayerLifeFloorOne", label: boolRow("Damage that would reduce your life total to less than 1 reduces it to 1 instead.")},
+	{field: "PlayerLifeFloorOneIfCreature", label: boolRow("If you control a creature, damage that would reduce your life total to less than 1 reduces it to 1 instead.")},
 	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "LoyaltyTwiceEachTurn", label: boolRow("You may activate its loyalty abilities twice each turn rather than only once.")},
 	{field: "YourPlaneswalkersLoyaltyTwiceEachTurn", label: boolRow("You may activate the loyalty abilities of planeswalkers you control twice each turn rather than only once.")},
@@ -403,6 +407,19 @@ func boolRow(label string) func(reflect.Value) []string {
 	}
 }
 
+// attachOnlyToRows is the AttachOnlyTo slot's row (#5846): "Can be
+// attached only to a legendary creature." from the clause's label.
+func attachOnlyToRows(v reflect.Value) []string {
+	spec, _ := v.Interface().(*TargetSpec)
+	if spec == nil {
+		return nil
+	}
+	if spec.Label == "" {
+		return []string{"Can be attached only to some objects"}
+	}
+	return []string{"Can be attached only to " + spec.Label + "."}
+}
+
 // extraVoteRows is the ExtraVote slot's row (ADR 0146).
 func extraVoteRows(v reflect.Value) []string {
 	switch ExtraVote(v.Int()) {
@@ -445,6 +462,10 @@ func conditionalLandPlayRows(v reflect.Value) []string {
 		return []string{fmt.Sprintf("%d+ | You may play an additional land on each of your turns.", cp.AtCharge)}
 	case cp.AtCharge > 0 && cp.Plays > 1:
 		return []string{fmt.Sprintf("%d+ | You may play %d additional lands on each of your turns.", cp.AtCharge, cp.Plays)}
+	case cp.AtLevel > 0 && cp.Plays == 1:
+		return []string{"You may play an additional land on each of your turns."}
+	case cp.AtLevel > 0 && cp.Plays > 1:
+		return []string{fmt.Sprintf("You may play %d additional lands on each of your turns.", cp.Plays)}
 	case cp.Plays == 1:
 		return []string{fmt.Sprintf("As long as you control another %s, you may play an additional land on each of your turns.", cp.Another)}
 	case cp.Plays > 1:

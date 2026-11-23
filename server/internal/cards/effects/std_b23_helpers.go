@@ -16,7 +16,7 @@ import (
 // that is a creature or an enchantment, never the source itself (CR
 // 109.1, "another"). It is a cost (CR 602.2), paid as the ability is
 // activated, and it counts as a sacrifice for "whenever you sacrifice".
-func b23SacrificeAnotherCreatureOrEnchantment() game.AbilityCost {
+func B23SacrificeAnotherCreatureOrEnchantment() game.AbilityCost {
 	return SacrificeAnotherN(1, "another creature or enchantment", Or(Creature(), Enchantment()))
 }
 
@@ -24,7 +24,7 @@ func b23SacrificeAnotherCreatureOrEnchantment() game.AbilityCost {
 // end of turn. Tap it." as an activated ability's effect, the source being
 // the creature (Popular Egotist). Both halves are the resolving ability's
 // own, so it does both even if the creature was already tapped.
-func b23IndestructibleAndTapThis(label string) Effect {
+func B23IndestructibleAndTapThis(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if err := (GrantKeywordUntilEOT{
@@ -42,7 +42,7 @@ func b23IndestructibleAndTapThis(label string) Effect {
 // EventSacrifice per permanent, actor the source's controller. It fires
 // while the permanent is still on the battlefield, so sacrificing the
 // source itself triggers its own ability too (the Popular Egotist ruling).
-func b23YouSacrificedAPermanent(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func B23YouSacrificedAPermanent(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Actor == source.Controller && ev.CardID != uuid.Nil
 }
 
@@ -50,12 +50,12 @@ func b23YouSacrificedAPermanent(ev game.Event, source *game.Card, _ game.Charact
 // sacrificed this turn" for the resolving item's controller: the turn
 // tally counts every one, tokens included (CR 704.5d), and an opponent's
 // sacrifices are not in it (Sawblade Skinripper).
-func b23PermanentsYouSacrificedThisTurn(ctx *Context) int {
+func B23PermanentsYouSacrificedThisTurn(ctx *Context) int {
 	return ctx.Game.TurnTallyFor(ctx.Controller()).PermanentsSacrificed
 }
 
 // b23HasID reports whether ids holds id.
-func b23HasID(ids []uuid.UUID, id uuid.UUID) bool {
+func B23HasID(ids []uuid.UUID, id uuid.UUID) bool {
 	for _, x := range ids {
 		if x == id {
 			return true

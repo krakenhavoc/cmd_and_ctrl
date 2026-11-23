@@ -1,0 +1,44 @@
+package cardskr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Kurbis, Harvest Celebrant — Legendary Creature — Treefolk {X}{G}{G},
+// 0/0:
+//
+//	"Kurbis enters with a number of +1/+1 counters on it equal to the
+//	 amount of mana spent to cast it.
+//	 Remove a +1/+1 counter from Kurbis: Prevent all damage that would be
+//	 dealt this turn to another target creature with a +1/+1 counter on
+//	 it."
+//
+// ADR 0108 §7, Delivery PR 7 (#1904): the entry counters are a CR 614.1c
+// clause over the cast (game.CastCounts.ManaSpent, #1735), and the
+// ability is the not-one-use shield pinned to the target. Whether the
+// target still has a +1/+1 counter is checked again as the ability
+// resolves (CR 608.2b); the shield then lasts the turn.
+//
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:       "991fab9c-8554-4e64-a933-6cc2ffa4edb1",
+		Name:           "Kurbis, Harvest Celebrant",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   effects.CompletenessFull,
+		EntersWithCountersFromCast: []game.EntryCountersFromCast{{
+			Kind:  game.CounterPlusOne,
+			Count: func(cast game.CastCounts) int { return cast.ManaSpent },
+		}},
+		Activated: []effects.ActivatedAbility{effects.ShieldTargetRow(
+			"Remove a +1/+1 counter from Kurbis: Prevent all damage that would be dealt this turn to another target creature with a +1/+1 counter on it.",
+			effects.RemoveCountersFromThis(game.CounterPlusOne, 1),
+			effects.Another(effects.TargetCreature("another target creature with a +1/+1 counter on it", effects.CreatureWithCounter(game.CounterPlusOne))))},
+	})
+}

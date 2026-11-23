@@ -491,6 +491,10 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 		// EntersWithCounters below have to be applied to the new object
 		// rather than to the one that is about to be wiped.
 		if newID := g.resetAsNewObjectLocked(entered); newID != uuid.Nil {
+			// #5877: an "until" return's follow-up names the card it
+			// returns; it follows the card to the new object, before
+			// EventETB, so it can trigger on that object's entry.
+			g.followUntilThenLocked(entered, newID)
 			entered = newID
 			moved.InstanceID = newID
 		}
@@ -652,7 +656,22 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 // Caller must hold g.mu.
 func (g *Game) announceEntryLocked(l entryLanding) {
 	ev := l.ev
-	if l.srcKind == "" {
+	if l.srcKind == "" && ev.entryTokenNotCreated() {
+		// #4994: the token a copy of a permanent spell becomes is not
+		// "created" (CR 111.13, CR 608.3f), so its arrival is a move
+		// from no zone, the shape a spawn's arrival has: every entry
+		// reader sees it, and no creation watcher or tally does. It is
+		// a new object all the same, so it gets its source ordinal as an
+		// EventTokenCreated would give it (EmitEvent).
+		g.noteCreatedSourceLocked(l.entered)
+		g.EmitEvent(Event{
+			Kind:        EventZoneMove,
+			Actor:       ev.Actor,
+			CardID:      l.entered,
+			NewZone:     ZoneBattlefield,
+			BecameToken: true,
+		})
+	} else if l.srcKind == "" {
 		// #762: a created token arrived from no zone, so the
 		// announcement is the creation itself (CR 111.1). One event,
 		// never two — a token that also emitted a zone move would be
@@ -698,6 +717,9 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 	// un-paused path orders it.
 	if ev.stackItem != nil {
 		g.attachResolvedAuraLocked(l.entered, ev.stackItem)
+		// #5929: a permanent spell that entered as a copy of an Aura (Copy
+		// Enchantment) chose its host as it entered (CR 303.4f).
+		g.attachEnteringAuraLocked(l.entered, ev)
 	} else {
 		// CR 303.4f (#3158): an Aura put onto the battlefield enters
 		// attached to the host its window settled, at the same point.

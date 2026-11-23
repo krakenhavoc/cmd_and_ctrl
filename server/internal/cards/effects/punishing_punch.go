@@ -24,12 +24,12 @@ func init() {
 		OracleID:     "454c4e8b-e417-4381-a931-6a11356ef64e",
 		Name:         "Punishing Punch",
 		Completeness: CompletenessFull,
-		Targets:      ownCreatureAndOpposingCreatureClauses(),
+		Targets:      OwnCreatureAndOpposingCreatureClauses(),
 		SelfCostModifiers: []game.CostModifier{
 			CostsLess(2, "This spell costs {2} less to cast if there are two or more creature cards in your graveyard.",
 				func(q game.CostQuery) bool { return CountCardsInYourGraveyard(Creature())(q) >= 2 }),
 		},
-		OnResolve: ownCreatureDealsTwiceItsPowerToOpposingCreature,
+		OnResolve: OwnCreatureDealsTwiceItsPowerToOpposingCreature,
 	})
 }
 
@@ -37,7 +37,7 @@ func init() {
 // creature you control deals damage equal to twice its power to target
 // creature an opponent controls": slot 0 the damage source, slot 1 the
 // recipient (Punishing Punch, Thing Swing).
-func ownCreatureAndOpposingCreatureClauses() *game.TargetSpec {
+func OwnCreatureAndOpposingCreatureClauses() *game.TargetSpec {
 	return Clauses(
 		TargetCreature("target creature you control", YouControl()),
 		TargetCreature("target creature an opponent controls", OpponentControls()),
@@ -49,7 +49,7 @@ func ownCreatureAndOpposingCreatureClauses() *game.TargetSpec {
 // response scales it, and the damage carries the source's deathtouch and
 // lifelink. A creature that left in response deals nothing; a recipient that
 // left takes nothing (CR 608.2b).
-func ownCreatureDealsTwiceItsPowerToOpposingCreature(_ *game.StackItem, ctx *Context) error {
+func OwnCreatureDealsTwiceItsPowerToOpposingCreature(_ *game.StackItem, ctx *Context) error {
 	biter, ok := ctx.ClauseTarget(0)
 	if !ok || biter.Kind != game.TargetCard {
 		return nil

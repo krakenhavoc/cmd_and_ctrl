@@ -53,43 +53,55 @@ import (
 // whatever became of the source.
 type freeHandCastOffer struct {
 	name string
-	then game.ChooseCardsThen
+	Then game.ChooseCardsThen
 }
 
 // freeCastSpell is a free cast's "a spell [with <quality>]" clause as
 // data the permission carries (#4509): the types it admits (Filter, about
 // the spell) and the mana value it caps (MaxManaValue, nil for none),
 // both judged on the face being cast. The zero value is "a spell".
-type freeCastSpell struct {
-	filter       game.PermissionFilter
+type FreeCastSpell struct {
+	Filter       game.PermissionFilter
 	maxManaValue *int
+	minManaValue *int
 }
 
 // anySpell is "a spell", with no quality.
-var anySpell = freeCastSpell{}
+var AnySpell = FreeCastSpell{}
 
 // freeInstantOrSorcery is "an instant or sorcery spell".
-func freeInstantOrSorcery() freeCastSpell {
-	return freeCastSpell{filter: game.PermissionFilter{InstantOrSorceryOnly: true}}
+func FreeInstantOrSorcery() FreeCastSpell {
+	return FreeCastSpell{Filter: game.PermissionFilter{InstantOrSorceryOnly: true}}
 }
 
 // spellWithManaValueAtMost is "a spell with mana value N or less".
-func spellWithManaValueAtMost(n int) freeCastSpell {
-	return anySpell.withManaValueAtMost(n)
+func SpellWithManaValueAtMost(n int) FreeCastSpell {
+	return AnySpell.WithManaValueAtMost(n)
 }
 
 // withManaValueAtMost adds "with mana value N or less" to the clause.
-func (s freeCastSpell) withManaValueAtMost(n int) freeCastSpell {
+func (s FreeCastSpell) WithManaValueAtMost(n int) FreeCastSpell {
 	s.maxManaValue = &n
 	return s
 }
 
+// withManaValueAtLeast adds "with mana value N or more" to the clause
+// (Founding the Third Path's "mana value 1 or 2" is at least 1, at most 2).
+func (s FreeCastSpell) WithManaValueAtLeast(n int) FreeCastSpell {
+	s.minManaValue = &n
+	return s
+}
+
 // on writes the clause onto a free-cast permission, a copy of it.
-func (s freeCastSpell) on(perm game.CastPermission) game.CastPermission {
-	perm.Filter = s.filter
+func (s FreeCastSpell) On(perm game.CastPermission) game.CastPermission {
+	perm.Filter = s.Filter
 	if s.maxManaValue != nil {
 		n := *s.maxManaValue
 		perm.MaxSpellManaValue = &n
+	}
+	if s.minManaValue != nil {
+		n := *s.minManaValue
+		perm.MinSpellManaValue = &n
 	}
 	return perm
 }
@@ -97,7 +109,7 @@ func (s freeCastSpell) on(perm game.CastPermission) game.CastPermission {
 // freeCastCandidates is the cards of `ids` a cast through `perm` could
 // make a spell of: some face of each is not a land and is admitted by
 // the clause the permission carries (CastPermission.OffersASpell).
-func freeCastCandidates(g *game.Game, perm *game.CastPermission, ids []uuid.UUID) []uuid.UUID {
+func FreeCastCandidates(g *game.Game, perm *game.CastPermission, ids []uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, id := range ids {
 		if c, ok := g.LookupCardForEffect(id); ok && perm.OffersASpell(c) {
@@ -149,10 +161,10 @@ func keyedFreeCastCandidates(g *game.Game, perm *game.CastPermission, candidates
 // ledgered in game/testdata/effect_keys.txt. Call it once, from a
 // package-level var. The continuation captures only `name`, a constant of
 // the card's printed text, never game state.
-func registerFreeHandCastOffer(key, name string) freeHandCastOffer {
+func RegisterFreeHandCastOffer(key, name string) freeHandCastOffer {
 	return freeHandCastOffer{
 		name: name,
-		then: game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
+		Then: game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
 			grantPickedFreeHandCast(g, r, name)
 			return nil
 		}),
@@ -179,16 +191,16 @@ func grantPickedFreeHandCast(g *game.Game, r game.CardsChosen, name string) {
 // spell the clause admits (anySpell for "a spell") to cast free, or none.
 // The offer's name heads the question and labels the grant. Nothing is
 // queued when the hand holds no candidate.
-func offerFreeHandCast(ctx *Context, controller uuid.UUID, offer freeHandCastOffer, clause string, spell freeCastSpell) {
-	offerFreeHandCastFrom(ctx.Game, controller, ctx.Source(), offer, clause, spell)
+func OfferFreeHandCast(ctx *Context, controller uuid.UUID, offer freeHandCastOffer, clause string, spell FreeCastSpell) {
+	OfferFreeHandCastFrom(ctx.Game, controller, ctx.Source(), offer, clause, spell)
 }
 
 // offerFreeHandCastFrom is offerFreeHandCast with the game and the
 // source handed in rather than read off a Context.
-func offerFreeHandCastFrom(g *game.Game, controller, source uuid.UUID, offer freeHandCastOffer, clause string, spell freeCastSpell) {
-	offerFreeHandCastOver(g, controller, source, offer,
+func OfferFreeHandCastFrom(g *game.Game, controller, source uuid.UUID, offer freeHandCastOffer, clause string, spell FreeCastSpell) {
+	OfferFreeHandCastOver(g, controller, source, offer,
 		offer.name+" — cast "+clause+" from your hand without paying its mana cost?",
-		spell, allHandCardIDs(g, controller))
+		spell, AllHandCardIDs(g, controller))
 }
 
 // offerFreeHandCastOver offers the free cast of a spell the clause admits
@@ -196,9 +208,9 @@ func offerFreeHandCastFrom(g *game.Game, controller, source uuid.UUID, offer fre
 // inside an open resolution (#4250), else the keyed pick under
 // `question`. Only the cards with such a spell are offered, and nothing
 // is queued for none.
-func offerFreeHandCastOver(g *game.Game, controller, source uuid.UUID, offer freeHandCastOffer, question string, spell freeCastSpell, cards []uuid.UUID) {
-	perm := spell.on(g.FreeCastFromHandPermission(controller, source, offer.name))
-	candidates := freeCastCandidates(g, &perm, cards)
+func OfferFreeHandCastOver(g *game.Game, controller, source uuid.UUID, offer freeHandCastOffer, question string, spell FreeCastSpell, cards []uuid.UUID) {
+	perm := spell.On(g.FreeCastFromHandPermission(controller, source, offer.name))
+	candidates := FreeCastCandidates(g, &perm, cards)
 	if len(candidates) == 0 {
 		return
 	}
@@ -226,16 +238,16 @@ func offerFreeHandCastOver(g *game.Game, controller, source uuid.UUID, offer fre
 		Min:         0,
 		Max:         1,
 		Destination: game.ChooseCastFree,
-		ThenKey:     offer.then,
+		ThenKey:     offer.Then,
 	})
 }
 
 // freeCastHandCandidates is the hand cards a free cast may name: every
 // card with a face that is a spell (a land is never one) the clause
 // admits, judged face by face (#4509).
-func freeCastHandCandidates(g *game.Game, controller uuid.UUID, spell freeCastSpell) []uuid.UUID {
-	perm := spell.on(game.CastPermission{})
-	return freeCastCandidates(g, &perm, allHandCardIDs(g, controller))
+func FreeCastHandCandidates(g *game.Game, controller uuid.UUID, spell FreeCastSpell) []uuid.UUID {
+	perm := spell.On(game.CastPermission{})
+	return FreeCastCandidates(g, &perm, AllHandCardIDs(g, controller))
 }
 
 // grantFreeHandCastsFrom is "you may cast any number of spells from your
@@ -255,15 +267,15 @@ func freeCastHandCandidates(g *game.Game, controller uuid.UUID, spell freeCastSp
 //
 // Returns how many cards were granted. Cards drawn by the same
 // resolution are included, so this runs from the draw's continuation.
-func grantFreeHandCastsFrom(g *game.Game, controller, source uuid.UUID, name string) int {
-	return offerFreeHandCastsOf(g, controller, source, name, freeCastHandCandidates(g, controller, anySpell),
+func GrantFreeHandCastsFrom(g *game.Game, controller, source uuid.UUID, name string) int {
+	return OfferFreeHandCastsOf(g, controller, source, name, FreeCastHandCandidates(g, controller, AnySpell),
 		func(id uuid.UUID) bool { return g.FreeCastFromHandForEffect(controller, source, id, name) },
 		game.ChooseCardsThen{})
 }
 
 // offerFreeHandCastsOf grants each of `candidates` with `grant` and asks
 // the resolution_cast prompt over the ones granted (grantFreeHandCastsFrom).
-func offerFreeHandCastsOf(g *game.Game, controller, source uuid.UUID, name string, candidates []uuid.UUID,
+func OfferFreeHandCastsOf(g *game.Game, controller, source uuid.UUID, name string, candidates []uuid.UUID,
 	grant func(uuid.UUID) bool, then game.ChooseCardsThen) int {
 	var granted []uuid.UUID
 	for _, id := range candidates {

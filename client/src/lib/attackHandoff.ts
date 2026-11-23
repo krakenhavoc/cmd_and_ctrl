@@ -16,6 +16,7 @@
 // the two sends.
 
 import type { DockRequest } from "./dock";
+import { attackPriceText } from "./attackAll";
 import type { GameView } from "./protocol";
 
 /** One chosen attacker and what it attacks right now. */
@@ -48,11 +49,16 @@ export function chosenAttacks(view: GameView, seatID: string): ChosenAttack[] {
 /**
  * chosenAttacksCost is what confirming the attacks as they stand costs:
  * each attack's server-priced tax (`turn.attack_targets[].tax`), once per
- * attacker, concatenated as the server charges it. "" when free.
+ * attacker, concatenated as the server charges it, then (#5869) the
+ * life it charges, summed: "{2}{2}", "4 life", "{2} and 2 life". "" when
+ * free.
  */
 export function chosenAttacksCost(view: GameView, attacks: ChosenAttack[]): string {
   const rows = view.turn?.attack_targets ?? [];
-  return attacks.map((a) => rows.find((t) => t.id === a.target)?.tax ?? "").join("");
+  const row = (a: ChosenAttack) => rows.find((t) => t.id === a.target);
+  const mana = attacks.map((a) => row(a)?.tax ?? "").join("");
+  const life = attacks.reduce((n, a) => n + (row(a)?.tax_life ?? 0), 0);
+  return attackPriceText(mana, life);
 }
 
 /** The declare_attackers payload that confirms the attacks as they stand. */

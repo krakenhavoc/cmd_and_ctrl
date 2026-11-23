@@ -285,7 +285,7 @@ what changed around them.
 - **Where the OAuth work landed.** PRs #121 (sign-in and seat claim),
   #122 (avatars and `SeatInfo` fields) and #147 (the login-page flow).
   Not #127-129. Routes and payloads are in
-  [docs/lobby.md](../lobby.md#discord-sign-in-s125-adr-0004-0050-0051);
+  [docs/lobby.md](../lobby.md#discord-sign-in-s125-adr-0004--0050--0051);
   the design changed from the original plan in one way worth knowing:
   there is no `avatar_url` field, clients build `/avatars/<id>/<hash>.png`
   from `discord_id` and `discord_avatar_hash`.

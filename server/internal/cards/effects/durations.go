@@ -18,6 +18,7 @@ import (
 //	DurationUntilEndOfTurn(ctx)
 //	DurationUntilYourNextTurn(ctx, player)
 //	DurationUntilYourNextUpkeep(ctx, player)
+//	DurationThisTurnAndNextTurn(ctx)
 //	DurationWhileSourceRemains(ctx, source)
 //	DurationWhileYouControlSource(ctx, source, player)
 //	game.IndefiniteDuration()
@@ -60,6 +61,15 @@ func DurationUntilYourNextUpkeep(ctx *Context, player uuid.UUID) game.Duration {
 	return ctx.Game.UntilYourNextUpkeepDuration(player)
 }
 
+// DurationThisTurnAndNextTurn is "this turn and next turn" (#5718):
+// Peace Talks. The effect lasts through the turn it is made in and the
+// turn after it, whoever takes that turn (an extra turn taken right after
+// this one included, CR 500.7), and ends in that next turn's cleanup step
+// (CR 514.2): two turns, never a round of them.
+func DurationThisTurnAndNextTurn(ctx *Context) game.Duration {
+	return ctx.Game.ThisTurnAndNextTurnDuration()
+}
+
 // DurationWhileSourceRemains is "for as long as ~ remains on the
 // battlefield" (CR 611.2b) — Sower of Temptation.
 //
@@ -76,7 +86,7 @@ func DurationUntilYourNextUpkeep(ctx *Context, player uuid.UUID) game.Duration {
 func DurationWhileSourceRemains(ctx *Context, source uuid.UUID) (game.Duration, bool) {
 	// #1432: a source that left and came back while the ability
 	// waited is not the object "~" names, so the effect never begins.
-	if ctx.isNewSourceObjectAsThis(source) {
+	if ctx.IsNewSourceObjectAsThis(source) {
 		return game.Duration{}, false
 	}
 	return ctx.Game.ForAsLongAsOnBattlefieldDuration(source)
@@ -87,7 +97,7 @@ func DurationWhileSourceRemains(ctx *Context, source uuid.UUID) (game.Duration, 
 // control test — losing the source ends the effect even though the
 // source is still on the battlefield.
 func DurationWhileYouControlSource(ctx *Context, source, player uuid.UUID) (game.Duration, bool) {
-	if ctx.isNewSourceObjectAsThis(source) { // #1432, as above
+	if ctx.IsNewSourceObjectAsThis(source) { // #1432, as above
 		return game.Duration{}, false
 	}
 	return ctx.Game.ForAsLongAsYouControlDuration(source, player)

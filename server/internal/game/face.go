@@ -256,6 +256,10 @@ func (c *Card) SetFace(i int) {
 	if c.WarpText != PrintedUnknown {
 		c.WarpText = PrintedFactOf(WarpInText(f.OracleText))
 	}
+	// S82: and for "card with flashback" (HasFlashback).
+	if c.FlashbackText != PrintedUnknown {
+		c.FlashbackText = PrintedFactOf(FlashbackInText(f.OracleText))
+	}
 	// ADR 0107 §4: a double-faced card's printed keywords are the face
 	// that is up's too (CR 712.8d, 712.8e), and so are a flip card's
 	// (CR 710.2, ADR 0151 decision 3). Only when the importer recorded

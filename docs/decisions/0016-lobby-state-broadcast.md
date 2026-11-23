@@ -1,6 +1,6 @@
 # ADR 0016 — Broadcasting lobby mutations to connected clients
 
-**Status:** Implemented · 2026-07-08 · Branch `refactor/major-wip`
+**Status:** Accepted · 2026-07-08 · Branch `refactor/major-wip`
 
 ## Context
 

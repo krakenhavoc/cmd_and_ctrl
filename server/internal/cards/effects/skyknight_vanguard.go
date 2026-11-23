@@ -42,7 +42,7 @@ func init() {
 					ctx := NewContext(g, item)
 					tmpl := TokenCard("1/1 white Soldier")
 					tmpl.Tapped = true
-					tmpl.AttackingTarget = skyknightVanguardDefender(g, ctx.Source())
+					tmpl.AttackingTarget = SkyknightVanguardDefender(g, ctx.Source())
 					return CreateToken{Controller: item.Controller, Template: tmpl, N: 1}.Apply(ctx)
 				}),
 		},
@@ -59,7 +59,7 @@ func init() {
 // AttackingTarget enters tapped but not attacking. That is the weaker
 // reading of a card whose attacker is gone, which is the direction
 // #259 asks for.
-func skyknightVanguardDefender(g *game.Game, source uuid.UUID) uuid.UUID {
+func SkyknightVanguardDefender(g *game.Game, source uuid.UUID) uuid.UUID {
 	c, ok := g.LookupCardForEffect(source)
 	if !ok {
 		return uuid.Nil

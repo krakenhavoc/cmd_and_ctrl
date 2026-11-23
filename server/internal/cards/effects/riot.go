@@ -40,7 +40,7 @@ func CreaturesYouControlWithCountersHave(kind string, others bool, keyword strin
 		if others && target.InstanceID == source.InstanceID {
 			return false
 		}
-		return hasCounterOfKind(*target, kind)
+		return HasCounterOfKind(*target, kind)
 	}, keyword)
 	subject := "Creatures"
 	if others {
@@ -63,7 +63,7 @@ func counterPhrase(kind string) string {
 // has a <kind> counter on it" — Chaos Imps' trample.
 func ThisHasWhileItHasCounter(kind, keyword string) game.StaticAbility {
 	ab := KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && hasCounterOfKind(*target, kind)
+		return target.InstanceID == source.InstanceID && HasCounterOfKind(*target, kind)
 	}, keyword)
 	ab.Label = "Has " + keyword + " while it has " + counterPhrase(kind) + " on it."
 	return ab
@@ -71,7 +71,7 @@ func ThisHasWhileItHasCounter(kind, keyword string) game.StaticAbility {
 
 // hasCounterOfKind reports whether the card carries a counter of `kind`,
 // or of any kind when `kind` is empty.
-func hasCounterOfKind(c game.Card, kind string) bool {
+func HasCounterOfKind(c game.Card, kind string) bool {
 	if kind != "" {
 		return c.Counters[kind] > 0
 	}

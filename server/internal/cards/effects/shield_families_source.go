@@ -48,7 +48,7 @@ func shieldAgainstEachTarget(ctx *Context, combatOnly bool) error {
 
 // shieldAgainstTargetsSpell is an instant's OnResolve whose whole effect
 // is shieldAgainstEachTarget.
-func shieldAgainstTargetsSpell(combatOnly bool) func(*game.StackItem, *Context) error {
+func ShieldAgainstTargetsSpell(combatOnly bool) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return shieldAgainstEachTarget(ctx, combatOnly)
 	}
@@ -58,12 +58,12 @@ func shieldAgainstTargetsSpell(combatOnly bool) func(*game.StackItem, *Context) 
 // shieldAgainstEachTarget: "<cost>: Prevent all combat damage that would
 // be dealt by target creature this turn" (Kor Haven, Horn of Deafening,
 // Safeguard, Lady Evangela).
-func shieldAgainstTargetsRow(label string, cost game.AbilityCost, targets *game.TargetSpec, combatOnly bool) ActivatedAbility {
+func ShieldAgainstTargetsRow(label string, cost game.AbilityCost, targets *game.TargetSpec, combatOnly bool) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   label,
 		Cost:    cost,
 		Targets: targets,
-		Purpose: preventsDamageUnlessTargeted(targets),
+		Purpose: PreventsDamage(),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return shieldAgainstEachTarget(NewContext(g, item), combatOnly)
 		},
@@ -76,7 +76,7 @@ func shieldAgainstTargetsRow(label string, cost game.AbilityCost, targets *game.
 // destruction): the shield on the first still-legal card target, then
 // `then` with that target. Nothing happens when the target has gone,
 // which is CR 608.2b for a spell or ability with one target.
-func shieldAgainstTheTargetThen(ctx *Context, combatOnly bool, then func(ctx *Context, target uuid.UUID) error) error {
+func ShieldAgainstTheTargetThen(ctx *Context, combatOnly bool, then func(ctx *Context, target uuid.UUID) error) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -95,7 +95,7 @@ func shieldAgainstTheTargetThen(ctx *Context, combatOnly bool, then func(ctx *Co
 // toughnessByManaValueUntilEOT is "That creature gets +0/+X until end of
 // turn, where X is its mana value" (Subdue, Kry Shield): X read as the
 // spell or ability resolves.
-func toughnessByManaValueUntilEOT(ctx *Context, target uuid.UUID) error {
+func ToughnessByManaValueUntilEOT(ctx *Context, target uuid.UUID) error {
 	c, ok := ctx.Game.LookupCardForEffect(target)
 	if !ok {
 		return nil
@@ -104,12 +104,12 @@ func toughnessByManaValueUntilEOT(ctx *Context, target uuid.UUID) error {
 	if !ok || mv <= 0 {
 		return nil
 	}
-	return BoostUntilEOT{Target: target, Toughness: mv, Label: shieldSourceName(ctx) + " — +0/+X until end of turn"}.Apply(ctx)
+	return BoostUntilEOT{Target: target, Toughness: mv, Label: ShieldSourceName(ctx) + " — +0/+X until end of turn"}.Apply(ctx)
 }
 
 // blockersOf lists the creatures blocking `attacker` right now, in
 // battlefield order (Feint's "each creature blocking it").
-func blockersOf(g *game.Game, attacker uuid.UUID) []uuid.UUID {
+func BlockersOf(g *game.Game, attacker uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsBlockingAttacker(attacker) {
@@ -121,7 +121,7 @@ func blockersOf(g *game.Game, attacker uuid.UUID) []uuid.UUID {
 
 // blockingCreatures lists every creature blocking anything right now, in
 // battlefield order (Fighting Chance's "each blocking creature").
-func blockingCreatures(g *game.Game) []uuid.UUID {
+func BlockingCreatures(g *game.Game) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsCreature() && c.BlockingTarget != uuid.Nil {
@@ -136,6 +136,6 @@ func blockingCreatures(g *game.Game) []uuid.UUID {
 // ability (Ignoble Soldier, Loafing Giant, Zealot il-Vec, Mtenda Lion):
 // the source is the permanent the ability came from, as long as it is
 // still that object (CR 400.7).
-func shieldAgainstThisCombatDamage(ctx *Context) error {
+func ShieldAgainstThisCombatDamage(ctx *Context) error {
 	return PreventDamageFromSource{FromThis: true, CombatOnly: true, Protect: ShieldAnything}.Apply(ctx)
 }

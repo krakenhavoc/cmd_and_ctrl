@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -39,8 +40,12 @@ import (
 //	              when not (#4177, foldUnpaidTwobrid, solveColored). The life half
 //	              of a Phyrexian symbol is announced on the cast
 //	              (CastSpellParams.PhyrexianLife, CR 601.2b).
-//	{S}       — snow. Parses but ParsedCost.HasSnow is informational only;
-//	            S15 does not enforce "must be paid with snow sources."
+//	{S}       — snow (CR 107.4h): one mana of any type, produced by a
+//	            snow source. Parsed into a ColorRequirement with Snow
+//	            set; every solver pays it with mana whose
+//	            ManaToken.SourceKinds has ManaSourceSnow, whatever its
+//	            colour (#5986, ColorRequirement.PaidBy). It is not
+//	            generic, so a generic reduction never reaches it.
 //
 // Unknown symbols return an error rather than silently succeeding.
 
@@ -110,9 +115,9 @@ type ParsedCost struct {
 	// phyrexian_mana.go. PhyrexianSymbols() counts them.
 	HasPhyrexian bool
 
-	// HasSnow is true if any {S} token was parsed. S15 treats snow
-	// sources as identical to generic sources — the flag is
-	// informational for S17's snow-routing work.
+	// HasSnow is true if any {S} token was parsed: a cost-level "at
+	// least one" bit. The payment reads the per-symbol
+	// ColorRequirement.Snow instead (#5986).
 	HasSnow bool
 
 	// SpendOnly is a COST-side spend restriction, resolved: "Spend
@@ -155,20 +160,24 @@ type ParsedCost struct {
 // ColorRequirement.ManaValue).
 //
 // Snow (#1190) marks a requirement that was printed as the snow symbol
-// {S} rather than plain colorless {C} — the two parse to the same
-// Options set (S15 pays a snow symbol like any colorless one), so
-// without a per-symbol tag a cost carrying both ("{S}{C}") would have
-// two indistinguishable ColorRequirement{Options:{"C"}} entries and
-// String could not say which was which. ParsedCost.HasSnow stays a
-// cost-level "at least one" bit for its existing informational
-// readers; Snow is what String reads to print the right glyph back.
+// {S} rather than plain colorless {C}. The two parse to the same
+// Options set, kept for the restore points and wire shapes that
+// already carry it, so Snow is what tells them apart: String reads it
+// to print the right glyph back, and since #5986 every payment path
+// reads it through PaidBy. A snow slot is paid by one mana of ANY type
+// produced by a snow source (CR 107.4h), and its Options are not
+// consulted: a {G} from a Snow-Covered Forest pays it and a {C} from a
+// Sol Ring does not. Snow is neither a colour nor a type of mana
+// (CR 107.4h), so a "spend mana as though it were mana of any
+// color/type" grant never widens it (widenSlots, widenForAnyColorSpend).
 type ColorRequirement struct {
 	Options       []string
 	Phyrexian     bool
 	NumericAlt    int
 	HasNumericAlt bool
-	// Snow marks a requirement parsed from {S} rather than {C}. See
-	// the type doc above.
+	// Snow marks a requirement parsed from {S} rather than {C}: one
+	// mana of any type from a snow source pays it (CR 107.4h). See the
+	// type doc above and PaidBy.
 	Snow bool
 	// AnyMana marks a slot whose MANA half a "spend mana as though it
 	// were mana of any color / any type" grant has widened to any mana:
@@ -197,8 +206,35 @@ type ColorRequirement struct {
 // the pool solver, the auto-tapper, the Phyrexian strike's ranking
 // and convoke — asks this rather than reading Options, so a widened
 // slot cannot be payable to one of them and not another.
+//
+// It is a question about COLOUR only, so it cannot answer for a snow
+// slot, which is paid by where the mana came from (CR 107.4h): the
+// solvers ask PaidBy, which knows the source, and the executor's
+// colour ledger leaves snow slots out (materializePlanInLocked).
 func (r ColorRequirement) Admits(color string) bool {
 	return r.AnyMana || matchColor(color, r.Options)
+}
+
+// PaidBy reports whether one mana of `color` whose source was `snow`
+// (ManaToken.SourceKinds has ManaSourceSnow) can pay this slot by what
+// the slot PRINTS — the question the coloured passes of the pool solver
+// and the auto-tapper ask (#5986). A snow slot is paid by any mana a
+// snow source produced, of any colour or colourless, and by nothing
+// else (CR 107.4h); every other slot is paid by a colour in Options,
+// whatever its source. A widened slot's any-mana half is not asked
+// here: it is paid in the generic pass (#1600).
+func (r ColorRequirement) PaidBy(color string, snow bool) bool {
+	if r.Snow {
+		return snow
+	}
+	return matchColor(color, r.Options)
+}
+
+// sameAdmitted reports whether two slots are paid by exactly the same
+// mana (PaidBy): the same printed colours and the same snow bit. A {C}
+// and an {S} share their Options and are not the same slot.
+func sameAdmitted(a, b ColorRequirement) bool {
+	return a.Snow == b.Snow && slices.Equal(a.Options, b.Options)
 }
 
 // width is how many kinds of mana can pay the slot — the "fewest
@@ -430,6 +466,16 @@ func absorbToken(token string, out *ParsedCost) error {
 			Phyrexian: true,
 		})
 		out.HasPhyrexian = true
+		return nil
+	}
+
+	// Three-way hybrid — "{G/W/U}": one symbol payable with mana of any of
+	// its three colours. No card prints it; it is how "pay {G}, {W}, or {U}"
+	// (Isu the Abominable) is one payment of one mana of three colours.
+	if len(u) == 5 && u[1] == '/' && u[3] == '/' && isColor(u[0]) && isColor(u[2]) && isColor(u[4]) {
+		out.Required = append(out.Required, ColorRequirement{
+			Options: []string{string(u[0]), string(u[2]), string(u[4])},
+		})
 		return nil
 	}
 

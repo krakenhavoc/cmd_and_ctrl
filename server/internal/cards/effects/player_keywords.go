@@ -51,6 +51,11 @@ const ProtectionFromEachOfYourOpponents = game.ProtectionFromEachOfYourOpponents
 // that compares against it.
 const KeywordHexproof = game.KeywordHexproof
 
+// KeywordShroud is CR 702.18a's token on a player ("You gain shroud
+// until end of turn", Gilded Light, #5842), re-exported for the same
+// reason. Unlike hexproof it stops the player's own spells too.
+const KeywordShroud = game.KeywordShroud
+
 // YouHaveWhile is a permanent's printed "<condition>, you have
 // <keyword>": the controller has the ability while `while` holds, asked
 // on every query with the permanent as it is now (CR 611.3a). For
@@ -69,7 +74,7 @@ func YouHaveWhile(keyword, label string, while func(g *game.Game, source game.Ca
 // changes control grants on its new controller's turns.
 func YouHaveDuringYourTurn(keyword string) game.PlayerKeywordIf {
 	return YouHaveWhile(keyword, "During your turn, you have "+keyword+".",
-		func(g *game.Game, source game.Card) bool { return isActivePlayer(g, source.Controller) })
+		func(g *game.Game, source game.Card) bool { return IsActivePlayer(g, source.Controller) })
 }
 
 // ThisHasDuringYourTurn is "This creature has <keyword> during your
@@ -79,7 +84,7 @@ func YouHaveDuringYourTurn(keyword string) game.PlayerKeywordIf {
 // the keyword is gone on an opponent's turn.
 func ThisHasDuringYourTurn(keyword string) game.StaticAbility {
 	ab := KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && isActivePlayer(g, source.Controller)
+		return target.InstanceID == source.InstanceID && IsActivePlayer(g, source.Controller)
 	}, keyword)
 	ab.Label = "Has " + keyword + " during your turn."
 	return ab

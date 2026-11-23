@@ -38,7 +38,7 @@ import (
 // stack item's own SourceObject names for a death — so the resolution
 // can tell it from a card that left the graveyard and came back.
 func WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn(label string) game.TriggeredAbility {
-	t := WhenThisIsPutIntoAGraveyardFromAnywhere(label, shuffleThisCardIntoItsOwnersLibrary)
+	t := WhenThisIsPutIntoAGraveyardFromAnywhere(label, ShuffleThisCardIntoItsOwnersLibrary)
 	// A fill-in Build (ADR 0041 P9): it records the graveyard object and
 	// leaves the Effect to the row.
 	t.Build = func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
@@ -55,23 +55,23 @@ func WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn(label string) game.Trigg
 // shuffled whether or not it did (CR 701.24c). The move is the ordinary
 // tuck, so a commander's owner is offered the command zone (CR 903.9b),
 // and the shuffle is its continuation, so it waits for that answer.
-func shuffleThisCardIntoItsOwnersLibrary(g *game.Game, item *game.StackItem) error {
+func ShuffleThisCardIntoItsOwnersLibrary(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	owner := item.Controller
 	if c, ok := g.LookupCardForEffect(id); ok && c.Owner != uuid.Nil {
 		owner = c.Owner
 	}
-	if !thisCardStillInTheGraveyard(g, item) {
+	if !ThisCardStillInTheGraveyard(g, item) {
 		return g.ShuffleLibraryForEffect(owner)
 	}
-	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, game.KeyedTail{Ref: ThenShuffle, Player: owner})
 }
 
 // thisCardStillInTheGraveyard reports whether the trigger's card is in a
 // graveyard as the object the trigger stamped (CR 400.7). An item with
 // no stamp (built by hand) keeps the plain "is it in a graveyard"
 // answer.
-func thisCardStillInTheGraveyard(g *game.Game, item *game.StackItem) bool {
+func ThisCardStillInTheGraveyard(g *game.Game, item *game.StackItem) bool {
 	id := item.SourceCardID
 	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
 		return false

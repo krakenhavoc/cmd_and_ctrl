@@ -89,6 +89,10 @@ type ConditionalCastZone struct {
 // ordinary case: the card declares no conditional zone.
 var CatalogCastableZonesIf func(oracleID string) []ConditionalCastZone
 
+// CatalogCastsOnlyFromGraveyard is the catalog hook for
+// Spec.CastsOnlyFromGraveyard (Haakon, Stromgald Scourge). Nil is false.
+var CatalogCastsOnlyFromGraveyard func(key string) bool
+
 // cardOpensZoneLocked is THE predicate for "does this card's own text
 // let its owner cast it from `zone` right now": an unconditional
 // CastableZones declaration, or a CastableZonesIf entry whose condition
@@ -600,7 +604,7 @@ func sameCounterRemoval(a, b *CounterRemovalCost) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if a.N != b.N || a.Counter != b.Counter || a.Among != b.Among || a.Variable != b.Variable || (a.From == nil) != (b.From == nil) {
+	if a.N != b.N || a.Counter != b.Counter || a.Among != b.Among || len(a.Kinds) != len(b.Kinds) || a.Variable != b.Variable || a.All != b.All || (a.From == nil) != (b.From == nil) {
 		return false
 	}
 	return a.From == nil || a.From.Label == b.From.Label

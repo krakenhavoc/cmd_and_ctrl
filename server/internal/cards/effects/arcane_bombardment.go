@@ -50,7 +50,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast,
-				AllOf(YouCast(Or(Instant(), Sorcery())), youCastYourFirstInstantOrSorceryEachTurn),
+				AllOf(YouCast(Or(Instant(), Sorcery())), YouCastYourFirstInstantOrSorceryEachTurn),
 				arcaneBombardmentLabel,
 				arcaneBombardmentResolve),
 		},
@@ -65,7 +65,7 @@ const arcaneBombardmentLabel = "Arcane Bombardment — exile an instant or sorce
 // half of the condition; YouCast supplies the "instant or sorcery spell"
 // half. The tally is bumped before EventCast, so one means this spell is
 // the first.
-func youCastYourFirstInstantOrSorceryEachTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func YouCastYourFirstInstantOrSorceryEachTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.Kind == game.EventCast && ev.Actor == source.Controller &&
 		g.CastTallyFor(ev.Actor).InstantSorcery == 1
 }
@@ -74,7 +74,7 @@ func youCastYourFirstInstantOrSorceryEachTurn(ev game.Event, source *game.Card, 
 // everything exiled with the enchantment.
 func arcaneBombardmentResolve(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	pick := g.ChooseAtRandomForEffect(randomDraw(ctx), graveyardIDs(g, ctx.Controller(), func(c game.Card) bool {
+	pick := g.ChooseAtRandomForEffect(RandomDraw(ctx), GraveyardIDs(g, ctx.Controller(), func(c game.Card) bool {
 		return c.IsInstant() || c.IsSorcery()
 	}), 1)
 	if len(pick) == 0 {
@@ -87,7 +87,7 @@ func arcaneBombardmentResolve(g *game.Game, item *game.StackItem) error {
 // You may cast any number of the copies without paying their mana costs."
 func arcaneBombardmentCopy(ctx *Context) error {
 	var set []uuid.UUID
-	set = append(set, b27ExiledWith(ctx.Game, ctx.Source(), arcaneBombardmentLabel)...)
+	set = append(set, B27ExiledWith(ctx.Game, ctx.Source(), arcaneBombardmentLabel)...)
 	return CopyAndCast{Cards: set, Free: true}.Apply(ctx)
 }
 

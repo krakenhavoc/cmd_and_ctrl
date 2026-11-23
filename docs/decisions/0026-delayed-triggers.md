@@ -1,6 +1,6 @@
 # ADR 0026 — Delayed triggers and return-from-exile (flicker)
 
-**Status:** accepted (S22)
+**Status:** Accepted (S22)
 **Extends:** [ADR 0018](0018-triggers-on-the-stack.md) (triggered abilities use
 the stack), [ADR 0013](0013-replacement-effects.md) (the CR 614 pipeline).
 **Turn-identity amendment:** [ADR 0059](0059-turn-machinery.md) sub-PR 1

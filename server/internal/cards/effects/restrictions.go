@@ -51,11 +51,27 @@ import (
 // the same pass.
 func RestrictAttached(r game.Restriction) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     restrictedLabel("Attached creature ", r),
+		Label:     restrictedLabel("Attached creature ", r, 0),
 		Layer:     game.Layer6Ability,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= r
+		},
+	}
+}
+
+// RestrictAttachedExtra is RestrictAttached with bits from the second
+// restriction set as well (game.ExtraRestriction: "can't crew
+// Vehicles", Intercessor's Arrest, #5673), for a card whose one printed
+// sentence spans both sets.
+func RestrictAttachedExtra(r game.Restriction, x game.ExtraRestriction) game.StaticAbility {
+	return game.StaticAbility{
+		Label:     restrictedLabel("Attached creature ", r, x),
+		Layer:     game.Layer6Ability,
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.Restrictions |= r
+			c.ExtraRestrictions |= x
 		},
 	}
 }
@@ -66,11 +82,25 @@ func RestrictAttached(r game.Restriction) game.StaticAbility {
 func RestrictSelf(r game.Restriction) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= r
 		},
 		Label: selfRestrictionLabel(r),
+	}
+}
+
+// RestrictSelfExtra is RestrictSelf with bits from the second
+// restriction set as well (game.ExtraRestriction).
+func RestrictSelfExtra(r game.Restriction, x game.ExtraRestriction) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer6Ability,
+		AppliesTo: SelfOnly,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.Restrictions |= r
+			c.ExtraRestrictions |= x
+		},
+		Label: restrictedLabel("", r, x),
 	}
 }
 
@@ -87,7 +117,7 @@ func CantAttackOrBlockUnlessPowerAtLeast(n int) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     fmt.Sprintf("This creature can't attack or block unless its power is %d or greater.", n),
 		Layer:     game.Layer6Ability,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			if n > c.AttackBlockPowerFloor {
 				c.AttackBlockPowerFloor = n
@@ -101,14 +131,14 @@ func CantAttackOrBlockUnlessPowerAtLeast(n int) game.StaticAbility {
 // on itself, and nothing for any other set, which the tile then
 // describes by its layer.
 func selfRestrictionLabel(r game.Restriction) string {
-	return restrictedLabel("", r)
+	return restrictedLabel("", r, 0)
 }
 
 // restrictedLabel is "<prefix>can't attack or block." for a restriction
 // set, or nothing for a set restrictionClause does not word. With no
 // prefix the sentence opens on the clause ("Can't attack.").
-func restrictedLabel(prefix string, r game.Restriction) string {
-	clause := restrictionClause(r)
+func restrictedLabel(prefix string, r game.Restriction, x game.ExtraRestriction) string {
+	clause := restrictionClause(r, x)
 	if clause == "" {
 		return ""
 	}
@@ -159,17 +189,22 @@ type RestrictUntilEOT struct {
 	// the common pair.
 	Restrictions game.Restriction
 
+	// ExtraRestrictions is the second set's bits to add
+	// (game.CantCrew).
+	ExtraRestrictions game.ExtraRestriction
+
 	// Label is attribution for logs and tests; defaults to a
 	// generic string when empty.
 	Label string
 }
 
 func (r RestrictUntilEOT) Apply(ctx *Context) error {
-	if r.Restrictions == 0 {
+	if r.Restrictions == 0 && r.ExtraRestrictions == 0 {
 		return nil
 	}
 	label := eotLabel(r.Label, "restriction until end of turn")
 	mod := game.AddRestrictionsMod(r.Restrictions)
+	mod.ExtraRestrictions = r.ExtraRestrictions
 	if r.Scope != game.ScopeNone {
 		if !game.KnownAffectedScope(r.Scope) {
 			return fmt.Errorf("effects: RestrictUntilEOT %q: unknown scope %q", label, r.Scope)
@@ -178,7 +213,7 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 			[]game.Mod{mod}, DurationUntilEndOfTurn(ctx), label)
 		return nil
 	}
-	return untilEndOfTurn(ctx, r.Target, nil, label, mod)
+	return UntilEndOfTurn(ctx, r.Target, nil, label, mod)
 }
 
 // RestrictAttachedWhile is "During your turn, equipped creature can't
@@ -189,7 +224,7 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 // and both must hold for the bits to apply.
 func RestrictAttachedWhile(cond func(host *game.Card, g *game.Game, source *game.Card) bool, r game.Restriction) game.StaticAbility {
 	return game.StaticAbility{
-		Label: strings.TrimSuffix(restrictedLabel("Attached creature ", r), ".") + " while a condition holds.",
+		Label: strings.TrimSuffix(restrictedLabel("Attached creature ", r, 0), ".") + " while a condition holds.",
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return AttachedToSource(target, g, source) && cond(target, g, source)

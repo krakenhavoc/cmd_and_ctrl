@@ -29,9 +29,9 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b10CommanderYouControlDealtCombatDamageToOpponent(ev, source, g)
+				return B10CommanderYouControlDealtCombatDamageToOpponent(ev, source, g)
 			}, "Jocasta — put a +1/+1 counter on Jocasta", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
-			OncePerBatch(InGraveyard(On(game.EventAttack, msc13AttackedWithYourCommander,
+			OncePerBatch(InGraveyard(On(game.EventAttack, Msc13AttackedWithYourCommander,
 				"Jocasta — you may return her from your graveyard to the battlefield tapped and attacking",
 				msc13JocastaOffer))),
 		},
@@ -41,8 +41,8 @@ func init() {
 // msc13AttackedWithYourCommander is "whenever you attack with your
 // commander": the attack declaration is yours and the attacker is a
 // commander you control.
-func msc13AttackedWithYourCommander(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || !attackDeclaredByYou(ev, source.Controller) {
+func Msc13AttackedWithYourCommander(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if source == nil || !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -62,5 +62,5 @@ func msc13JocastaOffer(g *game.Game, item *game.StackItem) error {
 }
 
 var msc13JocastaReturn = MayYes("confirm/jocasta-return", func(ctx *Context, _ game.ConfirmAnswer) error {
-	return putAttackingYourChoice(ctx, ctx.Source(), game.ZoneGraveyard, "Jocasta, Automaton Avenger")
+	return PutAttackingYourChoice(ctx, ctx.Source(), game.ZoneGraveyard, "Jocasta, Automaton Avenger")
 })

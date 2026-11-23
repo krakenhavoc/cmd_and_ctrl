@@ -20,29 +20,34 @@ func init() {
 		OracleID:     "24f7143c-d43a-4120-baa0-0235b15d8186",
 		Name:         "Wave of Reckoning",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			type hit struct {
-				id    game.Card
-				power int
+		OnResolve:    EachCreatureDealsDamageToItselfEqualToItsPower,
+	})
+}
+
+// eachCreatureDealsDamageToItselfEqualToItsPower is "Each creature deals
+// damage to itself equal to its power." as a spell's whole effect: Wave of
+// Reckoning and Solar Blaze.
+func EachCreatureDealsDamageToItselfEqualToItsPower(_ *game.StackItem, ctx *Context) error {
+	type hit struct {
+		id    game.Card
+		power int
+	}
+	var hits []hit
+	for _, id := range ctx.CreatureIDs() {
+		c, ok := ctx.Game.LookupCardForEffect(id)
+		if !ok {
+			continue
+		}
+		if p := c.CurrentPower(); p > 0 {
+			hits = append(hits, hit{id: c, power: p})
+		}
+	}
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, h := range hits {
+			if err := (DealDamage{Source: h.id.InstanceID, Target: h.id.InstanceID, Amount: h.power}).Apply(ctx); err != nil {
+				return err
 			}
-			var hits []hit
-			for _, id := range ctx.CreatureIDs() {
-				c, ok := ctx.Game.LookupCardForEffect(id)
-				if !ok {
-					continue
-				}
-				if p := c.CurrentPower(); p > 0 {
-					hits = append(hits, hit{id: c, power: p})
-				}
-			}
-			return ctx.Game.DamageInstanceForEffect(func() error {
-				for _, h := range hits {
-					if err := (DealDamage{Source: h.id.InstanceID, Target: h.id.InstanceID, Amount: h.power}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			})
-		},
+		}
+		return nil
 	})
 }

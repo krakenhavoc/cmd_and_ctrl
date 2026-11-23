@@ -271,10 +271,20 @@ func (g *Game) CopySpellKeepingTargetsForEffect(spellID, controller uuid.UUID) (
 	if spellPrintsCantBeCopied(src) {
 		return uuid.Nil, ErrCardNotFound
 	}
+	// #5918: one copy instruction. "The copy" the caller acts on is the
+	// instruction's own; a copy a replacement adds (Twinning Staff) is
+	// made after it and offered new targets (spell_copy_event.go).
+	total, additional := g.replaceSpellCopyLocked(spellID, controller, 1)
+	if total <= 0 {
+		return uuid.Nil, ErrCardNotFound
+	}
 	g.createSpellCopyLocked(src, item, controller, item.Targets)
 	top, err := g.Stack.Top()
 	if err != nil {
 		return uuid.Nil, ErrCardNotFound
+	}
+	for i := 1; i < total; i++ {
+		g.copySpellFromLocked(src, item, controller, i >= total-additional, nil, nil)
 	}
 	return top.InstanceID, nil
 }

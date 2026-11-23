@@ -20,6 +20,8 @@ func legendRuleExemptionRows(v reflect.Value) []string {
 			out = append(out, "The legend rule doesn't apply.")
 		case LegendRuleExemptYourCreatures:
 			out = append(out, "The legend rule doesn't apply to creatures you control.")
+		case LegendRuleExemptNamedPair:
+			out = append(out, e.Label)
 		default:
 			out = append(out, "The legend rule doesn't apply to permanents you control.")
 		}
@@ -84,6 +86,10 @@ func manaPoolRows(v reflect.Value) []string {
 		}
 		if s.Kind == ManaPoolBecomesColorless {
 			out = append(out, fmt.Sprintf("If %s lose unspent mana as steps and phases end, it becomes colorless instead.", would))
+			continue
+		}
+		if s.Kind == ManaPoolBecomesBlack {
+			out = append(out, fmt.Sprintf("If %s lose unspent mana, that mana becomes black instead.", would))
 			continue
 		}
 		if s.Kind == ManaPoolBecomesRed {
@@ -173,7 +179,7 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 	switch {
 	case gr.MaxManaValue != nil:
 		limit = fmt.Sprintf(" with mana value %d or less", *gr.MaxManaValue)
-	case gr.MaxManaValueFunc != nil && gr.MaxManaValueText != "":
+	case (gr.MaxManaValueFunc != nil || gr.MaxManaValueOfSource != nil) && gr.MaxManaValueText != "":
 		limit = " with mana value less than or equal to " + gr.MaxManaValueText
 	}
 	if fromHand {

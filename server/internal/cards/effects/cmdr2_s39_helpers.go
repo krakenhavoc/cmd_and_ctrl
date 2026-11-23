@@ -16,7 +16,7 @@ import (
 // battlefield, where X is zero (CR 202.3e). The permanent is not targeted.
 // One candidate is not asked; none means nothing returns, and the discard
 // still happens.
-func cmdr2S39OpponentReturnsGreatest(ctx *Context, player uuid.UUID) error {
+func Cmdr2S39OpponentReturnsGreatest(ctx *Context, player uuid.UUID) error {
 	best := -1
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.ManaValue() > best {
@@ -34,7 +34,7 @@ func cmdr2S39OpponentReturnsGreatest(ctx *Context, player uuid.UUID) error {
 		return cmdr2S39QueueDiscard(ctx.Game, player, ctx.Source())
 	case 1:
 		if err := ctx.Game.BounceToHandForEffect(candidates[0]); err != nil {
-			return nothingIfGone(err)
+			return NothingIfGone(err)
 		}
 		return cmdr2S39QueueDiscard(ctx.Game, player, ctx.Source())
 	}
@@ -70,7 +70,7 @@ var cmdr2S39DispersalReturn = game.RegisterChooseCardsThen("choose-cards/cmdr2-s
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := nothingIfGone(g.BounceToHandForEffect(id)); err != nil {
+		if err := NothingIfGone(g.BounceToHandForEffect(id)); err != nil {
 			return err
 		}
 	}
@@ -87,7 +87,7 @@ var cmdr2S39DispersalReturn = game.RegisterChooseCardsThen("choose-cards/cmdr2-s
 //
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{cmdr2S39JumpStart("{1}{U}")},
-func cmdr2S39JumpStart(printedCost string) game.AlternativeCost {
+func Cmdr2S39JumpStart(printedCost string) game.AlternativeCost {
 	ac := Flashback(printedCost)
 	ac.Key = "jump-start"
 	ac.Label = "Jump-start — discard a card"

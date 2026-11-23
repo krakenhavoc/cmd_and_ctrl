@@ -53,8 +53,8 @@ func (CondNoSpellFromHand) Holds(ctx *Context) bool {
 	return !CastASpellFromHandThisTurn(ctx.Game, ctx.Controller())
 }
 
-func (CondNoSpellFromHand) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondNoSpellsCastFromHand, 0), true
+func (CondNoSpellFromHand) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondNoSpellsCastFromHand, 0), true
 }
 
 // AtYourEndStepIfNoSpellFromHand is "At the beginning of your end step,

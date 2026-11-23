@@ -17,8 +17,8 @@ import (
 // Ethereal Armor. The Aura itself is one, and a permanent that is an
 // enchantment only through an earlier layer still counts (Effective
 // types, not printed).
-func enchantmentsControlledBy(g *game.Game, source *game.Card) int {
-	return permanentsYouControl(g, source, func(c *game.Card) bool {
+func EnchantmentsControlledBy(g *game.Game, source *game.Card) int {
+	return CountPermanentsYouControl(g, source, func(c *game.Card) bool {
 		for _, t := range c.Effective().Types {
 			if t == "Enchantment" {
 				return true
@@ -32,7 +32,7 @@ func enchantmentsControlledBy(g *game.Game, source *game.Card) int {
 // attached to a creature" — Sage's Reverie. "You control" is the
 // SOURCE's controller; the Aura may be on anyone's creature, and an
 // Aura on a land or a player does not count.
-func aurasYouControlOnCreatures(g *game.Game, source *game.Card) int {
+func AurasYouControlOnCreatures(g *game.Game, source *game.Card) int {
 	if g == nil || g.Battlefield == nil {
 		return 0
 	}
@@ -53,7 +53,7 @@ func aurasYouControlOnCreatures(g *game.Game, source *game.Card) int {
 // to it" for an Aura's own host — Mantle of the Ancients. Everybody's
 // attachments count, the source included, because the printed text
 // names no controller.
-func aurasAndEquipmentOnTheHost(g *game.Game, source *game.Card) int {
+func AurasAndEquipmentOnTheHost(g *game.Game, source *game.Card) int {
 	if g == nil || g.Battlefield == nil {
 		return 0
 	}
@@ -76,8 +76,8 @@ func aurasAndEquipmentOnTheHost(g *game.Game, source *game.Card) int {
 // as the ability resolves, and an attachment that has fallen off by
 // then untaps nothing. Sting, the Glinting Dagger's combat trigger
 // and Freed from the Real's second ability.
-func untapAttachedHost(g *game.Game, item *game.StackItem) error {
-	host := attachedHostFor(g, item.SourceCardID)
+func UntapAttachedHost(g *game.Game, item *game.StackItem) error {
+	host := AttachedHostFor(g, item.SourceCardID)
 	if host == nil {
 		return nil
 	}
@@ -86,8 +86,8 @@ func untapAttachedHost(g *game.Game, item *game.StackItem) error {
 
 // tapAttachedHost is untapAttachedHost's twin, for "tap enchanted
 // creature" (Freed from the Real).
-func tapAttachedHost(g *game.Game, item *game.StackItem) error {
-	host := attachedHostFor(g, item.SourceCardID)
+func TapAttachedHost(g *game.Game, item *game.StackItem) error {
+	host := AttachedHostFor(g, item.SourceCardID)
 	if host == nil {
 		return nil
 	}
@@ -98,8 +98,8 @@ func tapAttachedHost(g *game.Game, item *game.StackItem) error {
 // attachment's own ability (Robe of Stars). The Equipment goes with its
 // host (CR 702.26g); an attachment that has fallen off by resolution
 // phases nothing out.
-func phaseOutAttachedHost(g *game.Game, item *game.StackItem) error {
-	host := attachedHostFor(g, item.SourceCardID)
+func PhaseOutAttachedHost(g *game.Game, item *game.StackItem) error {
+	host := AttachedHostFor(g, item.SourceCardID)
 	if host == nil {
 		return nil
 	}

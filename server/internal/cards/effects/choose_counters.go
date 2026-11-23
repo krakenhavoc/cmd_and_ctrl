@@ -48,7 +48,7 @@ type counterChoice struct {
 // (nil: as many as it may), `final` what the clause does with the counts
 // (kind to count, zero counts dropped) once every kind has been asked.
 // Both capture nothing; the card's own IDs ride as `extra`.
-func registerCounterChoice(key string, goal counterGoal, final func(ctx *Context, perm uuid.UUID, extra []uuid.UUID, picked map[string]int) error) *counterChoice {
+func RegisterCounterChoice(key string, goal counterGoal, final func(ctx *Context, perm uuid.UUID, extra []uuid.UUID, picked map[string]int) error) *counterChoice {
 	cc := &counterChoice{goal: goal, final: final}
 	cc.then = NumberThen(key, func(ctx *Context, r game.NumberAnswer) error {
 		s, ok := counterAskOf(r)
@@ -62,7 +62,7 @@ func registerCounterChoice(key string, goal counterGoal, final func(ctx *Context
 			}
 		}
 		s.idx++
-		return cc.ask(ctx, s)
+		return cc.Ask(ctx, s)
 	})
 	return cc
 }
@@ -83,6 +83,10 @@ type counterAsk struct {
 	idx      int
 	left     int
 	limited  bool
+	// exact makes the ceiling a total to reach ("remove X counters", not
+	// "up to X"): each kind is asked for at least what the kinds after it
+	// cannot cover. It rides the Nums as limited == 2.
+	exact bool
 }
 
 func (s counterAsk) carry() []uuid.UUID {
@@ -97,6 +101,9 @@ func (s counterAsk) nums() []int {
 	limited := 0
 	if s.limited {
 		limited = 1
+	}
+	if s.exact {
+		limited = 2
 	}
 	out := []int{s.left, limited, s.idx}
 	out = append(out, s.have...)
@@ -120,6 +127,7 @@ func counterAskOf(r game.NumberAnswer) (counterAsk, bool) {
 		kinds:    append([]string(nil), r.Words[1:]...),
 		left:     r.Nums[0],
 		limited:  r.Nums[1] != 0,
+		exact:    r.Nums[1] == 2,
 		idx:      r.Nums[2],
 		have:     append([]int(nil), r.Nums[3:3+m]...),
 		picked:   append([]int(nil), r.Nums[3+m:]...),
@@ -131,7 +139,17 @@ func counterAskOf(r game.NumberAnswer) (counterAsk, bool) {
 // most `ceiling` in all, or any number when ceiling is 0 — and runs the
 // clause's final step once with the counts. Nothing to choose from runs
 // it with an empty map.
-func (cc *counterChoice) choose(ctx *Context, perm uuid.UUID, extra []uuid.UUID, ceiling int, question string) error {
+func (cc *counterChoice) Choose(ctx *Context, perm uuid.UUID, extra []uuid.UUID, ceiling int, question string) error {
+	return cc.chooseTotal(ctx, perm, extra, ceiling, false, question)
+}
+
+// chooseExactly is choose for "remove X counters": the player must reach
+// the total, or take every counter the permanent has when it has fewer.
+func (cc *counterChoice) ChooseExactly(ctx *Context, perm uuid.UUID, extra []uuid.UUID, total int, question string) error {
+	return cc.chooseTotal(ctx, perm, extra, total, true, question)
+}
+
+func (cc *counterChoice) chooseTotal(ctx *Context, perm uuid.UUID, extra []uuid.UUID, ceiling int, exact bool, question string) error {
 	c, ok := ctx.Game.LookupCardForEffect(perm)
 	if !ok {
 		return cc.final(ctx, perm, extra, map[string]int{})
@@ -147,13 +165,13 @@ func (cc *counterChoice) choose(ctx *Context, perm uuid.UUID, extra []uuid.UUID,
 	for i, kind := range kinds {
 		have[i] = c.Counters[kind]
 	}
-	return cc.ask(ctx, counterAsk{
+	return cc.Ask(ctx, counterAsk{
 		perm: perm, extra: extra, question: question, kinds: kinds, have: have,
-		picked: make([]int, len(kinds)), left: ceiling, limited: ceiling > 0,
+		picked: make([]int, len(kinds)), left: ceiling, limited: ceiling > 0, exact: exact && ceiling > 0,
 	})
 }
 
-func (cc *counterChoice) ask(ctx *Context, s counterAsk) error {
+func (cc *counterChoice) Ask(ctx *Context, s counterAsk) error {
 	for ; s.idx < len(s.kinds); s.idx++ {
 		kind, most := s.kinds[s.idx], s.have[s.idx]
 		if s.limited && most > s.left {
@@ -163,8 +181,17 @@ func (cc *counterChoice) ask(ctx *Context, s counterAsk) error {
 			continue
 		}
 		perm := s.perm
+		least := 0
+		if s.exact {
+			// What the kinds still to come cannot cover has to come from this one.
+			later := 0
+			for _, n := range s.have[s.idx+1:] {
+				later += n
+			}
+			least = max(0, min(s.left, most+later)-later)
+		}
 		return ChooseNumber{
-			Min:      0,
+			Min:      least,
 			Max:      most,
 			Question: s.question + " — " + kind + " counters",
 			Unit:     game.PayAmountCounters,
@@ -173,8 +200,8 @@ func (cc *counterChoice) ask(ctx *Context, s counterAsk) error {
 					return most
 				}
 				n := cc.goal(ctx, perm, kind, most)
-				if n < 0 {
-					return 0
+				if n < least {
+					return least
 				}
 				if n > most {
 					return most

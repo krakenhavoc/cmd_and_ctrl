@@ -255,6 +255,7 @@ func (g *Game) forgetObjectLocked(cardID uuid.UUID) {
 		delete(g.LoyaltyActivatedThisTurn, cardID)
 	}
 	delete(g.LoyaltyActivatedTwiceThisTurn, cardID)
+	delete(g.LoyaltyPermanentTwiceThisTurn, cardID)
 	delete(g.LoyaltyExtraActivationsUsedThisTurn, cardID)
 	if g.lastKnownBattlefield != nil {
 		delete(g.lastKnownBattlefield, cardID)
@@ -821,6 +822,11 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// left the game would be put onto the stack, it isn't put on the
 	// stack". Choosing a mode for an ability that will never be
 	// announced is choosing nothing.
+	//
+	// #5771: except an opponent's mode choice for a spell being cast,
+	// which a spell requires and which reassignDepartedChoiceLocked
+	// passes on (opponent_mode.go). The row stays a drop for every
+	// trigger's mode_pick.
 	PendingChoiceTriggerOrder: {},
 	PendingChoiceModePick:     {},
 	// CR 310.9's protector is chosen by the battle's controller as it
@@ -920,7 +926,10 @@ func ReassignableChoiceKinds() []PendingChoiceKind {
 //
 // Caller must hold g.mu.
 func (g *Game) reassignDepartedChoiceLocked(c *PendingChoice) bool {
-	if c == nil || !choiceDepartureDecisions[c.Kind].reassign {
+	// #5771: an opponent's mode choice for a spell being cast is the
+	// spell's, not a trigger's (the mode_pick row's reason for dropping
+	// does not apply), so CR 800.4g passes it to another opponent.
+	if c == nil || !(choiceDepartureDecisions[c.Kind].reassign || c.isOpponentModePick()) {
 		return false
 	}
 	controller, ok := g.departedChoiceObjectLocked(c)

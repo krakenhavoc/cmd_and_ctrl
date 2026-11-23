@@ -526,6 +526,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"LifePlayer":                 repFieldCarried,
 	"LifeDelta":                  repFieldCarried,
 	"LifeFromRadiation":          repFieldCarried,
+	"LifeFromDamage":             repFieldCarried,
 	"LifePayment":                repFieldCarried,
 	"LifeThenLoses":              repFieldCarried,
 	// #4253 slice 3: a tail's data half — a keyed continuation, or a
@@ -589,6 +590,11 @@ var replacementEventFields = map[string]replacementEventField{
 	"RollPlanar":       repFieldGate,
 	"rollShields":      repFieldGate,
 	"rollIgnoreLowest": repFieldGate,
+	// #5918: a copy instruction's window never pauses (mustSettleNow).
+	"CopySpellID":    repFieldGate,
+	"CopyPlayer":     repFieldGate,
+	"CopyCount":      repFieldGate,
+	"copyAdditional": repFieldGate,
 }
 
 // replacementEventGatesClear reports whether every gate field of ev is
@@ -860,6 +866,7 @@ type replacementEventSnapshot struct {
 	LifePlayer                 *uuid.UUID                 `json:"lifePlayer,omitempty"`
 	LifeDelta                  int                        `json:"lifeDelta,omitempty"`
 	LifeFromRadiation          bool                       `json:"lifeFromRadiation,omitempty"`
+	LifeFromDamage             bool                       `json:"lifeFromDamage,omitempty"`
 	LifePayment                bool                       `json:"lifePayment,omitempty"`
 	LifeThenLoses              *uuid.UUID                 `json:"lifeThenLoses,omitempty"`
 	// #4253 slice 9: a discard.
@@ -1313,6 +1320,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		LifePlayer:                 uuidPtrOrNil(ev.LifePlayer),
 		LifeDelta:                  ev.LifeDelta,
 		LifeFromRadiation:          ev.LifeFromRadiation,
+		LifeFromDamage:             ev.LifeFromDamage,
 		LifePayment:                ev.LifePayment,
 		LifeThenLoses:              uuidPtrOrNil(ev.LifeThenLoses),
 		DiscardPlayer:              uuidPtrOrNil(ev.DiscardPlayer),
@@ -1489,6 +1497,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		LifePlayer:                 uuidOrNil(s.LifePlayer),
 		LifeDelta:                  s.LifeDelta,
 		LifeFromRadiation:          s.LifeFromRadiation,
+		LifeFromDamage:             s.LifeFromDamage,
 		LifePayment:                s.LifePayment,
 		LifeThenLoses:              uuidOrNil(s.LifeThenLoses),
 		DiscardPlayer:              uuidOrNil(s.DiscardPlayer),

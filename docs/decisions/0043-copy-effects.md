@@ -11,7 +11,7 @@ copy effects — was deferred to S16.5 with a named trigger: *land it
 when a Clone-class card enters the catalog*.
 
 That trigger fired twice. Clone was added to a playtest deck and
-[#335](../../issues/335) reported it: "does not allow the selection of
+[#335](https://github.com/krakenhavoc/cmd_and_ctrl/issues/335) reported it: "does not allow the selection of
 any usable target and enters the battlefield as a 0/0." Both halves of
 that sentence are one missing feature. The CR 614 replacement pipeline
 had no way to express "as this enters, choose something", and the
@@ -130,7 +130,7 @@ it.
 
 ### 5. Dependency detection (CR 613.8) stays deferred
 
-The other half of [#159](../../issues/159) is **not** shipped, and
+The other half of [#159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/159) is **not** shipped, and
 this is the decision rather than an omission.
 
 CR 613.8's rule — apply A before B when A's existence changes what B
@@ -416,6 +416,9 @@ an instant or sorcery. Double Major does.
 replaces the refusal with the rule.
 
 ### Decision 9. The copy becomes a created TOKEN, through the one creation path
+
+*Amended 2026-11-20 (#4994): the token is NOT created, and takes no
+creation window. See the amendment of that date at the end of this ADR.*
 
 CR 608.3f: a resolving copy of a permanent spell does not put a
 permanent card onto the battlefield — a token that is a copy of the
@@ -1337,3 +1340,67 @@ only when the trigger resolves; declined, he is himself and exiles nothing) and
 Proof cards: Superior Spider-Man, Body Double, Voq, Torchbearer (Full).
 Activated Sleeper ("put there from the battlefield this turn") and Invasion of
 Amonkhet // Lazotep Convert need only their candidate filter and except clause.
+
+## Amendment (2026-11-20, [#4994](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4994)): the token a copy of a permanent spell becomes is not created
+
+Sprint S82. Owner decision, 2026-11-19: CR 111.13 and
+[ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md) win over
+Decision 9. CR 111.13: "A copy of a permanent spell becomes a token as it
+resolves. The token has the characteristics of the spell that became that
+token. The token is not 'created' for the purposes of any replacement effects
+or triggered abilities that refer to creating a token." CR 608.3f says the same
+for "any rules or effects that refer to creating a token". Decision 9 sent the
+token through the creation path, so Doubling Season doubled it, and ADR 0061
+said it "must not reach `RepEventCreateTokens`". The two disagreed.
+
+**Decision 9, amended: no creation window, and no creation event.**
+`resolvePermanentSpellCopyLocked` (`game/spell_copy.go`) no longer calls
+`CreateTokensKeyedForEffect`. `putSpellCopyTokenLocked` mints the one token from
+the template and enters it through the staged token entry a created token takes
+(`enterStagedTokensLocked`), with no `RepEventCreateTokens` window. So Doubling
+Season, Parallel Lives, Academy Manufactor and every other "if you would create"
+replacement never see it, and nobody is asked to order them.
+
+Its arrival is announced as an `EventZoneMove` from no zone onto the
+battlefield, with `Event.BecameToken` set, not as an `EventTokenCreated`. Every
+"whenever you create a token" trigger (Mirkwood Bats) and the turn's
+tokens-created tally (`PlayerTurnTally.TokensCreated`) watch
+`EventTokenCreated`, so none of them counts it. Every reader that means
+"entered" already reads a move onto the battlefield: the layer listener, Deep
+Gnome Terramancer, and the trigger doublers. A spawned permanent's arrival is
+the precedent for a move from no zone (#4763). The game log skips a spawn's
+move, because `EventSpawned` already announced it. It tells this one as a
+`token` line, because nothing else announces it. The token still gets its RNG
+source ordinal, which `EmitEvent` used to stamp from `EventTokenCreated`.
+
+**Unchanged: the entry.** The token takes the ordinary CR 614 entry window, so
+enters-tapped and enters-with-counters effects still apply (Doubling Season
+still doubles the counters an X creature's copy enters with). `EventETB` and
+`fireETBHookLocked` still reach it, so its own enters abilities trigger. The
+copy's alternative-cost riders, control records, Aura attach and sneak attack
+still ride the same keyed tails (`engine/spell-copy-token`,
+`engine/spell-copy-token-control`, `engine/spell-copy-token-alt-cost`).
+
+**On disk.** A CR 616 prompt in the token's entry is a restore point: the run
+of the entry (`tokenEntryRun`) carries `notCreated`, so a restored entry still
+announces the arrival as a move. `notCreated` and `Event.became_token` are
+additive in schema v9 (`snapshot_shape/v9.txt`). An older binary that drops
+`notCreated` restores the entry correctly and announces the token as created,
+which is what it did before this change. A file from before it has no paused
+copy-token entry with the flag, and its paused creation window
+(`ReplacementResumeCreateTokens`) still resumes as a creation, as it was written.
+
+**Tests.** The restore tests that took their CR 616 pause from a Doubling
+Season beside a Parallel Lives now take it from two entry replacements on the
+token (`tokenEntryOrderProbeOracles` in
+`cards/effects/closure_doors_token_restore_test.go`), with the frame
+`ReplacementResumeMoveTail`. They are
+`TestACopiedPermanentSpellIsARestorePointAtTheTokenOrderPrompt`,
+`TestCensusS12AStolenPermanentSpellCopysTokenIsARestorePoint` and
+`TestADashedSpellCopyKeepsItsRidersAcrossTheOrderPromptAndRestore`, and they
+now expect one token, not four. In `double_major_test.go`,
+`TestDoubleMajorsTokenIsNotDoubledByDoublingSeason` replaces the doubling case.
+`TestDoubleMajorsTokenDoesNotTriggerAWheneverYouCreateAToken` pins Mirkwood
+Bats and the tally, and the X-creature case expects one token with doubled
+counters. In the engine, `game/spell_copy_not_created_test.go` pins the window,
+the events, the tally and a strict restore in the middle of the entry.

@@ -78,3 +78,54 @@ func TestAnAttackTaxModWithoutACostPanics(t *testing.T) {
 		t.Errorf("a sound mod refused: %s", p)
 	}
 }
+
+// #5869: the life-priced sibling (Sivitri, Dragon Master).
+
+func TestAnAttackTaxLifeModNeedsAPlayerAndLife(t *testing.T) {
+	for name, m := range map[string]Mod{
+		"no player": {Kind: ModAttackTaxLife, Amount: 2},
+		"no life":   {Kind: ModAttackTaxLife, Player: uuid.New()},
+		"bad types": {Kind: ModAttackTaxLife, Player: uuid.New(), Amount: 2, Types: []string{"battle"}},
+	} {
+		if attackTaxModProblem(m) == "" {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	for _, scope := range []AttackTaxScope{AttackTaxOnPlayer, AttackTaxOnPlayerOrPlaneswalkers} {
+		if p := attackTaxModProblem(AttackTaxLifeMod(uuid.New(), 2, scope)); p != "" {
+			t.Errorf("a sound mod refused: %s", p)
+		}
+	}
+}
+
+// A static tax may name both halves: the mana is paid, then the life,
+// and a seat with the mana but not the life pays neither (CR 119.4).
+func TestAStaticTaxWithManaAndLifeIsAllOrNothing(t *testing.T) {
+	mixed := AttackTax{
+		Label:    "Test — mana and life",
+		ManaCost: func(AttackTaxQuery) string { return "{1}" },
+		LifeCost: func(AttackTaxQuery) int { return 3 },
+	}
+	g, bear := taxedTable(t, map[string][]AttackTax{propagandaTestOracle: {mixed}})
+	pushTaxEnchantment(g, g.Seats[1], "Propaganda", propagandaTestOracle)
+
+	price := g.PriceAttackDeclaration([]AttackDeclaration{{Attacker: bear, Target: g.Seats[1].ID}})
+	if price.Cost != "{1}" || price.Life != 3 || price.Describe() != "{1} and 3 life" {
+		t.Fatalf("price = %q / %d life (%q), want {1} and 3 life", price.Cost, price.Life, price.Describe())
+	}
+	addMana(g.Seats[0], 1)
+	g.Seats[0].Life = 2
+	if err := g.DeclareAttacker(bear, g.Seats[1].ID); !errors.Is(err, ErrAttackTaxUnpaid) {
+		t.Fatalf("2 life against 3: %v, want ErrAttackTaxUnpaid", err)
+	}
+	if n := len(g.Seats[0].ManaPool); n != 1 || g.Seats[0].Life != 2 {
+		t.Fatalf("a refused declaration spent something: pool %d, life %d", n, g.Seats[0].Life)
+	}
+	g.Seats[0].Life = 3
+	if err := g.DeclareAttacker(bear, g.Seats[1].ID); err != nil {
+		t.Fatalf("paid declaration: %v", err)
+	}
+	if n := len(g.Seats[0].ManaPool); n != 0 || g.Seats[0].Life != 0 {
+		t.Errorf("after paying: pool %d, life %d, want 0 and 0", n, g.Seats[0].Life)
+	}
+}

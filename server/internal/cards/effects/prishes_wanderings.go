@@ -27,7 +27,7 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:        ctx.Controller(),
-				Predicate:     prishesWanderingsFinds,
+				Predicate:     PrishesWanderingsFinds,
 				Dest:          game.ZoneBattlefield,
 				Limit:         1,
 				Shuffle:       true,
@@ -40,7 +40,7 @@ func init() {
 }
 
 // prishesWanderingsFinds is "a basic land card or Town card".
-func prishesWanderingsFinds(c game.Card) bool {
+func PrishesWanderingsFinds(c game.Card) bool {
 	return IsBasicLand(c) || c.HasSubtype("Town")
 }
 
@@ -54,7 +54,7 @@ var prishesWanderingsSearched = CardTail("prishes-wanderings/searched", func(ctx
 
 // prishesWanderingsCounterBody is the reflexive half: a +1/+1 counter on
 // the target. An on-disk key.
-var prishesWanderingsCounterBody = game.ReflexiveBody("prishes-wanderings/counter", simpleBody(PlusOneCounterOnTheTarget),
-	constTargets(func() *game.TargetSpec {
+var prishesWanderingsCounterBody = game.ReflexiveBody("prishes-wanderings/counter", SimpleBody(PlusOneCounterOnTheTarget),
+	ConstTargets(func() *game.TargetSpec {
 		return TargetCreature("target creature you control", YouControl())
 	}))

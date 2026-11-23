@@ -83,6 +83,14 @@ type CounterRemovalCost struct {
 	// it is spelled Among with no From (#3987).
 	Counter string
 
+	// Kinds narrows an any-kind cost (empty Counter) to a short list of
+	// kinds: Ion Storm's "Remove a +1/+1 counter or a charge counter from a
+	// permanent you control". The activator still names the kind with the
+	// permanent, but only a listed kind is offered or accepted. Empty means
+	// every kind. Only meaningful with an empty Counter; effects.Register
+	// refuses it beside a printed kind. Additive.
+	Kinds []string
+
 	// N is how many counters are removed — or, when Variable is set,
 	// the FLOOR on how many the activator may announce. Always at
 	// least 1 for a fixed cost; effects.Register panics at boot
@@ -161,6 +169,16 @@ type CounterRemovalCost struct {
 	// permanent, so a payment that names two permanents is refused
 	// (ErrInvalidParam). Only meaningful with Among and From; additive.
 	OnePermanent bool
+
+	// All is "Remove ALL <kind> counters from this permanent" (Catti-brie
+	// of Mithral Hall): the cost is paid with every counter of Counter the
+	// source holds, never fewer (CR 118.3), and the number removed is the
+	// paid-cost record, as for Variable. Only the self form with a printed
+	// kind and a variable count: effects.Register refuses it elsewhere. An
+	// announcement of any other count is refused (ErrInvalidParam), and an
+	// empty one is the all-of-them payment, which with none held is zero.
+	// The view floors the stepper at the held count. Additive.
+	All bool
 }
 
 // CounterAddCost is a cost that PUTS a counter on the source —
@@ -263,6 +281,15 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 			continue
 		}
 		kinds := g.counterKindsPaying(c, rc.Counter, floor)
+		if len(rc.Kinds) > 0 && rc.Counter == "" {
+			kept := kinds[:0:0]
+			for _, k := range kinds {
+				if rc.admitsKind(k.Kind) {
+					kept = append(kept, k)
+				}
+			}
+			kinds = kept
+		}
 		if len(kinds) == 0 {
 			continue
 		}
@@ -270,6 +297,20 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].most() > out[j].most() })
 	return out
+}
+
+// admitsKind reports whether a counter of `kind` may pay rc's any-kind
+// cost: always, unless Kinds narrows it.
+func (rc *CounterRemovalCost) admitsKind(kind string) bool {
+	if rc.Counter != "" || len(rc.Kinds) == 0 {
+		return true
+	}
+	for _, k := range rc.Kinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
 }
 
 // counterCostPayerMayUse reports whether `c` may pay part of `rc` for
@@ -496,6 +537,9 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 	// owed, so the payment is the empty one. Only the self form with
 	// a zero floor reads it this way; an among part that removes
 	// nothing is still refused below.
+	if rc.All {
+		return g.validateAllCountersLocked(sourceID, rc, pay)
+	}
 	if announcesNoCounters(rc, sourceID, pay) {
 		return counterPayment{}, nil
 	}
@@ -673,6 +717,9 @@ func counterPaymentKinds(rc *CounterRemovalCost, pay CounterCostPayment, n int) 
 			if rc.Counter != "" && k != rc.Counter {
 				return nil, ErrInvalidParam
 			}
+			if !rc.admitsKind(k) {
+				return nil, ErrInvalidParam
+			}
 			if pay.Kind != "" && k != pay.Kind {
 				return nil, ErrInvalidParam
 			}
@@ -682,7 +729,7 @@ func counterPaymentKinds(rc *CounterRemovalCost, pay CounterCostPayment, n int) 
 	}
 	kind := rc.Counter
 	if kind == "" {
-		if pay.Kind == "" {
+		if pay.Kind == "" || !rc.admitsKind(pay.Kind) {
 			return nil, ErrInvalidParam
 		}
 		kind = pay.Kind
@@ -880,4 +927,34 @@ func (g *Game) payCostCounterLocked(playerID, cardID uuid.UUID, name string, del
 		CounterPlacer:   playerID,
 		CounterFromCost: true,
 	})
+}
+
+// validateAllCountersLocked is the payment of an All cost: every counter of
+// the printed kind the source holds, whatever the client announced as long
+// as it names that number (or nothing). Caller must hold g.mu.
+func (g *Game) validateAllCountersLocked(sourceID uuid.UUID, rc *CounterRemovalCost, pay CounterCostPayment) (counterPayment, error) {
+	if rc.From != nil || rc.Among || rc.Counter == "" || len(pay.Kinds) > 0 || (pay.Kind != "" && pay.Kind != rc.Counter) {
+		return counterPayment{}, ErrInvalidParam
+	}
+	if len(pay.SourceIDs) > 1 || (len(pay.SourceIDs) == 1 && pay.SourceIDs[0] != sourceID) {
+		return counterPayment{}, ErrInvalidParam
+	}
+	c := findBattlefieldCard(g, sourceID)
+	if c == nil {
+		return counterPayment{}, ErrCardNotFound
+	}
+	held := c.Counters[rc.Counter]
+	if len(pay.Counts) > 1 || (len(pay.Counts) == 1 && pay.Counts[0] != held) {
+		return counterPayment{}, ErrInvalidParam
+	}
+	if held == 0 {
+		return counterPayment{}, nil
+	}
+	if g.counterRemovalLockedLocked(c, rc.Counter) {
+		return counterPayment{}, ErrInsufficientCounters
+	}
+	return counterPayment{
+		parts: []counterPaymentPart{{cardID: sourceID, kind: rc.Counter, n: held}},
+		total: held,
+	}, nil
 }

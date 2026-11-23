@@ -1018,6 +1018,19 @@ type PendingChoiceView struct {
 	// `legal_targets` are the asking seat's (#1172). Absent when the
 	// prompt's ability could not be found.
 	ModeBullets []ModeOptionView `json:"mode_bullets,omitempty"`
+	// ModeChosenFor is, on a mode_pick an opponent answers for an "An
+	// opponent chooses one" spell (#5771, CR 700.2e), the player casting
+	// it: the spell is theirs and its targets will be, but the mode is
+	// the chooser's. The prompt's `reason` names the caster and the spell
+	// too. A bot choosing for somebody else's spell prices the bullets
+	// the other way round. Absent on every mode_pick a controller answers
+	// for their own trigger.
+	ModeChosenFor string `json:"mode_chosen_for,omitempty"`
+	// ModeSpellName is, beside ModeChosenFor, the name of the spell being
+	// cast. Its card is still in the caster's hand while the cast waits,
+	// where the chooser cannot see it, but a spell is public from the
+	// moment it is cast (CR 601.2a).
+	ModeSpellName string `json:"mode_spell_name,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -1519,6 +1532,13 @@ type ModeSpecView struct {
 	// counted again, may not add up to more. Absent for a modal card
 	// without pawprints. Printed text, so public.
 	Pawprints int `json:"pawprints,omitempty"`
+	// ChosenByOpponent is "An opponent chooses one —" (#5771, CR
+	// 700.2e): the caster does not choose the mode. The client casts
+	// the card with no mode and opens no picker; the server asks the
+	// caster which opponent (when more than one could choose) and that
+	// opponent a mode_pick, then the caster any targets. Printed text,
+	// so public.
+	ChosenByOpponent bool `json:"chosen_by_opponent,omitempty"`
 
 	// printedMin / printedMax are the spec's own Min / Max, before any
 	// conditional raise, for publicModeSpec: the raise is the asking
@@ -1875,6 +1895,14 @@ type OptionalCostView struct {
 	// the stepper stops where the engine stops accepting the cast.
 	Energy      int  `json:"energy,omitempty"`
 	EnergyShort bool `json:"energy_short,omitempty"`
+	// PayLife is the fixed "pay N life" this cost charges (ADR 0100's
+	// 2026-11-20 amendment, #5782): Slaughter's "Buyback—Pay 4 life" is
+	// 4, a Defiler's granted "you may pay 2 life" is 2. LifeShort is set
+	// when the viewer can't pay it now — a life total below N (CR 119.4)
+	// or a rule that stops them paying life — so the client greys the
+	// offer the server would refuse.
+	PayLife   int  `json:"pay_life,omitempty"`
+	LifeShort bool `json:"life_short,omitempty"`
 	// DiscardCards and SacrificeOptions are the card-shaped halves,
 	// in the same shape and with the same meaning AdditionalCostView
 	// gives them — present-and-empty SacrificeOptions means this
@@ -2454,6 +2482,14 @@ type DamageAssignmentView struct {
 	// controller divides its damage among them as they choose — no
 	// order to keep and no trample.
 	BlockerDivides bool `json:"blocker_divides,omitempty"`
+	// Banding marks a division handed to the OTHER player by banding
+	// (ADR 0224): the defending player divides an attacker's damage among
+	// their blockers when one of them has banding (CR 702.22j), and the
+	// active player divides a blocker's damage among their attackers when
+	// it blocks one with banding (CR 702.22k). The chooser is not the
+	// controller of attacker_card_id. No trample, and covers_lethal is
+	// never set, so the prompt is never sent unasked.
+	Banding bool `json:"banding,omitempty"`
 	// #2956 (ADR 0147): the canonical split, legal.CanonicalDamageSplit,
 	// which the bots answer with. The client pre-fills the prompt with
 	// it, and sends it unasked when covers_lethal is set and the
@@ -3273,6 +3309,32 @@ type EmblemView struct {
 	// table can show the lines still to come beside the ones gained
 	// (ADR 0114 owner decision 1). Absent on every other emblem.
 	Lines []EmblemLineView `json:"lines,omitempty"`
+	// ZoneAbilities are the emblem's CR 602 activated abilities (#5868,
+	// CR 114.4): Karn, Living Legacy's "Tap an untapped artifact you
+	// control: This emblem deals 1 damage to any target." The same rows
+	// a card's `zone_abilities` carries, read for the emblem's owner
+	// with the emblem in the command zone, and sent as an ordinary
+	// `activate_ability` with the emblem's instance_id as `source_card_id`.
+	// OWNER ONLY, like a graveyard card's rows (#1055): the target sets
+	// are narrowed by who is asking, so FilterViewFor takes them off
+	// every other seat's frame (the controller of the owner's whole
+	// turn keeps them, ADR 0167 §9). Absent on an emblem with none.
+	ZoneAbilities []ActivatedAbilityView `json:"zone_abilities,omitempty"`
+}
+
+// emblemsWithoutAbilityRows is `in` with every emblem's ZoneAbilities
+// taken off, as a copy, so the owner's frame built from the same view
+// keeps its rows (#5868). Returns `in` itself when no emblem has any.
+func emblemsWithoutAbilityRows(in []EmblemView) []EmblemView {
+	if !slices.ContainsFunc(in, func(e EmblemView) bool { return len(e.ZoneAbilities) > 0 }) {
+		return in
+	}
+	out := make([]EmblemView, len(in))
+	for i, e := range in {
+		e.ZoneAbilities = nil
+		out[i] = e
+	}
+	return out
 }
 
 // EmblemLineView is one line of the Ring: its text, and how many
@@ -3627,6 +3689,13 @@ type CardView struct {
 	// what AttackingTarget names. Omitted when nothing is declared.
 	// Added in S27.
 	AttackingTargetKind string `json:"attacking_target_kind,omitempty"`
+	// AttackBand is the band this attacker is in (CR 702.22c, ADR 0224):
+	// attackers with the same number attack as one band, so blocking
+	// one blocks them all (CR 702.22h). Numbered 1, 2, ... in battlefield
+	// order of each band's first member, and omitted for an attacker in
+	// no band or the only member of its band still in combat. Public:
+	// the band is announced to the table (CR 508.1e).
+	AttackBand int `json:"attack_band,omitempty"`
 	// DefendingPlayer is the seat defending against this attack — the
 	// only seat whose creatures may block it (CR 802.4a, #1339): the
 	// player attacked, the controller of the planeswalker attacked, or
@@ -3838,10 +3907,11 @@ type CardView struct {
 	// sends for a permanent. Added for #660, widened by #1221.
 	ZoneAbilities []ActivatedAbilityView `json:"zone_abilities,omitempty"`
 	// ZoneManaAbilities are the CR 605 MANA abilities this card offers
-	// from the non-battlefield zone it is sitting in (#1228) — a hand,
-	// today and only a hand (game.supportedManaAbilityZones). The
-	// Spirit Guides' "Exile this card from your hand: Add {R}" is the
-	// whole printed family.
+	// from the non-battlefield zone it is sitting in (#1228) — a hand
+	// or a graveyard (game.supportedManaAbilityZones). The Spirit
+	// Guides' "Exile this card from your hand: Add {R}" and
+	// Jack-o'-Lantern's "{1}, Exile this card from your graveyard: Add
+	// one mana of any color" (#5896) are the printed family.
 	//
 	// `zone_abilities`' twin, one ability kind over, and separate from
 	// it for the reason `mana_abilities` is separate from
@@ -3852,10 +3922,9 @@ type CardView struct {
 	// Not public, and it rides castOffers for the same reason
 	// `zone_abilities` does — an activation row answers "what may YOU
 	// announce about this card, from here". A hand is already hidden
-	// wholesale, so today that is belt-and-braces; it is written this
-	// way because the graveyard is one entry in
-	// supportedManaAbilityZones away and a public pile would ship one
-	// seat's answer to the table (#1055, #1167).
+	// wholesale; the graveyard (#5896) is a public pile, and this is
+	// what keeps one seat's answer from shipping to the table (#1055,
+	// #1167).
 	//
 	// `index` is the ability's index in the card's FULL mana-ability
 	// list, so the client sends the same activate_mana_ability payload
@@ -4189,7 +4258,8 @@ type CardView struct {
 	// Restrictions is the S24 restriction set as stable snake_case
 	// tokens — "cant_attack", "cant_block", "cant_be_blocked",
 	// "cant_activate", "cant_activate_mana", and (#2733)
-	// "cant_become_suspected". Empty for the permanent
+	// "cant_become_suspected", and (#5673) "cant_crew" (it is left
+	// out of every crew cost's crew_options). Empty for the permanent
 	// nothing is restricting, which is almost all of them.
 	//
 	// It is deliberately NOT folded into Abilities. A restriction is
@@ -4268,6 +4338,14 @@ type CardView struct {
 	// and what the two cards will be when it leaves. Absent on every
 	// other card.
 	MeldedFrom []CardFaceView `json:"melded_from,omitempty"`
+
+	// MergedFrom is a MUTATED permanent's components (CR 702.140c, 730.2;
+	// ADR 0223), topmost first: their names, costs, type lines, P/T and
+	// art. The fields above already describe the permanent (the topmost
+	// component's characteristics plus every component's abilities);
+	// this is what the hover panel lists, and what the cards will be
+	// when it leaves. Absent on every other card.
+	MergedFrom []CardFaceView `json:"merged_from,omitempty"`
 
 	// MeldsInto is a meld card's combined back face (CR 712.4): the
 	// permanent this card and its partner become when they meld, for
@@ -6151,6 +6229,13 @@ type AttackTargetView struct {
 	// one. The field would go then, rather than grow a caveat.
 	Tax string `json:"tax,omitempty"`
 
+	// TaxLife is the life ONE creature pays to attack this target
+	// (#5869): 2 against a seat under Sivitri, Dragon Master's +1. A
+	// declaration of n attackers pays n times as much, after Tax's mana,
+	// and only from a life total at least that large (CR 119.4). Absent
+	// when attacking it costs no life.
+	TaxLife int `json:"tax_life,omitempty"`
+
 	// TaxPhyrexian is how many symbols in ONE creature's `tax` carry
 	// CR 107.4f's "or 2 life" option — 1 for Norn's Annex's {W/P}. A
 	// declaration of n attackers at this target prints n times as many
@@ -6316,6 +6401,10 @@ func ViewOfGame(g *game.Game) GameView {
 				// one card, its top, which is the LAST element.
 				stampGrantedPermissions(g, view.Seats, &view.Seats[si].Library, seat.Library,
 					id, len(view.Seats[si].Library.Cards)-1)
+				// #5922: and a hand, for a standing rule over another
+				// seat's (Sen Triplets). The owner's own cast is the
+				// ordinary one stampLegalTargets stamped.
+				stampGrantedPermissions(g, view.Seats, &view.Seats[si].Hand, seat.Hand, id, 0)
 			}
 		}
 		stampLibraryTop(g, view.Seats)
@@ -6788,9 +6877,10 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 				// is not seat B's to read, wherever the card is
 				// sitting.
 				//
-				// `castable_here` was never part of this: castStampsFor
-				// only ever sets it for a graveyard or a library top,
-				// so a hand card has never carried one.
+				// `castable_here` is not part of this: castStampsFor sets
+				// it on a hand card only under a standing rule over
+				// ANOTHER seat's hand (#5922), which
+				// stampGrantedPermissions files for that holder alone.
 				//
 				// #1686: the grant is no longer hard-coded nil. A hand
 				// card's own printed text never needed a permission
@@ -8003,6 +8093,14 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 			// The sideboard tab's price tag, as the exile strip's.
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
 		}
+	case game.ZoneHand:
+		// #5922: a card in ANOTHER seat's hand that a standing rule over
+		// that hand opens (Sen Triplets). Reached only through
+		// stampGrantedPermissions, filed under the holder's seat; the
+		// owner's own hand cards never carry the bit, as before.
+		if grant.ForeignHandRule() {
+			out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offerGrants)
+		}
 	case game.ZoneExile:
 		// #1389: exile joins them, for the castable-from-exile strip.
 		// A seat reaches this only through stampGrantedPermissions,
@@ -8305,7 +8403,7 @@ type ProtectionView struct {
 	// bound N, #2181), "ring_bearer" (#2145), "opponents" (#2745),
 	// "mana_value_odd", "mana_value_even", "multityped_creatures" or
 	// "noncreature_permanents" (#4307), "multicolored" (#4834),
-	// "mana_value_at_least" (Value is the bound N) or "colorless"
+	// "mana_value_at_least" (Value is the bound N), "colored_spells" or "colorless"
 	// (a source with no colour, #5650).
 	// Stable tokens; see
 	// game.ProtectionQualityKind.
@@ -9015,6 +9113,12 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 			}
 			v.EnergyShort = affordable == 0
 		}
+		// #5782: a fixed life payment, offered only while the viewer can
+		// pay it (CR 119.4) — the reader CastSpell's validator asks.
+		if oc.PayLife > 0 {
+			v.PayLife = oc.PayLife
+			v.LifeShort = !g.CanPayLifeToCastOrActivateLocked(g.PlayerByIDForEffect(caster), oc.PayLife)
+		}
 		if oc.Sacrifice != nil {
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, oc.Sacrifice, uuid.Nil, false)
 		}
@@ -9200,6 +9304,8 @@ func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, 
 		NotChosen:  modeMemoryWire(ms.NotChosen),
 		Pawprints:  ms.Pawprints,
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
+		// #5771: the opponent chooses.
+		ChosenByOpponent: ms.ChosenByOpponent,
 	}
 	used := g.ModesChosenForEffect(ms, ab)
 	for i, o := range ms.Options {
@@ -9605,10 +9711,9 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 			continue
 		}
 		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, *card, you, kind, restricted))
-		// #1228: nil for every pile today — game.supportedManaAbilityZones
-		// is the hand alone, so the zone predicate answers no here —
-		// and the call is made anyway so that adding a zone to that
-		// list is adding it in one place rather than two.
+		// #1228: the CR 605 rows beside the CR 602 ones. Since #5896 a
+		// graveyard card can carry one (Jack-o'-Lantern); the zone
+		// predicate answers no for every other pile.
 		c.stampZoneManaAbilitiesFor(you, viewOfManaAbilitiesFromZone(card, kind))
 	}
 }
@@ -9777,7 +9882,9 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 		// foretell discount. Left nil on a pricing error, exactly as
 		// ActivatedAbilityView.ChargedManaCost does, so the client
 		// falls back to Cost rather than showing a stale charge.
-		if sa.Cost != "" {
+		// #5844: and a tax on a cost that prints no mana, the engine's
+		// payment gate (SpecialActionChargesManaForEffect).
+		if g.SpecialActionChargesManaForEffect(owner, card, sa.Kind, sa) {
 			if charged, err := g.SpecialActionManaCostForEffect(owner, card, sa.Kind, sa); err == nil {
 				s := charged.String()
 				view.ChargedCost = &s
@@ -9987,6 +10094,7 @@ func stampManaCounterCosts(g *game.Game, card *game.Card, controller uuid.UUID, 
 //
 // Caller must hold g's read lock (ReadSnapshot already does).
 func stampCombatTargets(g *game.Game, view *GameView) {
+	bands := g.AttackBandNumbersLocked()
 	for i := range view.Battlefield.Cards {
 		c := &view.Battlefield.Cards[i]
 		if c.AttackingTarget == "" {
@@ -9998,6 +10106,10 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 		}
 		if kind := g.ClassifyAttackTargetForEffect(id); kind != "" {
 			c.AttackingTargetKind = string(kind)
+		}
+		// ADR 0224: the band it attacks in.
+		if atk, err := uuid.Parse(c.InstanceID); err == nil && bands != nil {
+			c.AttackBand = bands[atk]
 		}
 		// #1364: the attacker-based read, so an attacker whose
 		// planeswalker or battle has left still names the player who
@@ -10054,10 +10166,11 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 			ID:   t.ID.String(),
 		}
 		if probe != uuid.Nil {
-			row.Tax = g.PriceAttackDeclarationForEffect([]game.AttackDeclaration{{
+			price := g.PriceAttackDeclarationForEffect([]game.AttackDeclaration{{
 				Attacker: probe,
 				Target:   t.ID,
-			}}).Cost
+			}})
+			row.Tax, row.TaxLife = price.Cost, price.Life
 			row.TaxPhyrexian, row.TaxPhyrexianGranted = phyrexianSymbolsIn(g, active.ID, row.Tax)
 		}
 		// #1533: the CR 508.1c room left under any attack limit.
@@ -10944,6 +11057,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if src, ms, ok := g.ModePickSpecLocked(c); ok {
 				v.ModeBullets = viewOfModePickBullets(g, src, ms, c.ModeOptionIndex)
 			}
+			if c.ModePickFor != uuid.Nil {
+				v.ModeChosenFor = c.ModePickFor.String()
+				v.ModeSpellName = c.OpponentModeSpellName()
+			}
 		}
 		// PendingChoiceMana carries a color-option list server-
 		// filtered against the chooser's commander identity (see
@@ -11130,6 +11247,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				AsThoughUnblocked: frame.AsThoughUnblocked,
 				HasDeathtouch:     frame.HasDeathtouch,
 				BlockerDivides:    frame.BlockerDivides,
+				Banding:           frame.Banding,
 			}
 			if split, ok := legal.CanonicalDamageSplit(g, c); ok {
 				shares := make([]DamageShareView, len(split.Assignments))
@@ -11390,6 +11508,12 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		}
 		for _, l := range e.Lines {
 			ev.Lines = append(ev.Lines, EmblemLineView{Text: l.Text, At: l.At})
+		}
+		// #5868: the emblem's activated abilities, as its owner may
+		// activate them from the command zone. FilterViewFor keeps them
+		// on the owner's frame alone.
+		if obj, ok := g.EmblemObjectLocked(e.InstanceID); ok {
+			ev.ZoneAbilities = viewOfActivatedAbilities(g, obj, p.ID, game.ZoneCommand, g.AnyActivationRestrictionsForEffect())
 		}
 		emblems = append(emblems, ev)
 	}
@@ -11893,6 +12017,12 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// controller's), as the companion's {3} row is.
 		if viewerID != "" && p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
 			out.IgnorableEffects = nil
+		}
+		// #5868: an emblem's ability rows are its owner's (or the
+		// controller's of the owner's whole turn), for the reason a
+		// graveyard card's are: their targets are narrowed by who asks.
+		if p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
+			out.Emblems = emblemsWithoutAbilityRows(p.Emblems)
 		}
 		// #1530, #1968: the trigger-ordering preference is the seat's own.
 		if p.ID != viewerID {
@@ -12816,6 +12946,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// name the card as loudly as its faces do.
 	out.MeldedFrom = nil
 	out.MeldsInto = nil
+	out.MergedFrom = nil
 	// #95: everything below is read off the card's own text or type
 	// line — the catalog entry, its abilities, its target prompt — and
 	// so names it as surely as the fields above. A face-down Forest
@@ -13241,7 +13372,7 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		ManaAbilities: viewOfManaAbilities(c),
 		SummoningSick: game.HasSummoningSickness(c),
 		Abilities:     viewOfAbilityBadges(eff),
-		Restrictions:  eff.Restrictions.Names(),
+		Restrictions:  game.RestrictionNames(eff.Restrictions, eff.ExtraRestrictions),
 		// #4692: only a battlefield static writes it.
 		CantHaveCounters: eff.CantHaveCounters,
 		// ADR 0106 §2 (#1794): the owner chip's data, resolved here.
@@ -13260,6 +13391,7 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		Layout:       c.Layout,
 		Faces:        viewOfFaces(c),
 		MeldedFrom:   viewOfMeldedFrom(c),
+		MergedFrom:   viewOfMergedFrom(c),
 		MeldsInto:    viewOfMeldsInto(c),
 		ActiveFace:   c.ActiveFace,
 		// ADR 0083. A token has no printing behind it, so there is no
@@ -13418,6 +13550,12 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 		v := &zone.Cards[i]
 		card := live.Cards[i]
 		perm := g.CastPermissionOnCardForEffect(card, kind)
+		if kind == game.ZoneHand && !perm.ForeignHandRule() {
+			// #5922: a hand's only foreign holder is a standing rule over
+			// it. A hand grant its owner holds (miracle) is the owner's
+			// own answer, stamped by stampLegalTargets.
+			continue
+		}
 		if perm == nil {
 			// THE fast negative for the per-holder walk below, and it
 			// is exact rather than approximate: the only permission
@@ -14016,9 +14154,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// gate's reason, from the one function the engine and the
 		// enumerator call. Behind the fast negative taken once for
 		// the whole card, because almost no board restricts anything.
+		// The identity is ActivationAbilityOf's, the one the engine and
+		// the enumerator build, so a restriction keyed on a keyword bit
+		// (power-up, cycling: Stabilizer, #5843) greys the same rows
+		// the engine refuses.
 		if restricted {
-			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone,
-				game.ActivationAbility{Label: a.Label, PowerUp: a.PowerUp})
+			v.CantActivate = g.CantActivateReasonLocked(caster, c, zone, game.ActivationAbilityOf(a))
 		}
 		// ADR 0129 §8: the energy component, and the refusal's own text
 		// when the controller is short of the printed part (CR 118.3),
@@ -14245,6 +14386,12 @@ func crewOptions(g *game.Game, caster, except uuid.UUID, use game.CostPowerUse) 
 		if c.Controller != caster || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
+		// CR 702.122d: a creature that can't crew Vehicles is not
+		// offered for a crew cost (Intercessor's Arrest, #5673). A
+		// saddle cost still offers it.
+		if use == game.CostPowerCrew && !game.CanCrewVehicles(&c) {
+			continue
+		}
 		id := c.InstanceID.String()
 		out.Cards = append(out.Cards, id)
 		if counted == nil {
@@ -14288,6 +14435,10 @@ func counterCostView(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterR
 			// walk the engine validates against — so a player can
 			// never name a number the server then refuses.
 			v.CounterCostMax = g.MaxCounterPaymentForEffect(caster, sourceID, rc)
+			if rc.All {
+				// All of them: the stepper has nothing to choose.
+				v.CounterCostN = v.CounterCostMax
+			}
 		}
 	}
 	if ac != nil && ac.N > 0 {
@@ -14693,6 +14844,29 @@ func viewOfMeldedFrom(c *game.Card) []CardFaceView {
 	}
 	out := make([]CardFaceView, 0, len(c.MeldedFrom))
 	for _, part := range c.MeldedFrom {
+		v := CardFaceView{
+			Name:      part.Name,
+			TypeLine:  part.TypeLine,
+			ManaCost:  part.ManaCost,
+			Power:     part.Power,
+			Toughness: part.Toughness,
+		}
+		if part.ScryfallID != "" {
+			v.Image = fmt.Sprintf("/cards/%s/image", part.ScryfallID)
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// viewOfMergedFrom projects a mutated permanent's components, topmost
+// first (ADR 0223). nil for every other card.
+func viewOfMergedFrom(c *game.Card) []CardFaceView {
+	if !game.IsMergedPtr(c) {
+		return nil
+	}
+	out := make([]CardFaceView, 0, len(c.MergedFrom))
+	for _, part := range c.MergedFrom {
 		v := CardFaceView{
 			Name:      part.Name,
 			TypeLine:  part.TypeLine,
