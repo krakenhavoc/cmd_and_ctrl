@@ -1,8 +1,6 @@
 package cardsgr
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -35,36 +33,10 @@ func init() {
 			effects.GrantToAttached("infect"),
 		},
 		Triggered: []game.TriggeredAbility{
-			effects.OnAny([]game.EventKind{game.EventUnattach, game.EventLTB}, effects.Self,
-				"Grafted Exoskeleton — sacrifice the permanent it became unattached from",
-				effects.Do(effects.Instruction(func(ctx *effects.Context) error {
-					host := graftedExoskeletonHost(ctx)
-					if host == uuid.Nil {
-						return nil
-					}
-					if z := ctx.Game.FindCardZoneForEffect(host); z == nil || z.Kind != game.ZoneBattlefield {
-						return nil
-					}
-					return effects.SacrificePermanent{Target: host}.Apply(ctx)
-				}))),
+			effects.GraftedSacrificeOnUnattach("Grafted Exoskeleton — sacrifice the permanent it became unattached from"),
 		},
 		Activated: []effects.ActivatedAbility{
 			effects.EquipAbility("{2}"),
 		},
 	})
-}
-
-// graftedExoskeletonHost is the permanent the Equipment became unattached
-// from: the event's target when the link broke with the Equipment still on the
-// battlefield, and what the departed Equipment was last attached to when it
-// left.
-func graftedExoskeletonHost(ctx *effects.Context) uuid.UUID {
-	tc := ctx.Trigger()
-	if tc.Event.Kind == game.EventUnattach {
-		return tc.Event.Target
-	}
-	if info, ok := ctx.TriggeringPermanent(); ok && info.AttachedTo.Kind == game.TargetCard {
-		return info.AttachedTo.ID
-	}
-	return uuid.Nil
 }

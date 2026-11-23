@@ -23,25 +23,6 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      effects.TargetCreature("target nonblack creature", effects.NonBlack()),
-		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				c, ok := ctx.Game.LookupCardForEffect(t.ID)
-				if !ok {
-					return nil
-				}
-				toughness := c.CurrentToughness()
-				if err := (effects.DestroyTarget{Target: t.ID, CantBeRegenerated: true}).Apply(ctx); err != nil {
-					return err
-				}
-				if toughness <= 0 {
-					return nil
-				}
-				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -toughness)
-			}
-			return nil
-		},
+		OnResolve:    effects.VendettaResolve,
 	})
 }
