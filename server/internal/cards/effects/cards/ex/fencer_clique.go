@@ -34,7 +34,7 @@ func init() {
 // fencerCliqueTuckSelf puts Fencer Clique on top of its owner's library,
 // if it is still the permanent the ability came from (CR 400.7).
 func fencerCliqueTuckSelf(g *game.Game, item *game.StackItem) error {
-	if !effects.SourceIsStillThisPermanent(g, item) {
+	if !effects.B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	return g.TuckToLibraryForEffect(item.SourceCardID, false)
