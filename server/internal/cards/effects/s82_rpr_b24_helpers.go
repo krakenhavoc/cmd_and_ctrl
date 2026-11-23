@@ -14,7 +14,7 @@ import (
 // text is "Exile target artifact or enchantment." (Fade into Antiquity),
 // named once so it is not a second copy of Altar's Light's body (the clone
 // gate, TestNoNewExactClonesInTheCatalog).
-func exileTargetArtifactOrEnchantmentSpell(oracleID, name string) Spec {
+func ExileTargetArtifactOrEnchantmentSpell(oracleID, name string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -34,14 +34,14 @@ func exileTargetArtifactOrEnchantmentSpell(oracleID, name string) Spec {
 // target clause names the damaged player's graveyard (Fire Nation
 // Salvagers' TargetsFrom); the cast is Arcane Heist's free, exile-instead
 // grant offered during the resolution (CR 608.2g).
-func freeCastFromDamagedPlayersGraveyard(name string) game.TriggeredAbility {
+func FreeCastFromDamagedPlayersGraveyard(name string) game.TriggeredAbility {
 	damage := WheneverThisDealsCombatDamageToAPlayer(
 		name+" — you may cast target instant or sorcery card from that player's graveyard without paying its mana cost",
 		func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			for _, t := range ctx.LegalTargets() {
 				if t.Kind == game.TargetCard {
-					cmdr2S42FreeGraveyardCast(ctx, name, freeInstantOrSorcery(), true, []uuid.UUID{t.ID})
+					Cmdr2S42FreeGraveyardCast(ctx, name, FreeInstantOrSorcery(), true, []uuid.UUID{t.ID})
 					break
 				}
 			}
@@ -63,17 +63,17 @@ func freeCastFromDamagedPlayersGraveyard(name string) game.TriggeredAbility {
 // it is gone (CR 603.10, 608.2h).
 //
 // Caller must hold g.mu.
-func zurzothDevilAttackedPlayers(g *game.Game, ev game.Event, controller uuid.UUID, devil string) []uuid.UUID {
+func ZurzothDevilAttackedPlayers(g *game.Game, ev game.Event, controller uuid.UUID, devil string) []uuid.UUID {
 	var out []uuid.UUID
 	for i := range g.Events {
 		e := g.Events[i]
 		if e.Batch != ev.Batch || e.Kind != game.EventAttack || e.Actor != controller {
 			continue
 		}
-		if !attackerHadSubtype(g, e.CardID, devil) {
+		if !AttackerHadSubtype(g, e.CardID, devil) {
 			continue
 		}
-		p := attackedPlayer(g, e)
+		p := AttackedPlayer(g, e)
 		if p == uuid.Nil || slices.Contains(out, p) {
 			continue
 		}
@@ -85,7 +85,7 @@ func zurzothDevilAttackedPlayers(g *game.Game, ev game.Event, controller uuid.UU
 // attackerHadSubtype reports whether the attacking object has the creature
 // type `sub` (a word of the source's text, CR 612.2): read live while it is
 // on the battlefield, else off its last-known record.
-func attackerHadSubtype(g *game.Game, id uuid.UUID, sub string) bool {
+func AttackerHadSubtype(g *game.Game, id uuid.UUID, sub string) bool {
 	if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneBattlefield {
 		if c, ok := g.LookupCardForEffect(id); ok {
 			return c.HasSubtype(sub)
@@ -98,9 +98,9 @@ func attackerHadSubtype(g *game.Game, id uuid.UUID, sub string) bool {
 // putAFlyingCounterOnTheTarget is "put a flying counter on target creature":
 // the one legal target of the ability or trigger gets the counter (Hexavus,
 // Wingspan Mentor).
-func putAFlyingCounterOnTheTarget(g *game.Game, item *game.StackItem) error {
+func PutAFlyingCounterOnTheTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

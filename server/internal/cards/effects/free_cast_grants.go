@@ -32,12 +32,12 @@ import (
 // still in exile. `timing` is TimingNormal for an ability that offers
 // the cast "this turn" (the card keeps its own timing), and TimingFlash
 // for a spell's resolution that casts "as part of" itself (CR 608.2g).
-func grantFreeCasts(g *game.Game, controller, source uuid.UUID, sourceName string,
+func GrantFreeCasts(g *game.Game, controller, source uuid.UUID, sourceName string,
 	timing game.GrantTiming, lapse game.PermissionLapse, ids []uuid.UUID) {
 	var granted []uuid.UUID
 	defer func() {
 		if lapse != "" {
-			offerResolutionCastOver(g, controller, source, sourceName, game.MayCastKeywordFreeCast, declineLeaveInExile, granted...)
+			OfferResolutionCastOver(g, controller, source, sourceName, game.MayCastKeywordFreeCast, DeclineLeaveInExile, granted...)
 		}
 	}()
 	for _, id := range ids {
@@ -65,8 +65,8 @@ func grantFreeCasts(g *game.Game, controller, source uuid.UUID, sourceName strin
 // The decline labels the one-off offers use (#4250): where a card that is
 // not cast stays.
 const (
-	declineLeaveInExile     = "Leave it in exile"
-	declineLeaveInGraveyard = "Leave it in the graveyard"
+	DeclineLeaveInExile     = "Leave it in exile"
+	DeclineLeaveInGraveyard = "Leave it in the graveyard"
 )
 
 // offerResolutionCastOver asks `controller` to cast `ids` during the
@@ -78,7 +78,7 @@ const (
 // the cards where they are. Outside an open resolution nothing is asked
 // and the permissions alone are the window, closing on the holder's next
 // priority pass.
-func offerResolutionCastOver(g *game.Game, controller, source uuid.UUID, name, keyword, decline string, ids ...uuid.UUID) {
+func OfferResolutionCastOver(g *game.Game, controller, source uuid.UUID, name, keyword, decline string, ids ...uuid.UUID) {
 	accept := "Cast it free"
 	if keyword == game.MayCastKeywordPaidCast {
 		accept = "Cast it"
@@ -99,7 +99,7 @@ func offerResolutionCastOver(g *game.Game, controller, source uuid.UUID, name, k
 // offer over it (#4250). A card that does not reach exile (its owner sent
 // a commander to the command zone) is offered nothing. An empty name heads
 // the offer with the exiled card's own.
-func exileWithPermissionThenOffer(g *game.Game, cardID, source uuid.UUID, perm game.CastPermission, name string) error {
+func ExileWithPermissionThenOffer(g *game.Game, cardID, source uuid.UUID, perm game.CastPermission, name string) error {
 	const keyword = game.MayCastKeywordFreeCast
 	if z := g.FindCardZoneForEffect(cardID); z != nil && z.Kind == game.ZoneExile {
 		exiledWithPermissionOffer(g, cardID, source, perm, name, keyword)
@@ -107,21 +107,21 @@ func exileWithPermissionThenOffer(g *game.Game, cardID, source uuid.UUID, perm g
 	}
 	// Keyed (#4253 slice 10a): the permission, the offer's heading and its
 	// keyword ride the exile's tail.
-	return g.ExileCardKeyedForEffect(cardID, game.KeyedTail{Ref: exiledThenOffer, Source: source, Permission: &perm,
-		Word: keyword + freeCastWordSep + name})
+	return g.ExileCardKeyedForEffect(cardID, game.KeyedTail{Ref: ExiledThenOffer, Source: source, Permission: &perm,
+		Word: keyword + FreeCastWordSep + name})
 }
 
 // freeCastWordSep separates exiledThenOffer's keyword from its heading in
 // the tail's Word.
-const freeCastWordSep = "\x1f"
+const FreeCastWordSep = "\x1f"
 
 // exiledThenOffer is exileWithPermissionThenOffer's continuation, told the
 // card when it reached exile.
-var exiledThenOffer = game.RegisterTail("exile/grant-permission-then-offer", func(g *game.Game, o game.TailOutcome) error {
+var ExiledThenOffer = game.RegisterTail("exile/grant-permission-then-offer", func(g *game.Game, o game.TailOutcome) error {
 	if len(o.IDs) != 1 || o.Tail.Permission == nil {
 		return nil
 	}
-	keyword, name, _ := strings.Cut(o.Tail.Word, freeCastWordSep)
+	keyword, name, _ := strings.Cut(o.Tail.Word, FreeCastWordSep)
 	exiledWithPermissionOffer(g, o.IDs[0], o.Tail.Source, *o.Tail.Permission, name, keyword)
 	return nil
 })
@@ -137,5 +137,5 @@ func exiledWithPermissionOffer(g *game.Game, cardID, source uuid.UUID, perm game
 	if c, found := g.LookupCardForEffect(cardID); found && reason == "" {
 		reason = c.Name
 	}
-	offerResolutionCastOver(g, perm.Player, source, reason, keyword, declineLeaveInExile, cardID)
+	OfferResolutionCastOver(g, perm.Player, source, reason, keyword, DeclineLeaveInExile, cardID)
 }

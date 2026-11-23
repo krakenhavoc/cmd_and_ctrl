@@ -55,8 +55,8 @@ const cantBlockRatSlug = "rat-cant-block"
 // "This creature can't block." — a token template because the ability
 // is a static the token carries, which a plain tokens_table row cannot
 // declare.
-func printedCantBlockRatToken() tokenTemplate {
-	return tokenTemplate{
+func printedCantBlockRatToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: cantBlockRatSlug,
 		Card: game.Card{
 			Name:      "Rat",
@@ -71,4 +71,4 @@ func printedCantBlockRatToken() tokenTemplate {
 }
 
 // CantBlockRatToken is the Rat's card value for CreateToken.
-func CantBlockRatToken() game.Card { return tokenFromCatalog(printedCantBlockRatToken) }
+func CantBlockRatToken() game.Card { return TokenFromCatalog(printedCantBlockRatToken) }

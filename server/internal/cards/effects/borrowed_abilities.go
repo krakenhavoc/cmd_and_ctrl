@@ -238,7 +238,7 @@ func ExileLenders(p LenderPredicate) func(g *game.Game, source *game.Card) []*ga
 // (CR 400.7).
 func CraftedWithLenders() func(g *game.Game, source *game.Card) []*game.Card {
 	return func(g *game.Game, source *game.Card) []*game.Card {
-		mats := craftMaterialsOf(g, source)
+		mats := CraftMaterialsOf(g, source)
 		if len(mats) == 0 {
 			return nil
 		}
@@ -264,7 +264,7 @@ func AnyLender(*game.Game, *game.Card, game.Card) bool { return true }
 
 // exileLinkedTargetsEffect is exileLinkedTargets as an ability's Effect:
 // Duplicant's imprint, Myr Welder's, Territory Forge's.
-func exileLinkedTargetsEffect(g *game.Game, item *game.StackItem) error {
+func ExileLinkedTargetsEffect(g *game.Game, item *game.StackItem) error {
 	return exileLinkedTargets(NewContext(g, item))
 }
 

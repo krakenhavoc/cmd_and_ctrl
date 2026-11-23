@@ -87,8 +87,8 @@ func roleCard(name string, colors ...string) game.Card {
 	}
 }
 
-func printedMonsterRoleToken() tokenTemplate {
-	return tokenTemplate{
+func printedMonsterRoleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug:   "monster-role",
 		Card:   roleCard("Monster Role", "R"),
 		Static: []game.StaticAbility{PumpAttached(1, 1), GrantToAttached("trample")},
@@ -96,8 +96,8 @@ func printedMonsterRoleToken() tokenTemplate {
 	}
 }
 
-func printedCursedRoleToken() tokenTemplate {
-	return tokenTemplate{
+func printedCursedRoleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug:   "cursed-role",
 		Card:   roleCard("Cursed Role", "B"),
 		Static: []game.StaticAbility{SetAttachedBasePT(1, 1)},
@@ -105,8 +105,8 @@ func printedCursedRoleToken() tokenTemplate {
 	}
 }
 
-func printedRoyalRoleToken() tokenTemplate {
-	return tokenTemplate{
+func printedRoyalRoleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug:   "royal-role",
 		Card:   roleCard("Royal Role", "W"),
 		Static: []game.StaticAbility{PumpAttached(1, 1)},
@@ -117,14 +117,14 @@ func printedRoyalRoleToken() tokenTemplate {
 	}
 }
 
-func printedWickedRoleToken() tokenTemplate {
-	return tokenTemplate{
+func printedWickedRoleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug:   "wicked-role",
 		Card:   roleCard("Wicked Role", "B"),
 		Static: []game.StaticAbility{PumpAttached(1, 0)},
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Wicked Role — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
-				return eachOpponentLosesLife(g, item, 1)
+				return EachOpponentLosesLifeNow(g, item, 1)
 			}),
 		},
 		Text: "Enchant creature\nEnchanted creature gets +1/+0.\nWhen this token is put into a graveyard, each opponent loses 1 life.",
@@ -137,8 +137,8 @@ const (
 	chefRoleGrant      = "chef-role/food"
 )
 
-func printedSorcererRoleToken() tokenTemplate {
-	return tokenTemplate{
+func printedSorcererRoleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug:   "sorcerer-role",
 		Card:   roleCard("Sorcerer Role", "U"),
 		Static: []game.StaticAbility{PumpAttached(1, 1), GrantAbilitiesToAttached(sorcererRoleGrant)},
@@ -146,7 +146,7 @@ func printedSorcererRoleToken() tokenTemplate {
 			Key: sorcererRoleGrant,
 			Triggered: []game.TriggeredAbility{
 				On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return attackDeclared(ev, source)
+					return AttackDeclared(ev, source)
 				}, "Sorcerer Role — scry 1", func(g *game.Game, item *game.StackItem) error {
 					return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 				}),
@@ -157,8 +157,8 @@ func printedSorcererRoleToken() tokenTemplate {
 	}
 }
 
-func printedYoungHeroRoleToken() tokenTemplate {
-	return tokenTemplate{
+func printedYoungHeroRoleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug:   "young-hero-role",
 		Card:   roleCard("Young Hero Role", "W"),
 		Static: []game.StaticAbility{GrantAbilitiesToAttached(youngHeroRoleGrant)},
@@ -167,7 +167,7 @@ func printedYoungHeroRoleToken() tokenTemplate {
 			Triggered: []game.TriggeredAbility{
 				On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					// Intervening-if, first check (CR 603.4).
-					return attackDeclared(ev, source) && source.CurrentToughness() <= 3
+					return AttackDeclared(ev, source) && source.CurrentToughness() <= 3
 				}, "Young Hero Role — a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
 					// Second check, on resolution: a pump in response
 					// that lifts the toughness past 3 stops the counter.
@@ -184,17 +184,17 @@ func printedYoungHeroRoleToken() tokenTemplate {
 	}
 }
 
-func printedVirtuousRoleToken() tokenTemplate {
-	return tokenTemplate{
+func printedVirtuousRoleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug:   "virtuous-role",
 		Card:   roleCard("Virtuous Role", "W"),
-		Static: []game.StaticAbility{PumpAttachedPer(1, 1, enchantmentsControlledBy)},
+		Static: []game.StaticAbility{PumpAttachedPer(1, 1, EnchantmentsControlledBy)},
 		Text:   "Enchant creature\nEnchanted creature gets +1/+1 for each enchantment you control.",
 	}
 }
 
-func printedChefRoleToken() tokenTemplate {
-	return tokenTemplate{
+func printedChefRoleToken() TokenTemplate {
+	return TokenTemplate{
 		Slug:   "chef-role",
 		Card:   roleCard("Chef Role", "G"),
 		Static: []game.StaticAbility{PumpAttached(1, 1), GrantAbilitiesToAttached(chefRoleGrant)},
@@ -202,7 +202,7 @@ func printedChefRoleToken() tokenTemplate {
 			Key: chefRoleGrant,
 			Triggered: []game.TriggeredAbility{
 				On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return attackDeclared(ev, source)
+					return AttackDeclared(ev, source)
 				}, "Chef Role — create a Food token", func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
 				}),
@@ -215,7 +215,7 @@ func printedChefRoleToken() tokenTemplate {
 
 // RoleToken is the named Role's template, for a test or a card that
 // needs the card value rather than the primitive.
-func RoleToken(k RoleKind) game.Card { return tokenFromCatalog(roleBuilder(k)) }
+func RoleToken(k RoleKind) game.Card { return TokenFromCatalog(roleBuilder(k)) }
 
 // CreateRoleToken is "create a <Role> token attached to <Host>".
 // Controller defaults to the ability's controller. A Host that is not
@@ -255,7 +255,7 @@ func (r CreateRoleToken) Apply(ctx *Context) error {
 		Controller: controller,
 		Source:     ctx.Source(),
 		Groups: []game.TokenGroup{{
-			Template: ruleDefinedToken(tokenFromCatalog(roleBuilder(r.Role))),
+			Template: RuleDefinedToken(TokenFromCatalog(roleBuilder(r.Role))),
 			Count:    1,
 		}},
 	}, tail)
@@ -281,7 +281,7 @@ var roleAttachToHost = CardTail("role-tokens/attach-to-host", func(ctx *Context,
 // this creature" (Faunsbane Troll): the activator's own permanents that
 // match `preds`, restricted to those attached to the paying permanent.
 func AttachedToThis(label string, preds ...CardPredicate) *game.TargetSpec {
-	spec := sacrificeSpec(label, preds...)
+	spec := SacrificeSpec(label, preds...)
 	spec.AttachedToSource = true
 	return spec
 }

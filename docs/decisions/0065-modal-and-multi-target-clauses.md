@@ -2093,3 +2093,85 @@ legality, the picker's pairs, a copy moved to another player, and every
 answer the enumerator offers for the copy accepted),
 `effects/target_relation_players_graveyard_test.go` (Register's gate) and
 `client/src/lib/targetingRelation.test.ts`.
+
+## Amendment 2026-11-19: an opponent chooses the mode (#5771)
+
+**Sprint:** S82 — Card coverage: sets outside Standard, newest first (found
+on the first Alliances batch, #5634).
+
+Fatal Lore, Library of Lat-Nam and Misfortune say "An opponent chooses one
+—", and the chosen opponent is "that player" in the bullets. A `ModeSpec`
+could not say who chooses: the caster always did.
+
+### Decision: the rules settle when and which; the cast parks, as an opponent's target does
+
+- **When.** CR 700.2e: "Some spells and abilities specify that a player
+  other than their controller chooses a mode for it. In that case, the
+  other player does so when the spell or ability's controller normally
+  would do so." For a spell that is CR 601.2b, as it is cast, before its
+  targets (CR 601.2c). Fatal Lore's 2004 ruling says the same: "The
+  opponent chooses which option they want (this is a mode choice). If they
+  choose the 'destroy' option, you choose the zero, one, or two targets
+  after that." Not on resolution.
+- **Which opponent.** CR 700.2e again: "If there is more than one other
+  player who could make such a choice, the spell or ability's controller
+  decides which of those players will make the choice." The example under
+  CR 801.5b (an "An opponent chooses one" spell whose caster "chooses
+  Carissa to make that choice") reads the same way. An opponent
+  "could" choose when a bullet is choosable with them as "that player" (CR
+  700.2a). Nothing is left to the product.
+- **Engine.** `ModeSpec.ChosenByOpponent` (`effects.OpponentChoosesOne`), a
+  spell's plain one-of only. The cast is parked before anything is paid
+  (`game/opponent_mode.go`), the shape "target … of an opponent's choice"
+  built ([ADR 0019's 2026-10-16 amendment](0019-structured-targeting.md),
+  `opponent_target.go`), and on the same `opponentTargetFrame`: the
+  caster's payload names no mode and no target; the caster is asked which
+  opponent with an ordinary choose-a-player `option_pick` when more than
+  one could choose; that opponent answers an ordinary `mode_pick` offering
+  the bullets choosable for them; each answer makes the announcement again
+  from scratch. A bullet's clauses are then parked steps the caster is
+  asked for, one `pick_target` each (an "up to" clause with nothing to
+  pick is answered with nothing). The opponent is recorded as
+  `StackItem.ModeChooser`, read by the card (`ctx.ModeChooser()`) and by
+  the CR 608.2b re-check of a "that player controls" clause
+  (`TargetSpec.ControlledByModeChooser`, `effects.ThatPlayerControls`,
+  through `TargetSource.modeChooser`). A copy keeps it (CR 707.10).
+- **Leaving.** The opponent's `mode_pick` is a choice the spell requires, so
+  CR 800.4g passes it to another opponent (the departure table's inheritor,
+  never the caster), its bullets judged again for them. A caster who leaves
+  takes the parked cast with them: the opponent's prompt is withdrawn (CR
+  800.4a), as an opponent's pick for them is. There is no timer: like every
+  other prompt owed by another seat it waits, and the away flow
+  ([ADR 0177](0177-away-players-and-moving-the-table-on.md): hand the seat
+  to a bot, or concede it) is the fallback for a seat that has gone quiet.
+- **Snapshot.** Additive within the schema version: `stackMeta[].modeChooser`,
+  `pendingChoices[].modePickFor`, and `opponentMode` beside a parked cast's
+  params. The opponent's `mode_pick` is written as a parked announcement
+  under the marker `announce/opponent-mode`, and the caster's "which
+  opponent" question under its own option-pick key
+  `option-pick/opponent-mode-chooser`; both are on-disk identities. A binary
+  from before this refuses a file holding either. A table waiting on any of
+  the three prompts is a restore point.
+- **Wire.** `CardView.modes.chosen_by_opponent`; on the opponent's
+  `mode_pick`, `mode_chosen_for` (the caster) and `mode_spell_name` (the
+  card is still in the caster's hand while the cast waits; a spell is
+  public from CR 601.2a). The client opens no mode picker for such a card,
+  and the chooser's prompt names the spell and its caster
+  (`L.opponentModeChoice`).
+- **Bots.** The caster's enumerator offers the cast with no mode while some
+  opponent could choose. A bot that chooses for somebody else's spell
+  prices each bullet as the caster's gain, its declared purpose plus what
+  the caster's best picks among the bot's own permanents would cost it, and
+  takes the least (`aiseat/heuristic/mode_pick.go`, `casterBulletGain`).
+
+Out of scope, stated: "an opponent chooses" on a trigger or an activated
+ability (CR 700.2e reaches both; no printed card has one), and beside a
+cost, a raised count or a repeat. `effects.Register` refuses them.
+
+Tests: `effects/opponent_mode_cards_test.go` (the three cards at four
+seats: the caster cannot name the mode, only the named opponent is asked,
+the destroy bullet's targets are that player's creatures, a restore while
+either question is open resumes, the departures),
+`aiseat/opponent_mode_bot_test.go` and
+`aiseat/heuristic/opponent_mode_pick_test.go` (the bot chooser), and
+`client/src/lib/modePrompt.render.test.ts`.

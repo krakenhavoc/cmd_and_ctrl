@@ -11,11 +11,11 @@ import (
 
 // socB20TomekeeperLabel is the stack label (and effect key) of Biblioplex
 // Tomekeeper's entry trigger.
-const socB20TomekeeperLabel = "Biblioplex Tomekeeper — a creature becomes prepared or unprepared"
+const SocB20TomekeeperLabel = "Biblioplex Tomekeeper — a creature becomes prepared or unprepared"
 
 // socB20UntappedCreaturesYouControl is every untapped creature `player`
 // controls, read through the layered view (Aziza, Mage Tower Captain).
-func socB20UntappedCreaturesYouControl(g *game.Game, player uuid.UUID) []uuid.UUID {
+func SocB20UntappedCreaturesYouControl(g *game.Game, player uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && !c.Tapped && c.IsCreature() {
@@ -31,7 +31,7 @@ func socB20UntappedCreaturesYouControl(g *game.Game, player uuid.UUID) []uuid.UU
 // Archaic's Agony, "in some unusual cases ... may have deathtouch"). The
 // source's deathtouch is read off the resolving spell the way the damage
 // itself reads it (CR 702.2). It returns the excess that landed.
-func socB20DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, error) {
+func SocB20DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, error) {
 	c, ok := ctx.Game.LookupCardForEffect(target)
 	if !ok || amount <= 0 {
 		return 0, nil
@@ -40,11 +40,11 @@ func socB20DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int
 	if src, found := ctx.Game.LookupCardForEffect(ctx.Source()); found && game.HasKeyword(&src, "deathtouch") && lethal > 1 {
 		lethal = 1
 	}
-	cursor := b25LastEventSeq(ctx.Game)
+	cursor := B25LastEventSeq(ctx.Game)
 	if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: amount}).Apply(ctx); err != nil {
 		return 0, err
 	}
-	return max(b27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor)-lethal, 0), nil
+	return max(B27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor)-lethal, 0), nil
 }
 
 // socB20SmallCreatureYouControlDied is "a creature you control with power
@@ -52,9 +52,9 @@ func socB20DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int
 // went to the graveyard from the battlefield under your control, and its
 // power or toughness as it last existed there (CR 603.10a, the departure
 // record, counters and effects included, not clamped) was 1 or less.
-func socB20SmallCreatureYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	if !ok || leftUnderControlOf(ev, dead) != source.Controller {
+func SocB20SmallCreatureYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	if !ok || LeftUnderControlOf(ev, dead) != source.Controller {
 		return false
 	}
 	info, ok := g.LastKnownPermanentForEffect(ev.CardID)
@@ -67,7 +67,7 @@ func socB20SmallCreatureYouControlDied(ev game.Event, source *game.Card, _ game.
 // socB20DamageToTheModeTarget is "<this card> deals n damage to target
 // creature" as a mode's body (Artistic Process, Konstrari Charm): the
 // mode's own target, if it was chosen, takes n from the resolving spell.
-func socB20DamageToTheModeTarget(n int) func(*game.StackItem, *Context, int) error {
+func SocB20DamageToTheModeTarget(n int) func(*game.StackItem, *Context, int) error {
 	return func(_ *game.StackItem, ctx *Context, occ int) error {
 		t, ok := ModeTarget(ctx, occ)
 		if !ok {

@@ -6,6 +6,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // counters-matter batch (S82, #5491).
 
 // s82SncHasACounter reports whether the card carries a counter of any kind.
-func s82SncHasACounter(c game.Card) bool {
-	return b41HasACounter()(nil, [16]byte{}, c)
+func S82SncHasACounter(c game.Card) bool {
+	return B41HasACounter()(nil, [16]byte{}, c)
 }

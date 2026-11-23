@@ -37,7 +37,7 @@ func init() {
 		SpendOnly:    SpellSpendOnlyOnX("B"),
 		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return damageThenGainUpToWhatItWas(ctx, item, noExtraLifeCap)
+			return DamageThenGainUpToWhatItWas(ctx, item, noExtraLifeCap)
 		},
 	})
 }
@@ -53,8 +53,8 @@ const noExtraLifeCap = math.MaxInt
 // and not more than `extraCap` (Soul Burn's black mana spent on X).
 // The recipient's number is read BEFORE the damage, because the cap is
 // printed that way; the gain waits on the damage's own continuation.
-func damageThenGainUpToWhatItWas(ctx *Context, item *game.StackItem, extraCap int) error {
-	t, ok := firstLegalTarget(ctx)
+func DamageThenGainUpToWhatItWas(ctx *Context, item *game.StackItem, extraCap int) error {
+	t, ok := FirstLegalTarget(ctx)
 	if !ok {
 		return nil
 	}
@@ -67,7 +67,7 @@ func damageThenGainUpToWhatItWas(ctx *Context, item *game.StackItem, extraCap in
 // drainLifeGainUpTo is the Drain Life family's gain, told the damage the
 // recipient took: the tail's Player gains that much, from its Source, but
 // not more than its N, the cap read before the damage. An on-disk key.
-var drainLifeGainUpTo = recipientTail("recipient/drain-life-gain-up-to", func(ctx *Context, _ uuid.UUID, dealt int, o game.TailOutcome) error {
+var drainLifeGainUpTo = RecipientTail("recipient/drain-life-gain-up-to", func(ctx *Context, _ uuid.UUID, dealt int, o game.TailOutcome) error {
 	gain := min(dealt, o.Tail.N)
 	if gain <= 0 {
 		return nil

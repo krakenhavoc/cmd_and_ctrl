@@ -33,7 +33,7 @@ func init() {
 		AsEnters:     ChooseOptionAsEnters("Barrensteppe Siege", "Abzan", "Mardu"),
 		Triggered: []game.TriggeredAbility{
 			WhenChosen("Abzan", AtYourEndStep("Barrensteppe Siege — put a +1/+1 counter on each creature you control",
-				b11PutCounterOnEachCreatureYouControl)),
+				B11PutCounterOnEachCreatureYouControl)),
 			WhenChosen("Mardu", TriggerEdict(On(game.EventBeginEndStep,
 				AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return aCreatureDiedUnderYourControlThisTurn(g, source.Controller)

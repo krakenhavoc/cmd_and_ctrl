@@ -32,7 +32,7 @@ func init() {
 			TriggerWithPurpose(ChapterTrigger(2, "One Ring to Rule Them All — destroy all nonlegendary creatures", func(g *game.Game, item *game.StackItem) error {
 				return DestroyAllMatching{Match: And(Creature(), Not(Legendary()))}.Apply(NewContext(g, item))
 			}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
-			ChapterTrigger(3, "One Ring to Rule Them All — each opponent loses life for their creature cards", oneRingDrain),
+			ChapterTrigger(3, "One Ring to Rule Them All — each opponent loses life for their creature cards", OneRingDrain),
 		},
 	})
 }
@@ -55,11 +55,11 @@ var oneRingMillTail = RingTail("then/one-ring-to-rule-them-all-mill", func(ctx *
 		}
 	}
 	// One library at a time in APNAP order (#4266).
-	return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(n), game.KeyedTail{})
+	return MillEachPlayerInTurn(ctx, ApnapPlayers(ctx.Game), ConstantMill(n), game.KeyedTail{})
 })
 
 // oneRingDrain is chapter III.
-func oneRingDrain(g *game.Game, item *game.StackItem) error {
+func OneRingDrain(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, opp := range ctx.Opponents() {
 		p := g.PlayerByIDForEffect(opp)

@@ -201,7 +201,7 @@ type EmblemSpec struct {
 // emblemActivatedShapes projects an emblem's activated abilities, each
 // functioning from the command zone (CR 114.4).
 func emblemActivatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
-	out := activatedShapes(in)
+	out := ActivatedShapes(in)
 	for i := range out {
 		out[i].Zones = []game.ZoneKind{game.ZoneCommand}
 	}
@@ -245,7 +245,7 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 // checkEmblemSpec is the registration guard. Every failure here is a
 // card file that is wrong in a way no test of the card would catch,
 // so it fails at boot.
-func checkEmblemSpec(name string, e *EmblemSpec) {
+func CheckEmblemSpec(name string, e *EmblemSpec) {
 	if e == nil {
 		return
 	}

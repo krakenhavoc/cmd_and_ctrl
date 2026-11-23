@@ -1,0 +1,80 @@
+package cardsg
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Gideon the Oathless — Legendary Creature — Human Mercenary {2}{B},
+// 3/3 (Reality Fracture):
+//
+//	"Ward—Discard a card.
+//	 Whenever a creature an opponent controls enters, Gideon deals 1
+//	 damage to that player.
+//	 Whenever an opponent activates a loyalty ability, Gideon deals 1
+//	 damage to that player."
+//
+// Ward—Discard a card is Ward(WardDiscard(1)) (#3172, ward.go), the
+// same shape Graveyard Trespasser uses.
+//
+// Both damage triggers read the player from the triggering event, not
+// from a target: "that player" is not a target, so hexproof and shroud
+// do not matter.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "7afa530f-ea51-4bee-af3b-59b83ea5cb25",
+		Name:         "Gideon the Oathless",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.Ward(effects.WardDiscard(1), "Gideon the Oathless — ward, discard a card"),
+			effects.On(game.EventETB, anOpponentsCreatureEntered,
+				"Gideon the Oathless — 1 damage to that player",
+				gideonOathlessPing(func(item *game.StackItem, g *game.Game) uuid.UUID {
+					if item.Trigger == nil {
+						return uuid.Nil
+					}
+					c, ok := g.LookupCardForEffect(item.Trigger.Event.CardID)
+					if !ok {
+						return uuid.Nil
+					}
+					return c.Controller
+				})),
+			effects.On(game.EventActivateAbility, anOpponentActivatedALoyaltyAbility,
+				"Gideon the Oathless — 1 damage to that player",
+				gideonOathlessPing(func(item *game.StackItem, _ *game.Game) uuid.UUID {
+					return effects.TriggeringActor(item)
+				})),
+		},
+	})
+}
+
+// gideonOathlessPing is "Gideon deals 1 damage to that player", with
+// the player read off the triggering event when the trigger resolves.
+func gideonOathlessPing(who func(*game.StackItem, *game.Game) uuid.UUID) effects.Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		player := who(item, g)
+		if player == uuid.Nil || g.PlayerByIDForEffect(player) == nil {
+			return nil
+		}
+		return effects.DealDamage{Source: item.SourceCardID, Target: player, Amount: 1}.Apply(effects.NewContext(g, item))
+	}
+}
+
+// anOpponentsCreatureEntered is "a creature an opponent controls
+// enters", read from the creature as it stands on the battlefield.
+func anOpponentsCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsCreature() && c.Controller != source.Controller
+}
+
+// anOpponentActivatedALoyaltyAbility is "an opponent activates a
+// loyalty ability": the activation event's Loyalty bit (CR 606.2), by a
+// player other than the source's controller.
+func anOpponentActivatedALoyaltyAbility(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventActivateAbility && ev.Loyalty && ev.Actor != uuid.Nil && ev.Actor != source.Controller
+}

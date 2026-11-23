@@ -23,10 +23,10 @@ import (
 func init() {
 	ab := PowerUp("{4}{G}{G}: Put three +1/+1 counters on this creature. Then draw a card for each creature you control with a counter on it.",
 		ManaCost("{4}{G}{G}"), func(g *game.Game, item *game.StackItem) error {
-			if err := plusOneCountersOnThis(3)(g, item); err != nil {
+			if err := PlusOneCountersOnThis(3)(g, item); err != nil {
 				return err
 			}
-			return DrawCards{Player: item.Controller, N: len(creaturesWithACounter(g, item.Controller))}.Apply(NewContext(g, item))
+			return DrawCards{Player: item.Controller, N: len(CreaturesWithACounter(g, item.Controller))}.Apply(NewContext(g, item))
 		})
 	ab.Purpose.Answers = game.AnswerPump
 	Register(Spec{
@@ -40,7 +40,7 @@ func init() {
 
 // creaturesWithACounter lists the creatures `controller` controls that have
 // at least one counter of any kind.
-func creaturesWithACounter(g *game.Game, controller uuid.UUID) []uuid.UUID {
+func CreaturesWithACounter(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || !c.IsCreature() {

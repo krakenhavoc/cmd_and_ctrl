@@ -82,7 +82,7 @@ func (t ThenSteps) RunAt(ctx *Context, i int) error {
 
 // seatAtOccurrence is the player RunAt was given the seat of: the seat
 // index the continuation's steps are running for.
-func seatAtOccurrence(ctx *Context) uuid.UUID {
+func SeatAtOccurrence(ctx *Context) uuid.UUID {
 	i := ctx.Occurrence()
 	if i < 0 || i >= len(ctx.Game.Seats) || ctx.Game.Seats[i] == nil {
 		return uuid.Nil
@@ -91,7 +91,7 @@ func seatAtOccurrence(ctx *Context) uuid.UUID {
 }
 
 // seatIndexOf is the index in Game.Seats of player id, or 0 for none.
-func seatIndexOf(g *game.Game, id uuid.UUID) int {
+func SeatIndexOf(g *game.Game, id uuid.UUID) int {
 	for i, p := range g.Seats {
 		if p != nil && p.ID == id {
 			return i

@@ -17,7 +17,7 @@ func vowB16GraveyardCards(g *game.Game, except uuid.UUID) []uuid.UUID {
 		if p == nil {
 			continue
 		}
-		for _, id := range graveyardCardsOfPlayer(g, p.ID) {
+		for _, id := range GraveyardCardsOfPlayer(g, p.ID) {
 			if id != except {
 				out = append(out, id)
 			}
@@ -29,7 +29,7 @@ func vowB16GraveyardCards(g *game.Game, except uuid.UUID) []uuid.UUID {
 // vowB16QueueExile asks the item's controller for one card from any
 // graveyard other than `except` (uuid.Nil: any card), and hands the pick to
 // `then`. Nothing is asked with every graveyard empty.
-func vowB16QueueExile(g *game.Game, item *game.StackItem, label string, except uuid.UUID, then game.ChooseCardsThen) {
+func VowB16QueueExile(g *game.Game, item *game.StackItem, label string, except uuid.UUID, then game.ChooseCardsThen) {
 	candidates := vowB16GraveyardCards(g, except)
 	if len(candidates) == 0 {
 		return
@@ -49,7 +49,7 @@ func vowB16QueueExile(g *game.Game, item *game.StackItem, label string, except u
 // vowB16LinkedExileThen registers the answer that exiles the pick, linked to
 // the asking trigger. key is an on-disk identity: never renamed, never
 // reused.
-func vowB16LinkedExileThen(key string) game.ChooseCardsThen {
+func VowB16LinkedExileThen(key string) game.ChooseCardsThen {
 	return game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
 		if len(r.Picked) == 0 || r.Asked == nil {
 			return nil
@@ -65,14 +65,14 @@ func vowB16ExiledWith(g *game.Game, source game.PermissionCardRef, label string)
 }
 
 // vowB16ExiledWithCard is vowB16ExiledWith for a source still in play.
-func vowB16ExiledWithCard(g *game.Game, source *game.Card, label string) []*game.Card {
+func VowB16ExiledWithCard(g *game.Game, source *game.Card, label string) []*game.Card {
 	return vowB16ExiledWith(g, game.PermissionCardRef{ID: source.InstanceID, Epoch: source.ObjectEpoch}, label)
 }
 
 // vowB16SharesATypeWithAny reports whether `c` has a card type that any of
 // `exiled` has (CR 205.2a).
-func vowB16SharesATypeWithAny(c game.Card, exiled []*game.Card) bool {
-	for _, t := range semblanceCardTypes {
+func VowB16SharesATypeWithAny(c game.Card, exiled []*game.Card) bool {
+	for _, t := range SemblanceCardTypes {
 		if !c.HasCardType(t) {
 			continue
 		}
@@ -88,7 +88,7 @@ func vowB16SharesATypeWithAny(c game.Card, exiled []*game.Card) bool {
 // vowB16PlayedCardBy is the card a play-a-land-or-cast-a-spell event is
 // about and the player who did it. False for any other event.
 func vowB16PlayedCardBy(ev game.Event, g *game.Game) (game.Card, uuid.UUID, bool) {
-	if ev.Kind != game.EventCast && !b20LandPlayed(ev, g) {
+	if ev.Kind != game.EventCast && !B20LandPlayed(ev, g) {
 		return game.Card{}, uuid.Nil, false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -102,19 +102,19 @@ func vowB16PlayedCardBy(ev game.Event, g *game.Game) (game.Card, uuid.UUID, bool
 // spell, if it shares a card type with the exiled card" test, as the ability
 // triggers: `who` says whether the player counts (nil: any player), and the
 // exiled card is the one `label`'s row exiled with the source.
-func vowB16PlaysSharingAType(label string, who func(actor uuid.UUID, source *game.Card) bool) When {
+func VowB16PlaysSharingAType(label string, who func(actor uuid.UUID, source *game.Card) bool) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		c, actor, ok := vowB16PlayedCardBy(ev, g)
 		if !ok || (who != nil && !who(actor, source)) {
 			return false
 		}
-		return vowB16SharesATypeWithAny(c, vowB16ExiledWithCard(g, source, label))
+		return VowB16SharesATypeWithAny(c, VowB16ExiledWithCard(g, source, label))
 	}
 }
 
 // vowB16PlaySharesStillHolds is the same test as the ability resolves
 // (CR 603.4), the source read as it last existed if it has gone.
-func vowB16PlaySharesStillHolds(label string) Condition {
+func VowB16PlaySharesStillHolds(label string) Condition {
 	return CondBoard{
 		Name: "the land played or spell cast shares a card type with the exiled card",
 		Test: func(ctx *Context) bool {
@@ -126,14 +126,14 @@ func vowB16PlaySharesStillHolds(label string) Condition {
 			if !ok {
 				return false
 			}
-			return vowB16SharesATypeWithAny(c, vowB16ExiledWith(ctx.Game, game.PermissionCardRef(ref), label))
+			return VowB16SharesATypeWithAny(c, vowB16ExiledWith(ctx.Game, game.PermissionCardRef(ref), label))
 		},
 	}
 }
 
 // vowB16YouPlay is "you" for vowB16PlaysSharingAType.
-func vowB16YouPlay(actor uuid.UUID, source *game.Card) bool { return actor == source.Controller }
+func VowB16YouPlay(actor uuid.UUID, source *game.Card) bool { return actor == source.Controller }
 
 // vowB16PlayEvents are the events a play-a-land-or-cast-a-spell ability
 // watches.
-var vowB16PlayEvents = []game.EventKind{game.EventCast, game.EventZoneMove}
+var VowB16PlayEvents = []game.EventKind{game.EventCast, game.EventZoneMove}

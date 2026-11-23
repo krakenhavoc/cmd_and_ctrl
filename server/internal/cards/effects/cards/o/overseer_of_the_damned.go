@@ -1,0 +1,49 @@
+package cardso
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Overseer of the Damned — Creature — Demon {5}{B}{B}, 5/5 (EDHREC
+// rank 3512):
+//
+//	"Flying
+//	 When this creature enters, you may destroy target creature.
+//	 Whenever a nontoken creature an opponent controls dies, create a
+//	 tapped 2/2 black Zombie creature token."
+//
+// A removal spell on a body that turns every opposing death into a
+// Zombie — its own entry kill included, when the target was a
+// nontoken creature an opponent controlled. The entry trigger is
+// optional and targeted (the CR 603.3d prompt, then the pick); the
+// dies trigger is diedCreature narrowed to a nontoken creature under
+// another player's control, so an opponent's token dying makes
+// nothing and one of the controller's own creatures dying makes
+// nothing. The Zombie enters tapped through the token entry options.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "c1f085ce-5b52-45b3-aef0-f77f36b3da36",
+		Name:            "Overseer of the Damned",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Triggered: []game.TriggeredAbility{
+			{
+				Watches:   []game.EventKind{game.EventETB},
+				AppliesTo: effects.B06SelfETB,
+				Targets:   effects.TargetCreature("target creature"),
+				OptionalPrompt: &game.TriggerOptionalPrompt{
+					Question: "Overseer of the Damned — destroy target creature?",
+				},
+				Key:    "Overseer of the Damned — destroy target creature",
+				Effect: effects.DestroyFirstLegalTarget,
+			},
+			effects.On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.B33OpponentsNontokenCreatureDied(ev, source, g)
+			}, "Overseer of the Damned — create a tapped 2/2 black Zombie", effects.Do(effects.CreateTokenAdvanced{Spec: effects.Token(effects.BlackZombieToken()).EntersTapped(), N: 1})),
+		},
+	})
+}

@@ -20,13 +20,13 @@ func mshB3EnteredOrControlsBasic(g *game.Game, _, source uuid.UUID) bool {
 	if !ok {
 		return false
 	}
-	return SourceEnteredThisTurn(g, c) || b11ControlsBasicLand(g, &c)
+	return SourceEnteredThisTurn(g, c) || B11ControlsBasicLand(g, &c)
 }
 
 // mshB3ConditionalDualLand is the cycle's two mana abilities: "{T}: Add {C}"
 // and "{T}: Add <a> or <b>. Activate only if this land entered this turn or
 // if you control a basic land." `produced` is the pair, e.g. "{B|R}".
-func mshB3ConditionalDualLand(produced, label string) []ManaAbility {
+func MshB3ConditionalDualLand(produced, label string) []ManaAbility {
 	return []ManaAbility{
 		{Cost: ManaAbilityCost{Tap: true}, Produced: "{C}", Label: "Add {C}"},
 		{

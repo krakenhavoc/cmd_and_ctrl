@@ -205,6 +205,12 @@ const (
 	// Vampires") a non-creature object carrying the type (a Kindred
 	// spell) does not match. Value is the canonical creature type.
 	ProtectionQualityCreatureSubtype
+	// ProtectionQualityColoredSpells is "protection from spells that are
+	// one or more colors" (CR 702.16a, Emrakul, the Aeons Torn): the source
+	// is a spell (not an ability, not a permanent) with at least one colour.
+	// A spell's colours are those of the card or copy on the stack
+	// (CR 105.2); colourless spells and abilities are not stopped.
+	ProtectionQualityColoredSpells
 )
 
 // protectionCreaturesOfType heads the token of ProtectionQualityCreatureSubtype,
@@ -258,6 +264,8 @@ func (k ProtectionQualityKind) String() string {
 		return "mana_value_at_least"
 	case ProtectionQualityColorless:
 		return "colorless"
+	case ProtectionQualityColoredSpells:
+		return "colored_spells"
 	case ProtectionQualityCreatureSubtype:
 		// Same wire kind as a creature-type quality: the badge reads Value.
 		return "subtype"
@@ -486,6 +494,8 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityNoncreaturePermanents, Printed: printed}, true
 	case "multicolored":
 		return ProtectionQuality{Kind: ProtectionQualityMulticolored, Printed: printed}, true
+	case "spells that are one or more colors":
+		return ProtectionQuality{Kind: ProtectionQualityColoredSpells, Printed: printed}, true
 	case protectionColorless:
 		return ProtectionQuality{Kind: ProtectionQualityColorless, Printed: printed}, true
 	}
@@ -902,6 +912,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return len(src.Colors) > 0
 	case ProtectionQualityMulticolored:
 		return len(src.Colors) >= 2
+	case ProtectionQualityColoredSpells:
+		return src.SourceIsSpell && len(src.Colors) >= 1
 	case ProtectionQualityColorless:
 		// CR 105.2c. The snapshot's colours are the post-layer ones, so
 		// an artifact an effect made red is not colourless and a

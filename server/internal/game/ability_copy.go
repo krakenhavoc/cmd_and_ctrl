@@ -323,6 +323,7 @@ func copiedPaidCost(p PaidCost) PaidCost {
 		// sacrificed.
 		SacrificedObjects: append([]ObjectRef(nil), p.SacrificedObjects...),
 		ReturnedAttacking: p.ReturnedAttacking,
+		ReturnedObjects:   append([]ObjectRef(nil), p.ReturnedObjects...),
 	}
 }
 

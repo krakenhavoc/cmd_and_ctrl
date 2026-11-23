@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // castersLoseLife is a triggered ability that fires when any player
 // (the controller included) casts a spell `spellOK` accepts and makes
 // that player lose `n` life.
-func castersLoseLife(label string, n int, spellOK func(spell game.Card) bool) game.TriggeredAbility {
+func CastersLoseLife(label string, n int, spellOK func(spell game.Card) bool) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventCast},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

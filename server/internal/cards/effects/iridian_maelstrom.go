@@ -25,7 +25,7 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{
 				Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-					return c.IsCreature() && !isAllColors(c)
+					return c.IsCreature() && !IsAllColors(c)
 				},
 			}.Apply(ctx)
 		},
@@ -33,7 +33,7 @@ func init() {
 }
 
 // isAllColors is "all colors": the five colors, as the card has them now.
-func isAllColors(c game.Card) bool {
+func IsAllColors(c game.Card) bool {
 	seen := map[string]bool{}
 	for _, col := range c.EffectiveColors() {
 		seen[col] = true

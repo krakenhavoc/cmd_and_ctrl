@@ -1,0 +1,32 @@
+package cardsth
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// The Wasp, Janet Van Dyne — {2}{W} Legendary Creature — Human Hero 1/1
+// (Marvel Super Heroes Commander, #4455):
+//
+//	"Flying
+//	 When The Wasp enters, she deals 4 damage to target tapped creature an
+//	 opponent controls."
+//
+// The target is chosen as the trigger is put on the stack and re-checked as
+// it resolves (CR 608.2b). The damage is dealt by The Wasp even if she has
+// left the battlefield by then, using her last-known information
+// (CR 608.2h).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "8d35c7c8-1342-40b7-82ec-2f7973ee8af8",
+		Name:            "The Wasp, Janet Van Dyne",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEntersFourDamageToTappedOpponentCreature("The Wasp — she deals 4 damage to target tapped creature an opponent controls"),
+		},
+	})
+}

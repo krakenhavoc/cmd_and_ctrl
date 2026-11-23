@@ -42,8 +42,8 @@ const BOLAS = "cb33e07b-9599-4979-991f-df0c43ddac31";
 
 describe("the signature catalog", () => {
   const effectsDir = join(SERVER, "effects");
-  const specs = readdirSync(effectsDir)
-    .filter((f) => f.endsWith(".go") && !f.endsWith("_test.go"))
+  const specs = readdirSync(effectsDir, { recursive: true, encoding: "utf8" })
+    .filter((f) => f.endsWith(".go") && !f.endsWith("_test.go") && !f.startsWith("effectstest"))
     .map((f) => readFileSync(join(effectsDir, f), "utf8"));
 
   it.each(Object.entries(SIGNATURES))(

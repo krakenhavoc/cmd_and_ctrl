@@ -1,0 +1,52 @@
+package cardsso
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Soul-Shackled Zombie — Creature — Zombie {3}{B}, 4/2:
+//
+//	"When this creature enters, exile up to two target cards from a
+//	 single graveyard. If at least one creature card was exiled this
+//	 way, each opponent loses 2 life and you gain 2 life."
+//
+// #1807, ADR 0106 §5. "Exiled this way" is what ACTUALLY reached exile
+// (#870): the type is read before the move and the drain is gated on
+// the batch's continuation, so a creature card whose exile was
+// replaced, or a commander its owner sent to the command zone, does
+// not pay out.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "f81ca3a5-356d-4b5d-afc2-a33aa774816b",
+		Name:         "Soul-Shackled Zombie",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEntersExileFromASingleGraveyard("Soul-Shackled Zombie", 2, func(g *game.Game, item *game.StackItem) error {
+				return effects.ExileTargetCardsThen(effects.NewContext(g, item), soulShackledZombieAfterExile)
+			}),
+		},
+	})
+}
+
+// soulShackledZombieDrain is the life loss and then the gain: the gain waits
+// for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
+var soulShackledZombieDrain = effects.RegisterThenSteps("then-steps/soul-shackled-zombie-drain",
+	effects.Instruction(func(ctx *effects.Context) error {
+		return effects.EachOpponentLosesLifeNow(ctx.Game, ctx.Item, 2)
+	}),
+	effects.GainLife{Amount: 2},
+)
+
+// soulShackledZombieAfterExile is the drain if a creature card was exiled
+// (#4253 slice 9).
+var soulShackledZombieAfterExile = effects.GraveyardExileTail("soul-shackled-zombie/drain-if-creature", func(ctx *effects.Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error {
+	if !effects.AnyWasCreature(exiled, wasCreature) {
+		return nil
+	}
+	return soulShackledZombieDrain.Run(ctx)
+})

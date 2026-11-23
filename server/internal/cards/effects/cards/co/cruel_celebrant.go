@@ -1,0 +1,45 @@
+package cardsco
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Cruel Celebrant — Creature — Vampire, {W}{B}, 1/2 (EDHREC rank 952):
+//
+//	"Whenever this creature or another creature or planeswalker you
+//	 control dies, each opponent loses 1 life and you gain 1 life."
+//
+// The Orzhov Zulaport Cutthroat: a drain on every death of your own,
+// planeswalkers included, and on its own. One dies trigger. The
+// self case is the ordinary "this dies" read on the LTB harvest; the
+// other case reads the dead card post-move — its controller survives
+// the trip to the graveyard — and admits what was a creature or a
+// planeswalker you controlled as it last existed (leftAsType, #1675).
+// An opponent's creature is not "you control" and an exile or a
+// bounce is not a death.
+//
+// The row declares DeathPayoff (ADR 0126 §6), as Zulaport's does, so
+// the bot keeps it in play and sacrifices around it (#4990).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "3ee78cfc-0e9e-4737-a7e2-b42f94228040",
+		Name:         "Cruel Celebrant",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.TriggerWithPurpose(effects.On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				if effects.CardDied(ev, source) {
+					return true
+				}
+				if ev.NewZone != game.ZoneGraveyard {
+					return false
+				}
+				dead, ok := g.LookupCardForEffect(ev.CardID)
+				return ok && effects.LeftUnderControlOf(ev, dead) == source.Controller && (effects.LeftAsType(ev, dead, "creature") || effects.LeftAsType(ev, dead, "planeswalker"))
+			}, "Cruel Celebrant — each opponent loses 1 life, you gain 1 life", effects.Do(effects.EachOpponentLosesLife{N: 1}, effects.GainLife{Amount: 1})), game.Purpose{DeathPayoff: true}),
+		},
+	})
+}

@@ -41,7 +41,7 @@ import (
 // --- tokens --------------------------------------------------------
 
 // b34WhiteZombieToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
-func b34WhiteZombieToken() game.Card { return TokenCard("1/1 white Zombie") }
+func B34WhiteZombieToken() game.Card { return TokenCard("1/1 white Zombie") }
 
 // --- card reads ----------------------------------------------------
 
@@ -66,7 +66,7 @@ func b34ElementalsControlled(g *game.Game, controller uuid.UUID, elemental strin
 // creature you control". Post-layer types and colours, so an
 // animated artifact and a creature something painted green both
 // count.
-func b34CreaturesYouControlMatching(g *game.Game, controller uuid.UUID, match func(game.Card) bool) int {
+func B34CreaturesYouControlMatching(g *game.Game, controller uuid.UUID, match func(game.Card) bool) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && match(c) {
@@ -77,10 +77,10 @@ func b34CreaturesYouControlMatching(g *game.Game, controller uuid.UUID, match fu
 }
 
 // b34HasPlusCounter is "with a +1/+1 counter on it".
-func b34HasPlusCounter(c game.Card) bool { return c.Counters[game.CounterPlusOne] > 0 }
+func B34HasPlusCounter(c game.Card) bool { return c.Counters[game.CounterPlusOne] > 0 }
 
 // b34IsGreen is "green creature" read off the effective colours.
-func b34IsGreen(c game.Card) bool {
+func B34IsGreen(c game.Card) bool {
 	for _, col := range c.EffectiveColors() {
 		if col == "G" {
 			return true
@@ -91,7 +91,7 @@ func b34IsGreen(c game.Card) bool {
 
 // b34GraveyardHasAtLeast is threshold's test: `player`'s graveyard
 // holds `n` or more cards.
-func b34GraveyardHasAtLeast(g *game.Game, player uuid.UUID, n int) bool {
+func B34GraveyardHasAtLeast(g *game.Game, player uuid.UUID, n int) bool {
 	p := g.PlayerByIDForEffect(player)
 	return p != nil && p.Graveyard != nil && p.Graveyard.Size() >= n
 }
@@ -129,7 +129,7 @@ func b34NoOpponentHasMoreLifeThan(g *game.Game, controller, player uuid.UUID) bo
 // step the lookup found nothing and the commonest case the card is
 // printed for (eat the Food Elanor herself made) silently stopped
 // counting.
-func b34YouSacrificedAFoodThisTurn(g *game.Game, controller uuid.UUID) bool {
+func B34YouSacrificedAFoodThisTurn(g *game.Game, controller uuid.UUID) bool {
 	return g.SacrificedWithSubtypeThisTurn(controller, "Food") > 0
 }
 
@@ -166,7 +166,7 @@ func b34GoblinsEnteredUnderYourControlThisTurn(g *game.Game, controller uuid.UUI
 // permanent on the battlefield, or a spell still on the stack while
 // its effect deals the damage. A source that cannot be found is
 // nobody's, which errs weaker.
-func b34DamageSourceController(ev game.Event, g *game.Game) (uuid.UUID, bool) {
+func B34DamageSourceController(ev game.Event, g *game.Game) (uuid.UUID, bool) {
 	if ev.Kind != game.EventDealDamage {
 		return uuid.Nil, false
 	}
@@ -189,7 +189,7 @@ func b34DamageSourceController(ev game.Event, g *game.Game) (uuid.UUID, bool) {
 // land entered the battlefield under the control of an opponent of
 // the source's controller. Returns the land. Post-layer types, so
 // an animated land still counts and a Dryad Arbor is a land.
-func b34LandAnOpponentControlsEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
+func B34LandAnOpponentControlsEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
 		return game.Card{}, false
 	}
@@ -209,12 +209,12 @@ func b34LandAnOpponentControlsEntered(ev game.Event, source *game.Card, g *game.
 // controller's control. Historic is read post-layer (b09IsHistoric),
 // so an artifact something else animated still counts and a token
 // copy of a legend does not.
-func b34SelfOrAnotherNontokenHistoricYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+func B34SelfOrAnotherNontokenHistoricYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind == game.EventETB && ev.CardID == source.InstanceID {
 		return true
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, true)
-	return ok && !IsToken(c) && b09IsHistoric(c)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
+	return ok && !IsToken(c) && B09IsHistoric(c)
 }
 
 // b34VampireYouControlDied is Crossway Troublemakers' second
@@ -223,9 +223,9 @@ func b34SelfOrAnotherNontokenHistoricYouControlEntered(ev game.Event, source *ga
 // back (CR 603.10). The Vampire is its last-known subtypes
 // (leftAsSubtype, #1679), so a creature that was one only through a
 // grant counts.
-func b34VampireYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Vampire"))
+func B34VampireYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
+	return ok && LeftUnderControlOf(ev, dead) == source.Controller && LeftAsSubtype(ev, dead, source.TextSubtype("Vampire"))
 }
 
 // b34SourceYouControlDealtDamageToPlayerAtLeast is Dragonborn
@@ -233,11 +233,11 @@ func b34VampireYouControlDied(ev game.Event, source *game.Card, g *game.Game) bo
 // source the source's controller controls to a player. One event
 // per source per recipient, as the engine emits them, so two
 // creatures connecting for 3 each do not add up to 5 — as printed.
-func b34SourceYouControlDealtDamageToPlayerAtLeast(ev game.Event, source *game.Card, g *game.Game, n int) bool {
+func B34SourceYouControlDealtDamageToPlayerAtLeast(ev game.Event, source *game.Card, g *game.Game, n int) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount < n || g.PlayerByIDForEffect(ev.Target) == nil {
 		return false
 	}
-	controller, ok := b34DamageSourceController(ev, g)
+	controller, ok := B34DamageSourceController(ev, g)
 	return ok && controller == source.Controller
 }
 
@@ -253,7 +253,7 @@ func b34ZombieOrTokenYouControl(target *game.Card, _ *game.Game, source *game.Ca
 
 // b34ZombiesAndTokensYouControlGetPlusOne is the +1/+1 half of On
 // Wings of Gold — layer 7c.
-func b34ZombiesAndTokensYouControlGetPlusOne() game.StaticAbility {
+func B34ZombiesAndTokensYouControlGetPlusOne() game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "Creatures you control that are Zombies and/or tokens get +1/+1.",
 		Layer:     game.Layer7PT,
@@ -268,7 +268,7 @@ func b34ZombiesAndTokensYouControlGetPlusOne() game.StaticAbility {
 
 // b34ZombiesAndTokensYouControlHaveFlying is the flying half of On
 // Wings of Gold — layer 6, deduped.
-func b34ZombiesAndTokensYouControlHaveFlying() game.StaticAbility {
+func B34ZombiesAndTokensYouControlHaveFlying() game.StaticAbility {
 	return Labelled(KeywordGrant(b34ZombieOrTokenYouControl, "flying"), "Creatures you control that are Zombies and/or tokens have flying.")
 }
 
@@ -280,7 +280,7 @@ func b34ZombiesAndTokensYouControlHaveFlying() game.StaticAbility {
 // controller's own included, but only when the recipient is a
 // PLAYER who is an opponent of the Duo's controller. Damage to a
 // permanent, or to the controller, is untouched.
-func b34DoubleDamageToOpponents(label string) game.ReplacementEffect {
+func B34DoubleDamageToOpponents(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventDealDamage},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -308,8 +308,8 @@ func b34DoubleDamageToOpponents(label string) game.ReplacementEffect {
 // many more as it now has — "double the number of +1/+1 counters on
 // that creature", in printed order, so a creature with none ends on
 // two. Two placements, so a Hardened Scales sees both.
-func b34PutCounterThenDoubleCounters(ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func B34PutCounterThenDoubleCounters(ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -326,9 +326,9 @@ func b34PutCounterThenDoubleCounters(ctx *Context) error {
 // b34DrawPerCreatureYouControlMatching is "draw a card for each
 // creature you control that <match>" as a trigger body — Armorcraft
 // Judge, Regal Force. Counted at resolution, as printed.
-func b34DrawPerCreatureYouControlMatching(match func(game.Card) bool) func(g *game.Game, item *game.StackItem) error {
+func B34DrawPerCreatureYouControlMatching(match func(game.Card) bool) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		n := b34CreaturesYouControlMatching(g, item.Controller, match)
+		n := B34CreaturesYouControlMatching(g, item.Controller, match)
 		return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
 	}
 }
@@ -339,7 +339,7 @@ func b34DrawPerCreatureYouControlMatching(match func(game.Card) bool) func(g *ga
 // trigger resolves. Omnath removed in response deals nothing for
 // himself but still counts every other Elemental — the source of
 // the damage is Omnath by last known information.
-func b34DamageChosenTargetPerElemental(g *game.Game, item *game.StackItem) error {
+func B34DamageChosenTargetPerElemental(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	n := b34ElementalsControlled(g, item.Controller, ctx.TextSubtype("Elemental"))
 	for _, t := range ctx.LegalTargets() {
@@ -353,16 +353,16 @@ func b34DamageChosenTargetPerElemental(g *game.Game, item *game.StackItem) error
 // still legal, then a card if the controller controls eight or more
 // lands as the trigger resolves. A target that left in response
 // counters the whole ability (CR 608.2b), the draw included.
-func b34CounterOnChosenElementalThenDrawAtEightLands(g *game.Game, item *game.StackItem) error {
+func B34CounterOnChosenElementalThenDrawAtEightLands(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
 	if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
 		return err
 	}
-	if b10LandsControlled(g, item.Controller) < 8 {
+	if B10LandsControlled(g, item.Controller) < 8 {
 		return nil
 	}
 	return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
@@ -372,10 +372,10 @@ func b34CounterOnChosenElementalThenDrawAtEightLands(g *game.Game, item *game.St
 // two basic land cards, revealed, to hand, then shuffle. The "may"
 // was answered when the trigger fired; the search prompt is where
 // the controller picks which two, or fewer.
-func b34SearchUpToTwoBasicsToHand(g *game.Game, item *game.StackItem) error {
+func B34SearchUpToTwoBasicsToHand(g *game.Game, item *game.StackItem) error {
 	return SearchLibrary{
 		Player:    item.Controller,
-		Predicate: b30IsBasicLandCard,
+		Predicate: B30IsBasicLandCard,
 		Dest:      game.ZoneHand,
 		Limit:     2,
 		Reveal:    true,
@@ -389,8 +389,8 @@ func b34SearchUpToTwoBasicsToHand(g *game.Game, item *game.StackItem) error {
 // still power 2 or less, return to the battlefield under their
 // owner's control — the controller's own graveyard, so the owner is
 // the controller.
-func b34ReturnUpToTwoSmallCreatures(g *game.Game, item *game.StackItem) error {
-	return b24ReturnGraveyardTargetsToBattlefield(NewContext(g, item), 2)
+func B34ReturnUpToTwoSmallCreatures(g *game.Game, item *game.StackItem) error {
+	return B24ReturnGraveyardTargetsToBattlefield(NewContext(g, item), 2)
 }
 
 // b34DestroyChosenAndAllOthersWithItsName is Maelstrom Pulse's body:
@@ -400,8 +400,8 @@ func b34ReturnUpToTwoSmallCreatures(g *game.Game, item *game.StackItem) error {
 // destroyed through the single-target verb, so an indestructible one
 // survives while the rest go. The name is read at resolution, off
 // the effective characteristics.
-func b34DestroyChosenAndAllOthersWithItsName(ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func B34DestroyChosenAndAllOthersWithItsName(ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -417,10 +417,10 @@ func b34DestroyChosenAndAllOthersWithItsName(ctx *Context) error {
 		}
 	}
 	for _, target := range ids {
-		if !onBattlefield(ctx.Game, target) {
+		if !OnBattlefield(ctx.Game, target) {
 			continue
 		}
-		if err := (DestroyTarget{Target: target}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (DestroyTarget{Target: target}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -432,7 +432,7 @@ func b34DestroyChosenAndAllOthersWithItsName(ctx *Context) error {
 // item.Params.Player by a fill-in Build — loses `life` life and
 // draws `draw` cards, in printed order. A player no longer seated
 // does neither.
-func b34ThatPlayerLosesLifeAndDraws(life, draw int) func(g *game.Game, item *game.StackItem) error {
+func B34ThatPlayerLosesLifeAndDraws(life, draw int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		player := item.Params.Player
 		if p := g.PlayerByIDForEffect(player); p == nil || p.Eliminated {
@@ -447,9 +447,9 @@ func b34ThatPlayerLosesLifeAndDraws(life, draw int) func(g *game.Game, item *gam
 
 // b34DamageEachOpponentAndGainLife is Arbaaz Mir's body: `damage`
 // from Arbaaz to each opponent, then the controller gains `life`.
-func b34DamageEachOpponentAndGainLife(damage, life int) func(g *game.Game, item *game.StackItem) error {
+func B34DamageEachOpponentAndGainLife(damage, life int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		if err := damageToEachOpponent(g, item, damage); err != nil {
+		if err := DamageToEachOpponent(g, item, damage); err != nil {
 			return err
 		}
 		return GainLife{Player: item.Controller, Amount: life}.Apply(NewContext(g, item))
@@ -462,7 +462,7 @@ func b34DamageEachOpponentAndGainLife(damage, life int) func(g *game.Game, item 
 // the controller's control this turn. Counted as the ability
 // RESOLVES (CR 608.2h) — a Goblin that entered in response to the
 // activation is in the number — off the per-turn entry tally.
-func b34DamageChosenTargetPerGoblinEnteredThisTurn(g *game.Game, item *game.StackItem) error {
+func B34DamageChosenTargetPerGoblinEnteredThisTurn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	n := b34GoblinsEnteredUnderYourControlThisTurn(g, item.Controller, ctx.TextSubtype("Goblin"))
 	for _, t := range ctx.LegalTargets() {
@@ -475,13 +475,13 @@ func b34DamageChosenTargetPerGoblinEnteredThisTurn(g *game.Game, item *game.Stac
 // body: the intervening-if re-checked at resolution (CR 603.4), then
 // a basic land card onto the battlefield tapped and a shuffle. The
 // "may" was answered when the trigger fired.
-func b34SearchBasicTappedIfSacrificedAFood(g *game.Game, item *game.StackItem) error {
-	if !b34YouSacrificedAFoodThisTurn(g, item.Controller) {
+func B34SearchBasicTappedIfSacrificedAFood(g *game.Game, item *game.StackItem) error {
+	if !B34YouSacrificedAFoodThisTurn(g, item.Controller) {
 		return nil
 	}
 	return SearchLibrary{
 		Player:        item.Controller,
-		Predicate:     b30IsBasicLandCard,
+		Predicate:     B30IsBasicLandCard,
 		Dest:          game.ZoneBattlefield,
 		Limit:         1,
 		TappedOnEntry: true,
@@ -496,7 +496,7 @@ func b34SearchBasicTappedIfSacrificedAFood(g *game.Game, item *game.StackItem) e
 // controller gains 2. A loss and a gain, not damage and not a drain
 // of whatever was lost: the gain is 2 even when the loser is already
 // gone.
-func b34ThatPlayerLosesTwoYouGainTwo(g *game.Game, item *game.StackItem) error {
+func B34ThatPlayerLosesTwoYouGainTwo(g *game.Game, item *game.StackItem) error {
 	victim := item.Params.Player
 	if p := g.PlayerByIDForEffect(victim); p != nil && !p.Eliminated {
 		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -2); err != nil {
@@ -513,15 +513,15 @@ func b34ThatPlayerLosesTwoYouGainTwo(g *game.Game, item *game.StackItem) error {
 // indestructible creature still ramps the caster. A creature that
 // left in response never reaches here: the engine fizzles a
 // single-target spell before its body runs (CR 608.2b).
-func b34DestroyChosenThenSearchBasicTapped(ctx *Context) error {
-	if id, ok := b16FirstLegalTargetCard(ctx); ok {
+func B34DestroyChosenThenSearchBasicTapped(ctx *Context) error {
+	if id, ok := B16FirstLegalTargetCard(ctx); ok {
 		if err := (DestroyTarget{Target: id}).Apply(ctx); err != nil {
 			return err
 		}
 	}
 	return SearchLibrary{
 		Player:        ctx.Controller(),
-		Predicate:     b30IsBasicLandCard,
+		Predicate:     B30IsBasicLandCard,
 		Dest:          game.ZoneBattlefield,
 		Limit:         1,
 		TappedOnEntry: true,
@@ -532,17 +532,17 @@ func b34DestroyChosenThenSearchBasicTapped(ctx *Context) error {
 
 // b34IsBasicLandOrDesertCard is Map the Frontier's predicate: a basic
 // land card, or any card with the Desert land type.
-func b34IsBasicLandOrDesertCard(c game.Card) bool {
-	return b30IsBasicLandCard(c) || (c.IsLand() && c.HasSubtype("Desert"))
+func B34IsBasicLandOrDesertCard(c game.Card) bool {
+	return B30IsBasicLandCard(c) || (c.IsLand() && c.HasSubtype("Desert"))
 }
 
 // b34SearchUpToTwoBasicsOrDesertsTapped is Map the Frontier's body:
 // up to two cards, each a basic land or a Desert, onto the
 // battlefield tapped, then shuffle.
-func b34SearchUpToTwoBasicsOrDesertsTapped(ctx *Context) error {
+func B34SearchUpToTwoBasicsOrDesertsTapped(ctx *Context) error {
 	return SearchLibrary{
 		Player:        ctx.Controller(),
-		Predicate:     b34IsBasicLandOrDesertCard,
+		Predicate:     B34IsBasicLandOrDesertCard,
 		Dest:          game.ZoneBattlefield,
 		Limit:         2,
 		TappedOnEntry: true,
@@ -554,8 +554,8 @@ func b34SearchUpToTwoBasicsOrDesertsTapped(ctx *Context) error {
 // b34CreateScionIfThreshold is Kiora, the Rising Tide's attack body:
 // threshold re-checked at resolution (CR 603.4), then Scion of the
 // Deep. The "may" was answered when the trigger fired.
-func b34CreateScionIfThreshold(g *game.Game, item *game.StackItem) error {
-	if !b34GraveyardHasAtLeast(g, item.Controller, 7) {
+func B34CreateScionIfThreshold(g *game.Game, item *game.StackItem) error {
+	if !B34GraveyardHasAtLeast(g, item.Controller, 7) {
 		return nil
 	}
 	return CreateToken{Controller: item.Controller, Template: TokenCard("8/8 blue Scion of the Deep"), N: 1}.Apply(NewContext(g, item))
@@ -563,12 +563,12 @@ func b34CreateScionIfThreshold(g *game.Game, item *game.StackItem) error {
 
 // b34UntapAllCreaturesYouControl is "untap all creatures you
 // control" — Vitalize's resolution and Village Bell-Ringer's entry.
-func b34UntapAllCreaturesYouControl(g *game.Game, item *game.StackItem) error {
-	return b16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return c.IsCreature() })
+func B34UntapAllCreaturesYouControl(g *game.Game, item *game.StackItem) error {
+	return B16UntapAllYouControlMatching(NewContext(g, item), item.Controller, func(c game.Card) bool { return c.IsCreature() })
 }
 
 // b34CreateTokens is "create N <token>s" as a trigger body.
-func b34CreateTokens(template func() game.Card, n int) func(g *game.Game, item *game.StackItem) error {
+func B34CreateTokens(template func() game.Card, n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		return CreateToken{Controller: item.Controller, Template: template(), N: n}.Apply(NewContext(g, item))
 	}
@@ -577,7 +577,7 @@ func b34CreateTokens(template func() game.Card, n int) func(g *game.Game, item *
 // b34ReturnChosenGraveyardCardToHand is Auroral Procession's body
 // and Lord of the Undead's activation: the announced card, if still
 // in a graveyard, to its owner's hand.
-func b34ReturnChosenGraveyardCardToHand(ctx *Context) error {
+func B34ReturnChosenGraveyardCardToHand(ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue

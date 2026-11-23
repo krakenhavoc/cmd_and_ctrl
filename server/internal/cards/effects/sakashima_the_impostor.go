@@ -55,7 +55,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOf(
 				"Sakashima the Impostor",
-				anyCreatureOnBattlefield,
+				AnyCreatureOnBattlefield,
 				func(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
 					v.SetName("Sakashima the Impostor")
 					v.AddSupertype("Legendary")

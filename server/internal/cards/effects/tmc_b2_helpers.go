@@ -20,7 +20,7 @@ func APlayerIsAtOrBelowHalfTheirStartingLife() CostPredicate {
 		if q.Game == nil {
 			return false
 		}
-		start := startingLifeOf(q.Game)
+		start := StartingLifeOf(q.Game)
 		for _, p := range q.Game.Seats {
 			if p != nil && !p.Eliminated && 2*p.Life <= start {
 				return true
@@ -34,12 +34,12 @@ func APlayerIsAtOrBelowHalfTheirStartingLife() CostPredicate {
 // creature … leaves the battlefield" (Rat King, Pale Piper): any exit,
 // not only dying, with the creature type read as it last existed on the
 // battlefield (CR 603.10a, leftAsType).
-func tmcB2LeftCreature(ev game.Event, g *game.Game) (game.Card, bool) {
+func TmcB2LeftCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 	if ev.Kind != game.EventLTB {
 		return game.Card{}, false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !leftAsType(ev, c, "creature") {
+	if !ok || !LeftAsType(ev, c, "creature") {
 		return game.Card{}, false
 	}
 	return c, true
@@ -52,7 +52,7 @@ func tmcB2LeftCreature(ev game.Event, g *game.Game) (game.Card, bool) {
 // battlefield (a zone move starts a new object, CR 400.7), so the source
 // card dying again after it came back as a new object is "another".
 func tmcB2AnotherCreatureDied(ev game.Event, dt *game.DelayedTrigger, g *game.Game, _ game.EffectParams) bool {
-	dead, ok := diedCreature(ev, g)
+	dead, ok := DiedCreature(ev, g)
 	if !ok {
 		return false
 	}
@@ -65,14 +65,14 @@ func tmcB2AnotherCreatureDied(ev game.Event, dt *game.DelayedTrigger, g *game.Ga
 
 var (
 	// "Whenever another creature dies" (Electric Seaweed, #5011).
-	tmcB2AnotherCreatureDiedCondition = game.DelayedCondition("dies/another-creature-than-the-source", tmcB2AnotherCreatureDied)
+	TmcB2AnotherCreatureDiedCondition = game.DelayedCondition("dies/another-creature-than-the-source", tmcB2AnotherCreatureDied)
 
 	// "This creature deals 1 damage to each non-Wall creature" (Electric
 	// Seaweed, #5011): from the delayed trigger's source, as it last
 	// existed if it has left (CR 608.2h).
-	tmcB2OneDamageToEachNonWallBody = game.SimpleDelayedBody("electric-seaweed/one-damage-to-each-non-wall-creature",
+	TmcB2OneDamageToEachNonWallBody = game.SimpleDelayedBody("electric-seaweed/one-damage-to-each-non-wall-creature",
 		func(g *game.Game, item *game.StackItem) error {
-			return damageEachMatching(NewContext(g, item), And(Creature(), Not(OfCreatureType("Wall"))), 1)
+			return DamageEachMatching(NewContext(g, item), And(Creature(), Not(OfCreatureType("Wall"))), 1)
 		})
 )
 
@@ -80,7 +80,7 @@ var (
 // opponents control" (Fast Forward) and "goad all creatures you don't
 // control" (Disrupt Decorum): every creature on the battlefield whose
 // controller is not the resolving item's, as the effect resolves.
-func goadAllCreaturesYourOpponentsControl(_ *game.StackItem, ctx *Context) error {
+func GoadAllCreaturesYourOpponentsControl(_ *game.StackItem, ctx *Context) error {
 	return GoadAllMatching(ctx, func(_ *game.Game, c game.Card) bool {
 		return c.Controller != ctx.Controller()
 	})
@@ -117,7 +117,7 @@ func OpponentsYouAttackedThisTurn(g *game.Game, you uuid.UUID) int {
 // or damage prevented, is none) earns its controller-of-the-spell one
 // Mutagen token. A creature the damage is lethal to still counts: it was
 // dealt the damage before state-based actions see it. An on-disk key.
-var mutagenIfDealtDamage = recipientTail("recipient/create-a-mutagen-if-dealt-damage", func(ctx *Context, _ uuid.UUID, dealt int, _ game.TailOutcome) error {
+var MutagenIfDealtDamage = RecipientTail("recipient/create-a-mutagen-if-dealt-damage", func(ctx *Context, _ uuid.UUID, dealt int, _ game.TailOutcome) error {
 	if dealt <= 0 {
 		return nil
 	}

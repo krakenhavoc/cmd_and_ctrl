@@ -9,15 +9,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // ContractToken is the Contract token's template (see
 // printedContractToken).
-func ContractToken() game.Card { return tokenFromCatalog(printedContractToken) }
+func ContractToken() game.Card { return TokenFromCatalog(printedContractToken) }
 
 // printedContractToken is the Contract as Scriv defines it. "You" in its
 // trigger is the Contract's controller, which is the controller of the
 // trigger's stack item (CR 109.5), so the opponents are measured from the
 // player who made it. It is a trigger of the Aura, so it keeps working
 // whoever controls the enchanted creature.
-func printedContractToken() tokenTemplate {
-	return tokenTemplate{
+func printedContractToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "contract",
 		Card: game.Card{
 			Name:     "Contract",
@@ -45,10 +45,10 @@ func contractAttackEffect(g *game.Game, item *game.StackItem) error {
 	}
 	ev := item.Trigger.Event
 	attacker, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !onBattlefield(g, ev.CardID) {
+	if !ok || !OnBattlefield(g, ev.CardID) {
 		return g.ChangePlayerLifeForEffect(item.SourceCardID, ev.Actor, -2)
 	}
-	if socB8AttackingAnOpponentOf(g, item.Controller, attacker) {
+	if SocB8AttackingAnOpponentOf(g, item.Controller, attacker) {
 		return BoostUntilEOT{
 			Target: attacker.InstanceID,
 			Power:  2,

@@ -11,7 +11,7 @@ import (
 // sncSecondResolutionThisTurn is "if this is the second time this ability
 // has resolved this turn" (Captain Michael Burnham's tally): the count
 // includes the resolution in progress, so the second reads exactly 2.
-func sncSecondResolutionThisTurn(g *game.Game, item *game.StackItem, label string) bool {
+func SncSecondResolutionThisTurn(g *game.Game, item *game.StackItem, label string) bool {
 	return g.ResolvedThisTurn(item.SourceCardID, label) == 2
 }
 
@@ -22,7 +22,7 @@ func sncSecondResolutionThisTurn(g *game.Game, item *game.StackItem, label strin
 // turn after this one. When its controller is the active player and combat
 // has not begun yet, the next combat phase is this turn's, so it lasts to
 // end of turn instead.
-func sncCreatureAttacksDuringItsControllersNextCombat(ctx *Context, creature uuid.UUID, label string) error {
+func SncCreatureAttacksDuringItsControllersNextCombat(ctx *Context, creature uuid.UUID, label string) error {
 	g := ctx.Game
 	c, ok := g.LookupCardForEffect(creature)
 	if !ok {

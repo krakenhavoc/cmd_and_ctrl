@@ -36,12 +36,12 @@ import (
 
 // IncubatorToken is the Incubator as PRINTED: the template an incubate
 // creates a token from, front face up.
-func IncubatorToken() game.Card { return tokenFromCatalog(printedIncubatorToken) }
+func IncubatorToken() game.Card { return TokenFromCatalog(PrintedIncubatorToken) }
 
 // printedIncubatorToken is the Incubator as PRINTED, abilities
 // included. It is the catalog's entry for this token (token_catalog.go).
-func printedIncubatorToken() tokenTemplate {
-	return tokenTemplate{
+func PrintedIncubatorToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "incubator",
 		Card: game.Card{
 			Name:     "Incubator",
@@ -60,7 +60,7 @@ func printedIncubatorToken() tokenTemplate {
 			Purpose: game.Purpose{Answers: game.AnswerAnimate},
 			Effect:  Do(TransformThis{}),
 		}},
-		Back: &tokenTemplate{
+		Back: &TokenTemplate{
 			Card: game.Card{
 				Name:     "Phyrexian Token",
 				TypeLine: "Token Artifact Creature — Phyrexian",
@@ -146,7 +146,7 @@ func incubateRounds(g *game.Game, item *game.StackItem, controller uuid.UUID, n,
 	}
 	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: controller,
-		Groups:     []game.TokenGroup{{Template: ruleDefinedToken(IncubatorToken()), Count: 1, Entry: opts}},
+		Groups:     []game.TokenGroup{{Template: RuleDefinedToken(IncubatorToken()), Count: 1, Entry: opts}},
 	}, tail)
 }
 
@@ -178,7 +178,7 @@ func init() {
 
 // transformAllIncubatorsTail is TransformAllIncubators as a keyed tail
 // (#4253 slice 6). An on-disk key.
-var transformAllIncubatorsTail = CardTail("incubate/transform-all-incubators", func(ctx *Context, _ game.TailOutcome) error {
+var TransformAllIncubatorsTail = CardTail("incubate/transform-all-incubators", func(ctx *Context, _ game.TailOutcome) error {
 	return TransformAllIncubators(ctx)
 })
 
@@ -206,7 +206,7 @@ func TargetIncubatorYouControl() *game.TargetSpec {
 // (there is one) and does nothing for a target that is gone or is no
 // longer an Incubator (CR 608.2b: the predicate is re-run at
 // resolution, so LegalTargets is already empty then).
-func transformTargetIncubator(ctx *Context) error {
+func TransformTargetIncubator(ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -231,7 +231,7 @@ func TransformAllIncubators(ctx *Context) error {
 		}
 	}
 	for _, id := range ids {
-		if err := (Transform{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (Transform{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

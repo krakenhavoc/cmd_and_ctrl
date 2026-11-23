@@ -11,17 +11,17 @@ import (
 
 // broB05SoldierToken is the printed 1/1 colorless Soldier artifact
 // creature token's tokens_table.go key.
-const broB05SoldierToken = "1/1 colorless Soldier artifact"
+const BroB05SoldierToken = "1/1 colorless Soldier artifact"
 
 // broB05NontokenSoldierYouControlDied is "another nontoken Soldier you
 // control dies": the dead permanent, read as it last existed on the
 // battlefield (CR 603.10a), is another Soldier, not a token, and left
 // under the source's controller's control.
-func broB05NontokenSoldierYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	dead, ok := diedCreature(ev, g)
+func BroB05NontokenSoldierYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	dead, ok := DiedCreature(ev, g)
 	return ok && dead.InstanceID != source.InstanceID && !IsToken(dead) &&
-		leftUnderControlOf(ev, dead) == source.Controller &&
-		leftAsSubtype(ev, dead, source.TextSubtype("Soldier"))
+		LeftUnderControlOf(ev, dead) == source.Controller &&
+		LeftAsSubtype(ev, dead, source.TextSubtype("Soldier"))
 }
 
 // broB05EntersTappedUnlessRevealOrControl is "As this land enters, you may
@@ -29,7 +29,7 @@ func broB05NontokenSoldierYouControlDied(ev game.Event, source *game.Card, _ gam
 // you revealed a <subtype> card this way or you control a <subtype>": the
 // reveal-land replacement that does not apply at all, and so asks nothing,
 // while the entering permanent's controller controls one.
-func broB05EntersTappedUnlessRevealOrControl(name, subtype string) game.ReplacementEffect {
+func BroB05EntersTappedUnlessRevealOrControl(name, subtype string) game.ReplacementEffect {
 	r := EntersTappedUnlessYouRevealFromHand(name, "a "+subtype+" card", func(c game.Card) bool {
 		return c.HasSubtypeWord(subtype)
 	})
@@ -60,7 +60,7 @@ func broB05EntersTappedUnlessRevealOrControl(name, subtype string) game.Replacem
 // Retriever): a CR 615 prevention over every damage event, combat or not,
 // aimed at an attacking Soldier the source's controller controls that is
 // not the source.
-func broB05PreventDamageToOtherAttackingSoldiers(label string) game.ReplacementEffect {
+func BroB05PreventDamageToOtherAttackingSoldiers(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:    []game.EventKind{game.EventDealDamage},
 		Prevention: true, // CR 615.1a
@@ -90,10 +90,10 @@ func broB05PreventDamageToOtherAttackingSoldiers(label string) game.ReplacementE
 // as N; the tail runs once the card has reached a hand (a move the window
 // cancelled or redirected puts no counter), and the counter lands on the
 // Sentinel only while it is still there.
-func broB05ZephyrSentinelEnters(g *game.Game, item *game.StackItem) error {
+func BroB05ZephyrSentinelEnters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok || !onBattlefield(g, id) {
+	id, ok := B16FirstLegalTargetCard(ctx)
+	if !ok || !OnBattlefield(g, id) {
 		return nil
 	}
 	g.RecomputeLayersIfStaleLocked()
@@ -103,14 +103,14 @@ func broB05ZephyrSentinelEnters(g *game.Game, item *game.StackItem) error {
 			wasSoldier = 1
 		}
 	}
-	return BounceToHand{Target: id, ThenTail: withN(ctx.ItemTail(broB05ZephyrSentinelCounter), wasSoldier)}.Apply(ctx)
+	return BounceToHand{Target: id, ThenTail: WithN(ctx.ItemTail(broB05ZephyrSentinelCounter), wasSoldier)}.Apply(ctx)
 }
 
 // broB05ZephyrSentinelCounter is the "if it was a Soldier, put a +1/+1
 // counter on this creature" half of Zephyr Sentinel's trigger. An on-disk
 // key.
 var broB05ZephyrSentinelCounter = CardTail("bro-b05/zephyr-sentinel-counter", func(ctx *Context, o game.TailOutcome) error {
-	if o.Tail.N == 0 || len(o.IDs) == 0 || !onBattlefield(ctx.Game, ctx.Source()) {
+	if o.Tail.N == 0 || len(o.IDs) == 0 || !OnBattlefield(ctx.Game, ctx.Source()) {
 		return nil
 	}
 	return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)

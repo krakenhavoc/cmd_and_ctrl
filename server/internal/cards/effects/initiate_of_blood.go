@@ -31,11 +31,11 @@ import (
 // initiateOfBloodRecord files the creature the damage was dealt to.
 const initiateOfBloodRecord = "initiate-of-blood/target"
 
-const initiateOfBloodOracleID = "5b18d2fd-bc65-49a2-b812-c217f125571d"
+const InitiateOfBloodOracleID = "5b18d2fd-bc65-49a2-b812-c217f125571d"
 
 func init() {
 	Register(Spec{
-		OracleID:     initiateOfBloodOracleID,
+		OracleID:     InitiateOfBloodOracleID,
 		Name:         "Initiate of Blood",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
@@ -45,7 +45,7 @@ func init() {
 			// The flip watch waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
 			Effect: Do(
 				Instruction(func(ctx *Context) error {
-					id, ok := b16FirstLegalTargetCard(ctx)
+					id, ok := B16FirstLegalTargetCard(ctx)
 					if !ok {
 						return nil
 					}
@@ -64,7 +64,7 @@ func init() {
 		}},
 	})
 	Register(Spec{
-		OracleID:     initiateOfBloodOracleID + "#1",
+		OracleID:     InitiateOfBloodOracleID + "#1",
 		Name:         "Goka the Unjust",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
@@ -73,7 +73,7 @@ func init() {
 			Targets: TargetCreature("target creature that was dealt damage this turn", DealtDamageThisTurn()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				if id, ok := b16FirstLegalTargetCard(ctx); ok {
+				if id, ok := B16FirstLegalTargetCard(ctx); ok {
 					return g.DealDamageToCreatureForEffect(item.SourceCardID, id, 4)
 				}
 				return nil
@@ -92,7 +92,7 @@ func flipWhenItDiesThisTurn(ctx *Context, id uuid.UUID, label string) {
 		SourceCardID: ctx.Source(),
 		Label:        label,
 		On:           []game.EventKind{game.EventLTB},
-		Condition:    theListedObjectDiedCondition,
+		Condition:    TheListedObjectDiedCondition,
 		Cards:        []uuid.UUID{id},
 		Duration:     &d,
 		Body:         flipTheSourceBody,

@@ -21,7 +21,7 @@ import (
 // when the source can't be found or isn't attached to a card — a
 // quiet no-op rather than an error, the same posture every other
 // attachment read in this package takes.
-func attachedHostFor(g *game.Game, sourceID uuid.UUID) *game.Card {
+func AttachedHostFor(g *game.Game, sourceID uuid.UUID) *game.Card {
 	src, ok := g.LookupCardForEffect(sourceID)
 	if !ok {
 		return nil
@@ -35,7 +35,7 @@ func attachedHostFor(g *game.Game, sourceID uuid.UUID) *game.Card {
 // Swords' attachedCreatureDealtCombatDamageToPlayer widened to also
 // match a planeswalker target, which none of the existing Swords
 // need.
-func dealtCombatDamageToPlayerOrPlaneswalkerByAttached(ev game.Event, source *game.Card, g *game.Game) bool {
+func DealtCombatDamageToPlayerOrPlaneswalkerByAttached(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
@@ -54,7 +54,7 @@ func dealtCombatDamageToPlayerOrPlaneswalkerByAttached(ev game.Event, source *ga
 // the Soulcleaver's own instance, per the printed "another" — the
 // equipped creature dying counts, which is the whole reason the card
 // still grows when its own carrier trades in combat.
-func anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(ev game.Event, source *game.Card, g *game.Game) bool {
+func AnotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return false
 	}
@@ -65,7 +65,7 @@ func anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(ev game.Event, sou
 	if !ok {
 		return false
 	}
-	return leftAsType(ev, c, "artifact") || leftAsType(ev, c, "creature")
+	return LeftAsType(ev, c, "artifact") || LeftAsType(ev, c, "creature")
 }
 
 // colorsAmongPermanentsControlledBy counts the distinct colors among
@@ -73,7 +73,7 @@ func anotherArtifactOrCreaturePutIntoGraveyardFromBattlefield(ev game.Event, sou
 // "for each color among permanents you control". Colorless permanents
 // contribute nothing, which is correct: a colorless-only board makes
 // the Flail a plain +0/+0.
-func colorsAmongPermanentsControlledBy(g *game.Game, source *game.Card) int {
+func ColorsAmongPermanentsControlledBy(g *game.Game, source *game.Card) int {
 	if g == nil || source == nil {
 		return 0
 	}
@@ -99,7 +99,7 @@ func colorsAmongPermanentsControlledBy(g *game.Game, source *game.Card) int {
 // supertype), so the word is removed wherever it stands among the
 // supertypes, not only at the front. A type line that never carried
 // it is returned unchanged.
-func removeLegendaryFromTypeLine(tl string) string {
+func RemoveLegendaryFromTypeLine(tl string) string {
 	const word = "Legendary "
 	for i := 0; i+len(word) <= len(tl); i++ {
 		if tl[i:i+len(word)] != word {

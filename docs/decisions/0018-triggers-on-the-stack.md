@@ -9,7 +9,7 @@
 **Amendment:** 2026-10-12 · **Accepted** · [An identical batch is asked again when its copies read their subjects](#amendment-2026-10-12--an-identical-batch-is-asked-again-when-its-copies-read-their-subjects-3021--accepted) · [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021)
 **Amendment:** 2026-10-13 · **Accepted** · [The order prompt says why it asked](#amendment-2026-10-13--the-order-prompt-says-why-it-asked-3015--accepted) · [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015)
 **Amendment:** 2026-10-13 (second) · **Accepted** · [The six remaining villainous-choice cards](#amendment-2026-10-13-second--the-six-remaining-villainous-choice-cards-3143--accepted--backlog) · [#3143](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3143)
-**Amendment:** 2026-10-15 · **Accepted** · [A became-target event says what kind of object targeted](#amendment-2026-10-15--a-became-target-event-says-what-kind-of-object-targeted-3779--accepted) · [#3779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3779)
+**Amendment:** 2026-10-15 · **Accepted** · [A became-target event says what kind of object targeted](#amendment-2026-10-15-seventh--a-became-target-event-says-what-kind-of-object-targeted-3779--accepted) · [#3779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3779)
 **Amendment:** 2026-11-12 · **Accepted** · [A became-target event names the keyword ability that targeted](#amendment-2026-11-12--a-became-target-event-names-the-keyword-ability-that-targeted-5651--accepted) · [#5651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5651)
 
 ## Context

@@ -20,7 +20,7 @@ import (
 //
 // No simplification.
 func init() {
-	damage := On(game.EventStickerPlaced, aStickerWentOnThis,
+	damage := On(game.EventStickerPlaced, AStickerWentOnThis,
 		"_____ Balls of Fire — it deals damage equal to the number of o's in name stickers on it to any target",
 		blankBallsOfFireDamage)
 	damage.Targets = TargetAny()
@@ -38,7 +38,7 @@ func init() {
 
 // aStickerWentOnThis is "whenever you put a sticker on this <permanent>":
 // the source's controller put a sticker on the source itself.
-func aStickerWentOnThis(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func AStickerWentOnThis(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Actor == source.Controller && ev.CardID == source.InstanceID
 }
 
@@ -47,7 +47,7 @@ func aStickerWentOnThis(ev game.Event, source *game.Card, _ game.Characteristic,
 // sticker stays on a card that changes public zones), else the words the
 // trigger was put on the stack with.
 func nameStickerWordsNow(ctx *Context) []string {
-	if c, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok && !ctx.isNewSourceObject(ctx.Source()) {
+	if c, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok && !ctx.IsNewSourceObject(ctx.Source()) {
 		if words := nameStickersOn(c); len(words) > 0 {
 			return words
 		}
@@ -59,7 +59,7 @@ func nameStickerWordsNow(ctx *Context) []string {
 }
 
 // lettersOnWords is the number of times `letter` appears in the words.
-func lettersOnWords(words []string, letter rune) int {
+func LettersOnWords(words []string, letter rune) int {
 	n := 0
 	for _, w := range words {
 		n += game.StickerLetterCount(w, letter)
@@ -72,7 +72,7 @@ func blankBallsOfFireDamage(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
 		return nil
 	}
-	n := lettersOnWords(nameStickerWordsNow(ctx), 'o')
+	n := LettersOnWords(nameStickerWordsNow(ctx), 'o')
 	if n <= 0 {
 		return nil
 	}

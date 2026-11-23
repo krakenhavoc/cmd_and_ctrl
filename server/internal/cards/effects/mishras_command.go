@@ -55,7 +55,7 @@ func init() {
 							N:        ctx.X(),
 							UpTo:     true,
 							Question: "Mishra's Command — discard up to X cards",
-						}, mishrasCommandDraw, nil)
+						}, MishrasCommandDraw, nil)
 				}),
 			ModeDoing("This spell deals X damage to target creature.",
 				TargetCreature("target creature"),
@@ -81,6 +81,6 @@ func init() {
 
 // mishrasCommandDraw is "then they draw a card for each card discarded
 // this way", keyed (#4264).
-var mishrasCommandDraw = game.RegisterDiscardThen("choose-cards/mishras-command-draw", func(g *game.Game, r game.DiscardsDone) error {
+var MishrasCommandDraw = game.RegisterDiscardThen("choose-cards/mishras-command-draw", func(g *game.Game, r game.DiscardsDone) error {
 	return g.DrawNForEffect(r.Player, r.Discarded.Count())
 })

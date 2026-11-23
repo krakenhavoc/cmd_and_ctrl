@@ -11,7 +11,7 @@ import (
 // trekB1CountersNowOrLastKnown is how many `kind` counters a permanent
 // has: now while it is on the battlefield, else as it last existed
 // there (CR 608.2h).
-func trekB1CountersNowOrLastKnown(g *game.Game, id uuid.UUID, kind string) int {
+func TrekB1CountersNowOrLastKnown(g *game.Game, id uuid.UUID, kind string) int {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID == id {
 			return c.Counters[kind]

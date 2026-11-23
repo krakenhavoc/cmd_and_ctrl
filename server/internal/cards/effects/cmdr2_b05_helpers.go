@@ -10,7 +10,7 @@ import (
 
 // cmdr2B05MerfolkFilter is "Merfolk creatures", every Merfolk or only
 // the source controller's, and with or without the source itself.
-func cmdr2B05MerfolkFilter(others, yours bool) TribeFilter {
+func Cmdr2B05MerfolkFilter(others, yours bool) TribeFilter {
 	return TribeFilter{Tribes: []string{"Merfolk"}, Others: others, YoursOnly: yours}
 }
 
@@ -18,7 +18,7 @@ func cmdr2B05MerfolkFilter(others, yours bool) TribeFilter {
 // controls at least n Merfolk creatures other than the source. It reads
 // the layered view on every recompute (CR 611.3a), changelings included.
 func cmdr2B05ControlsOtherMerfolk(g *game.Game, source *game.Card, n int) bool {
-	f := cmdr2B05MerfolkFilter(true, true)
+	f := Cmdr2B05MerfolkFilter(true, true)
 	count := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		c := c
@@ -31,11 +31,11 @@ func cmdr2B05ControlsOtherMerfolk(g *game.Game, source *game.Card, n int) bool {
 
 // cmdr2B05SelfKeywordWhileOtherMerfolk is "<this> has <keyword> as long
 // as you control at least n other Merfolk".
-func cmdr2B05SelfKeywordWhileOtherMerfolk(n int, keyword string) game.StaticAbility {
+func Cmdr2B05SelfKeywordWhileOtherMerfolk(n int, keyword string) game.StaticAbility {
 	ab := KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return selfCreature(target, g, source) && cmdr2B05ControlsOtherMerfolk(g, source, n)
+		return SelfCreature(target, g, source) && cmdr2B05ControlsOtherMerfolk(g, source, n)
 	}, keyword)
-	ab.Label = "Has " + keyword + " as long as you control at least " + numberWord(n) + " other Merfolk."
+	ab.Label = "Has " + keyword + " as long as you control at least " + NumberWord(n) + " other Merfolk."
 	return ab
 }
 
@@ -43,8 +43,8 @@ func cmdr2B05SelfKeywordWhileOtherMerfolk(n int, keyword string) game.StaticAbil
 // a Merfolk creature the modifier source's controller controls — Kopala's
 // "that target a Merfolk you control". A target-reading predicate: the
 // modifier that uses it sets ReadsTargets.
-func cmdr2B05TargetsYourMerfolk() CostPredicate {
-	f := cmdr2B05MerfolkFilter(false, false)
+func Cmdr2B05TargetsYourMerfolk() CostPredicate {
+	f := Cmdr2B05MerfolkFilter(false, false)
 	return func(q game.CostQuery) bool {
 		if q.Game == nil {
 			return false
@@ -67,7 +67,7 @@ func cmdr2B05TargetsYourMerfolk() CostPredicate {
 // sits on the stack, where HasSubtype answers true for every creature
 // type on a changeling (CR 702.73a); the names are words of the source's
 // text (CR 612.2).
-func cmdr2B05SpellOfAnyType(subtypes ...string) CostPredicate {
+func Cmdr2B05SpellOfAnyType(subtypes ...string) CostPredicate {
 	return func(q game.CostQuery) bool {
 		for _, s := range subtypes {
 			if q.Card.HasSubtype(q.Source.TextSubtype(s)) {
@@ -82,7 +82,7 @@ func cmdr2B05SpellOfAnyType(subtypes ...string) CostPredicate {
 // component (CR 602.2, game/tap_others_cost.go). `another` is the printed
 // word "another": the source may not pay itself. Merfolk is an effective
 // subtype, so a changeling pays.
-func cmdr2B05TapMerfolk(n int, another bool, label string) game.AbilityCost {
+func Cmdr2B05TapMerfolk(n int, another bool, label string) game.AbilityCost {
 	return game.AbilityCost{TapOthers: &game.TapOthersCost{
 		Count:         n,
 		ExcludeSource: another,
@@ -93,10 +93,10 @@ func cmdr2B05TapMerfolk(n int, another bool, label string) game.AbilityCost {
 
 // cmdr2B05CountersOnEachMerfolk puts n +1/+1 counters on each Merfolk
 // creature the item's controller controls, one placement per creature.
-func cmdr2B05CountersOnEachMerfolk(n int) Effect {
+func Cmdr2B05CountersOnEachMerfolk(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		f := cmdr2B05MerfolkFilter(false, true)
+		f := Cmdr2B05MerfolkFilter(false, true)
 		src := game.Card{Controller: item.Controller}
 		var ids []uuid.UUID
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -109,7 +109,7 @@ func cmdr2B05CountersOnEachMerfolk(n int) Effect {
 			if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 				continue
 			}
-			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}).Apply(ctx.asGroupMember()); err != nil {
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}).Apply(ctx.AsGroupMember()); err != nil {
 				return err
 			}
 		}
@@ -121,7 +121,7 @@ func cmdr2B05CountersOnEachMerfolk(n int) Effect {
 // of their life, rounded up" (Dire Fleet Ravager): the controller and
 // every opponent, each amount read before any loss is applied. A player
 // at or below 0 life loses nothing more.
-func cmdr2B05EachPlayerLosesAThirdOfTheirLife(g *game.Game, item *game.StackItem) error {
+func Cmdr2B05EachPlayerLosesAThirdOfTheirLife(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	players := append([]uuid.UUID{item.Controller}, ctx.Opponents()...)
 	amounts := make([]int, len(players))
@@ -144,9 +144,9 @@ func cmdr2B05EachPlayerLosesAThirdOfTheirLife(g *game.Game, item *game.StackItem
 // cmdr2B05ControlsAnotherNontokenPirate is "you control another nontoken
 // Pirate" (Fathom Fleet Captain): a Pirate creature other than `self`
 // that is not a token, read through the layers.
-func cmdr2B05ControlsAnotherNontokenPirate(g *game.Game, controller, self uuid.UUID) bool {
+func Cmdr2B05ControlsAnotherNontokenPirate(g *game.Game, controller, self uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.InstanceID != self && !c.IsToken() && isPirate(c) {
+		if c.Controller == controller && c.InstanceID != self && !c.IsToken() && IsPirate(c) {
 			return true
 		}
 	}
@@ -156,10 +156,10 @@ func cmdr2B05ControlsAnotherNontokenPirate(g *game.Game, controller, self uuid.U
 // cmdr2B05PirateDealtDamageToAPlayer is "one or more Pirates you control
 // deal damage to a player": damage of any kind from a Pirate creature the
 // source's controller controls, to any player.
-func cmdr2B05PirateDealtDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !damageToPlayerBy(ev, source.Controller, g) {
+func Cmdr2B05PirateDealtDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !DamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)
-	return ok && isPirate(game.ThroughTextOf(source, dealer))
+	return ok && IsPirate(game.ThroughTextOf(source, dealer))
 }

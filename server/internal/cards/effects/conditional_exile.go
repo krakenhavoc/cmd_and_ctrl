@@ -18,7 +18,7 @@ import (
 
 // attackedCondition builds a condition on what the holder attacked with
 // this turn: "during any turn you attacked with …".
-func attackedCondition(key game.PermissionConditionKey) *game.PermissionCondition {
+func AttackedCondition(key game.PermissionConditionKey) *game.PermissionCondition {
 	return &game.PermissionCondition{Key: key}
 }
 
@@ -26,7 +26,7 @@ func attackedCondition(key game.PermissionConditionKey) *game.PermissionConditio
 // creature": the condition names the source OBJECT (id and CR 400.7
 // epoch) as the trigger put it on the stack, so a creature that has
 // since left and come back is not it.
-func attackedWithObject(item *game.StackItem) *game.PermissionCondition {
+func AttackedWithObject(item *game.StackItem) *game.PermissionCondition {
 	return &game.PermissionCondition{
 		Key:         game.CondAttackedWithObject,
 		ObjectID:    item.SourceObject.ID,
@@ -42,7 +42,7 @@ func attackedWithObject(item *game.StackItem) *game.PermissionCondition {
 // that print it still exile, and the exiled card is simply never
 // playable (CR 611.2b: an effect whose condition is false as it would
 // begin does nothing).
-func forAsLongAsYouControlWindow(g *game.Game, source, player uuid.UUID) game.Duration {
+func ForAsLongAsYouControlWindow(g *game.Game, source, player uuid.UUID) game.Duration {
 	if d, ok := g.ForAsLongAsYouControlDuration(source, player); ok {
 		return d
 	}
@@ -56,8 +56,8 @@ func forAsLongAsYouControlWindow(g *game.Game, source, player uuid.UUID) game.Du
 // library. You may play that card for as long as you control <this>"
 // (Lightning, Security Sergeant; Gwen Stacy): one card, the controller's
 // own library, with forAsLongAsYouControlWindow as the window.
-func exileTopPlayableWhileYouControlThis(g *game.Game, item *game.StackItem) error {
-	window := forAsLongAsYouControlWindow(g, item.SourceCardID, item.Controller)
+func ExileTopPlayableWhileYouControlThis(g *game.Game, item *game.StackItem) error {
+	window := ForAsLongAsYouControlWindow(g, item.SourceCardID, item.Controller)
 	return ExileTopWithPermission{
 		From: item.Controller, GrantTo: item.Controller, N: 1,
 		Window: &window,
@@ -67,7 +67,7 @@ func exileTopPlayableWhileYouControlThis(g *game.Game, item *game.StackItem) err
 // forAsLongAsOnBattlefieldWindow is "for as long as <source> remains on
 // the battlefield" / "as long as this Saga remains", with the same
 // never-started fallback.
-func forAsLongAsOnBattlefieldWindow(g *game.Game, source uuid.UUID) game.Duration {
+func ForAsLongAsOnBattlefieldWindow(g *game.Game, source uuid.UUID) game.Duration {
 	if d, ok := g.ForAsLongAsOnBattlefieldDuration(source); ok {
 		return d
 	}
@@ -82,34 +82,34 @@ func forAsLongAsOnBattlefieldWindow(g *game.Game, source uuid.UUID) game.Duratio
 // the battlefield", "as long as this Saga remains"): the source must
 // still be the object the ability came from. One that left and came
 // back is a new object (CR 400.7), so the window never starts.
-func forAsLongAsThisRemainsWindow(g *game.Game, item *game.StackItem) game.Duration {
-	if sourceIsNewObject(g, item) {
+func ForAsLongAsThisRemainsWindow(g *game.Game, item *game.StackItem) game.Duration {
+	if SourceIsNewObject(g, item) {
 		return game.Duration{
 			Kind: game.ForAsLongAs, Condition: game.WhileSourceOnBattlefield,
 			Source: item.SourceCardID, SourceEnteredAt: -1,
 		}
 	}
-	return forAsLongAsOnBattlefieldWindow(g, item.SourceCardID)
+	return ForAsLongAsOnBattlefieldWindow(g, item.SourceCardID)
 }
 
 // forAsLongAsYouControlThisWindow is forAsLongAsYouControlWindow for the
 // resolving ability's OWN source and controller ("for as long as you
 // control this creature"), with forAsLongAsThisRemainsWindow's CR 400.7
 // guard: a source that left and came back is not "this creature".
-func forAsLongAsYouControlThisWindow(g *game.Game, item *game.StackItem) game.Duration {
-	if sourceIsNewObject(g, item) {
+func ForAsLongAsYouControlThisWindow(g *game.Game, item *game.StackItem) game.Duration {
+	if SourceIsNewObject(g, item) {
 		return game.Duration{
 			Kind: game.ForAsLongAs, Condition: game.WhileYouControlSource,
 			Player: item.Controller, Source: item.SourceCardID, SourceEnteredAt: -1,
 		}
 	}
-	return forAsLongAsYouControlWindow(g, item.SourceCardID, item.Controller)
+	return ForAsLongAsYouControlWindow(g, item.SourceCardID, item.Controller)
 }
 
 // defendingPlayerOfAttack is the "defending player" of an attack
 // declaration event: the player attacked, or the controller of the
 // planeswalker or battle attacked.
-func defendingPlayerOfAttack(g *game.Game, ev game.Event) uuid.UUID {
+func DefendingPlayerOfAttack(g *game.Game, ev game.Event) uuid.UUID {
 	if g.PlayerByIDForEffect(ev.Target) != nil {
 		return ev.Target
 	}
@@ -124,7 +124,7 @@ func defendingPlayerOfAttack(g *game.Game, ev game.Event) uuid.UUID {
 // `except`: the "and at least two other creatures attack" of battalion.
 // Every attacker is staged before the declaration is announced, so the
 // source's own EventAttack already sees the whole group.
-func attackersYouControlOtherThan(g *game.Game, controller, except uuid.UUID) int {
+func AttackersYouControlOtherThan(g *game.Game, controller, except uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.InstanceID != except && c.AttackingTarget != uuid.Nil {

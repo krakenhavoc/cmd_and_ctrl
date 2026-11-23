@@ -69,7 +69,7 @@ func (s ScopedEffectFor) Apply(ctx *Context) error {
 	}
 	// ADR 0093 PR 4: a grantAbilities mod must name a bundle the
 	// catalog registers (duration_grants.go).
-	if err := checkGrantMods(s.Mods); err != nil {
+	if err := CheckGrantMods(s.Mods); err != nil {
 		return err
 	}
 	// #1650: a restriction is not a characteristic, so CR 611.2c does
@@ -83,11 +83,11 @@ func (s ScopedEffectFor) Apply(ctx *Context) error {
 			}
 		}
 	}
-	set := eotSnapshot(ctx, s.Target, s.Match)
+	set := EotSnapshot(ctx, s.Target, s.Match)
 	if set == nil {
 		return nil
 	}
-	ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), set.affectedObjects(), s.Mods,
+	ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), set.AffectedObjects(), s.Mods,
 		s.Duration, eotLabel(s.Label, "continuous effect"))
 	return nil
 }
@@ -95,7 +95,7 @@ func (s ScopedEffectFor) Apply(ctx *Context) error {
 // affectedObjects is the snapshot as a record's affected set, sorted by
 // instance ID so the record — and so a restore point — is the same
 // bytes whatever order the map iterates in.
-func (s eotAffected) affectedObjects() []game.AffectedObject {
+func (s eotAffected) AffectedObjects() []game.AffectedObject {
 	out := make([]game.AffectedObject, 0, len(s))
 	for id, stamp := range s {
 		// PinObject, not a bare stamp: an unstamped permanent is pinned

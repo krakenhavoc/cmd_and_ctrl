@@ -38,17 +38,17 @@ type BlockCapacityUntilEOT struct {
 
 // Apply registers the record.
 func (b BlockCapacityUntilEOT) Apply(ctx *Context) error {
-	mods := blockCapacityMods(b.Additional, b.AnyNumber)
+	mods := BlockCapacityMods(b.Additional, b.AnyNumber)
 	if b.Target == uuid.Nil || len(mods) == 0 {
 		return nil
 	}
-	return untilEndOfTurn(ctx, b.Target, nil, eotLabel(b.Label, "block capacity this turn"), mods...)
+	return UntilEndOfTurn(ctx, b.Target, nil, eotLabel(b.Label, "block capacity this turn"), mods...)
 }
 
 // blockCapacityMods is the mod list for a capacity grant, for a card
 // that folds it into one record with a pump (Give No Ground's "+2/+6
 // … and can block any number" is ONE effect, CR 613.7).
-func blockCapacityMods(additional int, anyNumber bool) []game.Mod {
+func BlockCapacityMods(additional int, anyNumber bool) []game.Mod {
 	switch {
 	case anyNumber:
 		return []game.Mod{game.BlockAnyNumberMod()}
@@ -81,6 +81,6 @@ func ControlledByDefendingPlayer() CardPredicate {
 // (#1706), so the event numbered N is the one that takes the creature
 // to N — once per declaration however many more it blocks, and never
 // for a creature that blocks fewer.
-func selfBlocksAtLeast(ev game.Event, source *game.Card, n int) bool {
-	return b28SelfBlocked(ev, source) && ev.Amount == n
+func SelfBlocksAtLeast(ev game.Event, source *game.Card, n int) bool {
+	return B28SelfBlocked(ev, source) && ev.Amount == n
 }

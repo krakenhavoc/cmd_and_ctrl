@@ -11,10 +11,10 @@ import (
 // dmuB11DomainCounters is "put X +1/+1 counters on target creature you
 // control, where X is the number of basic land types among lands you
 // control" (Briar Hydra). X is counted as the ability resolves.
-func dmuB11DomainCounters() Effect {
+func DmuB11DomainCounters() Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -28,7 +28,7 @@ func dmuB11DomainCounters() Effect {
 
 // dmuB11BecameTapped is the "becomes tapped" trigger shape: the tap
 // event or an attack that taps the creature (ThisBecameTapped, #4534).
-func dmuB11BecameTapped(label string, effect Effect) game.TriggeredAbility {
+func DmuB11BecameTapped(label string, effect Effect) game.TriggeredAbility {
 	return OnAny([]game.EventKind{game.EventTapCard, game.EventAttack}, ThisBecameTapped, label, effect)
 }
 
@@ -36,7 +36,7 @@ func dmuB11BecameTapped(label string, effect Effect) game.TriggeredAbility {
 // each creature the controller controls whose toughness is less than the
 // domain count. The set is fixed before any counter is placed (CR 608.2),
 // so a counter that lifts one creature never pulls another in.
-func dmuB11CountersOnSmallCreatures(g *game.Game, item *game.StackItem) error {
+func DmuB11CountersOnSmallCreatures(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	n := DomainCount(g, item.Controller)
 	var ids []uuid.UUID
@@ -49,7 +49,7 @@ func dmuB11CountersOnSmallCreatures(g *game.Game, item *game.StackItem) error {
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -75,7 +75,7 @@ var DivideSourcePlusOneCounters = game.RegisterDivideAmount("source-plus-one-cou
 // searchRuleDifferentPowers is "creature cards with different powers"
 // (Threats Undetected): no two picked cards share a power. The power is the
 // one the card has in the library, its printed value.
-var searchRuleDifferentPowers = game.RegisterSearchRule("search/different-powers",
+var SearchRuleDifferentPowers = game.RegisterSearchRule("search/different-powers",
 	func(picked []game.Card, _ int) bool {
 		seen := make(map[int]bool, len(picked))
 		for _, c := range picked {

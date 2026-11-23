@@ -11,7 +11,7 @@ import (
 // defending player is the becomes-blocked event's Actor, and the loss is
 // life loss, not damage. Cyberman Patrol grants it and Neheb, the Eternal
 // prints it; each declares its own becomes-blocked condition.
-func afflictDefenderLoses(n int) Effect {
+func AfflictDefenderLoses(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		defender := item.Trigger.Event.Actor
 		if g.PlayerByIDForEffect(defender) == nil {
@@ -33,6 +33,6 @@ func Afflict(n int, name string) game.TriggeredAbility {
 			return ev.Kind == game.EventBecomesBlocked && ev.Target == source.InstanceID
 		},
 		Key:    name + " — afflict " + strconv.Itoa(n) + ": defending player loses " + strconv.Itoa(n) + " life",
-		Effect: afflictDefenderLoses(n),
+		Effect: AfflictDefenderLoses(n),
 	}
 }

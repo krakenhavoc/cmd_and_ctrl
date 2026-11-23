@@ -1,0 +1,51 @@
+package testss82v
+
+import (
+	"github.com/google/uuid"
+
+	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+const shannaSisaysLegacyOracle = "546201d0-3fa5-44e4-a526-ab0945711e49"
+
+func TestShannaSisaysLegacyGetsPlusOnePerCreatureYouControl(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	shanna := effectstest.B27Push(g, me.ID, "Shanna, Sisay's Legacy", "Legendary Creature — Human Warrior", shannaSisaysLegacyOracle, "{G}{W}", 0, 0, "G", "W")
+	if p, tt := effectstest.EffectivePower(t, g, shanna), effectstest.EffectiveToughness(t, g, shanna); p != 1 || tt != 1 {
+		t.Errorf("alone Shanna is %d/%d, want 1/1", p, tt)
+	}
+	effectstest.B12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	effectstest.B12Creature(g, me.ID, "My Cat", "Creature — Cat", 1, 1)
+	effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	if p, tt := effectstest.EffectivePower(t, g, shanna), effectstest.EffectiveToughness(t, g, shanna); p != 3 || tt != 3 {
+		t.Errorf("with two more creatures Shanna is %d/%d, want 3/3 (opponents' creatures don't count)", p, tt)
+	}
+}
+
+func TestShannaSisaysLegacyRefusesOpponentsAbilitiesButNotSpellsOrYours(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	shanna := effectstest.B27Push(g, me.ID, "Shanna, Sisay's Legacy", "Legendary Creature — Human Warrior", shannaSisaysLegacyOracle, "{G}{W}", 0, 0, "G", "W")
+	theirBallista := effectstest.B27Push(g, opp.ID, "Walking Ballista", "Artifact Creature — Construct", effectstest.WalkingBallistaOracle, "{X}{X}", 0, 0)
+	myBallista := effectstest.B27Push(g, me.ID, "Walking Ballista", "Artifact Creature — Construct", effectstest.WalkingBallistaOracle, "{X}{X}", 0, 0)
+	for _, id := range []uuid.UUID{theirBallista, myBallista} {
+		effectstest.SetCountersOn(g, id, map[string]int{game.CounterPlusOne: 2})
+	}
+	effectstest.AdvanceToMain(t, g)
+	if err := g.ActivateCatalogAbility(opp.ID, theirBallista, 1, game.ActivateAbilityParams{Targets: effectstest.CardRefs(shanna), Strict: true}); err == nil {
+		t.Error("an opponent's ability targeted Shanna")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, myBallista, 1, game.ActivateAbilityParams{Targets: effectstest.CardRefs(shanna), Strict: true}); err != nil {
+		t.Errorf("my own ability could not target Shanna: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	// An opponent's spell may still target her (it is not hexproof).
+	stoke := effectstest.PutInHand(opp, game.Card{Name: "Stoke the Flames", TypeLine: "Instant", OracleID: effectstest.RprB03StokeOracle, Owner: opp.ID, Controller: opp.ID})
+	if err := g.CastSpell(opp.ID, stoke, game.CastSpellParams{Targets: effectstest.CardTarget(shanna), Strict: true}); err != nil {
+		t.Errorf("an opponent's spell could not target Shanna: %v", err)
+	}
+}

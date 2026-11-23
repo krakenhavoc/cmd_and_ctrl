@@ -12,7 +12,7 @@ import (
 // socB25GraveyardHasInstantAndSorcery is "there is an instant card and a
 // sorcery card in your graveyard" (Flow State): the two are different cards,
 // and a graveyard card has only its printed characteristics.
-func socB25GraveyardHasInstantAndSorcery(g *game.Game, player uuid.UUID) bool {
+func SocB25GraveyardHasInstantAndSorcery(g *game.Game, player uuid.UUID) bool {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return false
@@ -34,7 +34,7 @@ func socB25GraveyardHasInstantAndSorcery(g *game.Game, player uuid.UUID) bool {
 // are not it (counterPlacedBy reads the placer the event names).
 //
 // Caller must hold g.mu.
-func socB25YouPutACounterOnThisObjectThisTurn(g *game.Game, you, id uuid.UUID) bool {
+func SocB25YouPutACounterOnThisObjectThisTurn(g *game.Game, you, id uuid.UUID) bool {
 	events := g.EventsThisTurn()
 	for i := len(events) - 1; i >= 0; i-- {
 		ev := events[i]
@@ -42,7 +42,7 @@ func socB25YouPutACounterOnThisObjectThisTurn(g *game.Game, you, id uuid.UUID) b
 			return false
 		}
 		if ev.Kind == game.EventCounterPlaced && ev.Target == id &&
-			counterPlacementDelta(ev, g) > 0 && counterPlacedBy(ev, you, g) {
+			CounterPlacementDelta(ev, g) > 0 && counterPlacedBy(ev, you, g) {
 			return true
 		}
 	}

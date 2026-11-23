@@ -21,7 +21,7 @@ import (
 // themselves, which is the printed outcome for a target that left in
 // response (CR 608.2b) and for a player who targets themselves (nothing
 // changes hands).
-func controlPlayerNextTurn(g *game.Game, item *game.StackItem, controller, controlled uuid.UUID, sourceName string) {
+func ControlPlayerNextTurn(g *game.Game, item *game.StackItem, controller, controlled uuid.UUID, sourceName string) {
 	g.BeginTurnControlForEffect(game.TurnControl{
 		Controller:  controller,
 		Controlled:  controlled,
@@ -33,7 +33,7 @@ func controlPlayerNextTurn(g *game.Game, item *game.StackItem, controller, contr
 
 // firstLegalTargetPlayer is the first still-legal player in the item's
 // targets (CR 608.2b: a target that left is skipped), or uuid.Nil.
-func firstLegalTargetPlayer(ctx *Context) uuid.UUID {
+func FirstLegalTargetPlayer(ctx *Context) uuid.UUID {
 	for _, ref := range ctx.LegalTargets() {
 		if ref.Kind == game.TargetPlayer && ref.ID != uuid.Nil {
 			return ref.ID
@@ -45,11 +45,11 @@ func firstLegalTargetPlayer(ctx *Context) uuid.UUID {
 // controlTargetPlayerNextTurn is the effect of "You control target
 // player during that player's next turn." for a card named sourceName:
 // the item's controller controls the one player it targets.
-func controlTargetPlayerNextTurn(sourceName string) func(g *game.Game, item *game.StackItem) error {
+func ControlTargetPlayerNextTurn(sourceName string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		if p := firstLegalTargetPlayer(ctx); p != uuid.Nil {
-			controlPlayerNextTurn(g, item, item.Controller, p, sourceName)
+		if p := FirstLegalTargetPlayer(ctx); p != uuid.Nil {
+			ControlPlayerNextTurn(g, item, item.Controller, p, sourceName)
 		}
 		return nil
 	}

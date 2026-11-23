@@ -25,14 +25,14 @@ func init() {
 			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{3}"), TapCost()),
 			Condition: GraveyardAtLeast(2, func(c game.Card) bool { return c.IsCreature() }),
-			Effect:    Do(CreateToken{Template: mshB1TappedVillainToken(), N: 1}),
+			Effect:    Do(CreateToken{Template: MshB1TappedVillainToken(), N: 1}),
 		}},
 	})
 }
 
 // mshB1TappedVillainToken is the 2/1 black Villain with menace, entering
 // tapped.
-func mshB1TappedVillainToken() game.Card {
+func MshB1TappedVillainToken() game.Card {
 	tmpl := TokenCard("2/1 black Villain with menace")
 	tmpl.Tapped = true
 	return tmpl

@@ -34,15 +34,15 @@ func init() {
 					return PreventDamageFromSource{Protect: ShieldYou}.Apply(NewContext(g, item))
 				}),
 			WheneverDamageToYouIsPrevented("Selfless Squire — put that many +1/+1 counters on it",
-				selflessSquireCounters),
+				SelflessSquireCounters),
 		},
 	})
 }
 
 // selflessSquireCounters is "put that many +1/+1 counters on this
 // creature": the damage the triggering application prevented.
-func selflessSquireCounters(g *game.Game, item *game.StackItem) error {
-	if item.Trigger == nil || item.Trigger.Event.Amount <= 0 || !sourceIsStillThisPermanent(g, item) {
+func SelflessSquireCounters(g *game.Game, item *game.StackItem) error {
+	if item.Trigger == nil || item.Trigger.Event.Amount <= 0 || !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	return CounterOnThis{Kind: game.CounterPlusOne, N: item.Trigger.Event.Amount}.Apply(NewContext(g, item))

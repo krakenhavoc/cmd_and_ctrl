@@ -25,13 +25,13 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepSacrifice, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return keepCreaturesThenSacrificeTheRest(ctx.Game, item, apnapPlayers(ctx.Game),
+			return KeepCreaturesThenSacrificeTheRest(ctx.Game, item, ApnapPlayers(ctx.Game),
 				"Slaughter the Strong — choose any number of creatures with total power 4 or less to keep; the rest are sacrificed",
-				0, slaughterKeep)
+				0, SlaughterKeep)
 		},
 	})
 }
 
 // slaughterKeep is the keyed rest of the card (#4290): the set rule is
 // total power 4 or less, registered with the leg.
-var slaughterKeep = newKeepRun("prompt-run/slaughter-the-strong-keep", "choose-cards/slaughter-the-strong-keep-leg", totalPowerAtMost(4))
+var SlaughterKeep = NewKeepRun("prompt-run/slaughter-the-strong-keep", "choose-cards/slaughter-the-strong-keep-leg", totalPowerAtMost(4))

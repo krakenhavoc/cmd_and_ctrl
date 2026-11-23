@@ -30,10 +30,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	doubleStrike := Labelled(KeywordGrant(hobB5EquippedCreatureOnYourTurn, "double strike"),
+	doubleStrike := Labelled(KeywordGrant(HobB5EquippedCreatureOnYourTurn, "double strike"),
 		"During your turn, equipped creatures you control have double strike.")
 	doubleStrike.ActiveWhen = Level(3)
-	haste := Labelled(KeywordGrant(hobB5EquippedCreatureOnYourTurn, "haste"),
+	haste := Labelled(KeywordGrant(HobB5EquippedCreatureOnYourTurn, "haste"),
 		"During your turn, equipped creatures you control have haste.")
 	haste.ActiveWhen = Level(3)
 	Register(Spec{
@@ -43,7 +43,7 @@ func init() {
 		Purpose:      game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Blacksmith's Talent — create a colorless Equipment artifact token named Sword",
-				Do(CreateToken{Template: tokenFromCatalog(printedBlacksmithsSwordToken), N: 1})),
+				Do(CreateToken{Template: TokenFromCatalog(printedBlacksmithsSwordToken), N: 1})),
 			AtLevel(2, Targeting(
 				AtBeginningOfYourCombat("Blacksmith's Talent — attach target Equipment you control to up to one target creature you control",
 					AttachClauseTargets),
@@ -62,8 +62,8 @@ func init() {
 
 // printedBlacksmithsSwordToken is the catalog's entry for Sword: +1/+1 for
 // the equipped creature, and equip {2}.
-func printedBlacksmithsSwordToken() tokenTemplate {
-	return tokenTemplate{
+func printedBlacksmithsSwordToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "blacksmiths-talent-sword",
 		Card: game.Card{
 			Name:     "Sword",
@@ -71,6 +71,6 @@ func printedBlacksmithsSwordToken() tokenTemplate {
 		},
 		Text:      "Equipped creature gets +1/+1.\nEquip {2}",
 		Static:    []game.StaticAbility{PumpAttached(1, 1)},
-		Activated: activatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
+		Activated: ActivatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
 	}
 }

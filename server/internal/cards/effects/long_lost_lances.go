@@ -23,9 +23,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			PumpAttached(2, 0),
-			Labelled(KeywordGrant(hobB5EquippedCreatureOnYourTurn, "first strike"),
+			Labelled(KeywordGrant(HobB5EquippedCreatureOnYourTurn, "first strike"),
 				"During your turn, creatures you control that are equipped have first strike."),
-			Labelled(KeywordGrant(hobB5EquippedCreatureOnYourTurn, "vigilance"),
+			Labelled(KeywordGrant(HobB5EquippedCreatureOnYourTurn, "vigilance"),
 				"During your turn, creatures you control that are equipped have vigilance."),
 		},
 		Activated: []ActivatedAbility{EquipAbility("{2}")},
@@ -35,8 +35,8 @@ func init() {
 // hobB5EquippedCreatureOnYourTurn is "during your turn, creatures you control
 // that are equipped": a creature the source's controller controls with an
 // Equipment attached, while it is that controller's turn.
-func hobB5EquippedCreatureOnYourTurn(target *game.Card, g *game.Game, source *game.Card) bool {
+func HobB5EquippedCreatureOnYourTurn(target *game.Card, g *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller &&
 		IsYourTurn(g, source.Controller) &&
-		isEquippedCreature(g, *target)
+		IsEquippedCreature(g, *target)
 }

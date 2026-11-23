@@ -18,6 +18,7 @@ import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
 import type { ActionType, GameView, PendingChoiceView } from "./protocol";
 import { barPrimary } from "./test/dockView";
 import { render, click, cleanup } from "./test/render.svelte";
+import { L } from "./labels";
 
 afterEach(cleanup);
 
@@ -68,6 +69,8 @@ function mount(choice: Partial<PendingChoiceView>): { container: HTMLElement; se
 
 const optionButtons = (c: HTMLElement): HTMLElement[] =>
   Array.from(c.querySelectorAll(".prompt-options .prompt-opt")) as HTMLElement[];
+
+const text = (c: HTMLElement): string => (c.textContent ?? "").replace(/\s+/g, " ");
 
 const primary = (c: HTMLElement): HTMLButtonElement => barPrimary(c) as HTMLButtonElement;
 
@@ -220,5 +223,43 @@ describe("ChoicePromptModal — a choose-up-to mode_pick (#4617, CR 700.2b)", ()
     expect(primary(container).textContent).toContain("Choose none");
     click(primary(container));
     expect(sent[0].params).toMatchObject({ modes: [] });
+  });
+});
+
+describe("ChoicePromptModal — an opponent chooses the mode (#5771, CR 700.2e)", () => {
+  it("names the spell and its caster when an opponent chooses the mode (#5771, CR 700.2e)", () => {
+    // Them is casting Fatal Lore; Me chooses its mode.
+    const { container, sent } = mount({
+      reason: "Them's Fatal Lore: choose one",
+      mode_options: [
+        "You draw three cards.",
+        "You destroy up to two target creatures that player controls.",
+      ],
+      mode_indexes: [0, 1],
+      mode_min: 1,
+      mode_max: 1,
+      mode_chosen_for: "them",
+      mode_spell_name: "Fatal Lore",
+    });
+    const group = container.querySelector(".prompt-options") as HTMLElement;
+    expect(group.getAttribute("aria-label")).toBe(L.opponentModeChoice("Them", "Fatal Lore"));
+    expect(text(container)).toContain("Them is casting Fatal Lore, and you choose its mode");
+    expect(text(container)).not.toContain("CR 603.3c");
+    const opts = optionButtons(container);
+    click(opts[1]);
+    click(primary(container));
+    expect(sent[0].params).toMatchObject({ choice_id: "choice-1", modes: [1] });
+  });
+
+  it("keeps a trigger's own mode prompt unnamed", () => {
+    const { container } = mount({
+      mode_options: ["Draw a card."],
+      mode_indexes: [0],
+      mode_min: 1,
+      mode_max: 1,
+    });
+    const group = container.querySelector(".prompt-options") as HTMLElement;
+    expect(group.getAttribute("aria-label")).toBeNull();
+    expect(text(container)).toContain("CR 603.3c");
   });
 });

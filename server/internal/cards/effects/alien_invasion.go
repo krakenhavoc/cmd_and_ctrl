@@ -62,11 +62,11 @@ var alienInvasionGrow = CardTail("alien-invasion/grow", func(ctx *Context, o gam
 
 // alienToken is the 1/1 red Alien creature token with haste and "This token
 // attacks each combat if able."
-func alienToken() game.Card { return tokenFromCatalog(printedAlienToken) }
+func alienToken() game.Card { return TokenFromCatalog(printedAlienToken) }
 
 // printedAlienToken is the Alien as PRINTED.
-func printedAlienToken() tokenTemplate {
-	return tokenTemplate{
+func printedAlienToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "alien",
 		Card: game.Card{
 			Name:      "Alien",

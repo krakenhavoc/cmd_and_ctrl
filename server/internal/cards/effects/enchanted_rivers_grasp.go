@@ -34,11 +34,11 @@ func init() {
 		Completeness:          CompletenessFull,
 		Targets:               EnchantCreature(),
 		Purpose:               game.Purpose{Aura: game.AuraHarm},
-		UntapStepRestrictions: []game.UntapStepRestriction{enchantedDoesntUntap()},
+		UntapStepRestrictions: []game.UntapStepRestriction{EnchantedDoesntUntap()},
 		Static:                []game.StaticAbility{LoseAllAbilities()},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Enchanted River's Grasp — tap enchanted creature and remove all counters from it",
-				tapEnchantedAndRemoveAllCounters),
+				TapEnchantedAndRemoveAllCounters),
 		},
 	})
 }
@@ -46,7 +46,7 @@ func init() {
 // removeEveryCounterFrom is "remove all counters from [a permanent]": every
 // kind it carries, in name order, a kind at a time. A permanent that has gone
 // has none to lose.
-func removeEveryCounterFrom(ctx *Context, id uuid.UUID) error {
+func RemoveEveryCounterFrom(ctx *Context, id uuid.UUID) error {
 	c, ok := ctx.Game.LookupCardForEffect(id)
 	if !ok {
 		return nil

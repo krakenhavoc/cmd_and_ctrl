@@ -11,7 +11,7 @@ import (
 // socB27TargetGetsAndGains is "Target creature gets +P/+T and gains <keyword>
 // until end of turn" as a spell's whole body: Interjection, and the prepare
 // spell of Honorbound Page. Both halves end at cleanup (CR 514.2).
-func socB27TargetGetsAndGains(power, toughness int, keyword, label string) func(item *game.StackItem, ctx *Context) error {
+func SocB27TargetGetsAndGains(power, toughness int, keyword, label string) func(item *game.StackItem, ctx *Context) error {
 	return ResolveSteps(
 		OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {
 			return BoostUntilEOT{Target: id, Power: power, Toughness: toughness, Label: label + " — pump"}.Apply(ctx)
@@ -28,8 +28,8 @@ func socB27TargetGetsAndGains(power, toughness int, keyword, label string) func(
 // that left and came back is a new object (CR 400.7). A zero power grants the
 // keyword alone. Every printed use leaves toughness alone, so there is no
 // toughness argument.
-func socB27ThisGetsAndGains(ctx *Context, power int, keyword, label string) error {
-	if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+func SocB27ThisGetsAndGains(ctx *Context, power int, keyword, label string) error {
+	if !SourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 		return nil
 	}
 	id := ctx.Item.SourceCardID

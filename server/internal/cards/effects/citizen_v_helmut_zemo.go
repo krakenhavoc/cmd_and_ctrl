@@ -29,23 +29,23 @@ func init() {
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouGainLife("Citizen V, Helmut Zemo — put a +1/+1 counter on each Villain you control",
-				Do(Instruction(msc5CounterOnEachVillain))),
+				Do(Instruction(Msc5CounterOnEachVillain))),
 		},
 	})
 }
 
 // msc5CounterOnEachVillain puts a +1/+1 counter on each Villain the
 // ability's controller controls, the source included when it is one.
-func msc5CounterOnEachVillain(ctx *Context) error {
+func Msc5CounterOnEachVillain(ctx *Context) error {
 	var ids []uuid.UUID
 	for _, c := range MatchingBattlefield(ctx, And(Subtype(ctx.TextSubtype("Villain")), YouControl())) {
 		ids = append(ids, c.InstanceID)
 	}
 	for _, id := range ids {
-		if !onBattlefield(ctx.Game, id) {
+		if !OnBattlefield(ctx.Game, id) {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

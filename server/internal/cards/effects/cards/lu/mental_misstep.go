@@ -1,0 +1,39 @@
+package cardslu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Mental Misstep — Instant {U/P} (EDHREC rank 463):
+//
+//	"({U/P} can be paid with either {U} or 2 life.)
+//	 Counter target spell with mana value 1."
+//
+// The free counter for Sol Ring, Swords to Plowshares and the
+// one-mana dorks. The target clause reads the spell's mana value on
+// the stack (b03ManaValueIs), so a Sol Ring is a legal target and a
+// Counterspell is not. {X} counts as the value chosen for it (CR
+// 202.3e): a {X}{U} spell cast with X=1 is mana value 2 and can't be
+// targeted, and a {X} spell cast with X=1 is mana value 1 and can.
+//
+// The PHYREXIAN mana's 2-life half landed in the cost engine with
+// #787 (CastSpellParams.PhyrexianLife, CR 107.4f) and this card
+// needed no change for it, exactly as predicted. #916 gave the cast
+// prompt the stepper that asks, so the free counterspell is castable
+// for 2 life from the board.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "1a0770e6-b093-4439-baff-6889a50ba12e",
+		Name:         "Mental Misstep",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetSpell("target spell with mana value 1", effects.B03ManaValueIs(1)),
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			if len(item.Targets) == 0 {
+				return nil
+			}
+			return effects.CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
+		},
+	})
+}

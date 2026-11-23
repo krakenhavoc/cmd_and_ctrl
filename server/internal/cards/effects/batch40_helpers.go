@@ -34,7 +34,7 @@ import (
 // spelling the 8 itself is a card file that can get the cycle's one
 // number wrong, and five lands whose thresholds disagreed would be
 // invisible until someone played the odd one out.
-func b40CatchUpDualCondition() func(g *game.Game, controller uuid.UUID) bool {
+func B40CatchUpDualCondition() func(g *game.Game, controller uuid.UUID) bool {
 	return func(g *game.Game, controller uuid.UUID) bool {
 		total := 0
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -57,7 +57,7 @@ func b40CatchUpDualCondition() func(g *game.Game, controller uuid.UUID) bool {
 // Effective subtypes, so a changeling is an outlaw and a creature
 // something has turned into a Pirate is one too. Shoot the Sheriff
 // asks for the complement of this.
-func b40Outlaw() CardPredicate {
+func B40Outlaw() CardPredicate {
 	return AnySubtype("Assassin", "Mercenary", "Pirate", "Rogue", "Warlock")
 }
 
@@ -74,7 +74,7 @@ func b40Outlaw() CardPredicate {
 // mana ability this is, and would be too strict for one with two —
 // the safe direction, and no card in the catalog has the second
 // shape.
-func b40NotActivatedForManaThisTurn() func(g *game.Game, controller, source uuid.UUID) bool {
+func B40NotActivatedForManaThisTurn() func(g *game.Game, controller, source uuid.UUID) bool {
 	return func(g *game.Game, _ uuid.UUID, source uuid.UUID) bool {
 		for _, ev := range g.EventsThisTurn() {
 			if ev.Kind == game.EventManaAbilityActivated && ev.Source == source {
@@ -100,8 +100,8 @@ func b40NotActivatedForManaThisTurn() func(g *game.Game, controller, source uuid
 //
 // A source the engine cannot read at all is not boosted, which is
 // weaker than printed and never stronger.
-func b40RedOrArtifactSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
-	return damageSourceIsRedControlledBy(ev, g, controller, true)
+func B40RedOrArtifactSourceControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
+	return DamageSourceIsRedControlledBy(ev, g, controller, true)
 }
 
 // b40DamageHitsAnOpponentOf is the second half: "to an opponent or a
@@ -111,7 +111,7 @@ func b40RedOrArtifactSourceControlledBy(ev *game.ReplacementEvent, g *game.Game,
 //
 // Damage to the controller themself, to their own permanents, and to
 // anything the engine cannot identify is left alone.
-func b40DamageHitsAnOpponentOf(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
+func B40DamageHitsAnOpponentOf(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
 	if ev.DamageTarget == uuid.Nil || ev.DamageTarget == controller {
 		return false
 	}
@@ -139,7 +139,7 @@ func b40DamageHitsAnOpponentOf(ev *game.ReplacementEvent, g *game.Game, controll
 // A draw the player makes during an OPPONENT's turn counts — the
 // clause is "each turn", not "each of your turns", so a Windfall on
 // someone else's turn triggers this.
-func b40IsYourSecondDrawThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+func B40IsYourSecondDrawThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDrawCard || ev.Actor != source.Controller {
 		return false
 	}
@@ -172,11 +172,11 @@ func b40IsYourSecondDrawThisTurn(ev game.Event, source *game.Card, g *game.Game)
 //
 // Firing on abilities too would be a strictly better Gargos, which is
 // the direction this catalog does not ship (#259).
-func b40CreatureYouControlTargetedByASpell(ev game.Event, source *game.Card, g *game.Game) bool {
+func B40CreatureYouControlTargetedByASpell(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventBecomesTarget || ev.CardID == uuid.Nil {
 		return false
 	}
-	if !b40TargetedByASpell(ev, g) {
+	if !B40TargetedByASpell(ev, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -185,7 +185,7 @@ func b40CreatureYouControlTargetedByASpell(ev game.Event, source *game.Card, g *
 
 // b40TargetedByASpell reports whether the object that did the
 // targeting is a spell on the stack rather than an ability.
-func b40TargetedByASpell(ev game.Event, g *game.Game) bool {
+func B40TargetedByASpell(ev game.Event, g *game.Game) bool {
 	if ev.Source == uuid.Nil {
 		return false
 	}
@@ -203,9 +203,9 @@ func b40TargetedByASpell(ev game.Event, g *game.Game) bool {
 //
 // Life LOSS, not damage: nothing prevents it, no damage replacement
 // doubles it, and lifelink does not see it.
-func b40DrainEachOpponent(n int) Effect {
+func B40DrainEachOpponent(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if err := eachOpponentLosesLife(g, item, n); err != nil {
+		if err := EachOpponentLosesLifeNow(g, item, n); err != nil {
 			return err
 		}
 		return GainLife{Player: item.Controller, Amount: n}.Apply(NewContext(g, item))
@@ -226,7 +226,7 @@ func b40DrainEachOpponent(n int) Effect {
 // power is 7 or greater", and Effective().Power excludes +1/+1 / -1/-1
 // counters, so a Vincent pumped by counters rather than by an anthem
 // never reached the threshold.
-func b40ChaosSpillover(g *game.Game, item *game.StackItem, hit uuid.UUID, amount, minPower int) error {
+func B40ChaosSpillover(g *game.Game, item *game.StackItem, hit uuid.UUID, amount, minPower int) error {
 	if amount <= 0 {
 		return nil
 	}
@@ -255,7 +255,7 @@ func b40ChaosSpillover(g *game.Game, item *game.StackItem, hit uuid.UUID, amount
 // card being cast, which on the stack is its printed type line; the
 // word is Gargos's text, read through the modifier's source (CR 612.2,
 // #3984).
-func b40HydraSpell() CostPredicate {
+func B40HydraSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.HasSubtype(q.Source.TextSubtype("Hydra")) }
 }
 
@@ -267,7 +267,7 @@ func b40HydraSpell() CostPredicate {
 //
 // Post-layer characteristics, so a changeling is a Bird and an
 // animated land that something has made a Bird is one too.
-func b40ControlsA(g *game.Game, controller uuid.UUID, match CardPredicate) bool {
+func B40ControlsA(g *game.Game, controller uuid.UUID, match CardPredicate) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && match(g, controller, c) {
 			return true

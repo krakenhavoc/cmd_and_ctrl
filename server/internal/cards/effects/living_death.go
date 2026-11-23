@@ -75,12 +75,12 @@ func init() {
 		OracleID:     "9e6a3df4-67a3-452e-a6ef-f04dbadb21ef",
 		Name:         "Living Death",
 		Completeness: CompletenessFull,
-		OnResolve:    livingDeathResolve,
+		OnResolve:    LivingDeathResolve,
 	})
 }
 
 // livingDeathResolve is the whole resolution, shared with Living End.
-func livingDeathResolve(item *game.StackItem, ctx *Context) error {
+func LivingDeathResolve(item *game.StackItem, ctx *Context) error {
 	// BOTH sides are snapshotted before anything moves, and
 	// the graveyard side before the exile in particular: the
 	// creatures sacrificed below land in graveyards, and a set

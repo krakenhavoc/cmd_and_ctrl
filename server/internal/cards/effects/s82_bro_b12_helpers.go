@@ -14,9 +14,9 @@ import (
 // together by one effect are one batch (OncePerBatch), and the
 // once-each-turn guard declines every later batch of the turn. The
 // card is read where it landed (an artifact card in the graveyard).
-func wheneverYouDiscardOneOrMoreArtifactCardsOnce(label string, effect Effect) game.TriggeredAbility {
+func WheneverYouDiscardOneOrMoreArtifactCardsOnce(label string, effect Effect) game.TriggeredAbility {
 	return TriggersOnlyOnceEachTurn(OncePerBatch(
-		On(game.EventDiscardCard, youDiscardedA(game.Card.IsArtifact), label, effect)))
+		On(game.EventDiscardCard, YouDiscardedA(game.Card.IsArtifact), label, effect)))
 }
 
 // nontokenArtifactYouControlWasPutIntoAGraveyardOrExileFromTheBattlefield is
@@ -30,12 +30,12 @@ func wheneverYouDiscardOneOrMoreArtifactCardsOnce(label string, effect Effect) g
 // the graveyard or exile. A bounce or a library tuck is neither zone. The
 // source itself counts even as a token copy ("this artifact"); another
 // artifact must be nontoken.
-func nontokenArtifactYouControlWasPutIntoAGraveyardOrExileFromTheBattlefield(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func NontokenArtifactYouControlWasPutIntoAGraveyardOrExileFromTheBattlefield(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || (ev.NewZone != game.ZoneGraveyard && ev.NewZone != game.ZoneExile) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !leftAsType(ev, c, "artifact") || leftUnderControlOf(ev, c) != source.Controller {
+	if !ok || !LeftAsType(ev, c, "artifact") || LeftUnderControlOf(ev, c) != source.Controller {
 		return false
 	}
 	return ev.CardID == source.InstanceID || !c.IsToken()
@@ -59,8 +59,8 @@ func (CondNoCardPlayedFromExile) Holds(ctx *Context) bool {
 	return !CardPlayedFromExileThisTurn(ctx.Game, ctx.Controller())
 }
 
-func (CondNoCardPlayedFromExile) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondNoCardsPlayedFromExile, 0), true
+func (CondNoCardPlayedFromExile) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondNoCardsPlayedFromExile, 0), true
 }
 
 // AtYourEndStepIfNoCardPlayedFromExile is "At the beginning of your end
@@ -76,4 +76,4 @@ func AtYourEndStepIfNoCardPlayedFromExile(label string, effect Effect) game.Trig
 // loseXLife is "you lose X life" off the resolving spell's announced X
 // (Terisiare's Devastation). An X of 0 loses nothing: GainLife declines
 // a zero amount.
-func loseXLife(ctx *Context) error { return GainLife{Amount: -ctx.X()}.Apply(ctx) }
+func LoseXLife(ctx *Context) error { return GainLife{Amount: -ctx.X()}.Apply(ctx) }

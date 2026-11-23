@@ -1,0 +1,31 @@
+package cardsd
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Damning Verdict — Sorcery {3}{W}{W} (EDHREC rank 1173):
+//
+//	"Destroy all creatures with no counters on them."
+//
+// The counters deck's one-sided wrath. DestroyAllMatching over
+// creatures whose counter map holds no positive count of ANY kind —
+// a +1/+1, a -1/-1, a loyalty, a shield or a flying counter all
+// spare the creature, as printed. One simultaneous event, so a
+// dies-payoff sees every creature that fell together.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID: "355ed7ef-bfa6-4538-99fb-a2d203eb7005",
+		Name:     "Damning Verdict",
+		// ADR 0126 §6: a creature with a counter on it stays.
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.DestroyAllMatching{Match: effects.And(effects.Creature(), effects.B10NoCounters())}.Apply(ctx)
+		},
+	})
+}

@@ -77,7 +77,7 @@ func (m MultiplyDamage) Apply(ctx *Context) error {
 		Label:        m.Label,
 	}
 	if d.Label == "" {
-		d.Label = shieldSourceName(ctx)
+		d.Label = ShieldSourceName(ctx)
 	}
 	if m.UntilYourNextTurn {
 		d.UntilNextTurnOf = ctx.Controller()
@@ -114,25 +114,25 @@ type NextTimeFlip struct {
 // nextTimeFlipBy is the resolving item a NextTimeFlip belongs to, as
 // plain values: a continuation (a choice answered later) rebuilds its
 // context from these, never from the item it began with.
-type nextTimeFlipBy struct {
-	controller, source, self uuid.UUID
-	kind                     game.StackItemKind
-	name                     string
+type NextTimeFlipBy struct {
+	Controller, Source, Self uuid.UUID
+	Kind                     game.StackItemKind
+	Name                     string
 }
 
 // Apply queues the coin call for the resolving item.
 func (f NextTimeFlip) Apply(ctx *Context) error {
-	f.queue(ctx.Game, nextTimeFlipBy{
-		controller: ctx.Controller(), source: ctx.Source(), self: ctx.Item.ID,
-		kind: ctx.Item.Kind, name: shieldSourceName(ctx),
+	f.Queue(ctx.Game, NextTimeFlipBy{
+		Controller: ctx.Controller(), Source: ctx.Source(), Self: ctx.Item.ID,
+		Kind: ctx.Item.Kind, Name: ShieldSourceName(ctx),
 	})
 	return nil
 }
 
 // queue queues the coin call. Both halves are built in the flip's
 // continuation from plain values.
-func (f NextTimeFlip) queue(g *game.Game, by nextTimeFlipBy) {
-	controller, source, name := by.controller, by.source, by.name
+func (f NextTimeFlip) Queue(g *game.Game, by NextTimeFlipBy) {
+	controller, source, name := by.Controller, by.Source, by.Name
 	question := f.Question
 	if question == "" {
 		question = name + " — call the coin flip"
@@ -148,9 +148,9 @@ func (f NextTimeFlip) queue(g *game.Game, by nextTimeFlipBy) {
 		// Keyed (#4253 slice 10b): the resolving item and the pinned
 		// source ride the call as values.
 		ThenKey: nextTimeFlipped,
-		Carry:   []uuid.UUID{by.self, f.Source.ID},
+		Carry:   []uuid.UUID{by.Self, f.Source.ID},
 		Nums:    []int{f.Source.Epoch, combat},
-		Words:   []string{name, string(f.SourceZone), string(by.kind)},
+		Words:   []string{name, string(f.SourceZone), string(by.Kind)},
 	})
 }
 
@@ -158,17 +158,17 @@ func (f NextTimeFlip) queue(g *game.Game, by nextTimeFlipBy) {
 // source's next damage, a lost one prevents it. An on-disk key: never
 // renamed, never reused.
 var nextTimeFlipped = game.RegisterCoinFlipThen("coin-flip/next-time-double-or-prevent", func(g *game.Game, r game.CoinFlipped) error {
-	src := game.ObjectRef{ID: carriedID(r.Carry, 1), Epoch: carriedNum(r.Nums, 0)}
+	src := game.ObjectRef{ID: CarriedID(r.Carry, 1), Epoch: CarriedNum(r.Nums, 0)}
 	if src.ID == uuid.Nil {
 		return nil
 	}
-	name, zone, combat := carriedWord(r.Words, 0), game.ZoneKind(carriedWord(r.Words, 1)), carriedNum(r.Nums, 1) == 1
+	name, zone, combat := CarriedWord(r.Words, 0), game.ZoneKind(CarriedWord(r.Words, 1)), CarriedNum(r.Nums, 1) == 1
 	controller, source := r.Flipper, r.Source
 	c := NewContext(g, &game.StackItem{
-		ID: carriedID(r.Carry, 0), Kind: game.StackItemKind(carriedWord(r.Words, 2)),
+		ID: CarriedID(r.Carry, 0), Kind: game.StackItemKind(CarriedWord(r.Words, 2)),
 		Controller: controller, Owner: controller, SourceCardID: source,
 	})
-	if wonFirstFlip(r) {
+	if WonFirstFlip(r) {
 		return MultiplyDamage{Factor: 2, FromRef: src, FromZone: zone,
 			CombatOnly: combat, Next: true, Label: name + " — double the next damage"}.Apply(c)
 	}

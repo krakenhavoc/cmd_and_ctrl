@@ -1018,6 +1018,19 @@ type PendingChoiceView struct {
 	// `legal_targets` are the asking seat's (#1172). Absent when the
 	// prompt's ability could not be found.
 	ModeBullets []ModeOptionView `json:"mode_bullets,omitempty"`
+	// ModeChosenFor is, on a mode_pick an opponent answers for an "An
+	// opponent chooses one" spell (#5771, CR 700.2e), the player casting
+	// it: the spell is theirs and its targets will be, but the mode is
+	// the chooser's. The prompt's `reason` names the caster and the spell
+	// too. A bot choosing for somebody else's spell prices the bullets
+	// the other way round. Absent on every mode_pick a controller answers
+	// for their own trigger.
+	ModeChosenFor string `json:"mode_chosen_for,omitempty"`
+	// ModeSpellName is, beside ModeChosenFor, the name of the spell being
+	// cast. Its card is still in the caster's hand while the cast waits,
+	// where the chooser cannot see it, but a spell is public from the
+	// moment it is cast (CR 601.2a).
+	ModeSpellName string `json:"mode_spell_name,omitempty"`
 	// DoubledBy / DoubledByName identify the public permanent that
 	// caused this additional trigger (CR 603.2d). They are
 	// present only on trigger_prompt and pick_target choices.
@@ -1519,6 +1532,13 @@ type ModeSpecView struct {
 	// counted again, may not add up to more. Absent for a modal card
 	// without pawprints. Printed text, so public.
 	Pawprints int `json:"pawprints,omitempty"`
+	// ChosenByOpponent is "An opponent chooses one —" (#5771, CR
+	// 700.2e): the caster does not choose the mode. The client casts
+	// the card with no mode and opens no picker; the server asks the
+	// caster which opponent (when more than one could choose) and that
+	// opponent a mode_pick, then the caster any targets. Printed text,
+	// so public.
+	ChosenByOpponent bool `json:"chosen_by_opponent,omitempty"`
 
 	// printedMin / printedMax are the spec's own Min / Max, before any
 	// conditional raise, for publicModeSpec: the raise is the asking
@@ -8383,7 +8403,7 @@ type ProtectionView struct {
 	// bound N, #2181), "ring_bearer" (#2145), "opponents" (#2745),
 	// "mana_value_odd", "mana_value_even", "multityped_creatures" or
 	// "noncreature_permanents" (#4307), "multicolored" (#4834),
-	// "mana_value_at_least" (Value is the bound N) or "colorless"
+	// "mana_value_at_least" (Value is the bound N), "colored_spells" or "colorless"
 	// (a source with no colour, #5650).
 	// Stable tokens; see
 	// game.ProtectionQualityKind.
@@ -9284,6 +9304,8 @@ func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, 
 		NotChosen:  modeMemoryWire(ms.NotChosen),
 		Pawprints:  ms.Pawprints,
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
+		// #5771: the opponent chooses.
+		ChosenByOpponent: ms.ChosenByOpponent,
 	}
 	used := g.ModesChosenForEffect(ms, ab)
 	for i, o := range ms.Options {
@@ -11034,6 +11056,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ModeNotChosen = modeMemoryWire(c.ModeNotChosen)
 			if src, ms, ok := g.ModePickSpecLocked(c); ok {
 				v.ModeBullets = viewOfModePickBullets(g, src, ms, c.ModeOptionIndex)
+			}
+			if c.ModePickFor != uuid.Nil {
+				v.ModeChosenFor = c.ModePickFor.String()
+				v.ModeSpellName = c.OpponentModeSpellName()
 			}
 		}
 		// PendingChoiceMana carries a color-option list server-

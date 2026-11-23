@@ -13,11 +13,11 @@ import (
 // damage, …" shape: one trigger per damaged batch (CR 120.3, CR 510.2), with
 // the total the creature was dealt as the event's Amount, for the amount
 // readers ("that much", "that many"). Damage of 0 never triggers (CR 120.8).
-func cmdr2B08EnrageTrigger(key string, effect Effect) game.TriggeredAbility {
+func Cmdr2B08EnrageTrigger(key string, effect Effect) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventDealDamage},
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			return b35SelfWasDealtDamage(ev, source)
+			return B35SelfWasDealtDamage(ev, source)
 		},
 		Key:        key,
 		AtBatchEnd: ThatMuchDamage(),
@@ -27,7 +27,7 @@ func cmdr2B08EnrageTrigger(key string, effect Effect) game.TriggeredAbility {
 
 // cmdr2B08DrawThatMany is "draw that many cards" for a trigger whose event
 // carries an amount (the damage a creature was dealt).
-func cmdr2B08DrawThatMany(g *game.Game, item *game.StackItem) error {
+func Cmdr2B08DrawThatMany(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
@@ -37,7 +37,7 @@ func cmdr2B08DrawThatMany(g *game.Game, item *game.StackItem) error {
 // cmdr2B08ToughnessIsCardsInYourHand is the toughness half of "power and
 // toughness are each equal to the number of cards in your hand" (CR 604.3,
 // layer 7a); powerIsCardsInYourHand is the power half.
-func cmdr2B08ToughnessIsCardsInYourHand() game.StaticAbility {
+func Cmdr2B08ToughnessIsCardsInYourHand() game.StaticAbility {
 	return game.StaticAbility{
 		Layer:             game.Layer7PT,
 		SubLayer:          game.SubLayer7A_CDA,
@@ -59,8 +59,8 @@ func cmdr2B08ToughnessIsCardsInYourHand() game.StaticAbility {
 // Crasher's condition: combat damage to a player by a creature with trample
 // the source's controller controls, the keyword read through the layered
 // view (CR 702.19).
-func cmdr2B08TramplerYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || !combatDamageToPlayerBy(ev, source.Controller, g) {
+func Cmdr2B08TramplerYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if source == nil || !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	dealer, ok := g.LookupCardForEffect(ev.Source)
@@ -69,8 +69,8 @@ func cmdr2B08TramplerYouControlDealtCombatDamageToAPlayer(ev game.Event, source 
 
 // cmdr2B08CreateBeastForTheDamage creates an X/X green Dinosaur Beast
 // creature token with trample, X the settled damage total.
-func cmdr2B08CreateBeastForTheDamage(g *game.Game, item *game.StackItem) error {
-	x := settledEventAmount(item)
+func Cmdr2B08CreateBeastForTheDamage(g *game.Game, item *game.StackItem) error {
+	x := SettledEventAmount(item)
 	return CreateToken{Template: game.Card{
 		Name:      "Dinosaur Beast",
 		TypeLine:  "Token Creature — Dinosaur Beast",
@@ -84,7 +84,7 @@ func cmdr2B08CreateBeastForTheDamage(g *game.Game, item *game.StackItem) error {
 // cmdr2B08RecipientIsOpponentOrTheirPermanent reports whether damage to
 // `target` goes to a player other than `you`, or to a permanent on the
 // battlefield another player controls.
-func cmdr2B08RecipientIsOpponentOrTheirPermanent(target uuid.UUID, g *game.Game, you uuid.UUID) bool {
+func Cmdr2B08RecipientIsOpponentOrTheirPermanent(target uuid.UUID, g *game.Game, you uuid.UUID) bool {
 	if p := g.PlayerByIDForEffect(target); p != nil {
 		return p.ID != you
 	}
@@ -94,7 +94,7 @@ func cmdr2B08RecipientIsOpponentOrTheirPermanent(target uuid.UUID, g *game.Game,
 
 // cmdr2B08RecipientIsYouOrYourPermanent reports whether damage to `target`
 // goes to `you` or to a permanent on the battlefield `you` control.
-func cmdr2B08RecipientIsYouOrYourPermanent(target uuid.UUID, g *game.Game, you uuid.UUID) bool {
+func Cmdr2B08RecipientIsYouOrYourPermanent(target uuid.UUID, g *game.Game, you uuid.UUID) bool {
 	if target == you {
 		return true
 	}
@@ -109,7 +109,7 @@ func cmdr2B08RecipientIsYouOrYourPermanent(target uuid.UUID, g *game.Game, you u
 // the activation's announced targets are two creatures its controller
 // controls. Like ItTargets it reads q.Targets, so it is only meaningful on a
 // modifier that sets ReadsTargets.
-func cmdr2B08ItTargetsTwoCreaturesYouControl() CostPredicate {
+func Cmdr2B08ItTargetsTwoCreaturesYouControl() CostPredicate {
 	return func(q game.CostQuery) bool {
 		if q.Game == nil || len(q.Targets) != 2 {
 			return false
@@ -132,7 +132,7 @@ func cmdr2B08ItTargetsTwoCreaturesYouControl() CostPredicate {
 // control to trigger, that ability triggers an additional time" (CR 603.2d):
 // the event is damage dealt to a creature the doubler's controller controls,
 // and the ability belongs to a permanent they control.
-func cmdr2B08CreatureYouControlDealtDamageDoubler() game.TriggerDoubler {
+func Cmdr2B08CreatureYouControlDealtDamageDoubler() game.TriggerDoubler {
 	return game.TriggerDoubler{
 		Label:    "Wayta, Trainer Prodigy",
 		RowLabel: "Abilities of your permanents that trigger when a creature you control is dealt damage trigger an additional time.",

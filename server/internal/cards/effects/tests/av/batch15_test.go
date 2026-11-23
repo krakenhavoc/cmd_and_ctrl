@@ -1,0 +1,1071 @@
+package testsav
+
+import (
+	"errors"
+	"strings"
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// b15CastInstant puts an instant with the given colours in the
+// active seat's hand and casts it from a main phase, leaving it on
+// the stack.
+func b15CastInstant(t *testing.T, g *game.Game, name string, colors ...string) uuid.UUID {
+	t.Helper()
+	effectstest.AdvanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := effectstest.HandCardFull(me, name, "Instant", "", "", colors)
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell %s: %v", name, err)
+	}
+	return id
+}
+
+// b15Lives reads every opponent's life total for a seat-0 controller.
+func b15Lives(g *game.Game) []int {
+	out := make([]int, 0, len(g.Seats)-1)
+	for _, p := range g.Seats[1:] {
+		out = append(out, p.Life)
+	}
+	return out
+}
+
+// --- registration --------------------------------------------------
+
+// Every card in the batch, pinned by oracle ID → name. Botanical
+// Sanctum is a row in fastlands.go, so a transposed row is invisible
+// until someone plays that exact card.
+func TestBatch15CardsAreRegistered(t *testing.T) {
+	want := map[string]string{
+		effectstest.B15WhirlwindOfThoughtOracle:    "Whirlwind of Thought",
+		effectstest.B15StitchTogetherOracle:        "Stitch Together",
+		effectstest.B15SoulOfTheHarvestOracle:      "Soul of the Harvest",
+		effectstest.B15ObscuraStorefrontOracle:     "Obscura Storefront",
+		effectstest.B15WindsOfRathOracle:           "Winds of Rath",
+		effectstest.B15PoisonTipArcherOracle:       "Poison-Tip Archer",
+		effectstest.B15BloodMoneyOracle:            "Blood Money",
+		effectstest.B15SilentClearingOracle:        "Silent Clearing",
+		effectstest.B15InspiringOverseerOracle:     "Inspiring Overseer",
+		effectstest.B15BotanicalSanctumOracle:      "Botanical Sanctum",
+		effectstest.B15RunawaySteamKinOracle:       "Runaway Steam-Kin",
+		effectstest.B15MoonsilverKeyOracle:         "Moonsilver Key",
+		effectstest.B15TheGafferOracle:             "The Gaffer",
+		effectstest.B15RunAwayTogetherOracle:       "Run Away Together",
+		effectstest.B15UtterEndOracle:              "Utter End",
+		effectstest.B15SmugglersShareOracle:        "Smuggler's Share",
+		effectstest.B15SunscorchRegentOracle:       "Sunscorch Regent",
+		effectstest.B15HorizonCanopyOracle:         "Horizon Canopy",
+		effectstest.B15HornetQueenOracle:           "Hornet Queen",
+		effectstest.B15OversoldCemeteryOracle:      "Oversold Cemetery",
+		effectstest.B15MirrorBoxOracle:             "Mirror Box",
+		effectstest.B15KherKeepOracle:              "Kher Keep",
+		effectstest.B15GalaGreetersOracle:          "Gala Greeters",
+		effectstest.B15FateUnravelerOracle:         "Fate Unraveler",
+		effectstest.B15ThermoAlchemistOracle:       "Thermo-Alchemist",
+		effectstest.B15SimulacrumSynthesizerOracle: "Simulacrum Synthesizer",
+		effectstest.B15TheLocustGodOracle:          "The Locust God",
+	}
+	if len(want) != 27 {
+		t.Fatalf("the batch registers 27 cards, the table lists %d", len(want))
+	}
+	for oracle, name := range want {
+		spec, ok := effects.Lookup(oracle)
+		if !ok {
+			t.Errorf("%s (%s) is not registered", name, oracle)
+			continue
+		}
+		if spec.Name != name {
+			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
+		}
+	}
+}
+
+// --- the lands -----------------------------------------------------
+
+func TestB15BotanicalSanctumIsTheTenthFastland(t *testing.T) {
+	spec, ok := effects.Lookup(effectstest.B15BotanicalSanctumOracle)
+	if !ok {
+		t.Fatal("Botanical Sanctum not registered")
+	}
+	if len(spec.Replacements) != 1 || len(spec.ManaAbilities) != 1 || spec.ManaAbilities[0].Produced != "{G|U}" {
+		t.Errorf("Botanical Sanctum: want one enters-tapped-unless replacement and one {G|U} ability, got %d / %+v", len(spec.Replacements), spec.ManaAbilities)
+	}
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.SeedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	effectstest.SeedLandOnBattlefield(g, me.ID, "Island", "Basic Land — Island")
+	early := effectstest.B12PlayFromHand(t, g, "Botanical Sanctum", "Land", effectstest.B15BotanicalSanctumOracle, game.CastSpellParams{})
+	if effectstest.B13Tapped(t, g, early) {
+		t.Error("with two other lands Botanical Sanctum enters untapped")
+	}
+	late := effectstest.B12PlayFromHand(t, g, "Botanical Sanctum", "Land", effectstest.B15BotanicalSanctumOracle, game.CastSpellParams{})
+	if !effectstest.B13Tapped(t, g, late) {
+		t.Error("with three other lands Botanical Sanctum enters tapped")
+	}
+}
+
+func TestB15CanopyLandsPayLifeForManaAndCashInForACard(t *testing.T) {
+	for _, tc := range []struct {
+		name, oracle, colour string
+	}{
+		{"Silent Clearing", effectstest.B15SilentClearingOracle, "B"},
+		{"Horizon Canopy", effectstest.B15HorizonCanopyOracle, "G"},
+	} {
+		g := effectstest.NewCatalogGame(t)
+		me := g.Seats[0]
+		land := effectstest.B12Push(g, me.ID, tc.name, "Land", tc.oracle, 0, 0)
+		before := me.Life
+		if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err != nil {
+			t.Fatalf("%s: ActivateManaAbility: %v", tc.name, err)
+		}
+		if me.Life != before-1 {
+			t.Errorf("%s: life %d → %d, want -1", tc.name, before, me.Life)
+		}
+		if n := effectstest.B10ResolveAllManaPicks(t, g, me.ID, tc.colour); n != 1 {
+			t.Fatalf("%s: expected one colour pick, answered %d", tc.name, n)
+		}
+		if got := effectstest.Batch01PoolColors(me); len(got) != 1 || got[0] != tc.colour {
+			t.Errorf("%s: pool %v, want [%s]", tc.name, got, tc.colour)
+		}
+		effectstest.B08Untap(g, land)
+		effectstest.AdvanceToMain(t, g)
+		me.ManaPool.AddMana(game.ManaToken{Color: "C"})
+		hand := me.Hand.Size()
+		if err := g.ActivateCatalogAbility(me.ID, land, 0, game.ActivateAbilityParams{}); err != nil {
+			t.Fatalf("%s: ActivateCatalogAbility: %v", tc.name, err)
+		}
+		effectstest.PassPriorityAroundTable(t, g)
+		if me.Hand.Size() != hand+1 {
+			t.Errorf("%s: hand %d → %d, want +1", tc.name, hand, me.Hand.Size())
+		}
+		if g.Battlefield.Contains(land) {
+			t.Errorf("%s: the land was sacrificed", tc.name)
+		}
+	}
+}
+
+func TestB15ObscuraStorefrontFetchesAnEsperBasicTappedAndGainsOne(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.SeedSearchLibrary(me,
+		effectstest.SearchTestLand("Plains", "Basic Land — Plains"),
+		effectstest.SearchTestLand("Island", "Basic Land — Island"),
+		effectstest.SearchTestLand("Swamp", "Basic Land — Swamp"),
+		effectstest.SearchTestLand("Forest", "Basic Land — Forest"),
+	)
+	before := me.Life
+	storefront := effectstest.PlayLandFromHand(t, g, "Obscura Storefront", effectstest.B15ObscuraStorefrontOracle)
+	effectstest.PassPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(storefront) || !me.Graveyard.Contains(storefront) {
+		t.Fatal("the Storefront should have sacrificed itself")
+	}
+	c := effectstest.SearchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the search should ask which basic to take")
+	}
+	if effectstest.SearchOptionNamed(g, c, "Forest") != uuid.Nil {
+		t.Error("a Forest is not a Plains, Island or Swamp")
+	}
+	effectstest.AnswerSearchNamed(t, g, me.ID, "Island")
+	island := effectstest.FindBattlefieldByName(g, "Island")
+	if card, ok := effectstest.BattlefieldCard(g, island); !ok || !card.Tapped {
+		t.Error("the fetched basic enters tapped")
+	}
+	if me.Life != before+1 {
+		t.Errorf("life %d → %d, want +1", before, me.Life)
+	}
+}
+
+func TestB15KherKeepMakesANamedKobold(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	keep := effectstest.B12Push(g, me.ID, "Kher Keep", "Legendary Land", effectstest.B15KherKeepOracle, 0, 0)
+	if err := g.ActivateManaAbility(me.ID, keep, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("tap for colorless: %v", err)
+	}
+	if got := effectstest.Batch01PoolColors(me); len(got) != 1 || got[0] != "C" {
+		t.Errorf("pool %v, want [C]", got)
+	}
+	effectstest.B08Untap(g, keep)
+	effectstest.AdvanceToMain(t, g)
+	me.ManaPool.AddMana(game.ManaToken{Color: "R"}, game.ManaToken{Color: "C"})
+	if err := g.ActivateCatalogAbility(me.ID, keep, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	if !effectstest.B13Tapped(t, g, keep) {
+		t.Error("the token ability taps the Keep")
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	kobold := effectstest.FindBattlefieldByName(g, "Kobolds of Kher Keep")
+	if kobold == uuid.Nil {
+		t.Fatal("no Kobolds of Kher Keep token")
+	}
+	if p, tough := effectstest.EffectivePower(t, g, kobold), effectstest.EffectiveToughness(t, g, kobold); p != 0 || tough != 1 {
+		t.Errorf("the Kobold is 0/1, got %d/%d", p, tough)
+	}
+}
+
+// --- cast triggers -------------------------------------------------
+
+func TestB15WhirlwindOfThoughtDrawsOffNoncreatureSpellsOnly(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.B12Push(g, me.ID, "Whirlwind of Thought", "Enchantment", effectstest.B15WhirlwindOfThoughtOracle, 0, 0)
+	hand := me.Hand.Size()
+	effectstest.CastCatalogSpell(t, g, "Shock", "Instant", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("an instant: hand %d → %d, want +1 (the draw, net of the cast)", hand, me.Hand.Size())
+	}
+	hand = me.Hand.Size()
+	effectstest.CastCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand {
+		t.Errorf("a creature spell must not draw: hand %d → %d", hand, me.Hand.Size())
+	}
+}
+
+func TestB15SunscorchRegentGrowsOffOpposingSpells(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	regent := effectstest.B12Push(g, me.ID, "Sunscorch Regent", "Creature — Dragon", effectstest.B15SunscorchRegentOracle, 4, 3)
+	life := me.Life
+	effectstest.B13OpponentCasts(t, g, opp, "Shock", "Instant", "", "{R}", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if n := effectstest.CounterCount(g, regent, "+1/+1"); n != 1 {
+		t.Errorf("an opponent's spell: %d counters, want 1", n)
+	}
+	if me.Life != life+1 {
+		t.Errorf("life %d → %d, want +1", life, me.Life)
+	}
+	effectstest.CastCatalogSpell(t, g, "Shock", "Instant", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if n := effectstest.CounterCount(g, regent, "+1/+1"); n != 1 {
+		t.Errorf("the controller's own spell must not trigger it: %d counters", n)
+	}
+}
+
+func TestB15ThermoAlchemistPingsTheTableAndUntapsOnInstants(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	alchemist := effectstest.B12Push(g, me.ID, "Thermo-Alchemist", "Creature — Human Shaman", effectstest.B15ThermoAlchemistOracle, 0, 3)
+	before := b15Lives(g)
+	effectstest.AdvanceToMain(t, g)
+	if err := g.ActivateCatalogAbility(me.ID, alchemist, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	for i, b := range before {
+		if got := g.Seats[i+1].Life; got != b-1 {
+			t.Errorf("opponent %d: %d → %d, want -1", i+1, b, got)
+		}
+	}
+	if !effectstest.B13Tapped(t, g, alchemist) {
+		t.Fatal("the ping taps the Alchemist")
+	}
+	effectstest.CastCatalogSpell(t, g, "Shock", "Instant", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.B13Tapped(t, g, alchemist) {
+		t.Error("an instant cast untaps the Alchemist")
+	}
+	effectstest.CastCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	if err := g.ActivateCatalogAbility(me.ID, alchemist, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("second activation: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	if !effectstest.B13Tapped(t, g, alchemist) {
+		t.Error("a creature spell must not untap it")
+	}
+	if effectstest.SummoningSickOf(t, g, alchemist) {
+		t.Error("a pushed fixture is not summoning sick")
+	}
+}
+
+func TestB15RunawaySteamKinChargesOnRedSpellsAndCashesInForRRR(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	kin := effectstest.B12Push(g, me.ID, "Runaway Steam-Kin", "Creature — Elemental", effectstest.B15RunawaySteamKinOracle, 1, 1)
+	for i := 1; i <= 2; i++ {
+		b15CastInstant(t, g, "Lightning Bolt", "R")
+		effectstest.PassPriorityAroundTable(t, g)
+		if n := effectstest.CounterCount(g, kin, "+1/+1"); n != i {
+			t.Fatalf("after %d red spells: %d counters, want %d", i, n, i)
+		}
+	}
+	if err := g.ActivateManaAbility(me.ID, kin, 0, game.ManaAbilityParams{}); err == nil {
+		t.Fatal("two counters must not be enough to activate")
+	}
+	if n := effectstest.CounterCount(g, kin, "+1/+1"); n != 2 {
+		t.Fatalf("a refused activation must not touch the counters: %d", n)
+	}
+	b15CastInstant(t, g, "Counterspell", "U")
+	effectstest.PassPriorityAroundTable(t, g)
+	if n := effectstest.CounterCount(g, kin, "+1/+1"); n != 2 {
+		t.Errorf("a blue spell must not charge it: %d counters", n)
+	}
+	b15CastInstant(t, g, "Boros Charm", "R", "W")
+	effectstest.PassPriorityAroundTable(t, g)
+	b15CastInstant(t, g, "Lightning Bolt", "R")
+	effectstest.PassPriorityAroundTable(t, g)
+	if n := effectstest.CounterCount(g, kin, "+1/+1"); n != 3 {
+		t.Fatalf("the intervening-if caps it at three: %d counters", n)
+	}
+	if err := g.ActivateManaAbility(me.ID, kin, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("with three counters the ability activates: %v", err)
+	}
+	if got := effectstest.Batch01PoolColors(me); len(got) != 3 || got[0] != "R" || got[1] != "R" || got[2] != "R" {
+		t.Errorf("pool %v, want [R R R]", got)
+	}
+	if n := effectstest.CounterCount(g, kin, "+1/+1"); n != 0 {
+		t.Errorf("the three counters are the cost: %d left", n)
+	}
+	if effectstest.B13Tapped(t, g, kin) {
+		t.Error("the ability has no tap cost")
+	}
+}
+
+// --- entry triggers ------------------------------------------------
+
+func TestB15InspiringOverseerGainsALifeAndDrawsOnEntry(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	life, hand := me.Life, me.Hand.Size()
+	overseer := effectstest.CastCatalogSpell(t, g, "Inspiring Overseer", "Creature — Angel Cleric", effectstest.B15InspiringOverseerOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Life != life+1 {
+		t.Errorf("life %d → %d, want +1", life, me.Life)
+	}
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d → %d, want +1 (the draw, net of the cast)", hand, me.Hand.Size())
+	}
+	if !effectstest.HasEffectiveKeyword(t, g, overseer, "flying") {
+		t.Error("printed flying did not reach the effective abilities")
+	}
+}
+
+func TestB15HornetQueenBringsFourDeathtouchFlyers(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	queen := effectstest.CastCatalogSpell(t, g, "Hornet Queen", "Creature — Insect", effectstest.B15HornetQueenOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	insects := effectstest.BattlefieldIDsNamed(g, "Insect")
+	if len(insects) != 4 {
+		t.Fatalf("%d Insects, want 4", len(insects))
+	}
+	for _, id := range insects {
+		if !effectstest.HasEffectiveKeyword(t, g, id, "flying") || !effectstest.HasEffectiveKeyword(t, g, id, "deathtouch") {
+			t.Error("each Insect has flying and deathtouch")
+		}
+		if effectstest.ControllerOf(t, g, id) != me.ID {
+			t.Error("the Insects are the controller's")
+		}
+	}
+	if !effectstest.HasEffectiveKeyword(t, g, queen, "deathtouch") {
+		t.Error("the Queen's own deathtouch did not reach the effective abilities")
+	}
+}
+
+func TestB15SoulOfTheHarvestOffersADrawPerNontokenCreature(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.B12Push(g, me.ID, "Soul of the Harvest", "Creature — Elemental", effectstest.B15SoulOfTheHarvestOracle, 6, 6)
+	hand := me.Hand.Size()
+	effectstest.CastCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.OwedMays(g, me.ID) == 0 {
+		t.Fatal("a nontoken creature entering should ask about the draw")
+	}
+	effectstest.AnswerLatestTriggerPrompt(t, g, me.ID, true)
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d → %d, want +1", hand, me.Hand.Size())
+	}
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, effects.RedGoblinToken(), 1) })
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.OwedMays(g, me.ID) > 0 {
+		t.Error("a token must not trigger it")
+	}
+}
+
+// #764: Gala Greeters is a MODAL TRIGGER. The mode is chosen as the
+// ability goes on the stack (CR 603.3c) through a mode_pick prompt —
+// not at resolution, and not by the engine picking for the player.
+// This is the untargeted half of the modal-trigger proof set; the
+// targeted half is Glissa Sunslayer.
+func TestB15GalaGreetersPromptsForItsModeAsItGoesOnTheStack(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	greeters := effectstest.B12Push(g, me.ID, "Gala Greeters", "Creature — Elf Druid", effectstest.B15GalaGreetersOracle, 1, 1)
+	life := me.Life
+
+	effectstest.CastCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	// The prompt is open and the ability is NOT on the stack yet: the
+	// mode is chosen as it is put there, so there is nothing to
+	// respond to until the controller has answered.
+	c := effectstest.ModePickChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the alliance trigger asks for its mode")
+	}
+	if effectstest.TriggerOnStack(g, greeters) != nil {
+		t.Error("CR 603.3c: the mode is chosen as the ability is put on the stack, not after")
+	}
+	if len(c.ModeOptionIndex) != 3 || c.ModeMin != 1 || c.ModeMax != 1 {
+		t.Fatalf("three bullets, choose one: %+v", c)
+	}
+	if c.ModeOptionLabel[1] != "Create a tapped Treasure token." {
+		t.Errorf("the bullets ride the prompt verbatim: %q", c.ModeOptionLabel[1])
+	}
+
+	// Take the Treasure first — the old shape could only ever give
+	// the counter to the first creature of the turn.
+	if err := g.ResolveModePick(c.ID, me.ID, []int{1}); err != nil {
+		t.Fatalf("ResolveModePick: %v", err)
+	}
+	if effectstest.TriggerOnStack(g, greeters) == nil {
+		t.Fatal("answering puts the ability on the stack")
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	treasure := effectstest.FindBattlefieldByName(g, "Treasure")
+	if treasure == uuid.Nil || !effectstest.B13Tapped(t, g, treasure) {
+		t.Fatal("the chosen mode resolved: a tapped Treasure")
+	}
+	if effectstest.CounterCount(g, greeters, "+1/+1") != 0 || me.Life != life {
+		t.Error("only the chosen bullet happens (CR 608.2c)")
+	}
+
+	// A second creature, and the controller takes a different bullet.
+	effectstest.CastCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	c = effectstest.ModePickChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the second trigger asks again")
+	}
+	if err := g.ResolveModePick(c.ID, me.ID, []int{0}); err != nil {
+		t.Fatalf("ResolveModePick: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	if n := effectstest.CounterCount(g, greeters, "+1/+1"); n != 1 {
+		t.Errorf("the +1/+1 bullet: %d counters, want 1", n)
+	}
+}
+
+func TestB15SimulacrumSynthesizerScriesAndBuildsConstructsItSizes(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	synth := effectstest.CastCatalogSpell(t, g, "Simulacrum Synthesizer", "Artifact", effectstest.B15SimulacrumSynthesizerOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.ScryChoiceFor(g, me.ID)
+	if c == nil || len(c.ScryCards) != 2 {
+		t.Fatalf("the entry scries 2, got %+v", c)
+	}
+	if err := g.ResolveScry(c.ID, me.ID, nil, c.ScryCards); err != nil {
+		t.Fatalf("ResolveScry: %v", err)
+	}
+	effectstest.CastWithCost(t, g, "Signet", "Artifact", "{2}", "")
+	effectstest.PassPriorityAroundTable(t, g)
+	if effectstest.FindBattlefieldByName(g, "Construct") != uuid.Nil {
+		t.Fatal("a mana value 2 artifact makes nothing")
+	}
+	effectstest.CastWithCost(t, g, "Big Rock", "Artifact", "{3}", "")
+	effectstest.PassPriorityAroundTable(t, g)
+	construct := effectstest.FindBattlefieldByName(g, "Construct")
+	if construct == uuid.Nil {
+		t.Fatal("a mana value 3 artifact makes a Construct")
+	}
+	// Synthesizer, Signet, Big Rock and the Construct itself.
+	if p := effectstest.EffectivePower(t, g, construct); p != 4 {
+		t.Errorf("the Construct is +1/+1 per artifact: power %d, want 4", p)
+	}
+	other := effectstest.B12Push(g, me.ID, "Simulacrum Synthesizer", "Artifact", effectstest.B15SimulacrumSynthesizerOracle, 0, 0)
+	if p := effectstest.EffectivePower(t, g, construct); p != 5 {
+		t.Errorf("a second Synthesizer is one more artifact, not a second sizing: power %d, want 5", p)
+	}
+	// The sizing is the Construct's own (#3172): the Synthesizers leaving
+	// costs it only the artifacts they were, never the sizing.
+	effectstest.B15Destroy(t, g, synth)
+	if p := effectstest.EffectivePower(t, g, construct); p != 4 {
+		t.Errorf("one Synthesizer fewer is one artifact fewer: power %d, want 4", p)
+	}
+	effectstest.B15Destroy(t, g, other)
+	if p := effectstest.EffectivePower(t, g, construct); p != 3 {
+		t.Errorf("with no Synthesizer the Construct still counts its artifacts (Signet, Big Rock, itself): power %d, want 3", p)
+	}
+	effectstest.RunStateChecksViaDraw(t, g)
+	if !g.Battlefield.Contains(construct) {
+		t.Error("a Construct that counts three artifacts is a 3/3 and survives the state check")
+	}
+	if spec, _ := effects.Lookup(effectstest.B15SimulacrumSynthesizerOracle); spec.Completeness != effects.CompletenessFull {
+		t.Errorf("Simulacrum Synthesizer completeness = %v, want Full", spec.Completeness)
+	}
+}
+
+// #683: a Construct that has had counters and lost them all is no
+// placeholder (Card.LostLastCounter). With the sizing on the token
+// itself it never shrinks to 0/0, so it survives the Synthesizer
+// leaving and losing its counter alike.
+func TestB15SynthesizerConstructKeepsItsSizeWhenTheSynthesizerLeaves(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	synth := effectstest.B12Push(g, me.ID, "Simulacrum Synthesizer", "Artifact", effectstest.B15SimulacrumSynthesizerOracle, 0, 0)
+	g.WithWriteLock(func() {
+		_ = g.CreateTokenForEffect(me.ID, effects.UrzaConstructToken(), 2)
+	})
+	var constructs []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Construct" {
+			constructs = append(constructs, c.InstanceID)
+		}
+	}
+	if len(constructs) != 2 {
+		t.Fatalf("want 2 Constructs, got %d", len(constructs))
+	}
+	spent := constructs[0]
+
+	effectstest.GainAndLoseACounter(t, g, spent)
+	if !g.Battlefield.Contains(spent) {
+		t.Fatal("a Construct survives losing its last counter")
+	}
+	if got := effectstest.EffectiveToughness(t, g, spent); got != 3 {
+		t.Errorf("Synthesizer and two Constructs: toughness %d, want 3", got)
+	}
+
+	effectstest.B15Destroy(t, g, synth)
+	effectstest.RunStateChecksViaDraw(t, g)
+	for _, id := range constructs {
+		if !g.Battlefield.Contains(id) {
+			t.Error("a Construct died when the Synthesizer left; its sizing is its own")
+		}
+	}
+	if got := effectstest.EffectiveToughness(t, g, spent); got != 2 {
+		t.Errorf("two Constructs and no Synthesizer: toughness %d, want 2", got)
+	}
+}
+
+// --- draw and death triggers ---------------------------------------
+
+func TestB15FateUnravelerPingsAnOpponentPerCardDrawn(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.B12Push(g, me.ID, "Fate Unraveler", "Enchantment Creature — Hag", effectstest.B15FateUnravelerOracle, 3, 4)
+	before := opp.Life
+	g.WithWriteLock(func() { _ = g.DrawNForEffect(opp.ID, 2) })
+	effectstest.PassPriorityAroundTable(t, g)
+	if opp.Life != before-2 {
+		t.Errorf("two draws: opponent %d → %d, want -2", before, opp.Life)
+	}
+	mine := me.Life
+	g.WithWriteLock(func() { _ = g.DrawNForEffect(me.ID, 1) })
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Life != mine {
+		t.Errorf("the controller's own draw must not trigger it: %d → %d", mine, me.Life)
+	}
+}
+
+func TestB15PoisonTipArcherDrainsTheTableWhenAnotherCreatureDies(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	archer := effectstest.B12Push(g, me.ID, "Poison-Tip Archer", "Creature — Elf Archer", effectstest.B15PoisonTipArcherOracle, 2, 3)
+	if !effectstest.HasEffectiveKeyword(t, g, archer, "reach") || !effectstest.HasEffectiveKeyword(t, g, archer, "deathtouch") {
+		t.Error("printed reach and deathtouch did not reach the effective abilities")
+	}
+	before := b15Lives(g)
+	effectstest.B15Destroy(t, g, effectstest.SeedCreature(g, "Their Bear", opp.ID))
+	for i, b := range before {
+		if got := g.Seats[i+1].Life; got != b-1 {
+			t.Errorf("an opponent's creature died: opponent %d %d → %d, want -1", i+1, b, got)
+		}
+	}
+	effectstest.B15Destroy(t, g, effectstest.SeedCreature(g, "My Bear", me.ID))
+	for i, b := range before {
+		if got := g.Seats[i+1].Life; got != b-2 {
+			t.Errorf("the controller's own creature counts too: opponent %d %d → %d, want -2", i+1, b, got)
+		}
+	}
+	effectstest.B15Destroy(t, g, archer)
+	for i, b := range before {
+		if got := g.Seats[i+1].Life; got != b-2 {
+			t.Errorf("the Archer's own death is not \"another\": opponent %d %d → %d", i+1, b, got)
+		}
+	}
+	if me.Life != 40 {
+		t.Errorf("the controller loses nothing: %d", me.Life)
+	}
+}
+
+func TestB15TheLocustGodSwarmsLootsAndComesBack(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	god := effectstest.B12Push(g, me.ID, "The Locust God", "Legendary Creature — God", effectstest.B15TheLocustGodOracle, 4, 4)
+	g.WithWriteLock(func() { _ = g.DrawNForEffect(me.ID, 2) })
+	effectstest.PassPriorityAroundTable(t, g)
+	insects := effectstest.BattlefieldIDsNamed(g, "Insect")
+	if len(insects) != 2 {
+		t.Fatalf("two draws: %d Insects, want 2", len(insects))
+	}
+	if !effectstest.HasEffectiveKeyword(t, g, insects[0], "flying") || !effectstest.HasEffectiveKeyword(t, g, insects[0], "haste") {
+		t.Error("the Insects have flying and haste")
+	}
+	effectstest.AdvanceToMain(t, g)
+	me.ManaPool.AddMana(game.ManaToken{Color: "C"}, game.ManaToken{Color: "C"}, game.ManaToken{Color: "U"}, game.ManaToken{Color: "R"})
+	hand := me.Hand.Size()
+	if err := g.ActivateCatalogAbility(me.ID, god, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("loot: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 || effectstest.DiscardOwed(g, me.ID) != 1 {
+		t.Errorf("draw first, then owe a discard: hand %d → %d, pending %d", hand, me.Hand.Size(), effectstest.DiscardOwed(g, me.ID))
+	}
+	// The looted draw's trigger waits behind the discard prompt — the
+	// table does not move on while one is open (#651) — so it reaches
+	// the stack only once the discard is paid.
+	effectstest.AnswerDiscard(t, g, me.ID, me.Hand.Cards[0].InstanceID)
+	effectstest.PassPriorityAroundTable(t, g)
+	if n := len(effectstest.BattlefieldIDsNamed(g, "Insect")); n != 3 {
+		t.Errorf("the looted draw is a draw: %d Insects, want 3", n)
+	}
+	effectstest.B15Destroy(t, g, god)
+	if !me.Graveyard.Contains(god) {
+		t.Fatal("the God should be in the graveyard until the end step")
+	}
+	effectstest.AdvanceToEndStepOf(t, g, g.Turn.ActiveSeat)
+	effectstest.PassPriorityAroundTable(t, g)
+	if !me.Hand.Contains(god) {
+		t.Error("at the next end step the God returns to hand")
+	}
+}
+
+// --- end-step and upkeep triggers ----------------------------------
+
+func TestB15TheGafferDrawsAtAnyEndStepAfterThreeLife(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	effectstest.B12Push(g, me.ID, "The Gaffer", "Legendary Creature — Halfling Peasant", effectstest.B15TheGafferOracle, 2, 3)
+	effectstest.AdvanceToMain(t, g)
+	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 2) })
+	hand := me.Hand.Size()
+	effectstest.AdvanceToEndStepOf(t, g, 0)
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand {
+		t.Errorf("two life is not three: hand %d → %d", hand, me.Hand.Size())
+	}
+	// An opponent's turn: two separate gains add up, and "each end
+	// step" includes theirs.
+	effectstest.AdvanceToMainOf(t, g, 1)
+	g.WithWriteLock(func() {
+		_ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 2)
+		_ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, -5)
+		_ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 1)
+	})
+	hand = me.Hand.Size()
+	effectstest.AdvanceToEndStepOf(t, g, 1)
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("three life gained (a loss does not offset it): hand %d → %d, want +1", hand, me.Hand.Size())
+	}
+}
+
+func TestB15SmugglersSharePaysForGreedyAndRampingOpponents(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, greedy, ramper, quiet := g.Seats[0], g.Seats[1], g.Seats[2], g.Seats[3]
+	effectstest.B12Push(g, me.ID, "Smuggler's Share", "Enchantment", effectstest.B15SmugglersShareOracle, 0, 0)
+	effectstest.AdvanceToMain(t, g)
+	forest := game.Card{Name: "Forest", TypeLine: "Token Land — Forest"}
+	g.WithWriteLock(func() {
+		_ = g.DrawNForEffect(greedy.ID, 2)
+		_ = g.DrawNForEffect(quiet.ID, 1)
+		_ = g.CreateTokenForEffect(ramper.ID, forest, 2)
+		_ = g.CreateTokenForEffect(quiet.ID, forest, 1)
+		_ = g.CreateTokenForEffect(me.ID, forest, 2)
+	})
+	effectstest.PassPriorityAroundTable(t, g)
+	hand := me.Hand.Size()
+	effectstest.AdvanceToEndStepOf(t, g, 0)
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("one opponent drew two: hand %d → %d, want +1", hand, me.Hand.Size())
+	}
+	if n := effectstest.CountBattlefieldNamed(g, me.ID, "Treasure"); n != 1 {
+		t.Errorf("one opponent had two lands enter (my own do not count): %d Treasures, want 1", n)
+	}
+	// The next end step starts from zero.
+	hand = me.Hand.Size()
+	effectstest.AdvanceToEndStepOf(t, g, 1)
+	effectstest.PassPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand || effectstest.CountBattlefieldNamed(g, me.ID, "Treasure") != 1 {
+		t.Error("the tallies reset with the turn")
+	}
+}
+
+func TestB15OversoldCemeteryReturnsACreatureCardWithFourInTheYard(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	owner := g.Seats[1]
+	effectstest.B12Push(g, owner.ID, "Oversold Cemetery", "Enchantment", effectstest.B15OversoldCemeteryOracle, 0, 0)
+	dead := effectstest.PushGraveyardCardForTest(owner, "Dead Bear")
+	effectstest.PushGraveyardCardForTest(owner, "Dead Two")
+	effectstest.PushGraveyardCardForTest(owner, "Dead Three")
+	relic := effectstest.Batch01GraveyardCard(owner, "Sol Ring", "Artifact")
+
+	effectstest.AdvanceToUpkeepOf(t, g, 1)
+	if len(g.PendingChoices) != 0 {
+		t.Fatal("three creature cards and an artifact is not four — no prompt")
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+
+	effectstest.PushGraveyardCardForTest(owner, "Dead Four")
+	effectstest.AdvanceToUpkeepOf(t, g, 2)
+	effectstest.AdvanceToUpkeepOf(t, g, 1)
+	effectstest.B04WaitForPick(t, g, owner.ID)
+	if effectstest.HasID(effectstest.LatestPickTarget(g, owner.ID).PickTargetCards, relic) {
+		t.Error("an artifact card was offered for 'target creature card'")
+	}
+	effectstest.PickCard(t, g, owner.ID, dead)
+	effectstest.AnswerLatestTriggerPrompt(t, g, owner.ID, true)
+	effectstest.PassPriorityAroundTable(t, g)
+	if !owner.Hand.Contains(dead) {
+		t.Error("the creature card did not return to hand")
+	}
+}
+
+func TestB15OversoldCemeteryChecksTheCountAgainOnResolution(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	owner := g.Seats[1]
+	effectstest.B12Push(g, owner.ID, "Oversold Cemetery", "Enchantment", effectstest.B15OversoldCemeteryOracle, 0, 0)
+	dead := effectstest.PushGraveyardCardForTest(owner, "Dead Bear")
+	extra := effectstest.PushGraveyardCardForTest(owner, "Dead Two")
+	effectstest.PushGraveyardCardForTest(owner, "Dead Three")
+	effectstest.PushGraveyardCardForTest(owner, "Dead Four")
+	effectstest.AdvanceToUpkeepOf(t, g, 1)
+	effectstest.B04WaitForPick(t, g, owner.ID)
+	effectstest.PickCard(t, g, owner.ID, dead)
+	// In response, one of the other creature cards leaves the yard.
+	g.WithWriteLock(func() { _ = g.ExileCardForEffect(extra) })
+	effectstest.AnswerLatestTriggerPrompt(t, g, owner.ID, true)
+	effectstest.PassPriorityAroundTable(t, g)
+	if owner.Hand.Contains(dead) || !owner.Graveyard.Contains(dead) {
+		t.Error("with three creature cards left the intervening-if fails and nothing returns")
+	}
+}
+
+// --- removal and reanimation ---------------------------------------
+
+func TestB15UtterEndExilesAnyNonlandPermanent(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	rock := effectstest.SeedPermanentFor(g, opp.ID, "Rock", "Artifact")
+	effectstest.CastCatalogSpell(t, g, "Utter End", "Instant", effectstest.B15UtterEndOracle, []game.TargetRef{{Kind: game.TargetCard, ID: rock}})
+	effectstest.PassPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(rock) || !effectstest.ExileHas(g, rock) {
+		t.Error("the artifact should be in exile")
+	}
+	land := effectstest.SeedLandOnBattlefield(g, opp.ID, "Forest", "Basic Land — Forest")
+	if err := g.CastSpell(me.ID, effectstest.B13HandCard(me, "Utter End", "Instant", effectstest.B15UtterEndOracle),
+		game.CastSpellParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: land}}}); err == nil {
+		t.Error("a land was accepted as a target for 'target nonland permanent'")
+	}
+}
+
+func TestB15RunAwayTogetherBouncesTwoCreaturesOfDifferentControllers(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine, theirs := effectstest.SeedCreature(g, "My Bear", me.ID), effectstest.SeedCreature(g, "Their Bear", opp.ID)
+	effectstest.CastCatalogSpell(t, g, "Run Away Together", "Instant", effectstest.B15RunAwayTogetherOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: mine}, {Kind: game.TargetCard, ID: theirs}})
+	effectstest.PassPriorityAroundTable(t, g)
+	if !me.Hand.Contains(mine) || !opp.Hand.Contains(theirs) {
+		t.Error("both creatures return to their owners' hands")
+	}
+	// #1559: "controlled by different players" is the clause's set
+	// rule, so a same-controller pair is refused at announce (CR
+	// 601.2c), with the rule in the message.
+	a, b := effectstest.SeedCreature(g, "Bear A", opp.ID), effectstest.SeedCreature(g, "Bear B", opp.ID)
+	err := effectstest.CastCatalogSpellErr(t, g, "Run Away Together", "Instant", effectstest.B15RunAwayTogetherOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}})
+	if !errors.Is(err, game.ErrIllegalTarget) || !strings.Contains(err.Error(), "controlled by different players") {
+		t.Errorf("a same-controller pair is refused naming the rule, got %v", err)
+	}
+	if !g.Battlefield.Contains(a) || !g.Battlefield.Contains(b) {
+		t.Error("the refused cast touches nothing")
+	}
+	// One target gone in response: the other still returns.
+	c, d := effectstest.SeedCreature(g, "Bear C", me.ID), effectstest.SeedCreature(g, "Bear D", opp.ID)
+	effectstest.CastCatalogSpell(t, g, "Run Away Together", "Instant", effectstest.B15RunAwayTogetherOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: c}, {Kind: game.TargetCard, ID: d}})
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(c) })
+	effectstest.PassPriorityAroundTable(t, g)
+	if !opp.Hand.Contains(d) {
+		t.Error("the surviving target is still returned")
+	}
+}
+
+func TestB15StitchTogetherReturnsToHandOrWithThresholdToTheBattlefield(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	dead := effectstest.PushGraveyardCardForTest(me, "Dead Bear")
+	effectstest.CastCatalogSpell(t, g, "Stitch Together", "Sorcery", effectstest.B15StitchTogetherOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: dead}})
+	effectstest.PassPriorityAroundTable(t, g)
+	if !me.Hand.Contains(dead) {
+		t.Fatal("below threshold the card returns to hand")
+	}
+	// Threshold: the target plus six others is seven; the Stitch
+	// Together resolving is on the stack, not in the graveyard.
+	second := effectstest.PushGraveyardCardForTest(me, "Dead Two")
+	for i := 0; i < 6; i++ {
+		effectstest.PushGraveyardCardForTest(me, "Filler")
+	}
+	if me.Graveyard.Size() < 7 {
+		t.Fatalf("graveyard holds %d, want at least 7", me.Graveyard.Size())
+	}
+	effectstest.CastCatalogSpell(t, g, "Stitch Together", "Sorcery", effectstest.B15StitchTogetherOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: second}})
+	effectstest.PassPriorityAroundTable(t, g)
+	card, ok := effectstest.BattlefieldCard(g, second)
+	if !ok {
+		t.Fatal("at threshold the card returns to the battlefield instead")
+	}
+	if card.Controller != me.ID {
+		t.Error("it returns under its owner's control")
+	}
+}
+
+func TestB15WindsOfRathSparesEnchantedCreatures(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := effectstest.SeedCreature(g, "My Bear", me.ID)
+	blessed := effectstest.SeedCreature(g, "Blessed Bear", me.ID)
+	effectstest.B15Aura(g, me.ID, blessed)
+	theirs := effectstest.SeedCreature(g, "Their Bear", opp.ID)
+	cursed := effectstest.SeedCreature(g, "Cursed Bear", opp.ID)
+	effectstest.B15Aura(g, me.ID, cursed)
+	equipped := effectstest.SeedCreature(g, "Equipped Bear", opp.ID)
+	effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Sword", TypeLine: "Artifact — Equipment",
+		Owner: opp.ID, Controller: opp.ID,
+		AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: equipped},
+	})
+	effectstest.CastCatalogSpell(t, g, "Winds of Rath", "Sorcery", effectstest.B15WindsOfRathOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{mine, theirs, equipped} {
+		if g.Battlefield.Contains(id) {
+			t.Errorf("%s: an unenchanted creature (an Equipment does not enchant) is destroyed", effectstest.CardByID(g, id).Name)
+		}
+	}
+	for _, id := range []uuid.UUID{blessed, cursed} {
+		if !g.Battlefield.Contains(id) {
+			t.Errorf("%s: an enchanted creature survives, whoever controls the Aura", effectstest.CardByID(g, id).Name)
+		}
+	}
+}
+
+func TestB15BloodMoneyPaysATappedTreasurePerNontokenCreatureDestroyed(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.SeedCreature(g, "My Bear", me.ID)
+	effectstest.SeedCreature(g, "Their Bear", opp.ID)
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, effects.RedGoblinToken(), 2) })
+	darksteel := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Darksteel Myr", TypeLine: "Artifact Creature — Myr",
+		Power: 0, Toughness: 1, Keywords: []string{"indestructible"}, Owner: opp.ID, Controller: opp.ID,
+	})
+	effectstest.CastCatalogSpell(t, g, "Blood Money", "Sorcery", effectstest.B15BloodMoneyOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if n := effectstest.CountBattlefieldByName(g, "Goblin"); n != 0 {
+		t.Errorf("the tokens die too: %d Goblins left", n)
+	}
+	if !g.Battlefield.Contains(darksteel) {
+		t.Error("an indestructible creature survives (#446 — DestroyAllMatching honours it)")
+	}
+	treasures := effectstest.BattlefieldIDsNamed(g, "Treasure")
+	if len(treasures) != 2 {
+		t.Fatalf("two nontoken creatures died (tokens and the survivor pay nothing): %d Treasures, want 2", len(treasures))
+	}
+	for _, id := range treasures {
+		if !effectstest.B13Tapped(t, g, id) || effectstest.ControllerOf(t, g, id) != me.ID {
+			t.Error("the Treasures are the caster's and enter tapped")
+		}
+	}
+}
+
+// A commander caught in Blood Money was destroyed and pays a Treasure.
+// Since ADR 0115 it is destroyed and put into its owner's graveyard
+// with the rest of the wipe, so "for each creature destroyed this way"
+// counts it at once; the CR 903.9a state-based action then asks its
+// owner about the command zone, and neither answer changes the count.
+func TestB15BloodMoneyPaysForACommanderCaughtInTheWipe(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		commandZone bool
+	}{{"to the command zone", true}, {"left in the graveyard", false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := effectstest.NewCatalogGame(t)
+			me := g.Seats[0]
+			effectstest.SeedCreature(g, "My Bear", me.ID)
+			commander := effectstest.B36Commander(g, me.ID, "My Commander")
+			g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, effects.RedGoblinToken(), 1) })
+
+			effectstest.CastCatalogSpell(t, g, "Blood Money", "Sorcery", effectstest.B15BloodMoneyOracle, nil)
+			effectstest.PassPriorityAroundTable(t, g)
+			if !me.Graveyard.Contains(commander) {
+				t.Fatal("the destroyed commander is not in its owner's graveyard")
+			}
+			if n := len(effectstest.BattlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("%d Treasures before the CR 903.9a answer, want 2 — the commander was destroyed", n)
+			}
+
+			effectstest.AnswerCommanderReturn(t, g, me.ID, tc.commandZone)
+			if tc.commandZone && !me.Command.Contains(commander) {
+				t.Error("the commander goes to the command zone")
+			}
+			if !tc.commandZone && !me.Graveyard.Contains(commander) {
+				t.Error("the commander stays in the graveyard")
+			}
+			if n := len(effectstest.BattlefieldIDsNamed(g, "Treasure")); n != 2 {
+				t.Errorf("after the CR 903.9a answer: %d Treasures, want 2", n)
+			}
+		})
+	}
+}
+
+// Blood Money destroys every creature at the same time (CR 700.4), so
+// a Zulaport Cutthroat caught in the wipe triggers for every creature
+// its controller lost, itself included. Zulaport is pushed first, the
+// battlefield position where the old one-at-a-time loop destroyed it
+// before the others and it saw only its own death.
+func TestB15BloodMoneyDeathsAreSimultaneousForAristocratsPayoffs(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.PushCatalogPermanent(g, me.ID, "Zulaport Cutthroat", "Creature — Human Rogue", effectstest.ZulaportOracle, false)
+	effectstest.PushWipeCreature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	effectstest.PushWipeCreature(g, me.ID, "Bear B", "Creature — Bear", 2, 2)
+	effectstest.PushWipeCreature(g, me.ID, "Bear C", "Creature — Bear", 2, 2)
+	survivor := effectstest.PushIndestructibleWipeCreature(g, me.ID, "Darksteel Myr")
+
+	meBefore, oppBefore := me.Life, opp.Life
+	effectstest.CastCatalogSpell(t, g, "Blood Money", "Sorcery", effectstest.B15BloodMoneyOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if want := oppBefore - 4; opp.Life != want {
+		t.Errorf("opponent life %d -> %d, want %d (four simultaneous deaths; the indestructible survivor is not one)", oppBefore, opp.Life, want)
+	}
+	if want := meBefore + 4; me.Life != want {
+		t.Errorf("caster life %d -> %d, want %d", meBefore, me.Life, want)
+	}
+	if !g.Battlefield.Contains(survivor) {
+		t.Error("the indestructible creature survives the sweep")
+	}
+	if n := len(effectstest.BattlefieldIDsNamed(g, "Treasure")); n != 4 {
+		t.Errorf("four nontoken creatures died: %d Treasures, want 4", n)
+	}
+}
+
+// Since ADR 0115 a commander caught in the wipe dies in the same
+// simultaneous destruction as everything else (CR 700.4): a Zulaport
+// Cutthroat sees all three deaths, its own included, even when the
+// commander's owner then sends it to the command zone (CR 903.9a).
+func TestB15BloodMoneyCommanderDiesInTheSimultaneousDeathBatch(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.PushCatalogPermanent(g, me.ID, "Zulaport Cutthroat", "Creature — Human Rogue", effectstest.ZulaportOracle, false)
+	effectstest.PushWipeCreature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	commander := effectstest.B36Commander(g, me.ID, "My Commander")
+
+	meBefore, oppBefore := me.Life, opp.Life
+	effectstest.CastCatalogSpell(t, g, "Blood Money", "Sorcery", effectstest.B15BloodMoneyOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if !me.Graveyard.Contains(commander) {
+		t.Fatal("the commander died with the rest of the wipe")
+	}
+
+	// A "yes" does not undo the death.
+	effectstest.AnswerCommanderReturn(t, g, me.ID, true)
+	effectstest.PassPriorityAroundTable(t, g)
+	if !me.Command.Contains(commander) {
+		t.Error("the commander went home after the yes")
+	}
+
+	if want := oppBefore - 3; opp.Life != want {
+		t.Errorf("opponent life %d -> %d, want %d (Cutthroat, Bear and commander died together)", oppBefore, opp.Life, want)
+	}
+	if want := meBefore + 3; me.Life != want {
+		t.Errorf("caster life %d -> %d, want %d", meBefore, me.Life, want)
+	}
+}
+
+// --- statics -------------------------------------------------------
+
+func TestB15MirrorBoxPumpsLegendsAndSameNamedNontokens(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	effectstest.B12Push(g, me.ID, "Mirror Box", "Artifact", effectstest.B15MirrorBoxOracle, 0, 0)
+	legend := effectstest.B12Creature(g, me.ID, "Legend", "Legendary Creature — Human Knight", 2, 2)
+	elfA := effectstest.B12Creature(g, me.ID, "Elf", "Creature — Elf", 1, 1)
+	elfB := effectstest.B12Creature(g, me.ID, "Elf", "Creature — Elf", 1, 1)
+	bear := effectstest.B12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	theirElf := effectstest.B12Creature(g, opp.ID, "Elf", "Creature — Elf", 1, 1)
+	if p := effectstest.EffectivePower(t, g, legend); p != 3 {
+		t.Errorf("a legendary creature gets +1/+1: power %d, want 3", p)
+	}
+	if p := effectstest.EffectivePower(t, g, elfA); p != 2 {
+		t.Errorf("one other Elf you control with the same name: power %d, want 2", p)
+	}
+	if p := effectstest.EffectivePower(t, g, bear); p != 2 {
+		t.Errorf("a lone nonlegendary is untouched: power %d, want 2", p)
+	}
+	if p := effectstest.EffectivePower(t, g, theirElf); p != 1 {
+		t.Errorf("an opponent's Elf is untouched: power %d, want 1", p)
+	}
+	token := effectstest.PushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Elf", TypeLine: "Token Creature — Elf",
+		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID,
+	})
+	if p := effectstest.EffectivePower(t, g, elfB); p != 3 {
+		t.Errorf("a token with the same name counts as an OTHER creature: power %d, want 3", p)
+	}
+	if p := effectstest.EffectivePower(t, g, token); p != 1 {
+		t.Errorf("the token itself is not a nontoken creature: power %d, want 1", p)
+	}
+}
+
+// --- tutors --------------------------------------------------------
+
+func TestB15MoonsilverKeyFindsAManaRockOrABasic(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	key := effectstest.B12Push(g, me.ID, "Moonsilver Key", "Artifact", effectstest.B15MoonsilverKeyOracle, 0, 0)
+	effectstest.SeedSearchLibrary(me,
+		game.Card{Name: "Sol Ring", TypeLine: "Artifact", OracleID: effectstest.B15SolRingOracle},
+		game.Card{Name: "Plain Rock", TypeLine: "Artifact"},
+		effectstest.SearchTestLand("Forest", "Basic Land — Forest"),
+		game.Card{Name: "Bear", TypeLine: "Creature — Bear"},
+	)
+	effectstest.AdvanceToMain(t, g)
+	me.ManaPool.AddMana(game.ManaToken{Color: "C"})
+	if err := g.ActivateCatalogAbility(me.ID, key, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	if g.Battlefield.Contains(key) {
+		t.Error("the Key is sacrificed as a cost, at announce")
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.SearchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("two matches: the searcher chooses")
+	}
+	if effectstest.SearchOptionNamed(g, c, "Plain Rock") != uuid.Nil || effectstest.SearchOptionNamed(g, c, "Bear") != uuid.Nil {
+		t.Error("an artifact with no mana ability, and a creature, are not offered")
+	}
+	if effectstest.SearchOptionNamed(g, c, "Forest") == uuid.Nil {
+		t.Error("a basic land is offered")
+	}
+	effectstest.AnswerSearchNamed(t, g, me.ID, "Sol Ring")
+	if !effectstest.B02bHandHasNamed(me, "Sol Ring") {
+		t.Error("the rock goes to hand")
+	}
+}

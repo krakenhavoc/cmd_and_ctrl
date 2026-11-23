@@ -23,11 +23,11 @@ func ForNthOpponent(n int, spec *game.TargetSpec) *game.TargetSpec {
 // has been eliminated, is not an opponent, so its clause is not required
 // (see game/opponent_slot.go); a live opponent with nothing legal to
 // target makes the spell uncastable (CR 601.2c).
-func perOpponentRequiredClauses(noun string, what ...CardPredicate) *game.TargetSpec {
+func PerOpponentRequiredClauses(noun string, what ...CardPredicate) *game.TargetSpec {
 	var out []*game.TargetSpec
 	for n := 1; n <= game.MaxPlayers-1; n++ {
 		out = append(out, ForNthOpponent(n, TargetPermanent(
-			"target "+noun+" controlled by the "+nthOpponentWords[n]+" opponent after you in turn order", what...)))
+			"target "+noun+" controlled by the "+NthOpponentWords[n]+" opponent after you in turn order", what...)))
 	}
 	return Clauses(out[0], out[1:]...)
 }

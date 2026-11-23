@@ -1229,6 +1229,16 @@
   const modeMin = $derived(active?.mode_min ?? 0);
   const modeMax = $derived(active?.mode_max ?? 1);
   const modeRepeatable = $derived(active?.mode_repeatable ?? false);
+  // #5771, CR 700.2e: an "An opponent chooses one" spell another player
+  // is casting. The mode is this viewer's to choose; the spell and its
+  // targets stay the caster's. The card is still in the caster's hand,
+  // so its name rides the prompt.
+  const modeCaster = $derived(
+    active?.mode_chosen_for
+      ? ((snap.seats ?? []).find((s) => s.id === active?.mode_chosen_for)?.name ?? "An opponent")
+      : null,
+  );
+  const modeSpell = $derived(active?.mode_spell_name || "their spell");
   // ADR 0097 (#1749): every bullet in printed order, the ones this
   // object's ability has already chosen marked used. The used ones
   // ride beside the offer (`mode_used_*`), so they are merged in here
@@ -2044,7 +2054,7 @@
       // so, rather than offer "Choose" with nothing chosen.
       const verb = modeMin === 0 && modePicks.length === 0 ? "Choose none" : "Choose";
       return {
-        label: triggerSourceName(c.source),
+        label: modeCaster ? `${modeCaster}'s ${modeSpell}` : triggerSourceName(c.source),
         src: c.reason || "choose one",
         count: `${modePicks.length} / ${modeMax > 0 ? modeMax : "any"}`,
         width: 560,
@@ -2791,8 +2801,13 @@
       </ul>
     {:else if isModePick}
       <p class="prompt-hint">
-        The ability is not on the stack until you answer — its mode is chosen as it goes there (CR
-        603.3c), and any targets it asks for come after.
+        {#if modeCaster}
+          {modeCaster} is casting {modeSpell}, and you choose its mode (CR 700.2e). {modeCaster} chooses
+          any targets after, and "that player" in it is you.
+        {:else}
+          The ability is not on the stack until you answer — its mode is chosen as it goes there (CR
+          603.3c), and any targets it asks for come after.
+        {/if}
         {#if modeRepeatable}
           You may choose the same mode more than once.
         {/if}
@@ -2801,7 +2816,11 @@
           ability does nothing.
         {/if}
       </p>
-      <ul class="prompt-options" role={modeSingle ? "radiogroup" : "group"}>
+      <ul
+        class="prompt-options"
+        role={modeSingle ? "radiogroup" : "group"}
+        aria-label={modeCaster ? L.opponentModeChoice(modeCaster, modeSpell) : undefined}
+      >
         {#each modeRows as row (row.idx)}
           {@const idx = row.idx}
           {@const times = modeTimes(idx)}

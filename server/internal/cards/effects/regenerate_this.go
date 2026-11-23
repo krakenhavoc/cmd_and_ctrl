@@ -13,16 +13,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // regenerateThisRow is "<cost>: Regenerate this creature." for a mana
 // cost such as "{1}{G}".
-func regenerateThisRow(cost string) ActivatedAbility {
+func RegenerateThisRow(cost string) ActivatedAbility {
 	return ActivatedAbility{
 		Label:   cost + ": Regenerate this creature.",
 		Purpose: game.Purpose{Answers: game.AnswerSurvive},
 		Cost:    ManaCost(cost),
-		Effect:  regenerateThisSource,
+		Effect:  RegenerateThisSource,
 	}
 }
 
 // regenerateThisSource is the body: one shield on the item's source.
-func regenerateThisSource(g *game.Game, item *game.StackItem) error {
+func RegenerateThisSource(g *game.Game, item *game.StackItem) error {
 	return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))
 }

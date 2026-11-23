@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // source has left by the time the trigger resolves. A copy or a cheat onto
 // the battlefield has X = 0 and deals no damage. The damage is the source's
 // (last known information if it left), so lifelink and Torbran apply.
-func etbDealsCastXDamage(label string, targets *game.TargetSpec) game.TriggeredAbility {
+func EtbDealsCastXDamage(label string, targets *game.TargetSpec) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches:   []game.EventKind{game.EventETB},
 		AppliesTo: Self,

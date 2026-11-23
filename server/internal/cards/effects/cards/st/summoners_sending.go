@@ -1,0 +1,83 @@
+package cardsst
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Summoner's Sending — Enchantment {1}{W}:
+//
+//	"At the beginning of your end step, you may exile target creature
+//	 card from a graveyard. If you do, create a 1/1 white Spirit
+//	 creature token with flying. Put a +1/+1 counter on it if the
+//	 exiled card's mana value is 4 or greater."
+//
+// The "you may" is the trigger's CR 603.5 prompt, asked before the
+// target. "If you do" hangs off the exile's continuation: a card that
+// left the graveyard in response, or that a replacement kept out of
+// exile, makes no Spirit. The mana value is the exiled card's, read
+// once it is in exile, and the counter goes on the token as it is
+// created (CreateTokensKeyedForEffect's continuation names it).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "46b01055-4839-4b95-aa53-b954e9669e03",
+		Name:         "Summoner's Sending",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.Optional(effects.Targeting(effects.AtYourEndStep("Summoner's Sending — exile a creature card from a graveyard for a Spirit",
+				summonersSendingExile),
+				effects.TargetCardInGraveyard("target creature card from a graveyard", effects.Creature())),
+				"Summoner's Sending — exile target creature card from a graveyard?"),
+		},
+	})
+}
+
+func summonersSendingExile(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	ts := ctx.LegalTargets()
+	if len(ts) == 0 {
+		return nil
+	}
+	exiledID := ts[0].ID
+	return effects.ExileTarget{Target: exiledID, ThenTail: effects.WithCarry(ctx.ItemTail(summonersSendingExiled), exiledID)}.Apply(ctx)
+}
+
+// summonersSendingCounter is "if its mana value was 4 or greater, put a
+// +1/+1 counter on the token" as a keyed tail (#4253 slice 6): whether it
+// was is the tail's N. An on-disk key.
+var summonersSendingCounter = effects.CardTail("summoners-sending/counter-if-big", func(ctx *effects.Context, o game.TailOutcome) error {
+	if o.Tail.N != 1 {
+		return nil
+	}
+	for _, id := range o.IDs {
+		if err := ctx.Game.AddCounterByForEffect(o.Tail.Player, id, game.CounterPlusOne, 1); err != nil {
+			return err
+		}
+	}
+	return nil
+})
+
+// summonersSendingExiled is the clause after the exile (#4253 slice 9).
+var summonersSendingExiled = effects.CardTail("summoners-sending/after-exile", func(ctx *effects.Context, o game.TailOutcome) error {
+	exiledID := effects.TailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	big := false
+	if c, ok := ctx.Game.LookupCardForEffect(exiledID); ok {
+		big = c.ManaValue() >= 4
+	}
+	bigN := 0
+	if big {
+		bigN = 1
+	}
+	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: ctx.Controller(),
+		Source:     ctx.Source(),
+		Groups:     []game.TokenGroup{{Template: ctx.TextToken(effects.TokenCard("1/1 white Spirit with flying")), Count: 1}},
+	}, ctx.TailN(summonersSendingCounter, bigN))
+})

@@ -35,7 +35,7 @@ func init() {
 			WheneverThisDealsCombatDamageToAPlayer("Leitmotif Composer — draw a card", Do(DrawCards{N: 1})),
 			WheneverYouCast(And(Or(Instant(), Sorcery()), ManaValueGE(5)),
 				"Leitmotif Composer — create a token that's a copy of this creature",
-				leitmotifComposerCopy),
+				LeitmotifComposerCopy),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{U}: Creatures named Leitmotif Composer can't be blocked this turn.",
@@ -48,7 +48,7 @@ func init() {
 
 // leitmotifComposerCopy is the cast trigger's token copy of the source
 // object, live or as it last existed.
-func leitmotifComposerCopy(g *game.Game, item *game.StackItem) error {
+func LeitmotifComposerCopy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ref, ok := ctx.SourceRef()
 	if !ok {
@@ -58,7 +58,7 @@ func leitmotifComposerCopy(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	return createTokenCopies(ctx, ctx.Controller(), tmpl, 1)
+	return CreateTokenCopies(ctx, ctx.Controller(), tmpl, 1)
 }
 
 // leitmotifComposerUnblockable makes every creature named Leitmotif
@@ -73,7 +73,7 @@ func leitmotifComposerUnblockable(g *game.Game, item *game.StackItem) error {
 	}
 	for _, id := range named {
 		if err := (RestrictUntilEOT{Target: id, Restrictions: game.CantBeBlocked,
-			Label: "Leitmotif Composer — can't be blocked"}).Apply(ctx.asGroupMember()); err != nil {
+			Label: "Leitmotif Composer — can't be blocked"}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

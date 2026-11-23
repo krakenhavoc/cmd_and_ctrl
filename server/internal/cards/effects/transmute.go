@@ -53,7 +53,7 @@ func Transmute(cost string) ActivatedAbility {
 				Limit:   1,
 				Reveal:  true,
 				Shuffle: true,
-				Reason:  "Transmute — a card with mana value " + numberWord(mv) + ", to your hand",
+				Reason:  "Transmute — a card with mana value " + NumberWord(mv) + ", to your hand",
 				Source:  item.SourceCardID,
 			}.Apply(NewContext(g, item))
 		},

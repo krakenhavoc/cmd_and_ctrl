@@ -43,7 +43,7 @@ func init() {
 		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("The Gitrog Monster — sacrifice this unless you sacrifice a land", gitrogUpkeepEffect),
-			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventLTB}, gitrogLandToGraveyard,
+			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventLTB}, GitrogLandToGraveyard,
 				gitrogDrawLabel, Do(DrawCards{N: 1}))),
 		},
 	})
@@ -55,7 +55,7 @@ const gitrogDrawLabel = "The Gitrog Monster — draw a card"
 // from anywhere" — no OldZone check, which is the "from anywhere"
 // itself: it fires whether the land came from the battlefield, hand
 // or library.
-func gitrogLandToGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func GitrogLandToGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.NewZone != game.ZoneGraveyard {
 		return false
 	}
@@ -65,4 +65,4 @@ func gitrogLandToGraveyard(ev game.Event, source *game.Card, _ game.Characterist
 
 // gitrogUpkeepEffect is "sacrifice The Gitrog Monster unless you
 // sacrifice a land" (sacrifice_unless_land.go).
-var gitrogUpkeepEffect = sacrificeThisUnlessYouSacrificeALand("The Gitrog Monster")
+var gitrogUpkeepEffect = SacrificeThisUnlessYouSacrificeALand("The Gitrog Monster")

@@ -87,7 +87,7 @@ type BecomeCreatureUntilEOT struct {
 }
 
 func (b BecomeCreatureUntilEOT) Apply(ctx *Context) error {
-	return b.applyFor(ctx, ctx.Game.UntilEndOfTurnDuration())
+	return b.ApplyFor(ctx, ctx.Game.UntilEndOfTurnDuration())
 }
 
 // BecomeArtifactCreature is the same animation with NO duration
@@ -112,18 +112,18 @@ type BecomeArtifactCreature struct {
 }
 
 func (b BecomeArtifactCreature) Apply(ctx *Context) error {
-	return BecomeCreatureUntilEOT(b).applyFor(ctx, game.IndefiniteDuration())
+	return BecomeCreatureUntilEOT(b).ApplyFor(ctx, game.IndefiniteDuration())
 }
 
 // applyFor is the shared body: one registration, two durations.
-func (b BecomeCreatureUntilEOT) applyFor(ctx *Context, duration game.Duration) error {
+func (b BecomeCreatureUntilEOT) ApplyFor(ctx *Context, duration game.Duration) error {
 	target := b.Target
-	newObject := ctx.isNewSourceObject
+	newObject := ctx.IsNewSourceObject
 	if target == uuid.Nil {
 		// A zero Target is "this" by construction, whatever Context
 		// it was handed (#1463).
 		target = ctx.Source()
-		newObject = ctx.isNewSourceObjectAsThis
+		newObject = ctx.IsNewSourceObjectAsThis
 	}
 	if target == uuid.Nil || newObject(target) { // #1432
 		return nil
@@ -201,7 +201,7 @@ func CrewsAsThoughPowerGreater(n int, uses game.CostPowerUse) game.StaticAbility
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
 		Label:     costPowerLabel(uses, fmt.Sprintf("as though its power were %d greater", n)),
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.CostPower = append(c.CostPower, game.CostPowerRule{Uses: uses, Bonus: n})
 		},
@@ -216,7 +216,7 @@ func CrewsUsingToughness(uses game.CostPowerUse) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
 		Label:     costPowerLabel(uses, "using its toughness rather than its power"),
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.CostPower = append(c.CostPower, game.CostPowerRule{Uses: uses, UseToughness: true})
 		},
@@ -241,9 +241,9 @@ func costPowerLabel(uses game.CostPowerUse, how string) string {
 // Vehicle is crewed twice in a turn, which is legal and common — the
 // second crew is how you re-animate a Vehicle that a removal spell
 // turned back into an artifact.
-func eotHasType(list []string, want string) bool {
+func EotHasType(list []string, want string) bool {
 	for _, t := range list {
-		if len(t) == len(want) && equalFoldASCIIEffects(t, want) {
+		if len(t) == len(want) && EqualFoldASCIIEffects(t, want) {
 			return true
 		}
 	}
@@ -252,7 +252,7 @@ func eotHasType(list []string, want string) bool {
 
 // equalFoldASCIIEffects is strings.EqualFold restricted to ASCII.
 // Type and subtype names are ASCII in every Scryfall type line.
-func equalFoldASCIIEffects(a, b string) bool {
+func EqualFoldASCIIEffects(a, b string) bool {
 	for i := 0; i < len(a); i++ {
 		x, y := a[i], b[i]
 		if x >= 'A' && x <= 'Z' {

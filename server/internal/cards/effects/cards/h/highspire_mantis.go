@@ -1,0 +1,23 @@
+package cardsh
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Highspire Mantis — Creature — Insect {2}{R}{W}, 3/3 (Khans of Tarkir,
+// #5554):
+//
+//	"Flying, trample"
+//
+// Flying (CR 702.9b) and trample (CR 702.19b) are engine keywords
+// carried as printed data.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "6adff11d-5126-4a4b-b182-e2700d406995",
+		Name:            "Highspire Mantis",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying", "trample"},
+	})
+}

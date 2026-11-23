@@ -1,0 +1,27 @@
+package testsi
+
+import (
+	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// #2811: Karolina Dean adds {W}{U}{B}{R}{G} at the beginning of its
+// controller's first main phase, and none of it can cast a spell from
+// hand.
+func TestKarolinaDeanAddsFiveRestrictedMana(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.B12Push(g, me.ID, "Karolina Dean, Runaway", "Legendary Creature — Alien Hero", "50b5faff-acaa-426b-9f3e-1005c0392e6c", 3, 3)
+	effectstest.AdvanceTo(t, g, game.StepPrecombatMain)
+	effectstest.PassPriorityAroundTable(t, g)
+	if got := me.ManaPool.Total(); got != 5 {
+		t.Fatalf("pool has %d mana, want five", got)
+	}
+	for _, tok := range me.ManaPool.Units() {
+		if len(tok.Restrictions) != 1 || tok.Restrictions[0] != game.ManaRestrictNotFromHand {
+			t.Errorf("token %+v, want only the not-from-hand restriction", tok)
+		}
+	}
+}

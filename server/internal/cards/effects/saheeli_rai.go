@@ -98,7 +98,7 @@ func init() {
 						Dest:      game.ZoneBattlefield,
 						Limit:     3,
 						Shuffle:   true,
-						Rule:      searchRuleDifferentNames,
+						Rule:      SearchRuleDifferentNames,
 						Reason:    "Saheeli Rai — up to three artifact cards with different names, onto the battlefield",
 					}.Apply(NewContext(g, item))
 				},
@@ -143,8 +143,8 @@ func saheeliHastyArtifactCopy(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	tmpl.TypeLine = saheeliArtifactInAddition(tmpl.TypeLine)
-	made, err := g.CreateTokensForEffect(item.Controller, copiedToken(tmpl), 1, game.TokenEntryOptions{
+	tmpl.TypeLine = SaheeliArtifactInAddition(tmpl.TypeLine)
+	made, err := g.CreateTokensForEffect(item.Controller, CopiedToken(tmpl), 1, game.TokenEntryOptions{
 		Keywords: []string{"haste"},
 	})
 	if err != nil {
@@ -158,7 +158,7 @@ func saheeliHastyArtifactCopy(g *game.Game, item *game.StackItem) error {
 		Controller: item.Controller,
 		Label:      "Saheeli Rai — exile the copy",
 		Cards:      made,
-		Body:       exileListedCardsBody,
+		Body:       ExileListedCardsBody,
 	}.Apply(ctx)
 }
 
@@ -170,7 +170,7 @@ func saheeliHastyArtifactCopy(g *game.Game, item *game.StackItem) error {
 //
 // A permanent that is already an artifact is returned untouched, so
 // copying a Sol Ring does not produce "Artifact Artifact".
-func saheeliArtifactInAddition(printed string) string {
+func SaheeliArtifactInAddition(printed string) string {
 	super, types, sub := game.ParseTypeLine(printed)
 	for _, t := range types {
 		if t == "Artifact" {

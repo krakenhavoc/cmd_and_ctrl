@@ -25,12 +25,12 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"double strike"},
 		SelfCostModifiers: []game.CostModifier{
-			CostsLessEach(creatureCardsInYourGraveyard,
+			CostsLessEach(CreatureCardsInYourGraveyard,
 				"This spell costs {1} less to cast for each creature card in your graveyard."),
 		},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(OnAny(leftGraveyardEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return creatureCardLeftYourGraveyard(ev, source, g)
+			OncePerBatch(OnAny(LeftGraveyardEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return CreatureCardLeftYourGraveyard(ev, source, g)
 			}, "Cyan, Vengeful Samurai — put a +1/+1 counter on Cyan",
 				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}))),
 		},
@@ -39,7 +39,7 @@ func init() {
 
 // creatureCardsInYourGraveyard is the amount behind "for each creature
 // card in your graveyard", never counting the card being cast.
-func creatureCardsInYourGraveyard(q game.CostQuery) int {
+func CreatureCardsInYourGraveyard(q game.CostQuery) int {
 	if q.Game == nil {
 		return 0
 	}

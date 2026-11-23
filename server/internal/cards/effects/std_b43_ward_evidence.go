@@ -48,7 +48,7 @@ func wardEvidencePickFor(n int) game.ChooseCardsThen {
 				return nil
 			}
 			if len(r.Picked) == 0 {
-				return wardCounter(g, targetingItem)
+				return WardCounter(g, targetingItem)
 			}
 			for _, id := range r.Picked {
 				if err := g.ExileCardForEffect(id); err != nil {
@@ -67,7 +67,7 @@ func wardEvidencePickFor(n int) game.ChooseCardsThen {
 func wardCollectEvidenceOrCounter(g *game.Game, source, payer uuid.UUID, n int, targetingItem uuid.UUID) error {
 	options := g.CollectEvidenceOptionsForEffect(payer, uuid.Nil, n)
 	if len(options) == 0 {
-		return wardCounter(g, targetingItem)
+		return WardCounter(g, targetingItem)
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  payer,

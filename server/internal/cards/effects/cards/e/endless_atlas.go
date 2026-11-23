@@ -1,0 +1,33 @@
+package cardse
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Endless Atlas — Artifact {2} (EDHREC rank 2280):
+//
+//	"{2}, {T}: Draw a card. Activate only if you control three or
+//	 more lands with the same name."
+//
+// A basic-heavy deck's card-draw rock. The gate is the activation
+// condition (CR 602.1b, #743): some one name is shared by at least
+// three lands you control. Read off the battlefield's names, so three
+// Islands open it and an Island, a Snow-Covered Island and a Tropical
+// Island do not.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "cb923c4d-1d2e-4039-90bb-72d1981b9738",
+		Name:         "Endless Atlas",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:     "{2}, {T}: Draw a card. Activate only if you control three or more lands with the same name.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
+			Cost:      effects.Plus(effects.ManaCost("{2}"), effects.TapCost()),
+			Condition: effects.GapB186ThreeLandsSharingAName,
+			Effect:    effects.B36DrawOne,
+		}},
+	})
+}

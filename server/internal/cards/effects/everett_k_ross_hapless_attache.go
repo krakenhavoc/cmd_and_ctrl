@@ -29,7 +29,7 @@ func init() {
 				Label:     "Commander creatures you control get +1/+1.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7C_Modify,
-				AppliesTo: msc7CommanderCreatureYouControl,
+				AppliesTo: Msc7CommanderCreatureYouControl,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Power++
 					c.Toughness++
@@ -38,7 +38,7 @@ func init() {
 			{
 				Label:     "Commander creatures you control have lifelink.",
 				Layer:     game.Layer6Ability,
-				AppliesTo: msc7CommanderCreatureYouControl,
+				AppliesTo: Msc7CommanderCreatureYouControl,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Abilities = append(c.Abilities, "lifelink")
 				},
@@ -46,7 +46,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return opponentAttackedYouWithAtLeast(ev, source, g, 2, everettAttackLabel)
+				return OpponentAttackedYouWithAtLeast(ev, source, g, 2, everettAttackLabel)
 			}, everettAttackLabel, Do(DrawCards{N: 1}))),
 		},
 	})
@@ -56,6 +56,6 @@ const everettAttackLabel = "Everett K. Ross, Hapless Attaché — an opponent at
 
 // msc7CommanderCreatureYouControl is the target test of "commander
 // creatures you control".
-func msc7CommanderCreatureYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func Msc7CommanderCreatureYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.IsCommander && target.Controller == source.Controller
 }

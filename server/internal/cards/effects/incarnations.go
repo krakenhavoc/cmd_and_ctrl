@@ -53,7 +53,7 @@ import (
 // therefore commutative with every other grant — which is why the
 // gather's approximate timestamp for a graveyard source is
 // unobservable for this whole family.
-func incarnationAnthem(keyword, land string) game.StaticAbility {
+func IncarnationAnthem(keyword, land string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: "While this is in your graveyard and you control " + articleFor(strings.ToLower(land)) + " " + land + ", creatures you control have " + keyword + ".",
 		Layer: game.Layer6Ability,
@@ -67,7 +67,7 @@ func incarnationAnthem(keyword, land string) game.StaticAbility {
 			return controlsLandType(g, source.Controller, land)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			if !eotHasAbility(c.Abilities, keyword) {
+			if !EotHasAbility(c.Abilities, keyword) {
 				c.Abilities = append(c.Abilities, keyword)
 			}
 		},

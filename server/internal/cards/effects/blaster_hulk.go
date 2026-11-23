@@ -2,7 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-var blasterHulkPaid = energyPaid("pay-unless/blaster-hulk-damage",
+var blasterHulkPaid = EnergyPaid("pay-unless/blaster-hulk-damage",
 	func(g *game.Game, item *game.StackItem) error {
 		return WhenYouDo("Blaster Hulk — 8 damage divided as you choose among up to eight targets",
 			blasterHulkDamageBody).Apply(NewContext(g, item))
@@ -57,6 +57,6 @@ func init() {
 // blasterHulkDamage is the reflexive body: each target its announced
 // share of the 8, from the Hulk (its last-known information if it has
 // left, CR 608.2h).
-func blasterHulkDamage(g *game.Game, item *game.StackItem) error {
+func BlasterHulkDamage(g *game.Game, item *game.StackItem) error {
 	return DealDividedDamage(NewContext(g, item))
 }

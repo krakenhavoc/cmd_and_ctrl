@@ -19,12 +19,12 @@ func init() {
 		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsLess(1, "Equipment spells you cast cost {1} less to cast.",
-				YourSpell(), equipmentSpell()),
+				YourSpell(), EquipmentSpell()),
 			EquipAbilitiesYouActivateCostLess(1, "Equip abilities you activate cost {1} less to activate."),
 		},
 	})
 }
 
-func equipmentSpell() CostPredicate {
+func EquipmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.HasSubtype("Equipment") }
 }

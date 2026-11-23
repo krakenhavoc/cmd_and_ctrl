@@ -15,7 +15,7 @@ import (
 // the groups of other kinds in the same instruction are left alone. Only
 // the source's controller's creations are watched. The templates are
 // built when the replacement applies, not when the card registers.
-func hobA9InsteadCreateTokens(label string, pred func(game.Card) bool, templates func() []game.Card) game.ReplacementEffect {
+func HobA9InsteadCreateTokens(label string, pred func(game.Card) bool, templates func() []game.Card) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventTokenCreated},
 		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
@@ -38,9 +38,9 @@ func hobA9InsteadCreateTokens(label string, pred func(game.Card) bool, templates
 // controls with `subtype`, not counting the source itself: the "another
 // Dwarf" / "two or more other Wolves" of a self-referential static. The
 // permanents are read after the layers, so a changeling counts.
-func hobA9OtherSubtypeYouControl(g *game.Game, source *game.Card, subtype string) int {
+func HobA9OtherSubtypeYouControl(g *game.Game, source *game.Card, subtype string) int {
 	n := 0
-	for _, id := range permanentsControlledByMatching(g, source.Controller, Subtype(subtype)) {
+	for _, id := range PermanentsControlledByMatching(g, source.Controller, Subtype(subtype)) {
 		if id != source.InstanceID {
 			n++
 		}
@@ -52,8 +52,8 @@ func hobA9OtherSubtypeYouControl(g *game.Game, source *game.Card, subtype string
 // <keyword> as long as you control another <subtype>": the source alone,
 // while its controller controls some other permanent with the subtype
 // (Bolg's Company's haste, Dain's Company's lifelink).
-func hobA9WhileYouControlAnother(subtype string) func(target *game.Card, g *game.Game, source *game.Card) bool {
+func HobA9WhileYouControlAnother(subtype string) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && hobA9OtherSubtypeYouControl(g, source, subtype) > 0
+		return target.InstanceID == source.InstanceID && HobA9OtherSubtypeYouControl(g, source, subtype) > 0
 	}
 }

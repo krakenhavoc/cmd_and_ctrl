@@ -14,6 +14,6 @@ import (
 // CR 702.26b) and phases back in during its controller's next untap step
 // (CR 702.26a). PhaseOut skips a source that has left the battlefield or
 // come back as a new object (CR 400.7).
-func thisPhasesOut(g *game.Game, item *game.StackItem) error {
+func ThisPhasesOut(g *game.Game, item *game.StackItem) error {
 	return PhaseOut{Targets: []uuid.UUID{item.SourceCardID}}.Apply(NewContext(g, item))
 }

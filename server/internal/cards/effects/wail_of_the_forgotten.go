@@ -72,20 +72,20 @@ func wailOfTheForgottenLook(item *game.StackItem, ctx *Context, _ int) error {
 		Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 3),
 		Max:    1,
 		Label:  "Wail of the Forgotten — put one into your hand",
-		Key:    takeRestGraveyard,
+		Key:    TakeRestGraveyard,
 	}.Apply(ctx)
 }
 
 // Descended8 is descend 8's mode count — "If there are eight or more
 // permanent cards in your graveyard as you cast this spell" (#1655).
 var Descended8 = game.ModeCondition("descend-8", func(g *game.Game, chooser uuid.UUID) bool {
-	return permanentCardsInGraveyard(g, chooser) >= 8
+	return PermanentCardsInGraveyard(g, chooser) >= 8
 })
 
 // permanentCardsInGraveyard counts the permanent cards (CR 110.4) in
 // `player`'s graveyard — descend's count. Printed characteristics: a
 // card in a graveyard has no layer cache.
-func permanentCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+func PermanentCardsInGraveyard(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
