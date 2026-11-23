@@ -233,6 +233,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// "+3/-3 until end of turn" (S82 GAP): the same trade as Eldrazi
 	// Confluence's first mode.
 	"Spatial Contortion": "partly a benefit and partly a harm",
+	// Mode two, "target creature gets +2/-1 until end of turn" (#5595): the
+	// power is a benefit, the toughness a harm, and it is cast as often to
+	// kill an X/1 as to pump an attacker.
+	"Piracy Charm": "partly a benefit and partly a harm",
 
 	// The target creature is copied, not changed: its copies are the lands it
 	// does not target, until end of turn.

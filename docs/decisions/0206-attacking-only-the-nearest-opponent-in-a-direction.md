@@ -3,7 +3,7 @@
 **Status:** Accepted · 2026-10-20 · S76 — Cards: incubate, face-down and outside the game
 **Issue:** [#4197](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4197) (found on the Guffster's Party deck request, [#4184](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4184))
 **Numbering:** `git fetch origin`, then every `docs/decisions/` file name on all 67 remote heads (`git ls-tree -r --name-only <head> -- docs/decisions`, including `origin/develop` and `origin/main`) and the recent issue comments. The highest in use is **0205**. Reserved on #4197 before any code was written.
-**Builds on:** [ADR 0106](0106-any-player-may-activate-and-cant-attack-its-owner.md) §2 (`canAttackTargetWithLocked`, the one declaration-time predicate), [ADR 0063](0063-durations-and-control.md) and its 2026-10-08 amendment (a CR 508.1c restriction on a PLAYER's attacks, stored as a `PlayerStatic`), [ADR 0199](0199-a-hand-played-revealed.md) (a per-player state with a derived and a granted half), and the CR 614.12 anchor-word choice of [ADR 0071](0071-designations.md)'s 2026-09-27 amendment.
+**Builds on:** [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §2 (`canAttackTargetWithLocked`, the one declaration-time predicate), [ADR 0063](0063-durations-and-control.md) and its 2026-10-08 amendment (a CR 508.1c restriction on a PLAYER's attacks, stored as a `PlayerStatic`), [ADR 0199](0199-a-hand-played-revealed.md) (a per-player state with a derived and a granted half), and the CR 614.12 anchor-word choice of [ADR 0071](0071-designations-that-switch-abilities-on.md)'s 2026-09-27 amendment.
 
 ---
 

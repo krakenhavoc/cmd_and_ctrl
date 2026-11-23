@@ -173,4 +173,6 @@ competitive landscape and the original phased roadmap, is in the
 [§2.3](https://github.com/krakenhavoc/cmd_and_ctrl/blob/ddd802370bb42ee5952d0da21d26f8a5e1607308/PLAN.md#23-why-not-option-c-straight-custom-rules-engine)
 and [§6](https://github.com/krakenhavoc/cmd_and_ctrl/blob/ddd802370bb42ee5952d0da21d26f8a5e1607308/PLAN.md#6-phased-roadmap)).
 Since then the engine has taken over most of the rules. Bots, a user
-database, Discord sign-in, monitoring and a public beta (S70, S71) followed.
+database, Discord sign-in, monitoring and a public beta (S70, S71) followed,
+then Standard 1v1, booster draft and cube (S81,
+[ADR 0222](docs/decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md)).

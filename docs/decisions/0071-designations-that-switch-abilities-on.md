@@ -920,7 +920,7 @@ the whole point of Decision 1's one-gate design paying off a fifth
 time.
 
 **Proof card:** The Mind Stone
-([the_mind_stone.go](../../server/internal/cards/effects/the_mind_stone.go)),
+([the_mind_stone.go](../../server/internal/cards/effects/cards/th/the_mind_stone.go)),
 `CompletenessFull` — indestructible, `{T}: Add {W}`, the Harness
 ability and the ∞ end-step flicker (Thassa, Deep-Dwelling's blink,
 CR 400.7 new-object semantics and all, with `Flicker.Controller` left
