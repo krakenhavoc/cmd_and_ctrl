@@ -25,17 +25,17 @@ import (
 // Append-only.
 
 // godUnlessDevotion is the God clause for `color` ("B", "U", …).
-func godUnlessDevotion(color string) game.StaticAbility {
+func GodUnlessDevotion(color string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Isn't a creature unless your devotion to " + colorWords([]string{color}) + " is 5 or more.",
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			// The colour is a word of the God's text (CR 612.2).
 			return target.InstanceID == source.InstanceID &&
-				devotionTo(g, source.Controller, source.TextColor(color)) < 5
+				DevotionTo(g, source.Controller, source.TextColor(color)) < 5
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			notACreature(c)
+			NotACreature(c)
 		},
 	}
 }
@@ -51,7 +51,7 @@ func godUnlessDevotion(color string) game.StaticAbility {
 // reading that would count the hidden card's symbols (#4761): the
 // wrong devotion, and a way for the table to learn the colours of the
 // card from what a Gray Merchant drains or whether a God is a creature.
-func devotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int {
+func DevotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != controller || c.FaceDownIsPermanent() {
@@ -62,7 +62,7 @@ func devotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int 
 			continue
 		}
 		for _, req := range cost.Required {
-			if symbolIsAnyColor(req.Options, colors) {
+			if SymbolIsAnyColor(req.Options, colors) {
 				n++
 			}
 		}
@@ -70,7 +70,7 @@ func devotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int 
 	return n
 }
 
-func symbolIsAnyColor(options, colors []string) bool {
+func SymbolIsAnyColor(options, colors []string) bool {
 	for _, opt := range options {
 		for _, col := range colors {
 			if opt == col {
@@ -91,7 +91,7 @@ func symbolIsAnyColor(options, colors []string) bool {
 // caller).
 //
 //nolint:unparam // the printed threshold, kept at the call site
-func godUnlessDevotionToColors(threshold int, colors ...string) game.StaticAbility {
+func GodUnlessDevotionToColors(threshold int, colors ...string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: fmt.Sprintf("Isn't a creature unless your devotion to %s is %d or more.", colorWords(colors), threshold),
 		Layer: game.Layer4Type,
@@ -103,10 +103,10 @@ func godUnlessDevotionToColors(threshold int, colors ...string) game.StaticAbili
 			for i, col := range colors {
 				now[i] = source.TextColor(col)
 			}
-			return devotionToColors(g, source.Controller, now...) < threshold
+			return DevotionToColors(g, source.Controller, now...) < threshold
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			notACreature(c)
+			NotACreature(c)
 		},
 	}
 }

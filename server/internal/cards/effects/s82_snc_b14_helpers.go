@@ -14,7 +14,7 @@ import (
 // each coloured symbol takes one mana of its colour off the cost, or one
 // generic when the cost has none left. Panics at init on a string the cost
 // parser rejects or that carries {X}.
-func s82SncB14CostsLessMana(unit, label string, when ...CostPredicate) game.CostModifier {
+func S82SncB14CostsLessMana(unit, label string, when ...CostPredicate) game.CostModifier {
 	u, err := game.ParseCost(unit)
 	if err != nil || u.XSlots > 0 || u.ManaValue() == 0 {
 		panic(fmt.Sprintf("effects.s82SncB14CostsLessMana: %q is not a fixed mana amount (%v)", unit, err))
@@ -27,7 +27,7 @@ func s82SncB14CostsLessMana(unit, label string, when ...CostPredicate) game.Cost
 // s82SncB14AnOpponentDrewAtLeast is "an opponent has drawn <n> or more cards
 // this turn": ONE opponent's own tally (not the table's total) reaches n. A
 // player who has left the game is no opponent. The caster is q.Controller.
-func s82SncB14AnOpponentDrewAtLeast(n int) CostPredicate {
+func S82SncB14AnOpponentDrewAtLeast(n int) CostPredicate {
 	return func(q game.CostQuery) bool {
 		if q.Game == nil {
 			return false
@@ -50,14 +50,14 @@ func s82SncB14AnOpponentDrewAtLeast(n int) CostPredicate {
 // EventLTB records with each permanent's types as it last existed
 // (CR 603.10a). Read after the destruction, so the artifacts the spell just
 // destroyed are in the count along with any that left earlier this turn.
-func s82SncB14ArtifactsPutIntoGraveyardsThisTurn(g *game.Game) int {
+func S82SncB14ArtifactsPutIntoGraveyardsThisTurn(g *game.Game) int {
 	n := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.CardID == uuid.Nil {
 			continue
 		}
 		c, _ := g.LookupCardForEffect(ev.CardID)
-		if leftAsType(ev, c, "artifact") {
+		if LeftAsType(ev, c, "artifact") {
 			n++
 		}
 	}

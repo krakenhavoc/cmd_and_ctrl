@@ -161,6 +161,10 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 //
 // Caller must hold g.mu.
 func (g *Game) ModePickSpecLocked(c *PendingChoice) (TargetSource, *ModeSpec, bool) {
+	if c.isOpponentModePick() {
+		// #5771: an opponent's mode choice for a spell being cast.
+		return g.opponentModePickSpecLocked(c)
+	}
 	if c == nil || c.Kind != PendingChoiceModePick || c.modePickResume == nil || c.modePickResume.ability.Modes == nil {
 		return TargetSource{}, nil, false
 	}
@@ -238,6 +242,13 @@ func (g *Game) ResolveModePick(choiceID, chooserID uuid.UUID, modes []int) error
 	}
 	if err := validateModePick(choice, modes); err != nil {
 		return err
+	}
+	// #5771: an opponent choosing the mode of a parked cast. The answer
+	// casts it again (opponent_mode.go).
+	if choice.isOpponentModePick() {
+		g.resolveOpponentModeLocked(idx, choice.opponentTargetResume, chooserID, modes)
+		g.runStateChecksLocked()
+		return nil
 	}
 	frame := choice.modePickResume
 	// ADR 0097: the answer gate re-checks the LIVE memory, not only the

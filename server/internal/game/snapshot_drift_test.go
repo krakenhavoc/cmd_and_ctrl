@@ -522,6 +522,9 @@ var cardFields = plan(
 	// #5429: carried — a restore that dropped it would close Eye of
 	// Duskmantle's permission on the cards this turn's surveil opened.
 	"Surveilled", carried, "",
+	// Raul, Trouble Shooter: carried — a restore that dropped it would close
+	// his permission on the cards this turn's mills opened.
+	"Milled", carried, "",
 	// #4455: carried — a restore that dropped it would leave a card Kang
 	// Prime gave suspend counting down with no upkeep trigger and no free cast.
 	"SuspendGranted", carried, "",
@@ -989,6 +992,8 @@ var stackItemFields = plan(
 	"Distribution", carried, "",
 	// #2055: which opponent chose each "of an opponent's choice" clause.
 	"TargetChoosers", carried, "",
+	// #5771: the opponent who chose an "An opponent chooses one" mode.
+	"ModeChooser", carried, "",
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
@@ -1019,6 +1024,7 @@ var stackItemFields = plan(
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
 	"ExileAndPlot", carried, "",
+	"ExileAndSuspend", carried, "",
 	"ExileLinkedTo", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",
 	"BottomInsteadOfGraveyard", carried, "",
@@ -1232,6 +1238,8 @@ var pendingChoiceFields = plan(
 	"ModeUsedIndex", carried, "",
 	"ModeUsedLabel", carried, "",
 	"ModeNotChosen", carried, "",
+	// #5771: the caster an opponent's mode_pick is for.
+	"ModePickFor", carried, "",
 	"SacrificeOptions", carried, "",
 	// ADR 0116: the revealed-hand pick's legal cards. Carried for the
 	// same reason SacrificeOptions is — a restored game that forgot

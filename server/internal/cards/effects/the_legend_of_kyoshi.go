@@ -51,7 +51,7 @@ import (
 // earthbend caveat; #1178 cleared it).
 func init() {
 	Register(Spec{
-		OracleID:     theLegendOfKyoshiOracleID,
+		OracleID:     TheLegendOfKyoshiOracleID,
 		Name:         "The Legend of Kyoshi",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -68,14 +68,14 @@ func init() {
 
 // theLegendOfKyoshiOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const theLegendOfKyoshiOracleID = "e41e8754-028c-4399-b530-de9e134d04b0"
+const TheLegendOfKyoshiOracleID = "e41e8754-028c-4399-b530-de9e134d04b0"
 
 // kyoshiChapterOneDraw is "Draw cards equal to the greatest power
 // among creatures you control" — read at resolution, over the
 // controller's board.
 func kyoshiChapterOneDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	n := b42GreatestPowerControlledBy(g, item.Controller)
+	n := B42GreatestPowerControlledBy(g, item.Controller)
 	return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
 }
 

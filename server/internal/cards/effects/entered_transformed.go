@@ -28,7 +28,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cardEnteredTransformed reports whether c, read as the entry event is
 // harvested, entered the battlefield on the back face of a transform
 // card without having been converted to it.
-func cardEnteredTransformed(c game.Card) bool {
+func CardEnteredTransformed(c game.Card) bool {
 	if c.Layout != game.LayoutTransform || c.ActiveFace != 1 || len(c.Faces) < 2 {
 		return false
 	}
@@ -43,7 +43,7 @@ func cardEnteredTransformed(c game.Card) bool {
 // enteredTransformedUnderYourControl is "a permanent you control enters
 // transformed": ev is an entry of a permanent source's controller
 // controls, and it entered on the back face of a transform card.
-func enteredTransformedUnderYourControl(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && cardEnteredTransformed(c)
+func EnteredTransformedUnderYourControl(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
+	return ok && CardEnteredTransformed(c)
 }

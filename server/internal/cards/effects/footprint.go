@@ -31,41 +31,41 @@ import (
 
 // footprinter is a primitive that can declare its step.
 type footprinter interface {
-	footprint() (game.FootprintStep, bool)
+	Footprint() (game.FootprintStep, bool)
 }
 
-func (s GainLife) footprint() (game.FootprintStep, bool) {
+func (s GainLife) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintGainLife, N: s.Amount}, s.Player == uuid.Nil && s.Amount > 0
 }
 
-func (s DrawCards) footprint() (game.FootprintStep, bool) {
+func (s DrawCards) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintDraw, N: s.N}, s.Player == uuid.Nil && s.N > 0
 }
 
-func (s MillCards) footprint() (game.FootprintStep, bool) {
+func (s MillCards) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintMill, N: s.N}, s.Player == uuid.Nil && s.N > 0
 }
 
-func (s Scry) footprint() (game.FootprintStep, bool) {
+func (s Scry) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintScry, N: s.N}, s.Player == uuid.Nil && s.N > 0 && s.ThenTail.IsZero()
 }
 
-func (s Surveil) footprint() (game.FootprintStep, bool) {
+func (s Surveil) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintSurveil, N: s.N}, s.Player == uuid.Nil && s.N > 0 && s.ThenTail.IsZero()
 }
 
-func (s GetEnergy) footprint() (game.FootprintStep, bool) {
+func (s GetEnergy) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintEnergy, N: s.N}, s.Player == uuid.Nil && s.N > 0
 }
 
-func (s CreateToken) footprint() (game.FootprintStep, bool) {
+func (s CreateToken) Footprint() (game.FootprintStep, bool) {
 	key, manual, keywords := game.FootprintTokenOf(s.Template)
 	return game.FootprintStep{
 		Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
 	}, s.Controller == uuid.Nil && s.N > 0
 }
 
-func (s GainLifeEqualToSubject) footprint() (game.FootprintStep, bool) {
+func (s GainLifeEqualToSubject) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintGainLife, AmountFromSubject: true}, s.Stat == SubjectToughness || s.Stat == SubjectPower
 }
 
@@ -73,54 +73,54 @@ func (s GainLifeEqualToSubject) footprint() (game.FootprintStep, bool) {
 // token's own state and emits no event of its own. Counters or granted
 // keywords on the token are not described, so such a spec has no
 // footprint.
-func (s CreateTokenAdvanced) footprint() (game.FootprintStep, bool) {
+func (s CreateTokenAdvanced) Footprint() (game.FootprintStep, bool) {
 	key, manual, keywords := game.FootprintTokenOf(s.Spec.Template)
 	return game.FootprintStep{
 		Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
 	}, s.Controller == uuid.Nil && s.N > 0 && len(s.Spec.Counters) == 0 && len(s.Spec.Keywords) == 0
 }
 
-func (s BecomeTheMonarch) footprint() (game.FootprintStep, bool) {
+func (s BecomeTheMonarch) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintMonarch}, s.Player == uuid.Nil
 }
 
-func (s EachOpponentLosesLife) footprint() (game.FootprintStep, bool) {
+func (s EachOpponentLosesLife) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintLoseLifeEachOpponent, N: s.N}, s.N > 0
 }
 
-func (s CounterOnThis) footprint() (game.FootprintStep, bool) {
+func (s CounterOnThis) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintCounterOnSource, N: s.N, Counter: s.Kind}, s.N > 0 && s.Kind != ""
 }
 
-func (s DamageEachOpponent) footprint() (game.FootprintStep, bool) {
+func (s DamageEachOpponent) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintDamageEachOpponent, N: s.N}, s.N > 0
 }
 
-func (s DamageController) footprint() (game.FootprintStep, bool) {
+func (s DamageController) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintDamageController, N: s.N}, s.N > 0
 }
 
-func (s TargetPlayerLosesLife) footprint() (game.FootprintStep, bool) {
+func (s TargetPlayerLosesLife) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintTargetPlayerLosesLife, N: s.N}, s.N > 0
 }
 
-func (ExileChosenTarget) footprint() (game.FootprintStep, bool) {
+func (ExileChosenTarget) Footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintExileTargets}, true
 }
 
 // footprintOfRow is a row's declared footprint, or nil when the row is
 // anything the check cannot describe.
-func footprintOfRow(t game.TriggeredAbility) []game.FootprintStep {
+func FootprintOfRow(t game.TriggeredAbility) []game.FootprintStep {
 	if t.OptionalPrompt != nil || t.Modes != nil || t.TargetsFrom != nil || t.TargetsFromReadsBoard {
 		return nil
 	}
-	steps, ok := doStepsOf(t.Effect)
+	steps, ok := DoStepsOf(t.Effect)
 	if !ok || len(steps) == 0 {
 		return nil
 	}
 	out := make([]game.FootprintStep, 0, len(steps))
 	for _, s := range steps {
-		more, ok := stepFootprints(s)
+		more, ok := StepFootprints(s)
 		if !ok {
 			return nil
 		}
@@ -144,10 +144,10 @@ type multiFootprinter interface {
 }
 
 // stepFootprints is one Do step's footprint, or false when it has none.
-func stepFootprints(s Applier) ([]game.FootprintStep, bool) {
+func StepFootprints(s Applier) ([]game.FootprintStep, bool) {
 	switch f := s.(type) {
 	case footprinter:
-		step, ok := f.footprint()
+		step, ok := f.Footprint()
 		if !ok {
 			return nil, false
 		}
@@ -166,7 +166,7 @@ func classifyFootprint(d *game.CardDef) {
 		return
 	}
 	for i := range d.Triggered {
-		d.Triggered[i].Footprint = footprintOfRow(d.Triggered[i])
+		d.Triggered[i].Footprint = FootprintOfRow(d.Triggered[i])
 	}
 }
 
@@ -183,7 +183,7 @@ type CounterOnThis struct {
 
 func (s CounterOnThis) Apply(ctx *Context) error {
 	src := ctx.Source()
-	if !onBattlefield(ctx.Game, src) {
+	if !OnBattlefield(ctx.Game, src) {
 		return nil
 	}
 	return AddCounter{Target: src, Kind: s.Kind, N: s.N}.Apply(ctx)
@@ -248,7 +248,7 @@ type EachOpponentLosesLife struct {
 }
 
 func (s EachOpponentLosesLife) Apply(ctx *Context) error {
-	return eachOpponentLosesLife(ctx.Game, ctx.Item, s.N)
+	return EachOpponentLosesLifeNow(ctx.Game, ctx.Item, s.N)
 }
 
 // DamageEachOpponent is "<this> deals N damage to each opponent": one
@@ -259,7 +259,7 @@ type DamageEachOpponent struct {
 }
 
 func (s DamageEachOpponent) Apply(ctx *Context) error {
-	return damageToEachOpponent(ctx.Game, ctx.Item, s.N)
+	return DamageToEachOpponent(ctx.Game, ctx.Item, s.N)
 }
 
 // DamageController is "<this> deals N damage to you": one damage event

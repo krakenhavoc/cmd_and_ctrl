@@ -39,13 +39,13 @@ func init() {
 				TargetPlayer("target player")),
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Amount > 0 && source.AttachedTo.Kind == game.TargetCard && source.AttachedTo.ID == ev.Target
-			}, "Cracked Skull — destroy enchanted creature", crackedSkullDestroy),
+			}, "Cracked Skull — destroy enchanted creature", CrackedSkullDestroy),
 		},
 	})
 }
 
 // crackedSkullDestroy destroys the creature that was dealt damage.
-func crackedSkullDestroy(g *game.Game, item *game.StackItem) error {
+func CrackedSkullDestroy(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}

@@ -69,7 +69,7 @@ func init() {
 			Watches: []game.EventKind{game.EventChangeLife, game.EventDealDamage},
 			Key:     "Vilis, Broker of Blood — draw that many cards",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				_, ok := s22PlayerLostLife(ev, source.Controller, g)
+				_, ok := S22PlayerLostLife(ev, source.Controller, g)
 				return ok
 			},
 			// A fill-in Build (ADR 0041 P9): the amount lost is a
@@ -77,7 +77,7 @@ func init() {
 			// into Params.Amount rather than a closure.
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source, "Vilis, Broker of Blood — draw that many cards")
-				item.Params.Amount, _ = s22PlayerLostLife(ev, source.Controller, g)
+				item.Params.Amount, _ = S22PlayerLostLife(ev, source.Controller, g)
 				return item
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
@@ -108,7 +108,7 @@ func init() {
 // Damage counts the life it COST (game.Event.DamageLifeLoss, #2105):
 // infect damage, and damage to a player whose life total can't change,
 // loses no life (CR 702.90b, CR 119.8).
-func s22PlayerLostLife(ev game.Event, playerID uuid.UUID, g *game.Game) (int, bool) {
+func S22PlayerLostLife(ev game.Event, playerID uuid.UUID, g *game.Game) (int, bool) {
 	if playerID == uuid.Nil || ev.Target != playerID || g.PlayerByIDForEffect(playerID) == nil {
 		return 0, false
 	}

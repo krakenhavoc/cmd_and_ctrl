@@ -2661,6 +2661,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}DamageStepper.svelte`, `${BOARD}ChoicePromptModal.svelte`],
     doc: "the − beside addDamage",
   }),
+  opponentModeChoice: dynamicLabel({
+    stem: "Choose the mode of ",
+    match: "prefix",
+    shape: "Choose the mode of <caster>'s <spell>",
+    make: (caster: string, spell: string) => `Choose the mode of ${caster}'s ${spell}`,
+    example: ["Alice", "Fatal Lore"],
+    kind: "aria",
+    role: "radiogroup",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'the bullets of an "An opponent chooses one" spell another player is casting (#5771, CR 700.2e), offered to the opponent who chooses its mode',
+  }),
   awayOffer: label({
     name: "move on without an away player",
     kind: "aria",

@@ -49,7 +49,7 @@ func init() {
 					Label:   "{2}, {T}: This creature deals 1 damage to any target",
 					Cost:    Plus(ManaCost("{2}"), TapCost()),
 					Targets: TargetAny(),
-					Effect:  sourceDealsOneToFirstTarget,
+					Effect:  SourceDealsOneToFirstTarget,
 				}},
 				Text: "{2}, {T}: This creature deals 1 damage to any target.",
 			},
@@ -57,9 +57,9 @@ func init() {
 				Key: thornbiteStaffUntap,
 				Triggered: []game.TriggeredAbility{
 					On(game.EventLTB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
-						_, died := diedCreature(ev, g)
+						_, died := DiedCreature(ev, g)
 						return died
-					}, "Thornbite Staff — untap this creature", b31UntapSelf),
+					}, "Thornbite Staff — untap this creature", B31UntapSelf),
 				},
 				Text: "Whenever a creature dies, untap this creature.",
 			},
@@ -70,7 +70,7 @@ func init() {
 			AppliesTo: shamanCreatureEntered,
 			Key:       "Thornbite Staff — attach to the Shaman",
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return attachSourceTo(g, item, item.Trigger.Event.CardID)
+				return AttachSourceTo(g, item, item.Trigger.Event.CardID)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Thornbite Staff — attach it to the Shaman?"},
 		}},
@@ -90,6 +90,6 @@ func shamanCreatureEntered(ev game.Event, source *game.Card, _ game.Characterist
 }
 
 // attachSourceTo attaches the ability's source Equipment to `host`.
-func attachSourceTo(g *game.Game, item *game.StackItem, host uuid.UUID) error {
+func AttachSourceTo(g *game.Game, item *game.StackItem, host uuid.UUID) error {
 	return g.AttachSourceForEffect(item, game.TargetRef{Kind: game.TargetCard, ID: host})
 }

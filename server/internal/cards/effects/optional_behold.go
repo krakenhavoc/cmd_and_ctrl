@@ -47,7 +47,7 @@ func OptionalBeholdChosenType(n int) game.AdditionalCost {
 		Optional: true,
 		Key:      game.BeholdKey,
 		Reveal:   &game.RevealCost{Behold: true, ChosenType: true, Creature: true, Count: n},
-		Label:    fmt.Sprintf("Choose a creature type and behold %s creatures of that type", numberWord(n)),
+		Label:    fmt.Sprintf("Choose a creature type and behold %s creatures of that type", NumberWord(n)),
 	}
 }
 
@@ -94,7 +94,7 @@ func (c *Context) WasBeheld() bool {
 //     narrowing, which OptionalBehold never writes;
 //   - two of them, or one beside a mandatory reveal / behold branch:
 //     a cast names one card on reveal_ids.
-func checkOptionalBehold(spec Spec) {
+func CheckOptionalBehold(spec Spec) {
 	seen := 0
 	for _, oc := range spec.OptionalCosts {
 		if oc.Key != game.BeholdKey && oc.Reveal == nil {

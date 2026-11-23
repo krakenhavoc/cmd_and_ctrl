@@ -86,7 +86,7 @@ func init() {
 // they control, the event's amount drops to 1. `src` is the emblem; its
 // controller is its owner and never changes (CR 114.2).
 func ajaniSteadfastEmblemPrevention() game.ReplacementEffect {
-	return preventAllButOneOfTheDamage(
+	return PreventAllButOneOfTheDamage(
 		"Ajani Steadfast emblem — prevent all but 1 of that damage",
 		"Prevent all but 1 of the damage dealt to you or a planeswalker you control.",
 		func(target uuid.UUID, g *game.Game, src *game.Card) bool {
@@ -102,7 +102,7 @@ func ajaniSteadfastEmblemPrevention() game.ReplacementEffect {
 // damage" replacement, for any recipient `to` accepts (Ajani Steadfast's
 // emblem, Hyperion, Supreme Hero): damage to a recipient it names drops to
 // 1, and damage of 1 or less is left alone.
-func preventAllButOneOfTheDamage(label, rowLabel string, to func(target uuid.UUID, g *game.Game, src *game.Card) bool) game.ReplacementEffect {
+func PreventAllButOneOfTheDamage(label, rowLabel string, to func(target uuid.UUID, g *game.Game, src *game.Card) bool) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:    []game.EventKind{game.EventDealDamage},
 		Prevention: true, // CR 615.1a — "prevent"; CR 615.12 reads it
@@ -126,7 +126,7 @@ func preventAllButOneOfTheDamage(label, rowLabel string, to func(target uuid.UUI
 // activator controls and a loyalty counter on each planeswalker they
 // control other than this Ajani, the set read once as it resolves.
 func ajaniSteadfastCounters(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item).asGroupMember()
+	ctx := NewContext(g, item).AsGroupMember()
 	you := item.Controller
 	var creatures, walkers []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {

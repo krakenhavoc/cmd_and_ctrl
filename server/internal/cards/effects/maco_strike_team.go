@@ -26,7 +26,7 @@ func init() {
 		Name:         "MACO Strike Team",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBecomesTarget, macoYourCreatureTargetedByAnOpponent,
+			On(game.EventBecomesTarget, MacoYourCreatureTargetedByAnOpponent,
 				"MACO Strike Team — create a tapped 1/1 red Officer creature token",
 				Do(CreateTokenAdvanced{Spec: TokenSpec{Template: TokenCard("1/1 red Officer"), Tapped: true}, N: 1})),
 		},
@@ -35,7 +35,7 @@ func init() {
 
 // macoYourCreatureTargetedByAnOpponent is "a creature you control becomes
 // the target of a spell or ability an opponent controls".
-func macoYourCreatureTargetedByAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func MacoYourCreatureTargetedByAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventBecomesTarget || source == nil || ev.CardID == uuid.Nil {
 		return false
 	}
@@ -43,7 +43,7 @@ func macoYourCreatureTargetedByAnOpponent(ev game.Event, source *game.Card, _ ga
 	if you == uuid.Nil || ev.Actor == uuid.Nil || ev.Actor == you || g.PlayerByIDForEffect(ev.Actor) == nil {
 		return false
 	}
-	if !onBattlefield(g, ev.CardID) {
+	if !OnBattlefield(g, ev.CardID) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)

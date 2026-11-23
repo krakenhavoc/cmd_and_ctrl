@@ -46,7 +46,7 @@ func init() {
 		}},
 		Static: []game.StaticAbility{{
 			Layer:          game.Layer6Ability,
-			AppliesTo:      treasuresYouControl,
+			AppliesTo:      TreasuresYouControl,
 			GrantAbilities: []string{grant},
 			ActiveWhen:     Level(2),
 		}},
@@ -55,11 +55,11 @@ func init() {
 			LevelUp(3, ManaCost("{4}{R}")),
 		},
 		Triggered: []game.TriggeredAbility{
-			AtLevel(3, On(game.EventCast, spellPaidWithTreasureMana,
+			AtLevel(3, On(game.EventCast, SpellPaidWithTreasureMana,
 				"Alchemist's Talent — damage equal to that spell's mana value to each opponent",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					n := triggeringSpellManaValue(g, item)
+					n := TriggeringSpellManaValue(g, item)
 					return g.DamageInstanceForEffect(func() error {
 						for _, opp := range ctx.Opponents() {
 							if err := (DealDamage{Source: item.SourceCardID, Target: opp, Amount: n}).Apply(ctx); err != nil {
@@ -80,7 +80,7 @@ func init() {
 // The cast announcement's payment record keeps the mana's source kinds as
 // a snapshot, so a Treasure that sacrificed itself to pay still counts
 // (mana_source.go). A payment the engine did not see reads as "no".
-func spellPaidWithTreasureMana(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SpellPaidWithTreasureMana(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -89,6 +89,6 @@ func spellPaidWithTreasureMana(ev game.Event, source *game.Card, _ game.Characte
 
 // treasuresYouControl is "Treasures you control" — Alchemist's
 // Talent's level-2 grant.
-func treasuresYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func TreasuresYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.Controller == source.Controller && target.HasSubtype("Treasure")
 }

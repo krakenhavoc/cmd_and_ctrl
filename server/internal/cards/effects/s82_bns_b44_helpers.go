@@ -8,12 +8,12 @@ import (
 
 // dreadfulApathyOracle is Dreadful Apathy's oracle ID: it prints Cooped Up's
 // text and shares its exile body (coopedUpExileEnchanted).
-const dreadfulApathyOracle = "9c41b4ad-a73f-4274-9b71-9c9834910e05"
+const DreadfulApathyOracle = "9c41b4ad-a73f-4274-9b71-9c9834910e05"
 
 // coopedUpExileEnchanted is "Exile enchanted creature", read through the
 // Aura's last-known attachment when it has left (CR 608.2h).
-func coopedUpExileEnchanted(g *game.Game, item *game.StackItem) error {
-	id := coopedUpHost(g, item.SourceCardID)
+func CoopedUpExileEnchanted(g *game.Game, item *game.StackItem) error {
+	id := CoopedUpHost(g, item.SourceCardID)
 	if id == uuid.Nil {
 		return nil
 	}
@@ -22,7 +22,7 @@ func coopedUpExileEnchanted(g *game.Game, item *game.StackItem) error {
 
 // tormentOfScarabsUpkeep is the enchanted player's choice: lose 3 life,
 // sacrifice a nonland permanent, or discard a card.
-func tormentOfScarabsUpkeep(g *game.Game, item *game.StackItem) error {
+func TormentOfScarabsUpkeep(g *game.Game, item *game.StackItem) error {
 	victim := item.Trigger.Event.Actor
 	p := g.PlayerByIDForEffect(victim)
 	if p == nil || p.Eliminated {
@@ -80,14 +80,14 @@ var tormentOfScarabsDiscarded = game.RegisterDiscardThen("choose-cards/torment-o
 
 // eidolonOfAstralWindsPump is the constellation effect: base 4/4 and flying
 // until end of turn for the target creature you control.
-func eidolonOfAstralWindsPump(g *game.Game, item *game.StackItem) error {
+func EidolonOfAstralWindsPump(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	target := FirstLegalBattlefieldTarget(ctx)
 	if target == uuid.Nil {
 		return nil
 	}
 	const label = "Eidolon of Astral Winds — base power and toughness 4/4 and flying until end of turn"
-	if err := untilEndOfTurn(ctx, target, nil, label, game.SetBasePTMods(4, 4)...); err != nil {
+	if err := UntilEndOfTurn(ctx, target, nil, label, game.SetBasePTMods(4, 4)...); err != nil {
 		return err
 	}
 	return GrantKeywordUntilEOT{Target: target, Keywords: []string{"flying"}, Label: label}.Apply(ctx)
@@ -95,17 +95,17 @@ func eidolonOfAstralWindsPump(g *game.Game, item *game.StackItem) error {
 
 // smokeShroudReturn returns Smoke Shroud from the graveyard attached to the
 // Ninja that entered.
-func smokeShroudReturn(g *game.Game, item *game.StackItem) error {
+func SmokeShroudReturn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ninja := item.Trigger.Event.CardID
-	if !onBattlefield(g, ninja) {
+	if !OnBattlefield(g, ninja) {
 		return nil
 	}
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
 	}
 	card, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || !canBeAttachedTo(g, item.Controller, card, ninja) {
+	if !ok || !CanBeAttachedTo(g, item.Controller, card, ninja) {
 		return nil
 	}
 	return ReturnFromGraveyardTogether{
@@ -116,10 +116,10 @@ func smokeShroudReturn(g *game.Game, item *game.StackItem) error {
 
 // constellationTriggers is the condition of a constellation trigger:
 // "whenever this creature or another enchantment you control enters".
-func constellationTriggers(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func ConstellationTriggers(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return true
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsEnchantment()
 }

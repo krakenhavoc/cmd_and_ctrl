@@ -1,0 +1,145 @@
+package cardsch
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Charismatic Conqueror — Creature — Vampire Soldier {1}{W}, 2/2:
+//
+//	"Vigilance
+//	 Whenever an artifact or creature an opponent controls enters
+//	 untapped, they may tap that permanent. If they don't, you create
+//	 a 1/1 white Vampire creature token with lifelink."
+//
+// A tax on every opposing board development, and the decision is the
+// opponent's — #568's yes/no half, asked of whoever controls the
+// permanent that entered rather than of a target. Until MayChoice
+// gained Player addressing (#796) there was no prompt that could ask
+// it: pay_unless speaks about mana, and a trigger's CR 603.5 "you may"
+// belongs to the trigger's controller, who is the wrong player here
+// and would have been handed their opponent's decision.
+//
+// Two things the card needs that the engine does not do for it:
+//
+//   - "enters UNTAPPED" is read when the trigger FIRES, not at
+//     resolution. A permanent that entered tapped never triggers,
+//     however it is untapped afterwards; one that entered untapped and
+//     was tapped in response still asks the question, and the answer
+//     "tap it" then taps nothing and still makes no token.
+//   - the permanent can LEAVE between the trigger and the answer.
+//     "Tap that permanent" then happens to nothing — which is still an
+//     answer the player gave, so it must not fall through to the
+//     token.
+//
+// The permanent is read back from item.Trigger.Event.CardID at
+// resolution, never captured in a closure: a pointer into a zone
+// slice would not survive the clone an undo restores from, and a
+// closed-over ID would not survive a restore at all (ADR 0041 P9).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "3dcc35f3-74dc-46a8-8aa9-3411189f0547",
+		Name:            "Charismatic Conqueror",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"vigilance"},
+		Triggered: []game.TriggeredAbility{
+			{
+				Watches:   []game.EventKind{game.EventETB},
+				AppliesTo: charismaticConquerorWatch,
+				Key:       charismaticConquerorLabel,
+				Effect:    charismaticConquerorEffect,
+			},
+		},
+	})
+}
+
+// charismaticConquerorLabel is the stack-overlay copy.
+const charismaticConquerorLabel = "Charismatic Conqueror — they may tap it, or you get a Vampire"
+
+// charismaticConquerorWatch is the trigger condition: an artifact or
+// creature an OPPONENT controls entered UNTAPPED.
+func charismaticConquerorWatch(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || c.Controller == source.Controller || c.Tapped {
+		return false
+	}
+	return c.IsArtifact() || c.IsCreature()
+}
+
+// charismaticConquerorEffect reads the entering permanent off
+// item.Trigger.Event rather than a closure, so a restored item asks
+// again about the same object (ADR 0041 P9).
+func charismaticConquerorEffect(g *game.Game, item *game.StackItem) error {
+	entered := item.Trigger.Event.CardID
+	if entered == uuid.Nil {
+		return nil
+	}
+	return charismaticConquerorAsk(g, item, entered)
+}
+
+// charismaticConquerorAsk is the trigger's body: ask the permanent's
+// controller.
+//
+// Caller holds g.mu.
+func charismaticConquerorAsk(g *game.Game, item *game.StackItem, entered uuid.UUID) error {
+	ctx := effects.NewContext(g, item)
+	c, ok := g.LookupCardForEffect(entered)
+	if !ok || c.Controller == item.Controller {
+		// It has left, or it changed hands to the Conqueror's own
+		// controller. There is nobody to ask, so nothing happens —
+		// not the token, which is the "if they don't" branch of a
+		// question that was never put.
+		return nil
+	}
+	name := c.Name
+	if name == "" {
+		name = "that permanent"
+	}
+	return effects.MayChoice{
+		Player:   c.Controller,
+		Question: "Charismatic Conqueror — tap " + name + "?",
+		YesLabel: "Tap it",
+		NoLabel:  "They get a Vampire",
+		Then:     charismaticConquerorAnswer,
+		Carry:    []uuid.UUID{entered},
+	}.Apply(ctx)
+}
+
+// charismaticConquerorTap is the "they tap it" branch. A permanent
+// that has left, or is already tapped, taps nothing — and still makes
+// no token: the player answered, and the answer was yes.
+func charismaticConquerorTap(entered uuid.UUID) func(ctx *effects.Context) error {
+	return func(ctx *effects.Context) error {
+		if z := ctx.Game.FindCardZoneForEffect(entered); z == nil || z.Kind != game.ZoneBattlefield {
+			return nil
+		}
+		return effects.TapTarget{Target: entered}.Apply(ctx)
+	}
+}
+
+// charismaticConquerorToken is the "if they don't" branch.
+//
+// Caller holds g.mu.
+func charismaticConquerorToken(ctx *effects.Context) error {
+	return effects.CreateToken{
+		Controller: ctx.Controller(),
+		Template:   effects.TokenCard("1/1 white Vampire with lifelink"),
+		N:          1,
+	}.Apply(ctx)
+}
+
+// charismaticConquerorAnswer is the permanent's controller's answer: tap it
+// (the carried ID), or the Conqueror's controller gets a Vampire. Keyed
+// (#4291).
+var charismaticConquerorAnswer = effects.MayYesNo("confirm/charismatic-conqueror-tap",
+	func(ctx *effects.Context, r game.ConfirmAnswer) error {
+		return charismaticConquerorTap(effects.CarryAt(r, 0))(ctx)
+	},
+	func(ctx *effects.Context, _ game.ConfirmAnswer) error { return charismaticConquerorToken(ctx) })

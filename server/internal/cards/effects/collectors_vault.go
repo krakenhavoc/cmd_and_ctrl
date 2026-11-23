@@ -19,13 +19,13 @@ func init() {
 		OracleID:     "f460ff80-8175-43f7-9810-540cf3817085",
 		Name:         "Collector's Vault",
 		Completeness: CompletenessFull,
-		Activated:    []ActivatedAbility{lootAndTreasureAbility()},
+		Activated:    []ActivatedAbility{LootAndTreasureAbility()},
 	})
 }
 
 // lootAndTreasureAbility is Collector's Vault's one ability; Daily Bugle
 // Newspaper (Marvel Super Heroes, #4455) prints the same text.
-func lootAndTreasureAbility() ActivatedAbility {
+func LootAndTreasureAbility() ActivatedAbility {
 	return ActivatedAbility{
 		Label:   "{2}, {T}: Draw a card, then discard a card. Create a Treasure token.",
 		Purpose: game.Purpose{Answers: game.AnswerValue},
@@ -33,7 +33,7 @@ func lootAndTreasureAbility() ActivatedAbility {
 		Effect: Do(
 			// The Treasure waits for the loot's prompts (CR 608.2c, #4155).
 			Instruction(func(ctx *Context) error {
-				return lootOne(ctx.Game, ctx.Item, 1)
+				return LootOne(ctx.Game, ctx.Item, 1)
 			}),
 			CreateToken{Template: TreasureToken(), N: 1},
 		),

@@ -42,11 +42,11 @@ import (
 
 // graveyardArrivalKinds are the three event kinds an arrival in a graveyard,
 // from any zone, is announced by.
-var graveyardArrivalKinds = []game.EventKind{game.EventMill, game.EventZoneMove, game.EventDiscardCard}
+var GraveyardArrivalKinds = []game.EventKind{game.EventMill, game.EventZoneMove, game.EventDiscardCard}
 
 // graveyardArrivals describes the cards a "put into your graveyard from ..."
 // clause counts. The zero value is every card, from anywhere.
-type graveyardArrivals struct {
+type GraveyardArrivals struct {
 	// From lists the zones the card came from; empty means from anywhere.
 	From []game.ZoneKind
 	// Except lists zones it must not have come from: "from anywhere other
@@ -65,7 +65,7 @@ type graveyardArrivals struct {
 
 // arrival reports whether ev is a card owned by `owner` arriving in its
 // graveyard that the clause counts.
-func (a graveyardArrivals) arrival(ev game.Event, g *game.Game, owner uuid.UUID) bool {
+func (a GraveyardArrivals) arrival(ev game.Event, g *game.Game, owner uuid.UUID) bool {
 	switch ev.Kind {
 	case game.EventMill, game.EventZoneMove, game.EventDiscardCard:
 	default:
@@ -90,7 +90,7 @@ func (a graveyardArrivals) arrival(ev game.Event, g *game.Game, owner uuid.UUID)
 
 // When is the clause as a trigger's AppliesTo: ev is a card the source's
 // controller owns arriving in their graveyard. Watch graveyardArrivalKinds.
-func (a graveyardArrivals) When() When {
+func (a GraveyardArrivals) When() When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return a.arrival(ev, g, source.Controller)
 	}
@@ -101,7 +101,7 @@ func (a graveyardArrivals) When() When {
 // landed. A trigger's effect reads it as it resolves, from the triggering
 // event's Batch, so the first arrival of a batch fires the ability and every
 // later arrival of that batch is in the list.
-func (a graveyardArrivals) InBatch(g *game.Game, batch uint64, owner uuid.UUID) []uuid.UUID {
+func (a GraveyardArrivals) InBatch(g *game.Game, batch uint64, owner uuid.UUID) []uuid.UUID {
 	events := g.EventsThisTurn()
 	var lastMove map[uuid.UUID]int
 	if a.Present {
@@ -135,18 +135,18 @@ func (a graveyardArrivals) InBatch(g *game.Game, batch uint64, owner uuid.UUID) 
 
 // creatureCardsToYourGraveyard is "creature cards are put into your
 // graveyard from anywhere" (Voracious Brood).
-var creatureCardsToYourGraveyard = graveyardArrivals{Match: isCreatureCard}
+var CreatureCardsToYourGraveyard = GraveyardArrivals{Match: IsCreatureCard}
 
 // artifactCardsToYourGraveyardNotFromTheBattlefield is the second half of
 // "an artifact card is put into your graveyard from anywhere other than the
 // battlefield" (Ultron's Auxiliary, Ultron the Annihilator).
-var artifactCardsToYourGraveyardNotFromTheBattlefield = graveyardArrivals{
+var ArtifactCardsToYourGraveyardNotFromTheBattlefield = GraveyardArrivals{
 	Except: []game.ZoneKind{game.ZoneBattlefield},
-	Match:  isArtifactCard,
+	Match:  IsArtifactCard,
 }
 
 // isArtifactCard is the artifact filter the arrival readers are asked with.
-func isArtifactCard(c game.Card) bool { return c.IsArtifact() }
+func IsArtifactCard(c game.Card) bool { return c.IsArtifact() }
 
 // WhenAnotherArtifactIsPutIntoYourGraveyard is "Whenever another artifact is
 // put into your graveyard from the battlefield or an artifact card is put
@@ -163,8 +163,8 @@ func isArtifactCard(c game.Card) bool { return c.IsArtifact() }
 // graveyardArrivals, which a token can never be (CR 108.2b), the permanent's
 // own battlefield death excluded because the first clause already took it.
 func WhenAnotherArtifactIsPutIntoYourGraveyard(label string, effect Effect) game.TriggeredAbility {
-	kinds := append([]game.EventKind{game.EventLTB}, graveyardArrivalKinds...)
-	cards := artifactCardsToYourGraveyardNotFromTheBattlefield.When()
+	kinds := append([]game.EventKind{game.EventLTB}, GraveyardArrivalKinds...)
+	cards := ArtifactCardsToYourGraveyardNotFromTheBattlefield.When()
 	return OnAny(kinds, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 		if ev.Kind != game.EventLTB {
 			return cards(ev, source, lki, g)
@@ -173,6 +173,6 @@ func WhenAnotherArtifactIsPutIntoYourGraveyard(label string, effect Effect) game
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && c.Owner == source.Controller && leftAsType(ev, c, "artifact")
+		return ok && c.Owner == source.Controller && LeftAsType(ev, c, "artifact")
 	}, label, effect)
 }

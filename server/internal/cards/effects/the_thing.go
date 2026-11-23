@@ -29,7 +29,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{
-			mscM13CombatIfCastNoncreature("The Thing — put four +1/+1 counters on The Thing",
+			MscM13CombatIfCastNoncreature("The Thing — put four +1/+1 counters on The Thing",
 				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 4})),
 			WheneverThisAttacks(theThingPayLabel, theThingPayOffer),
 		},
@@ -60,18 +60,18 @@ var theThingPaid = PayUnlessBranches("pay-unless/the-thing-double-counters",
 
 // theThingDoubleBody is "when you do, double the number of each kind of
 // counter on any number of target permanents you control".
-var theThingDoubleBody = game.ReflexiveBody("the-thing/double-counters", simpleBody(theThingDouble),
-	constTargets(func() *game.TargetSpec {
+var theThingDoubleBody = game.ReflexiveBody("the-thing/double-counters", SimpleBody(TheThingDouble),
+	ConstTargets(func() *game.TargetSpec {
 		return PermanentYouControl("any number of target permanents you control").WithCount(0, 0)
 	}))
 
-func theThingDouble(g *game.Game, item *game.StackItem) error {
+func TheThingDouble(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		if err := b30DoubleEachCounterKindOn(ctx, t.ID); err != nil {
+		if err := B30DoubleEachCounterKindOn(ctx, t.ID); err != nil {
 			return err
 		}
 	}

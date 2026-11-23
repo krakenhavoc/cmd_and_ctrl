@@ -31,21 +31,21 @@ func init() {
 			Label:   "{1}{U}, {T}: Move a +1/+1 counter from this creature onto target creature.",
 			Cost:    Plus(ManaCost("{1}{U}"), TapCost()),
 			Targets: TargetCreature("target creature"),
-			Effect:  simicFluxmageMove,
+			Effect:  SimicFluxmageMove,
 		}},
 	})
 }
 
 // simicFluxmageMove is the move: place one +1/+1 counter on the target,
 // then, if it landed, take one off the Fluxmage.
-func simicFluxmageMove(g *game.Game, item *game.StackItem) error {
+func SimicFluxmageMove(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	targets := ctx.LegalTargets()
-	if len(targets) == 0 || sourceIsNewObject(g, item) {
+	if len(targets) == 0 || SourceIsNewObject(g, item) {
 		return nil
 	}
 	self, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || !onBattlefield(g, item.SourceCardID) || self.Counters[game.CounterPlusOne] <= 0 {
+	if !ok || !OnBattlefield(g, item.SourceCardID) || self.Counters[game.CounterPlusOne] <= 0 {
 		return nil
 	}
 	then := ctx.Tail(simicFluxmageTakeOne)

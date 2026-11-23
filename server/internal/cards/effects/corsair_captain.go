@@ -37,7 +37,7 @@ func init() {
 					return false // "OTHER Pirates"
 				}
 				// "Pirates" is a word of the source's text (CR 612.2, #3984).
-				return target.Controller == source.Controller && isPirate(game.ThroughTextOf(source, *target))
+				return target.Controller == source.Controller && IsPirate(game.ThroughTextOf(source, *target))
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power++
@@ -64,6 +64,6 @@ func init() {
 // "Pirate" is a word of the text of whichever card asks, read through
 // the lens a caller lends with game.ThroughTextOf (CR 612.2, #3984); a
 // card asked with no lens reads the printed word.
-func isPirate(c game.Card) bool {
+func IsPirate(c game.Card) bool {
 	return c.IsCreature() && c.HasSubtypeWord("Pirate")
 }

@@ -315,6 +315,13 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// by targeting, not a layer, and its cases are in
 		// cant_have_1651_test.go here and in cards/effects.
 		ModCantHaveKeywords: true, ModWaiveHexproof: true,
+		// #5948: Shay Cormac's "lose protection and ward". Its cases are in
+		// lose_keyword_families_test.go here and in cards/effects.
+		ModRemoveKeywordPrefixes: true, ModSuppressWard: true,
+		// #5948: Tax Collector's timed cost increase, read by the cast
+		// pricer. Its cases are in scoped_cost_tax_test.go here and in
+		// cards/effects.
+		ModSpellsCostMoreForOpponents: true,
 		// #3860: read by targeting, like the waiver. Its cases are in
 		// targeting_bar_test.go.
 		ModCantBeTargetedByOpponents: true,
@@ -338,6 +345,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// unpreventable_damage_test.go and cant_gain_life_test.go.
 		ModDamageCantBePrevented: true, ModDamageCantBeRedirected: true,
 		ModCantGainLife: true, ModGainNoLife: true,
+		// Everybody Lives!: the loss twin of "can't gain life", read by the
+		// life gate, the damage tail and the pay-life check. Its cases are
+		// in the effects package's S82 GAP batch 95 tests.
+		ModCantLoseLife: true,
 		// #4307: Squid Fire Knight's dice replacement, read by no layer.
 		// Its cases are in dice_roll_test.go and cards/effects.
 		ModRollExtraDieIgnoreOne: true,
@@ -377,6 +388,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
+		// Don't Blink: the entering-from-exile replacement. Its cases are
+		// in the effects package's S82 GAP batch 94 tests.
+		ModShuffleInsteadOfEnteringFromExile: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,

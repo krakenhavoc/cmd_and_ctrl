@@ -28,7 +28,7 @@ func init() {
 					Max:      0,
 					Optional: true,
 					Label:    "Genesis Ultimatum — put any number of permanent cards onto the battlefield (the rest go into your hand)",
-					ThenTail: putRestIntoHandTail,
+					ThenTail: PutRestIntoHandTail,
 				}.Apply(ctx)
 			}),
 			Instruction(func(ctx *Context) error {
@@ -40,4 +40,4 @@ func init() {
 
 // putRestIntoHandTail is "the rest into your hand" as a keyed tail. An
 // on-disk key.
-var putRestIntoHandTail = PutFromLibraryTail("put-from-library/rest-into-hand", putRestIntoHand)
+var PutRestIntoHandTail = PutFromLibraryTail("put-from-library/rest-into-hand", putRestIntoHand)

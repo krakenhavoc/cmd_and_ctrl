@@ -12,7 +12,7 @@ import (
 // trekB46FaerieToken is the 1/1 blue Faerie creature token with flying
 // that Worf, Still Not Merry; La Forge, Thoughtful as Ever; and Data,
 // Professor of Humanities create.
-const trekB46FaerieToken = "1/1 blue Faerie with flying"
+const TrekB46FaerieToken = "1/1 blue Faerie with flying"
 
 // onceEachTurnMayDrawThatMany is "Whenever you put one or more +1/+1
 // counters on <a creature `match` admits>, you may draw that many cards.
@@ -29,30 +29,30 @@ const trekB46FaerieToken = "1/1 blue Faerie with flying"
 // is per object (NoteDoneThisTurn) under doneLabel, and the gate is also
 // read as the ability triggers, so no trigger is made once the turn's
 // draw is done.
-func onceEachTurnMayDrawThatMany(match func(g *game.Game, source *game.Card, c game.Card) bool, label, doneLabel, question string) game.TriggeredAbility {
+func OnceEachTurnMayDrawThatMany(match func(g *game.Game, source *game.Card, c game.Card) bool, label, doneLabel, question string) game.TriggeredAbility {
 	t := WheneverYouPutCountersOfKindOnACreature(game.CounterPlusOne, match, label,
 		func(g *game.Game, item *game.StackItem) error {
-			if b28DoneThisTurn(g, item.SourceCardID, doneLabel) {
+			if B28DoneThisTurn(g, item.SourceCardID, doneLabel) {
 				return nil
 			}
-			n := plusOneCountersPutInTheTriggeringBatch(g, item)
+			n := PlusOneCountersPutInTheTriggeringBatch(g, item)
 			if n <= 0 {
 				return nil
 			}
-			b28NoteDoneThisTurn(g, item.SourceCardID, doneLabel)
+			B28NoteDoneThisTurn(g, item.SourceCardID, doneLabel)
 			return DrawCards{N: n}.Apply(NewContext(g, item))
 		})
 	when := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
-		return when(ev, source, ch, g) && !b28DoneThisTurn(g, source.InstanceID, doneLabel)
+		return when(ev, source, ch, g) && !B28DoneThisTurn(g, source.InstanceID, doneLabel)
 	}
-	return OptionalDrawThatMany(t, question, plusOneCountersPutInTheTriggeringBatch)
+	return OptionalDrawThatMany(t, question, PlusOneCountersPutInTheTriggeringBatch)
 }
 
 // plusOneCountersPutInTheTriggeringBatch is how many +1/+1 counters the
 // trigger's controller put in the placement that triggered it: "that
 // many" (#4016, OptionalDrawThatMany).
-func plusOneCountersPutInTheTriggeringBatch(g *game.Game, item *game.StackItem) int {
+func PlusOneCountersPutInTheTriggeringBatch(g *game.Game, item *game.StackItem) int {
 	if item.Trigger == nil {
 		return 0
 	}
@@ -61,7 +61,7 @@ func plusOneCountersPutInTheTriggeringBatch(g *game.Game, item *game.StackItem) 
 
 // trekB46IsThis is the match for "on <this creature>": the creature the
 // counters went on is the trigger's source itself.
-func trekB46IsThis(_ *game.Game, source *game.Card, c game.Card) bool {
+func TrekB46IsThis(_ *game.Game, source *game.Card, c game.Card) bool {
 	return source != nil && c.InstanceID == source.InstanceID
 }
 
@@ -72,7 +72,7 @@ func trekB46IsThis(_ *game.Game, source *game.Card, c game.Card) bool {
 // new object it is.
 //
 // Caller must hold g.mu.
-func trekB46NontokenPermanentsYouControlThatEnteredThisTurn(g *game.Game, you uuid.UUID) int {
+func TrekB46NontokenPermanentsYouControlThatEnteredThisTurn(g *game.Game, you uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == you && !IsToken(c) && g.EnteredThisTurn(c.InstanceID) {
@@ -89,10 +89,10 @@ func trekB46NontokenPermanentsYouControlThatEnteredThisTurn(g *game.Game, you uu
 // it is still there, on a permanent you control as the ability resolves.
 //
 // Caller must hold g.mu.
-func trekB46PermanentsYouControlYouPutACounterOnThisTurn(g *game.Game, you uuid.UUID) int {
+func TrekB46PermanentsYouControlYouPutACounterOnThisTurn(g *game.Game, you uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == you && socB25YouPutACounterOnThisObjectThisTurn(g, you, c.InstanceID) {
+		if c.Controller == you && SocB25YouPutACounterOnThisObjectThisTurn(g, you, c.InstanceID) {
 			n++
 		}
 	}
@@ -106,7 +106,7 @@ func trekB46PermanentsYouControlYouPutACounterOnThisTurn(g *game.Game, you uuid.
 // reads it as printed.
 //
 // Caller must hold g.mu.
-func trekB46AttackingNonFaerieCreatures(g *game.Game, source *game.Card) int {
+func TrekB46AttackingNonFaerieCreatures(g *game.Game, source *game.Card) int {
 	faerie := source.TextSubtype("Faerie")
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -124,11 +124,11 @@ func trekB46AttackingNonFaerieCreatures(g *game.Game, source *game.Card) int {
 // Spacecraft (CR 702.184a and c). It changes only what the creature counts
 // for when it pays those costs (Card.CountedPower), never its power, and a
 // creature that loses all abilities stops counting extra (CR 613.1f).
-func crewsAndStationsAsThoughPowerTripled() game.StaticAbility {
+func CrewsAndStationsAsThoughPowerTripled() game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
 		Label:     "This creature stations Spacecraft and crews Vehicles as though its power were tripled.",
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.CostPower = append(c.CostPower, game.CostPowerRule{Uses: game.CostPowerCrew | game.CostPowerStation, Multiplier: 3})
 		},
@@ -139,8 +139,8 @@ func crewsAndStationsAsThoughPowerTripled() game.StaticAbility {
 // non-Human creature enters": any player's, token or card, judged on the
 // battlefield as it entered. "Human" is read through the source's text
 // (CR 612.2).
-func trekB46NonHumanCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !b33AnyCreatureEntered(ev, g) {
+func TrekB46NonHumanCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !B33AnyCreatureEntered(ev, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)

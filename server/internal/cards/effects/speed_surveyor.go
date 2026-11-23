@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ADR 0062), and so does the max speed ability that grants it
 // (CR 702.178b), so it works there while its owner's speed is 4. One
 // builder rather than five copies of the body (TestNoNewExactClonesInTheCatalog).
-func maxSpeedSurveyorDraw() ActivatedAbility {
+func MaxSpeedSurveyorDraw() ActivatedAbility {
 	return MaxSpeedActivated(ActivatedAbility{
 		Label:   "Max speed — {3}, Exile this card from your graveyard: Draw a card.",
 		Purpose: game.Purpose{Answers: game.AnswerValue},

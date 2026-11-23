@@ -93,7 +93,7 @@ func ActivatedByTheModifiersController() CostPredicate {
 // createTheToken is "Create a <token> creature token" as an ability's
 // whole effect, under the ability's controller. The key is a
 // tokens_table.go row.
-func createTheToken(key string) Effect {
+func CreateTheToken(key string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return CreateToken{Controller: item.Controller, Template: TokenCard(key), N: 1}.Apply(NewContext(g, item))
 	}

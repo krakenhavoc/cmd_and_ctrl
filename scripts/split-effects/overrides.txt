@@ -1,0 +1,35 @@
+# overrides.txt — reviewed names for the split of internal/cards/effects (#5906).
+#
+# The split exports every unexported name used across a package boundary by
+# upper-casing its first letter. Where that name is already taken, the line
+# below says what to call it instead. Each was chosen by reading both
+# declarations; most pairs are two helpers with the same idea and a different
+# signature, so the new name says what this one takes or does. A collision
+# with no line here gets an X prefix and is listed by the tool: add a line.
+#
+#   name   <old>          <new>    a package-level function, variable, constant or type
+#   method <old>          <new>    every method of that name
+#   field  <Type>.<old>   <new>    a field of a named struct type (old type name)
+
+# Reached by a test only (effects/ward.go); WardSacrificeCost has a Count field.
+method count SacrificeCount
+
+name artifactEnteredUnderYourControl IsArtifactEnteredUnderYourControl # no Characteristic argument; ArtifactEnteredUnderYourControl takes one
+name attackingCreature           IsAttackingCreature                # predicate from blessed_alliance.go
+name controlledBy                ControlledByPlayer                 # takes the player, from shields_of_velis_vel.go
+name controlsAtLeast             YouControlAtLeast                  # (g, controller) form; ControlsAtLeast is the (g, source, controller) one
+name creaturesThatAttackedThisTurn CountCreaturesThatAttackedThisTurn # an int for a cost query; the exported one lists them
+name damageToFirstTarget         DamageToFirstTargetStep            # a resolution step; DamageToFirstTarget is the Effect
+name eachOpponentLosesLife       EachOpponentLosesLifeNow           # does it at once; EachOpponentLosesLife is the Effect
+name exileTheModesTarget         MurdocksExileTheModesTarget        # Murdock's Crusade's copy of ExileTheModesTarget
+name firebending                 NewFirebending                     # constructs a Firebending value
+name grantWhileItHasCounter      GrantWhileItAlreadyHasCounter      # for a permanent that already has the counter
+name hasSubtype                  CardHasSubtype                     # (card, subtype) bool; HasSubtype is the predicate
+name instantOrSorcerySpell       TargetInstantOrSorcerySpell        # a target spec; InstantOrSorcerySpell is the cost predicate
+name nonbasicLand                IsNonbasicLand                     # a layer applies-to func; NonbasicLand is the predicate
+name permanentsYouControl        CountPermanentsYouControl          # counts; PermanentsYouControl builds a cost count
+name plusOneCounterOnTheTarget   PutPlusOneCounterOnTheTarget       # the ctx form; PlusOneCounterOnTheTarget is the (g, item) one
+name removeAllCountersFromThis   RemoveAllCountersFromThisEffect    # the effect; RemoveAllCountersFromThis is the cost
+name shieldThis                  ApplyShieldThis                    # applies a shield; ShieldThis is the target value
+name targetPlayerMills           TargetPlayerMillsEffect            # a second copy of TargetPlayerMills
+name untapEachLegalTarget        UntapEachStillLegalTarget          # a second copy of UntapEachLegalTarget

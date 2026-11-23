@@ -36,7 +36,7 @@ func init() {
 			Label:   "{2}, {T}: Copy target triggered ability you control",
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: AbilityOnStack("target triggered ability you control", AnAbilityYouControl(), TriggeredAbilityOnly()),
-			Effect:  copyTargetedAbility,
+			Effect:  CopyTargetedAbility,
 		}},
 	})
 }
@@ -50,9 +50,9 @@ func init() {
 // CR 608.2b re-check, which counters this activation by game rules
 // before the effect runs. The guard is for the ordinary "no target
 // slot" defensive read every effect in the catalog makes.
-func copyTargetedAbility(g *game.Game, item *game.StackItem) error {
+func CopyTargetedAbility(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

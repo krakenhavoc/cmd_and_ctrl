@@ -34,12 +34,12 @@ func init() {
 	Register(Spec{
 		// Face 0's catalog key is the bare oracle ID; the back face
 		// registers under avatarAangOracle + "#1".
-		OracleID:        avatarAangOracle,
+		OracleID:        AvatarAangOracle,
 		Name:            "Avatar Aang",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Avatar Aang — firebending 2", Do(firebending(2))),
+			WheneverThisAttacks("Avatar Aang — firebending 2", Do(NewFirebending(2))),
 			OnAny(append([]game.EventKind(nil), game.BendKinds...), ByYou,
 				"Avatar Aang — you bent: draw a card, then if you've done all four this turn, transform Avatar Aang",
 				Do(
@@ -52,7 +52,7 @@ func init() {
 	})
 }
 
-const avatarAangOracle = "b4872bac-5822-4c35-9b73-38c4e3ffa477"
+const AvatarAangOracle = "b4872bac-5822-4c35-9b73-38c4e3ffa477"
 
 // allFourBendsThisTurn is "if you've done all four this turn": the
 // resolving item's controller has waterbent, earthbent, firebent and
@@ -65,6 +65,6 @@ func (allFourBendsThisTurn) Holds(ctx *Context) bool {
 
 // condition declares no footprint: the per-turn bending record is not a
 // state the trigger-order check reads, so the row keeps its prompt.
-func (allFourBendsThisTurn) condition() (game.FootprintStep, bool) {
+func (allFourBendsThisTurn) Condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }

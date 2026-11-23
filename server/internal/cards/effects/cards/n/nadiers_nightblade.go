@@ -1,0 +1,42 @@
+package cardsn
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Nadier's Nightblade — Creature — Elf Warrior {2}{B}, 1/3 (EDHREC
+// rank 848):
+//
+//	"Whenever a token you control leaves the battlefield, each
+//	 opponent loses 1 life and you gain 1 life."
+//
+// The token deck's drain — Mirkwood Bats' other half. "Leaves the
+// battlefield" is every exit, so a Treasure cracked for mana, a
+// Thopter that chump-blocked, and a token bounced or exiled all
+// count; EventLTB fires for each of those. The token is read after
+// the move (its Controller field survives the move, per
+// diedCreature), and it is still findable because tokens only cease
+// to exist at the next state check.
+//
+// The row declares DeathPayoff (ADR 0126 §6), as Mirkwood Bats' token
+// sacrifice does, so the bot keeps it in play and sacrifices tokens
+// around it (#4990). The bot adds a death payoff to every creature it
+// sacrifices, and only a token's sacrifice pays here; the same reading
+// Mirkwood Bats already takes.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "391978f6-0bbc-41e8-9246-f7d0e21c7900",
+		Name:         "Nadier's Nightblade",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.TriggerWithPurpose(effects.On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				c, ok := g.LookupCardForEffect(ev.CardID)
+				return ok && effects.IsToken(c) && effects.LeftUnderControlOf(ev, c) == source.Controller
+			}, "Nadier's Nightblade — each opponent loses 1, you gain 1", effects.Do(effects.EachOpponentLosesLife{N: 1}, effects.GainLife{Amount: 1})), game.Purpose{DeathPayoff: true}),
+		},
+	})
+}

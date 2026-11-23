@@ -72,7 +72,8 @@ def code_lines(path):
 
 def area(path):
     if path.endswith(".go"):
-        test = path.endswith("_test.go")
+        # effectstest/ holds the catalog's test helpers, in non-test files (#5906).
+        test = path.endswith("_test.go") or path.startswith("server/internal/cards/effects/effectstest/")
         if path.startswith("server/internal/cards/effects/"):
             return "cards_test" if test else "cards"
         return "server_test" if test else "server"
@@ -97,7 +98,7 @@ def repo_stats():
         if a is not None:
             lines[a] += code_lines(f)
     effects = [f for f in files if f.startswith("server/internal/cards/effects/") and f.endswith(".go")
-               and not f.endswith("_test.go")]
+               and not f.endswith("_test.go") and "/effectstest/" not in f]
     oracle = set()
     for f in effects:
         try:

@@ -54,7 +54,7 @@ func init() {
 				NarrowToCommanderIdentity: true,
 				SpendRiders: []game.ManaSpendRider{
 					SpentEntersWithCountersCounted(game.CounterPlusOne, "Opal Palace", game.ManaRiderCount{
-						Condition: opalPalaceYourCommander,
+						Condition: OpalPalaceYourCommander,
 						Count:     opalPalaceCommandZoneCasts,
 					}, ManaRestrictCast),
 				},
@@ -65,7 +65,7 @@ func init() {
 
 // opalPalaceYourCommander is "to cast your commander": the spell is a
 // commander its caster owns.
-func opalPalaceYourCommander(_ *game.Game, controller uuid.UUID, spell game.Card) bool {
+func OpalPalaceYourCommander(_ *game.Game, controller uuid.UUID, spell game.Card) bool {
 	return spell.IsCommander && spell.Owner == controller
 }
 

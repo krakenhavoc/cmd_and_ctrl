@@ -14,7 +14,7 @@ import (
 // trigger's event. Its controller is read as the trigger resolves (CR 608.2h),
 // last-known when the creature has left, and falls back to the attacking
 // player the event names.
-func socB10EnchantedCreatureControllerLoses(n int) func(ctx *Context) error {
+func SocB10EnchantedCreatureControllerLoses(n int) func(ctx *Context) error {
 	return func(ctx *Context) error {
 		victim := uuid.Nil
 		if ctx.Item != nil && ctx.Item.Trigger != nil {
@@ -32,7 +32,7 @@ func socB10EnchantedCreatureControllerLoses(n int) func(ctx *Context) error {
 
 // socB10PestTokenYouControl reports whether the player controls a creature token
 // of the subtype `pest`, which is a word of Pest Rescuer's text (CR 612.2).
-func socB10PestTokenYouControl(g *game.Game, player uuid.UUID, pest string) bool {
+func SocB10PestTokenYouControl(g *game.Game, player uuid.UUID, pest string) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && IsToken(c) && c.IsCreature() && c.HasSubtype(pest) {
 			return true
@@ -43,7 +43,7 @@ func socB10PestTokenYouControl(g *game.Game, player uuid.UUID, pest string) bool
 
 // socB10EnchantmentSpell passes on an enchantment spell (Pearl-Ear's
 // affinity).
-func socB10EnchantmentSpell() CostPredicate {
+func SocB10EnchantmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool { return q.Card.IsEnchantment() }
 }
 
@@ -52,7 +52,7 @@ func socB10EnchantmentSpell() CostPredicate {
 // source's controller, the spell is an Aura, and at least one target it
 // announced (CR 601.2c) is a permanent on the battlefield under that player's
 // control that is modified (CR 700.9, b07IsModified).
-func socB10AuraSpellTargetsYourModifiedPermanent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SocB10AuraSpellTargetsYourModifiedPermanent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -65,10 +65,10 @@ func socB10AuraSpellTargetsYourModifiedPermanent(ev game.Event, source *game.Car
 		return false
 	}
 	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || !onBattlefield(g, t.ID) {
+		if t.Kind != game.TargetCard || !OnBattlefield(g, t.ID) {
 			continue
 		}
-		if c, ok := g.LookupCardForEffect(t.ID); ok && c.Controller == source.Controller && b07IsModified(g, c) {
+		if c, ok := g.LookupCardForEffect(t.ID); ok && c.Controller == source.Controller && B07IsModified(g, c) {
 			return true
 		}
 	}
@@ -79,7 +79,7 @@ func socB10AuraSpellTargetsYourModifiedPermanent(ev game.Event, source *game.Car
 // may reveal a [match] card from among them and put it into your hand. Put the
 // rest on the bottom of your library in any order." (Duskwatch Recruiter's
 // body, Quandrix Apprentice's magecraft.)
-func socB10LookThreeTakeOne(match CardPredicate, label string) Effect {
+func SocB10LookThreeTakeOne(match CardPredicate, label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		player := ctx.Controller()
@@ -90,14 +90,14 @@ func socB10LookThreeTakeOne(match CardPredicate, label string) Effect {
 			Max:      1,
 			Optional: true,
 			Label:    label,
-			Key:      takeRevealRestBottomAny,
+			Key:      TakeRevealRestBottomAny,
 		}.Apply(ctx)
 	}
 }
 
 // socB10BasePowerZero is "a creature with base power 0" (CR 208.4b): the power
 // the layer pass had after layer 7b, without a pump, an anthem or a counter.
-func socB10BasePowerZero(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func SocB10BasePowerZero(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 	return c.BasePower() == 0
 }
 
@@ -108,7 +108,7 @@ func socB10BasePowerZero(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 // counting a creature whose base power is 0 as it stands, or as it last stood
 // when it has left (CR 608.2h). A pump on the damage dealt is in the event's
 // amount, not in the creature's base power.
-func socB10BasePowerZeroDamage(ctx *Context) int {
+func SocB10BasePowerZeroDamage(ctx *Context) int {
 	if ctx.Item == nil || ctx.Item.Trigger == nil {
 		return 0
 	}

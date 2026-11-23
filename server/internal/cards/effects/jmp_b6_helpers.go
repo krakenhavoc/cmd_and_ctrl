@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // hand, then shuffle" (Sylvan Ranger, Skittering Surveyor). Optional is
 // the printed "you may": declining skips the search and the shuffle.
 // `name` names the card on the search prompt.
-func mayFetchABasicLandToHand(name string) Effect {
+func MayFetchABasicLandToHand(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{
 			Player:    item.Controller,
@@ -29,8 +29,8 @@ func mayFetchABasicLandToHand(name string) Effect {
 // counter on this creature." (Trufflesnout, Trusty Retriever). A
 // source that has left the battlefield is a new object, or no object,
 // so nothing gets the counter (CR 400.7).
-func putAPlusOneCounterOnThisCreatureMode(item *game.StackItem, ctx *Context, _ int) error {
-	if !onBattlefield(ctx.Game, item.SourceCardID) {
+func PutAPlusOneCounterOnThisCreatureMode(item *game.StackItem, ctx *Context, _ int) error {
+	if !OnBattlefield(ctx.Game, item.SourceCardID) {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)

@@ -148,6 +148,13 @@ type AttackTargetRestriction struct {
 	// the city's blessing a fact about the controller alone, so it refuses
 	// every target while it is unmet.
 	ControllerHandAtLeast int `json:",omitempty"`
+	// ControllerMustControl, when set, forbids attacking anything while the
+	// attacking creature's controller controls no permanent matching ANY of
+	// these queries: "can't attack unless you control a 1/1 creature"
+	// (Lovestruck Beast, #5948, CR 508.1c). A fact about the controller
+	// alone, read live at declaration, so it refuses every target while
+	// unmet.
+	ControllerMustControl []PermanentQuery `json:",omitempty"`
 	// NotAlreadyAttackedThisTurn forbids attacking a player this object
 	// has already attacked this turn: "can't attack a player it has
 	// already attacked this turn" (Bloodthirster, #2171, CR 508.1c). It
@@ -220,6 +227,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
+		samePermanentQueries(r.ControllerMustControl, o.ControllerMustControl) &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn &&
 		r.NotAnAbility == o.NotAnAbility
 }
@@ -244,7 +252,7 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0
+		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0 || len(r.ControllerMustControl) > 0
 }
 
 // unmetDefenderClauseLocked is the first of r's defending-player clauses
@@ -280,6 +288,9 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 		if yp := g.playerByIDLocked(you); yp == nil || yp.Hand == nil || yp.Hand.Size() < n {
 			return g.playerNameLocked(you) + " has fewer than " + countWord(n) + " cards in hand"
 		}
+	}
+	if qs := r.ControllerMustControl; len(qs) > 0 && !g.controlsMatchingLocked(you, qs) {
+		return g.playerNameLocked(you) + " controls no " + PermanentQueriesNoun(qs)
 	}
 	return ""
 }

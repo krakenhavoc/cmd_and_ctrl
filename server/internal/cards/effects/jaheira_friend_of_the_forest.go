@@ -36,6 +36,6 @@ func tokensYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 
 // creatureTokensYouControl is the "creature tokens you control"
 // AppliesTo (Insidious Roots, Springleaf Parade).
-func creatureTokensYouControl(target *game.Card, g *game.Game, source *game.Card) bool {
+func CreatureTokensYouControl(target *game.Card, g *game.Game, source *game.Card) bool {
 	return target.IsCreature() && tokensYouControl(target, g, source)
 }

@@ -1,0 +1,68 @@
+package cardshu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// In the Darkness Bind Them — Enchantment — Saga {2}{U}{B}{R}:
+//
+//	"(As this Saga enters and after your draw step, add a lore
+//	 counter. Sacrifice after IV.)
+//	 I, II, III — Create a 3/3 black Wraith creature token with menace.
+//	     The Ring tempts you.
+//	 IV — For each opponent, gain control of up to one target creature
+//	     that player controls until end of turn. Untap those creatures.
+//	     They gain haste until end of turn. The Ring tempts you."
+//
+// Chapters I to III tempt once the token has entered, so it may be
+// chosen as the Ring-bearer (2023-06-16 ruling). Chapter IV is Molten
+// Primordial's clauses, one "up to one" per opponent: with no target
+// chosen it still tempts, and with every chosen target gone it does
+// nothing (CR 608.2b). A stolen creature may be chosen as the
+// Ring-bearer.
+//
+// No simplification.
+func init() {
+	steal := effects.ChapterTrigger(4, "In the Darkness Bind Them — gain control of a creature of each opponent, then the Ring tempts you", inTheDarknessSteal)
+	steal.TargetsFrom = effects.MoltenPrimordialClauses
+	effects.Register(effects.Spec{
+		OracleID:     "c8689a83-cefa-4ef3-8ec1-58b4c64e332b",
+		Name:         "In the Darkness Bind Them",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.ChapterTrigger(1, "In the Darkness Bind Them — create a Wraith, then the Ring tempts you", inTheDarknessWraith),
+			effects.ChapterTrigger(2, "In the Darkness Bind Them — create a Wraith, then the Ring tempts you", inTheDarknessWraith),
+			effects.ChapterTrigger(3, "In the Darkness Bind Them — create a Wraith, then the Ring tempts you", inTheDarknessWraith),
+			steal,
+		},
+	})
+}
+
+// inTheDarknessWraith is chapters I to III.
+func inTheDarknessWraith(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: item.Controller,
+		Source:     item.SourceCardID,
+		Groups:     []game.TokenGroup{{Template: ctx.TextToken(effects.TokenCard("3/3 black Wraith with menace")), Count: 1}},
+	}, ctx.ItemTail(effects.RingTemptsYouTail))
+}
+
+// inTheDarknessSteal is chapter IV: each still-legal pick is taken
+// until end of turn, untapped and given haste, then the tempt.
+func inTheDarknessSteal(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	for _, id := range effects.LegalTargetIDs(ctx) {
+		if err := (effects.GainControl{Target: id, Duration: effects.DurationUntilEndOfTurn(ctx), Label: "In the Darkness Bind Them — gain control"}).Apply(ctx); err != nil {
+			return err
+		}
+		if err := (effects.UntapTarget{Target: id}).Apply(ctx); err != nil {
+			return err
+		}
+		if err := (effects.GrantKeywordUntilEOT{Target: id, Keywords: []string{"haste"}, Label: "In the Darkness Bind Them — haste"}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return effects.TheRingTemptsYou{}.Apply(ctx)
+}

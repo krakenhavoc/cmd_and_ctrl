@@ -16,7 +16,7 @@ var momentOfTruthPickGraveyard = game.RegisterChooseCardsThen("choose-cards/mome
 	if len(r.Picked) == 0 {
 		return nil
 	}
-	if err := restIntoGraveyard(g, r.Picked); err != nil {
+	if err := RestIntoGraveyard(g, r.Picked); err != nil {
 		return err
 	}
 	return momentOfTruthBottom(g, r.Chooser, r.Source, subtractIDs(r.Candidates, r.Picked))
@@ -53,7 +53,7 @@ func momentOfTruthAfterTake(g *game.Game, res TakeFromLibraryResult) error {
 	case 1:
 		// Only two cards were there to look at: the second sentence's card
 		// is the one that goes into the graveyard.
-		return restIntoGraveyard(g, rest)
+		return RestIntoGraveyard(g, rest)
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  res.Player,
@@ -68,11 +68,11 @@ func momentOfTruthAfterTake(g *game.Game, res TakeFromLibraryResult) error {
 	return nil
 }
 
-var momentOfTruthTake = RegisterTake("choose-cards/moment-of-truth-take", TakeDef{Then: momentOfTruthAfterTake})
+var MomentOfTruthTake = RegisterTake("choose-cards/moment-of-truth-take", TakeDef{Then: momentOfTruthAfterTake})
 
 // seedOfHopePick is Seed of Hope's "you may put a permanent card from among
 // the milled cards into your hand"; the life is gained after the choice.
-var seedOfHopePick = askedPick("choose-cards/seed-of-hope-permanent", func(ctx *Context, r game.CardsChosen) error {
+var seedOfHopePick = AskedPick("choose-cards/seed-of-hope-permanent", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) > 0 {
 		if err := (ReturnFromGraveyard{Target: r.Picked[0], Dest: game.ZoneHand}).Apply(ctx); err != nil {
 			return err
@@ -81,7 +81,7 @@ var seedOfHopePick = askedPick("choose-cards/seed-of-hope-permanent", func(ctx *
 	return GainLife{Amount: 2}.Apply(ctx)
 })
 
-var seedOfHopeMilled = CardTail("seed-of-hope/after-mill", func(ctx *Context, o game.TailOutcome) error {
+var SeedOfHopeMilled = CardTail("seed-of-hope/after-mill", func(ctx *Context, o game.TailOutcome) error {
 	player := ctx.Controller()
 	var perms []uuid.UUID
 	for _, id := range o.IDs {

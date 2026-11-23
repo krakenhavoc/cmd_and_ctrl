@@ -10,12 +10,12 @@ import (
 
 // s82MomB17CountPT is a layer 7a characteristic-defining ability: "<this>'s
 // power and toughness are each equal to <count>" (CR 604.3, CR 613.4a).
-func s82MomB17CountPT(label string, count func(g *game.Game, source *game.Card) int) game.StaticAbility {
+func S82MomB17CountPT(label string, count func(g *game.Game, source *game.Card) int) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     label,
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7A_CDA,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 			n := count(g, source)
 			c.Power, c.Toughness = n, n
@@ -25,7 +25,7 @@ func s82MomB17CountPT(label string, count func(g *game.Game, source *game.Card) 
 
 // s82MomB17AnyOtherTarget is TargetAny with the label "any other target"; the
 // "other" is enforced at resolution (see tarkirAnyOtherTarget).
-func s82MomB17DamageAnyOtherTarget(n int) func(g *game.Game, item *game.StackItem) error {
+func S82MomB17DamageAnyOtherTarget(n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if len(item.Targets) == 0 {
@@ -42,7 +42,7 @@ func s82MomB17DamageAnyOtherTarget(n int) func(g *game.Game, item *game.StackIte
 // bounceUpToOneTarget is "return up to one target creature to its owner's
 // hand": the one target, if still legal, goes back. Shared by Bottomless Pool
 // and Invasion of Xerex.
-func bounceUpToOneTarget(g *game.Game, item *game.StackItem) error {
+func BounceUpToOneTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		return BounceToHand{Target: t.ID}.Apply(ctx)

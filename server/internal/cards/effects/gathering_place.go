@@ -25,16 +25,16 @@ func init() {
 		Name:         "Gathering Place",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
-			colorlessTapRow(),
-			mshA3GatedDual("G", "W"),
+			ColorlessTapRow(),
+			MshA3GatedDual("G", "W"),
 		},
 	})
 }
 
 // mshA3GatedDual is a "{T}: Add {A} or {B}. Activate only if this land
 // entered this turn or if you control a basic land" row.
-func mshA3GatedDual(a, b string) ManaAbility {
-	row := dualManaAbility(a, b)
+func MshA3GatedDual(a, b string) ManaAbility {
+	row := DualManaAbility(a, b)
 	row.Label += ". Activate only if this land entered this turn or if you control a basic land."
 	basic := ControlsAtLeast(1, IsBasicLand)
 	row.Condition = func(g *game.Game, controller, source uuid.UUID) bool {

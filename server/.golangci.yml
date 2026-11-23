@@ -80,6 +80,9 @@ linters:
         - maybelle
         # Mathemagics (Secrets of Strixhaven) is a printed card name.
         - mathemagics
+        # Primaris Eliminator and Primaris Chaplain (Warhammer 40,000 Commander)
+        # are printed card names.
+        - primaris
   exclusions:
     # v1's defaults, written out by `migrate`: lax generated-file
     # detection and the three conventional directories. No preset is
@@ -93,6 +96,13 @@ linters:
           - errcheck
           - unparam
         path: _test\.go
+      # The catalog's test helpers, lifted out of _test.go files when
+      # internal/cards/effects was split (#5906, ADR 0225): test code in
+      # non-test files, held to the same rules as the tests that call them.
+      - linters:
+          - errcheck
+          - unparam
+        path: internal/cards/effects/effectstest/
     paths:
       - third_party$
       - builtin$

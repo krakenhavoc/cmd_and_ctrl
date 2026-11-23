@@ -30,7 +30,7 @@ import (
 // False when there is no source to read: a source-less event, or one
 // the engine cannot find in any zone. Every caller treats that as "not
 // a qualifying source", which errs weaker and never stronger.
-func damageSourceCharacteristics(ev *game.ReplacementEvent, g *game.Game) (game.Characteristic, bool) {
+func DamageSourceCharacteristics(ev *game.ReplacementEvent, g *game.Game) (game.Characteristic, bool) {
 	if ev == nil {
 		return game.Characteristic{}, false
 	}
@@ -50,8 +50,8 @@ func damageSourceCharacteristics(ev *game.ReplacementEvent, g *game.Game) (game.
 // damageSourceIsRedControlledBy is "a red source <controller>
 // controls", read through damageSourceCharacteristics. With
 // orArtifact, "a red or artifact source" (Mechanized Warfare).
-func damageSourceIsRedControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID, orArtifact bool) bool {
-	ch, ok := damageSourceCharacteristics(ev, g)
+func DamageSourceIsRedControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID, orArtifact bool) bool {
+	ch, ok := DamageSourceCharacteristics(ev, g)
 	if !ok || ch.Controller != controller {
 		return false
 	}

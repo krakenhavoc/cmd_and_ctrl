@@ -58,6 +58,12 @@ const (
 	// (Cursed Rack): the player the permanent's Card.ChosenPlayer names.
 	// A permanent with no chosen player reaches nobody.
 	HandSizeChosenPlayer
+	// HandSizeAttachedController — "enchanted creature has 'You have no
+	// maximum hand size'" (Nerd Rage): the controller of the permanent
+	// this one is attached to, which is "you" of the granted ability. An
+	// unattached permanent reaches nobody. Additive; catalog data, never
+	// serialised.
+	HandSizeAttachedController
 )
 
 // HandSizeKind is what a maximum-hand-size static does to the value it
@@ -216,7 +222,16 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 				continue
 			}
 			for _, s := range CatalogHandSize(key) {
-				if !s.Reaches(c.Controller, c.ChosenPlayer, p.ID) || !s.When.Active(*c) {
+				reach := c.Controller
+				if s.Players == HandSizeAttachedController {
+					host := findBattlefieldCard(g, c.AttachedTo.ID)
+					if host == nil {
+						continue
+					}
+					reach = host.Controller
+					s.Players = HandSizeYou
+				}
+				if !s.Reaches(reach, c.ChosenPlayer, p.ID) || !s.When.Active(*c) {
 					continue
 				}
 				if s.Dynamic != nil {

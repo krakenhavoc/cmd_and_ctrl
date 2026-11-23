@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification on this face.
 func init() {
 	Register(Spec{
-		OracleID:     theLegendOfKurukOracleID,
+		OracleID:     TheLegendOfKurukOracleID,
 		Name:         "The Legend of Kuruk",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -38,7 +38,7 @@ func init() {
 
 // theLegendOfKurukOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const theLegendOfKurukOracleID = "201b8936-18f4-4881-a1d4-c308cf3832bf"
+const TheLegendOfKurukOracleID = "201b8936-18f4-4881-a1d4-c308cf3832bf"
 
 // kurukScryTwoThenDraw is chapters I and II's shared body — Preordain
 // written as a chapter Effect instead of an OnResolve. "Then" is load
@@ -51,6 +51,6 @@ func kurukScryTwoThenDraw(g *game.Game, item *game.StackItem) error {
 	return Scry{
 		Player:   item.Controller,
 		N:        2,
-		ThenTail: ctx.TailN(thenDrawCards, 1),
+		ThenTail: ctx.TailN(ThenDrawCards, 1),
 	}.Apply(ctx)
 }

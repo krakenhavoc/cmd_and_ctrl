@@ -56,7 +56,7 @@ func init() {
 				return ScheduleDelayedTrigger{
 					Label:  "Glyph of Destruction — destroy the Wall",
 					Cards:  []uuid.UUID{t.ID},
-					Body:   destroyTheObjectBody,
+					Body:   DestroyTheObjectBody,
 					Params: game.EffectParams{Object: game.ObjectRef{ID: t.ID, Epoch: c.ObjectEpoch}},
 				}.Apply(ctx)
 			}
@@ -70,7 +70,7 @@ func init() {
 func destroyTheObject(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	id := p.Object.ID
 	c, ok := g.LookupCardForEffect(id)
-	if !ok || c.ObjectEpoch != p.Object.Epoch || !onBattlefield(g, id) {
+	if !ok || c.ObjectEpoch != p.Object.Epoch || !OnBattlefield(g, id) {
 		return nil
 	}
 	return DestroyTarget{Target: id}.Apply(NewContext(g, item))

@@ -14,9 +14,9 @@ import (
 // greater than your starting life total" (n = 10): the condition for THIS
 // creature alone (Elenda, Saint of Dusk). The starting total is the
 // table's (ADR 0075), like Righteous Valkyrie's.
-func selfWhileYourLifeAboveStarting(n int) func(target *game.Card, g *game.Game, source *game.Card) bool {
+func SelfWhileYourLifeAboveStarting(n int) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && controllerLifeAtLeast(g, source, startingLifeOf(g)+n)
+		return target.InstanceID == source.InstanceID && ControllerLifeAtLeast(g, source, StartingLifeOf(g)+n)
 	}
 }
 
@@ -24,7 +24,7 @@ func selfWhileYourLifeAboveStarting(n int) func(target *game.Card, g *game.Game,
 // mana values among nonland permanents you control" (Lunar Insight): the
 // distinct mana values read through the layers, an {X} counted as 0 and a
 // token with no mana cost as 0 (CR 202.3).
-func stdDifferentManaValuesAmongYourNonlands(g *game.Game, you uuid.UUID) int {
+func StdDifferentManaValuesAmongYourNonlands(g *game.Game, you uuid.UUID) int {
 	seen := map[int]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != you || c.IsLand() {
@@ -56,6 +56,6 @@ func CountersIfCast(kind string, n int) game.EntryCountersFromCast {
 // a creature with power 4 or greater" (Flamewake Phoenix's ferocious):
 // current power, counters and anthems included. The resolution-time half
 // is CondPowerAtLeast.
-func stdYouControlAPower4Creature(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return b24ControlsCreatureWithPowerAtLeast(g, source.Controller, 4)
+func StdYouControlAPower4Creature(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return B24ControlsCreatureWithPowerAtLeast(g, source.Controller, 4)
 }

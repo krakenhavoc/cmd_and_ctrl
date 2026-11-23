@@ -169,7 +169,7 @@ func validateManaSpendRider(r game.ManaSpendRider) error {
 // the command zone, the battlefield, the stack (it may be the spell
 // being paid for), a hand, a graveyard or exile — and with partners
 // either one will do.
-func sharesCreatureTypeWithYourCommander(g *game.Game, controller uuid.UUID, spell game.Card) bool {
+func SharesCreatureTypeWithYourCommander(g *game.Game, controller uuid.UUID, spell game.Card) bool {
 	if !spell.IsCreature() {
 		return false
 	}

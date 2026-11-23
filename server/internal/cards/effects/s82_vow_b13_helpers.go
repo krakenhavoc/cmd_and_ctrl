@@ -12,7 +12,7 @@ import (
 // vowB13YouControlASpirit is "if you control a Spirit" for a timing
 // permission read as the cast begins (CR 601.3); the spell is still in
 // the hand then, so it is not the Spirit it asks about.
-func vowB13YouControlASpirit(g *game.Game, you uuid.UUID) bool {
+func VowB13YouControlASpirit(g *game.Game, you uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == you && c.HasSubtype("Spirit") {
 			return true

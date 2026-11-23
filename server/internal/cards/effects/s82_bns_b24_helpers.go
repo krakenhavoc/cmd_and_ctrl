@@ -11,7 +11,7 @@ import (
 
 // eagerConstructAsk asks each player in turn "scry 1?" (Model of Unity's
 // ask-in-turn): a yes scries before the next player is asked.
-func eagerConstructAsk(ctx *Context, players []uuid.UUID) error {
+func EagerConstructAsk(ctx *Context, players []uuid.UUID) error {
 	if len(players) == 0 {
 		return nil
 	}
@@ -31,7 +31,7 @@ var eagerConstructAnswer game.ConfirmThen
 func init() {
 	eagerConstructAnswer = MayAnswer("confirm/eager-construct-scry", func(ctx *Context, r game.ConfirmAnswer) error {
 		if !r.Accepted {
-			return eagerConstructAsk(ctx, r.Carry)
+			return EagerConstructAsk(ctx, r.Carry)
 		}
 		next := ctx.ItemTail(eagerConstructAskNext)
 		next.Carry = r.Carry
@@ -42,7 +42,7 @@ func init() {
 // eagerConstructAskNext asks the next player once the scry is done. An
 // on-disk key.
 var eagerConstructAskNext = CardTail("eager-construct/ask-next", func(ctx *Context, o game.TailOutcome) error {
-	return eagerConstructAsk(ctx, o.Tail.Carry)
+	return EagerConstructAsk(ctx, o.Tail.Carry)
 })
 
 // treasureKeeperHit is "a nonland card with mana value 3 or less". A card
@@ -61,10 +61,10 @@ func treasureKeeperHit(c game.Card) bool {
 // treasureKeeperReveal is the dies trigger: reveal until a hit, offer its
 // free cast from the library during this resolution (CR 608.2g), then put
 // every revealed card not cast on the bottom in a random order.
-func treasureKeeperReveal(g *game.Game, item *game.StackItem) error {
+func TreasureKeeperReveal(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	you := ctx.Controller()
-	run, hit := revealUntil(ctx, you, treasureKeeperHit, "Treasure Keeper — reveal until a nonland card with mana value 3 or less")
+	run, hit := RevealUntil(ctx, you, treasureKeeperHit, "Treasure Keeper — reveal until a nonland card with mana value 3 or less")
 	if len(run) == 0 {
 		return nil
 	}

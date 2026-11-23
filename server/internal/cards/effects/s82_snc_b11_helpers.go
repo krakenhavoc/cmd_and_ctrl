@@ -7,21 +7,21 @@ import (
 )
 
 // s82SncB11Treasures is how many Treasures `player` controls.
-func s82SncB11Treasures(g *game.Game, player uuid.UUID) int {
-	return len(permanentsControlledByMatching(g, player, Subtype("Treasure")))
+func S82SncB11Treasures(g *game.Game, player uuid.UUID) int {
+	return len(PermanentsControlledByMatching(g, player, Subtype("Treasure")))
 }
 
 // s82SncB11PumpOrCounter is the body of Jetmir's Fixer and Paragon of
 // Modernity: the source gets +1/+1 until end of turn, or, when counter
 // is true, a +1/+1 counter instead. Nothing when the source has left
 // or is a new object (CR 400.7).
-func s82SncB11PumpOrCounter(label string, counter func(ctx *Context) bool) Effect {
+func S82SncB11PumpOrCounter(label string, counter func(ctx *Context) bool) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if counter(ctx) {
-			return thisGetsAPlusOneCounter(g, item)
+			return ThisGetsAPlusOneCounter(g, item)
 		}
-		return thisGetsUntilEndOfTurn(1, 1, label)(g, item)
+		return ThisGetsUntilEndOfTurn(1, 1, label)(g, item)
 	}
 }
 
@@ -41,7 +41,7 @@ func OncePerBatchPerAttacker(t game.TriggeredAbility) game.TriggeredAbility {
 // left the battlefield and came back after fighting is a new object and
 // does not count (CR 400.7). EventFight carries the fighter as CardID
 // and no epoch, so an entry after the fight is read as a new object.
-func s82SncB11ControlsACreatureThatFought(g *game.Game, controller, _ uuid.UUID) bool {
+func S82SncB11ControlsACreatureThatFought(g *game.Game, controller, _ uuid.UUID) bool {
 	events := g.EventsThisTurn()
 	for i, ev := range events {
 		if ev.Kind != game.EventFight {
@@ -67,7 +67,7 @@ func s82SncB11ControlsACreatureThatFought(g *game.Game, controller, _ uuid.UUID)
 
 // s82SncB11EnteredFights is Boxing Ring's body: the creature that
 // entered fights the first target that is still legal.
-func s82SncB11EnteredFights(g *game.Game, item *game.StackItem) error {
+func S82SncB11EnteredFights(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	obj := ctx.Trigger().Object
 	if obj == nil {
@@ -88,7 +88,7 @@ func s82SncB11EnteredFights(g *game.Game, item *game.StackItem) error {
 
 // s82SncB11VaziCounterThenDraw is "put a +1/+1 counter on target creature,
 // then draw a card": nothing at all when the target is no longer legal.
-func s82SncB11VaziCounterThenDraw(g *game.Game, item *game.StackItem) error {
+func S82SncB11VaziCounterThenDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {

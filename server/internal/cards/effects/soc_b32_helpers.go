@@ -13,8 +13,8 @@ import (
 // rounded down" (Pox Plague): the caster first, then each opponent in seat
 // order, each a life change that names the item's source and no damage. A
 // player at zero or less loses nothing.
-func socB32EachPlayerLosesHalfTheirLife(ctx *Context) error {
-	for _, id := range tablePlayers(ctx) {
+func SocB32EachPlayerLosesHalfTheirLife(ctx *Context) error {
+	for _, id := range TablePlayers(ctx) {
 		p := ctx.PlayerByID(id)
 		if p == nil || p.Eliminated || p.Life <= 0 {
 			continue
@@ -32,7 +32,7 @@ func socB32EachPlayerLosesHalfTheirLife(ctx *Context) error {
 // creature target player controls" (Practiced Offense). The set is read before
 // the first counter goes on, so a creature a counter-placement trigger makes
 // mid-loop gets none.
-func socB32PutCounterOnEachCreaturePlayerControls(ctx *Context, player uuid.UUID) error {
+func SocB32PutCounterOnEachCreaturePlayerControls(ctx *Context, player uuid.UUID) error {
 	var ids []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() {
@@ -43,7 +43,7 @@ func socB32PutCounterOnEachCreaturePlayerControls(ctx *Context, player uuid.UUID
 		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -54,7 +54,7 @@ func socB32PutCounterOnEachCreaturePlayerControls(ctx *Context, player uuid.UUID
 // to spells its controller casts (GrantsCascade, socB32GrantsStorm): the cast
 // event is the controller's own, and `when` (nil admits every spell) judges the
 // spell, looked up off the stack, against the granting permanent.
-func socB32YouCastASpellThat(when func(spell game.Card, source *game.Card, g *game.Game) bool) func(game.Event, *game.Card, game.Characteristic, *game.Game) bool {
+func SocB32YouCastASpellThat(when func(spell game.Card, source *game.Card, g *game.Game) bool) func(game.Event, *game.Card, game.Characteristic, *game.Game) bool {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		if ev.Actor != source.Controller {
 			return false
@@ -79,12 +79,12 @@ func socB32YouCastASpellThat(when func(spell game.Card, source *game.Card, g *ga
 // are copies of the spell, not of the permanent. The copy count is read as the
 // item resolves (stormCopies), and the spell is copied from last-known
 // information if it has left the stack (CR 608.2h).
-func socB32GrantsStorm(label string, when func(spell game.Card, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
+func SocB32GrantsStorm(label string, when func(spell game.Card, source *game.Card, g *game.Game) bool) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Keyword:   KeywordStorm,
 		Key:       label,
 		Watches:   []game.EventKind{game.EventCast},
-		AppliesTo: socB32YouCastASpellThat(when),
+		AppliesTo: SocB32YouCastASpellThat(when),
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label+" — storm")
 			item.Controller, item.Owner = ev.Actor, ev.Actor

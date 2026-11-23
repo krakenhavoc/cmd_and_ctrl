@@ -14,7 +14,7 @@ import (
 // may cast that card without paying its mana cost. Then put the exiled cards
 // that weren't cast this way on the bottom of that library in a random
 // order": the walk is the victim's, the free cast is the item controller's.
-func cmdr2S43ExileUntilInstantOrSorcery(g *game.Game, item *game.StackItem, victim uuid.UUID) error {
+func Cmdr2S43ExileUntilInstantOrSorcery(g *game.Game, item *game.StackItem, victim uuid.UUID) error {
 	if victim == uuid.Nil {
 		return nil
 	}
@@ -26,7 +26,7 @@ func cmdr2S43ExileUntilInstantOrSorcery(g *game.Game, item *game.StackItem, vict
 // may cast that card without paying its mana cost". The card stays in exile,
 // the cast obeys the card's own timing (the card is not cast during the
 // resolution), and a land is never offered.
-var cmdr2S43StolenGoodsGranted = CardTail("cmdr2-s43/stolen-goods-grant", func(ctx *Context, o game.TailOutcome) error {
+var Cmdr2S43StolenGoodsGranted = CardTail("cmdr2-s43/stolen-goods-grant", func(ctx *Context, o game.TailOutcome) error {
 	for _, id := range o.IDs {
 		c, ok := ctx.Game.LookupCardForEffect(id)
 		z := ctx.Game.FindCardZoneForEffect(id)
@@ -51,7 +51,7 @@ var cmdr2S43StolenGoodsGranted = CardTail("cmdr2-s43/stolen-goods-grant", func(c
 // landed in exile: it offers the free casts over them during the resolution
 // (CR 608.2g) and, once that is answered, puts every card still in exile into
 // the graveyard. An on-disk key.
-var cmdr2S43EpicExperimentOffer = game.RegisterTail("cmdr2-s43/epic-experiment-offer", func(g *game.Game, o game.TailOutcome) error {
+var Cmdr2S43EpicExperimentOffer = game.RegisterTail("cmdr2-s43/epic-experiment-offer", func(g *game.Game, o game.TailOutcome) error {
 	if len(o.IDs) == 0 {
 		return nil
 	}
@@ -96,7 +96,7 @@ func cmdr2S43ExiledToGraveyard(g *game.Game, ids []uuid.UUID) error {
 
 // cmdr2S43GrantedAltCostLifeEnchantmentOnceYourTurn is the on-disk key of
 // Demon of Fate's Design's granted offer. Never renamed, never reused.
-const cmdr2S43GrantedAltCostLifeEnchantmentOnceYourTurn = "granted-life-enchantment-once-your-turn"
+const Cmdr2S43GrantedAltCostLifeEnchantmentOnceYourTurn = "granted-life-enchantment-once-your-turn"
 
 // cmdr2S43PayLifeForAnEnchantmentSpellOnceEachOfYourTurns is Demon of Fate's
 // Design's static: "Once during each of your turns, you may cast an
@@ -104,10 +104,10 @@ const cmdr2S43GrantedAltCostLifeEnchantmentOnceYourTurn = "granted-life-enchantm
 // its mana cost." Access Maze's offer (PayLifeForASpellFromHandOnceEachOfYourTurns)
 // narrowed to enchantment spells and to every zone a spell can be cast from
 // (CR 118.9a).
-func cmdr2S43PayLifeForAnEnchantmentSpellOnceEachOfYourTurns() game.GrantedAlternativeCost {
+func Cmdr2S43PayLifeForAnEnchantmentSpellOnceEachOfYourTurns() game.GrantedAlternativeCost {
 	return game.GrantedAlternativeCost{
 		Offer: game.AlternativeCost{
-			Key:   cmdr2S43GrantedAltCostLifeEnchantmentOnceYourTurn,
+			Key:   Cmdr2S43GrantedAltCostLifeEnchantmentOnceYourTurn,
 			Label: "Pay life equal to its mana value rather than pay its mana cost",
 		},
 		Spells:               game.PermissionFilter{CardType: "enchantment"},
@@ -119,7 +119,7 @@ func cmdr2S43PayLifeForAnEnchantmentSpellOnceEachOfYourTurns() game.GrantedAlter
 
 // cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn is the on-disk key of One
 // with the Multiverse's granted offer. Never renamed, never reused.
-const cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn = "granted-free-hand-or-top-once-your-turn"
+const Cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn = "granted-free-hand-or-top-once-your-turn"
 
 // cmdr2S43CastFromHandOrTopFreeOnceEachOfYourTurns is One with the
 // Multiverse's static: "Once during each of your turns, you may cast a spell
@@ -127,10 +127,10 @@ const cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn = "granted-free-hand-or-to
 // Omniscience's free offer (CastFromHandWithoutPayingManaCost), reaching the
 // top of the library as well as the hand, once per turn per source and on
 // your turn only. X is 0 (CR 107.3b).
-func cmdr2S43CastFromHandOrTopFreeOnceEachOfYourTurns() game.GrantedAlternativeCost {
+func Cmdr2S43CastFromHandOrTopFreeOnceEachOfYourTurns() game.GrantedAlternativeCost {
 	return game.GrantedAlternativeCost{
 		Offer: game.AlternativeCost{
-			Key:   cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn,
+			Key:   Cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn,
 			Label: "Cast it without paying its mana cost",
 		},
 		Zones:        []game.ZoneKind{game.ZoneHand, game.ZoneLibrary},
@@ -144,7 +144,7 @@ func cmdr2S43CastFromHandOrTopFreeOnceEachOfYourTurns() game.GrantedAlternativeC
 // card" (Tectonic Giant's second mode): Strongbox Raider's shape
 // (stdB15ExileTopTwoChooseOnePlay) worded for the Giant. Both cards are
 // exiled face up, the controller picks one, and only it gets the window.
-func cmdr2S43TectonicGiantExile(ctx *Context) error {
+func Cmdr2S43TectonicGiantExile(ctx *Context) error {
 	ids := ctx.Game.LookAtTopOfLibraryForEffect(ctx.Controller(), 2)
 	if len(ids) == 0 {
 		return nil
@@ -189,7 +189,7 @@ var cmdr2S43TectonicGiantPlay = game.RegisterChooseCardsThen("choose-cards/cmdr2
 // attacker, or became the target of a SPELL (not an ability) whose controller
 // is an opponent (EventBecomesTarget names the targeter's controller as Actor
 // and its kind as TargeterKind).
-func cmdr2S43TectonicGiantTrigger(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Cmdr2S43TectonicGiantTrigger(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventAttack:
 		return ThisAttacked(ev, source, game.Characteristic{}, g)

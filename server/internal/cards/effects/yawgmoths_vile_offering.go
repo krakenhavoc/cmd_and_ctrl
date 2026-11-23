@@ -69,7 +69,7 @@ func yawgmothsVileOfferingResolve(item *game.StackItem, ctx *Context) error {
 		Targets:    back,
 		Controller: ctx.Controller(),
 		ThenTail:   yawgmothsVileOfferingRest,
-		ThenN:      copyFlag(item),
+		ThenN:      CopyFlag(item),
 	}.Apply(ctx)
 }
 
@@ -93,7 +93,7 @@ var yawgmothsVileOfferingRest = TogetherTail("yawgmoths-vile-offering/destroy-th
 // copyFlag is 1 for a stack item that is a copy of a spell or ability, else
 // 0: the one bit of a resolving item a keyed tail's body reads that
 // game.AskedItem does not carry.
-func copyFlag(item *game.StackItem) int {
+func CopyFlag(item *game.StackItem) int {
 	if item != nil && item.IsCopy {
 		return 1
 	}

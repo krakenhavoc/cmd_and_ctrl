@@ -32,7 +32,7 @@ func init() {
 				return target.InstanceID == source.InstanceID
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				c.Power += transformedPermanentsControlledBy(g, source.Controller)
+				c.Power += TransformedPermanentsControlledBy(g, source.Controller)
 			},
 		}},
 	})
@@ -40,7 +40,7 @@ func init() {
 
 // transformedPermanentsControlledBy counts the transformed permanents a
 // player controls.
-func transformedPermanentsControlledBy(g *game.Game, player uuid.UUID) int {
+func TransformedPermanentsControlledBy(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && TransformedPermanent(c) {

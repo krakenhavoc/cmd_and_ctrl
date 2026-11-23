@@ -41,7 +41,7 @@ var afrB04InterrogateGrant = game.RegisterChooseCardsThen("choose-cards/s82-afr-
 // afrB04Interrogate is "exile the top three cards of target opponent's
 // library" as a modal bullet's body: the opponent is the bullet's own
 // target, still legal as the spell resolves (CR 608.2b).
-func afrB04Interrogate(item *game.StackItem, ctx *Context, occ int) error {
+func AfrB04Interrogate(item *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok || t.Kind != game.TargetPlayer {
 		return nil

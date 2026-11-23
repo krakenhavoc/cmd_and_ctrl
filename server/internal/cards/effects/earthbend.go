@@ -74,7 +74,7 @@ type Earthbend struct {
 }
 
 func (e Earthbend) Apply(ctx *Context) error {
-	if e.Target == uuid.Nil || ctx.isNewSourceObject(e.Target) { // #1432
+	if e.Target == uuid.Nil || ctx.IsNewSourceObject(e.Target) { // #1432
 		return nil
 	}
 	return ctx.Game.EarthbendKeyedForEffect(ctx.Controller(), ctx.Source(), e.Target, e.N, e.Then)
@@ -129,7 +129,7 @@ func FirstLegalBattlefieldTarget(ctx *Context) uuid.UUID {
 		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
 			continue
 		}
-		if onBattlefield(ctx.Game, t.ID) {
+		if OnBattlefield(ctx.Game, t.ID) {
 			return t.ID
 		}
 	}

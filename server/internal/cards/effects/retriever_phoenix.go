@@ -50,7 +50,7 @@ func init() {
 		PrintedKeywords: []string{"flying", "haste"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.CardID == source.InstanceID && b16EnteredFromStack(g, source.InstanceID)
+				return ev.CardID == source.InstanceID && B16EnteredFromStack(g, source.InstanceID)
 			}, "Retriever Phoenix — learn", Do(Learn{})),
 		},
 		Replacements: []game.ReplacementEffect{ReturnThisInsteadOfLearning("Retriever Phoenix")},
@@ -72,7 +72,7 @@ func ReturnThisInsteadOfLearning(name string) game.ReplacementEffect {
 				ev.KeywordAction == game.KeywordActionLearn &&
 				src != nil && ev.Actor == src.Owner
 		},
-		KeywordInstead: game.RegisterKeywordInstead("return-this-instead-of-learning", returnThisInsteadOfLearningBody),
+		KeywordInstead: game.RegisterKeywordInstead("return-this-instead-of-learning", ReturnThisInsteadOfLearningBody),
 		Controller: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) uuid.UUID {
 			return ev.Actor
 		},
@@ -88,7 +88,7 @@ func ReturnThisInsteadOfLearning(name string) game.ReplacementEffect {
 // took out of it in the meantime is simply not returned. The rest of the
 // sentence the learn was part of (nothing, in every printing: learn is
 // last) runs through done.
-func returnThisInsteadOfLearningBody(g *game.Game, _, card uuid.UUID, done func(*game.Game) error) error {
+func ReturnThisInsteadOfLearningBody(g *game.Game, _, card uuid.UUID, done func(*game.Game) error) error {
 	if z := g.FindCardZoneForEffect(card); z != nil && z.Kind == game.ZoneGraveyard {
 		if err := g.ReturnFromGraveyardForEffect(card, game.ZoneBattlefield); err != nil {
 			return err

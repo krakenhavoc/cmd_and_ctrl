@@ -36,14 +36,14 @@ func init() {
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{Player: item.Controller, N: item.Trigger.Event.Amount}.Apply(NewContext(g, item))
 				},
-			}, "Cold-Eyed Selkie — draw that many cards?", coldEyedSelkieDraws),
+			}, "Cold-Eyed Selkie — draw that many cards?", ColdEyedSelkieDraws),
 		},
 	})
 }
 
 // coldEyedSelkieDraws is how many cards a "yes" draws: the damage dealt
 // (#4016, OptionalDrawThatMany).
-func coldEyedSelkieDraws(_ *game.Game, item *game.StackItem) int {
+func ColdEyedSelkieDraws(_ *game.Game, item *game.StackItem) int {
 	if item.Trigger == nil {
 		return 0
 	}

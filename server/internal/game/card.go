@@ -1918,6 +1918,16 @@ type Card struct {
 	// and comes back is a new object (CR 400.7). Carried by the snapshot.
 	Surveilled bool
 
+	// Milled says the arrival PutInGraveyardFrom records was a mill's
+	// graveyard leg (CR 701.17a, milled_cards.go): the card came off the top
+	// of its owner's library as a mill and landed in a graveyard. With
+	// PutInGraveyardThisTurn it is "cards in your graveyard that were milled
+	// this turn" (Card.MilledThisTurn, Raul, Trouble Shooter). A search that
+	// puts a card into a graveyard, or a surveil, is not a mill. Cleared by
+	// MoveCard on every move, so a card that leaves and comes back is a new
+	// object (CR 400.7). Carried by the snapshot.
+	Milled bool
+
 	// SuspendGranted says an effect gave this exiled card suspend (CR
 	// 702.62a, #4455): Kang Prime's and Doom's Time Platform's "If it
 	// doesn't have suspend, it gains suspend". triggersOf then derives the

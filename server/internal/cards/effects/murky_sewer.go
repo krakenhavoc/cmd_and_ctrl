@@ -23,7 +23,7 @@ func init() {
 		OracleID:     "c2cdefeb-3176-4faf-be54-a62d31f777a5",
 		Name:         "Murky Sewer",
 		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(aPlayerHasLifeAtMost(13))},
+		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(APlayerHasLifeAtMost(13))},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{U|B}",
@@ -37,7 +37,7 @@ func init() {
 // parameter so each call site reads as its printed text.
 //
 //nolint:unparam // the printed life total, kept at the call site
-func aPlayerHasLifeAtMost(n int) func(g *game.Game, _ uuid.UUID) bool {
+func APlayerHasLifeAtMost(n int) func(g *game.Game, _ uuid.UUID) bool {
 	return func(g *game.Game, _ uuid.UUID) bool {
 		for _, p := range g.Seats {
 			if p != nil && !p.Eliminated && p.Life <= n {

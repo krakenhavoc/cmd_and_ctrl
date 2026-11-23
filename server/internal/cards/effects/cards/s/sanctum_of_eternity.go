@@ -1,0 +1,50 @@
+package cardss
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Sanctum of Eternity — Land (EDHREC rank 3753):
+//
+//	"{T}: Add {C}.
+//	 {2}, {T}: Return target commander you own from the battlefield
+//	 to your hand. Activate only during your turn."
+//
+// The commander-blink land: a repeatable way to re-cast your
+// commander for its ETB, or to save it from a wipe on your turn. The
+// colourless mana is an ordinary tap ability. The bounce is a real
+// activated ability with a target clause narrowed to permanents
+// flagged as commanders that the activator OWNS — a stolen commander
+// of yours is still yours to return, an opponent's commander you
+// happen to control is not. The chosen commander goes to its owner's
+// hand — and since #539 the bounce runs through the shared exit
+// primitive, so CR 903.9 offers its owner the command zone instead,
+// exactly as it does for a commander that dies. Declined, it is in
+// hand to be re-cast for the printed cost, which is the point.
+//
+// "Activate only during your turn" is the ability's activation
+// condition (CR 602.1b, #743): DuringYourTurn, not sorcery speed. So
+// the bounce is available in any step of your own turn — your combat,
+// your end step, and in response to something on your own turn — and
+// in none of an opponent's, as printed.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "c7d9ff27-f1fc-42e4-a47b-d2e6d68e4035",
+		Name:         "Sanctum of Eternity",
+		Completeness: effects.CompletenessFull,
+		ManaAbilities: []effects.ManaAbility{{
+			Cost:     effects.ManaAbilityCost{Tap: true},
+			Produced: "{C}",
+			Label:    "Add {C}",
+		}},
+		Activated: []effects.ActivatedAbility{{
+			Label:     "{2}, {T}: Return target commander you own from the battlefield to your hand. Activate only during your turn.",
+			Cost:      effects.Plus(effects.ManaCost("{2}"), effects.TapCost()),
+			Targets:   effects.TargetPermanent("target commander you own", effects.B36CommanderYouOwn()),
+			Condition: effects.DuringYourTurn(),
+			Effect:    effects.BounceChosenTarget,
+		}},
+	})
+}

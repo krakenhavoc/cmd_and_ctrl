@@ -41,7 +41,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			TriggerEdict(OncePerBatch(On(game.EventDealDamage, creatureDealtCombatDamageToYou,
+			TriggerEdict(OncePerBatch(On(game.EventDealDamage, CreatureDealtCombatDamageToYou,
 				"Witch-king of Angmar — each opponent sacrifices a creature that dealt combat damage to you this turn; the Ring tempts you",
 				witchKingEdict))),
 		},
@@ -57,7 +57,7 @@ func init() {
 // creatureDealtCombatDamageToYou is "a creature deals combat damage to
 // you": the event is combat damage to the source's controller from a
 // creature, whoever controls it.
-func creatureDealtCombatDamageToYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func CreatureDealtCombatDamageToYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if source == nil || ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Target != source.Controller {
 		return false
 	}

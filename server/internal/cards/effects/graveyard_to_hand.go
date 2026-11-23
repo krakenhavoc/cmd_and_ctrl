@@ -23,7 +23,7 @@ import (
 //
 // An empty pick is a legal answer to any prompt with a floor of zero
 // and moves nothing.
-var returnPickedToHand = askedPick("choose-cards/return-picked-to-hand", func(ctx *Context, r game.CardsChosen) error {
+var returnPickedToHand = AskedPick("choose-cards/return-picked-to-hand", func(ctx *Context, r game.CardsChosen) error {
 	return ReturnPickedToHandNow(ctx, r.Picked)
 })
 
@@ -31,7 +31,7 @@ var returnPickedToHand = askedPick("choose-cards/return-picked-to-hand", func(ct
 // `cards`, which sit in a graveyard, and returns the picked card to its
 // owner's hand: returnPickedToHand, with the graveyard re-checked on
 // submit, since a card can leave it between the question and the answer.
-func queueReturnPickedToHand(ctx *Context, chooser uuid.UUID, question string, cards []uuid.UUID) {
+func QueueReturnPickedToHand(ctx *Context, chooser uuid.UUID, question string, cards []uuid.UUID) {
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    chooser,
 		FromPlayer: chooser,

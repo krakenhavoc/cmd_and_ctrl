@@ -29,10 +29,10 @@ func init() {
 		AsEnters:     ChooseOptionAsEnters("Outpost Siege", "Khans", "Dragons"),
 		Triggered: []game.TriggeredAbility{
 			WhenChosen("Khans", AtYourUpkeep("Outpost Siege — exile the top card of your library; you may play it this turn",
-				outpostSiegeImpulse)),
+				OutpostSiegeImpulse)),
 			WhenChosen("Dragons", TriggerWithPurpose(Targeting(
-				On(game.EventLTB, aCreatureYouControlLeft, "Outpost Siege — 1 damage to any target",
-					b33DamageChosenTargetFromSource(1)),
+				On(game.EventLTB, ACreatureYouControlLeft, "Outpost Siege — 1 damage to any target",
+					B33DamageChosenTargetFromSource(1)),
 				TargetAny()), ForTargets(DamageToTarget(0, 1)))),
 		},
 	})
@@ -41,15 +41,15 @@ func init() {
 // aCreatureYouControlLeft is "whenever a creature you control leaves
 // the battlefield": any destination, the creature read after the move
 // (the move does not reset its controller — see edea_possessed_sorceress.go).
-func aCreatureYouControlLeft(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func ACreatureYouControlLeft(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventLTB {
 		return false
 	}
 	left, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftAsType(ev, left, "creature") && leftUnderControlOf(ev, left) == source.Controller
+	return ok && LeftAsType(ev, left, "creature") && LeftUnderControlOf(ev, left) == source.Controller
 }
 
 // outpostSiegeImpulse is the Khans body.
-func outpostSiegeImpulse(g *game.Game, item *game.StackItem) error {
+func OutpostSiegeImpulse(g *game.Game, item *game.StackItem) error {
 	return ExileTopWithPermission{From: item.Controller, GrantTo: item.Controller, N: 1}.Apply(NewContext(g, item))
 }

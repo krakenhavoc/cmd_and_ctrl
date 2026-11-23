@@ -10,7 +10,7 @@ import (
 // batch 15 (#4834).
 
 // socB15IsPrime reports whether n is a prime number (2, 3, 5, 7, 11, ...).
-func socB15IsPrime(n int) bool {
+func SocB15IsPrime(n int) bool {
 	if n < 2 {
 		return false
 	}
@@ -26,7 +26,7 @@ func socB15IsPrime(n int) bool {
 // first made its target player lose life (Collective Brutality, Witherbloom
 // Command): a step of its own, so the gain waits for a prompt the life loss
 // may ask (CR 608.2c).
-func socB15ModeYouGainLife(n int) Applier {
+func SocB15ModeYouGainLife(n int) Applier {
 	return Instruction(func(ctx *Context) error {
 		t, ok := ModeTarget(ctx, ctx.Occurrence())
 		if !ok || t.Kind != game.TargetPlayer {
@@ -40,8 +40,8 @@ func socB15ModeYouGainLife(n int) Applier {
 // "if": a land entered the battlefield under `player`'s control this turn (the
 // turn tally, bumped at the entry itself, so a land that has since left still
 // counts) and `player` controls a prime number of lands now.
-func socB15LandEnteredAndPrimeLands(g *game.Game, player uuid.UUID) bool {
-	return g.TurnTallyFor(player).LandsEntered > 0 && socB15IsPrime(b03LandsControlled(g, player))
+func SocB15LandEnteredAndPrimeLands(g *game.Game, player uuid.UUID) bool {
+	return g.TurnTallyFor(player).LandsEntered > 0 && SocB15IsPrime(B03LandsControlled(g, player))
 }
 
 // socB15PrimoKey files the event cursor and the land count before the token is
@@ -54,10 +54,10 @@ const socB15PrimoKey = "zimone-all-questioning/before-primo"
 // controls as the ability resolves (CR 608.2h). Create-then-put as Deekah's
 // Fractal is, so the counters are placed on the token after it has entered
 // and a creation that waits on a question (a CR 616 order) still gets them.
-func socB15PrimoWithLandCounters() Effect {
+func SocB15PrimoWithLandCounters() Effect {
 	return Do(
 		Instruction(func(ctx *Context) error {
-			ctx.RecordStep(socB15PrimoKey, nil, int(b25LastEventSeq(ctx.Game)), b03LandsControlled(ctx.Game, ctx.Controller()))
+			ctx.RecordStep(socB15PrimoKey, nil, int(B25LastEventSeq(ctx.Game)), B03LandsControlled(ctx.Game, ctx.Controller()))
 			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 green and blue Fractal named Primo, the Indivisible")), 1, game.TokenEntryOptions{})
 			return err
 		}),
@@ -66,12 +66,12 @@ func socB15PrimoWithLandCounters() Effect {
 			if len(rec.Ns) < 2 || rec.Ns[1] <= 0 {
 				return nil
 			}
-			for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
+			for _, id := range B27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(rec.Ns[0])) {
 				c, ok := ctx.Game.LookupCardForEffect(id)
-				if !ok || !c.IsToken() || c.Name != "Primo, the Indivisible" || !onBattlefield(ctx.Game, id) {
+				if !ok || !c.IsToken() || c.Name != "Primo, the Indivisible" || !OnBattlefield(ctx.Game, id) {
 					continue
 				}
-				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: rec.Ns[1]}).Apply(ctx.asGroupMember()); err != nil {
+				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: rec.Ns[1]}).Apply(ctx.AsGroupMember()); err != nil {
 					return err
 				}
 			}

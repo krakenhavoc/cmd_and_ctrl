@@ -11,7 +11,7 @@ import (
 
 // mscM13CastNoncreatureSpellThisTurn is "you've cast a noncreature spell
 // this turn": the per-turn cast tally, bumped after a cast succeeds.
-func mscM13CastNoncreatureSpellThisTurn(g *game.Game, controller uuid.UUID) bool {
+func MscM13CastNoncreatureSpellThisTurn(g *game.Game, controller uuid.UUID) bool {
 	return g.CastTallyFor(controller).Noncreature > 0
 }
 
@@ -20,12 +20,12 @@ func mscM13CastNoncreatureSpellThisTurn(g *game.Game, controller uuid.UUID) bool
 // The Thing): an intervening if (CR 603.4), checked as the step begins and
 // again as the trigger resolves, so a trigger that was not set off never
 // goes on the stack.
-func mscM13CombatIfCastNoncreature(label string, effect Effect) game.TriggeredAbility {
+func MscM13CombatIfCastNoncreature(label string, effect Effect) game.TriggeredAbility {
 	return InterveningIf(CondBoard{
 		Name: "you've cast a noncreature spell this turn",
-		Test: func(ctx *Context) bool { return mscM13CastNoncreatureSpellThisTurn(ctx.Game, ctx.Controller()) },
+		Test: func(ctx *Context) bool { return MscM13CastNoncreatureSpellThisTurn(ctx.Game, ctx.Controller()) },
 	}, On(game.EventStepBegan, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return StepBegan(game.StepBeginCombat, true)(ev, source, game.Characteristic{}, g) &&
-			mscM13CastNoncreatureSpellThisTurn(g, source.Controller)
+			MscM13CastNoncreatureSpellThisTurn(g, source.Controller)
 	}, label, effect))
 }

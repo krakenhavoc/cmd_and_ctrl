@@ -185,6 +185,16 @@ type AdditionalCost struct {
 	// the cost modifiers.
 	ManaCost string
 
+	// ManaCostIsSpellCost makes the mana half "a cost equal to its mana
+	// cost" (CR 202.1): a GRANTED optional cost whose price is the mana
+	// cost of the spell it was granted to (Hatchery Sliver's "Each Sliver
+	// spell you cast has replicate. The replicate cost is equal to its
+	// mana cost."). optionalCostsWithGrantorsLocked writes the card's mana
+	// cost into ManaCost as it files the grant, so every reader (the
+	// pricing, the auto-tapper, the view, the bot enumerator) sees a plain
+	// cost. Only a granted cost may carry it, with ManaCost empty.
+	ManaCostIsSpellCost bool
+
 	// Repeat is CR 702.33d's multikicker: the maximum number of times
 	// this cost may be paid for one cast. 0 and 1 both mean "once".
 	//

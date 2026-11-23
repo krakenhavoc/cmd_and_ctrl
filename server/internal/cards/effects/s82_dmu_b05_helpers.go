@@ -11,11 +11,11 @@ import (
 // step" (Djinn of the Fountain, Stenn, Paranoid Partisan). Only the
 // permanent the ability came from is exiled: one that left, or came back as
 // a new object, in response has nothing to blink (CR 400.7, CR 608.2b).
-func exileThisThenScheduleReturn(ctx *Context, item *game.StackItem, label string) error {
-	if !sourceIsStillThisPermanent(ctx.Game, item) {
+func ExileThisThenScheduleReturn(ctx *Context, item *game.StackItem, label string) error {
+	if !SourceIsStillThisPermanent(ctx.Game, item) {
 		return nil
 	}
-	return exileCardsThenScheduleReturn(ctx, []uuid.UUID{item.SourceCardID}, label)
+	return ExileCardsThenScheduleReturn(ctx, []uuid.UUID{item.SourceCardID}, label)
 }
 
 // CastFromGraveyardByDiscarding is "You may cast this card from your
@@ -32,7 +32,7 @@ func exileThisThenScheduleReturn(ctx *Context, item *game.StackItem, label strin
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{CastFromGraveyardByDiscarding("{1}{U}{B}{B}", 2)},
 func CastFromGraveyardByDiscarding(printedCost string, n int) game.AlternativeCost {
-	what := numberWord(n) + " cards"
+	what := NumberWord(n) + " cards"
 	return game.AlternativeCost{
 		Key:             "discard_from_graveyard",
 		Label:           "Discard " + what + " to cast this card from your graveyard",

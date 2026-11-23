@@ -38,6 +38,13 @@ cmd_and_ctrl/
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── adminview/   # the admin views' read side: every SQL statement behind /admin/users* and /admin/games* (SELECT only, guarded by a test), their response types, and pure merges with the lobby's live tables; imports no lobby or ws (ADR 0124)
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes; card roles (roles.go, roles_overrides.go, ADR 0217 §7)
+│   │   │   ├── effects/  # the card catalog (package effects): Spec, Register, Lookup, every seam and shared helper. Split by #5906 (ADR 0225) when its second PR lands; until then every card and test is in this one directory:
+│   │   │   │   ├── shards.txt      # the frozen range table: which card shard and test package a file name belongs to
+│   │   │   │   ├── core_cards.txt  # the card files that stay in the core because other files use their helpers (written by the split)
+│   │   │   │   ├── cards/          # package cards, the aggregator: links every shard; import it for its side effect wherever the whole catalog is read
+│   │   │   │   │   └── <shard>/    # package cards<shard>: card files only, one init() each, qualified calls into the core
+│   │   │   │   ├── effectstest/    # test helpers lifted out of the old _test.go files (NewCatalogGame, …) and the flat view the source-scanning tests read
+│   │   │   │   └── tests/<id>/     # package tests<id>: the catalog's tests, plus a generated main_test.go
 │   │   │   ├── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
 │   │   │   └── oracletext/ # reads printed Oracle text: the comparison form coverage's drift guards use, and the catalog row → printed ability map behind a stack item's ability_text (#3830)
 │   │   ├── catalog/     # /catalog routes (public) — what the engine automates + how completely (ADR 0042)

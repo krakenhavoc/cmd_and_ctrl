@@ -13,7 +13,7 @@ import (
 // (CR 305.6): any land card whose layered-in-library subtypes name one of
 // the five basic land types, so a Temple Garden counts and a Wastes does
 // not. A card in a library has only its printed types.
-func s82DmuB10IsLandWithBasicType(c game.Card) bool {
+func S82DmuB10IsLandWithBasicType(c game.Card) bool {
 	if !c.IsLand() {
 		return false
 	}
@@ -32,7 +32,7 @@ func s82DmuB10IsLandWithBasicType(c game.Card) bool {
 // Slimefoot's Survey). X is counted as the clause resolves. The kept card
 // is the one the player names; once the rest are under the library, it is
 // the top card. With no card named, every card goes under.
-func s82DmuB10LookKeepOneOnTop(ctx *Context, label string) error {
+func S82DmuB10LookKeepOneOnTop(ctx *Context, label string) error {
 	player := ctx.Controller()
 	n := DomainCount(ctx.Game, player)
 	if n <= 0 {

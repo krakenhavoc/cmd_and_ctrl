@@ -140,7 +140,7 @@ func (f TribeFilter) Matches(target *game.Card, _ *game.Game, source *game.Card)
 // creature the filter matches.
 func TribalAnthem(f TribeFilter, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     f.subject() + " get " + signedPT(power, toughness) + ".",
+		Label:     f.subject() + " get " + SignedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: f.Matches,
@@ -240,7 +240,7 @@ func AllCreatureTypesGrant(f TribeFilter) game.StaticAbility {
 		Label:     f.subject() + " are every creature type.",
 		Layer:     game.Layer4Type,
 		AppliesTo: f.Matches,
-		Apply:     applyAllCreatureTypes,
+		Apply:     ApplyAllCreatureTypes,
 	}
 }
 
@@ -249,7 +249,7 @@ func AllCreatureTypesGrant(f TribeFilter) game.StaticAbility {
 // disagree about where the property lives — one storage, and a later
 // layer-4 subtype SET in the same bucket clears it (CR 205.1b,
 // game.Characteristic.SetSubtypes).
-func applyAllCreatureTypes(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+func ApplyAllCreatureTypes(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 	c.AllCreatureTypes = true
 }
 
@@ -276,7 +276,7 @@ type GrantAllCreatureTypesUntilEOT struct {
 }
 
 func (a GrantAllCreatureTypesUntilEOT) Apply(ctx *Context) error {
-	return untilEndOfTurn(ctx, a.Target, a.Match,
+	return UntilEndOfTurn(ctx, a.Target, a.Match,
 		eotLabel(a.Label, "all creature types until end of turn"),
 		game.AllCreatureTypesMod())
 }

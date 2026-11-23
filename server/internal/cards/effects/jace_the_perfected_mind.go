@@ -47,7 +47,7 @@ func init() {
 				Cost:    LoyaltyCost(-2),
 				Targets: TargetPlayer("target player"),
 				Effect: Do(
-					Instruction(func(ctx *Context) error { return jacePerfectedMindMill(ctx, 3) }),
+					Instruction(func(ctx *Context) error { return JacePerfectedMindMill(ctx, 3) }),
 					Instruction(jacePerfectedMindDraw),
 				),
 			},
@@ -56,7 +56,7 @@ func init() {
 				Cost:    LoyaltyMinusX(),
 				Targets: TargetPlayer("target player"),
 				Effect: Do(Instruction(func(ctx *Context) error {
-					return jacePerfectedMindMill(ctx, 3*ctx.X())
+					return JacePerfectedMindMill(ctx, 3*ctx.X())
 				})),
 			},
 		},
@@ -78,12 +78,12 @@ func jacePerfectedMindPlusOne(g *game.Game, item *game.StackItem) error {
 }
 
 // jacePerfectedMindMill mills n cards from the still-legal target player.
-func jacePerfectedMindMill(ctx *Context, n int) error {
-	player, ok := firstLegalPlayerTarget(ctx)
+func JacePerfectedMindMill(ctx *Context, n int) error {
+	player, ok := FirstLegalPlayerTarget(ctx)
 	if !ok || n <= 0 {
 		return nil
 	}
-	return millEachPlayerInTurn(ctx, []uuid.UUID{player}, constantMill(n), game.KeyedTail{})
+	return MillEachPlayerInTurn(ctx, []uuid.UUID{player}, ConstantMill(n), game.KeyedTail{})
 }
 
 // jacePerfectedMindDraw is the −2's second sentence: three cards when any

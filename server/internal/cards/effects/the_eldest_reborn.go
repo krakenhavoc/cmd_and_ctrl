@@ -27,18 +27,18 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			TriggerEdict(ChapterTrigger(1, "The Eldest Reborn — I: each opponent sacrifices a creature or planeswalker",
-				eachOpponentSacrificesACreatureOrPlaneswalker)),
+				EachOpponentSacrificesACreatureOrPlaneswalker)),
 			ChapterTrigger(2, "The Eldest Reborn — II: each opponent discards a card",
-				eachOpponentDiscardsOne),
+				EachOpponentDiscardsOne),
 			ChapterTriggerTargeting(3, "The Eldest Reborn — III: reanimate under your control",
 				TargetCardInGraveyard("target creature or planeswalker card in a graveyard",
 					Or(Creature(), Planeswalker())),
-				eldestRebornReanimate),
+				EldestRebornReanimate),
 		},
 	})
 }
 
-func eachOpponentSacrificesACreatureOrPlaneswalker(g *game.Game, item *game.StackItem) error {
+func EachOpponentSacrificesACreatureOrPlaneswalker(g *game.Game, item *game.StackItem) error {
 	return EachPlayerSacrifices{
 		ExceptController: true,
 		Match:            Or(Creature(), Planeswalker()),
@@ -46,7 +46,7 @@ func eachOpponentSacrificesACreatureOrPlaneswalker(g *game.Game, item *game.Stac
 	}.Apply(NewContext(g, item))
 }
 
-func eldestRebornReanimate(g *game.Game, item *game.StackItem) error {
+func EldestRebornReanimate(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}

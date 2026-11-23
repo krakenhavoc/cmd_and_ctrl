@@ -1,0 +1,137 @@
+package testsu
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// werewolf_pack_leader_test.go — #4072: Werewolf Pack Leader (#4071).
+
+const (
+	hwWerewolfPackLeader = "086a911f-9ed4-4260-ae46-58c9333b95f5"
+	hwMikaeus            = "5d27c63e-d1ef-48af-b51d-01ebc6daeac9"
+)
+
+// hwHasKeyword and hwDeclare live in hallowolf_cards_test.go.
+
+func TestHWWerewolfPackLeaderIsFull(t *testing.T) {
+	spec, ok := effects.Lookup(hwWerewolfPackLeader)
+	if !ok || spec.Completeness != effects.CompletenessFull {
+		t.Fatal("Werewolf Pack Leader is registered complete")
+	}
+}
+
+func TestHWWerewolfPackLeaderPackTacticsDrawsOnlyWithSixPower(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		other int
+		draws int
+	}{{"total power 6", 3, 1}, {"total power 5", 2, 0}} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := effectstest.NewCatalogGame(t)
+			me, opp := g.Seats[0], g.Seats[1]
+			leader := effectstest.PushDiesCreatureForTest(g, me.ID, "Werewolf Pack Leader", hwWerewolfPackLeader, "Creature — Human Werewolf", 3, 3)
+			other := effectstest.PushVanillaCreature(g, me.ID, "Bear", tc.other, tc.other)
+			before := me.Hand.Size()
+			effectstest.HwDeclare(t, g, opp.ID, leader, other)
+			effectstest.PassPriorityAroundTable(t, g)
+			if got := me.Hand.Size() - before; got != tc.draws {
+				t.Errorf("cards drawn = %d, want %d", got, tc.draws)
+			}
+		})
+	}
+}
+
+func TestHWWerewolfPackLeaderActivationSetsBaseStatsAndTrample(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	leader := effectstest.PushDiesCreatureForTest(g, me.ID, "Werewolf Pack Leader", hwWerewolfPackLeader, "Creature — Human Werewolf", 3, 3)
+	effectstest.AdvanceToStepInTurn(t, g, game.StepPrecombatMain)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{G}{C}{C}{C}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, leader, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.LayeredCard(t, g, leader)
+	if c.CurrentPower() != 5 || c.CurrentToughness() != 3 || !effectstest.HwHasKeyword(c, "trample") {
+		t.Errorf("leader %d/%d trample=%v, want 5/3 trample", c.CurrentPower(), c.CurrentToughness(), effectstest.HwHasKeyword(c, "trample"))
+	}
+}
+
+// While the ability lasts the Pack Leader isn't a Human, so Mikaeus'
+// "other non-Human creatures" pump reaches it; at end of turn it is a
+// Human again and does not (CR 611.2, 514.2).
+func TestHWWerewolfPackLeaderStopsBeingAHumanUntilEndOfTurn(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	me := g.Seats[seat]
+	effectstest.RfcbPush(g, me.ID, "Mikaeus, the Unhallowed", "Legendary Creature — Zombie Cleric", hwMikaeus, 3, 3)
+	leader := effectstest.PushDiesCreatureForTest(g, me.ID, "Werewolf Pack Leader", hwWerewolfPackLeader, "Creature — Human Werewolf", 3, 3)
+	if c := effectstest.LayeredCard(t, g, leader); c.CurrentPower() != 3 || !c.HasSubtype("Human") {
+		t.Fatalf("control: %d power, human %v, want a 3-power Human", c.CurrentPower(), c.HasSubtype("Human"))
+	}
+	effectstest.AdvanceToStepInTurn(t, g, game.StepPrecombatMain)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{G}{C}{C}{C}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, leader, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.LayeredCard(t, g, leader)
+	if c.HasSubtype("Human") || !c.HasSubtype("Werewolf") {
+		t.Errorf("subtypes %v, want a Werewolf that is not a Human", c.Effective().Subtypes)
+	}
+	if c.CurrentPower() != 6 || c.CurrentToughness() != 4 || !effectstest.HwHasKeyword(c, "trample") {
+		t.Errorf("leader %d/%d trample=%v, want 6/4 (5/3 plus Mikaeus) trample", c.CurrentPower(), c.CurrentToughness(), effectstest.HwHasKeyword(c, "trample"))
+	}
+	for i := 0; i < 60 && g.Turn.ActiveSeat == seat; i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	c = effectstest.LayeredCard(t, g, leader)
+	if !c.HasSubtype("Human") || c.CurrentPower() != 3 || effectstest.HwHasKeyword(c, "trample") {
+		t.Errorf("next turn: human %v, power %d, trample %v, want a 3-power Human without trample", c.HasSubtype("Human"), c.CurrentPower(), effectstest.HwHasKeyword(c, "trample"))
+	}
+}
+
+// #5949: the ability reads "is a Werewolf" since the card's Oracle
+// update, which SETS its creature types (CR 205.1a): a creature type an
+// earlier effect gave it is replaced along with Human, where the old
+// "isn't a Human" left it.
+func TestHWWerewolfPackLeaderBecomesOnlyAWerewolf(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	leader := effectstest.PushDiesCreatureForTest(g, me.ID, "Werewolf Pack Leader", hwWerewolfPackLeader, "Creature — Human Werewolf", 3, 3)
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(leader),
+			[]game.Mod{game.AddSubtypesMod("Zombie")},
+			g.UntilEndOfTurnDuration(), "test — the leader is a Zombie in addition to its other types") {
+			t.Fatal("setup: the grant registered nothing")
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	if c := effectstest.LayeredCard(t, g, leader); !c.HasSubtype("Zombie") || !c.HasSubtype("Human") {
+		t.Fatalf("setup: subtypes %v, want a Human Werewolf Zombie", c.Effective().Subtypes)
+	}
+	effectstest.AdvanceToStepInTurn(t, g, game.StepPrecombatMain)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{G}{C}{C}{C}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, leader, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.LayeredCard(t, g, leader)
+	if !c.HasSubtype("Werewolf") || c.HasSubtype("Human") || c.HasSubtype("Zombie") {
+		t.Errorf("subtypes %v, want only Werewolf", c.Effective().Subtypes)
+	}
+}

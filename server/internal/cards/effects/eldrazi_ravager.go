@@ -28,7 +28,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 				Cost:    SacrificeN(2, "two Eldrazi", HasSubtype("Eldrazi")),
 				Zones:   []game.ZoneKind{game.ZoneGraveyard},
-				Effect:  returnThisCardFromYourGraveyardToYourHand,
+				Effect:  ReturnThisCardFromYourGraveyardToYourHand,
 			},
 			Cycling("{2}"),
 		},
@@ -39,7 +39,7 @@ func init() {
 // "Return this card from your graveyard to your hand." The card may
 // have left the graveyard between activation and resolution, and then
 // nothing happens.
-func returnThisCardFromYourGraveyardToYourHand(g *game.Game, item *game.StackItem) error {
+func ReturnThisCardFromYourGraveyardToYourHand(g *game.Game, item *game.StackItem) error {
 	id := item.SourceCardID
 	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil

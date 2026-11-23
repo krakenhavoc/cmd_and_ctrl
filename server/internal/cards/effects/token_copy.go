@@ -86,7 +86,7 @@ func (c CreateTokenCopy) Apply(ctx *Context) error {
 	if c.Except != nil {
 		c.Except(&tmpl)
 	}
-	return createTokenCopies(ctx, c.Controller, tmpl, c.N)
+	return CreateTokenCopies(ctx, c.Controller, tmpl, c.N)
 }
 
 // CreateTokenCopiesTogether is "for each <object>, create a token that's a
@@ -130,7 +130,7 @@ func (c CreateTokenCopiesTogether) Apply(ctx *Context) error {
 		if c.Except != nil {
 			c.Except(&tmpl)
 		}
-		groups = append(groups, game.TokenGroup{Template: copiedToken(tmpl), Count: n})
+		groups = append(groups, game.TokenGroup{Template: CopiedToken(tmpl), Count: n})
 	}
 	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: controller, Source: ctx.Source(), Groups: groups, Together: true,
@@ -189,7 +189,7 @@ func SacrificeThisTokenAtEndStepGrant(key, label string) AbilityGrant {
 // response is skipped (CR 608.2b).
 func TokenCopyWithHasteAndGrant(grant string) func(*game.StackItem, *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -260,12 +260,12 @@ func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 	if !ok {
 		return game.Card{}, false
 	}
-	return tokenCopyTemplateFromCard(src), true
+	return TokenCopyTemplateFromCard(src), true
 }
 
 // tokenCopyTemplateFromCard is TokenCopyTemplate's body over a card already
 // chosen as the copy source: the template carrying its copiable values.
-func tokenCopyTemplateFromCard(src game.Card) game.Card {
+func TokenCopyTemplateFromCard(src game.Card) game.Card {
 	out := game.Card{
 		Name:               src.Name,
 		ScryfallID:         src.ScryfallID,
@@ -327,7 +327,7 @@ func tokenTypeLine(printed string) string {
 	if printed == "" {
 		return "Token"
 	}
-	if containsFoldASCII(printed, "token") {
+	if ContainsFoldASCII(printed, "token") {
 		return printed
 	}
 	return "Token " + printed
@@ -345,7 +345,7 @@ func tokenTypeLine(printed string) string {
 //
 // Supertypes survive: a copy of a legendary creature is legendary,
 // and the legend rule applies to it.
-func retypedTypeLine(printed string, subtypes ...string) string {
+func RetypedTypeLine(printed string, subtypes ...string) string {
 	super, types, _ := game.ParseTypeLine(printed)
 	head := make([]string, 0, len(super)+len(types))
 	head = append(head, super...)
@@ -384,7 +384,7 @@ func ExileTargetThenTokenCopy(g *game.Game, item *game.StackItem, then game.Tail
 // var.
 func ExileThenTokenCopyTail(key string, exceptFor func(ctx *Context) func(t *game.Card)) game.TailRef {
 	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
-		if !oneWentThisWay(o) {
+		if !OneWentThisWay(o) {
 			return nil
 		}
 		return CreateTokenCopy{

@@ -26,18 +26,18 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("SP//dr — put a +1/+1 counter on target creature",
-				onePlusOneCounterOnFirstLegalTarget), TargetCreature("target creature")),
-			On(game.EventDealDamage, modifiedCreatureDealtCombatDamageToPlayer, "SP//dr — a modified creature dealt combat damage to a player: draw a card",
+				OnePlusOneCounterOnFirstLegalTarget), TargetCreature("target creature")),
+			On(game.EventDealDamage, ModifiedCreatureDealtCombatDamageToPlayer, "SP//dr — a modified creature dealt combat damage to a player: draw a card",
 				Do(DrawCards{N: 1})),
 		},
 	})
 }
 
-func onePlusOneCounterOnFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func OnePlusOneCounterOnFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {
-			return nothingIfGone(AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx))
+			return NothingIfGone(AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx))
 		}
 	}
 	return nil

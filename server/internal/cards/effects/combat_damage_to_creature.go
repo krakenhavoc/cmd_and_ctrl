@@ -18,7 +18,7 @@ import (
 // creature, so it is still on the battlefield to be asked about. A
 // planeswalker or battle that took the damage is not a creature and
 // does not match.
-func thisDealtCombatDamageToACreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func ThisDealtCombatDamageToACreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Source != source.InstanceID {
 		return false
 	}
@@ -37,7 +37,7 @@ func thisDealtCombatDamageToACreature(ev game.Event, source *game.Card, _ game.C
 // item.Params.Object. A card that is not on the battlefield and has
 // not left it this turn gets an epoch no object has, so the
 // resolution finds nothing to act on.
-func damagedCreatureRef(g *game.Game, id uuid.UUID) game.ObjectRef {
+func DamagedCreatureRef(g *game.Game, id uuid.UUID) game.ObjectRef {
 	if ref, ok := g.PermanentRefForEffect(id); ok {
 		return ref
 	}
@@ -48,7 +48,7 @@ func damagedCreatureRef(g *game.Game, id uuid.UUID) game.ObjectRef {
 // item.Params.Object, and only while it is still that object on the
 // battlefield. One that died to the damage is in a graveyard, and one
 // that came back since is a new object (CR 400.7); neither is exiled.
-func exileDamagedCreature(g *game.Game, item *game.StackItem) error {
+func ExileDamagedCreature(g *game.Game, item *game.StackItem) error {
 	ref := item.Params.Object
 	c, ok := g.LookupCardForEffect(ref.ID)
 	if !ok || c.ObjectEpoch != ref.Epoch {

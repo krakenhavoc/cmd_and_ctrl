@@ -14,10 +14,10 @@ import (
 // targets for the copy." (Doublecast's text on an instant, Teach by
 // Example): a delayed trigger that waits for the next such cast (CR 603.7b)
 // and ends with the turn.
-func copyYourNextInstantOrSorcery(label string) func(*game.StackItem, *Context) error {
+func CopyYourNextInstantOrSorcery(label string) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return WhenYouNextCast(label,
-			game.CastFilter{Types: []string{"Instant", "Sorcery"}}, copyTheSpellBody).Apply(ctx)
+			game.CastFilter{Types: []string{"Instant", "Sorcery"}}, CopyTheSpellBody).Apply(ctx)
 	}
 }
 
@@ -25,7 +25,7 @@ func copyYourNextInstantOrSorcery(label string) func(*game.StackItem, *Context) 
 // a stun counter on it" as a trigger's effect (Alchemax Slayer-Bots,
 // Floodpits Drowner): the first legal target is tapped, then given the
 // counter.
-func tapAndStunTheTarget(g *game.Game, item *game.StackItem) error {
+func TapAndStunTheTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
@@ -39,7 +39,7 @@ func tapAndStunTheTarget(g *game.Game, item *game.StackItem) error {
 }
 
 // hasAStunCounter is "creature with a stun counter on it".
-func hasAStunCounter() CardPredicate {
+func HasAStunCounter() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.Counters[game.CounterStun] > 0
 	}
@@ -49,7 +49,7 @@ func hasAStunCounter() CardPredicate {
 // hands" as a modal bullet's body (Atlantis Attacks, Get Out): each target
 // still legal at resolution (CR 608.2b) goes to its OWNER's hand, and one that
 // is no longer legal is skipped while the rest still return.
-func bounceTheModesTargets(_ *game.StackItem, ctx *Context, occ int) error {
+func BounceTheModesTargets(_ *game.StackItem, ctx *Context, occ int) error {
 	for _, t := range ctx.ModeTargets(occ) {
 		if !ctx.IsTargetLegal(t) {
 			continue

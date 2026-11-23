@@ -1,0 +1,29 @@
+package cardsa
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Alania's Pathmaker — Creature — Otter Wizard {2}{U}, 2/3 (Bloomburrow,
+// #4467):
+//
+//	"When this creature enters, exile the top card of your library. Until
+//	 the end of your next turn, you may play that card."
+//
+// Impulse draw for one card over a seat-turn window (ADR 0063), the
+// Elemental Mascot way: the card may be played (a land too) until the end of
+// its controller's next turn, paying its costs as usual.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "ce36a450-68a6-4519-a9f0-0e3b772054eb",
+		Name:         "Alania's Pathmaker",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Alania's Pathmaker — exile the top card of your library; until the end of your next turn, you may play it", effects.Do(effects.Instruction(effects.BnsB50ImpulseTopUntilYourNextTurnEnds))),
+		},
+	})
+}

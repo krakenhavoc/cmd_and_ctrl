@@ -39,11 +39,11 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordAscend},
 		BlockRules: []game.BlockRule{
-			CantBeBlockedWhile(yourDetectives, youHaveTheCitysBlessingCast),
+			CantBeBlockedWhile(yourDetectives, YouHaveTheCitysBlessingCast),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b41DrewYourSecondCardThisTurn(ev, source, g)
+				return B41DrewYourSecondCardThisTurn(ev, source, g)
 			}, "Detective of the Month — create a 2/2 Detective",
 				Do(CreateToken{Template: TokenCard("2/2 white and blue Detective"), N: 1})),
 		},
@@ -61,6 +61,6 @@ func yourDetectives(_ *game.Game, c, source *game.Card) bool {
 // youHaveTheCitysBlessingCast reads the blessing for the rule source's
 // controller, which is the "caster" the block-rule predicates are asked
 // with.
-func youHaveTheCitysBlessingCast(g *game.Game, you uuid.UUID, _ game.Card) bool {
+func YouHaveTheCitysBlessingCast(g *game.Game, you uuid.UUID, _ game.Card) bool {
 	return YouHaveTheCitysBlessing(g, you)
 }

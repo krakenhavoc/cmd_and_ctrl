@@ -27,7 +27,7 @@ func init() {
 		Name:         "Psemilla, Meletian Poet",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, AllOf(YouCast(Enchantment()), youCastYourFirstEnchantmentSpellEachTurn),
+			On(game.EventCast, AllOf(YouCast(Enchantment()), YouCastYourFirstEnchantmentSpellEachTurn),
 				"Psemilla — create a 2/2 white Nymph enchantment creature token",
 				Do(CreateToken{Template: TokenCard("2/2 white Nymph enchantment creature"), N: 1})),
 			InterveningIf(psemillaFiveEnchantments,
@@ -39,14 +39,14 @@ func init() {
 
 // youCastYourFirstEnchantmentSpellEachTurn is the "first ... each turn" half of
 // the condition, as Arcane Bombardment's is for instants and sorceries.
-func youCastYourFirstEnchantmentSpellEachTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func YouCastYourFirstEnchantmentSpellEachTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.Kind == game.EventCast && ev.Actor == source.Controller &&
 		g.CastTallyFor(ev.Actor).Enchantment == 1
 }
 
 var psemillaFiveEnchantments = CondBoard{
 	Name: "you control five or more enchantments",
-	Test: func(ctx *Context) bool { return countYouControl(ctx, Enchantment()) >= 5 },
+	Test: func(ctx *Context) bool { return CountYouControl(ctx, Enchantment()) >= 5 },
 }
 
 func psemillaPump(ctx *Context) error {

@@ -12,7 +12,7 @@ import (
 // cmdrB17DefendersControlled is the number of creatures with defender
 // `controller` controls right now, read through the layers (Blight Pile's
 // X, Wingmantle Chaplain's count).
-func cmdrB17DefendersControlled(g *game.Game, controller uuid.UUID) int {
+func CmdrB17DefendersControlled(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && game.HasKeyword(&c, "defender") {
@@ -26,7 +26,7 @@ func cmdrB17DefendersControlled(g *game.Game, controller uuid.UUID) int {
 // sorcery cards in `player`'s graveyard (Haughty Djinn). A split card
 // counts once. It walks the seats directly because it runs inside the
 // layer pass, where the lock is already held.
-func cmdrB17InstantSorceryCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+func CmdrB17InstantSorceryCardsInGraveyard(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for _, p := range g.Seats {
 		if p == nil || p.ID != player || p.Graveyard == nil {

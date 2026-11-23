@@ -1,0 +1,82 @@
+package cardsbu
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Case of the Stashed Skeleton — Enchantment — Case {1}{B}:
+//
+//	"When this Case enters, create a 2/1 black Skeleton creature token
+//	 and suspect it. (It has menace and can't block.)
+//	 To solve — You control no suspected Skeletons. (If unsolved, solve
+//	 at the beginning of your end step.)
+//	 Solved — {1}{B}, Sacrifice this Case: Search your library for a
+//	 card, put it into your hand, then shuffle. Activate only as a
+//	 sorcery."
+//
+// The Case (ADR 0071) is the Shattered Pact's skeleton: ToSolve for the
+// condition, an ability gated on Solved() for the payoff. The enters
+// trigger makes the token and suspects it in the token creation's
+// continuation, so the suspect lands on the token that actually entered
+// even if a replacement effect paused the creation. The solve condition
+// reads the Skeletons' status as they stand, at the end step and again
+// on resolution (CR 603.4): the Case solves the turn the suspected
+// Skeleton is gone, unsuspected or never made, and not before.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "64219e17-1302-4a43-85d2-8a6214448890",
+		Name:         "Case of the Stashed Skeleton",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Case of the Stashed Skeleton — create a Skeleton and suspect it", caseOfTheStashedSkeletonEnters),
+			effects.ToSolve("Case of the Stashed Skeleton — to solve: you control no suspected Skeletons", youControlNoSuspectedSkeletons),
+		},
+		Activated: []effects.ActivatedAbility{{
+			Label:        "{1}{B}, Sacrifice this Case: Search your library for a card, put it into your hand, then shuffle.",
+			Cost:         effects.Plus(effects.ManaCost("{1}{B}"), effects.SacrificeThis()),
+			SorcerySpeed: true,
+			ActiveWhen:   effects.Solved(),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.SearchLibrary{
+					Player:  item.Controller,
+					Dest:    game.ZoneHand,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Case of the Stashed Skeleton — search for a card",
+				}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}
+
+// caseOfTheStashedSkeletonEnters is "create a 2/1 black Skeleton
+// creature token and suspect it": the suspect rides the token
+// creation's continuation.
+func caseOfTheStashedSkeletonEnters(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: item.Controller,
+		Source:     item.SourceCardID,
+		Groups: []game.TokenGroup{{
+			Template: ctx.TextToken(effects.TokenCard("2/1 black Skeleton")),
+			Count:    1,
+		}},
+	}, ctx.Tail(effects.ThenSuspectEach))
+}
+
+// youControlNoSuspectedSkeletons is the Case's solve condition.
+// "Skeletons" is a word of the Case's text (CR 612.2, #3984).
+func youControlNoSuspectedSkeletons(g *game.Game, controller, source uuid.UUID) bool {
+	skeleton := g.TextReaderOfForEffect(source).TextSubtype("Skeleton")
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == controller && c.Suspected && c.HasSubtype(skeleton) {
+			return false
+		}
+	}
+	return true
+}

@@ -1,0 +1,23 @@
+package cardsx
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Zealous Guardian — Creature — Kithkin Soldier {W/U}, 1/1 (Shadowmoor,
+// #5591):
+//
+//	"Flash"
+//
+// Flash is a printed keyword (CR 702.8a): it is cast any time it could
+// cast an instant.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "508fdfb1-87d6-4342-a05a-01158f253896",
+		Name:            "Zealous Guardian",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flash"},
+	})
+}

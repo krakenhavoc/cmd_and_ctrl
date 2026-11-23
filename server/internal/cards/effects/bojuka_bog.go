@@ -47,7 +47,7 @@ func init() {
 			},
 			Targets: TargetPlayer("target player"),
 			Key:     "Bojuka Bog — exile target player's graveyard",
-			Effect:  exileTargetPlayersGraveyard,
+			Effect:  ExileTargetPlayersGraveyard,
 		}},
 	})
 }
@@ -60,11 +60,11 @@ func init() {
 // recomputed, because the clause targets: the graveyard emptied is the
 // one that player has at RESOLUTION, and a player who mills themselves
 // in response loses those cards too.
-func exileTargetPlayersGraveyard(g *game.Game, item *game.StackItem) error {
+func ExileTargetPlayersGraveyard(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
 		return nil
 	}
-	return exileGraveyardForEffect(g, item, item.Targets[0].ID)
+	return ExileGraveyardForEffect(g, item, item.Targets[0].ID)
 }
 
 // exileGraveyardForEffect exiles every card in one player's
@@ -75,7 +75,7 @@ func exileTargetPlayersGraveyard(g *game.Game, item *game.StackItem) error {
 // live slice would skip every other card and leave half the
 // graveyard behind — a bug that would look like "Bojuka Bog only
 // half works" rather than like an iteration error.
-func exileGraveyardForEffect(g *game.Game, item *game.StackItem, playerID uuid.UUID) error {
+func ExileGraveyardForEffect(g *game.Game, item *game.StackItem, playerID uuid.UUID) error {
 	p := g.PlayerByIDForEffect(playerID)
 	if p == nil {
 		return nil

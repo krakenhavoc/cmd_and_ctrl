@@ -14,7 +14,7 @@ var sb11ColorBits = map[string]int{"W": 1, "U": 2, "B": 4, "R": 8, "G": 16}
 
 // sb11ColorMask is the number of searchRuleOneCardPerColor naming these
 // colours.
-func sb11ColorMask(colors ...string) int {
+func Sb11ColorMask(colors ...string) int {
 	m := 0
 	for _, c := range colors {
 		m |= sb11ColorBits[c]
@@ -28,7 +28,7 @@ func sb11ColorMask(colors ...string) int {
 // standing for one quality only. A card of several colours may be any one
 // of them, and the others still need cards of their own (Lotuslight
 // Dancers' ruling). Fewer cards than colours is fine, none at all too.
-var searchRuleOneCardPerColor = game.RegisterSearchRule("search/one-card-per-color",
+var SearchRuleOneCardPerColor = game.RegisterSearchRule("search/one-card-per-color",
 	func(picked []game.Card, mask int) bool {
 		var colors []string
 		for c, bit := range sb11ColorBits {
@@ -88,12 +88,12 @@ func sb11CallPickLeg(g *game.Game, r game.CardsChosen) error {
 			return err
 		}
 	}
-	return sb11CallStep(g, r.Chooser, r.Source, r.Word, r.Nums[0]+1, given)
+	return Sb11CallStep(g, r.Chooser, r.Source, r.Word, r.Nums[0]+1, given)
 }
 
 // sb11CallPut puts the +1/+1 counter on the Dragon and counts it once.
 func sb11CallPut(g *game.Game, id uuid.UUID, given []uuid.UUID) ([]uuid.UUID, error) {
-	if _, ok := battlefieldCardForEffect(g, id); !ok {
+	if _, ok := BattlefieldCardForEffect(g, id); !ok {
 		return given, nil
 	}
 	if err := g.AddCounterForEffect(id, game.CounterPlusOne, 1); err != nil {
@@ -112,7 +112,7 @@ func sb11CallPut(g *game.Game, id uuid.UUID, given []uuid.UUID) ([]uuid.UUID, er
 // Dragon of it takes its counter at once, one with several asks the
 // controller, one with none is skipped. After the last colour the
 // controller wins if five different Dragons got counters.
-func sb11CallStep(g *game.Game, controller, source uuid.UUID, dragon string, from int, given []uuid.UUID) error {
+func Sb11CallStep(g *game.Game, controller, source uuid.UUID, dragon string, from int, given []uuid.UUID) error {
 	for i := from; i < len(sb11CallColors); i++ {
 		var cands []uuid.UUID
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -174,7 +174,7 @@ type MayBehold struct {
 // item's context when the controller beholds.
 func NewMayBehold(name, subtype, key string, ifYouDo func(ctx *Context) error) *MayBehold {
 	b := &MayBehold{name: name, subtype: subtype}
-	b.pick = askedPick(key, func(ctx *Context, r game.CardsChosen) error {
+	b.pick = AskedPick(key, func(ctx *Context, r game.CardsChosen) error {
 		if len(r.Picked) != 1 {
 			return nil
 		}
