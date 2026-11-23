@@ -14474,5 +14474,424 @@
   ],
   "after": [],
   "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 1,
+  "theme": "Built on seams already on develop: put-from-hand, remove-counters costs, {Q}, next-spell cascade and planeswalk, landwalk, granted replacements",
+  "missing": [
+   "Umbral Mantle",
+   "Dwarven Confluencer",
+   "Plain Walker",
+   "Unnatural Selection",
+   "TARDIS",
+   "Khalni Heart Expedition",
+   "Elvish Piper",
+   "Wand of Wonder",
+   "Scion of Halaster"
+  ],
+  "oracle_ids": [
+   "44f3241f-af82-4f2e-b15d-7f279bf6e816",
+   "d483f61b-6000-43ca-b5eb-8ab1c924ffd6",
+   "c8d38d18-2669-494a-89a8-2ead0cc9628a",
+   "0be10525-09dc-4970-b495-2db7d4d3c3e7",
+   "9167a585-b742-427d-b840-e024f6878a5c",
+   "be6155de-c5b2-415c-ad83-142f9926462a",
+   "872ef617-7cdb-4a7a-85f5-efc9e12bece5",
+   "8f1123dd-19b7-402b-8ecd-ab62494c9fd5",
+   "227ddf6c-d21a-48da-84fb-395c7e096914"
+  ],
+  "after": [],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 2,
+  "theme": "Haunt, game-loss and planeswalk replacements, and timed graveyard escape/unearth grants",
+  "missing": [
+   "Orzhov Euthanist",
+   "Blind Hunter",
+   "Orzhov Pontiff",
+   "The Golden Throne",
+   "Susan Foreman",
+   "Confession Dial",
+   "Welcome to . . . // Jurassic Park",
+   "Ghost Ark"
+  ],
+  "oracle_ids": [
+   "3cc82a02-2906-4411-aebf-474b0735bb53",
+   "a731f5bc-892c-4857-9590-4fa31c1caf00",
+   "3620ef25-d9e2-4460-b25f-592ff7df681b",
+   "a68f41a2-37ee-46e1-bf3c-164c78b003ca",
+   "0f21f3b1-aee9-4272-ad02-067aa5f6a7c8",
+   "6316158c-2f66-4dc4-b78c-c6ff7c39bb77",
+   "a4b37d16-95b3-4143-a0b2-ad9f2aba91f8",
+   "bb1b4786-3804-486b-9fd9-85848d24d362"
+  ],
+  "after": [
+   6083,
+   6096,
+   6086
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 3,
+  "theme": "Repeatable and composite non-mana costs: squad, escape variants, can't-spend-mana, replicate equal to mana cost, cost reducers",
+  "missing": [
+   "Ruthless Radrat",
+   "Thrill-Kill Disciple",
+   "Nethergoyf",
+   "Lunar Hatchling",
+   "Detective's Phoenix",
+   "Hogaak, Arisen Necropolis",
+   "Ian Chesterton",
+   "Hollow One",
+   "Titan's Presence"
+  ],
+  "oracle_ids": [
+   "344671d1-8abf-4be1-93c9-ef917e88e6c9",
+   "7273118b-08af-41cd-a316-6bf61dc45b6c",
+   "040cbd8a-a9e5-454b-a5ae-9b66bb66b8e9",
+   "cb2c8ea9-c125-4742-a562-b693254152e5",
+   "52c3fe55-74ee-44cb-b62b-dc6c5dfdc33e",
+   "97acd977-164d-49d5-b3a1-72e0d75c9016",
+   "32c9ce8c-a19d-49e4-bc6d-c7182fa00b51",
+   "b9e4d34a-ba91-4ad6-b886-daeeda6c9498",
+   "b011d6b2-8930-4192-aa94-82869faa991b"
+  ],
+  "after": [
+   6084
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 4,
+  "theme": "Shared X costs and X gates, and player-level combat requirements and restrictions",
+  "missing": [
+   "Talon of Pain",
+   "Necron Overlord",
+   "Rampaging War Mammoth",
+   "Lavinia, Azorius Renegade",
+   "Rosheen, Roaring Prophet",
+   "Trove of Temptation",
+   "Seeker of Slaanesh",
+   "Ace's Baseball Bat",
+   "Last Night Together",
+   "Ensnaring Bridge"
+  ],
+  "oracle_ids": [
+   "0e4d2fbc-1b34-4501-9022-8ea800cb2d24",
+   "2c0de95f-4269-439c-a1bc-faa11348b185",
+   "05e910aa-cf84-468c-8a48-256588cbbf08",
+   "81ba3a33-0e04-4f68-9a42-1dd717733b57",
+   "3108a4fe-b18a-4d02-9545-b19812454362",
+   "f624c0f1-1c09-4b7a-b140-11329f27e3c7",
+   "47af21d3-b43f-4101-81cf-ca44db1a2706",
+   "3f47ec32-4ee9-4bc0-96f2-310a939cb973",
+   "0ad48edf-49e2-4f3a-b50e-11231a616752",
+   "dade5835-ccaf-45e3-b9a3-46017e0384b3"
+  ],
+  "after": [
+   6085,
+   6087
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 5,
+  "theme": "Spell-on-stack characteristics and grants, and spell/ability copies and retargeting",
+  "missing": [
+   "Illusion // Reality",
+   "Eight-and-a-Half-Tails",
+   "Thief of Existence",
+   "Jade Orb of Dragonkind",
+   "Mizzix, Replica Rider",
+   "Agrus Kos, Eternal Soldier",
+   "Zevlor, Elturel Exile",
+   "Dynaheir, Invoker Adept",
+   "Wyll's Reversal",
+   "Not of This World",
+   "Neera, Wild Mage"
+  ],
+  "oracle_ids": [
+   "5af2689d-c45c-4d45-b6a9-f32e8410b336",
+   "01c8d29f-4924-4d55-80bc-0c0c06bcb733",
+   "7abbd5af-a04b-476d-aee5-2b2f5114b019",
+   "5eef3d70-ef16-4722-8c3d-21a0311597bd",
+   "24a7e1d2-0bc9-40a9-a606-f0017bde3dab",
+   "3d19823a-dbb8-4384-81f4-5c6818b7f46d",
+   "0c85a577-db82-4a36-bc42-49644eba1cf2",
+   "a968524a-3d2d-4c0c-8f66-bfbfb9ff3c36",
+   "8d35cef8-a52d-45fb-8f5f-cccea26826d0",
+   "5da5d8a3-009e-4d8a-977e-6ebc73ba2682",
+   "88fb1dd1-60fb-4f51-ac4d-30b43156a474"
+  ],
+  "after": [
+   6088,
+   6094
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 6,
+  "theme": "Draw replacements and library-search restrictions",
+  "missing": [
+   "Alms Collector",
+   "Abundance",
+   "River Song",
+   "Jace, Mirror Mage",
+   "Aven Mindcensor",
+   "Leonin Arbiter",
+   "Canoptek Wraith",
+   "Arachnus Spinner"
+  ],
+  "oracle_ids": [
+   "278e51fe-3cd9-4c82-bd81-2164771f8611",
+   "eccc9a54-2b56-4a02-9926-258d5b2e25fb",
+   "418ecbb7-b809-4639-a531-070b58b5b85e",
+   "7ca99e2f-faf2-4301-a0ae-7cb880ba965b",
+   "d9517c5d-66d0-4178-96fb-a8c04f311ad8",
+   "a33f6070-590c-4be8-9180-b1ac2608cbc4",
+   "61849685-b407-4ed0-aafc-ec3a003200b9",
+   "8fea91ee-5849-4c46-8198-fd383d9a55e8"
+  ],
+  "after": [
+   6089,
+   6090
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 7,
+  "theme": "One-shot play and cast offers",
+  "missing": [
+   "Lobelia, Defender of Bag End",
+   "Djinn of Wishes",
+   "Ogre Battlecaster",
+   "The Eighth Doctor",
+   "Geode Golem",
+   "The Face of Boe",
+   "Anrakyr the Traveller",
+   "Vault 112: Sadistic Simulation",
+   "Fires of Mount Doom"
+  ],
+  "oracle_ids": [
+   "0f2e3e2e-9857-4be5-9bf0-62da1cc147fc",
+   "a34c3012-f787-4998-93c7-89c4decaa1ba",
+   "00ba0c24-a671-493e-ba46-13e45d1818f1",
+   "0956bc16-ff04-4e96-8059-ef62afa2405f",
+   "aaed2f39-6d5d-4880-a7c4-5a045399dab3",
+   "acef7666-53b1-43c5-8107-236bea22a8b3",
+   "32476743-c9d4-49ca-bec2-0669c215841b",
+   "480967df-a967-4093-a999-b71f6ee70688",
+   "f4944fde-2066-4aed-85c0-6e5e00a4bfe6"
+  ],
+  "after": [
+   6091
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 8,
+  "theme": "Exile links and permissions over cards exiled with a source",
+  "missing": [
+   "Coram, the Undertaker",
+   "Ian Malcolm, Chaotician",
+   "Apple of Eden, Isu Relic",
+   "Tasha, the Witch Queen",
+   "Shelob, Dread Weaver",
+   "Redemptor Dreadnought",
+   "Death in Heaven",
+   "River Song's Diary",
+   "Idris, Soul of the TARDIS",
+   "Alaundo the Seer",
+   "Massimo, the Magician"
+  ],
+  "oracle_ids": [
+   "51c511c0-783a-456d-a7e2-959f6e8ddfc8",
+   "57ff1665-0a7b-4d98-bd8f-cc07cf04f701",
+   "7849426d-895d-4dfe-a94d-b8df634618a5",
+   "863a148c-596a-492b-b68e-3e1cbfcb140f",
+   "7eade76f-92e4-4d26-9eb8-d3d954845c04",
+   "bcd48403-7c4b-4b57-8a28-4007b36fe4d7",
+   "f2bf5014-677a-4880-b926-d93457348bdc",
+   "60a63eb4-b0f7-4930-9bf6-afd42261d4d0",
+   "abb5210f-597c-450d-9239-6253a9136680",
+   "1e048c15-50d6-4313-880a-e04348952a51",
+   "aa27c281-b909-4274-8216-6fd0be78b3c9"
+  ],
+  "after": [
+   6092
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 9,
+  "theme": "New durations, timed cost reductions, and untap-step replacements",
+  "missing": [
+   "Brazen Cannonade",
+   "Commander Liara Portyr",
+   "Will Kenrith",
+   "Cone of Cold",
+   "Bewitching Leechcraft",
+   "The Ninth Doctor",
+   "Tsabo's Web",
+   "The Pandorica"
+  ],
+  "oracle_ids": [
+   "b9212658-8406-489f-80d6-7af42df8956c",
+   "fcc7ed01-ff64-4ffe-9b83-daa4132fd92d",
+   "20dbfc9a-172e-4065-bfde-d40de3131787",
+   "56fd0752-9fb0-4c05-90e5-c3b268b57c6f",
+   "a5d803bc-7fd4-4570-8cd6-cb138727a66e",
+   "c99f59c0-5cce-41a4-908f-d34e2c697419",
+   "96a4e515-2b4e-4c2d-aa1a-963597484723",
+   "94d5c904-6504-4df2-b242-daf88a988475"
+  ],
+  "after": [
+   6093,
+   6095
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 10,
+  "theme": "Per-object persisted choices, and token-creation and grant variants",
+  "missing": [
+   "Long List of the Ents",
+   "Volo, Itinerant Scholar",
+   "Day of the Moon",
+   "Beckoning Will-o'-Wisp",
+   "Psychic Paper",
+   "Me, the Immortal",
+   "The Rani",
+   "Arna Kenner\u00fcd, Skycaptain",
+   "The Master, Multiplied",
+   "Henry Wu, InGen Geneticist",
+   "Gandalf the White"
+  ],
+  "oracle_ids": [
+   "01376449-5cd2-4079-8aaa-5128634ef20b",
+   "9b61f5b1-7688-4336-8fe9-66da37a34df9",
+   "7ec3aaa4-8b6a-4046-b599-654f9844ca6c",
+   "d39df714-bd0b-4de8-b9df-55713bab7f35",
+   "110b601c-bf38-4985-8de6-fcb477f543a8",
+   "26ad696e-9f17-4110-9c59-b9211e662900",
+   "ac9b0bdf-caf8-4dba-a900-e59de35e77d7",
+   "436e7548-f8d5-43af-947d-b382da0d19b3",
+   "0741e5b5-35c8-4f4d-b49f-c53e960240b9",
+   "d94a792f-a48b-4181-b656-86fe452a4875",
+   "5b3b5f6a-375e-4479-9384-a942eda83f9b"
+  ],
+  "after": [
+   6097,
+   6099
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 11,
+  "theme": "Combat records, last-known information and layer reads",
+  "missing": [
+   "Thijarian Witness",
+   "Firkraag, Cunning Instigator",
+   "Shelob, Child of Ungoliant",
+   "Baeloth Barrityl, Entertainer",
+   "Zilortha, Strength Incarnate",
+   "Emrakul, the World Anew",
+   "Noble Heritage"
+  ],
+  "oracle_ids": [
+   "d273033b-3b8b-4ce9-afe8-208d82dd20f1",
+   "81dad7c5-5950-4c45-adb0-cf1a15a74250",
+   "8372115d-c963-4a41-8759-72f7f6a8935a",
+   "33b401b1-cf94-4c7a-8a8a-426ac3d87bd0",
+   "2dba8d8d-891e-482e-8014-879f701d0619",
+   "33300e69-29f6-41e4-92ab-82d8b018b217",
+   "2e342aa3-2590-4b59-852a-9adb31bafe5c"
+  ],
+  "after": [
+   6098
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 12,
+  "theme": "Resolution-time counter and target choices",
+  "missing": [
+   "Overseer of Vault 76",
+   "Etched Slith",
+   "Indominus Rex, Alpha",
+   "Comet, Stellar Pup",
+   "V.A.T.S.",
+   "Oath of Druids",
+   "The Curse of Fenric",
+   "Vault 13: Dweller's Journey",
+   "The Sea Devils"
+  ],
+  "oracle_ids": [
+   "84f32a1d-3861-418e-a3c2-7e731a2cd55c",
+   "f1bd0d32-7513-4d1d-94aa-d06101a940c0",
+   "723a66c3-2c2c-411c-bba5-922e8601981b",
+   "e7c67480-1816-4071-9eab-a1d1b535a344",
+   "d077d54c-6f1b-4795-a241-6073b0dc1dc8",
+   "cf0dcb27-f02e-4065-81dc-75fbbb09ea3f",
+   "ef7fce1b-0d95-4f92-a8ad-09d9756fa0e4",
+   "586fb987-cd77-420f-978c-2ce140bcdcfb",
+   "09d7a2d5-9e6e-4d84-8f97-c36b11ccc6fb"
+  ],
+  "after": [
+   6100
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP2",
+  "issue": 5948,
+  "batch": 13,
+  "theme": "Mana for another player, banding, repeated library looks, opening-hand reveals, random events",
+  "missing": [
+   "Spectral Searchlight",
+   "Bigger on the Inside",
+   "Nalathni Dragon",
+   "Lim-D\u00fbl's Vault",
+   "Devourer of Destiny",
+   "Chira, All In"
+  ],
+  "oracle_ids": [
+   "511b1174-8ef7-4d17-93de-01b9b81bda6a",
+   "8f351961-69e3-4637-b010-d13f19daca39",
+   "0887dc95-3e75-4f72-bf05-4067d3785376",
+   "3f8e7a45-4c6e-4ee6-93d0-b7de9715ec97",
+   "89215e6d-ebe7-4eb0-9999-11ee2e6eb1d2",
+   "f6552921-f949-4f3c-b75d-718c106d712b"
+  ],
+  "after": [
+   6101
+  ],
+  "status": "ready"
  }
 ]
