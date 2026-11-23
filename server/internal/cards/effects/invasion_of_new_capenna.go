@@ -25,7 +25,7 @@ import (
 func init() {
 	const name = "Invasion of New Capenna"
 	Register(Spec{
-		OracleID:     invasionOfNewCapennaOracleID,
+		OracleID:     InvasionOfNewCapennaOracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -35,7 +35,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters(name+" — you may sacrifice an artifact or creature; when you do, exile target artifact or creature an opponent controls",
 				func(g *game.Game, item *game.StackItem) error {
-					return maySacrificeOne(g, item, name+" — sacrifice an artifact or creature to exile target artifact or creature an opponent controls?",
+					return MaySacrificeOne(g, item, name+" — sacrifice an artifact or creature to exile target artifact or creature an opponent controls?",
 						Or(Artifact(), Creature()), false, invasionOfNewCapennaSacrificed)
 				}),
 			DefeatedTrigger(name+" — defeated: exile it, then cast Holy Frazzle-Cannon", SiegeDefeated()),
@@ -50,11 +50,11 @@ var invasionOfNewCapennaSacrificed = RegisterSacrificedOne("prompt-run/invasion-
 	}.Apply(ctx)
 })
 
-var invasionOfNewCapennaExileBody = game.ReflexiveBody("invasion-of-new-capenna/exile", simpleBody(exileEveryLegalCardTarget),
-	constTargets(func() *game.TargetSpec {
+var invasionOfNewCapennaExileBody = game.ReflexiveBody("invasion-of-new-capenna/exile", SimpleBody(ExileEveryLegalCardTarget),
+	ConstTargets(func() *game.TargetSpec {
 		return TargetPermanent("target artifact or creature an opponent controls", Or(Artifact(), Creature()), OpponentControls())
 	}))
 
 // invasionOfNewCapennaOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfNewCapennaOracleID = "530dc119-e266-4525-abe9-7fab599e9de2"
+const InvasionOfNewCapennaOracleID = "530dc119-e266-4525-abe9-7fab599e9de2"

@@ -39,6 +39,11 @@ type AbilityCost struct {
 	// Tap requires the source to be untapped, taps it, and — for a
 	// creature source — enforces summoning sickness (CR 302.6).
 	Tap bool
+	// UntapSelf is the untap symbol {Q} (CR 107.6): "Untap this
+	// permanent" as a cost. The source must be tapped (an untapped
+	// permanent can't be untapped again), able to become untapped,
+	// and, for a creature, past summoning sickness (CR 302.6).
+	UntapSelf bool
 
 	// TapOthers taps OTHER untapped permanents the activator
 	// controls — Earthcraft's "tap an untapped creature you
@@ -439,6 +444,16 @@ type AbilityCost struct {
 	// (CR 118.3) with nothing to show. See payRevealHandCostLocked in
 	// reveal_hand_cost.go. An ACTIVATED ability only, like RevealCards.
 	RevealHand bool
+
+	// RevealThis is "Reveal this card from your hand" as a cost: Forecast
+	// (CR 702.57a), Sky Hussar's "Tap two untapped white and/or blue creatures
+	// you control, Reveal this card from your hand: Draw a card." The card
+	// shown is the ability's own source, in the hand it is activated from; it is
+	// shown to every player as the cost is paid (CR 601.2h), before anyone may
+	// respond, and a countered ability has still shown it. Revealing moves
+	// nothing (CR 701.20b). See payRevealThisCostLocked in reveal_this_cost.go.
+	// An ACTIVATED ability only, like RevealCards and RevealHand.
+	RevealThis bool
 
 	// RevealSecretChoice is "Reveal the creature type you chose" as a
 	// cost (A Killer Among Us, secret_choice.go): the word the source's
@@ -1911,6 +1926,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return ErrSummoningSick
 		}
 	}
+	if ab.Cost.UntapSelf {
+		if !source.Tapped || g.CantBecomeUntappedLocked(source) {
+			return ErrNotTapped
+		}
+		if g.ActivationSummoningSickLocked(source, playerID) {
+			return ErrSummoningSick
+		}
+	}
 	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, ab.Cost, params.SacrificeIDs, params.XValue)
 	if err != nil {
 		return err
@@ -2434,6 +2457,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		source.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
+	// CR 107.6: the untap symbol untaps the source as a cost.
+	if ab.Cost.UntapSelf {
+		g.untapPermanentLocked(source)
+	}
 	// ADR 0130 §4: "Exert this creature", beside the {T} and while the
 	// source is certainly on the battlefield (CR 701.43c), keyed to the
 	// activator's untap step (CR 701.43a). Always payable (CR 701.43b,
@@ -2541,6 +2568,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.RevealHand {
 		g.payRevealHandCostLocked(playerID, cardID)
 	}
+	// "Reveal this card from your hand", at the same point.
+	if ab.Cost.RevealThis {
+		g.payRevealThisCostLocked(playerID, cardID)
+	}
 	// And "Reveal the creature type you chose", while the source is still
 	// on the battlefield to be read.
 	g.payRevealSecretChoiceCostLocked(playerID, cardID, ab.Cost)
@@ -2564,10 +2595,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// before the stack item is built so the leaves-triggers it queues
 	// are drained ABOVE the ability by the closing state-check pass
 	// (CR 603.3b).
+	returnedRefs := g.sacrificeRefsLocked(params.ReturnIDs) // #5948: which, named before they move
 	returnedAttacking, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs, params.commanderAnswers)
 	if err != nil {
 		return err
 	}
+	paid.ReturnedObjects = returnedRefs
 	// #1227: what the returned permanent was attacking, read by the
 	// payer BEFORE the bounce because the exit clears it and LKI
 	// carries no combat state. Ninjutsu's entry reads it back through

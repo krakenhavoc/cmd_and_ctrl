@@ -19,12 +19,12 @@ import (
 
 // selfPumpRow builds the row for a non-negative power and toughness.
 // `name` names the stack item ("Wall of Lava — +1/+1").
-func selfPumpRow(name, cost string, power, toughness int) ActivatedAbility {
+func SelfPumpRow(name, cost string, power, toughness int) ActivatedAbility {
 	size := fmt.Sprintf("%+d/%+d", power, toughness)
 	return ActivatedAbility{
 		Label:   cost + ": This creature gets " + size + " until end of turn.",
 		Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: power, Toughness: toughness}},
 		Cost:    ManaCost(cost),
-		Effect:  thisGetsUntilEndOfTurn(power, toughness, name+" — "+size),
+		Effect:  ThisGetsUntilEndOfTurn(power, toughness, name+" — "+size),
 	}
 }

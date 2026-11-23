@@ -18,7 +18,7 @@ var deathCloudDiscardThen = RunThen("prompt-run/death-cloud-sacrifice-creatures"
 		return nil
 	}
 	return ctx.PlayersSacrificeThen(deathCloudSeatsOwing(ctx.Game, x),
-		sacrificeSpec("a creature", Creature()), "Death Cloud — sacrifice X creatures",
+		SacrificeSpec("a creature", Creature()), "Death Cloud — sacrifice X creatures",
 		deathCloudSacrificeLands, ctx.RunData(r.Carry[:1], x))
 })
 
@@ -29,7 +29,7 @@ var deathCloudSacrificeLands = RunThen("prompt-run/death-cloud-sacrifice-lands",
 		return nil
 	}
 	ctx.Game.PlayersSacrificeForEffect(ctx.Source(), deathCloudSeatsOwing(ctx.Game, r.Nums[0]),
-		sacrificeSpec("a land", Land()), "Death Cloud — sacrifice X lands")
+		SacrificeSpec("a land", Land()), "Death Cloud — sacrifice X lands")
 	return nil
 })
 
@@ -37,7 +37,7 @@ var deathCloudSacrificeLands = RunThen("prompt-run/death-cloud-sacrifice-lands",
 // times owes N permanents (PlayersSacrificeThen).
 func deathCloudSeatsOwing(g *game.Game, x int) []uuid.UUID {
 	var out []uuid.UUID
-	for _, seat := range apnapLivingSeats(g) {
+	for _, seat := range ApnapLivingSeats(g) {
 		for i := 0; i < x; i++ {
 			out = append(out, seat)
 		}
@@ -47,12 +47,12 @@ func deathCloudSeatsOwing(g *game.Game, x int) []uuid.UUID {
 
 // deathCloudResolve is the printed body: life, then discards, then
 // creatures, then lands, each finishing before the next (CR 608.2c).
-func deathCloudResolve(_ *game.StackItem, ctx *Context) error {
+func DeathCloudResolve(_ *game.StackItem, ctx *Context) error {
 	x := ctx.X()
 	if x <= 0 {
 		return nil
 	}
-	for _, seat := range apnapLivingSeats(ctx.Game) {
+	for _, seat := range ApnapLivingSeats(ctx.Game) {
 		if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), seat, -x); err != nil {
 			return err
 		}
@@ -69,9 +69,9 @@ func deathCloudResolve(_ *game.StackItem, ctx *Context) error {
 
 // s82BNSB08MillTargetPlayer is "target player mills a card" (Duskmantle,
 // House of Shadow).
-func s82BNSB08MillTargetPlayer(g *game.Game, item *game.StackItem) error {
+func S82BNSB08MillTargetPlayer(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	victim, ok := firstLegalPlayerTarget(ctx)
+	victim, ok := FirstLegalPlayerTarget(ctx)
 	if !ok {
 		return nil
 	}

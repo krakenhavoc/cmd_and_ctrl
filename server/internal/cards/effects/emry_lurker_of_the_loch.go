@@ -44,7 +44,7 @@ func init() {
 			Cost:  TapCost(),
 			Targets: TargetCardInGraveyard("target artifact card in your graveyard",
 				YouOwn(), Artifact()),
-			Effect: emryGrantCastFromGraveyard,
+			Effect: EmryGrantCastFromGraveyard,
 		}},
 	})
 }
@@ -55,7 +55,7 @@ func init() {
 // item.Targets, so a card that left the graveyard in response (or was
 // never there — an empty graveyard leaves nothing to target) grants
 // nothing rather than a permission over a card that is not there.
-func emryGrantCastFromGraveyard(g *game.Game, item *game.StackItem) error {
+func EmryGrantCastFromGraveyard(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {

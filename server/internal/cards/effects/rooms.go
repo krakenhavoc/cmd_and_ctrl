@@ -130,8 +130,8 @@ func Room(r RoomSpec) Spec {
 // ability, an "as enters" hook, a keyword — because the Room constructor
 // has no way to lock it. A door gate on a Spec that is NOT a Room is a
 // mistake too: nothing but a Room has doors.
-func checkRoomSpec(spec Spec) string {
-	gates := specDesignations(spec)
+func CheckRoomSpec(spec Spec) string {
+	gates := SpecDesignations(spec)
 	if !spec.room {
 		for _, d := range gates {
 			if d.Kind == game.DesignationDoorUnlocked {
@@ -195,7 +195,7 @@ func WheneverYouFullyUnlockARoom(label string, effect Effect) game.TriggeredAbil
 // EnchantmentEnteredUnderYourControl — "whenever an enchantment you
 // control enters", the source itself included.
 func EnchantmentEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && c.IsEnchantment()
 }
 

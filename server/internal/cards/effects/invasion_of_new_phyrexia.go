@@ -25,7 +25,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // deluge_of_the_dead.go).
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfNewPhyrexiaOracleID,
+		OracleID:     InvasionOfNewPhyrexiaOracleID,
 		Name:         "Invasion of New Phyrexia",
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -59,4 +59,4 @@ func init() {
 
 // invasionOfNewPhyrexiaOracleID is shared with the back face's spec,
 // which registers under this ID plus "#1".
-const invasionOfNewPhyrexiaOracleID = "480ea052-87d7-4fea-ac97-b6121b78f863"
+const InvasionOfNewPhyrexiaOracleID = "480ea052-87d7-4fea-ac97-b6121b78f863"

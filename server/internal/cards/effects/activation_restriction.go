@@ -127,7 +127,7 @@ func OpponentsSourcesCantActivateDuringYourTurn(label string, match CardPredicat
 			if q.Card.Controller == q.Source.Controller {
 				return false
 			}
-			if !isActivePlayer(q.Game, q.Source.Controller) {
+			if !IsActivePlayer(q.Game, q.Source.Controller) {
 				return false
 			}
 			return matchActivationSource(q, match)

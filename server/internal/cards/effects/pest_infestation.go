@@ -27,9 +27,9 @@ func init() {
 		Name:         "Pest Infestation",
 		XMatters:     true,
 		Completeness: CompletenessFull,
-		Targets:      socB10PestInfestationTargets(),
+		Targets:      SocB10PestInfestationTargets(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, id := range legalTargetCards(item, ctx.Game) {
+			for _, id := range LegalTargetCards(item, ctx.Game) {
 				if err := (DestroyTarget{Target: id}).Apply(ctx); err != nil {
 					return err
 				}
@@ -41,7 +41,7 @@ func init() {
 
 // socB10PestInfestationTargets is "up to X target artifacts and/or
 // enchantments".
-func socB10PestInfestationTargets() *game.TargetSpec {
+func SocB10PestInfestationTargets() *game.TargetSpec {
 	spec := TargetPermanent("up to X target artifacts and/or enchantments", Or(Artifact(), Enchantment()))
 	spec.CountFromX = true
 	spec.UpToX = true

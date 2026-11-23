@@ -50,7 +50,7 @@ func init() {
 				}),
 			WheneverThisAttacks("Herald of Amity — it gets +X/+X until end of turn, where X is the number of Auras you control",
 				func(g *game.Game, item *game.StackItem) error {
-					n := countControlled(g, item.Controller, func(c game.Card) bool { return c.HasSubtype("Aura") })
+					n := CountControlled(g, item.Controller, func(c game.Card) bool { return c.HasSubtype("Aura") })
 					return BoostUntilEOT{Target: item.SourceCardID, Power: n, Toughness: n,
 						Label: "Herald of Amity — +X/+X"}.Apply(NewContext(g, item))
 				}),
@@ -84,7 +84,7 @@ var heraldOfAmityExiled = CardTail("herald-of-amity/after-exile", func(ctx *Cont
 		SourceName:  "Herald of Amity",
 		Label:       "Herald of Amity — cast an Aura spell from among them without paying its mana cost",
 	}
-	candidates := freeCastCandidates(g, &perm, exiled)
+	candidates := FreeCastCandidates(g, &perm, exiled)
 	if len(candidates) > 0 && g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
 		Chooser:      controller,
 		Source:       source,
@@ -99,7 +99,7 @@ var heraldOfAmityExiled = CardTail("herald-of-amity/after-exile", func(ctx *Cont
 	}) {
 		return nil
 	}
-	return heraldOfAmityBottomTheRest(g, controller, exiled)
+	return HeraldOfAmityBottomTheRest(g, controller, exiled)
 })
 
 // heraldOfAmityRestToBottom is "Then put the rest on the bottom of your
@@ -107,13 +107,13 @@ var heraldOfAmityExiled = CardTail("herald-of-amity/after-exile", func(ctx *Cont
 // exiled cards. An on-disk key, never renamed.
 var heraldOfAmityRestToBottom = game.RegisterChooseCardsThen("resolution-cast/herald-of-amity-rest-to-bottom",
 	func(g *game.Game, r game.CardsChosen) error {
-		return heraldOfAmityBottomTheRest(g, r.Chooser, r.Carry)
+		return HeraldOfAmityBottomTheRest(g, r.Chooser, r.Carry)
 	})
 
 // heraldOfAmityBottomTheRest puts every one of the cards still in exile on
 // the bottom of its owner's library in a random order (the one cast is on
 // the stack, not in exile).
-func heraldOfAmityBottomTheRest(g *game.Game, controller uuid.UUID, ids []uuid.UUID) error {
+func HeraldOfAmityBottomTheRest(g *game.Game, controller uuid.UUID, ids []uuid.UUID) error {
 	var rest []uuid.UUID
 	for _, id := range ids {
 		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneExile {

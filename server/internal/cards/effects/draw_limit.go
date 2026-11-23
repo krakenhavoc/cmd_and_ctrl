@@ -45,7 +45,7 @@ func PlayersCantDrawCards() []game.DrawLimitStatic {
 // it is not a draw, so their "can't draw cards" doesn't stop it (CR
 // 121.5). The life loss comes first and is not a cost: a player at 3
 // life or less still searches, and loses as a state-based action after.
-func mornsongDrawStep(name string) game.TriggeredAbility {
+func MornsongDrawStep(name string) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventBeginDrawStep},
 		Key:     name + " — that player loses 3 life and searches for a card",

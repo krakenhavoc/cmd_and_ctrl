@@ -20,10 +20,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	enters := WhenThisEnters("Invasion of Shandalar — return up to three target permanent cards from your graveyard to your hand",
-		returnEachTargetCardToHand)
+		ReturnEachTargetCardToHand)
 	enters.Targets = TargetCardInGraveyard("up to three target permanent cards from your graveyard", Permanent(), YouOwn()).WithCount(0, 3)
 	Register(Spec{
-		OracleID:     invasionOfShandalarOracleID,
+		OracleID:     InvasionOfShandalarOracleID,
 		Name:         "Invasion of Shandalar",
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -39,4 +39,4 @@ func init() {
 
 // invasionOfShandalarOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfShandalarOracleID = "b5fe62f0-d914-4789-afd3-3831dcdbed7b"
+const InvasionOfShandalarOracleID = "b5fe62f0-d914-4789-afd3-3831dcdbed7b"

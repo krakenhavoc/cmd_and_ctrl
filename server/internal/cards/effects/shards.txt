@@ -1,0 +1,84 @@
+# shards.txt — the frozen range table of the split effects tree (#5906, ADR 0225).
+#
+#   card <shard> <from>   a card file goes to internal/cards/effects/cards/<shard>/ (package cards<shard>)
+#   test <id>    <from>   a _test.go file goes to internal/cards/effects/tests/<id>/ (package tests<id>)
+#
+# A file belongs to the last row of its kind whose <from> is less than or equal
+# to its lower-cased file name; the first row of each kind starts at 0. So
+# monk_gyatso.go is a card of shard mi (mi <= monk_gyatso.go < n), and
+# monk_gyatso_test.go is a test of package m.
+#
+# The rows are frozen: they change only in a PR whose purpose is to change them
+# (to split a shard that has passed about 1,000 card files or 300 test files),
+# never as a side effect of adding a card. Such a PR moves the files with
+# scripts/split-effects.sh --check / --place and regenerates the aggregator.
+# server/internal/docsguard checks that every file sits where this table puts
+# it, and scripts/split-effects reads it to place a file.
+#
+# Sized on develop at 2af192538 (2026-11-19, 17,223 card files and 2,945 test
+# files) for at most 600 card files and 150 test files a package; the comment
+# on each row is the count and range then.
+
+# card: 37 rows; 17223 files on 2af192538
+card a      0         #  585 a_good_day_to_die.go .. ao_the_dawn_sky.go
+card ap     ap        #  461 apex_altisaur.go .. azusas_many_journeys.go
+card b      b         #  400 b03_bounce_lands.go .. bituminous_blast.go
+card bl     bl        #  548 black_bolt_inhuman_king.go .. bruvac_the_grandiloquent.go
+card bu     bu        #  417 bubble_smuggler.go .. ceti_eel.go
+card ch     ch        #  339 chadich_investigator.go .. cmdr_troi_outgoing_empath.go
+card co     co        #  596 co_option_adjutant.go .. cytoshape.go
+card d      d         #  459 d_7_battle_cruiser.go .. dghor_bloodletter.go
+card di     di        #  537 diabolic_edict.go .. dynavolt_tower.go
+card e      e         #  515 eager_construct.go .. evolving_wilds.go
+card ex     ex        #  504 exalted_angel.go .. fixer_techno_terror.go
+card fl     fl        #  365 flagstones_of_trokair.go .. fynn_the_fangbearer.go
+card g      g         #  583 g_raha_tia.go .. gowron_eager_for_battle.go
+card gr     gr        #  262 graaz_unstoppable_juggernaut.go .. gysahl_greens.go
+card h      h         #  540 h_e_r_b_i_e_lovable_robot.go .. hraesvelgr_of_the_first_brood.go
+card hu     hu        #  579 hua_tuo_honored_physician.go .. izzet_generatorium.go
+card j      j         #  570 j_jonah_jameson.go .. kozileks_command.go
+card kr     kr        #  562 krang_and_shredder.go .. lt_cmdr_geordi_la_forge.go
+card lu     lu        #  533 lu_su_wu_advisor.go .. mezzio_mugger.go
+card mi     mi        #  537 miasma_demon.go .. mystifying_maze.go
+card n      n         #  316 naban_dean_of_iteration.go .. nyxborn_rollicker.go
+card o      o         #  360 o_kagachi_vengeful_kami.go .. ozox_the_clattering_king.go
+card p      p         #  487 pacesetter_paragon.go .. pox_plague.go
+card pr     pr        #  332 practiced_offense.go .. qutrub_forayer.go
+card r      r         #  590 rabanastre_royal_city.go .. rhythm_of_the_wild.go
+card ri     ri        #  342 ria_ivor_bane_of_bladehold.go .. ryusei_the_falling_star.go
+card s      s         #  555 s82_bns_b02_helpers.go .. seymour_flux.go
+card sh     sh        #  566 shackle_slinger.go .. snuff_out.go
+card so     so        #  388 soaring_drake.go .. ss_botany_bay.go
+card st     st        #  564 stab.go .. swordsworn_cavalier.go
+card sy     sy        #  363 sycorax_commander.go .. tezzerets_gambit.go
+card th     th        #  550 thada_adel_acquisitor.go .. tivit_seller_of_secrets.go
+card to     to        #  391 toadstool_admirer.go .. tyvars_stand.go
+card u      u         #  293 uchbenbak_the_great_mistake.go .. uurg_spawn_of_turg.go
+card v      v         #  430 vaan_street_thief.go .. vulture_scheming_scavenger.go
+card w      w         #  592 wail_of_the_forgotten.go .. wyluli_wolf.go
+card x      x         #  212 x_23_deadly_weapon.go .. zygon_infiltrator.go
+
+# test: 24 rows (the last row also takes y and z); 2945 files on 2af192538
+test a      0         #  129 aang_airbending_master_test.go .. autotap_trigger_mana_test.go
+test av     av        #  150 avatar_b10_cards_test.go .. borrowed_lender_cards_test.go
+test br     br        #  132 brass_squire_test.go .. cloud_deck_c_test.go
+test cm     cm        #  139 cmdr2_b01_test.go .. coveted_jewel_test.go
+test cr     cr        #  150 crab_umbra_test.go .. drownyard_temple_test.go
+test ds     ds        #  121 dsk_b1_cards_test.go .. evolving_door_test.go
+test ex     ex        #  131 exalted_test.go .. funeral_room_awakening_hall_test.go
+test g      g         #  141 g18_cards_test.go .. hyena_umbra_test.go
+test i      i         #  127 ice_b1_cards_test.go .. kuon_ogre_ascendant_test.go
+test l      l         #   83 lagrella_the_magpie_test.go .. loyalty_x_cards_test.go
+test m      m         #  131 m3c_5468_cards_test.go .. mrd_batch4_cards_test.go
+test ms     ms        #  101 msc_10_cards_test.go .. nullhide_ferox_test.go
+test o      o         #   60 ob_nixilis_end_the_turn_test.go .. outside_collection_realdump_manual_test.go
+test p      p         #  105 padeem_consul_of_innovation_test.go .. qutrub_forayer_test.go
+test r      r         #  150 rad_counter_batch1_test.go .. route_batch_restore_test.go
+test ru     ru        #  132 rules_batch_3946_test.go .. s82_dmu_b19_cards_test.go
+test s82m   s82_m     #  150 s82_mat_b01_test.go .. s82_snc_b23_cards_test.go
+test s82v   s82_v     #  143 s82_vow_b01_cards_test.go .. sneak_test.go
+test so     so        #  120 soc_b10_cards_test.go .. squid_fire_knight_test.go
+test st     st        #  118 stabilizer_test.go .. synthesis_pod_test.go
+test t      t         #  132 table_roll_test.go .. tmt_mutagen_cards_test.go
+test to     to        #  133 toby_beastie_befriender_test.go .. tyvar_the_bellicose_test.go
+test u      u         #  167 uds_b3_cards_test.go .. zone_layers_cards_test.go

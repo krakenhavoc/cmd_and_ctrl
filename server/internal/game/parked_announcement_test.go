@@ -37,10 +37,10 @@ func TestParkedAnnouncementParamsAreCarriedInFull(t *testing.T) {
 		typ  reflect.Type
 		want []string
 	}{
-		// commanderAnswers, opponentPicks, splicedRefs: AssistAnnounce;
+		// commanderAnswers, opponentMode, opponentPicks, splicedRefs: AssistAnnounce;
 		// assistPaid: never set at a park (parkedAnnouncement.snapshot
 		// leaves such a cast to the census).
-		{reflect.TypeOf(CastSpellParams{}), []string{"assistPaid", "commanderAnswers", "opponentPicks", "splicedRefs"}},
+		{reflect.TypeOf(CastSpellParams{}), []string{"assistPaid", "commanderAnswers", "opponentMode", "opponentPicks", "splicedRefs"}},
 		// all four: ActivateAnnounce.
 		{reflect.TypeOf(ActivateAbilityParams{}), []string{"commanderAnswers", "opponentPicks", "randomDiscards", "randomTargets"}},
 	} {

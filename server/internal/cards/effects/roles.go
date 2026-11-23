@@ -25,7 +25,7 @@ func CardRoles(idx *cards.Index, oracleID uuid.UUID) []string {
 		roles = idx.Roles(oracleID)
 	}
 	if spec, ok := Lookup(oracleID.String()); ok {
-		roles = append(roles, purposeRoles(spec)...)
+		roles = append(roles, PurposeRoles(spec)...)
 	}
 	return cards.ApplyRoleOverrides(oracleID, roles)
 }
@@ -33,7 +33,7 @@ func CardRoles(idx *cards.Index, oracleID uuid.UUID) []string {
 // purposeRoles reads every Purpose a catalog entry declares: the card's,
 // its alternative costs' (an overload's sweep), its modes', and its
 // activated and triggered abilities'.
-func purposeRoles(spec Spec) []string {
+func PurposeRoles(spec Spec) []string {
 	var roles []string
 	add := func(p game.Purpose) { roles = append(roles, rolesOfPurpose(p)...) }
 	add(spec.Purpose)

@@ -27,7 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			InterveningIf(rufusNoDarkstar,
 				On(game.EventAttack, AllOf(ThisAttacked, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return youControlNoCreatureNamed(g, source.Controller, "Darkstar")
+					return YouControlNoCreatureNamed(g, source.Controller, "Darkstar")
 				}),
 					"Rufus Shinra — if you don't control a creature named Darkstar, create Darkstar, a legendary 2/2 white and black Dog",
 					Do(CreateToken{Template: TokenCard("2/2 white and black Legendary Dog named Darkstar"), N: 1}))),
@@ -37,10 +37,10 @@ func init() {
 
 var rufusNoDarkstar = CondBoard{
 	Name: "you don't control a creature named Darkstar",
-	Test: func(ctx *Context) bool { return youControlNoCreatureNamed(ctx.Game, ctx.Controller(), "Darkstar") },
+	Test: func(ctx *Context) bool { return YouControlNoCreatureNamed(ctx.Game, ctx.Controller(), "Darkstar") },
 }
 
 // youControlNoCreatureNamed is "you don't control a creature named N".
-func youControlNoCreatureNamed(g *game.Game, you uuid.UUID, name string) bool {
-	return countControlled(g, you, func(c game.Card) bool { return c.IsCreature() && c.Name == name }) == 0
+func YouControlNoCreatureNamed(g *game.Game, you uuid.UUID, name string) bool {
+	return CountControlled(g, you, func(c game.Card) bool { return c.IsCreature() && c.Name == name }) == 0
 }

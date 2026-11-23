@@ -27,7 +27,7 @@ import (
 func init() {
 	hit := On(game.EventChangeLife, whiteInstantOrSorcerySpellCausedYouToGainLife,
 		"Firesong and Sunspeaker — 3 damage to target creature or player",
-		damageToFirstTargetEffect(3))
+		DamageToFirstTargetEffect(3))
 	hit.Targets = targetCreatureOrPlayer("target creature or player")
 	Register(Spec{
 		OracleID:     "fffaa634-42a0-4038-b027-24f28754fec7",
@@ -68,9 +68,9 @@ func targetCreatureOrPlayer(label string) *game.TargetSpec {
 
 // damageToFirstTargetEffect is "deals n damage to <the target>" as a
 // trigger body, the source being the trigger's own.
-func damageToFirstTargetEffect(n int) Effect {
+func DamageToFirstTargetEffect(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		return damageToFirstTarget(n)(item, ctx)
+		return DamageToFirstTargetStep(n)(item, ctx)
 	}
 }

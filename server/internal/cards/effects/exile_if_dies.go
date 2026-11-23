@@ -45,7 +45,7 @@ type ExileIfItWouldDieThisTurn struct {
 
 func (e ExileIfItWouldDieThisTurn) Apply(ctx *Context) error {
 	// #1432: "this creature" after a flicker in response is a new object.
-	if ctx.isNewSourceObject(e.Target) {
+	if ctx.IsNewSourceObject(e.Target) {
 		return nil
 	}
 	label := e.Label
@@ -91,7 +91,7 @@ type CantBeRegeneratedThisTurn struct {
 func (c CantBeRegeneratedThisTurn) Apply(ctx *Context) error {
 	// #1432: "this creature can't be regenerated" after a flicker in
 	// response is a new object (Clergy of the Holy Nimbus).
-	if ctx.isNewSourceObject(c.Target) {
+	if ctx.IsNewSourceObject(c.Target) {
 		return nil
 	}
 	label := c.Label
@@ -116,7 +116,7 @@ type RecipientThen = game.KeyedTail
 // runs against the Context rebuilt from the tail (CardTail), told the
 // recipient and what it took; the tail's Next, when set, is the next
 // rider, told the same. Call it once, from a package-level var.
-func recipientTail(key string, body func(ctx *Context, target uuid.UUID, dealt int, o game.TailOutcome) error) game.TailRef {
+func RecipientTail(key string, body func(ctx *Context, target uuid.UUID, dealt int, o game.TailOutcome) error) game.TailRef {
 	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
 		target := uuid.Nil
 		if len(o.IDs) > 0 {
@@ -135,7 +135,7 @@ func recipientTail(key string, body func(ctx *Context, target uuid.UUID, dealt i
 // itemRecipient is a per-recipient tail for ref with the resolving item
 // carried as data, for a body that reads the item (the window its source
 // had, CR 400.7).
-func itemRecipient(item *game.StackItem, ref game.TailRef) RecipientThen {
+func ItemRecipient(item *game.StackItem, ref game.TailRef) RecipientThen {
 	return NewContext(nil, item).ItemTail(ref)
 }
 
@@ -146,7 +146,7 @@ func itemRecipient(item *game.StackItem, ref game.TailRef) RecipientThen {
 // this way", Spikefield Hazard, Underworld Fires) — is marked. A player
 // is not.
 func ExileIfDealtDamageWouldDie(item *game.StackItem, permanents bool) RecipientThen {
-	t := itemRecipient(item, exileIfDealtDamageWouldDie)
+	t := ItemRecipient(item, exileIfDealtDamageWouldDie)
 	if permanents {
 		t.N = 1
 	}
@@ -155,7 +155,7 @@ func ExileIfDealtDamageWouldDie(item *game.StackItem, permanents bool) Recipient
 
 // exileIfDealtDamageWouldDie is ExileIfDealtDamageWouldDie's body: N 1 is
 // "any permanent". An on-disk key.
-var exileIfDealtDamageWouldDie = recipientTail("recipient/exile-if-dealt-damage-would-die", func(ctx *Context, target uuid.UUID, dealt int, o game.TailOutcome) error {
+var exileIfDealtDamageWouldDie = RecipientTail("recipient/exile-if-dealt-damage-would-die", func(ctx *Context, target uuid.UUID, dealt int, o game.TailOutcome) error {
 	if !dealtDamagePermanent(ctx.Game, target, dealt, o.Tail.N == 1) {
 		return nil
 	}
@@ -166,12 +166,12 @@ var exileIfDealtDamageWouldDie = recipientTail("recipient/exile-if-dealt-damage-
 // can't be regenerated this turn" (Incinerate, Flamebreak, Jaya Ballard)
 // as a continuation: a creature that was dealt more than 0 damage.
 func CantBeRegeneratedIfDealtDamage(item *game.StackItem) RecipientThen {
-	return itemRecipient(item, cantBeRegeneratedIfDealtDamage)
+	return ItemRecipient(item, cantBeRegeneratedIfDealtDamage)
 }
 
 // cantBeRegeneratedIfDealtDamage is CantBeRegeneratedIfDealtDamage's
 // body. An on-disk key.
-var cantBeRegeneratedIfDealtDamage = recipientTail("recipient/cant-be-regenerated-if-dealt-damage", func(ctx *Context, target uuid.UUID, dealt int, _ game.TailOutcome) error {
+var cantBeRegeneratedIfDealtDamage = RecipientTail("recipient/cant-be-regenerated-if-dealt-damage", func(ctx *Context, target uuid.UUID, dealt int, _ game.TailOutcome) error {
 	if !dealtDamagePermanent(ctx.Game, target, dealt, false) {
 		return nil
 	}
@@ -246,7 +246,7 @@ func appendRecipient(t, next RecipientThen) RecipientThen {
 
 // firstLegalTarget is the spell's one target if it is still legal
 // (CR 608.2b): a player or a card, whichever the clause allows.
-func firstLegalTarget(ctx *Context) (game.TargetRef, bool) {
+func FirstLegalTarget(ctx *Context) (game.TargetRef, bool) {
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
 		return game.TargetRef{}, false
@@ -261,9 +261,9 @@ func firstLegalTarget(ctx *Context) (game.TargetRef, bool) {
 // the spell resolves. The replacement is the spell's, not the damage's,
 // so it is registered on a legal target whether or not the damage was
 // dealt (the Disintegrate ruling).
-func damageFirstTargetExileIfItDies(amount func(item *game.StackItem, ctx *Context) int) func(item *game.StackItem, ctx *Context) error {
+func DamageFirstTargetExileIfItDies(amount func(item *game.StackItem, ctx *Context) int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		id, ok := b16FirstLegalTargetCard(ctx)
+		id, ok := B16FirstLegalTargetCard(ctx)
 		if !ok {
 			return nil
 		}
@@ -275,13 +275,13 @@ func damageFirstTargetExileIfItDies(amount func(item *game.StackItem, ctx *Conte
 }
 
 // fixedAmount is a damage amount printed as a number.
-func fixedAmount(n int) func(*game.StackItem, *Context) int {
+func FixedAmount(n int) func(*game.StackItem, *Context) int {
 	return func(*game.StackItem, *Context) int { return n }
 }
 
 // xAmount is a damage amount of X. A call, not a value, so the XMatters
 // guard sees the card read X.
-func xAmount() func(*game.StackItem, *Context) int {
+func XAmount() func(*game.StackItem, *Context) int {
 	return func(_ *game.StackItem, ctx *Context) int { return ctx.X() }
 }
 
@@ -289,9 +289,9 @@ func xAmount() func(*game.StackItem, *Context) int {
 // a creature [permanent] dealt damage this way would die this turn,
 // exile it instead." (Demonfire, Annihilating Fire, Pillar of Flame,
 // Yamabushi's Flame and the rest).
-func damageAnyTargetExileIfDealtDies(amount func(item *game.StackItem, ctx *Context) int, permanents bool) func(item *game.StackItem, ctx *Context) error {
+func DamageAnyTargetExileIfDealtDies(amount func(item *game.StackItem, ctx *Context) int, permanents bool) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		t, ok := firstLegalTarget(ctx)
+		t, ok := FirstLegalTarget(ctx)
 		if !ok {
 			return nil
 		}
@@ -305,23 +305,23 @@ func damageAnyTargetExileIfDealtDies(amount func(item *game.StackItem, ctx *Cont
 // a kicked Scorching Lava). Both riders are the spell's: a creature
 // target is marked whether or not the damage was dealt (the Disintegrate
 // ruling). A player or a noncreature permanent is only dealt damage.
-func damageThenIfCreatureNoRegenExileIfDies(amount func(item *game.StackItem, ctx *Context) int) func(item *game.StackItem, ctx *Context) error {
+func DamageThenIfCreatureNoRegenExileIfDies(amount func(item *game.StackItem, ctx *Context) int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		t, ok := firstLegalTarget(ctx)
+		t, ok := FirstLegalTarget(ctx)
 		if !ok {
 			return nil
 		}
 		if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: amount(item, ctx)}).Apply(ctx); err != nil {
 			return err
 		}
-		return markCreatureNoRegenExileIfDies(ctx, t.ID)
+		return MarkCreatureNoRegenExileIfDies(ctx, t.ID)
 	}
 }
 
 // markCreatureNoRegenExileIfDies is "If it's a creature, it can't be
 // regenerated this turn, and if it would die this turn, exile it
 // instead" on `id`, judged now.
-func markCreatureNoRegenExileIfDies(ctx *Context, id uuid.UUID) error {
+func MarkCreatureNoRegenExileIfDies(ctx *Context, id uuid.UUID) error {
 	if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}
@@ -337,9 +337,9 @@ func markCreatureNoRegenExileIfDies(ctx *Context, id uuid.UUID) error {
 // damageAnyTargetNoRegenIfDealt is "~ deals N damage to any target. A
 // creature dealt damage this way can't be regenerated this turn."
 // (Incinerate, Jaya Ballard's second ability).
-func damageAnyTargetNoRegenIfDealt(amount func(item *game.StackItem, ctx *Context) int) func(item *game.StackItem, ctx *Context) error {
+func DamageAnyTargetNoRegenIfDealt(amount func(item *game.StackItem, ctx *Context) int) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		t, ok := firstLegalTarget(ctx)
+		t, ok := FirstLegalTarget(ctx)
 		if !ok {
 			return nil
 		}
@@ -352,7 +352,7 @@ func damageAnyTargetNoRegenIfDealt(amount func(item *game.StackItem, ctx *Contex
 // exile it instead." (Flaying Tendrils, Malicious Malfunction, Malicious
 // Eclipse). The shrink's set is locked as it begins (CR 611.2c); the
 // replacement's is read live.
-func allCreaturesShrinkThenExileIfTheyDie(n int, opponentsOnly bool) func(item *game.StackItem, ctx *Context) error {
+func AllCreaturesShrinkThenExileIfTheyDie(n int, opponentsOnly bool) func(item *game.StackItem, ctx *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		if err := (BoostUntilEOT{Match: Creature(), Power: n, Toughness: n}).Apply(ctx); err != nil {
 			return err
@@ -365,7 +365,7 @@ func allCreaturesShrinkThenExileIfTheyDie(n int, opponentsOnly bool) func(item *
 // If a creature [permanent] dealt damage this way would die this turn,
 // exile it instead." (Anger of the Gods, Crush the Weak, Yamabushi's
 // Storm, Underworld Fires).
-func damageEachExileIfDealtDies(ctx *Context, match CardPredicate, amount int, permanents bool) error {
+func DamageEachExileIfDealtDies(ctx *Context, match CardPredicate, amount int, permanents bool) error {
 	var ids []uuid.UUID
 	for _, c := range MatchingBattlefield(ctx, match) {
 		ids = append(ids, c.InstanceID)

@@ -6,7 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // library for a basic land card, put it onto the battlefield tapped, then
 // shuffle." Rampant Growth and Studious First-Year's prepared spell (the
 // same printed card) both call it.
-func rampantGrowthSearch() func(*game.StackItem, *Context) error {
+func RampantGrowthSearch() func(*game.StackItem, *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		return SearchLibrary{
 			Player:        ctx.Controller(),

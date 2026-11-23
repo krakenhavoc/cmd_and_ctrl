@@ -875,6 +875,9 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	out = g.appendPlanarCostModifiersLocked(out, q)
 	// An emblem's cost modifiers (CR 114.3): Saheeli, Filigree Master's.
 	out = g.appendEmblemCostModifiersLocked(out, q)
+	// #5948: a timed "spells your opponents cast cost {N} more" held as a
+	// scoped record (Tax Collector, scoped_cost_tax.go).
+	out = g.appendScopedCostTaxLocked(out, q)
 	// #1184: an ability's cost is not its source's cost, and #1319
 	// widens the same fact to a special action's. The self slot is
 	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the

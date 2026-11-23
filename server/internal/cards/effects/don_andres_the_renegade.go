@@ -43,7 +43,7 @@ func init() {
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 					// "Pirate" is a word of the source's text (CR 612.2, #3984).
 					pirate := source.TextSubtype("Pirate")
-					if !eotHasType(c.Subtypes, pirate) {
+					if !EotHasType(c.Subtypes, pirate) {
 						c.Subtypes = append(c.Subtypes, pirate)
 					}
 				},
@@ -54,7 +54,7 @@ func init() {
 				AppliesTo: donAndresStolenCreature,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					for _, kw := range []string{"menace", "deathtouch"} {
-						if !eotHasAbility(c.Abilities, kw) {
+						if !EotHasAbility(c.Abilities, kw) {
 							c.Abilities = append(c.Abilities, kw)
 						}
 					}
@@ -72,7 +72,7 @@ func init() {
 			},
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, YouCast(And(Noncreature(), notOwnedByCaster())),
+			On(game.EventCast, YouCast(And(Noncreature(), NotOwnedByCaster())),
 				"Don Andres, the Renegade — create two tapped Treasure tokens",
 				Do(CreateTokenAdvanced{Spec: Token(TreasureToken()).EntersTapped(), N: 2})),
 		},
@@ -87,6 +87,6 @@ func donAndresStolenCreature(target *game.Card, _ *game.Game, source *game.Card)
 
 // notOwnedByCaster is "a spell you don't own": the card's owner is not
 // the player the predicate is asked about.
-func notOwnedByCaster() CardPredicate {
+func NotOwnedByCaster() CardPredicate {
 	return func(_ *game.Game, caster uuid.UUID, c game.Card) bool { return c.Owner != caster }
 }

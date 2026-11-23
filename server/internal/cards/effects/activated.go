@@ -27,13 +27,13 @@ func SacrificeThis() game.AbilityCost { return game.AbilityCost{SacrificeSelf: t
 // creature". The source itself qualifies when it's a creature —
 // Carrion Feeder really can eat itself.
 func SacrificeACreature() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a creature", Creature())}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a creature", Creature())}
 }
 
 // SacrificeAPermanent is "Sacrifice a permanent" (Altar of
 // Dementia's broader cousin).
 func SacrificeAPermanent() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("a permanent")}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("a permanent")}
 }
 
 // SacrificeN is "Sacrifice N <permanents>" — "Sacrifice two
@@ -58,7 +58,7 @@ func SacrificeAPermanent() game.AbilityCost {
 // (#1213); this constructor is the fixed one and Register refuses a
 // count below one here.
 func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n)}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec(label, preds...).WithCount(n, n)}
 }
 
 // SacrificeNDifferent is SacrificeN with a rule over the set: no two of
@@ -73,7 +73,7 @@ func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
 // with no name can't pay it at all. Register allows it on an activated
 // ability's cost only, at a count of two or more.
 func SacrificeNDifferent(n int, label string, d *game.TargetDifference, preds ...CardPredicate) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n).EachDifferent(d)}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec(label, preds...).WithCount(n, n).EachDifferent(d)}
 }
 
 // Another is the printed word "another" / "other" on a clause: the
@@ -94,7 +94,7 @@ func Another(spec *game.TargetSpec) *game.TargetSpec {
 // the source itself is not a legal payment (a second permanent with the
 // same name is).
 func SacrificeAnotherN(n int, label string, preds ...CardPredicate) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: Another(sacrificeSpec(label, preds...)).WithCount(n, n)}
+	return game.AbilityCost{SacrificeOther: Another(SacrificeSpec(label, preds...)).WithCount(n, n)}
 }
 
 // SacrificeEach is "Sacrifice <one of each kind>" — Jarad, Golgari
@@ -138,7 +138,7 @@ func SacrificeCardType(label string, cardTypes ...string) game.SacrificeKind {
 // additional-cost form share: a head whose predicate is the union of the
 // kinds, with the kinds as EachOf and the count their number.
 func sacrificeEachSpec(label string, kinds ...game.SacrificeKind) *game.TargetSpec {
-	spec := sacrificeSpec(label)
+	spec := SacrificeSpec(label)
 	spec.CardOK = func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
 		return anyKindMatches(kinds, c)
 	}
@@ -173,7 +173,7 @@ func anyKindMatches(kinds []game.SacrificeKind, c game.Card) bool {
 // lists are walked in plan order and need a fixed width, so
 // Register refuses a variable clause in AdditionalCost.
 func SacrificeOneOrMore(label string, preds ...CardPredicate) game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(1, 0)}
+	return game.AbilityCost{SacrificeOther: SacrificeSpec(label, preds...).WithCount(1, 0)}
 }
 
 // SacrificeX is "Sacrifice X <permanents>" — Grim Hireling's "{B},
@@ -193,7 +193,7 @@ func SacrificeOneOrMore(label string, preds ...CardPredicate) game.AbilityCost {
 // Register refuses it on a mana ability (CR 605.3b) and on a cast's
 // additional cost.
 func SacrificeX(label string, preds ...CardPredicate) game.AbilityCost {
-	spec := sacrificeSpec(label, preds...)
+	spec := SacrificeSpec(label, preds...)
 	spec.CountFromX = true
 	return game.AbilityCost{SacrificeOther: spec}
 }
@@ -386,6 +386,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// flip for nothing and show nothing.
 		if c.RevealHand {
 			out.RevealHand = true
+		}
+		if c.RevealThis {
+			out.RevealThis = true
 		}
 		// "Reveal the creature type you chose" likewise: dropped, A Killer
 		// Among Us would show nothing and need no choice.
@@ -1165,7 +1168,7 @@ func ExileACardFromHand() *game.ExileCost {
 // doesn't target, so hexproof and "can't be the target of" never
 // apply to it. The controller filter lives in the engine's cost
 // validation (CR 701.21a).
-func sacrificeSpec(label string, preds ...CardPredicate) *game.TargetSpec {
+func SacrificeSpec(label string, preds ...CardPredicate) *game.TargetSpec {
 	return TargetPermanent(label, preds...)
 }
 

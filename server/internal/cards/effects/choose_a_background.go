@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // read as the attack is declared and again as the trigger resolves
 // (CR 603.4), against live life totals and the opponents of the
 // trigger's controller.
-func wheneverThisAttacksAPlayerNoOpponentRicher(label string, effect Effect) game.TriggeredAbility {
+func WheneverThisAttacksAPlayerNoOpponentRicher(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventAttack, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 		return ThisAttacked(ev, source, lki, g) &&
 			g.ClassifyAttackTargetForEffect(ev.Target) == game.AttackTargetPlayer &&
@@ -39,6 +39,6 @@ func wheneverThisAttacksAPlayerNoOpponentRicher(label string, effect Effect) gam
 // grantToCommanderCreaturesYouOwn is a Background's one static: the
 // named bundles, granted to each commander creature its controller
 // owns.
-func grantToCommanderCreaturesYouOwn(keys ...string) game.StaticAbility {
-	return GrantAbilities(commanderCreatureYouOwn, keys...)
+func GrantToCommanderCreaturesYouOwn(keys ...string) game.StaticAbility {
+	return GrantAbilities(CommanderCreatureYouOwn, keys...)
 }

@@ -36,14 +36,14 @@ import (
 // It is a battlefield ability: AtBatchEnd stages and settles only for a
 // permanent, which is where all three cards print it.
 func WheneverOneOrMoreNonlandCardsAreMilled(label string, effect Effect) game.TriggeredAbility {
-	return withAtBatchEnd(On(game.EventMill, ANonlandCardWasMilled, label, effect), ThatManyEvents())
+	return WithAtBatchEnd(On(game.EventMill, ANonlandCardWasMilled, label, effect), ThatManyEvents())
 }
 
 // nonlandCardsMilledThisWay is the settled count of a
 // WheneverOneOrMoreNonlandCardsAreMilled trigger: the nonland cards its
 // mill put into graveyards. At least 1.
-func nonlandCardsMilledThisWay(item *game.StackItem) int {
-	return settledEventAmount(item)
+func NonlandCardsMilledThisWay(item *game.StackItem) int {
+	return SettledEventAmount(item)
 }
 
 // TriggersOnlyOnceEachTurn is "This ability triggers only once each
@@ -56,7 +56,7 @@ func nonlandCardsMilledThisWay(item *game.StackItem) int {
 func TriggersOnlyOnceEachTurn(t game.TriggeredAbility) game.TriggeredAbility {
 	when, label := t.AppliesTo, t.Key
 	t.AppliesTo = func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
-		if source == nil || b11TriggeredThisTurn(g, source.InstanceID, label) {
+		if source == nil || B11TriggeredThisTurn(g, source.InstanceID, label) {
 			return false
 		}
 		return when == nil || when(ev, source, ch, g)
@@ -135,15 +135,15 @@ func (CondThisInYourGraveyard) Holds(ctx *Context) bool {
 	return ctx.Item != nil && thisCardIsStillInItsGraveyard(ctx.Game, ctx.Item)
 }
 
-func (CondThisInYourGraveyard) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondSource, 0), true
+func (CondThisInYourGraveyard) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondSource, 0), true
 }
 
 // youGetRadCounters is "you get N rad counters" as a Do step (Tato
 // Farmer, Strong, the Brutish Thespian): the resolving item's controller
 // gives them to themself, the giver every rad-counter gift names.
-type youGetRadCounters struct{ N int }
+type YouGetRadCounters struct{ N int }
 
-func (s youGetRadCounters) Apply(ctx *Context) error {
-	return playerGetsRadCounters(ctx.Game, ctx.Controller(), ctx.Controller(), s.N)
+func (s YouGetRadCounters) Apply(ctx *Context) error {
+	return PlayerGetsRadCounters(ctx.Game, ctx.Controller(), ctx.Controller(), s.N)
 }

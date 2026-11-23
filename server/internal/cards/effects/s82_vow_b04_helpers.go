@@ -14,7 +14,7 @@ import (
 // sacrifice's actor is the source's controller and the permanent that
 // went (read last-known, so a Blood paid as its own cost still counts,
 // CR 701.21) is a Blood.
-func vowB04YouSacrificedBlood(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func VowB04YouSacrificedBlood(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller {
 		return false
 	}
@@ -23,8 +23,8 @@ func vowB04YouSacrificedBlood(ev game.Event, source *game.Card, _ game.Character
 }
 
 // vowB04BloodTokensControlledBy counts the Blood tokens `player` controls.
-func vowB04BloodTokensControlledBy(g *game.Game, player uuid.UUID) int {
-	return countControlled(g, player, func(c game.Card) bool {
+func VowB04BloodTokensControlledBy(g *game.Game, player uuid.UUID) int {
+	return CountControlled(g, player, func(c game.Card) bool {
 		return c.IsToken() && c.HasSubtypeWord("Blood")
 	})
 }
@@ -33,9 +33,9 @@ func vowB04BloodTokensControlledBy(g *game.Game, player uuid.UUID) int {
 // Restless Bloodseeker print: "At the beginning of your end step, if you
 // gained life this turn, create a Blood token." The intervening "if"
 // (CR 603.4) is checked as the trigger fires and again as it resolves.
-func vowB04BloodAtEndStepIfLifeGained(name string) game.TriggeredAbility {
+func VowB04BloodAtEndStepIfLifeGained(name string) game.TriggeredAbility {
 	return On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return b24YourEndStepAndYouGainedLifeThisTurn(ev, source, g)
+		return B24YourEndStepAndYouGainedLifeThisTurn(ev, source, g)
 	}, name+" — create a Blood token (you gained life this turn)",
 		Do(If{
 			Cond: CondLifeGained{},

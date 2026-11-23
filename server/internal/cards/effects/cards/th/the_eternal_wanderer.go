@@ -1,0 +1,133 @@
+package cardsth
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// The Eternal Wanderer — Legendary Planeswalker {4}{W}{W}, loyalty 5:
+//
+//	"No more than one creature can attack The Eternal Wanderer each
+//	 combat.
+//	 +1: Exile up to one target artifact or creature. Return that card
+//	     to the battlefield under its owner's control at the beginning
+//	     of that player's next end step.
+//	 0: Create a 2/2 white Samurai creature token with double strike.
+//	 −4: For each player, choose a creature that player controls. Each
+//	     player sacrifices all creatures they control not chosen this
+//	     way."
+//
+// The proof card for #1534's per-permanent attack scope
+// (AttackLimitAttackingThis, ADR 0045 amendment of 2026-09-24,
+// Decision 47): only an attack that names the Wanderer herself counts,
+// so her controller — and any other planeswalker they control — may
+// still be attacked by any number of creatures in the same combat.
+//
+// The loyalty abilities:
+//
+//   - The 0 is CreateToken.
+//   - The −4 is Tragic Arrogance's shape (ChoosePermanents with a
+//     non-owner chooser, one leg per player, APNAP from the active
+//     player): the Wanderer's controller picks one creature on each
+//     board, then every creature not picked is sacrificed as one
+//     event. A player with no creatures is skipped.
+//   - The +1 is flicker.go's delayed blink bound to the owner's turn
+//     (exileTargetsThenReturnOnOwnersEndStep, #1538): the return waits
+//     for the end step of the exiled card's OWNER, through
+//     DelayedTrigger.TurnOf, while the delayed ability stays the
+//     Wanderer controller's (CR 603.7d). Until #1538 it fired at the
+//     next end step whoever owned the card, and carried a caveat.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "20a1671d-e8a4-4cf1-87a7-f2f6319f4b9e",
+		Name:         "The Eternal Wanderer",
+		Completeness: effects.CompletenessFull,
+		// The fallback for tokens, fixtures and the dev spawner; an
+		// imported deck reads printed loyalty (ADR 0032 §1).
+		StartingLoyalty: 5,
+		AttackLimits:    []game.AttackLimit{effects.NoMoreThanNCanAttackThisEachCombat(1)},
+		Activated: []effects.ActivatedAbility{
+			{
+				Label:   "+1: Exile up to one target artifact or creature. Return that card to the battlefield under its owner's control at the beginning of that player's next end step.",
+				Cost:    effects.LoyaltyCost(1),
+				Targets: effects.TargetPermanent("up to one target artifact or creature", effects.Or(effects.Artifact(), effects.Creature())).WithCount(0, 1),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					// "Up to one" with nothing chosen resolves and does
+					// nothing.
+					if len(item.Targets) == 0 {
+						return nil
+					}
+					return effects.ExileTargetsThenReturnOnOwnersEndStep(effects.NewContext(g, item), "The Eternal Wanderer — return the exiled card")
+				},
+			},
+			{
+				Label: "0: Create a 2/2 white Samurai creature token with double strike.",
+				Cost:  effects.LoyaltyCost(0),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := effects.NewContext(g, item)
+					return effects.CreateToken{
+						Controller: ctx.Controller(),
+						Template:   effects.TokenCard("2/2 white Samurai with double strike"),
+						N:          1,
+					}.Apply(ctx)
+				},
+			},
+			{
+				Label: "−4: For each player, choose a creature that player controls. Each player sacrifices all creatures they control not chosen this way.",
+				// ADR 0126 §6: each player keeps one creature.
+				Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepSacrifice, Partial: true}},
+				Cost:    effects.LoyaltyCost(-4),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return effects.ChoosePermanents{
+						Question:   "The Eternal Wanderer — choose the creature that player keeps",
+						Of:         effects.SeatsFromActive(g),
+						Candidates: eternalWandererCandidates,
+						Keyed:      eternalWandererChosen,
+					}.Apply(effects.NewContext(g, item))
+				},
+			},
+		},
+	})
+}
+
+// eternalWandererChosen is every other creature sacrificed, keyed (#4290).
+var eternalWandererChosen = effects.RegisterPermanentsPick("prompt-run/the-eternal-wanderer-sacrifice-the-rest",
+	effects.PermanentsDef{Then: eternalWandererSacrificeTheRest})
+
+// eternalWandererCandidates is one player's creatures, exactly one to
+// be chosen. A player with none is skipped.
+//
+// Caller holds g.mu.
+func eternalWandererCandidates(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+	var ids []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == of && c.IsCreature() {
+			ids = append(ids, c.InstanceID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil, 0, 0
+	}
+	return ids, 1, 1
+}
+
+// eternalWandererSacrificeTheRest is "each player sacrifices all
+// creatures they control not chosen this way", as one event.
+//
+// Caller holds g.mu.
+func eternalWandererSacrificeTheRest(ctx *effects.Context, picked game.PromptedPicks) error {
+	g := ctx.Game
+	var doomed []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if !c.IsCreature() || picked.Contains(c.InstanceID) {
+			continue
+		}
+		doomed = append(doomed, c.InstanceID)
+	}
+	if len(doomed) == 0 {
+		return nil
+	}
+	return g.SacrificeAllKeyedForEffect(ctx.Source(), doomed, game.KeyedTail{})
+}

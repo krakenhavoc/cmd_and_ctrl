@@ -28,7 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				AtYourUpkeep("Extravagant Replication — create a token that's a copy of another target nonland permanent you control",
-					extravagantReplicationCopy),
+					ExtravagantReplicationCopy),
 				Another(TargetPermanent("another target nonland permanent you control", Nonland(), YouControl())),
 			),
 		},
@@ -37,7 +37,7 @@ func init() {
 
 // extravagantReplicationCopy makes the token copy of the still-legal
 // target.
-func extravagantReplicationCopy(g *game.Game, item *game.StackItem) error {
+func ExtravagantReplicationCopy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	copyOf := FirstLegalBattlefieldTarget(ctx)
 	if copyOf == uuid.Nil {

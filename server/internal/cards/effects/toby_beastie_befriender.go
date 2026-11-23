@@ -35,13 +35,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Toby — create a 4/4 white Beast that can't attack or block alone",
-				Do(CreateToken{Template: tobyBeastToken(), N: 1})),
+				Do(CreateToken{Template: TobyBeastToken(), N: 1})),
 		},
 		Static: []game.StaticAbility{{
 			Label: "As long as you control four or more creature tokens, creature tokens you control have flying.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return creatureTokensYouControl(target, g, source) && tobyCreatureTokens(g, source.Controller) >= 4
+				return CreatureTokensYouControl(target, g, source) && tobyCreatureTokens(g, source.Controller) >= 4
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Abilities = game.AppendKeywordAbility(c.Abilities, "flying")
@@ -64,12 +64,12 @@ func tobyCreatureTokens(g *game.Game, controller uuid.UUID) int {
 
 // tobyBeastToken is the 4/4 white Beast creature token with "This token
 // can't attack or block alone."
-func tobyBeastToken() game.Card { return tokenFromCatalog(printedTobyBeastToken) }
+func TobyBeastToken() game.Card { return TokenFromCatalog(printedTobyBeastToken) }
 
 // printedTobyBeastToken is the Beast as PRINTED (the Duskmourn token): not
 // the plain "4/4 green Beast" row, which prints no text and is green.
-func printedTobyBeastToken() tokenTemplate {
-	return tokenTemplate{
+func printedTobyBeastToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "beast-not-alone",
 		Card: game.Card{
 			Name:      "Beast",

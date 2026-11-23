@@ -26,7 +26,7 @@ func init() {
 			AtYourUpkeep("Endless Ranks of the Dead — create a Zombie for every two Zombies you control",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					n := zombiesYouControl(g, item.Controller) / 2
+					n := ZombiesYouControl(g, item.Controller) / 2
 					return CreateToken{Template: TokenCard("2/2 black Zombie"), N: n}.Apply(ctx)
 				}),
 		},
@@ -35,6 +35,6 @@ func init() {
 
 // zombiesYouControl is "the number of Zombies you control": every
 // permanent `player` controls with the Zombie subtype.
-func zombiesYouControl(g *game.Game, player uuid.UUID) int {
-	return len(permanentsControlledByMatching(g, player, HasSubtype("Zombie")))
+func ZombiesYouControl(g *game.Game, player uuid.UUID) int {
+	return len(PermanentsControlledByMatching(g, player, HasSubtype("Zombie")))
 }

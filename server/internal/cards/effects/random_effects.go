@@ -9,7 +9,7 @@ import (
 // randomDraw identifies the player and object whose effect consumes a keyed
 // random stream. It deliberately contains IDs only so every continuation is
 // safe to clone and restore.
-func randomDraw(ctx *Context) game.RandomDraw {
+func RandomDraw(ctx *Context) game.RandomDraw {
 	return game.RandomDraw{Player: ctx.Controller(), Source: ctx.Source()}
 }
 
@@ -47,10 +47,10 @@ type RollDice struct {
 func (r RollDice) Apply(ctx *Context) error {
 	var then game.KeyedTail
 	if r.Then.Key() != "" {
-		then = withN(ctx.ItemTail(r.Then), r.TailN)
+		then = WithN(ctx.ItemTail(r.Then), r.TailN)
 		then.Carry = append([]uuid.UUID(nil), r.TailCarry...)
 	}
-	d := randomDraw(ctx)
+	d := RandomDraw(ctx)
 	return ctx.Game.RollDiceThenForEffect(game.DiceRoll{
 		Player: d.Player, Source: d.Source, Sides: r.Sides, N: r.N, IgnoreLowest: r.IgnoreLowest, Then: then,
 		Modifier: r.Modifier,
@@ -110,11 +110,11 @@ func DiceTail(key string, body func(ctx *Context, rolls []int) error) game.TailR
 }
 
 //nolint:unparam // n is the count "choose N at random" prints; every card so far picks one, in-flight batches may not.
-func randomPick(ctx *Context, ids []uuid.UUID, n int) []uuid.UUID {
-	return ctx.Game.ChooseAtRandomForEffect(randomDraw(ctx), ids, n)
+func RandomPick(ctx *Context, ids []uuid.UUID, n int) []uuid.UUID {
+	return ctx.Game.ChooseAtRandomForEffect(RandomDraw(ctx), ids, n)
 }
 
-func graveyardIDs(g *game.Game, player uuid.UUID, match func(game.Card) bool) []uuid.UUID {
+func GraveyardIDs(g *game.Game, player uuid.UUID, match func(game.Card) bool) []uuid.UUID {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return nil
@@ -128,14 +128,14 @@ func graveyardIDs(g *game.Game, player uuid.UUID, match func(game.Card) bool) []
 	return ids
 }
 
-func treasureTokens(g *game.Game, controller uuid.UUID, n int) error {
+func TreasureTokens(g *game.Game, controller uuid.UUID, n int) error {
 	if n <= 0 {
 		return nil
 	}
-	return g.CreateTokenForEffect(controller, ruleDefinedToken(TreasureToken()), n)
+	return g.CreateTokenForEffect(controller, RuleDefinedToken(TreasureToken()), n)
 }
 
-func randomCardToHandOrBattlefield(g *game.Game, id uuid.UUID) error {
+func RandomCardToHandOrBattlefield(g *game.Game, id uuid.UUID) error {
 	c, ok := g.LookupCardForEffect(id)
 	if !ok {
 		return nil

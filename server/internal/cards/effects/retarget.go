@@ -132,7 +132,7 @@ func (c ChangeTargets) Apply(ctx *Context) error {
 // Specimen); Spellskite's activation is mandatory. `reason` is the
 // prompt header, shown only when there is a choice to make: which
 // target, or — for a "you may" — whether.
-func changeATargetToThisCreature(reason string, optional bool) func(g *game.Game, item *game.StackItem) error {
+func ChangeATargetToThisCreature(reason string, optional bool) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -162,7 +162,7 @@ func changeATargetToThisCreature(reason string, optional bool) func(g *game.Game
 // header; the body is this. It reads the LEGAL targets rather than
 // item.Targets so a trigger or ability whose target has left is skipped
 // the same way the engine would skip it.
-func retargetTheTargetedItem(ctx *Context, reason string, policy game.RetargetPolicy, optional bool) error {
+func RetargetTheTargetedItem(ctx *Context, reason string, policy game.RetargetPolicy, optional bool) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -179,25 +179,25 @@ func retargetTheTargetedItem(ctx *Context, reason string, policy game.RetargetPo
 
 // changeTheTargetEffect is retargetTheTargetedItem as the mandatory
 // "change the target of …" body of a trigger or ability.
-func changeTheTargetEffect(reason string) func(g *game.Game, item *game.StackItem) error {
+func ChangeTheTargetEffect(reason string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		return retargetTheTargetedItem(NewContext(g, item), reason, game.RetargetChangeOne, false)
+		return RetargetTheTargetedItem(NewContext(g, item), reason, game.RetargetChangeOne, false)
 	}
 }
 
 // changeTheTarget is the same as an `OnResolve` body, for the spells.
-func changeTheTarget(reason string) func(item *game.StackItem, ctx *Context) error {
+func ChangeTheTarget(reason string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
-		return changeTheTargetEffect(reason)(ctx.Game, item)
+		return ChangeTheTargetEffect(reason)(ctx.Game, item)
 	}
 }
 
 // chooseNewTargets is the "you may choose new targets for / change the
 // targets of …" family (Redirect, Goblin Flectomancer): every slot may
 // move, and declining is allowed.
-func chooseNewTargets(reason string) func(g *game.Game, item *game.StackItem) error {
+func ChooseNewTargets(reason string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		return retargetTheTargetedItem(NewContext(g, item), reason, game.RetargetChooseNew, true)
+		return RetargetTheTargetedItem(NewContext(g, item), reason, game.RetargetChooseNew, true)
 	}
 }
 

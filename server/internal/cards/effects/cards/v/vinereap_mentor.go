@@ -1,0 +1,28 @@
+package cardsv
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Vinereap Mentor — Creature — Squirrel Druid {B}{G}, 3/2 (Bloomburrow,
+// #4467):
+//
+//	"When this creature enters or dies, create a Food token. (It's an
+//	 artifact with "{2}, {T}, Sacrifice this token: You gain 3 life.")"
+//
+// Crow of Dark Tidings' one ability with two conditions
+// (WhenThisEntersOrDies), making the catalog's printed Food token.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "db649e15-24ca-4fd8-9f0b-f1df28c9c57d",
+		Name:         "Vinereap Mentor",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEntersOrDies("Vinereap Mentor — create a Food token", effects.Do(effects.CreateToken{Template: effects.FoodToken(), N: 1})),
+		},
+	})
+}

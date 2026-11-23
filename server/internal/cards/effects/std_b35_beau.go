@@ -11,11 +11,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the lands-you-control static the set's other land-counting creatures use.
 
 // BeauToken is the Beau template.
-func BeauToken() game.Card { return tokenFromCatalog(printedBeauToken) }
+func BeauToken() game.Card { return TokenFromCatalog(printedBeauToken) }
 
-func printedBeauToken() tokenTemplate {
+func printedBeauToken() TokenTemplate {
 	const text = "Beau's power and toughness are each equal to the number of lands you control."
-	return tokenTemplate{
+	return TokenTemplate{
 		Slug: "beau",
 		Card: game.Card{
 			Name:     "Beau",
@@ -23,6 +23,6 @@ func printedBeauToken() tokenTemplate {
 			Colors:   []string{"U"},
 		},
 		Text:   text,
-		Static: []game.StaticAbility{landsYouControlPT(text)},
+		Static: []game.StaticAbility{LandsYouControlPT(text)},
 	}
 }

@@ -13,11 +13,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that triggered, once per land.
 
 // chocoboBirdToken is the Final Fantasy landfall Bird.
-func chocoboBirdToken() game.Card { return tokenFromCatalog(printedChocoboBirdToken) }
+func ChocoboBirdToken() game.Card { return TokenFromCatalog(printedChocoboBirdToken) }
 
 // printedChocoboBirdToken is the Bird as PRINTED.
-func printedChocoboBirdToken() tokenTemplate {
-	return tokenTemplate{
+func printedChocoboBirdToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "bird-landfall",
 		Card: game.Card{
 			Name:      "Bird",
@@ -28,7 +28,7 @@ func printedChocoboBirdToken() tokenTemplate {
 		},
 		Triggered: []game.TriggeredAbility{
 			Landfall("Bird — +1/+0 until end of turn (landfall)",
-				thisGetsUntilEndOfTurn(1, 0, "Bird — +1/+0 until end of turn")),
+				ThisGetsUntilEndOfTurn(1, 0, "Bird — +1/+0 until end of turn")),
 		},
 		Text: "Whenever a land you control enters, this token gets +1/+0 until end of turn.",
 	}

@@ -36,13 +36,13 @@ func init() {
 				AppliesTo: AllOf(
 					StepBegan(game.StepEnd, false),
 					func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-						return cardLeftYourGraveyardThisTurn(g, source.Controller)
+						return CardLeftYourGraveyardThisTurn(g, source.Controller)
 					},
 				),
 				Key: "Gau, Feral Youth — damage equal to its power to each opponent",
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					// CR 603.4: the intervening if again on resolution.
-					if !cardLeftYourGraveyardThisTurn(g, item.Controller) {
+					if !CardLeftYourGraveyardThisTurn(g, item.Controller) {
 						return nil
 					}
 					power := 0
@@ -52,7 +52,7 @@ func init() {
 					if power <= 0 {
 						return nil
 					}
-					return damageToEachOpponent(g, item, power)
+					return DamageToEachOpponent(g, item, power)
 				},
 			},
 		},
@@ -62,9 +62,9 @@ func init() {
 // cardLeftYourGraveyardThisTurn is "a card left your graveyard this
 // turn": any move this turn out of a graveyard, a cast from one
 // included (cardThatLeftAGraveyard), of a card the player owns.
-func cardLeftYourGraveyardThisTurn(g *game.Game, player uuid.UUID) bool {
+func CardLeftYourGraveyardThisTurn(g *game.Game, player uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
-		if c, ok := cardThatLeftAGraveyard(ev, g); ok && c.Owner == player {
+		if c, ok := CardThatLeftAGraveyard(ev, g); ok && c.Owner == player {
 			return true
 		}
 	}

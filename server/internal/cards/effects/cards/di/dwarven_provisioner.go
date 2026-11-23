@@ -1,0 +1,34 @@
+package cardsdi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Dwarven Provisioner — Creature — Dwarf Citizen {1}{W}, 2/2 (The Hobbit):
+//
+//	"{3}{W}: Creatures you control get +1/+1 until end of turn."
+//
+// The creatures are the ones you control as the ability resolves, locked
+// in for the turn (CR 611.2c): one that arrives later gets nothing. It has
+// no {T} in its cost, so it can be activated again and again, and with
+// summoning sickness.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "8fcab221-8737-4357-b8ee-bad9421739a3",
+		Name:         "Dwarven Provisioner",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{3}{W}: Creatures you control get +1/+1 until end of turn.",
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1, Toughness: 1}, Answers: game.AnswerPump},
+			Cost:    effects.ManaCost("{3}{W}"),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.BoostUntilEOT{Match: effects.And(effects.Creature(), effects.YouControl()), Power: 1, Toughness: 1,
+					Label: "Dwarven Provisioner — creatures you control get +1/+1"}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}

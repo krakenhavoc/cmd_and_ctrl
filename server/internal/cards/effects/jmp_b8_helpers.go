@@ -13,7 +13,7 @@ import (
 // target creature. At the beginning of the next end step, return that
 // card to the battlefield under its owner's control with a +1/+1
 // counter on it" (Long Road Home).
-var returnExiledWithAPlusOneCounterBody = game.SimpleDelayedBody(
+var ReturnExiledWithAPlusOneCounterBody = game.SimpleDelayedBody(
 	"flicker/return-exiled-with-a-plus-one-counter", returnExiledCardsWithAPlusOneCounter)
 
 // returnExiledCardsWithAPlusOneCounter returns the listed cards from
@@ -31,6 +31,6 @@ func returnExiledCardsWithAPlusOneCounter(g *game.Game, item *game.StackItem) er
 			ids = append(ids, t.ID)
 		}
 	}
-	return putCardsFromZoneTogetherWith(NewContext(g, item), game.ZoneExile, ids,
+	return PutCardsFromZoneTogetherWith(NewContext(g, item), game.ZoneExile, ids,
 		game.ZoneEntryOptions{EntersWithCounters: map[string]int{game.CounterPlusOne: 1}}, game.TailRef{}, 0)
 }

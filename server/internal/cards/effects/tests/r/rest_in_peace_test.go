@@ -1,0 +1,241 @@
+package testsr
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// millOne mills one card off a player's library and returns its ID,
+// or uuid.Nil when the library was empty.
+func millOne(t *testing.T, g *game.Game, p *game.Player) uuid.UUID {
+	t.Helper()
+	top, err := p.Library.Top()
+	if err != nil {
+		t.Fatalf("library is empty: %v", err)
+	}
+	id := top.InstanceID
+	g.WithWriteLock(func() {
+		if _, err := g.MillToZoneForEffect(p.ID, 1, game.ZoneGraveyard); err != nil {
+			t.Fatalf("MillToZoneForEffect: %v", err)
+		}
+	})
+	return id
+}
+
+// TestRestInPeaceExilesAnEntombedCard is the issue's first route: a
+// search that puts the card into a graveyard. Before #931 the take was
+// a raw move and Entomb walked straight past the enchantment.
+func TestRestInPeaceExilesAnEntombedCard(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.SeedLibrary(me, "Reanimation Target", "Something Else")
+	effectstest.CastRestInPeace(t, g)
+
+	effectstest.CastCatalogSpell(t, g, "Entomb", "Instant", effectstest.B02bEntombOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerSearchNamed(t, g, me.ID, "Reanimation Target")
+
+	if effectstest.B02bGraveyardHasNamed(me, "Reanimation Target") {
+		t.Error("the tutored card reached the graveyard; Rest in Peace exiles it instead")
+	}
+	if !exileHasNamed(g, "Reanimation Target") {
+		t.Error("the tutored card is in exile")
+	}
+}
+
+// TestRestInPeaceExilesASurveilledCard is the second route. Surveil
+// bins by choice rather than by count, and the card it bins is put
+// into a graveyard like any other.
+func TestRestInPeaceExilesASurveilledCard(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.CastRestInPeace(t, g)
+	effectstest.SeedLibrary(me, "Fodder", "Keeper")
+
+	effectstest.PlayLandFromHand(t, g, "Undercity Sewers", effectstest.UndercitySewersOracle)
+	effectstest.PassPriorityAroundTable(t, g)
+	c := effectstest.SurveilChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no surveil prompt")
+	}
+	if err := g.ResolveSurveil(c.ID, me.ID, c.ScryCards, nil); err != nil {
+		t.Fatalf("ResolveSurveil: %v", err)
+	}
+
+	if effectstest.B02bGraveyardHasNamed(me, "Fodder") {
+		t.Error("the surveilled card reached the graveyard; Rest in Peace exiles it instead")
+	}
+	if !exileHasNamed(g, "Fodder") {
+		t.Error("the surveilled card is in exile")
+	}
+}
+
+// TestRestInPeaceExilesAMilledCard is the route that has gone through
+// the window since #529 — it is here because "from anywhere" is a
+// claim about all of them, and a regression in one mover is invisible
+// from the others.
+func TestRestInPeaceExilesAMilledCard(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.CastRestInPeace(t, g)
+
+	milled := millOne(t, g, me)
+	if me.Graveyard.Contains(milled) {
+		t.Error("a milled card reached the graveyard under Rest in Peace")
+	}
+	if !g.Exile.Contains(milled) {
+		t.Error("the milled card is in exile")
+	}
+}
+
+// TestRestInPeaceExilesADyingCreature is the "from anywhere" half that
+// is a judgement rather than a route: the battlefield is a zone like
+// any other, so a creature that would die is exiled instead and never
+// died at all (CR 700.4).
+func TestRestInPeaceExilesADyingCreature(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.CastRestInPeace(t, g)
+	bear := effectstest.SeedPermanentWithOracle(g, me.ID, "Bears", "Creature — Bear", "")
+
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(bear); err != nil {
+			t.Fatalf("DestroyPermanentForEffect: %v", err)
+		}
+	})
+
+	if me.Graveyard.Contains(bear) {
+		t.Error("the destroyed creature reached the graveyard; Rest in Peace exiles it instead")
+	}
+	if !g.Exile.Contains(bear) {
+		t.Error("the destroyed creature is in exile")
+	}
+}
+
+// TestRestInPeaceExilesAllGraveyardsAsItEnters is the other half of
+// the card — the one-shot sweep, every seat's graveyard including its
+// controller's.
+func TestRestInPeaceExilesAllGraveyardsAsItEnters(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	them := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	mine := millOne(t, g, me)
+	theirs := millOne(t, g, them)
+	if !me.Graveyard.Contains(mine) || !them.Graveyard.Contains(theirs) {
+		t.Fatal("both graveyards are seeded before the enchantment arrives")
+	}
+
+	effectstest.CastRestInPeace(t, g)
+
+	if me.Graveyard.Size() != 0 || them.Graveyard.Size() != 0 {
+		t.Error("the entry sweep empties every graveyard, the controller's included")
+	}
+	if !g.Exile.Contains(mine) || !g.Exile.Contains(theirs) {
+		t.Error("the swept cards are in exile")
+	}
+}
+
+// TestLeylineOfTheVoidExilesOnlyOpponentsCards is the one clause that
+// separates the two cards, and the reason the builder takes a flag
+// rather than the cards taking a copy each.
+func TestLeylineOfTheVoidExilesOnlyOpponentsCards(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	them := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+
+	effectstest.CastCatalogSpell(t, g, "Leyline of the Void", "Enchantment", effectstest.LeylineOfTheVoidOracle, nil)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	mine := millOne(t, g, me)
+	theirs := millOne(t, g, them)
+
+	if !me.Graveyard.Contains(mine) {
+		t.Error("my own graveyard still works: Leyline names an OPPONENT's graveyard")
+	}
+	if g.Exile.Contains(mine) {
+		t.Error("my own milled card was exiled; Leyline is the one-sided version")
+	}
+	if them.Graveyard.Contains(theirs) {
+		t.Error("the opponent's milled card reached their graveyard")
+	}
+	if !g.Exile.Contains(theirs) {
+		t.Error("the opponent's milled card is in exile")
+	}
+}
+
+// exileHasNamed reports whether a card of that name is in exile.
+func exileHasNamed(g *game.Game, name string) bool {
+	for _, c := range g.Exile.Cards {
+		if c.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// A dying commander under Rest in Peace or Leyline of the Void (ADR 0115,
+// CR 903.9a). The replacement exiles it like any card, with no ordering
+// prompt, and only then is its owner offered the command zone. Leyline
+// is one-sided, so a commander of the caster's own dies normally.
+func TestAGraveyardHateEnchantmentExilesADyingCommanderThenItsOwnerIsOffered(t *testing.T) {
+	for _, tc := range []struct {
+		name, card, oracle string
+		theirs, exiled     bool
+	}{
+		{"Rest in Peace, my commander", "Rest in Peace", effectstest.RestInPeaceOracle, false, true},
+		{"Rest in Peace, their commander", "Rest in Peace", effectstest.RestInPeaceOracle, true, true},
+		{"Leyline, their commander", "Leyline of the Void", effectstest.LeylineOfTheVoidOracle, true, true},
+		{"Leyline, my commander", "Leyline of the Void", effectstest.LeylineOfTheVoidOracle, false, false},
+	} {
+		for _, home := range []bool{false, true} {
+			name := tc.name + " declined"
+			if home {
+				name = tc.name + " taken home"
+			}
+			t.Run(name, func(t *testing.T) {
+				g := effectstest.NewCatalogGame(t)
+				me := g.Seats[g.Turn.ActiveSeat]
+				owner := me
+				if tc.theirs {
+					owner = g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+				}
+				effectstest.CastCatalogSpell(t, g, tc.card, "Enchantment", tc.oracle, nil)
+				effectstest.PassPriorityAroundTable(t, g)
+
+				commander := uuid.New()
+				g.Battlefield.PushTop(game.Card{
+					InstanceID: commander, Name: "A Commander", TypeLine: "Legendary Creature — Human",
+					Power: 2, Toughness: 2, Owner: owner.ID, Controller: owner.ID, IsCommander: true,
+				})
+				g.WithWriteLock(func() {
+					if err := g.DestroyPermanentForEffect(commander); err != nil {
+						t.Fatalf("DestroyPermanentForEffect: %v", err)
+					}
+				})
+				for _, c := range g.PendingChoices {
+					if c != nil && (c.Kind == game.PendingChoiceReplacementOrder || c.Kind == game.PendingChoiceOptionalReplacement) {
+						t.Fatalf("unexpected %s prompt: nothing orders against a dying commander", c.Kind)
+					}
+				}
+				if tc.exiled {
+					if !g.Exile.Contains(commander) || owner.Graveyard.Contains(commander) {
+						t.Fatal("the dying commander was not exiled instead of reaching the graveyard")
+					}
+				} else if !owner.Graveyard.Contains(commander) {
+					t.Fatal("Leyline touched its own controller's commander")
+				}
+				if effectstest.CommanderReturnPromptFor(g, owner.ID) == nil {
+					t.Fatal("the commander's owner was never offered the command zone")
+				}
+				effectstest.AnswerCommanderReturn(t, g, owner.ID, home)
+				if got := owner.Command.Contains(commander); got != home {
+					t.Fatalf("in the command zone = %v, want %v", got, home)
+				}
+			})
+		}
+	}
+}

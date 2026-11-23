@@ -23,7 +23,7 @@ func init() {
 		AlternativeCosts: []game.AlternativeCost{Miracle("{1}{U}")},
 		// ADR 0188 Decision 10: the caster's extra turn, priced by the bot.
 		Purpose:   game.Purpose{ExtraTurns: 1},
-		OnResolve: takeAnExtraTurnThenExileThisSpell,
+		OnResolve: TakeAnExtraTurnThenExileThisSpell,
 	})
 }
 
@@ -31,7 +31,7 @@ func init() {
 // one. Exile <this spell>." — Temporal Mastery and Part the Waterveil. A
 // spell moving itself, not a permanent's ability, so the #1432 new-object
 // question does not arise.
-func takeAnExtraTurnThenExileThisSpell(item *game.StackItem, ctx *Context) error {
+func TakeAnExtraTurnThenExileThisSpell(item *game.StackItem, ctx *Context) error {
 	if err := (TakeExtraTurn{}).Apply(ctx); err != nil {
 		return err
 	}

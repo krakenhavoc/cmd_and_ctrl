@@ -32,14 +32,14 @@ func init() {
 		Name:         "Bone Miser",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(On(game.EventDiscardCard, youDiscardedA(game.Card.IsCreature),
+			TriggerWithPurpose(On(game.EventDiscardCard, YouDiscardedA(game.Card.IsCreature),
 				"Bone Miser — create a 2/2 black Zombie",
 				Do(CreateToken{Template: TokenCard("2/2 black Zombie"), N: 1})),
 				game.Purpose{DiscardPayoff: &game.DiscardPayoff{Types: []string{"creature"}, Tokens: 1}}),
-			On(game.EventDiscardCard, youDiscardedA(game.Card.IsLand),
+			On(game.EventDiscardCard, YouDiscardedA(game.Card.IsLand),
 				"Bone Miser — add {B}{B}",
 				Do(AddMana{Produced: "{B}{B}"})),
-			On(game.EventDiscardCard, youDiscardedA(func(c game.Card) bool { return !c.IsCreature() && !c.IsLand() }),
+			On(game.EventDiscardCard, YouDiscardedA(func(c game.Card) bool { return !c.IsCreature() && !c.IsLand() }),
 				"Bone Miser — draw a card",
 				Do(DrawCards{N: 1})),
 		},
@@ -48,8 +48,8 @@ func init() {
 
 // youDiscardedA is the condition of Bone Miser's three abilities:
 // source's controller discarded a card that match accepts.
-func youDiscardedA(match func(game.Card) bool) When {
+func YouDiscardedA(match func(game.Card) bool) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return b30YouDiscardedCardWhere(ev, source, g, match)
+		return B30YouDiscardedCardWhere(ev, source, g, match)
 	}
 }

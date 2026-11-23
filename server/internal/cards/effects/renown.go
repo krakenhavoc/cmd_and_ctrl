@@ -37,9 +37,9 @@ func RenownedKeywords(keywords ...string) game.StaticAbility {
 		Label:      "Has " + joinWords(keywords) + " while renowned.",
 		Layer:      game.Layer6Ability,
 		ActiveWhen: Renowned(),
-		AppliesTo:  selfOnly,
+		AppliesTo:  SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			appendKeywordsTo(c, kws)
+			AppendKeywordsTo(c, kws)
 		},
 	}
 }

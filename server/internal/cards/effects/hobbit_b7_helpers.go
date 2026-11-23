@@ -9,7 +9,7 @@ import (
 // hobB7ArtifactsByOpponents is "the artifacts your opponents control": every
 // artifact on the battlefield, tokens included, whose controller is not
 // `you`. An eliminated player's permanents are already gone.
-func hobB7ArtifactsByOpponents(g *game.Game, you uuid.UUID) int {
+func HobB7ArtifactsByOpponents(g *game.Game, you uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != you && c.IsArtifact() {
@@ -22,7 +22,7 @@ func hobB7ArtifactsByOpponents(g *game.Game, you uuid.UUID) int {
 // hobB7GreatestArtifactsAnOpponentControls is Cavern-Hoard Dragon's "X is the
 // greatest number of artifacts an opponent controls": the largest per-player
 // count among the caster's opponents (not their sum), zero when none has one.
-func hobB7GreatestArtifactsAnOpponentControls() func(q game.CostQuery) int {
+func HobB7GreatestArtifactsAnOpponentControls() func(q game.CostQuery) int {
 	return func(q game.CostQuery) int {
 		if q.Game == nil || q.Game.Battlefield == nil {
 			return 0
@@ -55,7 +55,7 @@ func hobB7GreatestArtifactsAnOpponentControls() func(q game.CostQuery) int {
 // sacrifice) is paid at announcement. The target is checked again at
 // resolution (CR 608.2b); if it is gone the counters are simply not put
 // (b31CountersOnChosenCreature, shared with Fain and Room of Refuge).
-func hobB7CounterLand(oracleID, name, produced, manaLabel, activationCost, targetLabel string, victim CardPredicate) Spec {
+func HobB7CounterLand(oracleID, name, produced, manaLabel, activationCost, targetLabel string, victim CardPredicate) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -71,7 +71,7 @@ func hobB7CounterLand(oracleID, name, produced, manaLabel, activationCost, targe
 			Cost:         Plus(ManaCost(activationCost), TapCost(), SacrificeThis()),
 			SorcerySpeed: true,
 			Targets:      TargetCreature(targetLabel, YouControl(), victim),
-			Effect:       b31CountersOnChosenCreature,
+			Effect:       B31CountersOnChosenCreature,
 		}},
 	}
 }

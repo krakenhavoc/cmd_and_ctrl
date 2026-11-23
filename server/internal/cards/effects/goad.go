@@ -34,11 +34,11 @@ import (
 // it.
 func GoadTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
-	return goadAndScheduleClear(ctx, []uuid.UUID{id})
+	return GoadAndScheduleClear(ctx, []uuid.UUID{id})
 }
 
 // GoadAllMatching goads every creature on the battlefield `match`
@@ -57,16 +57,16 @@ func GoadAllMatching(ctx *Context, match func(g *game.Game, c game.Card) bool) e
 	if len(ids) == 0 {
 		return nil
 	}
-	return goadAndScheduleClear(ctx, ids)
+	return GoadAndScheduleClear(ctx, ids)
 }
 
 // goadAndScheduleClear adds the controller's goad to every listed card
 // and schedules the legacy "the goad ends" delayed trigger for the
 // controller's next upkeep (see the file comment).
-func goadAndScheduleClear(ctx *Context, ids []uuid.UUID) error {
+func GoadAndScheduleClear(ctx *Context, ids []uuid.UUID) error {
 	controller := ctx.Controller()
 	for _, id := range ids {
-		b33Goad(ctx.Game, id, controller)
+		B33Goad(ctx.Game, id, controller)
 	}
 	return ScheduleDelayedTrigger{
 		At:                 game.StepUpkeep,

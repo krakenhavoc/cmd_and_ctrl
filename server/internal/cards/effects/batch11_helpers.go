@@ -22,7 +22,7 @@ import (
 // --- token templates ---------------------------------------------
 
 // b11GreenSaprolingToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
-func b11GreenSaprolingToken() game.Card { return TokenCard("1/1 green Saproling") }
+func B11GreenSaprolingToken() game.Card { return TokenCard("1/1 green Saproling") }
 
 // --- conditions and counts ---------------------------------------
 
@@ -32,7 +32,7 @@ func b11GreenSaprolingToken() game.Card { return TokenCard("1/1 green Saproling"
 // the OTHER lands its controller controls, exactly as the checkland
 // condition does. Supertype rather than name, so a Snow-Covered
 // Plains and a Wastes both satisfy it, as printed.
-func b11ControlsBasicLand(g *game.Game, src *game.Card) bool {
+func B11ControlsBasicLand(g *game.Game, src *game.Card) bool {
 	for _, c := range g.Battlefield.Cards {
 		if c.InstanceID == src.InstanceID || c.Controller != src.Controller {
 			continue
@@ -48,7 +48,7 @@ func b11ControlsBasicLand(g *game.Game, src *game.Card) bool {
 // `controller`'s graveyard — Wight of the Reliquary's bonus. A card in
 // a graveyard has no layer cache, so this is the printed type line,
 // which is what "creature card" means off the battlefield.
-func b11CreatureCardsInGraveyard(g *game.Game, controller uuid.UUID) int {
+func B11CreatureCardsInGraveyard(g *game.Game, controller uuid.UUID) int {
 	p := g.PlayerByIDForEffect(controller)
 	if p == nil || p.Graveyard == nil {
 		return 0
@@ -68,7 +68,7 @@ func b11CreatureCardsInGraveyard(g *game.Game, controller uuid.UUID) int {
 // the last-known battlefield characteristics, so a token that died
 // counts and a permanent that was a creature only through a layer
 // effect when it died counts too.
-func b11CreaturesDiedThisTurn(g *game.Game) int {
+func B11CreaturesDiedThisTurn(g *game.Game) int {
 	return g.TurnTally.CreaturesDied
 }
 
@@ -78,7 +78,7 @@ func b11CreaturesDiedThisTurn(g *game.Game) int {
 // The harvester emits EventTrigger, carrying the source and the
 // label, the moment it queues an item, and the per-turn tally counts
 // it there; a trigger that was countered still counts, as printed.
-func b11TriggeredThisTurn(g *game.Game, source uuid.UUID, label string) bool {
+func B11TriggeredThisTurn(g *game.Game, source uuid.UUID, label string) bool {
 	return g.TriggeredThisTurn(source, label) > 0
 }
 
@@ -87,7 +87,7 @@ func b11TriggeredThisTurn(g *game.Game, source uuid.UUID, label string) bool {
 // is emitted for both and carries only the post-change total, so the
 // previous total is the engine's read of the log
 // (Game.CounterCountBeforeForEffect, #4865).
-func b11CountersWerePlaced(ev game.Event, target uuid.UUID, kind string, g *game.Game) bool {
+func B11CountersWerePlaced(ev game.Event, target uuid.UUID, kind string, g *game.Game) bool {
 	if ev.Kind != game.EventCounterPlaced || ev.Target != target || ev.Label != kind {
 		return false
 	}
@@ -104,14 +104,14 @@ func b11CountersWerePlaced(ev game.Event, target uuid.UUID, kind string, g *game
 // (CR 122.6a), the source's controller for a CR 120.3d damage result.
 // A removal names nobody and is not a placement anyway. The g argument
 // is kept so the callers read the same as the other "you put" helpers.
-func b11CounterPlacerOf(ev game.Event, _ *game.Game) uuid.UUID {
+func B11CounterPlacerOf(ev game.Event, _ *game.Game) uuid.UUID {
 	return ev.Actor
 }
 
 // b11OpponentControlsMoreThanYou is Keeper of the Accord's
 // intervening-if: `opp` controls more permanents matching `match`
 // than `you` do.
-func b11OpponentControlsMoreThanYou(g *game.Game, you, opp uuid.UUID, match func(game.Card) bool) bool {
+func B11OpponentControlsMoreThanYou(g *game.Game, you, opp uuid.UUID, match func(game.Card) bool) bool {
 	yours, theirs := 0, 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if !match(c) {
@@ -130,7 +130,7 @@ func b11OpponentControlsMoreThanYou(g *game.Game, you, opp uuid.UUID, match func
 // b11OpponentControlsCreatures reports whether some opponent of
 // `controller` controls at least n creatures — Defense of the
 // Heart's intervening-if.
-func b11OpponentControlsCreatures(g *game.Game, controller uuid.UUID, n int) bool {
+func B11OpponentControlsCreatures(g *game.Game, controller uuid.UUID, n int) bool {
 	counts := map[uuid.UUID]int{}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller || !c.IsCreature() {
@@ -151,7 +151,7 @@ func b11OpponentControlsCreatures(g *game.Game, controller uuid.UUID, n int) boo
 // off the card on the stack — Scryfall's stamped list, or the mana
 // cost for a fixture — so an artifact creature and an Eldrazi both
 // qualify and a Devoid card does when its printed colours say so.
-func b11ColorlessSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+func B11ColorlessSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false
 	}
@@ -170,7 +170,7 @@ func b11ColorlessSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) 
 // ever emits EventTapCard from the attack path too, this fires
 // twice and the batch 11 test that counts one Treasure per
 // attacking Dwarf catches it.
-func b11DwarfYouControlBecameTapped(ev game.Event, source *game.Card, g *game.Game) bool {
+func B11DwarfYouControlBecameTapped(ev game.Event, source *game.Card, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventTapCard, game.EventAttack:
 	default:
@@ -189,7 +189,7 @@ func b11DwarfYouControlBecameTapped(ev game.Event, source *game.Card, g *game.Ga
 // b11SacrificedAFood is Nuka-Cola Vending Machine's condition: the
 // controller sacrificed a Food. EventSacrifice fires before the zone
 // move, so the token is still on the battlefield to be read.
-func b11SacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool {
+func B11SacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller {
 		return false
 	}
@@ -202,8 +202,8 @@ func b11SacrificedAFood(ev game.Event, source *game.Card, g *game.Game) bool {
 // b11PutCounterOnEachCreatureYouControl is Abandoned Air Temple's
 // activated ability. Snapshots the set first so a creature made by a
 // counter-placement trigger mid-loop does not receive one.
-func b11PutCounterOnEachCreatureYouControl(g *game.Game, item *game.StackItem) error {
-	return b11PutCountersOnEachCreatureYouControl(g, item, 1)
+func B11PutCounterOnEachCreatureYouControl(g *game.Game, item *game.StackItem) error {
+	return B11PutCountersOnEachCreatureYouControl(g, item, 1)
 }
 
 // b11PutCountersOnEachCreatureYouControl puts n +1/+1 counters on
@@ -212,7 +212,7 @@ func b11PutCounterOnEachCreatureYouControl(g *game.Game, item *game.StackItem) e
 // event of two, so a counter replacement (Hardened Scales, CR 614)
 // applies to it once and a "one or more counters" watcher sees one
 // placement, where two calls of the N=1 form would apply both twice.
-func b11PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, n int) error {
+func B11PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -224,7 +224,7 @@ func b11PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, 
 		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -234,7 +234,7 @@ func b11PutCountersOnEachCreatureYouControl(g *game.Game, item *game.StackItem, 
 // b11DamageEachCreatureControlledBy is Balefire Dragon's rider: the
 // source deals `amount` damage to each creature `victim` controls.
 // The set is snapshotted before any damage is dealt (CR 608.2).
-func b11DamageEachCreatureControlledBy(g *game.Game, item *game.StackItem, victim uuid.UUID, amount int) error {
+func B11DamageEachCreatureControlledBy(g *game.Game, item *game.StackItem, victim uuid.UUID, amount int) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -255,7 +255,7 @@ func b11DamageEachCreatureControlledBy(g *game.Game, item *game.StackItem, victi
 // b11FetchLandTapped is the "search your library for a land card,
 // put it onto the battlefield tapped, then shuffle" body Wight of
 // the Reliquary shares with Sakura-Tribe Elder's shape.
-func b11FetchLandTapped(reason string) func(g *game.Game, item *game.StackItem) error {
+func B11FetchLandTapped(reason string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{
 			Player:        item.Controller,

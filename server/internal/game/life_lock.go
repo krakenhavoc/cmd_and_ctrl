@@ -112,6 +112,47 @@ func (g *Game) GrantLifeTotalLockForEffect(player uuid.UUID, label string, sourc
 	})
 }
 
+// GrantLifeLossLockForEffect makes `player` unable to lose life for a
+// duration — "you can't lose life this turn" (Courageous Resolve's fateful
+// hour). Unlike GrantLifeTotalLockForEffect it stops only life LOSS (CR
+// 119.8): life can still be gained, damage is still dealt in full (lifelink
+// and commander damage see all of it) but costs no life, and a cost that
+// pays life can't be paid. Caller must hold g.mu (write). An unstamped
+// Duration is "until end of turn".
+func (g *Game) GrantLifeLossLockForEffect(player uuid.UUID, label string, source uuid.UUID, d Duration) {
+	if player == uuid.Nil {
+		return
+	}
+	p := g.playerByIDLocked(player)
+	if p == nil {
+		return
+	}
+	if d.IsZero() {
+		d = g.UntilEndOfTurnDuration()
+	}
+	p.Statics = append(p.Statics, PlayerStatic{
+		LifeLossLocked: true,
+		Source:         source,
+		Label:          label,
+		Duration:       d,
+	})
+}
+
+// playerLifeLossLockedLocked reports whether a live stored "can't lose
+// life" statement binds p (the duration tested here as well as in the sweep,
+// for playerLifeTotalCantChangeLocked's reason). Caller must hold g.mu.
+func (g *Game) playerLifeLossLockedLocked(p *Player) bool {
+	if p == nil {
+		return false
+	}
+	for _, s := range p.Statics {
+		if s.LifeLossLocked && !g.durationExpiredLocked(s.Duration, false) {
+			return true
+		}
+	}
+	return false
+}
+
 // playerLifeTotalCantChangeLocked is THE reader: may this player's
 // life total move right now? Derived locks first, stored ones after,
 // with an early-out on the first true — the life half's twin of
@@ -210,7 +251,7 @@ func (g *Game) CanPayLifeLocked(p *Player, amount int) bool {
 	if p == nil || p.Life < amount {
 		return false
 	}
-	return !g.playerLifeTotalCantChangeLocked(p)
+	return !g.playerLifeTotalCantChangeLocked(p) && !g.playerLifeLossLockedLocked(p) && !g.playerCantLoseLifeLocked(p)
 }
 
 // lifeChangeIsLockedLocked is the built-in's AppliesTo: is this a life
@@ -226,7 +267,12 @@ func (g *Game) lifeChangeIsLockedLocked(ev *ReplacementEvent) bool {
 	if ev == nil || ev.Kind != RepEventLife || ev.LifeDelta == 0 {
 		return false
 	}
-	return g.playerLifeTotalCantChangeLocked(g.playerByIDLocked(ev.LifePlayer))
+	p := g.playerByIDLocked(ev.LifePlayer)
+	if g.playerLifeTotalCantChangeLocked(p) {
+		return true
+	}
+	// "Can't lose life" (CR 119.8): only a loss does not happen.
+	return ev.LifeDelta < 0 && g.playerLifeLossLockedLocked(p)
 }
 
 // lifeTotalCantChangeReplacement implements CR 119.7 and CR 119.8 on

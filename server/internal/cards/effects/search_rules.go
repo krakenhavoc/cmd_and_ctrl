@@ -16,16 +16,16 @@ var (
 	// searchRuleDifferentNames is "cards with different names": Gifts
 	// Ungiven, Emergent Ultimatum, Tiamat, Shared Summons, Fblthp, Knows the
 	// Way, and Saheeli Rai's −7.
-	searchRuleDifferentNames = game.RegisterSearchRule("search/different-names",
+	SearchRuleDifferentNames = game.RegisterSearchRule("search/different-names",
 		func(picked []game.Card, _ int) bool { return DifferentNames(picked) })
 
 	// searchRuleBasicsShareALandType is Myriad Landscape's "two basic land
 	// cards that share a land type".
-	searchRuleBasicsShareALandType = game.RegisterSearchRule("search/basics-share-a-land-type",
+	SearchRuleBasicsShareALandType = game.RegisterSearchRule("search/basics-share-a-land-type",
 		func(picked []game.Card, _ int) bool { return basicsShareALandType(picked) })
 
 	// searchRuleTotalManaValueAtMost is "with total mana value N or less"
 	// (Protean Hulk), N the rule's number.
 	searchRuleTotalManaValueAtMost = game.RegisterSearchRule("search/total-mana-value-at-most",
-		func(picked []game.Card, n int) bool { return b23TotalManaValueAtMost(n)(picked) })
+		func(picked []game.Card, n int) bool { return B23TotalManaValueAtMost(n)(picked) })
 )

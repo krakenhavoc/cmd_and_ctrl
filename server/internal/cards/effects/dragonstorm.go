@@ -16,7 +16,7 @@ func WhenADragonYouControlEntersReturnThis(name string) game.TriggeredAbility {
 	return On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return b23DragonYouControlEntered(ev, source, g)
 	}, name+" — return it to its owner's hand", func(g *game.Game, item *game.StackItem) error {
-		if !onBattlefield(g, item.SourceCardID) {
+		if !OnBattlefield(g, item.SourceCardID) {
 			return nil
 		}
 		return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))

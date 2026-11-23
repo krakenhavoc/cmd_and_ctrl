@@ -35,7 +35,7 @@ func init() {
 			Echo("Shah of Naar Isle", "{0}"),
 			WhenEchoIsPaid("Shah of Naar Isle — each opponent may draw up to three cards", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				return shahAskOpponents(ctx, opponentsInTurnOrderAfter(ctx, item.Controller), nil)
+				return shahAskOpponents(ctx, OpponentsInTurnOrderAfter(ctx, item.Controller), nil)
 			}),
 		},
 	})
@@ -73,7 +73,7 @@ func shahAskOpponents(ctx *Context, opps []uuid.UUID, chosen []int) error {
 		Question: "Shah of Naar Isle — you may draw up to three cards",
 		Options:  shahDrawOptions[:ceiling+1],
 		ThenKey:  shahAnswer,
-		Carry:    packIDLists(opps, intsToCarry(chosen)),
+		Carry:    PackIDLists(opps, intsToCarry(chosen)),
 	}.Apply(ctx)
 }
 
@@ -84,7 +84,7 @@ var shahAnswer game.OptionPickThen
 
 func init() {
 	shahAnswer = OptionPickThen("option-pick/shah-of-naar-isle-draw", func(ctx *Context, r game.OptionPicked) error {
-		opps, answers := unpackIDPair(r.Carry)
+		opps, answers := UnpackIDPair(r.Carry)
 		index := r.Index
 		if index < 0 {
 			index = 0
@@ -96,7 +96,7 @@ func init() {
 
 // opponentsInTurnOrderAfter is `player`'s opponents in turn order,
 // starting with the one after them (CR 101.4).
-func opponentsInTurnOrderAfter(ctx *Context, player uuid.UUID) []uuid.UUID {
+func OpponentsInTurnOrderAfter(ctx *Context, player uuid.UUID) []uuid.UUID {
 	seats := ctx.Game.Seats
 	start := 0
 	for i, p := range seats {

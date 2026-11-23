@@ -30,13 +30,13 @@ func init() {
 }
 
 // SturdyShieldEquipmentToken is the Sturdy Shield as PRINTED.
-func SturdyShieldEquipmentToken() game.Card { return tokenFromCatalog(printedSturdyShieldToken) }
+func SturdyShieldEquipmentToken() game.Card { return TokenFromCatalog(printedSturdyShieldToken) }
 
 // printedSturdyShieldToken is the catalog's entry for the Sturdy Shield:
 // a colorless Equipment artifact token, "Equipped creature gets +1/+2" and
 // equip {2}. Its slug is an on-disk identity and is never renamed.
-func printedSturdyShieldToken() tokenTemplate {
-	return tokenTemplate{
+func printedSturdyShieldToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "sturdy-shield-equipment",
 		Card: game.Card{
 			Name:     "Sturdy Shield",
@@ -44,7 +44,7 @@ func printedSturdyShieldToken() tokenTemplate {
 		},
 		Text:      "Equipped creature gets +1/+2.\nEquip {2}",
 		Static:    []game.StaticAbility{PumpAttached(1, 2)},
-		Activated: activatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
+		Activated: ActivatedShapes([]ActivatedAbility{EquipAbility("{2}")}),
 	}
 }
 

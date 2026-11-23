@@ -14,8 +14,8 @@ import (
 // for a Spike named name: a self-replacement on the entry (CR 614.1c), so
 // the Spike is never a 0/0 on the battlefield, however it arrived. words
 // is n as printed ("two"), for the replacement's header.
-func spikeEntersWith(name, words string, n int) game.ReplacementEffect {
-	r := b10EntersWithCounters(game.CounterPlusOne, n, name+" — enters with "+words+" +1/+1 counters")
+func SpikeEntersWith(name, words string, n int) game.ReplacementEffect {
+	r := B10EntersWithCounters(game.CounterPlusOne, n, name+" — enters with "+words+" +1/+1 counters")
 	r.RowLabel = "Enters with " + strconv.Itoa(n) + " +1/+1 counters on it."
 	return r
 }
@@ -27,7 +27,7 @@ func spikeEntersWith(name, words string, n int) game.ReplacementEffect {
 // state-based check (CR 704.5f) with the ability still on the stack. The
 // target may be the Spike itself. The counter goes on the target if it is
 // still legal as the ability resolves (CR 608.2b).
-func spikeMovesACounter() ActivatedAbility {
+func SpikeMovesACounter() ActivatedAbility {
 	return ActivatedAbility{
 		Label:   "{2}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on target creature.",
 		Purpose: game.Purpose{Answers: game.AnswerPump},

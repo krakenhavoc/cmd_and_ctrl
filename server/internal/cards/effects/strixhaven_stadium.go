@@ -36,11 +36,11 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDealDamage, strixhavenCreatureDealtCombatDamageToYou,
+			On(game.EventDealDamage, StrixhavenCreatureDealtCombatDamageToYou,
 				"Strixhaven Stadium — remove a point counter from this artifact",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					if !onBattlefield(g, ctx.Source()) || counterCountOn(g, ctx.Source(), point) == 0 {
+					if !OnBattlefield(g, ctx.Source()) || CounterCountOn(g, ctx.Source(), point) == 0 {
 						return nil
 					}
 					return AddCounter{Target: ctx.Source(), Kind: point, N: -1}.Apply(ctx)
@@ -49,13 +49,13 @@ func init() {
 				"Strixhaven Stadium — put a point counter on this artifact; then if it has ten or more, remove them all and that player loses the game",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					if !onBattlefield(g, ctx.Source()) {
+					if !OnBattlefield(g, ctx.Source()) {
 						return nil
 					}
 					if err := (AddCounter{Target: ctx.Source(), Kind: point, N: 1}).Apply(ctx); err != nil {
 						return err
 					}
-					n := counterCountOn(g, ctx.Source(), point)
+					n := CounterCountOn(g, ctx.Source(), point)
 					if n < 10 || item.Trigger == nil {
 						return nil
 					}
@@ -70,7 +70,7 @@ func init() {
 
 // strixhavenCreatureDealtCombatDamageToYou — a creature (any controller's)
 // dealt combat damage to the source's controller.
-func strixhavenCreatureDealtCombatDamageToYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func StrixhavenCreatureDealtCombatDamageToYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || ev.Target != source.Controller {
 		return false
 	}
@@ -81,5 +81,5 @@ func strixhavenCreatureDealtCombatDamageToYou(ev game.Event, source *game.Card, 
 // strixhavenYourCreatureDealtCombatDamageToAnOpponent — a creature the
 // source's controller controls dealt combat damage to an opponent.
 func strixhavenYourCreatureDealtCombatDamageToAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return ev.Target != source.Controller && combatDamageToPlayerBy(ev, source.Controller, g)
+	return ev.Target != source.Controller && CombatDamageToPlayerBy(ev, source.Controller, g)
 }

@@ -45,7 +45,7 @@ func init() {
 }
 
 // rottenmouthViper is the printed punisher: 4 life a refusal.
-var rottenmouthViper = punisherRepeat{Name: "Rottenmouth Viper", Life: 4}
+var RottenmouthViper = PunisherRepeat{Name: "Rottenmouth Viper", Life: 4}
 
 // rottenmouthBlight is the blight counter's kind.
 const rottenmouthBlight = "blight"
@@ -61,7 +61,7 @@ func rottenmouthViperTrigger(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	if perm.Left {
-		return rottenmouthViper.start(ctx, perm.Counters[rottenmouthBlight])
+		return RottenmouthViper.Start(ctx, perm.Counters[rottenmouthBlight])
 	}
 	return g.AddCounterByKeyedForEffect(item.Controller, item.SourceCardID, rottenmouthBlight, 1, ctx.ItemTail(rottenmouthViperPunish))
 }
@@ -74,5 +74,5 @@ var rottenmouthViperPunish = CardTail("rottenmouth-viper/punish", func(ctx *Cont
 	if !ok {
 		return nil
 	}
-	return rottenmouthViper.start(ctx, perm.Counters[rottenmouthBlight])
+	return RottenmouthViper.Start(ctx, perm.Counters[rottenmouthBlight])
 })

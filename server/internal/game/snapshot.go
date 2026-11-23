@@ -1206,6 +1206,10 @@ type cardSnapshot struct {
 	// arrival was a surveil's graveyard leg. Absent from every earlier
 	// file, which restores as "not surveilled".
 	Surveilled bool `json:"surveilled,omitempty"`
+	// Milled is Card.Milled (Raul, Trouble Shooter): the arrival was a
+	// mill's graveyard leg. Absent from every earlier file, which restores
+	// as "not milled".
+	Milled bool `json:"milled,omitempty"`
 	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
 	// effect gave suspend. Absent from every earlier file, which restores as
 	// "has only its printed abilities".
@@ -1807,6 +1811,12 @@ type stackItemSnapshot struct {
 	AltCost        string          `json:"altCost,omitempty"`
 	Foretold       bool            `json:"foretold,omitempty"`
 
+	// ModeChooser is StackItem.ModeChooser (#5771): the opponent who
+	// chose an "An opponent chooses one" spell's mode. Additive within
+	// the schema version and omitted when unset, which is every other
+	// item.
+	ModeChooser *uuid.UUID `json:"modeChooser,omitempty"`
+
 	// MutateUnder is StackItem.MutateUnder (ADR 0223).
 	MutateUnder bool `json:"mutateUnder,omitempty"`
 
@@ -1842,6 +1852,10 @@ type stackItemSnapshot struct {
 	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
 	// Carried for the reason ExileWithCounter is.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+	// ExileAndSuspend is Gandalf of the Secret Fire's mark: exile the
+	// resolving spell with this many time counters and give it suspend.
+	// Carried for the reason ExileWithCounter is.
+	ExileAndSuspend int `json:"exileAndSuspend,omitempty"`
 	// ExileLinkedTo is Forger's Foundry's mark: exile the resolving spell,
 	// linked to this object. Carried for the reason ExileWithCounter is.
 	ExileLinkedTo *PermissionCardRef `json:"exileLinkedTo,omitempty"`
@@ -2069,6 +2083,7 @@ type pendingChoiceSnapshot struct {
 	ModeUsedIndex    []int          `json:"modeUsedIndex,omitempty"`
 	ModeUsedLabel    []string       `json:"modeUsedLabel,omitempty"`
 	ModeNotChosen    ModeMemory     `json:"modeNotChosen,omitempty"`
+	ModePickFor      *uuid.UUID     `json:"modePickFor,omitempty"` // #5771: PendingChoice.ModePickFor, the caster an opponent's mode_pick is for; absent on every other prompt
 	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
 	// ADR 0116: the revealed-hand pick's legal cards and their label.
 	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
@@ -3209,6 +3224,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		Surveilled:               c.Surveilled,
+		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -3425,6 +3441,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
 		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
+		ModeChooser:      uuidPtrOrNil(s.ModeChooser),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
@@ -3441,6 +3458,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
@@ -3668,6 +3686,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		ModeUsedIndex:         copyInts(c.ModeUsedIndex),
 		ModeUsedLabel:         copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:         c.ModeNotChosen,
+		ModePickFor:           uuidPtrOrNil(c.ModePickFor),
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
 		CastPile:              copyUUIDs(c.CastPile),
@@ -4378,6 +4397,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		Surveilled:               c.Surveilled,
+		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -4641,6 +4661,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
 		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
+		ModeChooser:      uuidOrNil(s.ModeChooser),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
@@ -4657,6 +4678,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
@@ -4813,6 +4835,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeUsedIndex:         copyInts(c.ModeUsedIndex),
 		ModeUsedLabel:         copyStrings(c.ModeUsedLabel),
 		ModeNotChosen:         c.ModeNotChosen,
+		ModePickFor:           uuidOrNil(c.ModePickFor),
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
 		CastPile:              copyUUIDs(c.CastPile),

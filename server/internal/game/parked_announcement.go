@@ -16,7 +16,11 @@ import (
 //     (cost_commander_choice.go, costCommanderFrame);
 //   - "target … of an opponent's choice" (#2055, opponent_target.go,
 //     opponentTargetFrame): the controller's "which opponent" option pick
-//     and that opponent's pick_target.
+//     and that opponent's pick_target;
+//   - "An opponent chooses one —" (#5771, opponent_mode.go, the same
+//     opponentTargetFrame): the caster's "which opponent" option pick,
+//     that opponent's mode_pick, and the caster's pick_target for the
+//     chosen bullet's targets.
 //
 // Both frames used to differ only in how they re-ran it: the commander
 // question held a closure over the caller's params, the opponent's pick
@@ -281,7 +285,15 @@ func snapshotParkedAnnouncement(c *PendingChoice) (*parkedAnnouncementSnapshot, 
 		}
 		out.Mode, out.Slot = f.mode, f.slot
 		return &out, OpponentTargetAnnounceKey
-	case c.Kind == PendingChoiceOptionPick && c.opponentTargetResume != nil && c.pickTargetResume == nil && c.PickThen == opponentTargetChooserThen.key:
+	case c.isOpponentModePick() && c.modePickResume == nil:
+		// #5771: an opponent's mode choice for a parked cast.
+		out, ok := c.opponentTargetResume.snapshot()
+		if !ok {
+			return nil, ""
+		}
+		return &out, OpponentModeAnnounceKey
+	case c.Kind == PendingChoiceOptionPick && c.opponentTargetResume != nil && c.pickTargetResume == nil &&
+		(c.PickThen == opponentTargetChooserThen.key || c.PickThen == opponentModeChooserThen.key):
 		f := c.opponentTargetResume
 		out, ok := f.snapshot()
 		if !ok {
@@ -306,8 +318,17 @@ func restoreParkedAnnouncement(c *PendingChoice, s *parkedAnnouncementSnapshot) 
 	case PendingChoicePickTarget:
 		c.opponentTargetResume = &opponentTargetFrame{parkedAnnouncement: s.announcement(), mode: s.Mode, slot: s.Slot}
 		// The pick is for the announcement's controller (CR 601.2c: they
-		// still target), which the wire shows.
+		// still target), which the wire shows. #5771: unless it is the
+		// controller's own pick, for a bullet an opponent chose.
 		c.PickTargetFor = s.Controller
+		if c.Chooser == s.Controller {
+			c.PickTargetFor = uuid.Nil
+		}
+		c.PickThen = ""
+	case PendingChoiceModePick:
+		// #5771: an opponent's mode choice, for the caster's spell.
+		c.opponentTargetResume = &opponentTargetFrame{parkedAnnouncement: s.announcement()}
+		c.ModePickFor = s.Controller
 		c.PickThen = ""
 	case PendingChoiceOptionPick:
 		c.opponentTargetResume = &opponentTargetFrame{parkedAnnouncement: s.announcement(), mode: s.Mode, slot: s.Slot}
@@ -325,14 +346,22 @@ func unknownParkedAnnouncementKeys(c *pendingChoiceSnapshot) []string {
 		want = CostCommanderAnnounceKey
 	case PendingChoicePickTarget:
 		want = OpponentTargetAnnounceKey
+	case PendingChoiceModePick:
+		want = OpponentModeAnnounceKey
 	case PendingChoiceOptionPick:
 		want = opponentTargetChooserThen.key
+		if c.PickThen == opponentModeChooserThen.key {
+			want = opponentModeChooserThen.key
+		}
 	}
 	switch {
 	case want == "" || c.PickThen != want:
 		return []string{fmt.Sprintf("parked announcement on a %s prompt with tail %q", c.Kind, c.PickThen)}
 	case s.Activation != (s.Activate != nil) || s.Activation == (s.Cast != nil):
 		return []string{fmt.Sprintf("parked announcement on a %s prompt with no params", c.Kind)}
+	case (c.Kind == PendingChoiceModePick || c.PickThen == opponentModeChooserThen.key) && s.Activation:
+		// #5771: only a spell's mode is an opponent's.
+		return []string{fmt.Sprintf("parked activation on an opponent's %s prompt", c.Kind)}
 	}
 	return nil
 }

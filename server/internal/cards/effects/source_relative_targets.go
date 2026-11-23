@@ -136,3 +136,10 @@ func BlockedByEquipped(spec *game.TargetSpec) *game.TargetSpec {
 	spec.CombatWithSource = game.SourceCombat{Of: game.CombatOfHost, Role: game.CombatBlockedBy}
 	return spec
 }
+
+// SameNameAsSource is "with the same name as this creature" (Callidus
+// Assassin): the candidate's name equals the source's, read live while the
+// source stands and from its last-known characteristics once it has left.
+func SameNameAsSource() game.SourceComparison {
+	return game.SourceComparison{Stat: game.SourceSameName}
+}

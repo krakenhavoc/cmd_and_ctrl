@@ -17,7 +17,7 @@ import (
 // CreateToken{Template: ClueToken()}: that is not an investigate.
 
 func init() {
-	game.RegisterInvestigateToken(func() game.Card { return ruleDefinedToken(ClueToken()) })
+	game.RegisterInvestigateToken(func() game.Card { return RuleDefinedToken(ClueToken()) })
 }
 
 // Investigate is "investigate" (N of 1), "investigate twice" (N of 2) and
@@ -37,7 +37,7 @@ func (s Investigate) Apply(ctx *Context) error {
 	return ctx.Game.InvestigateForEffect(player, ctx.Source(), s.N)
 }
 
-func (s Investigate) footprint() (game.FootprintStep, bool) {
+func (s Investigate) Footprint() (game.FootprintStep, bool) {
 	key, manual, keywords := game.FootprintTokenOf(ClueToken())
 	return game.FootprintStep{
 		Kind: game.FootprintInvestigate, N: s.N, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
@@ -65,8 +65,8 @@ func (s InvestigateForEach) footprints() ([]game.FootprintStep, bool) {
 	if s.Count == nil {
 		return nil, false
 	}
-	step, _ := Investigate{N: 1}.footprint()
-	return []game.FootprintStep{condStep(game.FootprintCondBoard, 0), step}, true
+	step, _ := Investigate{N: 1}.Footprint()
+	return []game.FootprintStep{CondStep(game.FootprintCondBoard, 0), step}, true
 }
 
 // WheneverYouInvestigateForTheFirstTimeEachTurn is that trigger (Erdwal

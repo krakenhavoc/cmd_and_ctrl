@@ -82,7 +82,7 @@ func RestrictAttachedExtra(r game.Restriction, x game.ExtraRestriction) game.Sta
 func RestrictSelf(r game.Restriction) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= r
 		},
@@ -95,7 +95,7 @@ func RestrictSelf(r game.Restriction) game.StaticAbility {
 func RestrictSelfExtra(r game.Restriction, x game.ExtraRestriction) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer6Ability,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= r
 			c.ExtraRestrictions |= x
@@ -117,7 +117,7 @@ func CantAttackOrBlockUnlessPowerAtLeast(n int) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     fmt.Sprintf("This creature can't attack or block unless its power is %d or greater.", n),
 		Layer:     game.Layer6Ability,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			if n > c.AttackBlockPowerFloor {
 				c.AttackBlockPowerFloor = n
@@ -213,7 +213,7 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 			[]game.Mod{mod}, DurationUntilEndOfTurn(ctx), label)
 		return nil
 	}
-	return untilEndOfTurn(ctx, r.Target, nil, label, mod)
+	return UntilEndOfTurn(ctx, r.Target, nil, label, mod)
 }
 
 // RestrictAttachedWhile is "During your turn, equipped creature can't

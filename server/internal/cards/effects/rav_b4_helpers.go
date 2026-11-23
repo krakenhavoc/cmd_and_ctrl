@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // control them (CR 111.2), and an opponent who has left by the time the
 // trigger resolves gets nothing (CR 608.2b). `token` is a tokens_table.go
 // key.
-func ravB4TargetOpponentCreates(label, token string, n int) game.TriggeredAbility {
+func RavB4TargetOpponentCreates(label, token string, n int) game.TriggeredAbility {
 	return Targeting(
 		WhenThisEnters(label, func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)

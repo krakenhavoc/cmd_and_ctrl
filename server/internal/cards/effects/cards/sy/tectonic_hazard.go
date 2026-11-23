@@ -1,0 +1,31 @@
+package cardssy
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Tectonic Hazard — Sorcery {R} (EDHREC rank 2637):
+//
+//	"Tectonic Hazard deals 1 damage to each opponent and each creature
+//	 they control."
+//
+// A one-sided Electrickery for the table. One damage to every
+// opponent, then one to every creature an opponent controls
+// (damageEachMatching — the set is snapshotted before the first
+// point lands, so nothing is hit twice and a creature that took
+// lethal dies at the state-based sweep). The caster and their
+// creatures are untouched, as printed.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "9097243a-39fa-4e18-8316-c0e57699c783",
+		Name:         "Tectonic Hazard",
+		Completeness: effects.CompletenessFull,
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.DamageEachOpponentAndEachCreatureTheyControl(ctx, 1)
+		},
+	})
+}

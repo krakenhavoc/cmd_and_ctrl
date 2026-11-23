@@ -223,6 +223,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return []EventKind{EventTokenCreated}
 	case ModExileInsteadOfYourGraveyard:
 		return watchMoveOrDiscard
+	case ModShuffleInsteadOfEnteringFromExile:
+		return watchZoneMove
 	case ModLandManaIsColor:
 		return watchManaAdded
 	}
@@ -503,6 +505,39 @@ func (g *Game) ExileInsteadOfYourGraveyardThisTurnForEffect(sourceID, player uui
 		[]Mod{{Kind: ModExileInsteadOfYourGraveyard, Player: player}}, g.UntilEndOfTurnDuration(), label)
 }
 
+// ShuffleInsteadOfEnteringFromExileThisTurnForEffect is Don't Blink's "until
+// end of turn, if one or more creatures would enter from exile or after
+// being cast from exile, their owners shuffle them into their libraries
+// instead" (CR 614.1a). The record is game-wide with no object pinned.
+//
+// Caller must hold g.mu (write) — every caller is a resolving effect.
+func (g *Game) ShuffleInsteadOfEnteringFromExileThisTurnForEffect(sourceID uuid.UUID, label string) bool {
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
+		[]Mod{{Kind: ModShuffleInsteadOfEnteringFromExile}}, g.UntilEndOfTurnDuration(), label)
+}
+
+// shuffleInsteadOfEnteringFromExileAppliesLocked is the kind's test: a
+// creature card moving onto the battlefield out of exile, or the creature
+// spell that was cast from exile as it resolves. Not a token, and not a
+// card that is entering as a copy of something else (its characteristics
+// as it enters are the copy's).
+//
+// Caller must hold g.mu.
+func shuffleInsteadOfEnteringFromExileAppliesLocked(g *Game, ev *ReplacementEvent) bool {
+	if ev.Kind != RepEventMove || ev.NewZone != ZoneBattlefield || ev.Canceled {
+		return false
+	}
+	fromExile := ev.OldZone == ZoneExile
+	if ev.stackItem != nil && !ev.stackItem.IsCopy && ev.stackItem.CastFromZone == ZoneExile {
+		fromExile = true
+	}
+	if !fromExile {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && !c.IsToken() && c.IsCreature()
+}
+
 // ---------------------------------------------------------------
 // The gather adapter
 // ---------------------------------------------------------------
@@ -748,6 +783,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 			dest = c.Owner
 		}
 		return dest == m.Player
+	case ModShuffleInsteadOfEnteringFromExile:
+		return shuffleInsteadOfEnteringFromExileAppliesLocked(g, ev)
 	case ModGainNoLife:
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
@@ -837,6 +874,13 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		// the engine's own path.
 		ev.NewZone = ZoneExile
 		ev.NewZoneOwner = uuid.Nil
+	case ModShuffleInsteadOfEnteringFromExile:
+		// "Their owners shuffle them into their libraries instead": the
+		// card goes to its OWNER's library, which is then shuffled
+		// (ShuffleDestinationLibrary, as Darksteel Colossus does).
+		ev.NewZone = ZoneLibrary
+		ev.NewZoneOwner = uuid.Nil
+		ev.ShuffleDestinationLibrary = true
 	case ModGainNoLife:
 		// "That player gains no life instead": CR 614.10's null
 		// replacement. No EventChangeLife, so "whenever you gain life"

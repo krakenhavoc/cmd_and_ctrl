@@ -23,17 +23,17 @@ import (
 type CondDescend struct{ N int }
 
 func (c CondDescend) Holds(ctx *Context) bool {
-	return permanentCardsInGraveyard(ctx.Game, ctx.Controller()) >= c.N
+	return PermanentCardsInGraveyard(ctx.Game, ctx.Controller()) >= c.N
 }
 
-func (CondDescend) condition() (game.FootprintStep, bool) { return game.FootprintStep{}, false }
+func (CondDescend) Condition() (game.FootprintStep, bool) { return game.FootprintStep{}, false }
 
 // DescendHolds is the When for "if there are N or more permanent cards in
 // your graveyard", read for the source's controller as the event happens,
 // for composing with AllOf.
 func DescendHolds(n int) When {
 	return func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return permanentCardsInGraveyard(g, source.Controller) >= n
+		return PermanentCardsInGraveyard(g, source.Controller) >= n
 	}
 }
 
@@ -62,17 +62,17 @@ func WhenThisEntersIfDescend(n int, label string, effect Effect) game.TriggeredA
 // covers every way one can get there.
 type CondDescended struct{}
 
-func (CondDescended) Holds(ctx *Context) bool { return descendedThisTurn(ctx.Game, ctx.Controller()) }
+func (CondDescended) Holds(ctx *Context) bool { return DescendedThisTurn(ctx.Game, ctx.Controller()) }
 
-func (CondDescended) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondGraveyard, 0), true
+func (CondDescended) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondGraveyard, 0), true
 }
 
 // YouDescendedThisTurn is the When for "if you descended this turn", read
 // for the source's controller as the event happens, for composing with
 // AllOf.
 func YouDescendedThisTurn(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return descendedThisTurn(g, source.Controller)
+	return DescendedThisTurn(g, source.Controller)
 }
 
 // AtYourEndStepIfDescended is "At the beginning of your end step, if you
@@ -86,7 +86,7 @@ func AtYourEndStepIfDescended(label string, effect Effect) game.TriggeredAbility
 // descendHas is "there are N or more permanent cards in your graveyard"
 // for a player, the shape whileYouHave reads.
 func descendHas(n int) func(g *game.Game, you uuid.UUID) bool {
-	return func(g *game.Game, you uuid.UUID) bool { return permanentCardsInGraveyard(g, you) >= n }
+	return func(g *game.Game, you uuid.UUID) bool { return PermanentCardsInGraveyard(g, you) >= n }
 }
 
 // SelfPumpWhileDescend is "Descend N — This creature gets +p/+t as long
@@ -97,11 +97,11 @@ func descendHas(n int) func(g *game.Game, you uuid.UUID) bool {
 // cache.
 func SelfPumpWhileDescend(n, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Gets " + signedPT(power, toughness) + " as long as there are " + numberWord(n) + " or more permanent cards in your graveyard.",
+		Label:     "Gets " + SignedPT(power, toughness) + " as long as there are " + NumberWord(n) + " or more permanent cards in your graveyard.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
-		AppliesTo: whileYouHave(descendHas(n), selfCreature),
-		Apply:     pumpBy(power, toughness),
+		AppliesTo: WhileYouHave(descendHas(n), SelfCreature),
+		Apply:     PumpBy(power, toughness),
 	}
 }
 
@@ -110,7 +110,7 @@ func SelfPumpWhileDescend(n, power, toughness int) game.StaticAbility {
 // Echo's flying, Echo of Dusk's lifelink): a layer 6 grant (CR 613.1f) on
 // the same live condition.
 func SelfKeywordWhileDescend(n int, keyword string) game.StaticAbility {
-	ab := KeywordGrant(whileYouHave(descendHas(n), selfCreature), keyword)
-	ab.Label = "Has " + keyword + " as long as there are " + numberWord(n) + " or more permanent cards in your graveyard."
+	ab := KeywordGrant(WhileYouHave(descendHas(n), SelfCreature), keyword)
+	ab.Label = "Has " + keyword + " as long as there are " + NumberWord(n) + " or more permanent cards in your graveyard."
 	return ab
 }

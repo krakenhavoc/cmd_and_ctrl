@@ -8,10 +8,10 @@ import "github.com/google/uuid"
 // Fatigue's spell and Roaring Slagwurm's attack trigger. The set is read
 // once, as the effect starts (CR 608.2h); an artifact already tapped
 // stays tapped.
-func dstB2TapAllArtifacts(ctx *Context) error {
+func DstB2TapAllArtifacts(ctx *Context) error {
 	var ids []uuid.UUID
 	for _, c := range MatchingBattlefield(ctx, Artifact()) {
 		ids = append(ids, c.InstanceID)
 	}
-	return tapEach(ctx, ids)
+	return TapEach(ctx, ids)
 }

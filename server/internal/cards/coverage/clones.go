@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -98,14 +99,26 @@ func FormatCloneBaseline(groups []CloneGroup) string {
 	return sb.String()
 }
 
-// ExactClones parses every non-test Go file in dir and returns the
-// function and closure bodies of at least minLines lines that occur
-// two or more times, sorted by hash.
+// ExactClones parses every non-test Go file in dir, and in each card
+// shard under dir/cards (#5906), and returns the function and closure
+// bodies of at least minLines lines that occur two or more times, sorted
+// by hash.
+//
+// A shard's file reaches the core through the effects qualifier
+// (effects.Register, effects.OnBattlefield); a core file names the same
+// helper bare. The qualifier is dropped before a body is hashed, so a copy
+// in a shard and a copy in the core are still the same body, and a member
+// is still named by its base name.
 func ExactClones(dir string, minLines int) ([]CloneGroup, error) {
 	files, err := filepath.Glob(filepath.Join(dir, "*.go"))
 	if err != nil {
 		return nil, err
 	}
+	shards, err := filepath.Glob(filepath.Join(dir, "cards", "*", "*.go"))
+	if err != nil {
+		return nil, err
+	}
+	files = append(files, shards...)
 	fset := token.NewFileSet()
 	type member struct {
 		name  string
@@ -125,6 +138,7 @@ func ExactClones(dir string, minLines int) ([]CloneGroup, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", base, err)
 		}
+		dropEffectsQualifier(af)
 		add := func(name string, body *ast.BlockStmt) {
 			if body == nil {
 				return
@@ -137,7 +151,7 @@ func ExactClones(dir string, minLines int) ([]CloneGroup, error) {
 			if err := printer.Fprint(&buf, fset, body); err != nil {
 				return
 			}
-			norm := strings.Join(strings.Fields(buf.String()), " ")
+			norm := strings.ReplaceAll(strings.Join(strings.Fields(buf.String()), " "), droppedQualifier, "")
 			sum := sha1.Sum([]byte(norm))
 			h := hex.EncodeToString(sum[:8])
 			byHash[h] = append(byHash[h], member{name, lines})
@@ -179,3 +193,34 @@ func ExactClones(dir string, minLines int) ([]CloneGroup, error) {
 	sort.Slice(out, func(i, j int) bool { return out[i].Hash < out[j].Hash })
 	return out, nil
 }
+
+// droppedQualifier stands in for the effects qualifier in a printed body;
+// ExactClones deletes it before hashing. No Go source can contain it.
+const droppedQualifier = "\x00."
+
+// dropEffectsQualifier marks every effects.X selector of a file that
+// imports the effects core, so its body hashes as the core's bare X does.
+func dropEffectsQualifier(f *ast.File) {
+	name := ""
+	for _, im := range f.Imports {
+		if p, _ := strconv.Unquote(im.Path.Value); p == effectsImportPath {
+			name = "effects"
+			if im.Name != nil {
+				name = im.Name.Name
+			}
+		}
+	}
+	if name == "" {
+		return
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		if se, ok := n.(*ast.SelectorExpr); ok {
+			if id, ok := se.X.(*ast.Ident); ok && id.Name == name {
+				id.Name = "\x00"
+			}
+		}
+		return true
+	})
+}
+
+const effectsImportPath = "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"

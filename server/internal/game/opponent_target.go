@@ -99,9 +99,13 @@ func StepChosenByOpponent(s AnnouncedClause) bool {
 // StepsChosenByController is the announcement's steps without the
 // clauses an opponent chooses, and without the clauses the engine draws
 // at random (#4051): the ones the controller's payload names targets
-// for. The same slice when there are none.
+// for. The same slice when there are none. #5771: nor a bullet an
+// opponent chose (parkedStep), which the controller is asked for once
+// the bullet is known.
 func StepsChosenByController(steps []AnnouncedClause) []AnnouncedClause {
-	notTheController := func(s AnnouncedClause) bool { return StepChosenByOpponent(s) || StepChosenAtRandom(s) }
+	notTheController := func(s AnnouncedClause) bool {
+		return StepChosenByOpponent(s) || StepChosenAtRandom(s) || s.Clause.afterOpponentMode
+	}
 	if !slices.ContainsFunc(steps, notTheController) {
 		return steps
 	}
@@ -112,6 +116,15 @@ func StepsChosenByController(steps []AnnouncedClause) []AnnouncedClause {
 		}
 	}
 	return out
+}
+
+// parkedStep reports whether a step's targets are asked of somebody
+// while the announcement is parked, rather than named in the
+// controller's payload: an "of an opponent's choice" clause, asked of
+// the opponent (#2055), or a clause of a bullet an opponent chose,
+// asked of the controller once the bullet is known (#5771).
+func parkedStep(s AnnouncedClause) bool {
+	return s.Clause.ChosenByOpponent || s.Clause.afterOpponentMode
 }
 
 // opponentPick is one "of an opponent's choice" clause of a parked
@@ -184,7 +197,7 @@ type opponentAnnouncement struct {
 // nothing but a resume carries answers. An announcement with no such
 // clause comes back exactly as it went in.
 func splitOpponentTargets(steps []AnnouncedClause, own []TargetRef, picks []opponentPick) (opponentAnnouncement, error) {
-	if !slices.ContainsFunc(steps, StepChosenByOpponent) {
+	if !slices.ContainsFunc(steps, parkedStep) {
 		if len(picks) > 0 {
 			return opponentAnnouncement{}, ErrInvalidParam
 		}
@@ -193,10 +206,12 @@ func splitOpponentTargets(steps []AnnouncedClause, own []TargetRef, picks []oppo
 	var out opponentAnnouncement
 	for _, p := range picks {
 		i := stepIndexOf(steps, p.mode, p.slot)
-		if i < 0 || !steps[i].Clause.ChosenByOpponent || p.chooser == uuid.Nil {
+		if i < 0 || !parkedStep(steps[i]) || p.chooser == uuid.Nil {
 			return opponentAnnouncement{}, ErrInvalidParam
 		}
-		if p.answered {
+		// #5771: the caster's own picks for a bullet an opponent chose
+		// name nobody else; only an opponent's clause records its chooser.
+		if p.answered && steps[i].Clause.ChosenByOpponent {
 			out.choosers = append(out.choosers, TargetChooser{Mode: p.mode, Slot: p.slot, Player: p.chooser})
 		}
 	}
@@ -209,12 +224,12 @@ func splitOpponentTargets(steps []AnnouncedClause, own []TargetRef, picks []oppo
 			continue
 		}
 		i := stepIndexOf(steps, t.Mode, t.Slot)
-		if i < 0 || steps[i].Clause.ChosenByOpponent {
+		if i < 0 || parkedStep(steps[i]) {
 			return opponentAnnouncement{}, ErrInvalidParam
 		}
 	}
 	for i, s := range out.bound {
-		if s.Clause.ChosenByOpponent {
+		if parkedStep(s) {
 			p, ok := opponentPickFor(picks, s.Mode, s.Slot)
 			if !ok || !p.answered {
 				out.pending = append(out.pending, i)
@@ -318,6 +333,11 @@ func (g *Game) parkForOpponentTargetLocked(f *opponentTargetFrame, src TargetSou
 	idx := opp.pending[0]
 	step := opp.bound[idx]
 	f.mode, f.slot = step.Mode, step.Slot
+	if step.Clause.afterOpponentMode {
+		// #5771: a bullet an opponent chose; its targets are the
+		// controller's to pick (opponent_mode.go).
+		return g.parkForModeTargetsLocked(f, src, opp, idx)
+	}
 	eligible := g.opponentChoosersForStepLocked(src, opp.bound, idx, opp.targets)
 	if named, ok := opponentPickFor(f.picks(), step.Mode, step.Slot); ok && named.chooser != uuid.Nil {
 		if !slices.Contains(eligible, named.chooser) {
@@ -382,18 +402,24 @@ func (g *Game) queueOpponentTargetPickLocked(f *opponentTargetFrame, src TargetS
 		return ErrIllegalTarget
 	}
 	clause := opp.bound[idx].Clause
-	who := g.seatLabelLocked(f.controller)
+	reason := g.seatLabelLocked(f.controller) + "'s " + f.name + ": choose " + clauseLabel(&clause)
+	pickFor := f.controller
+	if chooser == f.controller {
+		// #5771: the controller's own pick, for a bullet an opponent
+		// chose. It is for nobody else.
+		reason, pickFor = f.name+": choose "+clauseLabel(&clause), uuid.Nil
+	}
 	id := g.QueueChoiceForEffect(PendingChoice{
 		Kind:                 PendingChoicePickTarget,
 		Chooser:              chooser,
 		Count:                1,
 		Source:               f.cardID,
-		Reason:               who + "'s " + f.name + ": choose " + clauseLabel(&clause),
+		Reason:               reason,
 		PickTargetPlayers:    lt.Players,
 		PickTargetCards:      lt.Cards,
 		PickTargetMin:        clause.Min,
 		PickTargetMax:        clause.Max,
-		PickTargetFor:        f.controller,
+		PickTargetFor:        pickFor,
 		opponentTargetResume: f,
 	})
 	if id == uuid.Nil {
@@ -456,23 +482,35 @@ func (g *Game) resolveOpponentTargetsLocked(idx int, choice *PendingChoice, f *o
 //
 // Caller must hold g.mu.
 func (g *Game) rerunOpponentTargetLocked(f *opponentTargetFrame, picks []opponentPick) {
-	if !g.playerInGameLocked(f.controller) {
-		return
+	g.rerunParkedAnnouncementLocked(f.withOpponentPicks(picks))
+}
+
+// rerunParkedAnnouncementLocked makes a parked announcement again and
+// reports a refusal to its controller, and reports whether it went
+// through. A controller who has left has no announcement to make (CR
+// 800.4a). Shared by the opponent's target (#2055) and the opponent's
+// mode (#5771).
+//
+// Caller must hold g.mu.
+func (g *Game) rerunParkedAnnouncementLocked(a parkedAnnouncement) bool {
+	if !g.playerInGameLocked(a.controller) {
+		return false
 	}
-	if err := f.rerun(g, picks); err != nil {
+	if err := a.run(g); err != nil {
 		what := "cast"
-		if f.activation {
+		if a.activation {
 			what = "activated"
 		}
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
-			Actor:    f.controller,
-			Source:   f.cardID,
-			ErrorMsg: f.name + " couldn't be " + what + ": " + err.Error(),
+			Actor:    a.controller,
+			Source:   a.cardID,
+			ErrorMsg: a.name + " couldn't be " + what + ": " + err.Error(),
 		})
-		return
+		return false
 	}
-	g.noteActionTakenLocked(f.controller)
+	g.noteActionTakenLocked(a.controller)
+	return true
 }
 
 // withStepChooser is `choosers` with step s's chooser set to `who`, in

@@ -32,7 +32,7 @@ const glitteringPreventionRow = 0
 
 // glitteringAbilities returns the cat's replacement and its any-player
 // row, the latter costing `cost` ("{3}", "{2}").
-func glitteringAbilities(name, cost string) ([]game.ReplacementEffect, []ActivatedAbility) {
+func GlitteringAbilities(name, cost string) ([]game.ReplacementEffect, []ActivatedAbility) {
 	reps := []game.ReplacementEffect{
 		PreventAllDamageDealtTo(PreventionStatic{
 			To:    ToThisCreature,

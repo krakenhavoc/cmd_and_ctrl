@@ -15,11 +15,11 @@ import (
 // put onto the battlefield under the resolving controller's control as one
 // simultaneous entry (CR 603.6a). A card that is no longer in `from`, a
 // token or a nonpermanent card is skipped.
-func trekB36AssimilateTogether(ctx *Context, from game.ZoneKind, cards []uuid.UUID, label string) error {
+func TrekB36AssimilateTogether(ctx *Context, from game.ZoneKind, cards []uuid.UUID, label string) error {
 	if len(cards) == 0 {
 		return nil
 	}
-	return putCardsFromZoneTogetherWith(ctx, from, cards,
+	return PutCardsFromZoneTogetherWith(ctx, from, cards,
 		game.ZoneEntryOptions{
 			Controller:         ctx.Controller(),
 			EntersWithCounters: map[string]int{game.CounterPlusOne: 1},
@@ -36,7 +36,7 @@ func trekB36AssimilateTogether(ctx *Context, from game.ZoneKind, cards []uuid.UU
 // player's graveyard" for a per-opponent graveyard clause. Eliminated
 // seats keep their place, so the numbering never shifts mid-game, and an
 // absent or eliminated seat admits nothing.
-func trekB36OwnedByNthOpponent(n int) CardPredicate {
+func TrekB36OwnedByNthOpponent(n int) CardPredicate {
 	return func(g *game.Game, chooser uuid.UUID, c game.Card) bool {
 		p := g.OpponentSeatAfter(chooser, n)
 		return p != nil && c.Owner == p.ID
@@ -45,6 +45,6 @@ func trekB36OwnedByNthOpponent(n int) CardPredicate {
 
 // trekB36ArtifactCreaturesYouControl is "artifact creatures you control",
 // read on post-layer types, the source included when it is one.
-func trekB36ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func TrekB36ArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsArtifact() && target.IsCreature() && target.Controller == source.Controller
 }

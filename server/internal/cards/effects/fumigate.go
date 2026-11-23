@@ -35,13 +35,13 @@ func init() {
 		Name:         "Fumigate",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
-		OnResolve:    destroyAllCreaturesGainLifeForEach,
+		OnResolve:    DestroyAllCreaturesGainLifeForEach,
 	})
 }
 
 // destroyAllCreaturesGainLifeForEach is "Destroy all creatures. You gain 1
 // life for each creature destroyed this way." — Fumigate's body, and
 // Avenge's.
-func destroyAllCreaturesGainLifeForEach(_ *game.StackItem, ctx *Context) error {
-	return DestroyAllMatching{Match: Creature(), ThenTail: ctx.Tail(massGainLifeForEach)}.Apply(ctx)
+func DestroyAllCreaturesGainLifeForEach(_ *game.StackItem, ctx *Context) error {
+	return DestroyAllMatching{Match: Creature(), ThenTail: ctx.Tail(MassGainLifeForEach)}.Apply(ctx)
 }

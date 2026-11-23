@@ -6,7 +6,7 @@ import "fmt"
 // could not honour (#3781): a blank or duplicated key is unaddressable
 // from ctx.CastValue, and a nil Value would stamp nothing while the
 // resolution waits for it. Copy-paste mistakes, failed at boot.
-func checkCastTimeValues(spec Spec) {
+func CheckCastTimeValues(spec Spec) {
 	seen := make(map[string]bool, len(spec.CastTimeValues))
 	for _, v := range spec.CastTimeValues {
 		if v.Key == "" {

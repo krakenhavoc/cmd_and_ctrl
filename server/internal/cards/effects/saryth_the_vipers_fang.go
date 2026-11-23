@@ -26,21 +26,21 @@ func init() {
 		Name:         "Saryth, the Viper's Fang",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			KeywordGrant(sarythOtherCreatureYouControl(true), "deathtouch"),
-			KeywordGrant(sarythOtherCreatureYouControl(false), "hexproof"),
+			KeywordGrant(SarythOtherCreatureYouControl(true), "deathtouch"),
+			KeywordGrant(SarythOtherCreatureYouControl(false), "hexproof"),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}: Untap another target creature or land you control.",
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Targets: Another(TargetPermanent("another target creature or land you control", And(Or(Creature(), Land()), YouControl()))),
-			Effect:  untapFirstLegalTarget,
+			Effect:  UntapFirstLegalTarget,
 		}},
 	})
 }
 
 // sarythOtherCreatureYouControl matches the other creatures Saryth's
 // controller controls that are tapped (true) or untapped (false).
-func sarythOtherCreatureYouControl(tapped bool) func(target *game.Card, g *game.Game, source *game.Card) bool {
+func SarythOtherCreatureYouControl(tapped bool) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.InstanceID != source.InstanceID &&
 			target.Controller == source.Controller &&

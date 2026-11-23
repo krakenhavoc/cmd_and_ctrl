@@ -1,0 +1,31 @@
+package cardsmi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Mind Slash — Enchantment {1}{B}{B}:
+//
+//	"{B}, Sacrifice a creature: Target opponent reveals their hand. You
+//	 choose a card from it. That player discards that card. Activate
+//	 only as a sorcery."
+//
+// Corpse Traders' ability on an enchantment for {B}: the revealed-hand
+// pick (ADR 0116) with no filter, chosen by the activator (CR 113.8),
+// at sorcery timing (CR 602.5d).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "47e79913-322e-4ba6-9bf8-3b4c1c82a6c4",
+		Name:         "Mind Slash",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:        "{B}, Sacrifice a creature: Target opponent reveals their hand. You choose a card from it. That player discards that card. Activate only as a sorcery.",
+			Cost:         effects.Plus(effects.ManaCost("{B}"), effects.SacrificeACreature()),
+			SorcerySpeed: true,
+			Targets:      effects.TargetPlayer("target opponent", effects.Opponent()),
+			Effect:       effects.TargetRevealsYouChooseDiscardAbility(nil, "card"),
+		}},
+	})
+}

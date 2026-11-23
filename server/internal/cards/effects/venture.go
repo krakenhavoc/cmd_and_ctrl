@@ -42,40 +42,40 @@ func (v VentureIntoTheDungeon) Apply(ctx *Context) error {
 var Venture = Do(VentureIntoTheDungeon{})
 
 // ventureLabel is the stack label of a card's venture ability.
-func ventureLabel(name string) string { return name + " — venture into the dungeon" }
+func VentureLabel(name string) string { return name + " — venture into the dungeon" }
 
 // WhenThisEntersVenture is "When this <permanent> enters, venture into
 // the dungeon."
 func WhenThisEntersVenture(name string) game.TriggeredAbility {
-	return WhenThisEnters(ventureLabel(name), Venture)
+	return WhenThisEnters(VentureLabel(name), Venture)
 }
 
 // ventureCond is a CR 603.4 intervening "if" these cards print, as a
 // function of the game and the ability's controller. It is both halves
 // of the condition: read as the ability triggers (IfVentureCond's
 // AppliesTo) and as it resolves (Holds). It declares no footprint.
-type ventureCond func(g *game.Game, you uuid.UUID) bool
+type VentureCond func(g *game.Game, you uuid.UUID) bool
 
-func (c ventureCond) Holds(ctx *Context) bool { return c(ctx.Game, ctx.Controller()) }
+func (c VentureCond) Holds(ctx *Context) bool { return c(ctx.Game, ctx.Controller()) }
 
-func (ventureCond) condition() (game.FootprintStep, bool) { return game.FootprintStep{}, false }
+func (VentureCond) Condition() (game.FootprintStep, bool) { return game.FootprintStep{}, false }
 
 var (
 	// CondYouCompletedADungeon is "if you've completed a dungeon".
-	CondYouCompletedADungeon = ventureCond(YouCompletedADungeon)
+	CondYouCompletedADungeon = VentureCond(YouCompletedADungeon)
 	// condYouHaventCompletedTomb is "if you haven't completed Tomb of
 	// Annihilation" (Acererak the Archlich).
-	condYouHaventCompletedTomb = ventureCond(func(g *game.Game, you uuid.UUID) bool {
+	CondYouHaventCompletedTomb = VentureCond(func(g *game.Game, you uuid.UUID) bool {
 		return !game.CompletedDungeon(g, you, TombOfAnnihilationKey)
 	})
 	// condACreatureDiedThisTurn is "if a creature died this turn": any
 	// creature, any controller (Zombie Ogre).
-	condACreatureDiedThisTurn = ventureCond(func(g *game.Game, _ uuid.UUID) bool {
+	CondACreatureDiedThisTurn = VentureCond(func(g *game.Game, _ uuid.UUID) bool {
 		return g.TurnTally.CreaturesDied > 0
 	})
 	// condYouHadALandEnter is "if you had a land enter the battlefield
 	// under your control this turn" (Wandering Troubadour).
-	condYouHadALandEnter = ventureCond(func(g *game.Game, you uuid.UUID) bool {
+	CondYouHadALandEnter = VentureCond(func(g *game.Game, you uuid.UUID) bool {
 		return g.TurnTallyFor(you).LandsEntered > 0
 	})
 )
@@ -83,7 +83,7 @@ var (
 // IfVentureCond narrows a trigger to the intervening "if" `cond` (CR
 // 603.4): it triggers only while the condition holds for its
 // controller, and does nothing if it no longer holds as it resolves.
-func IfVentureCond(cond ventureCond, t game.TriggeredAbility) game.TriggeredAbility {
+func IfVentureCond(cond VentureCond, t game.TriggeredAbility) game.TriggeredAbility {
 	when := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 		return source != nil && cond(g, source.Controller) && when(ev, source, lki, g)
@@ -96,7 +96,7 @@ func IfVentureCond(cond ventureCond, t game.TriggeredAbility) game.TriggeredAbil
 // a dungeon" static reads. The layer pass bumps on EventDungeonCompleted
 // (ADR 0203 §3), so a static gated on it is re-read the moment a
 // dungeon is completed.
-func completedADungeonSource(g *game.Game, source *game.Card) bool {
+func CompletedADungeonSource(g *game.Game, source *game.Card) bool {
 	return source != nil && YouCompletedADungeon(g, source.Controller)
 }
 
@@ -104,7 +104,7 @@ func completedADungeonSource(g *game.Game, source *game.Card) bool {
 // you've completed a dungeon".
 func whileCompletedADungeon(applies func(target *game.Card, g *game.Game, source *game.Card) bool) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return completedADungeonSource(g, source) && applies(target, g, source)
+		return CompletedADungeonSource(g, source) && applies(target, g, source)
 	}
 }
 
@@ -113,7 +113,7 @@ func whileCompletedADungeon(applies func(target *game.Card, g *game.Game, source
 // Gargoyle's +3/+0, Nadaar's anthem).
 func PumpWhileCompletedADungeon(applies func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Gives " + signedPT(power, toughness) + " as long as you've completed a dungeon.",
+		Label:     "Gives " + SignedPT(power, toughness) + " as long as you've completed a dungeon.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: whileCompletedADungeon(applies),

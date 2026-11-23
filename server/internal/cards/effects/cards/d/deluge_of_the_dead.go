@@ -1,0 +1,93 @@
+package cardsd
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Deluge of the Dead — Enchantment, the BACK FACE of Invasion of
+// Innistrad (oracle a3c1af66…, face 1):
+//
+//	"When this enchantment enters, create two 2/2 black Zombie
+//	 creature tokens.
+//	 {2}{B}: Exile target card from a graveyard. If it was a creature
+//	 card, create a 2/2 black Zombie creature token."
+//
+// # Why this file exists now and not in S27
+//
+// The front face shipped in #415 with the largest declared
+// simplification in that sprint: the defeated Siege was exiled and
+// its back face was never cast, because nothing in the multi-face
+// model could say "cast THAT FACE of this exiled card". S32 closes
+// that — CastPermission.Faces, faceForCastLocked and
+// faceOnResolve — so the back face finally becomes reachable and
+// finally needs rules.
+//
+// # Why it registers under "<oracle_id>#1"
+//
+// Scryfall issues one oracle_id per CARD, so the battle and the
+// enchantment share one, and effects.Register panics on a duplicate.
+// game.CatalogKey makes the key composite: face 0 keeps the bare
+// oracle ID and face N takes "<oracle_id>#N". Same keyspace the
+// sixty MDFC land backs use (mdfc_lands.go); this is the first
+// SPELL back face in it, and the first one reached by casting rather
+// than by playing a land.
+//
+// The ETB is a real triggered ability rather than an OnETB hook,
+// matching the front face: it uses the stack and can be responded to,
+// which is what the card prints. The activated ability is Scavenging
+// Ooze's shape exactly — read the card's type BEFORE the exile,
+// because after it the card is in exile and "it WAS a creature card"
+// is a question about the past, and WAIT for the exile, because the
+// clause is about the card the first sentence moved (#911, ADR 0013
+// §5t). Both halves are ExileThenIfItWas; no Zombie for a meal the
+// CR 614 window kept in its graveyard.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     effects.InvasionOfInnistradOracleID + "#1",
+		Name:         "Deluge of the Dead",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenThisEnters("Deluge of the Dead — create two 2/2 Zombies", effects.Do(effects.CreateToken{
+				Template: effects.BlackZombieToken(),
+				N:        2,
+			})),
+		},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{2}{B}: Exile target card from a graveyard. If it was a creature card, create a 2/2 black Zombie creature token.",
+			Cost:    effects.ManaCost("{2}{B}"),
+			Targets: effects.TargetCardInGraveyard("target card from a graveyard"),
+			// #4559: priced by what the exile takes away; the token it
+			// makes for a creature card is left unpriced.
+			Purpose: effects.ForTargets(effects.ExilesFromGraveyard(0, "")),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := effects.NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					if err := (effects.ExileThenIfItWas{
+						Target: t.ID,
+						Was:    effects.WasCreatureCard,
+						Keyed:  delugeOfTheDeadIfCreature,
+					}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		}},
+	})
+}
+
+// delugeOfTheDeadIfCreature is the exile's keyed "if it was a creature
+// card, create a 2/2 black Zombie creature token" (#4253): the ability
+// rides the tail, so the token is its controller's. An on-disk key: never
+// renamed, never reused.
+var delugeOfTheDeadIfCreature = effects.IfItWasTail("if-it-was/deluge-of-the-dead-zombie", func(ctx *effects.Context) error {
+	return effects.CreateToken{
+		Controller: ctx.Controller(),
+		Template:   effects.BlackZombieToken(),
+		N:          1,
+	}.Apply(ctx)
+}, nil)

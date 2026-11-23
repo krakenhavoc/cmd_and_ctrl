@@ -21,9 +21,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventStepBegan, c18LieutenantCombat, "Loyal Drake — draw a card",
+			On(game.EventStepBegan, C18LieutenantCombat, "Loyal Drake — draw a card",
 				func(g *game.Game, item *game.StackItem) error {
-					if !b18ControlsYourCommander(g, item.Controller) {
+					if !B18ControlsYourCommander(g, item.Controller) {
 						return nil
 					}
 					return DrawCards{N: 1}.Apply(NewContext(g, item))
@@ -35,7 +35,7 @@ func init() {
 // c18LieutenantCombat is the lieutenant condition of the Commander 2018
 // Loyal cycle: your beginning of combat, while you control your commander.
 // Each resolution checks the commander again.
-func c18LieutenantCombat(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func C18LieutenantCombat(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	return StepBegan(game.StepBeginCombat, true)(ev, source, lki, g) &&
-		b18ControlsYourCommander(g, source.Controller)
+		B18ControlsYourCommander(g, source.Controller)
 }

@@ -28,16 +28,16 @@ func init() {
 		Name:         "Cosmotronic Wave",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, OpponentsOnly: true}},
 		Completeness: CompletenessFull,
-		OnResolve:    pingThenOpponentsCantBlock("Cosmotronic Wave"),
+		OnResolve:    PingThenOpponentsCantBlock("Cosmotronic Wave"),
 	})
 }
 
 // pingThenOpponentsCantBlock is "<this> deals 1 damage to each creature
 // your opponents control. Creatures your opponents control can't block
 // this turn." — Cosmotronic Wave and Hazardous Blast.
-func pingThenOpponentsCantBlock(name string) func(*game.StackItem, *Context) error {
+func PingThenOpponentsCantBlock(name string) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		if err := damageEachMatching(ctx, And(Creature(), OpponentControls()), 1); err != nil {
+		if err := DamageEachMatching(ctx, And(Creature(), OpponentControls()), 1); err != nil {
 			return err
 		}
 		return RestrictUntilEOT{

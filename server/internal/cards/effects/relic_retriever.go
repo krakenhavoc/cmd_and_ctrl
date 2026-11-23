@@ -23,12 +23,12 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"first strike"},
 		Triggered: []game.TriggeredAbility{
-			InterveningIf(cardLeftYourGraveyardThisTurnCond, game.TriggeredAbility{
+			InterveningIf(CardLeftYourGraveyardThisTurnCond, game.TriggeredAbility{
 				Watches: []game.EventKind{game.EventStepBegan},
 				AppliesTo: AllOf(
 					StepBegan(game.StepEnd, false),
 					func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-						return cardLeftYourGraveyardThisTurn(g, source.Controller)
+						return CardLeftYourGraveyardThisTurn(g, source.Controller)
 					},
 				),
 				Key:    "Relic Retriever — create a Treasure token",
@@ -41,7 +41,7 @@ func init() {
 // cardLeftYourGraveyardThisTurnCond is the intervening "if a card left your
 // graveyard this turn" (CR 603.4) as a Do step, read off this turn's zone
 // moves.
-var cardLeftYourGraveyardThisTurnCond = CondBoard{
+var CardLeftYourGraveyardThisTurnCond = CondBoard{
 	Name: "a card left your graveyard this turn",
-	Test: func(ctx *Context) bool { return cardLeftYourGraveyardThisTurn(ctx.Game, ctx.Controller()) },
+	Test: func(ctx *Context) bool { return CardLeftYourGraveyardThisTurn(ctx.Game, ctx.Controller()) },
 }

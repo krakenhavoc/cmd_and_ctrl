@@ -148,7 +148,7 @@ func ThisOrEquippedCreatureBecomesBlocked(ev game.Event, source *game.Card, _ ga
 // for the creature a "this creature or equipped creature" trigger was
 // about: the triggering permanent, if it is still that object on the
 // battlefield (CR 400.7). One that has left gets nothing.
-func pumpTriggeringCreatureUntilEOT(ctx *Context, power, toughness int, label string) error {
+func PumpTriggeringCreatureUntilEOT(ctx *Context, power, toughness int, label string) error {
 	info, ok := ctx.TriggeringPermanent()
 	if !ok || info.Left {
 		return nil
@@ -167,7 +167,7 @@ func pumpTriggeringCreatureUntilEOT(ctx *Context, power, toughness int, label st
 // and is a black Demon"): CR 613.6 keeps it applying in the later
 // layers once it has started, whatever removes the source's abilities
 // part-way through the pass.
-func equippedCreatureIs(layer game.Layer, label string, apply func(c *game.Characteristic)) game.StaticAbility {
+func EquippedCreatureIs(layer game.Layer, label string, apply func(c *game.Characteristic)) game.StaticAbility {
 	return game.StaticAbility{
 		Label:                 label,
 		Layer:                 layer,

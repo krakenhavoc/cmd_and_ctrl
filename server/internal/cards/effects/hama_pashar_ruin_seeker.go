@@ -22,7 +22,7 @@ func init() {
 		OracleID:        "c7371040-160c-4502-b7f9-77b7f54cc020",
 		Name:            "Hama Pashar, Ruin Seeker",
 		Completeness:    CompletenessFull,
-		TriggerDoublers: []game.TriggerDoubler{roomAbilitiesOfDungeonsYouOwnDoubler("Hama Pashar, Ruin Seeker — room abilities trigger an additional time")},
+		TriggerDoublers: []game.TriggerDoubler{RoomAbilitiesOfDungeonsYouOwnDoubler("Hama Pashar, Ruin Seeker — room abilities trigger an additional time")},
 	})
 }
 
@@ -30,7 +30,7 @@ func init() {
 // own trigger an additional time": the doubler Hama Pashar prints and
 // Dungeon Delver grants (#4137). "You" is the doubler's controller, which
 // for a granted copy is the recipient's.
-func roomAbilitiesOfDungeonsYouOwnDoubler(label string) game.TriggerDoubler {
+func RoomAbilitiesOfDungeonsYouOwnDoubler(label string) game.TriggerDoubler {
 	return game.TriggerDoubler{
 		Label:    label,
 		RowLabel: "Room abilities of dungeons you own trigger an additional time.",

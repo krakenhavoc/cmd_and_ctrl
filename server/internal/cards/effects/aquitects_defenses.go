@@ -30,16 +30,16 @@ func init() {
 			PumpAttached(1, 2),
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Aquitect's Defenses — enchanted creature gains hexproof until end of turn", aquitectsDefensesEnters),
+			WhenThisEnters("Aquitect's Defenses — enchanted creature gains hexproof until end of turn", AquitectsDefensesEnters),
 		},
 	})
 }
 
 // aquitectsDefensesEnters gives the enchanted creature hexproof until end
 // of turn, or does nothing if the Aura no longer enchants one.
-func aquitectsDefensesEnters(g *game.Game, item *game.StackItem) error {
+func AquitectsDefensesEnters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	host, ok := enchantedCreatureAsItResolves(ctx)
+	host, ok := EnchantedCreatureAsItResolves(ctx)
 	if !ok {
 		return nil
 	}

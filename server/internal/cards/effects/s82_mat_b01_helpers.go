@@ -7,13 +7,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and planeswalkers they control" as a spell's whole resolution (End of
 // the Hunt, Blot Out): slot 0 is the targeted opponent, who is asked,
 // choosing among the tied greatest.
-func s82MatB01ExileGreatestEdict(label string) func(*game.StackItem, *Context) error {
+func S82MatB01ExileGreatestEdict(label string) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
-		t, ok := firstLegalTarget(ctx)
+		t, ok := FirstLegalTarget(ctx)
 		if !ok || t.Kind != game.TargetPlayer {
 			return nil
 		}
-		return msc17ExileEdict(ctx, t.ID, label,
-			b10GreatestManaValueCreatureOrPlaneswalkerYouControl(), doomfallExile)
+		return Msc17ExileEdict(ctx, t.ID, label,
+			B10GreatestManaValueCreatureOrPlaneswalkerYouControl(), DoomfallExile)
 	}
 }

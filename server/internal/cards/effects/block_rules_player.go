@@ -65,7 +65,7 @@ type CantBeBlockedThisTurnByPower struct {
 func (r CantBeBlockedThisTurnByPower) Apply(ctx *Context) error {
 	return ScopedEffectFor{
 		Target:   r.Target,
-		Mods:     []game.Mod{cantBeBlockedByPowerMod(r.AtMost)},
+		Mods:     []game.Mod{CantBeBlockedByPowerMod(r.AtMost)},
 		Duration: DurationUntilEndOfTurn(ctx),
 		Label:    eotLabel(r.Label, "can't be blocked this turn by creatures with power "+strconv.Itoa(r.AtMost)+" or less"),
 	}.Apply(ctx)
@@ -74,7 +74,7 @@ func (r CantBeBlockedThisTurnByPower) Apply(ctx *Context) error {
 // cantBeBlockedByPowerMod is the mod CantBeBlockedThisTurnByPower
 // registers, shared with the cards that register it beside another mod
 // in one record.
-func cantBeBlockedByPowerMod(n int) game.Mod {
+func CantBeBlockedByPowerMod(n int) game.Mod {
 	return game.CantBeBlockedByPowerMod(n, "creatures with power "+strconv.Itoa(n)+" or less")
 }
 
@@ -122,7 +122,7 @@ type CantBlockThisCreatureThisTurn struct {
 // (holds g.mu write).
 func (r CantBlockThisCreatureThisTurn) Apply(ctx *Context) error {
 	blocker, ok := ctx.Game.LookupCardForEffect(r.Blocker)
-	if !ok || !onBattlefield(ctx.Game, r.Blocker) || !onBattlefield(ctx.Game, r.Attacker) {
+	if !ok || !OnBattlefield(ctx.Game, r.Blocker) || !OnBattlefield(ctx.Game, r.Attacker) {
 		return nil
 	}
 	return ScopedEffectFor{

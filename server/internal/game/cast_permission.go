@@ -255,12 +255,24 @@ type PermissionFilter struct {
 	// colors".
 	LegendaryOnly bool `json:"legendaryOnly,omitempty"`
 
+	// SnowOnly is Isu the Abominable's "snow lands and snow spells": the
+	// card must have the snow supertype (CR 205.4), read from its effective
+	// characteristics. It judges a land to be played and a spell to be cast
+	// alike.
+	SnowOnly bool `json:"snowOnly,omitempty"`
+
 	// ArtifactOrColorlessOnly is Mystic Forge's "artifact spells and
 	// colorless spells": an OR of two properties read from the card's
 	// effective characteristics, so a colored artifact and a colorless
 	// non-artifact (an Eldrazi) both qualify. Pair it with NonLandOnly,
 	// because a land is never cast and a colorless land is not a spell.
 	ArtifactOrColorlessOnly bool `json:"artifactOrColorlessOnly,omitempty"`
+
+	// ColorlessOnly is Darksteel Monolith's "a colorless spell": the card
+	// has no colour (CR 105.2c), read from its effective characteristics,
+	// so a coloured artifact fails it and an Eldrazi passes. Pair it with
+	// NonLandOnly where lands could reach the filter. Additive.
+	ColorlessOnly bool `json:"colorlessOnly,omitempty"`
 
 	// AuraOrEquipmentOnly is Sigarda's Aid's "Aura and Equipment
 	// spells" (#3918): an OR of two subtypes, read from the card's
@@ -312,6 +324,12 @@ type PermissionFilter struct {
 	// by the derivation for FromChosenType; a catalog card may also
 	// set it directly.
 	CreatureType string `json:"creatureType,omitempty"`
+
+	// ArtifactOrSubtype is "an artifact or <subtype> spell" (Arcade Gannon's
+	// "artifact or Human spell"): a qualifying card is an artifact, or has
+	// this subtype read through Card.HasSubtype. Empty constrains nothing.
+	// Additive within a snapshot version.
+	ArtifactOrSubtype string `json:"artifactOrSubtype,omitempty"`
 
 	// CreatureTypesAny is Deeproot Historian's "MERFOLK AND DRUID cards
 	// in your graveyard have retrace" (#2550): a card qualifies when it
@@ -410,6 +428,24 @@ type PermissionFilter struct {
 	// does not qualify, and neither does one that left the graveyard and
 	// came back. Read off Card.SurveilledThisTurn, pure card data.
 	SurveilledThisTurn bool `json:"surveilledThisTurn,omitempty"`
+
+	// FromLibraryToGraveyardThisTurn is Kagha, Shadow Archdruid's "cards in
+	// your graveyard that were put there from your library this turn": the
+	// card arrived in the graveyard during the current turn from a library,
+	// by a mill, a surveil, a discard-from-the-top effect or any other move
+	// out of the library (Card.PutInGraveyardFrom). A card that came from a
+	// hand, the battlefield or the stack does not qualify, and neither does
+	// one that left the graveyard and came back (CR 400.7). Read off
+	// Card.PutInGraveyardFromLibraryThisTurn, pure card data. Additive.
+	FromLibraryToGraveyardThisTurn bool `json:"fromLibraryToGraveyardThisTurn,omitempty"`
+
+	// MilledThisTurn is Raul, Trouble Shooter's "cards in your graveyard that
+	// were milled this turn": the card arrived in the graveyard during the
+	// current turn as a mill's graveyard leg (CR 701.17a). A card discarded,
+	// surveilled, searched for or put there any other way does not qualify,
+	// and neither does one that left the graveyard and came back. Read off
+	// Card.MilledThisTurn, pure card data. Additive.
+	MilledThisTurn bool `json:"milledThisTurn,omitempty"`
 
 	// Named is "spells with the same name as that creature" (Reflector
 	// Mage, ADR 0066's 2026-10-19 amendment): a qualifying card's name
@@ -532,13 +568,22 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.LegendaryOnly && !c.IsLegendary() {
 		return false
 	}
+	if f.SnowOnly && !c.HasSupertype("Snow") {
+		return false
+	}
 	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {
+		return false
+	}
+	if f.ColorlessOnly && !c.IsColorless() {
 		return false
 	}
 	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {
 		return false
 	}
 	if f.Subtype != "" && !c.HasSubtype(f.Subtype) {
+		return false
+	}
+	if f.ArtifactOrSubtype != "" && !c.IsArtifact() && !c.HasSubtype(f.ArtifactOrSubtype) {
 		return false
 	}
 	if f.NotSubtype != "" && c.HasSubtype(f.NotSubtype) {
@@ -574,6 +619,12 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.SurveilledThisTurn && !c.SurveilledThisTurn() {
 		return false
 	}
+	if f.MilledThisTurn && !c.MilledThisTurn() {
+		return false
+	}
+	if f.FromLibraryToGraveyardThisTurn && !c.PutInGraveyardFromLibraryThisTurn() {
+		return false
+	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
@@ -606,6 +657,8 @@ func (f PermissionFilter) faceBlind() bool {
 	f.ExiledWithSourceThisTurn, f.ExiledOnTurn = false, 0
 	f.PutInGraveyardThisTurn = false
 	f.SurveilledThisTurn = false
+	f.MilledThisTurn = false
+	f.FromLibraryToGraveyardThisTurn = false
 	f.FromChosenType = false
 	return f == PermissionFilter{}
 }
@@ -765,6 +818,15 @@ type CastPermission struct {
 	// and the enumerator agree, and never below {0}. Empty is no
 	// affinity, which is every permission written before this.
 	AffinityFor string `json:"affinityFor,omitempty"`
+
+	// Undaunted is "that spell has undaunted" (CR 702.125a; Durnan of the
+	// Yawning Portal): a spell cast through this permission costs {1} less
+	// for each opponent its caster has as it is cast (CR 702.125b: every
+	// other seat still in the game). It is CostLess counted off the table,
+	// taken off with it by the one pricer (grantReductionLocked) so the
+	// payment, the preview and the enumerator agree, and never below {0}.
+	// False is no undaunted, which is every permission written before this.
+	Undaunted bool `json:"undaunted,omitempty"`
 
 	// CostMore is "a spell cast this way costs {N} more to cast" (Zero,
 	// Incorporeal Sensate, #4973): generic mana added to the price of a
@@ -966,6 +1028,14 @@ type CastPermission struct {
 	// as this one. ADR 0066's 2026-09-24 amendment (#1573).
 	AnyType bool `json:"anyType,omitempty"`
 
+	// AnyColorFrom narrows the "spend mana as though it were mana of any
+	// color" clause to one kind of mana: "you may spend colorless mana as
+	// though it were mana of any color to cast that spell" (Abstruse
+	// Appropriation, #5948) sets "C". Each colored symbol then also
+	// admits that mana (widenFromColors), and other mana pays as printed.
+	// Ignored when AnyColor or AnyType is set.
+	AnyColorFrom string `json:"anyColorFrom,omitempty"`
+
 	// --- the window ------------------------------------------------
 
 	// Duration is when the permission ENDS (CR 611.2), in the one
@@ -1152,6 +1222,13 @@ type CastPermission struct {
 	// MaxSpellManaValue, so the cap is the count as the spell is cast.
 	// Empty is no such cap. Additive.
 	MaxSpellManaValueCountOf []string `json:"maxSpellManaValueCountOf,omitempty"`
+	// MaxSpellManaValueCountersOnSource is a MaxSpellManaValue that is the
+	// number of counters of this kind on the permission's source: "a spell
+	// with mana value less than or equal to the number of quest counters on
+	// Arcade Gannon". Only a STANDING permission reads it, derived like
+	// MaxSpellManaValueCountOf, so the cap is the count as the spell is
+	// cast. Empty is no such cap. Additive.
+	MaxSpellManaValueCountersOnSource string `json:"maxSpellManaValueCountersOnSource,omitempty"`
 
 	// MinSpellManaValue is the floor of the same test: the SPELL this
 	// permission lets a player cast must have at least this mana value
@@ -2848,6 +2925,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
+					g.fillDerivedSourceLiveLocked(&stamped, c)
 					out = append(out, stamped)
 				}
 			}
@@ -2868,6 +2946,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			if stamped, ok := stampStandingPermissionLocked(gp.Permission, p, c); ok {
 				g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 				g.fillDerivedLiveLocked(&stamped, p.ID)
+				g.fillDerivedSourceLiveLocked(&stamped, c)
 				out = append(out, stamped)
 			}
 		}
@@ -2891,6 +2970,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					g.fillDerivedLiveLocked(&stamped, p.ID)
+					g.fillDerivedSourceLiveLocked(&stamped, c)
 					out = append(out, stamped)
 				}
 			}
@@ -3523,6 +3603,8 @@ func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
 		return asAnyTypeCost(cost)
 	case grant.AnyColor:
 		return asAnyColorCost(cost)
+	case grant.AnyColorFrom != "":
+		return widenFromColors(cost, []string{grant.AnyColorFrom})
 	}
 	return cost
 }
@@ -3560,6 +3642,9 @@ func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind
 	}
 	// The affinity is counted as the spell is cast (CR 702.41a).
 	reduction := grant.CostLess + g.affinityCountLocked(playerID, grant.AffinityFor)
+	if grant.Undaunted {
+		reduction += g.undauntedCountLocked(playerID)
+	}
 	if reduction <= 0 {
 		return 0
 	}
