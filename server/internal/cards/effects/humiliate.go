@@ -31,10 +31,10 @@ func init() {
 		Targets:      TargetPlayer("target opponent", Opponent()),
 		// The counter's question waits for the choice from the revealed hand (CR 608.2c, #4155).
 		OnResolve: ResolveSteps(
-			Instruction(chooseNonlandFromTargetedHand),
+			Instruction(ChooseNonlandFromTargetedHand),
 			ChoosePermanents{
 				Question:   "Humiliate — put a +1/+1 counter on a creature you control",
-				Candidates: humiliateCreatures,
+				Candidates: HumiliateCreatures,
 				Keyed:      humiliateChosen,
 			},
 		),
@@ -56,8 +56,8 @@ var humiliateChosen = RegisterPermanentsPick("prompt-run/humiliate-counter", Per
 
 // humiliateCreatures offers exactly one of the creatures `of` controls,
 // or nothing when they control none.
-func humiliateCreatures(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-	ids := creaturesControlledByPlayer(g, of)
+func HumiliateCreatures(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+	ids := CreaturesControlledByPlayer(g, of)
 	if len(ids) == 0 {
 		return nil, 0, 0
 	}

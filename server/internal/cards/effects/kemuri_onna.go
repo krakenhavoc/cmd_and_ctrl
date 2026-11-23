@@ -19,17 +19,17 @@ func init() {
 		Name:         "Kemuri-Onna",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisEnters("Kemuri-Onna — target player discards a card", kemuriOnnaDiscard),
+			Targeting(WhenThisEnters("Kemuri-Onna — target player discards a card", KemuriOnnaDiscard),
 				TargetPlayer("target player")),
-			sokB1OnnaReturn("Kemuri-Onna"),
+			SokB1OnnaReturn("Kemuri-Onna"),
 		},
 	})
 }
 
 // kemuriOnnaDiscard asks the still-legal target player to discard a card
 // of their choice.
-func kemuriOnnaDiscard(g *game.Game, item *game.StackItem) error {
-	player, ok := firstLegalPlayerTarget(NewContext(g, item))
+func KemuriOnnaDiscard(g *game.Game, item *game.StackItem) error {
+	player, ok := FirstLegalPlayerTarget(NewContext(g, item))
 	if !ok {
 		return nil
 	}

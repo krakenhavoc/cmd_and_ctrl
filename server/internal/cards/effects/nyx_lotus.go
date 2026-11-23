@@ -37,16 +37,16 @@ func init() {
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: nyxLotusProduced,
+			ProducedFunc: NyxLotusProduced,
 			Label:        "Choose a color: add mana of that color equal to your devotion to it",
 		}},
 	})
 }
 
-func nyxLotusProduced(g *game.Game, controller, _ uuid.UUID) string {
+func NyxLotusProduced(g *game.Game, controller, _ uuid.UUID) string {
 	var parts []string
 	for _, c := range game.AllColors {
-		if n := devotionTo(g, controller, c); n > 0 {
+		if n := DevotionTo(g, controller, c); n > 0 {
 			parts = append(parts, c+strconv.Itoa(n))
 		}
 	}

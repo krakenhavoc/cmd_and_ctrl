@@ -27,11 +27,11 @@ func init() {
 			InterveningIf(CondBoard{
 				Name: "you control another creature with power 4 or greater",
 				Test: func(ctx *Context) bool {
-					return hornbeetleControlsAnotherPowerFour(ctx.Game, ctx.Controller(), ctx.Source())
+					return HornbeetleControlsAnotherPowerFour(ctx.Game, ctx.Controller(), ctx.Source())
 				},
 			}, On(game.EventStepBegan, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 				return StepBegan(game.StepBeginCombat, true)(ev, source, lki, g) &&
-					hornbeetleControlsAnotherPowerFour(g, source.Controller, source.InstanceID)
+					HornbeetleControlsAnotherPowerFour(g, source.Controller, source.InstanceID)
 			}, "Nessian Hornbeetle — a +1/+1 counter on this creature",
 				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}))),
 		},
@@ -41,7 +41,7 @@ func init() {
 // hornbeetleControlsAnotherPowerFour is "you control another creature
 // with power 4 or greater": a creature `controller` controls, other than
 // `self`, with layered power 4 or more.
-func hornbeetleControlsAnotherPowerFour(g *game.Game, controller, self uuid.UUID) bool {
+func HornbeetleControlsAnotherPowerFour(g *game.Game, controller, self uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID != self && c.Controller == controller && c.IsCreature() && c.CurrentPower() >= 4 {
 			return true

@@ -20,7 +20,7 @@ var sncB16CardTypes = []string{
 // the artifact and the other the creature. It is a bipartite matching of
 // cards to types, tried by augmenting paths. A function of the cards alone,
 // capturing nothing (game.SetRuleFunc).
-func sncB16OneCardOfEachType(picked []game.Card) bool {
+func SncB16OneCardOfEachType(picked []game.Card) bool {
 	owner := map[string]int{} // type → index of the picked card standing for it
 	var place func(i int, seen map[string]bool) bool
 	place = func(i int, seen map[string]bool) bool {

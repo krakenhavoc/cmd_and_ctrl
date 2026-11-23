@@ -37,7 +37,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, mirrorwingSpellTargetsOnlyThis,
+			On(game.EventCast, MirrorwingSpellTargetsOnlyThis,
 				"Mirrorwing Dragon — that player copies the spell for each other creature they control it could target",
 				mirrorwingCopies),
 		},
@@ -46,7 +46,7 @@ func init() {
 
 // mirrorwingSpellTargetsOnlyThis is "a player casts an instant or sorcery
 // spell that targets only this creature".
-func mirrorwingSpellTargetsOnlyThis(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func MirrorwingSpellTargetsOnlyThis(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast {
 		return false
 	}
@@ -98,4 +98,4 @@ func mirrorwingCopies(g *game.Game, item *game.StackItem) error {
 // mirrorwingCopyInOrder makes the copies in the order the caster put the
 // creatures, keyed: the spell and the Dragon are the carry. A creature
 // that is no longer a legal target by the answer gets no copy.
-var mirrorwingCopyInOrder = game.RegisterChooseCardsThen("choose-cards/mirrorwing-dragon-copy-order", copySpellForEachChosenInOrder)
+var mirrorwingCopyInOrder = game.RegisterChooseCardsThen("choose-cards/mirrorwing-dragon-copy-order", CopySpellForEachChosenInOrder)

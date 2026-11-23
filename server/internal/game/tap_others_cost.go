@@ -142,6 +142,16 @@ type TapOthersCost struct {
 	// one walk the view, the enumerator and the engine share (#544).
 	SharesColorWithSource bool
 
+	// SharesCreatureType is "that share a creature type" (Weight of
+	// Conscience, #5948): every permanent tapped must share a creature type
+	// with every other one (SharesCreatureType, CR 205.3m, so a changeling
+	// shares with any creature that has a creature type). A clause of
+	// Count 2, where "every pair" and "a type common to all" are the same
+	// thing. The option walk drops a candidate no other candidate shares a
+	// type with, so a menu row is greyed when no pair can pay; the
+	// validator then checks the named pair.
+	SharesCreatureType bool
+
 	// Untap turns the clause over (#5669): "Untap N TAPPED creatures you
 	// control" (Halo Fountain). Everything else is the tap clause's:
 	// Count, Filter, ExcludeSource and Label, the one candidate walk, the
@@ -300,6 +310,31 @@ func (g *Game) TapOthersOptionsForEffect(playerID, sourceID uuid.UUID, tc *TapOt
 		}
 		out = append(out, id)
 	}
+	if tc.SharesCreatureType {
+		out = g.tapOthersWithSharingPartnerLocked(out)
+	}
+	return out
+}
+
+// tapOthersWithSharingPartnerLocked keeps the candidates that share a
+// creature type with at least one other candidate: the necessary condition
+// for a pair of them to pay a SharesCreatureType clause.
+//
+// Caller must hold g.mu.
+func (g *Game) tapOthersWithSharingPartnerLocked(ids []uuid.UUID) []uuid.UUID {
+	var out []uuid.UUID
+	for _, id := range ids {
+		a := findBattlefieldCard(g, id)
+		for _, other := range ids {
+			if other == id {
+				continue
+			}
+			if SharesCreatureType(a, findBattlefieldCard(g, other)) {
+				out = append(out, id)
+				break
+			}
+		}
+	}
 	return out
 }
 
@@ -431,6 +466,16 @@ func (g *Game) validateTapOthersCostWithSourceLocked(playerID, sourceID uuid.UUI
 		// Conspire (CR 702.78a): "that each share a color with it".
 		if !g.tapOthersColorOKLocked(tc, sourceID, c) {
 			return ErrIllegalTarget
+		}
+	}
+	// "That share a creature type": every named pair shares one.
+	if tc.SharesCreatureType {
+		for i := range ids {
+			for j := i + 1; j < len(ids); j++ {
+				if !SharesCreatureType(findBattlefieldCard(g, ids[i]), findBattlefieldCard(g, ids[j])) {
+					return ErrIllegalTarget
+				}
+			}
 		}
 	}
 	return nil

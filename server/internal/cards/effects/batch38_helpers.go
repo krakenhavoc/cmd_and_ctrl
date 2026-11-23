@@ -41,7 +41,7 @@ import (
 // the next is computed, which matters only for the loss-of-life
 // triggers that fire in between; nothing here reads a count, so
 // there is no snapshot to take.
-func b38DamageEachPlayer(ctx *Context, amount int) error {
+func B38DamageEachPlayer(ctx *Context, amount int) error {
 	if amount <= 0 {
 		return nil
 	}
@@ -75,8 +75,8 @@ func b38DamageEachPlayer(ctx *Context, amount int) error {
 //
 // The card is read post-move, so a token is still findable until the
 // state-based sweep removes it (CR 111.7).
-func b38ArtifactPutIntoAnOpponentsGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !b23ArtifactPutIntoGraveyardFromBattlefield(ev, g) {
+func B38ArtifactPutIntoAnOpponentsGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !B23ArtifactPutIntoGraveyardFromBattlefield(ev, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -93,7 +93,7 @@ func b38ArtifactPutIntoAnOpponentsGraveyard(ev game.Event, source *game.Card, g 
 // damaged player must be an opponent: a goaded Hydra forced to attack
 // its own controller, or one attacking a teammate in a format with
 // them, triggers nothing.
-func b38ThisDealtCombatDamageToAnOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
+func B38ThisDealtCombatDamageToAnOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
@@ -121,7 +121,7 @@ func b38ThisDealtCombatDamageToAnOpponent(ev game.Event, source *game.Card, g *g
 //
 // A target that stopped being legal takes the whole clause with it
 // (CR 608.2b) and no question is asked.
-func b38TapOrUntapTarget(cardName string) Effect {
+func B38TapOrUntapTarget(cardName string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		target := uuid.Nil
@@ -134,7 +134,7 @@ func b38TapOrUntapTarget(cardName string) Effect {
 		if target == uuid.Nil {
 			return nil
 		}
-		return tapOrUntapPermanent(ctx, cardName, target)
+		return TapOrUntapPermanent(ctx, cardName, target)
 	}
 }
 
@@ -162,8 +162,8 @@ func b38TapOrUntapTarget(cardName string) Effect {
 // (CR 101.4b), and then the chosen cards enter together, as one event:
 // each newcomer sees the others enter (CR 603.6a). A prompt withdrawn
 // unanswered (its chooser left) runs on with nothing chosen.
-func b38EachPlayerReanimatesOne(g *game.Game, item *game.StackItem, question string) error {
-	return b38ReanimateAskNext(g, item, question, apnapPlayers(g), nil)
+func B38EachPlayerReanimatesOne(g *game.Game, item *game.StackItem, question string) error {
+	return b38ReanimateAskNext(g, item, question, ApnapPlayers(g), nil)
 }
 
 // b38ReanimateAskNext asks the first player in `order` who has a
@@ -174,7 +174,7 @@ func b38EachPlayerReanimatesOne(g *game.Game, item *game.StackItem, question str
 func b38ReanimateAskNext(g *game.Game, item *game.StackItem, question string, order, chosen []uuid.UUID) error {
 	ctx := NewContext(g, item)
 	for i, owner := range order {
-		candidates := graveyardCardIDs(ctx, owner, game.Card.IsCreature)
+		candidates := GraveyardCardIDs(ctx, owner, game.Card.IsCreature)
 		if len(candidates) == 0 {
 			continue
 		}
@@ -193,7 +193,7 @@ func b38ReanimateAskNext(g *game.Game, item *game.StackItem, question string, or
 			// The players still to ask and the cards chosen so far are the
 			// carry, the question's words the word (#4253).
 			ThenKey:   b38ReanimatePick,
-			Carry:     packIDLists(rest, chosen),
+			Carry:     PackIDLists(rest, chosen),
 			CarryWord: question,
 			Asked:     game.NewAskedItem(item),
 		})
@@ -212,8 +212,8 @@ func b38ReanimateAskNext(g *game.Game, item *game.StackItem, question string, or
 var b38ReanimatePick game.ChooseCardsThen
 
 func init() {
-	b38ReanimatePick = askedPick("choose-cards/each-player-reanimates-one", func(ctx *Context, r game.CardsChosen) error {
-		rest, chosen := unpackIDPair(r.Carry)
+	b38ReanimatePick = AskedPick("choose-cards/each-player-reanimates-one", func(ctx *Context, r game.CardsChosen) error {
+		rest, chosen := UnpackIDPair(r.Carry)
 		next := append(append([]uuid.UUID(nil), chosen...), r.Picked...)
 		return b38ReanimateAskNext(ctx.Game, ctx.Item, r.Word, rest, next)
 	})
@@ -235,7 +235,7 @@ func init() {
 // lost the type is not.
 //
 // "Horror" is a word of the source's text (CR 612.2, #3984).
-func b38SlimedNonHorror(target *game.Card, _ *game.Game, source *game.Card) bool {
+func B38SlimedNonHorror(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.Counters["slime"] > 0 && !target.HasSubtype(source.TextSubtype("Horror"))
 }
 
@@ -252,7 +252,7 @@ func b38SlimedNonHorror(target *game.Card, _ *game.Game, source *game.Card) bool
 //
 // `faerie` is the creature type as the counting object's text now reads
 // it (TextSubtype, CR 612.2, #3984).
-func b38FaeriesYouControl(g *game.Game, controller uuid.UUID, faerie string) int {
+func B38FaeriesYouControl(g *game.Game, controller uuid.UUID, faerie string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.HasSubtype(faerie) {
@@ -272,7 +272,7 @@ func b38FaeriesYouControl(g *game.Game, controller uuid.UUID, faerie string) int
 // not (they are named Rabbit). "Other" is by instance rather than by
 // name, because every card this clause appears on is legal in
 // multiples and the other copies must all count.
-func b38OtherCreaturesYouControlNamed(g *game.Game, controller, self uuid.UUID, name string) int {
+func B38OtherCreaturesYouControlNamed(g *game.Game, controller, self uuid.UUID, name string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID == self || c.Controller != controller || !c.IsCreature() {

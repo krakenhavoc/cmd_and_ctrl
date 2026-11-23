@@ -21,13 +21,13 @@ import (
 
 // searchAllZonesNamed starts the search for the controller. `names` are
 // the card names printed on the card.
-func searchAllZonesNamed(ctx *Context, question string, then game.ConfirmThen) error {
+func SearchAllZonesNamed(ctx *Context, question string, then game.ConfirmThen) error {
 	return MayChoice{Question: question, Then: then}.Apply(ctx)
 }
 
 // searchAllZonesCandidates lists, in zone order, the cards named one of
 // names in the player's graveyard, hand and (when library is set) library.
-func searchAllZonesCandidates(g *game.Game, player uuid.UUID, names []string, library bool) []uuid.UUID {
+func SearchAllZonesCandidates(g *game.Game, player uuid.UUID, names []string, library bool) []uuid.UUID {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil {
 		return nil
@@ -54,7 +54,7 @@ func searchAllZonesCandidates(g *game.Game, player uuid.UUID, names []string, li
 }
 
 // oneCardPerName is the set rule "at most one card of each name".
-func oneCardPerName(picked []game.Card) bool {
+func OneCardPerName(picked []game.Card) bool {
 	seen := map[string]bool{}
 	for _, c := range picked {
 		if seen[c.Name] {
@@ -67,7 +67,7 @@ func oneCardPerName(picked []game.Card) bool {
 
 // searchAllZonesPut puts the picked cards onto the battlefield together
 // from wherever they are, then shuffles when the library was searched.
-func searchAllZonesPut(ctx *Context, picked []uuid.UUID, librarySearched bool) error {
+func SearchAllZonesPut(ctx *Context, picked []uuid.UUID, librarySearched bool) error {
 	var entries []game.BatchEntry
 	for _, id := range picked {
 		z := ctx.Game.FindCardZoneForEffect(id)

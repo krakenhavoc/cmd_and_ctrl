@@ -11,7 +11,7 @@ import (
 // s82SNC22CreaturesEnterTapped is "Creatures enter tapped" (False Floor):
 // Kismet's CR 614 replacement narrowed to creatures and applying to every
 // player's, the source's controller included.
-func s82SNC22CreaturesEnterTapped(label string) game.ReplacementEffect {
+func S82SNC22CreaturesEnterTapped(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) bool {
@@ -38,7 +38,7 @@ func s82SNC22CreaturesEnterTapped(label string) game.ReplacementEffect {
 // enchanted creature as the combat is declared. A creature that player
 // controls cannot attack them, so the requirement is impossible and
 // ignored for it (CR 508.1d).
-func s82SNC22AllCreaturesAttackHostController() game.StaticAbility {
+func S82SNC22AllCreaturesAttackHostController() game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer6Ability,
 		Label: "All creatures attack enchanted creature's controller each combat if able.",
@@ -65,7 +65,7 @@ func s82SNC22AllCreaturesAttackHostController() game.StaticAbility {
 
 // s82SNC22ContestedKind is the counter Turf War puts on lands. An on-disk
 // identity: never renamed.
-const s82SNC22ContestedKind = "contested"
+const S82SNC22ContestedKind = "contested"
 
 // s82SNC22ContestedLands is the lands `player` controls that carry a
 // contested counter.
@@ -73,7 +73,7 @@ func s82SNC22ContestedLands(g *game.Game, player uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller == player && c.IsLand() && c.Counters[s82SNC22ContestedKind] > 0 {
+		if c.Controller == player && c.IsLand() && c.Counters[S82SNC22ContestedKind] > 0 {
 			out = append(out, c.InstanceID)
 		}
 	}
@@ -82,7 +82,7 @@ func s82SNC22ContestedLands(g *game.Game, player uuid.UUID) []uuid.UUID {
 
 // s82SNC22SeatLands is "target land that player controls" for the seat k
 // places after the caster in turn order (the table has at most four seats).
-func s82SNC22SeatLands() *game.TargetSpec {
+func S82SNC22SeatLands() *game.TargetSpec {
 	var clauses []*game.TargetSpec
 	for k := 0; k < game.MaxPlayers; k++ {
 		k := k
@@ -97,7 +97,7 @@ func s82SNC22SeatLands() *game.TargetSpec {
 // s82SNC22TurfWarHit is the intervening-"if" half of Turf War's second
 // ability (CR 603.4): a creature dealt combat damage to a player who
 // controls a land with a contested counter.
-func s82SNC22TurfWarHit(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+func S82SNC22TurfWarHit(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || g.PlayerByIDForEffect(ev.Target) == nil {
 		return false
 	}
@@ -110,7 +110,7 @@ func s82SNC22TurfWarHit(ev game.Event, _ *game.Card, _ game.Characteristic, g *g
 
 // s82SNC22TurfWarTake: the creature's controller gains control of one of
 // the damaged player's contested lands, of their choice, and untaps it.
-func s82SNC22TurfWarTake(g *game.Game, item *game.StackItem) error {
+func S82SNC22TurfWarTake(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
@@ -154,7 +154,7 @@ func s82SNC22TurfWarSteal(g *game.Game, source, thief, land uuid.UUID) error {
 
 // s82SNC22TurfWarPick is the picked land's theft, keyed. An on-disk key:
 // never renamed, never reused.
-var s82SNC22TurfWarPick = askedPick("choose-cards/s82-snc-turf-war-take",
+var s82SNC22TurfWarPick = AskedPick("choose-cards/s82-snc-turf-war-take",
 	func(ctx *Context, r game.CardsChosen) error {
 		if len(r.Picked) != 1 {
 			return nil
@@ -163,7 +163,7 @@ var s82SNC22TurfWarPick = askedPick("choose-cards/s82-snc-turf-war-take",
 	})
 
 // s82SNC22CreaturesControlledBy counts the creatures `player` controls.
-func s82SNC22CreaturesControlledBy(g *game.Game, player uuid.UUID) int {
+func S82SNC22CreaturesControlledBy(g *game.Game, player uuid.UUID) int {
 	n := 0
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
@@ -177,14 +177,14 @@ func s82SNC22CreaturesControlledBy(g *game.Game, player uuid.UUID) int {
 // s82SNC22EntersNotAToken is Life of the Party's "When this creature
 // enters, if it's not a token" (CR 603.4): the entering permanent is the
 // source and is not a token.
-func s82SNC22EntersNotAToken(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func S82SNC22EntersNotAToken(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventETB && source != nil && ev.CardID == source.InstanceID && !source.IsToken()
 }
 
 // s82SNC22LifeCopyForNext makes the next opponent's goaded token copy, then
 // (from the keyed tail) the ones after it. Each token is goaded for the
 // rest of the game by the effect's controller as it lands.
-func s82SNC22LifeCopyForNext(ctx *Context, players []uuid.UUID, template game.Card) error {
+func S82SNC22LifeCopyForNext(ctx *Context, players []uuid.UUID, template game.Card) error {
 	for len(players) > 0 && ctx.Game.PlayerByIDForEffect(players[0]) == nil {
 		players = players[1:]
 	}
@@ -197,7 +197,7 @@ func s82SNC22LifeCopyForNext(ctx *Context, players []uuid.UUID, template game.Ca
 	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: player,
 		Source:     ctx.Source(),
-		Groups:     []game.TokenGroup{{Template: copiedToken(template), Count: 1}},
+		Groups:     []game.TokenGroup{{Template: CopiedToken(template), Count: 1}},
 	}, tail)
 }
 
@@ -215,7 +215,7 @@ func init() {
 		if !ok {
 			return nil
 		}
-		return s82SNC22LifeCopyForNext(ctx, o.Tail.Carry, tmpl)
+		return S82SNC22LifeCopyForNext(ctx, o.Tail.Carry, tmpl)
 	})
 }
 
@@ -239,7 +239,7 @@ func s82SNC22IsJinnieToken(t game.Card) bool {
 // groups are already her tokens: whichever the player answers "yes" to is
 // the only one that applies (CR 614.5). The player is asked about each in
 // turn, and "no" to both leaves the instruction alone.
-func s82SNC22JinnieInstead(label, question, tokenKey string) game.ReplacementEffect {
+func S82SNC22JinnieInstead(label, question, tokenKey string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:  []game.EventKind{game.EventTokenCreated},
 		Optional: true,

@@ -14,7 +14,7 @@ import (
 // trigger was attacking: a player, a planeswalker or a battle. It is
 // uuid.Nil for a trigger with no attack event behind it. Read it as the
 // Prefer of CreateTokensAttackingYourChoice, which asks about it first.
-func triggerAttackTarget(item *game.StackItem) uuid.UUID {
+func TriggerAttackTarget(item *game.StackItem) uuid.UUID {
 	if item == nil || item.Trigger == nil {
 		return uuid.Nil
 	}
@@ -39,7 +39,7 @@ func AttackingCreaturesHave(label string, match func(*game.Card) bool, keywords 
 			return match == nil || match(target)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			appendKeywordsTo(c, keywords)
+			AppendKeywordsTo(c, keywords)
 		},
 	}
 }

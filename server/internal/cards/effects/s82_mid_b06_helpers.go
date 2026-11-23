@@ -13,7 +13,7 @@ import (
 // read through the layered view as the caller runs.
 //
 // vampire is the word "Vampire" as the source's text reads it (CR 612.2).
-func s82MidB06VampiresYouControl(g *game.Game, player uuid.UUID, vampire string) []uuid.UUID {
+func S82MidB06VampiresYouControl(g *game.Game, player uuid.UUID, vampire string) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == player && c.IsCreature() && c.HasSubtype(vampire) {
@@ -28,14 +28,14 @@ func s82MidB06VampiresYouControl(g *game.Game, player uuid.UUID, vampire string)
 // enters with an additional +1/+1 counter on it": a CR 614.1c replacement on
 // the entry of another Vampire under the source's controller, applying only
 // while an opponent of that controller has lost life this turn.
-func s82MidB06OtherVampiresYouControlEnterWithACounter(label string) game.ReplacementEffect {
+func S82MidB06OtherVampiresYouControlEnterWithACounter(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield || src == nil || ev.CardID == src.InstanceID {
 				return false
 			}
-			if opponentLifeLostThisTurn(g, src.Controller) == 0 {
+			if OpponentLifeLostThisTurn(g, src.Controller) == 0 {
 				return false
 			}
 			entering, ok := g.LookupCardForEffect(ev.CardID)
@@ -55,12 +55,12 @@ func s82MidB06OtherVampiresYouControlEnterWithACounter(label string) game.Replac
 // s82MidB06CondAnOpponentLostLife is avB34CondAnOpponentLostLife with its
 // read declared (FootprintCondOpponentLostLife), for a one-sentence trigger
 // whose row must carry a footprint (Arrogant Outlaw's drain).
-type s82MidB06CondAnOpponentLostLife struct{}
+type S82MidB06CondAnOpponentLostLife struct{}
 
-func (s82MidB06CondAnOpponentLostLife) Holds(ctx *Context) bool {
-	return opponentLifeLostThisTurn(ctx.Game, ctx.Controller()) > 0
+func (S82MidB06CondAnOpponentLostLife) Holds(ctx *Context) bool {
+	return OpponentLifeLostThisTurn(ctx.Game, ctx.Controller()) > 0
 }
 
-func (s82MidB06CondAnOpponentLostLife) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondOpponentLostLife, 1), true
+func (S82MidB06CondAnOpponentLostLife) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondOpponentLostLife, 1), true
 }

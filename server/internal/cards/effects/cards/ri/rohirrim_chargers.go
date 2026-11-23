@@ -1,0 +1,87 @@
+package cardsri
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Rohirrim Chargers — Creature — Human Knight {2}{R}{W}, 4/4:
+//
+//	"You may exert this creature as it attacks. (It won't untap during
+//	 your next untap step.)
+//	 Whenever you exert a creature, reveal cards from the top of your
+//	 library until you reveal an Equipment card. Put that card onto the
+//	 battlefield attached to that creature, then put the rest on the
+//	 bottom of your library in a random order."
+//
+// ADR 0130 §11: exert as it attacks (CR 701.43d) with no linked
+// trigger, and a "whenever you exert a creature" payoff that sees this
+// creature and any other creature its controller exerts (the Amonkhet
+// ruling). "That creature" is the exerted permanent, recorded with its
+// object epoch as the trigger is put on the stack (Params.Object): if
+// it has left the battlefield, or left and come back as a new object
+// (CR 400.7), the Equipment still enters, unattached.
+//
+// The reveal is the shared reveal-until sentence (revealUntil, as The
+// Regalia). The Equipment is attached as it enters: CR 704.5n unattaches
+// one that is illegally attached (protection from artifacts), so
+// nothing stronger than printed is left on the table. A library with no
+// Equipment is revealed whole and goes to the bottom in a random order.
+//
+// No simplification.
+func init() {
+	const label = "Rohirrim Chargers — reveal until an Equipment card; put it onto the battlefield attached to the exerted creature"
+	payoff := effects.WheneverYouExert(label, rohirrimChargersFetch)
+	payoff.Build = effects.WhenYouExertBuild(label)
+	effects.Register(effects.Spec{
+		OracleID:      "8e638c52-e7b9-445b-adcf-77b58e06c2ba",
+		Name:          "Rohirrim Chargers",
+		Completeness:  effects.CompletenessFull,
+		ExertOnAttack: effects.ExertAsItAttacks(),
+		Triggered:     []game.TriggeredAbility{payoff},
+	})
+}
+
+// rohirrimChargersFetch is the payoff's body.
+func rohirrimChargersFetch(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	player := item.Controller
+	exerted := item.Params.Object
+	run, hit := effects.RevealUntil(ctx, player, func(c game.Card) bool { return c.HasSubtype("Equipment") },
+		"Rohirrim Chargers — revealed until an Equipment card")
+	return effects.PutFromLibraryOntoBattlefield{
+		Player:    player,
+		Cards:     run,
+		Match:     func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+		All:       true,
+		ThenTail:  rohirrimChargersAttach,
+		ThenCarry: []uuid.UUID{exerted.ID},
+		ThenN:     exerted.Epoch,
+	}.Apply(ctx)
+}
+
+// rohirrimChargersAttach is the rider as a keyed tail (#4253 slice 6):
+// attach the Equipment to the exerted creature if it is still the same
+// object, then the rest to the bottom. The exerted creature rides the
+// tail as its ID (carried) and its epoch (N). An on-disk key.
+var rohirrimChargersAttach = effects.PutFromLibraryTailCarrying("rohirrim-chargers/attach-then-rest", 1,
+	func(ctx *effects.Context, res effects.PutFromLibraryResult) error {
+		g := ctx.Game
+		if len(res.Carry) == 1 {
+			exerted := game.ObjectRef{ID: res.Carry[0], Epoch: res.N}
+			host, ok := g.LookupCardForEffect(exerted.ID)
+			if ok && effects.OnBattlefield(g, exerted.ID) && host.ObjectEpoch == exerted.Epoch {
+				for _, id := range res.Entered {
+					if !effects.OnBattlefield(g, id) {
+						continue
+					}
+					if err := g.AttachForEffect(id, game.TargetRef{Kind: game.TargetCard, ID: exerted.ID}); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return effects.PutRestOnBottomInRandomOrder(g, res)
+	})

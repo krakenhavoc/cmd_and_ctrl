@@ -41,7 +41,7 @@ func DealtCombatDamageToYouThisTurn() CardPredicate {
 // dealtDamageToPlayerThisTurn is DealtDamageToYouThisTurn for a victim
 // fixed by the caller, for the mass effects whose predicate is not
 // handed the controller.
-func dealtDamageToPlayerThisTurn(victim uuid.UUID) CardPredicate {
+func DealtDamageToPlayerThisTurn(victim uuid.UUID) CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		return g.ObjectDealtDamageToPlayerThisTurn(c.InstanceID, victim)
 	}

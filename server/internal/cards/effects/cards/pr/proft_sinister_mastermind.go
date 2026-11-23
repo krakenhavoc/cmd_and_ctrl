@@ -1,0 +1,51 @@
+package cardspr
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Proft, Sinister Mastermind — Legendary Creature — Human Rogue {2}{B},
+// 5/5:
+//
+//	"Threshold — You can't cast this spell unless there are seven or
+//	 more cards in your graveyard.
+//	 Menace
+//	 {B}, Discard this card: Target creature gets -3/-1 until end of
+//	 turn."
+//
+// The restriction is a CastCondition on the card itself (the shape
+// Rakdos, Lord of Riots uses), checked at announce and never again. The
+// discard ability works only from the hand (CR 113.6), the way cycling
+// does; the -3/-1 is a modify-P/T effect that locks to the target at
+// resolution.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "a350856c-87f2-4605-999f-4e26aa362a55",
+		Name:            "Proft, Sinister Mastermind",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"menace"},
+		CastCondition: func(g *game.Game, controller uuid.UUID, _ game.Card) bool {
+			return effects.B31GraveyardSize(g, controller) >= 7
+		},
+		CastConditionLabel: "You can't cast this spell unless there are seven or more cards in your graveyard.",
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{B}, Discard this card: Target creature gets -3/-1 until end of turn",
+			Purpose: effects.ForTargets(effects.HarmUntilEOT(0, -3, -1)),
+			Cost:    effects.Plus(effects.ManaCost("{B}"), effects.DiscardThis()),
+			Zones:   []game.ZoneKind{game.ZoneHand},
+			Targets: effects.TargetCreature("target creature"),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := effects.NewContext(g, item)
+				for _, t := range ctx.LegalTargets() {
+					return effects.BoostUntilEOT{Target: t.ID, Power: -3, Toughness: -1, Label: "Proft, Sinister Mastermind — -3/-1"}.Apply(ctx)
+				}
+				return nil
+			},
+		}},
+	})
+}

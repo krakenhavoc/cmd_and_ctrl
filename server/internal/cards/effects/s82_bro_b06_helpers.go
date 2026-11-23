@@ -18,8 +18,8 @@ import (
 // (CR 400.7), at most one, and a card not taken, whether none matched or
 // the player declined, is the counter. The two keys are on-disk
 // identities derived from slug: never renamed, never reused.
-func bro6MillThreeTakeOne(card, slug, what string, match CardPredicate) game.TriggeredAbility {
-	pick := askedPick("choose-cards/bro-b06-"+slug+"-take-or-counter", func(ctx *Context, r game.CardsChosen) error {
+func Bro6MillThreeTakeOne(card, slug, what string, match CardPredicate) game.TriggeredAbility {
+	pick := AskedPick("choose-cards/bro-b06-"+slug+"-take-or-counter", func(ctx *Context, r game.CardsChosen) error {
 		if len(r.Picked) == 0 {
 			return CounterOnThis{Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 		}
@@ -69,9 +69,9 @@ func bro6MillThreeTakeOne(card, slug, what string, match CardPredicate) game.Tri
 type CondThreeCreatureCardsInYourGraveyard struct{}
 
 func (CondThreeCreatureCardsInYourGraveyard) Holds(ctx *Context) bool {
-	return b11CreatureCardsInGraveyard(ctx.Game, ctx.Controller()) >= 3
+	return B11CreatureCardsInGraveyard(ctx.Game, ctx.Controller()) >= 3
 }
 
-func (CondThreeCreatureCardsInYourGraveyard) condition() (game.FootprintStep, bool) {
-	return condStep(game.FootprintCondGraveyard, 3), true
+func (CondThreeCreatureCardsInYourGraveyard) Condition() (game.FootprintStep, bool) {
+	return CondStep(game.FootprintCondGraveyard, 3), true
 }

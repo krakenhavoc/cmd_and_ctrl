@@ -8,12 +8,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // #5641). The toughness is the creature's as it last existed on the
 // battlefield (counters and an anthem's bonus count), and a creature
 // whose toughness was zero or less gains nothing.
-func gainLifeEqualToSacrificedToughness(g *game.Game, item *game.StackItem) error {
-	fed, ok := b17PermanentSacrificedToPay(g, item)
+func GainLifeEqualToSacrificedToughness(g *game.Game, item *game.StackItem) error {
+	fed, ok := B17PermanentSacrificedToPay(g, item)
 	if !ok {
 		return nil
 	}
-	toughness := departedCreatureToughness(g, fed)
+	toughness := DepartedCreatureToughness(g, fed)
 	if toughness <= 0 {
 		return nil
 	}

@@ -24,7 +24,7 @@ func init() {
 		Name:         "Belladonna Took",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, belladonnaTokenYouControlEntered, belladonnaLabel, belladonnaTookResolves),
+			On(game.EventETB, BelladonnaTokenYouControlEntered, belladonnaLabel, belladonnaTookResolves),
 		},
 	})
 }
@@ -32,8 +32,8 @@ func init() {
 const belladonnaLabel = "Belladonna Took — gain 1 life, then draw a card, then a +1/+1 counter on each creature you control"
 
 // belladonnaTokenYouControlEntered is "a token you control enters".
-func belladonnaTokenYouControlEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, false)
+func BelladonnaTokenYouControlEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, false)
 	return ok && IsToken(c)
 }
 
@@ -47,7 +47,7 @@ func belladonnaTookResolves(g *game.Game, item *game.StackItem) error {
 	case 2:
 		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 	case 3:
-		return b11PutCounterOnEachCreatureYouControl(g, item)
+		return B11PutCounterOnEachCreatureYouControl(g, item)
 	}
 	return nil
 }

@@ -46,10 +46,10 @@ var thousandMoonsCrackshotPaid = PayUnlessBranches("pay-unless/thousand-moons-cr
 	}, nil)
 
 // thousandMoonsCrackshotTapBody is "when you do, tap target creature".
-var thousandMoonsCrackshotTapBody = game.ReflexiveBody("thousand-moons-crackshot/tap", simpleBody(thousandMoonsCrackshotTap),
-	constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+var thousandMoonsCrackshotTapBody = game.ReflexiveBody("thousand-moons-crackshot/tap", SimpleBody(ThousandMoonsCrackshotTap),
+	ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
 
-func thousandMoonsCrackshotTap(g *game.Game, item *game.StackItem) error {
+func ThousandMoonsCrackshotTap(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetCard {

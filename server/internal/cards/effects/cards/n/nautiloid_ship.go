@@ -1,0 +1,95 @@
+package cardsn
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Nautiloid Ship — Artifact — Vehicle {4}, 5/5:
+//
+//	"Flying
+//	 When this Vehicle enters, exile target player's graveyard.
+//	 Whenever this Vehicle deals combat damage to a player, you may put
+//	 a creature card exiled with this Vehicle onto the battlefield under
+//	 your control.
+//	 Crew 3"
+//
+// The two triggers are linked (CR 607.2a): "exiled with this Vehicle"
+// means the cards the entry trigger exiled and that are still in exile.
+// b27ExiledWith reads that off the event log by the entry trigger's
+// label (Bag of Holding's and Unlicensed Hearse's shape). A Ship that
+// leaves and comes back is a new object (CR 400.7) and has exiled
+// nothing (the ruling), which b27ExiledWith's reset on re-entry gives.
+//
+// The entry trigger is Bojuka Bog's (exileTargetPlayersGraveyard). A
+// commander exiled this way whose owner moves it to the command zone
+// (CR 903.9a) is no longer in exile and is never offered.
+//
+// The damage trigger offers the creature cards among them, read as
+// cards in exile (printed types). The "may" is the prompt's zero
+// minimum. The chosen card enters under the Ship's controller's
+// control, whoever owns it.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "613a8774-165e-4cf6-ad43-124f9ffc9980",
+		Name:            "Nautiloid Ship",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "Crew 3",
+			Cost:    effects.CrewCost(3),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  effects.CrewEffect("Nautiloid Ship"),
+		}},
+		Triggered: []game.TriggeredAbility{
+			effects.Targeting(effects.WhenThisEnters(nautiloidShipExileLabel, effects.ExileTargetPlayersGraveyard),
+				effects.TargetPlayer("target player")),
+			effects.WheneverThisDealsCombatDamageToAPlayer(
+				"Nautiloid Ship — you may put a creature card exiled with it onto the battlefield under your control",
+				nautiloidShipReturnACreature),
+		},
+	})
+}
+
+// nautiloidShipExileLabel is the entry trigger's label, the key its
+// exiled-with record is read by.
+const nautiloidShipExileLabel = "Nautiloid Ship — exile target player's graveyard"
+
+// nautiloidShipReturnACreature is the combat-damage trigger's body.
+func nautiloidShipReturnACreature(g *game.Game, item *game.StackItem) error {
+	var creatures []uuid.UUID
+	for _, id := range effects.B27ExiledWith(g, item.SourceCardID, nautiloidShipExileLabel) {
+		if c, ok := g.LookupCardForEffect(id); ok && c.IsCreature() {
+			creatures = append(creatures, id)
+		}
+	}
+	if len(creatures) == 0 {
+		return nil
+	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  item.Controller,
+		Source:   item.SourceCardID,
+		Question: "Nautiloid Ship — you may put a creature card exiled with it onto the battlefield under your control",
+		Cards:    creatures,
+		LiveZone: game.ZoneExile,
+		Min:      0,
+		Max:      1,
+		ThenKey:  nautiloidShipReturn,
+	})
+	return nil
+}
+
+// nautiloidShipReturn is the creature card put onto the battlefield, keyed
+// (#4253): the chooser is the trigger's controller, and the pick is all it
+// reads.
+var nautiloidShipReturn = game.RegisterChooseCardsThen("choose-cards/nautiloid-ship-return", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	_, err := g.ReturnFromExileToBattlefieldForEffect(r.Picked[0], r.Chooser, false)
+	return err
+})

@@ -38,13 +38,13 @@ type RevealFromHandPick struct {
 // owner is the player whose hand it was revealed from.
 func NewRevealFromHandPick(name, verb, revealKey, pickKey string, onPick func(ctx *Context, owner, card uuid.UUID) error) *RevealFromHandPick {
 	r := &RevealFromHandPick{name: name, verb: verb}
-	r.pick = askedPick(pickKey, func(ctx *Context, c game.CardsChosen) error {
+	r.pick = AskedPick(pickKey, func(ctx *Context, c game.CardsChosen) error {
 		if len(c.Picked) == 0 {
 			return nil
 		}
 		return onPick(ctx, c.From, c.Picked[0])
 	})
-	r.reveal = askedPick(revealKey, func(ctx *Context, c game.CardsChosen) error {
+	r.reveal = AskedPick(revealKey, func(ctx *Context, c game.CardsChosen) error {
 		return r.revealAndPick(ctx, c.Chooser, c.Picked)
 	})
 	return r

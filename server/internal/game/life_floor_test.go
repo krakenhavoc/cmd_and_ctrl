@@ -109,3 +109,40 @@ func TestAPrintedLifeFloorEndsWhenThePermanentLosesItsAbilities(t *testing.T) {
 		t.Error("a permanent that lost all its abilities still gives the floor")
 	}
 }
+
+// Worship (S82 GAP batch 119): the floor applies only while the permanent's
+// controller controls a creature, read as the damage is dealt.
+func TestAConditionalLifeFloorNeedsACreatureToApply(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	const worship = "test-life-floor-worship"
+	prev := CatalogPlayerLifeFloorOneIfCreature
+	CatalogPlayerLifeFloorOneIfCreature = func(id string) bool { return id == worship }
+	t.Cleanup(func() { CatalogPlayerLifeFloorOneIfCreature = prev })
+	pushLeyline(t, g, me, worship)
+	src := pushColouredCreature(g, opp, "Attacker", []string{"R"})
+
+	me.Life = 4
+	g.WithWriteLock(func() { g.markCombatDamageToPlayerLocked(me.ID, src, 7, "") })
+	if me.Life != -3 {
+		t.Errorf("life with no creature = %d, want -3 (the floor is off)", me.Life)
+	}
+
+	pushColouredCreature(g, me, "Defender", []string{"W"})
+	me.Life = 4
+	g.WithWriteLock(func() { g.markCombatDamageToPlayerLocked(me.ID, src, 7, "") })
+	if me.Life != 1 {
+		t.Errorf("life with a creature = %d, want 1", me.Life)
+	}
+	// An opponent's creature does not count.
+	g2 := newFourPlayerActiveGame(t)
+	me2, opp2 := g2.Seats[0], g2.Seats[1]
+	CatalogPlayerLifeFloorOneIfCreature = func(id string) bool { return id == worship }
+	pushLeyline(t, g2, me2, worship)
+	src2 := pushColouredCreature(g2, opp2, "Attacker", []string{"R"})
+	me2.Life = 4
+	g2.WithWriteLock(func() { g2.markCombatDamageToPlayerLocked(me2.ID, src2, 7, "") })
+	if me2.Life != -3 {
+		t.Errorf("life with only an opposing creature = %d, want -3", me2.Life)
+	}
+}

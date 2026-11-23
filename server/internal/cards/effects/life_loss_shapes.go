@@ -17,12 +17,12 @@ import (
 // Archfiend of Despair). The amounts are read off the per-turn tally
 // (b18LifeLostThisTurn) for every opponent BEFORE any is applied, so
 // one opponent's loss to this ability never inflates another's.
-func eachOpponentLosesTheLifeTheyLostThisTurn(g *game.Game, item *game.StackItem) error {
+func EachOpponentLosesTheLifeTheyLostThisTurn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	opponents := ctx.Opponents()
 	amounts := make([]int, len(opponents))
 	for i, opp := range opponents {
-		amounts[i] = b18LifeLostThisTurn(g, opp)
+		amounts[i] = B18LifeLostThisTurn(g, opp)
 	}
 	for i, opp := range opponents {
 		if amounts[i] <= 0 {
@@ -39,7 +39,7 @@ func eachOpponentLosesTheLifeTheyLostThisTurn(g *game.Game, item *game.StackItem
 // rounded up" (Havoc Festival, Grievous Wound): the ceiling of half the
 // life total as it is at resolution, so 21 loses 11. A player at or
 // below zero loses nothing more.
-func playerLosesHalfTheirLife(g *game.Game, item *game.StackItem, player uuid.UUID) error {
+func PlayerLosesHalfTheirLife(g *game.Game, item *game.StackItem, player uuid.UUID) error {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Eliminated || p.Life <= 0 {
 		return nil
@@ -51,9 +51,9 @@ func playerLosesHalfTheirLife(g *game.Game, item *game.StackItem, player uuid.UU
 // rounded up" for a trigger whose event names the player in Target —
 // Unstoppable Slasher's combat damage. The halving is
 // playerLosesHalfTheirLife's.
-func triggeringTargetLosesHalfTheirLife(g *game.Game, item *game.StackItem) error {
+func TriggeringTargetLosesHalfTheirLife(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	return playerLosesHalfTheirLife(g, item, item.Trigger.Event.Target)
+	return PlayerLosesHalfTheirLife(g, item, item.Trigger.Event.Target)
 }

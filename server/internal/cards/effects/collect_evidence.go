@@ -252,7 +252,7 @@ func RegisterCollectEvidence(key string, n int, then func(ctx *Context, exiled [
 	if n <= 0 {
 		panic(fmt.Sprintf("effects.RegisterCollectEvidence: %q needs N ≥ 1", key))
 	}
-	return CollectEvidence{n: n, pick: askedPickRule(key,
+	return CollectEvidence{n: n, pick: AskedPickRule(key,
 		func(picked []game.Card) bool { return game.CollectEvidenceMet(picked, n) },
 		func(ctx *Context, r game.CardsChosen) error {
 			if len(r.Picked) == 0 {
@@ -357,7 +357,7 @@ func RegisterCollectEvidenceX(slug, name string, then func(ctx *Context, x int, 
 	number := NumberThen("number/"+slug+"-collect-evidence-x", func(ctx *Context, r game.NumberAnswer) error {
 		return finish(ctx, r.Number, append([]uuid.UUID(nil), r.Carry...))
 	})
-	pick := askedPick("choose-cards/"+slug+"-collect-evidence-x", func(ctx *Context, r game.CardsChosen) error {
+	pick := AskedPick("choose-cards/"+slug+"-collect-evidence-x", func(ctx *Context, r game.CardsChosen) error {
 		if !r.Answered {
 			// The chooser left, or the pick was withdrawn: nothing is
 			// collected.

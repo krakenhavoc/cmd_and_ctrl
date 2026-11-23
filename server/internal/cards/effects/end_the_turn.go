@@ -43,13 +43,13 @@ func (EndTheTurn) Apply(ctx *Context) error {
 
 // endTheTurnEffect is EndTheTurn as an activated ability's effect
 // (Sundial of the Infinite).
-func endTheTurnEffect(g *game.Game, item *game.StackItem) error {
+func EndTheTurnEffect(g *game.Game, item *game.StackItem) error {
 	return EndTheTurn{}.Apply(NewContext(g, item))
 }
 
 // endTheTurnOnResolve is EndTheTurn as a spell's whole resolution
 // (Time Stop).
-func endTheTurnOnResolve(_ *game.StackItem, ctx *Context) error {
+func EndTheTurnOnResolve(_ *game.StackItem, ctx *Context) error {
 	return EndTheTurn{}.Apply(ctx)
 }
 
@@ -68,7 +68,7 @@ type ActivePlayerMayEndTheTurn struct{}
 
 // Apply implements Primitive.
 func (ActivePlayerMayEndTheTurn) Apply(ctx *Context) error {
-	active := activePlayerIDOf(ctx.Game)
+	active := ActivePlayerIDOf(ctx.Game)
 	if active == uuid.Nil {
 		return nil
 	}
@@ -77,13 +77,13 @@ func (ActivePlayerMayEndTheTurn) Apply(ctx *Context) error {
 		Question: "End the turn?",
 		YesLabel: "End the turn",
 		NoLabel:  "Don't end it",
-		Then:     activePlayerEndTheTurn,
+		Then:     ActivePlayerEndTheTurn,
 	}.Apply(ctx)
 }
 
 // activePlayerEndTheTurn is the answer to Obeka's question (#4298: keyed): a
 // yes ends the turn, on behalf of the card that asked.
-var activePlayerEndTheTurn = MayYes("confirm/end-the-turn", func(ctx *Context, r game.ConfirmAnswer) error {
+var ActivePlayerEndTheTurn = MayYes("confirm/end-the-turn", func(ctx *Context, r game.ConfirmAnswer) error {
 	ctx.Game.EndTheTurnForEffect(r.Source)
 	return nil
 })

@@ -386,6 +386,16 @@ type StackItem struct {
 	// item without such a clause.
 	TargetChoosers []TargetChooser
 
+	// ModeChooser is the opponent who chose this spell's mode, for a
+	// spell whose ModeSpec is ChosenByOpponent ("An opponent chooses one
+	// —", CR 700.2e, #5771): the "that player" of its bullets (Fatal
+	// Lore's "target creatures that player controls", Misfortune's
+	// "deals 4 damage to that player"). Fixed as the spell is cast, read
+	// by the CR 608.2b re-check (TargetSource.modeChooser) and by the
+	// card (effects.Context.ModeChooser). Carried by clone, snapshot and
+	// copy (CR 707.10). uuid.Nil on every other item.
+	ModeChooser uuid.UUID
+
 	// Paid is what this announcement actually cost: the counters
 	// removed or added, the life paid, and — since #761 — the mana
 	// tokens that left the pool, or the fact that the engine waived
@@ -574,6 +584,16 @@ type StackItem struct {
 	// only, like ExileWithCounter: a countered or fizzled spell goes to the
 	// graveyard. Set by MarkSpellExilesAndPlotsForEffect; never on a copy.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+
+	// ExileAndSuspend, when positive, is Gandalf of the Secret Fire's
+	// "exile that card with three time counters on it instead of putting
+	// it into your graveyard as it resolves. Then if the exiled card
+	// doesn't have suspend, it gains suspend" as a fact about this stack
+	// object: the number of time counters. Resolution only, like
+	// ExileWithCounter: a countered or fizzled spell goes to the
+	// graveyard. Set by MarkSpellExilesAndSuspendsForEffect; never on a
+	// copy.
+	ExileAndSuspend int `json:"exileAndSuspend,omitempty"`
 
 	// ExileInsteadOfGraveyard is "If that spell would be put into your
 	// graveyard, exile it instead" as a fact about this stack object

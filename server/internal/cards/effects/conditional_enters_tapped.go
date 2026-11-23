@@ -80,7 +80,7 @@ func countOtherLandsControlled(g *game.Game, src *game.Card) int {
 
 // otherLandsAtMost is a fastland's condition: "unless you control
 // two or fewer other lands".
-func otherLandsAtMost(n int) func(*game.Game, *game.Card) bool {
+func OtherLandsAtMost(n int) func(*game.Game, *game.Card) bool {
 	return func(g *game.Game, src *game.Card) bool {
 		return countOtherLandsControlled(g, src) <= n
 	}
@@ -90,7 +90,7 @@ func otherLandsAtMost(n int) func(*game.Game, *game.Card) bool {
 // two or more other lands".
 //
 //nolint:unparam // the printed threshold, kept at the call site like otherLandsAtMost's
-func otherLandsAtLeast(n int) func(*game.Game, *game.Card) bool {
+func OtherLandsAtLeast(n int) func(*game.Game, *game.Card) bool {
 	return func(g *game.Game, src *game.Card) bool {
 		return countOtherLandsControlled(g, src) >= n
 	}
@@ -105,7 +105,7 @@ func otherLandsAtLeast(n int) func(*game.Game, *game.Card) bool {
 //
 // `subtype` is matched case-insensitively by HasSubtype, so pass it
 // the way the rest of the catalog does ("island").
-func otherLandsWithSubtypeAtLeast(subtype string, n int) func(*game.Game, *game.Card) bool {
+func OtherLandsWithSubtypeAtLeast(subtype string, n int) func(*game.Game, *game.Card) bool {
 	return func(g *game.Game, src *game.Card) bool {
 		count := 0
 		for _, c := range g.Battlefield.Cards {
@@ -124,7 +124,7 @@ func otherLandsWithSubtypeAtLeast(subtype string, n int) func(*game.Game, *game.
 // two-colour land in this batch carries. Two separate one-colour
 // abilities would also work but would clutter the activation menu
 // with a fixed pair.
-func dualManaAbility(a, b string) ManaAbility {
+func DualManaAbility(a, b string) ManaAbility {
 	return ManaAbility{
 		Cost:     ManaAbilityCost{Tap: true},
 		Produced: "{" + a + "|" + b + "}",

@@ -1,0 +1,49 @@
+package cardsr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Renata, Called to the Hunt — Legendary Enchantment Creature —
+// Demigod {2}{G}{G}, */3 (EDHREC rank 2843):
+//
+//	"Renata's power is equal to your devotion to green. (Each {G} in
+//	 the mana costs of permanents you control counts toward your
+//	 devotion to green.)
+//	 Each other creature you control enters with an additional
+//	 +1/+1 counter on it."
+//
+// The green Demigod. The power is a Layer 7a CDA (Daxos's shape) set
+// to devotionTo(controller, "G") on every recompute — Renata's own
+// {G}{G} counts, so she is at least a 2/3 while she is on the
+// battlefield; the printed "*" is 0 in the card data and the CDA
+// overrides it. The counter is Arwen's CR 614 entry replacement
+// (b17OtherCreaturesYouControlEnterWithCounters) with a fixed one
+// counter — cast, reanimated, fetched or flickered creature cards
+// all get it, and Hardened Scales and Doubling Season apply to it.
+//
+// Creature TOKENS get the counter too, since #762: a created token
+// runs the same battlefield-entry pipeline every other permanent
+// runs, so this replacement sees one exactly as it sees a cast
+// creature. Arwen's matching gap closed in the same change.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "6761b077-7a89-42c9-93ab-675fe4231564",
+		Name:         "Renata, Called to the Hunt",
+		Completeness: effects.CompletenessFull,
+		Static: []game.StaticAbility{{
+			Label:     "Power is equal to your devotion to green.",
+			Layer:     game.Layer7PT,
+			SubLayer:  game.SubLayer7A_CDA,
+			AppliesTo: effects.SelfOnly,
+			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+				c.Power = effects.DevotionTo(g, source.Controller, source.TextColor("G"))
+			},
+		}},
+		Replacements: []game.ReplacementEffect{
+			effects.B27OtherCreaturesYouControlEnterWithACounter("Renata, Called to the Hunt: enters with an additional +1/+1 counter"),
+		},
+	})
+}

@@ -69,13 +69,13 @@ func init() {
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					left, ok := g.LookupCardForEffect(ev.CardID)
-					if !ok || !leftAsType(ev, left, "creature") || leftUnderControlOf(ev, left) != source.Controller {
+					if !ok || !LeftAsType(ev, left, "creature") || LeftUnderControlOf(ev, left) != source.Controller {
 						return false
 					}
 					return len(g.LastKnownCountersForEffect(ev.CardID)) > 0
 				},
 				Key:    "The Ozolith — put those counters on it",
-				Effect: ozolithCollectCounters,
+				Effect: OzolithCollectCounters,
 			},
 			{
 				Watches: []game.EventKind{game.EventStepBegan},
@@ -108,9 +108,9 @@ func init() {
 // #1379 record read here in consecutive calls, each a copy of the same
 // Card.Counters, and the record is keyed by the object's epoch, so a
 // card that has come back since is never read in its place.
-func ozolithCollectCounters(g *game.Game, item *game.StackItem) error {
+func OzolithCollectCounters(g *game.Game, item *game.StackItem) error {
 	// #1432: an Ozolith that left and came back is not "it".
-	if sourceIsNewObject(g, item) {
+	if SourceIsNewObject(g, item) {
 		return nil
 	}
 	left, ok := NewContext(g, item).TriggeringPermanent()
@@ -138,7 +138,7 @@ func ozolithMoveCounters(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	target := item.Targets[0].ID
-	if _, ok := g.LookupCardForEffect(target); !ok || sourceIsNewObject(g, item) { // #1432
+	if _, ok := g.LookupCardForEffect(target); !ok || SourceIsNewObject(g, item) { // #1432
 		return nil
 	}
 	source, ok := g.LookupCardForEffect(item.SourceCardID)

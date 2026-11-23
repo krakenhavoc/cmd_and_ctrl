@@ -90,14 +90,14 @@ var (
 	// nontokenCreaturesAttackCondition is "whenever one or more nontoken
 	// creatures attack": an EventAttack for a nontoken creature. With
 	// OncePerBatch it fires once per declaration (CR 603.2c).
-	nontokenCreaturesAttackCondition = game.DelayedCondition("attack/nontoken-creatures-attack",
+	NontokenCreaturesAttackCondition = game.DelayedCondition("attack/nontoken-creatures-attack",
 		func(ev game.Event, _ *game.DelayedTrigger, g *game.Game, _ game.EffectParams) bool {
 			return ev.Kind == game.EventAttack && attackerIsNontoken(g, ev.CardID)
 		})
 
 	// basriKetSoldiersBody is Basri Ket's −2 delayed trigger: that many
 	// 1/1 white Soldiers, tapped and attacking.
-	basriKetSoldiersBody = game.SimpleDelayedBody("basri-ket/soldiers-tapped-and-attacking", basriKetSoldiers)
+	BasriKetSoldiersBody = game.SimpleDelayedBody("basri-ket/soldiers-tapped-and-attacking", basriKetSoldiers)
 )
 
 // basriKetSoldiers counts the nontoken attackers of the triggering
@@ -117,7 +117,7 @@ func basriKetSoldiers(g *game.Game, item *game.StackItem) error {
 		Template: TokenCard("1/1 white Soldier"),
 		N:        n,
 		Tapped:   true,
-		Prefer:   triggerAttackTarget(item),
+		Prefer:   TriggerAttackTarget(item),
 		Label:    "Basri Ket",
 	}.Apply(NewContext(g, item))
 }
@@ -126,8 +126,8 @@ func basriKetSoldiers(g *game.Game, item *game.StackItem) error {
 // on each creature you control" as a Do step, read as the step runs, so a
 // creature an earlier step of the same effect made is among them (Basri
 // Ket's emblem).
-func putAPlusOneCounterOnEachCreatureYouControlStep(ctx *Context) error {
-	return b11PutCounterOnEachCreatureYouControl(ctx.Game, ctx.Item)
+func PutAPlusOneCounterOnEachCreatureYouControlStep(ctx *Context) error {
+	return B11PutCounterOnEachCreatureYouControl(ctx.Game, ctx.Item)
 }
 
 // enchantedCreaturesControllerNow is "its controller" for an Aura's
@@ -135,7 +135,7 @@ func putAPlusOneCounterOnEachCreatureYouControlStep(ctx *Context) error {
 // creature's controller as the trigger resolves, or as it last existed on
 // the battlefield once it has left (CR 608.2h). The event's actor, the
 // creature's controller as it dealt the damage, is the fallback.
-func enchantedCreaturesControllerNow(g *game.Game, ev game.Event) uuid.UUID {
+func EnchantedCreaturesControllerNow(g *game.Game, ev game.Event) uuid.UUID {
 	if c, ok := g.LookupCardForEffect(ev.Source); ok {
 		if z := g.FindCardZoneForEffect(ev.Source); z != nil && z.Kind == game.ZoneBattlefield {
 			return c.Controller
@@ -151,7 +151,7 @@ func enchantedCreaturesControllerNow(g *game.Game, ev game.Event) uuid.UUID {
 // below zero, loses) life equal to their life total (CR 701.10d, as Beacon
 // of Immortality applies it), through the ordinary life-change path, so a
 // "can't gain life" stops it. A total of zero changes nothing.
-func doubleLifeTotal(g *game.Game, source, player uuid.UUID) error {
+func DoubleLifeTotal(g *game.Game, source, player uuid.UUID) error {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Life == 0 {
 		return nil
@@ -165,23 +165,23 @@ func doubleLifeTotal(g *game.Game, source, player uuid.UUID) error {
 // 608.2b): Basri Ket's +1 (indestructible, up to one target, so no target
 // does nothing) and Battlefield Promotion (first strike). The counter
 // settles before the grant, so a prompt the counter asks holds the grant.
-func plusOneCounterThenKeywordOnTheTarget(keyword, label string) []Applier {
-	return plusOneCounterThenKeywordsOnTheTarget(label, keyword)
+func PlusOneCounterThenKeywordOnTheTarget(keyword, label string) []Applier {
+	return PlusOneCounterThenKeywordsOnTheTarget(label, keyword)
 }
 
 // plusOneCounterThenKeywordsOnTheTarget is plusOneCounterThenKeywordOnTheTarget
 // for a grant of several keywords at once: Biosynthic Burst's "It gains
 // reach, trample, and indestructible until end of turn."
-func plusOneCounterThenKeywordsOnTheTarget(label string, keywords ...string) []Applier {
+func PlusOneCounterThenKeywordsOnTheTarget(label string, keywords ...string) []Applier {
 	return []Applier{
 		Instruction(func(ctx *Context) error {
-			if id := firstLegalCardTarget(ctx); id != uuid.Nil {
+			if id := FirstLegalCardTarget(ctx); id != uuid.Nil {
 				return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 			}
 			return nil
 		}),
 		Instruction(func(ctx *Context) error {
-			if id := firstLegalCardTarget(ctx); id != uuid.Nil {
+			if id := FirstLegalCardTarget(ctx); id != uuid.Nil {
 				return GrantKeywordUntilEOT{Target: id, Keywords: keywords, Label: label}.Apply(ctx)
 			}
 			return nil

@@ -29,18 +29,18 @@ import (
 // card's body.
 //
 // No simplification.
-const sanarUnfinishedGeniusOracleID = "a8c44bd9-6470-47d7-934f-77c76a44a984"
+const SanarUnfinishedGeniusOracleID = "a8c44bd9-6470-47d7-934f-77c76a44a984"
 
 func init() {
 	Register(Spec{
-		OracleID:     sanarUnfinishedGeniusOracleID,
+		OracleID:     SanarUnfinishedGeniusOracleID,
 		Name:         "Sanar, Unfinished Genius",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersPrepared()},
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Create a Treasure token. Activate only if you've cast an instant or sorcery spell this turn.",
 			Cost:      TapCost(),
-			Condition: sanarCastAnInstantOrSorceryThisTurn,
+			Condition: SanarCastAnInstantOrSorceryThisTurn,
 			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
@@ -48,15 +48,15 @@ func init() {
 		}},
 	})
 	Register(Spec{
-		OracleID:     sanarUnfinishedGeniusOracleID + "#1",
+		OracleID:     SanarUnfinishedGeniusOracleID + "#1",
 		Name:         "Wild Idea",
 		Completeness: CompletenessFull,
-		OnResolve:    b06TutorToHand("Wild Idea — an instant or sorcery card, revealed, to your hand", b08IsInstantOrSorceryCard),
+		OnResolve:    B06TutorToHand("Wild Idea — an instant or sorcery card, revealed, to your hand", B08IsInstantOrSorceryCard),
 	})
 }
 
 // sanarCastAnInstantOrSorceryThisTurn is "activate only if you've cast an
 // instant or sorcery spell this turn".
-func sanarCastAnInstantOrSorceryThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
+func SanarCastAnInstantOrSorceryThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
 	return g.CastTallyFor(controller).InstantSorcery > 0
 }

@@ -13,7 +13,7 @@ func UpToOneTargetPermanent(label string, preds ...CardPredicate) *game.TargetSp
 // yotiaDamageBody is Yotia Declares War's reflexive trigger: "this Saga
 // deals that much damage to target creature or planeswalker", the amount
 // the artifacts tapped, carried as Params.Amount.
-var yotiaDamageBody = game.ReflexiveBody("yotia-declares-war/damage", breechesBlastEffect,
-	constTargets(func() *game.TargetSpec {
+var YotiaDamageBody = game.ReflexiveBody("yotia-declares-war/damage", BreechesBlastEffect,
+	ConstTargets(func() *game.TargetSpec {
 		return TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker()))
 	}))

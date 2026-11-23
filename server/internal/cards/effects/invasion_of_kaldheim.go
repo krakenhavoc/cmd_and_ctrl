@@ -23,7 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     invasionOfKaldheimOracleID,
+		OracleID:     InvasionOfKaldheimOracleID,
 		Name:         "Invasion of Kaldheim",
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -33,7 +33,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Invasion of Kaldheim — exile all cards from your hand, then draw that many cards", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				return g.ExileCardsKeyedForEffect(allHandCardIDs(g, ctx.Controller()), ctx.ItemTail(invasionOfKaldheimDraw))
+				return g.ExileCardsKeyedForEffect(AllHandCardIDs(g, ctx.Controller()), ctx.ItemTail(invasionOfKaldheimDraw))
 			}),
 			DefeatedTrigger("Invasion of Kaldheim — defeated: exile it, then cast Pyre of the World Tree", SiegeDefeated()),
 		},
@@ -42,7 +42,7 @@ func init() {
 
 // invasionOfKaldheimOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfKaldheimOracleID = "66914a34-59b3-48a0-9305-ebd956d34f02"
+const InvasionOfKaldheimOracleID = "66914a34-59b3-48a0-9305-ebd956d34f02"
 
 // invasionOfKaldheimDraw is "then draw that many cards" and the play window
 // over the cards exiled this way. An on-disk key.

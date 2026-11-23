@@ -24,13 +24,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(bitingSpell("623903de-3c04-4745-9af3-d7ec9fb2574d", "Bite Down"))
+	Register(BitingSpell("623903de-3c04-4745-9af3-d7ec9fb2574d", "Bite Down"))
 }
 
 // bitingSpell is the whole spec of a vanilla "target creature you control
 // deals damage equal to its power to target creature or planeswalker you
 // don't control" instant (Bite Down, Master's Rebuke).
-func bitingSpell(oracleID, name string) Spec {
+func BitingSpell(oracleID, name string) Spec {
 	return Spec{
 		OracleID:     oracleID,
 		Name:         name,
@@ -41,7 +41,7 @@ func bitingSpell(oracleID, name string) Spec {
 			TargetPermanent("target creature or planeswalker you don't control",
 				Or(Creature(), Planeswalker()), OpponentControls()),
 		),
-		OnResolve: oneSidedBite,
+		OnResolve: OneSidedBite,
 	}
 }
 
@@ -49,14 +49,14 @@ func bitingSpell(oracleID, name string) Spec {
 // its power to target creature or planeswalker you don't control" as
 // a spell's whole resolution, read off a two-clause announcement:
 // slot 0 deals, slot 1 takes. Bite Down and Stump Stomp share it.
-func oneSidedBite(_ *game.StackItem, ctx *Context) error {
-	return oneSidedBiteTimes(ctx, 1)
+func OneSidedBite(_ *game.StackItem, ctx *Context) error {
+	return OneSidedBiteTimes(ctx, 1)
 }
 
 // oneSidedBiteTimes is oneSidedBite dealing `times` times the biter's
 // power — Chocobo Kick's kicked "twice that much damage instead" (#5358).
 // Nothing is dealt unless both picks are still legal (CR 608.2b).
-func oneSidedBiteTimes(ctx *Context, times int) error {
+func OneSidedBiteTimes(ctx *Context, times int) error {
 	biter, ok := ctx.ClauseTarget(0)
 	if !ok || biter.Kind != game.TargetCard {
 		return nil

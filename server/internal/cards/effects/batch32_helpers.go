@@ -77,7 +77,7 @@ func b32TokenYouControlAttacksAPlayer(g *game.Game, controller uuid.UUID) bool {
 // taps an attacker without an EventTapCard, so an EventAttack whose
 // creature is now tapped is "became tapped" and a vigilance attacker
 // is not.
-func b32CreatureYouControlBecameTapped(ev game.Event, source *game.Card, g *game.Game) bool {
+func B32CreatureYouControlBecameTapped(ev game.Event, source *game.Card, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventTapCard, game.EventAttack:
 	default:
@@ -97,16 +97,16 @@ func b32CreatureYouControlBecameTapped(ev game.Event, source *game.Card, g *game
 // intervening-if at announce: any player's end step began and the
 // source's controller gained `n` or more life this turn. Re-run at
 // resolution by the body, as CR 603.4 asks.
-func b32EndStepAndYouGainedLifeThisTurnAtLeast(ev game.Event, source *game.Card, g *game.Game, n int) bool {
-	return ev.Kind == game.EventBeginEndStep && b15LifeGainedThisTurn(g, source.Controller) >= n
+func B32EndStepAndYouGainedLifeThisTurnAtLeast(ev game.Event, source *game.Card, g *game.Game, n int) bool {
+	return ev.Kind == game.EventBeginEndStep && B15LifeGainedThisTurn(g, source.Controller) >= n
 }
 
 // b32AnotherFaerieYouControlEntered is Obyra's condition: a Faerie
 // other than the source entered under the source's controller's
 // control. Effective subtypes, so a changeling counts; a Faerie
 // token counts, since a token's entry emits the same EventETB.
-func b32AnotherFaerieYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B32AnotherFaerieYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	// "Faerie" is a word of the source's text (CR 612.2, #3984).
 	return ok && c.HasSubtype(source.TextSubtype("Faerie"))
 }
@@ -114,8 +114,8 @@ func b32AnotherFaerieYouControlEntered(ev game.Event, source *game.Card, g *game
 // b32TokenYouControlAttacked is Neyali's condition before the "one
 // or more" dedup: a creature token the source's controller controls
 // was declared as an attacker.
-func b32TokenYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
+func B32TokenYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !AttackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -127,9 +127,9 @@ func b32TokenYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) 
 // b32AngelIfYouGainedLifeThisTurnAtLeast is Angelic Accord's
 // end-step body: the intervening-if re-checked at resolution, then
 // a 4/4 white Angel with flying.
-func b32AngelIfYouGainedLifeThisTurnAtLeast(n int) func(g *game.Game, item *game.StackItem) error {
+func B32AngelIfYouGainedLifeThisTurnAtLeast(n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
-		if b15LifeGainedThisTurn(g, item.Controller) < n {
+		if B15LifeGainedThisTurn(g, item.Controller) < n {
 			return nil
 		}
 		return CreateToken{Controller: item.Controller, Template: TokenCard("4/4 white Angel with flying"), N: 1}.Apply(NewContext(g, item))
@@ -138,7 +138,7 @@ func b32AngelIfYouGainedLifeThisTurnAtLeast(n int) func(g *game.Game, item *game
 
 // b32GainLifeThenDraw is Sphinx's Revelation's body: gain X life,
 // then draw X, in printed order.
-func b32GainLifeThenDraw(item *game.StackItem, ctx *Context, n int) error {
+func B32GainLifeThenDraw(item *game.StackItem, ctx *Context, n int) error {
 	if n <= 0 {
 		return nil
 	}
@@ -152,7 +152,7 @@ func b32GainLifeThenDraw(item *game.StackItem, ctx *Context, n int) error {
 // announced player, if still legal, draws `draw` cards and loses
 // `life` life — a loss, not damage, so no prevention shield sees
 // it.
-func b32TargetPlayerDrawsAndLosesLife(item *game.StackItem, ctx *Context, draw, life int) error {
+func B32TargetPlayerDrawsAndLosesLife(item *game.StackItem, ctx *Context, draw, life int) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
 			continue
@@ -169,7 +169,7 @@ func b32TargetPlayerDrawsAndLosesLife(item *game.StackItem, ctx *Context, draw, 
 // the announced spell, if still on the stack, is countered and its
 // controller — read before the counter moves it — mills `n`,
 // bounded by their library.
-func b32CounterTargetThenControllerMills(ctx *Context, n int) error {
+func B32CounterTargetThenControllerMills(ctx *Context, n int) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
@@ -192,15 +192,15 @@ func b32CounterTargetThenControllerMills(ctx *Context, n int) error {
 
 // b32ErtaiLabel is the stack label of Ertai Resurrected's entry
 // trigger.
-const b32ErtaiLabel = "Ertai Resurrected — counter a spell, or destroy a creature or planeswalker; its controller draws"
+const B32ErtaiLabel = "Ertai Resurrected — counter a spell, or destroy a creature or planeswalker; its controller draws"
 
 // b32PutCountersPerElfOnChosenCreature is Immaculate Magistrate's
 // body: one +1/+1 counter on the chosen creature, if it is still
 // legal, for each Elf the controller controls as the ability
 // resolves.
-func b32PutCountersPerElfOnChosenCreature(g *game.Game, item *game.StackItem) error {
+func B32PutCountersPerElfOnChosenCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -213,11 +213,11 @@ func b32PutCountersPerElfOnChosenCreature(g *game.Game, item *game.StackItem) er
 
 // b32TrygonPredatorLabel is the stack label of Trygon Predator's
 // combat-damage trigger.
-const b32TrygonPredatorLabel = "Trygon Predator — destroy an artifact or enchantment that player controls"
+const B32TrygonPredatorLabel = "Trygon Predator — destroy an artifact or enchantment that player controls"
 
 // b32NeyaliLabel is the stack label of Neyali's attack trigger —
 // the "one or more" dedup keys on it.
-const b32NeyaliLabel = "Neyali, Suns' Vanguard — exile the top card"
+const B32NeyaliLabel = "Neyali, Suns' Vanguard — exile the top card"
 
 // b32NeyaliAttack is Neyali, Suns' Vanguard's attack body, the trigger
 // sentence (the "attacking tokens have double strike" sentence is a
@@ -227,7 +227,7 @@ const b32NeyaliLabel = "Neyali, Suns' Vanguard — exile the top card"
 // is the conditional exile play (game.CondAttackedWithToken, #3192): it
 // lasts as long as the card stays exiled, is dormant on a turn no token
 // attacked, and does not need Neyali, or her trigger, to still be there.
-func b32NeyaliAttack(g *game.Game, item *game.StackItem) error {
+func B32NeyaliAttack(g *game.Game, item *game.StackItem) error {
 	if !b32TokenYouControlAttacksAPlayer(g, item.Controller) {
 		return nil
 	}
@@ -241,7 +241,7 @@ func b32NeyaliAttack(g *game.Game, item *game.StackItem) error {
 // b32CreateTokenBody is the body of one of Transmutation Font's
 // three tap abilities: one token from `template` for the
 // controller.
-func b32CreateTokenBody(template func() game.Card) func(g *game.Game, item *game.StackItem) error {
+func B32CreateTokenBody(template func() game.Card) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		return CreateToken{Controller: item.Controller, Template: template(), N: 1}.Apply(NewContext(g, item))
 	}
@@ -254,7 +254,7 @@ func b32CreateTokenBody(template func() game.Card) func(g *game.Game, item *game
 // shuffled once, after the second search; both finds are revealed.
 // The second search runs from the first's continuation, which
 // outlives the resolution, so it is built from IDs alone.
-func b32SearchAuraThenEquipmentToHand(g *game.Game, item *game.StackItem) error {
+func B32SearchAuraThenEquipmentToHand(g *game.Game, item *game.StackItem) error {
 	controller, source := item.Controller, item.SourceCardID
 	return SearchLibrary{
 		Player:    controller,

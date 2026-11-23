@@ -26,7 +26,7 @@ func init() {
 	chapterOne := ChapterTriggerTargeting(1,
 		SagaChapterLabel(name, 1, "destroy up to one target nonland permanent"),
 		TargetPermanent("up to one target nonland permanent", Nonland()).WithCount(0, 1),
-		destroyChosenPermanent)
+		DestroyChosenPermanent)
 	Register(Spec{
 		OracleID:     "e05f23ba-f2b2-4c40-83fa-8defce3cb978",
 		Name:         name,
@@ -42,18 +42,18 @@ func init() {
 }
 
 func theComingOfGalactusDrain(g *game.Game, item *game.StackItem) error {
-	return eachOpponentLosesLife(g, item, 2)
+	return EachOpponentLosesLifeNow(g, item, 2)
 }
 
 // galactusToken is the legendary 16/16 black Elder Alien creature token with
 // flying, trample and "Whenever Galactus attacks, destroy target land."
-func galactusToken() game.Card { return tokenFromCatalog(printedGalactusToken) }
+func galactusToken() game.Card { return TokenFromCatalog(printedGalactusToken) }
 
 // printedGalactusToken is Galactus as PRINTED.
-func printedGalactusToken() tokenTemplate {
-	attack := WheneverThisAttacks("Galactus — destroy target land", destroyChosenPermanent)
+func printedGalactusToken() TokenTemplate {
+	attack := WheneverThisAttacks("Galactus — destroy target land", DestroyChosenPermanent)
 	attack.Targets = TargetPermanent("target land", Land())
-	return tokenTemplate{
+	return TokenTemplate{
 		Slug: "galactus",
 		Card: game.Card{
 			Name:      "Galactus",

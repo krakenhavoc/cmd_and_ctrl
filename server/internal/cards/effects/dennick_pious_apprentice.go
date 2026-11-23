@@ -45,7 +45,7 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:         dennickOracleID,
+		OracleID:         DennickOracleID,
 		Name:             "Dennick, Pious Apprentice",
 		Completeness:     CompletenessFull,
 		PrintedKeywords:  []string{"lifelink"},
@@ -56,7 +56,7 @@ func init() {
 		},
 	})
 	Register(Spec{
-		OracleID:        dennickOracleID + "#1",
+		OracleID:        DennickOracleID + "#1",
 		Name:            "Dennick, Pious Apparition",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
@@ -64,8 +64,8 @@ func init() {
 			OncePerBatch(OnAny(
 				[]game.EventKind{game.EventZoneMove, game.EventDiscardCard, game.EventMill, game.EventCounterSpell},
 				func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return creatureCardPutIntoAGraveyard(ev, g) &&
-						!b11TriggeredThisTurn(g, source.InstanceID, dennickInvestigateLabel)
+					return CreatureCardPutIntoAGraveyard(ev, g) &&
+						!B11TriggeredThisTurn(g, source.InstanceID, dennickInvestigateLabel)
 				},
 				dennickInvestigateLabel, Do(Investigate{N: 1}))),
 		},
@@ -74,7 +74,7 @@ func init() {
 }
 
 const (
-	dennickOracleID         = "45802eb2-6848-416c-95e0-c1c1ea0620d0"
+	DennickOracleID         = "45802eb2-6848-416c-95e0-c1c1ea0620d0"
 	dennickInvestigateLabel = "Dennick, Pious Apparition — investigate"
 )
 
@@ -86,7 +86,7 @@ const (
 // now. A card already in a graveyard that moves to another is not "put
 // into a graveyard" from anywhere new, and a token is not a card
 // (CR 108.2). The card is judged in the graveyard, by its printed types.
-func creatureCardPutIntoAGraveyard(ev game.Event, g *game.Game) bool {
+func CreatureCardPutIntoAGraveyard(ev game.Event, g *game.Game) bool {
 	if ev.CardID == uuid.Nil {
 		return false
 	}

@@ -11,7 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 as a sorcery.)"
 //
 // Hero's Blade's +3/+2 and Grafted Exoskeleton's "becomes unattached"
-// sacrifice (the shared graftedSacrificeOnUnattach row: moved to another
+// sacrifice (the shared GraftedSacrificeOnUnattach row: moved to another
 // creature, an illegal host, or the Equipment leaving), with equip {0}.
 //
 // No simplification.
@@ -22,7 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{PumpAttached(3, 2)},
 		Triggered: []game.TriggeredAbility{
-			graftedSacrificeOnUnattach("Grafted Wargear — sacrifice the permanent it became unattached from"),
+			GraftedSacrificeOnUnattach("Grafted Wargear — sacrifice the permanent it became unattached from"),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{0}"),

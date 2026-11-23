@@ -52,18 +52,18 @@ func rhukEquippedCreatureAttackedOrDied(ev game.Event, source *game.Card, _ game
 	switch ev.Kind {
 	case game.EventAttack:
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && attackDeclaredByYou(ev, source.Controller) && c.Controller == source.Controller &&
-			isEquippedCreature(g, c)
+		return ok && AttackDeclaredByYou(ev, source.Controller) && c.Controller == source.Controller &&
+			IsEquippedCreature(g, c)
 	case game.EventLTB:
-		dead, ok := diedCreature(ev, g)
-		return ok && leftUnderControlOf(ev, dead) == source.Controller && rhukWasEquipped(g, ev.CardID)
+		dead, ok := DiedCreature(ev, g)
+		return ok && LeftUnderControlOf(ev, dead) == source.Controller && RhukWasEquipped(g, ev.CardID)
 	}
 	return false
 }
 
 // rhukWasEquipped reports whether an Equipment is attached to the permanent
 // `id` right now.
-func rhukWasEquipped(g *game.Game, id uuid.UUID) bool {
+func RhukWasEquipped(g *game.Game, id uuid.UUID) bool {
 	for _, a := range g.BattlefieldCardsForEffect() {
 		if a.IsAttachedTo(id) && a.HasSubtype("Equipment") {
 			return true
@@ -75,12 +75,12 @@ func rhukWasEquipped(g *game.Game, id uuid.UUID) bool {
 // rhukTakeTheEquipment attaches every Equipment that was attached to the
 // triggering creature to Rhuk.
 func rhukTakeTheEquipment(g *game.Game, item *game.StackItem) error {
-	if item.Trigger == nil || !sourceIsStillThisPermanent(g, item) {
+	if item.Trigger == nil || !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	creature := item.Trigger.Event.CardID
 	var equipment []uuid.UUID
-	if o := item.Trigger.Object; o != nil && onBattlefield(g, creature) && g.ObjectEpochForEffect(creature) == o.Epoch {
+	if o := item.Trigger.Object; o != nil && OnBattlefield(g, creature) && g.ObjectEpochForEffect(creature) == o.Epoch {
 		// Still the same permanent: its Equipment as of now.
 		for _, a := range g.BattlefieldCardsForEffect() {
 			if a.IsAttachedTo(creature) && a.HasSubtype("Equipment") {
@@ -90,7 +90,7 @@ func rhukTakeTheEquipment(g *game.Game, item *game.StackItem) error {
 	} else if o != nil {
 		// It has gone: the Equipment it had when the trigger was written down.
 		for _, ref := range o.Attached {
-			if onBattlefield(g, ref.ID) && g.ObjectEpochForEffect(ref.ID) == ref.Epoch {
+			if OnBattlefield(g, ref.ID) && g.ObjectEpochForEffect(ref.ID) == ref.Epoch {
 				if a, ok := g.LookupCardForEffect(ref.ID); ok && a.HasSubtype("Equipment") {
 					equipment = append(equipment, ref.ID)
 				}

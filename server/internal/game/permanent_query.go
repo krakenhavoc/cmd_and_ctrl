@@ -66,6 +66,20 @@ type PermanentQuery struct {
 	// Lightning Rager", Rite of the Raging Storm), compared case-folded
 	// against its effective name (CR 201.2).
 	Names []string `json:",omitempty"`
+	// HasExactPT asks for a permanent whose power is ExactPower and whose
+	// toughness is ExactToughness, both read live after the layers and its
+	// counters: "a 1/1 creature" (Lovestruck Beast, #5948). A flag beside
+	// the pair because zero is a real size. Like the power bounds it needs a
+	// battlefield permanent. Set it with WithExactPT.
+	HasExactPT     bool `json:",omitempty"`
+	ExactPower     int  `json:",omitempty"`
+	ExactToughness int  `json:",omitempty"`
+}
+
+// WithExactPT is q that also asks for exactly power p and toughness t.
+func (q PermanentQuery) WithExactPT(p, t int) PermanentQuery {
+	q.HasExactPT, q.ExactPower, q.ExactToughness = true, p, t
+	return q
 }
 
 // WithPowerAtMost is q that also asks for power n or less.
@@ -81,7 +95,9 @@ func (q PermanentQuery) WithPowerAtLeast(n int) PermanentQuery {
 }
 
 // boundsPower reports whether q asks anything about power.
-func (q PermanentQuery) boundsPower() bool { return q.HasPowerAtMost || q.HasPowerAtLeast }
+func (q PermanentQuery) boundsPower() bool {
+	return q.HasPowerAtMost || q.HasPowerAtLeast || q.HasExactPT
+}
 
 // Equal reports whether q and o ask the same thing, field by field.
 func (q PermanentQuery) Equal(o PermanentQuery) bool {
@@ -93,7 +109,8 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		q.Keyword == o.Keyword &&
 		q.Enchanted == o.Enchanted &&
 		q.HasPowerAtMost == o.HasPowerAtMost && q.PowerAtMost == o.PowerAtMost &&
-		q.HasPowerAtLeast == o.HasPowerAtLeast && q.PowerAtLeast == o.PowerAtLeast
+		q.HasPowerAtLeast == o.HasPowerAtLeast && q.PowerAtLeast == o.PowerAtLeast &&
+		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness
 }
 
 // samePermanentQueries compares two any-of lists in order.
@@ -136,6 +153,9 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 	if q.boundsPower() {
 		p := c.PowerForComparison()
 		if (q.HasPowerAtMost && p > q.PowerAtMost) || (q.HasPowerAtLeast && p < q.PowerAtLeast) {
+			return false
+		}
+		if q.HasExactPT && (p != q.ExactPower || c.CurrentToughness() != q.ExactToughness) {
 			return false
 		}
 	}
@@ -251,6 +271,9 @@ func (q PermanentQuery) Noun() string {
 	s := strings.Join(words, " ")
 	if len(q.Names) > 0 {
 		s += " named " + strings.Join(q.Names, " or ")
+	}
+	if q.HasExactPT {
+		s = fmt.Sprintf("%d/%d %s", q.ExactPower, q.ExactToughness, s)
 	}
 	var with []string
 	if q.Keyword != "" {

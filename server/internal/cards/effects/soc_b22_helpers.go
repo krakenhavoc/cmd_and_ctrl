@@ -8,8 +8,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // socB22EachPlayerLosesOneLife is "each player loses 1 life": the caster
 // first, then each opponent in seat order, each a life change that names the
 // item's source and no damage (Smallpox, Conciliator's Duelist).
-func socB22EachPlayerLosesOneLife(ctx *Context) error {
-	for _, id := range tablePlayers(ctx) {
+func SocB22EachPlayerLosesOneLife(ctx *Context) error {
+	for _, id := range TablePlayers(ctx) {
 		if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), id, -1); err != nil {
 			return err
 		}
@@ -22,7 +22,7 @@ func socB22EachPlayerLosesOneLife(ctx *Context) error {
 // +1/+1 counter on it" (Spaceshift, Daydream): the first target, if it is
 // still legal as the spell resolves (CR 608.2b), blinks at once and returns
 // with the counter already on it.
-func socB22FlickerFirstTargetWithACounter(item *game.StackItem, ctx *Context) error {
+func SocB22FlickerFirstTargetWithACounter(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
 		return nil
 	}

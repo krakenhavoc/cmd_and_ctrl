@@ -39,10 +39,10 @@ type returnLandsOrSacrifice struct {
 
 // newReturnLandsOrSacrifice registers the pick and the tail under the
 // card's keys. Call it once, from a package-level var.
-func newReturnLandsOrSacrifice(question string, n int, pickKey, tailKey string, match func(source *game.Card, land game.Card) bool) *returnLandsOrSacrifice {
+func NewReturnLandsOrSacrifice(question string, n int, pickKey, tailKey string, match func(source *game.Card, land game.Card) bool) *returnLandsOrSacrifice {
 	r := &returnLandsOrSacrifice{question: question, n: n, match: match}
 	r.tail = CardTail(tailKey, r.afterReturn)
-	r.pick = askedPickRule(pickKey, r.exactlyN, r.picked)
+	r.pick = AskedPickRule(pickKey, r.exactlyN, r.picked)
 	return r
 }
 
@@ -66,7 +66,7 @@ func (r *returnLandsOrSacrifice) allStillThere(ctx *Context, ids []uuid.UUID) bo
 		return false
 	}
 	for _, id := range ids {
-		if !onBattlefield(ctx.Game, id) {
+		if !OnBattlefield(ctx.Game, id) {
 			return false
 		}
 	}
@@ -82,7 +82,7 @@ func (r *returnLandsOrSacrifice) afterReturn(ctx *Context, o game.TailOutcome) e
 }
 
 // trigger is the enters trigger, labelled with the card's text.
-func (r *returnLandsOrSacrifice) trigger(label string) game.TriggeredAbility {
+func (r *returnLandsOrSacrifice) Trigger(label string) game.TriggeredAbility {
 	return WhenThisEnters(label, r.enters)
 }
 

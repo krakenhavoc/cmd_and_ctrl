@@ -50,15 +50,15 @@ func init() {
 			OnAny([]game.EventKind{game.EventETB, game.EventTransform}, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 				return (ev.Kind == game.EventETB && ev.CardID == source.InstanceID) || ThisTransformedInto(0)(ev, source, lki, g)
 			}, ashlingRekindledRummageLabel, func(g *game.Game, item *game.StackItem) error {
-				return b39MayDiscardThenDraw(1, false, ashlingRekindledRummageLabel,
-					drawAsManyAsDiscarded)(NewContext(g, item))
+				return B39MayDiscardThenDraw(1, false, ashlingRekindledRummageLabel,
+					DrawAsManyAsDiscarded)(NewContext(g, item))
 			}),
 			AtYourPrecombatMain(ashlingRekindledTransformLabel, func(g *game.Game, item *game.StackItem) error {
 				return MayPay{
 					Chooser:  item.Controller,
 					Cost:     "{U}",
 					Question: "Ashling, Rekindled — pay {U} to transform Ashling?",
-					Then:     ashlingTransformPaid,
+					Then:     AshlingTransformPaid,
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -83,7 +83,7 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{R}",
 					Question: "Ashling, Rimebound — pay {R} to transform Ashling?",
-					Then:     ashlingTransformPaid,
+					Then:     AshlingTransformPaid,
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -98,7 +98,7 @@ const (
 
 // ashlingTransformPaid is both faces' paid branch, keyed: transform the
 // asking item's source, unless it has turned over since (CR 701.27f).
-var ashlingTransformPaid = PayUnlessBranches("pay-unless/ashling-transform",
+var AshlingTransformPaid = PayUnlessBranches("pay-unless/ashling-transform",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		return TransformThis{}.Apply(ctx)
 	}, nil)

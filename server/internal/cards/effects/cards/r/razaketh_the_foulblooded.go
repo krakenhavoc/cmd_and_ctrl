@@ -1,0 +1,51 @@
+package cardsr
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Razaketh, the Foulblooded — Legendary Creature — Demon {5}{B}{B}{B},
+// 8/8 (EDHREC rank 1861):
+//
+//	"Flying, trample
+//	 Pay 2 life, Sacrifice another creature: Search your library for
+//	 a card, put that card into your hand, then shuffle."
+//
+// The Demon that turns every creature into a Demonic Tutor. The
+// cost is two components merged by Plus — life and a sacrifice of
+// another creature — and the tutor is unrestricted: the S22 searcher
+// chooses from the whole library.
+//
+// "Another creature" is the Warren Soultrader shape: the sacrifice
+// clause excludes the source by NAME, since a cost's spec is built at
+// init and has no instance to compare against. Razaketh is legendary,
+// so a second one can never be on the battlefield to be wrongly
+// refused.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "136c9ecb-59b4-4ef6-bcb2-7b8d3df3ee75",
+		Name:            "Razaketh, the Foulblooded",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying", "trample"},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "Pay 2 life, Sacrifice another creature: Search your library for a card and put it into your hand",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost: effects.Plus(effects.PayLife(2), game.AbilityCost{
+				SacrificeOther: effects.Another(effects.SacrificeSpec("another creature", effects.Creature())),
+			}),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.SearchLibrary{
+					Player:  item.Controller,
+					Dest:    game.ZoneHand,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Razaketh, the Foulblooded — a card, to hand",
+				}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}

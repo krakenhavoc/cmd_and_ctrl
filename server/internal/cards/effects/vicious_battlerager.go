@@ -30,7 +30,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouTakeTheInitiative("Vicious Battlerager"),
-			On(game.EventBlock, viciousBattleragerBlocked,
+			On(game.EventBlock, ViciousBattleragerBlocked,
 				"Vicious Battlerager — Spiked Retribution: the blocking creature's controller loses 5 life", viciousBattleragerRetribution),
 		},
 	})
@@ -38,7 +38,7 @@ func init() {
 
 // viciousBattleragerBlocked: this creature became blocked — EventBlock
 // carries the blocker in CardID and the attacker in Target.
-func viciousBattleragerBlocked(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func ViciousBattleragerBlocked(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return source != nil && ev.Kind == game.EventBlock && ev.CardID != source.InstanceID && ev.Target == source.InstanceID
 }
 

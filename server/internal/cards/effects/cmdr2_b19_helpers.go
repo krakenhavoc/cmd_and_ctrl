@@ -14,13 +14,13 @@ import (
 // a layer 6 restriction on the attached creature naming the Aura's
 // controller, read when the layers run, so a stolen Aura protects its new
 // controller. A battle that player protects is not covered.
-func cmdr2B19AttachedCantAttackYou() game.StaticAbility {
+func Cmdr2B19AttachedCantAttackYou() game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "Enchanted creature can't attack you or planeswalkers you control.",
 		Layer:     game.Layer6Ability,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			cmdr2B19BarAttackingSourcesController(c, source)
+			Cmdr2B19BarAttackingSourcesController(c, source)
 		},
 	}
 }
@@ -29,7 +29,7 @@ func cmdr2B19AttachedCantAttackYou() game.StaticAbility {
 // planeswalkers you control" onto a creature's characteristic, "you" being
 // the controller of the permanent whose static this is (CR 508.1c). Eriette
 // of the Charmed Apple's and the Vows' statics share it.
-func cmdr2B19BarAttackingSourcesController(c *game.Characteristic, source *game.Card) {
+func Cmdr2B19BarAttackingSourcesController(c *game.Characteristic, source *game.Card) {
 	if source == nil {
 		return
 	}
@@ -42,12 +42,12 @@ func cmdr2B19BarAttackingSourcesController(c *game.Characteristic, source *game.
 
 // cmdr2B19HumanMonkToken is Careful Cultivation's 1/1 green Human Monk
 // creature token with "{T}: Add {G}."
-func cmdr2B19HumanMonkToken() game.Card { return tokenFromCatalog(printedCmdr2B19HumanMonkToken) }
+func Cmdr2B19HumanMonkToken() game.Card { return TokenFromCatalog(printedCmdr2B19HumanMonkToken) }
 
 // printedCmdr2B19HumanMonkToken is that token as PRINTED (Neon Dynasty's
 // token card, tneo 10). Its slug is an on-disk identity.
-func printedCmdr2B19HumanMonkToken() tokenTemplate {
-	return tokenTemplate{
+func printedCmdr2B19HumanMonkToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "human-monk-tap-g",
 		Card: game.Card{
 			Name:      "Human Monk",
@@ -68,7 +68,7 @@ func printedCmdr2B19HumanMonkToken() tokenTemplate {
 // cmdr2B19AttachedIsCreature is the condition of Careful Cultivation's
 // "As long as enchanted permanent is a creature": the host as the earlier
 // layers have left it this pass.
-func cmdr2B19AttachedIsCreature(target *game.Card, g *game.Game, source *game.Card) bool {
+func Cmdr2B19AttachedIsCreature(target *game.Card, g *game.Game, source *game.Card) bool {
 	return AttachedToSource(target, g, source) && target.IsCreature()
 }
 
@@ -76,7 +76,7 @@ func cmdr2B19AttachedIsCreature(target *game.Card, g *game.Game, source *game.Ca
 // controller may have it assign its combat damage as though it weren't
 // blocked" (Indomitable Might, CR 510.1c): the creature-side flag Wolverine,
 // Claws Out sets on itself, set here on the attached creature.
-func cmdr2B19AttachedAssignsAsThoughUnblocked() game.StaticAbility {
+func Cmdr2B19AttachedAssignsAsThoughUnblocked() game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "Enchanted creature's controller may have it assign its combat damage as though it weren't blocked.",
 		Layer:     game.Layer6Ability,
@@ -87,7 +87,7 @@ func cmdr2B19AttachedAssignsAsThoughUnblocked() game.StaticAbility {
 	}
 }
 
-const cmdr2B19DaybreakCoronetOracle = "0f5ac364-447b-4c43-9aed-6098dc0bab82"
+const Cmdr2B19DaybreakCoronetOracle = "0f5ac364-447b-4c43-9aed-6098dc0bab82"
 
 // cmdr2B19HasAnotherAuraAttached is Daybreak Coronet's "Enchant creature
 // with another Aura attached to it". An enchant clause is one predicate on
@@ -105,7 +105,7 @@ const cmdr2B19DaybreakCoronetOracle = "0f5ac364-447b-4c43-9aed-6098dc0bab82"
 // Coronet itself is on the host at the check, and is not yet at the cast),
 // and a lone Coronet on an otherwise bare creature is exactly the state
 // the rule removes. Auras are read as they are now (effective types).
-func cmdr2B19HasAnotherAuraAttached() CardPredicate {
+func Cmdr2B19HasAnotherAuraAttached() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		if g == nil || g.Battlefield == nil {
 			return false
@@ -116,7 +116,7 @@ func cmdr2B19HasAnotherAuraAttached() CardPredicate {
 			if !a.IsAura() || !a.IsAttachedTo(c.InstanceID) {
 				continue
 			}
-			if a.OracleID != cmdr2B19DaybreakCoronetOracle {
+			if a.OracleID != Cmdr2B19DaybreakCoronetOracle {
 				return true
 			}
 			coronets++
@@ -129,7 +129,7 @@ func cmdr2B19HasAnotherAuraAttached() CardPredicate {
 // It runs inside a layer pass that may hold only the read lock, so it
 // walks the battlefield directly (see PumpAttachedPer). Auras are read as
 // the layers have them, so an enchantment that became an Aura counts.
-func cmdr2B19AurasAttachedTo(g *game.Game, id uuid.UUID) int {
+func Cmdr2B19AurasAttachedTo(g *game.Game, id uuid.UUID) int {
 	if g == nil || g.Battlefield == nil {
 		return 0
 	}
@@ -145,7 +145,7 @@ func cmdr2B19AurasAttachedTo(g *game.Game, id uuid.UUID) int {
 
 // cmdr2B19AurasOnTheBattlefield counts every Aura on the battlefield, any
 // controller's (Aura Gnarlid), by the same walk.
-func cmdr2B19AurasOnTheBattlefield(g *game.Game) int {
+func Cmdr2B19AurasOnTheBattlefield(g *game.Game) int {
 	if g == nil || g.Battlefield == nil {
 		return 0
 	}
@@ -163,7 +163,7 @@ func cmdr2B19AurasOnTheBattlefield(g *game.Game) int {
 // read as the comparison rules do (CR 208.1), live as the block is
 // declared. The attacker is the creature itself, so a pump (Aura Gnarlid's
 // own) raises the bar.
-func cmdr2B19LesserPowerThanAttacker() BlockerAgainstAttacker {
+func Cmdr2B19LesserPowerThanAttacker() BlockerAgainstAttacker {
 	return func(_ *game.Game, attacker, blocker *game.Card) bool {
 		return blocker.PowerForComparison() < attacker.PowerForComparison()
 	}
@@ -172,7 +172,7 @@ func cmdr2B19LesserPowerThanAttacker() BlockerAgainstAttacker {
 // cmdr2B19YourAuraBecameAttachedToYourCreature is "Whenever an Aura you
 // control becomes attached to a creature you control": both read as the
 // Aura attaches.
-func cmdr2B19YourAuraBecameAttachedToYourCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Cmdr2B19YourAuraBecameAttachedToYourCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventAttach || ev.Label != "Aura" || ev.AlreadyAttached || source == nil {
 		return false
 	}
@@ -191,7 +191,7 @@ func cmdr2B19YourAuraBecameAttachedToYourCreature(ev game.Event, source *game.Ca
 // the rest once the entry is complete. A token with no Aura card to offer is
 // passed over without a question. The tokens still to come ride the prompt
 // and the tail as data (Carry).
-func cmdr2B19OfferAuraForNextToken(g *game.Game, player, source uuid.UUID, tokens []uuid.UUID) error {
+func Cmdr2B19OfferAuraForNextToken(g *game.Game, player, source uuid.UUID, tokens []uuid.UUID) error {
 	for len(tokens) > 0 {
 		token := tokens[0]
 		rest := tokens[1:]
@@ -252,7 +252,7 @@ func init() {
 			}
 			token, rest := r.Carry[0], r.Carry[1:]
 			if len(r.Picked) == 0 {
-				return cmdr2B19OfferAuraForNextToken(g, r.Chooser, r.Source, rest)
+				return Cmdr2B19OfferAuraForNextToken(g, r.Chooser, r.Source, rest)
 			}
 			from := game.ZoneHand
 			if z := g.FindCardZoneForEffect(r.Picked[0]); z != nil {
@@ -264,6 +264,6 @@ func init() {
 				game.KeyedTail{Ref: cmdr2B19LivestockNext, Player: r.Chooser, Source: r.Source, Carry: rest})
 		})
 	cmdr2B19LivestockNext = CardTail("cmdr2-b19/liberated-livestock-next", func(ctx *Context, o game.TailOutcome) error {
-		return cmdr2B19OfferAuraForNextToken(ctx.Game, o.Tail.Player, o.Tail.Source, o.Tail.Carry)
+		return Cmdr2B19OfferAuraForNextToken(ctx.Game, o.Tail.Player, o.Tail.Source, o.Tail.Carry)
 	})
 }

@@ -1,0 +1,171 @@
+package cardsg
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Garruk Relentless // Garruk, the Veil-Cursed — Legendary Planeswalker
+// {3}{G}, loyalty 3, transforming:
+//
+//	Front: "When Garruk has two or fewer loyalty counters on him,
+//	        transform him.
+//	        0: Garruk deals 3 damage to target creature. That creature
+//	           deals damage equal to its power to him.
+//	        0: Create a 2/2 green Wolf creature token."
+//	Back:  "+1: Create a 1/1 black Wolf creature token with deathtouch.
+//	        −1: Sacrifice a creature. If you do, search your library for
+//	            a creature card, reveal it, put it into your hand, then
+//	            shuffle.
+//	        −3: Creatures you control gain trample and get +X/+X until
+//	            end of turn, where X is the number of creature cards in
+//	            your graveyard."
+//
+// ADR 0107 §1 (#1858):
+//
+//   - The transform is a CR 603.8 state trigger on the front face. It
+//     triggers whenever Garruk is at two or fewer — after his own fight,
+//     or after damage from an attacker — and Garruk stays the same object
+//     as he turns over (CR 712.18), loyalty counters and all. CR 701.27f:
+//     the trigger transforms him only if he has not transformed since it
+//     was put on the stack, so a Garruk already back face up is left alone.
+//   - The fight: Garruk's 3 damage is dealt first, and then the creature
+//     deals damage equal to its power to him. State-based actions are not
+//     checked in between (CR 704.3), so a creature dealt lethal damage is
+//     still there and still hits back; one that left the battlefield some
+//     other way hits back with its power as it last existed (CR 608.2h).
+//     A Garruk that has left is not dealt the damage.
+//   - The −1's search is "if you do" (CR 701.21a): no sacrifice, no search.
+//   - The −3's X is counted as it resolves; the creatures it affects are
+//     the ones you control then (CR 611.2c).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        garrukRelentlessOracleID,
+		Name:            "Garruk Relentless",
+		Completeness:    effects.CompletenessFull,
+		StartingLoyalty: 3,
+		Triggered: []game.TriggeredAbility{
+			effects.WhenState("Garruk Relentless — transform him",
+				func(_ *game.Game, source *game.Card, _ uuid.UUID) bool {
+					return source.Counters[game.CounterLoyalty] <= 2
+				}, garrukTransform),
+		},
+		Activated: []effects.ActivatedAbility{
+			{
+				Label:   "0: Garruk deals 3 damage to target creature. That creature deals damage equal to its power to him.",
+				Cost:    effects.LoyaltyCost(0),
+				Targets: effects.TargetCreature("target creature"),
+				Effect:  garrukFight,
+			},
+			{
+				Label: "0: Create a 2/2 green Wolf creature token.",
+				Cost:  effects.LoyaltyCost(0),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return effects.CreateToken{Template: effects.TokenCard("2/2 green Wolf"), N: 1}.Apply(effects.NewContext(g, item))
+				},
+			},
+		},
+	})
+
+	effects.Register(effects.Spec{
+		OracleID:     garrukRelentlessOracleID + "#1",
+		Name:         "Garruk, the Veil-Cursed",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{
+			{
+				Label: "+1: Create a 1/1 black Wolf creature token with deathtouch.",
+				Cost:  effects.LoyaltyCost(1),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return effects.CreateToken{Template: effects.TokenCard("1/1 black Wolf with deathtouch"), N: 1}.Apply(effects.NewContext(g, item))
+				},
+			},
+			{
+				Label:  "−1: Sacrifice a creature. If you do, search your library for a creature card, reveal it, put it into your hand, then shuffle.",
+				Cost:   effects.LoyaltyCost(-1),
+				Effect: garrukSacrificeThenTutor,
+			},
+			{
+				Label:  "−3: Creatures you control gain trample and get +X/+X until end of turn, where X is the number of creature cards in your graveyard.",
+				Cost:   effects.LoyaltyCost(-3),
+				Effect: garrukOverrun,
+			},
+		},
+	})
+}
+
+const garrukRelentlessOracleID = "7cec9021-6f25-4fd8-b40e-adf4ffd3a7b8"
+
+// garrukTransform turns Garruk over unless he already has (CR 701.27f).
+func garrukTransform(g *game.Game, item *game.StackItem) error {
+	c, ok := g.LookupCardForEffect(item.SourceCardID)
+	if !ok || !effects.OnBattlefield(g, item.SourceCardID) || c.ActiveFace != 0 {
+		return nil
+	}
+	return effects.TransformThis{}.Apply(effects.NewContext(g, item))
+}
+
+// garrukFight is the front face's first 0.
+func garrukFight(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	targets := ctx.LegalTargets()
+	if len(targets) == 0 {
+		return nil
+	}
+	creature := targets[0].ID
+	ref, ok := g.PermanentRefForEffect(creature)
+	if !ok {
+		return nil
+	}
+	if err := (effects.DealDamage{Source: item.SourceCardID, Target: creature, Amount: 3}).Apply(ctx); err != nil {
+		return err
+	}
+	info, ok := g.PermanentForEffect(ref)
+	if !ok || info.Power <= 0 || !effects.OnBattlefield(g, item.SourceCardID) || effects.SourceIsNewObject(g, item) {
+		return nil
+	}
+	return effects.DealDamage{SourceObject: &ref, Target: item.SourceCardID, Amount: info.Power}.Apply(ctx)
+}
+
+// garrukSacrificeThenTutor is the back face's −1.
+func garrukSacrificeThenTutor(g *game.Game, item *game.StackItem) error {
+	// Keyed (#4290): the controller rides the run as its carry, so a
+	// table waiting on the sacrifice is a restore point.
+	return g.PlayerSacrificesThenKeyedForEffect(item.SourceCardID, item.Controller,
+		effects.SacrificeSpec("a creature you control", effects.Creature(), effects.YouControl()),
+		"Garruk, the Veil-Cursed — sacrifice a creature", 1,
+		garrukVeilCursedTutor, []uuid.UUID{item.Controller})
+}
+
+// garrukOverrun is the back face's −3.
+func garrukOverrun(g *game.Game, item *game.StackItem) error {
+	ctx := effects.NewContext(g, item)
+	x := effects.B11CreatureCardsInGraveyard(g, item.Controller)
+	yours := effects.And(effects.Creature(), effects.YouControl())
+	if x > 0 {
+		if err := (effects.BoostUntilEOT{Match: yours, Power: x, Toughness: x, Label: "Garruk, the Veil-Cursed — +X/+X"}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return effects.GrantKeywordUntilEOT{Match: yours, Keywords: []string{"trample"}, Label: "Garruk, the Veil-Cursed — trample"}.Apply(ctx)
+}
+
+// garrukVeilCursedTutor is the −1's "if you do, search your library for
+// a creature card, reveal it, put it into your hand".
+var garrukVeilCursedTutor = game.RegisterPromptRunThen("prompt-run/garruk-the-veil-cursed-tutor", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 || !r.Sacrifices().Sacrificed(r.Carry[0]) {
+		return nil
+	}
+	return effects.SearchLibrary{
+		Player:    r.Carry[0],
+		Predicate: func(c game.Card) bool { return c.IsCreature() },
+		Dest:      game.ZoneHand,
+		Limit:     1,
+		Reveal:    true,
+		Shuffle:   true,
+		Reason:    "Garruk, the Veil-Cursed — a creature card",
+	}.Apply(effects.KeyedContext(g, r.Carry[0], r.Source))
+})

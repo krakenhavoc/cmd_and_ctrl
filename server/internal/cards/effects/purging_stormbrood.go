@@ -21,28 +21,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 
-const purgingStormbroodOracleID = "5e8086d5-ea48-4555-b65a-a33d08ba4afd"
+const PurgingStormbroodOracleID = "5e8086d5-ea48-4555-b65a-a33d08ba4afd"
 
 func init() {
 	Register(Spec{
-		OracleID:        purgingStormbroodOracleID,
+		OracleID:        PurgingStormbroodOracleID,
 		Name:            "Purging Stormbrood",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardLife(2), "Purging Stormbrood — ward, pay 2 life"),
-			Targeting(WhenThisEnters("Purging Stormbrood — remove all counters from up to one target creature", purgingStormbroodRemoveCounters),
+			Targeting(WhenThisEnters("Purging Stormbrood — remove all counters from up to one target creature", PurgingStormbroodRemoveCounters),
 				TargetCreature("up to one target creature").WithCount(0, 1)),
 		},
 	})
 	Register(Spec{
-		OracleID:     purgingStormbroodOracleID + "#1",
+		OracleID:     PurgingStormbroodOracleID + "#1",
 		Name:         "Absorb Essence",
 		Completeness: CompletenessFull,
 		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 2, "lifelink", "hexproof")),
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return pumpAndGrantFirstTarget(2, 2, "Absorb Essence — +2/+2, lifelink and hexproof", "lifelink", "hexproof")(ctx.Game, item)
+			return PumpAndGrantFirstTarget(2, 2, "Absorb Essence — +2/+2, lifelink and hexproof", "lifelink", "hexproof")(ctx.Game, item)
 		},
 	})
 }
@@ -50,10 +50,10 @@ func init() {
 // purgingStormbroodRemoveCounters removes every counter from the
 // trigger's target, if it is still legal as the trigger resolves
 // (CR 608.2b).
-func purgingStormbroodRemoveCounters(g *game.Game, item *game.StackItem) error {
+func PurgingStormbroodRemoveCounters(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, id := range legalTargetCards(item, g) {
-		if err := removeEveryCounterFrom(ctx, id); err != nil {
+	for _, id := range LegalTargetCards(item, g) {
+		if err := RemoveEveryCounterFrom(ctx, id); err != nil {
 			return err
 		}
 	}

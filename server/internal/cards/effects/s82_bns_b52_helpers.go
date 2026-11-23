@@ -13,7 +13,7 @@ import (
 // hand" as a ChoosePermanents pick of none or one land from the chooser's own
 // board, made as the effect resolves (Kefnet the Mindful, Sutina, Speaker of
 // the Tajuru). `keyed` is what happens to the pick.
-func mayReturnALandYouControl(question string, keyed PermanentsThen) ChoosePermanents {
+func MayReturnALandYouControl(question string, keyed PermanentsThen) ChoosePermanents {
 	return ChoosePermanents{
 		Question: question,
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {

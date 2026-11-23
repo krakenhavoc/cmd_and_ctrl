@@ -1,0 +1,22 @@
+package cardsap
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Ardent Militia — Creature — Human Soldier {4}{W}, 2/5 (Portal, #5630):
+//
+//	"Vigilance"
+//
+// Vigilance is an engine keyword carried as printed data: attacking
+// doesn't tap it (CR 702.20b).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "23625877-b6db-480c-8885-a62b7d0457df",
+		Name:            "Ardent Militia",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"vigilance"},
+	})
+}

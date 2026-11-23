@@ -34,7 +34,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Byzantium Radiation — Aplan Mortarium: put an exposure counter on it, then lose life equal to its exposure counters",
 				func(g *game.Game, item *game.StackItem) error {
-					n, ok := g.PutCountersOnFaceUpPlanarCardForEffect(item.SourceCardID, aplanMortariumExposure, 1)
+					n, ok := g.PutCountersOnFaceUpPlanarCardForEffect(item.SourceCardID, AplanMortariumExposure, 1)
 					if !ok || n <= 0 {
 						return nil
 					}
@@ -47,18 +47,18 @@ func init() {
 }
 
 // aplanMortariumExposure is the exposure counter's kind.
-const aplanMortariumExposure = "exposure"
+const AplanMortariumExposure = "exposure"
 
 // AlienAngelToken is Aplan Mortarium's token: a 2/2 black Alien Angel
 // artifact creature with first strike, vigilance, and "Whenever an
 // opponent casts a creature spell, this token isn't a creature until end
 // of turn."
-func AlienAngelToken() game.Card { return tokenFromCatalog(printedAlienAngelToken) }
+func AlienAngelToken() game.Card { return TokenFromCatalog(printedAlienAngelToken) }
 
 // printedAlienAngelToken is the Alien Angel as PRINTED. "This token" is the
 // trigger's source; "an opponent" is an opponent of its controller now.
-func printedAlienAngelToken() tokenTemplate {
-	return tokenTemplate{
+func printedAlienAngelToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "alien-angel",
 		Card: game.Card{
 			Name:      "Alien Angel",
@@ -70,7 +70,7 @@ func printedAlienAngelToken() tokenTemplate {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, AnOpponentCast(Creature()), "Alien Angel — this token isn't a creature until end of turn",
-				thisIsntACreatureUntilEndOfTurn("Alien Angel — isn't a creature until end of turn")),
+				ThisIsntACreatureUntilEndOfTurn("Alien Angel — isn't a creature until end of turn")),
 		},
 		Text: "First strike, vigilance\nWhenever an opponent casts a creature spell, this token isn't a creature until end of turn.",
 	}

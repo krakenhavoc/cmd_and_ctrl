@@ -25,18 +25,18 @@ import (
 // card as the source.
 func CoinFlipThen(key string, body func(ctx *Context, r game.CoinFlipped) error) game.CoinFlipThen {
 	return game.RegisterCoinFlipThen(key, func(g *game.Game, r game.CoinFlipped) error {
-		ctx, _ := askedContext(g, r.Asked, r.Flipper, r.Source, nil)
+		ctx, _ := AskedContext(g, r.Asked, r.Flipper, r.Source, nil)
 		return body(ctx, r)
 	})
 }
 
 // wonFirstFlip reports whether the first coin of a settled call was won.
-func wonFirstFlip(r game.CoinFlipped) bool {
+func WonFirstFlip(r game.CoinFlipped) bool {
 	return len(r.Result.Won) > 0 && r.Result.Won[0]
 }
 
 // carriedID is the i-th carried ID, or uuid.Nil past the end.
-func carriedID(carry []uuid.UUID, i int) uuid.UUID {
+func CarriedID(carry []uuid.UUID, i int) uuid.UUID {
 	if i < 0 || i >= len(carry) {
 		return uuid.Nil
 	}
@@ -44,7 +44,7 @@ func carriedID(carry []uuid.UUID, i int) uuid.UUID {
 }
 
 // carriedNum is the i-th carried number, or 0 past the end.
-func carriedNum(nums []int, i int) int {
+func CarriedNum(nums []int, i int) int {
 	if i < 0 || i >= len(nums) {
 		return 0
 	}
@@ -52,7 +52,7 @@ func carriedNum(nums []int, i int) int {
 }
 
 // carriedWord is the i-th carried word, or "" past the end.
-func carriedWord(words []string, i int) string {
+func CarriedWord(words []string, i int) string {
 	if i < 0 || i >= len(words) {
 		return ""
 	}

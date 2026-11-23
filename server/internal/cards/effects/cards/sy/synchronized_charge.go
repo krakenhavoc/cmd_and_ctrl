@@ -1,0 +1,45 @@
+package cardssy
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Synchronized Charge — Sorcery {1}{G} (#3931):
+//
+//	"Distribute two +1/+1 counters among one or two target creatures you
+//	 control. Creatures you control with counters on them gain vigilance
+//	 and trample until end of turn.
+//	 Harmonize {4}{G}"
+//
+// Abzan Charm's distribution (CR 601.2d: each target at least one, the
+// split announced with the targets), then Mutational Advantage's set:
+// the creatures you control that have any counter on them as the second
+// sentence is applied, the two just placed included, locked as it
+// resolves (CR 611.2c), so a creature that gets a counter later this turn
+// does not gain them. Harmonize is CR 702.180.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:         "faa0055b-c1d2-4ce7-875f-41b4be8030bd",
+		Name:             "Synchronized Charge",
+		Completeness:     effects.CompletenessFull,
+		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+		AlternativeCosts: []game.AlternativeCost{effects.Harmonize("{4}{G}")},
+		Targets: effects.TargetCreature("one or two target creatures you control", effects.YouControl()).
+			WithCount(1, 2).Dividing(effects.Divide(2)),
+		// The keywords wait for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: effects.ResolveSteps(
+			effects.Instruction(func(ctx *effects.Context) error {
+				return effects.PutDividedCounters(ctx, game.CounterPlusOne)
+			}),
+			effects.GrantKeywordUntilEOT{
+				Match:    effects.And(effects.Creature(), effects.YouControl(), effects.B64HasAnyCounter()),
+				Keywords: []string{"vigilance", "trample"},
+				Label:    "Synchronized Charge — vigilance and trample",
+			},
+		),
+	})
+}

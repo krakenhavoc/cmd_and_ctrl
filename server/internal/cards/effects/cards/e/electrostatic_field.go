@@ -1,0 +1,33 @@
+package cardse
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Electrostatic Field — Creature — Wall {1}{R}, 0/4 (EDHREC rank
+// 1593):
+//
+//	"Defender
+//	 Whenever you cast an instant or sorcery spell, this creature
+//	 deals 1 damage to each opponent."
+//
+// The spellslinger Wall. The trigger reads the spell off the stack,
+// where its type line is intact, and the damage is from the Field
+// itself — a Torbran or a prevention shield sees it.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "2fa94a07-c932-4f85-b6e0-a97d2b29eb52",
+		Name:            "Electrostatic Field",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"defender"},
+		Triggered: []game.TriggeredAbility{
+			effects.On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return effects.InstantOrSorceryCastByYou(ev, source, g)
+			}, "Electrostatic Field — 1 damage to each opponent", effects.Do(effects.DamageEachOpponent{N: 1})),
+		},
+	})
+}

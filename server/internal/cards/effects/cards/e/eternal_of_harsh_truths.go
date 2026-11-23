@@ -1,0 +1,56 @@
+package cardse
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Eternal of Harsh Truths — Creature — Zombie Cleric {2}{U}, 1/3
+// (EDHREC rank 17907):
+//
+//	"Afflict 2 (Whenever this creature becomes blocked, defending
+//	 player loses 2 life.)
+//	 Whenever this creature attacks and isn't blocked, draw a card."
+//
+// A proof card for #1279, and the one that shows both halves of a
+// declaration's answer: exactly one of its two triggers fires each
+// combat, and which one is decided by the defending player's COMPLETED
+// block declaration. Afflict is "becomes blocked" (CR 702.130a),
+// EventBecomesBlocked, emitted once per blocked attacker when the
+// declaration is locked in (CR 506.4, #830); "isn't blocked" is
+// EventBlockersDeclared (see Swamp Mosquito). Both are emitted by the
+// same completion, afflict first, so a defender who declares no
+// blocks never makes the card blocked and a defender who blocks never
+// lets it draw.
+//
+// No simplifications.
+func init() {
+	// The draw is a footprinted Do (#3013): the row's Effect is replaced
+	// after the constructor builds the trigger, whose callback for the
+	// defending player this payoff does not use.
+	eternalDrawRow := effects.WhenAttacksAndIsNotBlockedEffect("Eternal of Harsh Truths — draw a card", nil)
+	eternalDrawRow.Effect = effects.Do(effects.DrawCards{N: 1})
+	effects.Register(effects.Spec{
+		OracleID:     "5c09d646-afea-4fd0-9752-04820b81cc5b",
+		Name:         "Eternal of Harsh Truths",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			{
+				Watches: []game.EventKind{game.EventBecomesBlocked},
+				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+					return ev.Kind == game.EventBecomesBlocked && ev.CardID == source.InstanceID
+				},
+				Key: "Eternal of Harsh Truths — afflict 2: defending player loses 2 life",
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					defender := item.Trigger.Event.Actor
+					if !effects.DefendingPlayerStillIn(g, defender) {
+						return nil
+					}
+					return g.ChangePlayerLifeForEffect(item.SourceCardID, defender, -2)
+				},
+			},
+			eternalDrawRow,
+		},
+	})
+}

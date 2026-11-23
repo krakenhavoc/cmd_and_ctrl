@@ -1,0 +1,27 @@
+package cardsdi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Direct Current — Sorcery {1}{R}{R} (Ravnica: Clue Edition):
+//
+//	"Direct Current deals 2 damage to any target.
+//	 Jump-start (You may cast this card from your graveyard by discarding a
+//	 card in addition to paying its other costs. Then exile this card.)"
+//
+// Jump-start is the shared cmdr2S39JumpStart (CR 702.133a).
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:         "54e34440-c890-4a07-83c6-63a2f7a65639",
+		Name:             "Direct Current",
+		Completeness:     effects.CompletenessFull,
+		Targets:          effects.TargetAny(),
+		Purpose:          game.Purpose{Targets: game.ForTargets(effects.DamageToTarget(0, 2)), Answers: game.AnswerRemove},
+		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+		AlternativeCosts: []game.AlternativeCost{effects.Cmdr2S39JumpStart("{1}{R}{R}")},
+		OnResolve:        effects.DamageToFirstTargetStep(2),
+	})
+}

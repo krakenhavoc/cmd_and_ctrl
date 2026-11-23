@@ -1,0 +1,37 @@
+package cardsmi
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Molten Gatekeeper — Artifact Creature — Golem {2}{R}, 2/3:
+//
+//	"Whenever another creature you control enters, this creature deals
+//	 1 damage to each opponent.
+//	 Unearth {R} ({R}: Return this card from your graveyard to the
+//	 battlefield. It gains haste. Exile it at the beginning of the next
+//	 end step or if it would leave the battlefield. Unearth only as a
+//	 sorcery.)"
+//
+// Impact Tremors' shape with "another" instead of "a" — the Gatekeeper
+// itself entering does not ping anybody, including its own unearthed
+// return. Unearth is the constructor: the return, the haste, the
+// end-step exile and the leaves-the-battlefield redirect all come with
+// the keyword.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "90fdfba8-f29e-44f9-91d2-7bf3c458a9c1",
+		Name:         "Molten Gatekeeper",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			effects.CreatureEnterPaying(effects.On(game.EventETB, effects.AnotherCreatureEnteredUnderYourControl,
+				"Molten Gatekeeper — 1 damage to each opponent", effects.Do(effects.DamageEachOpponent{N: 1})),
+				game.CreatureEnterPayoff{DamageEachOpponent: 1}),
+		},
+		Activated: []effects.ActivatedAbility{effects.Unearth("{R}")},
+	})
+}

@@ -657,6 +657,14 @@ type CastSpellParams struct {
 	// announcement's resume, so no payload answers for an opponent.
 	opponentPicks []opponentPick
 
+	// opponentMode is the mode half of a parked cast whose modes an
+	// opponent chooses (#5771, ModeSpec.ChosenByOpponent,
+	// opponent_mode.go): the opponent the caster named, and that
+	// opponent's modes once they have answered. Unexported, and set only
+	// by the parked announcement's resume, so no payload answers for an
+	// opponent.
+	opponentMode *opponentModeAnswer
+
 	// splicedRefs are the refs of Targets that answer a spliced text
 	// (TargetRef.Splice > 0), taken out of Targets as the cast begins so
 	// that everything reading Targets reads the spell's own text's, as
@@ -1323,7 +1331,23 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		OracleID:      CatalogKey(card),
 		OptionalCosts: params.OptionalCosts,
 	})
-	if err := validateModes(modeSpec, modeMin, modeMax, params.Modes); err != nil {
+	// #5771, CR 700.2e: "An opponent chooses one —". The caster's payload
+	// names no mode; the cast parks below, before anything is paid, until
+	// the opponent has chosen, and the answer rides params.opponentMode.
+	modesPending, err := settleOpponentModes(modeSpec, &params)
+	if err != nil {
+		slog.Warn("cast_spell rejected: the caster named a mode an opponent chooses",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"modes_received", params.Modes,
+		)
+		return err
+	}
+	if modesPending {
+		// Nothing to validate yet: the opponent's answer is checked
+		// against the same bounds when it is given (validateModePick),
+		// and again here on the re-run.
+	} else if err := validateModes(modeSpec, modeMin, modeMax, params.Modes); err != nil {
 		slog.Warn("cast_spell rejected: bad mode choice",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1386,6 +1410,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if len(steps) == 0 && modeSpec != nil && len(params.Targets) > 0 {
 		return ErrInvalidParam
 	}
+	// #5771: an opponent chose the mode, so the caster's payload could
+	// not name its bullet's targets; the cast asks for them below.
+	markAfterOpponentMode(modeSpec, steps)
 	// ADR 0089 §3: a card whose ONLY clause is the one an unpaid
 	// optional cost would add (Valley Rally's "if the gift was
 	// promised, target creature you control") has structured
@@ -1419,6 +1446,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #4869, CR 601.2a: and it is cast, so it is not its own target.
 	castSrc := SourceCast(playerID, &card)
 	castSrc.X = params.XValue
+	// #5771: "that player" is the opponent who chose the mode.
+	castSrc.modeChooser = params.opponentMode.chosenBy()
 	// #2055: the payload names targets for the caster's own clauses
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
@@ -2081,10 +2110,25 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	asking = append(asking, costCommanderMovesTo(ZoneHand, spliceReturnIDsOf(params.SplicePayments)...)...)
 	// #5247: and the additional cost's return to hand (Fear of Isolation).
 	asking = append(asking, costCommanderMovesTo(ZoneHand, params.ReturnIDs...)...)
+	// #5771, CR 700.2e: an opponent's mode choice still to be made parks
+	// the cast here, at the same point and for the same reason: the
+	// caster names an opponent (when more than one could choose), that
+	// opponent answers a mode_pick, and the answer casts it again
+	// (opponent_mode.go). CR 601.2b's mode comes before CR 601.2c's
+	// targets, so this is asked first.
+	if modesPending {
+		parked := params
+		parked.Targets = ownTargets
+		return g.parkForOpponentModeLocked(&opponentTargetFrame{
+			parkedAnnouncement: castAnnouncement(playerID, cardID, card.Name, parked),
+		}, castSrc, modeSpec)
+	}
 	// #2055: an "of an opponent's choice" clause still unanswered parks
 	// the cast here, before anything is paid or moved (CR 601.2c comes
 	// before CR 601.2h): the caster names an opponent and that opponent
 	// picks, and each answer casts it again (opponent_target.go).
+	// #5771: so does a bullet an opponent chose, whose targets the caster
+	// is asked for now that the bullet is known.
 	if len(oppTargets.pending) > 0 {
 		parked := params
 		parked.Targets = ownTargets
@@ -2239,6 +2283,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		// #2055: who chose each "of an opponent's choice" clause.
 		TargetChoosers: copyTargetChoosers(oppTargets.choosers),
+		ModeChooser:    params.opponentMode.chosenBy(), // #5771: who chose the mode, when an opponent did
 		Spliced:        cloneSplicedTexts(spliced),
 		Modes:          append([]int(nil), params.Modes...),
 		XValue:         params.XValue,
@@ -2679,6 +2724,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasSubtype(ch, "Otter") && !strings.EqualFold(sc.Name, "Alania, Divergent Storm") {
 				tally.OtterSpellsExceptAlania++
 			}
+			// Acolyte of Bahamut's "first Dragon spell you cast each turn".
+			if characteristicHasSubtype(ch, "Dragon") {
+				tally.DragonSpells++
+			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {
 				tally.InstantSorceryVillain++
@@ -2768,8 +2817,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #4973: a modal spell's modes were chosen as it was cast (CR 601.2b,
 	// 700.2a) — "you face a dilemma". Before EventCast, as the choice
 	// came before the cast finished.
+	// #5771, CR 700.2e: when an opponent chose them, it is that opponent
+	// who faced it.
 	if modeSpec != nil && len(params.Modes) > 0 {
-		g.emitFacedDilemmaLocked(playerID, cardID)
+		chooser := playerID
+		if by := params.opponentMode.chosenBy(); by != uuid.Nil {
+			chooser = by
+		}
+		g.emitFacedDilemmaLocked(chooser, cardID)
 	}
 	castEv := Event{
 		Kind:    EventCast,
@@ -6563,7 +6618,8 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 		// on the stack, and there is nobody left to make the
 		// announcement (CR 800.4a, CR 800.4d), so the prompt is
 		// withdrawn and nothing runs.
-		if c != nil && c.Chooser != playerID && c.PickTargetFor == playerID {
+		// #5771: and an opponent choosing the mode of their spell.
+		if c != nil && c.Chooser != playerID && (c.PickTargetFor == playerID || c.ModePickFor == playerID) {
 			g.EmitEvent(Event{
 				Kind:   EventPendingChoiceDropped,
 				Actor:  c.Chooser,
@@ -9341,6 +9397,9 @@ func intrinsicLandOriginsFor(rows []ManaAbilityShape) AbilityOrigins {
 // it had before.
 func intrinsicLandManaAbilities(c *Card) []ManaAbilityShape {
 	if !hasCardType(c, "land") {
+		return nil
+	}
+	if c.effective != nil && c.effective.IntrinsicLandManaRemoved {
 		return nil
 	}
 	var subtypes []string

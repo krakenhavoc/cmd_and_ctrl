@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	cast := WhenYouCastThisSpell("Elder Deep-Fiend — tap up to four target permanents", tapEachLegalTarget)
+	cast := WhenYouCastThisSpell("Elder Deep-Fiend — tap up to four target permanents", TapEachLegalTarget)
 	cast.Targets = TargetPermanent("up to four target permanents").WithCount(0, 4)
 	Register(Spec{
 		OracleID:         "4eafe717-4ba4-4901-8c67-11757230eb54",
@@ -32,9 +32,9 @@ func init() {
 
 // tapEachLegalTarget taps each of the item's still-legal card targets —
 // "tap up to N target permanents".
-func tapEachLegalTarget(g *game.Game, item *game.StackItem) error {
+func TapEachLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, id := range legalTargetCards(item, g) {
+	for _, id := range LegalTargetCards(item, g) {
 		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
 			return err
 		}

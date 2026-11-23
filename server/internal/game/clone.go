@@ -964,6 +964,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
 		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
+		ModeChooser:      s.ModeChooser,
 		XValue:           s.XValue,
 		HoldPriority:     s.HoldPriority,
 		SplitSecond:      s.SplitSecond,
@@ -980,6 +981,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		// #3863

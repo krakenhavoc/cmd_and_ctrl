@@ -19,7 +19,7 @@ import (
 // now, or as it last existed when it has left the battlefield (CR 608.2h).
 // It is asked at announcement (CR 601.2c, 602.2b) and again on resolution
 // (CR 608.2b).
-func rprB03AbilitiesFromOpponentsCantTargetThis(label string) game.TargetingRestriction {
+func RprB03AbilitiesFromOpponentsCantTargetThis(label string) game.TargetingRestriction {
 	return game.TargetingRestriction{
 		Label: label,
 		Zones: []game.ZoneKind{game.ZoneBattlefield},
@@ -34,7 +34,7 @@ func rprB03AbilitiesFromOpponentsCantTargetThis(label string) game.TargetingRest
 
 // rprB03IsEnchantedOrEquipped is "enchanted or equipped": an Aura or an
 // Equipment is attached to the permanent right now (CR 303.4, 301.5).
-func rprB03IsEnchantedOrEquipped(g *game.Game, id uuid.UUID) bool {
+func RprB03IsEnchantedOrEquipped(g *game.Game, id uuid.UUID) bool {
 	for _, a := range g.BattlefieldCardsForEffect() {
 		if a.IsAttachedTo(id) && (a.IsAura() || a.HasSubtype("Equipment")) {
 			return true
@@ -45,7 +45,7 @@ func rprB03IsEnchantedOrEquipped(g *game.Game, id uuid.UUID) bool {
 
 // rprB03IsOfChosenType is "of the chosen type" for Umori's choice of any
 // card type, over the card's effective types.
-func rprB03IsOfChosenType(chosen string, c game.Card) bool {
+func RprB03IsOfChosenType(chosen string, c game.Card) bool {
 	switch chosen {
 	case "":
 		return false

@@ -34,7 +34,7 @@ func init() {
 		Name:            "Domri, Anarch of Bolas",
 		Completeness:    CompletenessFull,
 		StartingLoyalty: 3,
-		Static:          []game.StaticAbility{b16Anthem(b41CreatureYouControlStatic, 1, 0)},
+		Static:          []game.StaticAbility{B16Anthem(B41CreatureYouControlStatic, 1, 0)},
 		Activated: []ActivatedAbility{
 			{
 				Label: "+1: Add {R} or {G}. Creature spells you cast this turn can't be countered.",
@@ -53,7 +53,7 @@ func init() {
 					TargetCreature("target creature you control", YouControl()),
 					TargetCreature("target creature you don't control", OpponentControls()),
 				),
-				Effect: domriFight,
+				Effect: DomriFight,
 			},
 		},
 	})
@@ -61,7 +61,7 @@ func init() {
 
 // domriFight is Domri's −2: the slot-0 creature fights the slot-1
 // creature, and only while both are still legal targets (CR 701.14b).
-func domriFight(g *game.Game, item *game.StackItem) error {
+func DomriFight(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	mine, ok := ctx.ClauseTarget(0)
 	if !ok || mine.Kind != game.TargetCard {
@@ -71,5 +71,5 @@ func domriFight(g *game.Game, item *game.StackItem) error {
 	if !ok || theirs.Kind != game.TargetCard {
 		return nil
 	}
-	return b10Fight(ctx, mine.ID, theirs.ID)
+	return B10Fight(ctx, mine.ID, theirs.ID)
 }

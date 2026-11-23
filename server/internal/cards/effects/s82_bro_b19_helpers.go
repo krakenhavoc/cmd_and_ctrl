@@ -12,7 +12,7 @@ import (
 // for an activated ability with one battlefield target (Drafna, Founder of
 // Lat-Nam): the target goes back if it is still a permanent on the
 // battlefield as the ability resolves.
-func s82Bro19BounceTarget(g *game.Game, item *game.StackItem) error {
+func S82Bro19BounceTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	target := FirstLegalBattlefieldTarget(ctx)
 	if target == uuid.Nil {

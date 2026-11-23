@@ -15,7 +15,7 @@ import (
 // that is illegal as the ability resolves, nothing moves (CR 608.2b).
 // The cards are the ones in the graveyard as the ability resolves; each
 // one is a zone change of its own, in an order nobody chooses or sees.
-func cmdr2S53TargetPlayerBottomsTheirGraveyard(g *game.Game, item *game.StackItem) error {
+func Cmdr2S53TargetPlayerBottomsTheirGraveyard(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
@@ -39,7 +39,7 @@ func cmdr2S53TargetPlayerBottomsTheirGraveyard(g *game.Game, item *game.StackIte
 // and put the other on the bottom of that library. The looker alone may
 // play the exiled card for as long as it stays exiled, spending mana as
 // though it were mana of any color.
-func cmdr2S53SiphonInsightLook(g *game.Game, item *game.StackItem) error {
+func Cmdr2S53SiphonInsightLook(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var opp uuid.UUID
 	for _, t := range ctx.LegalTargets() {
@@ -96,7 +96,7 @@ func cmdr2S53SiphonInsightFinish(g *game.Game, controller, source uuid.UUID, loo
 		took[id] = true
 	}
 	var rest []uuid.UUID
-	for _, id := range cardsStillInALibrary(g, looked) {
+	for _, id := range CardsStillInALibrary(g, looked) {
 		if !took[id] {
 			rest = append(rest, id)
 		}

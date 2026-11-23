@@ -22,7 +22,7 @@ import (
 // playerGetsRadCounters is "<player> gets n rad counters", given by
 // `giver` (the item's controller). A player who has left the game gets
 // nothing (CR 800.4a).
-func playerGetsRadCounters(g *game.Game, giver, player uuid.UUID, n int) error {
+func PlayerGetsRadCounters(g *game.Game, giver, player uuid.UUID, n int) error {
 	if n <= 0 {
 		return nil
 	}
@@ -34,12 +34,12 @@ func playerGetsRadCounters(g *game.Game, giver, player uuid.UUID, n int) error {
 
 // eachPlayerGetsRadCounters is "each player gets n rad counters", in
 // seat order.
-func eachPlayerGetsRadCounters(g *game.Game, giver uuid.UUID, n int) error {
+func EachPlayerGetsRadCounters(g *game.Game, giver uuid.UUID, n int) error {
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated {
 			continue
 		}
-		if err := playerGetsRadCounters(g, giver, p.ID, n); err != nil {
+		if err := PlayerGetsRadCounters(g, giver, p.ID, n); err != nil {
 			return err
 		}
 	}
@@ -48,12 +48,12 @@ func eachPlayerGetsRadCounters(g *game.Game, giver uuid.UUID, n int) error {
 
 // eachOpponentGetsRadCounters is "each opponent gets n rad counters":
 // every player still in the game other than `giver`.
-func eachOpponentGetsRadCounters(g *game.Game, giver uuid.UUID, n int) error {
+func EachOpponentGetsRadCounters(g *game.Game, giver uuid.UUID, n int) error {
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.ID == giver {
 			continue
 		}
-		if err := playerGetsRadCounters(g, giver, p.ID, n); err != nil {
+		if err := PlayerGetsRadCounters(g, giver, p.ID, n); err != nil {
 			return err
 		}
 	}
@@ -63,12 +63,12 @@ func eachOpponentGetsRadCounters(g *game.Game, giver uuid.UUID, n int) error {
 // damagedPlayerGetsRadCounters is "Whenever this creature deals combat
 // damage to a player, they get n rad counters" (Glowing One): the
 // damaged player is the triggering event's target.
-func damagedPlayerGetsRadCounters(n int) Effect {
+func DamagedPlayerGetsRadCounters(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if item.Trigger == nil {
 			return nil
 		}
-		return playerGetsRadCounters(g, item.Controller, item.Trigger.Event.Target, n)
+		return PlayerGetsRadCounters(g, item.Controller, item.Trigger.Event.Target, n)
 	}
 }
 
@@ -86,13 +86,13 @@ func ANonlandCardWasMilled(ev game.Event, _ *game.Card, _ game.Characteristic, g
 // targetPlayerGetsRadCounters is "target player gets n rad counters"
 // (Nightkin Ambusher): the player the item targets, if that target is
 // still legal as it resolves (CR 608.2b).
-func targetPlayerGetsRadCounters(n int) Effect {
+func TargetPlayerGetsRadCounters(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		target := targetedPlayerOf(NewContext(g, item))
+		target := TargetedPlayerOf(NewContext(g, item))
 		if target == uuid.Nil {
 			return nil
 		}
-		return playerGetsRadCounters(g, item.Controller, target, n)
+		return PlayerGetsRadCounters(g, item.Controller, target, n)
 	}
 }
 
@@ -108,7 +108,7 @@ func DefendingPlayerHasARadCounter(g *game.Game, _ uuid.UUID, attacker game.Card
 
 // radCountersAmongPlayers is "the total number of rad counters among
 // players": every rad counter every player still in the game has.
-func radCountersAmongPlayers(g *game.Game) int {
+func RadCountersAmongPlayers(g *game.Game) int {
 	total := 0
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated {
@@ -127,7 +127,7 @@ func radCountersAmongPlayers(g *game.Game) int {
 // tapped as it enters and the player gets the counters, through the
 // CR 614 player-counter window; on "no", or in a window that cannot
 // ask, nothing happens and the land enters untapped.
-func mayEnterTappedToGetRadCounters(name string, n int) game.ReplacementEffect {
+func MayEnterTappedToGetRadCounters(name string, n int) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		RowLabel:        fmt.Sprintf("You may have this land enter tapped. If you do, you get %d rad counters.", n),
 		EntryOnly:       true,
@@ -148,7 +148,7 @@ func mayEnterTappedToGetRadCounters(name string, n int) game.ReplacementEffect {
 			if player == uuid.Nil {
 				return nil
 			}
-			return playerGetsRadCounters(g, player, player, n)
+			return PlayerGetsRadCounters(g, player, player, n)
 		},
 	}
 }
@@ -156,7 +156,7 @@ func mayEnterTappedToGetRadCounters(name string, n int) game.ReplacementEffect {
 // radCountersYouHave is the amount for "costs {1} less to activate for
 // each rad counter you have": the activator's rad counters at the time
 // the cost is determined (CR 602.2b, 601.2f). It never goes below zero.
-func radCountersYouHave(q game.CostQuery) int {
+func RadCountersYouHave(q game.CostQuery) int {
 	if q.Game == nil {
 		return 0
 	}

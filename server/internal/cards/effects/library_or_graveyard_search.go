@@ -22,12 +22,12 @@ import (
 // into your hand" enters trigger. `self` is the creature's name, used
 // only for the stack and prompt labels. Declining the "you may" neither
 // searches nor shuffles.
-func mayFetchNamedFromLibraryOrGraveyard(self, named string) game.TriggeredAbility {
-	return On(game.EventETB, b06SelfETB, self+" — search for "+named,
+func MayFetchNamedFromLibraryOrGraveyard(self, named string) game.TriggeredAbility {
+	return On(game.EventETB, B06SelfETB, self+" — search for "+named,
 		func(g *game.Game, item *game.StackItem) error {
 			return MayChoice{
 				Question: self + " — search your library and/or graveyard for a card named " + named + "?",
-				Then:     maySearchNamedLibraryOrGraveyard,
+				Then:     MaySearchNamedLibraryOrGraveyard,
 				Word:     named,
 			}.Apply(NewContext(g, item))
 		})
@@ -48,7 +48,7 @@ func init() {
 			Name:            c.name,
 			Completeness:    CompletenessFull,
 			PrintedKeywords: c.keywords,
-			Triggered:       []game.TriggeredAbility{mayFetchNamedFromLibraryOrGraveyard(c.name, c.fetches)},
+			Triggered:       []game.TriggeredAbility{MayFetchNamedFromLibraryOrGraveyard(c.name, c.fetches)},
 		})
 	}
 }

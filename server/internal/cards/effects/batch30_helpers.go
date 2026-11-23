@@ -35,8 +35,8 @@ import (
 // b30SacrificeAnArtifactOrCreature is Dockside Chef's "Sacrifice an
 // artifact or creature" — any artifact or creature the activator
 // controls, the Chef itself included (it is a creature).
-func b30SacrificeAnArtifactOrCreature() game.AbilityCost {
-	return game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact or creature", Or(Artifact(), Creature()))}
+func B30SacrificeAnArtifactOrCreature() game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: SacrificeSpec("an artifact or creature", Or(Artifact(), Creature()))}
 }
 
 // --- card reads --------------------------------------------------
@@ -47,7 +47,7 @@ func b30SacrificeAnArtifactOrCreature() game.AbilityCost {
 // identical, and this is kept as a thin alias rather than renamed at
 // every existing call site (batches 30/33/34, Solemn Simulacrum, the
 // Aang deck).
-func b30IsBasicLandCard(c game.Card) bool {
+func B30IsBasicLandCard(c game.Card) bool {
 	return IsBasicLand(c)
 }
 
@@ -78,7 +78,7 @@ func b30OtherSquirrelsAndFoodControlled(g *game.Game, controller, self uuid.UUID
 // Current toughness (layers plus counters), so an anthem and a
 // -1/-1 counter both count; a negative toughness contributes as
 // itself, since the sum is what the card asks for.
-func b30TotalToughnessControlled(g *game.Game, controller uuid.UUID) int {
+func B30TotalToughnessControlled(g *game.Game, controller uuid.UUID) int {
 	g.RecomputeLayersIfStaleLocked()
 	total := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -95,7 +95,7 @@ func b30TotalToughnessControlled(g *game.Game, controller uuid.UUID) int {
 func b30DesertsControlled(g *game.Game, controller uuid.UUID) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && b02IsDesert(g, controller, c) {
+		if c.Controller == controller && B02IsDesert(g, controller, c) {
 			n++
 		}
 	}
@@ -108,8 +108,8 @@ func b30DesertsControlled(g *game.Game, controller uuid.UUID) int {
 // the cast that put it there left the caster's hand — the cast
 // event records its origin zone. A cast from the command zone, a
 // graveyard or exile is a cast, but not from hand.
-func b30CastFromHand(g *game.Game, cardID uuid.UUID) bool {
-	if !b16EnteredFromStack(g, cardID) {
+func B30CastFromHand(g *game.Game, cardID uuid.UUID) bool {
+	if !B16EnteredFromStack(g, cardID) {
 		return false
 	}
 	for i := len(g.Events) - 1; i >= 0; i-- {
@@ -137,8 +137,8 @@ func b30CreaturesYouControlWithFlying(target *game.Card, _ *game.Game, source *g
 // second trigger: a Squirrel or Food other than the source entered
 // under the source's controller's control. A Food token counts — a
 // token's entry emits the same EventETB a card's does.
-func b30AnotherSquirrelOrFoodYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+func B30AnotherSquirrelOrFoodYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && b30SquirrelOrFood(c, source.TextSubtype("Squirrel"))
 }
 
@@ -147,11 +147,11 @@ func b30AnotherSquirrelOrFoodYouControlEntered(ev game.Event, source *game.Card,
 // enters" (Grim Guardian). Eidolon of Blossoms' shape: the source's
 // own entry, or another enchantment entering under the same
 // control.
-func b30SelfOrAnotherEnchantmentYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+func B30SelfOrAnotherEnchantmentYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind == game.EventETB && ev.CardID == source.InstanceID {
 		return true
 	}
-	c, ok := enteredUnderYourControl(ev, source, g, true)
+	c, ok := EnteredUnderYourControl(ev, source, g, true)
 	return ok && c.IsEnchantment()
 }
 
@@ -162,8 +162,8 @@ func b30SelfOrAnotherEnchantmentYouControlEntered(ev game.Event, source *game.Ca
 // cost emits the same life-change event a drain does, so the card's
 // own "Pay 2 life" counts, as printed. Re-run at resolution by the
 // effect body.
-func b30YourEndStepAndYouGainedAndLostLifeThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
-	return b24YourEndStepAndYouGainedLifeThisTurn(ev, source, g) && b18LifeLostThisTurn(g, source.Controller) > 0
+func B30YourEndStepAndYouGainedAndLostLifeThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+	return B24YourEndStepAndYouGainedLifeThisTurn(ev, source, g) && B18LifeLostThisTurn(g, source.Controller) > 0
 }
 
 // b30YouDiscardedCardWhere reports whether the source's controller
@@ -176,8 +176,8 @@ func b30YourEndStepAndYouGainedAndLostLifeThisTurn(ev game.Event, source *game.C
 // top of a library is NOT revealed, so a strict reading would let the
 // trigger see only what a public zone shows. Nothing in the catalog
 // depends on the difference today.
-func b30YouDiscardedCardWhere(ev game.Event, source *game.Card, g *game.Game, match func(game.Card) bool) bool {
-	if !discardedByYou(ev, source) {
+func B30YouDiscardedCardWhere(ev game.Event, source *game.Card, g *game.Game, match func(game.Card) bool) bool {
+	if !DiscardedByYou(ev, source) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -189,7 +189,7 @@ func b30YouDiscardedCardWhere(ev game.Event, source *game.Card, g *game.Game, ma
 // changeling is a Human and does not count. The rest of the printed
 // condition (combat damage to a player, by a creature you control,
 // once per player) is the constructor's, #784.
-func b30NonHuman() CardPredicate {
+func B30NonHuman() CardPredicate {
 	return Not(Subtype("Human"))
 }
 
@@ -197,9 +197,9 @@ func b30NonHuman() CardPredicate {
 // announce: the source's controller's end step began and their
 // creatures' total toughness meets `n`. Re-run at resolution by the
 // effect body, as CR 603.4 asks.
-func b30EndStepAndTotalToughnessAtLeast(ev game.Event, source *game.Card, g *game.Game, n int) bool {
+func B30EndStepAndTotalToughnessAtLeast(ev game.Event, source *game.Card, g *game.Game, n int) bool {
 	return ev.Kind == game.EventBeginEndStep && ev.Actor == source.Controller &&
-		b30TotalToughnessControlled(g, source.Controller) >= n
+		B30TotalToughnessControlled(g, source.Controller) >= n
 }
 
 // --- effect bodies -----------------------------------------------
@@ -209,12 +209,12 @@ func b30EndStepAndTotalToughnessAtLeast(ev game.Event, source *game.Card, g *gam
 // players' graveyards" (Stonespeaker Crystal, Thraben Charm). With
 // no targets named it exiles nothing, which is what "any number"
 // allows.
-func b30ExileTargetGraveyards(ctx *Context) error {
+func B30ExileTargetGraveyards(ctx *Context) error {
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
 			continue
 		}
-		if err := exileGraveyardForEffect(ctx.Game, ctx.Item, t.ID); err != nil {
+		if err := ExileGraveyardForEffect(ctx.Game, ctx.Item, t.ID); err != nil {
 			return err
 		}
 	}
@@ -223,9 +223,9 @@ func b30ExileTargetGraveyards(ctx *Context) error {
 
 // b30ExileTargetGraveyardsThenDraw is Stonespeaker Crystal's
 // activated body: the graveyards, then a card, in printed order.
-func b30ExileTargetGraveyardsThenDraw(g *game.Game, item *game.StackItem) error {
+func B30ExileTargetGraveyardsThenDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if err := b30ExileTargetGraveyards(ctx); err != nil {
+	if err := B30ExileTargetGraveyards(ctx); err != nil {
 		return err
 	}
 	return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
@@ -237,7 +237,7 @@ func b30ExileTargetGraveyardsThenDraw(g *game.Game, item *game.StackItem) error 
 // not read again mid-loop, and each placement runs through
 // AddCounter so a counter doubler applies to the doubling, as
 // printed. A target that has left the battlefield is left alone.
-func b30DoubleEachCounterKindOn(ctx *Context, target uuid.UUID) error {
+func B30DoubleEachCounterKindOn(ctx *Context, target uuid.UUID) error {
 	if z := ctx.Game.FindCardZoneForEffect(target); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}
@@ -262,13 +262,13 @@ func b30DoubleEachCounterKindOn(ctx *Context, target uuid.UUID) error {
 // b30DoubleCountersOnFirstLegalTarget is Vorel's activated body:
 // the announced target, if it is still legal, has each kind of
 // counter on it doubled.
-func b30DoubleCountersOnFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+func B30DoubleCountersOnFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
-	return b30DoubleEachCounterKindOn(ctx, id)
+	return B30DoubleEachCounterKindOn(ctx, id)
 }
 
 // b30PutCounterOnEachArtifactCreatureOrVehicleYouControl is Iron
@@ -276,7 +276,7 @@ func b30DoubleCountersOnFirstLegalTarget(g *game.Game, item *game.StackItem) err
 // and every Vehicle the controller controls, the Spider itself
 // included. The set is snapshotted first so a counter payoff that
 // makes an artifact mid-loop is not counted.
-func b30PutCounterOnEachArtifactCreatureOrVehicleYouControl(g *game.Game, item *game.StackItem) error {
+func B30PutCounterOnEachArtifactCreatureOrVehicleYouControl(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -288,7 +288,7 @@ func b30PutCounterOnEachArtifactCreatureOrVehicleYouControl(g *game.Game, item *
 		}
 	}
 	for _, id := range ids {
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx.asGroupMember()); err != nil {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}
@@ -299,23 +299,23 @@ func b30PutCounterOnEachArtifactCreatureOrVehicleYouControl(g *game.Game, item *
 // target creature you don't control" (Surly Badgersaur): the source,
 // if it is still on the battlefield, fights the announced target if
 // one was chosen and it is still legal.
-func b30SourceFightsFirstLegalTarget(g *game.Game, item *game.StackItem) error {
-	if !b09SourceStillOnBattlefield(g, item) {
+func B30SourceFightsFirstLegalTarget(g *game.Game, item *game.StackItem) error {
+	if !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
-	return b10Fight(ctx, item.SourceCardID, id)
+	return B10Fight(ctx, item.SourceCardID, id)
 }
 
 // putCounterOnSelf puts one +1/+1 counter on the item's source if
 // it is still on the battlefield — Honored Dreyleader's second
 // trigger, Surly Badgersaur's first.
-func putCounterOnSelf(g *game.Game, item *game.StackItem) error {
-	if !b09SourceStillOnBattlefield(g, item) {
+func PutCounterOnSelf(g *game.Game, item *game.StackItem) error {
+	if !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
@@ -324,8 +324,8 @@ func putCounterOnSelf(g *game.Game, item *game.StackItem) error {
 // b30CountersForOtherSquirrelsAndFood is Honored Dreyleader's entry
 // body: one +1/+1 counter per other Squirrel or Food the controller
 // controls, counted as the trigger resolves.
-func b30CountersForOtherSquirrelsAndFood(g *game.Game, item *game.StackItem) error {
-	if !b09SourceStillOnBattlefield(g, item) {
+func B30CountersForOtherSquirrelsAndFood(g *game.Game, item *game.StackItem) error {
+	if !B09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
 	n := b30OtherSquirrelsAndFoodControlled(g, item.Controller, item.SourceCardID, g.TextReaderForEffect(item).TextSubtype("Squirrel"))
@@ -358,21 +358,21 @@ func b30EachOpponentLosesHalfTheirLife(ctx *Context) error {
 // creature you control at 20, halve each opponent's life at 40.
 // The whole trigger was gated on 10 at announce; below it now, the
 // intervening-if fails and nothing happens.
-func b30BetorEndStep(g *game.Game, item *game.StackItem) error {
+func B30BetorEndStep(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if b30TotalToughnessControlled(g, item.Controller) < 10 {
+	if B30TotalToughnessControlled(g, item.Controller) < 10 {
 		return nil
 	}
 	if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
 		return err
 	}
-	if b30TotalToughnessControlled(g, item.Controller) < 20 {
+	if B30TotalToughnessControlled(g, item.Controller) < 20 {
 		return nil
 	}
-	if err := b16UntapAllYouControlMatching(ctx, item.Controller, func(c game.Card) bool { return c.IsCreature() }); err != nil {
+	if err := B16UntapAllYouControlMatching(ctx, item.Controller, func(c game.Card) bool { return c.IsCreature() }); err != nil {
 		return err
 	}
-	if b30TotalToughnessControlled(g, item.Controller) < 40 {
+	if B30TotalToughnessControlled(g, item.Controller) < 40 {
 		return nil
 	}
 	return b30EachOpponentLosesHalfTheirLife(ctx)
@@ -381,7 +381,7 @@ func b30BetorEndStep(g *game.Game, item *game.StackItem) error {
 // b30LoseOneIfYouGainedLifeThisTurn is Lunar Convocation's first
 // end-step body: the intervening-if re-checked at resolution, then
 // each opponent loses 1.
-var b30LoseOneIfYouGainedLifeThisTurn = Do(If{
+var B30LoseOneIfYouGainedLifeThisTurn = Do(If{
 	Cond: CondLifeGained{},
 	Then: []Applier{EachOpponentLosesLife{N: 1}},
 })
@@ -389,7 +389,7 @@ var b30LoseOneIfYouGainedLifeThisTurn = Do(If{
 // b30BatIfYouGainedAndLostLifeThisTurn is Lunar Convocation's second
 // end-step body: the intervening-if re-checked at resolution, then a
 // Bat. "Gained and lost" is one If inside another.
-var b30BatIfYouGainedAndLostLifeThisTurn = Do(If{
+var B30BatIfYouGainedAndLostLifeThisTurn = Do(If{
 	Cond: CondLifeGained{},
 	Then: []Applier{If{
 		Cond: CondLifeLost{},
@@ -400,10 +400,10 @@ var b30BatIfYouGainedAndLostLifeThisTurn = Do(If{
 // b30FetchBasicTapped is Promising Vein's search: a basic land card
 // (by supertype, so a snow basic qualifies), onto the battlefield
 // tapped, then shuffle.
-func b30FetchBasicTapped(g *game.Game, item *game.StackItem) error {
+func B30FetchBasicTapped(g *game.Game, item *game.StackItem) error {
 	return SearchLibrary{
 		Player:        item.Controller,
-		Predicate:     b30IsBasicLandCard,
+		Predicate:     B30IsBasicLandCard,
 		Dest:          game.ZoneBattlefield,
 		Limit:         1,
 		Reveal:        true,
@@ -429,7 +429,7 @@ func b30ZombiesIfThreeDeserts(g *game.Game, item *game.StackItem, controller uui
 // up to two land cards onto the battlefield tapped, then shuffle,
 // then the Desert check — in the continuation, because the search
 // may be waiting on the searcher's pick when this returns.
-func b30SearchUpToTwoLandsTappedThenZombies(item *game.StackItem, ctx *Context) error {
+func B30SearchUpToTwoLandsTappedThenZombies(item *game.StackItem, ctx *Context) error {
 	controller := item.Controller
 	return SearchLibrary{
 		Player:        controller,

@@ -43,7 +43,7 @@ func init() {
 // delifsCone is the delayed trigger's body.
 func delifsCone(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	it := firstPayloadCard(ctx)
+	it := FirstPayloadCard(ctx)
 	if it == uuid.Nil {
 		return nil
 	}
@@ -58,8 +58,8 @@ func delifsCone(g *game.Game, item *game.StackItem) error {
 // power (the carried ID), and it assigns no combat damage this turn. Keyed
 // (#4291).
 var delifsConeAnswer = MayYes("confirm/delifs-cone-gain-life", func(ctx *Context, r game.ConfirmAnswer) error {
-	it := carryAt(r, 0)
-	if err := (GainLife{Player: ctx.Controller(), Amount: powerNowOrLastKnown(ctx.Game, it)}).Apply(ctx); err != nil {
+	it := CarryAt(r, 0)
+	if err := (GainLife{Player: ctx.Controller(), Amount: PowerNowOrLastKnown(ctx.Game, it)}).Apply(ctx); err != nil {
 		return err
 	}
 	ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), it, "Delif's Cone — assigns no combat damage this turn")

@@ -26,7 +26,7 @@ func ExileThisTokenAtEndStepGrant(key, label string) AbilityGrant {
 // from last-known information if the original has already left the stack
 // (CR 608.2h), with the new-targets choice its controller is owed (CR
 // 707.10c). It is created, not cast, so it triggers no cast trigger.
-func copyTheTriggeringSpellWithNewTargets(g *game.Game, item *game.StackItem) error {
+func CopyTheTriggeringSpellWithNewTargets(g *game.Game, item *game.StackItem) error {
 	return CopySpell{
 		StackID:          item.Trigger.Event.CardID,
 		Controller:       item.Controller,

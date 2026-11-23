@@ -20,10 +20,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	enters := WhenThisEnters("Invasion of Tolvada — return target nonbattle permanent card from your graveyard to the battlefield",
-		returnFirstLegalGraveyardTargetToBattlefield)
+		ReturnFirstLegalGraveyardTargetToBattlefield)
 	enters.Targets = TargetCardInGraveyard("target nonbattle permanent card from your graveyard", Permanent(), Not(Battle()), YouOwn())
 	Register(Spec{
-		OracleID:     invasionOfTolvadaOracleID,
+		OracleID:     InvasionOfTolvadaOracleID,
 		Name:         "Invasion of Tolvada",
 		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
@@ -39,4 +39,4 @@ func init() {
 
 // invasionOfTolvadaOracleID is shared with the back face's spec, which
 // registers under this ID plus "#1".
-const invasionOfTolvadaOracleID = "7f8dad7f-a573-469f-9095-4ba3886b4f0b"
+const InvasionOfTolvadaOracleID = "7f8dad7f-a573-469f-9095-4ba3886b4f0b"

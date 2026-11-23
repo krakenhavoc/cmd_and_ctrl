@@ -1,0 +1,35 @@
+package cardsb
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Bestial Incursion — Sorcery {3}{G}:
+//
+//	"Create a 4/4 green Beast creature token with trample.
+//	 Flashback {5}{G} (You may cast this card from your graveyard for
+//	 its flashback cost. Then exile it.)"
+//
+// Flashback is the shared constructor, which bundles the graveyard
+// cast zone, the price and CR 702.34a's exile-on-leaving-the-stack.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:         "bc00f29a-e9d2-4b86-bb22-33b686ac4365",
+		Name:             "Bestial Incursion",
+		Purpose:          game.Purpose{Tokens: 1},
+		Completeness:     effects.CompletenessFull,
+		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+		AlternativeCosts: []game.AlternativeCost{effects.Flashback("{5}{G}")},
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.CreateToken{
+				Controller: ctx.Controller(),
+				Template:   effects.TokenCard("4/4 green Beast with trample"),
+				N:          1,
+			}.Apply(ctx)
+		},
+	})
+}

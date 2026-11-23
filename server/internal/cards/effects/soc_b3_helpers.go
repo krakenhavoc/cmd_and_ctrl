@@ -13,8 +13,8 @@ import (
 // creature token you control deals combat damage to a player" (Curiosity
 // Crafter): the damage source is a creature token its controller
 // controls as the damage is dealt.
-func socB3CreatureTokenYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func SocB3CreatureTokenYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	src, ok := g.LookupCardForEffect(ev.Source)
@@ -25,7 +25,7 @@ func socB3CreatureTokenYouControlDealtCombatDamageToAPlayer(ev game.Event, sourc
 // a commander from the command zone this game: Player.CommanderCasts,
 // which only a cast from the command zone bumps, summed over every
 // commander they cast.
-func socB3CommanderCastsFromCommandZone(g *game.Game, player uuid.UUID) int {
+func SocB3CommanderCastsFromCommandZone(g *game.Game, player uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil {
 		return 0
@@ -48,7 +48,7 @@ func socB3CommanderCastsFromCommandZone(g *game.Game, player uuid.UUID) int {
 // whether an attacker has it is judged at declaration on its effective
 // types (AttackTargetRestriction.OnlyAttackersMatching), so a changeling
 // is an Inkling and a creature that stops being one may attack.
-func socB3SubtypeCantAttackYouOrYourPlaneswalkers(label, subtype string) game.StaticAbility {
+func SocB3SubtypeCantAttackYouOrYourPlaneswalkers(label, subtype string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: label,
 		Layer: game.Layer6Ability,
@@ -76,7 +76,7 @@ func socB3SubtypeCantAttackYouOrYourPlaneswalkers(label, subtype string) game.St
 // anyone, the controller included. Batched per attacked player
 // (OncePerBatchPerPlayer), so one declaration at one opponent is one
 // trigger however many creatures it names.
-func socB3APlayerAttackedYourOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SocB3APlayerAttackedYourOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if source == nil || ev.Kind != game.EventAttack || ev.Target == uuid.Nil || ev.Target == source.Controller {
 		return false
 	}
@@ -118,14 +118,14 @@ func demonstrateEffect(g *game.Game, item *game.StackItem) error {
 	return ChoosePlayer{
 		Among:    Opponents,
 		Question: "Demonstrate — choose an opponent to also copy the spell",
-		ThenKey:  demonstrateOpponentCopies,
+		ThenKey:  DemonstrateOpponentCopies,
 		Carry:    []uuid.UUID{spell},
 	}.Apply(ctx)
 }
 
 // demonstrateOpponentCopies is "that player copies the spell and may
 // choose new targets for that copy", keyed: the spell rides the prompt.
-var demonstrateOpponentCopies = ChoosePlayerThen("option-pick/demonstrate-opponent-copies", func(ctx *Context, chosen uuid.UUID, carry []uuid.UUID) error {
+var DemonstrateOpponentCopies = ChoosePlayerThen("option-pick/demonstrate-opponent-copies", func(ctx *Context, chosen uuid.UUID, carry []uuid.UUID) error {
 	if chosen == uuid.Nil || len(carry) == 0 {
 		return nil
 	}

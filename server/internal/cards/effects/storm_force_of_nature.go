@@ -42,7 +42,7 @@ func init() {
 					return WhenYouNextCast(
 						"Storm, Force of Nature — storm: copy that spell for each spell cast before it",
 						game.CastFilter{Types: []string{"Instant", "Sorcery"}},
-						stormTheSpellBody,
+						StormTheSpellBody,
 					).Apply(NewContext(g, item))
 				}),
 		},
@@ -51,7 +51,7 @@ func init() {
 
 // stormTheSpellBody is the delayed trigger's body: storm (CR 702.40a) for
 // the spell the watch fired on, which rides the item as its payload.
-var stormTheSpellBody = game.SimpleDelayedBody("storm/the-spell-just-cast", stormTheSpellYouJustCast)
+var StormTheSpellBody = game.SimpleDelayedBody("storm/the-spell-just-cast", stormTheSpellYouJustCast)
 
 func stormTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
 	cast := NewContext(g, item).PayloadCards()

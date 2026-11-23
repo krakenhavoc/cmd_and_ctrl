@@ -17,6 +17,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // exileTopUntilYouExileAnother is the shared resolution: exile the top
 // card of the controller's library and open its window, closing the
 // one this source object opened for them before.
-func exileTopUntilYouExileAnother(g *game.Game, item *game.StackItem) error {
+func ExileTopUntilYouExileAnother(g *game.Game, item *game.StackItem) error {
 	return g.ExileTopUntilAnotherForEffect(item, 1)
 }

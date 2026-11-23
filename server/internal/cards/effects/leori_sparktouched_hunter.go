@@ -68,7 +68,7 @@ var (
 				On:         []game.EventKind{game.EventActivateAbility},
 				Condition:  leoriActivatedAbilityOfTypeCondition,
 				CondParams: game.EffectParams{Name: pwType},
-				Body:       copyTheAbilityBody,
+				Body:       CopyTheAbilityBody,
 				Repeats:    true,
 			}.Apply(ctx)
 		})

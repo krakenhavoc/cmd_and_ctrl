@@ -84,6 +84,11 @@ const (
 	// BorrowExceptMana is "activated abilities … that aren't mana
 	// abilities" (CR 605.1a).
 	BorrowExceptMana
+	// BorrowExceptNonLoyalty is "all loyalty abilities of …" (CR 606): only
+	// the lenders' loyalty abilities are lent, so a lender's other
+	// activated abilities and its mana abilities are not (Nicol Bolas,
+	// Dragon-God).
+	BorrowExceptNonLoyalty
 )
 
 // LentKind says which list a lent row is read from.
@@ -348,11 +353,14 @@ func lentRowsOf(lender *Card, except BorrowExcept) []BorrowedAbility {
 		if except&BorrowExceptLoyalty != 0 && acts[i].Cost.Loyalty != nil {
 			continue
 		}
+		if except&BorrowExceptNonLoyalty != 0 && acts[i].Cost.Loyalty == nil {
+			continue
+		}
 		if e, ok := lentEntryFor(lender, ao.At(i), AbilitySlotActivated, acts[i].Label); ok {
 			out = append(out, e)
 		}
 	}
-	if except&BorrowExceptMana == 0 {
+	if except&(BorrowExceptMana|BorrowExceptNonLoyalty) == 0 {
 		manas, mo := manaAbilityRows(lender, true)
 		for i := range manas {
 			if e, ok := lentEntryFor(lender, mo.At(i), BorrowSlotMana, manas[i].Label); ok {

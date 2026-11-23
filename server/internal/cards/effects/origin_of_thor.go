@@ -38,14 +38,14 @@ func init() {
 						N:        1,
 						UpTo:     true,
 						Question: "Origin of Thor — you may discard a card; if you do, draw two cards",
-					}, abandonAttachmentsDraw, nil)
+					}, AbandonAttachmentsDraw, nil)
 				}),
 			ChapterTrigger(2, SagaChapterLabel(name, 2, "whenever you cast a spell this turn, put a +1/+1 counter on target creature you control"),
 				func(g *game.Game, item *game.StackItem) error {
 					return DelayedOnEvent{
 						Label:     "Origin of Thor — put a +1/+1 counter on target creature you control",
 						On:        []game.EventKind{game.EventCast},
-						Condition: youNextCastCondition,
+						Condition: YouNextCastCondition,
 						Body:      originOfThorCounterBody,
 						Repeats:   true,
 					}.Apply(NewContext(g, item))
@@ -58,12 +58,12 @@ func init() {
 
 // originOfThorCounterBody is chapter II's delayed trigger; its target clause
 // is announced as each instance goes on the stack. An on-disk key.
-var originOfThorCounterBody = game.TargetedDelayedBody("msc-m5/origin-of-thor-counter", simpleBody(b36CounterOnChosenAnimal),
-	constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+var originOfThorCounterBody = game.TargetedDelayedBody("msc-m5/origin-of-thor-counter", SimpleBody(B36CounterOnChosenAnimal),
+	ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
 
 func originOfThorDamage(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -71,12 +71,12 @@ func originOfThorDamage(g *game.Game, item *game.StackItem) error {
 	if !ok || c.CurrentPower() <= 0 {
 		return nil
 	}
-	return originOfThorDealToEachOpponent(ctx, id, c.CurrentPower())
+	return OriginOfThorDealToEachOpponent(ctx, id, c.CurrentPower())
 }
 
 // originOfThorDealToEachOpponent is one damage instance from the creature
 // to every opponent.
-func originOfThorDealToEachOpponent(ctx *Context, source uuid.UUID, n int) error {
+func OriginOfThorDealToEachOpponent(ctx *Context, source uuid.UUID, n int) error {
 	return ctx.Game.DamageInstanceForEffect(func() error {
 		for _, opp := range ctx.Opponents() {
 			if err := ctx.Game.DealDamageToPlayerForEffect(source, opp, n); err != nil {

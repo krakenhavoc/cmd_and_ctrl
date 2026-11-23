@@ -11,7 +11,7 @@ import (
 // bnsB06TriggeredAbilityItem passes for a TRIGGERED ability on the stack and
 // fails for a spell or an activated ability: Consign to Memory's
 // "triggered ability" half.
-func bnsB06TriggeredAbilityItem() StackItemPredicate {
+func BnsB06TriggeredAbilityItem() StackItemPredicate {
 	return func(_ *game.Game, _ uuid.UUID, item *game.StackItem) bool {
 		return item.Kind == game.StackItemTriggered
 	}
@@ -21,7 +21,7 @@ func bnsB06TriggeredAbilityItem() StackItemPredicate {
 // library in any order" as a rider of PutFromLibraryOntoBattlefield: the
 // player orders the pile (the put_in_library prompt), unlike
 // PutRestOnBottomInRandomOrderTail. An on-disk key: never renamed.
-var bnsB06PutRestOnBottomInAnyOrder = PutFromLibraryTail("put-from-library/rest-on-bottom-in-any-order",
+var BnsB06PutRestOnBottomInAnyOrder = PutFromLibraryTail("put-from-library/rest-on-bottom-in-any-order",
 	func(ctx *Context, res PutFromLibraryResult) error {
 		return ctx.Game.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
 			Chooser:   res.Player,
@@ -29,6 +29,6 @@ var bnsB06PutRestOnBottomInAnyOrder = PutFromLibraryTail("put-from-library/rest-
 			Cards:     res.Rest,
 			From:      game.ZoneLibrary,
 			Placement: game.LibraryPlaceBottom,
-			Reason:    libraryOrderLabel(ctx.Game, res.Source, "put the rest on the bottom of your library in any order"),
+			Reason:    LibraryOrderLabel(ctx.Game, res.Source, "put the rest on the bottom of your library in any order"),
 		})
 	})

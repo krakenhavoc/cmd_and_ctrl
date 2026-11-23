@@ -50,7 +50,7 @@ func init() {
 // skullwinderReturn is the controller's half, then the choice.
 func skullwinderReturn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if err := b34ReturnChosenGraveyardCardToHand(ctx); err != nil {
+	if err := B34ReturnChosenGraveyardCardToHand(ctx); err != nil {
 		return err
 	}
 	return ChoosePlayer{
@@ -68,11 +68,11 @@ func skullwinderReturn(g *game.Game, item *game.StackItem) error {
 // one, and an opponent with an empty graveyard is not prompted at all
 // (CR 608.2, as much as it can).
 var skullwinderOpponentReturn = ChoosePlayerThen("option-pick/skullwinder-opponent", func(ctx *Context, opp uuid.UUID, _ []uuid.UUID) error {
-	cards := graveyardCardsOfPlayer(ctx.Game, opp)
+	cards := GraveyardCardsOfPlayer(ctx.Game, opp)
 	if opp == uuid.Nil || len(cards) == 0 {
 		return nil
 	}
-	queueReturnPickedToHand(ctx, opp, "Skullwinder — return a card from your graveyard to your hand", cards)
+	QueueReturnPickedToHand(ctx, opp, "Skullwinder — return a card from your graveyard to your hand", cards)
 	return nil
 })
 
@@ -80,7 +80,7 @@ var skullwinderOpponentReturn = ChoosePlayerThen("option-pick/skullwinder-oppone
 // the candidate set behind "a card from their graveyard".
 //
 // Caller must hold g.mu — it is an effect-time read.
-func graveyardCardsOfPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+func GraveyardCardsOfPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 	if playerID == uuid.Nil {
 		return nil
 	}

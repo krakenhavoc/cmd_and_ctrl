@@ -44,10 +44,10 @@ func (c ClashWithAnOpponent) Apply(ctx *Context) error {
 }
 
 // wonTheClash reports whether a Clash's Then was told its controller won.
-func wonTheClash(o game.TailOutcome) bool { return o.Amount == 1 }
+func WonTheClash(o game.TailOutcome) bool { return o.Amount == 1 }
 
 // youWonAClash is "whenever you win a clash": game.EventClashWon names the
 // winner as its Actor (CR 701.30d), whoever's effect started the clash.
-func youWonAClash(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func YouWonAClash(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventClashWon && ev.Actor == source.Controller
 }

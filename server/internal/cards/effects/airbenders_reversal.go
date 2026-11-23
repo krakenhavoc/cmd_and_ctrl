@@ -43,12 +43,12 @@ func init() {
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Destroy target attacking creature.",
-				TargetCreature("target attacking creature", b41Attacking())),
+				TargetCreature("target attacking creature", B41Attacking())),
 			Mode("Airbend target creature you control.",
 				TargetCreature("target creature you control", YouControl())),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			target, ok := b16FirstLegalTargetCard(ctx)
+			target, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}
@@ -66,7 +66,7 @@ func init() {
 // creature "is attacking" (CR 506.4).
 //
 // Kept beside the card because it is one card's clause.
-func b41Attacking() CardPredicate {
+func B41Attacking() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.AttackingTarget != uuid.Nil
 	}

@@ -18,7 +18,7 @@ import (
 // hand if the spell is countered; with no creature to return the cast
 // is refused before anything is paid. The card file opens the graveyard
 // in CastableZones, as for flashback.
-func trekB2BeamMeUp(cost string) game.AlternativeCost {
+func TrekB2BeamMeUp(cost string) game.AlternativeCost {
 	ac := Flashback(cost)
 	ac.Key = "beam_me_up"
 	ac.Label = "Beam me up " + cost
@@ -30,7 +30,7 @@ func trekB2BeamMeUp(cost string) game.AlternativeCost {
 // trekB2ControlsAPermanentWithACounter is "if you control a permanent
 // with a counter on it": any kind of counter, read off the battlefield
 // as the instruction is performed.
-func trekB2ControlsAPermanentWithACounter(g *game.Game, player uuid.UUID) bool {
+func TrekB2ControlsAPermanentWithACounter(g *game.Game, player uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != player {
 			continue
@@ -52,7 +52,7 @@ func trekB2ControlsAPermanentWithACounter(g *game.Game, player uuid.UUID) bool {
 // permanent that player controls, so a spell's, an emblem's (CR 114.4)
 // and a delayed trigger's ability (which watches nothing, CR 603.7) are
 // left alone.
-func trekB2DoublesYourLifeGain(label string) game.TriggerDoubler {
+func TrekB2DoublesYourLifeGain(label string) game.TriggerDoubler {
 	return game.TriggerDoubler{
 		Label:    label,
 		RowLabel: "Abilities that trigger when you gain life trigger an additional time.",
@@ -64,7 +64,7 @@ func trekB2DoublesYourLifeGain(label string) game.TriggerDoubler {
 			if ev.Kind != game.EventChangeLife || ev.Amount <= 0 || ev.Target != q.DoublerLKI.Controller {
 				return false
 			}
-			return q.SourceLKI.Controller == q.DoublerLKI.Controller && onBattlefield(g, q.Source.InstanceID)
+			return q.SourceLKI.Controller == q.DoublerLKI.Controller && OnBattlefield(g, q.Source.InstanceID)
 		},
 	}
 }
@@ -77,7 +77,7 @@ func trekB2DoublesYourLifeGain(label string) game.TriggerDoubler {
 // the source's controller controls that has at least one +1/+1 counter is
 // cancelled; the counters come off and the damage is healed. The affected
 // creature's controller orders it against other replacements (CR 616.1).
-func trekB2CountersInsteadOfDestruction(label string) game.ReplacementEffect {
+func TrekB2CountersInsteadOfDestruction(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -85,7 +85,7 @@ func trekB2CountersInsteadOfDestruction(label string) game.ReplacementEffect {
 				return false
 			}
 			c, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && onBattlefield(g, ev.CardID) && c.IsCreature() && c.Controller == src.Controller && c.Counters[game.CounterPlusOne] > 0
+			return ok && OnBattlefield(g, ev.CardID) && c.IsCreature() && c.Controller == src.Controller && c.Counters[game.CounterPlusOne] > 0
 		},
 		Replace: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) error {
 			c, ok := g.LookupCardForEffect(ev.CardID)

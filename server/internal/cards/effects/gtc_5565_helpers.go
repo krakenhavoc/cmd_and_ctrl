@@ -14,13 +14,13 @@ import (
 // gets +P/+T [and gains <keyword>] until end of turn." Both halves end at
 // cleanup (CR 514.2). A target that stopped attacking or left is illegal,
 // and the ability does nothing (CR 608.2b).
-func gtcBloodrush(name, mana string, power, toughness int, keyword string) ActivatedAbility {
+func GtcBloodrush(name, mana string, power, toughness int, keyword string) ActivatedAbility {
 	effect := fmt.Sprintf("Target attacking creature gets %+d/%+d until end of turn.", power, toughness)
-	resolve := boostTheTargetUntilEOT(power, toughness, name+" — bloodrush")
+	resolve := BoostTheTargetUntilEOT(power, toughness, name+" — bloodrush")
 	var keywords []string
 	if keyword != "" {
 		effect = fmt.Sprintf("Target attacking creature gets %+d/%+d and gains %s until end of turn.", power, toughness, keyword)
-		resolve = socB27TargetGetsAndGains(power, toughness, keyword, name+" — bloodrush")
+		resolve = SocB27TargetGetsAndGains(power, toughness, keyword, name+" — bloodrush")
 		keywords = []string{keyword}
 	}
 	return ActivatedAbility{
@@ -38,8 +38,8 @@ func gtcBloodrush(name, mana string, power, toughness int, keyword string) Activ
 // gtcBattalion is "Battalion — Whenever this creature and at least two
 // other creatures attack, <effect>" (Boros Strike-Captain's group test,
 // battalionAttack).
-func gtcBattalion(label string, effect Effect) game.TriggeredAbility {
-	return On(game.EventAttack, battalionAttack, label, effect)
+func GtcBattalion(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventAttack, BattalionAttack, label, effect)
 }
 
 // gtcKeyruneAnimate is a Gatecrash Keyrune's second ability: "This
@@ -50,11 +50,11 @@ func gtcBattalion(label string, effect Effect) game.TriggeredAbility {
 // granting the keyword (layer 6) and setting the base power and toughness
 // (layer 7b). It stays an artifact and keeps its mana ability, which the
 // engine refuses while it is a summoning-sick creature (CR 302.6).
-func gtcKeyruneAnimate(label string, power, toughness int, subtype string, colours []string, keyword string) Effect {
+func GtcKeyruneAnimate(label string, power, toughness int, subtype string, colours []string, keyword string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !sourceIsStillThisPermanent(g, item) {
+		if !SourceIsStillThisPermanent(g, item) {
 			return nil
 		}
-		return cmdr2B13Animate(NewContext(g, item), item.SourceCardID, label, power, toughness, subtype, colours, keyword)
+		return Cmdr2B13Animate(NewContext(g, item), item.SourceCardID, label, power, toughness, subtype, colours, keyword)
 	}
 }

@@ -1,0 +1,72 @@
+package cardspr
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Presumed Dead — Instant {1}{B}:
+//
+//	"Until end of turn, target creature gets +2/+0 and gains "When this
+//	 creature dies, return it to the battlefield under its owner's
+//	 control and suspect it." (A suspected creature has menace and
+//	 can't block.)"
+//
+// Fake Your Own Death's shape (ADR 0093 PR 4): the boost and the grant
+// are one effect at one timestamp, and the granted trigger belongs to
+// the creature. It returns the card UNTAPPED, as printed, and suspects
+// the new object it became (CR 400.7). A token that dies is gone and
+// returns nothing, and so is not suspected.
+//
+// The suspect is the entry's tail (ADR 0154), so it lands even when the
+// creature first asks a question as it re-enters (a copy effect, a
+// shockland's payment).
+const presumedDeadReturn = "presumed-dead/return"
+
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "a2d3e3f0-7399-4eb9-a0cf-831710c3d431",
+		Name:         "Presumed Dead",
+		Completeness: effects.CompletenessFull,
+		Targets:      effects.TargetCreature("target creature"),
+		Grants: []effects.AbilityGrant{{
+			Key: presumedDeadReturn,
+			Triggered: []game.TriggeredAbility{
+				effects.WhenThisDies("Presumed Dead — return it and suspect it", presumedDeadReturnsAndSuspects),
+			},
+			Text: "When this creature dies, return it to the battlefield under its owner's control and suspect it.",
+		}},
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			target, ok := effects.B16FirstLegalTargetCard(ctx)
+			if !ok {
+				return nil
+			}
+			return effects.GrantAbilitiesFor{
+				Target: target,
+				Keys:   []string{presumedDeadReturn},
+				Also:   []game.Mod{game.ModifyPTMod(2, 0)},
+				Label:  "Presumed Dead — +2/+0 and it returns when it dies",
+			}.Apply(ctx)
+		},
+	})
+}
+
+// presumedDeadReturnsAndSuspects is the granted trigger's body:
+// returnThisCreatureFromGraveyard's "still the object that died" check
+// and untapped return, then the suspect on whatever entered.
+func presumedDeadReturnsAndSuspects(g *game.Game, item *game.StackItem) error {
+	z := g.FindCardZoneForEffect(item.SourceCardID)
+	if z == nil || z.Kind != game.ZoneGraveyard || !effects.SameGraveyardObject(z, item) {
+		return nil
+	}
+	// The suspect is the keyed tail thenSuspectEach, the game mutator and
+	// not the Suspect primitive: this ability's source IS the card that
+	// came back, a new object since it died, and the primitive's #1432
+	// guard would read that as "the old object's ability must not reach
+	// the new one" and do nothing. Here the new object is exactly what the
+	// instruction names.
+	return g.ReturnFromGraveyardToBattlefieldKeyedForEffect(item.SourceCardID, uuid.Nil, false,
+		effects.NewContext(g, item).Tail(effects.ThenSuspectEach))
+}

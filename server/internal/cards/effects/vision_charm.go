@@ -44,7 +44,7 @@ func init() {
 				}),
 			ModeDoing("Target artifact phases out. (While it's phased out, it's treated as though it doesn't exist. It phases in before its controller untaps during their next untap step.)",
 				TargetPermanent("target artifact", Artifact()),
-				visionCharmPhaseOut),
+				VisionCharmPhaseOut),
 		),
 	})
 }
@@ -60,7 +60,7 @@ func visionCharmMill(_ *game.StackItem, ctx *Context, occ int) error {
 
 // visionCharmPhaseOut is the third bullet: the target artifact phases
 // out.
-func visionCharmPhaseOut(_ *game.StackItem, ctx *Context, occ int) error {
+func VisionCharmPhaseOut(_ *game.StackItem, ctx *Context, occ int) error {
 	t, ok := ModeTarget(ctx, occ)
 	if !ok {
 		return nil

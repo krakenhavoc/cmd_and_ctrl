@@ -37,7 +37,7 @@ import (
 func init() {
 	fourQuest := CondBoard{
 		Name: "this enchantment has four or more quest counters on it",
-		Test: func(ctx *Context) bool { return airbenderAscensionCharged(ctx.Game, ctx.Source()) },
+		Test: func(ctx *Context) bool { return AirbenderAscensionCharged(ctx.Game, ctx.Source()) },
 	}
 	Register(Spec{
 		OracleID:     "c4d2fdf9-637d-4e97-ae33-45f2d27bf8cd",
@@ -50,10 +50,10 @@ func init() {
 				"Airbender Ascension — put a quest counter on it", Do(CounterOnThis{Kind: "quest", N: 1})),
 			InterveningIf(fourQuest, Targeting(On(game.EventBeginEndStep,
 				func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
-					return ByYou(ev, source, ch, g) && airbenderAscensionCharged(g, source.InstanceID)
+					return ByYou(ev, source, ch, g) && AirbenderAscensionCharged(g, source.InstanceID)
 				},
 				"Airbender Ascension — exile up to one target creature you control, then return it to the battlefield under its owner's control",
-				flickerFirstLegalTargetUnderOwner),
+				FlickerFirstLegalTargetUnderOwner),
 				TargetCreature("up to one target creature you control", YouControl()).WithCount(0, 1))),
 		},
 	})
@@ -61,7 +61,7 @@ func init() {
 
 // airbenderAscensionCharged is "this enchantment has four or more quest
 // counters on it": false once it has left the battlefield.
-func airbenderAscensionCharged(g *game.Game, id uuid.UUID) bool {
+func AirbenderAscensionCharged(g *game.Game, id uuid.UUID) bool {
 	c, ok := g.LookupCardForEffect(id)
-	return ok && onBattlefield(g, id) && c.Counters["quest"] >= 4
+	return ok && OnBattlefield(g, id) && c.Counters["quest"] >= 4
 }

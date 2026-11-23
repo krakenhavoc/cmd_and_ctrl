@@ -27,14 +27,14 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Automated Warfare System — you may sacrifice another creature or artifact to draw a card",
 				func(g *game.Game, item *game.StackItem) error {
-					return maySacrificeOne(g, item, "Automated Warfare System — sacrifice another creature or artifact to draw a card?",
-						Or(Creature(), Artifact()), true, automatedWarfareSystemDraw)
+					return MaySacrificeOne(g, item, "Automated Warfare System — sacrifice another creature or artifact to draw a card?",
+						Or(Creature(), Artifact()), true, AutomatedWarfareSystemDraw)
 				}),
 		},
 	})
 }
 
 // automatedWarfareSystemDraw is "if you do, draw a card". An on-disk key.
-var automatedWarfareSystemDraw = RegisterSacrificedOne("prompt-run/automated-warfare-system-draw", func(ctx *Context, _ uuid.UUID) error {
+var AutomatedWarfareSystemDraw = RegisterSacrificedOne("prompt-run/automated-warfare-system-draw", func(ctx *Context, _ uuid.UUID) error {
 	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 })

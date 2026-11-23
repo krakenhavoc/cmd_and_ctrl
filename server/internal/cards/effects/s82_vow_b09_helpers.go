@@ -16,10 +16,10 @@ import (
 // "trains" ability is a CR 603.12 reflexive trigger created only when the
 // counter really went on (the trainee still the same object on the
 // battlefield), built like exploit.go's.
-func vowB09TrainingThen(label string, payoff game.BodyRef) game.TriggeredAbility {
+func VowB09TrainingThen(label string, payoff game.BodyRef) game.TriggeredAbility {
 	return On(game.EventAttack, AllOf(ThisAttacked, attacksWithGreaterPower), label,
 		func(g *game.Game, item *game.StackItem) error {
-			if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
+			if !OnBattlefield(g, item.SourceCardID) || SourceIsNewObject(g, item) {
 				return nil
 			}
 			if err := g.AddCounterForEffect(item.SourceCardID, game.CounterPlusOne, 1); err != nil {
@@ -30,7 +30,7 @@ func vowB09TrainingThen(label string, payoff game.BodyRef) game.TriggeredAbility
 }
 
 // vowB09HasPlusOneCounter is "creature ... with a +1/+1 counter on it".
-func vowB09HasPlusOneCounter() CardPredicate {
+func VowB09HasPlusOneCounter() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.Counters[game.CounterPlusOne] > 0
 	}
@@ -39,10 +39,10 @@ func vowB09HasPlusOneCounter() CardPredicate {
 // vowB09YouPutPlusOneThisTurn is "you've put one or more +1/+1 counters on a
 // creature this turn", read off this turn's event log. Caller holds g.mu (a
 // static's AppliesTo does).
-func vowB09YouPutPlusOneThisTurn(g *game.Game, you uuid.UUID) bool {
+func VowB09YouPutPlusOneThisTurn(g *game.Game, you uuid.UUID) bool {
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind == game.EventCounterPlaced && ev.Label == game.CounterPlusOne &&
-			counterPlacedBy(ev, you, g) && wasACreatureWhenCountered(ev, g) && counterPlacementDelta(ev, g) > 0 {
+			counterPlacedBy(ev, you, g) && wasACreatureWhenCountered(ev, g) && CounterPlacementDelta(ev, g) > 0 {
 			return true
 		}
 	}
@@ -51,10 +51,10 @@ func vowB09YouPutPlusOneThisTurn(g *game.Game, you uuid.UUID) bool {
 
 // vowB09GrantUntilEOTOnTarget is "target creature gains <keywords> until end
 // of turn" for the first legal target.
-func vowB09GrantUntilEOTOnTarget(label string, keywords ...string) Effect {
+func VowB09GrantUntilEOTOnTarget(label string, keywords ...string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		target := firstLegalCardTarget(ctx)
+		target := FirstLegalCardTarget(ctx)
 		if target == uuid.Nil {
 			return nil
 		}
@@ -64,10 +64,10 @@ func vowB09GrantUntilEOTOnTarget(label string, keywords ...string) Effect {
 
 // HumanSoldierTrainingToken is the 1/1 green and white Human Soldier creature
 // token with training (Torens, Fist of the Angels).
-func HumanSoldierTrainingToken() game.Card { return tokenFromCatalog(printedHumanSoldierTrainingToken) }
+func HumanSoldierTrainingToken() game.Card { return TokenFromCatalog(printedHumanSoldierTrainingToken) }
 
-func printedHumanSoldierTrainingToken() tokenTemplate {
-	return tokenTemplate{
+func printedHumanSoldierTrainingToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "human-soldier-training",
 		Card: game.Card{
 			Name:      "Human Soldier",

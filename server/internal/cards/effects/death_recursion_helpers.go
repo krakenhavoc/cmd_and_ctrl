@@ -18,9 +18,9 @@ import (
 // ability cannot find, so nothing happens: sameGraveyardObject compares
 // the object epoch the trigger stamped. A token ceased to exist in the
 // graveyard (CR 111.7) and is not found either.
-func returnSelfFromGraveyardToHand(g *game.Game, item *game.StackItem) error {
+func ReturnSelfFromGraveyardToHand(g *game.Game, item *game.StackItem) error {
 	z := g.FindCardZoneForEffect(item.SourceCardID)
-	if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
+	if z == nil || z.Kind != game.ZoneGraveyard || !SameGraveyardObject(z, item) {
 		return nil
 	}
 	return ReturnFromGraveyard{Target: item.SourceCardID, Dest: game.ZoneHand}.Apply(NewContext(g, item))

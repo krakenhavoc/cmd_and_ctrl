@@ -1,0 +1,111 @@
+package testsbr
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// call_forth_the_tempest_test.go — #2743: the cast tally's running mana
+// value, and the card that reads it after its own two cascades.
+
+const callForthTheTempestOracle = "0623c51a-e829-413f-a3a0-817c0902821e"
+
+// pushBodyForTest seeds a vanilla creature with the given toughness.
+func pushBodyForTest(g *game.Game, owner uuid.UUID, name string, toughness int) uuid.UUID {
+	id := effectstest.PushCreatureToBattlefieldForTest(g, owner, name)
+	c := &g.Battlefield.Cards[len(g.Battlefield.Cards)-1]
+	c.Power, c.Toughness = toughness, toughness
+	return id
+}
+
+// castWithXForTest pushes a spell into the active seat's hand and
+// casts it, with x as its announced X.
+func castWithXForTest(t *testing.T, g *game.Game, name, typeLine, manaCost string, x int) uuid.UUID {
+	t.Helper()
+	active := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id, Name: name, TypeLine: typeLine, ManaCost: manaCost,
+		Owner: active.ID, Controller: active.ID,
+	})
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{XValue: x}); err != nil {
+		t.Fatalf("CastSpell %s: %v", name, err)
+	}
+	return id
+}
+
+// TestCastTallyAddsEachSpellsManaValueWithItsX — the tally reads the
+// spell on the stack as it becomes cast: an X spell counts its X
+// (CR 202.3e).
+func TestCastTallyAddsEachSpellsManaValueWithItsX(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	effectstest.AdvanceToMain(t, g)
+
+	castWithXForTest(t, g, "Test Blaze", "Instant", "{X}{R}", 3)
+	if got := g.CastTallyFor(me.ID).ManaValue; got != 4 {
+		t.Fatalf("after an X=3 {X}{R} spell the tally is %d, want 4", got)
+	}
+	castWithXForTest(t, g, "Test Divination", "Instant", "{2}{U}", 0)
+	if got := g.CastTallyFor(me.ID).ManaValue; got != 7 {
+		t.Errorf("after a second spell of mana value 3 the tally is %d, want 7", got)
+	}
+	if got := g.CastTallyFor(g.Seats[1].ID).ManaValue; got != 0 {
+		t.Errorf("a seat that cast nothing has %d", got)
+	}
+}
+
+// TestCallForthTheTempestCountsItsCascadedSpells is the deck's reason
+// for the card: a spell cast earlier in the turn and both cascade hits
+// all count, the Tempest itself does not, and only opponents'
+// creatures are dealt the damage.
+func TestCallForthTheTempestCountsItsCascadedSpells(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	effectstest.AdvanceToMain(t, g)
+
+	// Two cascade hits of mana value 3 each.
+	me.Library.Cards = nil
+	for i := 0; i < 2; i++ {
+		c := game.NewCard("Test Hit", me.ID)
+		c.TypeLine = "Instant"
+		c.ManaCost = "{2}{U}"
+		me.Library.PushTop(c)
+	}
+	// One spell before the Tempest, mana value 2.
+	castWithXForTest(t, g, "Test Opener", "Sorcery", "{1}{R}", 0)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	dies := pushBodyForTest(g, opp.ID, "Eight Toughness", 8)
+	lives := pushBodyForTest(g, opp.ID, "Nine Toughness", 9)
+	mine := pushBodyForTest(g, me.ID, "My Creature", 1)
+
+	effectstest.CastWithCost(t, g, "Call Forth the Tempest", "Sorcery", "{5}{R}{R}{R}", callForthTheTempestOracle)
+	hits := 0
+	for i := 0; i < 16 && !effectstest.StackFullyEmpty(g); i++ {
+		// Each hit is cast while its cascade resolves (CR 608.2g, #4243).
+		hits += effectstest.AnswerAllMayCast(t, g, me.ID, true)
+		effectstest.PassPriorityAroundTable(t, g)
+	}
+	if hits != 2 {
+		t.Fatalf("cast %d cascade hits, want 2", hits)
+	}
+	if got := g.CastTallyFor(me.ID).ManaValue; got != 2+8+3+3 {
+		t.Errorf("tally %d, want 16", got)
+	}
+
+	// Other spells: 2 + 3 + 3 = 8.
+	if effectstest.BattlefieldHas(g, dies) {
+		t.Error("an 8-toughness opposing creature survived 8 damage")
+	}
+	if !effectstest.BattlefieldHas(g, lives) {
+		t.Error("a 9-toughness opposing creature died: the Tempest counted itself")
+	}
+	if !effectstest.BattlefieldHas(g, mine) {
+		t.Error("the Tempest damaged its controller's own creature")
+	}
+}

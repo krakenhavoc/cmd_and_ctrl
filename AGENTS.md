@@ -67,8 +67,9 @@ cmd_and_ctrl/
 ├── Makefile       # top-level dev/test/lint targets
 ├── server/        # Go game server (authoritative state, WebSocket + HTTP API)
 ├── client/        # TypeScript + Svelte 5 + Vite
+├── tests-e2e/     # Playwright e2e
 ├── scripts/       # CD helpers, cron and backup jobs, one-off tools
-├── deploy/        # monitoring alert rules and Grafana dashboards
+├── deploy/        # Caddy, systemd, monitoring
 ├── data/          # runtime state (gitignored)
 └── docs/          # reference, runbooks and ADRs
 ```
@@ -116,7 +117,7 @@ Work is organised into 2-week sprints, tracked on the
 checklist; the plan lists them.
 
 **Every commit and pull request must reference the sprint and issue it relates
-to.** This is non-negotiable. If a PR does not belong to the active sprint, say so
+to.** If a PR does not belong to the active sprint, say so
 and justify it.
 
 ### Picking an ADR number
@@ -128,7 +129,7 @@ take the first number none of them uses, and name the branches you checked in th
 PR body. Numbers are never reused. `TestADRNumbersAreUniqueAndMatchTheirHeading`
 (`server/internal/docsguard`) fails CI on a duplicate or on an H1 that disagrees
 with its filename. If yours collides, renumber your file, not the other branch's.
-Current range: **0001–0224**.
+Current range: **0001–0225**.
 
 ### Commit message format
 
@@ -251,9 +252,9 @@ long on purpose; open the subsection you need, not the whole file.
 
 Rules that must not be missed:
 
-- **One file per card**, `server/internal/cards/effects/<snake_name>.go`, one
-  `init()` each. The catalog is opt-in per Scryfall `oracle_id` (never
-  `scryfall_id`).
+- **One file per card**, one `init()` each, placed per
+  [Where a card goes](docs/adding-cards.md#where-a-card-goes). Opt-in
+  per Scryfall `oracle_id` (never `scryfall_id`).
 - **Declare `Completeness` truthfully.** The zero value is `Unreviewed` and is a
   legal thing to ship; never stamp `Full` to tidy it. `Caveats` are written for
   a player, one sentence, no engine vocabulary.

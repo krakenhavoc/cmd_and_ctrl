@@ -37,45 +37,45 @@ type mayWheel struct {
 
 // newMayWheel registers a card's wheel. answerKey is an on-disk key: never
 // renamed, never reused. Call it once, from a package-level var.
-func newMayWheel(answerKey, question string) *mayWheel {
-	return newMayWheelDrawing(answerKey, question, 7, mayWheelSteps)
+func NewMayWheel(answerKey, question string) *mayWheel {
+	return NewMayWheelDrawing(answerKey, question, 7, mayWheelSteps)
 }
 
 // newMayWheelDrawing is newMayWheel for a card that draws a number other than
 // seven: `steps` is the wheel that draws that many (see mayWheelStepsFor).
-func newMayWheelDrawing(answerKey, question string, draws int, steps ThenSteps) *mayWheel {
+func NewMayWheelDrawing(answerKey, question string, draws int, steps ThenSteps) *mayWheel {
 	w := &mayWheel{question: question, draws: draws, steps: steps}
 	// The prompt carries the yes-sayers (the first Word of them), then
 	// the players still to ask.
 	w.answer = MayAnswer(answerKey, func(ctx *Context, r game.ConfirmAnswer) error {
-		n := min(wordInt(r), len(r.Carry))
+		n := min(WordInt(r), len(r.Carry))
 		yes, rest := append([]uuid.UUID(nil), r.Carry[:n]...), r.Carry[n:]
 		if r.Accepted {
 			yes = append(yes, r.Chooser)
 		}
-		return w.ask(ctx, rest, yes)
+		return w.Ask(ctx, rest, yes)
 	})
 	return w
 }
 
 // Start asks every player, the active player first.
 func (w *mayWheel) Start(ctx *Context) error {
-	return w.ask(ctx, apnapPlayers(ctx.Game), nil)
+	return w.Ask(ctx, ApnapPlayers(ctx.Game), nil)
 }
 
 // ask asks the next player in order; after the last answer, the yes-sayers
 // wheel together.
-func (w *mayWheel) ask(ctx *Context, order, yes []uuid.UUID) error {
+func (w *mayWheel) Ask(ctx *Context, order, yes []uuid.UUID) error {
 	if len(order) == 0 {
 		if len(yes) == 0 {
 			return nil
 		}
-		ctx.RecordStep(mayWheelYesKey, yes)
+		ctx.RecordStep(MayWheelYesKey, yes)
 		return w.steps.Run(ctx)
 	}
 	who, rest := order[0], order[1:]
 	if p := ctx.Game.PlayerByIDForEffect(who); p == nil || p.Eliminated {
-		return w.ask(ctx, rest, yes)
+		return w.Ask(ctx, rest, yes)
 	}
 	return MayChoice{
 		Player:   who,
@@ -88,26 +88,26 @@ func (w *mayWheel) ask(ctx *Context, order, yes []uuid.UUID) error {
 }
 
 // mayWheelYesKey is the step record holding the players who said yes.
-const mayWheelYesKey = "each-player-may-wheel-yes"
+const MayWheelYesKey = "each-player-may-wheel-yes"
 
 // mayWheelSteps is the yes-sayers' wheel: every hand is discarded, then
 // each of them draws seven, after any question a discard asked.
-var mayWheelSteps = mayWheelStepsFor("then-steps/each-player-may-wheel", 7)
+var mayWheelSteps = MayWheelStepsFor("then-steps/each-player-may-wheel", 7)
 
 // mayWheelStepsFor registers a wheel that draws `draws` cards under key (an
 // on-disk key: never renamed, never reused).
-func mayWheelStepsFor(key string, draws int) ThenSteps {
+func MayWheelStepsFor(key string, draws int) ThenSteps {
 	return RegisterThenSteps(key,
 		Instruction(func(ctx *Context) error {
-			for _, id := range ctx.StepRecord(mayWheelYesKey).IDs {
-				if _, err := discardWholeHand(ctx.Game, id); err != nil {
+			for _, id := range ctx.StepRecord(MayWheelYesKey).IDs {
+				if _, err := DiscardWholeHand(ctx.Game, id); err != nil {
 					return err
 				}
 			}
 			return nil
 		}),
 		Instruction(func(ctx *Context) error {
-			for _, id := range ctx.StepRecord(mayWheelYesKey).IDs {
+			for _, id := range ctx.StepRecord(MayWheelYesKey).IDs {
 				if p := ctx.Game.PlayerByIDForEffect(id); p == nil || p.Eliminated {
 					continue
 				}

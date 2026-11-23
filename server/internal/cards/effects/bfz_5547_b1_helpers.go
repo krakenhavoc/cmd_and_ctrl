@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // changeling counts.
 func bfzB1RallyWhen(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.CardID == source.InstanceID ||
-		b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Ally"))
+		B10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Ally"))
 }
 
 // bfzB1Rally is a rally trigger: one trigger per entering Ally, each on
@@ -28,7 +28,7 @@ func bfzB1Rally(label string, effect Effect) game.TriggeredAbility {
 // resolves (CR 611.2c), so a creature that enters later in the turn does
 // not gain the keyword from this instance; the grant ends in the cleanup
 // step (CR 514.2).
-func bfzB1RallyTeamGains(name, keyword string) game.TriggeredAbility {
+func BfzB1RallyTeamGains(name, keyword string) game.TriggeredAbility {
 	label := name + " — creatures you control gain " + keyword + " until end of turn"
 	return bfzB1Rally(label, Do(GrantKeywordUntilEOT{
 		Match:    And(Creature(), YouControl()),
@@ -40,8 +40,8 @@ func bfzB1RallyTeamGains(name, keyword string) game.TriggeredAbility {
 // bfzB1RallyTeamGets is "Rally — …, creatures you control get +N/+N
 // until end of turn." (Tajuru Beastmaster, Tajuru Warcaller), the set
 // locked as it resolves (CR 611.2c).
-func bfzB1RallyTeamGets(name string, n int) game.TriggeredAbility {
-	label := name + " — creatures you control get " + signedPT(n, n) + " until end of turn"
+func BfzB1RallyTeamGets(name string, n int) game.TriggeredAbility {
+	label := name + " — creatures you control get " + SignedPT(n, n) + " until end of turn"
 	return bfzB1Rally(label, Do(BoostUntilEOT{
 		Match:     And(Creature(), YouControl()),
 		Power:     n,

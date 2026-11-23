@@ -499,7 +499,13 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 		return nil
 	}
 	// CR 202.3e: a spell on the stack counts its announced X.
-	return SourceCharacteristicsX(&c, g.announcedXOnStackLocked(c.InstanceID))
+	ch := SourceCharacteristicsX(&c, g.announcedXOnStackLocked(c.InstanceID))
+	if ch != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
+		if item := g.StackMeta[c.InstanceID]; item != nil && item.Kind == StackItemSpell {
+			ch.SourceIsSpell = true
+		}
+	}
+	return ch
 }
 
 // damageTailFromFrame builds a combat damage tail from a queued
@@ -834,7 +840,7 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// Angel's Grace (#3172): the damage stays whole and only the life it
 	// costs is capped at the floor of 1, after the window (ADR 0169 §3).
 	lifeLoss = g.capLifeLossByFloorLocked(p, lifeLoss)
-	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
+	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p) && !g.playerLifeLossLockedLocked(p) && !g.playerCantLoseLifeLocked(p)
 	lost := 0
 	if loseLife {
 		lost = lifeLoss

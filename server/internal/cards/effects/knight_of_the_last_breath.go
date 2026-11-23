@@ -24,11 +24,11 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost: Plus(ManaCost("{3}"),
 				SacrificeAnotherN(1, "another nontoken creature", Creature(), Not(IsTokenPredicate()))),
-			Effect: knightOfTheLastBreathSpirits(1),
+			Effect: KnightOfTheLastBreathSpirits(1),
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Knight of the Last Breath — afterlife 3: create three 1/1 white and black Spirit creature tokens with flying",
-				knightOfTheLastBreathSpirits(3)),
+				KnightOfTheLastBreathSpirits(3)),
 		},
 	})
 }
@@ -36,7 +36,7 @@ func init() {
 // knightOfTheLastBreathSpirits makes n of the printed 1/1 white and black
 // Spirit tokens with flying. The row is added by std_b43_helpers.go's init,
 // which runs after this file's, so the template is read as the effect runs.
-func knightOfTheLastBreathSpirits(n int) Effect {
+func KnightOfTheLastBreathSpirits(n int) Effect {
 	return Do(Instruction(func(ctx *Context) error {
 		return CreateToken{Template: TokenCard("1/1 white and black Spirit with flying"), N: n}.Apply(ctx)
 	}))

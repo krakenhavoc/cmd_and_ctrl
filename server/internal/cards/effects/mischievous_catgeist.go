@@ -28,21 +28,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:         mischievousCatgeistOracleID,
+		OracleID:         MischievousCatgeistOracleID,
 		Name:             "Mischievous Catgeist",
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Disturb("{2}{U}")},
-		Triggered:        []game.TriggeredAbility{catgeistDraw("Mischievous Catgeist — draw a card")},
+		Triggered:        []game.TriggeredAbility{CatgeistDraw("Mischievous Catgeist — draw a card")},
 	})
 	Register(Spec{
-		OracleID:     mischievousCatgeistOracleID + "#1",
+		OracleID:     MischievousCatgeistOracleID + "#1",
 		Name:         "Catlike Curiosity",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
 		Grants: []AbilityGrant{{
 			Key:       catlikeCuriosityDraw,
-			Triggered: []game.TriggeredAbility{catgeistDraw("Catlike Curiosity — draw a card")},
+			Triggered: []game.TriggeredAbility{CatgeistDraw("Catlike Curiosity — draw a card")},
 			Text:      "Whenever this creature deals combat damage to a player, draw a card.",
 		}},
 		Static:       []game.StaticAbility{GrantAbilitiesToAttached(catlikeCuriosityDraw)},
@@ -51,13 +51,13 @@ func init() {
 }
 
 const (
-	mischievousCatgeistOracleID = "4d0a0027-53b3-45a1-8736-f0ac86b19342"
+	MischievousCatgeistOracleID = "4d0a0027-53b3-45a1-8736-f0ac86b19342"
 	catlikeCuriosityDraw        = "catlike-curiosity/draw"
 )
 
 // catgeistDraw is "Whenever this creature deals combat damage to a
 // player, draw a card", printed on the front face and quoted on the
 // back.
-func catgeistDraw(label string) game.TriggeredAbility {
+func CatgeistDraw(label string) game.TriggeredAbility {
 	return WheneverThisDealsCombatDamageToAPlayer(label, Do(DrawCards{N: 1}))
 }

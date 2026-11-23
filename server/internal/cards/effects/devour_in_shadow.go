@@ -7,7 +7,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Destroy target creature. It can't be regenerated. You lose life
 //	 equal to that creature's toughness."
 //
-// Vendetta's body (vendettaResolve) for any creature: the toughness is read
+// Vendetta's body (VendettaResolve) for any creature: the toughness is read
 // as the spell resolves, before the destruction, and the life is lost even if
 // the creature isn't destroyed.
 //
@@ -19,6 +19,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      TargetCreature("target creature"),
-		OnResolve:    vendettaResolve,
+		OnResolve:    VendettaResolve,
 	})
 }

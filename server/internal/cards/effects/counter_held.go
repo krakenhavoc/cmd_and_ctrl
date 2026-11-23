@@ -74,12 +74,12 @@ func GrantWhileItHasCounter(ctx *Context, object uuid.UUID, kind, label string, 
 	if err := (AddCounter{Target: object, Kind: kind, N: 1}).Apply(ctx); err != nil {
 		return err
 	}
-	return grantWhileItHasCounter(ctx, object, kind, label, keys...)
+	return GrantWhileItAlreadyHasCounter(ctx, object, kind, label, keys...)
 }
 
 // grantWhileItHasCounter is GrantWhileItHasCounter for a permanent that
 // already has the counter (Makeshift Mannequin's entered with it).
-func grantWhileItHasCounter(ctx *Context, object uuid.UUID, kind, label string, keys ...string) error {
+func GrantWhileItAlreadyHasCounter(ctx *Context, object uuid.UUID, kind, label string, keys ...string) error {
 	d, ok := DurationWhileItHasCounter(ctx, object, kind)
 	if !ok {
 		return nil

@@ -1,0 +1,36 @@
+package cardsso
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Spire Patrol — Creature — Human Soldier {2}{W}{U}, 3/2 (Aether Revolt,
+// #5536):
+//
+//	"Flying
+//	 When this creature enters, tap target creature an opponent controls.
+//	 That creature doesn't untap during its controller's next untap step."
+//
+// Frost Trickster's tap-and-freeze enters trigger (TapAndFreeze, the
+// ADR 0058 one-shot mark).
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "afacd2b1-1733-4b28-b834-71a31149fa00",
+		Name:            "Spire Patrol",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flying"},
+		Triggered: []game.TriggeredAbility{
+			effects.Targeting(
+				effects.WhenThisEnters("Spire Patrol — tap target creature an opponent controls; it doesn't untap during its controller's next untap step",
+					func(g *game.Game, item *game.StackItem) error {
+						return effects.B751TapFreezeTargets(effects.NewContext(g, item), uuid.Nil, "Spire Patrol — doesn't untap during its controller's next untap step")
+					}),
+				effects.TargetCreature("target creature an opponent controls", effects.OpponentControls())),
+		},
+	})
+}

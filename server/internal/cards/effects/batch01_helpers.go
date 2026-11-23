@@ -23,7 +23,7 @@ import (
 // keeps the same question — an Urborg-granted Swamp and a
 // Conspiracy-granted Goblin have to answer identically whether the
 // asker is the mana pipeline or a card file.
-func hasSubtype(c game.Card, subtype string) bool {
+func CardHasSubtype(c game.Card, subtype string) bool {
 	return c.HasSubtype(subtype)
 }
 
@@ -31,13 +31,13 @@ func hasSubtype(c game.Card, subtype string) bool {
 // Treasure". Reads the Treasure subtype rather than the token's name,
 // so a Treasure that is a copy of something else, or a nontoken
 // artifact with the subtype, is still one.
-func isTreasure(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-	return hasSubtype(c, "Treasure")
+func IsTreasure(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+	return CardHasSubtype(c, "Treasure")
 }
 
 // eachOpponentLosesLife is "each opponent loses N life" — life loss,
 // not damage, so no prevention or damage replacement sees it.
-func eachOpponentLosesLife(g *game.Game, item *game.StackItem, n int) error {
+func EachOpponentLosesLifeNow(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
 	for _, opp := range ctx.Opponents() {
 		if err := g.ChangePlayerLifeForEffect(ctx.Source(), opp, -n); err != nil {

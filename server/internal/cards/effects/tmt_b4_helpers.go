@@ -10,13 +10,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // grant is its own step, so it waits for any prompt the counter asks (a
 // CR 616 order) and lands on the permanent only while it is still the
 // object the ability came from (CR 400.7, CR 608.2b).
-func plusOneCounterOnThisThenItGains(label string, keywords ...string) Effect {
+func PlusOneCounterOnThisThenItGains(label string, keywords ...string) Effect {
 	return Do(
 		Instruction(func(ctx *Context) error {
 			return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 		}),
 		Instruction(func(ctx *Context) error {
-			if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			if !SourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 				return nil
 			}
 			return GrantKeywordUntilEOT{Target: ctx.Item.SourceCardID, Keywords: keywords, Label: label}.Apply(ctx)

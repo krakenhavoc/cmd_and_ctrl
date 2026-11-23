@@ -39,14 +39,14 @@ import (
 // its controller, and Megatron converts only when there was any.
 //
 // No simplification.
-const megatronOracleID = "33e88072-3840-4090-8d0b-7fb38279e150"
+const MegatronOracleID = "33e88072-3840-4090-8d0b-7fb38279e150"
 
 var megatronStrikeBody = game.ReflexiveBody("megatron-destructive-force/strike", megatronStrike,
-	constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+	ConstTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
 
 func init() {
 	Register(Spec{
-		OracleID:         megatronOracleID,
+		OracleID:         MegatronOracleID,
 		Name:             "Megatron, Tyrant",
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{MoreThanMeetsTheEye("{1}{R}{W}{B}")},
@@ -54,7 +54,7 @@ func init() {
 			{
 				Label: "Megatron, Tyrant — your opponents can't cast spells during combat.",
 				Forbids: func(q game.CastQuery) bool {
-					return q.Source.Controller != q.Controller && inCombatStep(q.Game.Turn.Step)
+					return q.Source.Controller != q.Controller && InCombatStep(q.Game.Turn.Step)
 				},
 			},
 		},
@@ -64,7 +64,7 @@ func init() {
 		},
 	})
 	Register(Spec{
-		OracleID:     megatronOracleID + "#1",
+		OracleID:     MegatronOracleID + "#1",
 		Name:         "Megatron, Destructive Force",
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{LivingMetal()},
@@ -77,7 +77,7 @@ func init() {
 
 // inCombatStep is "during combat": the combat phase's steps. It reads
 // the step it is handed, so it needs no lock (the cast path holds g.mu).
-func inCombatStep(s game.Step) bool {
+func InCombatStep(s game.Step) bool {
 	switch s {
 	case game.StepBeginCombat, game.StepDeclareAttackers, game.StepDeclareBlockers,
 		game.StepFirstStrikeDamage, game.StepCombatDamage, game.StepEndCombat:
@@ -99,7 +99,7 @@ func megatronMaySacrifice(g *game.Game, item *game.StackItem) error {
 		Question: "Megatron, Destructive Force — sacrifice another artifact to deal damage equal to its mana value to target creature?",
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			var out []uuid.UUID
-			for _, id := range permanentsControlledByMatching(g, of, Artifact()) {
+			for _, id := range PermanentsControlledByMatching(g, of, Artifact()) {
 				if id != self {
 					out = append(out, id)
 				}
@@ -122,7 +122,7 @@ var megatronSacrificed = RegisterPermanentsPick("prompt-run/megatron-tyrant-sacr
 		if c, ok := ctx.Game.LookupCardForEffect(cards[0]); ok {
 			mv, _ = ctx.Game.ManaValueForEffect(c)
 		}
-		return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, cards, withN(ctx.ItemTail(megatronWhenYouDo), mv))
+		return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, cards, WithN(ctx.ItemTail(megatronWhenYouDo), mv))
 	},
 })
 
@@ -178,13 +178,13 @@ func megatronStrike(g *game.Game, item *game.StackItem, p game.EffectParams) err
 // megatronConvertAnswer is the "yes": convert Megatron, then add {C} for
 // each life the opponents have lost this turn. Keyed (#4291).
 var megatronConvertAnswer = MayYes("confirm/megatron-tyrant-convert", func(ctx *Context, _ game.ConfirmAnswer) error {
-	converted, err := convertThisReporting(ctx)
+	converted, err := ConvertThisReporting(ctx)
 	if err != nil || !converted {
 		return err
 	}
 	lost := 0
 	for _, opp := range ctx.Opponents() {
-		lost += b18LifeLostThisTurn(ctx.Game, opp)
+		lost += B18LifeLostThisTurn(ctx.Game, opp)
 	}
 	if lost <= 0 {
 		return nil

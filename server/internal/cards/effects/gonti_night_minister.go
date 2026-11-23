@@ -72,7 +72,7 @@ func init() {
 					return item
 				},
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return gontiExileTopForPlay(NewContext(g, item), item.Trigger.Event.Target, item.Params.Player, 1)
+					return GontiExileTopForPlay(NewContext(g, item), item.Trigger.Event.Target, item.Params.Player, 1)
 				},
 			},
 		},
@@ -109,7 +109,7 @@ func gontiCombatDamageToYourOpponent(ev game.Event, source *game.Card, _ game.Ch
 // down and lets `grantee` look at and play them for as long as they
 // remain exiled, spending mana of any type. Shared with Outrageous
 // Robbery. An n of zero exiles nothing (Robbery with X = 0).
-func gontiExileTopForPlay(ctx *Context, from, grantee uuid.UUID, n int) error {
+func GontiExileTopForPlay(ctx *Context, from, grantee uuid.UUID, n int) error {
 	if grantee == uuid.Nil || n <= 0 {
 		return nil
 	}
