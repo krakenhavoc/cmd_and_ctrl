@@ -14,7 +14,7 @@ import (
 // cards in hand" (hellbent): the source, while it is a creature, and
 // while its controller's hand is empty. A hand's size is public.
 func futB1SelfWhileHellbent(target *game.Card, g *game.Game, source *game.Card) bool {
-	return selfCreature(target, g, source) && stickerHandSize(g, source.Controller) == 0
+	return SelfCreature(target, g, source) && R35StickerHandSize(g, source.Controller) == 0
 }
 
 // futB1HellbentKeyword is "Hellbent — This creature has <keyword> as long
@@ -22,7 +22,7 @@ func futB1SelfWhileHellbent(target *game.Card, g *game.Game, source *game.Card) 
 // (CR 613.1f) that is on while the controller's hand is empty. It
 // declares DependsOnHandSize, so the layers are recomputed as the hand
 // empties and refills.
-func futB1HellbentKeyword(keyword string) game.StaticAbility {
+func FutB1HellbentKeyword(keyword string) game.StaticAbility {
 	ab := KeywordGrant(futB1SelfWhileHellbent, keyword)
 	ab.Label = "Hellbent — This creature has " + keyword + " as long as you have no cards in hand."
 	ab.DependsOnHandSize = true
@@ -33,12 +33,12 @@ func futB1HellbentKeyword(keyword string) game.StaticAbility {
 // pay <cost>. If you don't, you lose the game." (Slaughter Pact, Pact of
 // the Titan): Pact of Negation's delayed trigger, owed whatever became of
 // the rest of the spell.
-func futB1OwePact(ctx *Context, name, cost string) error {
+func FutB1OwePact(ctx *Context, name, cost string) error {
 	return ScheduleDelayedTrigger{
 		At:                 game.StepUpkeep,
 		ControllerTurnOnly: true,
 		Label:              name + " — pay " + cost + " or lose the game",
-		Body:               pactPaymentBody,
+		Body:               PactPaymentBody,
 		Params:             game.EffectParams{Cost: cost, Name: name},
 	}.Apply(ctx)
 }
@@ -47,7 +47,7 @@ func futB1OwePact(ctx *Context, name, cost string) error {
 // or greater" (Bloodshot Trainee): the source's power through the layers
 // as the ability is announced. Read-only and public, like every
 // activation condition.
-func futB1SourcePowerAtLeast(n int) ActivationCondition {
+func FutB1SourcePowerAtLeast(n int) ActivationCondition {
 	return func(g *game.Game, _, source uuid.UUID) bool {
 		c, ok := g.LookupCardForEffect(source)
 		return ok && c.IsCreature() && c.CurrentPower() >= n
@@ -59,13 +59,13 @@ func futB1SourcePowerAtLeast(n int) ActivationCondition {
 // caster's creatures against every opponent still in the game, one at a
 // time. With no opponent left there is no one to compare with, and the
 // condition is not met.
-func futB1YouControlFewerCreaturesThanEachOpponent(g *game.Game, caster uuid.UUID, _ game.Card) bool {
+func FutB1YouControlFewerCreaturesThanEachOpponent(g *game.Game, caster uuid.UUID, _ game.Card) bool {
 	creature := func(c game.Card) bool { return c.IsCreature() }
-	mine := countControlled(g, caster, creature)
+	mine := CountControlled(g, caster, creature)
 	anyOpponent := false
-	notFewer := eachOpponent(g, caster, func(opp uuid.UUID) bool {
+	notFewer := EachOpponent(g, caster, func(opp uuid.UUID) bool {
 		anyOpponent = true
-		return countControlled(g, opp, creature) <= mine
+		return CountControlled(g, opp, creature) <= mine
 	})
 	return anyOpponent && !notFewer
 }
